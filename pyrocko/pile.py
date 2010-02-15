@@ -1,5 +1,13 @@
 import trace, io, util, config
+
 import numpy as num
+import os, pickle, logging
+
+logger = logging.getLogger('pyrocko.pile')
+
+from util import reuse
+from trace import degapper
+
 
 class TracesGroup(object):
     def __init__(self):
@@ -9,12 +17,12 @@ class TracesGroup(object):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
         self.tmin, self.tmax = num.inf, -num.inf
     
-    def update_from_content(self, content):
+    def update_from_contents(self, content):
         self.empty()
         
         for c in content:
         
-            if isinstance(c, Group):
+            if isinstance(c, TracesGroup):
                 self.networks.update( c.networks )
                 self.stations.update( c.stations )
                 self.locations.update( c.locations )
@@ -59,6 +67,7 @@ class TracesFile(TracesGroup):
         self.data_loaded = False
         self.substitutions = substitutions
         self.load_headers(mtime=mtime)
+        self.mtime = mtime
         
     def load_headers(self, mtime=None):
         if mtime is None:
@@ -68,10 +77,10 @@ class TracesFile(TracesGroup):
             self.traces.append(tr)
             
         self.data_loaded = False
-        self.update_from_content(self.traces)
+        self.update_from_contents(self.traces)
         
     def load_data(self):
-        logging.info('loading data from file: %s' % self.abspath)
+        logger.info('loading data from file: %s' % self.abspath)
         self.traces = []
         for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
             self.traces.append(tr)
@@ -80,7 +89,7 @@ class TracesFile(TracesGroup):
         self.update_from_contents(self.traces)
         
     def drop_data(self):
-        logging.info('forgetting data of file: %s' % self.abspath)
+        logger.info('forgetting data of file: %s' % self.abspath)
         for tr in self.traces:
             tr.drop_data()
         self.data_loaded = False
@@ -96,12 +105,12 @@ class TracesFile(TracesGroup):
     
     def chop(self,tmin,tmax,selector):
         chopped = []
-        for trace in self.traces:
-            if selector(trace):
-                chopped_trace = trace.chop(tmin,tmax,inplace=False)
-                if chopped_trace is not None:
-                    chopped_trace.mtime = self.mtime
-                    chopped.append(chopped_trace)
+        for tr in self.traces:
+            if not selector or selector(tr):
+                try:
+                    chopped.append(tr.chop(tmin,tmax,inplace=False))
+                except trace.NoData:
+                    pass
             
         return chopped
         
@@ -143,39 +152,39 @@ class TracesFile(TracesGroup):
 def load_cache(cachefilename):
         
     if os.path.isfile(cachefilename):
-        progress_beg('reading cache...')
+        util.progress_beg('reading cache...')
         f = open(cachefilename,'r')
         cache = pickle.load(f)
         f.close()
-        progress_end()
+        util.progress_end()
     else:
         cache = {}
         
     # weed out files which no longer exist
-    progress_beg('weeding cache...')
+    util.progress_beg('weeding cache...')
     for fn in cache.keys():
         if not os.path.isfile(fn):
             del cache[fn]
     
-    progress_end()
+    util.progress_end()
             
     return cache
 
 def dump_cache(cache, cachefilename):
     
-    progress_beg('writing cache...')
+    util.progress_beg('writing cache...')
     f = open(cachefilename+'.tmp','w')
     pickle.dump(cache, f)
     f.close()
     os.rename(cachefilename+'.tmp', cachefilename)
-    progress_end()
+    util.progress_end()
     
 class FilenameAttributeError(Exception):
     pass
 
 
 class Pile(TracesGroup):
-    def __init__(self, filenames, cachefilename=None, filename_attributes=None):
+    def __init__(self, filenames, cachefilename=None, filename_attributes=None, format='mseed'):
         msfiles = []
         
         if filenames:
@@ -184,8 +193,11 @@ class Pile(TracesGroup):
                 cache = load_cache(cachefilename)
             else:
                 cache = {}
-                
-            if config.show_progress:
+            
+            progressbar = util.progressbar_module()
+
+            if progressbar and config.show_progress:
+
                 widgets = ['Scanning files', ' ',
                         progressbar.Bar(marker='-',left='[',right=']'), ' ',
                         progressbar.Percentage(), ' ',]
@@ -218,15 +230,15 @@ class Pile(TracesGroup):
                         
                 except (io.FileLoadError, OSError, FilenameAttributeError), xerror:
                     failures.append(abspath)
-                    logging.warn(xerror)
+                    logger.warn(xerror)
                 else:
                     msfiles.append(cache[abspath])
                
-                if config.show_progress: pbar.update(ifile+1)
+                if progressbar and config.show_progress: pbar.update(ifile+1)
             
-            if config.show_progress: pbar.finish()
+            if progressbar and config.show_progress: pbar.finish()
             if failures:
-                logging.warn('The following file%s caused problems and will be ignored:\n' % plural_s(len(failures)) + '\n'.join(failures))
+                logger.warn('The following file%s caused problems and will be ignored:\n' % plural_s(len(failures)) + '\n'.join(failures))
             
             if cachefilename and cache_modified: dump_cache(cache, cachefilename)
         
@@ -295,7 +307,7 @@ class Pile(TracesGroup):
                     chopped_weeded = []
                     for trace in chopped:
                         if abs(wlen - round(wlen/trace.deltat)*trace.deltat) > 0.001:
-                            logging.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, trace.deltat) )
+                            logger.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, trace.deltat) )
                         if len(trace.ydata) == t2ind((wmax+tpad)-(wmin-tpad), trace.deltat):
                             chopped_weeded.append(trace)
                     chopped = chopped_weeded
@@ -381,59 +393,3 @@ class Pile(TracesGroup):
         return s
 
 
-if __name__ == '__main__':
-    import unittest
-    import numpy as num
-    
-    def makeManyFiles( nfiles=200, nsamples=100000):
-        import tempfile
-        import random
-        from random import choice as rc
-        from os.path import join as pjoin
-        
-
-        abc = 'abcdefghijklmnopqrstuvwxyz' 
-        
-        def rn(n):
-            return ''.join( [ random.choice(abc) for i in xrange(n) ] )
-        
-        stations = [ rn(4) for i in xrange(10) ]
-        components = [ rn(3) for i in xrange(3) ]
-        networks = [ 'xx' ]
-        
-        datadir = tempfile.mkdtemp()
-        traces = []
-        for i in xrange(nfiles):
-            tmin = 1234567890+i*60*60*24*10 # random.randint(1,int(time.time()))
-            deltat = 1.0
-            data = num.ones(nsamples)
-            traces.append(trace.Trace(rc(networks), rc(stations),'',rc(components), tmin, None, deltat, data))
-        
-        fnt = pjoin( datadir, '%(network)s-%(station)s-%(location)s-%(channel)s-%(tmin)s.mseed', 'mseed')
-        io.save(traces, fnt)
-        
-        return datadir
-
-    class MSeedTestCase( unittest.TestCase ):
-                
-        def testPileTraversal(self):
-            import tempfile, shutil
-            config.show_progress = False
-            nfiles = 200
-            nsamples = 100000
-            datadir = makeManyFiles(nfiles=nfiles, nsamples=nsamples)
-            filenames = select_files([datadir])
-            cachefilename = pjoin(datadir,'_cache_')
-            pile = MSeedPile(filenames, cachefilename)
-            s = 0
-            for traces in pile.chopper(tmin=None, tmax=None, tinc=1234.): #tpad=10.):
-                for trace in traces:
-                    s += num.sum(trace.ydata)
-                    
-            os.unlink(cachefilename)
-            shutil.rmtree(datadir)
-            assert s == nfiles*nsamples
-        
-
-    unittest.main()
-    

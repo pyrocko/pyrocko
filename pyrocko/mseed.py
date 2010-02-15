@@ -1,5 +1,5 @@
-import pyrocko.mseed_ext
-from pyrocko.mseed_ext import HPTMODULUS, MSEEDERROR
+import mseed_ext
+from mseed_ext import HPTMODULUS, MSeedError
 import trace
 import os
 from util import reuse
@@ -8,7 +8,7 @@ def load(filename, getdata=True):
 
     mtime = os.stat(filename)[8]
     traces = []
-    for tr in pyrocko.mseed_ext.get_traces( filename, getdata ):
+    for tr in mseed_ext.get_traces( filename, getdata ):
         network, station, location, channel = tr[1:5]
         tmin = float(tr[5])/float(HPTMODULUS)
         tmax = float(tr[6])/float(HPTMODULUS)
@@ -40,68 +40,12 @@ def save(traces, filename_template):
         traces_thisfile.sort(lambda a,b: cmp(a.full_id, b.full_id))
         for tr in traces_thisfile:
             trtups.append(as_tuple(tr))
-            
-        pyrocko.mseed_ext.store_traces(trtups, fn)
         
+        try:
+            mseed_ext.store_traces(trtups, fn)
+        except MSeedError, e:
+            raise MSeedError( str(e) + ' (while storing traces to file \'%s\')' % fn)
+            
     return fn_tr.keys()
     
     
-if __name__ == '__main__':
-    import unittest
-    import numpy as num
-    import time
-    import tempfile
-    import random
-    from random import choice as rc
-    from os.path import join as pjoin
-
-    abc = 'abcdefghijklmnopqrstuvwxyz' 
-        
-    def rn(n):
-        return ''.join( [ random.choice(abc) for i in xrange(n) ] )
-    
-    class MSeedTestCase( unittest.TestCase ):
-    
-        def testWriteRead(self):
-            now = time.time()
-            n = 10
-            deltat = 0.1
-            
-            networks = [ rn(2) for i in range(5) ]
-            
-            traces1 = [ trace.Trace(rc(networks), rn(4), rn(2), rn(3), tmin=now+i*deltat*n*2, deltat=deltat, ydata=num.arange(n), mtime=now)
-                for i in range(100) ]
-                
-            tempdir = tempfile.mkdtemp()
-            fns = save(traces1, pjoin(tempdir, '%(network)s'))
-            traces2 = []
-            for fn in fns:
-                traces2.extend(load(fn))
-                
-            for tr in traces1:
-                assert tr in traces2
-                
-            for fn in fns:
-                os.remove(fn)
-            
-        def testReadNonexistant(self):
-            try:
-                trs = load('/tmp/thisfileshouldnotexist')
-            except OSError, e:
-                pass
-            assert isinstance(e, OSError)
-            
-        def testReadEmpty(self):
-            tempfn = tempfile.mkstemp()[1]
-            try:
-                trs = load(tempfn)
-            except MSEEDERROR, e:
-                pass
-                
-            assert str(e).find('No SEED data detected') != -1
-            os.remove(tempfn)
-        
-    
-    unittest.main()
-
-        

@@ -11,7 +11,7 @@
 #include <libmseed.h>
 #include <assert.h>
 
-static PyObject *MseedError;
+static PyObject *MSeedError;
 
 #define BUFSIZE 1024
 
@@ -32,12 +32,12 @@ mseed_get_traces (PyObject *dummy, PyObject *args)
     PyObject      *unpackdata = NULL;
 
     if (!PyArg_ParseTuple(args, "sO", &filename, &unpackdata)) {
-        PyErr_SetString(MseedError, "usage get_traces(filename, dataflag)" );
+        PyErr_SetString(MSeedError, "usage get_traces(filename, dataflag)" );
         return NULL;
     }
 
     if (!PyBool_Check(unpackdata)) {
-        PyErr_SetString(MseedError, "Second argument must be a boolean" );
+        PyErr_SetString(MSeedError, "Second argument must be a boolean" );
         return NULL;
     }
   
@@ -45,13 +45,13 @@ mseed_get_traces (PyObject *dummy, PyObject *args)
     retcode = ms_readtraces (&mstg, filename, 0, -1.0, -1.0, 0, 1, (unpackdata == Py_True), 0);
     if ( retcode < 0 ) {
         snprintf (strbuf, BUFSIZE, "Cannot read file '%s': %s", filename, ms_errorstr(retcode));
-        PyErr_SetString(MseedError, strbuf);
+        PyErr_SetString(MSeedError, strbuf);
         return NULL;
     }
 
     if ( ! mstg ) {
         snprintf (strbuf, BUFSIZE, "Error reading file");
-        PyErr_SetString(MseedError, strbuf);
+        PyErr_SetString(MSeedError, strbuf);
         return NULL;
     }
 
@@ -61,7 +61,7 @@ mseed_get_traces (PyObject *dummy, PyObject *args)
         while (mst) {
             if (mst->datasamples == NULL) {
                 snprintf (strbuf, BUFSIZE, "Error reading file - datasamples is NULL");
-                PyErr_SetString(MseedError, strbuf);
+                PyErr_SetString(MSeedError, strbuf);
                 return NULL;
             }
             mst = mst->next;
@@ -97,7 +97,7 @@ mseed_get_traces (PyObject *dummy, PyObject *args)
                     break;
                 default:
                     snprintf (strbuf, BUFSIZE, "Unknown sampletype %c\n", mst->sampletype);
-                    PyErr_SetString(MseedError, strbuf);
+                    PyErr_SetString(MSeedError, strbuf);
                     Py_XDECREF(out_traces);
                     return NULL;
             }
@@ -155,17 +155,17 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
     FILE          *outfile;
 
     if (!PyArg_ParseTuple(args, "Os", &in_traces, &filename)) {
-        PyErr_SetString(MseedError, "usage store_traces(traces, filename)" );
+        PyErr_SetString(MSeedError, "usage store_traces(traces, filename)" );
         return NULL;
     }
     if (!PySequence_Check( in_traces )) {
-        PyErr_SetString(MseedError, "Traces is not of sequence type." );
+        PyErr_SetString(MSeedError, "Traces is not of sequence type." );
         return NULL;
     }
 
     outfile = fopen(filename, "w" );
     if (outfile == NULL) {
-        PyErr_SetString(MseedError, "Error opening file.");
+        PyErr_SetString(MSeedError, "Error opening file.");
         return NULL;
     }
 
@@ -173,7 +173,7 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
         
         in_trace = PySequence_GetItem(in_traces, i);
         if (!PyTuple_Check(in_trace)) {
-            PyErr_SetString(MseedError, "Trace record must be a tuple of (network, station, location, channel, starttime, endtime, samprate, data)." );
+            PyErr_SetString(MSeedError, "Trace record must be a tuple of (network, station, location, channel, starttime, endtime, samprate, data)." );
             Py_DECREF(in_trace);
             return NULL;
         }
@@ -188,7 +188,7 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
                                     &(mst->endtime),
                                     &(mst->samprate),
                                     &array )) {
-            PyErr_SetString(MseedError, "Trace record must be a tuple of (network, station, location, channel, starttime, endtime, samprate, data)." );
+            PyErr_SetString(MSeedError, "Trace record must be a tuple of (network, station, location, channel, starttime, endtime, samprate, data)." );
             mst_free( &mst );  
             Py_DECREF(in_trace);
             return NULL;
@@ -204,7 +204,7 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
         mst->channel[10] = '\0';
         
         if (!PyArray_Check(array)) {
-            PyErr_SetString(MseedError, "Data must be given as NumPy array." );
+            PyErr_SetString(MSeedError, "Data must be given as NumPy array." );
             mst_free( &mst );  
             Py_DECREF(in_trace);
             return NULL;
@@ -232,7 +232,7 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
                     msdetype = DE_FLOAT64;
                     break;
                 default:
-                    PyErr_SetString(MseedError, "Data must be of type float64, float32, int32 or int8.");
+                    PyErr_SetString(MSeedError, "Data must be of type float64, float32, int32 or int8.");
                     mst_free( &mst );  
                     Py_DECREF(in_trace);
                     return NULL;
@@ -290,11 +290,11 @@ initmseed_ext(void)
     if (m == NULL) return;
     import_array();
 
-    MseedError = PyErr_NewException("mseed_ext.error", NULL, NULL);
-    Py_INCREF(MseedError);  /* required, because other code could remove `error` 
+    MSeedError = PyErr_NewException("mseed_ext.error", NULL, NULL);
+    Py_INCREF(MSeedError);  /* required, because other code could remove `error` 
                                from the module, what would create a dangling
                                pointer. */
-    PyModule_AddObject(m, "MSEEDERROR", MseedError);
+    PyModule_AddObject(m, "MSeedError", MSeedError);
 
     hptmodulus = Py_BuildValue("i", HPTMODULUS);
                             /* no incref here because `hptmodulus` is not needed

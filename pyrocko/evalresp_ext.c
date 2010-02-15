@@ -127,5 +127,5 @@ initevalresp_ext(void)
     Py_INCREF(EvalrespError);  /* required, because other code could remove `error` 
                                from the module, what would create a dangling
                                pointer. */
-    PyModule_AddObject(m, "EVALRESPERROR", EvalrespError);
+    PyModule_AddObject(m, "EvalrespError", EvalrespError);
 }
