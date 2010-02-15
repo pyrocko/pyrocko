@@ -52,5 +52,7 @@ class PileTestCase( unittest.TestCase ):
         assert s == nfiles*nsamples
     
 
-unittest.main()
+if __name__ == "__main__":
+    pyrocko.util.setup_logging('warning')
+    unittest.main()
 

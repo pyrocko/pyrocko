@@ -22,7 +22,7 @@ class IOTestCase( unittest.TestCase ):
         
         networks = [ rn(2) for i in range(5) ]
         
-        traces1 = [ trace.Trace(rc(networks), rn(4), rn(2), rn(3), tmin=now+i*deltat*n*2, deltat=deltat, ydata=num.arange(n), mtime=now)
+        traces1 = [ trace.Trace(rc(networks), rn(4), rn(2), rn(3), tmin=now+i*deltat*n*2, deltat=deltat, ydata=num.arange(n, dtype=num.int32), mtime=now)
             for i in range(100) ]
             
         tempdir = tempfile.mkdtemp()
@@ -55,6 +55,8 @@ class IOTestCase( unittest.TestCase ):
         os.remove(tempfn)
     
 
-unittest.main()
+if __name__ == "__main__":
+    pyrocko.util.setup_logging('warning')
+    unittest.main()
 
     

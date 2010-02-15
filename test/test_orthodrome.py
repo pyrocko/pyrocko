@@ -132,6 +132,7 @@ def plot_erroneous_ne_to_latlon():
             print 'ok', gsize, lat, lon
             
 if __name__ == "__main__":
+    pyrocko.util.setup_logging('warning')
     unittest.main()
 
             
