@@ -1,3 +1,9 @@
+import logging
+
+import orthodrome, trace, pile, config
+import os, sys, shutil, subprocess
+
+
 def dumb_parser( data ):
     
     (in_ws, in_kw, in_str) = (1,2,3)
@@ -42,8 +48,6 @@ def dumb_parser( data ):
        rows.append( cols )
        
     return rows
-
-pymseed.config.show_progress = False
 
 class Programs:
     rdseed   = 'rdseed4.8'
@@ -119,27 +123,27 @@ class SeedVolumeAccess:
         return self.get_pile().iter_all()
 
     def iter_displacement_traces(self, tfade, freqlimits, deltat=None):
-        for trace in self.iter_raw_traces():
+        for tr in self.iter_raw_traces():
             try:
                 if deltat is not None:
-                    trace.downsample_to(deltat)
+                    tr.downsample_to(deltat)
                 
-                respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % trace.nslc_id)
-                trans = pymseed.InverseEvalresp(respfile, trace)
+                respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
+                trans = trace.InverseEvalresp(respfile, tr)
 
-                displacement = trace.transfer(tfade, freqlimits, transfer_function=trans)
+                displacement = tr.transfer(tfade, freqlimits, transfer_function=trans)
                 
                 yield displacement
             
-            except pymseed.TraceTooShort:
-                logging.warn('trace too short: %s' % trace)
+            except trace.TraceTooShort:
+                logging.warn('trace too short: %s' % tr)
             
-            except pymseed.UnavailableDecimation:
-                logging.warn('cannot downsample: %s' % trace)
+            except trace.UnavailableDecimation:
+                logging.warn('cannot downsample: %s' % tr)
                 
     def get_pile(self):
         if self._pile is None:
-            self._pile = pymseed.MSeedPile([ pjoin(self.tempdir, 'mini.seed') ] )
+            self._pile = pile.Pile([ pjoin(self.tempdir, 'mini.seed') ] )
         return self._pile
         
     def get_event(self):
