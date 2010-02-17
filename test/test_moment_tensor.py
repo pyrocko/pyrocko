@@ -3,6 +3,7 @@ import random, math
 import numpy as num
 
 from pyrocko.moment_tensor import *
+from pyrocko import util
 
 
 class MomentTensorTestCase( unittest.TestCase ):
@@ -51,5 +52,5 @@ class MomentTensorTestCase( unittest.TestCase ):
             "angles don't match after forward-backward calculation:\nfirst:\n"+str(m1)+ "\nsecond:\n"+str(m2)
 
 if __name__ == "__main__":
-    pyrocko.util.setup_logging('warning')
+    util.setup_logging('warning')
     unittest.main()

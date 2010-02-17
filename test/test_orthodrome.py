@@ -1,4 +1,4 @@
-from pyrocko import orthodrome, config
+from pyrocko import orthodrome, config, util
 
 import unittest
 import numpy as num
@@ -132,7 +132,7 @@ def plot_erroneous_ne_to_latlon():
             print 'ok', gsize, lat, lon
             
 if __name__ == "__main__":
-    pyrocko.util.setup_logging('warning')
+    util.setup_logging('warning')
     unittest.main()
 
             

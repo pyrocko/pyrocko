@@ -4,6 +4,7 @@ from test_orthodrome import OrthodromeTestCase
 from test_io import IOTestCase
 from test_pile import PileTestCase
 from test_moment_tensor import MomentTensorTestCase
+from test_trace import TraceTestCase
 
 
 import unittest

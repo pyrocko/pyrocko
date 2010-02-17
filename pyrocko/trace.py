@@ -118,6 +118,9 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
         
     return out_traces
 
+def rotate(traces, azimuth, in_components, out_component):
+    pass
+
 def moving_avg(x,n):
     n = int(n)
     cx = x.cumsum()
@@ -148,6 +151,73 @@ def costaper(a,b,c,d, nfreqs, deltaf):
 def t2ind(t,tdelta):
     return int(round(t/tdelta))
 
+class TraceTooShort(Exception):
+    pass
+
+class FrequencyResponse(object):
+    '''Evaluates frequency response at given frequencies.'''
+    
+    def evaluate(self, freqs):
+        coefs = num.ones(freqs.size, dtype=num.complex)
+        return coefs
+   
+class InverseEvalresp(FrequencyResponse):
+    '''Calls evalresp and generates values of the inverse instrument response for 
+       deconvolution of instrument response.'''
+    
+    def __init__(self, respfile, trace, target='dis'):
+        self.respfile = respfile
+        self.nslc_id = trace.nslc_id
+        self.instant = trace.tmin
+        self.target = target
+        
+    def evaluate(self, freqs):
+        network, station, location, channel = self.nslc_id
+        x = evalresp.evalresp(sta_list=station,
+                          cha_list=channel,
+                          net_code=network,
+                          locid=location,
+                          instant=self.instant,
+                          freqs=freqs,
+                          units=self.target.upper(),
+                          file=self.respfile,
+                          rtype='CS')
+        
+        transfer = x[0][4]
+        return 1./transfer
+
+class PoleZeroResponse(FrequencyResponse):
+    
+    def __init__(self, zeros, poles, constant):
+        self.zeros = zeros
+        self.poles = poles
+        self.constant = constant
+        
+    def evaluate(self, freqs):
+        jomeg = 1.0j* 2.*num.pi*freqs
+        
+        a = num.ones(freqs.size, dtype=num.complex)*self.constant
+        for z in self.zeros:
+            a *= jomeg-z
+        for p in self.poles:
+            a /= jomeg-p
+        
+        return a
+        
+        
+class IntegrationResponse(FrequencyResponse):
+    def __init__(self, gain=1.0):
+        self._gain = gain
+        
+    def evaluate(self, freqs):
+        return (self._gain/(1.0j * 2. * num.pi)) / freqs
+
+class DifferentiationResponse(FrequencyResponse):
+    def __init__(self, gain=1.0):
+        self._gain = gain
+        
+    def evaluate(self, freqs):
+        return self._gain * 1.0j * 2. * num.pi * freqs
 
 class NoData(Exception):
     pass
@@ -155,6 +225,21 @@ class NoData(Exception):
 class Trace(object):
     def __init__(self, network='', station='STA', location='', channel='', 
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
+    
+        '''Create new trace object
+           
+        In:
+            network -- network code
+            station -- station code
+            location -- location code
+            channel -- channel code
+            tmin -- system time of first sample in [s]
+            tmax -- system time of last sample in [s] (if None it is computed from length)
+            deltat -- sampling interval in [s]
+            ydata -- 1D numpy array with data samples
+            mtime -- opitional modification time 
+            meta -- additional meta information (not used by pyrocko)
+        '''
     
         if mtime is None:
             mtime = time.time()
@@ -184,6 +269,18 @@ class Trace(object):
                 abs(self.tmax-other.tmax) < self.deltat*0.001 and
                 num.all(self.ydata == other.ydata))
                 
+    def set_codes(self, network=None, station=None, location=None, channel=None):
+        if network is not None:
+            self.network = network
+        if station is not None:
+            self.station = station
+        if location is not None:
+            self.location = location
+        if channel is not None:
+            self.channel = channel
+        
+        self.update_ids()
+        
     def overlaps(self, tmin,tmax):
         return not (tmax < self.tmin or self.tmax < tmin)
            
@@ -219,10 +316,12 @@ class Trace(object):
         tracecopy.meta = copy.deepcopy(self.meta)
         return tracecopy
         
-    def chop(self, tmin, tmax, inplace=True):
+    def chop(self, tmin, tmax, inplace=True, include_last=False):
         if (tmax <= self.tmin or self.tmax < tmin): raise NoData()
         ibeg = max(0, t2ind(tmin-self.tmin,self.deltat))
-        iend = min(len(self.ydata), t2ind(tmax-self.tmin,self.deltat))
+        iplus = 0
+        if include_last: iplus=1
+        iend = min(len(self.ydata), t2ind(tmax-self.tmin,self.deltat)+iplus)
         
         obj = self
         if not inplace:
@@ -244,8 +343,8 @@ class Trace(object):
     def downsample_to(self, deltat):
         ratio = deltat/self.deltat
         rratio = round(ratio)
-        if abs(rratio - ratio) > 0.0001: raise UnavailableDecimation('ratio = %g' % ratio)
-        deci_seq = decitab(int(rratio))
+        if abs(rratio - ratio) > 0.0001: raise util.UnavailableDecimation('ratio = %g' % ratio)
+        deci_seq = util.decitab(int(rratio))
         for ndecimate in deci_seq:
              if ndecimate != 1:
                 self.downsample(ndecimate)
@@ -362,6 +461,7 @@ class Trace(object):
         transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
         
         tapered_transfer = costaper(a,b,c,d, nfreqs, deltaf)*transfer
+        tapered_transfer[0] = 0.0 # don't introduce static offsets
         return tapered_transfer
         
     def fill_template(self, template):

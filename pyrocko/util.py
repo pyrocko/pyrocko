@@ -1,4 +1,4 @@
-import time, logging, os, sys
+import time, logging, os, sys, re
 from scipy import signal
 
 from os.path import join as pjoin
@@ -22,7 +22,7 @@ def setup_logging(levelname):
 
 def progressbar_module():
     try:
-        import progressbarx
+        import progressbar
     except:
         logger.warn('progressbar module not available.')
         progressbar = None
@@ -83,13 +83,13 @@ def decimate(x, q, n=None, ftype='iir', axis=-1):
 class UnavailableDecimation(Exception):
     pass
     
-class Glob:
+class GlobalVars:
     reuse_store = dict()
     decitab_nmax = 0
     decitab = {}
 
 def mk_decitab(nmax=100):
-    tab = Glob.decitab
+    tab = GlobalVars.decitab
     for i in range(1,10):
         for j in range(1,i+1):
             for k in range(1,j+1):
@@ -105,10 +105,10 @@ def mk_decitab(nmax=100):
         if i > nmax: break
     
 def decitab(n):
-    if n > Glob.decitab_nmax:
+    if n > GlobalVars.decitab_nmax:
         mk_decitab(n*2)
-    if n not in Glob.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
-    return Glob.decitab[n]
+    if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
+    return GlobalVars.decitab[n]
 
 def gmctime(t):
     return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(t))
@@ -126,7 +126,7 @@ def plural_s(n):
         return 's' 
 
 def reuse(x):
-    grs = Glob.reuse_store
+    grs = GlobalVars.reuse_store
     if not x in grs:
         grs[x] = x
     return grs[x]

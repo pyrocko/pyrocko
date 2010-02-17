@@ -1,4 +1,4 @@
-from pyrocko import mseed, trace
+from pyrocko import mseed, trace, util
 import unittest
 import numpy as num
 import time
@@ -56,7 +56,7 @@ class IOTestCase( unittest.TestCase ):
     
 
 if __name__ == "__main__":
-    pyrocko.util.setup_logging('warning')
+    util.setup_logging('warning')
     unittest.main()
 
     

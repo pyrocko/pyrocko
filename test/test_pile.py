@@ -53,6 +53,6 @@ class PileTestCase( unittest.TestCase ):
     
 
 if __name__ == "__main__":
-    pyrocko.util.setup_logging('warning')
+    util.setup_logging('warning')
     unittest.main()
 
