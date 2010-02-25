@@ -18,8 +18,14 @@ def setup_logging(levelname):
         level=levels[levelname],
         format = '%(name)-20s - %(levelname)-8s - %(message)s' )
 
-
-
+class Stopwatch:
+    def __init__(self):
+        self.start = time.time()
+    
+    def __call__(self):
+        return time.time() - self.start
+        
+        
 def progressbar_module():
     try:
         import progressbar
@@ -124,6 +130,19 @@ def plural_s(n):
         return ''
     else:
         return 's' 
+
+def ensuredirs(dst):
+    d,x = os.path.split(dst)
+    dirs = []
+    while d and not os.path.exists(d):
+        dirs.append(d)
+        d,x = os.path.split(d)
+        
+    dirs.reverse()
+    
+    for d in dirs:
+        if not os.path.exists(d):
+            os.mkdir(d)
 
 def reuse(x):
     grs = GlobalVars.reuse_store

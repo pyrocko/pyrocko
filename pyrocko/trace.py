@@ -112,15 +112,52 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
                         if a.mtime and b.mtime:
                             a.mtime = max(a.mtime, b.mtime)
                         continue
+                    else:
+                        # make short second trace vanish
+                        continue
                     
         if len(b.ydata) >= 1:
             out_traces.append(b)
-        
+            
+    for tr in out_traces:
+        tr.update_ids()
+    
     return out_traces
 
-def rotate(traces, azimuth, in_components, out_component):
+class CannotRotate(Exception):
     pass
 
+def rotate(traces, azimuth, in_channels, out_channels):
+    phi = azimuth/180.*math.pi
+    cphi = math.cos(phi)
+    sphi = math.sin(phi)
+    rotated = []
+    for a in traces:
+        for b in traces:
+            if ( (a.channel, b.channel) == in_channels and
+                 a.nslc_id[:3] == b.nslc_id[:3] and
+                 abs(a.deltat-b.deltat) < a.deltat*0.001 ):
+                
+                tmin = max(a.tmin, b.tmin)
+                tmax = min(a.tmax, b.tmax)
+                
+                if tmin < tmax:
+                    ac = a.chop(tmin, tmax, inplace=False)
+                    bc = b.chop(tmin, tmax, inplace=False)
+                    if (ac.tmin - bc.tmin) > ac.deltat*0.01:
+                        logger.warn('cannot rotate traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
+                        continue
+                    
+                    ac.set_ydata(ac.get_ydata()*cphi+bc.get_ydata()*sphi)
+                    bc.set_ydata(-ac.get_ydata()*sphi+bc.get_ydata()*cphi)
+
+                    ac.set_codes(channel=out_channels[0])
+                    bc.set_codes(channel=out_channels[1])
+                    rotated.append(ac)
+                    rotated.append(bc)
+                    
+    return rotated
+            
 def moving_avg(x,n):
     n = int(n)
     cx = x.cumsum()
@@ -330,24 +367,34 @@ class Trace(object):
         obj.ydata = self.ydata[ibeg:iend].copy()
         obj.tmin = obj.tmin+ibeg*obj.deltat
         obj.tmax = obj.tmin+(len(obj.ydata)-1)*obj.deltat
-        
+        obj.update_ids()
         return obj
     
-    def downsample(self, ndecimate):
-        data = self.ydata.astype(num.float64)
+    def downsample(self, ndecimate, snap=False):
+        newdeltat = self.deltat*ndecimate
+        if snap:
+            ilag = (math.ceil(self.tmin / newdeltat) * newdeltat - self.tmin)/self.deltat
+            
+        if snap and ilag > 0 and ilag < self.ydata.size:
+            data = self.ydata.astype(num.float64)
+            self.tmin += ilag*self.deltat
+        else:
+            data = self.ydata.astype(num.float64)
+            
         data -= num.mean(data)
         self.ydata = util.decimate(data, ndecimate, ftype='fir')
         self.deltat = reuse(self.deltat*ndecimate)
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
+        self.update_ids()
         
-    def downsample_to(self, deltat):
+    def downsample_to(self, deltat, snap=False):
         ratio = deltat/self.deltat
         rratio = round(ratio)
         if abs(rratio - ratio) > 0.0001: raise util.UnavailableDecimation('ratio = %g' % ratio)
         deci_seq = util.decitab(int(rratio))
         for ndecimate in deci_seq:
              if ndecimate != 1:
-                self.downsample(ndecimate)
+                self.downsample(ndecimate, snap=snap)
             
     def lowpass(self, order, corner):
         (b,a) = signal.butter(order, corner*2.0*self.deltat, btype='low')
@@ -382,6 +429,7 @@ class Trace(object):
     def shift(self, tshift):
         self.tmin += tshift
         self.tmax += tshift
+        self.update_ids()
         
     def sta_lta_centered(self, tshort, tlong, quad=True):
     

@@ -1,8 +1,9 @@
 import logging
 
-import orthodrome, trace, pile, config
+import orthodrome, trace, pile, config, model
 import os, sys, shutil, subprocess
 
+logger = logging.getLogger('pyrocko.rdseed')
 
 def dumb_parser( data ):
     
@@ -52,52 +53,12 @@ def dumb_parser( data ):
 class Programs:
     rdseed   = 'rdseed4.8'
 
-def ensure_dir(d):
-    if not os.path.isdir(d):
-        if os.path.exists(d):
-            sys.exit(d+' exists and is not a directory')
-        os.mkdir( d )
 
-def clean_dir(d):
-    if os.path.isdir(d):
-        shutil.rmtree(d)
-    
-    os.mkdir( d )
 
-class Event:
-    def __init__(self, lat, lon, time):
-        self.lat = lat
-        self.lon = lon
-        self.time = time
-        
-class Station:
-    def __init__(self, network, station, lat, lon, elevation, name='', components=None):
-        self.network = network
-        self.station = station
-        self.lat = lat
-        self.lon = lon
-        self.elevation = elevation
-        self.name = name
-        if components is None:
-            self.components = set()
-        else:
-            self.components = components
-            
-        self.dist_deg = None
-        self.dist_m = None
-        self.azimuth = None
-
-    def set_event_relative_data( self, event ):
-        self.dist_m = orthodrome.distance_accurate50m( event, self )
-        self.dist_deg = self.dist_m / config.earthradius *orthodrome.r2d
-        self.azimuth = orthodrome.azimuth(event, self)
-        
-    def __str__(self):
-        return '%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)
-
-class SeedVolumeAccess:
+class SeedVolumeAccess(EventDataAccess):
 
     def __init__(self, seedvolume, datapile=None):
+        
         '''Create new SEED Volume access object.
         
         In:
@@ -108,59 +69,25 @@ class SeedVolumeAccess:
                 volumes.)
         '''
     
+        EventDataAccess.__init__(self, datapile=datapile)
+    
         self.seedvolume = seedvolume
         self.tempdir = tempfile.mkdtemp("","SeedVolumeAccess-")
-        self._pile = datapile
         self._unpack()
-        self._event = None
-        self._stations = None
 
     def __del__(self):
         import shutil
         shutil.rmtree(self.tempdir)
-
-    def iter_raw_traces(self):
-        return self.get_pile().iter_all()
-
-    def iter_displacement_traces(self, tfade, freqlimits, deltat=None):
-        for tr in self.iter_raw_traces():
-            try:
-                if deltat is not None:
-                    tr.downsample_to(deltat)
-                
-                respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
-                trans = trace.InverseEvalresp(respfile, tr)
-
-                displacement = tr.transfer(tfade, freqlimits, transfer_function=trans)
-                
-                yield displacement
-            
-            except trace.TraceTooShort:
-                logging.warn('trace too short: %s' % tr)
-            
-            except trace.UnavailableDecimation:
-                logging.warn('cannot downsample: %s' % tr)
                 
     def get_pile(self):
         if self._pile is None:
             self._pile = pile.Pile([ pjoin(self.tempdir, 'mini.seed') ] )
         return self._pile
         
-    def get_event(self):
-        if not self._event:
-            self._event = self._get_events_from_file()[0]
-        return self._event
-        
-    def get_stations(self):
-        if not self._stations:
-            self._stations = self._get_stations_from_file()
-        
-        event = self.get_event()
-        
-        for s in self._stations.values():
-            s.set_event_relative_data(event)
-            
-        return self._stations
+    def get_restitution(self, tr):
+        respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
+        trans = trace.InverseEvalresp(respfile, tr)
+        return trans
         
     def _unpack(self):
         input_fn = self.seedvolume
@@ -208,7 +135,7 @@ class SeedVolumeAccess:
                 lon = toks[3]
                 format = '%Y/%m/%d %H:%M:%S'
                 secs = calendar.timegm( time.strptime(datetime, format))
-                e = Event(
+                e = model.Event(
                     lat = float(lat),
                     lon = float(lon),
                     time = secs
@@ -232,18 +159,19 @@ class SeedVolumeAccess:
         icolname = 6
         icolcomp = 5
         
-        stations = {}
+        stations = []
         for cols in rows:
-            s = Station(
+            s = model.Station(
                 network = cols[1],
                 station = cols[0],
+                location = '*',
                 lat = float(cols[2]),
                 lon = float(cols[3]),
                 elevation = float(cols[4]),
                 name = cols[icolname],
                 components = set(cols[icolcomp].split())
             )
-            stations[(s.network, s.station)] = s
+            stations.append[s]
                 
         return stations
         

@@ -2,7 +2,7 @@ import mseed_ext
 from mseed_ext import HPTMODULUS, MSeedError
 import trace
 import os
-from util import reuse
+from util import reuse, ensuredirs
 
 def load(filename, getdata=True):
 
@@ -41,6 +41,7 @@ def save(traces, filename_template):
         for tr in traces_thisfile:
             trtups.append(as_tuple(tr))
         
+        ensuredirs(fn)
         try:
             mseed_ext.store_traces(trtups, fn)
         except MSeedError, e:

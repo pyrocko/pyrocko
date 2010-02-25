@@ -37,7 +37,27 @@ class TraceTestCase(unittest.TestCase):
         assert num.amax(num.abs(ydata-ydata_shouldbe)) < eps, \
             'differentiation failed'
         
+    def testDegapping(self):
+        dt = 1.0
+        for atmin, btmin in [ (100., 90.), (100.,92.), (100.,97.), (100.,100.), (100.,102.), (100.,105.), (100.,107.), (100., 110.), (100.,114.), (100.,120.) ]:
+            a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=atmin)
+            b = trace.Trace(deltat=dt, ydata=num.ones(5), tmin=btmin)
+            traces = [a,b]
+            traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
+            xs = trace.degapper(traces)
+            for x in xs:
+                print x.tmin, x.get_ydata()
+            print '--'
         
+        a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=100)
+        b = trace.Trace(deltat=dt, ydata=num.ones(10), tmin=100)
+        traces = [a,b]
+        traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
+        xs = trace.degapper(traces)
+        for x in xs:
+            print x.tmin, x.get_ydata()
+            
+        print '--'
 if __name__ == "__main__":
     util.setup_logging('warning')
     unittest.main()
