@@ -290,9 +290,12 @@ class SubPile(TracesGroup):
         self.update_from_contents(self.files)
     
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
-        for f in self.files:
-            if not group_selector or group_selector(f):
-                return f.chop(tmin, tmax, trace_selector)
+        chopped = []
+        for file in self.files:
+            if file.is_relevant(tmin, tmax, group_selector):
+                file.load_data()
+                chopped.extend( file.chop(tmin, tmax, trace_selector) )
+        return chopped
 
             
 class Pile(TracesGroup):
@@ -333,10 +336,11 @@ class Pile(TracesGroup):
         return self.subpiles[k]
         
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
+        chopped = []
         for subpile in self.subpiles.values():
-            if not group_selector or group_selector(subpile):
-            
-                return subpile.chop(tmin, tmax, group_selector, trace_selector)
+            if subpile.is_relevant(tmin,tmax, group_selector):
+                chopped.extend( subpile.chop(tmin, tmax, group_selector, trace_selector) )
+        return chopped
 
     def _process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad):
         chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
@@ -499,7 +503,7 @@ class Pile(TracesGroup):
             return sorted([ x for x in s ])
         
         s = 'Pile\n'
-        s += 'number of files: %i\n' % len(self.msfiles)
+        s += 'number of subpiles: %i\n' % len(self.subpiles)
         s += 'timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
         s += 'networks: %s\n' % ', '.join(sl(self.networks))
         s += 'stations: %s\n' % ', '.join(sl(self.stations))

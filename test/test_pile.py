@@ -49,7 +49,7 @@ class PileTestCase( unittest.TestCase ):
         assert set(p.networks) == set(networks)
         assert set(p.stations) == set(stations)
         assert set(p.channels) == set(channels)
-        
+        print p
         print p.chop(tmin+10, tmin+200)        
         
         #s = 0
