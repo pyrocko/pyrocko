@@ -1,15 +1,26 @@
 import numpy
 from distutils.core import setup, Extension
-                      
-setup (name = 'pyrocko',
-       include_dirs = [ numpy.get_include() ],
-       version = '0.1',
-       description = 'Seismological Processing Unit',
-       packages = [ 'pyrocko' ],
-       ext_modules = [ Extension('pyrocko/mseed_ext',
-                                 include_dirs = ['./libmseed'],
-                                 library_dirs = ['./libmseed'],
-                                 libraries = ['mseed'],
-                                 sources = ['pyrocko/mseed_ext.c']) ])
-       
-       
+
+packname = 'pyrocko'
+
+setup( name = packname,
+    version = '0.1',
+    description = 'Seismological Processing Unit',
+    packages = [ packname ],
+    ext_modules = [ 
+        
+        Extension( packname+'/mseed_ext',
+            include_dirs = [ numpy.get_include(), './libmseed' ],
+            library_dirs = ['./libmseed'],
+            libraries = ['mseed'],
+            sources = ['pyrocko/mseed_ext.c']),
+                
+        Extension( packname+'/evalresp',
+            include_dirs = [ numpy.get_include(), './evalresp-3.3.0' ],
+            library_dirs = ['./evalresp-3.3.0/.libs'],
+            libraries = ['evresp'],
+            sources = [ packname+'/evalresp_ext.c']),
+    ],
+                
+    scripts = [ 'apps/snuffler' ]
+)

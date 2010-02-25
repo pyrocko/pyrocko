@@ -1,5 +1,13 @@
 import trace, io, util, config
+
 import numpy as num
+import os, pickle, logging
+
+logger = logging.getLogger('pyrocko.pile')
+
+from util import reuse
+from trace import degapper
+
 
 def TracesFileCache(object):
 
@@ -134,7 +142,7 @@ class TracesGroup(object):
         
         for c in content:
         
-            if isinstance(c, Group):
+            if isinstance(c, TracesGroup):
                 self.networks.update( c.networks )
                 self.stations.update( c.stations )
                 self.locations.update( c.locations )
@@ -179,8 +187,10 @@ class TracesFile(TracesGroup):
         self.data_loaded = False
         self.substitutions = substitutions
         self.load_headers(mtime=mtime)
+        self.mtime = mtime
         
     def load_headers(self, mtime=None):
+        logger.debug('loading headers from file: %s' % self.abspath)
         if mtime is None:
             self.mtime = os.stat(self.abspath)[8]
 
@@ -188,10 +198,10 @@ class TracesFile(TracesGroup):
             self.traces.append(tr)
             
         self.data_loaded = False
-        self.update_from_content(self.traces)
+        self.update_from_contents(self.traces)
         
     def load_data(self):
-        logging.info('loading data from file: %s' % self.abspath)
+        logger.debug('loading data from file: %s' % self.abspath)
         self.traces = []
         for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
             self.traces.append(tr)
@@ -200,7 +210,7 @@ class TracesFile(TracesGroup):
         self.update_from_contents(self.traces)
         
     def drop_data(self):
-        logging.info('forgetting data of file: %s' % self.abspath)
+        logger.debug('forgetting data of file: %s' % self.abspath)
         for tr in self.traces:
             tr.drop_data()
         self.data_loaded = False
@@ -208,20 +218,21 @@ class TracesFile(TracesGroup):
     def reload_if_modified(self):
         mtime = os.stat(self.abspath)[8]
         if mtime != self.mtime:
+            logger.debug('reloading file: %s' % self.abspath)
             self.mtime = mtime
             if self.data_loaded:
-                self.load_data(self)
+                self.load_data()
             else:
-                self.load_headers(self)
+                self.load_headers()
     
     def chop(self,tmin,tmax,selector):
         chopped = []
-        for trace in self.traces:
-            if selector(trace):
-                chopped_trace = trace.chop(tmin,tmax,inplace=False)
-                if chopped_trace is not None:
-                    chopped_trace.mtime = self.mtime
-                    chopped.append(chopped_trace)
+        for tr in self.traces:
+            if not selector or selector(tr):
+                try:
+                    chopped.append(tr.chop(tmin,tmax,inplace=False))
+                except trace.NoData:
+                    pass
             
         return chopped
         
@@ -280,6 +291,7 @@ class SubPile(TracesGroup):
         for f in self.files:
             if group_selector(f):
                 f.chop(tmin, tmax, trace_selector)
+
             
 class Pile(TracesGroup):
     def __init__(self, filenames, cache=None, filename_attributes=None):
@@ -405,7 +417,32 @@ class Pile(TracesGroup):
         for traces in self.chopper( *args, **kwargs):
             for trace in traces:
                 yield trace
+    
+    def chopper_grouped(self, gather, *args, **kwargs):
+        keys = self.gather_keys(gather)
+        outer_selector = None
+        if 'selector' in kwargs:
+            outer_selector = kwargs['selector']
+        if outer_selector is None:
+            outer_selector = lambda xx: True
             
+        gather_cache = {}
+        
+        for key in keys:
+            def sel(obj):
+                if isinstance(obj, trace.Trace):
+                    return gather(obj) == key and outer_selector(obj)
+                else:
+                    if obj not in gather_cache:
+                        gather_cache[obj] = obj.gather_keys(gather)
+                        
+                    return key in gather_cache[obj] and outer_selector(obj)
+                
+            kwargs['selector'] = sel
+            
+            for traces in self.chopper(*args, **kwargs):
+                yield traces
+        
     def gather_keys(self, gather):
         keys = set()
         for file in self.msfiles:
@@ -457,59 +494,3 @@ class Pile(TracesGroup):
         return s
 
 
-if __name__ == '__main__':
-    import unittest
-    import numpy as num
-    
-    def makeManyFiles( nfiles=200, nsamples=100000):
-        import tempfile
-        import random
-        from random import choice as rc
-        from os.path import join as pjoin
-        
-
-        abc = 'abcdefghijklmnopqrstuvwxyz' 
-        
-        def rn(n):
-            return ''.join( [ random.choice(abc) for i in xrange(n) ] )
-        
-        stations = [ rn(4) for i in xrange(10) ]
-        components = [ rn(3) for i in xrange(3) ]
-        networks = [ 'xx' ]
-        
-        datadir = tempfile.mkdtemp()
-        traces = []
-        for i in xrange(nfiles):
-            tmin = 1234567890+i*60*60*24*10 # random.randint(1,int(time.time()))
-            deltat = 1.0
-            data = num.ones(nsamples)
-            traces.append(trace.Trace(rc(networks), rc(stations),'',rc(components), tmin, None, deltat, data))
-        
-        fnt = pjoin( datadir, '%(network)s-%(station)s-%(location)s-%(channel)s-%(tmin)s.mseed', 'mseed')
-        io.save(traces, fnt)
-        
-        return datadir
-
-    class MSeedTestCase( unittest.TestCase ):
-                
-        def testPileTraversal(self):
-            import tempfile, shutil
-            config.show_progress = False
-            nfiles = 200
-            nsamples = 100000
-            datadir = makeManyFiles(nfiles=nfiles, nsamples=nsamples)
-            filenames = select_files([datadir])
-            cachefilename = pjoin(datadir,'_cache_')
-            pile = MSeedPile(filenames, cachefilename)
-            s = 0
-            for traces in pile.chopper(tmin=None, tmax=None, tinc=1234.): #tpad=10.):
-                for trace in traces:
-                    s += num.sum(trace.ydata)
-                    
-            os.unlink(cachefilename)
-            shutil.rmtree(datadir)
-            assert s == nfiles*nsamples
-        
-
-    unittest.main()
-    

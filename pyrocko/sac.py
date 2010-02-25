@@ -174,7 +174,11 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             
             self.header_vals = hv
             for k, v in zip(SacFile.header_keys, self.header_vals):
-                self.__dict__[k] = self.val_or_none(k,v)
+                vn = self.val_or_none(k,v)
+                if isinstance(vn, str):
+                    self.__dict__[k] = vn.rstrip('\x00').rstrip()
+                else:
+                    self.__dict__[k] = vn
             
             self.data = []
             try:
@@ -243,7 +247,36 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 str += '%s: %s\n' % (k, v)
                         
         return str
+            
+    def to_mseed_trace(self):
+        import pymseed
+        tmin = self.get_ref_time()
+        tmax = tmin + self.delta*(self.npts-1)
         
+        return pymseed.MSeedTrace(trace=(None,
+                                  self.knetwk,
+                                  self.kstnm,
+                                  self.khole,
+                                  self.kcmpnm,
+                                  tmin*float(pymseed.HPTMODULUS),
+                                  tmax*float(pymseed.HPTMODULUS),
+                                  1.0/float(self.delta),
+                                  self.data[0]))
+        
+def from_mseed_trace(trace):
+    sac = SacFile()
+    sac.knetwk = trace.network
+    sac.kstnm = trace.station
+    sac.khole = trace.location
+    sac.kcmpnm = trace.channel
+    sac.set_ref_time( trace.tmin )
+    sac.delta = trace.deltat
+    sac.data = [ trace.ydata.copy() ]
+    sac.npts = trace.ydata.size
+    sac.b = 0.0
+    sac.e = sac.b + (sac.npts-1)*sac.delta
+    return sac
+                
 if __name__ == "__main__":
     print SacFile(sys.argv[1])
 

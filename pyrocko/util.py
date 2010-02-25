@@ -1,5 +1,51 @@
-import time
+import time, logging, os, sys, re
 from scipy import signal
+
+from os.path import join as pjoin
+
+import config
+
+logger = logging.getLogger('pyrocko.util')
+
+def setup_logging(levelname):
+    levels = {'debug': logging.DEBUG,
+              'info': logging.INFO,
+              'warning': logging.WARNING,
+              'error': logging.ERROR,
+              'critical': logging.CRITICAL}
+
+    logging.basicConfig(
+        level=levels[levelname],
+        format = '%(name)-20s - %(levelname)-8s - %(message)s' )
+
+class Stopwatch:
+    def __init__(self):
+        self.start = time.time()
+    
+    def __call__(self):
+        return time.time() - self.start
+        
+        
+def progressbar_module():
+    try:
+        import progressbar
+    except:
+        logger.warn('progressbar module not available.')
+        progressbar = None
+    
+    return progressbar
+
+
+def progress_beg(label):
+    if config.show_progress:
+        sys.stderr.write(label)
+        sys.stderr.flush()
+
+def progress_end(label=''):
+    if config.show_progress:
+        sys.stderr.write(' done. %s\n' % label)
+        sys.stderr.flush()
+        
 
 
 def decimate(x, q, n=None, ftype='iir', axis=-1):
@@ -43,12 +89,13 @@ def decimate(x, q, n=None, ftype='iir', axis=-1):
 class UnavailableDecimation(Exception):
     pass
     
-class Glob:
+class GlobalVars:
+    reuse_store = dict()
     decitab_nmax = 0
     decitab = {}
 
 def mk_decitab(nmax=100):
-    tab = Glob.decitab
+    tab = GlobalVars.decitab
     for i in range(1,10):
         for j in range(1,i+1):
             for k in range(1,j+1):
@@ -64,10 +111,10 @@ def mk_decitab(nmax=100):
         if i > nmax: break
     
 def decitab(n):
-    if n > Glob.decitab_nmax:
+    if n > GlobalVars.decitab_nmax:
         mk_decitab(n*2)
-    if n not in Glob.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
-    return Glob.decitab[n]
+    if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
+    return GlobalVars.decitab[n]
 
 def gmctime(t):
     return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(t))
@@ -78,9 +125,73 @@ def gmctime_v(t):
 def gmctime_fn(t):
     return time.strftime("%Y-%m-%d_%H-%M-%S", time.gmtime(t))
 
+def plural_s(n):
+    if n == 1:
+        return ''
+    else:
+        return 's' 
 
-reuse_store = dict()
+def ensuredirs(dst):
+    d,x = os.path.split(dst)
+    dirs = []
+    while d and not os.path.exists(d):
+        dirs.append(d)
+        d,x = os.path.split(d)
+        
+    dirs.reverse()
+    
+    for d in dirs:
+        if not os.path.exists(d):
+            os.mkdir(d)
+
 def reuse(x):
-    if not x in reuse_store:
-        reuse_store[x] = x
-    return reuse_store[x]
+    grs = GlobalVars.reuse_store
+    if not x in grs:
+        grs[x] = x
+    return grs[x]
+    
+    
+class Anon:
+    def __init__(self,dict):
+        for k in dict:
+            self.__dict__[k] = dict[k]
+
+
+def select_files( paths, selector=None,  regex=None ):
+
+    progress_beg('selecting files...')
+    if logger.isEnabledFor(logging.DEBUG): sys.stderr.write('\n')
+
+    good = []
+    if regex: rselector = re.compile(regex)
+
+    def addfile(path):
+        if regex:
+            logger.debug("looking at filename: '%s'" % path) 
+            m = rselector.search(path)
+            if m:
+                infos = Anon(m.groupdict())
+                logger.debug( "   regex '%s' matches." % regex)
+                for k,v in m.groupdict().iteritems():
+                    logger.debug( "      attribute '%s' has value '%s'" % (k,v) )
+                if selector is None or selector(infos):
+                    good.append(os.path.abspath(path))
+                
+            else:
+                logger.debug("   regex '%s' does not match." % regex)
+        else:
+            good.append(os.path.abspath(path))
+        
+        
+    for path in paths:
+        if os.path.isdir(path):
+            for (dirpath, dirnames, filenames) in os.walk(path):
+                for filename in filenames:
+                    addfile(pjoin(dirpath,filename))
+        else:
+            addfile(path)
+        
+    progress_end('%i file%s selected.' % (len( good), plural_s(len(good))))
+    
+    return good
+
