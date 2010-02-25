@@ -1,7 +1,7 @@
 import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging
+import os, pickle, logging, time
 
 logger = logging.getLogger('pyrocko.pile')
 
@@ -77,7 +77,7 @@ def get_cache(cachedir):
         
     return TracesFileCache.caches[cachedir]
     
-def loader(filenames, cache, filename_attributes):
+def loader(filenames, fileformat, cache, filename_attributes):
             
     if config.show_progress:
         widgets = ['Scanning files', ' ',
@@ -110,8 +110,8 @@ def loader(filenames, cache, filename_attributes):
                 tfile = cache.get(abspath)
             
             if not tfile or tfile.mtime != mtime or substitutions:
-                tfile = TracesFile(abspath, format, substitutions=substitutions, mtime=mtime)
-                if not substitutions:
+                tfile = TracesFile(abspath, fileformat, substitutions=substitutions, mtime=mtime)
+                if cache and not substitutions:
                     cache.put(abspath, tfile)
                 
         except (io.FileLoadError, OSError, FilenameAttributeError), xerror:
@@ -125,8 +125,9 @@ def loader(filenames, cache, filename_attributes):
     if config.show_progress: pbar.finish()
     if failures:
         logging.warn('The following file%s caused problems and will be ignored:\n' % plural_s(len(failures)) + '\n'.join(failures))
-        
-    cache.dump_modified()
+    
+    if cache:
+        cache.dump_modified()
 
 class TracesGroup(object):
     def __init__(self):
@@ -136,7 +137,7 @@ class TracesGroup(object):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
         self.tmin, self.tmax = num.inf, -num.inf
     
-    def update_from_content(self, content, flush=True):
+    def update_from_contents(self, content, flush=True):
         if flush:
             self.empty()
         
@@ -159,7 +160,7 @@ class TracesGroup(object):
             self.tmin = min(self.tmin, c.tmin)
             self.tmax = max(self.tmax, c.tmax)
             
-        self._convert_small_sets_to_tuples()
+        #self._convert_small_sets_to_tuples()
            
     def overlaps(self, tmin,tmax):
         return not (tmax < self.tmin or self.tmax < tmin)
@@ -278,6 +279,7 @@ class FilenameAttributeError(Exception):
 class SubPile(TracesGroup):
     def __init__(self):
         self.files = []
+        self.empty()
     
     def add_file(self, file):
         self.files.append(file)
@@ -289,40 +291,52 @@ class SubPile(TracesGroup):
     
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
         for f in self.files:
-            if group_selector(f):
-                f.chop(tmin, tmax, trace_selector)
+            if not group_selector or group_selector(f):
+                return f.chop(tmin, tmax, trace_selector)
 
             
 class Pile(TracesGroup):
-    def __init__(self, filenames, cache=None, filename_attributes=None):
-        msfiles = []
-        
+    def __init__(self, ):
         self.subpiles = {}
-        self.update_from_contents(self.msfiles)
+        self.update_from_contents(self.subpiles)
         self.open_files = set()
     
+    def add_files(self, files=None, filenames=None, filename_attributes=None, fileformat='mseed', cache=None):
+        modified_subpiles = set()
+        if filenames is not None:
+            for file in loader(filenames, fileformat, cache, filename_attributes):
+                subpile = self.dispatch(file)
+                subpile.add_file(file)
+                modified_subpiles.add(subpile)
+                
+        self.update_from_contents(modified_subpiles, flush=False)
+        
     def add_file(self, file):
-        self.dispatch(file).add_file(file)
+        subpile = self.dispatch(file)
+        subpile.add_file(file)
+        self.update_from_contents((file,), flush=False)
     
     def remove_file(self, file):
-        self.dispatch(file).remove_file(file)
+        subpile = self.dispatch(file)
+        subpile.remove_file(file)
+        self.update_from_contents(self.subpiles)
         
     def dispatch_key(self, file):
         tt = time.gmtime(file.tmin)
-        return (tt.year,tt.month)
+        return (tt[0],tt[1])
     
     def dispatch(self, file):
         k = self.dispatch_key(file)
-        if k in self.subpiles:
-            return self.subpiles[k]
-        else:
+        if k not in self.subpiles:
             self.subpiles[k] = SubPile()
             
         return self.subpiles[k]
         
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
-        for f in self.files:
-            f.chop(tmin, tmax, group_selector, trace_selector)
+        for subpile in self.subpiles.values():
+            if not group_selector or group_selector(subpile):
+            
+                return subpile.chop(tmin, tmax, group_selector, trace_selector)
 
     def _process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad):
         chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
