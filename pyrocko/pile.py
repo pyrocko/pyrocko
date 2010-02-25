@@ -1,6 +1,125 @@
 import trace, io, util, config
 import numpy as num
 
+def TracesFileCache(object):
+
+    caches = {}
+
+    def __init__(self, cachedir):
+        self.cachedir = cachedir
+        self.dircaches = {}
+        self.modified = set()
+        ensure_dir(self.cachedir)
+        
+    def get(self, abspath):
+        dircache = self.get_dircache_for(abspath)
+        if abspath in dircache:
+            return dircache[abspath]
+
+    def put(self, abspath, tfile):
+        cachepath = self.dircachepath(abspath)
+        dircache = self.get_dircache(cachepath)
+        dircache[abspath] = tfile
+        self.modified.add(cachepath)
+    
+    def get_dircache(self, cachepath):
+        if cachepath not in self.dircaches:
+            if os.path.isfile(cachepath):
+                self.dircaches[cachepath] = self.load_cache(cachepath)
+            else:
+                self.dircaches[cachepath] = {}
+                
+        return self.dircaches[cachepath]
+
+    def get_dircache_for(self, abspath):
+        return self.get_dircache(self.dircachepath(abspath))
+       
+            
+    def dircachepath(self, abspath):
+        cachefn = "%i" % abs(hash(dirname(abspath)))
+        return  pjoin(self.cachedir, cachefn)
+        
+    def dump_modified(self):
+        for cachepath in self.modified:
+            self.dump_cache(self.dircaches[cachepath], cachepath)
+            
+        self.modified = set()
+            
+    def load_dircache(self, cachefilename):
+        
+        f = open(cachefilename,'r')
+        cache = pickle.load(f)
+        f.close()
+        
+        # weed out files which no longer exist
+        for fn in cache.keys():
+            if not os.path.isfile(fn):
+                del cache[fn]
+        return cache
+        
+    def dump_cache(self, cache, cachefilename):
+        f = open(cachefilename+'.tmp','w')
+        pickle.dump(cache, f)
+        f.close()
+        os.rename(cachefilename+'.tmp', cachefilename)
+
+def get_cache(cachedir):
+    if cachedir not in TracesFileCache.caches:
+        TracesFileCache.caches[cachedir] = TracesFileCache(cachedir)
+        
+    return TracesFileCache.caches[cachedir]
+    
+def loader(filenames, cache, filename_attributes):
+            
+    if config.show_progress:
+        widgets = ['Scanning files', ' ',
+                progressbar.Bar(marker='-',left='[',right=']'), ' ',
+                progressbar.Percentage(), ' ',]
+        
+        pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(filenames)).start()
+    
+    regex = None
+    if filename_attributes:
+        regex = re.compile(filename_attributes)
+    
+    failures = []
+    for ifile, filename in enumerate(filenames):
+        try:
+            abspath = os.path.abspath(filename)
+            
+            substitutions = None
+            if regex:
+                m = regex.search(filename)
+                if not m: raise FilenameAttributeError(
+                    "Cannot get attributes with pattern '%s' from path '%s'" 
+                        % (filename_attributes, filename))
+                substitutions = m.groupdict()
+                
+            
+            mtime = os.stat(filename)[8]
+            tfile = None
+            if cache:
+                tfile = cache.get(abspath)
+            
+            if not tfile or tfile.mtime != mtime or substitutions:
+                tfile = TracesFile(abspath, format, substitutions=substitutions, mtime=mtime)
+                if not substitutions:
+                    cache.put(abspath, tfile)
+                
+        except (io.FileLoadError, OSError, FilenameAttributeError), xerror:
+            failures.append(abspath)
+            logging.warn(xerror)
+        else:
+            yield tfile
+        
+        if config.show_progress: pbar.update(ifile+1)
+    
+    if config.show_progress: pbar.finish()
+    if failures:
+        logging.warn('The following file%s caused problems and will be ignored:\n' % plural_s(len(failures)) + '\n'.join(failures))
+        
+    cache.dump_modified()
+
 class TracesGroup(object):
     def __init__(self):
         self.empty()
@@ -9,8 +128,9 @@ class TracesGroup(object):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
         self.tmin, self.tmax = num.inf, -num.inf
     
-    def update_from_content(self, content):
-        self.empty()
+    def update_from_content(self, content, flush=True):
+        if flush:
+            self.empty()
         
         for c in content:
         
@@ -140,105 +260,76 @@ class TracesFile(TracesGroup):
         return s
 
 
-def load_cache(cachefilename):
-        
-    if os.path.isfile(cachefilename):
-        progress_beg('reading cache...')
-        f = open(cachefilename,'r')
-        cache = pickle.load(f)
-        f.close()
-        progress_end()
-    else:
-        cache = {}
-        
-    # weed out files which no longer exist
-    progress_beg('weeding cache...')
-    for fn in cache.keys():
-        if not os.path.isfile(fn):
-            del cache[fn]
-    
-    progress_end()
-            
-    return cache
-
-def dump_cache(cache, cachefilename):
-    
-    progress_beg('writing cache...')
-    f = open(cachefilename+'.tmp','w')
-    pickle.dump(cache, f)
-    f.close()
-    os.rename(cachefilename+'.tmp', cachefilename)
-    progress_end()
     
 class FilenameAttributeError(Exception):
     pass
 
-
+class SubPile(TracesGroup):
+    def __init__(self):
+        self.files = []
+    
+    def add_file(self, file):
+        self.files.append(file)
+        self.update_from_contents((file,), flush=False)
+        
+    def remove_file(self, file):
+        self.files.remove(file)
+        self.update_from_contents(self.files)
+    
+    def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
+        for f in self.files:
+            if group_selector(f):
+                f.chop(tmin, tmax, trace_selector)
+            
 class Pile(TracesGroup):
-    def __init__(self, filenames, cachefilename=None, filename_attributes=None):
+    def __init__(self, filenames, cache=None, filename_attributes=None):
         msfiles = []
         
-        if filenames:
-            # should lock cache here...
-            if cachefilename:
-                cache = load_cache(cachefilename)
-            else:
-                cache = {}
-                
-            if config.show_progress:
-                widgets = ['Scanning files', ' ',
-                        progressbar.Bar(marker='-',left='[',right=']'), ' ',
-                        progressbar.Percentage(), ' ',]
-                
-                pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(filenames)).start()
-            
-            regex = None
-            if filename_attributes:
-               regex = re.compile(filename_attributes)
-            
-            failures = []
-            cache_modified = False
-            for ifile, filename in enumerate(filenames):
-                try:
-                    abspath = os.path.abspath(filename)
-                    
-                    substitutions = None
-                    if regex:
-                        m = regex.search(filename)
-                        if not m: raise FilenameAttributeError(
-                            "Cannot get attributes with pattern '%s' from path '%s'" 
-                                % (filename_attributes, filename))
-                        substitutions = m.groupdict()
-                        
-                    mtime = os.stat(filename)[8]
-                    if abspath not in cache or cache[abspath].mtime != mtime or substitutions:
-                        cache[abspath] = TracesFile(abspath, format, substitutions=substitutions, mtime=mtime)
-                        if not substitutions:
-                            cache_modified = True
-                        
-                except (io.FileLoadError, OSError, FilenameAttributeError), xerror:
-                    failures.append(abspath)
-                    logging.warn(xerror)
-                else:
-                    msfiles.append(cache[abspath])
-               
-                if config.show_progress: pbar.update(ifile+1)
-            
-            if config.show_progress: pbar.finish()
-            if failures:
-                logging.warn('The following file%s caused problems and will be ignored:\n' % plural_s(len(failures)) + '\n'.join(failures))
-            
-            if cachefilename and cache_modified: dump_cache(cache, cachefilename)
-        
-            # should unlock cache here...
-        
-        self.msfiles = msfiles
+        self.subpiles = {}
         self.update_from_contents(self.msfiles)
         self.open_files = set()
+    
+    def add_file(self, file):
+        self.dispatch(file).add_file(file)
+    
+    def remove_file(self, file):
+        self.dispatch(file).remove_file(file)
         
+    def dispatch_key(self, file):
+        tt = time.gmtime(file.tmin)
+        return (tt.year,tt.month)
+    
+    def dispatch(self, file):
+        k = self.dispatch_key(file)
+        if k in self.subpiles:
+            return self.subpiles[k]
+        else:
+            self.subpiles[k] = SubPile()
+            
+        return self.subpiles[k]
+        
+    def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
+        for f in self.files:
+            f.chop(tmin, tmax, group_selector, trace_selector)
+
+    def _process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad):
+        chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
+        if degap:
+            chopped = degapper(chopped)
+            
+        if not want_incomplete:
+            wlen = (wmax+tpad)-(wmin-tpad)
+            chopped_weeded = []
+            for trace in chopped:
+                if abs(wlen - round(wlen/trace.deltat)*trace.deltat) > 0.001:
+                    logging.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, trace.deltat) )
+                if len(trace.ydata) == t2ind((wmax+tpad)-(wmin-tpad), trace.deltat):
+                    chopped_weeded.append(trace)
+            chopped = chopped_weeded
+        return chopped
+            
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., selector=None, 
-                      want_incomplete=True, degap=True, keep_current_files_open=False,
-                      ndecimate=None):
+                      want_incomplete=True, degap=True, keep_current_files_open=False):
         
         if tmin is None:
             tmin = self.tmin+tpad
@@ -285,24 +376,8 @@ class Pile(TracesGroup):
                         self.open_files.add(file)
                         file.load_data()
                     chopped.extend( file.chop(wmin-tpad, wmax+tpad, selector) )
-                                
-                chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
-                if degap:
-                    chopped = degapper(chopped)
-                    
-                if not want_incomplete:
-                    wlen = (wmax+tpad)-(wmin-tpad)
-                    chopped_weeded = []
-                    for trace in chopped:
-                        if abs(wlen - round(wlen/trace.deltat)*trace.deltat) > 0.001:
-                            logging.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, trace.deltat) )
-                        if len(trace.ydata) == t2ind((wmax+tpad)-(wmin-tpad), trace.deltat):
-                            chopped_weeded.append(trace)
-                    chopped = chopped_weeded
                 
-                if ndecimate is not None:
-                    for trace in chopped:
-                        trace.downsample(ndecimate)
+                    self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
                     
                 yield chopped
                 
@@ -310,7 +385,6 @@ class Pile(TracesGroup):
                 for file in unused_files:
                     file.drop_data()
                     self.open_files.remove(file)
-                
             
             iwin += 1
         
@@ -365,6 +439,8 @@ class Pile(TracesGroup):
     def reload_modified(self):
         for file in self.msfiles:
             file.reload_if_modified()
+            
+        self.update_from_contents(self.msfiles)
             
     def __str__(self):
         
