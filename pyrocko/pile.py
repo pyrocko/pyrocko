@@ -2,14 +2,14 @@ import trace, io, util, config
 
 import numpy as num
 import os, pickle, logging, time
-
+pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
 
 from util import reuse
 from trace import degapper
 
 
-def TracesFileCache(object):
+class TracesFileCache(object):
 
     caches = {}
 
@@ -17,7 +17,7 @@ def TracesFileCache(object):
         self.cachedir = cachedir
         self.dircaches = {}
         self.modified = set()
-        ensure_dir(self.cachedir)
+        util.ensuredir(self.cachedir)
         
     def get(self, abspath):
         dircache = self.get_dircache_for(abspath)
@@ -44,12 +44,12 @@ def TracesFileCache(object):
        
             
     def dircachepath(self, abspath):
-        cachefn = "%i" % abs(hash(dirname(abspath)))
+        cachefn = "%i" % abs(hash(os.path.dirname(abspath)))
         return  pjoin(self.cachedir, cachefn)
         
     def dump_modified(self):
         for cachepath in self.modified:
-            self.dump_cache(self.dircaches[cachepath], cachepath)
+            self.dump_dircache(self.dircaches[cachepath], cachepath)
             
         self.modified = set()
             
@@ -65,11 +65,26 @@ def TracesFileCache(object):
                 del cache[fn]
         return cache
         
-    def dump_cache(self, cache, cachefilename):
+    def dump_dircache(self, cache, cachefilename):
+        if not cache:
+            if os.path.exists(cachefilename):
+                os.remove(cachefilename)
+            return            
+    
         f = open(cachefilename+'.tmp','w')
         pickle.dump(cache, f)
         f.close()
         os.rename(cachefilename+'.tmp', cachefilename)
+
+    def clean(self):
+        for fn in os.listdir(self.cachedir):
+            try:
+                i = int(fn) # valid names are integers
+                cache = self.load_dircache(pjoin(self.cachedir, fn))
+                self.dump_dircache(cache, pjoin(self.cachedir, fn))
+                
+            except ValueError:
+                pass
 
 def get_cache(cachedir):
     if cachedir not in TracesFileCache.caches:

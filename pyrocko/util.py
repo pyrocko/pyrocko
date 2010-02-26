@@ -144,6 +144,11 @@ def ensuredirs(dst):
         if not os.path.exists(d):
             os.mkdir(d)
 
+def ensuredir(dst):
+    ensuredirs(dst)
+    if not os.path.exists(dst):
+        os.mkdir(dst)
+    
 def reuse(x):
     grs = GlobalVars.reuse_store
     if not x in grs:

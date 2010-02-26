@@ -41,11 +41,11 @@ class PileTestCase( unittest.TestCase ):
         
         tmin = 1234567890
         datadir = makeManyFiles(nfiles, nsamples, networks, stations, channels, tmin)
-        
+        print datadir
         filenames = util.select_files([datadir])
-        cachefilename = pjoin(datadir,'_cache_')
+        cachedir = pjoin(datadir,'_cache_')
         p = pile.Pile()
-        p.add_files(filenames=filenames)
+        p.add_files(filenames=filenames, cache=pile.get_cache(cachedir))
         assert set(p.networks) == set(networks)
         assert set(p.stations) == set(stations)
         assert set(p.channels) == set(channels)
@@ -58,8 +58,9 @@ class PileTestCase( unittest.TestCase ):
         #        s += num.sum(trace.ydata)
                 
         #os.unlink(cachefilename)
-        #shutil.rmtree(datadir)
         #assert s == nfiles*nsamples
+        pile.get_cache(cachedir).clean()
+        shutil.rmtree(datadir)
     
 
 if __name__ == "__main__":
