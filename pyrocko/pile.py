@@ -20,40 +20,62 @@ class TracesFileCache(object):
         util.ensuredir(self.cachedir)
         
     def get(self, abspath):
-        dircache = self.get_dircache_for(abspath)
+        '''Try to get an item from the cache.'''
+        
+        dircache = self._get_dircache_for(abspath)
         if abspath in dircache:
             return dircache[abspath]
+        return None
 
     def put(self, abspath, tfile):
-        cachepath = self.dircachepath(abspath)
-        dircache = self.get_dircache(cachepath)
+        '''Put an item into the cache.'''
+        
+        cachepath = self._dircachepath(abspath)
+        # get lock on cachepath here
+        dircache = self._get_dircache(cachepath)
         dircache[abspath] = tfile
         self.modified.add(cachepath)
+
+    def dump_modified(self):
+        '''Save any modifications to disk.'''
+
+        for cachepath in self.modified:
+            self._dump_dircache(self.dircaches[cachepath], cachepath)
+            # unlock 
+            
+        self.modified = set()
+
+    def clean(self):
+        '''Weed out missing files from the disk caches.'''
+        
+        self.dump_modified()
+        
+        for fn in os.listdir(self.cachedir):
+            try:
+                i = int(fn) # valid filenames are integers
+                cache = self._load_dircache(pjoin(self.cachedir, fn))
+                self._dump_dircache(cache, pjoin(self.cachedir, fn))
+                
+            except ValueError:
+                pass
+
+    def _get_dircache_for(self, abspath):
+        return self._get_dircache(self._dircachepath(abspath))
     
-    def get_dircache(self, cachepath):
+    def _get_dircache(self, cachepath):
         if cachepath not in self.dircaches:
             if os.path.isfile(cachepath):
-                self.dircaches[cachepath] = self.load_cache(cachepath)
+                self.dircaches[cachepath] = self._load_dircache(cachepath)
             else:
                 self.dircaches[cachepath] = {}
                 
         return self.dircaches[cachepath]
-
-    def get_dircache_for(self, abspath):
-        return self.get_dircache(self.dircachepath(abspath))
        
-            
-    def dircachepath(self, abspath):
+    def _dircachepath(self, abspath):
         cachefn = "%i" % abs(hash(os.path.dirname(abspath)))
         return  pjoin(self.cachedir, cachefn)
-        
-    def dump_modified(self):
-        for cachepath in self.modified:
-            self.dump_dircache(self.dircaches[cachepath], cachepath)
             
-        self.modified = set()
-            
-    def load_dircache(self, cachefilename):
+    def _load_dircache(self, cachefilename):
         
         f = open(cachefilename,'r')
         cache = pickle.load(f)
@@ -65,7 +87,7 @@ class TracesFileCache(object):
                 del cache[fn]
         return cache
         
-    def dump_dircache(self, cache, cachefilename):
+    def _dump_dircache(self, cache, cachefilename):
         if not cache:
             if os.path.exists(cachefilename):
                 os.remove(cachefilename)
@@ -76,15 +98,6 @@ class TracesFileCache(object):
         f.close()
         os.rename(cachefilename+'.tmp', cachefilename)
 
-    def clean(self):
-        for fn in os.listdir(self.cachedir):
-            try:
-                i = int(fn) # valid names are integers
-                cache = self.load_dircache(pjoin(self.cachedir, fn))
-                self.dump_dircache(cache, pjoin(self.cachedir, fn))
-                
-            except ValueError:
-                pass
 
 def get_cache(cachedir):
     if cachedir not in TracesFileCache.caches:
