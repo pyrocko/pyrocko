@@ -1,7 +1,9 @@
 import logging
 
-import orthodrome, trace, pile, config, model
-import os, sys, shutil, subprocess
+import orthodrome, trace, pile, config, model, eventdata, io
+import os, sys, shutil, subprocess, tempfile, calendar, time
+
+pjoin = os.path.join
 
 logger = logging.getLogger('pyrocko.rdseed')
 
@@ -55,7 +57,7 @@ class Programs:
 
 
 
-class SeedVolumeAccess(EventDataAccess):
+class SeedVolumeAccess(eventdata.EventDataAccess):
 
     def __init__(self, seedvolume, datapile=None):
         
@@ -69,7 +71,7 @@ class SeedVolumeAccess(EventDataAccess):
                 volumes.)
         '''
     
-        EventDataAccess.__init__(self, datapile=datapile)
+        eventdata.EventDataAccess.__init__(self, datapile=datapile)
     
         self.seedvolume = seedvolume
         self.tempdir = tempfile.mkdtemp("","SeedVolumeAccess-")
@@ -81,7 +83,11 @@ class SeedVolumeAccess(EventDataAccess):
                 
     def get_pile(self):
         if self._pile is None:
-            self._pile = pile.Pile([ pjoin(self.tempdir, 'mini.seed') ] )
+            fns = io.save( io.load(pjoin(self.tempdir, 'mini.seed')), pjoin(self.tempdir,
+                     'raw-%(network)s-%(station)s-%(location)s-%(channel)s.mseed'))
+                
+            self._pile = pile.Pile(fns)
+            
         return self._pile
         
     def get_restitution(self, tr):
@@ -93,24 +99,27 @@ class SeedVolumeAccess(EventDataAccess):
         input_fn = self.seedvolume
         output_dir = self.tempdir
 
+        def strerr(s):
+            return '\n'.join([ 'rdseed: '+line for line in s.splitlines() ])
+                
         # seismograms:
         if self._pile is None:
             rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '4', '-p', '-R', '-q', output_dir], 
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (out,err) = rdseed_proc.communicate()
-            logging.info( 'rdseed: '+err )
+            logging.info(strerr(err))
         
         # event data:
         rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-e', '-q', output_dir], 
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out,err) = rdseed_proc.communicate()
-        logging.info( 'rdseed: '+err )
+        logging.info(strerr(err) )
         
         # station summary information:
         rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-S', '-q', output_dir], 
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (out,err) = rdseed_proc.communicate()
-        logging.info( 'rdseed: '+err )
+        logging.info(strerr(err))
         
         # station headers:
         rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-s', '-q', output_dir], 
@@ -120,7 +129,7 @@ class SeedVolumeAccess(EventDataAccess):
         fout = open(os.path.join(output_dir,'station_header_infos'),'w')
         fout.write( out )
         fout.close()
-        logging.info( 'rdseed: '+err )
+        logging.info(strerr(err))
         
     def _get_events_from_file( self ):
         rdseed_event_file =  os.path.join(self.tempdir,'rdseed.events')
@@ -146,6 +155,21 @@ class SeedVolumeAccess(EventDataAccess):
         return events
             
     def _get_stations_from_file(self):
+        
+        
+        # make station to locations map, cause these are not included in the 
+        # rdseed.stations file
+        
+        p = self.get_pile()
+        ns_to_l = {}
+        for nslc in p.nslc_ids:
+            ns = nslc[:2]
+            if ns not in ns_to_l:
+                ns_to_l[ns] = set()
+            
+            ns_to_l[ns].add(nslc[2])
+        
+        
         rdseed_station_file = os.path.join(self.tempdir, 'rdseed.stations')
         
         f = open(rdseed_station_file, 'r')
@@ -161,17 +185,18 @@ class SeedVolumeAccess(EventDataAccess):
         
         stations = []
         for cols in rows:
-            s = model.Station(
-                network = cols[1],
-                station = cols[0],
-                location = '*',
-                lat = float(cols[2]),
-                lon = float(cols[3]),
-                elevation = float(cols[4]),
-                name = cols[icolname],
-                components = set(cols[icolcomp].split())
-            )
-            stations.append[s]
+            for location in ns_to_l[cols[1],cols[0]]:    
+                s = model.Station(
+                    network = cols[1],
+                    station = cols[0],
+                    location = location,
+                    lat = float(cols[2]),
+                    lon = float(cols[3]),
+                    elevation = float(cols[4]),
+                    name = cols[icolname],
+                    components = set(cols[icolcomp].split())
+                )
+                stations.append(s)
                 
         return stations
         
