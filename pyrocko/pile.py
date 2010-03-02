@@ -8,6 +8,7 @@ logger = logging.getLogger('pyrocko.pile')
 from util import reuse
 from trace import degapper
 
+progressbar = util.progressbar_module()
 
 class TracesFileCache(object):
 
@@ -107,7 +108,8 @@ def get_cache(cachedir):
     
 def loader(filenames, fileformat, cache, filename_attributes):
             
-    if config.show_progress:
+    pbar = None
+    if progressbar and config.show_progress:
         widgets = ['Scanning files', ' ',
                 progressbar.Bar(marker='-',left='[',right=']'), ' ',
                 progressbar.Percentage(), ' ',]
@@ -148,11 +150,11 @@ def loader(filenames, fileformat, cache, filename_attributes):
         else:
             yield tfile
         
-        if config.show_progress: pbar.update(ifile+1)
+        if pbar: pbar.update(ifile+1)
     
-    if config.show_progress: pbar.finish()
+    if pbar: pbar.finish()
     if failures:
-        logging.warn('The following file%s caused problems and will be ignored:\n' % plural_s(len(failures)) + '\n'.join(failures))
+        logging.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
     
     if cache:
         cache.dump_modified()
@@ -197,10 +199,12 @@ class TracesGroup(object):
         
            
     def overlaps(self, tmin,tmax):
-        return not (tmax < self.tmin or self.tmax < tmin)
+        #return not (tmax < self.tmin or self.tmax < tmin)
+        return tmax >= self.tmin and self.tmax >= tmin
     
-    def is_relevant(self, tmin, tmax, selector=None):
-        return  not (tmax <= self.tmin or self.tmax < tmin) and (selector is None or selector(self))
+    def is_relevant(self, tmin, tmax, group_selector=None):
+        #return  not (tmax <= self.tmin or self.tmax < tmin) and (selector is None or selector(self))
+        return  tmax > self.tmin and self.tmax >= tmin and (group_selector is None or group_selector(self))
 
     def _convert_tuples_to_sets(self):
         if not isinstance(self.networks, set):
@@ -237,7 +241,8 @@ class TracesFile(TracesGroup):
         self.abspath = abspath
         self.format = format
         self.traces = []
-        self.data_loaded = 0
+        self.data_loaded = False
+        self.data_use_count = 0
         self.substitutions = substitutions
         self.load_headers(mtime=mtime)
         self.update(self.traces)
@@ -251,26 +256,35 @@ class TracesFile(TracesGroup):
         for tr in io.load(self.abspath, format=self.format, getdata=False, substitutions=self.substitutions):
             self.traces.append(tr)
             
-        self.data_loaded = 0
+        self.data_loaded = False
+        self.data_use_count = 0
         
     def load_data(self):
-        if self.data_loaded == 0:
+        if not self.data_loaded:
             logger.debug('loading data from file: %s' % self.abspath)
             self.traces = []
             for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
                 self.traces.append(tr)
-            
-        self.data_loaded += 1
-
+                
+            self.data_loaded = True
+    
+    def use_data(self):
+        if not self.data_loaded: raise Exception('Data not loaded')
+        self.data_use_count += 1
+        
     def drop_data(self):
         if self.data_loaded:
-            if self.data_loaded == 1:
+            if self.data_use_count == 1:
                 logger.debug('forgetting data of file: %s' % self.abspath)
                 for tr in self.traces:
                     tr.drop_data()
                     
-            self.data_loaded -= 1
-    
+                self.data_loaded = False
+                    
+            self.data_use_count -= 1    
+        else:
+            self.data_use_count = 0
+            
     def reload_if_modified(self):
         mtime = os.stat(self.abspath)[8]
         if mtime != self.mtime:
@@ -278,7 +292,6 @@ class TracesFile(TracesGroup):
             self.mtime = mtime
             if self.data_loaded:
                 self.load_data()
-                self.data_loaded -= 1
             else:
                 self.load_headers()
             
@@ -288,16 +301,22 @@ class TracesFile(TracesGroup):
             
         return False
        
-    def chop(self,tmin,tmax,selector):
+    def chop(self,tmin,tmax,trace_selector=None):
         chopped = []
-        for tr in self.traces:
-            if not selector or selector(tr):
-                try:
-                    chopped.append(tr.chop(tmin,tmax,inplace=False))
-                except trace.NoData:
-                    pass
+        used = False
+        needed = [ tr for tr in self.traces if not trace_selector or trace_selector(tr) ]
+                
+        if needed:
+            self.load_data()
+            used = True
+            for tr in self.traces:
+                if not trace_selector or trace_selector(tr):
+                    try:
+                        chopped.append(tr.chop(tmin,tmax,inplace=False))
+                    except trace.NoData:
+                        pass
             
-        return chopped
+        return chopped, used
         
     def get_deltats(self):
         deltats = set()
@@ -356,9 +375,10 @@ class SubPile(TracesGroup):
         chopped = []
         for file in self.files:
             if file.is_relevant(tmin, tmax, group_selector):
-                file.load_data()
-                used_files.add(file)
-                chopped.extend( file.chop(tmin, tmax, trace_selector) )
+                chopped_, used = file.chop(tmin, tmax, trace_selector)
+                chopped.extend( chopped_ )
+                if used:
+                    used_files.add(file)
                 
         return chopped, used_files
         
@@ -372,7 +392,7 @@ class SubPile(TracesGroup):
     def get_deltats(self):
         deltats = set()
         for file in self.files:
-            deltats.add(file.deltat)
+            deltats.update(file.get_deltats())
             
         return deltats
 
@@ -382,6 +402,7 @@ class SubPile(TracesGroup):
             must_drop = False
             if load_data:
                 file.load_data()
+                file.use_data()
                 must_drop = True
             
             for trace in file.iter_traces():
@@ -424,7 +445,7 @@ class Pile(TracesGroup):
         self.update(self.subpiles)
         self.open_files = set()
     
-    def add_files(self, files=None, filenames=None, filename_attributes=None, fileformat='mseed', cache=None):
+    def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None):
         modified_subpiles = set()
         if filenames is not None:
             for file in loader(filenames, fileformat, cache, filename_attributes):
@@ -482,7 +503,7 @@ class Pile(TracesGroup):
             chopped = chopped_weeded
         return chopped
             
-    def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., selector=None, 
+    def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
                       want_incomplete=True, degap=True, keep_current_files_open=False):
         
         if tmin is None:
@@ -494,7 +515,7 @@ class Pile(TracesGroup):
         if tinc is None:
             tinc = tmax-tmin
         
-        if not self.is_relevant(tmin-tpad,tmax+tpad,selector): return
+        if not self.is_relevant(tmin-tpad,tmax+tpad,group_selector): return
         
         iwin = 0
         
@@ -502,9 +523,16 @@ class Pile(TracesGroup):
             chopped = []
             wmin, wmax = tmin+iwin*tinc, tmin+(iwin+1)*tinc
             if wmin >= tmax: break
-            chopped, used_files = self.chop(wmin-tpad, wmax+tpad, selector) 
+            chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector) 
+            for file in used_files - self.open_files:
+                # increment datause counter on newly opened files
+                file.use_data()
+                
+            self.open_files.update(used_files)
+            
             processed = self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
             yield processed
+            
             unused_files = self.open_files - used_files
             while unused_files:
                 file = unused_files.pop()
@@ -514,7 +542,7 @@ class Pile(TracesGroup):
             iwin += 1
         
         if not keep_current_files_open:
-            while open_files:
+            while self.open_files:
                 file = self.open_files.pop()
                 file.drop_data()
             
@@ -533,25 +561,33 @@ class Pile(TracesGroup):
     
     def chopper_grouped(self, gather, *args, **kwargs):
         keys = self.gather_keys(gather)
-        outer_selector = None
-        if 'selector' in kwargs:
-            outer_selector = kwargs['selector']
-        if outer_selector is None:
-            outer_selector = lambda xx: True
+        
+        outer_group_selector = None
+        if 'group_selector' in kwargs:
+            outer_group_selector = kwargs['group_selector']
             
+        outer_trace_selector = None
+        if 'trace_selector' in kwargs:
+            outer_trace_selector = kwargs['trace_selector']
+        
+        # the use of this gather-cache makes it impossible to modify the pile
+        # during chopping
         gather_cache = {}
         
         for key in keys:
-            def sel(obj):
-                if isinstance(obj, trace.Trace):
-                    return gather(obj) == key and outer_selector(obj)
-                else:
-                    if obj not in gather_cache:
-                        gather_cache[obj] = obj.gather_keys(gather)
+            def tsel(tr):
+                return gather(tr) == key and (outer_trace_selector is None or 
+                                              outer_trace_selector(tr))
+                    
+            def gsel(gr):
+                if gr not in gather_cache:
+                    gather_cache[gr] = gr.gather_keys(gather)
                         
-                    return key in gather_cache[obj] and outer_selector(obj)
-                
-            kwargs['selector'] = sel
+                return key in gather_cache[gr] and (outer_group_selector is None or
+                                                    outer_group_selector(gr))
+            
+            kwargs['trace_selector'] = tsel
+            kwargs['group_selector'] = gsel
             
             for traces in self.chopper(*args, **kwargs):
                 yield traces

@@ -670,11 +670,11 @@ class PileOverview(QGLWidget):
         trace_views = []
         
         self.set_gathering()
-        traces_path = []
-        for msfile in self.pile.msfiles:
-            abspath = msfile.abspath
-            for trace in msfile.traces:
-                traces_path.append( (trace, abspath) )
+        #traces_path = []
+        #for msfile in self.pile.msfiles:
+        #    abspath = msfile.abspath
+        #    for trace in msfile.traces:
+        #        traces_path.append( (trace, abspath) )
         
         deltats = self.pile.get_deltats()
         if deltats:
@@ -689,19 +689,19 @@ class PileOverview(QGLWidget):
         self.track_to_screen = Projection()
         
             
-        traces_path.sort( lambda x,y: cmp(x[0].full_id, y[0].full_id) )
-        i = 1
+        #traces_path.sort( lambda x,y: cmp(x[0].full_id, y[0].full_id) )
+        #i = 1
         
-        for itrace, (trace,abspath) in enumerate(traces_path):
-            gv = TraceOverview( trace, abspath, 
-                            box_styles[i%len(box_styles)] )
-            trace_views.append(gv)
-            if itrace+1 < len(traces_path):
-                a = trace
-                b = traces_path[itrace+1][0]
-                if not (a.nslc_id == b.nslc_id and
-                        a.deltat == b.deltat and
-                        abs(b.tmin - a.tmax) < gap_lap_tolerance): i+=1
+        #for itrace, (trace,abspath) in enumerate(traces_path):
+        #    gv = TraceOverview( trace, abspath, 
+        #                    box_styles[i%len(box_styles)] )
+        #    trace_views.append(gv)
+        #    if itrace+1 < len(traces_path):
+        #        a = trace
+        #        b = traces_path[itrace+1][0]
+        #        if not (a.nslc_id == b.nslc_id and
+        #                a.deltat == b.deltat and
+        #                abs(b.tmin - a.tmax) < gap_lap_tolerance): i+=1
       
         self.trace_views = trace_views
         
@@ -992,10 +992,10 @@ class PileOverview(QGLWidget):
             pen = QPen(QColor(*primary_color))
             p.setPen(pen)
             
-            tracks_selector = lambda trace: not isinstance(trace, pyrocko.trace.Trace) or self.key_to_row[self.gather(trace)] in track_projections
+            trace_selector = lambda trace: self.key_to_row[self.gather(trace)] in track_projections
             
             processed_traces = self.prepare_cutout(self.tmin, self.tmax, 
-                                                   tracks_selector=tracks_selector, 
+                                                   trace_selector=trace_selector, 
                                                    degap=self.menuitem_degap.isChecked())
             
             color_lookup = dict([ (k,i) for (i,k) in enumerate(self.color_keys) ])
@@ -1083,7 +1083,7 @@ class PileOverview(QGLWidget):
                         p.fillRect( rect, label_bg )
                         p.drawText( lx, ly, label )
 
-    def prepare_cutout(self, tmin, tmax, tracks_selector=None, degap=True):
+    def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
 
         if self.lowpass is not None:
             deltat_target = 1./self.lowpass * 0.25
@@ -1114,7 +1114,7 @@ class PileOverview(QGLWidget):
             for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
                                              want_incomplete=True,
                                              degap=degap,
-                                             keep_current_files_open=True, selector=tracks_selector ):
+                                             keep_current_files_open=True, trace_selector=trace_selector ):
                 
                 for trace in traces:
                     
@@ -1162,8 +1162,11 @@ class PileOverview(QGLWidget):
                         a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
                         abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
                         len(a.get_ydata()) == len(b.get_ydata())):
-                        a.set_ydata(a.get_ydata()*cphi+b.get_ydata()*sphi)
-                        b.set_ydata(-a.get_ydata()*sphi+b.get_ydata()*cphi)
+                        
+                        aydata = a.get_ydata()*cphi+b.get_ydata()*sphi
+                        bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
+                        a.set_ydata(aydata)
+                        b.set_ydata(bydata)
                         
                     
         return processed_traces
@@ -1450,9 +1453,11 @@ class MyApp(QApplication):
             pyrocko.util.setup_logging('warning')
         
         filenames = pyrocko.util.select_files( args, regex=options.pattern )
-        cachefilename = '/tmp/new_snuffler_cache_%s' % os.environ['USER']
-        pile = pyrocko.pile.Pile( sorted(filenames), cachefilename, filename_attributes=options.pattern )
-
+        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
+        cache = pyrocko.pile.get_cache(cachedirname)
+        pile = pyrocko.pile.Pile()
+        pile.add_files( sorted(filenames), cache=cache, filename_attributes=options.pattern )
+        print pile
         self.pile_overview = PileOverview(pile, ntracks_shown_max=options.ntracks)
         
         if os.path.isfile('markers'):

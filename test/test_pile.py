@@ -41,7 +41,6 @@ class PileTestCase( unittest.TestCase ):
         
         tmin = 1234567890
         datadir = makeManyFiles(nfiles, nsamples, networks, stations, channels, tmin)
-        print datadir
         filenames = util.select_files([datadir])
         cachedir = pjoin(datadir,'_cache_')
         p = pile.Pile()
@@ -52,13 +51,15 @@ class PileTestCase( unittest.TestCase ):
         
         toff = 0
         while toff < nfiles*nsamples:
-            print p.chop(tmin+10, tmin+200)
+            
             trs, loaded1 = p.chop(tmin+10, tmin+200)
             for tr in trs:
                 assert num.all(tr.get_ydata() == num.ones(190))
+            
             trs, loaded2 = p.chop(tmin-100, tmin+100)
             for tr in trs:
-                print len(tr.get_ydata())
+                assert len(tr.get_ydata()) == 100
+                
             loaded = loaded1 | loaded2
             while loaded:
                 file = loaded.pop()
@@ -66,7 +67,6 @@ class PileTestCase( unittest.TestCase ):
             
             toff += nsamples
             
-        print p.nslc_ids
         s = 0
         for traces in p.chopper(tmin=None, tmax=None, tinc=123.): #tpad=10.):
             for trace in traces:
