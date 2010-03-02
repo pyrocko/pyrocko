@@ -475,7 +475,33 @@ class Trace(object):
             apeaks.append(apeak)
             
         return tpeaks, apeaks
+    
+    def extend(self, tmin, tmax, fillmethod='zeros'):
+        '''Extend trace to given span
         
+        In:
+            tmin, tmax -- new span
+            fillmethod -- 'zeros' or 'repeat' 
+        '''
+        
+        assert tmin <= self.tmin and tmax >= self.tmax
+        
+        nl = int(math.floor((self.tmin-tmin)/self.deltat))
+        nh = int(math.floor((tmax-self.tmax)/self.deltat))
+        self.tmin -= nl*self.deltat
+        self.tmax += nh*self.deltat
+        n = nl+self.ydata.size+nh
+
+        data = num.zeros(n, dtype=self.ydata.dtype)
+        data[nl:-nh] = self.ydata
+        if fillmethod == 'repeat' and self.ydata.size >= 1:
+            data[:nl] = data[nl]
+            data[-nh:] = data[-nh-1]
+            
+        self.ydata = data
+        
+        self.update_ids()
+    
     def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True):
         '''Return new trace with transfer function applied.
         
