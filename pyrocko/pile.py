@@ -497,7 +497,7 @@ class Pile(TracesGroup):
         if not self.is_relevant(tmin-tpad,tmax+tpad,selector): return
         
         iwin = 0
-        open_files = set()       
+        
         while True:
             chopped = []
             wmin, wmax = tmin+iwin*tinc, tmin+(iwin+1)*tinc
@@ -509,13 +509,14 @@ class Pile(TracesGroup):
             while unused_files:
                 file = unused_files.pop()
                 file.drop_data()
-                open_files.remove(file)
+                self.open_files.remove(file)
                 
             iwin += 1
         
-        while open_files:
-            file = open_files.pop()
-            file.drop_data()
+        if not keep_current_files_open:
+            while open_files:
+                file = self.open_files.pop()
+                file.drop_data()
             
         
     def all(self, *args, **kwargs):
