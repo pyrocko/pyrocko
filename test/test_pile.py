@@ -49,16 +49,30 @@ class PileTestCase( unittest.TestCase ):
         assert set(p.networks) == set(networks)
         assert set(p.stations) == set(stations)
         assert set(p.channels) == set(channels)
-        print p
-        print p.chop(tmin+10, tmin+200)        
         
-        #s = 0
-        #for traces in p.chopper(tmin=None, tmax=None, tinc=1234.): #tpad=10.):
-        #    for trace in traces:
-        #        s += num.sum(trace.ydata)
+        toff = 0
+        while toff < nfiles*nsamples:
+            print p.chop(tmin+10, tmin+200)
+            trs, loaded1 = p.chop(tmin+10, tmin+200)
+            for tr in trs:
+                assert num.all(tr.get_ydata() == num.ones(190))
+            trs, loaded2 = p.chop(tmin-100, tmin+100)
+            for tr in trs:
+                print len(tr.get_ydata())
+            loaded = loaded1 | loaded2
+            while loaded:
+                file = loaded.pop()
+                file.drop_data()
+            
+            toff += nsamples
+            
+        print p.nslc_ids
+        s = 0
+        for traces in p.chopper(tmin=None, tmax=None, tinc=123.): #tpad=10.):
+            for trace in traces:
+                s += num.sum(trace.ydata)
                 
-        #os.unlink(cachefilename)
-        #assert s == nfiles*nsamples
+        assert s == nfiles*nsamples
         pile.get_cache(cachedir).clean()
         shutil.rmtree(datadir)
     

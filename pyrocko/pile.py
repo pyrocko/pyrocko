@@ -92,11 +92,11 @@ class TracesFileCache(object):
             if os.path.exists(cachefilename):
                 os.remove(cachefilename)
             return            
-    
-        f = open(cachefilename+'.tmp','w')
+        tmpfn = cachefilename+'.%i.tmp' % os.getpid()
+        f = open(tmpfn, 'w')
         pickle.dump(cache, f)
         f.close()
-        os.rename(cachefilename+'.tmp', cachefilename)
+        os.rename(tmpfn, cachefilename)
 
 
 def get_cache(cachedir):
@@ -164,11 +164,15 @@ class TracesGroup(object):
     def empty(self):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
         self.tmin, self.tmax = num.inf, -num.inf
+        self.have_tuples = False
     
-    def update_from_contents(self, content, flush=True):
-        if flush:
+    def update(self, content, empty=True):
+        if empty:
             self.empty()
-        
+        else:
+            if self.have_tuples:
+                self._convert_tuples_to_sets()
+            
         for c in content:
         
             if isinstance(c, TracesGroup):
@@ -187,8 +191,10 @@ class TracesGroup(object):
                 
             self.tmin = min(self.tmin, c.tmin)
             self.tmax = max(self.tmax, c.tmax)
-            
-        #self._convert_small_sets_to_tuples()
+        
+        if empty:    
+            self._convert_small_sets_to_tuples()
+        
            
     def overlaps(self, tmin,tmax):
         return not (tmax < self.tmin or self.tmax < tmin)
@@ -196,26 +202,45 @@ class TracesGroup(object):
     def is_relevant(self, tmin, tmax, selector=None):
         return  not (tmax <= self.tmin or self.tmax < tmin) and (selector is None or selector(self))
 
+    def _convert_tuples_to_sets(self):
+        if not isinstance(self.networks, set):
+            self.networks = set(self.networks)
+        if not isinstance(self.stations, set):
+            self.stations = set(self.stations)
+        if not isinstance(self.locations, set):
+            self.locations = set(self.locations)
+        if not isinstance(self.channels, set):
+            self.channels = set(self.channels)
+        if not isinstance(self.nslc_ids, set):
+            self.nslc_ids = set(self.nslc_ids)
+        self.have_tuples = False
+
     def _convert_small_sets_to_tuples(self):
         if len(self.networks) < 32:
             self.networks = reuse(tuple(self.networks))
+            self.have_tuples = True
         if len(self.stations) < 32:
             self.stations = reuse(tuple(self.stations))
+            self.have_tuples = True
         if len(self.locations) < 32:
             self.locations = reuse(tuple(self.locations))
+            self.have_tuples = True
         if len(self.channels) < 32:
             self.channels = reuse(tuple(self.channels))
+            self.have_tuples = True
         if len(self.nslc_ids) < 32:
             self.nslc_ids = reuse(tuple(self.nslc_ids))
-
+            self.have_tuples = True
+            
 class TracesFile(TracesGroup):
     def __init__(self, abspath, format, substitutions=None, mtime=None):
         self.abspath = abspath
         self.format = format
         self.traces = []
-        self.data_loaded = False
+        self.data_loaded = 0
         self.substitutions = substitutions
         self.load_headers(mtime=mtime)
+        self.update(self.traces)
         self.mtime = mtime
         
     def load_headers(self, mtime=None):
@@ -226,23 +251,25 @@ class TracesFile(TracesGroup):
         for tr in io.load(self.abspath, format=self.format, getdata=False, substitutions=self.substitutions):
             self.traces.append(tr)
             
-        self.data_loaded = False
-        self.update_from_contents(self.traces)
+        self.data_loaded = 0
         
     def load_data(self):
-        logger.debug('loading data from file: %s' % self.abspath)
-        self.traces = []
-        for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
-            self.traces.append(tr)
+        if self.data_loaded == 0:
+            logger.debug('loading data from file: %s' % self.abspath)
+            self.traces = []
+            for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
+                self.traces.append(tr)
+            
+        self.data_loaded += 1
 
-        self.data_loaded = True
-        self.update_from_contents(self.traces)
-        
     def drop_data(self):
-        logger.debug('forgetting data of file: %s' % self.abspath)
-        for tr in self.traces:
-            tr.drop_data()
-        self.data_loaded = False
+        if self.data_loaded:
+            if self.data_loaded == 1:
+                logger.debug('forgetting data of file: %s' % self.abspath)
+                for tr in self.traces:
+                    tr.drop_data()
+                    
+            self.data_loaded -= 1
     
     def reload_if_modified(self):
         mtime = os.stat(self.abspath)[8]
@@ -251,9 +278,16 @@ class TracesFile(TracesGroup):
             self.mtime = mtime
             if self.data_loaded:
                 self.load_data()
+                self.data_loaded -= 1
             else:
                 self.load_headers()
-    
+            
+            self.update(self.traces)
+            
+            return True
+            
+        return False
+       
     def chop(self,tmin,tmax,selector):
         chopped = []
         for tr in self.traces:
@@ -311,25 +345,83 @@ class SubPile(TracesGroup):
     
     def add_file(self, file):
         self.files.append(file)
-        self.update_from_contents((file,), flush=False)
+        self.update((file,), empty=False)
         
     def remove_file(self, file):
         self.files.remove(file)
-        self.update_from_contents(self.files)
+        self.update(self.files)
     
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
+        used_files = set()
         chopped = []
         for file in self.files:
             if file.is_relevant(tmin, tmax, group_selector):
                 file.load_data()
+                used_files.add(file)
                 chopped.extend( file.chop(tmin, tmax, trace_selector) )
-        return chopped
-
+                
+        return chopped, used_files
+        
+    def gather_keys(self, gather):
+        keys = set()
+        for file in self.files:
+            keys |= file.gather_keys(gather)
             
+        return keys
+
+    def get_deltats(self):
+        deltats = set()
+        for file in self.files:
+            deltats.add(file.deltat)
+            
+        return deltats
+
+    def iter_traces(self, load_data=False, return_abspath=False):
+        for file in self.files:
+            
+            must_drop = False
+            if load_data:
+                file.load_data()
+                must_drop = True
+            
+            for trace in file.iter_traces():
+                if return_abspath:
+                    yield file.abspath, trace
+                else:
+                    yield trace
+            
+            if must_drop:
+                file.drop_data()
+
+    def reload_modified(self):
+        modified = False
+        for file in self.files:
+            modified |= file.reload_if_modified()
+        
+        if modified:
+            self.update(self.files)
+            
+        return modified
+        
+    def __str__(self):
+    
+        def sl(s):
+            return sorted([ x for x in s ])
+
+        s = 'SubPile\n'
+        s += 'number of files: %i\n' % len(self.files)
+        s += 'timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
+        s += 'networks: %s\n' % ', '.join(sl(self.networks))
+        s += 'stations: %s\n' % ', '.join(sl(self.stations))
+        s += 'locations: %s\n' % ', '.join(sl(self.locations))
+        s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        return s
+
+             
 class Pile(TracesGroup):
     def __init__(self, ):
         self.subpiles = {}
-        self.update_from_contents(self.subpiles)
+        self.update(self.subpiles)
         self.open_files = set()
     
     def add_files(self, files=None, filenames=None, filename_attributes=None, fileformat='mseed', cache=None):
@@ -340,17 +432,17 @@ class Pile(TracesGroup):
                 subpile.add_file(file)
                 modified_subpiles.add(subpile)
                 
-        self.update_from_contents(modified_subpiles, flush=False)
+        self.update(modified_subpiles, empty=False)
         
     def add_file(self, file):
         subpile = self.dispatch(file)
         subpile.add_file(file)
-        self.update_from_contents((file,), flush=False)
+        self.update((file,), empty=False)
     
     def remove_file(self, file):
         subpile = self.dispatch(file)
         subpile.remove_file(file)
-        self.update_from_contents(self.subpiles)
+        self.update(self.subpiles)
         
     def dispatch_key(self, file):
         tt = time.gmtime(file.tmin)
@@ -365,12 +457,16 @@ class Pile(TracesGroup):
         
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
         chopped = []
+        used_files = set()
         for subpile in self.subpiles.values():
             if subpile.is_relevant(tmin,tmax, group_selector):
-                chopped.extend( subpile.chop(tmin, tmax, group_selector, trace_selector) )
-        return chopped
+                _chopped, _used_files =  subpile.chop(tmin, tmax, group_selector, trace_selector)
+                chopped.extend(_chopped)
+                used_files.update(_used_files)
+                
+        return chopped, used_files
 
-    def _process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad):
+    def _process_chopped(self, chopped, degap, want_incomplete, wmax, wmin, tpad):
         chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
         if degap:
             chopped = degapper(chopped)
@@ -398,58 +494,28 @@ class Pile(TracesGroup):
         if tinc is None:
             tinc = tmax-tmin
         
-        if not self.is_relevant(tmin,tmax,selector): return
+        if not self.is_relevant(tmin-tpad,tmax+tpad,selector): return
         
-        files_match_full = [ f for f in self.msfiles if f.is_relevant( tmin-tpad, tmax+tpad, selector ) ]
-        
-        if not files_match_full: return
-        
-        ftmin = num.inf
-        ftmax = -num.inf
-        for f in files_match_full:
-            ftmin = min(ftmin,f.tmin)
-            ftmax = max(ftmax,f.tmax)
-        
-        iwin = max(0, int(((ftmin-tpad)-tmin)/tinc-2))
-        files_match_partial = files_match_full
-        
-        partial_every = 50
-        
+        iwin = 0
+        open_files = set()       
         while True:
             chopped = []
             wmin, wmax = tmin+iwin*tinc, tmin+(iwin+1)*tinc
-            if wmin >= ftmax or wmin >= tmax: break
-                        
-            if iwin%partial_every == 0:  # optimization
-                swmin, swmax = tmin+iwin*tinc, tmin+(iwin+partial_every)*tinc
-                files_match_partial = [ f for f in files_match_full if f.is_relevant( swmin-tpad, swmax+tpad, selector ) ]
+            if wmin >= tmax: break
+            chopped, used_files = self.chop(wmin-tpad, wmax+tpad, selector) 
+            processed = self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
+            yield processed
+            unused_files = self.open_files - used_files
+            while unused_files:
+                file = unused_files.pop()
+                file.drop_data()
+                open_files.remove(file)
                 
-            files_match_win = [ f for f in files_match_partial if f.is_relevant( wmin-tpad, wmax+tpad, selector ) ]
-            
-            if files_match_win:
-                used_files = set()
-                for file in files_match_win:
-                    used_files.add(file)
-                    if not file.data_loaded:
-                        self.open_files.add(file)
-                        file.load_data()
-                    chopped.extend( file.chop(wmin-tpad, wmax+tpad, selector) )
-                
-                    self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
-                    
-                yield chopped
-                
-                unused_files = self.open_files - used_files
-                for file in unused_files:
-                    file.drop_data()
-                    self.open_files.remove(file)
-            
             iwin += 1
         
-        if not keep_current_files_open:
-            while self.open_files:
-                file = self.open_files.pop()
-                file.drop_data()
+        while open_files:
+            file = open_files.pop()
+            file.drop_data()
             
         
     def all(self, *args, **kwargs):
@@ -491,39 +557,32 @@ class Pile(TracesGroup):
         
     def gather_keys(self, gather):
         keys = set()
-        for file in self.msfiles:
-            keys |= file.gather_keys(gather)
+        for subpile in self.subpiles.values():
+            keys |= subpile.gather_keys(gather)
             
         return sorted(keys)
     
     def get_deltats(self):
         deltats = set()
-        for file in self.msfiles:
-            deltats.update(file.get_deltats())
+        for subpile in self.subpiles.values():
+            deltats.update(subpile.get_deltats())
+            
         return sorted(list(deltats))
     
     def iter_traces(self, load_data=False, return_abspath=False):
-        for file in self.msfiles:
-            
-            must_close = False
-            if load_data and not file.data_loaded:
-                file.load_data()
-                must_close = True
-            
-            for trace in file.iter_traces():
-                if return_abspath:
-                    yield file.abspath, trace
-                else:
-                    yield trace
-            
-            if must_close:
-                file.drop_data()
-    
+        for subpile in self.subpiles.values():
+            for xx in subpile.iter_traces(load_data, return_abspath):
+                yield xx
+   
     def reload_modified(self):
-        for file in self.msfiles:
-            file.reload_if_modified()
+        modified = False
+        for subpile in self.subpiles.values():
+            modified |= subpile.reload_modified()
+        
+        if modified:
+            self.update(self.subpiles)
             
-        self.update_from_contents(self.msfiles)
+        return modified
             
     def __str__(self):
         
