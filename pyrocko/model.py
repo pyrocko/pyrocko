@@ -28,11 +28,13 @@ class Station:
         self.dist_deg = None
         self.dist_m = None
         self.azimuth = None
+        self.backazimuth = None
 
     def set_event_relative_data( self, event ):
         self.dist_m = orthodrome.distance_accurate50m( event, self )
         self.dist_deg = self.dist_m / orthodrome.earthradius_equator *orthodrome.r2d
         self.azimuth = orthodrome.azimuth(event, self)
+        self.backazimuth = orthodrome.azimuth(self, event)
         
     def __str__(self):
         return '%s.%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.location, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)
