@@ -1,5 +1,5 @@
 from pyrocko import trace, io, util
-import unittest
+import unittest, math
 import numpy as num
 
 class TraceTestCase(unittest.TestCase):
@@ -58,6 +58,27 @@ class TraceTestCase(unittest.TestCase):
             print x.tmin, x.get_ydata()
             
         print '--'
+        
+    def testRotation(self):
+        s2 = math.sqrt(2.)
+        ndata = num.array([s2,s2], dtype=num.float)
+        edata = num.array([s2,0.], dtype=num.float)
+        dt = 1.0
+        n = trace.Trace(deltat=dt, ydata=ndata, tmin=100, channel='N')
+        e = trace.Trace(deltat=dt, ydata=edata, tmin=100, channel='E')
+        rotated = trace.rotate([n,e], 45., ['N','E'], ['R','T'])
+        for tr in rotated:
+            if tr.channel == 'R':
+                r = tr
+            if tr.channel == 'T':
+                t = tr
+        
+        assert( num.all(r.get_ydata() - num.array([ 2., 1. ]) < 1.0e-6 ) )
+        assert( num.all(t.get_ydata() - num.array([ 0., -1 ]) < 1.0e-6 ) )
+            
+        
+        
+        
 if __name__ == "__main__":
     util.setup_logging('warning')
     unittest.main()
