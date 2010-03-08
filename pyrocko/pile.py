@@ -10,17 +10,38 @@ from trace import degapper
 
 
 class TracesFileCache(object):
+    '''Manages trace metainformation cache.
+    
+    For each directory with files containing traces, one cache file is 
+    maintained to hold the trace metainformation of all files which are 
+    contained in the directory.
+    '''
 
     caches = {}
 
     def __init__(self, cachedir):
+        '''Create new cache.
+        
+        In:
+          cachedir -- directory to hold the cache files.
+          
+        '''
+        
         self.cachedir = cachedir
         self.dircaches = {}
         self.modified = set()
         util.ensuredir(self.cachedir)
         
     def get(self, abspath):
-        '''Try to get an item from the cache.'''
+        '''Try to get an item from the cache.
+        
+        In:
+          abspath -- absolute path of the object to retrieve
+          
+        Returns:
+          A stored object is returned or None if nothing could be found.
+          
+        '''
         
         dircache = self._get_dircache_for(abspath)
         if abspath in dircache:
@@ -28,7 +49,12 @@ class TracesFileCache(object):
         return None
 
     def put(self, abspath, tfile):
-        '''Put an item into the cache.'''
+        '''Put an item into the cache.
+        
+        In:
+          abspath -- absolute path of the object to be stored
+          tfile -- object to be stored
+        '''
         
         cachepath = self._dircachepath(abspath)
         # get lock on cachepath here
@@ -100,13 +126,15 @@ class TracesFileCache(object):
 
 
 def get_cache(cachedir):
+    '''Get global TracesFileCache object for given directory.'''
     if cachedir not in TracesFileCache.caches:
         TracesFileCache.caches[cachedir] = TracesFileCache(cachedir)
         
     return TracesFileCache.caches[cachedir]
     
 def loader(filenames, fileformat, cache, filename_attributes):
-            
+    '''Cached reading of trace metainformation.'''
+    
     if config.show_progress:
         widgets = ['Scanning files', ' ',
                 progressbar.Bar(marker='-',left='[',right=']'), ' ',
