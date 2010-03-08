@@ -365,6 +365,16 @@ class Trace(object):
             tracecopy.ydata = self.ydata.copy()
         tracecopy.meta = copy.deepcopy(self.meta)
         return tracecopy
+    
+    def append(self, data):
+        assert self.ydata.dtype == data.dtype
+        newlen = data.size + self.ydata.size
+        if not hasattr(self, 'growbuffer') or self.growbuffer.size < newlen:
+            self.growbuffer = num.empty(newlen*2, dtype=self.ydata.dtype)
+            self.growbuffer[:self.ydata.size] = self.ydata
+        self.growbuffer[self.ydata.size:newlen] = data
+        self.ydata = self.growbuffer[:newlen]
+        self.tmax = self.tmin + (newlen-1)*self.deltat
         
     def chop(self, tmin, tmax, inplace=True, include_last=False):
         if (tmax <= self.tmin or self.tmax < tmin): raise NoData()
