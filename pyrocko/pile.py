@@ -345,7 +345,7 @@ class Pile(TracesGroup):
             for trace in traces:
                 yield trace
     
-    def chopper_grouped(self, gather, *args, **kwargs):
+    def chopper_grouped(self, gather, progress=None, *args, **kwargs):
         keys = self.gather_keys(gather)
         outer_selector = None
         if 'selector' in kwargs:
@@ -354,8 +354,16 @@ class Pile(TracesGroup):
             outer_selector = lambda xx: True
             
         gather_cache = {}
+        pbar = None
+        progressbar = util.progressbar_module()
+        if progress and progressbar and config.show_progress:
+            widgets = [progress, ' ',
+                        progressbar.Bar(marker='-',left='[',right=']'), ' ',
+                        progressbar.Percentage(), ' ',]
+                
+            pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(keys)).start()
         
-        for key in keys:
+        for ikey, key in enumerate(keys):
             def sel(obj):
                 if isinstance(obj, trace.Trace):
                     return gather(obj) == key and outer_selector(obj)
@@ -369,6 +377,10 @@ class Pile(TracesGroup):
             
             for traces in self.chopper(*args, **kwargs):
                 yield traces
+                
+            if pbar: pbar.update(ikey+1)
+        
+        if pbar: pbar.finish()
         
     def gather_keys(self, gather):
         keys = set()
