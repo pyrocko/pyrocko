@@ -586,7 +586,7 @@ class Pile(TracesGroup):
             for trace in traces:
                 yield trace
     
-    def chopper_grouped(self, gather, *args, **kwargs):
+    def chopper_grouped(self, gather, progress=None, *args, **kwargs):
         keys = self.gather_keys(gather)
         
         outer_group_selector = None
@@ -600,6 +600,14 @@ class Pile(TracesGroup):
         # the use of this gather-cache makes it impossible to modify the pile
         # during chopping
         gather_cache = {}
+        pbar = None
+        progressbar = util.progressbar_module()
+        if progress and progressbar and config.show_progress:
+            widgets = [progress, ' ',
+                        progressbar.Bar(marker='-',left='[',right=']'), ' ',
+                        progressbar.Percentage(), ' ',]
+                
+            pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(keys)).start()
         
         for key in keys:
             def tsel(tr):
@@ -618,6 +626,10 @@ class Pile(TracesGroup):
             
             for traces in self.chopper(*args, **kwargs):
                 yield traces
+                
+            if pbar: pbar.update(ikey+1)
+        
+        if pbar: pbar.finish()
         
     def gather_keys(self, gather):
         keys = set()

@@ -42,13 +42,15 @@ class EventDataAccess:
         
         return stations
         
-    def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None):
+    def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None, extend=None, selector=None):
         
         if rotate is not None:
             angles_func, rotation_mappings = rotate
                 
         for traces in self.get_pile().chopper_grouped(
-                gather=lambda tr: (tr.network, tr.station, tr.location)):
+                gather=lambda tr: (tr.network, tr.station, tr.location),
+                selector=selector,
+                progress='Processing traces'):
             
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
             
@@ -68,11 +70,15 @@ class EventDataAccess:
                     except NoRestitution, e:
                         logger.warn( 'Cannot restitute trace %s.%s.%s.%s: %s' % (tr.nslc_id + (e,)))
                         continue
+                    
                     try:
+                        if extend:
+                            tr.extend(tr.tmin-extend, tr.tmax+extend, fillmethod='repeat')
+                            
                         displacement = tr.transfer( tfade, freqband, transfer_function=trans )
-                        tmax = num.max(num.abs(displacement.get_ydata()))
-                        if maxdisplacement is not None and tmax > maxdisplacement:
-                            logger.warn( 'Trace %s.%s.%s.%s has too large displacement: %g' % (tr.nslc_id + (tmax,)) )
+                        amax = num.max(num.abs(displacement.get_ydata()))
+                        if maxdisplacement is not None and amax > maxdisplacement:
+                            logger.warn( 'Trace %s.%s.%s.%s has too large displacement: %g' % (tr.nslc_id + (amax,)) )
                             continue
                         
                         if not num.all(num.isfinite(displacement.get_ydata())):
