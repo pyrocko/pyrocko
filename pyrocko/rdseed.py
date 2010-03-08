@@ -138,19 +138,23 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         events = []
         for line in f:
             toks = line.split(', ')
-            if len(toks) > 4:
+            if len(toks) == 9:
                 datetime = toks[1].split('.')[0]
                 lat = toks[2]
                 lon = toks[3]
                 format = '%Y/%m/%d %H:%M:%S'
                 secs = calendar.timegm( time.strptime(datetime, format))
                 e = model.Event(
-                    lat = float(lat),
-                    lon = float(lon),
+                    lat = float(toks[2]),
+                    lon = float(toks[3]),
+                    depth = float(toks[4])*1000.,
+                    magnitude = float(toks[8]),
                     time = secs
                 )
                 events.append(e)
-                
+            else:
+                raise Exception('Event description in unrecognized format')
+            
         f.close()
         return events
             
