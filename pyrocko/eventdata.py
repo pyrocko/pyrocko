@@ -49,7 +49,8 @@ class EventDataAccess:
                 
         for traces in self.get_pile().chopper_grouped(
                 gather=lambda tr: (tr.network, tr.station, tr.location),
-                selector=selector):
+                selector=selector,
+                progress='Processing traces'):
             
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
             
