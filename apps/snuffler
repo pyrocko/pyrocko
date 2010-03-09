@@ -1228,7 +1228,10 @@ class PileOverview(QGLWidget):
             if not abort:
                 tmi, tma = self.picking_trange
                 
-                print myctime(tmi), myctime(tma), self.picking_trange
+                trmin,trmax = self.track_to_screen.get_in_range()
+                anchor = (self.track_to_screen.rev(wheel_event.y())-trmin)/(trmax-trmin)
+                
+                print anchor, myctime(tmi), myctime(tma), self.picking_trange
     
     def start_picking(self, ignore):
         if not self.picking:
