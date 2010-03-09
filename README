@@ -1,0 +1,21 @@
+Very brief installation guide:
+
+> tar -xzvf evalresp-3.3.0.tar.gz
+> cd evalresp-3.3.0
+> ./configure
+> make
+> cd ..
+> tar -xzvf libmseed-2.1.3.tar.gz
+> cd libmseed
+> make gcc
+> cd ..
+> python setup.py install
+
+or
+
+> python setup.py install --prefix=/install/somewhere/else
+
+
+Note: on MacOS X it might be neccessary to add --enable-shared to configure. If
+this has to be done, it will be neccessary to install the shared libs after
+'make' with 'sudo make install'.

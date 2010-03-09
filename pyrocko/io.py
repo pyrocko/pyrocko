@@ -62,12 +62,15 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     
 def save(traces, filename_template, format='mseed'):
     if format == 'mseed':
-        mseed.save(traces, filename_template)
+        return mseed.save(traces, filename_template)
     
     elif format == 'sac':
+        fns = []
         for tr in traces:
             f = sac.SacFile(from_trace=tr)
-            f.write(tr.fill_template(filename_template))
+            fn = tr.fill_template(filename_template)
+            f.write(fn)
+            fns.append(fn)
             
-
-            
+        return fns
+        

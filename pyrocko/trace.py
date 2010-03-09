@@ -1,5 +1,6 @@
 
-import util, time, math, copy, logging
+import util, evalresp
+import time, math, copy, logging
 import numpy as num
 from util import reuse
 from scipy import signal
@@ -84,7 +85,7 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
             dist = (b.tmin-(a.tmin+(len(a.ydata)-1)*a.deltat))/a.deltat
             idist = int(round(dist))
             if abs(dist - idist) > 0.05:
-                logger.warn('cannot degap traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
+                logger.warn('Cannot degap traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
             else:
                 idist = int(round(dist))
                 if 1 < idist <= maxgap:
@@ -124,14 +125,24 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
     
     return out_traces
 
-class CannotRotate(Exception):
-    pass
-
 def rotate(traces, azimuth, in_channels, out_channels):
+    '''Rotate corresponding traces
+    
+    In:
+       traces -- not rotated traces
+       azimuth -- difference of the azimuths of the component directions
+                     (azimuth of out_channels[0]) - (azimuth of in_channels[0])
+       in_channels -- names of the input channels (e.g. 'north', 'east')
+       out_channels -- names of the output channels (e.g. 'radial', 'right-transversal')
+       
+    '''
+    
     phi = azimuth/180.*math.pi
     cphi = math.cos(phi)
     sphi = math.sin(phi)
     rotated = []
+    in_channels = tuple(in_channels)
+    out_channels = tuple(out_channels)
     for a in traces:
         for b in traces:
             if ( (a.channel, b.channel) == in_channels and
@@ -142,14 +153,16 @@ def rotate(traces, azimuth, in_channels, out_channels):
                 tmax = min(a.tmax, b.tmax)
                 
                 if tmin < tmax:
-                    ac = a.chop(tmin, tmax, inplace=False)
-                    bc = b.chop(tmin, tmax, inplace=False)
+                    ac = a.chop(tmin, tmax, inplace=False, include_last=True)
+                    bc = b.chop(tmin, tmax, inplace=False, include_last=True)
                     if (ac.tmin - bc.tmin) > ac.deltat*0.01:
-                        logger.warn('cannot rotate traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
+                        logger.warn('Cannot rotate traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
                         continue
                     
-                    ac.set_ydata(ac.get_ydata()*cphi+bc.get_ydata()*sphi)
-                    bc.set_ydata(-ac.get_ydata()*sphi+bc.get_ydata()*cphi)
+                    acydata =  ac.get_ydata()*cphi+bc.get_ydata()*sphi
+                    bcydata = -ac.get_ydata()*sphi+bc.get_ydata()*cphi
+                    ac.set_ydata(acydata)
+                    bc.set_ydata(bcydata)
 
                     ac.set_codes(channel=out_channels[0])
                     bc.set_codes(channel=out_channels[1])
@@ -472,7 +485,33 @@ class Trace(object):
             apeaks.append(apeak)
             
         return tpeaks, apeaks
+    
+    def extend(self, tmin, tmax, fillmethod='zeros'):
+        '''Extend trace to given span
         
+        In:
+            tmin, tmax -- new span
+            fillmethod -- 'zeros' or 'repeat' 
+        '''
+        
+        assert tmin <= self.tmin and tmax >= self.tmax
+        
+        nl = int(math.floor((self.tmin-tmin)/self.deltat))
+        nh = int(math.floor((tmax-self.tmax)/self.deltat))
+        self.tmin -= nl*self.deltat
+        self.tmax += nh*self.deltat
+        n = nl+self.ydata.size+nh
+
+        data = num.zeros(n, dtype=self.ydata.dtype)
+        data[nl:-nh] = self.ydata
+        if fillmethod == 'repeat' and self.ydata.size >= 1:
+            data[:nl] = data[nl]
+            data[-nh:] = data[-nh-1]
+            
+        self.ydata = data
+        
+        self.update_ids()
+    
     def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True):
         '''Return new trace with transfer function applied.
         
@@ -487,7 +526,7 @@ class Trace(object):
             transfer_function = FrequencyResponse()
     
         if self.tmax - self.tmin <= tfade*2.:
-            raise TraceTooShort('trace too short for fading length setting. trace length = %g, fading length = %g' % (self.tmax-self.tmin, tfade))
+            raise TraceTooShort('Trace %s.%s.%s.%s too short for fading length setting. trace length = %g, fading length = %g' % (self.nslc_id + (self.tmax-self.tmin, tfade)))
 
         ndata = self.ydata.size
         ntrans = nextpow2(ndata*1.2)

@@ -15,7 +15,7 @@ setup( name = packname,
             libraries = ['mseed'],
             sources = ['pyrocko/mseed_ext.c']),
                 
-        Extension( packname+'/evalresp',
+        Extension( packname+'/evalresp_ext',
             include_dirs = [ numpy.get_include(), './evalresp-3.3.0' ],
             library_dirs = ['./evalresp-3.3.0/.libs'],
             libraries = ['evresp'],

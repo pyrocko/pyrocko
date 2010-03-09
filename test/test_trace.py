@@ -1,5 +1,5 @@
 from pyrocko import trace, io, util
-import unittest
+import unittest, math
 import numpy as num
 
 class TraceTestCase(unittest.TestCase):
@@ -64,7 +64,42 @@ class TraceTestCase(unittest.TestCase):
         for x in xs:
             assert x.tmin == 100
             assert x.get_ydata().size == 10
+        
+    def testRotation(self):
+        s2 = math.sqrt(2.)
+        ndata = num.array([s2,s2], dtype=num.float)
+        edata = num.array([s2,0.], dtype=num.float)
+        dt = 1.0
+        n = trace.Trace(deltat=dt, ydata=ndata, tmin=100, channel='N')
+        e = trace.Trace(deltat=dt, ydata=edata, tmin=100, channel='E')
+        rotated = trace.rotate([n,e], 45., ['N','E'], ['R','T'])
+        for tr in rotated:
+            if tr.channel == 'R':
+                r = tr
+            if tr.channel == 'T':
+                t = tr
+        
+        assert( num.all(r.get_ydata() - num.array([ 2., 1. ]) < 1.0e-6 ) )
+        assert( num.all(t.get_ydata() - num.array([ 0., -1 ]) < 1.0e-6 ) )
             
+        
+    def testExtend(self):
+        tmin = 1234567890.
+        t = trace.Trace(tmin=tmin, ydata=num.ones(10,dtype=num.float))
+        tmax = t.tmax
+        t.extend(tmin-10.2, tmax+10.7)
+        assert int(round(tmin-t.tmin)) == 10
+        assert int(round(t.tmax-tmax)) == 10
+        assert num.all(t.ydata[:10] == num.zeros(10, dtype=num.float))
+        assert num.all(t.ydata[-10:] == num.zeros(10, dtype=num.float))
+        assert num.all(t.ydata[10:-10] == num.ones(10, dtype=num.float))
+        
+        t = trace.Trace(tmin=tmin, ydata=num.arange(10,dtype=num.float)+1.)
+        t.extend(tmin-10.2, tmax+10.7, fillmethod='repeat')
+        assert all(t.ydata[:10] == num.ones(10, dtype=num.float))
+        assert all(t.ydata[-10:] == num.zeros(10, dtype=num.float)+10.)
+        assert all(t.ydata[10:-10] == num.arange(10, dtype=num.float)+1.)
+    
     def testAppend(self):
         a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=1234567890)
         for i in xrange(10000):
