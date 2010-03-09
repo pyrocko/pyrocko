@@ -942,6 +942,46 @@ class PileOverview(QGLWidget):
             painter.setRenderHint( QPainter.Antialiasing )
             
         self.drawit( painter )
+                
+
+    def draw_trace_boxes(self, p, time_projection, track_projections):
+        
+        for v_projection in track_projections.values():
+            v_projection.set_in_range(0.,1.)
+        
+        selector = lambda x: x.overlaps(*time_projection.get_in_range())
+        
+        traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=selector))
+        traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
+        print len(traces)
+        istyle = 0
+        rects = []
+        for itr, tr in enumerate(traces):
+            
+            itrack = self.key_to_row[self.gather(tr)]
+            if not itrack in track_projections: continue
+            
+            v_projection = track_projections[itrack]
+            
+            dtmin = time_projection(tr.tmin)
+            dtmax = time_projection(tr.tmax)
+            
+            dvmin = v_projection(0.)
+            dvmax = v_projection(1.)
+        
+            if itr > 0:
+                other = traces[itr-1]
+                if not (other.nslc_id == tr.nslc_id and
+                    other.deltat == tr.deltat and
+                    abs(other.tmax - tr.tmin) < gap_lap_tolerance): istyle+=1
+            style = box_styles[istyle%len(box_styles)]
+            rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
+            p.fillRect(rect, style.fill_brush)
+            rects.append(rect)
+            
+        #p.setPen(QPen(QColor((0,0,0))))
+        #p.setPen(style.frame_pen)
+        #p.drawRects(rects)
 
     def drawit(self, p, printmode=False, w=None, h=None):
         """This performs the actual drawing."""
@@ -981,6 +1021,10 @@ class PileOverview(QGLWidget):
             
             yscaler = gmtpy.AutoScaler()
             if not printmode and self.menuitem_showboxes.isChecked():
+                
+                self.draw_trace_boxes(p, self.time_projection, track_projections)
+                
+                
                 for trace_view in self.trace_views:
                     trace = trace_view.get_mstrace()
                     itrack = self.key_to_row[self.gather(trace)]

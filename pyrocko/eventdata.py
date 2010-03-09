@@ -42,14 +42,15 @@ class EventDataAccess:
         
         return stations
         
-    def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None, extend=None, selector=None):
+    def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None, extend=None, group_selector=None, trace_selector=None):
         
         if rotate is not None:
             angles_func, rotation_mappings = rotate
                 
         for traces in self.get_pile().chopper_grouped(
                 gather=lambda tr: (tr.network, tr.station, tr.location),
-                selector=selector,
+                group_selector=group_selector,
+                trace_selector=trace_selector,
                 progress='Processing traces'):
             
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )

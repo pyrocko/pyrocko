@@ -86,7 +86,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             fns = io.save( io.load(pjoin(self.tempdir, 'mini.seed')), pjoin(self.tempdir,
                      'raw-%(network)s-%(station)s-%(location)s-%(channel)s.mseed'))
                 
-            self._pile = pile.Pile(fns)
+            self._pile = pile.Pile()
+            self._pile.add_files(fns)
             
         return self._pile
         

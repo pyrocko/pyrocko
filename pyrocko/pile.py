@@ -2,6 +2,7 @@ import trace, io, util, config
 
 import numpy as num
 import os, pickle, logging, time
+import cPickle as pickle
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
 
@@ -423,8 +424,11 @@ class SubPile(TracesGroup):
             
         return deltats
 
-    def iter_traces(self, load_data=False, return_abspath=False):
+    def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
         for file in self.files:
+            
+            if group_selector and not group_selector(file):
+                continue
             
             must_drop = False
             if load_data:
@@ -433,6 +437,9 @@ class SubPile(TracesGroup):
                 must_drop = True
             
             for trace in file.iter_traces():
+                if trace_selector and not trace_selector(trace):
+                    continue
+                
                 if return_abspath:
                     yield file.abspath, trace
                 else:
@@ -609,7 +616,7 @@ class Pile(TracesGroup):
                 
             pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(keys)).start()
         
-        for key in keys:
+        for ikey, key in enumerate(keys):
             def tsel(tr):
                 return gather(tr) == key and (outer_trace_selector is None or 
                                               outer_trace_selector(tr))
@@ -645,10 +652,11 @@ class Pile(TracesGroup):
             
         return sorted(list(deltats))
     
-    def iter_traces(self, load_data=False, return_abspath=False):
+    def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
         for subpile in self.subpiles.values():
-            for xx in subpile.iter_traces(load_data, return_abspath):
-                yield xx
+            if not group_selector or group_selector(subpile):
+                for tr in subpile.iter_traces(load_data, return_abspath, group_selector, trace_selector):
+                    yield tr
    
     def reload_modified(self):
         modified = False
