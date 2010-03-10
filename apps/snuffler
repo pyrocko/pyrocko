@@ -33,7 +33,7 @@ import pyrocko.util
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
-QWidget = QGLWidget
+#QWidget = QGLWidget
 
 class Global:
     sacflag = False
@@ -528,18 +528,47 @@ class FloatingPick:
         self.tmax = tmax
 
     def draw(self, p, itrack, trace, time_projection, track_projection, gain):
-        trace = trace.chop(self.tmin, self.tmax)
-        udata = time_projection(trace.get_xdata())
-        vdata = track_projection( gain*trace.get_ydata() )
-        qpoints = make_QPolygonF( udata, vdata )
+        print itrack, self.ftrack
+        if self.ftrack >= 0 and int(math.floor(self.ftrack)) != itrack: return
         
-        color = (255,0,0)
+        color = gmtpy.color_tup('scarletred2')
         pen = QPen(QColor(*color))
+        pen.setWidth(2)
         p.setPen(pen)
-                        
-        p.drawPolyline( qpoints )
+        
+        def drawpoint(t,y):
+            u = time_projection(t)
+            v = track_projection(y)
+            rect = QRect(u-2,v-2,4,4)
+            p.drawRect(rect)
+            
+        def drawline(t):
+            u = time_projection(t)
+            v0, v1 = track_projection.get_out_range()
+            line = QLine(u,v0,u,v1)
+            p.drawLine(line)
 
-
+        try:
+            snippet = trace.chop(self.tmin, self.tmax, inplace=False, include_last=True, snap=(math.ceil,math.floor))
+            udata = time_projection(snippet.get_xdata())
+            vdata = track_projection( gain*snippet.get_ydata() )
+            qpoints = make_QPolygonF( udata, vdata )
+            p.drawPolyline( qpoints )
+            drawpoint(*trace(self.tmin, clip=True, snap=math.ceil))
+            drawpoint(*trace(self.tmax, clip=True, snap=math.floor))
+            
+        except pyrocko.trace.NoData:
+            pass
+            
+        drawline(self.tmin)
+        drawline(self.tmax)
+        try: drawpoint(self.tmin, trace.interpolate(self.tmin))
+        except IndexError: pass
+        try: drawpoint(self.tmax, trace.interpolate(self.tmax))
+        except IndexError: pass
+        
+            
+        
 class PileOverview(QWidget):
     def __init__(self, pile, ntracks_shown_max, *args):
         apply(QWidget.__init__, (self,) + args)
@@ -1051,8 +1080,8 @@ class PileOverview(QWidget):
                         v_projection.set_in_range(0.,1.)
                         trace_view.drawit(p, self.time_projection, v_projection)
             
-            pen = QPen(QColor(*primary_color))
-            p.setPen(pen)
+            primary_pen = QPen(QColor(*primary_color))
+            p.setPen(primary_pen)
             
             trace_selector = lambda trace: self.key_to_row[self.gather(trace)] in track_projections
             
@@ -1094,7 +1123,8 @@ class PileOverview(QWidget):
                         
                         if self.floating_pick:
                             self.floating_pick.draw(p, itrack, trace, self.time_projection, track_projection, self.gain)
-                        
+                            p.setPen(primary_pen)
+                            
                         if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
                         
                         if  itrack not in min_max_for_annot:
@@ -1102,9 +1132,8 @@ class PileOverview(QWidget):
                         else:
                             if min_max_for_annot is not None and min_max_for_annot[itrack] != (ymin, ymax):
                                 min_max_for_annot[itrack] = None
-
-            pen = QPen(QColor(*primary_color))
-            p.setPen(pen)
+            
+            p.setPen(primary_pen)
             if len(self.markers) > 0:
                 mvs = self.markers[:,1]
                 valmin, valmax = mvs.min(), mvs.max()
@@ -1351,12 +1380,13 @@ class PileOverview(QWidget):
             p1 = self.mapToGlobal( QPoint(x0, 0))
             
             self.picking.setGeometry( p1.x(), p1.y(), max(w,1), self.height())
-            ftrack = self.track_to_screen.rev(x0)
+            ftrack = self.track_to_screen.rev(y)
             self.floating_pick.set(ftrack, tmin, tmax)
             
             if dt != 0.0 and doshift:
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
-                self.update()
+            
+            self.update()
 
     def update_status(self):
         
