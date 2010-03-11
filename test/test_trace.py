@@ -96,9 +96,9 @@ class TraceTestCase(unittest.TestCase):
         
         t = trace.Trace(tmin=tmin, ydata=num.arange(10,dtype=num.float)+1.)
         t.extend(tmin-10.2, tmax+10.7, fillmethod='repeat')
-        assert all(t.ydata[:10] == num.ones(10, dtype=num.float))
-        assert all(t.ydata[-10:] == num.zeros(10, dtype=num.float)+10.)
-        assert all(t.ydata[10:-10] == num.arange(10, dtype=num.float)+1.)
+        assert num.all(t.ydata[:10] == num.ones(10, dtype=num.float))
+        assert num.all(t.ydata[-10:] == num.zeros(10, dtype=num.float)+10.)
+        assert num.all(t.ydata[10:-10] == num.arange(10, dtype=num.float)+1.)
     
     def testAppend(self):
         a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=1234567890)
