@@ -39,25 +39,31 @@ class TraceTestCase(unittest.TestCase):
         
     def testDegapping(self):
         dt = 1.0
-        for atmin, btmin in [ (100., 90.), (100.,92.), (100.,97.), (100.,100.), (100.,102.), (100.,105.), (100.,107.), (100., 110.), (100.,114.), (100.,120.) ]:
+        atmin = 100.
+        
+        for btmin in range(90,120):
             a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=atmin)
             b = trace.Trace(deltat=dt, ydata=num.ones(5), tmin=btmin)
             traces = [a,b]
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
             xs = trace.degapper(traces)
-            for x in xs:
-                print x.tmin, x.get_ydata()
-            print '--'
+            
+            if btmin == 90:
+                assert len(xs) == 2
+            elif btmin > 90 and btmin < 115:
+                assert len(xs) == 1
+            else:
+                assert len(xs) == 2
         
         a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=100)
         b = trace.Trace(deltat=dt, ydata=num.ones(10), tmin=100)
         traces = [a,b]
         traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
         xs = trace.degapper(traces)
+        assert len(xs) == 1
         for x in xs:
-            print x.tmin, x.get_ydata()
-            
-        print '--'
+            assert x.tmin == 100
+            assert x.get_ydata().size == 10
         
     def testRotation(self):
         s2 = math.sqrt(2.)
@@ -90,9 +96,16 @@ class TraceTestCase(unittest.TestCase):
         
         t = trace.Trace(tmin=tmin, ydata=num.arange(10,dtype=num.float)+1.)
         t.extend(tmin-10.2, tmax+10.7, fillmethod='repeat')
-        assert num.all(t.ydata[:10] == num.ones(10, dtype=num.float))
-        assert num.all(t.ydata[-10:] == num.zeros(10, dtype=num.float)+10.)
-        assert num.all(t.ydata[10:-10] == num.arange(10, dtype=num.float)+1.)
+        assert all(t.ydata[:10] == num.ones(10, dtype=num.float))
+        assert all(t.ydata[-10:] == num.zeros(10, dtype=num.float)+10.)
+        assert all(t.ydata[10:-10] == num.arange(10, dtype=num.float)+1.)
+    
+    def testAppend(self):
+        a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=1234567890)
+        for i in xrange(10000):
+            a.append(num.arange(1000, dtype=num.float))
+        
+        print a.get_ydata().size
 
 if __name__ == "__main__":
     util.setup_logging('warning')

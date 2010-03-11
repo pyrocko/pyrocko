@@ -33,7 +33,7 @@ import pyrocko.util
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
-
+#QWidget = QGLWidget
 
 class Global:
     sacflag = False
@@ -518,7 +518,55 @@ def add_radiobuttongroup(menu, menudef, obj, target):
     menuitems[0][0].setChecked(True)
     return menuitems
         
+class FloatingPick:
+    def __init__(self, ftrack, tmin,tmax):
+        self.set(ftrack, tmin,tmax)
+        
+    def set(self, ftrack, tmin,tmax):
+        self.ftrack = ftrack
+        self.tmin = tmin
+        self.tmax = tmax
 
+    def draw(self, p, itrack, trace, time_projection, track_projection, gain):
+        print itrack, self.ftrack
+        if self.ftrack >= 0 and int(math.floor(self.ftrack)) != itrack: return
+        
+        color = gmtpy.color_tup('scarletred2')
+        pen = QPen(QColor(*color))
+        pen.setWidth(2)
+        p.setPen(pen)
+        
+        def drawpoint(t,y):
+            u = time_projection(t)
+            v = track_projection(y)
+            rect = QRect(u-2,v-2,4,4)
+            p.drawRect(rect)
+            
+        def drawline(t):
+            u = time_projection(t)
+            v0, v1 = track_projection.get_out_range()
+            line = QLine(u,v0,u,v1)
+            p.drawLine(line)
+
+        try:
+            snippet = trace.chop(self.tmin, self.tmax, inplace=False, include_last=True, snap=(math.ceil,math.floor))
+            udata = time_projection(snippet.get_xdata())
+            vdata = track_projection( gain*snippet.get_ydata() )
+            qpoints = make_QPolygonF( udata, vdata )
+            p.drawPolyline( qpoints )
+            drawpoint(*trace(self.tmin, clip=True, snap=math.ceil))
+            drawpoint(*trace(self.tmax, clip=True, snap=math.floor))
+            
+        except pyrocko.trace.NoData:
+            pass
+            
+        drawline(self.tmin)
+        drawline(self.tmax)
+        try: drawpoint(self.tmin, trace.interpolate(self.tmin))
+        except IndexError: pass
+        try: drawpoint(self.tmax, trace.interpolate(self.tmax))
+        except IndexError: pass
+        
 class PileOverview(QWidget):
     def __init__(self, pile, ntracks_shown_max, *args):
         apply(QWidget.__init__, (self,) + args)
@@ -535,9 +583,9 @@ class PileOverview(QWidget):
         self.gain = 1.0
         self.rotate = 0.0
         self.markers = []
-        self.picking_start = None
         self.picking_down = None
         self.picking = None
+        self.floating_pick = None
         self.ignore_releases = 0
         self.message = None
         self.reload_requested = False
@@ -670,11 +718,11 @@ class PileOverview(QWidget):
         trace_views = []
         
         self.set_gathering()
-        traces_path = []
-        for msfile in self.pile.msfiles:
-            abspath = msfile.abspath
-            for trace in msfile.traces:
-                traces_path.append( (trace, abspath) )
+        #traces_path = []
+        #for msfile in self.pile.msfiles:
+        #    abspath = msfile.abspath
+        #    for trace in msfile.traces:
+        #        traces_path.append( (trace, abspath) )
         
         deltats = self.pile.get_deltats()
         if deltats:
@@ -689,19 +737,19 @@ class PileOverview(QWidget):
         self.track_to_screen = Projection()
         
             
-        traces_path.sort( lambda x,y: cmp(x[0].full_id, y[0].full_id) )
-        i = 1
+        #traces_path.sort( lambda x,y: cmp(x[0].full_id, y[0].full_id) )
+        #i = 1
         
-        for itrace, (trace,abspath) in enumerate(traces_path):
-            gv = TraceOverview( trace, abspath, 
-                            box_styles[i%len(box_styles)] )
-            trace_views.append(gv)
-            if itrace+1 < len(traces_path):
-                a = trace
-                b = traces_path[itrace+1][0]
-                if not (a.nslc_id == b.nslc_id and
-                        a.deltat == b.deltat and
-                        abs(b.tmin - a.tmax) < gap_lap_tolerance): i+=1
+        #for itrace, (trace,abspath) in enumerate(traces_path):
+        #    gv = TraceOverview( trace, abspath, 
+        #                    box_styles[i%len(box_styles)] )
+        #    trace_views.append(gv)
+        #    if itrace+1 < len(traces_path):
+        #        a = trace
+        #        b = traces_path[itrace+1][0]
+        #        if not (a.nslc_id == b.nslc_id and
+        #                a.deltat == b.deltat and
+        #                abs(b.tmin - a.tmax) < gap_lap_tolerance): i+=1
       
         self.trace_views = trace_views
         
@@ -781,7 +829,6 @@ class PileOverview(QWidget):
                 self.track_trange = self.tmin, self.tmax
         
         if mouse_ev.button() == Qt.RightButton:
-            self.picking_start = mouse_ev.x(), mouse_ev.y()
             self.menu.exec_(QCursor.pos())
         self.update_status()
 
@@ -792,13 +839,11 @@ class PileOverview(QWidget):
         
         if self.picking:
             self.stop_picking(mouse_ev.x(), mouse_ev.y())
-        self.picking_start = None
         self.track_start = None
         self.track_trange = None
         self.update_status()
         
     def mouseDoubleClickEvent(self, mouse_ev):
-        self.picking_start = mouse_ev.x(), mouse_ev.y()
         self.start_picking(None)
         self.ignore_releases = 1
 
@@ -942,6 +987,46 @@ class PileOverview(QWidget):
             painter.setRenderHint( QPainter.Antialiasing )
             
         self.drawit( painter )
+                
+
+    def draw_trace_boxes(self, p, time_projection, track_projections):
+        
+        for v_projection in track_projections.values():
+            v_projection.set_in_range(0.,1.)
+        
+        selector = lambda x: x.overlaps(*time_projection.get_in_range())
+        
+        traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=selector))
+        traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
+        print len(traces)
+        istyle = 0
+        rects = []
+        for itr, tr in enumerate(traces):
+            
+            itrack = self.key_to_row[self.gather(tr)]
+            if not itrack in track_projections: continue
+            
+            v_projection = track_projections[itrack]
+            
+            dtmin = time_projection(tr.tmin)
+            dtmax = time_projection(tr.tmax)
+            
+            dvmin = v_projection(0.)
+            dvmax = v_projection(1.)
+        
+            if itr > 0:
+                other = traces[itr-1]
+                if not (other.nslc_id == tr.nslc_id and
+                    other.deltat == tr.deltat and
+                    abs(other.tmax - tr.tmin) < gap_lap_tolerance): istyle+=1
+            style = box_styles[istyle%len(box_styles)]
+            rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
+            p.fillRect(rect, style.fill_brush)
+            rects.append(rect)
+            
+        #p.setPen(QPen(QColor((0,0,0))))
+        #p.setPen(style.frame_pen)
+        #p.drawRects(rects)
 
     def drawit(self, p, printmode=False, w=None, h=None):
         """This performs the actual drawing."""
@@ -981,6 +1066,10 @@ class PileOverview(QWidget):
             
             yscaler = gmtpy.AutoScaler()
             if not printmode and self.menuitem_showboxes.isChecked():
+                
+                self.draw_trace_boxes(p, self.time_projection, track_projections)
+                
+                
                 for trace_view in self.trace_views:
                     trace = trace_view.get_mstrace()
                     itrack = self.key_to_row[self.gather(trace)]
@@ -989,13 +1078,13 @@ class PileOverview(QWidget):
                         v_projection.set_in_range(0.,1.)
                         trace_view.drawit(p, self.time_projection, v_projection)
             
-            pen = QPen(QColor(*primary_color))
-            p.setPen(pen)
+            primary_pen = QPen(QColor(*primary_color))
+            p.setPen(primary_pen)
             
-            tracks_selector = lambda trace: not isinstance(trace, pyrocko.trace.Trace) or self.key_to_row[self.gather(trace)] in track_projections
+            trace_selector = lambda trace: self.key_to_row[self.gather(trace)] in track_projections
             
             processed_traces = self.prepare_cutout(self.tmin, self.tmax, 
-                                                   tracks_selector=tracks_selector, 
+                                                   trace_selector=trace_selector, 
                                                    degap=self.menuitem_degap.isChecked())
             
             color_lookup = dict([ (k,i) for (i,k) in enumerate(self.color_keys) ])
@@ -1007,20 +1096,21 @@ class PileOverview(QWidget):
                 for trace in processed_traces:
                     itrack = self.key_to_row[self.gather(trace)]
                     if itrack in track_projections:
+                        track_projection = track_projections[itrack]
                         data_range = data_ranges[self.scaling_key(trace)]
                         ymin, ymax, yinc = yscaler.make_scale( data_range )
-                        track_projections[itrack].set_in_range(ymax,ymin)
+                        track_projection.set_in_range(ymax,ymin)
     
                         udata = self.time_projection(trace.get_xdata())
-                        vdata = track_projections[itrack]( self.gain*trace.get_ydata() )
+                        vdata = track_projection( self.gain*trace.get_ydata() )
                         
                         umin, umax = self.time_projection.get_out_range()
-                        vmin, vmax = track_projections[itrack].get_out_range()
+                        vmin, vmax = track_projection.get_out_range()
                         
                         trackrect = QRectF(umin,vmin, umax-umin, vmax-vmin)
                        
                         qpoints = make_QPolygonF( udata, vdata )
-                        
+                            
                         if self.menuitem_cliptraces.isChecked(): p.setClipRect(trackrect)
                         if self.menuitem_colortraces.isChecked():
                             color = gmtpy.color_tup(color_lookup[self.color_gather(trace)])
@@ -1028,6 +1118,11 @@ class PileOverview(QWidget):
                             p.setPen(pen)
                         
                         p.drawPolyline( qpoints )
+                        
+                        if self.floating_pick:
+                            self.floating_pick.draw(p, itrack, trace, self.time_projection, track_projection, self.gain)
+                            p.setPen(primary_pen)
+                            
                         if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
                         
                         if  itrack not in min_max_for_annot:
@@ -1035,9 +1130,8 @@ class PileOverview(QWidget):
                         else:
                             if min_max_for_annot is not None and min_max_for_annot[itrack] != (ymin, ymax):
                                 min_max_for_annot[itrack] = None
-
-            pen = QPen(QColor(*primary_color))
-            p.setPen(pen)
+            
+            p.setPen(primary_pen)
             if len(self.markers) > 0:
                 mvs = self.markers[:,1]
                 valmin, valmax = mvs.min(), mvs.max()
@@ -1083,7 +1177,7 @@ class PileOverview(QWidget):
                         p.fillRect( rect, label_bg )
                         p.drawText( lx, ly, label )
 
-    def prepare_cutout(self, tmin, tmax, tracks_selector=None, degap=True):
+    def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
 
         if self.lowpass is not None:
             deltat_target = 1./self.lowpass * 0.25
@@ -1114,7 +1208,7 @@ class PileOverview(QWidget):
             for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
                                              want_incomplete=True,
                                              degap=degap,
-                                             keep_current_files_open=True, selector=tracks_selector ):
+                                             keep_current_files_open=True, trace_selector=trace_selector ):
                 
                 for trace in traces:
                     
@@ -1162,8 +1256,11 @@ class PileOverview(QWidget):
                         a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
                         abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
                         len(a.get_ydata()) == len(b.get_ydata())):
-                        a.set_ydata(a.get_ydata()*cphi+b.get_ydata()*sphi)
-                        b.set_ydata(-a.get_ydata()*sphi+b.get_ydata()*cphi)
+                        
+                        aydata = a.get_ydata()*cphi+b.get_ydata()*sphi
+                        bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
+                        a.set_ydata(aydata)
+                        b.set_ydata(bydata)
                         
                     
         return processed_traces
@@ -1220,25 +1317,34 @@ class PileOverview(QWidget):
         
     def stop_picking(self, x,y, abort=False):
         if self.picking:
+            self.update_picking(x,y, doshift=False)
             self.picking.hide()
             self.picking = None
             self.picking_down = None
             self.picking_timer.stop()
             self.picking_timer = None
             if not abort:
-                tmi, tma = self.picking_trange
-                
-                print myctime(tmi), myctime(tma), self.picking_trange
+                tmi = self.floating_pick.tmin
+                tma = self.floating_pick.tmax
+                ftrack = self.floating_pick.ftrack          
+                print ftrack, myctime(tmi), myctime(tma), tma-tmi
+            self.floating_pick = None
+    
     
     def start_picking(self, ignore):
         if not self.picking:
-            self.picking = QRubberBand(QRubberBand.Rectangle, self)
-            if self.picking_start:
-                self.picking.setGeometry( self.picking_start[0], 0, 1, self.height())
+            self.picking = QRubberBand(QRubberBand.Rectangle)
+            point = self.mapFromGlobal(QCursor.pos())
+            
+            gpoint = self.mapToGlobal( QPoint(point.x(), 0) )
+            self.picking.setGeometry( gpoint.x(), gpoint.y(), 1, self.height())
+            t = self.time_projection.rev(point.x())
+            ftrack = self.track_to_screen.rev(point.y())
+            self.floating_pick = FloatingPick(ftrack, t,t)
+
             self.picking.show()
             self.setMouseTracking(True)
-            t = self.time_projection.rev(self.picking_start[0])
-            self.picking_trange = t,t
+            
             self.picking_timer = QTimer()
             self.connect( self.picking_timer, SIGNAL("timeout()"), self.animate_picking )
             self.picking_timer.setInterval(50)
@@ -1265,14 +1371,20 @@ class PileOverview(QWidget):
             w = abs(x-x0)
             x0 = min(x0,x)
             
-            self.picking_trange = self.time_projection.rev(x0), self.time_projection.rev(x0+w)
-            self.picking_trange = ( max(working_system_time_range[0], self.picking_trange[0]),
-                                    min(working_system_time_range[1], self.picking_trange[1]))
-                                         
-            self.picking.setGeometry( x0, 0, max(w,1), self.height())
+            tmin, tmax = self.time_projection.rev(x0), self.time_projection.rev(x0+w)
+            tmin, tmax = ( max(working_system_time_range[0], tmin),
+                           min(working_system_time_range[1], tmax))
+                               
+            p1 = self.mapToGlobal( QPoint(x0, 0))
+            
+            self.picking.setGeometry( p1.x(), p1.y(), max(w,1), self.height())
+            ftrack = self.track_to_screen.rev(y)
+            self.floating_pick.set(ftrack, tmin, tmax)
+            
             if dt != 0.0 and doshift:
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
-                self.update()
+            
+            self.update()
 
     def update_status(self):
         
@@ -1281,8 +1393,8 @@ class PileOverview(QWidget):
             
             mouse_t = self.time_projection.rev(point.x())
             if not is_working_time(mouse_t): return
-            if self.picking:
-                tmi, tma = self.picking_trange
+            if self.floating_pick:
+                tmi, tma = self.floating_pick.tmin, self.floating_pick.tmax
                 tt, ms = gmtime_x(tmi)
             
                 if tmi == tma:
@@ -1450,9 +1562,11 @@ class MyApp(QApplication):
             pyrocko.util.setup_logging('warning')
         
         filenames = pyrocko.util.select_files( args, regex=options.pattern )
-        cachefilename = '/tmp/new_snuffler_cache_%s' % os.environ['USER']
-        pile = pyrocko.pile.Pile( sorted(filenames), cachefilename, filename_attributes=options.pattern )
-
+        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
+        cache = pyrocko.pile.get_cache(cachedirname)
+        pile = pyrocko.pile.Pile()
+        pile.add_files( sorted(filenames), cache=cache, filename_attributes=options.pattern )
+        print pile
         self.pile_overview = PileOverview(pile, ntracks_shown_max=options.ntracks)
         
         if os.path.isfile('markers'):

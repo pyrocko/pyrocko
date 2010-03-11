@@ -198,8 +198,8 @@ def costaper(a,b,c,d, nfreqs, deltaf):
     
     return tap
 
-def t2ind(t,tdelta):
-    return int(round(t/tdelta))
+def t2ind(t,tdelta, snap=round):
+    return int(snap(t/tdelta))
 
 class TraceTooShort(Exception):
     pass
@@ -318,7 +318,22 @@ class Trace(object):
                 abs(self.tmin-other.tmin) < self.deltat*0.001 and
                 abs(self.tmax-other.tmax) < self.deltat*0.001 and
                 num.all(self.ydata == other.ydata))
+    
+    def __call__(self, t, clip=False, snap=round):
+        it = int(snap(t-self.tmin))
+        if clip:
+            it = max(0, min(it, self.ydata.size-1))
+        else:
+            if it < 0 or self.ydata.size <= it:
+                raise IndexError()
                 
+        return self.tmin+it*self.deltat, self.ydata[it]
+    
+    def interpolate(self, t, clip=False):
+        t0, y0 = self(t, clip=clip, snap=math.floor)
+        t1, y1 = self(t, clip=clip, snap=math.ceil)
+        return y0+(t-t0)/(t1-t0)*(y1-y0)
+        
     def set_codes(self, network=None, station=None, location=None, channel=None):
         if network is not None:
             self.network = network
@@ -365,14 +380,24 @@ class Trace(object):
             tracecopy.ydata = self.ydata.copy()
         tracecopy.meta = copy.deepcopy(self.meta)
         return tracecopy
+    
+    def append(self, data):
+        assert self.ydata.dtype == data.dtype
+        newlen = data.size + self.ydata.size
+        if not hasattr(self, 'growbuffer') or self.growbuffer.size < newlen:
+            self.growbuffer = num.empty(newlen*2, dtype=self.ydata.dtype)
+            self.growbuffer[:self.ydata.size] = self.ydata
+        self.growbuffer[self.ydata.size:newlen] = data
+        self.ydata = self.growbuffer[:newlen]
+        self.tmax = self.tmin + (newlen-1)*self.deltat
         
-    def chop(self, tmin, tmax, inplace=True, include_last=False):
+    def chop(self, tmin, tmax, inplace=True, include_last=False, snap=(round,round)):
         if (tmax <= self.tmin or self.tmax < tmin): raise NoData()
-        ibeg = max(0, t2ind(tmin-self.tmin,self.deltat))
+        ibeg = max(0, t2ind(tmin-self.tmin,self.deltat, snap[0]))
         iplus = 0
         if include_last: iplus=1
-        iend = min(len(self.ydata), t2ind(tmax-self.tmin,self.deltat)+iplus)
-        
+        iend = min(len(self.ydata), t2ind(tmax-self.tmin,self.deltat, snap[1])+iplus)
+        if ibeg >= iend: raise NoData()
         obj = self
         if not inplace:
             obj = self.copy(data=False)
