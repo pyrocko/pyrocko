@@ -519,9 +519,9 @@ def add_radiobuttongroup(menu, menudef, obj, target):
     return menuitems
         
 
-class PileOverview(QGLWidget):
+class PileOverview(QWidget):
     def __init__(self, pile, ntracks_shown_max, *args):
-        apply(QGLWidget.__init__, (self,) + args)
+        apply(QWidget.__init__, (self,) + args)
         
         self.pile = pile
         self.ax_height = 80
