@@ -7,7 +7,7 @@ import config
 
 logger = logging.getLogger('pyrocko.util')
 
-def setup_logging(levelname):
+def setup_logging(programname, levelname,):
     levels = {'debug': logging.DEBUG,
               'info': logging.INFO,
               'warning': logging.WARNING,
@@ -16,7 +16,7 @@ def setup_logging(levelname):
 
     logging.basicConfig(
         level=levels[levelname],
-        format = '%(name)-20s - %(levelname)-8s - %(message)s' )
+        format = programname+':%(name)-20s - %(levelname)-8s - %(message)s' )
 
 class Stopwatch:
     def __init__(self):

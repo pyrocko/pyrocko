@@ -5,6 +5,8 @@ import random
 
 import model
 
+logger = logging.getLogger('pyrocko.wilber')
+
 def strgmtime(secs):
     return time.strftime('%Y/%m/%d %H:%M:%S', time.gmtime(secs))
 
@@ -207,7 +209,7 @@ class IrisWilber(Wilber):
         
         xevents = []
         for tmi, tma, lab in self.get_relevant_time_intervals(time_range):
-            logging.info('Querying event list page (%s).' % lab)
+            logger.info('Querying event list page (%s).' % lab)
             params = {'event_map': lab, 'radius': 'all'}
             eparams = urllib.urlencode(params)
             page = urllib2.urlopen(self.urlbeg+self.urlend2, eparams).read()
@@ -222,11 +224,11 @@ class IrisWilber(Wilber):
                     
         nev = len(xevents)
         if nev == 0:
-            logging.warn('No events matching given criteria found.')
+            logger.warn('No events matching given criteria found.')
         elif nev == 1:
-            logging.info('Found one distinct event matching given criteria.')
+            logger.info('Found one distinct event matching given criteria.')
         else:
-            logging.info('Found %i distinct events matching given criteria.' % nev)
+            logger.info('Found %i distinct events matching given criteria.' % nev)
 
         return xevents
         
@@ -239,9 +241,9 @@ class IrisWilber(Wilber):
                       after = 50,
                       outfilename='event_data.seed'):
             
-            logging.info('Attempt to download data for event %s' % str(event))
+            logger.info('Attempt to download data for event %s' % str(event))
             
-            logging.info('Querying network selection page.')
+            logger.info('Querying network selection page.')
             page = urllib2.urlopen(self.urlbeg+event.urlend).read()
             
             params = self.extract_hidden_params(page)
@@ -253,7 +255,7 @@ class IrisWilber(Wilber):
             
             eparams = urllib.urlencode(params)
             
-            logging.info('Querying station selection page.')
+            logger.info('Querying station selection page.')
             page = urllib2.urlopen(self.urlbeg+self.urlend4, eparams).read()
             
             hidden_params = self.extract_hidden_params(page)
@@ -272,10 +274,10 @@ class IrisWilber(Wilber):
             
             nstations = len(stations_filtered)
             if nstations == 0:
-                logging.warn('No events matching given criteria found.')
+                logger.warn('No events matching given criteria found.')
                 return 
             
-            logging.info('Number of stations selected: %i' % len(stations_filtered))
+            logger.info('Number of stations selected: %i' % len(stations_filtered))
                         
             params = []
             
@@ -307,10 +309,10 @@ class IrisWilber(Wilber):
                         
             eparams = urllib.urlencode(params)
             
-            logging.info('Requesting data...')
+            logger.info('Requesting data...')
             req = urllib2.urlopen(self.urlbeg+self.urlend4, eparams)
             
-            logging.info('Waiting for response...')
+            logger.info('Waiting for response...')
             page = req.read()
             
             self.check_request_error(page)
@@ -319,8 +321,8 @@ class IrisWilber(Wilber):
             
             url = self.urlbeg+statuspage
             
-            logging.info('Status page URL is: %s' % url)
-            logging.info('Waiting for data to become ready on FTP server.')
+            logger.info('Status page URL is: %s' % url)
+            logger.info('Waiting for data to become ready on FTP server.')
             
             while True:
                 page = urllib2.urlopen(url).read()
@@ -328,16 +330,16 @@ class IrisWilber(Wilber):
                 if ftplink is not None:
                     break
                 
-                logging.info('(waiting...)')
+                logger.info('(waiting...)')
                 time.sleep(10)
                 
             ftplink += '/%s.seed' % label
     
-            logging.info('Data is available on FTP server.')
-            logging.info('FTP URL is: %s' % ftplink)
+            logger.info('Data is available on FTP server.')
+            logger.info('FTP URL is: %s' % ftplink)
             
             out = open(outfilename, 'w')
-            logging.info('Connecting to FTP server...')
+            logger.info('Connecting to FTP server...')
             ftpcon = urllib2.urlopen(ftplink)
             
             l = 0
@@ -347,18 +349,18 @@ class IrisWilber(Wilber):
                 if n == 0:
                     break
                 l += n
-                logging.info('(downloading...) %i B downloaded.' % l)
+                logger.info('(downloading...) %i B downloaded.' % l)
                 out.write(data)
             
             ftpcon.close()
                 
             out.close()
-            logging.info('Download complete.')
+            logger.info('Download complete.')
 
 
 if __name__ == '__main__':
     
-    logging.basicConfig(level=logging.INFO,)
+    logger.basicConfig(level=logger.INFO,)
 
     # Example: Get data for all events in Jan 2007, having a magnitude > 6 and
     #          a depth of less than 50 km.

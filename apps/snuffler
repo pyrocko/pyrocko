@@ -1555,9 +1555,9 @@ class MyApp(QApplication):
         
         
         if options.debug:
-            pyrocko.util.setup_logging('debug')
+            pyrocko.util.setup_logging('snuffler', 'debug')
         else:
-            pyrocko.util.setup_logging('warning')
+            pyrocko.util.setup_logging('snuffler', 'warning')
         
         filenames = pyrocko.util.select_files( args, regex=options.pattern )
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']

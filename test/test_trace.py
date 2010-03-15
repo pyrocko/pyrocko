@@ -108,6 +108,6 @@ class TraceTestCase(unittest.TestCase):
         print a.get_ydata().size
 
 if __name__ == "__main__":
-    util.setup_logging('warning')
+    util.setup_logging('test_trace', 'warning')
     unittest.main()
 
