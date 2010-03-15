@@ -3,13 +3,14 @@ import orthodrome, config
 # simple flat datatypes until I have a better idea
 
 class Event:
-    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None):
+    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None):
         self.lat = lat
         self.lon = lon
         self.time = time
         self.name = name
         self.depth = depth
         self.magnitude = magnitude
+        self.region = region
         
 class Station:
     def __init__(self, network, station, location, lat, lon, elevation, name='', components=None):

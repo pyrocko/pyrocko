@@ -3,6 +3,8 @@ import calendar, time
 import logging
 import random
 
+import model
+
 def strgmtime(secs):
     return time.strftime('%Y/%m/%d %H:%M:%S', time.gmtime(secs))
 
@@ -12,34 +14,27 @@ def intersect(a,b):
 def interval_and(a,b):
     return (max(a[0],b[0]), min(a[1],b[1]))
 
-class Event:
-    def __init__(self, timestamp, mag, lat, lon, depth, region, datasource, urlend):
-        self.timestamp = timestamp
-        self.mag = mag
-        self.lat = lat
-        self.lon = lon
-        self.depth = depth
+class Event(model.Event):
+    def __init__(self, time, mag, lat, lon, depth, region, datasource, urlend):
+        model.Event.__init__(self, lat, lon, time, name='', depth=depth, magnitude=mag, region=region)
         self.region = region
         self.datasource = datasource
         self.urlend = urlend
         
     def __str__(self):
         return '%s %6s %3.1f %6.2f %7.2f %5.1f %s' % (
-            strgmtime(self.timestamp),
+            strgmtime(self.time),
             self.datasource, self.mag, self.lat, self.lon, self.depth, self.region
         )
 
-class Station:
-    def __init__(self, station, network, dist, azimuth, channels, snr):
-        self.station = station
-        self.network = network
-        self.dist = dist
-        self.azimuth = azimuth
+class Station(model.Station):
+    def __init__(self, station, network, channels, snr):
+        model.Station.__init__(self, network, station, '', lat, lon, None)
         self.channels = channels
         self.snr = snr
         
     def __str__(self):
-        return '%s %s %3.0f %3.0f %s %g' % (self.network, self.station, self.dist, self.azimuth, self.channels, self.snr)
+        return '%s %s %3.0f %3.0f %s %g' % (self.network, self.station, self.dist_m/1000., self.azimuth, self.channels, self.snr)
 
 def to_secs(date, time):
     toks = date.split('/')
@@ -91,8 +86,6 @@ class IrisWilber(Wilber):
             if toks[0] == 'name': continue
             st = Station( station=toks[0],
                           network=toks[1],
-                          dist=float(toks[2]),
-                          azimuth=float(toks[3]),
                           channels=toks[4:-1],
                           snr=float(toks[-1]) )
             
@@ -120,7 +113,7 @@ class IrisWilber(Wilber):
                 toks = descr.split(None,5)
                 assert len(toks)==6
                 
-                timestamp = to_secs(*datetime.split())
+                time = to_secs(*datetime.split())
                 
                 datasource, mag, lat, lon, depth, region = toks
                 for s in 'SPYDER', 'FARM':
@@ -131,7 +124,7 @@ class IrisWilber(Wilber):
                 lat = float(lat)
                 lon = float(lon)
                 depth = float(depth)
-                ev = Event(timestamp, mag, lat, lon, depth, region, datasource, urlend)
+                ev = Event(time, mag, lat, lon, depth*1000., region, datasource, urlend)
                 gather.append(ev)
         
         if gather:
@@ -221,7 +214,7 @@ class IrisWilber(Wilber):
             events = self.extract_events(page)
             for event_group in events:
                 event_group_filtered = [ ev for ev in event_group if self.event_filter(ev) and
-                                         tmi <= ev.timestamp and ev.timestamp < tma ]
+                                         tmi <= ev.time and ev.time < tma ]
                 
                 if event_group_filtered:
                     event_group_filtered.sort( lambda a,b: cmp(a.datasource, b.datasource))
@@ -265,7 +258,9 @@ class IrisWilber(Wilber):
             
             hidden_params = self.extract_hidden_params(page)
             stations = self.extract_stations(page)
-            
+            for station in stations:
+                station.set_event_relative_data(event)
+                
             stations_filtered = []
             for st in stations:
                 take = False
@@ -298,7 +293,7 @@ class IrisWilber(Wilber):
                                '%s_%s' % (st.station, st.network)))
             
             
-            label = 'event_%i_%i' % (event.timestamp, random.randint(1000000,9999999))
+            label = 'event_%i_%i' % (event.time, random.randint(1000000,9999999))
             
             params.extend([
                 ('data_format', 'SEED'),
@@ -392,7 +387,7 @@ if __name__ == '__main__':
         print event
     
     for event in events:
-        outfilename = 'data_%i.seed' % event.timestamp
+        outfilename = 'data_%i.seed' % event.time
         request.get_data(events[-1], outfilename=outfilename, vnetcodes=['_ILAR'], netcodes=['GE'] )
 
 

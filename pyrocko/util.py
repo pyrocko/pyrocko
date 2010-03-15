@@ -1,4 +1,4 @@
-import time, logging, os, sys, re
+import time, logging, os, sys, re, calendar
 from scipy import signal
 
 from os.path import join as pjoin
@@ -115,6 +115,9 @@ def decitab(n):
         mk_decitab(n*2)
     if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
     return GlobalVars.decitab[n]
+
+def ctimegm(s):
+    return calendar.timegm(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
 
 def gmctime(t):
     return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(t))
