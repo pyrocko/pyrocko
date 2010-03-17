@@ -3,7 +3,7 @@ import calendar, time
 import logging
 import random
 
-import model
+import model, orthodrome
 
 logger = logging.getLogger('pyrocko.wilber')
 
@@ -26,17 +26,20 @@ class Event(model.Event):
     def __str__(self):
         return '%s %6s %3.1f %6.2f %7.2f %5.1f %s' % (
             strgmtime(self.time),
-            self.datasource, self.mag, self.lat, self.lon, self.depth, self.region
+            self.datasource, self.magnitude, self.lat, self.lon, self.depth, self.region
         )
 
 class Station(model.Station):
-    def __init__(self, station, network, channels, snr):
-        model.Station.__init__(self, network, station, '', lat, lon, None)
+    def __init__(self, station, network, dist, azimuth, channels, snr):
+        model.Station.__init__(self, network, station, '', None, None, None)
+        self.dist_deg = dist
+        self.dist_m = self.dist_deg * orthodrome.earthradius_equator / orthodrome.r2d
+        self.azimuth = azimuth
         self.channels = channels
         self.snr = snr
         
     def __str__(self):
-        return '%s %s %3.0f %3.0f %s %g' % (self.network, self.station, self.dist_m/1000., self.azimuth, self.channels, self.snr)
+        return '%s %s %3.0f %3.0f %g' % (self.network, self.station, self.dist_m/1000., self.azimuth, self.snr)
 
 def to_secs(date, time):
     toks = date.split('/')
@@ -45,6 +48,9 @@ def to_secs(date, time):
     return calendar.timegm([ int(x) for x in toks ])
     
 class WilberRequestError(Exception):
+    pass
+    
+class WilberNoStations(Exception):
     pass
     
 class Wilber:
@@ -88,6 +94,8 @@ class IrisWilber(Wilber):
             if toks[0] == 'name': continue
             st = Station( station=toks[0],
                           network=toks[1],
+                          dist=float(toks[2]), 
+                          azimuth=float(toks[3]), 
                           channels=toks[4:-1],
                           snr=float(toks[-1]) )
             
@@ -202,7 +210,6 @@ class IrisWilber(Wilber):
         return relevant
         
     def get_events(self, time_range = None):
-        
         if time_range is None: # by default, get events in past 24 hours
             now = time.time()
             time_range = (now-24*60*60, now)
@@ -215,13 +222,14 @@ class IrisWilber(Wilber):
             page = urllib2.urlopen(self.urlbeg+self.urlend2, eparams).read()
             events = self.extract_events(page)
             for event_group in events:
-                event_group_filtered = [ ev for ev in event_group if self.event_filter(ev) and
-                                         tmi <= ev.time and ev.time < tma ]
+                event_group_filtered = [ ev 
+                    for ev in event_group 
+                    if tmi <= ev.time and ev.time < tma and self.event_filter(ev) ]
                 
                 if event_group_filtered:
                     event_group_filtered.sort( lambda a,b: cmp(a.datasource, b.datasource))
                     xevents.append(event_group_filtered[0])
-                    
+            
         nev = len(xevents)
         if nev == 0:
             logger.warn('No events matching given criteria found.')
@@ -260,8 +268,8 @@ class IrisWilber(Wilber):
             
             hidden_params = self.extract_hidden_params(page)
             stations = self.extract_stations(page)
-            for station in stations:
-                station.set_event_relative_data(event)
+           # for station in stations:
+           #     station.set_event_relative_data(event)
                 
             stations_filtered = []
             for st in stations:
@@ -274,8 +282,7 @@ class IrisWilber(Wilber):
             
             nstations = len(stations_filtered)
             if nstations == 0:
-                logger.warn('No events matching given criteria found.')
-                return 
+                raise WilberNoStations('No stations matching given criteria found.')
             
             logger.info('Number of stations selected: %i' % len(stations_filtered))
                         
