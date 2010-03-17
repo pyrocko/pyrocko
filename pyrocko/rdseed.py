@@ -139,7 +139,9 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         
     def _get_events_from_file( self ):
         rdseed_event_file =  os.path.join(self.tempdir,'rdseed.events')
-
+        if not os.path.isfile(rdseed_event_file):
+            return []
+        
         f = open(rdseed_event_file, 'r')
         events = []
         for line in f:
