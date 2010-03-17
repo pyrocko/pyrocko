@@ -135,7 +135,10 @@ def get_cache(cachedir):
     return TracesFileCache.caches[cachedir]
     
 def loader(filenames, fileformat, cache, filename_attributes):
-            
+    if not filenames:
+        logger.warn('No files to load from')
+        return
+    
     pbar = None
     if progressbar and config.show_progress:
         widgets = ['Scanning files', ' ',
@@ -595,7 +598,7 @@ class Pile(TracesGroup):
     
     def chopper_grouped(self, gather, progress=None, *args, **kwargs):
         keys = self.gather_keys(gather)
-        
+        if len(keys) == 0: return
         outer_group_selector = None
         if 'group_selector' in kwargs:
             outer_group_selector = kwargs['group_selector']
