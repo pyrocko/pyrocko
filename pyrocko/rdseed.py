@@ -55,7 +55,8 @@ def dumb_parser( data ):
 class Programs:
     rdseed   = 'rdseed4.8'
 
-
+class SeedVolumeNotFound(Exception):
+    pass
 
 class SeedVolumeAccess(eventdata.EventDataAccess):
 
@@ -72,14 +73,18 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         '''
     
         eventdata.EventDataAccess.__init__(self, datapile=datapile)
-    
+        self.tempdir = None
         self.seedvolume = seedvolume
+        if not os.path.isfile(self.seedvolume):
+            raise SeedVolumeNotFound()
+        
         self.tempdir = tempfile.mkdtemp("","SeedVolumeAccess-")
         self._unpack()
 
     def __del__(self):
         import shutil
-        shutil.rmtree(self.tempdir)
+        if self.tempdir:
+            shutil.rmtree(self.tempdir)
                 
     def get_pile(self):
         if self._pile is None:
