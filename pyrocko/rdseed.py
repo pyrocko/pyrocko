@@ -96,10 +96,14 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             
         return self._pile
         
-    def get_restitution(self, tr):
-        respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
-        trans = trace.InverseEvalresp(respfile, tr)
-        return trans
+    def get_restitution(self, tr, allowed_methods):
+        
+        if 'evalresp' in allowed_methods:
+            respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
+            trans = trace.InverseEvalresp(respfile, tr)
+            return trans
+        else:
+            raise eventdata.NoRestitution('no allowed restitution method available')
         
     def _unpack(self):
         input_fn = self.seedvolume
