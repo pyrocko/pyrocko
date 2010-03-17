@@ -557,7 +557,7 @@ class Trace(object):
         output = self.copy()
         output.ydata = ddata[:ndata]
         if cut_off_fading:
-            output = output.chop(output.tmin+tfade, output.tmax-tfade)
+            output.chop(output.tmin+tfade, output.tmax-tfade, inplace=True)
         else:
             output.ydata = output.ydata.copy()
         return output
