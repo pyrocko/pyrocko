@@ -1,4 +1,6 @@
-import mseed, sac
+
+import os
+import mseed, sac, kan
 import trace
 from pyrocko.mseed_ext import MSeedError
 
@@ -15,7 +17,7 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
     
     Inputs:
-        format -- format of the file ('mseed', 'sac', 'from_extension', 'try')
+        format -- format of the file ('mseed', 'sac', 'kan', 'from_extension', 'try')
         substitutions -- dict with substitutions to be applied to the traces
            metadata
     
@@ -28,13 +30,23 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
         extension = os.path.splitext(filename)[1]
         if extension.lower() == '.sac':
             format = 'sac'
+        if extension.lower() == '.kan':
+            format = 'kan'
     
     trs = []
+    
+    if format in ('kan'):
+        mtime = os.stat(filename)[8]
+        kanf = kan.KanFile(filename, get_data=getdata)
+        tr = kanf.to_trace()
+        tr.set_mtime(mtime)
+        trs.append(tr)
+    
     if format in ('sac', 'try'):
         mtime = os.stat(filename)[8]
         try:
-            sac = sac.SacFile(filename, get_data=getdata)
-            tr = sac.to_trace()
+            sacf = sac.SacFile(filename, get_data=getdata)
+            tr = sacf.to_trace()
             tr.set_mtime(mtime)
             trs.append(tr)
             

@@ -1550,6 +1550,7 @@ class MyApp(QApplication):
         parser.add_option('--pattern', dest='pattern')
         parser.add_option('--debug', dest='debug', action='store_true', default=False)
         parser.add_option('--ntracks', dest='ntracks', default=24)
+        parser.add_option('--format', dest='format', default='mseed')
         
         options, args = parser.parse_args(list(args[0][1:]))
         
@@ -1563,7 +1564,9 @@ class MyApp(QApplication):
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
         cache = pyrocko.pile.get_cache(cachedirname)
         pile = pyrocko.pile.Pile()
-        pile.add_files( sorted(filenames), cache=cache, filename_attributes=options.pattern )
+        pile.add_files( sorted(filenames), cache=cache, 
+                        filename_attributes=options.pattern,
+                        fileformat=options.format )
         self.pile_overview = PileOverview(pile, ntracks_shown_max=options.ntracks)
         
         if os.path.isfile('markers'):
