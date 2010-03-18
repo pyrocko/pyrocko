@@ -518,15 +518,15 @@ class Trace(object):
         n = nl+self.ydata.size+nh
 
         data = num.zeros(n, dtype=self.ydata.dtype)
-        data[nl:-nh] = self.ydata
+        data[nl:n-nh] = self.ydata
         if fillmethod == 'repeat' and self.ydata.size >= 1:
             data[:nl] = data[nl]
-            data[-nh:] = data[-nh-1]
+            data[n-nh:] = data[n-nh-1]
             
         self.ydata = data
         
         self.update_ids()
-    
+     
     def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True):
         '''Return new trace with transfer function applied.
         
