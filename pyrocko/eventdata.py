@@ -83,7 +83,7 @@ class EventDataAccess:
                     
                     try:
                         if extend:
-                            tr.extend(tr.tmin-extend, tr.tmax+extend, fillmethod='repeat')
+                            tr.extend(tr.tmin+extend[0], tr.tmax+extend[1], fillmethod='repeat')
                             
                         displacement = tr.transfer( tfade, freqband, transfer_function=trans, cut_off_fading=crop )
                         amax = num.max(num.abs(displacement.get_ydata()))
