@@ -42,6 +42,15 @@ class EventDataAccess:
         
         return stations
         
+    def iter_traces(self, group_selector=None, trace_selector=None):
+         
+         for traces in self.get_pile().chopper_grouped(
+             gather=lambda tr: (tr.network, tr.station, tr.location),
+             group_selector=group_selector,
+             trace_selector=trace_selector):
+             
+             yield traces
+               
     def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None, extend=None, group_selector=None, trace_selector=None, allowed_methods=None, crop=True):
         
         if rotate is not None:
