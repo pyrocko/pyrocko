@@ -35,7 +35,7 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     
     trs = []
     
-    if format in ('kan'):
+    if format in ('kan',):
         mtime = os.stat(filename)[8]
         kanf = kan.KanFile(filename, get_data=getdata)
         tr = kanf.to_trace()
@@ -50,7 +50,7 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
             tr.set_mtime(mtime)
             trs.append(tr)
             
-        except (OSError,SacError), e:
+        except (OSError,sac.SacError), e:
             if format == 'try':
                 pass
             else:

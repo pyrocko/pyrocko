@@ -998,7 +998,6 @@ class PileOverview(QWidget):
         traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=selector))
         traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
         istyle = 0
-        rects = []
         for itr, tr in enumerate(traces):
             
             itrack = self.key_to_row[self.gather(tr)]
@@ -1020,11 +1019,9 @@ class PileOverview(QWidget):
             style = box_styles[istyle%len(box_styles)]
             rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
             p.fillRect(rect, style.fill_brush)
-            rects.append(rect)
             
-        #p.setPen(QPen(QColor((0,0,0))))
-        #p.setPen(style.frame_pen)
-        #p.drawRects(rects)
+            p.setPen(style.frame_pen)
+            p.drawRect(rect)
 
     def drawit(self, p, printmode=False, w=None, h=None):
         """This performs the actual drawing."""
@@ -1548,10 +1545,11 @@ class MyApp(QApplication):
 
         parser = OptionParser()
         parser.add_option('--pattern', dest='pattern')
-        parser.add_option('--debug', dest='debug', action='store_true', default=False)
         parser.add_option('--ntracks', dest='ntracks', default=24)
-        parser.add_option('--format', dest='format', default='mseed')
-        
+        parser.add_option('--format', dest='format', default='from_extension', 
+                          choices=('mseed', 'sac', 'kan', 'from_extension', 'try'))
+        parser.add_option('--debug', dest='debug', action='store_true', default=False)
+
         options, args = parser.parse_args(list(args[0][1:]))
         
         
