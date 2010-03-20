@@ -254,6 +254,16 @@ class PoleZeroResponse(FrequencyResponse):
         
         return a
         
+class SampledResponse(FrequencyResponse):
+    
+    def __init__(self, freqs, vals, left=None, right=None):
+        self.freqs = freqs
+        self.vals = vals
+        self.left = left
+        self.right = right
+        
+    def evaluate(self, freqs):
+        return num.interp(freqs, self.freqs, self.vals, left=left, right=right)
         
 class IntegrationResponse(FrequencyResponse):
     def __init__(self, gain=1.0):
