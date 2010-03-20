@@ -1,6 +1,6 @@
 import logging
 
-import orthodrome, trace, pile, config, model, eventdata, io
+import orthodrome, trace, pile, config, model, eventdata, io, util
 import os, sys, shutil, subprocess, tempfile, calendar, time
 
 pjoin = os.path.join
@@ -88,11 +88,11 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 
     def get_pile(self):
         if self._pile is None:
-            fns = io.save( io.load(pjoin(self.tempdir, 'mini.seed')), pjoin(self.tempdir,
-                     'raw-%(network)s-%(station)s-%(location)s-%(channel)s.mseed'))
-                
+            #fns = io.save( io.load(pjoin(self.tempdir, 'mini.seed')), pjoin(self.tempdir,
+            #         'raw-%(network)s-%(station)s-%(location)s-%(channel)s.mseed'))
+            fns = util.select_files( [ self.tempdir ], regex=r'\.SAC$')
             self._pile = pile.Pile()
-            self._pile.add_files(fns)
+            self._pile.add_files(fns, fileformat='sac')
             
         return self._pile
         
@@ -114,7 +114,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 
         # seismograms:
         if self._pile is None:
-            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '4', '-p', '-R', '-q', output_dir], 
+            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '1', '-p', '-R', '-q', output_dir], 
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (out,err) = rdseed_proc.communicate()
             logging.info(strerr(err))
