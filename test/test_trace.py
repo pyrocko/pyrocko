@@ -2,6 +2,8 @@ from pyrocko import trace, io, util
 import unittest, math
 import numpy as num
 
+d2r = num.pi/180.
+
 class TraceTestCase(unittest.TestCase):
     
     def testIntegrationDifferentiation(self):
@@ -82,6 +84,37 @@ class TraceTestCase(unittest.TestCase):
         assert( num.all(r.get_ydata() - num.array([ 2., 1. ]) < 1.0e-6 ) )
         assert( num.all(t.get_ydata() - num.array([ 0., -1 ]) < 1.0e-6 ) )
             
+    def testProjection(self):
+        s2 = math.sqrt(2.)
+        ndata = num.array([s2,s2], dtype=num.float)
+        edata = num.array([s2,0.], dtype=num.float)
+        ddata = num.array([1.,-1.], dtype=num.float)
+        dt = 1.0
+        n = trace.Trace(deltat=dt, ydata=ndata, tmin=100, channel='N')
+        e = trace.Trace(deltat=dt, ydata=edata, tmin=100, channel='E')
+        d = trace.Trace(deltat=dt, ydata=ddata, tmin=100, channel='D')
+        azi = 45.
+        cazi = math.cos(azi*d2r)
+        sazi = math.sin(azi*d2r)
+        rot45 = num.matrix([[cazi, sazi, 0],[-sazi,cazi, 0], [0,0,-1]], dtype=num.float)
+        rotated = trace.project([n,e,d], rot45, ['N','E','D'], ['R','T','U'])
+        for tr in rotated:
+            if tr.channel == 'R':
+                r = tr
+            if tr.channel == 'T':
+                t = tr
+            if tr.channel == 'U':
+                u = tr
+        
+        assert( num.all(r.get_ydata() - num.array([ 2., 1. ]) < 1.0e-6 ) )
+        assert( num.all(t.get_ydata() - num.array([ 0., -1 ]) < 1.0e-6 ) )
+        assert( num.all(u.get_ydata() - num.array([ -1., 1. ]) < 1.0e-6 ) )
+        
+        # should work though no horizontals given
+        projected = trace.project([d], rot45, ['N','E','D'], ['R','T','U'])
+        if tr.channel == 'U': u = tr 
+        assert( num.all(u.get_ydata() - num.array([ -1., 1. ]) < 1.0e-6 ) )
+
         
     def testExtend(self):
         tmin = 1234567890.
@@ -105,7 +138,6 @@ class TraceTestCase(unittest.TestCase):
         for i in xrange(10000):
             a.append(num.arange(1000, dtype=num.float))
         
-        print a.get_ydata().size
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

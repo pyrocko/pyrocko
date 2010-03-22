@@ -1,5 +1,32 @@
-import orthodrome, config, util
+import orthodrome, config, util, math
+import numpy as num
+
 d2r = num.pi/180.
+
+def mkvec(x,y,z):
+    return num.array( [x,y,z], dtype=num.float )
+
+def fill_orthogonal(enus):
+    
+    nmiss = sum( x is None for x in enus )
+    
+    if nmiss == 1:
+        for ic in range(len(enus)):
+            if enus[ic] is None:
+                enus[ic] = num.cross(enus[(ic-2)%3],enus[(ic-1)%3])
+    
+    if nmiss == 2:
+        for ic in range(len(enus)):
+            if enus[ic] is not None:
+                xenu = enus[ic] + mkvec(1,1,1)
+                enus[(ic+1)%3] = num.cross(enus[ic], xenu)
+                enus[(ic+2)%3] = num.cross(enus[ic], enus[(ic+1)%3])
+
+    if nmiss == 3:
+        # holy camoly..
+        enus[0] = mkvec(1,0,0)
+        enus[1] = mkvec(0,1,0)
+        enus[2] = mkvec(0,0,1)
 
 # simple flat datatypes until I have a better idea
 
@@ -25,7 +52,7 @@ class Station:
         self.elevation = elevation
         self.name = name
         if channels is None:
-            self.channels = set()
+            self.channels = []
         else:
             self.channels = channels
         
@@ -41,21 +68,44 @@ class Station:
         self.azimuth = orthodrome.azimuth(event, self)
         self.backazimuth = orthodrome.azimuth(self, event)
         
-    self.set_components(self, components):
-        self.components = components
+    def set_channels(self, channels):
+        self.channels = channels
     
-    def projection_to_enu(self):
-        assert len(self.components) == 3
-        return num.hstack( [component.enu for component in self.components ] )
+    def get_channel(self, name):
+        for channel in self.channels:
+            if channel.name == name:
+                return channel
+            
+        return None
+    
+    
+    def _projection_to(self, to, in_channels, out_channels):
+        channels = [ self.get_channel(name) for name in in_channels ]
+        
+        # create orthogonal vectors for missing components, such that this 
+        # won't break projections when components are missing.
+        
+        vecs = []
+        for ch in channels:
+            if ch is None: vecs.append(None)
+            else: vecs.append(getattr(ch,to))
+            
+        fill_orthogonal(vecs)
+        
+        m = num.hstack([ vec[:,num.newaxis] for vec in vecs ])
+        m = num.where(num.abs(m) < num.max(num.abs(m))*1e-16, 0., m)
+        return in_channels, out_channels, m
+    
+    def projection_to_enu(self, in_channels, out_channels=('E', 'N', 'U')):
+        return self._projection_to('enu', in_channels, out_channels)
 
-    def projection_to_ned(self):
-        assert len(self.components) == 3
-        return num.hstack( [component.ned for component in self.components ] )
+    def projection_to_ned(self, in_channels, out_channels=('N', 'E', 'D')):
+        return self._projection_to('ned', in_channels, out_channels)
         
     def __str__(self):
         return '%s.%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.location, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)
 
-class Component:
+class Channel:
     def __init__(self, name, azimuth, dip, gain=1.0):
         self.name = name
         self.azimuth = azimuth
@@ -64,9 +114,8 @@ class Component:
         n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
         e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
         d = math.sin(self.dip*d2r)
-        self.ned = num.matrix( [[n],[e],[d]], dtype=num.float )
-        self.enu = num.matrix( [[e],[n],[-d]], dtype=num.float )
-        
+        self.ned = mkvec(n,e,d)
+        self.enu = mkvec(e,n,-d)
 
 def load_kps_event_list(filename):
     elist =[]

@@ -171,49 +171,182 @@ def rotate(traces, azimuth, in_channels, out_channels):
                     
     return rotated
 
-def project(traces, matrix, in_channels, out_channels):
-    pass
 
+def decompose(a):
+    '''Decompose matrix into independent submatrices.'''
+    
+    def depends(iout,a):
+        row = a[iout,:]
+        return set(num.arange(row.size).compress(row != 0.0))
+    
+    def provides(iin,a):
+        col = a[:,iin]
+        return set(num.arange(col.size).compress(col != 0.0))
+    
+    a = num.asarray(a)
+    outs = set(range(a.shape[0]))
+    systems = []
+    while outs:
+        iout = outs.pop()
+        
+        gout = set()
+        for iin in depends(iout,a):
+            gout.update(provides(iin,a))
+        
+        if not gout: continue
+        
+        gin = set()
+        for iout2 in gout:
+            gin.update(depends(iout2,a))
+        
+        if not gin: continue
+                
+        for iout2 in gout:
+            if iout2 in outs:
+                outs.remove(iout2)
+
+        gin = list(gin)
+        gin.sort()
+        gout = list(gout)
+        gout.sort()
+        
+        systems.append((gin, gout, a[gout,:][:,gin]))
+    
+    return systems
+
+
+def project(traces, matrix, in_channels, out_channels):
+    
+    # try to apply transformation to subsets of the channels if this is 
+    # possible, such that if for example a vertical component is missing,
+    # the horizontal components can still be rotated.
+    
+    systems = decompose(matrix)
+    
+    # fallback to full matrix if some are not quadratic
+    for iins, iouts, submatrix in systems:
+        if submatrix.shape[0] != submatrix.shape[1]:
+            return project3(traces, matrix, in_channels, out_channels)
+    
+    projected = []
+    for iins, iouts ,submatrix in systems:
+        in_cha = [ in_channels[iin] for iin in iins ]
+        out_cha = [ out_channels[iout] for iout in iouts ]
+        if submatrix.shape[0] == 1:
+            projected.extend( project1(traces, submatrix, in_cha, out_cha) )
+        elif submatrix.shape[1] == 2:
+            projected.extend( project2(traces, submatrix, in_cha, out_cha) )
+        else:
+            projected.extend( project3(traces, submatrix, in_cha, out_cha) )
+    
+    return projected
+
+def project1(traces, matrix, in_channels, out_channels):
+    assert len(in_channels) == 1
+    assert len(out_channels) == 1
+    in_channels = tuple(in_channels)
+    out_channels = tuple(out_channels)
+    projected = []
+    for a in traces:
+        if not (a.channel,) == in_channels: 
+            continue
+        
+        ac = a.copy()
+        ac.set_ydata(matrix[0,0]*a.get_ydata())
+        ac.set_codes(channel=out_channels[0])
+        projected.append(ac)
+        
+    return projected
+
+def project2(traces, matrix, in_channels, out_channels):
+    assert len(in_channels) == 2
+    assert len(out_channels) == 2
+    in_channels = tuple(in_channels)
+    out_channels = tuple(out_channels)
+    projected = []
+    for a in traces:
+        for b in traces:
+            if not ( (a.channel, b.channel ) == in_channels and
+                    a.nslc_id[:3] == b.nslc_id[:3] and
+                    abs(a.deltat-b.deltat) < a.deltat*0.001 ):
+                continue
+                    
+            tmin = max(a.tmin, b.tmin)
+            tmax = min(a.tmax, b.tmax)
+            
+            if tmin >= tmax:
+                continue
+        
+            ac = a.chop(tmin, tmax, inplace=False, include_last=True)
+            bc = b.chop(tmin, tmax, inplace=False, include_last=True)
+            if abs(ac.tmin - bc.tmin) > ac.deltat*0.01:
+                logger.warn('Cannot project traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
+                continue
+                
+            acydata = num.dot( matrix[0], (ac.get_ydata(),bc.get_ydata()))
+            bcydata = num.dot( matrix[1], (ac.get_ydata(),bc.get_ydata()))
+            
+            ac.set_ydata(acydata)
+            bc.set_ydata(bcydata)
+
+            ac.set_codes(channel=out_channels[0])
+            bc.set_codes(channel=out_channels[1])
+            
+            projected.append(ac)
+            projected.append(bc)
+    
+    return projected
+            
 def project3(traces, matrix, in_channels, out_channels):
+    assert len(in_channels) == 3
+    assert len(out_channels) == 3
     in_channels = tuple(in_channels)
     out_channels = tuple(out_channels)
     projected = []
     for a in traces:
         for b in traces:
             for c in traces:
-                if ( (a.channel, b.channel, c.channel) == in_channels and
+                if not ( (a.channel, b.channel, c.channel) == in_channels and
                      a.nslc_id[:3] == b.nslc_id[:3] and
                      b.nslc_id[:3] == c.nslc_id[:3] and
                      abs(a.deltat-b.deltat) < a.deltat*0.001 and
                      abs(b.deltat-c.deltat) < b.deltat*0.001 ):
+                    continue
                      
-                    tmin = max(a.tmin, b.tmin, c.tmin)
-                    tmax = min(a.tmax, b.tmax, c.tmax)
+                tmin = max(a.tmin, b.tmin, c.tmin)
+                tmax = min(a.tmax, b.tmax, c.tmax)
                     
-                    if tmin < tmax:
-                        ac = a.chop(tmin, tmax, inplace=False, include_last=True)
-                        bc = b.chop(tmin, tmax, inplace=False, include_last=True)
-                        cc = c.chop(tmin, tmax, inplace=False, include_last=True)
-                        if abs(ac.tmin - bc.tmin) > ac.deltat*0.01 or
-                           abs(bc.tmin - cc.tmin) > bc.deltat*0.01:
-                            logger.warn('Cannot project traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
-                            continue
-                         
-                        acydata = num.dot( matrix[0], (ac.get_ydata(),bc.get_ydata(),cc.get_ydata) )
-                        bcydata = num.dot( matrix[1], (ac.get_ydata(),bc.get_ydata(),cc.get_ydata) )
-                        ccydata = num.dot( matrix[2], (ac.get_ydata(),bc.get_ydata(),cc.get_ydata) )
-                        
-                        ac.set_ydata(acydata)
-                        bc.set_ydata(bcydata)
-                        cc.set_ydata(ccydata)
-    
-                        ac.set_codes(channel=out_channels[0])
-                        bc.set_codes(channel=out_channels[1])
-                        cc.set_codes(channel=out_channels[2])
-                        
-                        rotated.append(ac)
-                        rotated.append(bc)
-                        rotated.append(cc)
+                if tmin >= tmax:
+                    continue
+                
+                ac = a.chop(tmin, tmax, inplace=False, include_last=True)
+                bc = b.chop(tmin, tmax, inplace=False, include_last=True)
+                cc = c.chop(tmin, tmax, inplace=False, include_last=True)
+                if (abs(ac.tmin - bc.tmin) > ac.deltat*0.01 or
+                    abs(bc.tmin - cc.tmin) > bc.deltat*0.01):
+                    logger.warn('Cannot project traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
+                    continue
+                    
+                acydata = num.dot( matrix[0],
+                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata))
+                bcydata = num.dot( matrix[1],
+                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata))
+                ccydata = num.dot( matrix[2],
+                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata))
+                
+                ac.set_ydata(acydata)
+                bc.set_ydata(bcydata)
+                cc.set_ydata(ccydata)
+
+                ac.set_codes(channel=out_channels[0])
+                bc.set_codes(channel=out_channels[1])
+                cc.set_codes(channel=out_channels[2])
+                
+                projected.append(ac)
+                projected.append(bc)
+                projected.append(cc)
+     
+    return projected
 
 def moving_avg(x,n):
     n = int(n)
