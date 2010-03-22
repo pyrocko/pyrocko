@@ -199,7 +199,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                     lon = float(cols[3]),
                     elevation = float(cols[4]),
                     name = cols[icolname],
-                    components = set(cols[icolcomp].split())
+                    channels = set(cols[icolcomp].split())
                 )
                 stations.append(s)
                 

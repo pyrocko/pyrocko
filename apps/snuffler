@@ -517,19 +517,19 @@ def add_radiobuttongroup(menu, menudef, obj, target):
             
     menuitems[0][0].setChecked(True)
     return menuitems
+
+class Pick:
+    def __init__(self, nslc_ids, tmin, tmax):
+        self.set(nslc_ids, tmin, tmax)
         
-class FloatingPick:
-    def __init__(self, ftrack, tmin,tmax):
-        self.set(ftrack, tmin,tmax)
-        
-    def set(self, ftrack, tmin,tmax):
-        self.ftrack = ftrack
+    def set(self, nslc_ids, tmin,tmax):
+        self.nslc_ids = nslc_ids
         self.tmin = tmin
         self.tmax = tmax
 
-    def draw(self, p, itrack, trace, time_projection, track_projection, gain):
-        print itrack, self.ftrack
-        if self.ftrack >= 0 and int(math.floor(self.ftrack)) != itrack: return
+    def draw(self, p, trace, time_projection, track_projection, gain):
+    
+        if self.nslc_ids and trace.nslc_id not in self.slc_ids: return
         
         color = gmtpy.color_tup('scarletred2')
         pen = QPen(QColor(*color))
@@ -565,9 +565,7 @@ class FloatingPick:
         try: drawpoint(self.tmin, trace.interpolate(self.tmin))
         except IndexError: pass
         try: drawpoint(self.tmax, trace.interpolate(self.tmax))
-        except IndexError: pass
-        
-            
+        except IndexError: pass            
         
 class PileOverview(QWidget):
     def __init__(self, pile, ntracks_shown_max, *args):
@@ -1328,8 +1326,7 @@ class PileOverview(QWidget):
             if not abort:
                 tmi = self.floating_pick.tmin
                 tma = self.floating_pick.tmax
-                ftrack = self.floating_pick.ftrack          
-                print ftrack, myctime(tmi), myctime(tma), tma-tmi
+                print myctime(tmi), myctime(tma), tma-tmi
             self.floating_pick = None
     
     
@@ -1342,6 +1339,7 @@ class PileOverview(QWidget):
             self.picking.setGeometry( gpoint.x(), gpoint.y(), 1, self.height())
             t = self.time_projection.rev(point.x())
             ftrack = self.track_to_screen.rev(point.y())
+            
             self.floating_pick = FloatingPick(ftrack, t,t)
 
             self.picking.show()

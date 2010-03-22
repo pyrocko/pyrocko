@@ -132,8 +132,8 @@ def rotate(traces, azimuth, in_channels, out_channels):
        traces -- not rotated traces
        azimuth -- difference of the azimuths of the component directions
                      (azimuth of out_channels[0]) - (azimuth of in_channels[0])
-       in_channels -- names of the input channels (e.g. 'north', 'east')
-       out_channels -- names of the output channels (e.g. 'radial', 'right-transversal')
+       in_channels -- names of the input channels (e.g. 'N', 'E')
+       out_channels -- names of the output channels (e.g. 'R', 'T')
        
     '''
     
@@ -155,7 +155,7 @@ def rotate(traces, azimuth, in_channels, out_channels):
                 if tmin < tmax:
                     ac = a.chop(tmin, tmax, inplace=False, include_last=True)
                     bc = b.chop(tmin, tmax, inplace=False, include_last=True)
-                    if (ac.tmin - bc.tmin) > ac.deltat*0.01:
+                    if abs(ac.tmin - bc.tmin) > ac.deltat*0.01:
                         logger.warn('Cannot rotate traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
                         continue
                     
@@ -170,7 +170,51 @@ def rotate(traces, azimuth, in_channels, out_channels):
                     rotated.append(bc)
                     
     return rotated
-            
+
+def project(traces, matrix, in_channels, out_channels):
+    pass
+
+def project3(traces, matrix, in_channels, out_channels):
+    in_channels = tuple(in_channels)
+    out_channels = tuple(out_channels)
+    projected = []
+    for a in traces:
+        for b in traces:
+            for c in traces:
+                if ( (a.channel, b.channel, c.channel) == in_channels and
+                     a.nslc_id[:3] == b.nslc_id[:3] and
+                     b.nslc_id[:3] == c.nslc_id[:3] and
+                     abs(a.deltat-b.deltat) < a.deltat*0.001 and
+                     abs(b.deltat-c.deltat) < b.deltat*0.001 ):
+                     
+                    tmin = max(a.tmin, b.tmin, c.tmin)
+                    tmax = min(a.tmax, b.tmax, c.tmax)
+                    
+                    if tmin < tmax:
+                        ac = a.chop(tmin, tmax, inplace=False, include_last=True)
+                        bc = b.chop(tmin, tmax, inplace=False, include_last=True)
+                        cc = c.chop(tmin, tmax, inplace=False, include_last=True)
+                        if abs(ac.tmin - bc.tmin) > ac.deltat*0.01 or
+                           abs(bc.tmin - cc.tmin) > bc.deltat*0.01:
+                            logger.warn('Cannot project traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
+                            continue
+                         
+                        acydata = num.dot( matrix[0], (ac.get_ydata(),bc.get_ydata(),cc.get_ydata) )
+                        bcydata = num.dot( matrix[1], (ac.get_ydata(),bc.get_ydata(),cc.get_ydata) )
+                        ccydata = num.dot( matrix[2], (ac.get_ydata(),bc.get_ydata(),cc.get_ydata) )
+                        
+                        ac.set_ydata(acydata)
+                        bc.set_ydata(bcydata)
+                        cc.set_ydata(ccydata)
+    
+                        ac.set_codes(channel=out_channels[0])
+                        bc.set_codes(channel=out_channels[1])
+                        cc.set_codes(channel=out_channels[2])
+                        
+                        rotated.append(ac)
+                        rotated.append(bc)
+                        rotated.append(cc)
+
 def moving_avg(x,n):
     n = int(n)
     cx = x.cumsum()
