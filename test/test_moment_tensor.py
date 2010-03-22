@@ -52,5 +52,5 @@ class MomentTensorTestCase( unittest.TestCase ):
             "angles don't match after forward-backward calculation:\nfirst:\n"+str(m1)+ "\nsecond:\n"+str(m2)
 
 if __name__ == "__main__":
-    util.setup_logging('warning')
+    util.setup_logging('test_moment_tensor', 'warning')
     unittest.main()

@@ -3,6 +3,10 @@ import calendar, time
 import logging
 import random
 
+import model, orthodrome
+
+logger = logging.getLogger('pyrocko.wilber')
+
 def strgmtime(secs):
     return time.strftime('%Y/%m/%d %H:%M:%S', time.gmtime(secs))
 
@@ -12,34 +16,30 @@ def intersect(a,b):
 def interval_and(a,b):
     return (max(a[0],b[0]), min(a[1],b[1]))
 
-class Event:
-    def __init__(self, timestamp, mag, lat, lon, depth, region, datasource, urlend):
-        self.timestamp = timestamp
-        self.mag = mag
-        self.lat = lat
-        self.lon = lon
-        self.depth = depth
+class Event(model.Event):
+    def __init__(self, time, mag, lat, lon, depth, region, datasource, urlend):
+        model.Event.__init__(self, lat, lon, time, name='', depth=depth, magnitude=mag, region=region)
         self.region = region
         self.datasource = datasource
         self.urlend = urlend
         
     def __str__(self):
         return '%s %6s %3.1f %6.2f %7.2f %5.1f %s' % (
-            strgmtime(self.timestamp),
-            self.datasource, self.mag, self.lat, self.lon, self.depth, self.region
+            strgmtime(self.time),
+            self.datasource, self.magnitude, self.lat, self.lon, self.depth, self.region
         )
 
-class Station:
+class Station(model.Station):
     def __init__(self, station, network, dist, azimuth, channels, snr):
-        self.station = station
-        self.network = network
-        self.dist = dist
+        model.Station.__init__(self, network, station, '', None, None, None)
+        self.dist_deg = dist
+        self.dist_m = self.dist_deg * orthodrome.earthradius_equator / orthodrome.r2d
         self.azimuth = azimuth
         self.channels = channels
         self.snr = snr
         
     def __str__(self):
-        return '%s %s %3.0f %3.0f %s %g' % (self.network, self.station, self.dist, self.azimuth, self.channels, self.snr)
+        return '%s %s %3.0f %3.0f %g' % (self.network, self.station, self.dist_m/1000., self.azimuth, self.snr)
 
 def to_secs(date, time):
     toks = date.split('/')
@@ -48,6 +48,9 @@ def to_secs(date, time):
     return calendar.timegm([ int(x) for x in toks ])
     
 class WilberRequestError(Exception):
+    pass
+    
+class WilberNoStations(Exception):
     pass
     
 class Wilber:
@@ -91,8 +94,8 @@ class IrisWilber(Wilber):
             if toks[0] == 'name': continue
             st = Station( station=toks[0],
                           network=toks[1],
-                          dist=float(toks[2]),
-                          azimuth=float(toks[3]),
+                          dist=float(toks[2]), 
+                          azimuth=float(toks[3]), 
                           channels=toks[4:-1],
                           snr=float(toks[-1]) )
             
@@ -120,7 +123,7 @@ class IrisWilber(Wilber):
                 toks = descr.split(None,5)
                 assert len(toks)==6
                 
-                timestamp = to_secs(*datetime.split())
+                time = to_secs(*datetime.split())
                 
                 datasource, mag, lat, lon, depth, region = toks
                 for s in 'SPYDER', 'FARM':
@@ -131,7 +134,7 @@ class IrisWilber(Wilber):
                 lat = float(lat)
                 lon = float(lon)
                 depth = float(depth)
-                ev = Event(timestamp, mag, lat, lon, depth, region, datasource, urlend)
+                ev = Event(time, mag, lat, lon, depth*1000., region, datasource, urlend)
                 gather.append(ev)
         
         if gather:
@@ -207,33 +210,33 @@ class IrisWilber(Wilber):
         return relevant
         
     def get_events(self, time_range = None):
-        
         if time_range is None: # by default, get events in past 24 hours
             now = time.time()
             time_range = (now-24*60*60, now)
         
         xevents = []
         for tmi, tma, lab in self.get_relevant_time_intervals(time_range):
-            logging.info('Querying event list page (%s).' % lab)
+            logger.info('Querying event list page (%s).' % lab)
             params = {'event_map': lab, 'radius': 'all'}
             eparams = urllib.urlencode(params)
             page = urllib2.urlopen(self.urlbeg+self.urlend2, eparams).read()
             events = self.extract_events(page)
             for event_group in events:
-                event_group_filtered = [ ev for ev in event_group if self.event_filter(ev) and
-                                         tmi <= ev.timestamp and ev.timestamp < tma ]
+                event_group_filtered = [ ev 
+                    for ev in event_group 
+                    if tmi <= ev.time and ev.time < tma and self.event_filter(ev) ]
                 
                 if event_group_filtered:
                     event_group_filtered.sort( lambda a,b: cmp(a.datasource, b.datasource))
                     xevents.append(event_group_filtered[0])
-                    
+            
         nev = len(xevents)
         if nev == 0:
-            logging.warn('No events matching given criteria found.')
+            logger.warn('No events matching given criteria found.')
         elif nev == 1:
-            logging.info('Found one distinct event matching given criteria.')
+            logger.info('Found one distinct event matching given criteria.')
         else:
-            logging.info('Found %i distinct events matching given criteria.' % nev)
+            logger.info('Found %i distinct events matching given criteria.' % nev)
 
         return xevents
         
@@ -246,9 +249,9 @@ class IrisWilber(Wilber):
                       after = 50,
                       outfilename='event_data.seed'):
             
-            logging.info('Attempt to download data for event %s' % str(event))
+            logger.info('Attempt to download data for event %s' % str(event))
             
-            logging.info('Querying network selection page.')
+            logger.info('Querying network selection page.')
             page = urllib2.urlopen(self.urlbeg+event.urlend).read()
             
             params = self.extract_hidden_params(page)
@@ -260,12 +263,14 @@ class IrisWilber(Wilber):
             
             eparams = urllib.urlencode(params)
             
-            logging.info('Querying station selection page.')
+            logger.info('Querying station selection page.')
             page = urllib2.urlopen(self.urlbeg+self.urlend4, eparams).read()
             
             hidden_params = self.extract_hidden_params(page)
             stations = self.extract_stations(page)
-            
+           # for station in stations:
+           #     station.set_event_relative_data(event)
+                
             stations_filtered = []
             for st in stations:
                 take = False
@@ -277,10 +282,9 @@ class IrisWilber(Wilber):
             
             nstations = len(stations_filtered)
             if nstations == 0:
-                logging.warn('No events matching given criteria found.')
-                return 
+                raise WilberNoStations('No stations matching given criteria found.')
             
-            logging.info('Number of stations selected: %i' % len(stations_filtered))
+            logger.info('Number of stations selected: %i' % len(stations_filtered))
                         
             params = []
             
@@ -298,7 +302,7 @@ class IrisWilber(Wilber):
                                '%s_%s' % (st.station, st.network)))
             
             
-            label = 'event_%i_%i' % (event.timestamp, random.randint(1000000,9999999))
+            label = 'event_%i_%i' % (event.time, random.randint(1000000,9999999))
             
             params.extend([
                 ('data_format', 'SEED'),
@@ -312,10 +316,10 @@ class IrisWilber(Wilber):
                         
             eparams = urllib.urlencode(params)
             
-            logging.info('Requesting data...')
+            logger.info('Requesting data...')
             req = urllib2.urlopen(self.urlbeg+self.urlend4, eparams)
             
-            logging.info('Waiting for response...')
+            logger.info('Waiting for response...')
             page = req.read()
             
             self.check_request_error(page)
@@ -324,8 +328,8 @@ class IrisWilber(Wilber):
             
             url = self.urlbeg+statuspage
             
-            logging.info('Status page URL is: %s' % url)
-            logging.info('Waiting for data to become ready on FTP server.')
+            logger.info('Status page URL is: %s' % url)
+            logger.info('Waiting for data to become ready on FTP server.')
             
             while True:
                 page = urllib2.urlopen(url).read()
@@ -333,16 +337,16 @@ class IrisWilber(Wilber):
                 if ftplink is not None:
                     break
                 
-                logging.info('(waiting...)')
+                logger.info('(waiting...)')
                 time.sleep(10)
                 
             ftplink += '/%s.seed' % label
     
-            logging.info('Data is available on FTP server.')
-            logging.info('FTP URL is: %s' % ftplink)
+            logger.info('Data is available on FTP server.')
+            logger.info('FTP URL is: %s' % ftplink)
             
             out = open(outfilename, 'w')
-            logging.info('Connecting to FTP server...')
+            logger.info('Connecting to FTP server...')
             ftpcon = urllib2.urlopen(ftplink)
             
             l = 0
@@ -352,18 +356,18 @@ class IrisWilber(Wilber):
                 if n == 0:
                     break
                 l += n
-                logging.info('(downloading...) %i B downloaded.' % l)
+                logger.info('(downloading...) %i B downloaded.' % l)
                 out.write(data)
             
             ftpcon.close()
                 
             out.close()
-            logging.info('Download complete.')
+            logger.info('Download complete.')
 
 
 if __name__ == '__main__':
     
-    logging.basicConfig(level=logging.INFO,)
+    logger.basicConfig(level=logger.INFO,)
 
     # Example: Get data for all events in Jan 2007, having a magnitude > 6 and
     #          a depth of less than 50 km.
@@ -392,7 +396,7 @@ if __name__ == '__main__':
         print event
     
     for event in events:
-        outfilename = 'data_%i.seed' % event.timestamp
+        outfilename = 'data_%i.seed' % event.time
         request.get_data(events[-1], outfilename=outfilename, vnetcodes=['_ILAR'], netcodes=['GE'] )
 
 

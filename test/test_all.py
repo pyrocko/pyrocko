@@ -10,6 +10,6 @@ from test_trace import TraceTestCase
 import unittest
 
 if __name__ == '__main__':
-    pyrocko.util.setup_logging('warning')
+    pyrocko.util.setup_logging('test_all', 'warning')
     unittest.main()
     

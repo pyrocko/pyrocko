@@ -42,11 +42,20 @@ class EventDataAccess:
         
         return stations
         
-    def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None, extend=None, group_selector=None, trace_selector=None):
+    def iter_traces(self, group_selector=None, trace_selector=None):
+         
+         for traces in self.get_pile().chopper_grouped(
+             gather=lambda tr: (tr.network, tr.station, tr.location),
+             group_selector=group_selector,
+             trace_selector=trace_selector):
+             
+             yield traces
+               
+    def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None, extend=None, group_selector=None, trace_selector=None, allowed_methods=None, crop=True):
         
         if rotate is not None:
             angles_func, rotation_mappings = rotate
-                
+        
         for traces in self.get_pile().chopper_grouped(
                 gather=lambda tr: (tr.network, tr.station, tr.location),
                 group_selector=group_selector,
@@ -67,16 +76,16 @@ class EventDataAccess:
                             continue
                         
                     try:
-                        trans = self.get_restitution(tr)
+                        trans = self.get_restitution(tr, allowed_methods)
                     except NoRestitution, e:
                         logger.warn( 'Cannot restitute trace %s.%s.%s.%s: %s' % (tr.nslc_id + (e,)))
                         continue
                     
                     try:
                         if extend:
-                            tr.extend(tr.tmin-extend, tr.tmax+extend, fillmethod='repeat')
+                            tr.extend(tr.tmin+extend[0], tr.tmax+extend[1], fillmethod='repeat')
                             
-                        displacement = tr.transfer( tfade, freqband, transfer_function=trans )
+                        displacement = tr.transfer( tfade, freqband, transfer_function=trans, cut_off_fading=crop )
                         amax = num.max(num.abs(displacement.get_ydata()))
                         if maxdisplacement is not None and amax > maxdisplacement:
                             logger.warn( 'Trace %s.%s.%s.%s has too large displacement: %g' % (tr.nslc_id + (amax,)) )

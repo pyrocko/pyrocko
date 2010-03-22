@@ -1,16 +1,19 @@
-import orthodrome, config
+import orthodrome, config, util
 d2r = num.pi/180.
 
 # simple flat datatypes until I have a better idea
 
 class Event:
-    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None):
+    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None):
         self.lat = lat
         self.lon = lon
         self.time = time
         self.name = name
         self.depth = depth
         self.magnitude = magnitude
+        self.region = region
+        
+
         
 class Station:
     def __init__(self, network, station, location, lat, lon, elevation, name='', channels=None):
@@ -64,5 +67,21 @@ class Component:
         self.ned = num.matrix( [[n],[e],[d]], dtype=num.float )
         self.enu = num.matrix( [[e],[n],[-d]], dtype=num.float )
         
+
+def load_kps_event_list(filename):
+    elist =[]
+    f = open(filename, 'r')
+    for line in f:
+        toks = line.split()
+        if len(toks) < 7: continue
         
-    
+        tim = util.ctimegm(toks[0]+' '+toks[1])
+        lat, lon, depth, magnitude = [ float(x) for x in toks[2:6] ]
+        region = toks[-1]
+        name = util.gmctime_fn(tim)
+        e = Event(lat, lon, tim, name, depth, magnitude)
+        
+        elist.append(e)
+        
+    f.close()
+    return elist

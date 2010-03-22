@@ -566,7 +566,7 @@ class Pick:
         except IndexError: pass
         try: drawpoint(self.tmax, trace.interpolate(self.tmax))
         except IndexError: pass            
-        
+       
 class PileOverview(QWidget):
     def __init__(self, pile, ntracks_shown_max, *args):
         apply(QWidget.__init__, (self,) + args)
@@ -998,9 +998,7 @@ class PileOverview(QWidget):
         
         traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=selector))
         traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
-        print len(traces)
         istyle = 0
-        rects = []
         for itr, tr in enumerate(traces):
             
             itrack = self.key_to_row[self.gather(tr)]
@@ -1022,11 +1020,9 @@ class PileOverview(QWidget):
             style = box_styles[istyle%len(box_styles)]
             rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
             p.fillRect(rect, style.fill_brush)
-            rects.append(rect)
             
-        #p.setPen(QPen(QColor((0,0,0))))
-        #p.setPen(style.frame_pen)
-        #p.drawRects(rects)
+            p.setPen(style.frame_pen)
+            p.drawRect(rect)
 
     def drawit(self, p, printmode=False, w=None, h=None):
         """This performs the actual drawing."""
@@ -1318,7 +1314,7 @@ class PileOverview(QWidget):
     def stop_picking(self, x,y, abort=False):
         if self.picking:
             self.update_picking(x,y, doshift=False)
-            self.picking.hide()
+            #self.picking.hide()
             self.picking = None
             self.picking_down = None
             self.picking_timer.stop()
@@ -1342,7 +1338,7 @@ class PileOverview(QWidget):
             
             self.floating_pick = FloatingPick(ftrack, t,t)
 
-            self.picking.show()
+            #self.picking.show()
             self.setMouseTracking(True)
             
             self.picking_timer = QTimer()
@@ -1550,23 +1546,26 @@ class MyApp(QApplication):
 
         parser = OptionParser()
         parser.add_option('--pattern', dest='pattern')
-        parser.add_option('--debug', dest='debug', action='store_true', default=False)
         parser.add_option('--ntracks', dest='ntracks', default=24)
-        
+        parser.add_option('--format', dest='format', default='from_extension', 
+                          choices=('mseed', 'sac', 'kan', 'from_extension', 'try'))
+        parser.add_option('--debug', dest='debug', action='store_true', default=False)
+
         options, args = parser.parse_args(list(args[0][1:]))
         
         
         if options.debug:
-            pyrocko.util.setup_logging('debug')
+            pyrocko.util.setup_logging('snuffler', 'debug')
         else:
-            pyrocko.util.setup_logging('warning')
+            pyrocko.util.setup_logging('snuffler', 'warning')
         
         filenames = pyrocko.util.select_files( args, regex=options.pattern )
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
         cache = pyrocko.pile.get_cache(cachedirname)
         pile = pyrocko.pile.Pile()
-        pile.add_files( sorted(filenames), cache=cache, filename_attributes=options.pattern )
-        print pile
+        pile.add_files( sorted(filenames), cache=cache, 
+                        filename_attributes=options.pattern,
+                        fileformat=options.format )
         self.pile_overview = PileOverview(pile, ntracks_shown_max=options.ntracks)
         
         if os.path.isfile('markers'):

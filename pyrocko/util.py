@@ -1,4 +1,4 @@
-import time, logging, os, sys, re
+import time, logging, os, sys, re, calendar
 from scipy import signal
 
 from os.path import join as pjoin
@@ -7,7 +7,7 @@ import config
 
 logger = logging.getLogger('pyrocko.util')
 
-def setup_logging(levelname):
+def setup_logging(programname, levelname,):
     levels = {'debug': logging.DEBUG,
               'info': logging.INFO,
               'warning': logging.WARNING,
@@ -16,7 +16,7 @@ def setup_logging(levelname):
 
     logging.basicConfig(
         level=levels[levelname],
-        format = '%(name)-20s - %(levelname)-8s - %(message)s' )
+        format = programname+':%(name)-20s - %(levelname)-8s - %(message)s' )
 
 class Stopwatch:
     def __init__(self):
@@ -115,6 +115,9 @@ def decitab(n):
         mk_decitab(n*2)
     if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
     return GlobalVars.decitab[n]
+
+def ctimegm(s):
+    return calendar.timegm(time.strptime(s, "%Y-%m-%d %H:%M:%S"))
 
 def gmctime(t):
     return time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(t))

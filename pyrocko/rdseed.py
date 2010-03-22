@@ -1,6 +1,6 @@
 import logging
 
-import orthodrome, trace, pile, config, model, eventdata, io
+import orthodrome, trace, pile, config, model, eventdata, io, util
 import os, sys, shutil, subprocess, tempfile, calendar, time
 
 pjoin = os.path.join
@@ -55,7 +55,8 @@ def dumb_parser( data ):
 class Programs:
     rdseed   = 'rdseed4.8'
 
-
+class SeedVolumeNotFound(Exception):
+    pass
 
 class SeedVolumeAccess(eventdata.EventDataAccess):
 
@@ -72,29 +73,37 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         '''
     
         eventdata.EventDataAccess.__init__(self, datapile=datapile)
-    
+        self.tempdir = None
         self.seedvolume = seedvolume
+        if not os.path.isfile(self.seedvolume):
+            raise SeedVolumeNotFound()
+        
         self.tempdir = tempfile.mkdtemp("","SeedVolumeAccess-")
         self._unpack()
 
     def __del__(self):
         import shutil
-        shutil.rmtree(self.tempdir)
+        if self.tempdir:
+            shutil.rmtree(self.tempdir)
                 
     def get_pile(self):
         if self._pile is None:
-            fns = io.save( io.load(pjoin(self.tempdir, 'mini.seed')), pjoin(self.tempdir,
-                     'raw-%(network)s-%(station)s-%(location)s-%(channel)s.mseed'))
-                
+            #fns = io.save( io.load(pjoin(self.tempdir, 'mini.seed')), pjoin(self.tempdir,
+            #         'raw-%(network)s-%(station)s-%(location)s-%(channel)s.mseed'))
+            fns = util.select_files( [ self.tempdir ], regex=r'\.SAC$')
             self._pile = pile.Pile()
-            self._pile.add_files(fns)
+            self._pile.add_files(fns, fileformat='sac')
             
         return self._pile
         
-    def get_restitution(self, tr):
-        respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
-        trans = trace.InverseEvalresp(respfile, tr)
-        return trans
+    def get_restitution(self, tr, allowed_methods):
+        
+        if 'evalresp' in allowed_methods:
+            respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
+            trans = trace.InverseEvalresp(respfile, tr)
+            return trans
+        else:
+            raise eventdata.NoRestitution('no allowed restitution method available')
         
     def _unpack(self):
         input_fn = self.seedvolume
@@ -105,7 +114,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 
         # seismograms:
         if self._pile is None:
-            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '4', '-p', '-R', '-q', output_dir], 
+            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '1', '-p', '-R', '-q', output_dir], 
                                      stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (out,err) = rdseed_proc.communicate()
             logging.info(strerr(err))
@@ -134,7 +143,9 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         
     def _get_events_from_file( self ):
         rdseed_event_file =  os.path.join(self.tempdir,'rdseed.events')
-
+        if not os.path.isfile(rdseed_event_file):
+            return []
+        
         f = open(rdseed_event_file, 'r')
         events = []
         for line in f:

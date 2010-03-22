@@ -1,5 +1,7 @@
 '''SAC IO library for Python'''
 
+import trace
+
 import struct, sys, logging, math, time
 from calendar import timegm
 from time import gmtime
@@ -248,20 +250,23 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                         
         return str
             
-    def to_mseed_trace(self):
-        import pymseed
+    def to_trace(self):
+        
         tmin = self.get_ref_time()
         tmax = tmin + self.delta*(self.npts-1)
         
-        return pymseed.MSeedTrace(trace=(None,
-                                  self.knetwk,
+        data =None
+        if self.data:
+            data = self.data[0]
+        
+        return trace.Trace(self.knetwk,
                                   self.kstnm,
                                   self.khole,
                                   self.kcmpnm,
-                                  tmin*float(pymseed.HPTMODULUS),
-                                  tmax*float(pymseed.HPTMODULUS),
-                                  1.0/float(self.delta),
-                                  self.data[0]))
+                                  tmin,
+                                  tmax,
+                                  self.delta,
+                                  data)
         
 def from_mseed_trace(trace):
     sac = SacFile()
