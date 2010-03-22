@@ -244,6 +244,7 @@ def project(traces, matrix, in_channels, out_channels):
 def project1(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 1
     assert len(out_channels) == 1
+    assert matrix.shape == (1,1)
     in_channels = tuple(in_channels)
     out_channels = tuple(out_channels)
     projected = []
@@ -261,6 +262,7 @@ def project1(traces, matrix, in_channels, out_channels):
 def project2(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 2
     assert len(out_channels) == 2
+    assert matrix.shape == (2,2)
     in_channels = tuple(in_channels)
     out_channels = tuple(out_channels)
     projected = []
@@ -300,6 +302,7 @@ def project2(traces, matrix, in_channels, out_channels):
 def project3(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 3
     assert len(out_channels) == 3
+    assert matrix.shape == (3,3)
     in_channels = tuple(in_channels)
     out_channels = tuple(out_channels)
     projected = []
@@ -328,11 +331,11 @@ def project3(traces, matrix, in_channels, out_channels):
                     continue
                     
                 acydata = num.dot( matrix[0],
-                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata))
+                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata()))
                 bcydata = num.dot( matrix[1],
-                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata))
+                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata()))
                 ccydata = num.dot( matrix[2],
-                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata))
+                    (ac.get_ydata(),bc.get_ydata(),cc.get_ydata()))
                 
                 ac.set_ydata(acydata)
                 bc.set_ydata(bcydata)
@@ -440,8 +443,10 @@ class SampledResponse(FrequencyResponse):
         self.right = right
         
     def evaluate(self, freqs):
-        return num.interp(freqs, self.freqs, self.vals, left=left, right=right)
-        
+        eabs = num.interp(freqs, self.freqs, num.abs(self.vals), left=self.left, right=self.right)
+        ephase = num.interp(freqs, self.freqs, num.angle(self.vals), left=self.left, right=self.right)
+        return eabs * (num.cos(ephase) + 1.0j*num.sin(ephase))
+    
 class IntegrationResponse(FrequencyResponse):
     def __init__(self, gain=1.0):
         self._gain = gain

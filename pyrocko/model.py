@@ -39,17 +39,16 @@ class Event:
         self.depth = depth
         self.magnitude = magnitude
         self.region = region
-        
-
-        
+                
 class Station:
-    def __init__(self, network, station, location, lat, lon, elevation, name='', channels=None):
+    def __init__(self, network, station, location, lat, lon, elevation, depth=None, name='', channels=None):
         self.network = network
         self.station = station
         self.location = location
         self.lat = lat
         self.lon = lon
         self.elevation = elevation
+        self.depth = depth
         self.name = name
         if channels is None:
             self.channels = []
@@ -70,7 +69,13 @@ class Station:
         
     def set_channels(self, channels):
         self.channels = channels
-    
+        
+    def get_channels(self):
+        return self.channels
+        
+    def add_channel(self, channel):
+        self.channels.append(channel)
+            
     def get_channel(self, name):
         for channel in self.channels:
             if channel.name == name:
@@ -79,7 +84,7 @@ class Station:
         return None
     
     
-    def _projection_to(self, to, in_channels, out_channels):
+    def _projection_to(self, to, in_channels, out_channels, divide_by_gains=False):
         channels = [ self.get_channel(name) for name in in_channels ]
         
         # create orthogonal vectors for missing components, such that this 
@@ -87,20 +92,26 @@ class Station:
         
         vecs = []
         for ch in channels:
-            if ch is None: vecs.append(None)
-            else: vecs.append(getattr(ch,to))
-            
+            if ch is None: 
+                vecs.append(None)
+            else:
+                vec = getattr(ch,to)
+                if divide_by_gains:
+                    vec /= ch.gain
+                vecs.append(vec)
+                
         fill_orthogonal(vecs)
         
         m = num.hstack([ vec[:,num.newaxis] for vec in vecs ])
+        
         m = num.where(num.abs(m) < num.max(num.abs(m))*1e-16, 0., m)
-        return in_channels, out_channels, m
+        return m, in_channels, out_channels
     
-    def projection_to_enu(self, in_channels, out_channels=('E', 'N', 'U')):
-        return self._projection_to('enu', in_channels, out_channels)
+    def projection_to_enu(self, in_channels, out_channels=('E', 'N', 'U'), **kwargs):
+        return self._projection_to('enu', in_channels, out_channels, **kwargs)
 
-    def projection_to_ned(self, in_channels, out_channels=('N', 'E', 'D')):
-        return self._projection_to('ned', in_channels, out_channels)
+    def projection_to_ned(self, in_channels, out_channels=('N', 'E', 'D'), **kwargs):
+        return self._projection_to('ned', in_channels, out_channels, **kwargs)
         
     def __str__(self):
         return '%s.%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.location, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)

@@ -34,7 +34,7 @@ class EventDataAccess:
                 self._stations[station.network, station.station, station.location] = station
                 
         stations = copy.deepcopy(self._stations)
-                
+        
         if relative_event is not None:
             
             for s in stations.values():
@@ -51,11 +51,22 @@ class EventDataAccess:
              
              yield traces
                
-    def iter_displacement_traces(self, tfade, freqband, deltat=None, rotate=None, maxdisplacement=None, extend=None, group_selector=None, trace_selector=None, allowed_methods=None, crop=True):
+    def iter_displacement_traces( self, tfade, freqband, 
+                                  deltat=None,
+                                  rotate=None,
+                                  project=None,
+                                  maxdisplacement=None,
+                                  extend=None,
+                                  group_selector=None,
+                                  trace_selector=None,
+                                  allowed_methods=None,
+                                  crop=True):
+        
+        stations = self.get_stations()
         
         if rotate is not None:
             angles_func, rotation_mappings = rotate
-        
+            
         for traces in self.get_pile().chopper_grouped(
                 gather=lambda tr: (tr.network, tr.station, tr.location),
                 group_selector=group_selector,
@@ -101,17 +112,19 @@ class EventDataAccess:
                     
                     displacements.append(displacement)
                 
-                rotated = []
-                if rotate:
-                    try:
-                        angle = angles_func(tr)
-                    except Exception, e:
-                        logger.warn( 'Cannot get station locations for rotation of traces at %s.%s.%s: %s' % (tr.nslc_id[:3]+(e,)) )
-                        continue
+                if project:
+                    station = stations[tr.network, tr.station, tr.location]
                     
+                    matrix, in_channels, out_channels = project(station)
+                    projected = trace.project(displacements, matrix, in_channels, out_channels)
+                    displacements.extend(projected)
+                
+                if rotate:
+                    angle = angles_func(tr)
                     for in_channels, out_channels in rotation_mappings:
                         rotated = trace.rotate(displacements, angle, in_channels, out_channels)
                         displacements.extend(rotated)
+                        
                 yield displacements
                 
     def get_restitution(self, tr):
