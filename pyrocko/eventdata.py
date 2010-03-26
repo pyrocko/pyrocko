@@ -2,13 +2,43 @@ import trace, util
 
 import logging, copy
 import numpy as num
+import cPickle as pickle
 
 logger = logging.getLogger('pyrocko.eventdata')
 
 class NoRestitution(Exception):
     pass
 
-
+class Problems:
+    def __init__(self):
+        self._problems = {}
+        
+    def add(self, kind, nslct):
+        if kind not in self._problems:
+            self._problems[kind] = set()
+        problem = self._problems[kind]
+        problem.add(nslct)
+        
+    def dump(self, fn):
+        f = open(fn, 'w')
+        pickle.dump(self._problems, f)
+        f.close()
+        
+    def load(self, fn):
+        f = open(fn, 'r')
+        self._problems = pickle.load(f)
+        f.close()
+    
+    def mapped(self, mapping=lambda nslct: nslct[:3]):
+        p = {}
+        for kind, problem in self._problems.iteritems():            
+            nsl = set()
+            for nslct in problem:
+                nsl.add(mapping(nslct))
+            p[kind] = nsl
+        
+        return p
+        
 class EventDataAccess:
     '''Abstract base class for event data access (see rdseed.py)'''
     
@@ -17,6 +47,7 @@ class EventDataAccess:
         self._pile = datapile
         self._events = None
         self._stations = None
+        self._problems = Problems()
     
     def get_pile(self):
         return self._pile
@@ -51,6 +82,9 @@ class EventDataAccess:
              
              yield traces
                
+    def problems(self):
+        return self._problems
+               
     def iter_displacement_traces( self, tfade, freqband, 
                                   deltat=None,
                                   rotate=None,
@@ -83,12 +117,14 @@ class EventDataAccess:
                         try:
                             tr.downsample_to(deltat, snap=True)
                         except util.UnavailableDecimation, e:
+                            self.problems().add('cannot_downsample', tr.full_id)
                             logger.warn( 'Cannot downsample %s.%s.%s.%s: %s' % (tr.nslc_id + (e,)))
                             continue
                         
                     try:
                         trans = self.get_restitution(tr, allowed_methods)
                     except NoRestitution, e:
+                        self.problems().add('no_response', tr.full_id)
                         logger.warn( 'Cannot restitute trace %s.%s.%s.%s: %s' % (tr.nslc_id + (e,)))
                         continue
                     
@@ -99,14 +135,17 @@ class EventDataAccess:
                         displacement = tr.transfer( tfade, freqband, transfer_function=trans, cut_off_fading=crop )
                         amax = num.max(num.abs(displacement.get_ydata()))
                         if maxdisplacement is not None and amax > maxdisplacement:
+                            self.problems().add('unrealistic_amplitude', tr.full_id)
                             logger.warn( 'Trace %s.%s.%s.%s has too large displacement: %g' % (tr.nslc_id + (amax,)) )
                             continue
                         
                         if not num.all(num.isfinite(displacement.get_ydata())):
-                            logger.warn( 'Trace %s.%s.%s.%s has NaNs' % tr.nslc_id )
+                            self.problems().add('has_nan_or_inf', tr.full_id)
+                            logger.warn( 'Trace %s.%s.%s.%s has NaNs or Infs' % tr.nslc_id )
                             continue
                             
                     except trace.TraceTooShort, e:
+                        self.problems().add('gappy', tr.full_id)
                         logger.warn( '%s' % e )
                         continue
                     
