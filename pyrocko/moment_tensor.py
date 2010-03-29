@@ -4,6 +4,13 @@ import random
 import math
 import numpy as num
 
+dynecm = 1e-7
+
+def symmat6(*vals):
+    return num.matrix([[vals[0], vals[3], vals[4]],
+                       [vals[3], vals[1], vals[5]],
+                       [vals[4], vals[5], vals[2]]], dtype=num.float)
+
 def moment_to_magnitude( moment ):
     return num.log10(moment*1.0e7)/1.5 - 10.7
 
@@ -141,10 +148,11 @@ def sm(m):
 class MomentTensor:
 
     _flip_dc = num.matrix( [[0.,0.,-1.],[0.,-1.,0.],[-1.,0.,0.]], dtype=num.float )
+    _to_up_south_east = num.matrix( [[0.,0.,-1.],[-1.,0.,0.],[0.,1.,0.]], dtype=num.float ).T
     _m_unrot = num.matrix( [[0.,0.,-1.],[0.,0.,0.],[-1.,0.,0.]], dtype=num.float )
     _u_evals, _u_evecs = eigh_check(_m_unrot)
 
-    def __init__(self, m=None, strike=0., dip=0., rake=0., scalar_moment=1. ):
+    def __init__(self, m=None, m_up_south_east=None, strike=0., dip=0., rake=0., scalar_moment=1. ):
         '''Create moment tensor object based on 3x3 moment tensor matrix or orientation of 
            fault plane and scalar moment.''' 
         
@@ -152,11 +160,15 @@ class MomentTensor:
         dip = d2r*dip
         rake = d2r*rake
         
+        if m_up_south_east is not None:
+            m = self._to_up_south_east * m_up_south_east * self._to_up_south_east.T
+        
         if m is not None:
             m_evals, m_evecs = eigh_check(m)
             rotmat1 = (m_evecs * MomentTensor._u_evecs.T).T
             if num.linalg.det(rotmat1) < 0.:
                 rotmat1 *= -1.
+            
         else:
             rotmat1 = euler_to_matrix( dip, strike, -rake )
             m = rotmat1.T * MomentTensor._m_unrot * rotmat1 * scalar_moment
@@ -198,6 +210,9 @@ class MomentTensor:
     def m(self):
         '''Get plain moment tensor as 3x3 matrix.'''
         return self._m.copy()
+    
+    def m_up_south_east(self):
+        return self._to_up_south_east.T * self._m * self._to_up_south_east
     
     def m_plain_double_couple(self):
         '''Get plain double couple with same scalar moment as moment tensor.'''
@@ -288,6 +303,17 @@ class MomentTensorTestCase( unittest.TestCase ):
         assert num.all( num.abs(num.array(m1.both_strike_dip_rake()) - 
                                 num.array(m2.both_strike_dip_rake())) < 1e-7*100 ), \
             "angles don't match after forward-backward calculation:\nfirst:\n"+str(m1)+ "\nsecond:\n"+str(m2)
+
+    def assertSame(self, a,b, eps, errstr):
+        assert num.all(num.abs(num.array(a)-num.array(b)) < eps), errstr
+
+    def testChile(self):
+        m_use =  symmat6( 1.040, -0.030, -1.010, 0.227, -1.510, -0.120 )*1e29*dynecm
+        mt = MomentTensor(m_up_south_east=m_use)
+        sdr = mt.both_strike_dip_rake()
+        self.assertSame( sdr[0], (174.,73.,83.), 1., 'chile fail 1')
+        self.assertSame( sdr[1], (18.,18.,112.), 1., 'chile fail 2')
+        
 
 if __name__ == "__main__":
     unittest.main()
