@@ -527,13 +527,28 @@ class Pick:
         self.tmin = tmin
         self.tmax = tmax
 
-    def draw(self, p, trace, time_projection, track_projection, gain):
-    
-        if self.nslc_ids and trace.nslc_id not in self.slc_ids: return
+    def draw(self, p, time_projection, y_projection):
+        color = gmtpy.color_tup('aluminium5')
+        pen = QPen(QColor(*color))
+        pen.setWidth(1)
+        p.setPen(pen)
+        
+        def drawline(t):
+            u = time_projection(t)
+            v0, v1 = y_projection.get_out_range()
+            line = QLine(u,v0,u,v1)
+            p.drawLine(line)
+
+        drawline(self.tmin)
+        drawline(self.tmax)
+
+
+    def draw_trace(self, p, trace, time_projection, track_projection, gain):
+        if self.nslc_ids and trace.nslc_id not in self.nslc_ids: return
         
         color = gmtpy.color_tup('scarletred2')
         pen = QPen(QColor(*color))
-        pen.setWidth(2)
+        pen.setWidth(1)
         p.setPen(pen)
         
         def drawpoint(t,y):
@@ -735,7 +750,7 @@ class PileOverview(QWidget):
         self.time_projection.set_out_range(0., self.width())
             
         self.track_to_screen = Projection()
-        
+        self.track_to_nslc_ids = {}
             
         #traces_path.sort( lambda x,y: cmp(x[0].full_id, y[0].full_id) )
         #i = 1
@@ -1039,11 +1054,13 @@ class PileOverview(QWidget):
         
         vbottom_ax_projection = Projection()
         vtop_ax_projection = Projection()
-        self.time_projection.set_out_range(0, w)
+        vcenter_projection = Projection()
         
+        self.time_projection.set_out_range(0, w)
         vbottom_ax_projection.set_out_range(h-ax_h, h)
         vtop_ax_projection.set_out_range(0, ax_h)
-        
+        vcenter_projection.set_out_range(ax_h, h-ax_h)
+        vcenter_projection.set_in_range(0.,1.)
         self.track_to_screen.set_out_range(ax_h, h-ax_h)
         
         ntracks = self.ntracks
@@ -1053,7 +1070,8 @@ class PileOverview(QWidget):
             proj = Projection()
             proj.set_out_range(self.track_to_screen(i+0.05),self.track_to_screen(i+1.-0.05))
             track_projections[i] = proj
-              
+        
+                
         if self.tmin < self.tmax:
             self.time_projection.set_in_range(self.tmin, self.tmax)
             vbottom_ax_projection.set_in_range(0, ax_h)
@@ -1073,7 +1091,10 @@ class PileOverview(QWidget):
                         v_projection = track_projections[itrack]
                         v_projection.set_in_range(0.,1.)
                         trace_view.drawit(p, self.time_projection, v_projection)
-            
+
+            if self.floating_pick:
+                self.floating_pick.draw(p, self.time_projection, vcenter_projection)
+
             primary_pen = QPen(QColor(*primary_color))
             p.setPen(primary_pen)
             
@@ -1085,6 +1106,7 @@ class PileOverview(QWidget):
             
             color_lookup = dict([ (k,i) for (i,k) in enumerate(self.color_keys) ])
             
+            self.track_to_nslc_ids = {}
             min_max_for_annot = {}
             if processed_traces:
                 yscaler = gmtpy.AutoScaler()
@@ -1092,6 +1114,10 @@ class PileOverview(QWidget):
                 for trace in processed_traces:
                     itrack = self.key_to_row[self.gather(trace)]
                     if itrack in track_projections:
+                        if itrack not in self.track_to_nslc_ids:
+                            self.track_to_nslc_ids[itrack] = set()
+                        self.track_to_nslc_ids[itrack].add( trace.nslc_id )
+                        
                         track_projection = track_projections[itrack]
                         data_range = data_ranges[self.scaling_key(trace)]
                         ymin, ymax, yinc = yscaler.make_scale( data_range )
@@ -1116,7 +1142,7 @@ class PileOverview(QWidget):
                         p.drawPolyline( qpoints )
                         
                         if self.floating_pick:
-                            self.floating_pick.draw(p, itrack, trace, self.time_projection, track_projection, self.gain)
+                            self.floating_pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
                             p.setPen(primary_pen)
                             
                         if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
@@ -1126,7 +1152,7 @@ class PileOverview(QWidget):
                         else:
                             if min_max_for_annot is not None and min_max_for_annot[itrack] != (ymin, ymax):
                                 min_max_for_annot[itrack] = None
-            
+                        
             p.setPen(primary_pen)
             if len(self.markers) > 0:
                 mvs = self.markers[:,1]
@@ -1311,6 +1337,13 @@ class PileOverview(QWidget):
         point = self.mapFromGlobal(QCursor.pos())
         self.update_picking(point.x(), point.y(), doshift=True)
         
+    def get_nslc_ids_for_track(self, ftrack):
+        itrack = int(ftrack)
+        if itrack in self.track_to_nslc_ids:
+            return self.track_to_nslc_ids[int(ftrack)]
+        else:
+            return []
+            
     def stop_picking(self, x,y, abort=False):
         if self.picking:
             self.update_picking(x,y, doshift=False)
@@ -1334,9 +1367,10 @@ class PileOverview(QWidget):
             gpoint = self.mapToGlobal( QPoint(point.x(), 0) )
             self.picking.setGeometry( gpoint.x(), gpoint.y(), 1, self.height())
             t = self.time_projection.rev(point.x())
-            ftrack = self.track_to_screen.rev(point.y())
             
-            self.floating_pick = FloatingPick(ftrack, t,t)
+            ftrack = self.track_to_screen.rev(point.y())
+            nslc_ids = self.get_nslc_ids_for_track(ftrack)
+            self.floating_pick = Pick(nslc_ids, t,t)
 
             #self.picking.show()
             self.setMouseTracking(True)
@@ -1374,8 +1408,10 @@ class PileOverview(QWidget):
             p1 = self.mapToGlobal( QPoint(x0, 0))
             
             self.picking.setGeometry( p1.x(), p1.y(), max(w,1), self.height())
+            
             ftrack = self.track_to_screen.rev(y)
-            self.floating_pick.set(ftrack, tmin, tmax)
+            nslc_ids = self.get_nslc_ids_for_track(ftrack)
+            self.floating_pick.set(nslc_ids, tmin, tmax)
             
             if dt != 0.0 and doshift:
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
