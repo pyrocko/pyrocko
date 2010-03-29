@@ -530,7 +530,7 @@ class Pick:
     def draw(self, p, time_projection, y_projection):
         color = gmtpy.color_tup('aluminium5')
         pen = QPen(QColor(*color))
-        pen.setWidth(1)
+        pen.setWidth(2)
         p.setPen(pen)
         
         def drawline(t):
@@ -548,7 +548,7 @@ class Pick:
         
         color = gmtpy.color_tup('scarletred2')
         pen = QPen(QColor(*color))
-        pen.setWidth(1)
+        pen.setWidth(2)
         p.setPen(pen)
         
         def drawpoint(t,y):
@@ -1217,8 +1217,6 @@ class PileOverview(QWidget):
             
         nsee_points_per_trace = 5000*10
         see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
-        
-        
         
         processed_traces = []
         if (tmax - tmin) < see_data_range:

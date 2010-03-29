@@ -138,7 +138,6 @@ class TraceTestCase(unittest.TestCase):
         for i in xrange(10000):
             a.append(num.arange(1000, dtype=num.float))
         
-
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
     unittest.main()
