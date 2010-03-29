@@ -512,13 +512,13 @@ class Trace(object):
                 num.all(self.ydata == other.ydata))
     
     def __call__(self, t, clip=False, snap=round):
-        it = int(snap(t-self.tmin))
+        it = int(snap((t-self.tmin)/self.deltat))
         if clip:
             it = max(0, min(it, self.ydata.size-1))
         else:
             if it < 0 or self.ydata.size <= it:
                 raise IndexError()
-                
+                       
         return self.tmin+it*self.deltat, self.ydata[it]
     
     def interpolate(self, t, clip=False):
