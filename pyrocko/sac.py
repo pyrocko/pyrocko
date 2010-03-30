@@ -97,7 +97,21 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             return v.ljust(l)[:l]
             
     def __init__(self, *args, **kwargs):
-        if args:
+        if 'from_trace' in kwargs:
+            self.clear()
+            trace = kwargs['from_trace']
+            self.knetwk = trace.network
+            self.kstnm = trace.station
+            self.khole = trace.location
+            self.kcmpnm = trace.channel
+            self.set_ref_time( trace.tmin )
+            self.delta = trace.deltat
+            self.data = [ trace.ydata.copy() ]
+            self.npts = trace.ydata.size
+            self.b = 0.0
+            self.e = self.b + (self.npts-1)*self.delta
+                    
+        elif args:
             self.read(*args, **kwargs)
         else:
             self.clear()
@@ -267,21 +281,7 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                                   tmax,
                                   self.delta,
                                   data)
-        
-def from_mseed_trace(trace):
-    sac = SacFile()
-    sac.knetwk = trace.network
-    sac.kstnm = trace.station
-    sac.khole = trace.location
-    sac.kcmpnm = trace.channel
-    sac.set_ref_time( trace.tmin )
-    sac.delta = trace.deltat
-    sac.data = [ trace.ydata.copy() ]
-    sac.npts = trace.ydata.size
-    sac.b = 0.0
-    sac.e = sac.b + (sac.npts-1)*sac.delta
-    return sac
-                
+                        
 if __name__ == "__main__":
     print SacFile(sys.argv[1])
 

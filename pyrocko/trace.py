@@ -749,7 +749,10 @@ class Trace(object):
         output = self.copy()
         output.ydata = ddata[:ndata]
         if cut_off_fading:
-            output.chop(output.tmin+tfade, output.tmax-tfade, inplace=True)
+            try:
+                output.chop(output.tmin+tfade, output.tmax-tfade, inplace=True)
+            except NoData:
+                raise TraceTooShort('Trace %s.%s.%s.%s too short for fading length setting. trace length = %g, fading length = %g' % (self.nslc_id + (self.tmax-self.tmin, tfade)))
         else:
             output.ydata = output.ydata.copy()
         return output
