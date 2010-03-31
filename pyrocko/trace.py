@@ -501,6 +501,15 @@ class Trace(object):
         self.mtime = mtime
         self.update_ids()
         
+    def __str__(self):
+        s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
+        s += '  timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
+        s += '  delta t: %g\n' % self.deltat
+        if self.meta:
+            for k in sorted(self.meta.keys()):
+                s += '  %s: %s\n' % (k,self.meta[k])
+        return s
+        
     def __eq__(self, other):
         return (self.network == other.network and
                 self.station == other.station and
@@ -776,9 +785,3 @@ class Trace(object):
         params['tmin'] = util.gmctime_fn(self.tmin)
         params['tmax'] = util.gmctime_fn(self.tmax)
         return template % params
-        
-    def __str__(self):
-        s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
-        s += '  timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
-        s += '  delta t: %g\n' % self.deltat
-        return s
