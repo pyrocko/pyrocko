@@ -39,6 +39,9 @@ class Event:
         self.depth = depth
         self.magnitude = magnitude
         self.region = region
+        
+    def __str__(self):
+        return '%s %s %g %g %g %g %s' % (self.name, util.gmctime(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
                 
 class Station:
     def __init__(self, network, station, location, lat, lon, elevation, depth=None, name='', channels=None):
