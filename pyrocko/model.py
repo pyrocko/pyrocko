@@ -1,5 +1,7 @@
-import orthodrome, config, util, math
+import catalog, orthodrome, config, util
+import math
 import numpy as num
+
 
 d2r = num.pi/180.
 
@@ -144,6 +146,18 @@ def load_kps_event_list(filename):
         name = util.gmctime_fn(tim)
         e = Event(lat, lon, tim, name, depth, magnitude)
         
+        elist.append(e)
+        
+    f.close()
+    return elist
+        
+def load_gfz_event_list(filename):
+    cat = catalog.Geofon()
+    
+    elist =[]
+    f = open(filename, 'r')
+    for line in f:
+        e = cat.get_event(line.strip())
         elist.append(e)
         
     f.close()

@@ -70,9 +70,22 @@ class EventDataAccess:
             
             for s in stations.values():
                 s.set_event_relative_data(relative_event)
+                
+        self._insert_channel_descriptions(stations)
         
         return stations
         
+    def _insert_channel_descriptions(self, stations):
+        pile = self.get_pile()
+        nslc_ids = pile.gather_keys( lambda tr: (tr.network, tr.station, tr.location, tr.channel) )
+        
+        for nslc in nslc_ids:
+            sta = stations[nslc[:3]]
+            sta.add_channel(  self._get_channel_description_from_file(nslc) )
+   
+    def _get_channel_description_from_file(self, nslc):
+        return model.Channel(nslc[3], None, None, 1.)
+   
     def iter_traces(self, group_selector=None, trace_selector=None):
          
          for traces in self.get_pile().chopper_grouped(
