@@ -137,6 +137,8 @@ class TraceTestCase(unittest.TestCase):
         a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=1234567890)
         for i in xrange(10000):
             a.append(num.arange(1000, dtype=num.float))
+        assert a.ydata.size == 10000*1000
+        
         
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

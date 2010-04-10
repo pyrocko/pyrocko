@@ -7,6 +7,7 @@ import random
 from random import choice as rc
 from os.path import join as pjoin
 import os, sys
+import shutil
 
 abc = 'abcdefghijklmnopqrstuvwxyz' 
     
@@ -36,7 +37,8 @@ class IOTestCase( unittest.TestCase ):
             
         for fn in fns:
             os.remove(fn)
-        
+        shutil.rmtree(tempdir)
+                
     def testReadNonexistant(self):
         try:
             trs = mseed.load('/tmp/thisfileshouldnotexist')
