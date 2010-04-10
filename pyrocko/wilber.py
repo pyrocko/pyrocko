@@ -54,10 +54,11 @@ class WilberNoStations(Exception):
     pass
     
 class Wilber:
-    def get_events(time_range = None):
+    def get_events(self, time_range = None):
         raise Exception('This method should be implemented in derived class.')
     
-    def get_data( event,
+    def get_data( self,
+                  event,
                   wanted_channels = ('BHE', 'BHN', 'BHZ'),
                   before = 5,
                   after = 50,
