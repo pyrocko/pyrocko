@@ -1601,7 +1601,7 @@ class MyApp(QApplication):
         parser.add_option('--pattern', dest='pattern')
         parser.add_option('--ntracks', dest='ntracks', default=24)
         parser.add_option('--format', dest='format', default='from_extension', 
-                          choices=('mseed', 'sac', 'kan', 'from_extension', 'try'))
+                          choices=('mseed', 'sac', 'kan', 'segy', 'from_extension', 'try'))
         parser.add_option('--debug', dest='debug', action='store_true', default=False)
 
         options, args = parser.parse_args(list(args[0][1:]))

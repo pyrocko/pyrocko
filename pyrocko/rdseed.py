@@ -186,6 +186,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             ns_to_l[ns].add(nslc[2])
         
         
+        # make
+        
         rdseed_station_file = os.path.join(self.tempdir, 'rdseed.stations')
         
         f = open(rdseed_station_file, 'r')

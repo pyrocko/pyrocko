@@ -1,6 +1,6 @@
 
 import os
-import mseed, sac, kan
+import mseed, sac, kan, segy
 import trace
 from pyrocko.mseed_ext import MSeedError
 
@@ -41,6 +41,14 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
         tr = kanf.to_trace()
         tr.set_mtime(mtime)
         trs.append(tr)
+        
+    if format in ('segy',):
+        mtime = os.stat(filename)[8]
+        segyf = segy.SEGYFile(filename, get_data=getdata)
+        ftrs = segyf.get_traces()
+        for tr in ftrs:
+            tr.set_mtime(mtime)
+        trs.extend(ftrs)
     
     if format in ('sac', 'try'):
         mtime = os.stat(filename)[8]
@@ -63,8 +71,6 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
             
         except (OSError, MSeedError), e:
             raise FileLoadError(e)
-            
-   
     
     for tr in trs:
         make_substitutions(tr, substitutions)
