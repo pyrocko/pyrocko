@@ -97,8 +97,3 @@ class Geofon:
         
         return d
         
-
-
-catalog = Geofon()
-
-print catalog.get_event('gfz2010gtdx')
