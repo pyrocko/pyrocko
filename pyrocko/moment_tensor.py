@@ -71,7 +71,7 @@ def unique_euler( alpha, beta, gamma ):
     
 Put euler angles into ranges compatible with (dip,strike,-rake) in seismology:
     
-    alpha (dip)   : [0, pi/2)
+    alpha (dip)   : [0, pi/2]
     beta (strike) : [0, 2*pi)
     gamma (-rake) : [-pi, pi)
     
@@ -197,12 +197,18 @@ class MomentTensor:
                 
     def p_axis(self):
         '''Get direction of p axis.'''
-        return (self._m_eigenvecs.T)[ argmax(self._m_eigenvals) ]
+        return (self._m_eigenvecs.T)[0]
         
     def t_axis(self):
         '''Get direction of t axis.'''
-        return (self._m_eigenvecs.T)[ argmin(self._m_eigenvals) ]
-            
+        return (self._m_eigenvecs.T)[2]
+    
+    def null_axis(self):
+        return self._m_eigenvecs.T[1]
+    
+    def eigenvals(self):
+        return self._m_eigenvals
+    
     def both_slip_vectors(self):
         '''Get both possible slip directions.'''
         return  [rotmat*cvec(1.,0.,0.) for rotmat in self._rotmats ]   

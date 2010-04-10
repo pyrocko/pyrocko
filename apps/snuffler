@@ -601,6 +601,7 @@ class PileOverview(QWidget):
         self.picking_down = None
         self.picking = None
         self.floating_pick = None
+        self.picks = []
         self.ignore_releases = 0
         self.message = None
         self.reload_requested = False
@@ -768,6 +769,9 @@ class PileOverview(QWidget):
       
         self.trace_views = trace_views
         
+        self.old_vec = None
+        self.old_processed_traces = None
+        
         self.timer = QTimer( self )
         self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
         self.timer.setInterval(1000)
@@ -802,6 +806,9 @@ class PileOverview(QWidget):
         self.track_keys = sorted(keys, cmp=order)
         self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
         
+        inrange = lambda x,r: r[0] <= x and x < r[1]
+        self.trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
+    
     def set_time_range(self, tmin, tmax):
         self.tmin, self.tmax = tmin, tmax
         
@@ -1094,14 +1101,15 @@ class PileOverview(QWidget):
 
             if self.floating_pick:
                 self.floating_pick.draw(p, self.time_projection, vcenter_projection)
-
+            
+            for pick in self.picks:
+                pick.draw(p, self.time_projection, vcenter_projection)
+                
             primary_pen = QPen(QColor(*primary_color))
             p.setPen(primary_pen)
-            
-            trace_selector = lambda trace: self.key_to_row[self.gather(trace)] in track_projections
-            
+                        
             processed_traces = self.prepare_cutout(self.tmin, self.tmax, 
-                                                   trace_selector=trace_selector, 
+                                                   trace_selector=self.trace_selector, 
                                                    degap=self.menuitem_degap.isChecked())
             
             color_lookup = dict([ (k,i) for (i,k) in enumerate(self.color_keys) ])
@@ -1143,7 +1151,10 @@ class PileOverview(QWidget):
                         
                         if self.floating_pick:
                             self.floating_pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
-                            p.setPen(primary_pen)
+                            
+                        for pick in self.picks:
+                            pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                        p.setPen(primary_pen)
                             
                         if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
                         
@@ -1200,7 +1211,13 @@ class PileOverview(QWidget):
                         p.drawText( lx, ly, label )
 
     def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
-
+        
+        vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, self.min_deltat, self.rotate)
+        if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
+            return self.old_processed_traces
+        
+        self.old_vec = vec
+        
         if self.lowpass is not None:
             deltat_target = 1./self.lowpass * 0.25
             ndecimate = min(50, max(1, int(round(deltat_target / self.min_deltat))))
@@ -1282,7 +1299,7 @@ class PileOverview(QWidget):
                         a.set_ydata(aydata)
                         b.set_ydata(bydata)
                         
-                    
+        self.old_processed_traces = processed_traces
         return processed_traces
     
     def scalingbase_change(self, ignore):
@@ -1354,6 +1371,8 @@ class PileOverview(QWidget):
                 tmi = self.floating_pick.tmin
                 tma = self.floating_pick.tmax
                 print myctime(tmi), myctime(tma), tma-tmi
+                self.picks.append(self.floating_pick)
+            
             self.floating_pick = None
     
     

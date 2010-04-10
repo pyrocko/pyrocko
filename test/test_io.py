@@ -1,4 +1,4 @@
-from pyrocko import mseed, trace, util
+from pyrocko import mseed, trace, util, io
 import unittest
 import numpy as num
 import time
@@ -6,7 +6,7 @@ import tempfile
 import random
 from random import choice as rc
 from os.path import join as pjoin
-import os
+import os, sys
 
 abc = 'abcdefghijklmnopqrstuvwxyz' 
     
@@ -54,6 +54,13 @@ class IOTestCase( unittest.TestCase ):
         assert str(e).find('No SEED data detected') != -1
         os.remove(tempfn)
     
+    
+    def testReadSac(self):
+        
+        fn = os.path.join(sys.path[0], '2010.057.20.30.26.5356.IC.BJT.00.LHZ.R.SAC')
+        tr = io.load(fn, format='sac')[0]
+        assert tr.meta['cmpaz'] == 0.0
+        assert tr.meta['cmpinc'] == 0.0
 
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')

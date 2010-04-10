@@ -6,6 +6,8 @@ import struct, sys, logging, math, time
 from calendar import timegm
 from time import gmtime
 import numpy as num
+from util import reuse
+
 
 class SacError(Exception):
     pass
@@ -266,13 +268,24 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             
     def to_trace(self):
         
+        assert self.iftype == SacFile.header_name2num['itime']
+        assert self.leven == True
+        
         tmin = self.get_ref_time()
         tmax = tmin + self.delta*(self.npts-1)
         
         data =None
         if self.data:
             data = self.data[0]
-        
+            
+        meta = {}
+        exclude = ('b', 'e', 'knetwk', 'kstnm', 'khole', 'kcmpnm', 'delta', 'nzyear', 'nzjday', 'nzhour', 'nzmin', 'nzsec', 'nzmsec')
+        for k in SacFile.header_keys:
+            if k in exclude: continue
+            v = self.__dict__[k]
+            if v is not None:
+                meta[reuse(k)] = v
+                
         return trace.Trace(self.knetwk,
                                   self.kstnm,
                                   self.khole,
@@ -280,7 +293,8 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                                   tmin,
                                   tmax,
                                   self.delta,
-                                  data)
+                                  data,
+                                  meta=meta)
                         
 if __name__ == "__main__":
     print SacFile(sys.argv[1])
