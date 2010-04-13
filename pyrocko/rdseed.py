@@ -202,8 +202,12 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         icolcomp = 5
         
         stations = []
+        
         for cols in rows:
             for location in ns_to_l[cols[1],cols[0]]:    
+                
+                channels = [ model.Channel(x) for x in cols[icolcomp].split() ]
+
                 s = model.Station(
                     network = cols[1],
                     station = cols[0],
@@ -212,7 +216,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                     lon = float(cols[3]),
                     elevation = float(cols[4]),
                     name = cols[icolname],
-                    channels = set(cols[icolcomp].split())
+                    channels = channels
                 )
                 stations.append(s)
                 

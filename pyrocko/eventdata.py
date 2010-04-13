@@ -1,4 +1,4 @@
-import trace, util
+import trace, util, model
 
 import logging, copy
 import numpy as num

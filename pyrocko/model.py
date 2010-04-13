@@ -122,16 +122,20 @@ class Station:
         return '%s.%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.location, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)
 
 class Channel:
-    def __init__(self, name, azimuth, dip, gain=1.0):
+    def __init__(self, name, azimuth=None, dip=None, gain=1.0):
         self.name = name
         self.azimuth = azimuth
         self.dip = dip
         self.gain = gain
-        n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
-        e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
-        d = math.sin(self.dip*d2r)
-        self.ned = mkvec(n,e,d)
-        self.enu = mkvec(e,n,-d)
+        self.ned = None
+        self.enu = None
+        if azimuth is not None and dip is not None:
+            n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
+            e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
+            d = math.sin(self.dip*d2r)
+        
+            self.ned = mkvec(n,e,d)
+            self.enu = mkvec(e,n,-d)
 
 def load_kps_event_list(filename):
     elist =[]
