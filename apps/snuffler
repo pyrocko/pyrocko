@@ -1212,7 +1212,7 @@ class PileOverview(QWidget):
 
     def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
         
-        vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, self.min_deltat, self.rotate)
+        vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, self.min_deltat, self.rotate, self.shown_tracks_range)
         if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
             return self.old_processed_traces
         
