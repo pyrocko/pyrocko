@@ -80,6 +80,10 @@ class EventDataAccess:
         nslc_ids = pile.gather_keys( lambda tr: (tr.network, tr.station, tr.location, tr.channel) )
         
         for nslc in nslc_ids:
+            if nslc[:3] not in stations:
+                logger.warn('No station description for trace %s.%s.%s.%s' % nslc)
+                continue
+            
             sta = stations[nslc[:3]]
             sta.add_channel(  self._get_channel_description_from_file(nslc) )
    
@@ -114,12 +118,20 @@ class EventDataAccess:
         if rotate is not None:
             angles_func, rotation_mappings = rotate
             
-        for traces in self.get_pile().chopper_grouped(
+        for xtraces in self.get_pile().chopper_grouped(
                 gather=lambda tr: (tr.network, tr.station, tr.location),
                 group_selector=group_selector,
                 trace_selector=trace_selector,
                 progress='Processing traces'):
             
+            traces = []
+            for tr in xtraces:
+                nsl = tr.network, tr.station, tr.location
+                if nsl not in stations:
+                    logger.warn('No station description for trace %s.%s.%s.%s' % tr.nslc_id) 
+                    continue
+                traces.append(tr)
+                               
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
             
             traces = trace.degapper(traces)  # mainly to get rid if overlaps and duplicates
@@ -164,18 +176,19 @@ class EventDataAccess:
                     
                     displacements.append(displacement)
                 
-                if project:
-                    station = stations[tr.network, tr.station, tr.location]
+                if displacements:
+                    if project:
+                        station = stations[tr.network, tr.station, tr.location]
+                        
+                        matrix, in_channels, out_channels = project(station)
+                        projected = trace.project(displacements, matrix, in_channels, out_channels)
+                        displacements.extend(projected)
                     
-                    matrix, in_channels, out_channels = project(station)
-                    projected = trace.project(displacements, matrix, in_channels, out_channels)
-                    displacements.extend(projected)
-                
-                if rotate:
-                    angle = angles_func(tr)
-                    for in_channels, out_channels in rotation_mappings:
-                        rotated = trace.rotate(displacements, angle, in_channels, out_channels)
-                        displacements.extend(rotated)
+                    if rotate:
+                        angle = angles_func(tr)
+                        for in_channels, out_channels in rotation_mappings:
+                            rotated = trace.rotate(displacements, angle, in_channels, out_channels)
+                            displacements.extend(rotated)
                         
                 yield displacements
                 
