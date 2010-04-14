@@ -39,6 +39,7 @@ logger = logging.getLogger('pyrocko.pile_viewer')
 
 class Global:
     sacflag = False
+    appOnDemand = None
 
 gap_lap_tolerance = 5.
 
@@ -1624,6 +1625,39 @@ class PileViewer(QFrame):
         layout.addWidget( self.lowpass_widget, 2,0 )
         layout.addWidget( self.gain_widget, 3,0 )
         layout.addWidget( self.rot_widget, 4,0 )
+
+class SnufflerOnDemand(QApplication):
+    def __init__(self, *args):
+        apply(QApplication.__init__, (self,) + args)
+        self.windows = []
+        
+    def newViewer(self, pile, ntracks_shown_max=20):
+        self.pile_viewer = PileViewer(pile, ntracks_shown_max=ntracks_shown_max)
+        
+        if os.path.isfile('markers'):
+            markers = num.sort(num.loadtxt('markers'), axis=0)
+            self.pile_overview.set_markers( markers )
+        
+        win = QMainWindow()
+        win.setCentralWidget(self.pile_viewer)
+        win.setWindowTitle( "Snuffler %i" % (len(self.windows)+1) )        
+        win.show()
+        self.windows.append(win)
+
+        #sb = win.statusBar()
+        #sb.clearMessage()
+        #sb.showMessage('Welcome to Snuffler! Click and drag to zoom and pan. Doubleclick to pick. Right-click for Menu. <space> to step forward. <b> to step backward. <q> to close.')
+
+def snuffle(traces=None, filenames=None, pile=None):
+    if Global.appOnDemand is None:
+        Global.appOnDemand = SnufflerOnDemand([])
+    app = Global.appOnDemand
+    pile = pyrocko.pile.Pile()
+    app.newViewer( pile )
+    pile = pyrocko.pile.Pile()
+    
+    app.newViewer( pile )
+    app.exec_()
 
 def sac_exec():
     import readline, subprocess, atexit

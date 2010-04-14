@@ -21,13 +21,10 @@ from PyQt4.QtOpenGL import *
 #QWidget = QGLWidget
 
 class MySnuffler(QApplication):
-    """Puts it all together."""
     
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
         
-        self.apocalypse = False
-
         parser = OptionParser()
         parser.add_option('--pattern', dest='pattern')
         parser.add_option('--ntracks', dest='ntracks', default=24)
@@ -65,16 +62,15 @@ class MySnuffler(QApplication):
         sb.clearMessage()
         sb.showMessage('Welcome to Snuffler! Click and drag to zoom and pan. Doubleclick to pick. Right-click for Menu. <space> to step forward. <b> to step backward. <q> to close.')
 
+        self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
+        signal.signal(signal.SIGINT, self.myquit)
+
     def myquit(self, *args):
         self.quit()
     
 def main(args):
     
     app = MySnuffler(args)
-        
-    app.connect(app, SIGNAL("lastWindowClosed()"),
-                app.myquit)
-    signal.signal(signal.SIGINT, app.myquit)
     app.exec_()
     
     if pyrocko.pile_viewer.Global.sacflag: pyrocko.pile_viewer.sac_exec()
