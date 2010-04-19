@@ -1,7 +1,7 @@
 import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging, time
+import os, pickle, logging, time, weakref
 import cPickle as pickle
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
@@ -267,6 +267,75 @@ class TracesGroup(object):
             self.nslc_ids = reuse(tuple(self.nslc_ids))
             self.have_tuples = True
             
+class MemTracesFile(TracesGroup):
+    def __init__(self, traces):
+        self.traces = traces
+        self.update(self.traces)
+        
+    def load_headers(self, mtime=None):
+        pass
+        
+    def load_data(self):
+        pass
+        
+    def use_data(self):
+        pass
+        
+    def drop_data(self):
+        pass
+        
+    def reload_if_modified(self):
+        pass
+        
+    def chop(self,tmin,tmax,trace_selector=None):
+        chopped = []
+        used = False
+        needed = [ tr for tr in self.traces if not trace_selector or trace_selector(tr) ]
+                
+        if needed:
+            used = True
+            for tr in self.traces:
+                if not trace_selector or trace_selector(tr):
+                    try:
+                        chopped.append(tr.chop(tmin,tmax,inplace=False))
+                    except trace.NoData:
+                        pass
+            
+        return chopped, used
+        
+    def get_deltats(self):
+        deltats = set()
+        for trace in self.traces:
+            deltats.add(trace.deltat)
+            
+        return deltats
+    
+    def iter_traces(self):
+        for trace in self.traces:
+            yield trace
+    
+    def gather_keys(self, gather):
+        keys = set()
+        for trace in self.traces:
+            keys.add(gather(trace))
+            
+        return keys
+    
+    def __str__(self):
+        def sl(s):
+            return sorted(list(s))
+        
+        s = 'MemTracesFile\n'
+        s += 'abspath: %s\n' % self.abspath
+        s += 'file mtime: %s\n' % util.gmctime(self.mtime)
+        s += 'number of traces: %i\n' % len(self.traces)
+        s += 'timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
+        s += 'networks: %s\n' % ', '.join(sl(self.networks))
+        s += 'stations: %s\n' % ', '.join(sl(self.stations))
+        s += 'locations: %s\n' % ', '.join(sl(self.locations))
+        s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        return s
+
 class TracesFile(TracesGroup):
     def __init__(self, abspath, format, substitutions=None, mtime=None):
         self.abspath = abspath
@@ -481,6 +550,18 @@ class Pile(TracesGroup):
         self.subpiles = {}
         self.update(self.subpiles)
         self.open_files = set()
+        self.listeners = []
+        
+    def add_listener(self, obj):
+        self.listeners.append(weakref.ref(obj))
+    
+    def notify_listeners(self, what):
+        for ref in self.listeners:
+            print 'x'
+            obj = ref()
+            if obj:
+                print 'y'
+                obj.pile_changed(what)
     
     def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None):
         modified_subpiles = set()
@@ -491,16 +572,19 @@ class Pile(TracesGroup):
                 modified_subpiles.add(subpile)
                 
         self.update(modified_subpiles, empty=False)
+        self.notify_listeners('add')
         
     def add_file(self, file):
         subpile = self.dispatch(file)
         subpile.add_file(file)
         self.update((file,), empty=False)
+        self.notify_listeners('add')
     
     def remove_file(self, file):
         subpile = self.dispatch(file)
         subpile.remove_file(file)
         self.update(self.subpiles)
+        self.notify_listeners('remove')
         
     def dispatch_key(self, file):
         tt = time.gmtime(file.tmin)
@@ -542,7 +626,7 @@ class Pile(TracesGroup):
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
                       want_incomplete=True, degap=True, keep_current_files_open=False):
-        
+        print tmin, tmax
         if tmin is None:
             tmin = self.tmin+tpad
                 
@@ -555,7 +639,7 @@ class Pile(TracesGroup):
         if not self.is_relevant(tmin-tpad,tmax+tpad,group_selector): return
         
         iwin = 0
-        
+        print tinc
         while True:
             chopped = []
             wmin, wmax = tmin+iwin*tinc, tmin+(iwin+1)*tinc
@@ -568,6 +652,8 @@ class Pile(TracesGroup):
             self.open_files.update(used_files)
             
             processed = self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
+            print wmin, wmax
+
             yield processed
             
             unused_files = self.open_files - used_files

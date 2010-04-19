@@ -777,11 +777,19 @@ class PileOverview(QWidget):
         self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
         self.timer.setInterval(1000)
         self.timer.start()
+        self.pile.add_listener(self)
         
     def periodical(self):
         if self.menuitem_watch.isChecked():
             self.update()
 
+    def get_pile(self):
+        return self.pile
+    
+    def pile_changed(self, what):
+        print 'xxxxxxxxxxxxxx'
+        self.sortingmode_change()
+        
     def get_neic_events(self):
         self.set_markers(neic_earthquakes(self.pile.tmin, self.pile.tmax, magnitude_range=(5.,9.9)))
 
@@ -1247,7 +1255,6 @@ class PileOverview(QWidget):
                                              want_incomplete=True,
                                              degap=degap,
                                              keep_current_files_open=True, trace_selector=trace_selector ):
-                
                 for trace in traces:
                     
                     if self.lowpass is not None:
@@ -1283,7 +1290,14 @@ class PileOverview(QWidget):
                     if len(trace.get_ydata()) < 2: continue
                     
                     processed_traces.append(trace)
-    
+            
+            print QThread.currentThread()
+            
+            if len(processed_traces) > 1:
+                print 'ggg', len(processed_traces)
+                print 'hhh', tmin, tmax, tpad 
+                
+            
         if self.rotate != 0.0:
             phi = self.rotate/180.*math.pi
             cphi = math.cos(phi)
@@ -1313,7 +1327,7 @@ class PileOverview(QWidget):
             if menuitem.isChecked():
                 self.scaling_key = scaling_key
 
-    def sortingmode_change(self, ignore):
+    def sortingmode_change(self, ignore=None):
         for menuitem, (gather, order, color) in self.menuitems_sorting:
             if menuitem.isChecked():
                 self.set_gathering(gather, order, color)
@@ -1625,40 +1639,63 @@ class PileViewer(QFrame):
         layout.addWidget( self.lowpass_widget, 2,0 )
         layout.addWidget( self.gain_widget, 3,0 )
         layout.addWidget( self.rot_widget, 4,0 )
+    
+    def get_pile(self):
+        return self.pile_overview.get_pile()
 
-class SnufflerOnDemand(QApplication):
+from forked import Forked
+class SnufflerOnDemand(QApplication, Forked):
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
+        Forked.__init__(self, flipped=True)
+        self.timer = QTimer( self )
+        self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
+        self.timer.setInterval(1000)
+        self.timer.start()
+        self.caller_has_quit = False
+        self.viewers = []
         self.windows = []
+        pile = pyrocko.pile.Pile()
+        self.new_viewer(pile)
         
-    def newViewer(self, pile, ntracks_shown_max=20):
-        self.pile_viewer = PileViewer(pile, ntracks_shown_max=ntracks_shown_max)
+    def dispatch(self, command, args, kwargs):
+        method = getattr(self, command)
+        method(*args, **kwargs)
         
-        if os.path.isfile('markers'):
-            markers = num.sort(num.loadtxt('markers'), axis=0)
-            self.pile_overview.set_markers( markers )
+    def add_traces(self, traces, iviewer=0):
+        pile = self.viewers[iviewer].get_pile()
+        memfile = pyrocko.pile.MemTracesFile(traces)
+        print 'adding'
+        pile.add_file(memfile)
         
+    def periodical(self):
+        if not self.caller_has_quit:
+            self.caller_has_quit = not self.process()
+            
+    def new_viewer(self, pile, ntracks_shown_max=20):
+        pile_viewer = PileViewer(pile, ntracks_shown_max=ntracks_shown_max)
         win = QMainWindow()
-        win.setCentralWidget(self.pile_viewer)
-        win.setWindowTitle( "Snuffler %i" % (len(self.windows)+1) )        
+        win.setCentralWidget(pile_viewer)
+        win.setWindowTitle( "Snuffler %i" % (len(self.viewers)+1) )        
         win.show()
+        self.viewers.append(pile_viewer)
         self.windows.append(win)
-
-        #sb = win.statusBar()
-        #sb.clearMessage()
-        #sb.showMessage('Welcome to Snuffler! Click and drag to zoom and pan. Doubleclick to pick. Right-click for Menu. <space> to step forward. <b> to step backward. <q> to close.')
+        
+    def run(self):
+        self.exec_()
+    
 
 def snuffle(traces=None, filenames=None, pile=None):
-    if Global.appOnDemand is None:
-        Global.appOnDemand = SnufflerOnDemand([])
-    app = Global.appOnDemand
-    pile = pyrocko.pile.Pile()
-    app.newViewer( pile )
-    pile = pyrocko.pile.Pile()
+    pile = pyrocko.pile.Pile()    
     
-    app.newViewer( pile )
-    app.exec_()
-
+    if Global.appOnDemand is None:
+        app = Global.appOnDemand = SnufflerOnDemand([])
+        
+    app = Global.appOnDemand
+    if traces is not None:
+        print app.call('add_traces', traces)
+    
+    
 def sac_exec():
     import readline, subprocess, atexit
     sac = subprocess.Popen(['sac'], stdin=subprocess.PIPE)

@@ -32,19 +32,68 @@ def fill_orthogonal(enus):
 
 # simple flat datatypes until I have a better idea
 
+class FileParseError(Exception):
+    pass
+
 class Event:
-    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None):
-        self.lat = lat
-        self.lon = lon
-        self.time = time
-        self.name = name
-        self.depth = depth
-        self.magnitude = magnitude
-        self.region = region
-        
+    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None):
+        if load is not None:
+            self.load(load)
+        else:
+            self.lat = lat
+            self.lon = lon
+            self.time = time
+            self.name = name
+            self.depth = depth
+            self.magnitude = magnitude
+            self.region = region
+            
     def __str__(self):
-        return '%s %s %g %g %g %g %s' % (self.name, util.gmctime(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
+        return '%s %s %s %g %g %s %s' % (self.name, util.gmctime(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
                 
+    def dump(self, filename):
+        f = open(filename, 'w')
+        f.write('name = %s\n' % self.name)
+        f.write('time = %s\n' % util.gmctime(self.time))
+        f.write('latitude = %g\n' % self.lat)
+        f.write('longitude = %g\n' % self.lon)
+        if self.magnitude is not None:
+            f.write('magnitude = %g\n' % self.magnitude)
+        if self.depth is not None:
+            f.write('depth = %g\n' % self.depth)
+        if self.region is not None:
+            f.write('region = %s\n' % self.region)
+        f.close()
+        
+    def load(self, filename):
+        f = open(filename, 'r')
+        d = {}
+        try:
+            for line in f:
+                toks = line.split(' = ',1)
+                if len(toks) == 2:
+                    k,v = toks[0].strip(), toks[1].strip()
+                    if k in ('name', 'region'):
+                        d[k] = v
+                    if k in ('latitude', 'longitude', 'magnitude', 'depth'):
+                        d[k] = float(v)
+                    if k == 'time':
+                        d[k] = util.ctimegm(v[:19])
+                        
+        except Exception, e:
+            raise FileParseError(e)
+        finally:
+            f.close()
+            
+        self.lat = d.get('latitude', 0.0)
+        self.lon = d.get('longitude', 0.0)
+        self.time = d.get('time', 0.0)
+        self.name = d.get('name', '')
+        self.depth = d.get('depth', None)
+        self.magnitude = d.get('magnitude', None)
+        self.region = d.get('region', None)
+        
+
 class Station:
     def __init__(self, network, station, location, lat, lon, elevation, depth=None, name='', channels=None):
         self.network = network
@@ -122,16 +171,20 @@ class Station:
         return '%s.%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.location, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)
 
 class Channel:
-    def __init__(self, name, azimuth, dip, gain=1.0):
+    def __init__(self, name, azimuth=None, dip=None, gain=1.0):
         self.name = name
         self.azimuth = azimuth
         self.dip = dip
         self.gain = gain
-        n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
-        e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
-        d = math.sin(self.dip*d2r)
-        self.ned = mkvec(n,e,d)
-        self.enu = mkvec(e,n,-d)
+        self.ned = None
+        self.enu = None
+        if azimuth is not None and dip is not None:
+            n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
+            e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
+            d = math.sin(self.dip*d2r)
+        
+            self.ned = mkvec(n,e,d)
+            self.enu = mkvec(e,n,-d)
 
 def load_kps_event_list(filename):
     elist =[]
@@ -162,3 +215,5 @@ def load_gfz_event_list(filename):
         
     f.close()
     return elist
+
+    
