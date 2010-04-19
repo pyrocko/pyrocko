@@ -63,16 +63,14 @@ class EventDataAccess:
             self._stations = {}
             for station in self._get_stations_from_file():
                 self._stations[station.network, station.station, station.location] = station
-                
+            self._insert_channel_descriptions(self._stations)
+        
         stations = copy.deepcopy(self._stations)
         
         if relative_event is not None:
-            
             for s in stations.values():
                 s.set_event_relative_data(relative_event)
                 
-        self._insert_channel_descriptions(stations)
-        
         return stations
         
     def _insert_channel_descriptions(self, stations):
