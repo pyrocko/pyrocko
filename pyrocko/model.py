@@ -48,6 +48,9 @@ class Event:
             self.magnitude = magnitude
             self.region = region
             
+    def time_as_string(self):
+        return util.gmctime(self.time)
+    
     def __str__(self):
         return '%s %s %s %g %g %s %s' % (self.name, util.gmctime(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
                 
