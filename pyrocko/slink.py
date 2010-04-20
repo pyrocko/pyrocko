@@ -45,20 +45,9 @@ class SlowSlink:
                     deltat = 1.0/rate
                     net, sta, loc, cha = nslc
                     
-                    trace.Trace(network=net, station=sta, location=loc, channel=cha, tmin=tstamp, deltat=deltat, ydata=num.array(self.vals))
+                    tr = trace.Trace(network=net, station=sta, location=loc, channel=cha, tmin=tstamp, deltat=deltat, ydata=num.array(self.vals))
                     
-                    if nslc not in self.traces:
-                        self.traces[nslc] = trace.Trace(network=net, station=sta, location=loc, channel=cha, tmin=tstamp, deltat=deltat, ydata=num.array(self.vals))
-                        self.trace_add(self.traces[nslc])
-                    else:
-                        tr = self.traces[nslc]
-                        if abs((tr.tmax+deltat) - tstamp) < 1.0e-3*deltat:
-                            tr.append(num.array(self.vals))
-                            self.trace_update(tr)
-                        else:
-                            self.trace_done(tr)
-                            self.traces[nslc] = trace.Trace(network=net, station=sta, location=loc, channel=cha, tmin=tstamp, deltat=deltat, ydata=num.array(self.vals))
-                            self.trace_add(self.traces[nslc])
+                    
                             
                     self.vals = []
                     self.header = None
