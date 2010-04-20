@@ -557,10 +557,8 @@ class Pile(TracesGroup):
     
     def notify_listeners(self, what):
         for ref in self.listeners:
-            print 'x'
             obj = ref()
             if obj:
-                print 'y'
                 obj.pile_changed(what)
     
     def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None):
@@ -626,7 +624,7 @@ class Pile(TracesGroup):
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
                       want_incomplete=True, degap=True, keep_current_files_open=False):
-        print tmin, tmax
+        
         if tmin is None:
             tmin = self.tmin+tpad
                 
@@ -639,11 +637,11 @@ class Pile(TracesGroup):
         if not self.is_relevant(tmin-tpad,tmax+tpad,group_selector): return
         
         iwin = 0
-        print tinc
         while True:
             chopped = []
             wmin, wmax = tmin+iwin*tinc, tmin+(iwin+1)*tinc
-            if wmin >= tmax: break
+            eps = tinc*1e-6
+            if wmin >= tmax-eps: break
             chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector) 
             for file in used_files - self.open_files:
                 # increment datause counter on newly opened files
@@ -652,8 +650,6 @@ class Pile(TracesGroup):
             self.open_files.update(used_files)
             
             processed = self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
-            print wmin, wmax
-
             yield processed
             
             unused_files = self.open_files - used_files
@@ -668,7 +664,8 @@ class Pile(TracesGroup):
             while self.open_files:
                 file = self.open_files.pop()
                 file.drop_data()
-            
+        
+        
         
     def all(self, *args, **kwargs):
         alltraces = []
