@@ -787,7 +787,6 @@ class PileOverview(QWidget):
         return self.pile
     
     def pile_changed(self, what):
-        print 'xxxxxxxxxxxxxx'
         self.sortingmode_change()
         
     def get_neic_events(self):
@@ -1221,7 +1220,9 @@ class PileOverview(QWidget):
 
     def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
         
-        vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, self.min_deltat, self.rotate, self.shown_tracks_range)
+        vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, 
+               self.min_deltat, self.rotate, self.shown_tracks_range, 
+               self.menuitem_allowdownsampling.isChecked())
         if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
             return self.old_processed_traces
         
@@ -1290,13 +1291,6 @@ class PileOverview(QWidget):
                     if len(trace.get_ydata()) < 2: continue
                     
                     processed_traces.append(trace)
-            
-            print QThread.currentThread()
-            
-            if len(processed_traces) > 1:
-                print 'ggg', len(processed_traces)
-                print 'hhh', tmin, tmax, tpad 
-                
             
         if self.rotate != 0.0:
             phi = self.rotate/180.*math.pi
@@ -1665,7 +1659,6 @@ class SnufflerOnDemand(QApplication, Forked):
     def add_traces(self, traces, iviewer=0):
         pile = self.viewers[iviewer].get_pile()
         memfile = pyrocko.pile.MemTracesFile(traces)
-        print 'adding'
         pile.add_file(memfile)
         
     def periodical(self):
