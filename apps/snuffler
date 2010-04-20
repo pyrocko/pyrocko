@@ -17,8 +17,6 @@ import pyrocko.pile_viewer
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-from PyQt4.QtOpenGL import *
-#QWidget = QGLWidget
 
 class MySnuffler(QApplication):
     

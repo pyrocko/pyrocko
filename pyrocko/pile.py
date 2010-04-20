@@ -548,7 +548,7 @@ class SubPile(TracesGroup):
 class Pile(TracesGroup):
     def __init__(self, ):
         self.subpiles = {}
-        self.update(self.subpiles)
+        self.update(self.subpiles.values())
         self.open_files = set()
         self.listeners = []
         
@@ -581,7 +581,7 @@ class Pile(TracesGroup):
     def remove_file(self, file):
         subpile = self.dispatch(file)
         subpile.remove_file(file)
-        self.update(self.subpiles)
+        self.update(self.subpiles.values())
         self.notify_listeners('remove')
         
     def dispatch_key(self, file):
@@ -750,7 +750,7 @@ class Pile(TracesGroup):
             modified |= subpile.reload_modified()
         
         if modified:
-            self.update(self.subpiles)
+            self.update(self.subpiles.values())
             
         return modified
             
