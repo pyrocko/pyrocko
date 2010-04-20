@@ -191,7 +191,8 @@ def loader(filenames, fileformat, cache, filename_attributes):
         cache.dump_modified()
 
 class TracesGroup(object):
-    def __init__(self):
+    def __init__(self, parent):
+        self.parent = parent
         self.empty()
     
     def empty(self):
@@ -268,7 +269,8 @@ class TracesGroup(object):
             self.have_tuples = True
             
 class MemTracesFile(TracesGroup):
-    def __init__(self, traces):
+    def __init__(self, parent, traces):
+        TracesGroup.__init__(self, parent)
         self.traces = traces
         self.update(self.traces)
         
@@ -337,7 +339,8 @@ class MemTracesFile(TracesGroup):
         return s
 
 class TracesFile(TracesGroup):
-    def __init__(self, abspath, format, substitutions=None, mtime=None):
+    def __init__(self, parent, abspath, format, substitutions=None, mtime=None):
+        TracesGroup.__init__(self, parent)
         self.abspath = abspath
         self.format = format
         self.traces = []
@@ -458,7 +461,8 @@ class FilenameAttributeError(Exception):
     pass
 
 class SubPile(TracesGroup):
-    def __init__(self):
+    def __init__(self, parent):
+        TracesGroup.__init__(self, parent)
         self.files = []
         self.empty()
     
@@ -546,7 +550,8 @@ class SubPile(TracesGroup):
 
              
 class Pile(TracesGroup):
-    def __init__(self, ):
+    def __init__(self):
+        TracesGroup.__init__(self, None)
         self.subpiles = {}
         self.update(self.subpiles.values())
         self.open_files = set()
