@@ -116,13 +116,21 @@ class TracesFileCache(object):
         return cache
         
     def _dump_dircache(self, cache, cachefilename):
+        
         if not cache:
             if os.path.exists(cachefilename):
                 os.remove(cachefilename)
-            return            
+            return
+        
+        # make a copy without the parents
+        cache_copy = {}
+        for fn in cache.keys():
+            cache_copy[fn] = copy.copy(cache[fn])
+            cache_copy[fn].parent = None
+        
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
         f = open(tmpfn, 'w')
-        pickle.dump(cache, f)
+        pickle.dump(cache_copy, f)
         f.close()
         os.rename(tmpfn, cachefilename)
 
@@ -171,7 +179,7 @@ def loader(filenames, fileformat, cache, filename_attributes):
                 tfile = cache.get(abspath)
             
             if not tfile or tfile.mtime != mtime or substitutions:
-                tfile = TracesFile(abspath, fileformat, substitutions=substitutions, mtime=mtime)
+                tfile = TracesFile(None, abspath, fileformat, substitutions=substitutions, mtime=mtime)
                 if cache and not substitutions:
                     cache.put(abspath, tfile)
                 
@@ -194,6 +202,12 @@ class TracesGroup(object):
     def __init__(self, parent):
         self.parent = parent
         self.empty()
+    
+    def set_parent(self, parent):
+        self.parent = parent
+    
+    def get_parent(self):
+        return self.parent
     
     def empty(self):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
@@ -468,10 +482,12 @@ class SubPile(TracesGroup):
     
     def add_file(self, file):
         self.files.append(file)
+        file.set_parent(self)
         self.update((file,), empty=False)
         
     def remove_file(self, file):
         self.files.remove(file)
+        file.set_parent(None)
         self.update(self.files)
     
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
@@ -596,7 +612,7 @@ class Pile(TracesGroup):
     def dispatch(self, file):
         k = self.dispatch_key(file)
         if k not in self.subpiles:
-            self.subpiles[k] = SubPile()
+            self.subpiles[k] = SubPile(self)
             
         return self.subpiles[k]
         

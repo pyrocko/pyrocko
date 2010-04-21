@@ -1658,7 +1658,7 @@ class SnufflerOnDemand(QApplication, Forked):
         
     def add_traces(self, traces, iviewer=0):
         pile = self.viewers[iviewer].get_pile()
-        memfile = pyrocko.pile.MemTracesFile(traces)
+        memfile = pyrocko.pile.MemTracesFile(None, traces)
         pile.add_file(memfile)
         
     def periodical(self):
