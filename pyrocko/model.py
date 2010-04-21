@@ -69,19 +69,20 @@ class Event:
         f = open(filename, 'r')
         d = {}
         try:
-            for line in f:
-                toks = line.split(' = ',1)
-                if len(toks) == 2:
-                    k,v = toks[0].strip(), toks[1].strip()
-                    if k in ('name', 'region'):
-                        d[k] = v
-                    if k in ('latitude', 'longitude', 'magnitude', 'depth'):
-                        d[k] = float(v)
-                    if k == 'time':
-                        d[k] = util.ctimegm(v[:19])
+            try:
+                for line in f:
+                    toks = line.split(' = ',1)
+                    if len(toks) == 2:
+                        k,v = toks[0].strip(), toks[1].strip()
+                        if k in ('name', 'region'):
+                            d[k] = v
+                        if k in ('latitude', 'longitude', 'magnitude', 'depth'):
+                            d[k] = float(v)
+                        if k == 'time':
+                            d[k] = util.ctimegm(v[:19])
                         
-        except Exception, e:
-            raise FileParseError(e)
+            except Exception, e:
+                raise FileParseError(e)
         finally:
             f.close()
             
@@ -166,6 +167,9 @@ class Station:
 
     def projection_to_ned(self, in_channels, out_channels=('N', 'E', 'D'), **kwargs):
         return self._projection_to('ned', in_channels, out_channels, **kwargs)
+        
+    def nsl_string(self):
+        return '.'.join((self.network, self.station, self.location))
         
     def __str__(self):
         return '%s.%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.location, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)

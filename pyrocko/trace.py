@@ -443,16 +443,17 @@ class SampledResponse(FrequencyResponse):
         self.right = right
         
     def evaluate(self, freqs):
-        eabs = num.interp(freqs, self.freqs, num.abs(self.vals), left=self.left, right=self.right)
-        ephase = num.interp(freqs, self.freqs, num.angle(self.vals), left=self.left, right=self.right)
-        return eabs * (num.cos(ephase) + 1.0j*num.sin(ephase))
+        ereal = num.interp(freqs, self.freqs, num.real(self.vals), left=self.left, right=self.right)
+        eimag = num.interp(freqs, self.freqs, num.imag(self.vals), left=self.left, right=self.right)
+        transfer = ereal + 1.0j*eimag
+        return transfer
     
 class IntegrationResponse(FrequencyResponse):
     def __init__(self, gain=1.0):
         self._gain = gain
         
     def evaluate(self, freqs):
-        return (self._gain/(1.0j * 2. * num.pi)) / freqs
+        return self._gain/(1.0j * 2. * num.pi*freqs)
 
 class DifferentiationResponse(FrequencyResponse):
     def __init__(self, gain=1.0):
