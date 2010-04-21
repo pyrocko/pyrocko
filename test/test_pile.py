@@ -28,7 +28,7 @@ class PileTestCase( unittest.TestCase ):
         import tempfile, shutil
         config.show_progress = False
         nfiles = 200
-        nsamples = 100000
+        nsamples = 1000
 
         abc = 'abcdefghijklmnopqrstuvwxyz' 
     
@@ -76,7 +76,17 @@ class PileTestCase( unittest.TestCase ):
         pile.get_cache(cachedir).clean()
         shutil.rmtree(datadir)
     
-
+    def testMemTracesFile(self):
+        tr = trace.Trace(ydata=num.arange(100,dtype=num.float))
+        
+        f = pile.MemTracesFile([tr])
+        p = pile.Pile()
+        p.add_file(f)
+        for tr in p.iter_all():
+            print tr.ydata
+            assert( tr.ydata == num.arange(100, dtype=num.float) )
+        
+        
 if __name__ == "__main__":
     util.setup_logging('test_pile', 'warning')
     unittest.main()
