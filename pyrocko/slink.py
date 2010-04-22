@@ -44,11 +44,8 @@ class SlowSlink:
                     nslc, nsamples, rate, tstamp = self.header
                     deltat = 1.0/rate
                     net, sta, loc, cha = nslc
-                    
                     tr = trace.Trace(network=net, station=sta, location=loc, channel=cha, tmin=tstamp, deltat=deltat, ydata=num.array(self.vals))
-                    
-                    
-                            
+                    self.got_trace(tr)
                     self.vals = []
                     self.header = None
         return True

@@ -1,7 +1,7 @@
 import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging, time, weakref
+import os, pickle, logging, time, weakref, copy
 import cPickle as pickle
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
@@ -202,6 +202,7 @@ class TracesGroup(object):
     def __init__(self, parent):
         self.parent = parent
         self.empty()
+        self.nupdates = 0
     
     def set_parent(self, parent):
         self.parent = parent
@@ -243,7 +244,24 @@ class TracesGroup(object):
         if empty:    
             self._convert_small_sets_to_tuples()
         
-           
+        self.nupdates += 1
+    
+    def notify_listeners(self, what):
+        pass
+    
+    def recursive_grow_update(self, content=None):
+        
+        if content is not None:
+            self.update(content, empty=False)
+        
+        if self.parent is not None:
+            self.parent.recursive_grow_update((self,))
+            
+        self.notify_listeners('update')
+                        
+    def get_update_count(self):
+        return self.nupdates
+    
     def overlaps(self, tmin,tmax):
         #return not (tmax < self.tmin or self.tmax < tmin)
         return tmax >= self.tmin and self.tmax >= tmin
@@ -635,11 +653,11 @@ class Pile(TracesGroup):
         if not want_incomplete:
             wlen = (wmax+tpad)-(wmin-tpad)
             chopped_weeded = []
-            for trace in chopped:
-                if abs(wlen - round(wlen/trace.deltat)*trace.deltat) > 0.001:
-                    logging.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, trace.deltat) )
-                if len(trace.ydata) == t2ind((wmax+tpad)-(wmin-tpad), trace.deltat):
-                    chopped_weeded.append(trace)
+            for tr in chopped:
+                if abs(wlen - round(wlen/tr.deltat)*tr.deltat) > 0.001:
+                    logging.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, tr.deltat) )
+                if len(tr.ydata) == trace.t2ind((wmax+tpad)-(wmin-tpad), tr.deltat):
+                    chopped_weeded.append(tr)
             chopped = chopped_weeded
         return chopped
             

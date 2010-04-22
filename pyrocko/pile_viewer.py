@@ -1010,7 +1010,7 @@ class PileOverview(QWidget):
         
     def paintEvent(self, paint_ev ):
         """Called by QT whenever widget needs to be painted"""
-        
+        print 'xxxxx'
         painter = QPainter(self)
 
         if self.menuitem_antialias.isChecked():
@@ -1220,11 +1220,14 @@ class PileOverview(QWidget):
 
     def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
         
+        print self.pile.get_update_count()
+        
         vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, 
-               self.min_deltat, self.rotate, self.shown_tracks_range, 
-               self.menuitem_allowdownsampling.isChecked())
-        if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
-            return self.old_processed_traces
+               self.min_deltat, self.rotate, self.shown_tracks_range,
+               self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
+               
+        #if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
+        #    return self.old_processed_traces
         
         self.old_vec = vec
         
