@@ -29,8 +29,9 @@ class SlowSlink:
         toks = line.split(', ')
         if len(toks) != 1:
             nslc = tuple(toks[0].split('_'))
+            if len(nslc) == 3: nslc = nslc[0], nslc[1], '', nslc[2]
             nsamples = int(toks[1].split()[0])
-            rate = int(toks[2].split()[0])
+            rate = float(toks[2].split()[0])
             st,sms = toks[3].split()[0].split('.')
             us = int(sms)
             tstamp = calendar.timegm(time.strptime(st,'%Y,%j,%H:%M:%S'))+us*0.000001
