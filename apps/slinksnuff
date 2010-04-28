@@ -1,0 +1,173 @@
+#!/usr/bin/env python
+
+'''Effective MiniSEED trace viewer.'''
+
+# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
+#
+# This file is part of snuffler. For licensing information please see the file 
+# COPYING which is included with snuffler.
+
+import os, sys, signal, logging
+import numpy as num
+from optparse import OptionParser
+
+import pyrocko.pile
+import pyrocko.util
+import pyrocko.pile_viewer
+import pyrocko.slink
+
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
+
+logger = logging.getLogger('pyrocko.slinksnuff')
+
+class QSynchronizedSlink(pyrocko.slink.SlowSlink):
+    
+    def __init__(self, host, port=18000):
+        pyrocko.slink.SlowSlink.__init__(self, host, port)
+        self.mutex = QMutex()
+        self.queue = []
+    
+    def run(self):
+        pass
+ 
+    def got_trace(self, tr):
+        self.mutex.lock()
+        self.queue.append(tr)
+        self.mutex.unlock()
+    
+    def poll(self):
+        self.mutex.lock()
+        items = self.queue[:]
+        self.queue[:] = []
+        self.mutex.unlock()
+        return items
+    
+class QSlinkThread(QThread):
+    def __init__(self, host='localhost', port=18000):
+        QThread.__init__(self)
+        self.slink = QSynchronizedSlink(host, port=port)
+    
+    def get_slink(self):
+        return self.slink
+    
+    def run(self):
+        self.slink.start()
+        while self.slink.sun_is_shining():
+            self.slink.process()
+            
+    def stop(self):
+        self.sun_is_shining = False
+        self.slink.stop()
+        logger.debug("Waiting for thread to terminate...")
+        self.wait()
+        logger.debug("Thread has terminated.")
+ 
+class SlinkSnuffler(QApplication):
+    
+    def __init__(self, *args):
+        apply(QApplication.__init__, (self,) + args)
+        
+        parser = OptionParser()
+        parser.add_option('--ntracks', dest='ntracks', default=24)
+        parser.add_option('--debug', dest='debug', action='store_true', default=False)
+        parser.add_option('--streams', dest='streams', default='GE.WLF..BHZ')
+        parser.add_option('--host', dest='host', default='geofon.gfz-potsdam.de')
+        parser.add_option('--port', dest='port', default='18000')
+
+        options, args = parser.parse_args(list(args[0][1:]))
+        
+        if options.debug:
+            pyrocko.util.setup_logging('snuffler', 'debug')
+        else:
+            pyrocko.util.setup_logging('snuffler', 'warning')
+        
+        pile = pyrocko.pile.Pile()
+        self.pile_viewer = pyrocko.pile_viewer.PileViewer(pile, ntracks_shown_max=options.ntracks)
+        
+        self.win = QMainWindow()
+        self.win.setWindowTitle( "Snuffler" )        
+        self.win.setCentralWidget( self.pile_viewer )
+        self.win.show()
+
+        sb = self.win.statusBar()
+        sb.clearMessage()
+        sb.showMessage('Welcome to Snuffler! Click and drag to zoom and pan. Doubleclick to pick. Right-click for Menu. <space> to step forward. <b> to step backward. <q> to close.')
+
+        self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
+        signal.signal(signal.SIGINT, self.myquit)
+
+        self.slt = QSlinkThread(host=options.host, port=options.port)
+        slink = self.slt.get_slink()
+       
+        streams = slink.query_streams()
+       
+        for stream in streams:
+            if stream[0] == 'GE' and stream[3] == 'BHZ':
+                slink.add_stream(*stream) 
+       
+        for nslc in options.streams.split(','):
+            slink.add_stream(*nslc.split('.'))
+        
+        for arg in args:
+            slink.add_raw_stream_selector(arg)
+        
+        
+        self.timer = QTimer( self )
+        self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
+        self.timer.setInterval(1000)
+        self.timer.start()
+        
+        self.traces = {}
+        self.traces_to_files = {}
+        
+        self.slt.start()
+        
+    def periodical(self):
+        if self.slt.get_slink().sun_is_shining():
+            traces = self.slt.get_slink().poll()
+            for tr in traces:
+                self.got_trace(tr)
+    
+    def got_trace(self, tr):
+        nslc = tr.nslc_id
+        trnew = False
+        if nslc in self.traces:
+            trbuf = self.traces[nslc]
+            
+            if (abs((trbuf.tmax+trbuf.deltat) - tr.tmin) < 1.0e-3*trbuf.deltat and 
+                        trbuf.ydata.dtype == tr.ydata.dtype and
+                        trbuf.deltat == tr.deltat  ):
+                
+                trbuf.append(tr.ydata)
+                tr = trbuf
+            else:
+                trnew = True
+        else:
+            trnew = True
+            
+        if trnew:
+            self.traces[nslc] = tr
+            memfile = pyrocko.pile.MemTracesFile(None,[tr])
+            p = self.pile_viewer.get_pile()
+            p.add_file(memfile)
+            self.traces_to_files[tr] = memfile
+        
+        self.traces_to_files[tr].recursive_grow_update([tr])
+        
+        self.pile_viewer.pile_overview.update()
+        
+    def myquit(self, *args):
+        self.slt.stop()
+        self.quit()
+    
+def main(args):
+    
+    app = SlinkSnuffler(args)
+    app.exec_()
+    
+    if pyrocko.pile_viewer.Global.sacflag: pyrocko.pile_viewer.sac_exec()
+    sys.exit()
+
+if __name__=="__main__":
+    main(sys.argv)
