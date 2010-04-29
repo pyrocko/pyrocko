@@ -258,7 +258,10 @@ class TracesGroup(object):
             self.parent.recursive_grow_update((self,))
             
         self.notify_listeners('update')
-                        
+    
+    def recursive_full_update(self):
+        assert False, 'should be implemented in derived class'
+        
     def get_update_count(self):
         return self.nupdates
     
@@ -321,6 +324,14 @@ class MemTracesFile(TracesGroup):
     def reload_if_modified(self):
         pass
         
+    def recursive_full_update(self):
+        self.update(self.traces)
+        
+        if self.parent is not None:
+            self.parent.recursive_full_update()
+        
+        self.notify_listeners('fullupdate')
+            
     def chop(self,tmin,tmax,trace_selector=None):
         chopped = []
         used = False
@@ -382,6 +393,14 @@ class TracesFile(TracesGroup):
         self.load_headers(mtime=mtime)
         self.update(self.traces)
         self.mtime = mtime
+        
+    def recursive_full_update(self):
+        self.update(self.traces)
+        
+        if self.parent is not None:
+            self.parent.recursive_full_update()
+        
+        self.notify_listeners('fullupdate')
         
     def load_headers(self, mtime=None):
         logger.debug('loading headers from file: %s' % self.abspath)
@@ -497,6 +516,14 @@ class SubPile(TracesGroup):
         TracesGroup.__init__(self, parent)
         self.files = []
         self.empty()
+        
+    def recursive_full_update(self):
+        self.update(self.files)
+        
+        if self.parent is not None:
+            self.parent.recursive_full_update()
+        
+        self.notify_listeners('fullupdate')
     
     def add_file(self, file):
         self.files.append(file)
@@ -591,6 +618,10 @@ class Pile(TracesGroup):
         self.open_files = set()
         self.listeners = []
         
+    def recursive_full_update(self):
+        self.update(self.subpiles.values())
+        self.notify_listeners('fullupdate')
+    
     def add_listener(self, obj):
         self.listeners.append(weakref.ref(obj))
     
