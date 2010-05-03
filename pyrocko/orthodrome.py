@@ -14,12 +14,28 @@ def clip(x, mi, ma):
 def wrap(x, mi, ma):
     return x - num.floor((x-mi)/(ma-mi)) * (ma-mi)
 
-def cosdelta( a, b ):
+def cosdelta(a, b):
     return math.sin(a.lat*d2r) * math.sin(b.lat*d2r) + math.cos(a.lat*d2r) * math.cos(b.lat*d2r) * math.cos(d2r*(b.lon-a.lon))
+    
+def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
+    return num.sin(a_lats*d2r) * num.sin(b_lats*d2r) + num.cos(a_lats*d2r) * num.cos(b_lats*d2r) * num.cos(d2r*(b_lons-a_lons))
 
-def azimuth( a, b ):
+def azimuth(a, b):
     return r2d*math.atan2( math.cos(a.lat*d2r) * math.cos(b.lat*d2r) * math.sin(d2r*(b.lon-a.lon)),
                            math.sin(d2r*b.lat) - math.sin(d2r*a.lat) * cosdelta(a,b) )
+                           
+def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
+    if _cosdelta == None:
+        _cosdelta = cosdelta_numpy(a_lats,a_lons,b_lats,b_lons)
+        
+    return r2d*num.arctan2( num.cos(a_lats*d2r) * num.cos(b_lats*d2r) * 
+                            num.sin(d2r*(b_lons-a_lons)),
+                            num.sin(d2r*b_lats) - num.sin(d2r*a_lats) * _cosdelta )
+
+def azidist_numpy(*args):
+    _cosdelta = cosdelta_numpy(*args)
+    _azimuths = azimuth_numpy( _cosdelta=_cosdelta,*args)
+    return _azimuths, r2d*num.arccos(_cosdelta)
 
 def distance_accurate50m( a, b ):
 
@@ -50,6 +66,26 @@ def distance_accurate50m( a, b ):
 
     return d * (1.+ earth_oblateness * h1 * math.sin(f)**2 * math.cos(g)**2 - 
                     earth_oblateness * h2 * math.cos(f)**2 * math.sin(g)**2)
+                    
+def distance_accurate50m_numpy( a_lats, a_lons, b_lats, b_lons ):
+
+    # same as distance_accurate50m, but using numpy arrays
+    
+    f = (a_lats + b_lats)*d2r / 2.
+    g = (a_lats - b_lats)*d2r / 2.
+    l = (a_lons - b_lons)*d2r / 2.
+
+    s = num.sin(g)**2 * num.cos(l)**2 + num.cos(f)**2 * num.sin(l)**2
+    c = num.cos(g)**2 * num.cos(l)**2 + num.sin(f)**2 * num.sin(l)**2
+
+    w = num.arctan( num.sqrt( s/c ) )
+    r = num.sqrt(s*c)/w
+    d = 2.*w*earthradius_equator
+    h1 = (3.*r-1.)/(2.*c)
+    h2 = (3.*r+1.)/(2.*s)
+
+    return d * (1.+ earth_oblateness * h1 * num.sin(f)**2 * num.cos(g)**2 - 
+                    earth_oblateness * h2 * num.cos(f)**2 * num.sin(g)**2)
 
 def ne_to_latlon( lat0, lon0, north_m, east_m ):
     
