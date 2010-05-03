@@ -1,4 +1,4 @@
-import catalog, orthodrome, config, util
+import catalog, orthodrome, config, util, moment_tensor
 import math
 import numpy as num
 
@@ -62,6 +62,7 @@ class Event:
         f.write('longitude = %g\n' % self.lon)
         if self.magnitude is not None:
             f.write('magnitude = %g\n' % self.magnitude)
+            f.write('moment = %g\n' % moment_tensor.magnitude_to_moment(self.magnitude))
         if self.depth is not None:
             f.write('depth = %g\n' % self.depth)
         if self.region is not None:

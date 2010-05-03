@@ -22,5 +22,5 @@ setup( name = packname,
             sources = [ packname+'/evalresp_ext.c']),
     ],
                 
-    scripts = [ 'apps/snuffler' ]
+    scripts = [ 'apps/snuffler', 'apps/snuffslink' ]
 )

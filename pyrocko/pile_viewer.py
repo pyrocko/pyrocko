@@ -591,6 +591,8 @@ class PileOverview(QWidget):
         self.ax_height = 80
         
         self.ntracks_shown_max = ntracks_shown_max
+        self.ntracks = 0
+        self.shown_tracks_range = None
         self.track_start = None
         self.track_trange = None
         
@@ -734,12 +736,6 @@ class PileOverview(QWidget):
 
         trace_views = []
         
-        self.set_gathering()
-        #traces_path = []
-        #for msfile in self.pile.msfiles:
-        #    abspath = msfile.abspath
-        #    for trace in msfile.traces:
-        #        traces_path.append( (trace, abspath) )
         
         deltats = self.pile.get_deltats()
         if deltats:
@@ -750,6 +746,9 @@ class PileOverview(QWidget):
         self.time_projection = Projection()
         self.set_time_range(self.pile.tmin, self.pile.tmax)
         self.time_projection.set_out_range(0., self.width())
+            
+        self.set_gathering()
+
             
         self.track_to_screen = Projection()
         self.track_to_nslc_ids = {}
@@ -802,20 +801,30 @@ class PileOverview(QWidget):
         if color is None:
             color = lambda tr: tr.location
         
-        self.gather = gather    
+        self.gather = gather
         keys = self.pile.gather_keys(gather)
         self.color_gather = color
         self.color_keys = self.pile.gather_keys(color)
-        
+        previous_ntracks = self.ntracks
         self.ntracks = len(keys)
-        self.shown_tracks_start = 0.
-        self.shown_tracks_range = 0, min(self.ntracks, self.ntracks_shown_max)
+        if self.shown_tracks_range is None or previous_ntracks < self.ntracks:
+            self.shown_tracks_range = 0, self.ntracks
+            
+        l, h = self.shown_tracks_range
+        if l >= self.ntracks: l = self.ntracks-1
+        if h > self.ntracks: h = self.ntracks
         
+        self.shown_tracks_range = l, h
+        self.shown_tracks_start = float(self.shown_tracks_range[0])
+
         self.track_keys = sorted(keys, cmp=order)
         self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
         
         inrange = lambda x,r: r[0] <= x and x < r[1]
         self.trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
+    
+        if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1]:
+            self.set_time_range(self.pile.tmin, self.pile.tmax)
     
     def set_time_range(self, tmin, tmax):
         self.tmin, self.tmax = tmin, tmax
@@ -1010,7 +1019,6 @@ class PileOverview(QWidget):
         
     def paintEvent(self, paint_ev ):
         """Called by QT whenever widget needs to be painted"""
-        print 'xxxxx'
         painter = QPainter(self)
 
         if self.menuitem_antialias.isChecked():
@@ -1219,15 +1227,13 @@ class PileOverview(QWidget):
                         p.drawText( lx, ly, label )
 
     def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
-        
-        print self.pile.get_update_count()
-        
+                
         vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, 
                self.min_deltat, self.rotate, self.shown_tracks_range,
                self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
                
-        #if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
-        #    return self.old_processed_traces
+        if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
+            return self.old_processed_traces
         
         self.old_vec = vec
         
