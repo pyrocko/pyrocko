@@ -57,13 +57,17 @@ class EventDataAccess:
             self._events = self._get_events_from_file()
         return self._events
         
+    def get_station(self, tr):
+        self._update_stations()
+        return self._stations[tr.nslc_id[:3]]
+    
+    def get_channel(self, tr):
+        sta = self.get_station(tr)
+        return sta.get_channel(tr.channel)
+        
     def get_stations(self, relative_event=None):
         
-        if not self._stations:
-            self._stations = {}
-            for station in self._get_stations_from_file():
-                self._stations[station.network, station.station, station.location] = station
-            self._insert_channel_descriptions(self._stations)
+        self._update_stations()
         
         stations = copy.deepcopy(self._stations)
         
@@ -72,7 +76,14 @@ class EventDataAccess:
                 s.set_event_relative_data(relative_event)
                 
         return stations
-        
+    
+    def _update_stations(self):
+        if not self._stations:
+            self._stations = {}
+            for station in self._get_stations_from_file():
+                self._stations[station.network, station.station, station.location] = station
+            self._insert_channel_descriptions(self._stations)
+    
     def _insert_channel_descriptions(self, stations):
         pile = self.get_pile()
         nslc_ids = pile.gather_keys( lambda tr: (tr.network, tr.station, tr.location, tr.channel) )
