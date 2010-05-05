@@ -38,7 +38,7 @@ def _weed(dists, badnesses, neighborhood=1, interaction_radius=3., del_frac=4, m
     
     xdists = dists[num.meshgrid(kept,kept)]
     xbadnesses = badnesses[kept]
-    xdeleted = weed(xdists, xbadnesses, neighborhood, interaction_radius, del_frac, 
+    xdeleted = _weed(xdists, xbadnesses, neighborhood, interaction_radius, del_frac, 
                                 max_del-ndeleted, max_depth, depth+1)
     
     deleted[kept] = xdeleted
@@ -68,16 +68,35 @@ def weed(x, y, badnesses, neighborhood=1, nwanted=None, interaction_radius=3.):
     meandists_kept = neighborhood_density(dists_kept, neighborhood)
     return deleted, meandists_kept
 
-def weed_stations(event, stations, nwanted, badnesses=None, neighborhood=3):
+def weed_stations(stations, nwanted, badnesses=None, neighborhood=3, stream_badnesses=None):
     
-    lats = [ station.lat for station in stations ]
-    lons = [ station.lon for station in stations ]
-    azimuths, dists = orthodrome.azidist_numpy(event.lat, event.lon, lats, lons)
+    azimuths = num.zeros(len(stations), dtype=num.float)
+    dists = num.zeros(len(stations), dtype=num.float)
+    for ista, sta in enumerate(stations):
+        azimuths[ista] = sta.azimuth
+        dists[ista] = sta.dist_deg
+    
     if badnesses is None:
-        badnesses = num.ones(len(lats),dtype=float)
+        badnesses = num.ones(len(stations), dtype=float)
     
-    deleted, meandists_kept = station_selector(azimuths, dists, badnesses, nwanted=nwanted, neighborhood=neighborhood)
+    if stream_badnesses is not None:
+        # convert stream badnesses to station badnesses by averaging
+        station_badness = {}
+        for nslc, b in stream_badnesses.iteritems():
+            nsl = nslc[:3]
+            if nsl not in station_badness:
+                station_badness[nsl] = []
+            station_badness[nsl].append(b)
+        
+        badnesses = num.ones(len(stations), dtype=num.float)*99.
+        for ista, sta in enumerate(stations):
+            nsl = sta.network, sta.station, sta.location
+            if nsl in station_badness:
+                this_station_badness = station_badness[nsl]
+                badnesses[ista] = sum(this_station_badness)/len(this_station_badness)
+    
+    deleted, meandists_kept = weed(azimuths, dists, badnesses, nwanted=nwanted, neighborhood=neighborhood)
     
     stations_weeded = [ station for (delete, station) in zip(deleted, stations) if not delete ]
-    return stations_weeded
+    return stations_weeded, meandists_kept, deleted
 
