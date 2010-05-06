@@ -22,6 +22,8 @@ class SEGYFile:
         else:
             self.clear()
             
+    def __str__(self):
+        print 
             
     def clear(self):
         '''Empty file record.'''
@@ -38,6 +40,10 @@ class SEGYFile:
            filename -- Name of SEGY file.
            get_data -- If True, the data is read, otherwise only read headers.
         '''
+        
+        order = '<'
+        
+        
         nbth = SEGYFile.nbytes_textual_header
         nbbh = SEGYFile.nbytes_binary_header
         nbthx = SEGYFile.nbytes_optional_textual_header
@@ -49,38 +55,65 @@ class SEGYFile:
         # XXX should skip volume label
         
         filedata = f.read()
+        print len(filedata)
         f.close()
         
-        hvals = struct.unpack('>24H', filedata[3212:3212+24*2])
-        (ntraces, nauxtraces, deltat_us, deltat_us_orig, nsamples, 
-         nsamples_orig, format) = hvals[0:7]
+        if False:
+            hvals = struct.unpack(order+'24H', filedata[i+3212:i+3212+24*2])
+            (ntraces, nauxtraces, deltat_us, deltat_us_orig, nsamples, 
+                nsamples_orig, format) = hvals[0:7]
+            
+            print (ntraces, nauxtraces, deltat_us, deltat_us_orig, nsamples, 
+                    nsamples_orig, format)
         
-        (segy_revision, fixed_length_traces, nextended_headers) = struct.unpack('>3H', filedata[3500:3500+3*2])
         
-        formats = { 1: (None,  4, "4-byte IBM floating-point"),
-                    2: ('>i4', 4, "4-byte, two's complement integer"),
-                    3: ('>i4', 2, "2-byte, two's complement integer"),
+            (segy_revision, fixed_length_traces, nextended_headers) = struct.unpack(order+'3H', filedata[3500:3500+3*2])
+            print (segy_revision, fixed_length_traces, nextended_headers)
+        
+        
+            formats = { 1: (None,  4, "4-byte IBM floating-point"),
+                    2: (order+'i4', 4, "4-byte, two's complement integer"),
+                    3: (order+'i4', 2, "2-byte, two's complement integer"),
                     4: (None,  4, "4-byte fixed-point with gain (obolete)"),
                     5: ('f4',  4, "4-byte IEEE floating-point"),
                     6: (None,  0, "not currently used"),
                     7: (None,  0, "not currently used"),
                     8: ('i1',  1, "1-byte, two's complement integer") }
                     
-        dtype = formats[format][0]
-        sample_size = formats[format][1]
-        if dtype is None:
-            raise SEGYError('Cannot read SEG-Y files with data in format %i: %s (file=%s)' % (format, formats[format][1], filename))
+            dtype = formats[format][0]
+            sample_size = formats[format][1]
+            if dtype is None:
+                raise SEGYError('Cannot read SEG-Y files with data in format %i: %s (file=%s)' % (format, formats[format][1], filename))
         
-        ipos = nbth+nbbh + nextended_headers*nbthx 
+            ipos = nbth+nbbh + nextended_headers*nbthx 
+        else:
+            
+            ipos = 0
+            ntraces = 2
+            nauxtraces = 0
+            fixed_length_traces = False
+            sample_size = 4
+            dtype = order+'i4'
+            
+            
         traces = []
         for itrace in xrange(ntraces+nauxtraces):
             trace_header = filedata[ipos:ipos+nbtrh]
             if len(trace_header) != nbtrh:
                 raise SEGYError('SEG-Y file incomplete (file=%s)' % filename)
             
-            (trace_number,) = struct.unpack('>1I', trace_header[0:4])
-            (nsamples_this, deltat_us_this) = struct.unpack('>2H', trace_header[114:114+2*2])
-            (year,doy,hour,minute,second) = struct.unpack('>5H', trace_header[156:156+2*5])
+            print struct.unpack( order+'120H', trace_header )
+            
+            (scoordx,scoordy,gcoordx,gcoordy) = struct.unpack(order+'4f4', trace_header[72:72+4*4])
+            (ensemblex,ensembley) = struct.unpack(order+'2f4', trace_header[180:180+2*4])
+
+            (trace_number,) = struct.unpack(order+'1I', trace_header[0:4])
+            (nsamples_this, deltat_us_this) = struct.unpack(order+'2H', trace_header[114:114+2*2])
+            (year,doy,hour,minute,second) = struct.unpack(order+'5H', trace_header[156:156+2*5])
+            print (nsamples_this, deltat_us_this)
+            print (year,doy,hour,minute,second)
+            print 'XXX', (scoordx,scoordy,gcoordx,gcoordy)
+            print 'yyy', (ensemblex,ensembley)
             
             try:
                 tmin = calendar.timegm((year,1,doy,hour,minute,second))
@@ -99,10 +132,10 @@ class SEGYFile:
                 data = num.fromstring(datablock, dtype=dtype)
                 tmax = None
             else:
-                tmax = tmin + deltat_us/1000000.*(nsamples_this-1)
+                tmax = tmin + deltat_us_this/1000000.*(nsamples_this-1)
                 data = None
                 
-            tr = trace.Trace('','%i' % (itrace+1),'','', tmin=tmin, tmax=tmax, deltat=deltat_us/1000000., ydata=data)
+            tr = trace.Trace('','%i' % (itrace+1),'','', tmin=tmin, tmax=tmax, deltat=deltat_us_this/1000000., ydata=data)
             traces.append(tr)
             
             ipos += nbtrh+nsamples_this*sample_size
