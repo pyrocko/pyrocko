@@ -143,7 +143,7 @@ class Station:
         return None
     
     
-    def _projection_to(self, to, in_channels, out_channels, divide_by_gains=False):
+    def _projection_to(self, to, in_channels, out_channels, use_gains=False):
         channels = [ self.get_channel(name) for name in in_channels ]
         
         # create orthogonal vectors for missing components, such that this 
@@ -155,7 +155,7 @@ class Station:
                 vecs.append(None)
             else:
                 vec = getattr(ch,to)
-                if divide_by_gains:
+                if use_gains:
                     vec /= ch.gain
                 vecs.append(vec)
                 
@@ -171,6 +171,14 @@ class Station:
 
     def projection_to_ned(self, in_channels, out_channels=('N', 'E', 'D'), **kwargs):
         return self._projection_to('ned', in_channels, out_channels, **kwargs)
+        
+    def projection_from_enu(self, in_channels=('E','N','U'), out_channels=('X','Y','Z'), **kwargs):
+        m, out_channels, in_channels = self._projection_to('enu', out_channels,in_channels, **kwargs)
+        return num.linalg.inv(m), in_channels, out_channels
+    
+    def projection_from_ned(self, in_channels=('N','E','D'), out_channels=('X','Y','Z'), **kwargs):
+        m, out_channels, in_channels = self._projection_to('enu', out_channels,in_channels, **kwargs)
+        return num.linalg.inv(m), in_channels, out_channels
         
     def nsl_string(self):
         return '.'.join((self.network, self.station, self.location))

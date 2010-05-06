@@ -201,5 +201,8 @@ class EventDataAccess:
                         
                 yield displacements
                 
-    def get_restitution(self, tr):
-        return tr.IntegrationResponse()
+    def get_restitution(self, tr, allowed_methods):
+        if 'integration' in allowed_methods:
+            trace.IntegrationResponse()
+        else:
+            raise Exception('only "integration" restitution method is allowed')

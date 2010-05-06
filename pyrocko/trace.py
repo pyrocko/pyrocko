@@ -437,8 +437,8 @@ class PoleZeroResponse(FrequencyResponse):
 class SampledResponse(FrequencyResponse):
     
     def __init__(self, freqs, vals, left=None, right=None):
-        self.freqs = freqs
-        self.vals = vals
+        self.freqs = freqs.copy()
+        self.vals = vals.copy()
         self.left = left
         self.right = right
         
@@ -447,6 +447,9 @@ class SampledResponse(FrequencyResponse):
         eimag = num.interp(freqs, self.freqs, num.imag(self.vals), left=self.left, right=self.right)
         transfer = ereal + 1.0j*eimag
         return transfer
+    
+    def inverse(self):
+        return SampledResponse(self.freqs, 1./self.vals, left=self.left, right=self.right)
     
 class IntegrationResponse(FrequencyResponse):
     def __init__(self, gain=1.0):
