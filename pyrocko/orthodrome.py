@@ -88,7 +88,6 @@ def distance_accurate50m_numpy( a_lats, a_lons, b_lats, b_lons ):
                     earth_oblateness * h2 * num.cos(f)**2 * num.sin(g)**2)
 
 def ne_to_latlon( lat0, lon0, north_m, east_m ):
-    
     '''Transform local carthesian coordinates to latitude and longitude.
     
     lat0, lon0:      Origin of the carthesian coordinate system.
@@ -98,11 +97,22 @@ def ne_to_latlon( lat0, lon0, north_m, east_m ):
     
     The projection used preserves the azimuths of the input points.
     '''
+    
+    a = num.sqrt(north_m**2+east_m**2)/config.earthradius
+    gamma = num.arctan2(east_m,north_m)
+    
+    return azidist_to_latlon_rad( lat0, lon0, a, gamma)
+
+def azidist_to_latlon(lat0, lon0, azimuth_deg, distance_deg):
+    return azidist_to_latlon_rad( lat0, lon0, azimuth_deg/180.*num.pi, distance_deg/180.*num.pi)
+
+def azidist_to_latlon_rad( lat0, lon0, azimuth_rad, distance_rad):
+    
+    a = distance_rad
+    gamma = azimuth_rad
 
     b = math.pi/2.-lat0*d2r
-    a = num.sqrt(north_m**2+east_m**2)/config.earthradius
-
-    gamma = num.arctan2(east_m,north_m)
+    
     alphasign = 1.
     alphasign = num.where(gamma < 0, -1., 1.)
     gamma = num.abs(gamma)
