@@ -45,6 +45,19 @@ class ModelTestCase(unittest.TestCase):
         mat = station.projection_to_enu(('N', 'E', 'D'), ('E', 'N', 'U'))[0]
         assertOrtho(mat[:,0],mat[:,1],mat[:,2])  
 
+    def testIOStations(self):
+        tempdir = tempfile.mkdtemp()
+        fn = pjoin(tempdir, 'stations.txt')
+        
+        ne = model.Channel('NE', azimuth=45., dip=0.)
+        se = model.Channel('SE', azimuth=135., dip=0.)
+        stations = [ model.Station('', sta,'', 0.,0., 0., channels=[ne,se]) for sta in ['STA1', 'STA2'] ]
+        model.dump_stations(stations, fn)
+        stations = model.load_stations(fn)
+       
+        shutil.rmtree(tempdir)
+        
+
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
     unittest.main()

@@ -1,4 +1,4 @@
-from pyrocko import trace, io, util
+from pyrocko import trace, io, util, model
 import unittest, math
 import numpy as num
 
@@ -96,8 +96,9 @@ class TraceTestCase(unittest.TestCase):
         azi = 45.
         cazi = math.cos(azi*d2r)
         sazi = math.sin(azi*d2r)
-        rot45 = num.matrix([[cazi, sazi, 0],[-sazi,cazi, 0], [0,0,-1]], dtype=num.float)
-        rotated = trace.project([n,e,d], rot45, ['N','E','D'], ['R','T','U'])
+        rot45 = num.array([[cazi, sazi, 0],[-sazi,cazi, 0], [0,0,-1]], dtype=num.float)
+        C = lambda x: model.Channel(x)
+        rotated = trace.project([n,e,d], rot45, [C('N'),C('E'),C('D')], [C('R'),C('T'),C('U')])
         for tr in rotated:
             if tr.channel == 'R':
                 r = tr
@@ -111,10 +112,10 @@ class TraceTestCase(unittest.TestCase):
         assert( num.all(u.get_ydata() - num.array([ -1., 1. ]) < 1.0e-6 ) )
         
         # should work though no horizontals given
-        projected = trace.project([d], rot45, ['N','E','D'], ['R','T','U'])
+        projected = trace.project([d], rot45, [C('N'),C('E'),C('D')], [C('R'),C('T'),C('U')])
         if tr.channel == 'U': u = tr 
         assert( num.all(u.get_ydata() - num.array([ -1., 1. ]) < 1.0e-6 ) )
-
+        
         
     def testExtend(self):
         tmin = 1234567890.

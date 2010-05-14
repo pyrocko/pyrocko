@@ -4,6 +4,7 @@ import time, math, copy, logging
 import numpy as num
 from util import reuse
 from scipy import signal
+from pyrocko import model
 
 logger = logging.getLogger('pyrocko.trace')
 
@@ -141,14 +142,13 @@ def rotate(traces, azimuth, in_channels, out_channels):
     cphi = math.cos(phi)
     sphi = math.sin(phi)
     rotated = []
-    in_channels = tuple(in_channels)
-    out_channels = tuple(out_channels)
+    in_channels = tuple(channels_to_names(in_channels))
+    out_channels = tuple(channels_to_names(out_channels))
     for a in traces:
         for b in traces:
             if ( (a.channel, b.channel) == in_channels and
                  a.nslc_id[:3] == b.nslc_id[:3] and
                  abs(a.deltat-b.deltat) < a.deltat*0.001 ):
-                
                 tmin = max(a.tmin, b.tmin)
                 tmax = min(a.tmax, b.tmax)
                 
@@ -214,6 +214,14 @@ def decompose(a):
     
     return systems
 
+def channels_to_names(channels):
+    names = []
+    for ch in channels:
+        if isinstance(ch, model.Channel):
+            names.append(ch.name)
+        else:
+            names.append(ch)
+    return names
 
 def project(traces, matrix, in_channels, out_channels):
     
@@ -221,6 +229,8 @@ def project(traces, matrix, in_channels, out_channels):
     # possible, such that if for example a vertical component is missing,
     # the horizontal components can still be rotated.
     
+    in_channels = tuple( channels_to_names(in_channels) )
+    out_channels = tuple( channels_to_names(out_channels) )
     systems = decompose(matrix)
     
     # fallback to full matrix if some are not quadratic
@@ -230,8 +240,8 @@ def project(traces, matrix, in_channels, out_channels):
     
     projected = []
     for iins, iouts ,submatrix in systems:
-        in_cha = [ in_channels[iin] for iin in iins ]
-        out_cha = [ out_channels[iout] for iout in iouts ]
+        in_cha = tuple( [ in_channels[iin] for iin in iins ] )
+        out_cha = tuple( [ out_channels[iout] for iout in iouts ] )
         if submatrix.shape[0] == 1:
             projected.extend( project1(traces, submatrix, in_cha, out_cha) )
         elif submatrix.shape[1] == 2:
@@ -239,14 +249,15 @@ def project(traces, matrix, in_channels, out_channels):
         else:
             projected.extend( project3(traces, submatrix, in_cha, out_cha) )
     
+   
     return projected
-
+        
+        
 def project1(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 1
     assert len(out_channels) == 1
     assert matrix.shape == (1,1)
-    in_channels = tuple(in_channels)
-    out_channels = tuple(out_channels)
+    
     projected = []
     for a in traces:
         if not (a.channel,) == in_channels: 
@@ -263,8 +274,6 @@ def project2(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 2
     assert len(out_channels) == 2
     assert matrix.shape == (2,2)
-    in_channels = tuple(in_channels)
-    out_channels = tuple(out_channels)
     projected = []
     for a in traces:
         for b in traces:
@@ -303,8 +312,6 @@ def project3(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 3
     assert len(out_channels) == 3
     assert matrix.shape == (3,3)
-    in_channels = tuple(in_channels)
-    out_channels = tuple(out_channels)
     projected = []
     for a in traces:
         for b in traces:

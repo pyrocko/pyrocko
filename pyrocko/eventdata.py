@@ -57,9 +57,12 @@ class EventDataAccess:
             self._events = self._get_events_from_file()
         return self._events
         
-    def get_station(self, tr):
+    def get_station(self, tr, relative_event=None):
         self._update_stations()
-        return self._stations[tr.nslc_id[:3]]
+        s = copy.deepcopy(self._stations[tr.nslc_id[:3]])
+        if relative_event is not None:
+            s.set_event_relative_data(relative_event)
+        return s
     
     def get_channel(self, tr):
         sta = self.get_station(tr)
@@ -113,20 +116,23 @@ class EventDataAccess:
                
     def iter_displacement_traces( self, tfade, freqband, 
                                   deltat=None,
-                                  rotate=None,
-                                  project=None,
+                                  rotations=None,
+                                  projections=None,
+                                  relative_event=None,
                                   maxdisplacement=None,
                                   extend=None,
                                   group_selector=None,
                                   trace_selector=None,
                                   allowed_methods=None,
-                                  crop=True):
+                                  crop=True,
+                                  out_stations=None):
         
-        stations = self.get_stations()
-        
-        if rotate is not None:
-            angles_func, rotation_mappings = rotate
-            
+        stations = self.get_stations(relative_event=relative_event)
+        if out_stations is not None:
+            out_stations.clear()
+        else:
+            out_stations = {}
+
         for xtraces in self.get_pile().chopper_grouped(
                 gather=lambda tr: (tr.network, tr.station, tr.location),
                 group_selector=group_selector,
@@ -134,6 +140,7 @@ class EventDataAccess:
                 progress='Processing traces'):
             
             traces = []
+            
             for tr in xtraces:
                 nsl = tr.network, tr.station, tr.location
                 if nsl not in stations:
@@ -145,6 +152,9 @@ class EventDataAccess:
             
             traces = trace.degapper(traces)  # mainly to get rid if overlaps and duplicates
             if traces:
+                nsl = traces[0].nslc_id[:3]
+                station = stations[nsl] # all traces belong to the same station here
+                
                 displacements = []
                 for tr in traces:
                     if deltat is not None:
@@ -184,20 +194,31 @@ class EventDataAccess:
                         continue
                     
                     displacements.append(displacement)
+                    if nsl not in out_stations:
+                        out_stations[nsl] = copy.deepcopy(station)
+                        out_station = out_stations[nsl]
+                
                 
                 if displacements:
-                    if project:
-                        station = stations[tr.network, tr.station, tr.location]
-                        
-                        matrix, in_channels, out_channels = project(station)
-                        projected = trace.project(displacements, matrix, in_channels, out_channels)
-                        displacements.extend(projected)
+                    if projections:
+                        for project in projections:
+                            matrix, in_channels, out_channels = project(out_station)
+                            projected = trace.project(displacements, matrix, in_channels, out_channels)
+                            displacements.extend(projected)
+                            for tr in projected:
+                                for ch in out_channels:
+                                    if ch.name == tr.channel:
+                                        out_station.add_channel(ch)
                     
-                    if rotate:
-                        angle = angles_func(tr)
-                        for in_channels, out_channels in rotation_mappings:
+                    if rotations:
+                        for rotate in rotations:
+                            angle, in_channels, out_channels  = rotate(out_station)
                             rotated = trace.rotate(displacements, angle, in_channels, out_channels)
                             displacements.extend(rotated)
+                            for tr in rotated:
+                                for ch in out_channels:
+                                    if ch.name == tr.channel:
+                                        out_station.add_channel(ch)
                         
                 yield displacements
                 
