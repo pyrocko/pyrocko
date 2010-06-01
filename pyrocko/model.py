@@ -214,13 +214,13 @@ class Station:
         if sta.depth is not None:
             depth = sta.depth
         nsl = '%s.%s.%s' % (sta.network, sta.station, sta.location)
-        s = '%-15s  %14g %14g %14g %14g %s\n' % (nsl, sta.lat, sta.lon, elevation, depth, sta.name)
+        s = '%-15s  %14g %14g %14g %14g %s' % (nsl, sta.lat, sta.lon, elevation, depth, sta.name)
         return s
 
 def dump_stations(stations, filename):
     f = open(filename, 'w')
     for sta in stations:
-        f.write(str(sta))
+        f.write(str(sta)+'\n')
         for cha in sta.get_channels():
             azimuth = 'NaN'
             if cha.azimuth is not None:
