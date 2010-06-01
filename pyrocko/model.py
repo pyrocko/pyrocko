@@ -205,11 +205,7 @@ class Station:
         return '.'.join((self.network, self.station, self.location))
         
     def __str__(self):
-        return '%s.%s.%s  %f %f %f  %f %f %f  %s' % (self.network, self.station, self.location, self.lat, self.lon, self.elevation, self.dist_m, self.dist_deg, self.azimuth, self.name)
-
-def dump_stations(stations, filename):
-    f = open(filename, 'w')
-    for sta in stations:
+        sta = self
         elevation = 0.0
         if sta.elevation is not None:
             elevation = sta.elevation
@@ -218,7 +214,13 @@ def dump_stations(stations, filename):
         if sta.depth is not None:
             depth = sta.depth
         nsl = '%s.%s.%s' % (sta.network, sta.station, sta.location)
-        f.write( '%-15s  %14g %14g %14g %14g %s\n' % (nsl, sta.lat, sta.lon, elevation, depth, sta.name) )
+        s = '%-15s  %14g %14g %14g %14g %s\n' % (nsl, sta.lat, sta.lon, elevation, depth, sta.name)
+        return s
+
+def dump_stations(stations, filename):
+    f = open(filename, 'w')
+    for sta in stations:
+        f.write(str(sta))
         for cha in sta.get_channels():
             azimuth = 'NaN'
             if cha.azimuth is not None:
