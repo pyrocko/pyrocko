@@ -111,6 +111,10 @@ class TraceTestCase(unittest.TestCase):
         assert( num.all(t.get_ydata() - num.array([ 0., -1 ]) < 1.0e-6 ) )
         assert( num.all(u.get_ydata() - num.array([ -1., 1. ]) < 1.0e-6 ) )
         
+        deps = trace.project_dependencies(rot45, [C('N'),C('E'),C('D')], [C('R'),C('T'),C('U')])
+        assert( set(['N','E']) == set(deps['R']) and set(['N', 'E']) == set(deps['T']) and
+                set(['D']) == set(deps['U']) )
+        
         # should work though no horizontals given
         projected = trace.project([d], rot45, [C('N'),C('E'),C('D')], [C('R'),C('T'),C('U')])
         if tr.channel == 'U': u = tr 

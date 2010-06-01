@@ -251,7 +251,36 @@ def project(traces, matrix, in_channels, out_channels):
     
    
     return projected
-        
+
+def project_dependencies(matrix, in_channels, out_channels):
+    
+    # figure out what dependencies project() would produce
+    
+    in_channels = tuple( channels_to_names(in_channels) )
+    out_channels = tuple( channels_to_names(out_channels) )
+    systems = decompose(matrix)
+    
+    subpro = []
+    for iins, iouts, submatrix in systems:
+        if submatrix.shape[0] != submatrix.shape[1]:
+            subpro.append((matrix, in_channels, out_channels))
+    
+    if not subpro:
+        for iins, iouts ,submatrix in systems:
+            in_cha = tuple( [ in_channels[iin] for iin in iins ] )
+            out_cha = tuple( [ out_channels[iout] for iout in iouts ] )
+            subpro.append((submatrix, in_cha, out_cha))
+            
+    deps = {}
+    for mat, in_cha, out_cha in subpro:
+        for oc in out_cha:
+            if oc not in deps:
+                deps[oc] = []
+            
+            for ic in in_cha:
+                deps[oc].append(ic)
+    
+    return deps
         
 def project1(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 1
