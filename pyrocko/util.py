@@ -1,6 +1,7 @@
 import time, logging, os, sys, re, calendar
 from scipy import signal
 
+
 from os.path import join as pjoin
 
 import config
@@ -202,4 +203,27 @@ def select_files( paths, selector=None,  regex=None ):
     progress_end('%i file%s selected.' % (len( good), plural_s(len(good))))
     
     return good
+
+def base36encode(number, alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
+    '''
+    Convert positive integer to a base36 string.
+    '''
+    if not isinstance(number, (int, long)):
+        raise TypeError('number must be an integer')
+    if number < 0:
+        raise ValueError('number must be positive')
+ 
+    # Special case for small numbers
+    if number < 36:
+        return alphabet[number]
+ 
+    base36 = ''
+    while number != 0:
+        number, i = divmod(number, 36)
+        base36 = alphabet[i] + base36
+ 
+    return base36
+ 
+def base36decode(number):
+    return int(number,36)
 
