@@ -8,9 +8,17 @@ from time import gmtime
 import numpy as num
 from util import reuse
 
+logger = logging.getLogger('pyrocko.pile')
+
 
 class SacError(Exception):
     pass
+
+def nonetoempty(s):
+    if s is None:
+        return ''
+    else:
+        return s.strip()
 
 class SacFile:
     nbytes_header = 632
@@ -39,11 +47,14 @@ ipde iisc ireb iusgs ibrk icaltech illnl ievloc ijsop iuser iunknown iqb iqb1
 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
 '''.split()
     
+    enum_header_vars = 'iftype idep iztype imagtype imagsrc ievtyp iqual isynth'.split()
+    
     header_num2name = dict([ (a+1,b) for (a,b) in enumerate(header_enum_symbols)])
     header_name2num = dict([ (b,a+1) for (a,b) in enumerate(header_enum_symbols)])
     header_types = 'f'*70 + 'i'*35 + 'l'*5 + 'k'*23
     undefined_value = {'f':-12345.0, 'i':-12345, 'l':None, 'k': '-12345'}
     ldefaults = {'leven': 1, 'lpspol': 0, 'lovrok': 1, 'lcalda': 1, 'unused17': 0}
+    
     t_lookup = dict(zip(header_keys, header_types))
     u_lookup = dict([ (k, undefined_value[t_lookup[k]]) for k in header_keys ])
     
@@ -171,7 +182,7 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         f.close()
             
         if len(filedata) < nbh:
-            raise SacError('File too short to be a SAC file.')
+            raise SacError('File too short to be a SAC file: %s' % filename)
 
         # possibly try out different endiannesses        
         if byte_sex == 'try':
@@ -206,6 +217,9 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 if isex == len(sexes)-1:
                     raise e
         
+        if byte_sex == 'try':
+            logger.info('This seems to be a %s endian SAC file: %s' % (sex, filename))
+                
         # possibly get data
         if get_data:
             nblocks = self.ndatablocks()
@@ -214,11 +228,17 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 if len(filedata) < nbh+(iblock+1)*nbb:
                     raise SacError('File is incomplete.')
                     
-                self.data.append(num.fromstring(filedata[nbh+iblock*nbb:nbh+(iblock+1)*nbb], dtype=num.float32))
+                if sex == 'big':
+                    dtype=num.dtype('>f4')
+                else:
+                    dtype=num.dtype('<f4')
+                    
+                self.data.append(num.array(num.fromstring(filedata[nbh+iblock*nbb:nbh+(iblock+1)*nbb], dtype=dtype),dtype=num.float))
             
             if len(filedata) > nbh+nblocks*nbb:
-                sys.stderr.warn('Unused data at end of file.')
-            
+                logger.warn('Unused data (%i bytes) at end of SAC file: %s (npts=%i)' % (len(filedata) - nbh+nblocks*nbb, filename, self.npts))
+                
+                
             
     def write(self, filename, byte_sex='little'):
         '''Write SAC file.'''
@@ -262,6 +282,8 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         for k in SacFile.header_keys:
             v = self.__dict__[k]
             if v is not None:
+                if k in SacFile.enum_header_vars:
+                    v = SacFile.header_num2name[v]
                 str += '%s: %s\n' % (k, v)
                         
         return str
@@ -286,10 +308,10 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             if v is not None:
                 meta[reuse(k)] = v
                 
-        return trace.Trace(self.knetwk,
-                                  self.kstnm,
-                                  self.khole,
-                                  self.kcmpnm,
+        return trace.Trace(nonetoempty(self.knetwk)[:2],
+                                  nonetoempty(self.kstnm)[:5],
+                                  nonetoempty(self.khole)[:2],
+                                  nonetoempty(self.kcmpnm)[:3],
                                   tmin,
                                   tmax,
                                   self.delta,
