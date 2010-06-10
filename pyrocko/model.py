@@ -6,6 +6,26 @@ from orthodrome import wrap
 
 d2r = num.pi/180.
 
+def guess_azimuth_from_name(channel_name):
+    if channel_name.endswith('N'):
+        return 0.
+    elif channel_name.endswith('E'):
+        return 90.
+    elif channel_name.endswith('Z'):
+        return 0.
+    
+    return None
+
+def guess_dip_from_name(channel_name):
+    if channel_name.endswith('N'):
+        return 0.
+    elif channel_name.endswith('E'):
+        return 0.
+    elif channel_name.endswith('Z'):
+        return -90.
+    
+    return None
+
 def mkvec(x,y,z):
     return num.array( [x,y,z], dtype=num.float )
 
@@ -184,7 +204,7 @@ class Station:
                 Channel(out_channel_names[0], 90.,  0., 1.),
                 Channel(out_channel_names[1], 0.,   0., 1.),
                 Channel(out_channel_names[2], 0., -90., 1.) ]
-                
+        
         return m, in_channels, out_channels
     
     def projection_to_enu(self, in_channels, out_channels=('E', 'N', 'U'), **kwargs):
@@ -267,6 +287,11 @@ def load_stations(filename):
 class Channel:
     def __init__(self, name, azimuth=None, dip=None, gain=1.0):
         self.name = name
+        if azimuth is None:
+            azimuth = guess_azimuth_from_name(name)
+        if dip is None:
+            dip = guess_dip_from_name(name)
+        
         self.azimuth = azimuth
         self.dip = dip
         self.gain = gain
