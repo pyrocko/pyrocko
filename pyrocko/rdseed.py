@@ -79,12 +79,13 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             raise SeedVolumeNotFound()
         
         self.tempdir = tempfile.mkdtemp("","SeedVolumeAccess-")
+        self.station_headers_file = os.path.join(self.tempdir, 'station_header_infos')
         self._unpack()
 
     def __del__(self):
         import shutil
-        if self.tempdir:
-            shutil.rmtree(self.tempdir)
+        #if self.tempdir:
+        #    shutil.rmtree(self.tempdir)
                 
     def get_pile(self):
         if self._pile is None:
@@ -136,7 +137,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
         (out,err) = rdseed_proc.communicate()
-        fout = open(os.path.join(output_dir,'station_header_infos'),'w')
+        fout = open(self.station_headers_file, 'w')
         fout.write( out )
         fout.close()
         logging.info(strerr(err))
@@ -169,9 +170,21 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             
         f.close()
         return events
-            
+    
+    def _get_channel_orientations(self):
+        
+        orientations = {}
+        pile = self.get_pile()
+        
+        for trace in pile.iter_all():
+            dip = trace.meta['cmpinc']-90.
+            azimuth = trace.meta['cmpaz']
+            orientations[trace.nslc_id] = azimuth, dip
+        return orientations
+        
     def _get_stations_from_file(self):
         
+        orientations = self._get_channel_orientations()
         
         # make station to locations map, cause these are not included in the 
         # rdseed.stations file
@@ -204,10 +217,17 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         stations = []
         
         for cols in rows:
-            for location in ns_to_l[cols[1],cols[0]]:    
+            network, station = cols[1], cols[0]
+            for location in ns_to_l[network, station]:
                 
-                channels = [ model.Channel(x) for x in cols[icolcomp].split() ]
-
+                channels = []
+                for channel in  cols[icolcomp].split():
+                    if (network, station, location, channel) in orientations:
+                        azimuth, dip = orientations[network, station, location, channel]
+                    else:
+                        azimuth, dip = None, None # let Channel guess from name
+                    channels.append(model.Channel(channel, azimuth, dip))
+                    
                 s = model.Station(
                     network = cols[1],
                     station = cols[0],
@@ -222,3 +242,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 
         return stations
         
+        
+    def _insert_channel_descriptions(self, stations):
+        # this is done beforehand in this class
+        pass
+    
