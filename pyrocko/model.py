@@ -26,6 +26,10 @@ def guess_dip_from_name(channel_name):
     
     return None
 
+def guess_azimuth_dip_from_name(channel_name):
+    return guess_azimuth_from_name(channel_name), \
+           guess_dip_from_name(channel_name)
+
 def mkvec(x,y,z):
     return num.array( [x,y,z], dtype=num.float )
 
