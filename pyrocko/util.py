@@ -94,6 +94,16 @@ class GlobalVars:
     reuse_store = dict()
     decitab_nmax = 0
     decitab = {}
+    
+    
+def gcd(a,b, epsilon=1e-7):
+    while b > epsilon*a:
+       a, b = b, a % b
+
+    return a
+
+def lcm(a,b):
+    return a*b/gcd(a,b)
 
 def mk_decitab(nmax=100):
     tab = GlobalVars.decitab

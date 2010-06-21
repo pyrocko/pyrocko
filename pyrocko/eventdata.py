@@ -170,7 +170,7 @@ class EventDataAccess:
                 for tr in traces:
                     if deltat is not None:
                         try:
-                            tr.downsample_to(deltat, snap=True)
+                            tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
                         except util.UnavailableDecimation, e:
                             self.problems().add('cannot_downsample', tr.full_id)
                             logger.warn( 'Cannot downsample %s.%s.%s.%s: %s' % (tr.nslc_id + (e,)))

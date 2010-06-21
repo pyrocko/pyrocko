@@ -666,10 +666,29 @@ class Trace(object):
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
         self.update_ids()
         
-    def downsample_to(self, deltat, snap=False):
+    def downsample_to(self, deltat, snap=False, allow_upsample_max=1):
         ratio = deltat/self.deltat
         rratio = round(ratio)
-        if abs(rratio - ratio) > 0.0001: raise util.UnavailableDecimation('ratio = %g' % ratio)
+        if abs(rratio - ratio)/ratio > 0.0001:
+            if allow_upsample_max <=1:
+                raise util.UnavailableDecimation('ratio = %g' % ratio)
+            else:
+                deltat_inter = 1./util.lcm(1./self.deltat,1./deltat)
+                upsratio = int(round(self.deltat/deltat_inter))
+                if upsratio > allow_upsample_max:
+                    raise util.UnavailableDecimation('ratio = %g' % ratio)
+                
+                if upsratio > 1:
+                    ydata = self.ydata
+                    self.ydata = num.zeros(ydata.size*upsratio-(upsratio-1), ydata.dtype)
+                    self.ydata[::upsratio] = ydata
+                    for i in range(1,upsratio):
+                        self.ydata[i::upsratio] = float(i)/upsratio * ydata[:-1] + float(upsratio-i)/upsratio * ydata[1:]
+                    self.deltat = self.deltat/upsratio
+                
+                    ratio = deltat/self.deltat
+                    rratio = round(ratio)
+            
         deci_seq = util.decitab(int(rratio))
         for ndecimate in deci_seq:
              if ndecimate != 1:
