@@ -20,9 +20,14 @@ def read_sac_zpk(filename):
     nzeros = 0
     constant = 1.0
     atsect = None
-    for line in f:
+    for iline, line in enumerate(f):
         toks = line.split()
-        if len(toks) != 2: continue
+        if len(toks) == 0: continue
+        if toks[0][0] == '#': continue
+        if len(toks) != 2:
+            f.close()
+            raise SacPoleZeroError('Expected 2 tokens in line %i of file %s' % (iline+1, filename))
+        
         if toks[0].startswith('*'): continue
         lsect = toks[0].upper()
         if lsect in sects:
