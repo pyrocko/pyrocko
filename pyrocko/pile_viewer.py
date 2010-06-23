@@ -29,11 +29,10 @@ import pyrocko.pile
 import pyrocko.trace
 import pyrocko.util
 
-
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-#from PyQt4.QtOpenGL import *
-#QWidget = QGLWidget
+from PyQt4.QtOpenGL import *
+QWidget = QGLWidget
 
 logger = logging.getLogger('pyrocko.pile_viewer')
 
@@ -364,9 +363,8 @@ class TimeAx(TimeScaler):
     
     
     def drawit( self, p, xprojection, yprojection ):
-        pen = QPen(QColor(*gmtpy.tango_colors['aluminium5']))
-        pen.setWidth(2)
-        p.setPen(pen)        
+        pen = QPen(QColor(*gmtpy.tango_colors['aluminium5']),1)
+        p.setPen(pen)
         font = QFont()
         font.setBold(True)
         p.setFont(font)
@@ -438,9 +436,8 @@ class TimeAx(TimeScaler):
             p.drawText( QPointF(uumin+pad, vmin+rect0.height()+rect1.height()+rect2.height()+ticklen), label2 )
                 
         v = yprojection(0)
-        
         p.drawLine(QPointF(uumin, v), QPointF(uumax, v))
-
+        
 class Projection(object):
     def __init__(self):
         self.xr = 0.,1.
@@ -470,6 +467,8 @@ class Projection(object):
         xmin, xmax = self.xr
         return xmin + (u-umin)*((xmax-xmin)/(umax-umin))
 
+
+# XXX currently unused:
 class TraceOverview(object):
     def __init__(self, mstrace, file_abspath, style):
         self.mstrace = mstrace
@@ -734,9 +733,6 @@ class PileOverview(QWidget):
         self.menu.addAction(self.menuitem_fuckup)
         self.connect( self.menuitem_fuckup, SIGNAL("triggered(bool)"), self.fuck )
 
-        trace_views = []
-        
-        
         deltats = self.pile.get_deltats()
         if deltats:
             self.min_deltat = min(deltats)
@@ -749,26 +745,9 @@ class PileOverview(QWidget):
             
         self.set_gathering()
 
-            
         self.track_to_screen = Projection()
         self.track_to_nslc_ids = {}
-            
-        #traces_path.sort( lambda x,y: cmp(x[0].full_id, y[0].full_id) )
-        #i = 1
-        
-        #for itrace, (trace,abspath) in enumerate(traces_path):
-        #    gv = TraceOverview( trace, abspath, 
-        #                    box_styles[i%len(box_styles)] )
-        #    trace_views.append(gv)
-        #    if itrace+1 < len(traces_path):
-        #        a = trace
-        #        b = traces_path[itrace+1][0]
-        #        if not (a.nslc_id == b.nslc_id and
-        #                a.deltat == b.deltat and
-        #                abs(b.tmin - a.tmax) < gap_lap_tolerance): i+=1
-      
-        self.trace_views = trace_views
-        
+       
         self.old_vec = None
         self.old_processed_traces = None
         
@@ -777,6 +756,8 @@ class PileOverview(QWidget):
         self.timer.setInterval(1000)
         self.timer.start()
         self.pile.add_listener(self)
+        self.trace_styles = {}
+        self.determine_box_styles()
         
     def periodical(self):
         if self.menuitem_watch.isChecked():
@@ -787,6 +768,7 @@ class PileOverview(QWidget):
     
     def pile_changed(self, what):
         self.sortingmode_change()
+        self.determine_box_styles()
         
     def get_neic_events(self):
         self.set_markers(neic_earthquakes(self.pile.tmin, self.pile.tmax, magnitude_range=(5.,9.9)))
@@ -1025,8 +1007,24 @@ class PileOverview(QWidget):
             painter.setRenderHint( QPainter.Antialiasing )
             
         self.drawit( painter )
-                
-
+    
+    def determine_box_styles(self):
+        
+        traces = list(self.pile.iter_traces())
+        traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
+        istyle = 0
+        trace_styles = {}
+        for itr, tr in enumerate(traces):
+            if itr > 0:
+                other = traces[itr-1]
+                if not (other.nslc_id == tr.nslc_id and
+                    other.deltat == tr.deltat and
+                    abs(other.tmax - tr.tmin) < gap_lap_tolerance): istyle+=1
+        
+            trace_styles[tr.full_id, tr.deltat] = istyle
+        
+        self.trace_styles = trace_styles
+        
     def draw_trace_boxes(self, p, time_projection, track_projections):
         
         for v_projection in track_projections.values():
@@ -1050,18 +1048,14 @@ class PileOverview(QWidget):
             dvmin = v_projection(0.)
             dvmax = v_projection(1.)
         
-            if itr > 0:
-                other = traces[itr-1]
-                if not (other.nslc_id == tr.nslc_id and
-                    other.deltat == tr.deltat and
-                    abs(other.tmax - tr.tmin) < gap_lap_tolerance): istyle+=1
+            istyle = self.trace_styles.get((tr.full_id, tr.deltat), 0)
             style = box_styles[istyle%len(box_styles)]
             rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
             p.fillRect(rect, style.fill_brush)
             
             p.setPen(style.frame_pen)
             p.drawRect(rect)
-
+        
     def drawit(self, p, printmode=False, w=None, h=None):
         """This performs the actual drawing."""
 
@@ -1103,18 +1097,8 @@ class PileOverview(QWidget):
             
             yscaler = gmtpy.AutoScaler()
             if not printmode and self.menuitem_showboxes.isChecked():
-                
                 self.draw_trace_boxes(p, self.time_projection, track_projections)
-                
-                
-                for trace_view in self.trace_views:
-                    trace = trace_view.get_mstrace()
-                    itrack = self.key_to_row[self.gather(trace)]
-                    if itrack in track_projections:
-                        v_projection = track_projections[itrack]
-                        v_projection.set_in_range(0.,1.)
-                        trace_view.drawit(p, self.time_projection, v_projection)
-
+            
             if self.floating_pick:
                 self.floating_pick.draw(p, self.time_projection, vcenter_projection)
             
