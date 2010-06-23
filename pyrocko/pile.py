@@ -821,6 +821,7 @@ class Pile(TracesGroup):
         
         if modified:
             self.update(self.subpiles.values())
+            self.notify_listeners('modified')
             
         return modified
             
