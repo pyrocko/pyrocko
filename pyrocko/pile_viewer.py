@@ -32,7 +32,7 @@ import pyrocko.util
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
-QWidget = QGLWidget
+#QWidget = QGLWidget
 
 logger = logging.getLogger('pyrocko.pile_viewer')
 
@@ -582,907 +582,920 @@ class Pick:
         try: drawpoint(self.tmax, trace.interpolate(self.tmax))
         except IndexError: pass            
        
-class PileOverview(QWidget):
-    def __init__(self, pile, ntracks_shown_max, *args):
-        apply(QWidget.__init__, (self,) + args)
-        
-        self.pile = pile
-        self.ax_height = 80
-        
-        self.ntracks_shown_max = ntracks_shown_max
-        self.ntracks = 0
-        self.shown_tracks_range = None
-        self.track_start = None
-        self.track_trange = None
-        
-        self.lowpass = None
-        self.highpass = None
-        self.gain = 1.0
-        self.rotate = 0.0
-        self.markers = []
-        self.picking_down = None
-        self.picking = None
-        self.floating_pick = None
-        self.picks = []
-        self.ignore_releases = 0
-        self.message = None
-        self.reload_requested = False
-        
-        self.tax = TimeAx()
-        self.setBackgroundRole( QPalette.Base )
-        self.setAutoFillBackground( True )
-        poli = QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
-        self.setSizePolicy( poli )
-        self.setMinimumSize(300,200)
-        self.setFocusPolicy( Qt.StrongFocus )
 
-        self.menu = QMenu(self)
-        
-        self.menuitem_pick = QAction('Pick', self.menu)
-        self.menu.addAction(self.menuitem_pick)
-        self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
-        
-        self.menu.addSeparator()
-        
-        self.menuitem_neic = QAction('NEIC catalog events 5+', self.menu)
-        self.menu.addAction(self.menuitem_neic)
-        self.connect( self.menuitem_neic, SIGNAL("triggered(bool)"), self.get_neic_events )
-        
-        self.menu.addSeparator()
-
-        menudef = [
-            ('Indivdual Scale',            lambda tr: (tr.network, tr.station, tr.location, tr.channel)),
-            ('Common Scale',               lambda tr: None),
-            ('Common Scale per Station',   lambda tr: (tr.network, tr.station)),
-            ('Common Scale per Component', lambda tr: (tr.channel)),
-        ]
-        
-        self.menuitems_scaling = add_radiobuttongroup(self.menu, menudef, self, self.scalingmode_change)
-        self.scaling_key = self.menuitems_scaling[0][1]
-        
-        self.menu.addSeparator()
-        
-        menudef = [
-            ('Scaling based on Minimum and Maximum', 'minmax'),
-            ('Scaling based on Mean +- 2 x Std. Deviation', 2),
-            ('Scaling based on Mean +- 4 x Std. Deviation', 4),
-        ]
-        
-        self.menuitems_scalingbase = add_radiobuttongroup(self.menu, menudef, self, self.scalingbase_change)
-        self.scalingbase = self.menuitems_scalingbase[0][1]
-        
-        self.menu.addSeparator()
-        
-        menudef = [
-            ('Sort by Network, Station, Location, Channel', 
-                ( lambda tr: tr.nslc_id,     # gathering
-                  lambda a,b: cmp(a,b),      # sorting
-                  lambda tr: tr.location )),  # coloring
-            ('Sort by Network, Station, Channel, Location', 
-                ( lambda tr: tr.nslc_id, 
-                  lambda a,b: cmp((a[0],a[1],a[3],a[2]), (b[0],b[1],b[3],b[2])),
-                  lambda tr: tr.channel )),
-            ('Sort by Station, Network, Channel, Location', 
-                ( lambda tr: tr.nslc_id, 
-                  lambda a,b: cmp((a[1],a[0],a[3],a[2]), (b[1],b[0],b[3],b[2])),
-                  lambda tr: tr.channel )),
-            ('Sort by Network, Station, Channel',
-                ( lambda tr: (tr.network, tr.station, tr.channel),
-                  lambda a,b: cmp(a,b),
-                  lambda tr: tr.location )),
-            ('Sort by Station, Network, Channel',
-                ( lambda tr: (tr.station, tr.network, tr.channel),
-                  lambda a,b: cmp(a,b),
-                  lambda tr: tr.location )),
-        ]
-        self.menuitems_sorting = add_radiobuttongroup(self.menu, menudef, self, self.sortingmode_change)
-        
-        self.menu.addSeparator()
-        
-        self.menuitem_antialias = QAction('Antialiasing', self.menu)
-        self.menuitem_antialias.setCheckable(True)
-        self.menu.addAction(self.menuitem_antialias)
-        
-        self.menuitem_cliptraces = QAction('Clip Traces', self.menu)
-        self.menuitem_cliptraces.setCheckable(True)
-        self.menuitem_cliptraces.setChecked(True)
-        self.menu.addAction(self.menuitem_cliptraces)
-        
-        self.menuitem_showboxes = QAction('Show Boxes', self.menu)
-        self.menuitem_showboxes.setCheckable(True)
-        self.menuitem_showboxes.setChecked(True)
-        self.menu.addAction(self.menuitem_showboxes)
-        
-        self.menuitem_colortraces = QAction('Color Traces', self.menu)
-        self.menuitem_colortraces.setCheckable(True)
-        self.menuitem_colortraces.setChecked(False)
-        self.menu.addAction(self.menuitem_colortraces)
-        
-        self.menuitem_showscalerange = QAction('Show Scale Range', self.menu)
-        self.menuitem_showscalerange.setCheckable(True)
-        self.menu.addAction(self.menuitem_showscalerange)
-
-        self.menuitem_allowdownsampling = QAction('Allow Downsampling', self.menu)
-        self.menuitem_allowdownsampling.setCheckable(True)
-        self.menuitem_allowdownsampling.setChecked(True)
-        self.menu.addAction(self.menuitem_allowdownsampling)
-        
-        self.menuitem_degap = QAction('Allow Degapping', self.menu)
-        self.menuitem_degap.setCheckable(True)
-        self.menuitem_degap.setChecked(True)
-        self.menu.addAction(self.menuitem_degap)
-        
-        self.menuitem_watch = QAction('Watch Files', self.menu)
-        self.menuitem_watch.setCheckable(True)
-        self.menuitem_watch.setChecked(False)
-        self.menu.addAction(self.menuitem_watch)
-        
-        self.menu.addSeparator()
-
-        self.menuitem_print = QAction('Print', self.menu)
-        self.menu.addAction(self.menuitem_print)
-        self.connect( self.menuitem_print, SIGNAL("triggered(bool)"), self.printit )
-        
-        self.menuitem_close = QAction('Close', self.menu)
-        self.menu.addAction(self.menuitem_close)
-        self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
-        
-        self.menu.addSeparator()
-
-        self.menuitem_fuckup = QAction("Snuffler sucks! It can't do this and that...", self.menu)
-        self.menu.addAction(self.menuitem_fuckup)
-        self.connect( self.menuitem_fuckup, SIGNAL("triggered(bool)"), self.fuck )
-
-        deltats = self.pile.get_deltats()
-        if deltats:
-            self.min_deltat = min(deltats)
-        else:
-            self.min_deltat = 0.01
-            
-        self.time_projection = Projection()
-        self.set_time_range(self.pile.tmin, self.pile.tmax)
-        self.time_projection.set_out_range(0., self.width())
-            
-        self.set_gathering()
-
-        self.track_to_screen = Projection()
-        self.track_to_nslc_ids = {}
-       
-        self.old_vec = None
-        self.old_processed_traces = None
-        
-        self.timer = QTimer( self )
-        self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
-        self.timer.setInterval(1000)
-        self.timer.start()
-        self.pile.add_listener(self)
-        self.trace_styles = {}
-        self.determine_box_styles()
-        
-    def periodical(self):
-        if self.menuitem_watch.isChecked():
-            self.update()
-
-    def get_pile(self):
-        return self.pile
+def MakePileOverviewClass(base):
     
-    def pile_changed(self, what):
-        self.sortingmode_change()
-        self.determine_box_styles()
-        
-    def get_neic_events(self):
-        self.set_markers(neic_earthquakes(self.pile.tmin, self.pile.tmax, magnitude_range=(5.,9.9)))
-
-    def set_gathering(self, gather=None, order=None, color=None):
-        if gather is None:
-            gather = lambda tr: tr.nslc_id
+    class PileOverview(base):
+        def __init__(self, pile, ntracks_shown_max, *args):
+            apply(base.__init__, (self,) + args)
             
-        if order is None:
-            order = lambda a,b: cmp(a, b)
-        
-        if color is None:
-            color = lambda tr: tr.location
-        
-        self.gather = gather
-        keys = self.pile.gather_keys(gather)
-        self.color_gather = color
-        self.color_keys = self.pile.gather_keys(color)
-        previous_ntracks = self.ntracks
-        self.ntracks = len(keys)
-        if self.shown_tracks_range is None or previous_ntracks < self.ntracks:
-            self.shown_tracks_range = 0, self.ntracks
+            self.pile = pile
+            self.ax_height = 80
             
-        l, h = self.shown_tracks_range
-        if l >= self.ntracks: l = self.ntracks-1
-        if h > self.ntracks: h = self.ntracks
-        
-        self.shown_tracks_range = l, h
-        self.shown_tracks_start = float(self.shown_tracks_range[0])
-
-        self.track_keys = sorted(keys, cmp=order)
-        self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
-        
-        inrange = lambda x,r: r[0] <= x and x < r[1]
-        self.trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
+            self.ntracks_shown_max = ntracks_shown_max
+            self.ntracks = 0
+            self.shown_tracks_range = None
+            self.track_start = None
+            self.track_trange = None
+            
+            self.lowpass = None
+            self.highpass = None
+            self.gain = 1.0
+            self.rotate = 0.0
+            self.markers = []
+            self.picking_down = None
+            self.picking = None
+            self.floating_pick = None
+            self.picks = []
+            self.ignore_releases = 0
+            self.message = None
+            self.reloaded = False
+            
+            self.tax = TimeAx()
+            self.setBackgroundRole( QPalette.Base )
+            self.setAutoFillBackground( True )
+            poli = QSizePolicy( QSizePolicy.Expanding, QSizePolicy.Expanding )
+            self.setSizePolicy( poli )
+            self.setMinimumSize(300,200)
+            self.setFocusPolicy( Qt.StrongFocus )
     
-        if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1]:
-            self.set_time_range(self.pile.tmin, self.pile.tmax)
-    
-    def set_time_range(self, tmin, tmax):
-        self.tmin, self.tmax = tmin, tmax
-        
-        if self.tmin > self.tmax:
-            self.tmin, self.tmax = self.tmax, self.tmin
+            self.menu = QMenu(self)
             
-        if self.tmin == self.tmax:
-            self.tmin -= 1.
-            self.tmax += 1.
-        
-        self.tmin = max(working_system_time_range[0], self.tmin)
-        self.tmax = min(working_system_time_range[1], self.tmax)
-                
-        if (self.tmax - self.tmin < self.min_deltat):
-            m = (self.tmin + self.tmax) / 2.
-            self.tmin = m - self.min_deltat/2.
-            self.tmax = m + self.min_deltat/2.
+            self.menuitem_pick = QAction('Pick', self.menu)
+            self.menu.addAction(self.menuitem_pick)
+            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
             
-        self.time_projection.set_in_range(tmin,tmax)
+            self.menu.addSeparator()
+            
+            self.menuitem_neic = QAction('NEIC catalog events 5+', self.menu)
+            self.menu.addAction(self.menuitem_neic)
+            self.connect( self.menuitem_neic, SIGNAL("triggered(bool)"), self.get_neic_events )
+            
+            self.menu.addSeparator()
     
-    def ypart(self, y):
-        if y < self.ax_height:
-            return -1
-        elif y > self.height()-self.ax_height:
-            return 1
-        else:
-            return 0
-
-    def set_markers(self, markers):
-        self.markers = markers
-
-    def mousePressEvent( self, mouse_ev ):
-        self.setMouseTracking(False)
-        if mouse_ev.button() == Qt.LeftButton:
-            if self.picking:
-                if self.picking_down is None:
-                    self.picking_down = self.time_projection.rev(mouse_ev.x()), mouse_ev.y()
+            menudef = [
+                ('Indivdual Scale',            lambda tr: (tr.network, tr.station, tr.location, tr.channel)),
+                ('Common Scale',               lambda tr: None),
+                ('Common Scale per Station',   lambda tr: (tr.network, tr.station)),
+                ('Common Scale per Component', lambda tr: (tr.channel)),
+            ]
+            
+            self.menuitems_scaling = add_radiobuttongroup(self.menu, menudef, self, self.scalingmode_change)
+            self.scaling_key = self.menuitems_scaling[0][1]
+            
+            self.menu.addSeparator()
+            
+            menudef = [
+                ('Scaling based on Minimum and Maximum', 'minmax'),
+                ('Scaling based on Mean +- 2 x Std. Deviation', 2),
+                ('Scaling based on Mean +- 4 x Std. Deviation', 4),
+            ]
+            
+            self.menuitems_scalingbase = add_radiobuttongroup(self.menu, menudef, self, self.scalingbase_change)
+            self.scalingbase = self.menuitems_scalingbase[0][1]
+            
+            self.menu.addSeparator()
+            
+            menudef = [
+                ('Sort by Network, Station, Location, Channel', 
+                    ( lambda tr: tr.nslc_id,     # gathering
+                    lambda a,b: cmp(a,b),      # sorting
+                    lambda tr: tr.location )),  # coloring
+                ('Sort by Network, Station, Channel, Location', 
+                    ( lambda tr: tr.nslc_id, 
+                    lambda a,b: cmp((a[0],a[1],a[3],a[2]), (b[0],b[1],b[3],b[2])),
+                    lambda tr: tr.channel )),
+                ('Sort by Station, Network, Channel, Location', 
+                    ( lambda tr: tr.nslc_id, 
+                    lambda a,b: cmp((a[1],a[0],a[3],a[2]), (b[1],b[0],b[3],b[2])),
+                    lambda tr: tr.channel )),
+                ('Sort by Network, Station, Channel',
+                    ( lambda tr: (tr.network, tr.station, tr.channel),
+                    lambda a,b: cmp(a,b),
+                    lambda tr: tr.location )),
+                ('Sort by Station, Network, Channel',
+                    ( lambda tr: (tr.station, tr.network, tr.channel),
+                    lambda a,b: cmp(a,b),
+                    lambda tr: tr.location )),
+            ]
+            self.menuitems_sorting = add_radiobuttongroup(self.menu, menudef, self, self.sortingmode_change)
+            
+            self.menu.addSeparator()
+            
+            self.menuitem_antialias = QAction('Antialiasing', self.menu)
+            self.menuitem_antialias.setCheckable(True)
+            self.menu.addAction(self.menuitem_antialias)
+            
+            self.menuitem_cliptraces = QAction('Clip Traces', self.menu)
+            self.menuitem_cliptraces.setCheckable(True)
+            self.menuitem_cliptraces.setChecked(True)
+            self.menu.addAction(self.menuitem_cliptraces)
+            
+            self.menuitem_showboxes = QAction('Show Boxes', self.menu)
+            self.menuitem_showboxes.setCheckable(True)
+            self.menuitem_showboxes.setChecked(True)
+            self.menu.addAction(self.menuitem_showboxes)
+            
+            self.menuitem_colortraces = QAction('Color Traces', self.menu)
+            self.menuitem_colortraces.setCheckable(True)
+            self.menuitem_colortraces.setChecked(False)
+            self.menu.addAction(self.menuitem_colortraces)
+            
+            self.menuitem_showscalerange = QAction('Show Scale Range', self.menu)
+            self.menuitem_showscalerange.setCheckable(True)
+            self.menu.addAction(self.menuitem_showscalerange)
+    
+            self.menuitem_allowdownsampling = QAction('Allow Downsampling', self.menu)
+            self.menuitem_allowdownsampling.setCheckable(True)
+            self.menuitem_allowdownsampling.setChecked(True)
+            self.menu.addAction(self.menuitem_allowdownsampling)
+            
+            self.menuitem_degap = QAction('Allow Degapping', self.menu)
+            self.menuitem_degap.setCheckable(True)
+            self.menuitem_degap.setChecked(True)
+            self.menu.addAction(self.menuitem_degap)
+            
+            self.menuitem_watch = QAction('Watch Files', self.menu)
+            self.menuitem_watch.setCheckable(True)
+            self.menuitem_watch.setChecked(False)
+            self.menu.addAction(self.menuitem_watch)
+            
+            self.menu.addSeparator()
+    
+            self.menuitem_print = QAction('Print', self.menu)
+            self.menu.addAction(self.menuitem_print)
+            self.connect( self.menuitem_print, SIGNAL("triggered(bool)"), self.printit )
+            
+            self.menuitem_close = QAction('Close', self.menu)
+            self.menu.addAction(self.menuitem_close)
+            self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
+            
+            self.menu.addSeparator()
+    
+            self.menuitem_fuckup = QAction("Snuffler sucks! It can't do this and that...", self.menu)
+            self.menu.addAction(self.menuitem_fuckup)
+            self.connect( self.menuitem_fuckup, SIGNAL("triggered(bool)"), self.fuck )
+    
+            deltats = self.pile.get_deltats()
+            if deltats:
+                self.min_deltat = min(deltats)
             else:
-                self.track_start = mouse_ev.x(), mouse_ev.y()
-                self.track_trange = self.tmin, self.tmax
-        
-        if mouse_ev.button() == Qt.RightButton:
-            self.menu.exec_(QCursor.pos())
-        self.update_status()
-
-    def mouseReleaseEvent( self, mouse_ev ):
-        if self.ignore_releases:
-            self.ignore_releases -= 1
-            return
-        
-        if self.picking:
-            self.stop_picking(mouse_ev.x(), mouse_ev.y())
-        self.track_start = None
-        self.track_trange = None
-        self.update_status()
-        
-    def mouseDoubleClickEvent(self, mouse_ev):
-        self.start_picking(None)
-        self.ignore_releases = 1
-
-    def mouseMoveEvent( self, mouse_ev ):
-        point = self.mapFromGlobal(mouse_ev.globalPos())
-
-        if self.picking:
-           self.update_picking(point.x(),point.y())
-        else:
-            if self.track_start is not None:
-            
-                x0, y0 = self.track_start
-                dx = (point.x() - x0)/float(self.width())
-                dy = (point.y() - y0)/float(self.height())
-                if self.ypart(y0) == 1: dy = 0
+                self.min_deltat = 0.01
                 
-                tmin0, tmax0 = self.track_trange
+            self.time_projection = Projection()
+            self.set_time_range(self.pile.tmin, self.pile.tmax)
+            self.time_projection.set_out_range(0., self.width())
                 
-                scale = math.exp(-dy*5.)
-                dtr = scale*(tmax0-tmin0) - (tmax0-tmin0)
-                frac = x0/float(self.width())
-                dt = dx*(tmax0-tmin0)*scale
-                
-                self.set_time_range(tmin0 - dt - dtr*frac, tmax0 - dt + dtr*(1.-frac))
+            self.set_gathering()
     
-                self.update()
-                
-        self.update_status()
-            
-    def keyPressEvent(self, key_event):
-        dt = self.tmax - self.tmin
-        tmid = (self.tmin + self.tmax) / 2.
-        
-        if key_event.text() == ' ':
-            self.set_time_range(self.tmin+dt, self.tmax+dt)
-           
-        elif key_event.text() == 'b':
-            dt = self.tmax - self.tmin
-            self.set_time_range(self.tmin-dt, self.tmax-dt)
-        
-        elif key_event.text() == 'n':
-            if self.markers is not None and len(self.markers) != 0:
-                for marker in self.markers:
-                    t,v = marker
-                    if t > tmid:
-                        break
-                self.set_time_range(t-dt/2.,t+dt/2.)
-            
-        elif key_event.text() == 'p':
-            if self.markers is not None and len(self.markers) != 0:
-                for marker in self.markers[::-1]:
-                    t,v = marker
-                    if t < tmid:
-                        break
-                self.set_time_range(t-dt/2.,t+dt/2.)
-
-        elif key_event.text() == 'q':
-            self.myclose()
-
-        elif key_event.text() == 'r':
-            self.reload_requested = True
-
-        elif key_event.key() == Qt.Key_Escape:
-            if self.picking:
-                self.stop_picking(0,0,abort=True)
-        
-        elif key_event.key() == Qt.Key_PageDown:
-            self.scroll_tracks(self.shown_tracks_range[1]-self.shown_tracks_range[0])
-        elif key_event.key() == Qt.Key_PageUp:
-            self.scroll_tracks(self.shown_tracks_range[0]-self.shown_tracks_range[1])
-            
-        self.update()
-        self.update_status()
-
-    def wheelEvent(self, wheel_event):
-        amount = max(1.,abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
-        
-        if wheel_event.delta() < 0:
-            wdelta = -amount
-        else:
-            wdelta = +amount
-        
-        trmin,trmax = self.track_to_screen.get_in_range()
-        anchor = (self.track_to_screen.rev(wheel_event.y())-trmin)/(trmax-trmin)
-        if wheel_event.modifiers() & Qt.ControlModifier:
-            self.zoom_tracks( anchor, wdelta )
-        else:
-            
-            self.scroll_tracks( -wdelta )
-
-
-    def scroll_tracks(self, shift):
-        shown = self.shown_tracks_range
-        shiftmin = -shown[0]
-        shiftmax = self.ntracks-shown[1]
-        shift = max(shiftmin, shift)
-        shift = min(shiftmax, shift)
-        shown = shown[0] + shift, shown[1] + shift
-        self.shown_tracks_range = int(shown[0]), int(shown[1])
-        self.shown_tracks_start = self.shown_tracks_range[0]
-        self.update()
-        
-    def zoom_tracks(self, anchor, delta):
-        ntracks_shown = self.shown_tracks_range[1]-self.shown_tracks_range[0]
-        ntracks_shown += int(round(delta))
-        if not ( 1 <= ntracks_shown <= self.ntracks): return
-        u = self.shown_tracks_start
-        nu = max(0., u-anchor*delta)
-        nv = nu + ntracks_shown
-        if nv > self.ntracks:
-            nu -= nv - self.ntracks
-            nv -= nv - self.ntracks
-        
-        self.shown_tracks_start = nu
-        self.shown_tracks_range = int(round(nu)), int(round(nv))
-        
-        self.update()       
-
-    def printit(self):
-        printer = QPrinter()
-        printer.setOrientation(QPrinter.Landscape)
-        
-        dialog = QPrintDialog(printer, self)
-        dialog.setWindowTitle('Print')
-        
-        if dialog.exec_() != QDialog.Accepted:
-            return
-        
-        painter = QPainter()
-        painter.begin(printer)
-        page = printer.pageRect()
-        self.drawit(painter, printmode=False, w=page.width(), h=page.height())
-        painter.end()
-        
-    def paintEvent(self, paint_ev ):
-        """Called by QT whenever widget needs to be painted"""
-        painter = QPainter(self)
-
-        if self.menuitem_antialias.isChecked():
-            painter.setRenderHint( QPainter.Antialiasing )
-            
-        self.drawit( painter )
-    
-    def determine_box_styles(self):
-        
-        traces = list(self.pile.iter_traces())
-        traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
-        istyle = 0
-        trace_styles = {}
-        for itr, tr in enumerate(traces):
-            if itr > 0:
-                other = traces[itr-1]
-                if not (other.nslc_id == tr.nslc_id and
-                    other.deltat == tr.deltat and
-                    abs(other.tmax - tr.tmin) < gap_lap_tolerance): istyle+=1
-        
-            trace_styles[tr.full_id, tr.deltat] = istyle
-        
-        self.trace_styles = trace_styles
-        
-    def draw_trace_boxes(self, p, time_projection, track_projections):
-        
-        for v_projection in track_projections.values():
-            v_projection.set_in_range(0.,1.)
-        
-        selector = lambda x: x.overlaps(*time_projection.get_in_range())
-        
-        traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=selector))
-        traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
-        istyle = 0
-        for itr, tr in enumerate(traces):
-            
-            itrack = self.key_to_row[self.gather(tr)]
-            if not itrack in track_projections: continue
-            
-            v_projection = track_projections[itrack]
-            
-            dtmin = time_projection(tr.tmin)
-            dtmax = time_projection(tr.tmax)
-            
-            dvmin = v_projection(0.)
-            dvmax = v_projection(1.)
-        
-            istyle = self.trace_styles.get((tr.full_id, tr.deltat), 0)
-            style = box_styles[istyle%len(box_styles)]
-            rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
-            p.fillRect(rect, style.fill_brush)
-            
-            p.setPen(style.frame_pen)
-            p.drawRect(rect)
-        
-    def drawit(self, p, printmode=False, w=None, h=None):
-        """This performs the actual drawing."""
-
-        if h is None: h = self.height()
-        if w is None: w = self.width()
-        
-        if printmode:
-            primary_color = (0,0,0)
-        else:
-            primary_color = gmtpy.tango_colors['aluminium5']
-        
-        ax_h = self.ax_height
-        
-        vbottom_ax_projection = Projection()
-        vtop_ax_projection = Projection()
-        vcenter_projection = Projection()
-        
-        self.time_projection.set_out_range(0, w)
-        vbottom_ax_projection.set_out_range(h-ax_h, h)
-        vtop_ax_projection.set_out_range(0, ax_h)
-        vcenter_projection.set_out_range(ax_h, h-ax_h)
-        vcenter_projection.set_in_range(0.,1.)
-        self.track_to_screen.set_out_range(ax_h, h-ax_h)
-        
-        ntracks = self.ntracks
-        self.track_to_screen.set_in_range(*self.shown_tracks_range)
-        track_projections = {}
-        for i in range(*self.shown_tracks_range):
-            proj = Projection()
-            proj.set_out_range(self.track_to_screen(i+0.05),self.track_to_screen(i+1.-0.05))
-            track_projections[i] = proj
-        
-                
-        if self.tmin < self.tmax:
-            self.time_projection.set_in_range(self.tmin, self.tmax)
-            vbottom_ax_projection.set_in_range(0, ax_h)
-
-            self.tax.drawit( p, self.time_projection, vbottom_ax_projection )
-            
-            yscaler = gmtpy.AutoScaler()
-            if not printmode and self.menuitem_showboxes.isChecked():
-                self.draw_trace_boxes(p, self.time_projection, track_projections)
-            
-            if self.floating_pick:
-                self.floating_pick.draw(p, self.time_projection, vcenter_projection)
-            
-            for pick in self.picks:
-                pick.draw(p, self.time_projection, vcenter_projection)
-                
-            primary_pen = QPen(QColor(*primary_color))
-            p.setPen(primary_pen)
-                        
-            processed_traces = self.prepare_cutout(self.tmin, self.tmax, 
-                                                   trace_selector=self.trace_selector, 
-                                                   degap=self.menuitem_degap.isChecked())
-            
-            color_lookup = dict([ (k,i) for (i,k) in enumerate(self.color_keys) ])
-            
+            self.track_to_screen = Projection()
             self.track_to_nslc_ids = {}
-            min_max_for_annot = {}
-            if processed_traces:
-                yscaler = gmtpy.AutoScaler()
-                data_ranges = pyrocko.trace.minmax(processed_traces, key=self.scaling_key, mode=self.scalingbase)
-                for trace in processed_traces:
-                    itrack = self.key_to_row[self.gather(trace)]
-                    if itrack in track_projections:
-                        if itrack not in self.track_to_nslc_ids:
-                            self.track_to_nslc_ids[itrack] = set()
-                        self.track_to_nslc_ids[itrack].add( trace.nslc_id )
-                        
-                        track_projection = track_projections[itrack]
-                        data_range = data_ranges[self.scaling_key(trace)]
-                        ymin, ymax, yinc = yscaler.make_scale( data_range )
-                        track_projection.set_in_range(ymax,ymin)
-    
-                        udata = self.time_projection(trace.get_xdata())
-                        vdata = track_projection( self.gain*trace.get_ydata() )
-                        
-                        umin, umax = self.time_projection.get_out_range()
-                        vmin, vmax = track_projection.get_out_range()
-                        
-                        trackrect = QRectF(umin,vmin, umax-umin, vmax-vmin)
-                       
-                        qpoints = make_QPolygonF( udata, vdata )
-                            
-                        if self.menuitem_cliptraces.isChecked(): p.setClipRect(trackrect)
-                        if self.menuitem_colortraces.isChecked():
-                            color = gmtpy.color_tup(color_lookup[self.color_gather(trace)])
-                            pen = QPen(QColor(*color))
-                            p.setPen(pen)
-                        
-                        p.drawPolyline( qpoints )
-                        
-                        if self.floating_pick:
-                            self.floating_pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
-                            
-                        for pick in self.picks:
-                            pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
-                        p.setPen(primary_pen)
-                            
-                        if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
-                        
-                        if  itrack not in min_max_for_annot:
-                            min_max_for_annot[itrack] = (ymin, ymax)
-                        else:
-                            if min_max_for_annot is not None and min_max_for_annot[itrack] != (ymin, ymax):
-                                min_max_for_annot[itrack] = None
-                        
-            p.setPen(primary_pen)
-            if len(self.markers) > 0:
-                mvs = self.markers[:,1]
-                valmin, valmax = mvs.min(), mvs.max()
-                vtop_ax_projection.set_in_range(valmin, valmax)
-                for marker in self.markers:
-                    tim, val = marker
-                
-                    u = self.time_projection( tim )
-                    v0 = vtop_ax_projection(valmin)
-                    v1 = vtop_ax_projection(val)
-                
-                    p.drawLine(QPointF(u,v0), QPointF(u, v1))
-                                    
-            font = QFont()
-            font.setBold(True)
-            p.setFont(font)
-            fm = p.fontMetrics()
-            label_bg = QBrush( QColor(255,255,255,100) )
+        
+            self.old_vec = None
+            self.old_processed_traces = None
             
-            for key in self.track_keys:
-                itrack = self.key_to_row[key]
-                if itrack in track_projections:
-                    plabel = ' '.join([ x for x in key if x])
-                    label = QString( plabel)
-                    rect = fm.boundingRect( label )
+            self.timer = QTimer( self )
+            self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
+            self.timer.setInterval(1000)
+            self.timer.start()
+            self.pile.add_listener(self)
+            self.trace_styles = {}
+            self.determine_box_styles()
+            
+        def periodical(self):
+            if self.menuitem_watch.isChecked():
+                if self.pile.reload_modified():
+                    self.update()
+    
+        def get_pile(self):
+            return self.pile
+        
+        def pile_changed(self, what):
+            self.sortingmode_change()
+            self.determine_box_styles()
+            
+        def get_neic_events(self):
+            self.set_markers(neic_earthquakes(self.pile.tmin, self.pile.tmax, magnitude_range=(5.,9.9)))
+    
+        def set_gathering(self, gather=None, order=None, color=None):
+            if gather is None:
+                gather = lambda tr: tr.nslc_id
+                
+            if order is None:
+                order = lambda a,b: cmp(a, b)
+            
+            if color is None:
+                color = lambda tr: tr.location
+            
+            self.gather = gather
+            keys = self.pile.gather_keys(gather)
+            self.color_gather = color
+            self.color_keys = self.pile.gather_keys(color)
+            previous_ntracks = self.ntracks
+            self.ntracks = len(keys)
+            if self.shown_tracks_range is None or previous_ntracks < self.ntracks:
+                self.shown_tracks_range = 0, self.ntracks
+                
+            l, h = self.shown_tracks_range
+            if l >= self.ntracks: l = self.ntracks-1
+            if h > self.ntracks: h = self.ntracks
+            
+            self.shown_tracks_range = l, h
+            self.shown_tracks_start = float(self.shown_tracks_range[0])
+    
+            self.track_keys = sorted(keys, cmp=order)
+            self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
+            
+            inrange = lambda x,r: r[0] <= x and x < r[1]
+            self.trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
+        
+            if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1]:
+                self.set_time_range(self.pile.tmin, self.pile.tmax)
+        
+        def set_time_range(self, tmin, tmax):
+            self.tmin, self.tmax = tmin, tmax
+            
+            if self.tmin > self.tmax:
+                self.tmin, self.tmax = self.tmax, self.tmin
+                
+            if self.tmin == self.tmax:
+                self.tmin -= 1.
+                self.tmax += 1.
+            
+            self.tmin = max(working_system_time_range[0], self.tmin)
+            self.tmax = min(working_system_time_range[1], self.tmax)
                     
-                    lx = 10
-                    ly = self.track_to_screen(itrack+0.5)
+            if (self.tmax - self.tmin < self.min_deltat):
+                m = (self.tmin + self.tmax) / 2.
+                self.tmin = m - self.min_deltat/2.
+                self.tmax = m + self.min_deltat/2.
+                
+            self.time_projection.set_in_range(tmin,tmax)
+        
+        def ypart(self, y):
+            if y < self.ax_height:
+                return -1
+            elif y > self.height()-self.ax_height:
+                return 1
+            else:
+                return 0
+    
+        def set_markers(self, markers):
+            self.markers = markers
+    
+        def mousePressEvent( self, mouse_ev ):
+            self.setMouseTracking(False)
+            if mouse_ev.button() == Qt.LeftButton:
+                if self.picking:
+                    if self.picking_down is None:
+                        self.picking_down = self.time_projection.rev(mouse_ev.x()), mouse_ev.y()
+                else:
+                    self.track_start = mouse_ev.x(), mouse_ev.y()
+                    self.track_trange = self.tmin, self.tmax
+            
+            if mouse_ev.button() == Qt.RightButton:
+                self.menu.exec_(QCursor.pos())
+            self.update_status()
+    
+        def mouseReleaseEvent( self, mouse_ev ):
+            if self.ignore_releases:
+                self.ignore_releases -= 1
+                return
+            
+            if self.picking:
+                self.stop_picking(mouse_ev.x(), mouse_ev.y())
+            self.track_start = None
+            self.track_trange = None
+            self.update_status()
+            
+        def mouseDoubleClickEvent(self, mouse_ev):
+            self.start_picking(None)
+            self.ignore_releases = 1
+    
+        def mouseMoveEvent( self, mouse_ev ):
+            point = self.mapFromGlobal(mouse_ev.globalPos())
+    
+            if self.picking:
+                self.update_picking(point.x(),point.y())
+            else:
+                if self.track_start is not None:
+                
+                    x0, y0 = self.track_start
+                    dx = (point.x() - x0)/float(self.width())
+                    dy = (point.y() - y0)/float(self.height())
+                    if self.ypart(y0) == 1: dy = 0
                     
-                    rect.translate( lx, ly )
-                    p.fillRect( rect, label_bg )
-                    p.drawText( lx, ly, label )
+                    tmin0, tmax0 = self.track_trange
                     
-                    if (self.menuitem_showscalerange.isChecked() and itrack in min_max_for_annot):
-                        if min_max_for_annot[itrack] is not None:
-                            plabel = '(%.2g, %.2g)' % min_max_for_annot[itrack]
-                        else:
-                            plabel = 'Mixed Scales!'
+                    scale = math.exp(-dy*5.)
+                    dtr = scale*(tmax0-tmin0) - (tmax0-tmin0)
+                    frac = x0/float(self.width())
+                    dt = dx*(tmax0-tmin0)*scale
+                    
+                    self.set_time_range(tmin0 - dt - dtr*frac, tmax0 - dt + dtr*(1.-frac))
+        
+                    self.update()
+                    
+            self.update_status()
+                
+        def keyPressEvent(self, key_event):
+            dt = self.tmax - self.tmin
+            tmid = (self.tmin + self.tmax) / 2.
+            
+            if key_event.text() == ' ':
+                self.set_time_range(self.tmin+dt, self.tmax+dt)
+            
+            elif key_event.text() == 'b':
+                dt = self.tmax - self.tmin
+                self.set_time_range(self.tmin-dt, self.tmax-dt)
+            
+            elif key_event.text() == 'n':
+                if self.markers is not None and len(self.markers) != 0:
+                    for marker in self.markers:
+                        t,v = marker
+                        if t > tmid:
+                            break
+                    self.set_time_range(t-dt/2.,t+dt/2.)
+                
+            elif key_event.text() == 'p':
+                if self.markers is not None and len(self.markers) != 0:
+                    for marker in self.markers[::-1]:
+                        t,v = marker
+                        if t < tmid:
+                            break
+                    self.set_time_range(t-dt/2.,t+dt/2.)
+    
+            elif key_event.text() == 'q':
+                self.myclose()
+    
+            elif key_event.text() == 'r':
+                if self.pile.reload_modified():
+                    self.reloaded = True
+    
+            elif key_event.key() == Qt.Key_Escape:
+                if self.picking:
+                    self.stop_picking(0,0,abort=True)
+            
+            elif key_event.key() == Qt.Key_PageDown:
+                self.scroll_tracks(self.shown_tracks_range[1]-self.shown_tracks_range[0])
+                
+            elif key_event.key() == Qt.Key_PageUp:
+                self.scroll_tracks(self.shown_tracks_range[0]-self.shown_tracks_range[1])
+                
+            elif key_event.text() == '+':
+                self.zoom_tracks(0.,1.)
+            
+            elif key_event.text() == '-':
+                self.zoom_tracks(0.,-1.)
+                            
+            self.update()
+            self.update_status()
+    
+        def wheelEvent(self, wheel_event):
+            amount = max(1.,abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
+            
+            if wheel_event.delta() < 0:
+                wdelta = -amount
+            else:
+                wdelta = +amount
+            
+            trmin,trmax = self.track_to_screen.get_in_range()
+            anchor = (self.track_to_screen.rev(wheel_event.y())-trmin)/(trmax-trmin)
+            if wheel_event.modifiers() & Qt.ControlModifier:
+                self.zoom_tracks( anchor, wdelta )
+            else:
+                self.scroll_tracks( -wdelta )
+    
+    
+        def scroll_tracks(self, shift):
+            shown = self.shown_tracks_range
+            shiftmin = -shown[0]
+            shiftmax = self.ntracks-shown[1]
+            shift = max(shiftmin, shift)
+            shift = min(shiftmax, shift)
+            shown = shown[0] + shift, shown[1] + shift
+            self.shown_tracks_range = int(shown[0]), int(shown[1])
+            self.shown_tracks_start = self.shown_tracks_range[0]
+            self.update()
+            
+        def zoom_tracks(self, anchor, delta):
+            ntracks_shown = self.shown_tracks_range[1]-self.shown_tracks_range[0]
+            ntracks_shown += int(round(delta))
+            if not ( 1 <= ntracks_shown <= self.ntracks): return
+            u = self.shown_tracks_start
+            nu = max(0., u-anchor*delta)
+            nv = nu + ntracks_shown
+            if nv > self.ntracks:
+                nu -= nv - self.ntracks
+                nv -= nv - self.ntracks
+            
+            self.shown_tracks_start = nu
+            self.shown_tracks_range = int(round(nu)), int(round(nv))
+            
+            self.update()       
+    
+        def printit(self):
+            printer = QPrinter()
+            printer.setOrientation(QPrinter.Landscape)
+            
+            dialog = QPrintDialog(printer, self)
+            dialog.setWindowTitle('Print')
+            
+            if dialog.exec_() != QDialog.Accepted:
+                return
+            
+            painter = QPainter()
+            painter.begin(printer)
+            page = printer.pageRect()
+            self.drawit(painter, printmode=False, w=page.width(), h=page.height())
+            painter.end()
+            
+        def paintEvent(self, paint_ev ):
+            """Called by QT whenever widget needs to be painted"""
+            painter = QPainter(self)
+    
+            if self.menuitem_antialias.isChecked():
+                painter.setRenderHint( QPainter.Antialiasing )
+                
+            self.drawit( painter )
+        
+        def determine_box_styles(self):
+            
+            traces = list(self.pile.iter_traces())
+            traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
+            istyle = 0
+            trace_styles = {}
+            for itr, tr in enumerate(traces):
+                if itr > 0:
+                    other = traces[itr-1]
+                    if not (other.nslc_id == tr.nslc_id and
+                        other.deltat == tr.deltat and
+                        abs(other.tmax - tr.tmin) < gap_lap_tolerance): istyle+=1
+            
+                trace_styles[tr.full_id, tr.deltat] = istyle
+            
+            self.trace_styles = trace_styles
+            
+        def draw_trace_boxes(self, p, time_projection, track_projections):
+            
+            for v_projection in track_projections.values():
+                v_projection.set_in_range(0.,1.)
+            
+            selector = lambda x: x.overlaps(*time_projection.get_in_range())
+            
+            traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=selector))
+            traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
+            istyle = 0
+            for itr, tr in enumerate(traces):
+                
+                itrack = self.key_to_row[self.gather(tr)]
+                if not itrack in track_projections: continue
+                
+                v_projection = track_projections[itrack]
+                
+                dtmin = time_projection(tr.tmin)
+                dtmax = time_projection(tr.tmax)
+                
+                dvmin = v_projection(0.)
+                dvmax = v_projection(1.)
+            
+                istyle = self.trace_styles.get((tr.full_id, tr.deltat), 0)
+                style = box_styles[istyle%len(box_styles)]
+                rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
+                p.fillRect(rect, style.fill_brush)
+                
+                p.setPen(style.frame_pen)
+                p.drawRect(rect)
+            
+        def drawit(self, p, printmode=False, w=None, h=None):
+            """This performs the actual drawing."""
+    
+            if h is None: h = self.height()
+            if w is None: w = self.width()
+            
+            if printmode:
+                primary_color = (0,0,0)
+            else:
+                primary_color = gmtpy.tango_colors['aluminium5']
+            
+            ax_h = self.ax_height
+            
+            vbottom_ax_projection = Projection()
+            vtop_ax_projection = Projection()
+            vcenter_projection = Projection()
+            
+            self.time_projection.set_out_range(0, w)
+            vbottom_ax_projection.set_out_range(h-ax_h, h)
+            vtop_ax_projection.set_out_range(0, ax_h)
+            vcenter_projection.set_out_range(ax_h, h-ax_h)
+            vcenter_projection.set_in_range(0.,1.)
+            self.track_to_screen.set_out_range(ax_h, h-ax_h)
+            
+            ntracks = self.ntracks
+            self.track_to_screen.set_in_range(*self.shown_tracks_range)
+            track_projections = {}
+            for i in range(*self.shown_tracks_range):
+                proj = Projection()
+                proj.set_out_range(self.track_to_screen(i+0.05),self.track_to_screen(i+1.-0.05))
+                track_projections[i] = proj
+            
+                    
+            if self.tmin < self.tmax:
+                self.time_projection.set_in_range(self.tmin, self.tmax)
+                vbottom_ax_projection.set_in_range(0, ax_h)
+    
+                self.tax.drawit( p, self.time_projection, vbottom_ax_projection )
+                
+                yscaler = gmtpy.AutoScaler()
+                if not printmode and self.menuitem_showboxes.isChecked():
+                    self.draw_trace_boxes(p, self.time_projection, track_projections)
+                
+                if self.floating_pick:
+                    self.floating_pick.draw(p, self.time_projection, vcenter_projection)
+                
+                for pick in self.picks:
+                    pick.draw(p, self.time_projection, vcenter_projection)
+                    
+                primary_pen = QPen(QColor(*primary_color))
+                p.setPen(primary_pen)
+                            
+                processed_traces = self.prepare_cutout(self.tmin, self.tmax, 
+                                                    trace_selector=self.trace_selector, 
+                                                    degap=self.menuitem_degap.isChecked())
+                
+                color_lookup = dict([ (k,i) for (i,k) in enumerate(self.color_keys) ])
+                
+                self.track_to_nslc_ids = {}
+                min_max_for_annot = {}
+                if processed_traces:
+                    yscaler = gmtpy.AutoScaler()
+                    data_ranges = pyrocko.trace.minmax(processed_traces, key=self.scaling_key, mode=self.scalingbase)
+                    for trace in processed_traces:
+                        itrack = self.key_to_row[self.gather(trace)]
+                        if itrack in track_projections:
+                            if itrack not in self.track_to_nslc_ids:
+                                self.track_to_nslc_ids[itrack] = set()
+                            self.track_to_nslc_ids[itrack].add( trace.nslc_id )
+                            
+                            track_projection = track_projections[itrack]
+                            data_range = data_ranges[self.scaling_key(trace)]
+                            ymin, ymax, yinc = yscaler.make_scale( data_range )
+                            track_projection.set_in_range(ymax,ymin)
+        
+                            udata = self.time_projection(trace.get_xdata())
+                            vdata = track_projection( self.gain*trace.get_ydata() )
+                            
+                            umin, umax = self.time_projection.get_out_range()
+                            vmin, vmax = track_projection.get_out_range()
+                            
+                            trackrect = QRectF(umin,vmin, umax-umin, vmax-vmin)
+                        
+                            qpoints = make_QPolygonF( udata, vdata )
+                                
+                            if self.menuitem_cliptraces.isChecked(): p.setClipRect(trackrect)
+                            if self.menuitem_colortraces.isChecked():
+                                color = gmtpy.color_tup(color_lookup[self.color_gather(trace)])
+                                pen = QPen(QColor(*color))
+                                p.setPen(pen)
+                            
+                            p.drawPolyline( qpoints )
+                            
+                            if self.floating_pick:
+                                self.floating_pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                                
+                            for pick in self.picks:
+                                pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                            p.setPen(primary_pen)
+                                
+                            if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
+                            
+                            if  itrack not in min_max_for_annot:
+                                min_max_for_annot[itrack] = (ymin, ymax)
+                            else:
+                                if min_max_for_annot is not None and min_max_for_annot[itrack] != (ymin, ymax):
+                                    min_max_for_annot[itrack] = None
+                            
+                p.setPen(primary_pen)
+                if len(self.markers) > 0:
+                    mvs = self.markers[:,1]
+                    valmin, valmax = mvs.min(), mvs.max()
+                    vtop_ax_projection.set_in_range(valmin, valmax)
+                    for marker in self.markers:
+                        tim, val = marker
+                    
+                        u = self.time_projection( tim )
+                        v0 = vtop_ax_projection(valmin)
+                        v1 = vtop_ax_projection(val)
+                    
+                        p.drawLine(QPointF(u,v0), QPointF(u, v1))
+                                        
+                font = QFont()
+                font.setBold(True)
+                p.setFont(font)
+                fm = p.fontMetrics()
+                label_bg = QBrush( QColor(255,255,255,100) )
+                
+                for key in self.track_keys:
+                    itrack = self.key_to_row[key]
+                    if itrack in track_projections:
+                        plabel = ' '.join([ x for x in key if x])
                         label = QString( plabel)
                         rect = fm.boundingRect( label )
-                        lx = w-10-rect.width()
+                        
+                        lx = 10
+                        ly = self.track_to_screen(itrack+0.5)
+                        
                         rect.translate( lx, ly )
                         p.fillRect( rect, label_bg )
                         p.drawText( lx, ly, label )
-
-    def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
+                        
+                        if (self.menuitem_showscalerange.isChecked() and itrack in min_max_for_annot):
+                            if min_max_for_annot[itrack] is not None:
+                                plabel = '(%.2g, %.2g)' % min_max_for_annot[itrack]
+                            else:
+                                plabel = 'Mixed Scales!'
+                            label = QString( plabel)
+                            rect = fm.boundingRect( label )
+                            lx = w-10-rect.width()
+                            rect.translate( lx, ly )
+                            p.fillRect( rect, label_bg )
+                            p.drawText( lx, ly, label )
+    
+        def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
+                    
+            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, 
+                self.min_deltat, self.rotate, self.shown_tracks_range,
+                self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
                 
-        vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, 
-               self.min_deltat, self.rotate, self.shown_tracks_range,
-               self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
-               
-        if vec == self.old_vec and not (self.reload_requested or self.menuitem_watch.isChecked()):
-            return self.old_processed_traces
-        
-        self.old_vec = vec
-        
-        if self.lowpass is not None:
-            deltat_target = 1./self.lowpass * 0.25
-            ndecimate = min(50, max(1, int(round(deltat_target / self.min_deltat))))
-            tpad = 1./self.lowpass * 2.
-        else:
-            ndecimate = 1
-            tpad = self.min_deltat*5.
+            if vec == self.old_vec and not (self.reloaded or self.menuitem_watch.isChecked()):
+                return self.old_processed_traces
             
-        if self.highpass is not None:
-            tpad = max(1./self.highpass * 2., tpad)
-        
-        tpad = min(tmax-tmin, tpad)
-        tpad = max(self.min_deltat*5., tpad)
+            self.old_vec = vec
             
-        nsee_points_per_trace = 5000*10
-        see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
-        
-        processed_traces = []
-        if (tmax - tmin) < see_data_range:
-            
-            if self.reload_requested or self.menuitem_watch.isChecked():
-                self.pile.reload_modified()
-                self.reload_requested = False
-                        
-            for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
-                                             want_incomplete=True,
-                                             degap=degap,
-                                             keep_current_files_open=True, trace_selector=trace_selector ):
-                for trace in traces:
-                    
-                    if self.lowpass is not None:
-                        deltat_target = 1./self.lowpass * 0.2
-                        ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
-                        ndecimate2 = int(math.log(ndecimate,2))
-                        
-                    else:
-                        ndecimate = 1
-                        ndecimate2 = 0
-                    
-                    if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
-                        for i in range(ndecimate2):
-                            trace.downsample(2)
-                    
-                    lowpass_success = False
-                    if self.lowpass is not None:
-                        if self.lowpass < 0.5/trace.deltat:
-                            trace.lowpass(4,self.lowpass)
-                            lowpass_success = True
-                    
-                    highpass_success = False
-                    if self.highpass is not None:
-                        if self.lowpass is None or self.highpass < self.lowpass:
-                            if self.highpass < 0.5/trace.deltat:
-                                trace.highpass(4,self.highpass)
-                                highpass_success = True                            
-                    try:
-                        trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
-                    except pyrocko.trace.NoData:
-                        continue
-                        
-                    if len(trace.get_ydata()) < 2: continue
-                    
-                    processed_traces.append(trace)
-            
-        if self.rotate != 0.0:
-            phi = self.rotate/180.*math.pi
-            cphi = math.cos(phi)
-            sphi = math.sin(phi)
-            for a in processed_traces:
-                for b in processed_traces: 
-                    if (a.network == b.network and a.station == b.station and a.location == b.location and
-                        a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
-                        abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
-                        len(a.get_ydata()) == len(b.get_ydata())):
-                        
-                        aydata = a.get_ydata()*cphi+b.get_ydata()*sphi
-                        bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
-                        a.set_ydata(aydata)
-                        b.set_ydata(bydata)
-                        
-        self.old_processed_traces = processed_traces
-        return processed_traces
-    
-    def scalingbase_change(self, ignore):
-        for menuitem, scalingbase in self.menuitems_scalingbase:
-            if menuitem.isChecked():
-                self.scalingbase = scalingbase
-    
-    def scalingmode_change(self, ignore):
-        for menuitem, scaling_key in self.menuitems_scaling:
-            if menuitem.isChecked():
-                self.scaling_key = scaling_key
-
-    def sortingmode_change(self, ignore=None):
-        for menuitem, (gather, order, color) in self.menuitems_sorting:
-            if menuitem.isChecked():
-                self.set_gathering(gather, order, color)
-
-    def lowpass_change(self, value, ignore):
-        self.lowpass = value
-        self.passband_check()
-        self.update()
-        
-    def highpass_change(self, value, ignore):
-        self.highpass = value
-        self.passband_check()
-        self.update()
-
-    def passband_check(self):
-        if self.highpass and self.lowpass and self.highpass >= self.lowpass:
-            self.message = 'Corner frequency of highpass larger than corner frequency of lowpass! I will now deactivate the higpass.'
-            self.update_status()
-        else:
-            oldmess = self.message
-            self.message = None
-            if oldmess is not None:
-                self.update_status()        
-    
-    def gain_change(self, value, ignore):
-        self.gain = value
-        self.update()
-        
-    def rot_change(self, value, ignore):
-        self.rotate = value
-        self.update()
-
-    def get_min_deltat(self):
-        return self.min_deltat
-    
-    def animate_picking(self):
-        point = self.mapFromGlobal(QCursor.pos())
-        self.update_picking(point.x(), point.y(), doshift=True)
-        
-    def get_nslc_ids_for_track(self, ftrack):
-        itrack = int(ftrack)
-        if itrack in self.track_to_nslc_ids:
-            return self.track_to_nslc_ids[int(ftrack)]
-        else:
-            return []
-            
-    def stop_picking(self, x,y, abort=False):
-        if self.picking:
-            self.update_picking(x,y, doshift=False)
-            #self.picking.hide()
-            self.picking = None
-            self.picking_down = None
-            self.picking_timer.stop()
-            self.picking_timer = None
-            if not abort:
-                tmi = self.floating_pick.tmin
-                tma = self.floating_pick.tmax
-                print myctime(tmi), myctime(tma), tma-tmi
-                self.picks.append(self.floating_pick)
-            
-            self.floating_pick = None
-    
-    
-    def start_picking(self, ignore):
-        if not self.picking:
-            self.picking = QRubberBand(QRubberBand.Rectangle)
-            point = self.mapFromGlobal(QCursor.pos())
-            
-            gpoint = self.mapToGlobal( QPoint(point.x(), 0) )
-            self.picking.setGeometry( gpoint.x(), gpoint.y(), 1, self.height())
-            t = self.time_projection.rev(point.x())
-            
-            ftrack = self.track_to_screen.rev(point.y())
-            nslc_ids = self.get_nslc_ids_for_track(ftrack)
-            self.floating_pick = Pick(nslc_ids, t,t)
-
-            #self.picking.show()
-            self.setMouseTracking(True)
-            
-            self.picking_timer = QTimer()
-            self.connect( self.picking_timer, SIGNAL("timeout()"), self.animate_picking )
-            self.picking_timer.setInterval(50)
-            self.picking_timer.start()
-
-    
-    def update_picking(self, x,y, doshift=False):
-        if self.picking:
-            mouset = self.time_projection.rev(x)
-            dt = 0.0
-            if mouset < self.tmin or mouset > self.tmax:
-                if mouset < self.tmin:
-                    dt = -(self.tmin - mouset)
-                else:
-                    dt = mouset - self.tmax 
-                ddt = self.tmax-self.tmin
-                dt = max(dt,-ddt/10.)
-                dt = min(dt,ddt/10.)
-                
-            x0 = x
-            if self.picking_down is not None:
-                x0 = self.time_projection(self.picking_down[0])
-            
-            w = abs(x-x0)
-            x0 = min(x0,x)
-            
-            tmin, tmax = self.time_projection.rev(x0), self.time_projection.rev(x0+w)
-            tmin, tmax = ( max(working_system_time_range[0], tmin),
-                           min(working_system_time_range[1], tmax))
-                               
-            p1 = self.mapToGlobal( QPoint(x0, 0))
-            
-            self.picking.setGeometry( p1.x(), p1.y(), max(w,1), self.height())
-            
-            ftrack = self.track_to_screen.rev(y)
-            nslc_ids = self.get_nslc_ids_for_track(ftrack)
-            self.floating_pick.set(nslc_ids, tmin, tmax)
-            
-            if dt != 0.0 and doshift:
-                self.set_time_range(self.tmin+dt, self.tmax+dt)
-            
-            self.update()
-
-    def update_status(self):
-        
-        if self.message is None:
-            point = self.mapFromGlobal(QCursor.pos())
-            
-            mouse_t = self.time_projection.rev(point.x())
-            if not is_working_time(mouse_t): return
-            if self.floating_pick:
-                tmi, tma = self.floating_pick.tmin, self.floating_pick.tmax
-                tt, ms = gmtime_x(tmi)
-            
-                if tmi == tma:
-                    message = mystrftime(fmt='Pick: %b %d, %Y %H:%M:%S .%r', tt=tt, milliseconds=ms)
-                else:
-                    srange = '%g s' % (tma-tmi)
-                    message = mystrftime(fmt='Start: %b %d, %Y %H:%M:%S .%r Length: '+srange, tt=tt, milliseconds=ms)
+            if self.lowpass is not None:
+                deltat_target = 1./self.lowpass * 0.25
+                ndecimate = min(50, max(1, int(round(deltat_target / self.min_deltat))))
+                tpad = 1./self.lowpass * 2.
             else:
-                tt, ms = gmtime_x(mouse_t)
+                ndecimate = 1
+                tpad = self.min_deltat*5.
+                
+            if self.highpass is not None:
+                tpad = max(1./self.highpass * 2., tpad)
             
-                message = mystrftime(fmt=None,tt=tt,milliseconds=ms)
-        else:
-            message = self.message
+            tpad = min(tmax-tmin, tpad)
+            tpad = max(self.min_deltat*5., tpad)
+                
+            nsee_points_per_trace = 5000*10
+            see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
             
-        sb = self.window().statusBar()
-        sb.clearMessage()
-        sb.showMessage(message)
+            processed_traces = []
+            if (tmax - tmin) < see_data_range:
+                            
+                for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
+                                                want_incomplete=True,
+                                                degap=degap,
+                                                keep_current_files_open=True, trace_selector=trace_selector ):
+                    for trace in traces:
+                        
+                        if self.lowpass is not None:
+                            deltat_target = 1./self.lowpass * 0.2
+                            ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
+                            ndecimate2 = int(math.log(ndecimate,2))
+                            
+                        else:
+                            ndecimate = 1
+                            ndecimate2 = 0
+                        
+                        if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
+                            for i in range(ndecimate2):
+                                trace.downsample(2)
+                        
+                        lowpass_success = False
+                        if self.lowpass is not None:
+                            if self.lowpass < 0.5/trace.deltat:
+                                trace.lowpass(4,self.lowpass)
+                                lowpass_success = True
+                        
+                        highpass_success = False
+                        if self.highpass is not None:
+                            if self.lowpass is None or self.highpass < self.lowpass:
+                                if self.highpass < 0.5/trace.deltat:
+                                    trace.highpass(4,self.highpass)
+                                    highpass_success = True                            
+                        try:
+                            trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
+                        except pyrocko.trace.NoData:
+                            continue
+                            
+                        if len(trace.get_ydata()) < 2: continue
+                        
+                        processed_traces.append(trace)
+                
+            if self.rotate != 0.0:
+                phi = self.rotate/180.*math.pi
+                cphi = math.cos(phi)
+                sphi = math.sin(phi)
+                for a in processed_traces:
+                    for b in processed_traces: 
+                        if (a.network == b.network and a.station == b.station and a.location == b.location and
+                            a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
+                            abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
+                            len(a.get_ydata()) == len(b.get_ydata())):
+                            
+                            aydata = a.get_ydata()*cphi+b.get_ydata()*sphi
+                            bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
+                            a.set_ydata(aydata)
+                            b.set_ydata(bydata)
+                            
+            self.old_processed_traces = processed_traces
+            return processed_traces
         
-    def myclose(self):
-        self.window().close()
+        def scalingbase_change(self, ignore):
+            for menuitem, scalingbase in self.menuitems_scalingbase:
+                if menuitem.isChecked():
+                    self.scalingbase = scalingbase
+        
+        def scalingmode_change(self, ignore):
+            for menuitem, scaling_key in self.menuitems_scaling:
+                if menuitem.isChecked():
+                    self.scaling_key = scaling_key
+    
+        def sortingmode_change(self, ignore=None):
+            for menuitem, (gather, order, color) in self.menuitems_sorting:
+                if menuitem.isChecked():
+                    self.set_gathering(gather, order, color)
+    
+        def lowpass_change(self, value, ignore):
+            self.lowpass = value
+            self.passband_check()
+            self.update()
+            
+        def highpass_change(self, value, ignore):
+            self.highpass = value
+            self.passband_check()
+            self.update()
+    
+        def passband_check(self):
+            if self.highpass and self.lowpass and self.highpass >= self.lowpass:
+                self.message = 'Corner frequency of highpass larger than corner frequency of lowpass! I will now deactivate the higpass.'
+                self.update_status()
+            else:
+                oldmess = self.message
+                self.message = None
+                if oldmess is not None:
+                    self.update_status()        
+        
+        def gain_change(self, value, ignore):
+            self.gain = value
+            self.update()
+            
+        def rot_change(self, value, ignore):
+            self.rotate = value
+            self.update()
+    
+        def get_min_deltat(self):
+            return self.min_deltat
+        
+        def animate_picking(self):
+            point = self.mapFromGlobal(QCursor.pos())
+            self.update_picking(point.x(), point.y(), doshift=True)
+            
+        def get_nslc_ids_for_track(self, ftrack):
+            itrack = int(ftrack)
+            if itrack in self.track_to_nslc_ids:
+                return self.track_to_nslc_ids[int(ftrack)]
+            else:
+                return []
+                
+        def stop_picking(self, x,y, abort=False):
+            if self.picking:
+                self.update_picking(x,y, doshift=False)
+                #self.picking.hide()
+                self.picking = None
+                self.picking_down = None
+                self.picking_timer.stop()
+                self.picking_timer = None
+                if not abort:
+                    tmi = self.floating_pick.tmin
+                    tma = self.floating_pick.tmax
+                    print myctime(tmi), myctime(tma), tma-tmi
+                    self.picks.append(self.floating_pick)
+                
+                self.floating_pick = None
         
         
-    def fuck(self):
-        import pysacio
+        def start_picking(self, ignore):
+            if not self.picking:
+                self.picking = QRubberBand(QRubberBand.Rectangle)
+                point = self.mapFromGlobal(QCursor.pos())
+                
+                gpoint = self.mapToGlobal( QPoint(point.x(), 0) )
+                self.picking.setGeometry( gpoint.x(), gpoint.y(), 1, self.height())
+                t = self.time_projection.rev(point.x())
+                
+                ftrack = self.track_to_screen.rev(point.y())
+                nslc_ids = self.get_nslc_ids_for_track(ftrack)
+                self.floating_pick = Pick(nslc_ids, t,t)
+    
+                #self.picking.show()
+                self.setMouseTracking(True)
+                
+                self.picking_timer = QTimer()
+                self.connect( self.picking_timer, SIGNAL("timeout()"), self.animate_picking )
+                self.picking_timer.setInterval(50)
+                self.picking_timer.start()
+    
         
-        processed_traces = self.prepare_cutout(self.tmin,self.tmax)
-        sacdir = tempfile.mkdtemp(prefix='HERE_LIVES_SAC_')
-        os.chdir(sacdir)
-        
-        sys.stderr.write('\n\n --> Dumping SAC files to %s  <--\n\n\n' % sacdir)
-        
-        for trace in processed_traces:
-            sactr = pysacio.from_mseed_trace(trace)
-            sactr.write('trace-%s-%s-%s-%s.sac' % trace.nslc_id)
-        
-        self.myclose()
-        Global.sacflag = True
+        def update_picking(self, x,y, doshift=False):
+            if self.picking:
+                mouset = self.time_projection.rev(x)
+                dt = 0.0
+                if mouset < self.tmin or mouset > self.tmax:
+                    if mouset < self.tmin:
+                        dt = -(self.tmin - mouset)
+                    else:
+                        dt = mouset - self.tmax 
+                    ddt = self.tmax-self.tmin
+                    dt = max(dt,-ddt/10.)
+                    dt = min(dt,ddt/10.)
+                    
+                x0 = x
+                if self.picking_down is not None:
+                    x0 = self.time_projection(self.picking_down[0])
+                
+                w = abs(x-x0)
+                x0 = min(x0,x)
+                
+                tmin, tmax = self.time_projection.rev(x0), self.time_projection.rev(x0+w)
+                tmin, tmax = ( max(working_system_time_range[0], tmin),
+                            min(working_system_time_range[1], tmax))
+                                
+                p1 = self.mapToGlobal( QPoint(x0, 0))
+                
+                self.picking.setGeometry( p1.x(), p1.y(), max(w,1), self.height())
+                
+                ftrack = self.track_to_screen.rev(y)
+                nslc_ids = self.get_nslc_ids_for_track(ftrack)
+                self.floating_pick.set(nslc_ids, tmin, tmax)
+                
+                if dt != 0.0 and doshift:
+                    self.set_time_range(self.tmin+dt, self.tmax+dt)
+                
+                self.update()
+    
+        def update_status(self):
+            
+            if self.message is None:
+                point = self.mapFromGlobal(QCursor.pos())
+                
+                mouse_t = self.time_projection.rev(point.x())
+                if not is_working_time(mouse_t): return
+                if self.floating_pick:
+                    tmi, tma = self.floating_pick.tmin, self.floating_pick.tmax
+                    tt, ms = gmtime_x(tmi)
+                
+                    if tmi == tma:
+                        message = mystrftime(fmt='Pick: %b %d, %Y %H:%M:%S .%r', tt=tt, milliseconds=ms)
+                    else:
+                        srange = '%g s' % (tma-tmi)
+                        message = mystrftime(fmt='Start: %b %d, %Y %H:%M:%S .%r Length: '+srange, tt=tt, milliseconds=ms)
+                else:
+                    tt, ms = gmtime_x(mouse_t)
+                
+                    message = mystrftime(fmt=None,tt=tt,milliseconds=ms)
+            else:
+                message = self.message
+                
+            sb = self.window().statusBar()
+            sb.clearMessage()
+            sb.showMessage(message)
+            
+        def myclose(self):
+            self.window().close()
+            
+            
+        def fuck(self):
+            import pysacio
+            
+            processed_traces = self.prepare_cutout(self.tmin,self.tmax)
+            sacdir = tempfile.mkdtemp(prefix='HERE_LIVES_SAC_')
+            os.chdir(sacdir)
+            
+            sys.stderr.write('\n\n --> Dumping SAC files to %s  <--\n\n\n' % sacdir)
+            
+            for trace in processed_traces:
+                sactr = pysacio.from_mseed_trace(trace)
+                sactr.write('trace-%s-%s-%s-%s.sac' % trace.nslc_id)
+            
+            self.myclose()
+            Global.sacflag = True
+            
+            
+    return PileOverview
+
+PileOverview = MakePileOverviewClass(QWidget)
+GLPileOverview = MakePileOverviewClass(QGLWidget)
         
 class MyValueEdit(QLineEdit):
 
@@ -1594,10 +1607,13 @@ class LinValControl(ValControl):
 class PileViewer(QFrame):
     '''PileOverview + Controls'''
     
-    def __init__(self, pile, ntracks_shown_max, *args):
+    def __init__(self, pile, ntracks_shown_max, use_opengl=False, *args):
         apply(QFrame.__init__, (self,) + args)
         
-        self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max)
+        if use_opengl:
+            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max)
+        else:
+            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max)
         
         layout = QGridLayout()
         self.setLayout( layout )

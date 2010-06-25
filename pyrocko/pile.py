@@ -413,8 +413,8 @@ class TracesFile(TracesGroup):
         self.data_loaded = False
         self.data_use_count = 0
         
-    def load_data(self):
-        if not self.data_loaded:
+    def load_data(self, force=False):
+        if not self.data_loaded or force:
             logger.debug('loading data from file: %s' % self.abspath)
             self.traces = []
             for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
@@ -442,10 +442,10 @@ class TracesFile(TracesGroup):
     def reload_if_modified(self):
         mtime = os.stat(self.abspath)[8]
         if mtime != self.mtime:
-            logger.debug('reloading file: %s' % self.abspath)
+            logger.debug('mtime=%i, reloading file: %s' % (mtime, self.abspath))
             self.mtime = mtime
             if self.data_loaded:
-                self.load_data()
+                self.load_data(force=True)
             else:
                 self.load_headers()
             

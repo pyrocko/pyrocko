@@ -86,7 +86,7 @@ class SlinkSnuffler(QApplication):
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(pile, ntracks_shown_max=options.ntracks)
         
         self.win = QMainWindow()
-        self.win.setWindowTitle( "Snuffler" )        
+        self.win.setWindowTitle( "Snuffslink" )        
         self.win.setCentralWidget( self.pile_viewer )
         self.win.show()
 
