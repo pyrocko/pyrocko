@@ -99,9 +99,8 @@ def neic_earthquakes(tmin, tmax, magnitude_range=(5,9.9)):
         tt = time.strptime(datestr, '%Y %m %d %H%M%S')
         
         t = calendar.timegm(tt)
-        markers.append((t, float(toks[8])))
-                
-    return num.array(markers)
+        markers.append(EventMarker(t, float(toks[8])))
+    return markers
 
 def get_working_system_time_range():
     now = time.time()
@@ -326,7 +325,7 @@ def need_l1_tick(tt, ms, l1_trig):
  
 def mystrftime(fmt=None, tt=None, milliseconds=0):
    
-    if fmt is None: fmt = '%b %d, %Y %H:%M:%S .%r'
+    if fmt is None: fmt = '%Y-%M-%d %H:%M:%S .%r'
     if tt is None: tt = time.time()
     
     fmt2 = fmt.replace('%r', '%03i' % int(round(milliseconds)))
@@ -336,6 +335,7 @@ def mystrftime(fmt=None, tt=None, milliseconds=0):
 def myctime(timestamp):
     tt, ms = gmtime_x(timestamp)
     return mystrftime(None, tt, ms)
+    
 
 def tick_to_labels(tick, inc):
     tt, ms = gmtime_x(tick)
@@ -518,18 +518,73 @@ def add_radiobuttongroup(menu, menudef, obj, target):
     menuitems[0][0].setChecked(True)
     return menuitems
 
-class Pick:
+class Marker:
     def __init__(self, nslc_ids, tmin, tmax):
         self.set(nslc_ids, tmin, tmax)
+        c = gmtpy.color_tup
+        self.color_a = [ c(x) for x in ('aluminium4', 'aluminium5', 'aluminium6') ]
+        self.color_b = [ c(x) for x in ('scarletred1', 'scarletred2', 'scarletred3',
+                                        'chameleon1', 'chameleon2', 'chameleon3',
+                                        'skyblue1', 'skyblue2', 'skyblue3',
+                                        'orange1', 'orange2', 'orange3',
+                                        'plum1', 'plum2', 'plum3',
+                                        'chocolate1', 'chocolate2', 'chocolate3') ]
+        self.alerted = False
+        self.selected = False
+        self.kind = 0
         
     def set(self, nslc_ids, tmin,tmax):
         self.nslc_ids = nslc_ids
         self.tmin = tmin
         self.tmax = tmax
+     
+    def set_kind(self, kind):
+        self.kind = kind
+     
+    def get_tmin(self):
+        return self.tmin
+        
+    def get_tmax(self):
+        return self.tmax
 
+    def is_alerted(self):
+        return self.alerted
+        
+    def is_selected(self):
+        return self.selected
+
+    def set_alerted(self, state):
+        self.alerted = state
+        
+    def set_selected(self, state):
+        self.selected = state
+        
+    def __str__(self):
+        traces = ', '.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
+        st = myctime
+        if self.tmin == self.tmax:
+            return '%s %i %s' % (st(self.tmin), self.kind, traces)
+        else:
+            return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
+        
+    def from_str(self, line):
+        line.split()
+        
+    def select_color(self, colorlist):
+        cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
+        if self.selected:
+            return cl(0)
+        if self.alerted:
+            return cl(1)
+        return cl(2)
+            
     def draw(self, p, time_projection, y_projection):
-        color = gmtpy.color_tup('aluminium5')
+        color = self.select_color(self.color_b)            
         pen = QPen(QColor(*color))
+        if self.selected or self.alerted:
+            pen.setStyle(Qt.CustomDashLine)
+            pat = [5.,3.]
+            pen.setDashPattern(pat)
         pen.setWidth(2)
         p.setPen(pen)
         
@@ -538,15 +593,15 @@ class Pick:
             v0, v1 = y_projection.get_out_range()
             line = QLine(u,v0,u,v1)
             p.drawLine(line)
-
-        drawline(self.tmin)
-        drawline(self.tmax)
-
+            
+        if self.selected or self.alerted or not self.nslc_ids:
+            drawline(self.tmin)
+            drawline(self.tmax)
 
     def draw_trace(self, p, trace, time_projection, track_projection, gain):
         if self.nslc_ids and trace.nslc_id not in self.nslc_ids: return
         
-        color = gmtpy.color_tup('scarletred2')
+        color = self.select_color(self.color_b)
         pen = QPen(QColor(*color))
         pen.setWidth(2)
         p.setPen(pen)
@@ -575,13 +630,22 @@ class Pick:
         except pyrocko.trace.NoData:
             pass
             
+        color = self.select_color(self.color_b)
+        pen = QPen(QColor(*color))
+        pen.setWidth(2)
+        p.setPen(pen)
+
         drawline(self.tmin)
         drawline(self.tmax)
         try: drawpoint(self.tmin, trace.interpolate(self.tmin))
         except IndexError: pass
         try: drawpoint(self.tmax, trace.interpolate(self.tmax))
         except IndexError: pass            
-       
+
+class EventMarker(Marker):
+    def __init__(self, time, magnitude):
+        Marker.__init__(self, '', time, time)
+        
 
 def MakePileOverviewClass(base):
     
@@ -591,6 +655,8 @@ def MakePileOverviewClass(base):
             
             self.pile = pile
             self.ax_height = 80
+            
+            self.click_tolerance = 5
             
             self.ntracks_shown_max = ntracks_shown_max
             self.ntracks = 0
@@ -605,8 +671,8 @@ def MakePileOverviewClass(base):
             self.markers = []
             self.picking_down = None
             self.picking = None
-            self.floating_pick = None
-            self.picks = []
+            self.floating_marker = None
+            self.markers = []
             self.ignore_releases = 0
             self.message = None
             self.reloaded = False
@@ -624,6 +690,14 @@ def MakePileOverviewClass(base):
             self.menuitem_pick = QAction('Pick', self.menu)
             self.menu.addAction(self.menuitem_pick)
             self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
+            
+            self.menuitem_pick = QAction('Write picks', self.menu)
+            self.menu.addAction(self.menuitem_pick)
+            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.write_picks )
+            
+            self.menuitem_pick = QAction('Read picks', self.menu)
+            self.menu.addAction(self.menuitem_pick)
+            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.read_picks )
             
             self.menu.addSeparator()
             
@@ -761,6 +835,7 @@ def MakePileOverviewClass(base):
             self.pile.add_listener(self)
             self.trace_styles = {}
             self.determine_box_styles()
+            self.setMouseTracking(True)
             
         def periodical(self):
             if self.menuitem_watch.isChecked():
@@ -840,15 +915,33 @@ def MakePileOverviewClass(base):
             else:
                 return 0
     
+        def write_picks(self):
+            fn = QFileDialog.getSaveFileName(self,)
+            f = open(fn,'w')
+            for marker in self.markers:
+                f.write("%s\n" % marker)
+                
+            
+        def read_picks(self):
+            pass
+    
         def set_markers(self, markers):
             self.markers = markers
     
         def mousePressEvent( self, mouse_ev ):
-            self.setMouseTracking(False)
+            #self.setMouseTracking(False)
+            point = self.mapFromGlobal(mouse_ev.globalPos())
+
             if mouse_ev.button() == Qt.LeftButton:
+                marker = self.marker_under_cursor(point.x(), point.y())
                 if self.picking:
                     if self.picking_down is None:
                         self.picking_down = self.time_projection.rev(mouse_ev.x()), mouse_ev.y()
+                elif marker is not None:
+                    if not (mouse_ev.modifiers() & Qt.ShiftModifier):
+                        self.deselect_all()
+                    marker.set_selected(True)
+                    self.update()
                 else:
                     self.track_start = mouse_ev.x(), mouse_ev.y()
                     self.track_trange = self.tmin, self.tmax
@@ -877,26 +970,52 @@ def MakePileOverviewClass(base):
     
             if self.picking:
                 self.update_picking(point.x(),point.y())
-            else:
-                if self.track_start is not None:
+           
+            elif self.track_start is not None:
+                x0, y0 = self.track_start
+                dx = (point.x() - x0)/float(self.width())
+                dy = (point.y() - y0)/float(self.height())
+                if self.ypart(y0) == 1: dy = 0
                 
-                    x0, y0 = self.track_start
-                    dx = (point.x() - x0)/float(self.width())
-                    dy = (point.y() - y0)/float(self.height())
-                    if self.ypart(y0) == 1: dy = 0
-                    
-                    tmin0, tmax0 = self.track_trange
-                    
-                    scale = math.exp(-dy*5.)
-                    dtr = scale*(tmax0-tmin0) - (tmax0-tmin0)
-                    frac = x0/float(self.width())
-                    dt = dx*(tmax0-tmin0)*scale
-                    
-                    self.set_time_range(tmin0 - dt - dtr*frac, tmax0 - dt + dtr*(1.-frac))
-        
-                    self.update()
-                    
+                tmin0, tmax0 = self.track_trange
+                
+                scale = math.exp(-dy*5.)
+                dtr = scale*(tmax0-tmin0) - (tmax0-tmin0)
+                frac = x0/float(self.width())
+                dt = dx*(tmax0-tmin0)*scale
+                
+                self.set_time_range(tmin0 - dt - dtr*frac, tmax0 - dt + dtr*(1.-frac))
+    
+                self.update()
+            else:
+                self.hoovering(point.x(),point.y())
+                
             self.update_status()
+       
+        def marker_under_cursor(self, x,y):
+            mouset = self.time_projection.rev(x)
+            deltat = (self.tmax-self.tmin)*self.click_tolerance/self.width()
+            for marker in self.markers:
+                if (abs(mouset-marker.get_tmin()) < deltat or 
+                    abs(mouset-marker.get_tmax()) < deltat):
+                    return marker
+       
+        def hoovering(self, x,y):
+            mouset = self.time_projection.rev(x)
+            deltat = (self.tmax-self.tmin)*self.click_tolerance/self.width()
+            needupdate = False
+            haveone = False
+            for marker in self.markers:
+                state = abs(mouset-marker.get_tmin()) < deltat or \
+                                 abs(mouset-marker.get_tmax()) < deltat and not haveone
+                if state:
+                    haveone = True
+                oldstate = marker.is_alerted()
+                if oldstate != state:
+                    needupdate = True
+                    marker.set_alerted(state)
+            if needupdate:
+                self.update()
                 
         def keyPressEvent(self, key_event):
             dt = self.tmax - self.tmin
@@ -910,27 +1029,52 @@ def MakePileOverviewClass(base):
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
             
             elif key_event.text() == 'n':
-                if self.markers is not None and len(self.markers) != 0:
-                    for marker in self.markers:
-                        t,v = marker
-                        if t > tmid:
-                            break
-                    self.set_time_range(t-dt/2.,t+dt/2.)
+                for marker in sorted(self.markers, cmp=lambda a,b: cmp(a.tmin,b.tmin)):
+                    t = marker.tmin
+                    if t > tmid:
+                        self.deselect_all()
+                        marker.set_selected(True)
+                        self.set_time_range(t-dt/2.,t+dt/2.)
+                        break
                 
             elif key_event.text() == 'p':
-                if self.markers is not None and len(self.markers) != 0:
-                    for marker in self.markers[::-1]:
-                        t,v = marker
-                        if t < tmid:
-                            break
-                    self.set_time_range(t-dt/2.,t+dt/2.)
-    
+                for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmin,a.tmin)):
+                    t = marker.tmin
+                    if t < tmid:
+                        self.deselect_all()
+                        marker.set_selected(True)
+                        self.set_time_range(t-dt/2.,t+dt/2.)
+                        break
+                        
             elif key_event.text() == 'q':
                 self.myclose()
     
             elif key_event.text() == 'r':
                 if self.pile.reload_modified():
                     self.reloaded = True
+    
+            elif key_event.key() == Qt.Key_Backspace:
+                markers = []
+                for marker in self.markers:
+                    if not marker.is_selected():
+                        markers.append(marker)
+                        
+                self.markers = markers
+    
+            elif key_event.text() == 'a':
+                for marker in self.markers:
+                    if (self.tmin <= marker.get_tmin() <= self.tmax or
+                        self.tmin <= marker.get_tmax() <= self.tmax):
+                        marker.set_selected(True)
+                    
+            elif key_event.text() == 'd':
+                for marker in self.markers:
+                    marker.set_selected(False)
+                    
+            elif key_event.text() in ('1', '2', '3', '4', '5'):
+                for marker in self.markers:
+                    if marker.is_selected():
+                        marker.set_kind(int(key_event.text()))
     
             elif key_event.key() == Qt.Key_Escape:
                 if self.picking:
@@ -1110,11 +1254,12 @@ def MakePileOverviewClass(base):
                 if not printmode and self.menuitem_showboxes.isChecked():
                     self.draw_trace_boxes(p, self.time_projection, track_projections)
                 
-                if self.floating_pick:
-                    self.floating_pick.draw(p, self.time_projection, vcenter_projection)
+                if self.floating_marker:
+                    self.floating_marker.draw(p, self.time_projection, vcenter_projection)
                 
-                for pick in self.picks:
-                    pick.draw(p, self.time_projection, vcenter_projection)
+                for marker in self.markers:
+                    if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
+                        marker.draw(p, self.time_projection, vcenter_projection)
                     
                 primary_pen = QPen(QColor(*primary_color))
                 p.setPen(primary_pen)
@@ -1160,11 +1305,12 @@ def MakePileOverviewClass(base):
                             
                             p.drawPolyline( qpoints )
                             
-                            if self.floating_pick:
-                                self.floating_pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                            if self.floating_marker:
+                                self.floating_marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
                                 
-                            for pick in self.picks:
-                                pick.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                            for marker in self.markers:
+                                if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
+                                    marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
                             p.setPen(primary_pen)
                                 
                             if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
@@ -1176,19 +1322,7 @@ def MakePileOverviewClass(base):
                                     min_max_for_annot[itrack] = None
                             
                 p.setPen(primary_pen)
-                if len(self.markers) > 0:
-                    mvs = self.markers[:,1]
-                    valmin, valmax = mvs.min(), mvs.max()
-                    vtop_ax_projection.set_in_range(valmin, valmax)
-                    for marker in self.markers:
-                        tim, val = marker
-                    
-                        u = self.time_projection( tim )
-                        v0 = vtop_ax_projection(valmin)
-                        v1 = vtop_ax_projection(val)
-                    
-                        p.drawLine(QPointF(u,v0), QPointF(u, v1))
-                                        
+                                                        
                 font = QFont()
                 font.setBold(True)
                 p.setFont(font)
@@ -1357,6 +1491,10 @@ def MakePileOverviewClass(base):
         def get_min_deltat(self):
             return self.min_deltat
         
+        def deselect_all(self):
+            for marker in self.markers:
+                marker.set_selected(False)
+        
         def animate_picking(self):
             point = self.mapFromGlobal(QCursor.pos())
             self.update_picking(point.x(), point.y(), doshift=True)
@@ -1377,16 +1515,19 @@ def MakePileOverviewClass(base):
                 self.picking_timer.stop()
                 self.picking_timer = None
                 if not abort:
-                    tmi = self.floating_pick.tmin
-                    tma = self.floating_pick.tmax
-                    print myctime(tmi), myctime(tma), tma-tmi
-                    self.picks.append(self.floating_pick)
+                    tmi = self.floating_marker.tmin
+                    tma = self.floating_marker.tmax
+                    self.markers.append(self.floating_marker)
+                    self.floating_marker.set_selected(True)
+                    print self.floating_marker
                 
-                self.floating_pick = None
+                self.floating_marker = None
         
         
         def start_picking(self, ignore):
+            
             if not self.picking:
+                self.deselect_all()
                 self.picking = QRubberBand(QRubberBand.Rectangle)
                 point = self.mapFromGlobal(QCursor.pos())
                 
@@ -1396,10 +1537,11 @@ def MakePileOverviewClass(base):
                 
                 ftrack = self.track_to_screen.rev(point.y())
                 nslc_ids = self.get_nslc_ids_for_track(ftrack)
-                self.floating_pick = Pick(nslc_ids, t,t)
+                self.floating_marker = Marker(nslc_ids, t,t)
+                self.floating_marker.set_selected(True)
     
-                #self.picking.show()
-                self.setMouseTracking(True)
+                ##self.picking.show()
+                #self.setMouseTracking(True)
                 
                 self.picking_timer = QTimer()
                 self.connect( self.picking_timer, SIGNAL("timeout()"), self.animate_picking )
@@ -1437,7 +1579,7 @@ def MakePileOverviewClass(base):
                 
                 ftrack = self.track_to_screen.rev(y)
                 nslc_ids = self.get_nslc_ids_for_track(ftrack)
-                self.floating_pick.set(nslc_ids, tmin, tmax)
+                self.floating_marker.set(nslc_ids, tmin, tmax)
                 
                 if dt != 0.0 and doshift:
                     self.set_time_range(self.tmin+dt, self.tmax+dt)
@@ -1451,15 +1593,15 @@ def MakePileOverviewClass(base):
                 
                 mouse_t = self.time_projection.rev(point.x())
                 if not is_working_time(mouse_t): return
-                if self.floating_pick:
-                    tmi, tma = self.floating_pick.tmin, self.floating_pick.tmax
+                if self.floating_marker:
+                    tmi, tma = self.floating_marker.tmin, self.floating_marker.tmax
                     tt, ms = gmtime_x(tmi)
                 
                     if tmi == tma:
-                        message = mystrftime(fmt='Pick: %b %d, %Y %H:%M:%S .%r', tt=tt, milliseconds=ms)
+                        message = mystrftime(fmt='Pick: %Y-%m-%d %H:%M:%S .%r', tt=tt, milliseconds=ms)
                     else:
                         srange = '%g s' % (tma-tmi)
-                        message = mystrftime(fmt='Start: %b %d, %Y %H:%M:%S .%r Length: '+srange, tt=tt, milliseconds=ms)
+                        message = mystrftime(fmt='Start: %Y-%m-%d %H:%M:%S .%r Length: '+srange, tt=tt, milliseconds=ms)
                 else:
                     tt, ms = gmtime_x(mouse_t)
                 
@@ -1485,6 +1627,7 @@ def MakePileOverviewClass(base):
             sys.stderr.write('\n\n --> Dumping SAC files to %s  <--\n\n\n' % sacdir)
             
             for trace in processed_traces:
+                # FIXME:
                 sactr = pysacio.from_mseed_trace(trace)
                 sactr.write('trace-%s-%s-%s-%s.sac' % trace.nslc_id)
             
