@@ -325,7 +325,7 @@ def need_l1_tick(tt, ms, l1_trig):
  
 def mystrftime(fmt=None, tt=None, milliseconds=0):
    
-    if fmt is None: fmt = '%Y-%M-%d %H:%M:%S .%r'
+    if fmt is None: fmt = '%Y-%m-%d %H:%M:%S .%r'
     if tt is None: tt = time.time()
     
     fmt2 = fmt.replace('%r', '%03i' % int(round(milliseconds)))
@@ -518,7 +518,49 @@ def add_radiobuttongroup(menu, menudef, obj, target):
     menuitems[0][0].setChecked(True)
     return menuitems
 
+class MarkerParseError(Exception):
+    pass
+
 class Marker:
+    
+    @staticmethod
+    def from_string(line):
+        
+        def fail():
+            raise MarkerParseError(
+                'Unable to create marker from string: "%s"' % line)
+                
+        def parsedate(ymd,hms,sfs):
+            return calendar.timegm(time.strptime(ymd+' '+hms, '%Y-%m-%d %H:%M:%S')) + float(sfs)
+        
+        try:
+            toks = line.split()
+            if len(toks) in (4,5):
+                tmin = parsedate(*toks[:3])
+                tmax = tmin
+                
+            elif len(toks) in (7,8):
+                tmin = parsedate(*toks[:3])
+                tmax = parsedate(*toks[3:6])
+            
+            else:
+                fail()
+               
+            kind = float(toks[-2])
+            nslc_ids = []
+            if len(toks) in (5,8):
+                for snslc in toks[-1].split(','):
+                    nslc = snslc.split('.')
+                    if len(nslc) != 4:
+                        fail()
+                        
+                    nslc_ids.append(nslc)
+                
+        except MarkerParseError:
+            fail()
+    
+        return Marker(nslc_ids, tmin, tmax)
+    
     def __init__(self, nslc_ids, tmin, tmax):
         self.set(nslc_ids, tmin, tmax)
         c = gmtpy.color_tup
@@ -566,9 +608,6 @@ class Marker:
             return '%s %i %s' % (st(self.tmin), self.kind, traces)
         else:
             return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
-        
-    def from_str(self, line):
-        line.split()
         
     def select_color(self, colorlist):
         cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
@@ -920,11 +959,26 @@ def MakePileOverviewClass(base):
             f = open(fn,'w')
             for marker in self.markers:
                 f.write("%s\n" % marker)
+            f.close()
                 
             
         def read_picks(self):
-            pass
-    
+            fn = QFileDialog.getOpenFileName(self,)
+            f = open(fn, 'r')
+            for iline, line in enumerate(f):
+                sline = line.strip()
+                if not sline or sline.startswith('#'):
+                    continue
+                try:
+                    m = Marker.from_string(sline)
+                    self.markers.append(m)
+                    
+                except MarkerParseError:
+                    logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
+                    
+            f.close()
+            
+                
         def set_markers(self, markers):
             self.markers = markers
     
@@ -1071,7 +1125,7 @@ def MakePileOverviewClass(base):
                 for marker in self.markers:
                     marker.set_selected(False)
                     
-            elif key_event.text() in ('1', '2', '3', '4', '5'):
+            elif key_event.text() in ('0', '1', '2', '3', '4', '5'):
                 for marker in self.markers:
                     if marker.is_selected():
                         marker.set_kind(int(key_event.text()))
