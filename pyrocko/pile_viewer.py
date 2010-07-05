@@ -686,6 +686,33 @@ class EventMarker(Marker):
         Marker.__init__(self, '', time, time)
         
 
+class SnufflingModule:
+    
+    mtimes = {}
+    
+    def __init__(self, path, name):
+        self.path = path
+        self.name = name
+        self.module = None
+        
+    def load(self):
+        filename = os.path.join(self.path, self.name+'.py')
+        mtime = os.stat(filename)[8]
+        sys.path[0:0] = [ self.path ]
+        self.module = __import__(self.name)
+        if filename in SnufflingModule.mtimes:
+            if SnufflingModule.mtimes[filename] != mtime:
+                print 'xx'
+                logger.warn('reloading snuffling module %s' % self.name)
+                reload(self.module)
+        SnufflingModule.mtimes[filename] = mtime
+        sys.path[0:1] = []
+    
+    def snufflings(self):
+        self.load()
+        return self.module.__snufflings__()
+        
+
 def MakePileOverviewClass(base):
     
     class PileOverview(base):
@@ -725,7 +752,7 @@ def MakePileOverviewClass(base):
             self.setFocusPolicy( Qt.StrongFocus )
     
             self.menu = QMenu(self)
-            
+             
             self.menuitem_pick = QAction('Pick', self.menu)
             self.menu.addAction(self.menuitem_pick)
             self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
@@ -834,7 +861,15 @@ def MakePileOverviewClass(base):
             self.menu.addAction(self.menuitem_watch)
             
             self.menu.addSeparator()
-    
+            
+            self.snufflings_menu = QMenu('Snufflings', self.menu)
+            self.menu.addMenu(self.snufflings_menu)
+            
+            self.menuitem_reload = QAction('Reload snufflings', self.menu)
+            self.menu.addAction(self.menuitem_reload)
+            self.connect( self.menuitem_reload, SIGNAL("triggered(bool)"), self.setup_snufflings )
+            self.menu.addSeparator()
+
             self.menuitem_print = QAction('Print', self.menu)
             self.menu.addAction(self.menuitem_print)
             self.connect( self.menuitem_print, SIGNAL("triggered(bool)"), self.printit )
@@ -876,6 +911,39 @@ def MakePileOverviewClass(base):
             self.determine_box_styles()
             self.setMouseTracking(True)
             
+            user_home_dir = os.environ['HOME']
+
+            self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ] 
+            self.setup_snufflings()
+            
+            
+        def get_snufflings(self):
+            snufflings = []
+            for path in self.snuffling_paths:
+                if os.path.isdir(path):
+                    for fn in os.listdir(path):
+                        if fn.endswith('.py'):
+                            mod = SnufflingModule(path, fn[:-3])
+                            snufflings.extend(mod.snufflings())
+                            
+            return snufflings
+            
+        def setup_snufflings(self):
+            self.snuffling_hooks = []
+            self.snufflings_menu.clear()
+            for snuffling in self.get_snufflings():
+                item = QAction(snuffling.get_name(), self.menu)
+                self.snufflings_menu.addAction(item)
+                def hook():
+                    self.call_snuffling(snuffling)
+                    
+                self.snuffling_hooks.append(hook)
+                self.connect( item, SIGNAL("triggered(bool)"), hook )
+        
+                 
+        def call_snuffling(self, snuffling):
+            snuffling.call(self.pile, self.tmin, self.tmax)
+        
         def periodical(self):
             if self.menuitem_watch.isChecked():
                 if self.pile.reload_modified():
