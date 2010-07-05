@@ -101,7 +101,7 @@ def ne_to_latlon( lat0, lon0, north_m, east_m ):
     a = num.sqrt(north_m**2+east_m**2)/config.earthradius
     gamma = num.arctan2(east_m,north_m)
     
-    return azidist_to_latlon_rad( lat0, lon0, a, gamma)
+    return azidist_to_latlon_rad( lat0, lon0, gamma, a)
 
 def azidist_to_latlon(lat0, lon0, azimuth_deg, distance_deg):
     return azidist_to_latlon_rad( lat0, lon0, azimuth_deg/180.*num.pi, distance_deg/180.*num.pi)
