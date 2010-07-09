@@ -554,7 +554,7 @@ class Marker:
                     if len(nslc) != 4:
                         fail()
                         
-                    nslc_ids.append(nslc)
+                    nslc_ids.append(tuple(nslc))
                 
         except MarkerParseError:
             fail()
