@@ -147,18 +147,17 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         
     def check(self):
         '''Check the required header variables to have reasonable values.'''
-    
         if self.iftype not in [SacFile.header_name2num[x] for x in ('itime','irlim','iamph','ixy','ixyz')]:
             raise SacError('Unknown SAC file type: %i.' % self.iftype)
         if self.nvhdr < 1 or 20 < self.nvhdr:
             raise SacError('Unreasonable SAC header version number found.') 
         if self.npts < 0:
             raise SacError('Negative number of samples specified in NPTS header.')
-        if self.leven not in (0,1):
+        if self.leven not in (0,1,-12345):
             raise SacError('Header value LEVEN must be either 0 or 1.')
         if self.leven and self.delta <= 0.0:
             raise SacError('Header value DELTA should be positive for evenly spaced samples')
-        if self.b > self.e:
+        if self.e is not None and self.b > self.e:
             raise SacError('Beginning value of independent variable greater than its ending value.') 
         if self.nvhdr != 6:
             logging.warn('This module has only been tested with SAC header version 6.'+
@@ -283,7 +282,8 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             v = self.__dict__[k]
             if v is not None:
                 if k in SacFile.enum_header_vars:
-                    v = SacFile.header_num2name[v]
+                    if v in SacFile.header_num2name:
+                        v = SacFile.header_num2name[v]
                 str += '%s: %s\n' % (k, v)
                         
         return str
