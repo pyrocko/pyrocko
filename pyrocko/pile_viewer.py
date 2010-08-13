@@ -546,7 +546,7 @@ class Marker:
             else:
                 fail()
                
-            kind = float(toks[-2])
+            kind = int(toks[-2])
             nslc_ids = []
             if len(toks) in (5,8):
                 for snslc in toks[-1].split(','):
@@ -559,9 +559,9 @@ class Marker:
         except MarkerParseError:
             fail()
     
-        return Marker(nslc_ids, tmin, tmax)
+        return Marker(nslc_ids, tmin, tmax, kind=kind)
     
-    def __init__(self, nslc_ids, tmin, tmax):
+    def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
         c = gmtpy.color_tup
         self.color_a = [ c(x) for x in ('aluminium4', 'aluminium5', 'aluminium6') ]
@@ -573,7 +573,7 @@ class Marker:
                                         'chocolate1', 'chocolate2', 'chocolate3') ]
         self.alerted = False
         self.selected = False
-        self.kind = 0
+        self.kind = kind
         
     def set(self, nslc_ids, tmin,tmax):
         self.nslc_ids = nslc_ids
@@ -588,6 +588,9 @@ class Marker:
         
     def get_tmax(self):
         return self.tmax
+
+    def get_nslc_ids(self):
+        return self.nslc_ids
 
     def is_alerted(self):
         return self.alerted
@@ -1114,28 +1117,53 @@ def MakePileOverviewClass(base):
                 
             self.update_status()
        
+       
+        def nslc_ids_under_cursor(self, x,y):
+            ftrack = self.track_to_screen.rev(y)
+            nslc_ids = self.get_nslc_ids_for_track(ftrack)
+            return nslc_ids
+       
         def marker_under_cursor(self, x,y):
             mouset = self.time_projection.rev(x)
             deltat = (self.tmax-self.tmin)*self.click_tolerance/self.width()
+            relevant_nslc_ids = None
             for marker in self.markers:
                 if (abs(mouset-marker.get_tmin()) < deltat or 
                     abs(mouset-marker.get_tmax()) < deltat):
-                    return marker
+                    
+                    if relevant_nslc_ids is None:
+                        relevant_nslc_ids = self.nslc_ids_under_cursor(x,y)
+                        
+                    for nslc_id in marker.get_nslc_ids():
+                        if nslc_id in relevant_nslc_ids:
+                            return marker
        
         def hoovering(self, x,y):
             mouset = self.time_projection.rev(x)
             deltat = (self.tmax-self.tmin)*self.click_tolerance/self.width()
             needupdate = False
             haveone = False
+            relevant_nslc_ids = self.nslc_ids_under_cursor(x,y)
+            
             for marker in self.markers:
                 state = abs(mouset-marker.get_tmin()) < deltat or \
-                                 abs(mouset-marker.get_tmax()) < deltat and not haveone
+                        abs(mouset-marker.get_tmax()) < deltat and not haveone
+                
+                if state:
+                    xstate = False
+                    for nslc_id in marker.get_nslc_ids():
+                        if nslc_id in relevant_nslc_ids:
+                            xstate = True
+                            
+                    state = xstate
+                    
                 if state:
                     haveone = True
                 oldstate = marker.is_alerted()
                 if oldstate != state:
                     needupdate = True
                     marker.set_alerted(state)
+                    
             if needupdate:
                 self.update()
                 
