@@ -1,4 +1,4 @@
-import trace, io, util, config
+import trace, io, util, config, re
 
 import numpy as num
 import os, pickle, logging, time, weakref, copy
