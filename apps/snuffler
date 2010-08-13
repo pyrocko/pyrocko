@@ -40,7 +40,11 @@ class MySnuffler(QApplication):
         
         filenames = pyrocko.util.select_files( args, regex=options.pattern )
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
-        cache = pyrocko.pile.get_cache(cachedirname)
+        if options.pattern:
+            cache = None
+        else:
+            cache = pyrocko.pile.get_cache(cachedirname)
+            
         pile = pyrocko.pile.Pile()
         pile.add_files( sorted(filenames), cache=cache, 
                         filename_attributes=options.pattern,
