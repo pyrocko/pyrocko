@@ -574,6 +574,14 @@ class Trace(object):
         t1, y1 = self(t, clip=clip, snap=math.ceil)
         return y0+(t-t0)/(t1-t0)*(y1-y0)
         
+    def add(self,other):
+        other_xdata = other.get_xdata()
+        xdata = self.get_xdata()
+        xmin, xmax = other_xdata[0], other_xdata[-1]
+        self.ydata += num.interp(xdata, other_xdata, other.ydata, other.ydata[0], right=other.ydata[-1])
+        self.ydata = num.where(num.logical_or( xdata < xmin, xmax < xdata ), num.nan, self.ydata)
+
+        
     def set_codes(self, network=None, station=None, location=None, channel=None):
         if network is not None:
             self.network = network
@@ -838,8 +846,11 @@ class Trace(object):
         tapered_transfer[0] = 0.0 # don't introduce static offsets
         return tapered_transfer
         
-    def fill_template(self, template):
+    def fill_template(self, template, **additional):
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
         params['tmin'] = util.gmctime_fn(self.tmin)
         params['tmax'] = util.gmctime_fn(self.tmax)
+        params.update(additional)
         return template % params
+
+
