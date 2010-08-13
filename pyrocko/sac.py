@@ -208,6 +208,9 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 else:
                     self.__dict__[k] = vn
             
+            if self.leven == -12345:
+                self.leven = True
+            
             self.data = []
             try:
                 self.check()
