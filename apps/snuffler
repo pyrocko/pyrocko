@@ -14,6 +14,7 @@ from optparse import OptionParser
 import pyrocko.pile
 import pyrocko.util
 import pyrocko.pile_viewer
+import pyrocko.ipc
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -30,6 +31,7 @@ class MySnuffler(QApplication):
                           choices=('mseed', 'sac', 'kan', 'segy', 'from_extension', 'try'))
         parser.add_option('--debug', dest='debug', action='store_true', default=False)
         parser.add_option('--opengl', dest='opengl', action='store_true', default=False)
+        parser.add_option('--server', dest='server', action='store_true', default=False)
         
         options, args = parser.parse_args(list(args[0][1:]))
         
@@ -49,14 +51,13 @@ class MySnuffler(QApplication):
         pile.add_files( sorted(filenames), cache=cache, 
                         filename_attributes=options.pattern,
                         fileformat=options.format )
+                        
+        if options.server is not None:
+            self.pile_server = pyrocko.ipc.PileServer(pile)
 
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
             pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl)
-        
-        if os.path.isfile('markers'):
-            markers = num.sort(num.loadtxt('markers'), axis=0)
-            self.pile_overview.set_markers( markers )
-        
+                
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffler" )        
         self.win.setCentralWidget( self.pile_viewer )
