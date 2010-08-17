@@ -9,6 +9,11 @@ logger = logging.getLogger('pyrocko.pile')
 from util import reuse
 from trace import degapper
 
+'''
+A pile contains subpiles which contain tracesfiles which contain traces.
+'''
+
+
 progressbar = util.progressbar_module()
 
 class TracesFileCache(object):
@@ -199,6 +204,16 @@ def loader(filenames, fileformat, cache, filename_attributes):
         cache.dump_modified()
 
 class TracesGroup(object):
+    
+    '''Trace container base class.
+    
+    Base class for Pile, SubPile, and TracesFile, i.e. anything containing 
+    a collection of several traces. A TracesGroup object maintains lookup sets
+    of some of the traces meta-information, as well as a combined time-range
+    of its contents.
+    '''
+    
+    
     def __init__(self, parent):
         self.parent = parent
         self.empty()
@@ -304,6 +319,10 @@ class TracesGroup(object):
             self.have_tuples = True
             
 class MemTracesFile(TracesGroup):
+    
+    '''This is needed to make traces without an actual disc file to be inserted
+    into a Pile.'''
+    
     def __init__(self, parent, traces):
         TracesGroup.__init__(self, parent)
         self.traces = traces

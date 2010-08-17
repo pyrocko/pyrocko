@@ -53,7 +53,7 @@ class MySnuffler(QApplication):
                         fileformat=options.format )
                         
         if options.server is not None:
-            self.pile_server = pyrocko.ipc.PileServer(pile)
+            self.pile_server = pyrocko.ipc.RemotePileServer(pile)
 
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
             pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl)
