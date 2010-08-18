@@ -572,7 +572,10 @@ class Trace(object):
     def interpolate(self, t, clip=False):
         t0, y0 = self(t, clip=clip, snap=math.floor)
         t1, y1 = self(t, clip=clip, snap=math.ceil)
-        return y0+(t-t0)/(t1-t0)*(y1-y0)
+        if t0 == t1:
+            return y0
+        else:
+            return y0+(t-t0)/(t1-t0)*(y1-y0)
         
     def add(self,other):
         other_xdata = other.get_xdata()
