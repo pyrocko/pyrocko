@@ -32,6 +32,7 @@ import pyrocko.util
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
+from PyQt4.QtSvg import *
 #QWidget = QGLWidget
 
 logger = logging.getLogger('pyrocko.pile_viewer')
@@ -877,6 +878,10 @@ def MakePileOverviewClass(base):
             self.menu.addAction(self.menuitem_print)
             self.connect( self.menuitem_print, SIGNAL("triggered(bool)"), self.printit )
             
+            self.menuitem_svg = QAction('Save as SVG', self.menu)
+            self.menu.addAction(self.menuitem_svg)
+            self.connect( self.menuitem_svg, SIGNAL("triggered(bool)"), self.savesvg )
+            
             self.menuitem_close = QAction('Close', self.menu)
             self.menu.addAction(self.menuitem_close)
             self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
@@ -1302,6 +1307,24 @@ def MakePileOverviewClass(base):
             painter.begin(printer)
             page = printer.pageRect()
             self.drawit(painter, printmode=False, w=page.width(), h=page.height())
+            painter.end()
+            
+            
+        def savesvg(self):
+            
+            fn = QFileDialog.getSaveFileName(self, 
+                'Save as SVG',
+                os.path.join(os.environ['HOME'],  'untitled.svg'),
+                'SVG (*.svg)'
+            )
+            
+            generator = QSvgGenerator()
+            generator.setFileName(fn)
+            generator.setSize(QSize(842, 595))
+
+            painter = QPainter()
+            painter.begin(generator)
+            self.drawit(painter, printmode=False, w=generator.size().width(), h=generator.size().height())
             painter.end()
             
         def paintEvent(self, paint_ev ):
