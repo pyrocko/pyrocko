@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+from pyrocko import school_seismometer, io
+import os
+
+pjoin = os.path.join
+
+
+class Hamster(school_seismometer.SchoolSeismometer):
+
+    def __init__(self, path, *args, **kwargs):
+        school_seismometer.SchoolSeismometer.__init__(self, *args, **kwargs)
+        self.path = path
+        self.traces = {}
+
+    def got_trace(self, tr):
+
+        nslc = tr.nslc_id
+        trnew = False
+        if nslc in self.traces:
+            trbuf = self.traces[nslc]
+            print "xxx", abs((trbuf.tmax+trbuf.deltat) - tr.tmin)
+
+            if (abs((trbuf.tmax+trbuf.deltat) - tr.tmin) < 1.0e-1*trbuf.deltat and 
+                        trbuf.ydata.dtype == tr.ydata.dtype and
+                        trbuf.deltat == tr.deltat  ):
+                
+                trbuf.append(tr.ydata)
+                tr = trbuf
+            else:
+                trnew = True
+        else:
+            trnew = True
+        
+        if trnew:
+            if nslc in self.traces:
+                self.save(self.traces[nslc])
+
+            self.traces[nslc] = tr
+
+        for nslc, tr2 in self.traces.items():
+            if tr2.tmax - tr2.tmin > 40.:
+                self.save(tr2)
+                del self.traces[nslc]
+
+
+    def save(self, tr):
+        io.save([tr], pjoin(self.path, '%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.%(tmax)s.mseed'))
+        
+
+
+hamster = Hamster(path='testdata', port='/dev/ttyUSB0', baudrate=9600)
+hamster.start()
