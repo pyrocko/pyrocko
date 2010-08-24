@@ -39,7 +39,7 @@ class Hamster(school_seismometer.SchoolSeismometer):
             self.traces[nslc] = tr
 
         for nslc, tr2 in self.traces.items():
-            if tr2.tmax - tr2.tmin > 40.:
+            if tr2.tmax - tr2.tmin > 5.*60.:
                 self.save(tr2)
                 del self.traces[nslc]
 
@@ -49,5 +49,5 @@ class Hamster(school_seismometer.SchoolSeismometer):
         
 
 
-hamster = Hamster(path='testdata', port='/dev/ttyUSB0', baudrate=9600)
+hamster = Hamster(path='testdata', port='/dev/ttyUSB0', baudrate=9600, buffersize=1024)
 hamster.start()
