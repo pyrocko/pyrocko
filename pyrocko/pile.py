@@ -1,4 +1,4 @@
-import trace, io, util, config, re
+import trace, io, util, config, re, sys
 
 import numpy as num
 import os, pickle, logging, time, weakref, copy
@@ -857,5 +857,18 @@ class Pile(TracesGroup):
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
         return s
+
+
+def make_pile( paths=sys.argv[1:], selector=None, regex=None,
+        fileformat = 'mseed',
+        cachedirname='/tmp/pyrocko_cache_%s' % os.environ['USER'] ):
+ 
+    fns = util.select_files(paths, selector, regex)
+
+    cache = get_cache(cachedirname)
+    p = Pile()
+    p.add_files( sorted(fns), cache=cache, fileformat=fileformat)
+    return p
+
 
 
