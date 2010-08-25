@@ -41,8 +41,8 @@ class SchoolSeismometer:
             self.buffer = num.zeros(self.buffersize)
         
         except serial.serialutil.SerialException:
-            logger.error('Cannot open serial port %i' % self.port)
-            raise SchoolSeismometerError('Cannot open serial port %i' % self.port)
+            logger.error('Cannot open serial port %s' % self.port)
+            raise SchoolSeismometerError('Cannot open serial port %s' % self.port)
             
         self.run()
             
@@ -88,14 +88,11 @@ class SchoolSeismometer:
 
         r_deltat, r_tmin, r, tt, stderr = stats.linregress(num.arange(t.size, dtype=num.float), t)
         
-        print r_tmin, r_deltat
-        
         if self.previous:
             p_tmin, p_deltat, p_size = self.previous
             
             predicted_tmin = p_tmin + p_deltat * p_size   
             err_tmin = predicted_tmin - r_tmin
-            print 'tmin error: %g' % err_tmin
             
             if self.deltat is not None:
                 continuous_tmin = self.tmin + self.ncontinuous*self.deltat
