@@ -546,8 +546,12 @@ class Marker:
             
             else:
                 fail()
-               
-            kind = int(toks[-2])
+            
+            if len(toks) in (5,8):
+                kind = int(toks[-2])
+            else:
+                kind = int(toks[-1])
+                
             nslc_ids = []
             if len(toks) in (5,8):
                 for snslc in toks[-1].split(','):
