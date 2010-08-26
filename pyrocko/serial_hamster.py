@@ -4,7 +4,7 @@ import time, sys, logging
 import numpy as num
 from scipy import stats
 
-logger = logging.getLogger('pyrocko.school_seismometer')
+logger = logging.getLogger('pyrocko.serial_hamster')
 
 class QueueIsEmpty(Exception):
     pass
@@ -40,10 +40,10 @@ class Queue:
     def empty(self):
         self.queue[:] = []
         
-class SchoolSeismometerError(Exception):
+class SerialHamsterError(Exception):
     pass
 
-class SchoolSeismometer:
+class SerialHamster:
     
     def __init__(self, port=0, baudrate=9600, timeout=5, buffersize=128,
                        network='', station='TEST', location='', channel='Z',
@@ -86,7 +86,7 @@ class SchoolSeismometer:
         
             except serial.serialutil.SerialException:
                 logger.error('Cannot open serial port %s' % self.port)
-                raise SchoolSeismometerError('Cannot open serial port %s' % self.port)
+                raise SerialHamsterError('Cannot open serial port %s' % self.port)
         else:
             self.ser = self.in_file
 
@@ -219,6 +219,6 @@ class SchoolSeismometer:
         self.times = []
     
     def got_trace(self, tr):
-        logger.debug('Completed trace from school seismometer: %s' % tr)
+        logger.debug('Completed trace from serial hamster: %s' % tr)
         
                

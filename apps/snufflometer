@@ -10,22 +10,24 @@
 import os, sys, signal, logging
 import numpy as num
 from optparse import OptionParser
+from subprocess import Popen, PIPE
+
 
 import pyrocko.pile
 import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.slink
-import pyrocko.school_seismometer
+import pyrocko.serial_hamster
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-logger = logging.getLogger('pyrocko.slinksnuff')
+logger = logging.getLogger('pyrocko.snufflometer')
 
-class QSynchronizedSlink(pyrocko.school_seismometer.SchoolSeismometer):
+class QSynchronizedSlink(pyrocko.serial_hamster.SerialHamster):
     
     def __init__(self, *args, **kwargs ):
-        pyrocko.school_seismometer.SchoolSeismometer.__init__(self, *args, **kwargs)
+        pyrocko.serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
         self.mutex = QMutex()
         self.queue = []
     
@@ -94,8 +96,14 @@ class SlinkSnuffler(QApplication):
 
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
+        
+        source = Popen(['./test_datasource.py'], stdout=PIPE)
 
-        self.slt = QSlinkThread(port=options.port, baudrate=int(options.baudrate), timeout=float(options.timeout))
+        self.slt = QSlinkThread(
+            port=options.port, 
+            baudrate=int(options.baudrate), 
+            timeout=float(options.timeout), 
+            in_file=source.stdout)
        
         
         self.timer = QTimer( self )

@@ -214,6 +214,8 @@ def select_files( paths, selector=None,  regex=None ):
     
     return good
 
+    
+
 def base36encode(number, alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
     '''
     Convert positive integer to a base36 string.
