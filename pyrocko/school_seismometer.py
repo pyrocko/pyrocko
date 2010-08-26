@@ -1,10 +1,13 @@
-import trace
+import trace, util
 
 import time, sys, logging
 import numpy as num
 from scipy import stats
 
 logger = logging.getLogger('pyrocko.school_seismometer')
+
+class QueueIsEmpty(Exception):
+    pass
 
 class Queue:
     def __init__(self, nmax):
@@ -16,11 +19,26 @@ class Queue:
         while len(self.queue) > self.nmax:
             self.queue.pop(0)
         
-    def pop_front(self):
-        return self.pop(0)
-        
     def mean(self):
+        if not self.queue:
+            raise QueueIsEmpty()
         return sum(self.queue)/float(len(self.queue))
+    
+    def median(self):
+        if not self.queue:
+            raise QueueIsEmpty()
+        n = len(self.queue)
+        s = sorted(self.queue)
+        if n%2 != 0:
+            return s[n/2]
+        else:
+            return (s[n/2-1]+s[n/2])/2.0
+    
+    def add(self, w):
+        self.queue = [ v+w for v in self.queue ]
+            
+    def empty(self):
+        self.queue[:] = []
         
 class SchoolSeismometerError(Exception):
     pass
@@ -29,7 +47,9 @@ class SchoolSeismometer:
     
     def __init__(self, port=0, baudrate=9600, timeout=5, buffersize=128,
                        network='', station='TEST', location='', channel='Z',
-                       disallow_uneven_sampling_rates=True,
+                       disallow_uneven_sampling_rates=True, 
+                       deltat=None,
+                       deltat_tolerance=0.01,
                        in_file=None):
         
         self.port = port
@@ -40,9 +60,10 @@ class SchoolSeismometer:
         self.values = []
         self.times = []
         self.deltat = None
+        self.deltat_tolerance = deltat_tolerance
         self.tmin = None
-        self.previous_deltats = Queue(nmax=10)
-        self.previous_tmin_offsets = Queue(nmax=10)
+        self.previous_deltats = Queue(nmax=5)
+        self.previous_tmin_offsets = Queue(nmax=5)
         self.ncontinuous = 0
         self.disallow_uneven_sampling_rates = disallow_uneven_sampling_rates
         self.network = network
@@ -99,7 +120,7 @@ class SchoolSeismometer:
             try:
                 val = float(tok)
             except:
-                logger.error('Got something unexpected on serial line')
+                logger.warn('Got something unexpected on serial line')
                 continue
             
             self.values.append(val)
@@ -115,52 +136,74 @@ class SchoolSeismometer:
         t = t-toff
         i = num.arange(t.size, dtype=num.float)
         r_deltat, r_tmin, r, tt, stderr = stats.linregress(i, t)
-        print 'XXX', r_deltat, r_tmin, r, tt, stderr
         for ii in range(2):
             t_fit = r_tmin+r_deltat*i
             quickones = num.where(t < t_fit)
             i = i[quickones]
             t = t[quickones]
             r_deltat, r_tmin, r, tt, stderr = stats.linregress(i, t)
-            print 'YYY', r_deltat, r_tmin, r, tt, stderr
         
         return r_deltat, r_tmin+toff
         
     def _flush_buffer(self):
         t = num.array(self.times, dtype=num.float)
-        v = num.array(self.values, dtype=num.int) 
         r_deltat, r_tmin = self._regression(t)
         if self.disallow_uneven_sampling_rates:
             r_deltat = 1./round(1./r_deltat)
 
         # check if deltat is consistent with expectations        
+        if self.deltat is not None:
+            try:
+                p_deltat = self.previous_deltats.median()
+                if ((self.disallow_uneven_sampling_rates and abs(1./p_deltat - 1./self.deltat) > 0.5) or
+                    (not self.disallow_uneven_sampling_rates and abs((self.deltat - p_deltat)/self.deltat) > self.deltat_tolerance)):
+                    self.deltat = None
+                    self.previous_deltats.empty()
+            except QueueIsEmpty:
+                pass
+                
         self.previous_deltats.push_back(r_deltat)
         
-        if self.deltat is not None:
-            p_deltat = self.previous_deltats.mean()
-            if self.disallow_uneven_sampling_rates and 1./p_deltat - 1./self.deltat > 0.5:
-                self.deltat = None
-            
-            elif not self.disallow_uneven_sampling_rates and (self.deltat - p_deltat)/self.deltat > 0.01:
-                self.deltat = None
-                
+        # detect sampling rate
+        if self.deltat is None:
+            self.deltat = r_deltat
+            self.tmin = None         # must also set new time origin if sampling rate changes
+            logger.info('Setting new sampling rate to %g Hz (sampling interval is %g s)' % (1./self.deltat, self.deltat ))
+
         # check if onset has drifted / jumped
         if self.tmin is not None and self.tmin is not None:        
             continuous_tmin = self.tmin + self.ncontinuous*self.deltat
             
             tmin_offset = r_tmin - continuous_tmin
+            try:
+                toffset = self.previous_tmin_offsets.median()
+                if abs(toffset) > self.deltat*0.7:
+                    soffset = int(round(toffset/self.deltat))
+                    logger.info('Detected drift/jump/gap of %g sample%s' % (soffset, ['s',''][abs(soffset)==1]) )
+                    if soffset == 1:
+                        self.values.append(self.values[-1])
+                        self.previous_tmin_offsets.add(-self.deltat)
+                        logger.info('Adding one sample to compensate time drift')
+                    elif soffset == -1:
+                        self.values.pop(-1)
+                        self.previous_tmin_offsets.add(+self.deltat)
+                        logger.info('Removing one sample to compensate time drift')
+                    else:  
+                        self.tmin = None
+                        self.previous_tmin_offsets.empty()
+                    
+            except QueueIsEmpty:
+                pass
+                
             self.previous_tmin_offsets.push_back(tmin_offset)
-            toffset = self.previous_tmin_offsets.mean()
-            if toffset > self.deltat*0.6:
-                logger.warn('drift detected')
-            
-        # detect sampling rate
-        if self.deltat is None:
-            self.deltat = r_deltat
-
+        
+        # detect onset time
         if self.tmin is None:
             self.tmin = r_tmin
-            
+            self.ncontinuous = 0
+            logger.info('Setting new time origin to %s' % util.gmctime(self.tmin))
+        
+        v = num.array(self.values, dtype=num.int) 
 
         tr = trace.Trace(
                 network=self.network, 
@@ -169,7 +212,6 @@ class SchoolSeismometer:
                 channel=self.channel, 
                 tmin=self.tmin + self.ncontinuous*self.deltat, deltat=self.deltat, ydata=v)
                 
-                
         self.got_trace(tr)
         self.ncontinuous += v.size
         
@@ -177,8 +219,6 @@ class SchoolSeismometer:
         self.times = []
     
     def got_trace(self, tr):
-        logger.info('Completed trace from school seismometer: %s' % tr)
-        
-        
+        logger.debug('Completed trace from school seismometer: %s' % tr)
         
                
