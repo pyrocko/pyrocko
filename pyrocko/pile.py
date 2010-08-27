@@ -175,7 +175,10 @@ def loader(filenames, fileformat, cache, filename_attributes):
                 if not m: raise FilenameAttributeError(
                     "Cannot get attributes with pattern '%s' from path '%s'" 
                         % (filename_attributes, filename))
-                substitutions = m.groupdict()
+                substitutions = {}
+                for k in m.groupdict():
+                    if k  in ('network', 'station', 'location', 'channel'):
+                        substitutions[k] = m.groupdict()[k]
                 
             
             mtime = os.stat(filename)[8]
@@ -377,6 +380,9 @@ class MemTracesFile(TracesGroup):
     def iter_traces(self):
         for trace in self.traces:
             yield trace
+    
+    def get_traces(self):
+        return self.traces
     
     def gather_keys(self, gather):
         keys = set()
