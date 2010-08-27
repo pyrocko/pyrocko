@@ -1,6 +1,6 @@
 import trace, util
 
-import time, sys, logging
+import time, sys, logging, weakref
 import numpy as num
 from scipy import stats
 
@@ -71,7 +71,11 @@ class SerialHamster:
         self.location = location
         self.channel = channel
         self.in_file = in_file    # for testing
-        
+        self.listeners = []
+    
+    def add_listener(self, obj):
+        self.listeners.append(weakref.ref(obj))        
+                
     def start(self):
         if self.ser is not None:
             self.stop()
@@ -220,5 +224,8 @@ class SerialHamster:
     
     def got_trace(self, tr):
         logger.debug('Completed trace from serial hamster: %s' % tr)
-        
-               
+        for ref in self.listeners:
+            obj = ref()
+            if obj:
+                obj.got_trace(trace)
+                
