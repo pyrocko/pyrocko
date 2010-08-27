@@ -425,7 +425,8 @@ class TracesFile(TracesGroup):
         logger.debug('loading headers from file: %s' % self.abspath)
         if mtime is None:
             self.mtime = os.stat(self.abspath)[8]
-
+        
+        self.traces = []
         for tr in io.load(self.abspath, format=self.format, getdata=False, substitutions=self.substitutions):
             self.traces.append(tr)
             
