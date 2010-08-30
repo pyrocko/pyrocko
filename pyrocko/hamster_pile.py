@@ -6,12 +6,12 @@ class HamsterPile(pile.Pile):
         pile.Pile.__init__(self)
         self._buffers = {}          # keys: nslc,  values: MemTracesFile
         
-    def got_trace(self, trace):
+    def insert_trace(self, trace):
 
         buf = self._append_to_buffer(trace)
         nslc = trace.nslc_id
         
-        if trbuf is None: # create new buffer trace
+        if buf is None: # create new buffer trace
             if nslc in self._buffers:
                 self._fixate(self._buffers[nslc])
                 

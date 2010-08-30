@@ -224,8 +224,10 @@ class SerialHamster:
     
     def got_trace(self, tr):
         logger.debug('Completed trace from serial hamster: %s' % tr)
+        
+        # deliver payload to registered listeners
         for ref in self.listeners:
             obj = ref()
             if obj:
-                obj.got_trace(trace)
+                obj.insert_trace(trace)
                 
