@@ -7,15 +7,30 @@ from optparse import OptionParser
 pjoin = os.path.join
 
 
-parser = OptionParser()
-parser.add_option('--debug', dest='debug', action='store_true', default=False)
-parser.add_option('--port', dest='port', default='0')
-parser.add_option('--baudrate', dest='baudrate', default='9600')
-parser.add_option('--timeout', dest='timeout', default='5')
+parser = OptionParser(
+    usage = 'hamster [options] datadir',
+    description = '''
+Datalogger program for the A/D converter of the "School Seismometer" connected 
+to a serial port. This program expects  whitespace-separated ascii numbers on
+a serial interface and stores the received data as MSEED files in the directory
+datadir. It automatically detects the sampling rate and uses the system clock 
+as reference for time synchronization. Changes, gaps, jumps, and drift of the 
+sampling rate are handled by this program.
+'''.strip())
+parser.add_option('--port', dest='port', default='/dev/ttyS0',
+    help='device name of the serial port to be used (%default)')
+parser.add_option('--baudrate', dest='baudrate', default='9600',
+    help='baudrate for serial port (%default)')
+parser.add_option('--timeout', dest='timeout', default='5',
+    help='connection timeout in seconds (%default)', metavar='N')
+parser.add_option('--filelength', dest='filelength', default='3600',
+    help='approx file length in seconds (%default)', metavar='N')
+parser.add_option('--debug', dest='debug', action='store_true', default=False,
+    help='enable debugging output')
 
 options, args = parser.parse_args(sys.argv)
-
-print args
+if len(args) < 2:
+    parser.error('required argument missing')
 directory = args[1]
 
 if options.debug:
@@ -24,7 +39,7 @@ else:
     util.setup_logging('hamster', 'warning')
 
 pile = hamster_pile.HamsterPile()
-pile.set_fixation_length(15.)
+pile.set_fixation_length(int(options.filelength))
 
 fn = 'data_%(network)s.%(station)s.%(location)s.%(channel)s_%(tmin)s_%(tmax)s.mseed'
 
