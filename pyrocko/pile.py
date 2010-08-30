@@ -866,10 +866,30 @@ class Pile(TracesGroup):
         return s
 
 
-def make_pile( paths=sys.argv[1:], selector=None, regex=None,
+def make_pile( paths=None, selector=None, regex=None,
         fileformat = 'mseed',
         cachedirname='/tmp/pyrocko_cache_%s' % os.environ['USER'] ):
- 
+    
+    '''Create pile from given file and directory names.
+    
+    Inputs
+        paths -- filenames and/or directories to look for traces. If paths is 
+            None sys.argv[1:] is used.
+        selector -- lambda expression taking group dict of regex match object as
+            a single argument and which returns true or false to keep or reject
+            a file
+        regex -- regular expression which filenames have to match
+        fileformat -- format of the files ('mseed', 'sac', 'kan', 
+            'from_extension', 'try')
+        cachedirname -- loader cache is stored under this directory. It is
+            created as neccessary.
+    '''
+    if isinstance(paths, str):
+        paths = [ paths ]
+        
+    if paths is None:
+        paths = sys.argv[1:]
+    
     fns = util.select_files(paths, selector, regex)
 
     cache = get_cache(cachedirname)
