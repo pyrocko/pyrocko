@@ -9,9 +9,7 @@ class FileLoadError(Exception):
 
 def make_substitutions(tr, substitutions):
     if substitutions:
-        for k,v in substitutions.iteritems():
-            if hasattr(tr, k):
-                setattr(tr, k, v)
+        tr.set_codes(**substitutions)
 
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
