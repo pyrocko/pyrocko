@@ -13,7 +13,7 @@ from optparse import OptionParser
 from subprocess import Popen, PIPE
 
 
-import pyrocko.pile
+import pyrocko.hamster_pile
 import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.slink
@@ -82,8 +82,8 @@ class SlinkSnuffler(QApplication):
         else:
             pyrocko.util.setup_logging('snuffler', 'warning')
         
-        pile = pyrocko.pile.Pile()
-        self.pile_viewer = pyrocko.pile_viewer.PileViewer(pile, ntracks_shown_max=options.ntracks)
+        self.pile = pyrocko.hamster_pile.HamsterPile()
+        self.pile_viewer = pyrocko.pile_viewer.PileViewer(self.pile, ntracks_shown_max=options.ntracks)
         
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffslink" )        
@@ -120,34 +120,8 @@ class SlinkSnuffler(QApplication):
         if self.slt.get_slink().sun_is_shining():
             traces = self.slt.get_slink().poll()
             for tr in traces:
-                self.got_trace(tr)
-    
-    def got_trace(self, tr):
-        nslc = tr.nslc_id
-        trnew = False
-        if nslc in self.traces:
-            trbuf = self.traces[nslc]
+                self.pile.insert_trace(tr)
             
-            if (abs((trbuf.tmax+trbuf.deltat) - tr.tmin) < 1.0e-3*trbuf.deltat and 
-                        trbuf.ydata.dtype == tr.ydata.dtype and
-                        trbuf.deltat == tr.deltat  ):
-                
-                trbuf.append(tr.ydata)
-                tr = trbuf
-            else:
-                trnew = True
-        else:
-            trnew = True
-            
-        if trnew:
-            self.traces[nslc] = tr
-            memfile = pyrocko.pile.MemTracesFile(None,[tr])
-            p = self.pile_viewer.get_pile()
-            p.add_file(memfile)
-            self.traces_to_files[tr] = memfile
-        
-        self.traces_to_files[tr].recursive_grow_update([tr])
-        
         self.pile_viewer.pile_overview.update()
         
     def myquit(self, *args):
