@@ -147,13 +147,14 @@ def get_cache(cachedir):
         
     return TracesFileCache.caches[cachedir]
     
-def loader(filenames, fileformat, cache, filename_attributes):
+def loader(filenames, fileformat, cache, filename_attributes, show_progress=True):
+        
     if not filenames:
         logger.warn('No files to load from')
         return
     
     pbar = None
-    if progressbar and config.show_progress:
+    if show_progress and progressbar and config.show_progress:
         widgets = ['Scanning files', ' ',
                 progressbar.Bar(marker='-',left='[',right=']'), ' ',
                 progressbar.Percentage(), ' ',]
@@ -657,10 +658,10 @@ class Pile(TracesGroup):
             if obj:
                 obj.pile_changed(what)
     
-    def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None):
+    def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True):
         modified_subpiles = set()
         if filenames is not None:
-            for file in loader(filenames, fileformat, cache, filename_attributes):
+            for file in loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress):
                 subpile = self.dispatch(file)
                 subpile.add_file(file)
                 modified_subpiles.add(subpile)

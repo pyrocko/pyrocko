@@ -1,15 +1,43 @@
 #!/usr/bin/env python
 
-from pyrocko import serial_hamster, io
-import os
+from pyrocko import serial_hamster, hamster_pile, util
+import os, sys, signal
 from subprocess import Popen, PIPE
-
+from optparse import OptionParser
 pjoin = os.path.join
 
 
-        
+parser = OptionParser()
+parser.add_option('--debug', dest='debug', action='store_true', default=False)
+parser.add_option('--port', dest='port', default='0')
+parser.add_option('--baudrate', dest='baudrate', default='9600')
+parser.add_option('--timeout', dest='timeout', default='5')
 
-source = Popen(['./test_datasource.py'], stdout=PIPE)
+options, args = parser.parse_args(sys.argv)
 
-hamster = Hamster(path='testdata', port='/dev/ttyUSB0', in_file=source.stdout)
+print args
+directory = args[1]
+
+if options.debug:
+    util.setup_logging('hamster', 'debug')
+else:
+    util.setup_logging('hamster', 'warning')
+
+pile = hamster_pile.HamsterPile()
+pile.set_fixation_length(15.)
+
+fn = 'data_%(network)s.%(station)s.%(location)s.%(channel)s_%(tmin)s_%(tmax)s.mseed'
+
+pile.set_save_path(pjoin(directory, fn))
+
+#testsource = Popen(['./test_datasource.py'], stdout=PIPE)
+hamster = serial_hamster.SerialHamster( 
+    port=options.port, 
+    baudrate=int(options.baudrate),
+    timeout=int(options.timeout),
+  #  in_file = testsource.stdout,
+)
+hamster.add_listener(pile)
+signal.signal(signal.SIGINT, hamster.quit_soon)
 hamster.start()
+pile.fixate_all()

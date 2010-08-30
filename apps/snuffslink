@@ -84,6 +84,8 @@ class SlinkSnuffler(QApplication):
         
         self.pile = pyrocko.hamster_pile.HamsterPile()
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(self.pile, ntracks_shown_max=options.ntracks)
+        self.pile.set_fixation_length(60.*60.)
+        #self.pile.set_save_path('test_snuffslink_traces')
         
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffslink" )        
@@ -115,7 +117,7 @@ class SlinkSnuffler(QApplication):
         
         self.timer = QTimer( self )
         self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
-        self.timer.setInterval(1000)
+        self.timer.setInterval(500)
         self.timer.start()
         
         self.traces = {}
@@ -132,6 +134,7 @@ class SlinkSnuffler(QApplication):
         self.pile_viewer.pile_overview.update()
         
     def myquit(self, *args):
+        self.pile.fixate_all()
         self.slt.stop()
         self.quit()
     

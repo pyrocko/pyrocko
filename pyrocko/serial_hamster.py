@@ -72,6 +72,7 @@ class SerialHamster:
         self.channel = channel
         self.in_file = in_file    # for testing
         self.listeners = []
+        self.quit_requested = False
     
     def add_listener(self, obj):
         self.listeners.append(weakref.ref(obj))        
@@ -80,6 +81,7 @@ class SerialHamster:
         if self.ser is not None:
             self.stop()
         
+        logger.debug('Starting serial hamster')
         if self.in_file is None:
             import serial
             try:
@@ -100,24 +102,33 @@ class SerialHamster:
             
     def stop(self):
         if self.ser is not None:
+            logger.debug('Stopping serial hamster')
             if self.in_file is None:
                 self.ser.close()
             self.ser = None
         
             
     def sun_is_shining(self):
-        return True
+        return not self.quit_requested
+    
+    def quit_soon(self, *args):
+        logger.info('Quitting hamster')
+        self.quit_requested = True
         
     def run(self):
-        while self.process():
+        while self.sun_is_shining() and self.process():
             pass
-        
+        self.stop()
         
     def process(self):
         if self.ser is None:
             return False
         
-        line = self.ser.readline()
+        try:
+            line = self.ser.readline()
+        except:
+            return True
+        
         t = time.time()
         
         for tok in line.split():
@@ -229,5 +240,5 @@ class SerialHamster:
         for ref in self.listeners:
             obj = ref()
             if obj:
-                obj.insert_trace(trace)
+                obj.insert_trace(tr)
                 

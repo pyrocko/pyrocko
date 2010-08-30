@@ -125,6 +125,7 @@ class SlinkSnuffler(QApplication):
         self.pile_viewer.pile_overview.update()
         
     def myquit(self, *args):
+        self.pile.fixate_all()
         self.slt.stop()
         self.quit()
     
