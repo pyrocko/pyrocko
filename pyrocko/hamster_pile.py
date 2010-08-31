@@ -71,6 +71,7 @@ class HamsterPile(pile.Pile):
         for buf in self._buffers.values():
             self._fixate(buf)
             
+        self._buffers = {}
 
     def _fixate(self, buf):
         if self._path:

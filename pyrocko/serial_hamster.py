@@ -50,7 +50,8 @@ class SerialHamster:
                        disallow_uneven_sampling_rates=True, 
                        deltat=None,
                        deltat_tolerance=0.01,
-                       in_file=None):
+                       in_file=None,
+                       lookback=5):
         
         self.port = port
         self.baudrate = baudrate
@@ -62,8 +63,8 @@ class SerialHamster:
         self.deltat = None
         self.deltat_tolerance = deltat_tolerance
         self.tmin = None
-        self.previous_deltats = Queue(nmax=5)
-        self.previous_tmin_offsets = Queue(nmax=5)
+        self.previous_deltats = Queue(nmax=lookback)
+        self.previous_tmin_offsets = Queue(nmax=lookback)
         self.ncontinuous = 0
         self.disallow_uneven_sampling_rates = disallow_uneven_sampling_rates
         self.network = network
@@ -73,10 +74,15 @@ class SerialHamster:
         self.in_file = in_file    # for testing
         self.listeners = []
         self.quit_requested = False
+        
+        self.min_detection_size = 5
     
     def add_listener(self, obj):
         self.listeners.append(weakref.ref(obj))        
                 
+    def clear_listeners(self):
+        self.listeners = []
+    
     def start(self):
         if self.ser is not None:
             self.stop()
@@ -91,7 +97,6 @@ class SerialHamster:
                     timeout=self.timeout)
         
             except serial.serialutil.SerialException:
-                logger.error('Cannot open serial port %s' % self.port)
                 raise SerialHamsterError('Cannot open serial port %s' % self.port)
         else:
             self.ser = self.in_file
@@ -106,7 +111,7 @@ class SerialHamster:
             if self.in_file is None:
                 self.ser.close()
             self.ser = None
-        
+        self._flush_buffer()
             
     def sun_is_shining(self):
         return not self.quit_requested
@@ -126,8 +131,10 @@ class SerialHamster:
         
         try:
             line = self.ser.readline()
+            if line == '':
+                raise SerialHamsterError('Failed to read from serial port %s' % self.port)
         except:
-            return True
+            raise SerialHamsterError('Failed to read from serial port %s' % self.port)
         
         t = time.time()
         
@@ -161,6 +168,10 @@ class SerialHamster:
         return r_deltat, r_tmin+toff
         
     def _flush_buffer(self):
+        
+        if len(self.times) < self.min_detection_size:
+            return
+        
         t = num.array(self.times, dtype=num.float)
         r_deltat, r_tmin = self._regression(t)
         if self.disallow_uneven_sampling_rates:
@@ -186,7 +197,7 @@ class SerialHamster:
             logger.info('Setting new sampling rate to %g Hz (sampling interval is %g s)' % (1./self.deltat, self.deltat ))
 
         # check if onset has drifted / jumped
-        if self.tmin is not None and self.tmin is not None:        
+        if self.deltat is not None and self.tmin is not None:        
             continuous_tmin = self.tmin + self.ncontinuous*self.deltat
             
             tmin_offset = r_tmin - continuous_tmin
@@ -213,25 +224,26 @@ class SerialHamster:
             self.previous_tmin_offsets.push_back(tmin_offset)
         
         # detect onset time
-        if self.tmin is None:
+        if self.tmin is None and self.deltat is not None:
             self.tmin = r_tmin
             self.ncontinuous = 0
             logger.info('Setting new time origin to %s' % util.gmctime(self.tmin))
         
-        v = num.array(self.values, dtype=num.int) 
-
-        tr = trace.Trace(
-                network=self.network, 
-                station=self.station,
-                location=self.location,
-                channel=self.channel, 
-                tmin=self.tmin + self.ncontinuous*self.deltat, deltat=self.deltat, ydata=v)
-                
-        self.got_trace(tr)
-        self.ncontinuous += v.size
-        
-        self.values = []
-        self.times = []
+        if self.tmin is not None and self.deltat is not None:
+            v = num.array(self.values, dtype=num.int) 
+    
+            tr = trace.Trace(
+                    network=self.network, 
+                    station=self.station,
+                    location=self.location,
+                    channel=self.channel, 
+                    tmin=self.tmin + self.ncontinuous*self.deltat, deltat=self.deltat, ydata=v)
+                    
+            self.got_trace(tr)
+            self.ncontinuous += v.size
+            
+            self.values = []
+            self.times = []
     
     def got_trace(self, tr):
         logger.debug('Completed trace from serial hamster: %s' % tr)
