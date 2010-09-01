@@ -121,7 +121,7 @@ def mk_decitab(nmax=100):
             if i*j > nmax: break
         if i > nmax: break
         
-    GlobalVars.dictab_nmax = nmax
+    GlobalVars.decitab_nmax = nmax
     
 def decitab(n):
     if n > GlobalVars.decitab_nmax:
