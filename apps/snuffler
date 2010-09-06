@@ -14,6 +14,7 @@ from optparse import OptionParser
 import pyrocko.pile
 import pyrocko.util
 import pyrocko.pile_viewer
+import pyrocko.ipc
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -29,7 +30,9 @@ class MySnuffler(QApplication):
         parser.add_option('--format', dest='format', default='from_extension', 
                           choices=('mseed', 'sac', 'kan', 'segy', 'from_extension', 'try'))
         parser.add_option('--debug', dest='debug', action='store_true', default=False)
-
+        parser.add_option('--opengl', dest='opengl', action='store_true', default=False)
+        parser.add_option('--server', dest='server', action='store_true', default=False)
+        
         options, args = parser.parse_args(list(args[0][1:]))
         
         if options.debug:
@@ -39,18 +42,22 @@ class MySnuffler(QApplication):
         
         filenames = pyrocko.util.select_files( args, regex=options.pattern )
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
-        cache = pyrocko.pile.get_cache(cachedirname)
+        if options.pattern:
+            cache = None
+        else:
+            cache = pyrocko.pile.get_cache(cachedirname)
+            
         pile = pyrocko.pile.Pile()
         pile.add_files( sorted(filenames), cache=cache, 
                         filename_attributes=options.pattern,
                         fileformat=options.format )
+                        
+        if options.server is not None:
+            self.pile_server = pyrocko.ipc.RemotePileServer(pile)
 
-        self.pile_viewer = pyrocko.pile_viewer.PileViewer(pile, ntracks_shown_max=options.ntracks)
-        
-        if os.path.isfile('markers'):
-            markers = num.sort(num.loadtxt('markers'), axis=0)
-            self.pile_overview.set_markers( markers )
-        
+        self.pile_viewer = pyrocko.pile_viewer.PileViewer(
+            pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl)
+                
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffler" )        
         self.win.setCentralWidget( self.pile_viewer )

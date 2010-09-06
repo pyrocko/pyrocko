@@ -9,19 +9,17 @@ class FileLoadError(Exception):
 
 def make_substitutions(tr, substitutions):
     if substitutions:
-        for k,v in substitutions.iteritems():
-            if hasattr(tr, k):
-                setattr(tr, k, v)
+        tr.set_codes(**substitutions)
 
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
     
-    Inputs:
+    In:
         format -- format of the file ('mseed', 'sac', 'kan', 'from_extension', 'try')
         substitutions -- dict with substitutions to be applied to the traces
            metadata
     
-    Outputs:
+    Out:
         trs -- list of loaded traces
     '''
     
@@ -79,6 +77,19 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     
     
 def save(traces, filename_template, format='mseed'):
+    '''Save traces to file(s).
+    
+    In:
+        traces - list of traces to store
+        filename_template -- filename template with placeholders for trace
+            metadata. Valid placeholders are '%(network)s', '%(station)s', 
+            '%(location)s', '%(channel)s', '%(tmin)s', and '%(tmax)s'.
+        format -- 'mseed' or 'sac'.
+        
+    Out:
+        List of generated filenames
+    '''
+    
     if format == 'mseed':
         return mseed.save(traces, filename_template)
     

@@ -7,24 +7,27 @@
 # This file is part of snuffler. For licensing information please see the file 
 # COPYING which is included with snuffler.
 
-import os, sys, signal, logging
+import os, sys, signal, logging, time
 import numpy as num
 from optparse import OptionParser
+from subprocess import Popen, PIPE
+
 
 import pyrocko.hamster_pile
 import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.slink
+import pyrocko.serial_hamster
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-logger = logging.getLogger('pyrocko.slinksnuff')
+logger = logging.getLogger('pyrocko.snufflometer')
 
-class QSynchronizedSlink(pyrocko.slink.SlowSlink):
+class QSynchronizedSlink(pyrocko.serial_hamster.SerialHamster):
     
-    def __init__(self, host, port=18000):
-        pyrocko.slink.SlowSlink.__init__(self, host, port)
+    def __init__(self, *args, **kwargs ):
+        pyrocko.serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
         self.mutex = QMutex()
         self.queue = []
     
@@ -44,24 +47,41 @@ class QSynchronizedSlink(pyrocko.slink.SlowSlink):
         return items
     
 class QSlinkThread(QThread):
-    def __init__(self, host='localhost', port=18000):
+    def __init__(self, *args, **kwargs):
         QThread.__init__(self)
-        self.slink = QSynchronizedSlink(host, port=port)
+        self.args = args
+        self.kwargs = kwargs
+        self.slink = None
     
     def get_slink(self):
         return self.slink
     
     def run(self):
-        self.slink.start()
-        while self.slink.sun_is_shining():
-            self.slink.process()
+        
+        while True:
+            try:
+            
+                self.slink = QSynchronizedSlink(*self.args, **self.kwargs)
+                self.slink.start()
+                while self.slink.sun_is_shining():
+                    self.slink.process()
+                    
+                self.slink.stop()
+                break
+                
+            except pyrocko.serial_hamster.SerialHamsterError, e:
+                logger.error(str(e))
+                logger.error('Acquistion terminated, restart in 5 s')
+                self.slink.stop()
+                self.slink.clear_listeners()
+                time.sleep(5)
+                if not self.slink.sun_is_shining():
+                    break
+            
             
     def stop(self):
-        self.sun_is_shining = False
-        self.slink.stop()
-        logger.debug("Waiting for thread to terminate...")
-        self.wait()
-        logger.debug("Thread has terminated.")
+        pass
+        
  
 class SlinkSnuffler(QApplication):
     
@@ -71,9 +91,9 @@ class SlinkSnuffler(QApplication):
         parser = OptionParser()
         parser.add_option('--ntracks', dest='ntracks', default=24)
         parser.add_option('--debug', dest='debug', action='store_true', default=False)
-        parser.add_option('--streams', dest='streams', default='GE.WLF..BHZ')
-        parser.add_option('--host', dest='host', default='geofon.gfz-potsdam.de')
-        parser.add_option('--port', dest='port', default='18000')
+        parser.add_option('--port', dest='port', default='0')
+        parser.add_option('--baudrate', dest='baudrate', default='9600')
+        parser.add_option('--timeout', dest='timeout', default='5')
 
         options, args = parser.parse_args(list(args[0][1:]))
         
@@ -84,8 +104,6 @@ class SlinkSnuffler(QApplication):
         
         self.pile = pyrocko.hamster_pile.HamsterPile()
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(self.pile, ntracks_shown_max=options.ntracks)
-        self.pile.set_fixation_length(60.*60.)
-        #self.pile.set_save_path('test_snuffslink_traces')
         
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffslink" )        
@@ -98,26 +116,19 @@ class SlinkSnuffler(QApplication):
 
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
+        
+      #  source = Popen(['./test_datasource.py'], stdout=PIPE)
 
-        self.slt = QSlinkThread(host=options.host, port=options.port)
-        slink = self.slt.get_slink()
-       
-        streams = slink.query_streams()
-       
-        for stream in streams:
-            if stream[0] == 'GE' and stream[3] == 'BHZ':
-                slink.add_stream(*stream) 
-       
-        for nslc in options.streams.split(','):
-            slink.add_stream(*nslc.split('.'))
-        
-        for arg in args:
-            slink.add_raw_stream_selector(arg)
-        
+        self.slt = QSlinkThread(
+            port=options.port, 
+            baudrate=int(options.baudrate), 
+            timeout=float(options.timeout), 
+       #     in_file=source.stdout
+           )
         
         self.timer = QTimer( self )
         self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
-        self.timer.setInterval(500)
+        self.timer.setInterval(1000)
         self.timer.start()
         
         self.traces = {}
@@ -126,12 +137,14 @@ class SlinkSnuffler(QApplication):
         self.slt.start()
         
     def periodical(self):
-        if self.slt.get_slink().sun_is_shining():
+        slink = self.slt.get_slink()
+        if slink and slink.sun_is_shining():
             traces = self.slt.get_slink().poll()
-            for tr in traces:
-                self.pile.insert_trace(tr)
-    
-        self.pile_viewer.pile_overview.update()
+            if traces:
+                for tr in traces:
+                    self.pile.insert_trace(tr)
+            
+                self.pile_viewer.pile_overview.update()
         
     def myquit(self, *args):
         self.pile.fixate_all()

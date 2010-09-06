@@ -85,10 +85,9 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
             
             dist = (b.tmin-(a.tmin+(len(a.ydata)-1)*a.deltat))/a.deltat
             idist = int(round(dist))
-            if abs(dist - idist) > 0.05:
+            if abs(dist - idist) > 0.05 and idist <= maxgap:
                 logger.warn('Cannot degap traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
             else:
-                idist = int(round(dist))
                 if 1 < idist <= maxgap:
                     if fillmethod == 'interpolate':
                         filler = a.ydata[-1] + (((1.+num.arange(idist-1,dtype=num.float))/idist)*(b.ydata[0]-a.ydata[-1])).astype(a.ydata.dtype)
@@ -573,7 +572,18 @@ class Trace(object):
     def interpolate(self, t, clip=False):
         t0, y0 = self(t, clip=clip, snap=math.floor)
         t1, y1 = self(t, clip=clip, snap=math.ceil)
-        return y0+(t-t0)/(t1-t0)*(y1-y0)
+        if t0 == t1:
+            return y0
+        else:
+            return y0+(t-t0)/(t1-t0)*(y1-y0)
+        
+    def add(self,other):
+        other_xdata = other.get_xdata()
+        xdata = self.get_xdata()
+        xmin, xmax = other_xdata[0], other_xdata[-1]
+        self.ydata += num.interp(xdata, other_xdata, other.ydata, other.ydata[0], right=other.ydata[-1])
+        self.ydata = num.where(num.logical_or( xdata < xmin, xmax < xdata ), num.nan, self.ydata)
+
         
     def set_codes(self, network=None, station=None, location=None, channel=None):
         if network is not None:
@@ -666,10 +676,29 @@ class Trace(object):
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
         self.update_ids()
         
-    def downsample_to(self, deltat, snap=False):
+    def downsample_to(self, deltat, snap=False, allow_upsample_max=1):
         ratio = deltat/self.deltat
         rratio = round(ratio)
-        if abs(rratio - ratio) > 0.0001: raise util.UnavailableDecimation('ratio = %g' % ratio)
+        if abs(rratio - ratio)/ratio > 0.0001:
+            if allow_upsample_max <=1:
+                raise util.UnavailableDecimation('ratio = %g' % ratio)
+            else:
+                deltat_inter = 1./util.lcm(1./self.deltat,1./deltat)
+                upsratio = int(round(self.deltat/deltat_inter))
+                if upsratio > allow_upsample_max:
+                    raise util.UnavailableDecimation('ratio = %g' % ratio)
+                
+                if upsratio > 1:
+                    ydata = self.ydata
+                    self.ydata = num.zeros(ydata.size*upsratio-(upsratio-1), ydata.dtype)
+                    self.ydata[::upsratio] = ydata
+                    for i in range(1,upsratio):
+                        self.ydata[i::upsratio] = float(i)/upsratio * ydata[:-1] + float(upsratio-i)/upsratio * ydata[1:]
+                    self.deltat = self.deltat/upsratio
+                
+                    ratio = deltat/self.deltat
+                    rratio = round(ratio)
+            
         deci_seq = util.decitab(int(rratio))
         for ndecimate in deci_seq:
              if ndecimate != 1:
@@ -820,8 +849,11 @@ class Trace(object):
         tapered_transfer[0] = 0.0 # don't introduce static offsets
         return tapered_transfer
         
-    def fill_template(self, template):
+    def fill_template(self, template, **additional):
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
         params['tmin'] = util.gmctime_fn(self.tmin)
         params['tmax'] = util.gmctime_fn(self.tmax)
+        params.update(additional)
         return template % params
+
+

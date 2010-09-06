@@ -7,6 +7,10 @@ import numpy as num
 dynecm = 1e-7
 
 def symmat6(*vals):
+    '''Create symmetric 3x3 matrix from its 6 non-redundant values.
+     
+    vals = [ Axx, Ayy, Azz, Axy, Axz, Ayz ]'''
+    
     return num.matrix([[vals[0], vals[3], vals[4]],
                        [vals[3], vals[1], vals[5]],
                        [vals[4], vals[5], vals[2]]], dtype=num.float)
@@ -154,7 +158,14 @@ class MomentTensor:
 
     def __init__(self, m=None, m_up_south_east=None, strike=0., dip=0., rake=0., scalar_moment=1. ):
         '''Create moment tensor object based on 3x3 moment tensor matrix or orientation of 
-           fault plane and scalar moment.''' 
+           fault plane and scalar moment.
+           
+        In:
+           m -- Matrix in north-east-down convention
+           m_up_south_east -- Matrix in up-south-east convention
+           strike, dip, rake -- Fault plane angles in [degrees]
+           scalar_moment -- Scalar moment in [Nm]
+        ''' 
         
         strike = d2r*strike
         dip = d2r*dip

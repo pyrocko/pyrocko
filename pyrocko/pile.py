@@ -1,4 +1,4 @@
-import trace, io, util, config
+import trace, io, util, config, re, sys
 
 import numpy as num
 import os, pickle, logging, time, weakref, copy
@@ -8,6 +8,11 @@ logger = logging.getLogger('pyrocko.pile')
 
 from util import reuse
 from trace import degapper
+
+'''
+A pile contains subpiles which contain tracesfiles which contain traces.
+'''
+
 
 progressbar = util.progressbar_module()
 
@@ -142,13 +147,14 @@ def get_cache(cachedir):
         
     return TracesFileCache.caches[cachedir]
     
-def loader(filenames, fileformat, cache, filename_attributes):
+def loader(filenames, fileformat, cache, filename_attributes, show_progress=True):
+        
     if not filenames:
         logger.warn('No files to load from')
         return
     
     pbar = None
-    if progressbar and config.show_progress:
+    if show_progress and progressbar and config.show_progress:
         widgets = ['Scanning files', ' ',
                 progressbar.Bar(marker='-',left='[',right=']'), ' ',
                 progressbar.Percentage(), ' ',]
@@ -170,7 +176,10 @@ def loader(filenames, fileformat, cache, filename_attributes):
                 if not m: raise FilenameAttributeError(
                     "Cannot get attributes with pattern '%s' from path '%s'" 
                         % (filename_attributes, filename))
-                substitutions = m.groupdict()
+                substitutions = {}
+                for k in m.groupdict():
+                    if k  in ('network', 'station', 'location', 'channel'):
+                        substitutions[k] = m.groupdict()[k]
                 
             
             mtime = os.stat(filename)[8]
@@ -199,6 +208,16 @@ def loader(filenames, fileformat, cache, filename_attributes):
         cache.dump_modified()
 
 class TracesGroup(object):
+    
+    '''Trace container base class.
+    
+    Base class for Pile, SubPile, and TracesFile, i.e. anything containing 
+    a collection of several traces. A TracesGroup object maintains lookup sets
+    of some of the traces meta-information, as well as a combined time-range
+    of its contents.
+    '''
+    
+    
     def __init__(self, parent):
         self.parent = parent
         self.empty()
@@ -304,6 +323,10 @@ class TracesGroup(object):
             self.have_tuples = True
             
 class MemTracesFile(TracesGroup):
+    
+    '''This is needed to make traces without an actual disc file to be inserted
+    into a Pile.'''
+    
     def __init__(self, parent, traces):
         TracesGroup.__init__(self, parent)
         self.traces = traces
@@ -359,6 +382,9 @@ class MemTracesFile(TracesGroup):
         for trace in self.traces:
             yield trace
     
+    def get_traces(self):
+        return self.traces
+    
     def gather_keys(self, gather):
         keys = set()
         for trace in self.traces:
@@ -406,15 +432,16 @@ class TracesFile(TracesGroup):
         logger.debug('loading headers from file: %s' % self.abspath)
         if mtime is None:
             self.mtime = os.stat(self.abspath)[8]
-
+        
+        self.traces = []
         for tr in io.load(self.abspath, format=self.format, getdata=False, substitutions=self.substitutions):
             self.traces.append(tr)
             
         self.data_loaded = False
         self.data_use_count = 0
         
-    def load_data(self):
-        if not self.data_loaded:
+    def load_data(self, force=False):
+        if not self.data_loaded or force:
             logger.debug('loading data from file: %s' % self.abspath)
             self.traces = []
             for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
@@ -442,10 +469,10 @@ class TracesFile(TracesGroup):
     def reload_if_modified(self):
         mtime = os.stat(self.abspath)[8]
         if mtime != self.mtime:
-            logger.debug('reloading file: %s' % self.abspath)
+            logger.debug('mtime=%i, reloading file: %s' % (mtime, self.abspath))
             self.mtime = mtime
             if self.data_loaded:
-                self.load_data()
+                self.load_data(force=True)
             else:
                 self.load_headers()
             
@@ -631,10 +658,10 @@ class Pile(TracesGroup):
             if obj:
                 obj.pile_changed(what)
     
-    def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None):
+    def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True):
         modified_subpiles = set()
         if filenames is not None:
-            for file in loader(filenames, fileformat, cache, filename_attributes):
+            for file in loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress):
                 subpile = self.dispatch(file)
                 subpile.add_file(file)
                 modified_subpiles.add(subpile)
@@ -821,6 +848,7 @@ class Pile(TracesGroup):
         
         if modified:
             self.update(self.subpiles.values())
+            self.notify_listeners('modified')
             
         return modified
             
@@ -837,5 +865,38 @@ class Pile(TracesGroup):
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
         return s
+
+
+def make_pile( paths=None, selector=None, regex=None,
+        fileformat = 'mseed',
+        cachedirname='/tmp/pyrocko_cache_%s' % os.environ['USER'] ):
+    
+    '''Create pile from given file and directory names.
+    
+    Inputs
+        paths -- filenames and/or directories to look for traces. If paths is 
+            None sys.argv[1:] is used.
+        selector -- lambda expression taking group dict of regex match object as
+            a single argument and which returns true or false to keep or reject
+            a file
+        regex -- regular expression which filenames have to match
+        fileformat -- format of the files ('mseed', 'sac', 'kan', 
+            'from_extension', 'try')
+        cachedirname -- loader cache is stored under this directory. It is
+            created as neccessary.
+    '''
+    if isinstance(paths, str):
+        paths = [ paths ]
+        
+    if paths is None:
+        paths = sys.argv[1:]
+    
+    fns = util.select_files(paths, selector, regex)
+
+    cache = get_cache(cachedirname)
+    p = Pile()
+    p.add_files( sorted(fns), cache=cache, fileformat=fileformat)
+    return p
+
 
 

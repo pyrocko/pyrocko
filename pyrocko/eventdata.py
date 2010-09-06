@@ -9,6 +9,14 @@ logger = logging.getLogger('pyrocko.eventdata')
 class NoRestitution(Exception):
     pass
 
+class FileNotFound(Exception):
+    
+    def __init__(self, s):
+        self.s = s
+        
+    def __str__(self):
+        return 'File not found: %s' % self.s
+
 class Problems:
     def __init__(self):
         self._problems = {}
@@ -97,7 +105,10 @@ class EventDataAccess:
                 continue
             
             sta = stations[nslc[:3]]
-            sta.add_channel(  self._get_channel_description_from_file(nslc) )
+            try:
+                sta.add_channel(  self._get_channel_description_from_file(nslc) )
+            except FileNotFound, e:
+                logger.warn('No channel description for trace %s.%s.%s.%s' % nslc)
    
     def _get_channel_description_from_file(self, nslc):
         return model.Channel(nslc[3], None, None, 1.)
@@ -195,7 +206,7 @@ class EventDataAccess:
                 for tr in traces:
                     if deltat is not None:
                         try:
-                            tr.downsample_to(deltat, snap=True)
+                            tr.downsample_to(deltat, snap=True, allow_upsample_max=5)
                         except util.UnavailableDecimation, e:
                             self.problems().add('cannot_downsample', tr.full_id)
                             logger.warn( 'Cannot downsample %s.%s.%s.%s: %s' % (tr.nslc_id + (e,)))

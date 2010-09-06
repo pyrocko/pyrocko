@@ -144,6 +144,21 @@ class TraceTestCase(unittest.TestCase):
             a.append(num.arange(1000, dtype=num.float))
         assert a.ydata.size == 10000*1000
         
+    def testDownsampling(self):
+        
+        n = 1024
+        dt1 = 1./125.
+        dt2 = 1./10.
+        dtinter = 1./util.lcm(1./dt1,1./dt2)
+        upsratio = dt1/dtinter
+        print upsratio
+        xdata = num.arange(n,dtype=num.float)
+        ydata = num.exp(-((xdata-n/2)/10.)**2)
+        t = trace.Trace(ydata=ydata, tmin=1234567890, deltat=dt1, location='1')
+        t2 = t.copy()
+        t2.set_codes(location='2')
+        t2.downsample_to(dt2, allow_upsample_max = 10)
+        io.save([t,t2], 'test.mseed')
         
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
