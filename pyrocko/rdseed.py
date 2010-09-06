@@ -84,8 +84,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
 
     def __del__(self):
         import shutil
-        #if self.tempdir:
-        #    shutil.rmtree(self.tempdir)
+        if self.tempdir:
+            shutil.rmtree(self.tempdir)
                 
     def get_pile(self):
         if self._pile is None:

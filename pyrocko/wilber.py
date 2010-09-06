@@ -23,12 +23,6 @@ class Event(model.Event):
         self.datasource = datasource
         self.urlend = urlend
         
-    def __str__(self):
-        return '%s %6s %3.1f %6.2f %7.2f %5.1f %s' % (
-            strgmtime(self.time),
-            self.datasource, self.magnitude, self.lat, self.lon, self.depth, self.region
-        )
-
 class Station(model.Station):
     def __init__(self, station, network, dist, azimuth, channels, snr):
         model.Station.__init__(self, network, station, '', None, None, None)
