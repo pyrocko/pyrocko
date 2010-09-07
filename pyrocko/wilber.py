@@ -19,7 +19,6 @@ def interval_and(a,b):
 class Event(model.Event):
     def __init__(self, time, mag, lat, lon, depth, region, datasource, urlend):
         model.Event.__init__(self, lat, lon, time, name='', depth=depth, magnitude=mag, region=region)
-        self.region = region
         self.datasource = datasource
         self.urlend = urlend
         
