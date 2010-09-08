@@ -70,7 +70,7 @@ fn = 'data_%(network)s_%(station)s_%(location)s_%(channel)s_%(tmin)s_%(tmax)s.ms
 
 pile.set_save_path(pjoin(directory, fn))
 
-testsource = Popen(['./test_datasource.py'], stdout=PIPE)
+#testsource = Popen(['./test_datasource.py'], stdout=PIPE)
 
 while True:
     try:
@@ -84,7 +84,7 @@ while True:
             channel = options.channel,
             buffersize = options.buffersize,
             lookback = options.lookback,
-            in_file = testsource.stdout,
+            #in_file = testsource.stdout,
         )
     
         hamster.add_listener(pile)
