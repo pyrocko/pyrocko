@@ -2,8 +2,9 @@
 import util
 
 import sys, re, calendar, time, logging
+from pyrocko import gse_ext
 
-logger = logging.get_logger('pyrocko.gse')
+logger = logging.getLogger('pyrocko.gse')
 
 
 def isd(line, toks, name, nargs=None):
@@ -52,7 +53,8 @@ class Waveform:
             setattr(self, attrib, kwargs[attrib])
       
         assert self.sub_format in 'INT CM6 CM8 AUT AU6 AU8'.split()
-
+        
+        print ext_gse.decode_m6( dat2.rawdata )
         
     def __str__(self):
         return ' '.join([self.station, self.channel, self.auxid, self.sub_format, util.gmctime(self.tmin)])
@@ -140,7 +142,7 @@ class DataSection:
                 if line.startswith('DLY2'):
                     logger.warn('Cannot handle GSE2 DLY2 blocks')
                     
-                if line.startswith('OUT2');
+                if line.startswith('OUT2'):
                     logger.warn('Cannot handle GSE2 OUT2 blocks')
                     
                 
