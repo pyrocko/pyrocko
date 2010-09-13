@@ -506,7 +506,8 @@ class NoData(Exception):
 class Trace(object):
     
     cached_frequencies = {}
-    
+    cached_coefficients = {}
+        
     def __init__(self, network='', station='STA', location='', channel='', 
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
     
@@ -707,20 +708,30 @@ class Trace(object):
              if ndecimate != 1:
                 self.downsample(ndecimate, snap=snap)
             
+    def get_cached_filter_coefs(self, order, corners, btype):
+        ck = (order, tuple(corners), btype)
+        if ck not in Trace.cached_coefficients:
+            if len(corners) == 0:
+                Trace.cached_coefficients[ck] = signal.butter(order, corners[0], btype=btype)
+            else:
+                Trace.cached_coefficients[ck] = signal.butter(order, corners, btype=btype)
+
+        return Trace.cached_coefficients[ck]
+            
     def lowpass(self, order, corner):
-        (b,a) = signal.butter(order, corner*2.0*self.deltat, btype='low')
+        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def highpass(self, order, corner):
-        (b,a) = signal.butter(order, corner*2.0*self.deltat, btype='high')
+        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def bandpass(self, order, corner_hp, corner_lp):
-        (b,a) = signal.butter(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
+        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
@@ -738,8 +749,8 @@ class Trace(object):
         data[:n] = self.ydata
         fdata = num.fft.rfft(data)
         freqs = self.get_cached_freqs(len(fdata), 1./(self.deltat*n2))
-        fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
-        data = num.fft.irfft(fdata,n)
+      #  fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
+        data = num.fft.irfft(fdata)
         self.ydata = data[:n]
         
     def shift(self, tshift):
