@@ -867,6 +867,11 @@ def MakePileOverviewClass(base):
             self.menuitem_degap.setChecked(True)
             self.menu.addAction(self.menuitem_degap)
             
+            self.menuitem_fft_filtering = QAction('FFT Filtering', self.menu)
+            self.menuitem_fft_filtering.setCheckable(True)
+            self.menuitem_fft_filtering.setChecked(False)
+            self.menu.addAction(self.menuitem_fft_filtering)
+            
             self.menuitem_watch = QAction('Watch Files', self.menu)
             self.menuitem_watch.setCheckable(True)
             self.menuitem_watch.setChecked(False)
@@ -1538,7 +1543,8 @@ def MakePileOverviewClass(base):
     
         def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
                     
-            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, 
+            fft_filtering = self.menuitem_fft_filtering.isChecked()
+            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, fft_filtering,
                 self.min_deltat, self.rotate, self.shown_tracks_range,
                 self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
                 
@@ -1563,7 +1569,6 @@ def MakePileOverviewClass(base):
                 
             nsee_points_per_trace = 5000*10
             see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
-            
             processed_traces = []
             if (tmax - tmin) < see_data_range:
                             
@@ -1573,31 +1578,43 @@ def MakePileOverviewClass(base):
                                                 keep_current_files_open=True, trace_selector=trace_selector ):
                     for trace in traces:
                         
-                        if self.lowpass is not None:
-                            deltat_target = 1./self.lowpass * 0.2
-                            ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
-                            ndecimate2 = int(math.log(ndecimate,2))
+                        if fft_filtering:
+                            if self.lowpass is not None or self.highpass is not None:
+                                high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
+                                
+                                if self.lowpass is not None:
+                                    low = self.lowpass
+                                if self.highpass is not None:
+                                    high = self.highpass
+                                    
+                                trace.bandpass_fft(high, low)
                             
                         else:
-                            ndecimate = 1
-                            ndecimate2 = 0
-                        
-                        if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
-                            for i in range(ndecimate2):
-                                trace.downsample(2)
-                        
-                        lowpass_success = False
-                        if self.lowpass is not None:
-                            if self.lowpass < 0.5/trace.deltat:
-                                trace.lowpass(4,self.lowpass)
-                                lowpass_success = True
-                        
-                        highpass_success = False
-                        if self.highpass is not None:
-                            if self.lowpass is None or self.highpass < self.lowpass:
-                                if self.highpass < 0.5/trace.deltat:
-                                    trace.highpass(4,self.highpass)
-                                    highpass_success = True                            
+                            if self.lowpass is not None:
+                                deltat_target = 1./self.lowpass * 0.2
+                                ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
+                                ndecimate2 = int(math.log(ndecimate,2))
+                                
+                            else:
+                                ndecimate = 1
+                                ndecimate2 = 0
+                            
+                            if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
+                                for i in range(ndecimate2):
+                                    trace.downsample(2)
+                            
+                            lowpass_success = False
+                            if self.lowpass is not None:
+                                if self.lowpass < 0.5/trace.deltat:
+                                    trace.lowpass(4,self.lowpass)
+                                    lowpass_success = True
+                            
+                            highpass_success = False
+                            if self.highpass is not None:
+                                if self.lowpass is None or self.highpass < self.lowpass:
+                                    if self.highpass < 0.5/trace.deltat:
+                                        trace.highpass(4,self.highpass)
+                                        highpass_success = True                            
                         try:
                             trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
                         except pyrocko.trace.NoData:
