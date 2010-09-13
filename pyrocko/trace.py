@@ -504,6 +504,9 @@ class NoData(Exception):
     pass
 
 class Trace(object):
+    
+    cached_frequencies = {}
+    
     def __init__(self, network='', station='STA', location='', channel='', 
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
     
@@ -722,17 +725,22 @@ class Trace(object):
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
+    def get_cached_freqs(self, nf, deltaf):
+        ck = (nf, deltaf)
+        if ck not in Trace.cached_frequencies:
+            Trace.cached_frequencies[ck] = num.arange(nf)*deltaf
+        return Trace.cached_frequencies[ck]
+        
     def bandpass_fft(self, corner_hp, corner_lp):
-        data = self.ydata.astype(num.float64)
-        n = len(data)
+        n = len(self.ydata)
+        n2 = nextpow2(n)
+        data = num.zeros(n2, dtype=num.float64)
+        data[:n] = self.ydata
         fdata = num.fft.rfft(data)
-        nf = len(fdata)
-        df = 1./(n*self.deltat)
-        freqs = num.arange(nf)*df
+        freqs = self.get_cached_freqs(len(fdata), 1./(self.deltat*n2))
         fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
         data = num.fft.irfft(fdata,n)
-        assert len(data) == n
-        self.ydata = data
+        self.ydata = data[:n]
         
     def shift(self, tshift):
         self.tmin += tshift

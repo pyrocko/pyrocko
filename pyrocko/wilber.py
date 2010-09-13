@@ -19,16 +19,9 @@ def interval_and(a,b):
 class Event(model.Event):
     def __init__(self, time, mag, lat, lon, depth, region, datasource, urlend):
         model.Event.__init__(self, lat, lon, time, name='', depth=depth, magnitude=mag, region=region)
-        self.region = region
         self.datasource = datasource
         self.urlend = urlend
         
-    def __str__(self):
-        return '%s %6s %3.1f %6.2f %7.2f %5.1f %s' % (
-            strgmtime(self.time),
-            self.datasource, self.magnitude, self.lat, self.lon, self.depth, self.region
-        )
-
 class Station(model.Station):
     def __init__(self, station, network, dist, azimuth, channels, snr):
         model.Station.__init__(self, network, station, '', None, None, None)

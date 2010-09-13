@@ -124,7 +124,32 @@ class EventDataAccess:
                
     def problems(self):
         return self._problems
-               
+    
+    def _redundant_channel_weeder(self, redundant_channel_priorities, nslcs):
+            
+        if redundant_channel_priorities is None: return []
+            
+        # n=network,s=station,l=location,c=channel
+        # channels by station
+        by_nsl = {}
+        for nslc in nslcs:
+            nsl = nslc[:3]
+            if nsl not in by_nsl:
+                by_nsl[nsl] = []
+            
+            by_nsl[nsl].append( nslc )
+        
+        # figure out what items to remove
+        to_delete = []
+        for ((h1, h2), (l1, l2)) in redundant_channel_priorities:
+            for nsl, nslcs in by_nsl.iteritems():
+                channels = [ nslc[3] for nslc in nslcs ]
+                if h1 in channels and h2 in channels and l1 in channels and l2 in channels:
+                    to_delete.append(nslc[:3] + (l1,))
+                    to_delete.append(nslc[:3] + (l2,))
+        
+        return to_delete
+  
     def iter_displacement_traces( self, tfade, freqband, 
                                   deltat=None,
                                   rotations=None,
@@ -136,7 +161,8 @@ class EventDataAccess:
                                   trace_selector=None,
                                   allowed_methods=None,
                                   crop=True,
-                                  out_stations=None):
+                                  out_stations=None,
+                                  redundant_channel_priorities=None):
         
         stations = self.get_stations(relative_event=relative_event)
         if out_stations is not None:
@@ -150,12 +176,22 @@ class EventDataAccess:
                 trace_selector=trace_selector,
                 progress='Processing traces'):
             
-            traces = []
-            
+            xxtraces = []
+            nslcs = set()
             for tr in xtraces:
                 nsl = tr.network, tr.station, tr.location
                 if nsl not in stations:
                     logger.warn('No station description for trace %s.%s.%s.%s' % tr.nslc_id) 
+                    continue
+                
+                nslcs.add(tr.nslc_id)
+                xxtraces.append(tr)
+            
+            to_delete = self._redundant_channel_weeder(redundant_channel_priorities, nslcs)
+            traces = []
+            for tr in xxtraces:
+                if tr.nslc_id in to_delete:
+                    logger.info('Skipping channel %s.%s.%s.%s due to redunancies.' % tr.nslc_id)
                     continue
                 traces.append(tr)
                                

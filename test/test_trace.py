@@ -1,5 +1,5 @@
 from pyrocko import trace, io, util, model
-import unittest, math
+import unittest, math, time
 import numpy as num
 
 d2r = num.pi/180.
@@ -159,6 +159,25 @@ class TraceTestCase(unittest.TestCase):
         t2.set_codes(location='2')
         t2.downsample_to(dt2, allow_upsample_max = 10)
         io.save([t,t2], 'test.mseed')
+        
+    def testFiltering(self):
+        tmin = 1234567890.
+        b = time.time()
+        for i in range(100):
+            n = 10000
+            t = trace.Trace(tmin=tmin, deltat=0.05, ydata=num.ones(n,dtype=num.float))
+            t.lowpass(4,  5.)
+            t.highpass(4, 0.1)
+        d1 = time.time() - b
+        b = time.time()
+        for i in range(100):
+            n = 10000
+            t = trace.Trace(tmin=tmin, deltat=0.05, ydata=num.ones(n,dtype=num.float))
+            t.bandpass_fft(0.1, 5.)
+        d2 = time.time() - b
+        print d1, d2, d2/d1
+        
+        
         
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

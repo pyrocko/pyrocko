@@ -18,7 +18,6 @@ import signal
 import re
 import math
 import numpy as num
-import gmtpy
 from itertools import izip
 import scipy.stats
 import tempfile
@@ -28,6 +27,7 @@ from optparse import OptionParser
 import pyrocko.pile
 import pyrocko.trace
 import pyrocko.util
+import pyrocko.plot
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -63,8 +63,8 @@ box_styles = []
 box_alpha = 100
 for color in 'orange skyblue butter chameleon chocolate plum scarletred'.split():
     box_styles.append(ObjectStyle(
-        QPen(QColor(*gmtpy.tango_colors[color+'3'])),
-        QBrush(QColor(*(gmtpy.tango_colors[color+'1']+(box_alpha,)))),        
+        QPen(QColor(*pyrocko.plot.tango_colors[color+'3'])),
+        QBrush(QColor(*(pyrocko.plot.tango_colors[color+'1']+(box_alpha,)))),        
     ))
     
 sday   = 60*60*24     # \ 
@@ -201,16 +201,16 @@ def gmtime_x(timestamp):
         
 def time_nice_value(inc0):
     if inc0 < acceptable_tincs[0]:
-        return gmtpy.nice_value(inc0)
+        return pyrocko.plot.nice_value(inc0)
     elif inc0 > acceptable_tincs[-1]:
-        return gmtpy.nice_value(inc0/syear)*syear
+        return pyrocko.plot.nice_value(inc0/syear)*syear
     else:
         i = num.argmin(num.abs(acceptable_tincs-inc0))
         return acceptable_tincs[i]
 
-class TimeScaler(gmtpy.AutoScaler):
+class TimeScaler(pyrocko.plot.AutoScaler):
     def __init__(self):
-        gmtpy.AutoScaler.__init__(self)
+        pyrocko.plot.AutoScaler.__init__(self)
         self.mode = 'min-max'
     
     def make_scale(self, data_range):
@@ -364,7 +364,7 @@ class TimeAx(TimeScaler):
     
     
     def drawit( self, p, xprojection, yprojection ):
-        pen = QPen(QColor(*gmtpy.tango_colors['aluminium5']),1)
+        pen = QPen(QColor(*pyrocko.plot.tango_colors['aluminium5']),1)
         p.setPen(pen)
         font = QFont()
         font.setBold(True)
@@ -568,7 +568,7 @@ class Marker:
     
     def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
-        c = gmtpy.color_tup
+        c = pyrocko.plot.color
         self.color_a = [ c(x) for x in ('aluminium4', 'aluminium5', 'aluminium6') ]
         self.color_b = [ c(x) for x in ('scarletred1', 'scarletred2', 'scarletred3',
                                         'chameleon1', 'chameleon2', 'chameleon3',
@@ -866,6 +866,11 @@ def MakePileOverviewClass(base):
             self.menuitem_degap.setCheckable(True)
             self.menuitem_degap.setChecked(True)
             self.menu.addAction(self.menuitem_degap)
+            
+            self.menuitem_fft_filtering = QAction('FFT Filtering', self.menu)
+            self.menuitem_fft_filtering.setCheckable(True)
+            self.menuitem_fft_filtering.setChecked(False)
+            self.menu.addAction(self.menuitem_fft_filtering)
             
             self.menuitem_watch = QAction('Watch Files', self.menu)
             self.menuitem_watch.setCheckable(True)
@@ -1401,7 +1406,7 @@ def MakePileOverviewClass(base):
             if printmode:
                 primary_color = (0,0,0)
             else:
-                primary_color = gmtpy.tango_colors['aluminium5']
+                primary_color = pyrocko.plot.tango_colors['aluminium5']
             
             ax_h = self.ax_height
             
@@ -1431,7 +1436,7 @@ def MakePileOverviewClass(base):
     
                 self.tax.drawit( p, self.time_projection, vbottom_ax_projection )
                 
-                yscaler = gmtpy.AutoScaler()
+                yscaler = pyrocko.plot.AutoScaler()
                 if not printmode and self.menuitem_showboxes.isChecked():
                     self.draw_trace_boxes(p, self.time_projection, track_projections)
                 
@@ -1454,7 +1459,7 @@ def MakePileOverviewClass(base):
                 self.track_to_nslc_ids = {}
                 min_max_for_annot = {}
                 if processed_traces:
-                    yscaler = gmtpy.AutoScaler()
+                    yscaler = pyrocko.plot.AutoScaler()
                     data_ranges = pyrocko.trace.minmax(processed_traces, key=self.scaling_key, mode=self.scalingbase)
                     for trace in processed_traces:
                         itrack = self.key_to_row[self.gather(trace)]
@@ -1480,7 +1485,7 @@ def MakePileOverviewClass(base):
                                 
                             if self.menuitem_cliptraces.isChecked(): p.setClipRect(trackrect)
                             if self.menuitem_colortraces.isChecked():
-                                color = gmtpy.color_tup(color_lookup[self.color_gather(trace)])
+                                color = pyrocko.plot.color(color_lookup[self.color_gather(trace)])
                                 pen = QPen(QColor(*color))
                                 p.setPen(pen)
                             
@@ -1538,7 +1543,8 @@ def MakePileOverviewClass(base):
     
         def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
                     
-            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, 
+            fft_filtering = self.menuitem_fft_filtering.isChecked()
+            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, fft_filtering,
                 self.min_deltat, self.rotate, self.shown_tracks_range,
                 self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
                 
@@ -1563,7 +1569,6 @@ def MakePileOverviewClass(base):
                 
             nsee_points_per_trace = 5000*10
             see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
-            
             processed_traces = []
             if (tmax - tmin) < see_data_range:
                             
@@ -1573,31 +1578,43 @@ def MakePileOverviewClass(base):
                                                 keep_current_files_open=True, trace_selector=trace_selector ):
                     for trace in traces:
                         
-                        if self.lowpass is not None:
-                            deltat_target = 1./self.lowpass * 0.2
-                            ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
-                            ndecimate2 = int(math.log(ndecimate,2))
+                        if fft_filtering:
+                            if self.lowpass is not None or self.highpass is not None:
+                                high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
+                                
+                                if self.lowpass is not None:
+                                    low = self.lowpass
+                                if self.highpass is not None:
+                                    high = self.highpass
+                                    
+                                trace.bandpass_fft(high, low)
                             
                         else:
-                            ndecimate = 1
-                            ndecimate2 = 0
-                        
-                        if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
-                            for i in range(ndecimate2):
-                                trace.downsample(2)
-                        
-                        lowpass_success = False
-                        if self.lowpass is not None:
-                            if self.lowpass < 0.5/trace.deltat:
-                                trace.lowpass(4,self.lowpass)
-                                lowpass_success = True
-                        
-                        highpass_success = False
-                        if self.highpass is not None:
-                            if self.lowpass is None or self.highpass < self.lowpass:
-                                if self.highpass < 0.5/trace.deltat:
-                                    trace.highpass(4,self.highpass)
-                                    highpass_success = True                            
+                            if self.lowpass is not None:
+                                deltat_target = 1./self.lowpass * 0.2
+                                ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
+                                ndecimate2 = int(math.log(ndecimate,2))
+                                
+                            else:
+                                ndecimate = 1
+                                ndecimate2 = 0
+                            
+                            if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
+                                for i in range(ndecimate2):
+                                    trace.downsample(2)
+                            
+                            lowpass_success = False
+                            if self.lowpass is not None:
+                                if self.lowpass < 0.5/trace.deltat:
+                                    trace.lowpass(4,self.lowpass)
+                                    lowpass_success = True
+                            
+                            highpass_success = False
+                            if self.highpass is not None:
+                                if self.lowpass is None or self.highpass < self.lowpass:
+                                    if self.highpass < 0.5/trace.deltat:
+                                        trace.highpass(4,self.highpass)
+                                        highpass_success = True                            
                         try:
                             trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
                         except pyrocko.trace.NoData:
