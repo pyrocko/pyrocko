@@ -175,7 +175,6 @@ class TraceTestCase(unittest.TestCase):
             t = trace.Trace(tmin=tmin, deltat=0.05, ydata=num.ones(n,dtype=num.float))
             t.bandpass_fft(0.1, 5.)
         d2 = time.time() - b
-        print d1, d2, d2/d1
         
         
         
