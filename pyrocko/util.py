@@ -49,7 +49,7 @@ def progress_end(label=''):
         
 
 
-def decimate(x, q, n=None, ftype='iir', axis=-1):
+def decimate(x, q, n=None, ftype='iir'):
     """downsample the signal x by an integer factor q, using an order n filter
     
     By default, an order 8 Chebyshev type I filter is used or a 30 point FIR 
@@ -80,12 +80,12 @@ def decimate(x, q, n=None, ftype='iir', axis=-1):
             n = 8
     if ftype == 'fir':
         b = signal.firwin(n+1, 1./q, window='hamming')
-        y = signal.lfilter(b, 1., x, axis=axis)
+        y = signal.lfilter(b, 1., x)
     else:
         (b, a) = signal.cheby1(n, 0.05, 0.8/q)
-        y = signal.lfilter(b, a, x, axis=axis)
+        y = signal.lfilter(b, a, x)
 
-    return y.swapaxes(0,axis)[n/2::q].swapaxes(0,axis)
+    return y[n/2::q].copy()
 
 class UnavailableDecimation(Exception):
     pass
