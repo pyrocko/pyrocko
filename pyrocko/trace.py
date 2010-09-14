@@ -504,6 +504,10 @@ class NoData(Exception):
     pass
 
 class Trace(object):
+    
+    cached_frequencies = {}
+    cached_coefficients = {}
+        
     def __init__(self, network='', station='STA', location='', channel='', 
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
     
@@ -704,35 +708,51 @@ class Trace(object):
              if ndecimate != 1:
                 self.downsample(ndecimate, snap=snap)
             
+    def get_cached_filter_coefs(self, order, corners, btype):
+        ck = (order, tuple(corners), btype)
+        if ck not in Trace.cached_coefficients:
+            if len(corners) == 0:
+                Trace.cached_coefficients[ck] = signal.butter(order, corners[0], btype=btype)
+            else:
+                Trace.cached_coefficients[ck] = signal.butter(order, corners, btype=btype)
+
+        return Trace.cached_coefficients[ck]
+            
     def lowpass(self, order, corner):
-        (b,a) = signal.butter(order, corner*2.0*self.deltat, btype='low')
+        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def highpass(self, order, corner):
-        (b,a) = signal.butter(order, corner*2.0*self.deltat, btype='high')
+        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def bandpass(self, order, corner_hp, corner_lp):
-        (b,a) = signal.butter(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
+        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
+    def get_cached_freqs(self, nf, deltaf):
+        ck = (nf, deltaf)
+        if ck not in Trace.cached_frequencies:
+            Trace.cached_frequencies[ck] = num.arange(nf, dtype=num.float)*deltaf
+        return Trace.cached_frequencies[ck]
+        
     def bandpass_fft(self, corner_hp, corner_lp):
-        data = self.ydata.astype(num.float64)
-        n = len(data)
+        n = len(self.ydata)
+        n2 = nextpow2(n)
+        data = num.zeros(n2, dtype=num.float64)
+        data[:n] = self.ydata
         fdata = num.fft.rfft(data)
-        nf = len(fdata)
-        df = 1./(n*self.deltat)
-        freqs = num.arange(nf)*df
+        freqs = self.get_cached_freqs(len(fdata), 1./(self.deltat*n2))
+        fdata[0] = 0.0
         fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
-        data = num.fft.irfft(fdata,n)
-        assert len(data) == n
-        self.ydata = data
+        data = num.fft.irfft(fdata)
+        self.ydata = data[:n]
         
     def shift(self, tshift):
         self.tmin += tshift

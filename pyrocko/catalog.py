@@ -3,6 +3,7 @@ import urllib2
 import time
 import calendar
 import re
+
 from xml.dom import minidom
 
 def getText(nodelist):
@@ -21,7 +22,7 @@ def getTextR(node):
             rc = rc + getTextR(child)
     return rc
         
-class EartquakeCatalog:
+class EarthquakeCatalog:
     
     def get_event_names(self, time_range = None):
         raise Exception('This method should be implemented in derived class.')
@@ -54,7 +55,7 @@ def parse_km(s):
         return a
         
     
-class Geofon:
+class Geofon(EarthquakeCatalog):
     
     def __init__(self):
         self.events = {}
@@ -160,4 +161,14 @@ class Geofon:
                     
         
         return d
+        
+        
+class GlobalCMT(EarthquakeCatalog):
+    
+    def get_event_names(time_range=None):
+        
+        ttbeg = time.gmtime(time_range[0])
+        ttend = time.gmtime(time_range[1])
+        
+        
         
