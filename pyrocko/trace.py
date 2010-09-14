@@ -739,7 +739,7 @@ class Trace(object):
     def get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
         if ck not in Trace.cached_frequencies:
-            Trace.cached_frequencies[ck] = num.arange(nf)*deltaf
+            Trace.cached_frequencies[ck] = num.arange(nf, dtype=num.float)*deltaf
         return Trace.cached_frequencies[ck]
         
     def bandpass_fft(self, corner_hp, corner_lp):
@@ -749,7 +749,8 @@ class Trace(object):
         data[:n] = self.ydata
         fdata = num.fft.rfft(data)
         freqs = self.get_cached_freqs(len(fdata), 1./(self.deltat*n2))
-      #  fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
+        fdata[0] = 0.0
+        fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
         data = num.fft.irfft(fdata)
         self.ydata = data[:n]
         
