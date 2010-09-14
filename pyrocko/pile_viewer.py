@@ -872,6 +872,11 @@ def MakePileOverviewClass(base):
             self.menuitem_fft_filtering.setChecked(False)
             self.menu.addAction(self.menuitem_fft_filtering)
             
+            self.menuitem_lphp = QAction('Bandpass is Lowpass + Highpass', self.menu)
+            self.menuitem_lphp.setCheckable(True)
+            self.menuitem_lphp.setChecked(False)
+            self.menu.addAction(self.menuitem_lphp)
+            
             self.menuitem_watch = QAction('Watch Files', self.menu)
             self.menuitem_watch.setCheckable(True)
             self.menuitem_watch.setChecked(False)
@@ -1544,7 +1549,9 @@ def MakePileOverviewClass(base):
         def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
                     
             fft_filtering = self.menuitem_fft_filtering.isChecked()
-            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, fft_filtering,
+            lphp = self.menuitem_lphp.isChecked()
+            
+            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, fft_filtering, lphp,
                 self.min_deltat, self.rotate, self.shown_tracks_range,
                 self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
                 
@@ -1603,18 +1610,21 @@ def MakePileOverviewClass(base):
                                 for i in range(ndecimate2):
                                     trace.downsample(2)
                             
-                            lowpass_success = False
-                            if self.lowpass is not None:
-                                if self.lowpass < 0.5/trace.deltat:
-                                    trace.lowpass(4,self.lowpass)
-                                    lowpass_success = True
                             
-                            highpass_success = False
-                            if self.highpass is not None:
-                                if self.lowpass is None or self.highpass < self.lowpass:
-                                    if self.highpass < 0.5/trace.deltat:
-                                        trace.highpass(4,self.highpass)
-                                        highpass_success = True                            
+                            if not lphp and (self.lowpass is not None and self.highpass is not None and
+                                self.lowpass < 0.5/trace.deltat and
+                                self.highpass < 0.5/trace.deltat and
+                                self.highpass < self.lowpass):
+                                trace.bandpass(4,self.highpass, self.lowpass)
+                            else:
+                                if self.lowpass is not None:
+                                    if self.lowpass < 0.5/trace.deltat:
+                                        trace.lowpass(4,self.lowpass)
+                                
+                                if self.highpass is not None:
+                                    if self.lowpass is None or self.highpass < self.lowpass:
+                                        if self.highpass < 0.5/trace.deltat:
+                                            trace.highpass(4,self.highpass)
                         try:
                             trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
                         except pyrocko.trace.NoData:
@@ -1880,7 +1890,7 @@ class MyValueEdit(QLineEdit):
         
 class ValControl(QFrame):
 
-    def __init__(self, *args):
+    def __init__(self, low_is_none=False, high_is_none=False, *args):
         apply(QFrame.__init__, (self,) + args)
         self.layout = QHBoxLayout( self )
         #self.layout.setSpacing(5)
@@ -1896,6 +1906,8 @@ class ValControl(QFrame):
         self.layout.addWidget( self.lname )
         self.layout.addWidget( self.lvalue )
         self.layout.addWidget( self.slider )
+        self.low_is_none = low_is_none
+        self.high_is_none = high_is_none
         #self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
         self.connect( self.slider, SIGNAL("valueChanged(int)"),
                       self.slided )
@@ -1926,8 +1938,8 @@ class ValControl(QFrame):
             self.cursl = val
             self.cur = self.s2v(self.cursl)
             self.lvalue.setValue( self.cur )
-            self.emit(SIGNAL("valchange(float,int)"), float(self.cur), int(self.ind) )
-
+            self.fire_valchange()
+            
     def edited(self,val):
         if self.cur != val:
             self.cur = val
@@ -1935,7 +1947,21 @@ class ValControl(QFrame):
             if (cursl != self.cursl):
                 self.slider.setValue( cursl )
             
-            self.emit(SIGNAL("valchange(float,int)"), float(self.cur), int(self.ind) )
+            self.fire_valchange()
+        
+    def fire_valchange(self):
+        
+        if self.low_is_none and self.cur == self.mi:
+            cur = None
+        else:
+            cur = self.cur
+            
+        if self.high_is_none and self.cur == self.ma:
+            cur = None
+        else:
+            cur = self.cur
+            
+        self.emit(SIGNAL("valchange(float,int)"), float(self.cur), int(self.ind) )
         
 class LinValControl(ValControl):
     
@@ -1966,9 +1992,9 @@ class PileViewer(QFrame):
         if maxfreq < 100.*minfreq:
             minfreq = maxfreq*0.00001
         
-        self.lowpass_widget = ValControl()
+        self.lowpass_widget = ValControl(high_is_none=True)
         self.lowpass_widget.setup('Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
-        self.highpass_widget = ValControl()
+        self.highpass_widget = ValControl(low_is_none=True)
         self.highpass_widget.setup('Highpass [Hz]:', minfreq, maxfreq, minfreq, 1)
         self.gain_widget = ValControl()
         self.gain_widget.setup('Gain', 0.001, 1000., 1., 2)

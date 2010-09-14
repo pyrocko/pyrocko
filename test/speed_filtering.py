@@ -33,7 +33,7 @@ for n in range(1,22):
     b = timeit(lambda: lowpass_highpass(mktrace(2**n)))
     c = timeit(lambda: bandpass_fft(mktrace(2**n)))
     print 2**n, a, b, c
-    tab.append((2**n, a/2**n,b/2**n,c/2**n))
+    tab.append((2**n, a,b,c))
    
 a = num.array(tab).T
 p = gmtpy.Simple()
