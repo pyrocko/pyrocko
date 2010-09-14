@@ -140,7 +140,7 @@ class DataSection:
                 if line.startswith('DLY2'):
                     logger.warn('Cannot handle GSE2 DLY2 blocks')
                     
-                if line.startswith('OUT2');
+                if line.startswith('OUT2'):
                     logger.warn('Cannot handle GSE2 OUT2 blocks')
                     
                 
