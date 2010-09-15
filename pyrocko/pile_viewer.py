@@ -710,7 +710,6 @@ class SnufflingModule:
         self.module = __import__(self.name)
         if filename in SnufflingModule.mtimes:
             if SnufflingModule.mtimes[filename] != mtime:
-                print 'xx'
                 logger.warn('reloading snuffling module %s' % self.name)
                 reload(self.module)
         SnufflingModule.mtimes[filename] = mtime
@@ -874,7 +873,7 @@ def MakePileOverviewClass(base):
             
             self.menuitem_lphp = QAction('Bandpass is Lowpass + Highpass', self.menu)
             self.menuitem_lphp.setCheckable(True)
-            self.menuitem_lphp.setChecked(False)
+            self.menuitem_lphp.setChecked(True)
             self.menu.addAction(self.menuitem_lphp)
             
             self.menuitem_watch = QAction('Watch Files', self.menu)
@@ -1577,6 +1576,7 @@ def MakePileOverviewClass(base):
             nsee_points_per_trace = 5000*10
             see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
             processed_traces = []
+            
             if (tmax - tmin) < see_data_range:
                             
                 for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
@@ -1615,7 +1615,7 @@ def MakePileOverviewClass(base):
                                 self.lowpass < 0.5/trace.deltat and
                                 self.highpass < 0.5/trace.deltat and
                                 self.highpass < self.lowpass):
-                                trace.bandpass(4,self.highpass, self.lowpass)
+                                trace.bandpass(2,self.highpass, self.lowpass)
                             else:
                                 if self.lowpass is not None:
                                     if self.lowpass < 0.5/trace.deltat:
@@ -1669,12 +1669,18 @@ def MakePileOverviewClass(base):
                     self.set_gathering(gather, order, color)
     
         def lowpass_change(self, value, ignore):
-            self.lowpass = value
+            if num.isfinite(value):
+                self.lowpass = value
+            else:
+                self.lowpass = None
             self.passband_check()
             self.update()
             
         def highpass_change(self, value, ignore):
-            self.highpass = value
+            if num.isfinite(value):
+                self.highpass = value
+            else:
+                self.highpass = None
             self.passband_check()
             self.update()
     
@@ -1951,17 +1957,17 @@ class ValControl(QFrame):
         
     def fire_valchange(self):
         
-        if self.low_is_none and self.cur == self.mi:
-            cur = None
+        if self.low_is_none and self.cursl == 0:
+            cur = num.nan
         else:
             cur = self.cur
             
-        if self.high_is_none and self.cur == self.ma:
-            cur = None
+        if self.high_is_none and self.cursl == 10000:
+            cur = num.nan
         else:
             cur = self.cur
-            
-        self.emit(SIGNAL("valchange(float,int)"), float(self.cur), int(self.ind) )
+                        
+        self.emit(SIGNAL("valchange(float,int)"), cur, int(self.ind) )
         
 class LinValControl(ValControl):
     
