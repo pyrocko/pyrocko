@@ -855,6 +855,19 @@ class Trace(object):
             output.ydata = output.ydata.copy()
         return output
         
+    def spectrum(self, pad_to_pow2=False):
+        ndata = self.ydata.size
+        
+        if pad_to_pow2:
+            ntrans = nextpow2(ndata)
+        else:
+            ntrans = ndata
+            
+        fydata = num.fft.rfft(self.ydata, ntrans)
+        df = 1./(ntrans*self.deltat)
+        fxdata = num.arange(len(fydata))*df
+        return fxdata, fydata
+        
     def _get_tapered_coefs(self, ntrans, freqlimits, transfer_function):
     
         deltaf = 1./(self.deltat*ntrans)
