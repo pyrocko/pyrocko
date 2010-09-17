@@ -967,7 +967,7 @@ def MakePileOverviewClass(base):
         
                  
         def call_snuffling(self, snuffling):
-            snuffling.call(self.pile, self.tmin, self.tmax)
+            snuffling.call(self)
         
         def periodical(self):
             if self.menuitem_watch.isChecked():
@@ -1039,6 +1039,9 @@ def MakePileOverviewClass(base):
                 
             self.time_projection.set_in_range(tmin,tmax)
         
+        def get_time_range(self):
+            return self.tmin, self.tmax
+        
         def ypart(self, y):
             if y < self.ax_height:
                 return -1
@@ -1071,6 +1074,8 @@ def MakePileOverviewClass(base):
                     
             f.close()
             
+        def add_marker(self, marker):
+            self.markers.append(marker)
                 
         def set_markers(self, markers):
             self.markers = markers
