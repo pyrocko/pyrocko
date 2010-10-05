@@ -47,7 +47,14 @@ def progress_end(label=''):
         sys.stderr.write(' done. %s\n' % label)
         sys.stderr.flush()
         
-
+class GlobalVars:
+    reuse_store = dict()
+    decitab_nmax = 0
+    decitab = {}
+    decimate_fir_coeffs = {}
+    decimate_iir_coeffs = {}
+    
+    
 
 def decimate(x, q, n=None, ftype='iir'):
     """downsample the signal x by an integer factor q, using an order n filter
@@ -58,12 +65,11 @@ def decimate(x, q, n=None, ftype='iir'):
     (port to python of the GNU Octave function decimate.)
 
     Inputs:
-        x -- the signal to be downsampled (N-dimensional array)
+        x -- the signal to be downsampled (1-dimensional array)
         q -- the downsampling factor
         n -- order of the filter (1 less than the length of the filter for a
              'fir' filter)
         ftype -- type of the filter; can be 'iir' or 'fir'
-        axis -- the axis along which the filter should be applied
     
     Outputs:
         y -- the downsampled signal
@@ -78,11 +84,20 @@ def decimate(x, q, n=None, ftype='iir'):
             n = 30
         else:
             n = 8
+            
     if ftype == 'fir':
-        b = signal.firwin(n+1, 1./q, window='hamming')
+        coeffs = GlobalVars.decimate_fir_coeffs
+        if (n, 1./q) not in coeffs:
+            coeffs[n,1./q] = signal.firwin(n+1, 1./q, window='hamming')
+        
+        b = coeffs[n,1./q]
         y = signal.lfilter(b, 1., x)
     else:
-        (b, a) = signal.cheby1(n, 0.05, 0.8/q)
+        coeffs = GlobalVars.decimate_iir_coeffs
+        if (n,0.05,0.8/q) not in coeffs:
+            coeffs[n,0.05,0.8/q] = signal.cheby1(n, 0.05, 0.8/q)
+           
+        b, a = coeffs[n,0.05,0.8/q]
         y = signal.lfilter(b, a, x)
 
     return y[n/2::q].copy()
@@ -90,10 +105,6 @@ def decimate(x, q, n=None, ftype='iir'):
 class UnavailableDecimation(Exception):
     pass
     
-class GlobalVars:
-    reuse_store = dict()
-    decitab_nmax = 0
-    decitab = {}
     
     
 def gcd(a,b, epsilon=1e-7):
