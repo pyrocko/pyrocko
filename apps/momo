@@ -11,17 +11,28 @@ import os, sys, signal, logging
 import numpy as num
 from optparse import OptionParser
 
+from pyrocko import moment_tensor_viewer as mtv
+
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-class MySnuffler(QApplication):
+class Momo(QApplication):
     
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
         
+        viewer = mtv.BeachballView()
+        editor = mtv.MomentTensorEditor()
                         
         self.win = QMainWindow()
-       # self.win.setCentralWidget( self.pile_viewer )
+        self.win.setWindowTitle('Momo - Moment Tensor Calculator')
+        self.win.setCentralWidget( viewer )
+      
+        dockwin = QDockWidget('Moment Tensor')
+        dockwin.setWidget( editor )
+        self.win.addDockWidget(Qt.BottomDockWidgetArea, dockwin)
+        self.connect( editor, SIGNAL("moment_tensor_changed(PyQt_PyObject)"),
+                      viewer.set_moment_tensor )
         self.win.show()
 
         sb = self.win.statusBar()
@@ -36,7 +47,7 @@ class MySnuffler(QApplication):
     
 def main(args):
     
-    app = MySnuffler(args)
+    app = Momo(args)
     app.exec_()
     
     sys.exit()

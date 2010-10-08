@@ -1924,6 +1924,7 @@ class ValControl(QFrame):
                       self.slided )
         self.connect( self.lvalue, SIGNAL("edited(float)"),
                       self.edited )
+        self.mute = False
     
     def s2v(self, svalue):
         a = math.log(self.ma/self.mi) / 10000.
@@ -1937,12 +1938,20 @@ class ValControl(QFrame):
         self.lname.setText( name )
         self.mi = mi
         self.ma = ma
-        self.cur = cur
-        self.cursl = self.v2s(cur)
         self.ind = ind
         self.lvalue.setRange( mi, ma )
+        self.set_value(cur)
+        
+    def set_value(self, cur):
+        self.mute = True
+        self.cur = cur
+        self.cursl = self.v2s(cur)
         self.lvalue.setValue( self.cur )
         self.slider.setValue( self.cursl )
+        self.mute = False
+        
+    def get_value(self):
+        return self.cur
         
     def slided(self,val):
         if self.cursl != val:
@@ -1961,6 +1970,7 @@ class ValControl(QFrame):
             self.fire_valchange()
         
     def fire_valchange(self):
+        if self.mute: return
         
         if self.low_is_none and self.cursl == 0:
             cur = num.nan
