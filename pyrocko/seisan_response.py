@@ -2,6 +2,17 @@ import calendar
 import util
 import numpy as num
 
+class ButterworthLowpass:
+
+    def __init__(self, order, corner):
+        self.order = order
+        self.corner = corner
+        
+    def response(self, freqs):
+        omega = 2.0 * num.pi * freqs
+        omega0 = 2.0 * num.pi * self.corner
+        return 1./num.sqrt(1.+(omega/omega0)**(2*self.order))
+
 class SeisanResponseFileError(Exception):
     pass
 
@@ -46,6 +57,8 @@ class SeisanResponseFile:
             unpack_fixed('a5,a4,@1,i2,x1,i3,x1,i2,x1,i2,x1,i2,x1,i2,x1,f6', line[0:35],
                 lambda s: {' ': 1900, '0': 1900, '1': 2000}[s])
         
+        is_accelerometer = line[6] == 'A'
+        
         latitude, longitude, elevation, filetype, cf_flag = \
             unpack_fixed('f8?,x1,f9?,x1,f5?,x2,@1,a1', line[50:80],
                 lambda s: {' ': 'gains-and-filters', 't': 'tabulated', 'p': 'poles-and-zeros'}[s.lower()])
@@ -78,6 +91,9 @@ class SeisanResponseFile:
                     data[ix].extend(unpack_fixed('f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', line))
             response_table = num.array(data, dtype=num.float)
         
+        if filetype == 'poles-and-zeros':
+            assert False, 'poles-and-zeros file type not implemented yet for seisan response file format'
+            
         f.close()
                 
         self.station = station
@@ -96,11 +112,18 @@ class SeisanResponseFile:
         self.gain_1hz = gain_1hz
         self.filters = filters
         self.response_table = response_table
-        
-        
+
+    def response_1(self, freqs):
+        iomega = 1.0j * 2. * num.pi * freqs
+        omega0 = 2. * num.pi / self.period
+        trans = iomega * -iomega**2/(omega0**2 + iomega**2 + 2.0*iomega*omega0*self.damping) * \
+                self.sensor_sensitivity * 10.**(self.amplifier_gain/10.) * self.digitizer_gain
+        return trans
         
     def __str__(self):
-        return '''Seisan Response File
+        resp_str = '\n'.join([ "%10.3f %10.3f %10.3f" % tuple(fap) for fap in self.response_table.T])
+    
+        return '''--- Seisan Response File ---
 station: %s
 component: %s
 start time: %s
@@ -109,9 +132,19 @@ longitude: %f
 elevation: %f
 filetype: %s
 comment: %s
+sensor period: %g
+sensor damping: %g
+sensor sensitivity: %g
+amplifier gain: %g
+digitizer gain: %g
+gain at 1 Hz: %g
 filters: %s
-response: %s
+response: 
+%s
 '''     % (self.station, self.component, util.gmctime(self.tmin), self.latitude, 
-            self.longitude, self.elevation, self.filetype, self.comment, self.filters, self.response_table) 
+            self.longitude, self.elevation, self.filetype, self.comment, 
+            self.period, self.damping, self.sensor_sensitivity, 
+            self.amplifier_gain, self.digitizer_gain, self.gain_1hz,
+            self.filters, resp_str )
 
 
