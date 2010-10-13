@@ -1,17 +1,8 @@
 import calendar
-import util
+import util, trace
 import numpy as num
+from scipy import signal
 
-class ButterworthLowpass:
-
-    def __init__(self, order, corner):
-        self.order = order
-        self.corner = corner
-        
-    def response(self, freqs):
-        omega = 2.0 * num.pi * freqs
-        omega0 = 2.0 * num.pi * self.corner
-        return 1./num.sqrt(1.+(omega/omega0)**(2*self.order))
 
 class SeisanResponseFileError(Exception):
     pass
@@ -118,6 +109,13 @@ class SeisanResponseFile:
         omega0 = 2. * num.pi / self.period
         trans = iomega * -iomega**2/(omega0**2 + iomega**2 + 2.0*iomega*omega0*self.damping) * \
                 self.sensor_sensitivity * 10.**(self.amplifier_gain/10.) * self.digitizer_gain
+        for (order, corner) in self.filters:
+            print order, corner
+            
+            b,a = signal.butter(order, [corner], btype='low', analog=1)
+            
+            trans *= signal.freqs(b,a, freqs)[1]
+        
         return trans
         
     def __str__(self):
