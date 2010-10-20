@@ -1,8 +1,11 @@
-import calendar
+import calendar, logging
 import util, trace
 import numpy as num
 from scipy import signal
 
+logger = logging.getLogger('pyrocko.seisan_response')
+
+d2r = num.pi/180.
 
 class SeisanResponseFileError(Exception):
     pass
@@ -81,12 +84,19 @@ class SeisanResponseFile:
                     line = f.readline()
                     data[ix].extend(unpack_fixed('f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', line))
             response_table = num.array(data, dtype=num.float)
+            
         
         if filetype == 'poles-and-zeros':
             assert False, 'poles-and-zeros file type not implemented yet for seisan response file format'
             
         f.close()
-                
+        
+        if num.all(num.abs(response_table[2]) <= num.pi):
+            logger.warn('assuming tabulated phases are given in radians instead of degrees')
+            cresp = response_table[1] * (num.cos(response_table[2])+ 1.0j*num.sin(response_table[2]))
+        else:
+            cresp = response_table[1] * (num.cos(response_table[2]*d2r)+ 1.0j*num.sin(response_table[2]*d2r))
+
         self.station = station
         self.component = component
         self.tmin = tmin
@@ -102,24 +112,98 @@ class SeisanResponseFile:
         self.digitizer_gain = digitizer_gain
         self.gain_1hz = gain_1hz
         self.filters = filters
-        self.response_table = response_table
+        
+        self.sampled_response = trace.SampledResponse( response_table[0], cresp )
+        self._check_tabulated_response(filename=filename)
+        
+    def response(self, freqs, method='from-filetype', type='displacement'):
+        
+        freqs = num.asarray(freqs)
+        want_scalar = False
+        if freqs.ndim == 0:
+            freqs = num.array([ freqs ])
+            want_scalar = True
+        
+        if method == 'from-filetype':
+            method = self.filetype
+        
+        
+        if method == 'gains-and-filters':
+            dresp = self._response_prototype_and_filters(freqs) / abs(self._response_prototype_and_filters([1.0])[0]) * self.gain_1hz
+        
+        elif method == 'tabulated':
+            dresp = self._response_tabulated(freqs) / abs(self._response_tabulated([1.0])[0]) * self.gain_1hz
+        
+        elif method == 'poles-and-zeros':
+            dresp = self._response_from_poles_and_zeros(freqs) * normalization
+        
+        elif method == 'gains':
+            dresp = num.ones(freqs.size) * self.gain_total() * 1.0j * 2. * num.pi * freqs
+            
+        else:
+            assert False, 'invalid response method specified'
+            
+            
+        if type == 'velocity':
+            dresp /= 1.0j * 2. * num.pi * freqs
+        
+        if want_scalar:
+            return dresp[0]
+        else:
+            return dresp
+            
 
-    def response_1(self, freqs):
-        iomega = 1.0j * 2. * num.pi * freqs
+    def gain_total(self):
+        return self.sensor_sensitivity * 10.**(self.amplifier_gain/20.) * self.digitizer_gain
+
+   
+    def _prototype_response_velocity(self, s):
         omega0 = 2. * num.pi / self.period
-        trans = iomega * -iomega**2/(omega0**2 + iomega**2 + 2.0*iomega*omega0*self.damping) * \
-                self.sensor_sensitivity * 10.**(self.amplifier_gain/10.) * self.digitizer_gain
+        return s**2/(omega0**2 + s**2 + 2.0*s*omega0*self.damping)
+
+    def _response_prototype_and_filters(self, freqs):
+        freqs = num.asarray(freqs, dtype=num.float)
+        iomega = 1.0j * 2. * num.pi * freqs
+        
+        trans =   iomega * self._prototype_response_velocity(iomega)
+        
         for (order, corner) in self.filters:
-            print order, corner
-            
-            b,a = signal.butter(order, [corner], btype='low', analog=1)
-            
+            if order < 0. or corner < 0.:
+                b,a = signal.butter(abs(order), [abs(corner)], btype='high', analog=1)
+            else:
+                b,a = signal.butter(order, [corner], btype='low', analog=1)
+                
             trans *= signal.freqs(b,a, freqs)[1]
         
         return trans
         
+    def _response_tabulated(self, freqs):
+        freqs = num.asarray(freqs, dtype=num.float)
+        return self.sampled_response.evaluate(freqs)
+    
+    def _response_from_poles_and_zeros(self, freqs):
+        assert False, 'poles-and-zeros file type not implemented yet for seisan response file format'
+        return None
+        
+    def _check_tabulated_response(self, filename='?'):
+        if self.filetype == 'gains-and-filters':
+            freqs = self.sampled_response.frequencies()
+            
+            trans_gaf = self.response(freqs, method='gains-and-filters')
+            atrans_gaf = num.abs(trans_gaf)
+            
+            trans_tab = self.response(freqs, method='tabulated')
+            atrans_tab = num.abs(trans_tab)
+            
+            if num.any(num.abs(atrans_gaf-atrans_tab) / num.abs(atrans_gaf+atrans_tab) > 1./100.):
+                logger.warn('inconsistent amplitudes in tabulated response (in file "%s") (max |a-b|/|a+b| is %g' % (
+                    filename,
+                    num.amax(num.abs(atrans_gaf-atrans_tab) / abs(atrans_gaf+atrans_tab))))
+            else:
+                if num.any(num.abs(trans_gaf-trans_tab) > abs(trans_gaf+trans_tab)/100.):
+                    logger.warn('inconsistent phase values in tabulated response (in file "%s"' % filename)
+        
     def __str__(self):
-        resp_str = '\n'.join([ "%10.3f %10.3f %10.3f" % tuple(fap) for fap in self.response_table.T])
     
         return '''--- Seisan Response File ---
 station: %s
@@ -137,12 +221,38 @@ amplifier gain: %g
 digitizer gain: %g
 gain at 1 Hz: %g
 filters: %s
-response: 
-%s
 '''     % (self.station, self.component, util.gmctime(self.tmin), self.latitude, 
             self.longitude, self.elevation, self.filetype, self.comment, 
             self.period, self.damping, self.sensor_sensitivity, 
             self.amplifier_gain, self.digitizer_gain, self.gain_1hz,
-            self.filters, resp_str )
+            self.filters )
 
 
+    def plot_amplitudes(self, filename_pdf, type='velocity'):
+        
+        import gmtpy
+        
+        p = gmtpy.LogLogPlot()
+        f = self.sampled_response.frequencies()
+        atab = num.abs(self.response(f, method='tabulated', type=type))
+        acom = num.abs(self.response(f, method='gains-and-filters', type=type))
+        aconst = num.ones(f.size) * self.gain_total()
+        
+        p.plot((f, atab), '-W2p,red')
+        p.plot((f, acom), '-W1p,blue')
+        p.plot((f, aconst), '-W1p,green')
+        p.save(filename_pdf)
+        
+        
+    def plot_phases(self, filename_pdf, type='velocity'):
+        
+        import gmtpy
+        
+        p = gmtpy.LogLinPlot()
+        f = self.sampled_response.frequencies()
+        atab = num.unwrap(num.angle(self.response(f, method='tabulated', type=type))) /d2r
+        acom = num.unwrap(num.angle(self.response(f, method='gains-and-filters', type=type))) /d2r
+        p.plot((f, atab), '-W2p,red')
+        p.plot((f, acom), '-W1p,blue')
+        p.save(filename_pdf)
+        

@@ -486,6 +486,12 @@ class SampledResponse(FrequencyResponse):
     def inverse(self):
         return SampledResponse(self.freqs, 1./self.vals, left=self.left, right=self.right)
     
+    def frequencies(self):
+        return self.freqs
+    
+    def values(self):
+        return self.vals
+    
 class IntegrationResponse(FrequencyResponse):
     def __init__(self, gain=1.0):
         self._gain = gain
