@@ -236,7 +236,7 @@ filters: %s
         f = self.sampled_response.frequencies()
         atab = num.abs(self.response(f, method='tabulated', type=type))
         acom = num.abs(self.response(f, method='gains-and-filters', type=type))
-        aconst = num.ones(f.size) * self.gain_total()
+        aconst = num.abs(self.response(f, method='gains', type=type))
         
         p.plot((f, atab), '-W2p,red')
         p.plot((f, acom), '-W1p,blue')
@@ -252,7 +252,10 @@ filters: %s
         f = self.sampled_response.frequencies()
         atab = num.unwrap(num.angle(self.response(f, method='tabulated', type=type))) /d2r
         acom = num.unwrap(num.angle(self.response(f, method='gains-and-filters', type=type))) /d2r
+        aconst = num.unwrap(num.angle(self.response(f, method='gains', type=type))) /d2r
+        
         p.plot((f, atab), '-W2p,red')
         p.plot((f, acom), '-W1p,blue')
+        p.plot((f, aconst), '-W1p,green')
         p.save(filename_pdf)
         
