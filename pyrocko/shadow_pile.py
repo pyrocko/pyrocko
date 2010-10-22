@@ -16,15 +16,16 @@ class ShadowPile(pile.Pile):
     def __init__(self, basepile=None, tinc=360., tpad=0., storepath=None):
         pile.Pile.__init__(self)
         
-        if basepile is None:
-            self._base = pile.Pile()
-        else:
-            self._base = basepile
-        
         self._tinc = tinc
         self._tpad = tpad
         self._storepath = storepath
         self._blocks = {}
+        
+        if basepile is None:
+            basepile = pile.Pile()
+            
+        self.set_basepile(basepile)
+        
     
     def clear(self):
         for iblock in self._blocks.keys():
