@@ -685,15 +685,18 @@ class Pile(TracesGroup):
     
     def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True):
         modified_subpiles = set()
+        files = []
         if filenames is not None:
             for file in loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress):
                 subpile = self.dispatch(file)
                 subpile.add_file(file)
                 modified_subpiles.add(subpile)
+                files.append(file)
                 
         self.update(modified_subpiles, empty=False)
         self.notify_listeners('add')
-        
+        return files
+            
     def add_file(self, file):
         subpile = self.dispatch(file)
         subpile.add_file(file)

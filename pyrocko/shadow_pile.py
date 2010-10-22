@@ -4,7 +4,9 @@ import math, os
 pjoin = os.path.join
 
 class ShadowBlock:
-    
+    def __init__(self):
+        self.mtime = None
+        self.files = []
 
 class ShadowPile(pile.Pile):
 
@@ -13,7 +15,7 @@ class ShadowPile(pile.Pile):
         self._base = basepile
         self._tinc = tinc
         self._tpad = tpad
-        self._block_mtimes = {}
+        self._blocks = {}
         self._storedir = storedir
     
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., *args, **kwargs):
@@ -28,6 +30,9 @@ class ShadowPile(pile.Pile):
             
         return pile.Pile.chopper(self, tmin, tmax, tinc, tpad, *args, **kwargs)
         
+    def process(self, iblock, tmin, tmax, traces):
+        return traces
+    
     def _update_range(self, tmin, tmax):
         imin = int(math.floor(tmin / self._tinc))
         imax = int(math.floor(tmax / self._tinc)+1)
@@ -37,9 +42,12 @@ class ShadowPile(pile.Pile):
             wmin = i * self._tinc
             wmax = (i+1) * self._tinc
             mtime = util.gmctime(self._base.get_newest_mtime(wmin,wmax))
-            if i not in self._block_mtimes or self._block_mtimes[i] != mtime:
+            if i not in self._blocks or self._blocks[i].mtime != mtime:
+                if i not in self._blocks:
+                    self._blocks[i] = ShadowBlock()
+                    
                 todo.append(i)
-                self._block_mtimes[i] = mtime
+                self._blocks[i].mtime = mtime
             else:
                 if todo:
                     self._process_blocks(todo[0], todo[-1]+1)
@@ -54,32 +62,22 @@ class ShadowPile(pile.Pile):
         
         iblock = imin
         for traces in self._base.chopper(pmin, pmax, self._tinc, self._tpad):
-            ptraces = self.process(iblock, traces)
-            self._insert(iblock, ptraces)
+            tmin = iblock*self._tinc
+            tmax = (iblock+1)*self._tinc
+            traces = self.process(iblock, tmin, tmax, traces)
+            if self._tpad != 0.0:
+                for trace in traces:
+                    trace.chop(tmin, tmax, inplace=True)
+            self._clearblock(iblock)
+            self._insert(iblock, traces)
             iblock += 1
         
-    def process(self, iblock, traces):
-        return traces
-
     def _insert(self, iblock, traces):
-        for trace in traces:
-            print iblock, trace
-        
         fns = io.save(traces, pjoin(self._storedir, '%i.mseed' % iblock))
-        self.add_files(fns, show_progress=False)
-
-
-pbase = pile.make_pile()
-
-p = ShadowPile(pbase, 36000., 360)
-
-tmin = util.ctimegm('2009-05-01 02:30:00')
-tmax = util.ctimegm('2009-05-05 01:10:00')
-
-
-for traces in p.chopper( tmin=tmin, tmax=tmax):
-    for trace in traces:
-        print trace
+        files = self.add_files(fns, show_progress=False)
+        self._blocks[iblock].files.extend(files)
         
-        
-
+    def _clearblock(self, iblock):
+        for file in self._blocks[iblock].files:
+            self.remove_file(file)
+            
