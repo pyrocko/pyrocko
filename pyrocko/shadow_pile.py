@@ -1,8 +1,11 @@
-from pyrocko import pile, util, io
-import math, os
+import pile, util, io
+import math, logging
 
-pjoin = os.path.join
+logger = logging.getLogger('pyrocko.shadow_pile')
 
+class NoBasePileSet(Exception):
+    pass
+    
 class ShadowBlock:
     def __init__(self):
         self.mtime = None
@@ -10,16 +13,39 @@ class ShadowBlock:
 
 class ShadowPile(pile.Pile):
 
-    def __init__(self, basepile, tinc, tpad=0., storedir='shadow-store'):
+    def __init__(self, basepile=None, tinc=360., tpad=0., storepath=None):
         pile.Pile.__init__(self)
-        self._base = basepile
+        
+        if basepile is None:
+            self._base = pile.Pile()
+        else:
+            self._base = basepile
+        
         self._tinc = tinc
         self._tpad = tpad
+        self._storepath = storepath
         self._blocks = {}
-        self._storedir = storedir
     
-    def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., *args, **kwargs):
+    def clear(self):
+        for iblock in self._blocks.keys():
+            self._clearblock()
+        self._blocks = {}
+    
+    def set_basepile(self, basepile):
+        self.clear()
+        self._base = basepile
+    
+    def set_chopsize(self, tinc, tpad=0.):
+        self.clear()
+        self._tinc = tinc
+        self._tpad = tpad
         
+    def set_store(self, storepath=None):
+        self.clear()
+        self._storepath = storepath
+        
+    def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., *args, **kwargs):
+                
         if tmin is None:
             tmin = self.base.tmin+tpad
                 
@@ -73,9 +99,12 @@ class ShadowPile(pile.Pile):
             iblock += 1
         
     def _insert(self, iblock, traces):
-        fns = io.save(traces, pjoin(self._storedir, '%i.mseed' % iblock))
-        files = self.add_files(fns, show_progress=False)
-        self._blocks[iblock].files.extend(files)
+        if self._storepath is not None:
+            fns = io.save(traces, self._storepath, format='mseed', additional={'iblock': iblock})
+            files = self.add_files(fns, fileformat='mseed', show_progress=False)
+        else:
+            file = pile.MemTracesFile(None,traces)
+            self.add_file(file)
         
     def _clearblock(self, iblock):
         for file in self._blocks[iblock].files:
