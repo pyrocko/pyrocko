@@ -228,7 +228,7 @@ filters: %s
             self.filters )
 
 
-    def plot_amplitudes(self, filename_pdf, type='velocity'):
+    def plot_amplitudes(self, filename_pdf, type='displacement'):
         
         import gmtpy
         
@@ -244,7 +244,7 @@ filters: %s
         p.save(filename_pdf)
         
         
-    def plot_phases(self, filename_pdf, type='velocity'):
+    def plot_phases(self, filename_pdf, type='displacement'):
         
         import gmtpy
         
