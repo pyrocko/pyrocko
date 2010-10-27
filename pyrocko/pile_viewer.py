@@ -25,6 +25,7 @@ import logging
 from optparse import OptionParser
 
 import pyrocko.pile
+import pyrocko.shadow_pile
 import pyrocko.trace
 import pyrocko.util
 import pyrocko.plot
@@ -43,6 +44,15 @@ class Global:
 
 gap_lap_tolerance = 5.
 
+class Integrator(pyrocko.shadow_pile.ShadowPile):
+
+    def process(self, iblock, tmin, tmax, traces):
+        for trace in traces:
+            trace.ydata -= trace.ydata.mean()
+            trace.ydata = num.cumsum(trace.ydata)
+        
+        return traces
+        
 def make_QPolygonF( xdata, ydata ):
     assert len(xdata) == len(ydata)
     qpoints = QPolygonF( len(ydata) )
@@ -889,7 +899,14 @@ def MakePileOverviewClass(base):
             self.menuitem_reload = QAction('Reload snufflings', self.menu)
             self.menu.addAction(self.menuitem_reload)
             self.connect( self.menuitem_reload, SIGNAL("triggered(bool)"), self.setup_snufflings )
+
             self.menu.addSeparator()
+
+            self.menuitem_test = QAction('Test', self.menu)
+            self.menuitem_test.setCheckable(True)
+            self.menuitem_test.setChecked(False)
+            self.menu.addAction(self.menuitem_test)
+            self.connect( self.menuitem_test, SIGNAL("toggled(bool)"), self.toggletest )
 
             self.menuitem_print = QAction('Print', self.menu)
             self.menu.addAction(self.menuitem_print)
@@ -916,7 +933,7 @@ def MakePileOverviewClass(base):
                 self.min_deltat = 0.01
                 
             self.time_projection = Projection()
-            self.set_time_range(self.pile.tmin, self.pile.tmax)
+            self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
             self.time_projection.set_out_range(0., self.width())
                 
             self.set_gathering()
@@ -940,8 +957,24 @@ def MakePileOverviewClass(base):
 
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ] 
             self.setup_snufflings()
+        
+        def toggletest(self, checked):
+            if checked:
+                sp = Integrator()
+                
+                self.add_shadow_pile(sp)
+            else:
+                self.remove_shadow_piles()
+        
+        def add_shadow_pile(self, shadow_pile):
+            shadow_pile.set_basepile(self.pile)
+            shadow_pile.add_listener(self)
+            self.pile = shadow_pile
+        
+        def remove_shadow_piles(self):
+            self.pile = self.pile.get_basepile()
             
-            
+        
         def get_snufflings(self):
             snufflings = []
             for path in self.snuffling_paths:
@@ -982,7 +1015,7 @@ def MakePileOverviewClass(base):
             self.determine_box_styles()
             
         def get_neic_events(self):
-            self.set_markers(neic_earthquakes(self.pile.tmin, self.pile.tmax, magnitude_range=(5.,9.9)))
+            self.set_markers(neic_earthquakes(self.pile.get_tmin(), self.pile.get_tmax(), magnitude_range=(5.,9.9)))
     
         def set_gathering(self, gather=None, order=None, color=None):
             if gather is None:
@@ -1017,7 +1050,7 @@ def MakePileOverviewClass(base):
             self.trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
         
             if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1]:
-                self.set_time_range(self.pile.tmin, self.pile.tmax)
+                self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
         
         def set_time_range(self, tmin, tmax):
             self.tmin, self.tmax = tmin, tmax
@@ -1904,6 +1937,7 @@ class ValControl(QFrame):
     def __init__(self, low_is_none=False, high_is_none=False, *args):
         apply(QFrame.__init__, (self,) + args)
         self.layout = QHBoxLayout( self )
+        self.layout.setMargin(0)
         #self.layout.setSpacing(5)
         self.lname = QLabel( "name", self )
         self.lname.setFixedWidth(120)
@@ -2007,7 +2041,7 @@ class PileViewer(QFrame):
         self.setLayout( layout )
         
         layout.addWidget( self.pile_overview, 0, 0 )
-        
+        layout.setRowStretch(0,1)
         minfreq = 0.001
         maxfreq = 0.5/self.pile_overview.get_min_deltat()
         if maxfreq < 100.*minfreq:

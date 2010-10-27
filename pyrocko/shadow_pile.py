@@ -35,6 +35,9 @@ class ShadowPile(pile.Pile):
     def set_basepile(self, basepile):
         self.clear()
         self._base = basepile
+        
+    def get_basepile(self):
+        return self._base
     
     def set_chopsize(self, tinc, tpad=0.):
         self.clear()
@@ -100,12 +103,13 @@ class ShadowPile(pile.Pile):
             iblock += 1
         
     def _insert(self, iblock, traces):
-        if self._storepath is not None:
-            fns = io.save(traces, self._storepath, format='mseed', additional={'iblock': iblock})
-            files = self.add_files(fns, fileformat='mseed', show_progress=False)
-        else:
-            file = pile.MemTracesFile(None,traces)
-            self.add_file(file)
+        if traces:
+            if self._storepath is not None:
+                fns = io.save(traces, self._storepath, format='mseed', additional={'iblock': iblock})
+                files = self.add_files(fns, fileformat='mseed', show_progress=False)
+            else:
+                file = pile.MemTracesFile(None,traces)
+                self.add_file(file)
         
     def _clearblock(self, iblock):
         for file in self._blocks[iblock].files:

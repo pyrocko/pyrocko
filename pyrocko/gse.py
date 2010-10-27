@@ -41,6 +41,7 @@ instrument_descriptions = {
 'SOSUS': 'SOSUS',
 'TSJ-1e': 'TSJ-1e'}
 
+
 def isd(line, toks, name, nargs=None):
     if not line.startswith(name):
         return False

@@ -886,7 +886,13 @@ class Pile(TracesGroup):
             self.notify_listeners('modified')
             
         return modified
-            
+    
+    def get_tmin(self):
+        return self.tmin
+        
+    def get_tmax(self):
+        return self.tmax
+    
     def __str__(self):
         
         def sl(s):
