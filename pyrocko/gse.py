@@ -5,7 +5,6 @@ import sys, re, calendar, time, logging
 
 logger = logging.get_logger('pyrocko.gse')
 
-
 def isd(line, toks, name, nargs=None):
     if not line.startswith(name):
         return False
