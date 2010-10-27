@@ -2056,6 +2056,7 @@ class SnufflerOnDemand(QApplication, Forked):
         
     def add_traces(self, traces, viewer_id='default'):
         viewer = self.get_viewer(viewer_id)
+        print 'xxx'
         pile = viewer.get_pile()
         memfile = pyrocko.pile.MemTracesFile(None, traces)
         pile.add_file(memfile)

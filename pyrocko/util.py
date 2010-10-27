@@ -252,3 +252,30 @@ def base36encode(number, alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
 def base36decode(number):
     return int(number,36)
 
+def unpack_fixed(format, line, *callargs):
+    ipos = 0
+    values = []
+    icall = 0
+    for form in format.split(','):
+        optional = form[-1] == '?'
+        form = form.rstrip('?')
+        typ = form[0]
+        l = int(form[1:])
+        s = line[ipos:ipos+l]
+        cast = {'x': None, 'A': str, 'a': lambda x: x.strip(), 'i': int, 'f': float, '@': 'extra'}[typ]
+        if cast == 'extra':
+            cast = callargs[icall]
+            icall +=1
+        
+        if cast is not None:
+            if optional and s.strip() == '':
+                values.append(None)
+            else:
+                try:
+                    values.append(cast(s))
+                except:
+                    raise SeisanResponseFileError('Invalid cast at position [%i:%i] of line: %s' % (ipos, ipos+1, line))
+                
+        ipos += l
+    
+    return values

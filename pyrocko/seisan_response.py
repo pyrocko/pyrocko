@@ -3,6 +3,8 @@ import util, trace
 import numpy as num
 from scipy import signal
 
+unpack_fixed = util.unpack_fixed
+
 logger = logging.getLogger('pyrocko.seisan_response')
 
 d2r = num.pi/180.
@@ -10,34 +12,6 @@ d2r = num.pi/180.
 class SeisanResponseFileError(Exception):
     pass
 
-def unpack_fixed(format, line, *callargs):
-    ipos = 0
-    values = []
-    icall = 0
-    for form in format.split(','):
-        optional = form[-1] == '?'
-        form = form.rstrip('?')
-        typ = form[0]
-        l = int(form[1:])
-        s = line[ipos:ipos+l]
-        cast = {'x': None, 'a': str, 'i': int, 'f': float, '@': 'extra'}[typ]
-        if cast == 'extra':
-            cast = callargs[icall]
-            icall +=1
-        
-        if cast is not None:
-            if optional and s.strip() == '':
-                values.append(None)
-            else:
-                try:
-                    values.append(cast(s))
-                except:
-                    raise SeisanResponseFileError('Invalid cast at position [%i:%i] of line: %s' % (ipos, ipos+1, line))
-                
-        ipos += l
-    
-    return values
-        
 class SeisanResponseFile:
     
     def __init__(self):
