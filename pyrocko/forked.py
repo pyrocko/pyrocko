@@ -15,7 +15,6 @@ def readn(fh, size):
 def readobj(fh):
     data = readn(fh, 4)
     if len(data) == 0:
-        print XXX 
         raise EOF()
     size = struct.unpack('>i', data)[0]
     data = readn(fh, size)
@@ -56,9 +55,7 @@ class Forked:
             if self.pid == 0:
                 sys.exit()
             else:
-                print 'waiting'
                 os.wait()
-                print 'done'
         else:
             os.close(up_w)
             os.close(down_r)

@@ -2029,7 +2029,7 @@ class LinValControl(ValControl):
 class PileViewer(QFrame):
     '''PileOverview + Controls'''
     
-    def __init__(self, pile, ntracks_shown_max, use_opengl=False, *args):
+    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, *args):
         apply(QFrame.__init__, (self,) + args)
         
         if use_opengl:
@@ -2065,6 +2065,9 @@ class PileViewer(QFrame):
         layout.addWidget( self.gain_widget, 3,0 )
         layout.addWidget( self.rot_widget, 4,0 )
     
+    def update_contents(self):
+        self.pile_overview.update()
+    
     def get_pile(self):
         return self.pile_overview.get_pile()
 
@@ -2075,49 +2078,55 @@ class SnufflerOnDemand(QApplication, Forked):
         Forked.__init__(self, flipped=True)
         self.timer = QTimer( self )
         self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
-        self.timer.setInterval(1000)
+        self.timer.setInterval(100)
         self.timer.start()
         self.caller_has_quit = False
-        self.viewers = []
+        self.viewers = {}
         self.windows = []
-        pile = pyrocko.pile.Pile()
-        self.new_viewer(pile)
         
     def dispatch(self, command, args, kwargs):
         method = getattr(self, command)
         method(*args, **kwargs)
         
-    def add_traces(self, traces, iviewer=0):
-        pile = self.viewers[iviewer].get_pile()
+    def add_traces(self, traces, viewer_id='default'):
+        viewer = self.get_viewer(viewer_id)
+        pile = viewer.get_pile()
         memfile = pyrocko.pile.MemTracesFile(None, traces)
         pile.add_file(memfile)
+        viewer.update_contents()
         
     def periodical(self):
         if not self.caller_has_quit:
             self.caller_has_quit = not self.process()
             
-    def new_viewer(self, pile, ntracks_shown_max=20):
-        pile_viewer = PileViewer(pile, ntracks_shown_max=ntracks_shown_max)
+    def get_viewer(self, viewer_id):
+        if viewer_id not in self.viewers:
+            self.new_viewer(viewer_id)
+            
+        return self.viewers[viewer_id]
+            
+    def new_viewer(self, viewer_id):
+        pile = pyrocko.pile.Pile()
+        pile_viewer = PileViewer(pile)
         win = QMainWindow()
         win.setCentralWidget(pile_viewer)
-        win.setWindowTitle( "Snuffler %i" % (len(self.viewers)+1) )        
+        win.setWindowTitle( "Snuffler (%s)" % (viewer_id) )        
         win.show()
-        self.viewers.append(pile_viewer)
+        self.viewers[viewer_id] = pile_viewer
         self.windows.append(win)
         
     def run(self):
         self.exec_()
     
 
-def snuffle(traces=None, filenames=None, pile=None):
-    pile = pyrocko.pile.Pile()    
+def snuffle(traces=None, viewer_id='default'):
     
     if Global.appOnDemand is None:
         app = Global.appOnDemand = SnufflerOnDemand([])
         
     app = Global.appOnDemand
     if traces is not None:
-        print app.call('add_traces', traces)
+        app.call('add_traces', traces, viewer_id)
     
     
 def sac_exec():
