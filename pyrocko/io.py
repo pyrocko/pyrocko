@@ -76,28 +76,30 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     return trs
     
     
-def save(traces, filename_template, format='mseed'):
+def save(traces, filename_template, format='mseed', additional={}):
     '''Save traces to file(s).
     
     In:
         traces - list of traces to store
         filename_template -- filename template with placeholders for trace
             metadata. Valid placeholders are '%(network)s', '%(station)s', 
-            '%(location)s', '%(channel)s', '%(tmin)s', and '%(tmax)s'.
+            '%(location)s', '%(channel)s', '%(tmin)s', and '%(tmax)s'. Custom
+            placeholders can be inserted with 'additional' option below.
         format -- 'mseed' or 'sac'.
+        additional -- dict with custom placeholder fillins.
         
     Out:
         List of generated filenames
     '''
     
     if format == 'mseed':
-        return mseed.save(traces, filename_template)
+        return mseed.save(traces, filename_template, additional)
     
     elif format == 'sac':
         fns = []
         for tr in traces:
             f = sac.SacFile(from_trace=tr)
-            fn = tr.fill_template(filename_template)
+            fn = tr.fill_template(filename_template, **additional)
             f.write(fn)
             fns.append(fn)
             

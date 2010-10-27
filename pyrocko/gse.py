@@ -6,7 +6,6 @@ from pyrocko import gse_ext
 
 logger = logging.getLogger('pyrocko.gse')
 
-
 def isd(line, toks, name, nargs=None):
     if not line.startswith(name):
         return False

@@ -19,6 +19,38 @@ import pyrocko.ipc
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+class SnufflerServer(pyrocko.ipc.RPCServer):
+    
+    def __init__(self, pile):
+        RPCServer.__init__(self)
+        self.pile = pile
+        self.expose('add_trace')
+        self.mutex = QMutex()
+        self.queue_up = []
+        self.queue_down = []
+
+    def call(self, methodname, args, kwargs):
+        if methodname in self.exposed:
+            self.mutex.lock()
+            self.queue_up.append((methodname, args, kwargs))
+            self.mutex.unlock()
+            
+            self.mutex.lock()
+            items = self.queue_down[0]
+            self.queue_down[0:0] = []
+            self.mutex.unlock()
+            return getattr(self, methodname)(*args, **kwargs)
+
+
+class ServerThread(QThread):
+    def __init__(self, pile):
+        QThread.__init__(self)
+        self.server = SnufflerServer(pile)
+    
+    def run(self):
+        self.server.run()
+         
+    
 class MySnuffler(QApplication):
     
     def __init__(self, *args):
@@ -52,8 +84,8 @@ class MySnuffler(QApplication):
                         filename_attributes=options.pattern,
                         fileformat=options.format )
                         
-        if options.server is not None:
-            self.pile_server = pyrocko.ipc.RemotePileServer(pile)
+        if options.server:
+            self.pile_server = ServerThread(pile)
 
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
             pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl)

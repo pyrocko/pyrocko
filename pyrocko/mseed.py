@@ -26,10 +26,10 @@ def as_tuple(tr):
     return (tr.network, tr.station, tr.location, tr.channel, 
             itmin, itmax, srate, tr.get_ydata())
 
-def save(traces, filename_template):
+def save(traces, filename_template, additional={}):
     fn_tr = {}
     for tr in traces:
-        fn = tr.fill_template(filename_template)
+        fn = tr.fill_template(filename_template, **additional)
         if fn not in fn_tr:
             fn_tr[fn] = []
         

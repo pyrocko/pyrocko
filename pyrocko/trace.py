@@ -486,6 +486,12 @@ class SampledResponse(FrequencyResponse):
     def inverse(self):
         return SampledResponse(self.freqs, 1./self.vals, left=self.left, right=self.right)
     
+    def frequencies(self):
+        return self.freqs
+    
+    def values(self):
+        return self.vals
+    
 class IntegrationResponse(FrequencyResponse):
     def __init__(self, gain=1.0):
         self._gain = gain
@@ -500,13 +506,20 @@ class DifferentiationResponse(FrequencyResponse):
     def evaluate(self, freqs):
         return self._gain * 1.0j * 2. * num.pi * freqs
 
+class AnalogFilterResponse(FrequencyResponse):
+    def __init__(self, b,a):
+        self._b = b
+        self._a = a
+    
+    def evaluate(self, freqs):
+        return signal.freqs(self._b, self._a, freqs)[1]
+
 class NoData(Exception):
     pass
 
 class Trace(object):
     
     cached_frequencies = {}
-    cached_coefficients = {}
         
     def __init__(self, network='', station='STA', location='', channel='', 
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
@@ -708,30 +721,21 @@ class Trace(object):
              if ndecimate != 1:
                 self.downsample(ndecimate, snap=snap)
             
-    def get_cached_filter_coefs(self, order, corners, btype):
-        ck = (order, tuple(corners), btype)
-        if ck not in Trace.cached_coefficients:
-            if len(corners) == 0:
-                Trace.cached_coefficients[ck] = signal.butter(order, corners[0], btype=btype)
-            else:
-                Trace.cached_coefficients[ck] = signal.butter(order, corners, btype=btype)
-
-        return Trace.cached_coefficients[ck]
             
     def lowpass(self, order, corner):
-        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
+        (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def highpass(self, order, corner):
-        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
+        (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def bandpass(self, order, corner_hp, corner_lp):
-        (b,a) = self.get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
+        (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
@@ -739,7 +743,7 @@ class Trace(object):
     def get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
         if ck not in Trace.cached_frequencies:
-            Trace.cached_frequencies[ck] = num.arange(nf)*deltaf
+            Trace.cached_frequencies[ck] = num.arange(nf, dtype=num.float)*deltaf
         return Trace.cached_frequencies[ck]
         
     def bandpass_fft(self, corner_hp, corner_lp):
@@ -749,7 +753,8 @@ class Trace(object):
         data[:n] = self.ydata
         fdata = num.fft.rfft(data)
         freqs = self.get_cached_freqs(len(fdata), 1./(self.deltat*n2))
-      #  fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
+        fdata[0] = 0.0
+        fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
         data = num.fft.irfft(fdata)
         self.ydata = data[:n]
         
@@ -854,6 +859,19 @@ class Trace(object):
             output.ydata = output.ydata.copy()
         return output
         
+    def spectrum(self, pad_to_pow2=False):
+        ndata = self.ydata.size
+        
+        if pad_to_pow2:
+            ntrans = nextpow2(ndata)
+        else:
+            ntrans = ndata
+            
+        fydata = num.fft.rfft(self.ydata, ntrans)
+        df = 1./(ntrans*self.deltat)
+        fxdata = num.arange(len(fydata))*df
+        return fxdata, fydata
+        
     def _get_tapered_coefs(self, ntrans, freqlimits, transfer_function):
     
         deltaf = 1./(self.deltat*ntrans)
@@ -875,4 +893,15 @@ class Trace(object):
         params.update(additional)
         return template % params
 
+cached_coefficients = {}
+def get_cached_filter_coefs(order, corners, btype):
+    ck = (order, tuple(corners), btype)
+    if ck not in cached_coefficients:
+        if len(corners) == 0:
+            cached_coefficients[ck] = signal.butter(order, corners[0], btype=btype)
+        else:
+            cached_coefficients[ck] = signal.butter(order, corners, btype=btype)
 
+    return cached_coefficients[ck]
+    
+    

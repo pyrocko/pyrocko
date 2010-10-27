@@ -1,7 +1,7 @@
-import trace, io, util, config, re, sys
+import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging, time, weakref, copy
+import os, pickle, logging, time, weakref, copy, re, sys
 import cPickle as pickle
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
@@ -331,6 +331,7 @@ class MemTracesFile(TracesGroup):
         TracesGroup.__init__(self, parent)
         self.traces = traces
         self.update(self.traces)
+        self.mtime = time.time()
         
     def load_headers(self, mtime=None):
         pass
@@ -355,6 +356,14 @@ class MemTracesFile(TracesGroup):
         
         self.notify_listeners('fullupdate')
             
+    def get_newest_mtime(self, tmin, tmax, trace_selector=None):
+        mtime = None
+        for tr in self.traces:
+            if not trace_selector or trace_selector(tr):
+                mtime = max(mtime, self.mtime)
+                
+        return mtime
+        
     def chop(self,tmin,tmax,trace_selector=None):
         chopped = []
         used = False
@@ -482,6 +491,14 @@ class TracesFile(TracesGroup):
             
         return False
        
+    def get_newest_mtime(self, tmin, tmax, trace_selector=None):
+        mtime = None
+        for tr in self.traces:
+            if not trace_selector or trace_selector(tr):
+                mtime = max(mtime, self.mtime)
+                
+        return mtime
+
     def chop(self,tmin,tmax,trace_selector=None):
         chopped = []
         used = False
@@ -561,6 +578,14 @@ class SubPile(TracesGroup):
         self.files.remove(file)
         file.set_parent(None)
         self.update(self.files)
+    
+    def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
+        mtime = None
+        for file in self.files:
+            if file.is_relevant(tmin, tmax, group_selector):
+                mtime = max(mtime, file.get_newest_mtime(tmin, tmax, trace_selector))
+                
+        return mtime
     
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
         used_files = set()
@@ -660,15 +685,18 @@ class Pile(TracesGroup):
     
     def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True):
         modified_subpiles = set()
+        files = []
         if filenames is not None:
             for file in loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress):
                 subpile = self.dispatch(file)
                 subpile.add_file(file)
                 modified_subpiles.add(subpile)
+                files.append(file)
                 
         self.update(modified_subpiles, empty=False)
         self.notify_listeners('add')
-        
+        return files
+            
     def add_file(self, file):
         subpile = self.dispatch(file)
         subpile.add_file(file)
@@ -691,6 +719,14 @@ class Pile(TracesGroup):
             self.subpiles[k] = SubPile(self)
             
         return self.subpiles[k]
+        
+    def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
+        mtime = None
+        for subpile in self.subpiles.values():
+            if subpile.is_relevant(tmin,tmax, group_selector):
+                mtime = max(mtime, subpile.get_newest_mtime(tmin, tmax, group_selector, trace_selector))
+                
+        return mtime
         
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
         chopped = []
@@ -761,7 +797,6 @@ class Pile(TracesGroup):
             while self.open_files:
                 file = self.open_files.pop()
                 file.drop_data()
-        
         
         
     def all(self, *args, **kwargs):
@@ -851,7 +886,13 @@ class Pile(TracesGroup):
             self.notify_listeners('modified')
             
         return modified
-            
+    
+    def get_tmin(self):
+        return self.tmin
+        
+    def get_tmax(self):
+        return self.tmax
+    
     def __str__(self):
         
         def sl(s):
