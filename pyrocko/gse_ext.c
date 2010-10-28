@@ -21,7 +21,7 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
     char *pos;
     char v;
     int sample, isample, ibyte, sign;
-    size_t sizehint;
+    int sizehint;
     char imore = 32, isign = 16;
     PyObject      *array = NULL;
     npy_intp      array_dims[1] = {0};
