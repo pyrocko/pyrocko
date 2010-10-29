@@ -955,7 +955,8 @@ def MakePileOverviewClass(base):
             
             user_home_dir = os.environ['HOME']
 
-            self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ] 
+            self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
+            self.snuffling_data = []
             self.setup_snufflings()
         
         def toggletest(self, checked):
@@ -987,6 +988,7 @@ def MakePileOverviewClass(base):
             return snufflings
             
         def setup_snufflings(self):
+            self.flush_snuffling_data()
             self.snuffling_hooks = []
             self.snufflings_menu.clear()
             for snuffling in self.get_snufflings():
@@ -997,11 +999,37 @@ def MakePileOverviewClass(base):
                     
                 self.snuffling_hooks.append(hook)
                 self.connect( item, SIGNAL("triggered(bool)"), hook )
-        
+                
+            self.update()
                  
         def call_snuffling(self, snuffling):
             snuffling.call(self)
         
+        def add_traces(self, traces):
+            if traces:
+                mtf = pyrocko.pile.MemTracesFile(None, traces)
+                self.pile.add_file(mtf)
+                ticket = (self.pile, mtf)
+                self.snuffling_data.append(ticket)
+                return ticket
+            else:
+                return (None,None)
+            
+        def release_data(self, tickets):
+            for ticket in tickets:
+                pile, mtf = ticket
+                if pile is not None:
+                    self.snuffling_data.remove(ticket)
+                    pile.remove_file(mtf)
+            
+        def flush_snuffling_data(self):
+            for ticket in self.snuffling_data:
+                pile, mtf = ticket
+                if pile is not None:
+                    pile.remove_file(mtf)
+                
+            self.snuffling_data = []
+            
         def periodical(self):
             if self.menuitem_watch.isChecked():
                 if self.pile.reload_modified():
@@ -1085,27 +1113,29 @@ def MakePileOverviewClass(base):
     
         def write_picks(self):
             fn = QFileDialog.getSaveFileName(self,)
-            f = open(fn,'w')
-            for marker in self.markers:
-                f.write("%s\n" % marker)
-            f.close()
+            if fn:
+                f = open(fn,'w')
+                for marker in self.markers:
+                    f.write("%s\n" % marker)
+                f.close()
                 
             
         def read_picks(self):
             fn = QFileDialog.getOpenFileName(self,)
-            f = open(fn, 'r')
-            for iline, line in enumerate(f):
-                sline = line.strip()
-                if not sline or sline.startswith('#'):
-                    continue
-                try:
-                    m = Marker.from_string(sline)
-                    self.markers.append(m)
-                    
-                except MarkerParseError:
-                    logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
-                    
-            f.close()
+            if fn:
+                f = open(fn, 'r')
+                for iline, line in enumerate(f):
+                    sline = line.strip()
+                    if not sline or sline.startswith('#'):
+                        continue
+                    try:
+                        m = Marker.from_string(sline)
+                        self.markers.append(m)
+                        
+                    except MarkerParseError:
+                        logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
+                        
+                f.close()
             
         def add_marker(self, marker):
             self.markers.append(marker)

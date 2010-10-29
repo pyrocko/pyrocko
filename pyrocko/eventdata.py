@@ -162,7 +162,8 @@ class EventDataAccess:
                                   allowed_methods=None,
                                   crop=True,
                                   out_stations=None,
-                                  redundant_channel_priorities=None):
+                                  redundant_channel_priorities=None,
+                                  restitution_off_hack=False):
         
         stations = self.get_stations(relative_event=relative_event)
         if out_stations is not None:
@@ -222,8 +223,11 @@ class EventDataAccess:
                     try:
                         if extend:
                             tr.extend(tr.tmin+extend[0], tr.tmax+extend[1], fillmethod='repeat')
-                            
-                        displacement = tr.transfer( tfade, freqband, transfer_function=trans, cut_off_fading=crop )
+                        if restitution_off_hack:
+                            displacement = tr.copy()
+                        else:
+                            displacement = tr.transfer( tfade, freqband, transfer_function=trans, cut_off_fading=crop )
+                        
                         amax = num.max(num.abs(displacement.get_ydata()))
                         if maxdisplacement is not None and amax > maxdisplacement:
                             self.problems().add('unrealistic_amplitude', tr.full_id)
