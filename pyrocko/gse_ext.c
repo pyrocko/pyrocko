@@ -36,7 +36,7 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
         PyErr_SetString(GSEError, "cannot allocate memory" );
         return NULL;
     }
-    
+    printf("%i\n", sizehint);
     pos = in_data;
     sample = 0;
     isample = 0;
@@ -46,7 +46,8 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
         if (v != -1) {
             if (ibyte == 0) sign = (v & isign) ? -1 : 1;
             sample += sign*v;
-            if ( v & imore == 0x00) {
+            printf("%i\n", v & imore);
+            if ( (v & imore) == 0) {
                 if (isample >= sizehint) {
                     out_data = (int*)realloc(out_data, sizeof(int) * isample * 2);
                     if (out_data == NULL) {
@@ -55,6 +56,7 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
                         return NULL;
                     }
                 }
+                printf("-- %i\n", sample);
                 out_data[isample++] = sample;
                 sample = 0;
                 ibyte = 0;
@@ -62,9 +64,11 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
                 sample *= 32;
                 ibyte += 1;
             }
+            
         }
         pos++;
     }
+    printf("%i\n", isample);
     array_dims[0] = isample;
     array = PyArray_SimpleNewFromData(1, array_dims, NPY_INT32, out_data);
     return Py_BuildValue("N", array);

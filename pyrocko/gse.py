@@ -1,7 +1,8 @@
 
 import util, model
 import sys, re, calendar, time, logging
-from pyrocko import gse_ext
+from pyrocko import gse_ext, trace
+import numpy as num
 
 unpack_fixed = util.unpack_fixed
 
@@ -148,11 +149,14 @@ class Waveform:
         from pyrocko import gse_ext
         print wid2.samps
         print dat2.rawdata
-        print gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )
+        self.data = num.cumsum(num.cumsum(gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )))
         
     def __str__(self):
-        return ' '.join([self.station, self.channel, self.auxid, self.sub_format, util.gmctime(self.tmin)])
+        return ' '.join([self.wid2.station, self.wid2.channel, self.wid2.auxid, self.wid2.sub_format, util.gmctime(self.wid2.tmin)])
 
+    def trace(self):
+        return trace.Trace(station=self.wid2.station, location=self.wid2.auxid, channel=self.wid2.channel,
+            tmin=self.wid2.tmin, ydata=self.data)
 
 class ErrorLog:
     def __init__(self, message):
