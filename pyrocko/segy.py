@@ -54,7 +54,6 @@ class SEGYFile:
         # XXX should skip volume label
         
         filedata = f.read()
-        print len(filedata)
         f.close()
         
         i = 0
