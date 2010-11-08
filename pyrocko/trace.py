@@ -517,6 +517,9 @@ class AnalogFilterResponse(FrequencyResponse):
 class NoData(Exception):
     pass
 
+class AboveNyquist(Exception):
+    pass
+
 class Trace(object):
     
     cached_frequencies = {}
@@ -566,6 +569,10 @@ class Trace(object):
                 s += '  %s: %s\n' % (k,self.meta[k])
         return s
         
+    def name(self):
+        s = '%s.%s.%s.%s, %s, %s' % (self.nslc_id + (util.gmctime(self.tmin), util.gmctime(self.tmax)))
+        return s
+        
     def __eq__(self, other):
         return (self.network == other.network and
                 self.station == other.station and
@@ -600,8 +607,7 @@ class Trace(object):
         xmin, xmax = other_xdata[0], other_xdata[-1]
         self.ydata += num.interp(xdata, other_xdata, other.ydata, other.ydata[0], right=other.ydata[-1])
         self.ydata = num.where(num.logical_or( xdata < xmin, xmax < xdata ), num.nan, self.ydata)
-
-        
+            
     def set_codes(self, network=None, station=None, location=None, channel=None):
         if network is not None:
             self.network = network
@@ -649,7 +655,26 @@ class Trace(object):
         tracecopy.meta = copy.deepcopy(self.meta)
         return tracecopy
     
+    def crop_zeros(self):
+        '''Remove zeros at beginning and end.'''
+        
+        indices = num.where(self.ydata != 0.0)[0]
+        if indices.size == 0:
+            raise NoData()
+        
+        ibeg = indices[0]
+        iend = indices[-1]+1
+        if ibeg == 0 and iend == self.ydata.size-1:
+            return # nothing to do
+        
+        self.ydata = self.ydata[ibeg:iend].copy()
+        self.tmin = self.tmin+ibeg*self.deltat
+        self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
+        self.update_ids()
+    
     def append(self, data):
+        '''Append data to the end of the trace.'''
+        
         assert self.ydata.dtype == data.dtype
         newlen = data.size + self.ydata.size
         if not hasattr(self, 'growbuffer') or self.growbuffer.size < newlen:
@@ -721,20 +746,32 @@ class Trace(object):
              if ndecimate != 1:
                 self.downsample(ndecimate, snap=snap)
             
+    def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
+        if frequency >= 0.5/self.deltat:
+            message = '%s (%g Hz) is equal to or higher than nyquist frequency (%g Hz). (Trace %s)' \
+                    % (intro, frequency, 0.5/self.deltat, self.name())
+            if warn:
+                logger.warn(message)
+            if raise_exception:
+                raise AboveNyquist(message)
             
     def lowpass(self, order, corner):
+        self.nyquist_check(corner, 'Corner frequency of lowpass')
         (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def highpass(self, order, corner):
+        self.nyquist_check(corner, 'Corner frequency of highpass')
         (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.ydata = signal.lfilter(b,a, data)
         
     def bandpass(self, order, corner_hp, corner_lp):
+        self.nyquist_check(corner, 'Lower corner frequency of bandpass')
+        self.nyquist_check(corner, 'Higher corner frequency of bandpass')
         (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)

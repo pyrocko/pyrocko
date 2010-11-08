@@ -576,6 +576,24 @@ class Marker:
     
         return Marker(nslc_ids, tmin, tmax, kind=kind)
     
+    @staticmethod
+    def load_markers(fn):
+        markers = []
+        f = open(fn, 'r')
+        for iline, line in enumerate(f):
+            sline = line.strip()
+            if not sline or sline.startswith('#'):
+                continue
+            try:
+                m = Marker.from_string(sline)
+                markers.append(m)
+                
+            except MarkerParseError:
+                logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
+                
+        f.close()
+        return markers
+            
     def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
         c = pyrocko.plot.color
@@ -703,6 +721,14 @@ class EventMarker(Marker):
     def __init__(self, time, magnitude):
         Marker.__init__(self, '', time, time)
         
+
+class Param:
+    def __init__(self, name, ident, minimum, maximum, default):
+        self.name = name
+        self.ident = ident
+        self.minimum = minimum
+        self.maximum = maximum
+        self.default = default
 
 class SnufflingModule:
     
@@ -955,7 +981,8 @@ def MakePileOverviewClass(base):
             
             user_home_dir = os.environ['HOME']
 
-            self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ] 
+            self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
+            self.snuffling_data = []
             self.setup_snufflings()
         
         def toggletest(self, checked):
@@ -987,6 +1014,7 @@ def MakePileOverviewClass(base):
             return snufflings
             
         def setup_snufflings(self):
+            self.flush_snuffling_data()
             self.snuffling_hooks = []
             self.snufflings_menu.clear()
             for snuffling in self.get_snufflings():
@@ -994,14 +1022,62 @@ def MakePileOverviewClass(base):
                 self.snufflings_menu.addAction(item)
                 def hook():
                     self.call_snuffling(snuffling)
-                    
+                
+                self.setup_snuffling_panel(snuffling)
+                
                 self.snuffling_hooks.append(hook)
                 self.connect( item, SIGNAL("triggered(bool)"), hook )
+                
+            self.update()
         
-                 
+        def setup_snuffling_panel(self, snuffling):
+            
+            if hasattr(snuffling, 'get_parameters'):
+                
+                win = QMainWindow(self)
+                frame = QFrame(win)
+                layout = QGridLayout()
+                frame.setLayout( layout )
+                layout.setRowStretch(0,1)
+                win.setCentralWidget(frame)
+                
+                for iparam, param in enumerate(snuffling.get_parameters()):
+                    param_widget = ValControl()
+                    param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
+                    #self.connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
+                    layout.addWidget( param_widget, iparam,0 )
+                    
+                    
+                win.show()
+        
         def call_snuffling(self, snuffling):
             snuffling.call(self)
         
+        def add_traces(self, traces):
+            if traces:
+                mtf = pyrocko.pile.MemTracesFile(None, traces)
+                self.pile.add_file(mtf)
+                ticket = (self.pile, mtf)
+                self.snuffling_data.append(ticket)
+                return ticket
+            else:
+                return (None,None)
+            
+        def release_data(self, tickets):
+            for ticket in tickets:
+                pile, mtf = ticket
+                if pile is not None:
+                    self.snuffling_data.remove(ticket)
+                    pile.remove_file(mtf)
+            
+        def flush_snuffling_data(self):
+            for ticket in self.snuffling_data:
+                pile, mtf = ticket
+                if pile is not None:
+                    pile.remove_file(mtf)
+                
+            self.snuffling_data = []
+            
         def periodical(self):
             if self.menuitem_watch.isChecked():
                 if self.pile.reload_modified():
@@ -1085,27 +1161,17 @@ def MakePileOverviewClass(base):
     
         def write_picks(self):
             fn = QFileDialog.getSaveFileName(self,)
-            f = open(fn,'w')
-            for marker in self.markers:
-                f.write("%s\n" % marker)
-            f.close()
+            if fn:
+                f = open(fn,'w')
+                for marker in self.markers:
+                    f.write("%s\n" % marker)
+                f.close()
                 
             
         def read_picks(self):
             fn = QFileDialog.getOpenFileName(self,)
-            f = open(fn, 'r')
-            for iline, line in enumerate(f):
-                sline = line.strip()
-                if not sline or sline.startswith('#'):
-                    continue
-                try:
-                    m = Marker.from_string(sline)
-                    self.markers.append(m)
-                    
-                except MarkerParseError:
-                    logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
-                    
-            f.close()
+            if fn:
+                self.markers.extend(Marker.load_markers(fn))
             
         def add_marker(self, marker):
             self.markers.append(marker)

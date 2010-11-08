@@ -30,6 +30,8 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
             format = 'sac'
         if extension.lower() == '.kan':
             format = 'kan'
+        if extension.lower() in ('.sgy', '.segy'):
+            format = 'segy'
     
     trs = []
     
