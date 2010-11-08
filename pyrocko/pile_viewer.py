@@ -722,6 +722,14 @@ class EventMarker(Marker):
         Marker.__init__(self, '', time, time)
         
 
+class Param:
+    def __init__(self, name, ident, minimum, maximum, default):
+        self.name = name
+        self.ident = ident
+        self.minimum = minimum
+        self.maximum = maximum
+        self.default = default
+
 class SnufflingModule:
     
     mtimes = {}
@@ -1014,12 +1022,34 @@ def MakePileOverviewClass(base):
                 self.snufflings_menu.addAction(item)
                 def hook():
                     self.call_snuffling(snuffling)
-                    
+                
+                self.setup_snuffling_panel(snuffling)
+                
                 self.snuffling_hooks.append(hook)
                 self.connect( item, SIGNAL("triggered(bool)"), hook )
                 
             self.update()
-                 
+        
+        def setup_snuffling_panel(self, snuffling):
+            
+            if hasattr(snuffling, 'get_parameters'):
+                
+                win = QMainWindow(self)
+                frame = QFrame(win)
+                layout = QGridLayout()
+                frame.setLayout( layout )
+                layout.setRowStretch(0,1)
+                win.setCentralWidget(frame)
+                
+                for iparam, param in enumerate(snuffling.get_parameters()):
+                    param_widget = ValControl()
+                    param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
+                    #self.connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
+                    layout.addWidget( param_widget, iparam,0 )
+                    
+                    
+                win.show()
+        
         def call_snuffling(self, snuffling):
             snuffling.call(self)
         
