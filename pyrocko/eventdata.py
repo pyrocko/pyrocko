@@ -163,7 +163,8 @@ class EventDataAccess:
                                   crop=True,
                                   out_stations=None,
                                   redundant_channel_priorities=None,
-                                  restitution_off_hack=False):
+                                  restitution_off_hack=False,
+                                  progress='Processing traces'):
         
         stations = self.get_stations(relative_event=relative_event)
         if out_stations is not None:
@@ -175,7 +176,7 @@ class EventDataAccess:
                 gather=lambda tr: (tr.network, tr.station, tr.location),
                 group_selector=group_selector,
                 trace_selector=trace_selector,
-                progress='Processing traces'):
+                progress=progress):
             
             xxtraces = []
             nslcs = set()
