@@ -1,9 +1,6 @@
 import time, logging, os, sys, re, calendar
 from scipy import signal
-
-
 from os.path import join as pjoin
-
 import config
 
 logger = logging.getLogger('pyrocko.util')
