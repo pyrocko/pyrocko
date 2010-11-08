@@ -576,6 +576,24 @@ class Marker:
     
         return Marker(nslc_ids, tmin, tmax, kind=kind)
     
+    @staticmethod
+    def load_markers(fn):
+        markers = []
+        f = open(fn, 'r')
+        for iline, line in enumerate(f):
+            sline = line.strip()
+            if not sline or sline.startswith('#'):
+                continue
+            try:
+                m = Marker.from_string(sline)
+                markers.append(m)
+                
+            except MarkerParseError:
+                logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
+                
+        f.close()
+        return markers
+            
     def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
         c = pyrocko.plot.color
@@ -1123,19 +1141,7 @@ def MakePileOverviewClass(base):
         def read_picks(self):
             fn = QFileDialog.getOpenFileName(self,)
             if fn:
-                f = open(fn, 'r')
-                for iline, line in enumerate(f):
-                    sline = line.strip()
-                    if not sline or sline.startswith('#'):
-                        continue
-                    try:
-                        m = Marker.from_string(sline)
-                        self.markers.append(m)
-                        
-                    except MarkerParseError:
-                        logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
-                        
-                f.close()
+                self.markers.extend(Marker.load_markers(fn))
             
         def add_marker(self, marker):
             self.markers.append(marker)
