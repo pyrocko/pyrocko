@@ -23,7 +23,7 @@ class SEGYFile:
             self.clear()
             
     def __str__(self):
-        print 
+        pass
             
     def clear(self):
         '''Empty file record.'''
@@ -34,15 +34,14 @@ class SEGYFile:
         self.b = 0.0
         self.data = [ num.arange(0, dtype=num.int32) ]
         
-    def read(self, filename, get_data=True):
+    def read(self, filename, get_data=True, endianness='>'):
         '''Read SAC file.
         
            filename -- Name of SEGY file.
            get_data -- If True, the data is read, otherwise only read headers.
         '''
         
-        order = '<'
-        
+        order = endianness
         
         nbth = SEGYFile.nbytes_textual_header
         nbbh = SEGYFile.nbytes_binary_header
@@ -58,18 +57,13 @@ class SEGYFile:
         print len(filedata)
         f.close()
         
-        if False:
+        i = 0
+        if True:
             hvals = struct.unpack(order+'24H', filedata[i+3212:i+3212+24*2])
             (ntraces, nauxtraces, deltat_us, deltat_us_orig, nsamples, 
                 nsamples_orig, format) = hvals[0:7]
             
-            print (ntraces, nauxtraces, deltat_us, deltat_us_orig, nsamples, 
-                    nsamples_orig, format)
-        
-        
-            (segy_revision, fixed_length_traces, nextended_headers) = struct.unpack(order+'3H', filedata[3500:3500+3*2])
-            print (segy_revision, fixed_length_traces, nextended_headers)
-        
+            (segy_revision, fixed_length_traces, nextended_headers) = struct.unpack(order+'3H', filedata[3500:3500+3*2])        
         
             formats = { 1: (None,  4, "4-byte IBM floating-point"),
                     2: (order+'i4', 4, "4-byte, two's complement integer"),
@@ -102,18 +96,12 @@ class SEGYFile:
             if len(trace_header) != nbtrh:
                 raise SEGYError('SEG-Y file incomplete (file=%s)' % filename)
             
-            print struct.unpack( order+'120H', trace_header )
-            
             (scoordx,scoordy,gcoordx,gcoordy) = struct.unpack(order+'4f4', trace_header[72:72+4*4])
             (ensemblex,ensembley) = struct.unpack(order+'2f4', trace_header[180:180+2*4])
 
             (trace_number,) = struct.unpack(order+'1I', trace_header[0:4])
             (nsamples_this, deltat_us_this) = struct.unpack(order+'2H', trace_header[114:114+2*2])
             (year,doy,hour,minute,second) = struct.unpack(order+'5H', trace_header[156:156+2*5])
-            print (nsamples_this, deltat_us_this)
-            print (year,doy,hour,minute,second)
-            print 'XXX', (scoordx,scoordy,gcoordx,gcoordy)
-            print 'yyy', (ensemblex,ensembley)
             
             try:
                 tmin = calendar.timegm((year,1,doy,hour,minute,second))
