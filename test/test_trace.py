@@ -177,7 +177,30 @@ class TraceTestCase(unittest.TestCase):
         d2 = time.time() - b
         print d1, d2, d2/d1
         
+    def testCropping(self):
+        n = 20
+        tmin = 1234567890.
+        t = trace.Trace(tmin=tmin, deltat=0.05, ydata=num.ones(n,dtype=num.float))
+        tmax = t.tmax
+        t.ydata[:3] = 0.0
+        t.ydata[-3:] = 0.0
+        t.crop_zeros()
+        assert abs(t.tmin - (tmin + 0.05*3)) < 0.05*0.01
+        assert abs(t.tmax - (tmax - 0.05*3)) < 0.05*0.01
+        t = trace.Trace(tmin=tmin, deltat=0.05, ydata=num.zeros(n,dtype=num.float))
+        ok = False
+        try:
+            t.crop_zeros()
+        except trace.NoData:
+            ok = True
         
+        assert ok
+        
+        t = trace.Trace(tmin=tmin, deltat=0.05, ydata=num.ones(n,dtype=num.float))
+        t.crop_zeros()
+        assert t.ydata.size == 20
+        
+
         
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
