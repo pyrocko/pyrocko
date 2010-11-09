@@ -93,6 +93,11 @@ class MySnuffler(QApplication):
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffler" )        
         self.win.setCentralWidget( self.pile_viewer )
+        
+        self.add_panel(self.pile_viewer.controls())
+        
+        self.pile_viewer.set_panel_adder(self.add_panel)
+        
         self.win.show()
 
         sb = self.win.statusBar()
@@ -101,6 +106,12 @@ class MySnuffler(QApplication):
 
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
+
+    def add_panel(self, name, panel):
+        dockwidget = QDockWidget(name)
+        dockwidget.setWidget(panel)
+        self.win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
+
 
     def myquit(self, *args):
         self.quit()

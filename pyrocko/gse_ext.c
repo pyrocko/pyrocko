@@ -43,10 +43,11 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
     ibyte = 0;
     while (*pos != '\0') {
         v = translate[*pos & 0x7F];
+        printf('v %i\n', v);
         if (v != -1) {
             if (ibyte == 0) sign = (v & isign) ? -1 : 1;
-            sample += sign*v;
-            printf("%i\n", v & imore);
+            sample += v;
+            printf("%i\n", sign);
             if ( (v & imore) == 0) {
                 if (isample >= sizehint) {
                     out_data = (int*)realloc(out_data, sizeof(int) * isample * 2);
@@ -57,7 +58,7 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
                     }
                 }
                 printf("-- %i\n", sample);
-                out_data[isample++] = sample;
+                out_data[isample++] = sign * sample;
                 sample = 0;
                 ibyte = 0;
             } else {

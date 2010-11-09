@@ -156,7 +156,7 @@ class Waveform:
 
     def trace(self):
         return trace.Trace(station=self.wid2.station, location=self.wid2.auxid, channel=self.wid2.channel,
-            tmin=self.wid2.tmin, ydata=self.data)
+            tmin=self.wid2.tmin, deltat=1.0/self.wid2.samprate, ydata=self.data)
 
 class ErrorLog:
     def __init__(self, message):
