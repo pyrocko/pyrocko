@@ -4,7 +4,7 @@ from distutils.core import setup, Extension
 packname = 'pyrocko'
 
 setup( name = packname,
-    version = '0.1',
+    version = '0.2',
     description = 'Seismological Processing Unit',
     packages = [ packname ],
     ext_modules = [ 
