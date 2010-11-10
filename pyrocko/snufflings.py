@@ -1,17 +1,19 @@
-import os, sys
+import os, sys, logging
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 from gui_util import ValControl
 
+logger = logging.getLogger('pyrocko.snufflings')
+
 class Param:
-    def __init__(self, name, ident, minimum, maximum, default):
+    def __init__(self, name, ident, default, minimum, maximum):
         self.name = name
         self.ident = ident
+        self.default = default
         self.minimum = minimum
         self.maximum = maximum
-        self.default = default
 
 class SnufflingModule:
     
@@ -46,7 +48,22 @@ class Snuffling:
     def __init__(self):
         self._viewer = None
         self._tickets = []
+        for param in self.get_parameters():
+            self.set_parameter(param.ident, param.default)
         
+        self._delete_panel = None
+    
+    
+    def init_gui(self, panel_parent, panel_hook):
+        panel = self.make_panel(panel_parent)
+        if panel:
+            self._delete_panel = panel_hook(self.get_name(), panel)
+        
+    def delete_gui(self):
+        self.cleanup()
+        if self._delete_panel is not None:
+            self._delete_panel()
+    
     def set_viewer(self, viewer):
         self._viewer = viewer
         
@@ -55,7 +72,14 @@ class Snuffling:
             raise NoViewerSet()
         return self._viewer
         
-    def panel(self, parent):
+        
+    def get_parameters(self):
+        return []
+    
+    def set_parameter(self, ident, value):
+        setattr(self, ident, value)
+        
+    def make_panel(self, parent):
     
         params = self.get_parameters()
         
@@ -63,12 +87,12 @@ class Snuffling:
             frame = QFrame(parent)
             layout = QGridLayout()
             frame.setLayout( layout )
-            layout.setRowStretch(0,1)
+            #layout.setRowStretch(0,1)
                         
-            for iparam, param in enumerate(self.get_parameters()):
+            for iparam, param in enumerate(params):
                 param_widget = ValControl()
                 param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
-                #self.connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
+                self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
                 layout.addWidget( param_widget, iparam,0 )
         
             return frame
@@ -76,6 +100,12 @@ class Snuffling:
         else:
             return None
     
+    def modified_snuffling_panel(self, value, iparam):
+        param = self.get_parameters()[iparam]
+        self.set_parameter(param.ident, value)
+        self.call()
+        self.get_viewer().update()
+        
     def add_traces(self, traces):
         ticket = self.get_viewer().add_traces(traces)
         self._tickets.append( ticket )

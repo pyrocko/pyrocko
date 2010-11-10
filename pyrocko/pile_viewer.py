@@ -36,7 +36,6 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
-#QWidget = QGLWidget
 
 logger = logging.getLogger('pyrocko.pile_viewer')
 
@@ -728,11 +727,12 @@ class EventMarker(Marker):
 def MakePileOverviewClass(base):
     
     class PileOverview(base):
-        def __init__(self, pile, ntracks_shown_max, *args):
+        def __init__(self, pile, ntracks_shown_max, add_panel_hook, *args):
             apply(base.__init__, (self,) + args)
             
             self.pile = pile
             self.ax_height = 80
+            self.add_panel_hook = add_panel_hook
             
             self.click_tolerance = 5
             
@@ -949,7 +949,7 @@ def MakePileOverviewClass(base):
             self.setMouseTracking(True)
             
             user_home_dir = os.environ['HOME']
-
+            self.snufflings = []
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
             self.snuffling_data = []
             self.setup_snufflings()
@@ -972,18 +972,21 @@ def MakePileOverviewClass(base):
             
         
         def get_snufflings(self):
-            snufflings = []
+            self.snufflings = []
             for path in self.snuffling_paths:
                 if os.path.isdir(path):
                     for fn in os.listdir(path):
                         if fn.endswith('.py'):
                             mod = pyrocko.snufflings.SnufflingModule(path, fn[:-3])
-                            snufflings.extend(mod.snufflings())
+                            self.snufflings.extend(mod.snufflings())
                             
-            return snufflings
+            return self.snufflings
             
         def setup_snufflings(self):
             self.flush_snuffling_data()
+            for snuffling in self.snufflings:
+                snuffling.delete_gui()
+                
             self.snuffling_hooks = []
             self.snufflings_menu.clear()
             for snuffling in self.get_snufflings():
@@ -993,14 +996,13 @@ def MakePileOverviewClass(base):
                 def hook():
                     self.call_snuffling(snuffling)
                 
-                panel = snuffling.panel(self)
-                self.window().addDockWidget(Qt.BottomDockWidgetArea, panel)
+                snuffling.init_gui(self, self.add_panel_hook)
                 
                 self.snuffling_hooks.append(hook)
                 self.connect( item, SIGNAL("triggered(bool)"), hook )
                 
             self.update()            
-                    
+        
         def call_snuffling(self, snuffling):
             snuffling.call(self)
         
@@ -1018,8 +1020,9 @@ def MakePileOverviewClass(base):
             for ticket in tickets:
                 pile, mtf = ticket
                 if pile is not None:
-                    self.snuffling_data.remove(ticket)
-                    pile.remove_file(mtf)
+                    if ticket in self.snuffling_data:
+                        self.snuffling_data.remove(ticket)
+                        pile.remove_file(mtf)
             
         def flush_snuffling_data(self):
             for ticket in self.snuffling_data:
@@ -1913,13 +1916,13 @@ GLPileOverview = MakePileOverviewClass(QGLWidget)
 class PileViewer(QFrame):
     '''PileOverview + Controls'''
     
-    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, *args):
+    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, add_panel_hook=None, *args):
         apply(QFrame.__init__, (self,) + args)
         
         if use_opengl:
-            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max)
+            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
         else:
-            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max)
+            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
         
         layout = QGridLayout()
         self.setLayout( layout )
@@ -1981,7 +1984,6 @@ class SnufflerOnDemand(QApplication, Forked):
         
     def add_traces(self, traces, viewer_id='default'):
         viewer = self.get_viewer(viewer_id)
-        print 'xxx'
         pile = viewer.get_pile()
         memfile = pyrocko.pile.MemTracesFile(None, traces)
         pile.add_file(memfile)

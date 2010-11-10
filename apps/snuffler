@@ -56,6 +56,8 @@ class MySnuffler(QApplication):
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
         
+        self._previous_dock_widget = None
+        
         parser = OptionParser()
         parser.add_option('--pattern', dest='pattern')
         parser.add_option('--ntracks', dest='ntracks', default=24)
@@ -86,18 +88,17 @@ class MySnuffler(QApplication):
                         
         if options.server:
             self.pile_server = ServerThread(pile)
-
-        self.pile_viewer = pyrocko.pile_viewer.PileViewer(
-            pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl)
-                
+        
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffler" )        
+
+        self.pile_viewer = pyrocko.pile_viewer.PileViewer(
+            pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl, add_panel_hook=self.add_panel)
+        
         self.win.setCentralWidget( self.pile_viewer )
         
-        self.add_panel(self.pile_viewer.controls())
-        
-        self.pile_viewer.set_panel_adder(self.add_panel)
-        
+        self.add_panel('Main Controls', self.pile_viewer.controls())
+                
         self.win.show()
 
         sb = self.win.statusBar()
@@ -106,13 +107,21 @@ class MySnuffler(QApplication):
 
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
-
+        
     def add_panel(self, name, panel):
         dockwidget = QDockWidget(name)
         dockwidget.setWidget(panel)
         self.win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
-
-
+      #  if self._previous_dock_widget is not None:
+      #      self.win.tabifyDockWidget(self._previous_dock_widget,dockwidget)
+        
+        self._previous_dock_widget = dockwidget
+        
+        def delete_panel():
+            self.win.removeDockWidget(dockwidget)
+        
+        return delete_panel
+        
     def myquit(self, *args):
         self.quit()
     

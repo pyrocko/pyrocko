@@ -1,4 +1,6 @@
 import math
+import numpy as num
+
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *

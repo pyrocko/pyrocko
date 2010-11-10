@@ -699,6 +699,7 @@ class Trace(object):
         obj.tmin = obj.tmin+ibeg*obj.deltat
         obj.tmax = obj.tmin+(len(obj.ydata)-1)*obj.deltat
         obj.update_ids()
+        
         return obj
     
     def downsample(self, ndecimate, snap=False):

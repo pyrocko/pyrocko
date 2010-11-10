@@ -194,7 +194,7 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
                 
         except (io.FileLoadError, OSError, FilenameAttributeError), xerror:
             failures.append(abspath)
-            logging.warn(xerror)
+            logger.warn(xerror)
         else:
             yield tfile
         
@@ -202,7 +202,7 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
     
     if pbar: pbar.finish()
     if failures:
-        logging.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
+        logger.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
     
     if cache:
         cache.dump_modified()
@@ -748,10 +748,15 @@ class Pile(TracesGroup):
             wlen = (wmax+tpad)-(wmin-tpad)
             chopped_weeded = []
             for tr in chopped:
-                if abs(wlen - round(wlen/tr.deltat)*tr.deltat) > 0.001:
-                    logging.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, tr.deltat) )
-                if len(tr.ydata) == trace.t2ind((wmax+tpad)-(wmin-tpad), tr.deltat):
+                
+                #if len(tr.ydata) == trace.t2ind((wmax+tpad)-(wmin-tpad), tr.deltat):
+                #    chopped_weeded.append(tr)
+                
+                if abs(tr.tmin - (wmin-tpad)) <= 0.5*tr.deltat and abs(tr.tmax + tr.deltat - (wmax+tpad)) <= 0.5*tr.deltat :
                     chopped_weeded.append(tr)
+                else:
+                    logger.warn('incomplete  %g  %g  ' % ( tr.tmin - tr.deltat - ( wmin-tpad ) , tr.tmax + tr.deltat - ( wmax+tpad)) )
+               
             chopped = chopped_weeded
         return chopped
             
