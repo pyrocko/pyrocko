@@ -19,27 +19,44 @@ class SnufflingModule:
     
     mtimes = {}
     
-    def __init__(self, path, name):
-        self.path = path
-        self.name = name
-        self.module = None
+    def __init__(self, path, name, handler):
+        self._path = path
+        self._name = name
+        self._mtime = None
+        self._module = None
+        self._snufflings = []
+        self._handler = handler
         
-    def load(self):
-        filename = os.path.join(self.path, self.name+'.py')
+    def load_if_needed(self):
+        filename = os.path.join(self._path, self._name+'.py')
         mtime = os.stat(filename)[8]
-        sys.path[0:0] = [ self.path ]
-        self.module = __import__(self.name)
-        if filename in SnufflingModule.mtimes:
-            if SnufflingModule.mtimes[filename] != mtime:
-                logger.warn('reloading snuffling module %s' % self.name)
-                reload(self.module)
-        SnufflingModule.mtimes[filename] = mtime
+        sys.path[0:0] = [ self._path ]
+        if self._module == None:
+            self._module = __import__(self._name)
+            for snuffling in self._module.__snufflings__():
+                self.add_snuffling(snuffling)
+            
+        elif self._mtime != mtime:
+            logger.warn('reloading snuffling module %s' % self._name)
+            self.remove_snufflings()
+            reload(self._module)
+            for snuffling in self._module.__snufflings__():
+                self.add_snuffling(snuffling)
+            
+        self._mtime = mtime
         sys.path[0:1] = []
     
-    def snufflings(self):
-        self.load()
-        return self.module.__snufflings__()
-
+    def add_snuffling(self, snuffling):
+        self._snufflings.append(snuffling)
+        self._handler.add_snuffling(snuffling)
+    
+    def remove_snufflings(self):
+        for snuffling in self._snufflings:
+            self._handler.remove_snuffling(snuffling)
+            
+        self._snufflings = []
+    
+    
 class NoViewerSet(Exception):
     pass
 
@@ -52,18 +69,24 @@ class Snuffling:
             self.set_parameter(param.ident, param.default)
         
         self._delete_panel = None
+        self._delete_menuitem = None
     
-    
-    def init_gui(self, panel_parent, panel_hook):
+    def init_gui(self, panel_parent, panel_hook, menu_parent, menu_hook):
         panel = self.make_panel(panel_parent)
         if panel:
             self._delete_panel = panel_hook(self.get_name(), panel)
+        
+        menuitem = self.make_menuitem(menu_parent)
+        if menuitem:
+            self._delete_menuitem = menu_hook(menuitem)
         
     def delete_gui(self):
         self.cleanup()
         if self._delete_panel is not None:
             self._delete_panel()
-    
+        if self._delete_menuitem is not None:
+            self._delete_menuitem()
+            
     def set_viewer(self, viewer):
         self._viewer = viewer
         
@@ -71,8 +94,10 @@ class Snuffling:
         if self._viewer is None:
             raise NoViewerSet()
         return self._viewer
-        
-        
+    
+    def get_pile(self):
+        return self.get_viewer().get_pile()
+    
     def get_parameters(self):
         return []
     
@@ -93,16 +118,25 @@ class Snuffling:
                 param_widget = ValControl()
                 param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                 self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
-                layout.addWidget( param_widget, iparam,0 )
+                layout.addWidget( param_widget, iparam, 0 )
         
             return frame
             
         else:
             return None
     
+    def make_menuitem(self, parent):
+        item = QAction(self.get_name(), parent)
+        self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
+        return item
+    
     def modified_snuffling_panel(self, value, iparam):
         param = self.get_parameters()[iparam]
         self.set_parameter(param.ident, value)
+        self.call()
+        self.get_viewer().update()
+        
+    def menuitem_triggered(self, arg):
         self.call()
         self.get_viewer().update()
         

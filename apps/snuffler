@@ -49,8 +49,15 @@ class ServerThread(QThread):
     
     def run(self):
         self.server.run()
-         
+      
+class MyDockWidget(QDockWidget):
+    def __init__(self, *args):
+        QDockWidget.__init__(self, *args)
+        self.connect(self, SIGNAL("visibilityChanged(bool)"), self.vc)
     
+    def vc (self, visible):
+        print 'XXX', visible
+              
 class MySnuffler(QApplication):
     
     def __init__(self, *args):
@@ -109,11 +116,11 @@ class MySnuffler(QApplication):
         signal.signal(signal.SIGINT, self.myquit)
         
     def add_panel(self, name, panel):
-        dockwidget = QDockWidget(name)
+        dockwidget = MyDockWidget(name)
         dockwidget.setWidget(panel)
         self.win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
-      #  if self._previous_dock_widget is not None:
-      #      self.win.tabifyDockWidget(self._previous_dock_widget,dockwidget)
+        if self._previous_dock_widget is not None:
+            self.win.tabifyDockWidget(self._previous_dock_widget,dockwidget)
         
         self._previous_dock_widget = dockwidget
         

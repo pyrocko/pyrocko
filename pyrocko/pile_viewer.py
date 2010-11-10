@@ -949,9 +949,8 @@ def MakePileOverviewClass(base):
             self.setMouseTracking(True)
             
             user_home_dir = os.environ['HOME']
-            self.snufflings = []
+            self.snuffling_modules = {}
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
-            self.snuffling_data = []
             self.setup_snufflings()
         
         def toggletest(self, checked):
@@ -970,48 +969,47 @@ def MakePileOverviewClass(base):
         def remove_shadow_piles(self):
             self.pile = self.pile.get_basepile()
             
-        
-        def get_snufflings(self):
-            self.snufflings = []
+        def iter_snuffling_modules(self):
             for path in self.snuffling_paths:
-                if os.path.isdir(path):
-                    for fn in os.listdir(path):
-                        if fn.endswith('.py'):
-                            mod = pyrocko.snufflings.SnufflingModule(path, fn[:-3])
-                            self.snufflings.extend(mod.snufflings())
-                            
-            return self.snufflings
-            
+                if not os.path.isdir(path): 
+                    continue
+                
+                for fn in os.listdir(path):
+                    if not fn.endswith('.py'):
+                        continue
+                    
+                    name = fn[:-3]
+                    if (path, name) not in self.snuffling_modules:
+                        self.snuffling_modules[path, name] = \
+                            pyrocko.snufflings.SnufflingModule(path, name, self)
+                    
+                    yield self.snuffling_modules[path, name]
+                    
         def setup_snufflings(self):
-            self.flush_snuffling_data()
-            for snuffling in self.snufflings:
-                snuffling.delete_gui()
+            for mod in self.iter_snuffling_modules():
+                mod.load_if_needed()
                 
-            self.snuffling_hooks = []
-            self.snufflings_menu.clear()
-            for snuffling in self.get_snufflings():
-                snuffling.set_viewer(self)
-                item = QAction(snuffling.get_name(), self.menu)
-                self.snufflings_menu.addAction(item)
-                def hook():
-                    self.call_snuffling(snuffling)
-                
-                snuffling.init_gui(self, self.add_panel_hook)
-                
-                self.snuffling_hooks.append(hook)
-                self.connect( item, SIGNAL("triggered(bool)"), hook )
-                
-            self.update()            
+        def add_snuffling(self, snuffling):
+            snuffling.set_viewer(self)
+            snuffling.init_gui(self, self.add_panel_hook, self.snufflings_menu, self.add_snuffling_menuitem)
+            self.update()
+            
+        def remove_snuffling(self, snuffling):
+            snuffling.delete_gui()
+            self.update()
+            
+        def add_snuffling_menuitem(self, item):
+            self.snufflings_menu.addAction(item)
+            def delete_item():
+                self.snufflings_menu.removeAction(item)
+            return delete_item
         
-        def call_snuffling(self, snuffling):
-            snuffling.call(self)
         
         def add_traces(self, traces):
             if traces:
                 mtf = pyrocko.pile.MemTracesFile(None, traces)
                 self.pile.add_file(mtf)
                 ticket = (self.pile, mtf)
-                self.snuffling_data.append(ticket)
                 return ticket
             else:
                 return (None,None)
@@ -1020,18 +1018,8 @@ def MakePileOverviewClass(base):
             for ticket in tickets:
                 pile, mtf = ticket
                 if pile is not None:
-                    if ticket in self.snuffling_data:
-                        self.snuffling_data.remove(ticket)
-                        pile.remove_file(mtf)
-            
-        def flush_snuffling_data(self):
-            for ticket in self.snuffling_data:
-                pile, mtf = ticket
-                if pile is not None:
-                    pile.remove_file(mtf)
-                
-            self.snuffling_data = []
-            
+                     pile.remove_file(mtf)
+                   
         def periodical(self):
             if self.menuitem_watch.isChecked():
                 if self.pile.reload_modified():
