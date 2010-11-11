@@ -22,6 +22,7 @@ from itertools import izip
 import scipy.stats
 import tempfile
 import logging
+import traceback
 from optparse import OptionParser
 
 import pyrocko.pile
@@ -37,6 +38,9 @@ from PyQt4.QtSvg import *
 #QWidget = QGLWidget
 
 logger = logging.getLogger('pyrocko.pile_viewer')
+
+def str_traceback():
+    return '%s' % (traceback.format_exc(sys.exc_info()[2]))
 
 class Global:
     sacflag = False
@@ -730,6 +734,9 @@ class Param:
         self.maximum = maximum
         self.default = default
 
+class BrokenSnufflingModule(Exception):
+    pass
+
 class SnufflingModule:
     
     mtimes = {}
@@ -743,11 +750,21 @@ class SnufflingModule:
         filename = os.path.join(self.path, self.name+'.py')
         mtime = os.stat(filename)[8]
         sys.path[0:0] = [ self.path ]
-        self.module = __import__(self.name)
+        try:
+            self.module = __import__(self.name)
+        except:
+            logger.error(str_traceback())
+            raise BrokenSnufflingModule(self.name)
+        
         if filename in SnufflingModule.mtimes:
             if SnufflingModule.mtimes[filename] != mtime:
                 logger.warn('reloading snuffling module %s' % self.name)
-                reload(self.module)
+                try:
+                    reload(self.module)
+                except:
+                    logger.error(str_traceback())
+                    raise BrokenSnufflingModule(self.name)
+                
         SnufflingModule.mtimes[filename] = mtime
         sys.path[0:1] = []
     
@@ -1008,9 +1025,11 @@ def MakePileOverviewClass(base):
                 if os.path.isdir(path):
                     for fn in os.listdir(path):
                         if fn.endswith('.py'):
-                            mod = SnufflingModule(path, fn[:-3])
-                            snufflings.extend(mod.snufflings())
-                            
+                            try:
+                                mod = SnufflingModule(path, fn[:-3])
+                                snufflings.extend(mod.snufflings())
+                            except BrokenSnufflingModule, e:
+                                logger.warn( 'Snuffling module "%s" is broken' % e )
             return snufflings
             
         def setup_snufflings(self):
