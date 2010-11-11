@@ -748,11 +748,12 @@ class Pile(TracesGroup):
             wlen = (wmax+tpad)-(wmin-tpad)
             chopped_weeded = []
             for tr in chopped:
-                if abs(wlen - round(wlen/tr.deltat)*tr.deltat) > 0.001:
-                    logging.warn('Selected window length (%g) not nicely divideable by sampling interval (%g).' % (wlen, tr.deltat) )
-                if len(tr.ydata) == trace.t2ind((wmax+tpad)-(wmin-tpad), tr.deltat):
+                if (abs(tr.tmin - (wmin-tpad)) <= 0.5*tr.deltat and 
+                    abs(tr.tmax + tr.deltat - (wmax+tpad)) <= 0.5*tr.deltat):
                     chopped_weeded.append(tr)
+
             chopped = chopped_weeded
+        
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
