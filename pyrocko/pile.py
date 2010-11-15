@@ -13,7 +13,6 @@ from trace import degapper
 A pile contains subpiles which contain tracesfiles which contain traces.
 '''
 
-
 progressbar = util.progressbar_module()
 
 class TracesFileCache(object):
@@ -748,14 +747,9 @@ class Pile(TracesGroup):
             wlen = (wmax+tpad)-(wmin-tpad)
             chopped_weeded = []
             for tr in chopped:
-                
-                #if len(tr.ydata) == trace.t2ind((wmax+tpad)-(wmin-tpad), tr.deltat):
-                #    chopped_weeded.append(tr)
-                
+                                
                 if abs(tr.tmin - (wmin-tpad)) <= 0.5*tr.deltat and abs(tr.tmax + tr.deltat - (wmax+tpad)) <= 0.5*tr.deltat :
                     chopped_weeded.append(tr)
-                else:
-                    logger.warn('incomplete  %g  %g  ' % ( tr.tmin - tr.deltat - ( wmin-tpad ) , tr.tmax + tr.deltat - ( wmax+tpad)) )
                
             chopped = chopped_weeded
         return chopped

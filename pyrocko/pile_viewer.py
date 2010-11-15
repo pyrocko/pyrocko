@@ -479,43 +479,6 @@ class Projection(object):
         xmin, xmax = self.xr
         return xmin + (u-umin)*((xmax-xmin)/(umax-umin))
 
-
-# XXX currently unused:
-class TraceOverview(object):
-    def __init__(self, mstrace, file_abspath, style):
-        self.mstrace = mstrace
-        self.file_abspath = file_abspath
-        self.style = style
-        
-    def drawit(self, p, time_projection, v_projection):
-        
-        if self.mstrace.overlaps(*time_projection.get_in_range()):
-
-            font = QFont()
-            font.setBold(True)
-            font.setPointSize(6)
-            p.setFont(font)
-            fm = p.fontMetrics()
-            dtmin = time_projection(self.mstrace.tmin)
-            dtmax = time_projection(self.mstrace.tmax)
-            
-            dvmin = v_projection(0.)
-            dvmax = v_projection(1.)
-            
-            rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
-            p.fillRect(rect, self.style.fill_brush)
-            p.setPen(self.style.frame_pen)
-            p.drawRect(rect)
-            
-            fn_label = QString(self.file_abspath)
-            label_rect = fm.boundingRect( fn_label )
-            
-            if label_rect.width() < 0.9*rect.width():
-                p.drawText( QPointF(rect.left()+5, rect.bottom()-5), fn_label )
-    
-    def get_mstrace(self):
-        return self.mstrace
-
 def add_radiobuttongroup(menu, menudef, obj, target):
     group = QActionGroup(menu)
     menuitems = []
@@ -990,8 +953,7 @@ def MakePileOverviewClass(base):
                 mod.load_if_needed()
                 
         def add_snuffling(self, snuffling):
-            snuffling.set_viewer(self)
-            snuffling.init_gui(self, self.add_panel_hook, self.snufflings_menu, self.add_snuffling_menuitem)
+            snuffling.init_gui(self, self, self.add_panel_hook, self.snufflings_menu, self.add_snuffling_menuitem)
             self.update()
             
         def remove_snuffling(self, snuffling):
@@ -1631,52 +1593,54 @@ def MakePileOverviewClass(base):
                                                 keep_current_files_open=True, trace_selector=trace_selector ):
                     for trace in traces:
                         
-                        if fft_filtering:
-                            if self.lowpass is not None or self.highpass is not None:
-                                high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
-                                
-                                if self.lowpass is not None:
-                                    low = self.lowpass
-                                if self.highpass is not None:
-                                    high = self.highpass
+                        if not (trace.meta and trace.meta['tabu']):
+                        
+                            if fft_filtering:
+                                if self.lowpass is not None or self.highpass is not None:
+                                    high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
                                     
-                                trace.bandpass_fft(high, low)
-                            
-                        else:
-                            if self.lowpass is not None:
-                                deltat_target = 1./self.lowpass * 0.2
-                                ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
-                                ndecimate2 = int(math.log(ndecimate,2))
+                                    if self.lowpass is not None:
+                                        low = self.lowpass
+                                    if self.highpass is not None:
+                                        high = self.highpass
+                                        
+                                    trace.bandpass_fft(high, low)
                                 
-                            else:
-                                ndecimate = 1
-                                ndecimate2 = 0
-                            
-                            if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
-                                for i in range(ndecimate2):
-                                    trace.downsample(2)
-                            
-                            
-                            if not lphp and (self.lowpass is not None and self.highpass is not None and
-                                self.lowpass < 0.5/trace.deltat and
-                                self.highpass < 0.5/trace.deltat and
-                                self.highpass < self.lowpass):
-                                trace.bandpass(2,self.highpass, self.lowpass)
                             else:
                                 if self.lowpass is not None:
-                                    if self.lowpass < 0.5/trace.deltat:
-                                        trace.lowpass(4,self.lowpass)
+                                    deltat_target = 1./self.lowpass * 0.2
+                                    ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
+                                    ndecimate2 = int(math.log(ndecimate,2))
+                                    
+                                else:
+                                    ndecimate = 1
+                                    ndecimate2 = 0
                                 
-                                if self.highpass is not None:
-                                    if self.lowpass is None or self.highpass < self.lowpass:
-                                        if self.highpass < 0.5/trace.deltat:
-                                            trace.highpass(4,self.highpass)
-                        try:
-                            trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
-                        except pyrocko.trace.NoData:
-                            continue
-                            
-                        if len(trace.get_ydata()) < 2: continue
+                                if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
+                                    for i in range(ndecimate2):
+                                        trace.downsample(2)
+                                
+                                
+                                if not lphp and (self.lowpass is not None and self.highpass is not None and
+                                    self.lowpass < 0.5/trace.deltat and
+                                    self.highpass < 0.5/trace.deltat and
+                                    self.highpass < self.lowpass):
+                                    trace.bandpass(2,self.highpass, self.lowpass)
+                                else:
+                                    if self.lowpass is not None:
+                                        if self.lowpass < 0.5/trace.deltat:
+                                            trace.lowpass(4,self.lowpass)
+                                    
+                                    if self.highpass is not None:
+                                        if self.lowpass is None or self.highpass < self.lowpass:
+                                            if self.highpass < 0.5/trace.deltat:
+                                                trace.highpass(4,self.highpass)
+                            try:
+                                trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
+                            except pyrocko.trace.NoData:
+                                continue
+                                
+                            if len(trace.get_ydata()) < 2: continue
                         
                         processed_traces.append(trace)
                 
