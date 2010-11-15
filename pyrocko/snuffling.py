@@ -5,7 +5,7 @@ some utilities for their handling.
 '''
 
 
-import os, sys, logging
+import os, sys, logging, traceback
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -15,6 +15,9 @@ import pile
 from gui_util import ValControl
 
 logger = logging.getLogger('pyrocko.snufflings')
+
+def str_traceback():
+    return '%s' % (traceback.format_exc(sys.exc_info()[2]))
 
 class Param:
     '''Definition of an adjustable parameter for the snuffling. The snuffling
@@ -26,6 +29,9 @@ class Param:
         self.default = default
         self.minimum = minimum
         self.maximum = maximum
+
+class BrokenSnufflingModule(Exception):
+    pass
 
 class SnufflingModule:
     '''Utility class to load/reload snufflings from a file.
@@ -55,16 +61,26 @@ class SnufflingModule:
         mtime = os.stat(filename)[8]
         sys.path[0:0] = [ self._path ]
         if self._module == None:
-            self._module = __import__(self._name)
-            for snuffling in self._module.__snufflings__():
-                self.add_snuffling(snuffling)
-            
+            try:
+                self._module = __import__(self._name)
+                for snufflings in self._module.__snufflings__():
+                    self.add_snuffling(snuffling)
+                    
+            except:
+                logger.error(str_traceback())
+                raise BrokenSnufflingModule(self._name)
+                            
         elif self._mtime != mtime:
             logger.warn('reloading snuffling module %s' % self._name)
             self.remove_snufflings()
-            reload(self._module)
-            for snuffling in self._module.__snufflings__():
-                self.add_snuffling(snuffling)
+            try:
+                reload(self._module)
+                for snuffling in self._module.__snufflings__():
+                    self.add_snuffling(snuffling)
+                
+            except:
+                logger.error(str_traceback())
+                raise BrokenSnufflingModule(self._name)            
             
         self._mtime = mtime
         sys.path[0:1] = []
@@ -396,8 +412,11 @@ class Snuffling:
 
     def cleanup(self):
         '''Remove all traces which have been added so far by the snuffling.'''
+        try:
+            self.get_viewer().release_data(self._tickets)
+        except NoViewerSet:
+            pass
         
-        self.get_viewer().release_data(self._tickets)
         self._tickets = []
     
     def call(self):

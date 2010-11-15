@@ -747,11 +747,12 @@ class Pile(TracesGroup):
             wlen = (wmax+tpad)-(wmin-tpad)
             chopped_weeded = []
             for tr in chopped:
-                                
-                if abs(tr.tmin - (wmin-tpad)) <= 0.5*tr.deltat and abs(tr.tmax + tr.deltat - (wmax+tpad)) <= 0.5*tr.deltat :
+                if (abs(tr.tmin - (wmin-tpad)) <= 0.5*tr.deltat and 
+                    abs(tr.tmax + tr.deltat - (wmax+tpad)) <= 0.5*tr.deltat):
                     chopped_weeded.append(tr)
-               
+            
             chopped = chopped_weeded
+        
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,

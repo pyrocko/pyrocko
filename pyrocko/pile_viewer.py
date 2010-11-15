@@ -21,6 +21,7 @@ from itertools import izip
 import scipy.stats
 import tempfile
 import logging
+import traceback
 from optparse import OptionParser
 
 import pyrocko.pile
@@ -686,7 +687,6 @@ class EventMarker(Marker):
         Marker.__init__(self, '', time, time)
         
 
-
 def MakePileOverviewClass(base):
     
     class PileOverview(base):
@@ -935,6 +935,7 @@ def MakePileOverviewClass(base):
             
         def iter_snuffling_modules(self):
             for path in self.snuffling_paths:
+                
                 if not os.path.isdir(path): 
                     continue
                 
@@ -952,8 +953,11 @@ def MakePileOverviewClass(base):
         def setup_snufflings(self):
             # user snufflings
             for mod in self.iter_snuffling_modules():
-                mod.load_if_needed()
-                
+                try:
+                    mod.load_if_needed()
+                except pyrocko.snuffling.BrokenSnufflingModule, e:
+                    logger.warn( 'Snuffling module "%s" is broken' % e )
+
             # load the default snufflings on first run
             if self.default_snufflings is None:
                 self.default_snufflings = pyrocko.snufflings.__snufflings__()
