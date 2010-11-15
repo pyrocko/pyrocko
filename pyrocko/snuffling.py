@@ -315,9 +315,8 @@ class Snuffling:
         
         The default implementation calls the snuffling's call() method and triggers
         an update on the viewer widget.'''
-        
         self.call()
-        self.get_viewer().update().
+        self.get_viewer().update()
         
     def add_traces(self, traces):
         '''Add traces to the viewer.

@@ -8,7 +8,6 @@
 # This file is part of snuffler. For licensing information please see the file 
 # COPYING which is included with snuffler.
 
-
 import os
 import sys
 import time
@@ -29,6 +28,7 @@ import pyrocko.shadow_pile
 import pyrocko.trace
 import pyrocko.util
 import pyrocko.plot
+import pyrocko.snuffling
 import pyrocko.snufflings
 from pyrocko.gui_util import ValControl, LinValControl
 
@@ -914,6 +914,7 @@ def MakePileOverviewClass(base):
             user_home_dir = os.environ['HOME']
             self.snuffling_modules = {}
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
+            self.default_snufflings = None
             self.setup_snufflings()
         
         def toggletest(self, checked):
@@ -944,13 +945,20 @@ def MakePileOverviewClass(base):
                     name = fn[:-3]
                     if (path, name) not in self.snuffling_modules:
                         self.snuffling_modules[path, name] = \
-                            pyrocko.snufflings.SnufflingModule(path, name, self)
+                            pyrocko.snuffling.SnufflingModule(path, name, self)
                     
                     yield self.snuffling_modules[path, name]
                     
         def setup_snufflings(self):
+            # user snufflings
             for mod in self.iter_snuffling_modules():
                 mod.load_if_needed()
+                
+            # load the default snufflings on first run
+            if self.default_snufflings is None:
+                self.default_snufflings = pyrocko.snufflings.__snufflings__()
+                for snuffling in self.default_snufflings:
+                    self.add_snuffling(snuffling)
                 
         def add_snuffling(self, snuffling):
             snuffling.init_gui(self, self, self.add_panel_hook, self.snufflings_menu, self.add_snuffling_menuitem)

@@ -1,12 +1,13 @@
 import numpy
 from distutils.core import setup, Extension
 
-packname = 'pyrocko'
+packname = 'pyrocko' 
+subpacknames = [ 'pyrocko.snufflings' ]
 
 setup( name = packname,
     version = '0.2',
     description = 'Seismological Processing Unit',
-    packages = [ packname ],
+    packages = [ packname ] + subpacknames,
     ext_modules = [ 
         
         Extension( packname+'/mseed_ext',
