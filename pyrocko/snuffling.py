@@ -112,6 +112,8 @@ class Snuffling:
         self._menuitem = None
         self._parameters = []
         
+        self._live_update = True
+        
         self.setup()
         
     def setup(self):
@@ -187,6 +189,9 @@ class Snuffling:
         
         return self._name
     
+    def set_live_update(self, live_update):
+        self._live_update = live_update
+    
     def add_parameter(self, param):
         '''Add an adjustable parameter to the snuffling.
         
@@ -254,6 +259,35 @@ class Snuffling:
             
         return p
         
+    def chopper_selected_traces(self, *args, **kwargs):
+        '''Iterate over selected traces.
+        
+        This is a shortcut to get all trace data contained in the selected 
+        markers in the running snuffler. For each selected marker, 
+        Pile.chopper() is called with the arguments tmin, tmax, and 
+        trace_selector set to values according to the marker. Additional
+        arguments to the chopper are handed over from args and kwargs.
+        '''
+        
+        viewer = self.get_viewer()
+        markers = viewer.selected_markers()
+        pile = self.get_pile()
+        
+        for marker in markers:
+            if not marker.nslc_ids:
+                trace_selector = None
+            else:
+                trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
+            
+            for traces in pile.chopper(
+                    tmin = marker.tmin,
+                    tmax = marker.tmax,
+                    trace_selector = trace_selector,
+                    *args,
+                    **kwargs):
+            
+                yield traces
+        
     def make_pile(self):
         '''Create a pile.
         
@@ -280,8 +314,18 @@ class Snuffling:
                 param_widget = ValControl()
                 param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                 self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
-                layout.addWidget( param_widget, iparam, 0 )
+                layout.addWidget( param_widget, iparam, 0, 1, 2 )
         
+            live_update_checkbox = QCheckBox('Auto Update')
+            if self._live_update:
+                live_update_checkbox.setCheckState(Qt.Checked)
+            layout.addWidget( live_update_checkbox, len(params), 0 )
+            self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
+        
+            call_button = QPushButton('Call')
+            layout.addWidget( call_button, len(params), 1 )
+            self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.button_triggered )
+
             return frame
             
         else:
@@ -307,8 +351,9 @@ class Snuffling:
         
         param = self.get_parameters()[iparam]
         self.set_parameter(param.ident, value)
-        self.call()
-        self.get_viewer().update()
+        if self._live_update:
+            self.call()
+            self.get_viewer().update()
         
     def menuitem_triggered(self, arg):
         '''Called when the user has triggered the snuffling's menu.
@@ -317,6 +362,18 @@ class Snuffling:
         an update on the viewer widget.'''
         self.call()
         self.get_viewer().update()
+        
+    def button_triggered(self):
+        '''Called when the user has clicked the snuffling's call button.
+        
+        The default implementation calls the snuffling's call() method and triggers
+        an update on the viewer widget.'''
+        self.call()
+        self.get_viewer().update()
+        
+    def live_update_toggled(self, on):
+        print on
+        self.set_live_update(on)
         
     def add_traces(self, traces):
         '''Add traces to the viewer.

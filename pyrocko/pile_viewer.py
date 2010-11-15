@@ -1091,6 +1091,9 @@ def MakePileOverviewClass(base):
         def set_markers(self, markers):
             self.markers = markers
     
+        def selected_markers(self):
+            return [ marker for marker in self.markers if marker.is_selected() ]
+    
         def mousePressEvent( self, mouse_ev ):
             #self.setMouseTracking(False)
             point = self.mapFromGlobal(mouse_ev.globalPos())
