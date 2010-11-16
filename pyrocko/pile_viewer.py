@@ -483,41 +483,6 @@ class Projection(object):
         return xmin + (u-umin)*((xmax-xmin)/(umax-umin))
 
 
-# XXX currently unused:
-class TraceOverview(object):
-    def __init__(self, mstrace, file_abspath, style):
-        self.mstrace = mstrace
-        self.file_abspath = file_abspath
-        self.style = style
-        
-    def drawit(self, p, time_projection, v_projection):
-        
-        if self.mstrace.overlaps(*time_projection.get_in_range()):
-
-            font = QFont()
-            font.setBold(True)
-            font.setPointSize(6)
-            p.setFont(font)
-            fm = p.fontMetrics()
-            dtmin = time_projection(self.mstrace.tmin)
-            dtmax = time_projection(self.mstrace.tmax)
-            
-            dvmin = v_projection(0.)
-            dvmax = v_projection(1.)
-            
-            rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
-            p.fillRect(rect, self.style.fill_brush)
-            p.setPen(self.style.frame_pen)
-            p.drawRect(rect)
-            
-            fn_label = QString(self.file_abspath)
-            label_rect = fm.boundingRect( fn_label )
-            
-            if label_rect.width() < 0.9*rect.width():
-                p.drawText( QPointF(rect.left()+5, rect.bottom()-5), fn_label )
-    
-    def get_mstrace(self):
-        return self.mstrace
 
 def add_radiobuttongroup(menu, menudef, obj, target):
     group = QActionGroup(menu)
@@ -2175,7 +2140,6 @@ class SnufflerOnDemand(QApplication, Forked):
         
     def add_traces(self, traces, viewer_id='default'):
         viewer = self.get_viewer(viewer_id)
-        print 'xxx'
         pile = viewer.get_pile()
         memfile = pyrocko.pile.MemTracesFile(None, traces)
         pile.add_file(memfile)
