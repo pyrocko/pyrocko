@@ -374,7 +374,7 @@ class Snuffling:
                 self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
                 layout.addWidget( param_widget, iparam, 0, 1, 3 )
         
-            live_update_checkbox = QCheckBox('Auto Update')
+            live_update_checkbox = QCheckBox('Auto-Run')
             if self._live_update:
                 live_update_checkbox.setCheckState(Qt.Checked)
             layout.addWidget( live_update_checkbox, len(params), 0 )
