@@ -1608,7 +1608,7 @@ def MakePileOverviewClass(base):
                                                 keep_current_files_open=True, trace_selector=trace_selector ):
                     for trace in traces:
                         
-                        if not (trace.meta and trace.meta['tabu']):
+                        if not (trace.meta and 'tabu' in trace.meta and trace.meta['tabu']):
                         
                             if fft_filtering:
                                 if self.lowpass is not None or self.highpass is not None:

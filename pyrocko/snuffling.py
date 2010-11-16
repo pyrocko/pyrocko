@@ -63,7 +63,7 @@ class SnufflingModule:
         if self._module == None:
             try:
                 self._module = __import__(self._name)
-                for snufflings in self._module.__snufflings__():
+                for snuffling in self._module.__snufflings__():
                     self.add_snuffling(snuffling)
                     
             except:
@@ -97,6 +97,9 @@ class SnufflingModule:
     
     
 class NoViewerSet(Exception):
+    pass
+
+class NoTracesSelected(Exception):
     pass
 
 class Snuffling:
@@ -275,35 +278,74 @@ class Snuffling:
             
         return p
         
-    def chopper_selected_traces(self, *args, **kwargs):
+    def chopper_selected_traces(self, fallback=False, *args, **kwargs ):
         '''Iterate over selected traces.
         
         This is a shortcut to get all trace data contained in the selected 
         markers in the running snuffler. For each selected marker, 
         Pile.chopper() is called with the arguments tmin, tmax, and 
         trace_selector set to values according to the marker. Additional
-        arguments to the chopper are handed over from args and kwargs.
+        arguments to the chopper are handed over from *args and **kwargs.
+        
+           fallback -- if True, if no selection has been marked, use the content
+               currently visible in the viewer.
+               
         '''
         
         viewer = self.get_viewer()
         markers = viewer.selected_markers()
         pile = self.get_pile()
         
-        for marker in markers:
-            if not marker.nslc_ids:
-                trace_selector = None
-            else:
-                trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
+        if markers:
             
+            for marker in markers:
+                if not marker.nslc_ids:
+                    trace_selector = None
+                else:
+                    trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
+                
+                for traces in pile.chopper(
+                        tmin = marker.tmin,
+                        tmax = marker.tmax,
+                        trace_selector = trace_selector,
+                        *args,
+                        **kwargs):
+                
+                    yield traces
+                    
+        elif fallback:
+            
+            tmin, tmax = viewer.get_time_range()
             for traces in pile.chopper(
-                    tmin = marker.tmin,
-                    tmax = marker.tmax,
-                    trace_selector = trace_selector,
+                    tmin = tmin,
+                    tmax = tmax,
                     *args,
                     **kwargs):
-            
+                
                 yield traces
+        else:
+            raise NoTracesSelected()
+                    
+    def get_selected_time_range(self, fallback=False):
+        '''Get the time range spanning all selected markers.'''
         
+        viewer = self.get_viewer()
+        markers = viewer.selected_markers()
+        mins = [ marker.tmin for marker in markers ]
+        maxs = [ marker.tmax for marker in markers ]
+        
+        if mins and maxs:
+            tmin = min(mins)
+            tmax = max(maxs)
+            
+        elif fallback:
+            tmin, tmax  = viewer.get_time_range()
+            
+        else:
+            raise NoTracesSelected()
+            
+        return tmin, tmax
+
     def make_pile(self):
         '''Create a pile.
         
@@ -330,7 +372,7 @@ class Snuffling:
                 param_widget = ValControl()
                 param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                 self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
-                layout.addWidget( param_widget, iparam, 0, 1, 2 )
+                layout.addWidget( param_widget, iparam, 0, 1, 3 )
         
             live_update_checkbox = QCheckBox('Auto Update')
             if self._live_update:
@@ -338,9 +380,13 @@ class Snuffling:
             layout.addWidget( live_update_checkbox, len(params), 0 )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
         
-            call_button = QPushButton('Call')
-            layout.addWidget( call_button, len(params), 1 )
-            self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.button_triggered )
+            clear_button = QPushButton('Clear')
+            layout.addWidget( clear_button, len(params), 1 )
+            self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
+        
+            call_button = QPushButton('Run')
+            layout.addWidget( call_button, len(params), 2 )
+            self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
 
             return frame
             
@@ -379,7 +425,7 @@ class Snuffling:
         self.call()
         self.get_viewer().update()
         
-    def button_triggered(self):
+    def call_button_triggered(self):
         '''Called when the user has clicked the snuffling's call button.
         
         The default implementation calls the snuffling's call() method and triggers
@@ -387,8 +433,15 @@ class Snuffling:
         self.call()
         self.get_viewer().update()
         
+    def clear_button_triggered(self):
+        '''Called when the user has clicked the snuffling's clear button.
+        
+        This calls the cleanup() method and triggers an update on the viewer 
+        widget.'''
+        self.cleanup()
+        self.get_viewer().update()
+        
     def live_update_toggled(self, on):
-        print on
         self.set_live_update(on)
         
     def add_traces(self, traces):

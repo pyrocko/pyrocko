@@ -1,5 +1,5 @@
-import minmax
-modules = [minmax]
+import minmax, rms
+modules = [minmax, rms]
 
 def __snufflings__():
     snufflings = []
