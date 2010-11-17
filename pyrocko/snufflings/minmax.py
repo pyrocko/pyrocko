@@ -27,7 +27,7 @@ class MinMaxSnuffling(Snuffling):
         # the chopper yields lists of traces but for minmax() below, an iterator
         # yielding single traces is needed; using a converter:
         def iter_single_traces():
-            for traces in self.chopper_selected_traces(tinc=self.tinc, degap=False):
+            for traces in self.chopper_selected_traces(tinc=self.tinc, degap=False, fallback=True):
                 for tr in traces:
                     yield tr
         
