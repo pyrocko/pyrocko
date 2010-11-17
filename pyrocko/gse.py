@@ -44,7 +44,7 @@ instrument_descriptions = {
 'TSJ-1e': 'TSJ-1e'}
 
 def isd(line, toks, name, nargs=None):
-    if not line.startswith(name):
+    if not line.lower().startswith(name.lower()):
         return False
     if isinstance(nargs, int):
         if len(toks) != nargs:
@@ -149,8 +149,10 @@ class Waveform:
         from pyrocko import gse_ext
         print wid2.samps
         print dat2.rawdata
-        self.data = num.cumsum(num.cumsum(gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )))
-        
+        self.data = gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )
+        self.data = gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )
+        #self.data = num.cumsum(num.cumsum(gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )))
+
     def __str__(self):
         return ' '.join([self.wid2.station, self.wid2.channel, self.wid2.auxid, self.wid2.sub_format, util.gmctime(self.wid2.tmin)])
 
@@ -324,8 +326,15 @@ class DataSection:
                     wid2.calib = float(line[69:79])
                     wid2.calper = float(line[80:87])
                     wid2.instype = line[88:94].strip()
-                    wid2.hang = float(line[95:100])
-                    wid2.vang = float(line[101:105])
+                    try:
+                        wid2.hang = float(line[95:100])
+                    except:
+                        wid2.hang = None
+                        
+                    try:
+                        wid2.vang = float(line[101:105])
+                    except:
+                        wid2.vang = None
                     at = 1
                     continue
                     
@@ -436,7 +445,7 @@ def readgse(fn):
                     for content in d.interprete():
                         gse.add( content )
                 d = DataSection()
-                d.data_type = toks[1]
+                d.data_type = toks[1].lower()
                 if len(toks) == 3:
                     d.version = toks[2]
 

@@ -1,4 +1,9 @@
-from pyrocko import gse, io
+
+
+from pyrocko import gse, io, util
+
+util.setup_logging('test_gse', 'debug')
+
 
 for gse in gse.readgse('test.gse'):
     print gse

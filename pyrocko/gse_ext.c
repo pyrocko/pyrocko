@@ -5,7 +5,7 @@ static PyObject *GSEError;
 
 static char translate[128] = 
 	{
-		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+		-1, -1, -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
 		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
 		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0,-1, 1,-1,-1, 2,
 		 3, 4, 5, 6, 7, 8, 9,10,11,-1,-1,-1,-1,-1,-1,-1,
@@ -36,18 +36,18 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
         PyErr_SetString(GSEError, "cannot allocate memory" );
         return NULL;
     }
-    printf("%i\n", sizehint);
+
     pos = in_data;
     sample = 0;
     isample = 0;
     ibyte = 0;
+    sign = 1;
     while (*pos != '\0') {
         v = translate[*pos & 0x7F];
-        printf('v %i\n', v);
         if (v != -1) {
             if (ibyte == 0) sign = (v & isign) ? -1 : 1;
-            sample += v;
-            printf("%i\n", sign);
+            
+            sample += v & ((ibyte == 0) ? 15 : 31);
             if ( (v & imore) == 0) {
                 if (isample >= sizehint) {
                     out_data = (int*)realloc(out_data, sizeof(int) * isample * 2);
@@ -57,19 +57,21 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
                         return NULL;
                     }
                 }
-                printf("-- %i\n", sample);
+                printf("--%i %i\n", ibyte, sign * sample);
                 out_data[isample++] = sign * sample;
                 sample = 0;
                 ibyte = 0;
             } else {
                 sample *= 32;
-                ibyte += 1;
+                ibyte++;
             }
             
+        } else {
+            printf("contains invalid data\n");
         }
         pos++;
     }
-    printf("%i\n", isample);
+    printf("found/sizehint: %i / %i\n", isample, sizehint);
     array_dims[0] = isample;
     array = PyArray_SimpleNewFromData(1, array_dims, NPY_INT32, out_data);
     return Py_BuildValue("N", array);
@@ -86,7 +88,6 @@ PyMODINIT_FUNC
 initgse_ext(void)
 {
     PyObject *m;
-    PyObject *hptmodulus;
 
     m = Py_InitModule("gse_ext", GSEMethods);
     if (m == NULL) return;
