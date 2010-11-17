@@ -5,7 +5,7 @@ static PyObject *GSEError;
 
 static char translate[128] = 
 	{
-		-1, -1, -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
 		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
 		-1,-1,-1,-1,-1,-1,-1,-1,-1,-1, 0,-1, 1,-1,-1, 2,
 		 3, 4, 5, 6, 7, 8, 9,10,11,-1,-1,-1,-1,-1,-1,-1,
@@ -15,23 +15,62 @@ static char translate[128] =
 		54,55,56,57,58,59,60,61,62,63,-1,-1,-1,-1,-1
 	};
 
-static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
+static int MODULUS = 100000000;
+
+
+static PyObject* gse_checksum(PyObject *dummy, PyObject *args) {
+        
+    int checksum, length, i;
+    PyObject *array = NULL;
+    PyArrayObject *carray = NULL;
+    int *data;
+
+    if (!PyArg_ParseTuple(args, "O", &array )) {
+        PyErr_SetString(GSEError, "usage checksum(array)" );
+        return NULL;
+    }
+    if (!PyArray_Check(array)) {
+        PyErr_SetString(GSEError, "Data must be given as NumPy array." );
+        return NULL;
+    }
+    if (PyArray_TYPE(array) != NPY_INT32) {
+        PyErr_SetString(GSEError, "Data must be 32-bit integers.");
+        return NULL;
+    }
+    
+    carray = PyArray_GETCONTIGUOUS((PyArrayObject*)array);
+    length = PyArray_SIZE(carray);
+    data = (int*)PyArray_DATA(carray);
+    
+    checksum = 0;
+    for (i=0; i<length; i++) {
+        checksum += data[i] % MODULUS;
+        checksum %= MODULUS;
+    }
+    
+    return Py_BuildValue("i", abs(checksum));
+}
+
+static PyObject* gse_decode_m6(PyObject *dummy, PyObject *args) {
     char *in_data;
-    int *out_data;
+    int *out_data = NULL;
     char *pos;
     char v;
     int sample, isample, ibyte, sign;
-    int sizehint;
+    int bufsize, previous1, previous2;
     char imore = 32, isign = 16;
     PyObject      *array = NULL;
     npy_intp      array_dims[1] = {0};
     
     
-    if (!PyArg_ParseTuple(args, "si", &in_data, &sizehint)) {
+    if (!PyArg_ParseTuple(args, "si", &in_data, &bufsize)) {
         PyErr_SetString(GSEError, "invalid arguments in decode_m6(data, sizehint)" );
         return NULL;
     }
-    out_data = (int*)malloc(sizehint*sizeof(int));
+
+    if (bufsize <= 1) bufsize = 64;
+
+    out_data = (int*)malloc(bufsize*sizeof(int));
     if (out_data == NULL) {
         PyErr_SetString(GSEError, "cannot allocate memory" );
         return NULL;
@@ -42,44 +81,47 @@ static PyObject* decode_m6(PyObject *dummy, PyObject *args) {
     isample = 0;
     ibyte = 0;
     sign = 1;
+    previous1 = 0;
+    previous2 = 0;
     while (*pos != '\0') {
         v = translate[*pos & 0x7F];
         if (v != -1) {
             if (ibyte == 0) sign = (v & isign) ? -1 : 1;
             
-            sample += v & ((ibyte == 0) ? 15 : 31);
+            sample += v & ((ibyte == 0) ? 0xf : 0x1f);
             if ( (v & imore) == 0) {
-                if (isample >= sizehint) {
-                    out_data = (int*)realloc(out_data, sizeof(int) * isample * 2);
+                if (isample >= bufsize) {
+                    bufsize = isample*2;
+                    out_data = (int*)realloc(out_data, sizeof(int) * bufsize);
                     if (out_data == NULL) {
                         free(out_data);
                         PyErr_SetString(GSEError, "cannot allocate memory" );
                         return NULL;
                     }
                 }
-                printf("--%i %i\n", ibyte, sign * sample);
-                out_data[isample++] = sign * sample;
+                previous1 = previous1 + sign * sample;
+                out_data[isample] = previous2 = previous2 + previous1;
+                isample++;
                 sample = 0;
                 ibyte = 0;
             } else {
                 sample *= 32;
                 ibyte++;
             }
-            
-        } else {
-            printf("contains invalid data\n");
         }
         pos++;
     }
-    printf("found/sizehint: %i / %i\n", isample, sizehint);
     array_dims[0] = isample;
     array = PyArray_SimpleNewFromData(1, array_dims, NPY_INT32, out_data);
     return Py_BuildValue("N", array);
 }
 
 static PyMethodDef GSEMethods[] = {
-    {"decode_m6",  decode_m6, METH_VARARGS, 
-    "Decode m6 encoded GSE data." },
+    {"decode_m6",  gse_decode_m6, METH_VARARGS, 
+        "Decode m6 encoded GSE data." },
+        
+    {"checksum", gse_checksum, METH_VARARGS,
+        "Calculate GSE checksum."},
     
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
