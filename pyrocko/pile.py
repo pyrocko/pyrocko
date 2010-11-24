@@ -753,6 +753,10 @@ class Pile(TracesGroup):
             
             chopped = chopped_weeded
         
+        for tr in chopped:
+            tr.wmin = wmin
+            tr.wmax = wmax
+        
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
