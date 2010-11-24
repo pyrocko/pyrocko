@@ -684,8 +684,14 @@ class Trace(object):
         self.ydata = self.growbuffer[:newlen]
         self.tmax = self.tmin + (newlen-1)*self.deltat
         
-    def chop(self, tmin, tmax, inplace=True, include_last=False, snap=(round,round)):
-        if (tmax <= self.tmin or self.tmax < tmin): raise NoData()
+    def chop(self, tmin, tmax, inplace=True, include_last=False, snap=(round,round), want_incomplete=True):
+        if want_incomplete:
+            if tmax <= self.tmin or self.tmax < tmin: 
+                raise NoData()
+        else:
+            if tmin < self.tmin or self.tmax < tmax: 
+                raise NoData()
+        
         ibeg = max(0, t2ind(tmin-self.tmin,self.deltat, snap[0]))
         iplus = 0
         if include_last: iplus=1
