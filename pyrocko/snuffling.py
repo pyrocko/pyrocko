@@ -118,6 +118,7 @@ class Snuffling:
         self._name = 'Untitled Snuffling'
         self._viewer = None
         self._tickets = []
+        self._markers = []
         
         self._delete_panel = None
         self._delete_menuitem = None
@@ -463,14 +464,22 @@ class Snuffling:
         self._tickets.append( ticket )
         return ticket
 
+    def add_markers(self, markers):
+        self.get_viewer().add_markers(markers)
+        self._markers.extend(markers)
+
     def cleanup(self):
         '''Remove all traces which have been added so far by the snuffling.'''
         try:
-            self.get_viewer().release_data(self._tickets)
+            viewer = self.get_viewer()
+            viewer.release_data(self._tickets)
+            viewer.remove_markers(self._markers)
+            
         except NoViewerSet:
             pass
         
         self._tickets = []
+        self._markers = []
     
     def call(self):
         '''Main work routine of the snuffling.

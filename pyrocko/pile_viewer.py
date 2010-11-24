@@ -717,6 +717,7 @@ def MakePileOverviewClass(base):
             self.ignore_releases = 0
             self.message = None
             self.reloaded = False
+            self.pile_has_changed = False
             
             self.tax = TimeAx()
             self.setBackgroundRole( QPalette.Base )
@@ -1003,8 +1004,7 @@ def MakePileOverviewClass(base):
             return self.pile
         
         def pile_changed(self, what):
-            self.sortingmode_change()
-            self.determine_box_styles()
+            self.pile_has_changed = True
             
         def get_neic_events(self):
             self.set_markers(neic_earthquakes(self.pile.get_tmin(), self.pile.get_tmax(), magnitude_range=(5.,9.9)))
@@ -1025,7 +1025,7 @@ def MakePileOverviewClass(base):
             self.color_keys = self.pile.gather_keys(color)
             previous_ntracks = self.ntracks
             self.ntracks = len(keys)
-            if self.shown_tracks_range is None or previous_ntracks < self.ntracks:
+            if self.shown_tracks_range is None or previous_ntracks == 0:
                 self.shown_tracks_range = 0, self.ntracks
                 
             l, h = self.shown_tracks_range
@@ -1091,7 +1091,17 @@ def MakePileOverviewClass(base):
             
         def add_marker(self, marker):
             self.markers.append(marker)
-                
+        
+        def add_markers(self, markers):
+            self.markers.extend(markers)
+        
+        def remove_marker(self, marker):
+            self.markers.remove(marker)
+        
+        def remove_markers(self, markers):
+            for marker in markers:
+                self.markers.remove(marker)
+        
         def set_markers(self, markers):
             self.markers = markers
     
@@ -1426,6 +1436,11 @@ def MakePileOverviewClass(base):
             
         def drawit(self, p, printmode=False, w=None, h=None):
             """This performs the actual drawing."""
+    
+            if self.pile_has_changed:
+                self.sortingmode_change()
+                self.determine_box_styles()
+                self.pile_has_changed = False
     
             if h is None: h = self.height()
             if w is None: w = self.width()
