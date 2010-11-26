@@ -93,7 +93,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             #         'raw-%(network)s-%(station)s-%(location)s-%(channel)s.mseed'))
             fns = util.select_files( [ self.tempdir ], regex=r'\.SAC$')
             self._pile = pile.Pile()
-            self._pile.add_files(fns, fileformat='sac')
+            self._pile.load_files(fns, fileformat='sac')
             
         return self._pile
         

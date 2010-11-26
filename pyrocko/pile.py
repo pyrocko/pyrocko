@@ -682,20 +682,20 @@ class Pile(TracesGroup):
             if obj:
                 obj.pile_changed(what)
     
-    def add_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True):
+    def load_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True):
+        l = loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress)
+        self.add_files(l)
+        
+    def add_files(self, files):
         modified_subpiles = set()
-        files = []
-        if filenames is not None:
-            for file in loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress):
-                subpile = self.dispatch(file)
-                subpile.add_file(file)
-                modified_subpiles.add(subpile)
-                files.append(file)
-                
+        for file in files:
+            subpile = self.dispatch(file)
+            subpile.add_file(file)
+            modified_subpiles.add(subpile)
+        
         self.update(modified_subpiles, empty=False)
         self.notify_listeners('add')
-        return files
-            
+        
     def add_file(self, file):
         subpile = self.dispatch(file)
         subpile.add_file(file)
@@ -940,7 +940,7 @@ def make_pile( paths=None, selector=None, regex=None,
 
     cache = get_cache(cachedirname)
     p = Pile()
-    p.add_files( sorted(fns), cache=cache, fileformat=fileformat)
+    p.load_files( sorted(fns), cache=cache, fileformat=fileformat)
     return p
 
 
