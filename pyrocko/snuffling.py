@@ -218,6 +218,11 @@ class Snuffling:
         
         return self._name
     
+    def fail(self, reason):
+        box = QMessageBox(self.get_viewer())
+        box.setText(reason)
+        box.exec_()
+    
     def set_live_update(self, live_update):
         '''Enable/disable live updating.
         
