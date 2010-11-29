@@ -684,7 +684,7 @@ class Marker:
 
 class EventMarker(Marker):
     def __init__(self, time, magnitude):
-        Marker.__init__(self, '', time, time)
+        Marker.__init__(self, [], time, time)
         
 
 def MakePileOverviewClass(base):
@@ -1188,8 +1188,12 @@ def MakePileOverviewClass(base):
                     
                     if relevant_nslc_ids is None:
                         relevant_nslc_ids = self.nslc_ids_under_cursor(x,y)
-                        
-                    for nslc_id in marker.get_nslc_ids():
+                    
+                    marker_nslc_ids = marker.get_nslc_ids()
+                    if not marker_nslc_ids:
+                        return marker
+                    
+                    for nslc_id in marker_nslc_ids:
                         if nslc_id in relevant_nslc_ids:
                             return marker
        
@@ -1206,7 +1210,12 @@ def MakePileOverviewClass(base):
                 
                 if state:
                     xstate = False
-                    for nslc_id in marker.get_nslc_ids():
+                    
+                    marker_nslc_ids = marker.get_nslc_ids()
+                    if not marker_nslc_ids:
+                        xstate = True
+                    
+                    for nslc_id in marker_nslc_ids:
                         if nslc_id in relevant_nslc_ids:
                             xstate = True
                             
