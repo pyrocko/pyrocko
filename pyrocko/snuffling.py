@@ -97,9 +97,16 @@ class SnufflingModule:
     
     
 class NoViewerSet(Exception):
+    '''This exception is raised, when no viewer has been set on a Snuffling.'''
     pass
 
 class NoTracesSelected(Exception):
+    '''This exception is raised, when no traces have been selected in the viewer 
+    and we cannot fallback to using the current view.'''
+    pass
+
+class UserCancelled(Exception):
+    '''This exception is raised, when the user has cancelled a snuffling dialog.'''
     pass
 
 class Snuffling:
@@ -118,6 +125,7 @@ class Snuffling:
         self._name = 'Untitled Snuffling'
         self._viewer = None
         self._tickets = []
+        self._markers = []
         
         self._delete_panel = None
         self._delete_menuitem = None
@@ -132,6 +140,8 @@ class Snuffling:
         self._parameters = []
         
         self._live_update = True
+        
+        self._previous_output_filename = None
         
         self.setup()
         
@@ -208,7 +218,19 @@ class Snuffling:
         
         return self._name
     
+    def fail(self, reason):
+        box = QMessageBox(self.get_viewer())
+        box.setText(reason)
+        box.exec_()
+    
     def set_live_update(self, live_update):
+        '''Enable/disable live updating.
+        
+        When live updates are enabled, the call() method is called whenever
+        the user changes a parameter. If it is disabled, the user has to 
+        initiate such a call manually by triggering the snuffling's menu item
+        or pressing the call button.
+        '''
         self._live_update = live_update
     
     def add_parameter(self, param):
@@ -278,7 +300,7 @@ class Snuffling:
             
         return p
         
-    def chopper_selected_traces(self, fallback=False, *args, **kwargs ):
+    def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
         '''Iterate over selected traces.
         
         This is a shortcut to get all trace data contained in the selected 
@@ -294,6 +316,8 @@ class Snuffling:
         
         viewer = self.get_viewer()
         markers = viewer.selected_markers()
+        if marker_selector is not None:
+            markers = [  marker for marker in markers if marker_selector(marker) ] 
         pile = self.get_pile()
         
         if markers:
@@ -310,7 +334,7 @@ class Snuffling:
                         trace_selector = trace_selector,
                         *args,
                         **kwargs):
-                
+                    
                     yield traces
                     
         elif fallback:
@@ -404,6 +428,30 @@ class Snuffling:
         self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
         return item
     
+    def output_filename(self, caption='Save File', dir='', filter='', selected_filter=None):
+        
+        '''Query user for an output filename.
+        
+        This is currently just a wrapper to QFileDialog.getSaveFileName.
+        A UserCancelled exception is raised if the user cancels the dialog.
+        '''
+        
+        if not dir and self._previous_output_filename:
+            dir = self._previous_output_filename
+            
+        fn = QFileDialog.getSaveFileName(
+            self.get_viewer(),
+            caption,
+            dir,
+            filter,
+            selected_filter)
+            
+        if not fn:
+            raise UserCancelled()
+        
+        self._previous_output_filename = fn
+        return str(fn)
+    
     def modified_snuffling_panel(self, value, iparam):
         '''Called when the user has played with an adjustable parameter.
         
@@ -442,6 +490,8 @@ class Snuffling:
         self.get_viewer().update()
         
     def live_update_toggled(self, on):
+        '''Called when the checkbox for live-updates has been toggled.'''
+        
         self.set_live_update(on)
         
     def add_traces(self, traces):
@@ -463,14 +513,29 @@ class Snuffling:
         self._tickets.append( ticket )
         return ticket
 
+    def add_markers(self, markers):
+        '''Add some markers to the display.
+        
+        Takes a list of objects of type pyrocko.pile_viewer.Marker and adds
+        these to the viewer.
+        '''
+        
+        self.get_viewer().add_markers(markers)
+        self._markers.extend(markers)
+
     def cleanup(self):
-        '''Remove all traces which have been added so far by the snuffling.'''
+        '''Remove all traces and markers which have been added so far by the snuffling.'''
+        
         try:
-            self.get_viewer().release_data(self._tickets)
+            viewer = self.get_viewer()
+            viewer.release_data(self._tickets)
+            viewer.remove_markers(self._markers)
+            
         except NoViewerSet:
             pass
         
         self._tickets = []
+        self._markers = []
     
     def call(self):
         '''Main work routine of the snuffling.

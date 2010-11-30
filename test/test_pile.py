@@ -44,7 +44,7 @@ class PileTestCase( unittest.TestCase ):
         filenames = util.select_files([datadir])
         cachedir = pjoin(datadir,'_cache_')
         p = pile.Pile()
-        p.add_files(filenames=filenames, cache=pile.get_cache(cachedir))
+        p.load_files(filenames=filenames, cache=pile.get_cache(cachedir))
         assert set(p.networks) == set(networks)
         assert set(p.stations) == set(stations)
         assert set(p.channels) == set(channels)

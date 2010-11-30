@@ -106,7 +106,7 @@ class ShadowPile(pile.Pile):
         if traces:
             if self._storepath is not None:
                 fns = io.save(traces, self._storepath, format='mseed', additional={'iblock': iblock})
-                files = self.add_files(fns, fileformat='mseed', show_progress=False)
+                self.load_files(fns, fileformat='mseed', show_progress=False)
             else:
                 file = pile.MemTracesFile(None,traces)
                 self.add_file(file)

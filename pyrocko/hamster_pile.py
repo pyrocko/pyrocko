@@ -79,7 +79,7 @@ class HamsterPile(pile.Pile):
             fns = io.save([trbuf], self._path)
             
             self.remove_file(buf)
-            self.add_files(fns, show_progress=False)
+            self.load_files(fns, show_progress=False)
         
     def __del__(self):
         self.fixate_all()
