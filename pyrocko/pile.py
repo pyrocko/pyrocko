@@ -13,7 +13,6 @@ from trace import degapper
 A pile contains subpiles which contain tracesfiles which contain traces.
 '''
 
-
 progressbar = util.progressbar_module()
 
 class TracesFileCache(object):
@@ -194,7 +193,7 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
                 
         except (io.FileLoadError, OSError, FilenameAttributeError), xerror:
             failures.append(abspath)
-            logging.warn(xerror)
+            logger.warn(xerror)
         else:
             yield tfile
         
@@ -202,7 +201,7 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
     
     if pbar: pbar.finish()
     if failures:
-        logging.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
+        logger.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
     
     if cache:
         cache.dump_modified()
@@ -751,7 +750,7 @@ class Pile(TracesGroup):
                 if (abs(tr.tmin - (wmin-tpad)) <= 0.5*tr.deltat and 
                     abs(tr.tmax + tr.deltat - (wmax+tpad)) <= 0.5*tr.deltat):
                     chopped_weeded.append(tr)
-
+            
             chopped = chopped_weeded
         
         return chopped

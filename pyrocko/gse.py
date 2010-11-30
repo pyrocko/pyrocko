@@ -1,6 +1,8 @@
 
 import util, model
 import sys, re, calendar, time, logging
+from pyrocko import gse_ext, trace
+import numpy as num
 
 unpack_fixed = util.unpack_fixed
 
@@ -40,7 +42,6 @@ instrument_descriptions = {
 'SDSE-1': 'SDSE-1',
 'SOSUS': 'SOSUS',
 'TSJ-1e': 'TSJ-1e'}
-
 
 def isd(line, toks, name, nargs=None):
     if not line.startswith(name):
@@ -139,15 +140,23 @@ class GSE:
             
 class Waveform:
     def __init__(self, wid2, sta2, chk2, dat2):
-        for attrib in 'tmin station channel auxid sub_format samps samprate calib calper instype hang vang'.split():
-            setattr(self, attrib, kwargs[attrib])
+        self.wid2 = wid2
+        self.sta2 = sta2
+        self.chk2 = chk2
+        self.dat2 = dat2
       
-        assert self.sub_format in 'INT CM6 CM8 AUT AU6 AU8'.split()
-
+        assert self.wid2.sub_format in 'INT CM6 CM8 AUT AU6 AU8'.split()
+        from pyrocko import gse_ext
+        print wid2.samps
+        print dat2.rawdata
+        self.data = num.cumsum(num.cumsum(gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )))
         
     def __str__(self):
-        return ' '.join([self.station, self.channel, self.auxid, self.sub_format, util.gmctime(self.tmin)])
+        return ' '.join([self.wid2.station, self.wid2.channel, self.wid2.auxid, self.wid2.sub_format, util.gmctime(self.wid2.tmin)])
 
+    def trace(self):
+        return trace.Trace(station=self.wid2.station, location=self.wid2.auxid, channel=self.wid2.channel,
+            tmin=self.wid2.tmin, deltat=1.0/self.wid2.samprate, ydata=self.data)
 
 class ErrorLog:
     def __init__(self, message):
@@ -283,6 +292,7 @@ class DataSection:
     def interprete_waveform(self):
         rawdata_l = []
         at = 0
+        wid2, dat2, chk2, sta2 = None, None, None, None
         def reset():
             wid2 = None
             dat2 = None
@@ -294,8 +304,9 @@ class DataSection:
         for line in self.data:
             if at in (0,2):
                 if line.startswith('WID2'):
+                    print line
                     if wid2: 
-                        yield wid2(wid2, chk2, dat2)
+                        yield Waveform(wid2, sta2, chk2, dat2)
                         reset()
                     wid2 = Anon()
 
@@ -321,12 +332,8 @@ class DataSection:
             if at == 1:
                 if line.startswith('STA2'):
                     sta2 = Anon()
-                    sta2.network = line[5:14].strip()
-                    sta2.lat = float(line[15:34])
-                    sta2.lon = float(line[35:45])
-                    sta2.coordsys = line[46:58].strip()
-                    sta2.elev = float(line[59:64])
-                    sta2.edepth = float(line[65:70])
+                    sta2.network, sta2.lat, sta2.lon, sta2.coordsys, sta2.elev, sta2.depth = unpack_fixed(
+                        'x5,a9,f9,x1,f10,x1,a12,x1,f5,x1,f5', line)
                     
                 if line.startswith('EID2'):
                     logger.warn('Cannot handle GSE2 EID2 blocks')
@@ -350,6 +357,7 @@ class DataSection:
                 
             if at == 2:
                 if line.startswith('CHK2'):
+                    chk2 = Anon()
                     toks = line.split()
                     assert len(toks) == 2
                     chk2.checksum = int(toks[1])
@@ -358,8 +366,8 @@ class DataSection:
                 else:
                     dat2.rawdata.append(line)
                     
-        if waveform:
-            yield Waveform(**waveform.__dict__)
+        if wid2:
+            yield Waveform(wid2, sta2, chk2, dat2)
             reset()
                     
     
@@ -395,7 +403,17 @@ def readgse(fn):
                 
                 at = 1
                 continue
-               
+            if line.lstrip().startswith('WID2'):
+                gse = GSE()
+                gse.version = 'GSE2.1'
+                
+                d = DataSection()
+                d.data_type = 'waveform'
+                d.version = 'GSE2.1'
+
+                at = 2
+
+        
         if at == 1:
             if isd(line, toks, 'MSG_TYPE', 2):
                 gse.msg_type = toks[1]

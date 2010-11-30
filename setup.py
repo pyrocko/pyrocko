@@ -1,12 +1,13 @@
 import numpy
 from distutils.core import setup, Extension
 
-packname = 'pyrocko'
+packname = 'pyrocko' 
+subpacknames = [ 'pyrocko.snufflings' ]
 
 setup( name = packname,
-    version = '0.1',
+    version = '0.2',
     description = 'Seismological Processing Unit',
-    packages = [ packname ],
+    packages = [ packname ] + subpacknames,
     ext_modules = [ 
         
         Extension( packname+'/mseed_ext',
@@ -20,6 +21,11 @@ setup( name = packname,
             library_dirs = ['./evalresp-3.3.0/.libs'],
             libraries = ['evresp'],
             sources = [ packname+'/evalresp_ext.c']),
+            
+        Extension( packname+'/gse_ext',
+            include_dirs = [ numpy.get_include() ],
+            sources = [ packname+'/gse_ext.c' ]),
+            
     ],
                 
     scripts = [ 'apps/snuffler', 'apps/snuffslink', 'apps/snufflometer', 'apps/hamster' ]

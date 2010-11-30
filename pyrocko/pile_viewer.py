@@ -8,7 +8,6 @@
 # This file is part of snuffler. For licensing information please see the file 
 # COPYING which is included with snuffler.
 
-
 import os
 import sys
 import time
@@ -30,17 +29,16 @@ import pyrocko.shadow_pile
 import pyrocko.trace
 import pyrocko.util
 import pyrocko.plot
+import pyrocko.snuffling
+import pyrocko.snufflings
+from pyrocko.gui_util import ValControl, LinValControl
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
-#QWidget = QGLWidget
 
 logger = logging.getLogger('pyrocko.pile_viewer')
-
-def str_traceback():
-    return '%s' % (traceback.format_exc(sys.exc_info()[2]))
 
 class Global:
     sacflag = False
@@ -482,8 +480,6 @@ class Projection(object):
         xmin, xmax = self.xr
         return xmin + (u-umin)*((xmax-xmin)/(umax-umin))
 
-
-
 def add_radiobuttongroup(menu, menudef, obj, target):
     group = QActionGroup(menu)
     menuitems = []
@@ -691,61 +687,15 @@ class EventMarker(Marker):
         Marker.__init__(self, '', time, time)
         
 
-class Param:
-    def __init__(self, name, ident, minimum, maximum, default):
-        self.name = name
-        self.ident = ident
-        self.minimum = minimum
-        self.maximum = maximum
-        self.default = default
-
-class BrokenSnufflingModule(Exception):
-    pass
-
-class SnufflingModule:
-    
-    mtimes = {}
-    
-    def __init__(self, path, name):
-        self.path = path
-        self.name = name
-        self.module = None
-        
-    def load(self):
-        filename = os.path.join(self.path, self.name+'.py')
-        mtime = os.stat(filename)[8]
-        sys.path[0:0] = [ self.path ]
-        try:
-            self.module = __import__(self.name)
-        except:
-            logger.error(str_traceback())
-            raise BrokenSnufflingModule(self.name)
-        
-        if filename in SnufflingModule.mtimes:
-            if SnufflingModule.mtimes[filename] != mtime:
-                logger.warn('reloading snuffling module %s' % self.name)
-                try:
-                    reload(self.module)
-                except:
-                    logger.error(str_traceback())
-                    raise BrokenSnufflingModule(self.name)
-                
-        SnufflingModule.mtimes[filename] = mtime
-        sys.path[0:1] = []
-    
-    def snufflings(self):
-        self.load()
-        return self.module.__snufflings__()
-        
-
 def MakePileOverviewClass(base):
     
     class PileOverview(base):
-        def __init__(self, pile, ntracks_shown_max, *args):
+        def __init__(self, pile, ntracks_shown_max, add_panel_hook, *args):
             apply(base.__init__, (self,) + args)
             
             self.pile = pile
             self.ax_height = 80
+            self.add_panel_hook = add_panel_hook
             
             self.click_tolerance = 5
             
@@ -962,9 +912,9 @@ def MakePileOverviewClass(base):
             self.setMouseTracking(True)
             
             user_home_dir = os.environ['HOME']
-
+            self.snuffling_modules = {}
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
-            self.snuffling_data = []
+            self.default_snufflings = None
             self.setup_snufflings()
         
         def toggletest(self, checked):
@@ -983,66 +933,57 @@ def MakePileOverviewClass(base):
         def remove_shadow_piles(self):
             self.pile = self.pile.get_basepile()
             
-        
-        def get_snufflings(self):
-            snufflings = []
+        def iter_snuffling_modules(self):
             for path in self.snuffling_paths:
-                if os.path.isdir(path):
-                    for fn in os.listdir(path):
-                        if fn.endswith('.py'):
-                            try:
-                                mod = SnufflingModule(path, fn[:-3])
-                                snufflings.extend(mod.snufflings())
-                            except BrokenSnufflingModule, e:
-                                logger.warn( 'Snuffling module "%s" is broken' % e )
-            return snufflings
-            
+                
+                if not os.path.isdir(path): 
+                    continue
+                
+                for fn in os.listdir(path):
+                    if not fn.endswith('.py'):
+                        continue
+                    
+                    name = fn[:-3]
+                    if (path, name) not in self.snuffling_modules:
+                        self.snuffling_modules[path, name] = \
+                            pyrocko.snuffling.SnufflingModule(path, name, self)
+                    
+                    yield self.snuffling_modules[path, name]
+                    
         def setup_snufflings(self):
-            self.flush_snuffling_data()
-            self.snuffling_hooks = []
-            self.snufflings_menu.clear()
-            for snuffling in self.get_snufflings():
-                item = QAction(snuffling.get_name(), self.menu)
-                self.snufflings_menu.addAction(item)
-                def hook():
-                    self.call_snuffling(snuffling)
+            # user snufflings
+            for mod in self.iter_snuffling_modules():
+                try:
+                    mod.load_if_needed()
+                except pyrocko.snuffling.BrokenSnufflingModule, e:
+                    logger.warn( 'Snuffling module "%s" is broken' % e )
+
+            # load the default snufflings on first run
+            if self.default_snufflings is None:
+                self.default_snufflings = pyrocko.snufflings.__snufflings__()
+                for snuffling in self.default_snufflings:
+                    self.add_snuffling(snuffling)
                 
-                self.setup_snuffling_panel(snuffling)
-                
-                self.snuffling_hooks.append(hook)
-                self.connect( item, SIGNAL("triggered(bool)"), hook )
-                
+        def add_snuffling(self, snuffling):
+            snuffling.init_gui(self, self, self.add_panel_hook, self.snufflings_menu, self.add_snuffling_menuitem)
             self.update()
-        
-        def setup_snuffling_panel(self, snuffling):
             
-            if hasattr(snuffling, 'get_parameters'):
-                
-                win = QMainWindow(self)
-                frame = QFrame(win)
-                layout = QGridLayout()
-                frame.setLayout( layout )
-                layout.setRowStretch(0,1)
-                win.setCentralWidget(frame)
-                
-                for iparam, param in enumerate(snuffling.get_parameters()):
-                    param_widget = ValControl()
-                    param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
-                    #self.connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
-                    layout.addWidget( param_widget, iparam,0 )
-                    
-                    
-                win.show()
+        def remove_snuffling(self, snuffling):
+            snuffling.delete_gui()
+            self.update()
+            
+        def add_snuffling_menuitem(self, item):
+            self.snufflings_menu.addAction(item)
+            def delete_item():
+                self.snufflings_menu.removeAction(item)
+            return delete_item
         
-        def call_snuffling(self, snuffling):
-            snuffling.call(self)
         
         def add_traces(self, traces):
             if traces:
                 mtf = pyrocko.pile.MemTracesFile(None, traces)
                 self.pile.add_file(mtf)
                 ticket = (self.pile, mtf)
-                self.snuffling_data.append(ticket)
                 return ticket
             else:
                 return (None,None)
@@ -1051,17 +992,8 @@ def MakePileOverviewClass(base):
             for ticket in tickets:
                 pile, mtf = ticket
                 if pile is not None:
-                    self.snuffling_data.remove(ticket)
-                    pile.remove_file(mtf)
-            
-        def flush_snuffling_data(self):
-            for ticket in self.snuffling_data:
-                pile, mtf = ticket
-                if pile is not None:
-                    pile.remove_file(mtf)
-                
-            self.snuffling_data = []
-            
+                     pile.remove_file(mtf)
+                   
         def periodical(self):
             if self.menuitem_watch.isChecked():
                 if self.pile.reload_modified():
@@ -1162,6 +1094,9 @@ def MakePileOverviewClass(base):
                 
         def set_markers(self, markers):
             self.markers = markers
+    
+        def selected_markers(self):
+            return [ marker for marker in self.markers if marker.is_selected() ]
     
         def mousePressEvent( self, mouse_ev ):
             #self.setMouseTracking(False)
@@ -1673,52 +1608,54 @@ def MakePileOverviewClass(base):
                                                 keep_current_files_open=True, trace_selector=trace_selector ):
                     for trace in traces:
                         
-                        if fft_filtering:
-                            if self.lowpass is not None or self.highpass is not None:
-                                high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
-                                
-                                if self.lowpass is not None:
-                                    low = self.lowpass
-                                if self.highpass is not None:
-                                    high = self.highpass
+                        if not (trace.meta and 'tabu' in trace.meta and trace.meta['tabu']):
+                        
+                            if fft_filtering:
+                                if self.lowpass is not None or self.highpass is not None:
+                                    high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
                                     
-                                trace.bandpass_fft(high, low)
-                            
-                        else:
-                            if self.lowpass is not None:
-                                deltat_target = 1./self.lowpass * 0.2
-                                ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
-                                ndecimate2 = int(math.log(ndecimate,2))
+                                    if self.lowpass is not None:
+                                        low = self.lowpass
+                                    if self.highpass is not None:
+                                        high = self.highpass
+                                        
+                                    trace.bandpass_fft(high, low)
                                 
-                            else:
-                                ndecimate = 1
-                                ndecimate2 = 0
-                            
-                            if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
-                                for i in range(ndecimate2):
-                                    trace.downsample(2)
-                            
-                            
-                            if not lphp and (self.lowpass is not None and self.highpass is not None and
-                                self.lowpass < 0.5/trace.deltat and
-                                self.highpass < 0.5/trace.deltat and
-                                self.highpass < self.lowpass):
-                                trace.bandpass(2,self.highpass, self.lowpass)
                             else:
                                 if self.lowpass is not None:
-                                    if self.lowpass < 0.5/trace.deltat:
-                                        trace.lowpass(4,self.lowpass)
+                                    deltat_target = 1./self.lowpass * 0.2
+                                    ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
+                                    ndecimate2 = int(math.log(ndecimate,2))
+                                    
+                                else:
+                                    ndecimate = 1
+                                    ndecimate2 = 0
                                 
-                                if self.highpass is not None:
-                                    if self.lowpass is None or self.highpass < self.lowpass:
-                                        if self.highpass < 0.5/trace.deltat:
-                                            trace.highpass(4,self.highpass)
-                        try:
-                            trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
-                        except pyrocko.trace.NoData:
-                            continue
-                            
-                        if len(trace.get_ydata()) < 2: continue
+                                if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
+                                    for i in range(ndecimate2):
+                                        trace.downsample(2)
+                                
+                                
+                                if not lphp and (self.lowpass is not None and self.highpass is not None and
+                                    self.lowpass < 0.5/trace.deltat and
+                                    self.highpass < 0.5/trace.deltat and
+                                    self.highpass < self.lowpass):
+                                    trace.bandpass(2,self.highpass, self.lowpass)
+                                else:
+                                    if self.lowpass is not None:
+                                        if self.lowpass < 0.5/trace.deltat:
+                                            trace.lowpass(4,self.lowpass)
+                                    
+                                    if self.highpass is not None:
+                                        if self.lowpass is None or self.highpass < self.lowpass:
+                                            if self.highpass < 0.5/trace.deltat:
+                                                trace.highpass(4,self.highpass)
+                            try:
+                                trace = trace.chop(tmin-trace.deltat*4.,tmax+trace.deltat*4.)
+                            except pyrocko.trace.NoData:
+                                continue
+                                
+                            if len(trace.get_ydata()) < 2: continue
                         
                         processed_traces.append(trace)
                 
@@ -1942,156 +1879,29 @@ def MakePileOverviewClass(base):
 PileOverview = MakePileOverviewClass(QWidget)
 GLPileOverview = MakePileOverviewClass(QGLWidget)
         
-class MyValueEdit(QLineEdit):
-
-    def __init__(self, *args):
-        apply(QLineEdit.__init__, (self,) + args)
-        self.value = 0.
-        self.mi = 0.
-        self.ma = 1.
-        self.connect( self, SIGNAL("editingFinished()"), self.myEditingFinished )
-        self.err_palette = QPalette()
-        self.err_palette.setColor( QPalette.Base, QColor(255,200,200) )
-        self.lock = False
-        
-    def setRange( self, mi, ma ):
-        self.mi = mi
-        self.ma = ma
-        
-    def setValue( self, value ):
-        if not self.lock:
-            self.value = value
-            self.setPalette( QApplication.palette() )
-            self.adjust_text()
-        
-    def myEditingFinished(self):
-        try:
-            value = float(str(self.text()).strip())
-            if not (self.mi <= value <= self.ma):
-                raise Exception("out of range")
-            if value != self.value:
-                self.value = value
-                self.lock = True
-                self.emit(SIGNAL("edited(float)"), value )
-                self.setPalette( QApplication.palette() )
-        except:
-            self.setPalette( self.err_palette )
-        
-        self.lock = False
-        
-    def adjust_text(self):
-        self.setText( ("%8.5g" % self.value).strip() )
-        
-class ValControl(QFrame):
-
-    def __init__(self, low_is_none=False, high_is_none=False, *args):
-        apply(QFrame.__init__, (self,) + args)
-        self.layout = QHBoxLayout( self )
-        self.layout.setMargin(0)
-        #self.layout.setSpacing(5)
-        self.lname = QLabel( "name", self )
-        self.lname.setFixedWidth(120)
-        self.lvalue = MyValueEdit( self )
-        self.lvalue.setFixedWidth(100)
-        self.slider = QSlider(Qt.Horizontal, self)
-        self.slider.setMaximum( 10000 )
-        self.slider.setSingleStep( 100 )
-        self.slider.setPageStep( 1000 )
-        self.slider.setTickPosition( QSlider.NoTicks )
-        self.layout.addWidget( self.lname )
-        self.layout.addWidget( self.lvalue )
-        self.layout.addWidget( self.slider )
-        self.low_is_none = low_is_none
-        self.high_is_none = high_is_none
-        #self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
-        self.connect( self.slider, SIGNAL("valueChanged(int)"),
-                      self.slided )
-        self.connect( self.lvalue, SIGNAL("edited(float)"),
-                      self.edited )
-        self.mute = False
-    
-    def s2v(self, svalue):
-        a = math.log(self.ma/self.mi) / 10000.
-        return self.mi*math.exp(a*svalue)
-                
-    def v2s(self, value):
-        a = math.log(self.ma/self.mi) / 10000.
-        return math.log(value/self.mi) / a
-    
-    def setup(self, name, mi, ma, cur, ind):
-        self.lname.setText( name )
-        self.mi = mi
-        self.ma = ma
-        self.ind = ind
-        self.lvalue.setRange( mi, ma )
-        self.set_value(cur)
-        
-    def set_value(self, cur):
-        self.mute = True
-        self.cur = cur
-        self.cursl = self.v2s(cur)
-        self.lvalue.setValue( self.cur )
-        self.slider.setValue( self.cursl )
-        self.mute = False
-        
-    def get_value(self):
-        return self.cur
-        
-    def slided(self,val):
-        if self.cursl != val:
-            self.cursl = val
-            self.cur = self.s2v(self.cursl)
-            self.lvalue.setValue( self.cur )
-            self.fire_valchange()
-            
-    def edited(self,val):
-        if self.cur != val:
-            self.cur = val
-            cursl = self.v2s(val)
-            if (cursl != self.cursl):
-                self.slider.setValue( cursl )
-            
-            self.fire_valchange()
-        
-    def fire_valchange(self):
-        if self.mute: return
-        
-        if self.low_is_none and self.cursl == 0:
-            cur = num.nan
-        else:
-            cur = self.cur
-            
-        if self.high_is_none and self.cursl == 10000:
-            cur = num.nan
-        else:
-            cur = self.cur
-                        
-        self.emit(SIGNAL("valchange(float,int)"), cur, int(self.ind) )
-        
-class LinValControl(ValControl):
-    
-    def s2v(self, svalue):
-        return svalue/10000. * (self.ma-self.mi) + self.mi
-                
-    def v2s(self, value):
-        return (value-self.mi)/(self.ma-self.mi) * 10000.
 
 class PileViewer(QFrame):
     '''PileOverview + Controls'''
     
-    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, *args):
+    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, add_panel_hook=None, *args):
         apply(QFrame.__init__, (self,) + args)
         
         if use_opengl:
-            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max)
+            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
         else:
-            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max)
+            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
         
         layout = QGridLayout()
         self.setLayout( layout )
         
         layout.addWidget( self.pile_overview, 0, 0 )
-        layout.setRowStretch(0,1)
+        
+        
+    def controls(self):
+        frame = QFrame(self)
+        layout = QGridLayout()
+        frame.setLayout(layout)
+        
         minfreq = 0.001
         maxfreq = 0.5/self.pile_overview.get_min_deltat()
         if maxfreq < 100.*minfreq:
@@ -2114,6 +1924,7 @@ class PileViewer(QFrame):
         layout.addWidget( self.lowpass_widget, 2,0 )
         layout.addWidget( self.gain_widget, 3,0 )
         layout.addWidget( self.rot_widget, 4,0 )
+        return frame
     
     def update_contents(self):
         self.pile_overview.update()
