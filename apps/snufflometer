@@ -94,7 +94,8 @@ class SlinkSnuffler(QApplication):
         parser.add_option('--port', dest='port', default='0')
         parser.add_option('--baudrate', dest='baudrate', default='9600')
         parser.add_option('--timeout', dest='timeout', default='5')
-
+        parser.add_option('--opengl', dest='opengl', action='store_true', default=False)
+        
         options, args = parser.parse_args(list(args[0][1:]))
         
         if options.debug:
@@ -103,11 +104,19 @@ class SlinkSnuffler(QApplication):
             pyrocko.util.setup_logging('snuffler', 'warning')
         
         self.pile = pyrocko.hamster_pile.HamsterPile()
-        self.pile_viewer = pyrocko.pile_viewer.PileViewer(self.pile, ntracks_shown_max=options.ntracks)
         
         self.win = QMainWindow()
+        self._dockwidgets = []
+        
+        self.pile_viewer = pyrocko.pile_viewer.PileViewer(
+                    self.pile, 
+                    ntracks_shown_max=options.ntracks,
+                    use_opengl=options.opengl, add_panel_hook=self.add_panel)
+                    
         self.win.setWindowTitle( "Snuffslink" )        
         self.win.setCentralWidget( self.pile_viewer )
+        self.add_panel('Main Controls', self.pile_viewer.controls())
+
         self.win.show()
 
         sb = self.win.statusBar()
@@ -135,7 +144,24 @@ class SlinkSnuffler(QApplication):
         self.traces_to_files = {}
         
         self.slt.start()
+    
+    def add_panel(self, name, panel):
+        dockwidget = QDockWidget(name)
+        dockwidget.setWidget(panel)
+        self.win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
         
+        if self._dockwidgets:
+            self.win.tabifyDockWidget(self._dockwidgets[-1], dockwidget)
+        
+        self._dockwidgets.append(dockwidget)
+        dockwidget.raise_()
+        
+        def delete_panel():
+            self.win.removeDockWidget(dockwidget)
+            self._dockwidgets.remove(dockwidget)
+        
+        return delete_panel
+    
     def periodical(self):
         slink = self.slt.get_slink()
         if slink and slink.sun_is_shining():

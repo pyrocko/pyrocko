@@ -74,6 +74,7 @@ class SlinkSnuffler(QApplication):
         parser.add_option('--streams', dest='streams', default='GE.WLF..BHZ')
         parser.add_option('--host', dest='host', default='geofon.gfz-potsdam.de')
         parser.add_option('--port', dest='port', default='18000')
+        parser.add_option('--opengl', dest='opengl', action='store_true', default=False)
 
         options, args = parser.parse_args(list(args[0][1:]))
         
@@ -82,14 +83,21 @@ class SlinkSnuffler(QApplication):
         else:
             pyrocko.util.setup_logging('snuffler', 'warning')
         
+        self.win = QMainWindow()
+        self.win.setWindowTitle( "Snuffslink" )        
+        self._dockwidgets = []
+        
         self.pile = pyrocko.hamster_pile.HamsterPile()
-        self.pile_viewer = pyrocko.pile_viewer.PileViewer(self.pile, ntracks_shown_max=options.ntracks)
+        self.pile_viewer = pyrocko.pile_viewer.PileViewer(
+                    self.pile, 
+                    ntracks_shown_max=options.ntracks,
+                    use_opengl=options.opengl, add_panel_hook=self.add_panel)
+                    
         self.pile.set_fixation_length(60.*60.)
         #self.pile.set_save_path('test_snuffslink_traces')
         
-        self.win = QMainWindow()
-        self.win.setWindowTitle( "Snuffslink" )        
         self.win.setCentralWidget( self.pile_viewer )
+        self.add_panel('Main Controls', self.pile_viewer.controls())
         self.win.show()
 
         sb = self.win.statusBar()
@@ -124,7 +132,24 @@ class SlinkSnuffler(QApplication):
         self.traces_to_files = {}
         
         self.slt.start()
+    
+    def add_panel(self, name, panel):
+        dockwidget = QDockWidget(name)
+        dockwidget.setWidget(panel)
+        self.win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
         
+        if self._dockwidgets:
+            self.win.tabifyDockWidget(self._dockwidgets[-1], dockwidget)
+        
+        self._dockwidgets.append(dockwidget)
+        dockwidget.raise_()
+        
+        def delete_panel():
+            self.win.removeDockWidget(dockwidget)
+            self._dockwidgets.remove(dockwidget)
+        
+        return delete_panel
+    
     def periodical(self):
         if self.slt.get_slink().sun_is_shining():
             traces = self.slt.get_slink().poll()
