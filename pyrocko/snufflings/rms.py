@@ -14,7 +14,8 @@ class RootMeanSquareSnuffling(Snuffling):
         
         self.set_name('Block RMS')
         self.add_parameter(Param('Block Length [s]', 'block_length', 100., 0.1, 3600.))
-
+        self.set_live_update(False)
+        
     def call(self):
         '''Main work routine of the snuffling.'''
         
