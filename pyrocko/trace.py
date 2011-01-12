@@ -777,8 +777,8 @@ class Trace(object):
         self.ydata = signal.lfilter(b,a, data)
         
     def bandpass(self, order, corner_hp, corner_lp):
-        self.nyquist_check(corner, 'Lower corner frequency of bandpass')
-        self.nyquist_check(corner, 'Higher corner frequency of bandpass')
+        self.nyquist_check(corner_hp, 'Lower corner frequency of bandpass')
+        self.nyquist_check(corner_lp, 'Higher corner frequency of bandpass')
         (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
