@@ -4,6 +4,9 @@ import numpy as num
 
 d2r = num.pi/180.
 
+def numeq(a,b, eps):
+    return num.all(num.abs(num.array(a) - num.array(b)) < eps)
+
 class TraceTestCase(unittest.TestCase):
     
     def testIntegrationDifferentiation(self):
@@ -151,7 +154,6 @@ class TraceTestCase(unittest.TestCase):
         dt2 = 1./10.
         dtinter = 1./util.lcm(1./dt1,1./dt2)
         upsratio = dt1/dtinter
-        print upsratio
         xdata = num.arange(n,dtype=num.float)
         ydata = num.exp(-((xdata-n/2)/10.)**2)
         t = trace.Trace(ydata=ydata, tmin=1234567890, deltat=dt1, location='1')
@@ -199,7 +201,23 @@ class TraceTestCase(unittest.TestCase):
         t.crop_zeros()
         assert t.ydata.size == 20
         
-
+        
+    def testAdd(self):
+        n = 20
+        tmin = 1234567890.
+        deltat = 0.05
+        for distortion in [ -0.2, 0.2 ]:
+            for ioffs, result in [ (  1, [0.,1.,1.,1.,0.]),
+                                ( -1, [1.,1.,0.,0.,0.]),
+                                (  3, [0.,0.,0.,1.,1.]),
+                                (  10, [0.,0.,0.,0.,0.]),
+                                (  -10, [0.,0.,0.,0.,0.]) ]:
+                                
+                a = trace.Trace(tmin=tmin, deltat=deltat, ydata=num.zeros(5,dtype=num.float))
+                b = trace.Trace(tmin=tmin+(ioffs+distortion)*deltat, deltat=deltat, ydata=num.ones(3,dtype=num.float))
+                a.add(b, interpolate=False)
+                assert numeq(a.ydata, result, 0.001)
+        
         
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

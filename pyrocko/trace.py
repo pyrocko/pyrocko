@@ -416,6 +416,7 @@ def costaper(a,b,c,d, nfreqs, deltaf):
 def t2ind(t,tdelta, snap=round):
     return int(snap(t/tdelta))
 
+
 class TraceTooShort(Exception):
     pass
 
@@ -601,12 +602,32 @@ class Trace(object):
         else:
             return y0+(t-t0)/(t1-t0)*(y1-y0)
         
-    def add(self,other):
-        other_xdata = other.get_xdata()
-        xdata = self.get_xdata()
-        xmin, xmax = other_xdata[0], other_xdata[-1]
-        self.ydata += num.interp(xdata, other_xdata, other.ydata, other.ydata[0], right=other.ydata[-1])
-        self.ydata = num.where(num.logical_or( xdata < xmin, xmax < xdata ), num.nan, self.ydata)
+    def index_clip(self, i):
+        return min(max(0,i), self.ydata.size)
+
+        
+    def add(self, other, interpolate=True):
+        
+        if interpolate:
+            other_xdata = other.get_xdata()
+            xdata = self.get_xdata()
+            xmin, xmax = other_xdata[0], other_xdata[-1]
+            self.ydata += num.interp(xdata, other_xdata, other.ydata, left=0., right=0.)
+        else:
+            assert self.deltat == other.deltat
+            ibeg1 = int(round((other.tmin-self.tmin)/self.deltat))
+            ibeg2 = int(round((self.tmin-other.tmin)/self.deltat))
+            iend1 = int(round((other.tmax-self.tmin)/self.deltat))+1
+            iend2 = int(round((self.tmax-other.tmin)/self.deltat))+1
+            
+            ibeg1 = self.index_clip(ibeg1)
+            iend1 = self.index_clip(iend1)
+            ibeg2 = self.index_clip(ibeg2)
+            iend2 = self.index_clip(iend2)
+            
+            self.ydata[ibeg1:iend1] += other.ydata[ibeg2:iend2]
+            
+        #self.ydata = num.where(num.logical_or( xdata < xmin, xmax < xdata ), num.nan, self.ydata)
             
     def set_codes(self, network=None, station=None, location=None, channel=None):
         if network is not None:
