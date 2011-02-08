@@ -626,9 +626,7 @@ class Trace(object):
             iend2 = self.index_clip(iend2)
             
             self.ydata[ibeg1:iend1] += other.ydata[ibeg2:iend2]
-            
-        #self.ydata = num.where(num.logical_or( xdata < xmin, xmax < xdata ), num.nan, self.ydata)
-            
+                                    
     def set_codes(self, network=None, station=None, location=None, channel=None):
         if network is not None:
             self.network = network
