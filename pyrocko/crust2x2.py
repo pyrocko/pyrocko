@@ -1,18 +1,18 @@
 '''Interface to use CRUST2.0 model by Laske, Masters and Reif.
 
-Reference
----------
+All functions defined in this module return SI units (m, m/s, kg/m^3).
 
-Please refer to the REM web site if you use this model: 
+.. note:: 
+  Please refer to the REM web site if you use this model: 
 
     http://igppweb.ucsd.edu/~gabi/rem.html
 
-or
+  or
 
-Bassin, C., Laske, G. and Masters, G., The Current Limits of Resolution for
-Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000. A 
-description of CRUST 5.1 can be found in: Mooney, Laske and Masters, Crust 5.1:
-a global crustal model at 5x5 degrees, JGR, 103, 727-747, 1998.
+    Bassin, C., Laske, G. and Masters, G., The Current Limits of Resolution for
+    Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000. A 
+    description of CRUST 5.1 can be found in: Mooney, Laske and Masters, Crust 5.1:
+    a global crustal model at 5x5 degrees, JGR, 103, 727-747, 1998.
 '''
 
 import numpy as num
@@ -38,6 +38,12 @@ class Crust2Profile:
         self._elevation = elevation
     
     def get_weeded(self, include_waterlayer=False):
+        '''Get layers used in the profile.
+        
+        :param include_waterlayer: include water layer if `True`. Default is `False`
+        
+        :returns: NumPy array with rows `depth`, `vp`, `vs`, `density`
+        '''
         depth = 0.
         layers = []
         for ilayer, thickness, vp, vs, rho in zip(range(8), 
@@ -60,7 +66,11 @@ class Crust2Profile:
         return num.array(layers).T
     
     def get_layer(self, ilayer):
-        '''Get thickness, vp, vs, and density of a layer.'''
+        '''Get parameters for a layer.
+        
+        :param ilayer: id of layer
+        :returns: thickness, vp, vs, density
+        '''
         
         if ilayer == LBELOWCRUST:
             thickness = num.Inf
@@ -133,7 +143,12 @@ def clip(x, mi, ma):
     return min(max(mi,x),ma)
 
 class Crust2:
-    
+    '''Access CRUST2.0 model.
+        
+        :param directory: Directory with the data files which contain the 
+            CRUST2.0 model data. If this is set to `None`, builtin CRUST2.0 files 
+            are used.''' 
+            
     fn_keys      = 'CNtype2_key.txt'
     fn_elevation = 'CNelevatio2.txt'
     fn_map       = 'CNtype2.txt'
@@ -142,12 +157,6 @@ class Crust2:
     nla = 90
     
     def __init__(self, directory=None):
-        '''Access CRUST2.0 model.
-        
-        :param directory: Directory with the data files '%s',
-             '%s', and '%s' which contain the CRUST2.0 model data. If this is 
-             set to None, builtin CRUST2.0 files are used.''' % (
-             Crust2.fn_keys, Crust2.fn_elevation, Crust2.fn_map)
     
         self._directory = directory
         self._typemap = None
@@ -156,7 +165,9 @@ class Crust2:
     def get_profile(self, lat, lon):
         '''Get crustal profile at a specific location.
         
-        :param lat lon: latititude and longitude in degrees
+        :param lat: latitude
+        :param lon: longitude
+        :rtype: instance of :py:class:`Crust2Profile`
         '''
         
         return self._typemap[self._indices(float(lat),float(lon))]
@@ -241,6 +252,8 @@ class Crust2:
         
         
 def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
+    '''Create a quick and dirty plot of the crustal thicknesses defined in CRUST2.0.'''
+
     if crust2 is None:
         crust2 = Crust2()
    
@@ -250,6 +263,7 @@ def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
     plot(func, filename, zscaled_unit='km', zscaled_unit_factor=0.001)
     
 def plot_vp_belowcrust(crust2=None, filename='vp_below_crust.pdf'):
+    '''Create a quick and dirty plot of vp below the crust, as defined in CRUST2.0.'''
     if crust2 is None:
         crust2 = Crust2()
         
