@@ -34,12 +34,45 @@ class Crust2Profile:
         self._vs = vs
         self._rho = rho
         self._thickness = thickness
+        self._crustal_thickness = None
         self._elevation = elevation
+    
+    def get_weeded(self, include_waterlayer=False):
+        depth = 0.
+        layers = []
+        for ilayer, thickness, vp, vs, rho in zip(range(8), 
+            self._thickness, self._vp[:-1], self._vs[:-1], self._rho[:-1]):
+            if thickness == 0.0:
+                continue
+            
+            if not include_waterlayer and ilayer==LWATER:
+                continue
+            
+            layers.append([depth, vp,vs, rho])
+            layers.append([depth+thickness, vp,vs, rho])
+            depth += thickness
+            
+        layers.append([depth, 
+            self._vp[LBELOWCRUST],
+            self._vs[LBELOWCRUST],
+            self._rho[LBELOWCRUST]])
         
+        return num.array(layers).T
+    
+    def get_layer(self, ilayer):
+        '''Get thickness, vp, vs, and density of a layer.'''
+        
+        if ilayer == LBELOWCRUST:
+            thickness = num.Inf
+        else:
+            thickness = self._thickness[ilayer]
+            
+        return thickness, self._vp[ilayer], self._vs[ilayer], self._rho[ilayer]
+            
     def set_elevation(self, elevation):
         self._elevation = elevation
         
-    def set_thickness(self, ilayer, thickness):
+    def set_layer_thickness(self, ilayer, thickness):
         self._thickness[ilayer] = thickness
         
     def elevation(self):
@@ -58,10 +91,18 @@ mantle ave. vp, vs, rho: %15.5g %15.5g %15.5g
 %s''' % (self._ident, self._name, self._elevation, vthi, vvp, vvs, vrho,
     self._vp[LBELOWCRUST],self._vs[LBELOWCRUST],self._rho[LBELOWCRUST],
     '\n'.join( [ '%15.5g %15.5g %15.5g %15.5g   %s' % x for x in zip(
-        self._thickness, self._vp[:-1], self._vs[:-1], self._rho[0:-1],
+        self._thickness, self._vp[:-1], self._vs[:-1], self._rho[:-1],
         Crust2Profile.layer_names ) ])
       )
    
+    def crustal_thickness(self):
+        '''Get total crustal thickness
+        
+        Takes into account ice layer.
+        Does not take into account water layer.
+        '''
+        
+        return num.sum(self._thickness[3:]) + self._thickness[LICE]
 
     def averages(self):
         '''Get crustal averages for vp, vs and density and total crustal thickness,
@@ -70,7 +111,7 @@ mantle ave. vp, vs, rho: %15.5g %15.5g %15.5g
         Does not take into account water layer.
         '''
         
-        vthi = num.sum(self._thickness[3:]) + self._thickness[LICE]
+        vthi = self.crustal_thickness()
         vvp = num.sum(self._thickness[3:] / self._vp[3:-1]) + self._thickness[LICE] / self._vp[LICE]
         vvs = num.sum(self._thickness[3:] / self._vs[3:-1]) + self._thickness[LICE] / self._vs[LICE]
         vrho = num.sum(self._thickness[3:] * self._rho[3:-1]) + self._thickness[LICE] * self._rho[LICE]
@@ -126,8 +167,8 @@ class Crust2:
         dlo = 360./Crust2.nlo
         dla = 180./Crust2.nla
         cola = 90.-lat
-        ilat = int(cola/dla)
-        ilon = int((lon+180.)/dlo)
+        ilat = clip(int(cola/dla), 0, Crust2.nla-1)
+        ilon = int((lon+180.)/dlo)%Crust2.nlo
         return ilat, ilon
         
     def _load_crustal_model(self):
@@ -192,9 +233,47 @@ class Crust2:
                 p = amap[ila,ilo]
                 p.set_elevation(float(s))
                 if p.elevation() < 0.:
-                    p.set_thickness(LWATER, -p.elevation())
+                    p.set_layer_thickness(LWATER, -p.elevation())
         
         f.close()
         
         self._typemap = amap
         
+        
+def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
+    if crust2 is None:
+        crust2 = Crust2()
+   
+    def func(lat,lon):
+        return crust2.get_profile(lat,lon).crustal_thickness(), 
+    
+    plot(func, filename, zscaled_unit='km', zscaled_unit_factor=0.001)
+    
+def plot_vp_belowcrust(crust2=None, filename='vp_below_crust.pdf'):
+    if crust2 is None:
+        crust2 = Crust2()
+        
+    def func(lat,lon):
+        return crust2.get_profile(lat,lon).get_layer(LBELOWCRUST)[1]
+    
+    plot(func, filename, zscaled_unit='km/s', zscaled_unit_factor=0.001)
+    
+    
+def plot(func, filename, **kwargs):
+    nlats, nlons = 91, 181
+    lats = num.linspace(-90., 90., nlats)
+    lons = num.linspace(-180.,180., nlons)
+        
+    vecfunc = num.vectorize( func, [ num.float ] )
+    latss, lonss = num.meshgrid(lats, lons)         
+    thickness = vecfunc(latss, lonss)
+    
+    import gmtpy
+    cm = gmtpy.cm
+    marg = (1.5*cm, 2.5*cm, 1.5*cm, 1.5*cm)
+    p = gmtpy.Simple(width=20*cm, height=10*cm, margins=marg, 
+        with_palette=True, **kwargs)
+    
+    p.density_plot(gmtpy.tabledata(lons,lats, thickness.T))
+    p.save(filename)
+
