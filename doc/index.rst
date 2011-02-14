@@ -14,6 +14,7 @@ Contents:
    pile
    trace
    util
+   crust2x2
    
 
 Indices and tables
