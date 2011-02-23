@@ -110,6 +110,7 @@ class Geofon(EarthquakeCatalog):
         return events
         
     def _parse_events_page(self, page):
+        page = re.sub('&nbsp([^;])', '&nbsp;\\1', page)  # fix broken &nbsp; tags 
         doc = minidom.parseString(page)
         events = []
         for tr in doc.getElementsByTagName("tr"):
