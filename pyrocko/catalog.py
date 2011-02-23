@@ -115,7 +115,7 @@ class Geofon(EarthquakeCatalog):
         events = []
         for tr in doc.getElementsByTagName("tr"):
             tds = tr.getElementsByTagName("td")
-            if len(tds) == 7:
+            if len(tds) == 8:
                 elinks = tds[0].getElementsByTagName("a")
                 if len(elinks) != 1: continue
                 if not 'href' in elinks[0].attributes.keys(): continue
@@ -128,7 +128,7 @@ class Geofon(EarthquakeCatalog):
                 mag = float(vals[1])
                 epicenter = parse_location( vals[2]+' '+vals[3] )
                 depth = float(vals[4])*1000.
-                region = vals[6]
+                region = vals[7]
                 ev = model.Event(
                     lat=epicenter[0],
                     lon=epicenter[1], 
