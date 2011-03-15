@@ -515,20 +515,20 @@ class Marker:
                 tmin = parsedate(*toks[:3])
                 tmax = tmin
                 
-            elif len(toks) in (7,8):
+            elif len(toks) in (8,9):
                 tmin = parsedate(*toks[:3])
                 tmax = parsedate(*toks[3:6])
             
             else:
                 fail()
             
-            if len(toks) in (5,8):
+            if len(toks) in (5,9):
                 kind = int(toks[-2])
             else:
                 kind = int(toks[-1])
                 
             nslc_ids = []
-            if len(toks) in (5,8):
+            if len(toks) in (5,9):
                 for snslc in toks[-1].split(','):
                     nslc = snslc.split('.')
                     if len(nslc) != 4:
