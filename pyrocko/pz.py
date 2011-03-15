@@ -1,7 +1,6 @@
 import scipy.signal as sig
 import numpy as num
 import sys
-import pymseed
 import gmtpy
 
 class SacPoleZeroError(Exception):
