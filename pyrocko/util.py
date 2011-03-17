@@ -235,7 +235,14 @@ class FractionalSecondsMissing(Exception):
     '''Exception raised by :py:func:`str_to_time` when the given string lacks
     fractional seconds.'''
     pass
-    
+class FractionalSecondsWrongNumberOfDigits(Exception):
+    pass
+
+def endswith_n(s, endings):
+    for ix, x in enumerate(endings):
+        if s.endswith(x):
+            return ix
+    return -1
 
 def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     '''Convert string representing UTC time to floating point system time.
@@ -248,16 +255,24 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     If the format ends with ``'.FRAC'``, anything after a dot is interpreted as
     fractional seconds. If the format ends with ``'.OPTFRAC'``, the fractional part,
     including the dot is made optional. The latter has the consequence, that the time 
-    strings and the format may not contain any other dots.
+    strings and the format may not contain any other dots. If the format ends
+    with `'.xFRAC'`` where x is 1, 2, or 3, it is ensured, that exactly that
+    number of digits are present in the fractional seconds.
     '''
-    
+        
     fracsec = 0.
+    fixed_endings = '.FRAC', '.1FRAC', '.2FRAC', '.3FRAC'
     
-    if format.endswith('.FRAC'):
+    iend = endswith_n(format, fixed_endings)
+    if iend != -1:
         dotpos = s.rfind('.')
         if dotpos == -1:
             raise FractionalSecondsMissing('string=%s, format=%s' % (s,format))
-        format = format[:-5]
+        
+        if iend > 0 and iend != (len(s)-dotpos-1):
+            raise FractionalSecondsWrongNumberOfDigits('string=%s, format=%s' % (s,format))
+        
+        format = format[:-len(fixed_endings[iend])]
         fracsec = float(s[dotpos:])
         s = s[:dotpos]
         
@@ -266,12 +281,14 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
         format = format[:-8]
         if dotpos != -1 and len(s[dotpos:]) > 1:
             fracsec = float(s[dotpos:])
-        s = s[:dotpos]
-    
+        
+        if dotpos != -1:
+            s = s[:dotpos]
+      
     return calendar.timegm(time.strptime(s, format)) + fracsec
 
 
-def time_to_str(t, format='%Y-%m-%d %H:%M:%S.%.3f'):
+def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
     '''Get string representation for floating point system time.
     
     :param t: floating point system time
@@ -279,22 +296,24 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.%.3f'):
     :returns: string representing UTC time
     
     Uses the semantics of :py:func:`time.strftime` but additionally allows 
-    for fractional seconds. If *format* contains ``'%.Xf'``, where ``X`` is a digit, 
-    this is replaced with the fractional part of *t* with ``X`` digits (using normal 
-    python ``'%f'`` replacement but the dot and the zero before the dot are removed). 
-    E.g. if *t* is 1234567890.12345 and *format* is ``'%.3f'``, the string produced 
-    is ``'123'``.
+    for fractional seconds. If *format* contains ``'.xFRAC'``, where ``x`` is a digit between 1 and 3, 
+    this is replaced with the fractional part of *t* with ``x`` digits precision.
     '''
     
     if not GlobalVars.re_frac:
-        GlobalVars.re_frac = re.compile(r'%.\df')
-    
+        GlobalVars.re_frac = re.compile(r'\.[123]FRAC')
+        GlobalVars.frac_formats = { '.1FRAC': '%.1f', '.2FRAC': '%.2f', '.3FRAC': '%.3f' }
+        
     ts = math.floor(t)
     tfrac = t-ts
     m = GlobalVars.re_frac.search(format)
     if m:
-        format, nsub = GlobalVars.re_frac.subn((m.group(0) % tfrac)[2:], format, 1)
-        
+        sfrac = (GlobalVars.frac_formats[m.group(0)] % tfrac)
+        if sfrac[0] == '1':
+            ts += 1.
+                        
+        format, nsub = GlobalVars.re_frac.subn(sfrac[1:], format, 1)
+    
     return time.strftime(format, time.gmtime(ts))
     
 def plural_s(n):
