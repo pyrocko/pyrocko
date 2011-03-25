@@ -206,6 +206,9 @@ class EventDataAccess:
                 
                 displacements = []
                 for tr in traces:
+                    
+                    tr.ydata = tr.ydata - num.mean(tr.ydata)
+                    
                     if deltat is not None:
                         try:
                             tr.downsample_to(deltat, snap=True, allow_upsample_max=5)

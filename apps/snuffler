@@ -15,6 +15,7 @@ import pyrocko.pile
 import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.ipc
+import pyrocko.model
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -108,6 +109,9 @@ class MySnuffler(QApplication):
         parser.add_option('--server', dest='server', action='store_true', default=False)
         parser.add_option('--progressive', dest='progressive', action='store_true', default=False)
         parser.add_option('--force-cache', dest='force_cache', action='store_true', default=False)
+        parser.add_option('--stations', dest='station_fns', action='append', default=[])
+        parser.add_option('--event', dest='event_fns', action='append', default=[])
+        
         
         options, args = parser.parse_args(list(args[0][1:]))
         
@@ -147,11 +151,22 @@ class MySnuffler(QApplication):
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
             pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl, add_panel_hook=self.add_panel)
         
+        for stations_fn in options.station_fns:
+            stations = pyrocko.model.load_stations(stations_fn)
+            self.pile_viewer.get_view().add_stations(stations)
+        
+        for event_fn in options.event_fns:
+            ev = pyrocko.model.Event()
+            ev.load(event_fn)
+            self.pile_viewer.get_view().add_event(ev)
+            
         self.win.setCentralWidget( self.pile_viewer )
         
         self.add_panel('Main Controls', self.pile_viewer.controls())
                 
         self.win.show()
+
+        self.pile_viewer.get_view().setFocus(Qt.OtherFocusReason)
 
         sb = self.win.statusBar()
         sb.clearMessage()

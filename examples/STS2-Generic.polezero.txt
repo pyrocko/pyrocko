@@ -1,0 +1,12 @@
+# ok for all STS2 generations up to 10 Hz
+#
+#  !!! the constant has been arbitrarily set to 1.0 !!!
+#
+POLES 5
+-3.70E-02 	3.70E-02
+-3.70E-02 	-3.70E-02
+-2.51E+02 	0.00E+00
+-1.31E+02 	4.67E+02
+-1.31E+02 	-4.67E+02
+ZEROS 2
+CONSTANT 1

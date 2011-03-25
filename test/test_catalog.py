@@ -14,14 +14,20 @@ class CatalogTestCase(unittest.TestCase):
         tmax = util.ctimegm('2010-01-13 03:17:00')
         
         names = cat.get_event_names( time_range=(tmin,tmax))
+        
+        assert len(names) > 0
+        
         for name in names:
             ev = cat.get_event(name)
             if ev.magnitude >= 7:
                 assert near(ev.magnitude, 7.2, 0.001)
                 assert near(ev.lat, 18.37, 0.001)
                 assert near(ev.lon, -72.55, 0.001)
-                assert near(ev.depth, 17., 0.001)
+                assert near(ev.depth, 17000., 1.)
                 assert ev.region == 'Haiti Region'
+                
+        
+        
         
 if __name__ == "__main__":
     util.setup_logging('test_catalog', 'warning')
