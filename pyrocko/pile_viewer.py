@@ -44,6 +44,19 @@ class Global:
     sacflag = False
     appOnDemand = None
 
+class m_float(float):
+    
+    def __str__(self):
+        if abs(self) >= 1000.:
+            return '%.5g km' % (self/1000.)
+        else:
+            return '%.5g m' % self
+        
+class deg_float(float):
+    
+    def __str__(self):
+        return '%4.0f' % self
+ 
 gap_lap_tolerance = 5.
 
 class Integrator(pyrocko.shadow_pile.ShadowPile):
@@ -66,6 +79,26 @@ def make_QPolygonF( xdata, ydata ):
     aa[:,1] = ydata
     return qpoints
 
+def draw_label( p, x,y, label_str, label_bg, anchor='BL' ):
+    fm = p.fontMetrics()
+    
+    label = QString( label_str )
+    rect = fm.boundingRect( label )
+    
+    tx,ty =x,y
+    if 'T' in anchor:
+        ty += rect.height()
+    if 'R' in anchor:
+        tx -= rect.width()
+    if 'M' in anchor:
+        ty += rect.height()/2.
+    if 'C' in anchor:
+        tx -= rect.width()/2.
+        
+    rect.translate( tx, ty )
+    p.fillRect( rect, label_bg )
+    p.drawText( tx, ty, label )
+
 class ObjectStyle(object):
     def __init__(self, frame_pen, fill_brush):
         self.frame_pen = frame_pen
@@ -85,35 +118,6 @@ syear  = 60*60*24*365 # /
 
 acceptable_tincs = num.array([1, 2, 5, 10, 20, 30, 60, 60*5, 60*10, 60*20, 60*30, 60*60, 
                      60*60*3, 60*60*6, 60*60*12, sday, smonth, syear ],dtype=num.float)
-
-
-
-def neic_earthquakes(tmin, tmax, magnitude_range=(5,9.9)):
-    
-    import urllib2
-    
-    stt = time.gmtime(tmin)
-    ett = time.gmtime(tmax)
-    syear, smonth, sday = stt[:3]
-    eyear, emonth, eday = ett[:3]
-    
-    l = 'http://neic.usgs.gov/cgi-bin/epic/epic.cgi?SEARCHMETHOD=1&FILEFORMAT=4&SEARCHRANGE=HH&SYEAR=%i&SMONTH=%i&SDAY=%i&EYEAR=%i&EMONTH=%i&EDAY=%i&LMAG=%f&UMAG=%f&NDEP1=&NDEP2=&IO1=&IO2=&SLAT2=0.0&SLAT1=0.0&SLON2=0.0&SLON1=0.0&CLAT=0.0&CLON=0.0&CRAD=0&SUBMIT=Submit+Search' % (syear, smonth, sday, eyear, emonth, eday, magnitude_range[0], magnitude_range[1])
-
-    response = urllib2.urlopen(l)
-    
-    html = response.read()
-    
-    markers = []
-    for line in html.splitlines():
-        toks = line.split()
-        if not len(toks) == 12: continue
-        if not toks[0].startswith('PDE'): continue
-        datestr = ' '.join(toks[1:4]+[toks[4][:6]])
-        tt = time.strptime(datestr, '%Y %m %d %H%M%S')
-        
-        t = calendar.timegm(tt)
-        markers.append(EventMarker(t, float(toks[8])))
-    return markers
 
 def get_working_system_time_range():
     now = time.time()
@@ -683,9 +687,22 @@ class Marker:
         except IndexError: pass            
 
 class EventMarker(Marker):
-    def __init__(self, time, magnitude):
-        Marker.__init__(self, [], time, time)
+    def __init__(self, event):
+        Marker.__init__(self, [], event.time, event.time)
+        self._event = event
         
+    def draw(self, p, time_projection, y_projection):
+        Marker.draw(self, p, time_projection, y_projection)
+        
+        u = time_projection(self.tmin)
+        v0, v1 = y_projection.get_out_range()
+        
+        label = 'M%3.1f %s' % (self._event.magnitude, self._event.region)
+        label_bg = QBrush( QColor(220,220,220) )
+        draw_label( p, u, v0-10., label, label_bg, 'CB')
+
+    def draw_trace(self, p, trace, time_projection, track_projection, gain):
+        pass
 
 def MakePileOverviewClass(base):
     
@@ -743,11 +760,6 @@ def MakePileOverviewClass(base):
             
             self.menu.addSeparator()
             
-            self.menuitem_neic = QAction('NEIC catalog events 5+', self.menu)
-            self.menu.addAction(self.menuitem_neic)
-            self.connect( self.menuitem_neic, SIGNAL("triggered(bool)"), self.get_neic_events )
-            
-            self.menu.addSeparator()
     
             menudef = [
                 ('Indivdual Scale',            lambda tr: (tr.network, tr.station, tr.location, tr.channel)),
@@ -773,30 +785,47 @@ def MakePileOverviewClass(base):
             self.menu.addSeparator()
             
             menudef = [
-                ('Sort by Network, Station, Location, Channel', 
-                    ( lambda tr: tr.nslc_id,     # gathering
+                ('Sort by Names',
+                    lambda tr: () ),
+                ('Sort by Distance',
+                    lambda tr: self.station_attrib(tr, lambda sta: (m_float(sta.dist_m),) )),
+                ('Sort by Azimuth',
+                    lambda tr: self.station_attrib(tr, lambda sta: (deg_float(sta.azimuth),) )),
+                ('Sort by Distance in 12 Azimuthal Blocks',
+                    lambda tr: self.station_attrib(tr, lambda sta: (int(round((sta.azimuth+15.)/30.)), m_float(sta.dist_m)))),
+            ]
+            self.menuitems_ssorting = add_radiobuttongroup(self.menu, menudef, self, self.s_sortingmode_change)
+            
+            self._ssort = lambda tr: None
+            
+            self.menu.addSeparator()
+            
+            menudef = [
+                ('Subsort by Network, Station, Location, Channel', 
+                    ( lambda tr: self.ssort(tr) + tr.nslc_id,     # gathering
                     lambda a,b: cmp(a,b),      # sorting
                     lambda tr: tr.location )),  # coloring
-                ('Sort by Network, Station, Channel, Location', 
-                    ( lambda tr: tr.nslc_id, 
-                    lambda a,b: cmp((a[0],a[1],a[3],a[2]), (b[0],b[1],b[3],b[2])),
+                ('Subsort by Network, Station, Channel, Location', 
+                    ( lambda tr: self.ssort(tr) + (tr.network, tr.station, tr.channel, tr.location),
+                    lambda a,b: cmp(a,b),
                     lambda tr: tr.channel )),
-                ('Sort by Station, Network, Channel, Location', 
-                    ( lambda tr: tr.nslc_id, 
-                    lambda a,b: cmp((a[1],a[0],a[3],a[2]), (b[1],b[0],b[3],b[2])),
+                ('Subsort by Station, Network, Channel, Location', 
+                    ( lambda tr: self.ssort(tr) + (tr.station, tr.network, tr.channel, tr.location),
+                    lambda a,b: cmp(a,b),
                     lambda tr: tr.channel )),
-                ('Sort by Location, Network, Station, Channel', 
-                    ( lambda tr: tr.nslc_id, 
-                    lambda a,b: cmp((a[2],a[0],a[1],a[3]), (b[2],b[0],b[1],b[3])),
+                ('Subsort by Location, Network, Station, Channel', 
+                    ( lambda tr: self.ssort(tr) + (tr.location, tr.network, tr.station, tr.channel),
+                    lambda a,b: cmp(a,b),
                     lambda tr: tr.channel )),
-                ('Sort by Network, Station, Channel',
-                    ( lambda tr: (tr.network, tr.station, tr.channel),
+                ('Subsort by Network, Station, Channel (Grouped by Location)',
+                    ( lambda tr: self.ssort(tr) + (tr.network, tr.station, tr.channel),
                     lambda a,b: cmp(a,b),
                     lambda tr: tr.location )),
-                ('Sort by Station, Network, Channel',
-                    ( lambda tr: (tr.station, tr.network, tr.channel),
+                ('Subsort by Station, Network, Channel (Grouped by Location)',
+                    ( lambda tr: self.ssort(tr) + (tr.station, tr.network, tr.channel),
                     lambda a,b: cmp(a,b),
                     lambda tr: tr.location )),
+                
             ]
             self.menuitems_sorting = add_radiobuttongroup(self.menu, menudef, self, self.sortingmode_change)
             
@@ -917,6 +946,40 @@ def MakePileOverviewClass(base):
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
             self.default_snufflings = None
             self.setup_snufflings()
+            
+            self.stations = {}
+        
+        def ssort(self, tr):
+            return self._ssort(tr)
+        
+        def station_key(self, x):
+            return x.network, x.station
+        
+        def station_attrib(self, tr, getter):
+            sk = self.station_key(tr)
+            if sk in self.stations:
+                station = self.stations[sk]
+                return getter(station)
+            else:
+                return ''
+            
+        def set_stations(self, stations):
+            self.stations = {}
+            self.add_stations(stations)
+        
+        def add_stations(self, stations):
+            for station in stations:
+                sk = self.station_key(station)
+                self.stations[sk] = station
+        
+        def add_event(self, event):
+            marker = EventMarker(event)
+            self.add_marker( marker )
+            self.set_origin(event)
+        
+        def set_origin(self, location):
+            for station in self.stations.values():
+                station.set_event_relative_data(location)
         
         def toggletest(self, checked):
             if checked:
@@ -1005,10 +1068,7 @@ def MakePileOverviewClass(base):
         
         def pile_changed(self, what):
             self.pile_has_changed = True
-            
-        def get_neic_events(self):
-            self.set_markers(neic_earthquakes(self.pile.get_tmin(), self.pile.get_tmax(), magnitude_range=(5.,9.9)))
-    
+           
         def set_gathering(self, gather=None, order=None, color=None):
             if gather is None:
                 gather = lambda tr: tr.nslc_id
@@ -1569,16 +1629,10 @@ def MakePileOverviewClass(base):
                 for key in self.track_keys:
                     itrack = self.key_to_row[key]
                     if itrack in track_projections:
-                        plabel = ' '.join([ x for x in key if x])
-                        label = QString( plabel)
-                        rect = fm.boundingRect( label )
-                        
+                        plabel = ' '.join([ str(x) for x in key if x ])
                         lx = 10
                         ly = self.track_to_screen(itrack+0.5)
-                        
-                        rect.translate( lx, ly )
-                        p.fillRect( rect, label_bg )
-                        p.drawText( lx, ly, label )
+                        draw_label( p, lx, ly, plabel, label_bg, 'BL')
                         
                         if (self.menuitem_showscalerange.isChecked() and itrack in min_max_for_annot):
                             if min_max_for_annot[itrack] is not None:
@@ -1586,12 +1640,10 @@ def MakePileOverviewClass(base):
                             else:
                                 plabel = 'Mixed Scales!'
                             label = QString( plabel)
-                            rect = fm.boundingRect( label )
-                            lx = w-10-rect.width()
-                            rect.translate( lx, ly )
-                            p.fillRect( rect, label_bg )
-                            p.drawText( lx, ly, label )
-    
+                            
+                            lx = w-10
+                            draw_label( p, lx, ly, plabel, label_bg, 'BR')
+                            
         def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
                     
             fft_filtering = self.menuitem_fft_filtering.isChecked()
@@ -1711,6 +1763,13 @@ def MakePileOverviewClass(base):
             for menuitem, scaling_key in self.menuitems_scaling:
                 if menuitem.isChecked():
                     self.scaling_key = scaling_key
+    
+        def s_sortingmode_change(self, ignore=None):
+            for menuitem, valfunc in self.menuitems_ssorting:
+                if menuitem.isChecked():
+                    self._ssort = valfunc
+            
+            self.sortingmode_change()
     
         def sortingmode_change(self, ignore=None):
             for menuitem, (gather, order, color) in self.menuitems_sorting:
@@ -1949,6 +2008,9 @@ class PileViewer(QFrame):
         layout.addWidget( self.gain_widget, 3,0 )
         layout.addWidget( self.rot_widget, 4,0 )
         return frame
+    
+    def get_view(self):
+        return self.pile_overview
     
     def update_contents(self):
         self.pile_overview.update()
