@@ -707,6 +707,7 @@ class EventMarker(Marker):
 def MakePileOverviewClass(base):
     
     class PileOverview(base):
+
         def __init__(self, pile, ntracks_shown_max, add_panel_hook, *args):
             apply(base.__init__, (self,) + args)
             
@@ -1084,17 +1085,15 @@ def MakePileOverviewClass(base):
             self.color_gather = color
             self.color_keys = self.pile.gather_keys(color)
             previous_ntracks = self.ntracks
-            self.ntracks = len(keys)
+            self.set_ntracks(len(keys))
             if self.shown_tracks_range is None or previous_ntracks == 0:
-                self.shown_tracks_range = 0, self.ntracks
-                
-            l, h = self.shown_tracks_range
-            if l >= self.ntracks: l = self.ntracks-1
-            if h > self.ntracks: h = self.ntracks
+                l, h = 0, self.ntracks
+            else:
+                l, h = self.shown_tracks_range
             
-            self.shown_tracks_range = l, h
-            self.shown_tracks_start = float(self.shown_tracks_range[0])
-    
+            
+            self.set_tracks_range((l,h), float(l))
+
             self.track_keys = sorted(keys, cmp=order)
             self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
             
@@ -1383,8 +1382,30 @@ def MakePileOverviewClass(base):
                 self.zoom_tracks( anchor, wdelta )
             else:
                 self.scroll_tracks( -wdelta )
-    
-    
+
+        def set_ntracks(self, ntracks):
+            if self.ntracks != ntracks:
+                self.ntracks = ntracks
+                if self.shown_tracks_range is not None:
+                    l,h = self.shown_tracks_range
+                else:
+                    l,h = 0,self.ntracks
+
+                self.emit(SIGNAL('tracks_range_changed(int,int,int)'), self.ntracks, l,h) 
+        
+        def set_tracks_range(self, range, start):
+            l,h = range
+            l = min(self.ntracks-1, l)
+            h = min(self.ntracks, h)
+            l = max(0,l)
+            h = max(1,h)
+            
+            if self.shown_tracks_range != (l,h):
+                self.shown_tracks_range = l,h
+                self.shown_tracks_start = start
+
+                self.emit( SIGNAL('tracks_range_changed(int,int,int)'), self.ntracks, l,h)
+
         def scroll_tracks(self, shift):
             shown = self.shown_tracks_range
             shiftmin = -shown[0]
@@ -1392,8 +1413,9 @@ def MakePileOverviewClass(base):
             shift = max(shiftmin, shift)
             shift = min(shiftmax, shift)
             shown = shown[0] + shift, shown[1] + shift
-            self.shown_tracks_range = int(shown[0]), int(shown[1])
-            self.shown_tracks_start = self.shown_tracks_range[0]
+            
+            self.set_tracks_range((int(shown[0]), int(shown[1])), self.shown_tracks_range[0])
+
             self.update()
             
         def zoom_tracks(self, anchor, delta):
@@ -1407,8 +1429,7 @@ def MakePileOverviewClass(base):
                 nu -= nv - self.ntracks
                 nv -= nv - self.ntracks
             
-            self.shown_tracks_start = nu
-            self.shown_tracks_range = int(round(nu)), int(round(nv))
+            self.set_tracks_range((int(round(nu)), int(round(nv))), nu)
             
             self.update()       
     
@@ -1979,7 +2000,19 @@ class PileViewer(QFrame):
         
         layout.addWidget( self.pile_overview, 0, 0 )
         
-        
+        scrollbar = QScrollBar(Qt.Vertical)
+        self.scrollbar = scrollbar
+        layout.addWidget( scrollbar, 0, 1 )
+        self.connect( self.pile_overview, SIGNAL("tracks_range_changed(int,int,int)"), self.tracks_range_changed)
+
+    def tracks_range_changed(self, ntracks, ilo, ihi):
+        print ntracks, ilo, ihi
+        self.scrollbar.blockSignals(True)
+        self.scrollbar.setMaximum(ntracks-(ihi-ilo))        
+        self.scrollbar.setValue(ilo)
+        self.scrollbar.setPageStep(ihi-ilo)
+        self.scrollbar.blockSignals(False)
+
     def controls(self):
         frame = QFrame(self)
         layout = QGridLayout()
