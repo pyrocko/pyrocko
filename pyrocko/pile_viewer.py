@@ -47,8 +47,10 @@ class Global:
 class m_float(float):
     
     def __str__(self):
-        if abs(self) >= 1000.:
-            return '%.5g km' % (self/1000.)
+        if abs(self) >= 10000.:
+            return '%g km' % round(self/1000.,0)
+        elif abs(self) >= 1000.:
+            return '%g km' % round(self/1000.,1)
         else:
             return '%.5g m' % self
         
@@ -56,6 +58,11 @@ class deg_float(float):
     
     def __str__(self):
         return '%4.0f' % self
+ 
+class sector_int(int):
+    
+    def __str__(self):
+        return '[%i]' % self
  
 gap_lap_tolerance = 5.
 
@@ -789,15 +796,16 @@ def MakePileOverviewClass(base):
                 ('Sort by Names',
                     lambda tr: () ),
                 ('Sort by Distance',
-                    lambda tr: self.station_attrib(tr, lambda sta: (m_float(sta.dist_m),) )),
+                    lambda tr: self.station_attrib(tr, lambda sta: (m_float(sta.dist_m),), lambda tr: (None,) )),
                 ('Sort by Azimuth',
-                    lambda tr: self.station_attrib(tr, lambda sta: (deg_float(sta.azimuth),) )),
+                    lambda tr: self.station_attrib(tr, lambda sta: (deg_float(sta.azimuth),), lambda tr: (None,) )),
                 ('Sort by Distance in 12 Azimuthal Blocks',
-                    lambda tr: self.station_attrib(tr, lambda sta: (int(round((sta.azimuth+15.)/30.)), m_float(sta.dist_m)))),
+                    lambda tr: self.station_attrib(tr, lambda sta: (sector_int(round((sta.azimuth+15.)/30.)), m_float(sta.dist_m)),
+                                                       lambda tr: (None,None) )),
             ]
             self.menuitems_ssorting = add_radiobuttongroup(self.menu, menudef, self, self.s_sortingmode_change)
             
-            self._ssort = lambda tr: None
+            self._ssort = lambda tr: ()
             
             self.menu.addSeparator()
             
@@ -925,7 +933,7 @@ def MakePileOverviewClass(base):
             self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
             self.time_projection.set_out_range(0., self.width())
                 
-            self.set_gathering()
+            self.gather = None
     
             self.track_to_screen = Projection()
             self.track_to_nslc_ids = {}
@@ -949,20 +957,20 @@ def MakePileOverviewClass(base):
             self.setup_snufflings()
             
             self.stations = {}
-        
+            
         def ssort(self, tr):
             return self._ssort(tr)
         
         def station_key(self, x):
             return x.network, x.station
         
-        def station_attrib(self, tr, getter):
+        def station_attrib(self, tr, getter, default_getter):
             sk = self.station_key(tr)
             if sk in self.stations:
                 station = self.stations[sk]
                 return getter(station)
             else:
-                return ''
+                return default_getter(tr)
             
         def set_stations(self, stations):
             self.stations = {}
@@ -1071,6 +1079,7 @@ def MakePileOverviewClass(base):
             self.pile_has_changed = True
            
         def set_gathering(self, gather=None, order=None, color=None):
+            
             if gather is None:
                 gather = lambda tr: tr.nslc_id
                 
@@ -1087,12 +1096,12 @@ def MakePileOverviewClass(base):
             previous_ntracks = self.ntracks
             self.set_ntracks(len(keys))
             if self.shown_tracks_range is None or previous_ntracks == 0:
-                l, h = 0, self.ntracks
+                l, h = 0, min(self.ntracks_shown_max, self.ntracks)
             else:
                 l, h = self.shown_tracks_range
             
             
-            self.set_tracks_range((l,h), float(l))
+            self.set_tracks_range((l,h))
 
             self.track_keys = sorted(keys, cmp=order)
             self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
@@ -1393,12 +1402,16 @@ def MakePileOverviewClass(base):
 
                 self.emit(SIGNAL('tracks_range_changed(int,int,int)'), self.ntracks, l,h) 
         
-        def set_tracks_range(self, range, start):
+        def set_tracks_range(self, range, start=None):
+            
             l,h = range
             l = min(self.ntracks-1, l)
             h = min(self.ntracks, h)
             l = max(0,l)
             h = max(1,h)
+            
+            if start is None:
+                start = float(l)
             
             if self.shown_tracks_range != (l,h):
                 self.shown_tracks_range = l,h
@@ -1414,14 +1427,19 @@ def MakePileOverviewClass(base):
             shift = min(shiftmax, shift)
             shown = shown[0] + shift, shown[1] + shift
             
-            self.set_tracks_range((int(shown[0]), int(shown[1])), self.shown_tracks_range[0])
+            self.set_tracks_range((int(shown[0]), int(shown[1])))
 
             self.update()
             
         def zoom_tracks(self, anchor, delta):
             ntracks_shown = self.shown_tracks_range[1]-self.shown_tracks_range[0]
+            
+            if (ntracks_shown == 1 and delta <= 0) or (ntracks_shown == self.ntracks and delta >= 0):
+                return
+            
             ntracks_shown += int(round(delta))
-            if not ( 1 <= ntracks_shown <= self.ntracks): return
+            ntracks_shown = min(max(1, ntracks_shown), self.ntracks)
+            
             u = self.shown_tracks_start
             nu = max(0., u-anchor*delta)
             nv = nu + ntracks_shown
@@ -1430,7 +1448,6 @@ def MakePileOverviewClass(base):
                 nv -= nv - self.ntracks
             
             self.set_tracks_range((int(round(nu)), int(round(nv))), nu)
-            
             self.update()       
     
         def printit(self):
@@ -1526,6 +1543,9 @@ def MakePileOverviewClass(base):
             
         def drawit(self, p, printmode=False, w=None, h=None):
             """This performs the actual drawing."""
+    
+            if self.gather is None:
+                self.set_gathering()
     
             if self.pile_has_changed:
                 self.sortingmode_change()
@@ -1650,7 +1670,7 @@ def MakePileOverviewClass(base):
                 for key in self.track_keys:
                     itrack = self.key_to_row[key]
                     if itrack in track_projections:
-                        plabel = ' '.join([ str(x) for x in key if x ])
+                        plabel = ' '.join([ str(x) for x in key if x is not None ])
                         lx = 10
                         ly = self.track_to_screen(itrack+0.5)
                         draw_label( p, lx, ly, plabel, label_bg, 'BL')
@@ -2003,16 +2023,30 @@ class PileViewer(QFrame):
         scrollbar = QScrollBar(Qt.Vertical)
         self.scrollbar = scrollbar
         layout.addWidget( scrollbar, 0, 1 )
-        self.connect( self.pile_overview, SIGNAL("tracks_range_changed(int,int,int)"), self.tracks_range_changed)
+        self.connect(self.scrollbar, SIGNAL('valueChanged(int)'), self.scrollbar_changed)
+        self.block_scrollbar_changes = False
+        
+        self.connect(self.pile_overview, SIGNAL("tracks_range_changed(int,int,int)"), self.tracks_range_changed)
+        
 
     def tracks_range_changed(self, ntracks, ilo, ihi):
-        print ntracks, ilo, ihi
+        if self.block_scrollbar_changes:
+            return
+                
         self.scrollbar.blockSignals(True)
-        self.scrollbar.setMaximum(ntracks-(ihi-ilo))        
-        self.scrollbar.setValue(ilo)
         self.scrollbar.setPageStep(ihi-ilo)
+        self.scrollbar.setRange(0, max(0,ntracks-(ihi-ilo)))
+        self.scrollbar.setValue(ilo)
         self.scrollbar.blockSignals(False)
 
+    def scrollbar_changed(self, value):
+        self.block_scrollbar_changes = True
+        ilo = value
+        ihi = ilo + self.scrollbar.pageStep()
+        self.pile_overview.set_tracks_range((ilo, ihi))
+        self.block_scrollbar_changes = False
+        self.update_contents()
+        
     def controls(self):
         frame = QFrame(self)
         layout = QGridLayout()
