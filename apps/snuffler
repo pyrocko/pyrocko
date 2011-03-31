@@ -174,7 +174,7 @@ class MySnuffler(QApplication):
         self.win.setCentralWidget( self.pile_viewer )
         
         self.add_panel('Main Controls', self.pile_viewer.controls())
-                
+        self.win.resize(1024, 768)       
         self.win.show()
 
         self.pile_viewer.get_view().setFocus(Qt.OtherFocusReason)
