@@ -393,10 +393,11 @@ class MemTracesFile(TracesGroup):
     def get_traces(self):
         return self.traces
     
-    def gather_keys(self, gather):
+    def gather_keys(self, gather, selector=None):
         keys = set()
         for trace in self.traces:
-            keys.add(gather(trace))
+            if selector is None or selector(trace):
+                keys.add(gather(trace))
             
         return keys
     
@@ -526,10 +527,11 @@ class TracesFile(TracesGroup):
         for trace in self.traces:
             yield trace
     
-    def gather_keys(self, gather):
+    def gather_keys(self, gather, selector=None):
         keys = set()
         for trace in self.traces:
-            keys.add(gather(trace))
+            if selector is None or selector(trace):
+                keys.add(gather(trace))
             
         return keys
     
@@ -598,10 +600,10 @@ class SubPile(TracesGroup):
                 
         return chopped, used_files
         
-    def gather_keys(self, gather):
+    def gather_keys(self, gather, selector=None):
         keys = set()
         for file in self.files:
-            keys |= file.gather_keys(gather)
+            keys |= file.gather_keys(gather, selector)
             
         return keys
 
@@ -860,10 +862,10 @@ class Pile(TracesGroup):
         
         if pbar: pbar.finish()
         
-    def gather_keys(self, gather):
+    def gather_keys(self, gather, selector=None):
         keys = set()
         for subpile in self.subpiles.values():
-            keys |= subpile.gather_keys(gather)
+            keys |= subpile.gather_keys(gather, selector)
             
         return sorted(keys)
     
