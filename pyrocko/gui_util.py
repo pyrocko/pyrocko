@@ -62,6 +62,7 @@ class ValControl(QFrame):
         self.slider.setPageStep( 1000 )
         self.slider.setTickPosition( QSlider.NoTicks )
         self.slider.sizePolicy().setHorizontalStretch(10)
+        self.slider.setFocusPolicy(Qt.ClickFocus)
         self.layout.addWidget( self.lname )
         self.layout.addWidget( self.lvalue )
         self.layout.addWidget( self.slider )

@@ -744,6 +744,7 @@ def MakePileOverviewClass(base):
             self.reloaded = False
             self.pile_has_changed = False
             
+
             self.tax = TimeAx()
             self.setBackgroundRole( QPalette.Base )
             self.setAutoFillBackground( True )
@@ -935,6 +936,8 @@ def MakePileOverviewClass(base):
                 
             self.gather = None
     
+            self.trace_filter = None
+
             self.track_to_screen = Projection()
             self.track_to_nslc_ids = {}
         
@@ -958,6 +961,10 @@ def MakePileOverviewClass(base):
             
             self.stations = {}
             
+        def set_trace_filter(self, filter_func):
+            self.trace_filter = filter_func
+            self.sortingmode_change()
+
         def ssort(self, tr):
             return self._ssort(tr)
         
@@ -1090,12 +1097,12 @@ def MakePileOverviewClass(base):
                 color = lambda tr: tr.location
             
             self.gather = gather
-            keys = self.pile.gather_keys(gather)
+            keys = self.pile.gather_keys(gather, self.trace_filter) 
             self.color_gather = color
             self.color_keys = self.pile.gather_keys(color)
             previous_ntracks = self.ntracks
             self.set_ntracks(len(keys))
-            if self.shown_tracks_range is None or previous_ntracks == 0:
+            if self.shown_tracks_range is None or previous_ntracks == 0 or previous_ntracks != self.ntracks:
                 l, h = 0, min(self.ntracks_shown_max, self.ntracks)
             else:
                 l, h = self.shown_tracks_range
@@ -1107,8 +1114,13 @@ def MakePileOverviewClass(base):
             self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
             
             inrange = lambda x,r: r[0] <= x and x < r[1]
-            self.trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
+            trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
         
+            if self.trace_filter is not None:
+                self.trace_selector = lambda x: self.trace_filter(x) and trace_selector(x)
+            else:
+                self.trace_selector = trace_selector
+
             if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1]:
                 self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
         
@@ -1373,7 +1385,10 @@ def MakePileOverviewClass(base):
             
             elif key_event.text() == '-':
                 self.zoom_tracks(0.,-1.)
-                            
+                
+            elif key_event.text() == '/':
+                self.emit(SIGNAL('want_input()'))
+
             self.update()
             self.update_status()
     
@@ -1516,8 +1531,12 @@ def MakePileOverviewClass(base):
                 v_projection.set_in_range(0.,1.)
             
             selector = lambda x: x.overlaps(*time_projection.get_in_range())
-            
-            traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=selector))
+            if self.trace_filter is not None:
+                tselector = lambda x: selector(x) and self.trace_filter(x)
+            else:
+                tselector = selector
+
+            traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=tselector))
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
             istyle = 0
             for itr, tr in enumerate(traces):
@@ -2018,16 +2037,48 @@ class PileViewer(QFrame):
         layout = QGridLayout()
         self.setLayout( layout )
         
-        layout.addWidget( self.pile_overview, 0, 0 )
+        self.inputline = QLineEdit()
+        self.connect(self.inputline, SIGNAL('editingFinished()'), self.inputline_finished)
+        self.connect(self.inputline, SIGNAL('textEdited(QString)'), self.inputline_changed)
+        self.inputline.setFocusPolicy(Qt.ClickFocus)
+        self.inputline.hide()
+        layout.addWidget( self.inputline, 0, 0, 1, 2 )
+        layout.addWidget( self.pile_overview, 1, 0 )
         
         scrollbar = QScrollBar(Qt.Vertical)
         self.scrollbar = scrollbar
-        layout.addWidget( scrollbar, 0, 1 )
+        layout.addWidget( scrollbar, 1, 1 )
         self.connect(self.scrollbar, SIGNAL('valueChanged(int)'), self.scrollbar_changed)
         self.block_scrollbar_changes = False
         
+        self.connect(self.pile_overview, SIGNAL('want_input()'), self.inputline_show)
         self.connect(self.pile_overview, SIGNAL("tracks_range_changed(int,int,int)"), self.tracks_range_changed)
         
+
+    def inputline_show(self):
+        self.inputline.show()
+        self.inputline.setFocus(Qt.OtherFocusReason)
+        self.inputline.selectAll()
+
+    def inputline_changed(self, text):
+        line = str(text)
+        toks = line.split(None,1)
+        w,s = 's', ''
+        if len(toks) == 1:
+            s = toks[0].lower()
+        elif len(toks) == 2:
+            w,s = toks[0].lower(), toks[1].lower()
+
+        m = {'n': 'network', 's': 'station', 'l': 'location', 'c':'channel'}
+        if w in m:
+            filterfunc = lambda tr: getattr(tr, m[w]).lower().find(s) != -1
+        
+            self.pile_overview.set_trace_filter(filterfunc)
+            self.update_contents()
+
+    def inputline_finished(self):
+        self.pile_overview.setFocus(Qt.OtherFocusReason) 
+        self.inputline.hide()
 
     def tracks_range_changed(self, ntracks, ilo, ihi):
         if self.block_scrollbar_changes:
@@ -2035,8 +2086,10 @@ class PileViewer(QFrame):
                 
         self.scrollbar.blockSignals(True)
         self.scrollbar.setPageStep(ihi-ilo)
-        self.scrollbar.setRange(0, max(0,ntracks-(ihi-ilo)))
+        vmax = max(0,ntracks-(ihi-ilo))
+        self.scrollbar.setRange(0, vmax)
         self.scrollbar.setValue(ilo)
+        self.scrollbar.setHidden(vmax == 0)
         self.scrollbar.blockSignals(False)
 
     def scrollbar_changed(self, value):
