@@ -21,15 +21,24 @@ from PyQt4.QtGui import *
 
 logger = logging.getLogger('pyrocko.slinksnuff')
 
-class QSynchronizedSlink(pyrocko.slink.SlowSlink):
-    
-    def __init__(self, host, port=18000):
-        pyrocko.slink.SlowSlink.__init__(self, host, port)
+class AcquisitionThread(QThread):
+    def __init__(self):
+        QThread.__init__(self)
         self.mutex = QMutex()
         self.queue = []
     
     def run(self):
-        pass
+        self.xstart(call_run=False)
+        while self.sun_is_shining():
+            self.process()
+            
+    def xstop(self):
+        self.sun_is_shining = False
+        self.stop()
+
+        logger.debug("Waiting for thread to terminate...")
+        self.wait()
+        logger.debug("Thread has terminated.")
  
     def got_trace(self, tr):
         self.mutex.lock()
@@ -42,27 +51,12 @@ class QSynchronizedSlink(pyrocko.slink.SlowSlink):
         self.queue[:] = []
         self.mutex.unlock()
         return items
-    
-class QSlinkThread(QThread):
-    def __init__(self, host='localhost', port=18000):
-        QThread.__init__(self)
-        self.slink = QSynchronizedSlink(host, port=port)
-    
-    def get_slink(self):
-        return self.slink
-    
-    def run(self):
-        self.slink.start()
-        while self.slink.sun_is_shining():
-            self.slink.process()
-            
-    def stop(self):
-        self.sun_is_shining = False
-        self.slink.stop()
-        logger.debug("Waiting for thread to terminate...")
-        self.wait()
-        logger.debug("Thread has terminated.")
- 
+
+class SlinkAcquisition(pyrocko.slink.SlowSlink, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.slink.SlowSlink.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
 class SlinkSnuffler(QApplication):
     
     def __init__(self, *args):
@@ -107,8 +101,8 @@ class SlinkSnuffler(QApplication):
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
 
-        self.slt = QSlinkThread(host=options.host, port=options.port)
-        slink = self.slt.get_slink()
+        self.slt = SlinkAcquisition(host=options.host, port=options.port)
+        slink = self.slt
        
         streams = slink.query_streams()
        
@@ -151,8 +145,8 @@ class SlinkSnuffler(QApplication):
         return delete_panel
     
     def periodical(self):
-        if self.slt.get_slink().sun_is_shining():
-            traces = self.slt.get_slink().poll()
+        if self.slt.sun_is_shining():
+            traces = self.slt.poll()
             for tr in traces:
                 self.pile.insert_trace(tr)
     
