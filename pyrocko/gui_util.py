@@ -95,8 +95,12 @@ class ValControl(QFrame):
         self.mute = True
         self.cur = cur
         self.cursl = self.v2s(cur)
-        self.lvalue.setValue( self.cur )
+        self.slider.blockSignals(True)
         self.slider.setValue( self.cursl )
+        self.slider.blockSignals(False)
+        self.lvalue.blockSignals(True)
+        self.lvalue.setValue( self.cur )
+        self.lvalue.blockSignals(False)
         self.mute = False
         
     def get_value(self):
@@ -106,7 +110,10 @@ class ValControl(QFrame):
         if self.cursl != val:
             self.cursl = val
             self.cur = self.s2v(self.cursl)
+
+            self.lvalue.blockSignals(True)
             self.lvalue.setValue( self.cur )
+            self.lvalue.blockSignals(False)
             self.fire_valchange()
             
     def edited(self,val):
@@ -114,7 +121,9 @@ class ValControl(QFrame):
             self.cur = val
             cursl = self.v2s(val)
             if (cursl != self.cursl):
+                self.slider.blockSignals(True)
                 self.slider.setValue( cursl )
+                self.slider.blockSignals(False)
             
             self.fire_valchange()
         
@@ -140,3 +149,4 @@ class LinValControl(ValControl):
                 
     def v2s(self, value):
         return (value-self.mi)/(self.ma-self.mi) * 10000.
+
