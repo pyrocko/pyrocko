@@ -289,7 +289,7 @@ class TracesGroup(object):
     
     def is_relevant(self, tmin, tmax, group_selector=None):
         #return  not (tmax <= self.tmin or self.tmax < tmin) and (selector is None or selector(self))
-        return  tmax > self.tmin and self.tmax >= tmin and (group_selector is None or group_selector(self))
+        return  tmax >= self.tmin and self.tmax >= tmin and (group_selector is None or group_selector(self))
 
     def _convert_tuples_to_sets(self):
         if not isinstance(self.networks, set):
@@ -749,10 +749,17 @@ class Pile(TracesGroup):
             wlen = (wmax+tpad)-(wmin-tpad)
             chopped_weeded = []
             for tr in chopped:
-                if (abs(tr.tmin - (wmin-tpad)) <= 0.5*tr.deltat and 
-                    abs(tr.tmax + tr.deltat - (wmax+tpad)) <= 0.5*tr.deltat):
+                emin = tr.tmin - (wmin-tpad)
+                emax = tr.tmax + tr.deltat - (wmax+tpad)
+                if (abs(emin) <= 0.5*tr.deltat and 
+                    abs(emax) <= 0.5*tr.deltat):
                     chopped_weeded.append(tr)
-            
+                elif degap:
+                    if (0. < emin <= 5. * tr.deltat and 
+                            -5. * tr.deltat <= emax < 0.):
+                        tr.extend(wmin-tpad, wmax+tpad-tr.deltat, fillmethod='repeat')
+                        chopped_weeded.append(tr)
+
             chopped = chopped_weeded
         
         for tr in chopped:
