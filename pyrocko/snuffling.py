@@ -30,6 +30,30 @@ class Param:
         self.minimum = minimum
         self.maximum = maximum
 
+class Switch(Param):
+    '''Definition of a switch for the snuffling. The snuffling may display a
+    checkbox for such a switch.'''
+
+    def __init__(self, name, ident, default):
+        self.name = name
+        self.ident = ident
+        self.default = default
+
+class SwitchControl(QCheckBox):
+    def __init__(self, ident, default, *args):
+        QCheckBox.__init__(self, *args)
+        self.ident = ident
+        self.setChecked(default)
+        self.connect(self, SIGNAL('toggled(bool)'), self.sw_toggled)
+
+    def sw_toggled(self, state):
+        self.emit(SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.ident, state)
+
+    def set_value(self, state):
+        self.blockSignals(True)
+        self.setChecked(state)
+        self.blockSignals(False)
+
 class BrokenSnufflingModule(Exception):
     pass
 
@@ -72,12 +96,17 @@ class SnufflingModule:
                             
         elif self._mtime != mtime:
             logger.warn('reloading snuffling module %s' % self._name)
-            self.remove_snufflings()
+            settings = self.remove_snufflings()
             try:
                 reload(self._module)
                 for snuffling in self._module.__snufflings__():
                     self.add_snuffling(snuffling)
                 
+                if len(self._snufflings) == len(settings):
+                    for sett, snuf in zip(settings, self._snufflings):
+                        snuf.set_settings(sett)
+
+
             except:
                 logger.error(str_traceback())
                 raise BrokenSnufflingModule(self._name)            
@@ -90,11 +119,13 @@ class SnufflingModule:
         self._handler.add_snuffling(snuffling)
     
     def remove_snufflings(self):
+        settings = []
         for snuffling in self._snufflings:
+            settings.append(snuffling.get_settings())
             self._handler.remove_snuffling(snuffling)
             
         self._snufflings = []
-    
+        return settings
     
 class NoViewerSet(Exception):
     '''This exception is raised, when no viewer has been set on a Snuffling.'''
@@ -138,6 +169,7 @@ class Snuffling:
         self._panel = None
         self._menuitem = None
         self._parameters = []
+        self._param_controls = {}
         
         self._live_update = True
         
@@ -270,6 +302,27 @@ class Snuffling:
         
         setattr(self, ident, value)
         
+    def get_parameter(self, ident):
+        return getattr(self, ident)
+
+    def get_settings(self):
+        params = self.get_parameters()
+        settings = {}
+        for param in params:
+            settings[param.ident] = self.get_parameter(param.ident)
+
+        return settings
+
+    def set_settings(self, settings):
+        params = self.get_parameters()
+        dparams = dict( [ (param.ident, param) for param in params ] )
+        for k,v in settings.iteritems():
+            if k in dparams:
+                self.set_parameter(k,v)
+                if k in self._param_controls:
+                    control = self._param_controls[k]
+                    control.set_value(v)
+
     def get_viewer(self):
         '''Get the parent viewer.
         
@@ -386,16 +439,22 @@ class Snuffling:
         is needed (e.g. if the snuffling has no adjustable parameters).'''
     
         params = self.get_parameters()
-        
+        self._param_controls = {}
         if params:                
             frame = QFrame(parent)
             layout = QGridLayout()
             frame.setLayout( layout )
                         
             for iparam, param in enumerate(params):
-                param_widget = ValControl()
-                param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
-                self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
+                if isinstance(param, Switch):
+                    param_widget = SwitchControl(param.ident, param.default, param.name)
+                    self.get_viewer().connect( param_widget, SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.switch_on_snuffling_panel )
+                else:
+                    param_widget = ValControl()
+                    param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
+                    self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
+
+                self._param_controls[param.ident] = param_widget
                 layout.addWidget( param_widget, iparam, 0, 1, 3 )
         
             live_update_checkbox = QCheckBox('Auto-Run')
@@ -465,6 +524,15 @@ class Snuffling:
             self.call()
             self.get_viewer().update()
         
+
+    def switch_on_snuffling_panel(self, ident, state):
+        '''Called when the user has toggled a switchable parameter.'''
+
+        self.set_parameter(ident, state)
+        if self._live_update:
+            self.call()
+            self.get_viewer().update()
+
     def menuitem_triggered(self, arg):
         '''Called when the user has triggered the snuffling's menu.
         
@@ -512,6 +580,9 @@ class Snuffling:
         ticket = self.get_viewer().add_traces(traces)
         self._tickets.append( ticket )
         return ticket
+
+    def add_trace(self, tr):
+        self.add_traces([tr])
 
     def add_markers(self, markers):
         '''Add some markers to the display.
