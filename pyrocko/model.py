@@ -128,7 +128,7 @@ class Event:
         
 
 class Station:
-    def __init__(self, network, station, location, lat, lon, elevation, depth=None, name='', channels=None):
+    def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):
         self.network = network
         self.station = station
         self.location = location
