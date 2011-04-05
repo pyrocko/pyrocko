@@ -7,7 +7,7 @@
 # This file is part of snuffler. For licensing information please see the file 
 # COPYING which is included with snuffler.
 
-import os, sys, signal, logging, re, time
+import os, sys, signal, logging, re, time, random, struct
 import numpy as num
 from optparse import OptionParser
 
@@ -21,6 +21,16 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 logger = logging.getLogger('pyrocko.slinksnuff')
+
+class TestInput:
+    def write(self, data):
+        pass
+
+    def flush(self):
+        pass
+
+    def read(self, n):
+        return struct.pack( str(n)+'B', *[ random.randint(0,255) for i in xrange(n) ] )
 
 class AcquisitionThread(QThread):
     def __init__(self, post_process_sleep=0.1):
@@ -107,6 +117,7 @@ class SlinkSnuffler(QApplication):
         #parser.add_option('--streams', dest='streams', default='GE.WLF..BHZ')
         #parser.add_option('--host', dest='host', default='geofon.gfz-potsdam.de')
         #parser.add_option('--port', dest='port', default='18000')
+        parser.add_option('--follow', dest='follow')
         parser.add_option('--opengl', dest='opengl', action='store_true', default=False)
 
         options, args = parser.parse_args(list(args[0][1:]))
@@ -118,6 +129,11 @@ class SlinkSnuffler(QApplication):
         else:
             pyrocko.util.setup_logging('snuffler', 'warning')
         
+        if options.follow:
+            self.follow_length = options.follow
+        else:
+            self.follow_length = None
+
         self.win = QMainWindow()
         self.win.setWindowTitle( "Snuffslink" )        
         self._dockwidgets = []
@@ -166,7 +182,7 @@ class SlinkSnuffler(QApplication):
                 self.sources.append(cam)
             elif mus:
                 port = mus.group(1)
-                hb628 = USBHB628Acquisition(port=port)
+                hb628 = USBHB628Acquisition(port=port, in_file=TestInput())
                 self.sources.append(hb628)
 
         self.timer = QTimer( self )
