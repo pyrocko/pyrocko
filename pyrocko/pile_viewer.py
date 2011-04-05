@@ -1180,7 +1180,8 @@ def MakePileOverviewClass(base):
         
         def remove_markers(self, markers):
             for marker in markers:
-                self.markers.remove(marker)
+                if marker in self.markers:
+                    self.markers.remove(marker)
         
         def set_markers(self, markers):
             self.markers = markers
