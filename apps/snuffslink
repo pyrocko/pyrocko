@@ -7,7 +7,7 @@
 # This file is part of snuffler. For licensing information please see the file 
 # COPYING which is included with snuffler.
 
-import os, sys, signal, logging
+import os, sys, signal, logging, re, time
 import numpy as num
 from optparse import OptionParser
 
@@ -15,6 +15,7 @@ import pyrocko.hamster_pile
 import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.slink
+import pyrocko.serial_hamster
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -22,19 +23,36 @@ from PyQt4.QtGui import *
 logger = logging.getLogger('pyrocko.slinksnuff')
 
 class AcquisitionThread(QThread):
-    def __init__(self):
+    def __init__(self, post_process_sleep=0.1):
         QThread.__init__(self)
         self.mutex = QMutex()
         self.queue = []
+        self.post_process_sleep = post_process_sleep
+        self._sun_is_shining = True
     
     def run(self):
-        self.xstart(call_run=False)
-        while self.sun_is_shining():
-            self.process()
+        while True:
+            try:
+                self.acquisition_start()
+                while self._sun_is_shining:
+                    t0 = time.time()
+                    self.process()
+                    t1 = time.time()
+                    time.sleep(max(0, self.post_process_sleep-(t1-t0)))
             
-    def xstop(self):
-        self.sun_is_shining = False
-        self.stop()
+                self.acquisition_stop()
+                break
+            
+            except pyrocko.serial_hamster.SerialHamsterError, e:
+                logger.error(str(e))
+                logger.error('Acquistion terminated, restart in 5 s')
+                self.acquisition_stop()
+                time.sleep(5)
+                if not self.sun_is_shining():
+                    break
+
+    def stop(self):
+        self._sun_is_shining = False
 
         logger.debug("Waiting for thread to terminate...")
         self.wait()
@@ -60,6 +78,23 @@ class SlinkAcquisition(pyrocko.slink.SlowSlink, AcquisitionThread):
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self,tr)
 
+class CamAcquisition(pyrocko.serial_hamster.CamSerialHamster, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.serial_hamster.CamSerialHamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
+class USBHB628Acquisition(pyrocko.serial_hamster.USBHB628Hamster, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.serial_hamster.USBHB628Hamster.__init__(self, deltat=0.02, *args, **kwargs)
+        AcquisitionThread.__init__(self, post_process_sleep=0.01)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
+
 class SlinkSnuffler(QApplication):
     
     def __init__(self, *args):
@@ -68,13 +103,16 @@ class SlinkSnuffler(QApplication):
         parser = OptionParser()
         parser.add_option('--ntracks', dest='ntracks', default=24)
         parser.add_option('--debug', dest='debug', action='store_true', default=False)
-        parser.add_option('--streams', dest='streams', default='GE.WLF..BHZ')
-        parser.add_option('--host', dest='host', default='geofon.gfz-potsdam.de')
-        parser.add_option('--port', dest='port', default='18000')
+        #parser.add_option('--seedlink', dest='seedlinkurl') #   seedlink://geofon.gfz-potsdam.de:18000/
+        #parser.add_option('--streams', dest='streams', default='GE.WLF..BHZ')
+        #parser.add_option('--host', dest='host', default='geofon.gfz-potsdam.de')
+        #parser.add_option('--port', dest='port', default='18000')
         parser.add_option('--opengl', dest='opengl', action='store_true', default=False)
 
         options, args = parser.parse_args(list(args[0][1:]))
-        
+        if len(args) == 0:
+            args.append('seedlink://geofon.gfz-potsdam.de/GE.*.*.BHZ')
+
         if options.debug:
             pyrocko.util.setup_logging('snuffler', 'debug')
         else:
@@ -103,23 +141,34 @@ class SlinkSnuffler(QApplication):
 
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
-
-        self.slt = SlinkAcquisition(host=options.host, port=options.port)
-        slink = self.slt
-       
-        streams = slink.query_streams()
-       
-        for stream in streams:
-            if stream[0] == 'GE' and stream[3] == 'BHZ':
-                slink.add_stream(*stream) 
-       
-        for nslc in options.streams.split(','):
-            slink.add_stream(*nslc.split('.'))
         
+        self.sources = []
         for arg in args:
-            slink.add_raw_stream_selector(arg)
-        
-        
+            msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
+            mca = re.match(r'cam://([^:]+)', arg)
+            mus = re.match(r'hb628://([^:]+)', arg)
+            if msl:
+                host = msl.group(1)
+                port = msl.group(3)
+                if not port:
+                    port = '18000'
+                stream_patterns = msl.group(5).split(',')
+                sl = SlinkAcquisition(host=host, port=port)
+                streams = sl.query_streams()
+                streams = pyrocko.util.match_nslcs(stream_patterns, streams)
+                for stream in streams:
+                    sl.add_stream(*stream)
+                    
+                self.sources.append(sl)
+            elif mca:
+                port = mca.group(1)
+                cam = CamAcquisition(port=port)
+                self.sources.append(cam)
+            elif mus:
+                port = mus.group(1)
+                hb628 = USBHB628Acquisition(port=port)
+                self.sources.append(hb628)
+
         self.timer = QTimer( self )
         self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
         self.timer.setInterval(500)
@@ -128,8 +177,9 @@ class SlinkSnuffler(QApplication):
         self.traces = {}
         self.traces_to_files = {}
         
-        self.slt.start()
-    
+        for source in self.sources:
+            source.start()
+
     def add_panel(self, name, panel):
         dockwidget = QDockWidget(name)
         dockwidget.setWidget(panel)
@@ -148,16 +198,17 @@ class SlinkSnuffler(QApplication):
         return delete_panel
     
     def periodical(self):
-        if self.slt.sun_is_shining():
-            traces = self.slt.poll()
+        for source in self.sources:
+            traces = source.poll()
             for tr in traces:
                 self.pile.insert_trace(tr)
-    
+
         self.pile_viewer.pile_overview.update()
         
     def myquit(self, *args):
         self.pile.fixate_all()
-        self.slt.xstop()
+        for source in self.sources:
+            source.stop()
         self.quit()
     
 def main(args):

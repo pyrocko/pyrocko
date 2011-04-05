@@ -3,4 +3,5 @@ evalresp-3.3.0
 libmseed
 *.pyc
 *~
+*.swp
 doc/_build

@@ -1,6 +1,6 @@
 '''Utility functions for pyrocko.'''
 
-import time, logging, os, sys, re, calendar, math
+import time, logging, os, sys, re, calendar, math, fnmatch
 from scipy import signal
 from os.path import join as pjoin
 import config
@@ -546,3 +546,33 @@ def unpack_fixed(format, line, *callargs):
         ipos += l
     
     return values
+
+
+_pattern_cache = {}
+def _nslc_pattern(pattern):
+    if pattern not in _pattern_cache:
+        rpattern = re.compile(fnmatch.translate(pattern))
+        _pattern_cache[pattern] = rpattern
+    else:
+        rpattern = _pattern_cache[pattern]
+
+    return rpattern
+
+def match_nslc(patterns, nslc):
+    if isinstance(patterns, str):
+        patterns = [ patterns ]
+    
+    s = '.'.join(nslc)
+    for pattern in patterns:
+        if _nslc_pattern(pattern).match(s):
+            return True
+
+    return False
+
+def match_nslcs(patterns, nslcs):
+    matching = []
+    for nslc in nslcs:
+        if match_nslc(patterns, nslc): 
+            matching.append(nslc)
+
+    return matching

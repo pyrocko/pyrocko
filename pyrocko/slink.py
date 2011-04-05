@@ -32,7 +32,7 @@ class SlowSlink:
     def add_raw_stream_selector(self, stream_selector):
         self.stream_selectors.append(stream_selector)
     
-    def xstart(self, call_run=True):
+    def acquisition_start(self):
         
         assert not self.running
         
@@ -44,10 +44,8 @@ class SlowSlink:
         self.header = None
         self.vals = []
         self.running = True
-        if call_run:
-            self.xrun()
         
-    def xstop(self):
+    def acquisition_stop(self):
         if not self.running:
             return
         os.kill( self.slink.pid, signal.SIGTERM)
@@ -63,13 +61,6 @@ class SlowSlink:
         
         self.running = False
         logger.debug("Done, slinktool has terminated")
-
-    def sun_is_shining(self):
-        return self.running
-
-    def xrun(self):
-        while self.process():
-            pass
         
     def process(self):
         

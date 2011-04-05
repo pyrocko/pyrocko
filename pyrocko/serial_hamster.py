@@ -46,7 +46,7 @@ class SerialHamsterError(Exception):
 class SerialHamster:
     
     def __init__(self, port=0, baudrate=9600, timeout=5, buffersize=128,
-                       network='', station='TEST', location='', channel='Z',
+                       network='', station='TEST', location='', channels=['Z'],
                        disallow_uneven_sampling_rates=True, 
                        deltat=None,
                        deltat_tolerance=0.01,
@@ -58,8 +58,9 @@ class SerialHamster:
         self.timeout = timeout
         self.buffersize = buffersize
         self.ser = None
-        self.values = []
+        self.values = [[]]*len(channels)
         self.times = []
+        self.fixed_deltat = deltat
         self.deltat = None
         self.deltat_tolerance = deltat_tolerance
         self.tmin = None
@@ -70,7 +71,7 @@ class SerialHamster:
         self.network = network
         self.station = station
         self.location = location
-        self.channel = channel
+        self.channels = channels
         self.in_file = in_file    # for testing
         self.listeners = []
         self.quit_requested = False
@@ -83,7 +84,7 @@ class SerialHamster:
     def clear_listeners(self):
         self.listeners = []
     
-    def start(self, call_run=True):
+    def acquisition_start(self):
         if self.ser is not None:
             self.stop()
         
@@ -103,13 +104,10 @@ class SerialHamster:
         else:
             self.ser = self.in_file
 
-        if call_run:
-            self.run()
-            
     def send_start(self):
         pass
 
-    def stop(self):
+    def acquisition_stop(self):
         if self.ser is not None:
             logger.debug('Stopping serial hamster')
             if self.in_file is None:
@@ -117,18 +115,6 @@ class SerialHamster:
             self.ser = None
         self._flush_buffer()
             
-    def sun_is_shining(self):
-        return not self.quit_requested
-    
-    def quit_soon(self, *args):
-        logger.info('Quitting hamster')
-        self.quit_requested = True
-        
-    def run(self):
-        while self.sun_is_shining() and self.process():
-            pass
-        self.stop()
-        
     def process(self):
         if self.ser is None:
             return False
@@ -149,10 +135,10 @@ class SerialHamster:
                 logger.warn('Got something unexpected on serial line')
                 continue
             
-            self.values.append(val)
+            self.values[0].append(val)
             self.times.append(t)
             
-            if len(self.values) == self.buffersize:
+            if len(self.values[0]) == self.buffersize:
                 self._flush_buffer()
         
         return True
@@ -182,7 +168,7 @@ class SerialHamster:
             r_deltat = 1./round(1./r_deltat)
 
         # check if deltat is consistent with expectations        
-        if self.deltat is not None:
+        if self.deltat is not None and self.fixed_deltat is None:
             try:
                 p_deltat = self.previous_deltats.median()
                 if ((self.disallow_uneven_sampling_rates and abs(1./p_deltat - 1./self.deltat) > 0.5) or
@@ -196,9 +182,12 @@ class SerialHamster:
         
         # detect sampling rate
         if self.deltat is None:
-            self.deltat = r_deltat
-            self.tmin = None         # must also set new time origin if sampling rate changes
-            logger.info('Setting new sampling rate to %g Hz (sampling interval is %g s)' % (1./self.deltat, self.deltat ))
+            if self.fixed_deltat is not None:
+                self.deltat = self.fixed_deltat
+            else:
+                self.deltat = r_deltat
+                self.tmin = None         # must also set new time origin if sampling rate changes
+                logger.info('Setting new sampling rate to %g Hz (sampling interval is %g s)' % (1./self.deltat, self.deltat ))
 
         # check if onset has drifted / jumped
         if self.deltat is not None and self.tmin is not None:        
@@ -211,11 +200,13 @@ class SerialHamster:
                     soffset = int(round(toffset/self.deltat))
                     logger.info('Detected drift/jump/gap of %g sample%s' % (soffset, ['s',''][abs(soffset)==1]) )
                     if soffset == 1:
-                        self.values.append(self.values[-1])
+                        for values in self.values:
+                            values.append(values[-1])
                         self.previous_tmin_offsets.add(-self.deltat)
                         logger.info('Adding one sample to compensate time drift')
                     elif soffset == -1:
-                        self.values.pop(-1)
+                        for values in self.values:
+                            values.pop(-1)
                         self.previous_tmin_offsets.add(+self.deltat)
                         logger.info('Removing one sample to compensate time drift')
                     else:  
@@ -234,19 +225,20 @@ class SerialHamster:
             logger.info('Setting new time origin to %s' % util.gmctime(self.tmin))
         
         if self.tmin is not None and self.deltat is not None:
-            v = num.array(self.values, dtype=num.int) 
-    
-            tr = trace.Trace(
-                    network=self.network, 
-                    station=self.station,
-                    location=self.location,
-                    channel=self.channel, 
-                    tmin=self.tmin + self.ncontinuous*self.deltat, deltat=self.deltat, ydata=v)
+            for channel, values in zip(self.channels, self.values):
+                v = num.array(values, dtype=num.int) 
+        
+                tr = trace.Trace(
+                        network=self.network, 
+                        station=self.station,
+                        location=self.location,
+                        channel=channel, 
+                        tmin=self.tmin + self.ncontinuous*self.deltat, deltat=self.deltat, ydata=v)
                     
-            self.got_trace(tr)
+                self.got_trace(tr)
             self.ncontinuous += v.size
             
-            self.values = []
+            self.values = [[]] * len(self.channels)
             self.times = []
     
     def got_trace(self, tr):
@@ -261,15 +253,17 @@ class SerialHamster:
         
 class CamSerialHamster(SerialHamster):
 
-    def __init__(self, *args, **kwargs):
-        SerialHamster.__init__(self, *args, **kwargs)
+    def __init__(self, baudrate=115200, channels=['N'], *args, **kwargs):
+        SerialHamster.__init__(self, disallow_uneven_sampling_rates=False, baudrate=baudrate, channels=channels, *args, **kwargs)
 
     def send_start(self):
         ser = self.ser
         ser.write('99,e\n')
-        print ser.readline()
+        a = ser.readline()
+        logger.debug('Sent command "99,e" to cam; received answer: "%s"' % a.strip())
         ser.write('2,e\n')
-        print ser.readline()
+        a = ser.readline()
+        logger.debug('Sent command "2,e" to cam; received answer: "%s"' % a.strip())
         ser.write('2,01\n')
         ser.write('2,f400\n')
 
@@ -280,18 +274,71 @@ class CamSerialHamster(SerialHamster):
             return False
 
         ser.write('2,X\n')
+        isamp = 0
         while True:
-            v = ord(ser.read(1))
-            print v
-            if v == 0xff:
-                ser.read(1)
+            uclow = ord(ser.read(1))
+            uchigh = ord(ser.read(1))
+            
+            if uclow == 0xff and uchigh == 0xff:
                 break
+            
+            v = uclow + (uchigh << 8)
 
             self.times.append(time.time())
-            self.values.append(v)
+            self.values[isamp%len(self.channels)].append(v)
+            isamp += 1
 
-            if len(self.values) == self.buffersize:
+            if len(self.values[-1]) == self.buffersize:
                 self._flush_buffer()
         
         return True
+
+
+class USBHB628Hamster(SerialHamster):
+
+    def __init__(self, baudrate=115200, channels=[(0, 'Z')], *args, **kwargs):
+        SerialHamster.__init__(self, buffersize=16, lookback=50, baudrate=baudrate, channels=[ x[1] for x in channels], *args, **kwargs)
+        self.channel_map = dict( [ (c[0],j) for (j,c) in enumerate(channels) ] )
+        self.tlast = None
+        self.nread = 0
+
+    def process(self):
+        ser = self.ser
+
+        if ser is None:
+            return False
+
+        if self.tlast is not None:
+            while time.time() < self.tlast + self.fixed_deltat - 0.001:
+                time.sleep(0.001)
+
+            terr1 = time.time() - self.tlast
+
+        t = time.time()
+
+        ser.write('c09')        
+        ser.flush()
+        data = [ ord(x) for x in ser.read(17) ]
+        self.nread += 1
+
+        if self.tlast is not None:
+            terr2 = time.time() - self.tlast
+            #logger.debug('Time elapsed since last sample: %g, %g' % (terr1, terr2))
+
+        #logger.debug('Read values from serial line: %s' % ' '.join([ str(x) for x in data] ))
+
+        self.tlast = t
+        for ichan in range(8):
+            if ichan in self.channel_map:
+                v = data[ichan*2] + (data[ichan*2+1] << 8)
+                self.values[self.channel_map[ichan]].append(v)
+
+        self.times.append(t)
+        
+        if len(self.values[0]) == self.buffersize:
+            self._flush_buffer()
+        
+        return True
+
+
 
