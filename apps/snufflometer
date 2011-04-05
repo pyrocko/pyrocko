@@ -24,10 +24,10 @@ from PyQt4.QtGui import *
 
 logger = logging.getLogger('pyrocko.snufflometer')
 
-class QSynchronizedSlink(pyrocko.serial_hamster.SerialHamster):
+class QSynchronizedSlink(pyrocko.serial_hamster.CamSerialHamster):
     
     def __init__(self, *args, **kwargs ):
-        pyrocko.serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
+        pyrocko.serial_hamster.CamSerialHamster.__init__(self, *args, **kwargs)
         self.mutex = QMutex()
         self.queue = []
     
@@ -65,6 +65,7 @@ class QSlinkThread(QThread):
                 self.slink.start()
                 while self.slink.sun_is_shining():
                     self.slink.process()
+                    time.sleep(0.1)
                     
                 self.slink.stop()
                 break

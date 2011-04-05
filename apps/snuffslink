@@ -57,6 +57,9 @@ class SlinkAcquisition(pyrocko.slink.SlowSlink, AcquisitionThread):
         pyrocko.slink.SlowSlink.__init__(self, *args, **kwargs)
         AcquisitionThread.__init__(self)
 
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
 class SlinkSnuffler(QApplication):
     
     def __init__(self, *args):
@@ -154,7 +157,7 @@ class SlinkSnuffler(QApplication):
         
     def myquit(self, *args):
         self.pile.fixate_all()
-        self.slt.stop()
+        self.slt.xstop()
         self.quit()
     
 def main(args):

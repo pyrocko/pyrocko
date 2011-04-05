@@ -83,11 +83,11 @@ class SerialHamster:
     def clear_listeners(self):
         self.listeners = []
     
-    def start(self):
+    def start(self, call_run=True):
         if self.ser is not None:
             self.stop()
         
-        logger.debug('Starting serial hamster')
+        logger.debug('Starting serial hamster (port=%s, baudrate=%i, timeout=%f)' % (self.port, self.baudrate, self.timeout))
         if self.in_file is None:
             import serial
             try:
@@ -96,15 +96,19 @@ class SerialHamster:
                     baudrate=self.baudrate,
                     timeout=self.timeout)
         
+                self.send_start()
+
             except serial.serialutil.SerialException:
                 raise SerialHamsterError('Cannot open serial port %s' % self.port)
         else:
             self.ser = self.in_file
 
-        self.buffer = num.zeros(self.buffersize)
-
-        self.run()
+        if call_run:
+            self.run()
             
+    def send_start(self):
+        pass
+
     def stop(self):
         if self.ser is not None:
             logger.debug('Stopping serial hamster')
@@ -254,3 +258,40 @@ class SerialHamster:
             if obj:
                 obj.insert_trace(tr)
                 
+        
+class CamSerialHamster(SerialHamster):
+
+    def __init__(self, *args, **kwargs):
+        SerialHamster.__init__(self, *args, **kwargs)
+
+    def send_start(self):
+        ser = self.ser
+        ser.write('99,e\n')
+        print ser.readline()
+        ser.write('2,e\n')
+        print ser.readline()
+        ser.write('2,01\n')
+        ser.write('2,f400\n')
+
+    def process(self):
+        ser = self.ser
+
+        if ser is None:
+            return False
+
+        ser.write('2,X\n')
+        while True:
+            v = ord(ser.read(1))
+            print v
+            if v == 0xff:
+                ser.read(1)
+                break
+
+            self.times.append(time.time())
+            self.values.append(v)
+
+            if len(self.values) == self.buffersize:
+                self._flush_buffer()
+        
+        return True
+
