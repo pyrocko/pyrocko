@@ -705,7 +705,7 @@ class Trace(object):
         
     def chop(self, tmin, tmax, inplace=True, include_last=False, snap=(round,round), want_incomplete=True):
         if want_incomplete:
-            if tmax <= self.tmin or self.tmax < tmin: 
+            if tmax <= self.tmin-self.deltat or self.tmax+self.deltat < tmin: 
                 raise NoData()
         else:
             if tmin < self.tmin or self.tmax < tmax: 
@@ -727,7 +727,7 @@ class Trace(object):
         
         return obj
     
-    def downsample(self, ndecimate, snap=False):
+    def downsample(self, ndecimate, snap=False, initials=None, demean=True):
         newdeltat = self.deltat*ndecimate
         if snap:
             ilag = (math.ceil(self.tmin / newdeltat) * newdeltat - self.tmin)/self.deltat
@@ -737,14 +737,23 @@ class Trace(object):
             self.tmin += ilag*self.deltat
         else:
             data = self.ydata.astype(num.float64)
+        
+        if demean:
+            data -= num.mean(data)
+        
+        result = util.decimate(data, ndecimate, ftype='fir', zi=initials)
+        if initials is None:
+            self.ydata, finals = result, None
+        else:
+            self.ydata, finals = result
             
-        data -= num.mean(data)
-        self.ydata = util.decimate(data, ndecimate, ftype='fir')
         self.deltat = reuse(self.deltat*ndecimate)
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
         self.update_ids()
         
-    def downsample_to(self, deltat, snap=False, allow_upsample_max=1):
+        return finals
+        
+    def downsample_to(self, deltat, snap=False, allow_upsample_max=1, initials=None, demean=True):
         ratio = deltat/self.deltat
         rratio = round(ratio)
         if abs(rratio - ratio)/ratio > 0.0001:
@@ -770,7 +779,7 @@ class Trace(object):
         deci_seq = util.decitab(int(rratio))
         for ndecimate in deci_seq:
              if ndecimate != 1:
-                self.downsample(ndecimate, snap=snap)
+                return self.downsample(ndecimate, snap=snap, initials=initials, demean=demean)
             
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         if frequency >= 0.5/self.deltat:
@@ -831,6 +840,10 @@ class Trace(object):
         nshort = tshort/self.deltat
         nlong = tlong/self.deltat
     
+        assert nshort < nlong
+        if nlong > len(self.ydata):
+            raise TraceTooShort('Samples in trace: %s, samples needed: %s' % (len(self.ydata), nlong))
+         
         if quad:
             sqrdata = self.ydata**2
         else:
