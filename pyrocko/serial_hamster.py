@@ -1,6 +1,6 @@
 import trace, util
 
-import time, sys, logging, weakref
+import time, sys, logging, weakref, math
 import numpy as num
 from scipy import stats
 
@@ -39,6 +39,12 @@ class Queue:
             
     def empty(self):
         self.queue[:] = []
+
+    def __len__(self):
+        return len(self.queue)
+
+    def capacity(self):
+        return self.nmax
         
 class SerialHamsterError(Exception):
     pass
@@ -115,6 +121,9 @@ class SerialHamster:
             self.ser = None
         self._flush_buffer()
             
+    def acquisition_request_stop(self):
+        pass
+            
     def process(self):
         if self.ser is None:
             return False
@@ -171,8 +180,9 @@ class SerialHamster:
         if self.deltat is not None and self.fixed_deltat is None:
             try:
                 p_deltat = self.previous_deltats.median()
-                if ((self.disallow_uneven_sampling_rates and abs(1./p_deltat - 1./self.deltat) > 0.5) or
-                    (not self.disallow_uneven_sampling_rates and abs((self.deltat - p_deltat)/self.deltat) > self.deltat_tolerance)):
+                if (((self.disallow_uneven_sampling_rates and abs(1./p_deltat - 1./self.deltat) > 0.5) or
+                    (not self.disallow_uneven_sampling_rates and abs((self.deltat - p_deltat)/self.deltat) > self.deltat_tolerance)) and 
+                    len(self.previous_deltats) > 0.5*self.previous_deltats.capacity()):
                     self.deltat = None
                     self.previous_deltats.empty()
             except QueueIsEmpty:
@@ -196,7 +206,7 @@ class SerialHamster:
             tmin_offset = r_tmin - continuous_tmin
             try:
                 toffset = self.previous_tmin_offsets.median()
-                if abs(toffset) > self.deltat*0.7:
+                if abs(toffset) > self.deltat*0.7 and len(self.previous_tmin_offsets) > 0.5*self.previous_tmin_offsets.capacity():
                     soffset = int(round(toffset/self.deltat))
                     logger.info('Detected drift/jump/gap of %g sample%s' % (soffset, ['s',''][abs(soffset)==1]) )
                     if soffset == 1:
@@ -254,7 +264,7 @@ class SerialHamster:
 class CamSerialHamster(SerialHamster):
 
     def __init__(self, baudrate=115200, channels=['N'], *args, **kwargs):
-        SerialHamster.__init__(self, disallow_uneven_sampling_rates=False, baudrate=baudrate, channels=channels, *args, **kwargs)
+        SerialHamster.__init__(self, disallow_uneven_sampling_rates=False, deltat_tolerance=0.001, baudrate=baudrate, channels=channels, *args, **kwargs)
 
     def send_start(self):
         ser = self.ser
@@ -296,38 +306,36 @@ class CamSerialHamster(SerialHamster):
 
 class USBHB628Hamster(SerialHamster):
 
-    def __init__(self, baudrate=115200, channels=[(0, 'Z')], *args, **kwargs):
-        SerialHamster.__init__(self, buffersize=16, lookback=50, baudrate=baudrate, channels=[ x[1] for x in channels], *args, **kwargs)
+    def __init__(self, baudrate=9600, channels=[(0, 'Z')], *args, **kwargs):
+        SerialHamster.__init__(self, baudrate=baudrate, channels=[ x[1] for x in channels], *args, **kwargs)
         self.channel_map = dict( [ (c[0],j) for (j,c) in enumerate(channels) ] )
-        self.tlast = None
-        self.nread = 0
 
     def process(self):
+        import serial
+        
         ser = self.ser
 
         if ser is None:
             return False
-
-        if self.tlast is not None:
-            while time.time() < self.tlast + self.fixed_deltat - 0.001:
-                time.sleep(0.001)
-
-            terr1 = time.time() - self.tlast
-
+        
+        # determine next appropriate sampling instant
         t = time.time()
+        ts = math.ceil(t/self.fixed_deltat)*self.fixed_deltat
 
+        # wait for next sampling instant
+        while t < ts:
+            time.sleep(max(0., ts-t))
+            t = time.time()
+
+        # get the sample
         ser.write('c09')        
         ser.flush()
-        data = [ ord(x) for x in ser.read(17) ]
-        self.nread += 1
+        try:
+            data = [ ord(x) for x in ser.read(17) ]
 
-        if self.tlast is not None:
-            terr2 = time.time() - self.tlast
-            #logger.debug('Time elapsed since last sample: %g, %g' % (terr1, terr2))
+        except serial.serialutil.SerialException:
+            raise SerialHamsterError('Reading from serial line failed.')
 
-        #logger.debug('Read values from serial line: %s' % ' '.join([ str(x) for x in data] ))
-
-        self.tlast = t
         for ichan in range(8):
             if ichan in self.channel_map:
                 v = data[ichan*2] + (data[ichan*2+1] << 8)

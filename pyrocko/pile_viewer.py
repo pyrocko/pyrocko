@@ -716,8 +716,11 @@ def MakePileOverviewClass(base):
     class PileOverview(base):
 
         def __init__(self, pile, ntracks_shown_max, add_panel_hook, *args):
-            apply(base.__init__, (self,) + args)
-            
+            if base == QGLWidget:
+                apply(base.__init__, (self, QGLFormat(QGL.SampleBuffers)) + args)
+            else:
+                apply(base.__init__, (self,) + args)
+
             self.pile = pile
             self.ax_height = 80
             self.add_panel_hook = add_panel_hook
@@ -1837,7 +1840,7 @@ def MakePileOverviewClass(base):
                 if menuitem.isChecked():
                     self.set_gathering(gather, order, color)
     
-        def lowpass_change(self, value, ignore):
+        def lowpass_change(self, value, ignore=None):
             if num.isfinite(value):
                 self.lowpass = value
             else:
@@ -1845,7 +1848,7 @@ def MakePileOverviewClass(base):
             self.passband_check()
             self.update()
             
-        def highpass_change(self, value, ignore):
+        def highpass_change(self, value, ignore=None):
             if num.isfinite(value):
                 self.highpass = value
             else:
@@ -1996,9 +1999,20 @@ def MakePileOverviewClass(base):
             sb.clearMessage()
             sb.showMessage(message)
             
+        def follow(self, tlen, interval=50):
+            self.follow_time = tlen
+            self.follow_timer = QTimer(self)
+            self.connect( self.follow_timer, SIGNAL("timeout()"), self.follow_update ) 
+            self.follow_timer.setInterval(interval)
+            self.follow_timer.start()
+            
+        def follow_update(self):
+            now = time.time()
+            self.set_time_range(now-self.follow_time, now)
+            self.update()
+     
         def myclose(self):
             self.window().close()
-            
             
         def fuck(self):
             import pysacio

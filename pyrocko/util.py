@@ -1,6 +1,6 @@
 '''Utility functions for pyrocko.'''
 
-import time, logging, os, sys, re, calendar, math, fnmatch
+import time, logging, os, sys, re, calendar, math, fnmatch, errno
 from scipy import signal
 from os.path import join as pjoin
 import config
@@ -576,3 +576,48 @@ def match_nslcs(patterns, nslcs):
             matching.append(nslc)
 
     return matching
+
+class SoleError(Exception):
+    pass
+
+class Sole(object):
+    
+    def __init__(self, pid_path):
+        self._pid_path = pid_path
+        
+        pid = None
+        self._other_running = False
+        if os.path.exists(self._pid_path):
+            try:
+                f = open(self._pid_path, 'r')
+                pid = f.read().strip()
+                f.close()
+            except:
+                self._other_running = True
+                raise SoleError('Cannot read lockfile (path = %s)' % self._pid_path)
+            
+            try:
+                os.kill(int(pid), 0)
+                self._other_running = True
+            except OSError, e:
+                if e.errno == errno.EPERM:
+                    self._other_running = True   # ? running under different user id
+                
+        if self._other_running:
+            raise SoleError('Other instance is running (pid = %i)' % pid)
+            
+        if not self._other_running:
+            try:
+                ensuredirs(self._pid_path)
+                f = open(self._pid_path, 'w')
+                f.write(str(os.getpid()))
+                f.close()
+            except:
+                raise SoleError('Cannot write lockfile (path = %s)' % self._pid_path)
+            
+    def __del__(self):
+        if not self._other_running:
+            import os
+            os.unlink(self._pid_path)
+
+            

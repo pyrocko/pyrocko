@@ -23,7 +23,7 @@ from PyQt4.QtGui import *
 logger = logging.getLogger('pyrocko.slinksnuff')
 
 class AcquisitionThread(QThread):
-    def __init__(self, post_process_sleep=0.1):
+    def __init__(self, post_process_sleep=0.0):
         QThread.__init__(self)
         self.mutex = QMutex()
         self.queue = []
@@ -38,7 +38,8 @@ class AcquisitionThread(QThread):
                     t0 = time.time()
                     self.process()
                     t1 = time.time()
-                    time.sleep(max(0, self.post_process_sleep-(t1-t0)))
+                    if self.post_process_sleep != 0.0:
+                        time.sleep(max(0, self.post_process_sleep-(t1-t0)))
             
                 self.acquisition_stop()
                 break
@@ -48,7 +49,7 @@ class AcquisitionThread(QThread):
                 logger.error('Acquistion terminated, restart in 5 s')
                 self.acquisition_stop()
                 time.sleep(5)
-                if not self.sun_is_shining():
+                if not self._sun_is_shining:
                     break
 
     def stop(self):
@@ -81,15 +82,15 @@ class SlinkAcquisition(pyrocko.slink.SlowSlink, AcquisitionThread):
 class CamAcquisition(pyrocko.serial_hamster.CamSerialHamster, AcquisitionThread):
     def __init__(self, *args, **kwargs):
         pyrocko.serial_hamster.CamSerialHamster.__init__(self, *args, **kwargs)
-        AcquisitionThread.__init__(self)
+        AcquisitionThread.__init__(self, post_process_sleep=0.1)
 
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self,tr)
 
 class USBHB628Acquisition(pyrocko.serial_hamster.USBHB628Hamster, AcquisitionThread):
-    def __init__(self, *args, **kwargs):
-        pyrocko.serial_hamster.USBHB628Hamster.__init__(self, deltat=0.02, *args, **kwargs)
-        AcquisitionThread.__init__(self, post_process_sleep=0.01)
+    def __init__(self, deltat=0.02, *args, **kwargs):
+        pyrocko.serial_hamster.USBHB628Hamster.__init__(self, deltat=deltat, *args, **kwargs)
+        AcquisitionThread.__init__(self)
 
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self,tr)
@@ -107,6 +108,7 @@ class SlinkSnuffler(QApplication):
         #parser.add_option('--streams', dest='streams', default='GE.WLF..BHZ')
         #parser.add_option('--host', dest='host', default='geofon.gfz-potsdam.de')
         #parser.add_option('--port', dest='port', default='18000')
+        parser.add_option('--follow', dest='follow')
         parser.add_option('--opengl', dest='opengl', action='store_true', default=False)
 
         options, args = parser.parse_args(list(args[0][1:]))
@@ -146,7 +148,7 @@ class SlinkSnuffler(QApplication):
         for arg in args:
             msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
             mca = re.match(r'cam://([^:]+)', arg)
-            mus = re.match(r'hb628://([^:]+)', arg)
+            mus = re.match(r'hb628://([^:?]+)(\?(\d+))?', arg)
             if msl:
                 host = msl.group(1)
                 port = msl.group(3)
@@ -162,11 +164,15 @@ class SlinkSnuffler(QApplication):
                 self.sources.append(sl)
             elif mca:
                 port = mca.group(1)
-                cam = CamAcquisition(port=port)
+                cam = CamAcquisition(port=port, deltat=0.0314504)
                 self.sources.append(cam)
             elif mus:
                 port = mus.group(1)
-                hb628 = USBHB628Acquisition(port=port)
+                if mus.group(3):
+                    deltat = 1./float(mus.group(3))
+                else:
+                    deltat = 0.02
+                hb628 = USBHB628Acquisition(port=port, deltat=deltat, buffersize=16, lookback=50)
                 self.sources.append(hb628)
 
         self.timer = QTimer( self )
@@ -174,6 +180,14 @@ class SlinkSnuffler(QApplication):
         self.timer.setInterval(500)
         self.timer.start()
         
+        if options.follow:
+            self.follow_time = float(options.follow)
+            self.timer2 = QTimer(self)
+            self.connect( self.timer2, SIGNAL("timeout()"), self.periodical2 ) 
+            self.timer2.setInterval(50)
+            self.timer2.start()
+
+
         self.traces = {}
         self.traces_to_files = {}
         
@@ -203,8 +217,13 @@ class SlinkSnuffler(QApplication):
             for tr in traces:
                 self.pile.insert_trace(tr)
 
-        self.pile_viewer.pile_overview.update()
-        
+        self.pile_viewer.update_contents()
+
+    def periodical2(self):
+        now = time.time()
+        self.pile_viewer.pile_overview.set_time_range(now-self.follow_time, now)
+        self.pile_viewer.update_contents()
+
     def myquit(self, *args):
         self.pile.fixate_all()
         for source in self.sources:

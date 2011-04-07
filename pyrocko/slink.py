@@ -4,6 +4,9 @@ import numpy as num
 
 logger = logging.getLogger('pyrocko.slink')
 
+def preexec():
+    os.setpgrp()
+    
 class SlowSlink:
     def __init__(self, host='geofon.gfz-potsdam.de', port=18000):
         self.host = host
@@ -40,14 +43,20 @@ class SlowSlink:
         cmd = [ 'slinktool', '-u', '-S', streams_sel, self.host+':'+str(self.port) ]        
         
         logger.debug('Starting %s' % ' '.join(cmd))
-        self.slink = subprocess.Popen(cmd,stdout=subprocess.PIPE)
+        self.slink = subprocess.Popen(cmd,stdout=subprocess.PIPE, preexec_fn=preexec)
         self.header = None
         self.vals = []
         self.running = True
         
     def acquisition_stop(self):
+        self.acquisition_request_stop()
+        
+    def acquisition_request_stop(self):
         if not self.running:
             return
+        
+        self.running = False # intentionally before the kill
+        
         os.kill( self.slink.pid, signal.SIGTERM)
         logger.debug("Waiting for slinktool to terminate...")
         it = 0
@@ -59,41 +68,45 @@ class SlowSlink:
             
             it += 1
         
-        self.running = False
         logger.debug("Done, slinktool has terminated")
         
     def process(self):
+        try:
+            line = self.slink.stdout.readline()
         
-        line = self.slink.stdout.readline()
+            if not line:
+                return False
+            
+            toks = line.split(', ')
+            if len(toks) != 1:
+                nslc = tuple(toks[0].split('_'))
+                if len(nslc) == 3: nslc = nslc[0], nslc[1], '', nslc[2]
+                nsamples = int(toks[1].split()[0])
+                rate = float(toks[2].split()[0])
+                st,sms = toks[3].split()[0].split('.')
+                us = int(sms)
+                tstamp = calendar.timegm(time.strptime(st,'%Y,%j,%H:%M:%S'))+us*0.000001
+                if nsamples != 0:
+                    self.header = nslc, nsamples, rate, tstamp
+            else:
+                if self.header:
+                    self.vals.extend([ float(x) for x in line.split() ])
+                    
+                    if len(self.vals) == self.header[1]:
+                        nslc, nsamples, rate, tstamp = self.header
+                        deltat = 1.0/rate
+                        net, sta, loc, cha = nslc
+                        tr = trace.Trace(network=net, station=sta, location=loc, channel=cha, tmin=tstamp, deltat=deltat, ydata=num.array(self.vals))
+                        self.got_trace(tr)
+                        self.vals = []
+                        self.header = None
         
-        if not line:
+            return True
+        
+        except:
             return False
-        
-        toks = line.split(', ')
-        if len(toks) != 1:
-            nslc = tuple(toks[0].split('_'))
-            if len(nslc) == 3: nslc = nslc[0], nslc[1], '', nslc[2]
-            nsamples = int(toks[1].split()[0])
-            rate = float(toks[2].split()[0])
-            st,sms = toks[3].split()[0].split('.')
-            us = int(sms)
-            tstamp = calendar.timegm(time.strptime(st,'%Y,%j,%H:%M:%S'))+us*0.000001
-            if nsamples != 0:
-                self.header = nslc, nsamples, rate, tstamp
-        else:
-            if self.header:
-                self.vals.extend([ float(x) for x in line.split() ])
-                
-                if len(self.vals) == self.header[1]:
-                    nslc, nsamples, rate, tstamp = self.header
-                    deltat = 1.0/rate
-                    net, sta, loc, cha = nslc
-                    tr = trace.Trace(network=net, station=sta, location=loc, channel=cha, tmin=tstamp, deltat=deltat, ydata=num.array(self.vals))
-                    self.got_trace(tr)
-                    self.vals = []
-                    self.header = None
-        return True
-                        
+                            
+                            
     def got_trace(self, tr):
         logger.info('Got trace from slinktool: %s' % tr)
         

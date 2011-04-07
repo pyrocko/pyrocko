@@ -208,9 +208,11 @@ class Snuffling:
         has been changed.
         '''
         
-        self._panel = self.make_panel(self._panel_parent)
-        if self._panel:
-            self._delete_panel = self._panel_hook(self.get_name(), self._panel)
+        self._delete_panel = None
+        if self._panel_hook is not None:
+            self._panel = self.make_panel(self._panel_parent)
+            if self._panel:
+                self._delete_panel = self._panel_hook(self.get_name(), self._panel)
         
         self._menuitem = self.make_menuitem(self._menu_parent)
         if self._menuitem:

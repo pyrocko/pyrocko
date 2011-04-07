@@ -86,7 +86,7 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
             dist = (b.tmin-(a.tmin+(len(a.ydata)-1)*a.deltat))/a.deltat
             idist = int(round(dist))
             if abs(dist - idist) > 0.05 and idist <= maxgap:
-                logger.warn('Cannot degap traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
+                pass #logger.warn('Cannot degap traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
             else:
                 if 1 < idist <= maxgap:
                     if fillmethod == 'interpolate':
