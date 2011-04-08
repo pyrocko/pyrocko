@@ -346,6 +346,8 @@ class USBHB628Hamster(SerialHamster):
         ser.flush()
         try:
             data = [ ord(x) for x in ser.read(17) ]
+            if len(data) != 17:
+                raise SerialHamsterError('Reading from serial line failed.')
 
         except serial.serialutil.SerialException:
             raise SerialHamsterError('Reading from serial line failed.')
