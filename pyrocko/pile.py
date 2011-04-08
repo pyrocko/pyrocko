@@ -580,6 +580,12 @@ class SubPile(TracesGroup):
         file.set_parent(None)
         self.update(self.files)
     
+    def remove_files(self, files):
+        for file in files:
+            self.files.remove(file)
+            file.set_parent(None)
+        self.update(self.files)
+    
     def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
         mtime = None
         for file in self.files:
@@ -638,6 +644,10 @@ class SubPile(TracesGroup):
             if must_drop:
                 file.drop_data()
 
+    def iter_files(self):
+        for file in self.files:
+            yield file
+            
     def reload_modified(self):
         modified = False
         for file in self.files:
@@ -668,7 +678,7 @@ class Pile(TracesGroup):
         TracesGroup.__init__(self, None)
         self.subpiles = {}
         self.update(self.subpiles.values())
-        self.open_files = set()
+        self.open_files = {}
         self.listeners = []
         
     def recursive_full_update(self):
@@ -705,10 +715,26 @@ class Pile(TracesGroup):
         self.notify_listeners('add')
     
     def remove_file(self, file):
-        subpile = self.dispatch(file)
+        subpile = file.get_parent()
         subpile.remove_file(file)
         self.update(self.subpiles.values())
         self.notify_listeners('remove')
+        
+    def remove_files(self, files):
+        subpile_files = {}
+        for file in files:
+            subpile = file.get_parent()
+            if subpile not in subpile_files:
+                subpile_files[subpile] = []
+            
+            subpile_files[subpile].append(file)
+       
+        for subpile, files in subpile_files.iteritems():
+            subpile.remove_files(files)
+            
+        self.update(self.subpiles.values()) 
+        self.notify_listeners('remove')
+
         
     def dispatch_key(self, file):
         tt = time.gmtime(file.tmin)
@@ -769,7 +795,7 @@ class Pile(TracesGroup):
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
-                      want_incomplete=True, degap=True, keep_current_files_open=False):
+                      want_incomplete=True, degap=True, keep_current_files_open=False, accessor_id=None):
         
         if tmin is None:
             tmin = self.tmin+tpad
@@ -781,6 +807,11 @@ class Pile(TracesGroup):
             tinc = tmax-tmin
         
         if not self.is_relevant(tmin-tpad,tmax+tpad,group_selector): return
+                
+        if accessor_id not in self.open_files:
+            self.open_files[accessor_id] = set()
+                
+        open_files = self.open_files[accessor_id]
         
         iwin = 0
         while True:
@@ -789,26 +820,27 @@ class Pile(TracesGroup):
             eps = tinc*1e-6
             if wmin >= tmax-eps: break
             chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector) 
-            for file in used_files - self.open_files:
+            for file in used_files - open_files:
                 # increment datause counter on newly opened files
                 file.use_data()
                 
-            self.open_files.update(used_files)
+            open_files.update(used_files)
             
             processed = self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
             yield processed
+                        
+            unused_files = open_files - used_files
             
-            unused_files = self.open_files - used_files
             while unused_files:
                 file = unused_files.pop()
                 file.drop_data()
-                self.open_files.remove(file)
+                open_files.remove(file)
                 
             iwin += 1
         
         if not keep_current_files_open:
-            while self.open_files:
-                file = self.open_files.pop()
+            while open_files:
+                file = open_files.pop()
                 file.drop_data()
         
         
@@ -888,6 +920,11 @@ class Pile(TracesGroup):
             if not group_selector or group_selector(subpile):
                 for tr in subpile.iter_traces(load_data, return_abspath, group_selector, trace_selector):
                     yield tr
+    
+    def iter_files(self):
+        for subpile in self.subpiles.values():
+            for file in subpile.iter_files():
+                yield file
    
     def reload_modified(self):
         modified = False
