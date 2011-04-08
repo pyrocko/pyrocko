@@ -1,4 +1,4 @@
-import pile, trace, io
+import pile, trace, io, util
 import os, logging
 
 logger = logging.getLogger('pyrocko.hamster_pile')
@@ -26,7 +26,7 @@ class HamsterPile(pile.Pile):
         
     def insert_trace(self, trace):
         logger.debug('Received a trace: %s' % trace)
-    
+                
         buf = self._append_to_buffer(trace)
         nslc = trace.nslc_id
         
@@ -81,6 +81,19 @@ class HamsterPile(pile.Pile):
             self.remove_file(buf)
             self.load_files(fns, show_progress=False)
         
+    def drop_older(self, tmax, delete_disk_files=False):
+        candidates = []
+        buffers = self._buffers.values()
+        for file in self.iter_files():
+            if file.tmax < tmax and file not in buffers:
+                candidates.append(file)
+        
+        self.remove_files(candidates)
+        if delete_disk_files:
+            for file in candidates:
+                if file.abspath and os.path.exists(file.abspath):
+                    os.unlink(file.abspath)
+                
     def __del__(self):
         self.fixate_all()
         
