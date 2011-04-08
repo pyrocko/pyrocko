@@ -57,7 +57,8 @@ class SerialHamster:
                        deltat=None,
                        deltat_tolerance=0.01,
                        in_file=None,
-                       lookback=5):
+                       lookback=5,
+                       tune_to_quickones=True):
         
         self.port = port
         self.baudrate = baudrate
@@ -81,6 +82,7 @@ class SerialHamster:
         self.in_file = in_file    # for testing
         self.listeners = []
         self.quit_requested = False
+        self.tune_to_quickones = tune_to_quickones
         
         self.min_detection_size = 5
     
@@ -147,7 +149,7 @@ class SerialHamster:
             self.values[0].append(val)
             self.times.append(t)
             
-            if len(self.values[0]) == self.buffersize:
+            if len(self.values[0]) >= self.buffersize:
                 self._flush_buffer()
         
         return True
@@ -157,13 +159,16 @@ class SerialHamster:
         t = t-toff
         i = num.arange(t.size, dtype=num.float)
         r_deltat, r_tmin, r, tt, stderr = stats.linregress(i, t)
-        for ii in range(2):
-            t_fit = r_tmin+r_deltat*i
-            quickones = num.where(t < t_fit)
-            i = i[quickones]
-            t = t[quickones]
-            r_deltat, r_tmin, r, tt, stderr = stats.linregress(i, t)
-        
+        if self.tune_to_quickones:
+            for ii in range(2):
+                t_fit = r_tmin+r_deltat*i
+                quickones = num.where(t < t_fit)
+                if quickones[0].size < 2:
+                    break
+                i = i[quickones]
+                t = t[quickones]
+                r_deltat, r_tmin, r, tt, stderr = stats.linregress(i, t)
+                
         return r_deltat, r_tmin+toff
         
     def _flush_buffer(self):
@@ -173,6 +178,7 @@ class SerialHamster:
         
         t = num.array(self.times, dtype=num.float)
         r_deltat, r_tmin = self._regression(t)
+        
         if self.disallow_uneven_sampling_rates:
             r_deltat = 1./round(1./r_deltat)
 
@@ -267,16 +273,24 @@ class CamSerialHamster(SerialHamster):
         SerialHamster.__init__(self, disallow_uneven_sampling_rates=False, deltat_tolerance=0.001, baudrate=baudrate, channels=channels, *args, **kwargs)
 
     def send_start(self):
-        ser = self.ser
-        ser.write('99,e\n')
-        a = ser.readline()
-        logger.debug('Sent command "99,e" to cam; received answer: "%s"' % a.strip())
-        ser.write('2,e\n')
-        a = ser.readline()
-        logger.debug('Sent command "2,e" to cam; received answer: "%s"' % a.strip())
-        ser.write('2,01\n')
-        ser.write('2,f400\n')
-
+        try:
+            ser = self.ser
+            ser.write('99,e\n')
+            a = ser.readline()
+            if not a:
+                raise SerialHamsterError('Camera did not respond to command "99,e"')
+            logger.debug('Sent command "99,e" to cam; received answer: "%s"' % a.strip())
+            ser.write('2,e\n')
+            a = ser.readline()
+            if not a:
+                raise SerialHamsterError('Camera did not respond to command "2,e"')
+            
+            logger.debug('Sent command "2,e" to cam; received answer: "%s"' % a.strip())
+            ser.write('2,01\n')
+            ser.write('2,f400\n')
+        except:
+            raise SerialHamsterError('Initialization of camera acquisition failed.')
+        
     def process(self):
         ser = self.ser
 
@@ -298,7 +312,7 @@ class CamSerialHamster(SerialHamster):
             self.values[isamp%len(self.channels)].append(v)
             isamp += 1
 
-            if len(self.values[-1]) == self.buffersize:
+            if len(self.values[-1]) >= self.buffersize:
                 self._flush_buffer()
         
         return True
@@ -307,7 +321,7 @@ class CamSerialHamster(SerialHamster):
 class USBHB628Hamster(SerialHamster):
 
     def __init__(self, baudrate=9600, channels=[(0, 'Z')], *args, **kwargs):
-        SerialHamster.__init__(self, baudrate=baudrate, channels=[ x[1] for x in channels], *args, **kwargs)
+        SerialHamster.__init__(self, baudrate=baudrate, channels=[ x[1] for x in channels], tune_to_quickones=False, *args, **kwargs)
         self.channel_map = dict( [ (c[0],j) for (j,c) in enumerate(channels) ] )
 
     def process(self):
@@ -343,7 +357,7 @@ class USBHB628Hamster(SerialHamster):
 
         self.times.append(t)
         
-        if len(self.values[0]) == self.buffersize:
+        if len(self.times) >= self.buffersize:
             self._flush_buffer()
         
         return True
