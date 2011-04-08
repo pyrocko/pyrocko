@@ -36,18 +36,17 @@ class SlowSlink:
         self.stream_selectors.append(stream_selector)
     
     def acquisition_start(self):
-        
         assert not self.running
-        
         streams_sel = ','.join(self.stream_selectors)
         cmd = [ 'slinktool', '-u', '-S', streams_sel, self.host+':'+str(self.port) ]        
         
         logger.debug('Starting %s' % ' '.join(cmd))
-        self.slink = subprocess.Popen(cmd,stdout=subprocess.PIPE, preexec_fn=preexec)
+        self.running = True
         self.header = None
         self.vals = []
-        self.running = True
-        
+        self.slink = subprocess.Popen(cmd,stdout=subprocess.PIPE, preexec_fn=preexec, close_fds=True)
+        logger.debug('Started.')
+
     def acquisition_stop(self):
         self.acquisition_request_stop()
         
@@ -73,7 +72,7 @@ class SlowSlink:
     def process(self):
         try:
             line = self.slink.stdout.readline()
-        
+            
             if not line:
                 return False
             
