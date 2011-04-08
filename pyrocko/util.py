@@ -398,12 +398,13 @@ class Anon:
             self.__dict__[k] = dict[k]
 
 
-def select_files( paths, selector=None,  regex=None ):
+def select_files( paths, selector=None,  regex=None, show_progress=True ):
     '''Recursively select files.
     
     :param paths: entry path names
     :param selector: callback for conditional inclusion
     :param regex: pattern for conditional inclusion
+    :param show_progress: if True, indicate start and stop of processing
     :returns: list of path names
     
     Recursively finds all files under given entry points *paths*. If
@@ -429,8 +430,9 @@ def select_files( paths, selector=None,  regex=None ):
             selector=(lambda x: int(x.year) == 2009))
     '''
 
-    progress_beg('selecting files...')
-    if logger.isEnabledFor(logging.DEBUG): sys.stderr.write('\n')
+    if show_progress:
+        progress_beg('selecting files...')
+        if logger.isEnabledFor(logging.DEBUG): sys.stderr.write('\n')
 
     good = []
     if regex: rselector = re.compile(regex)
@@ -460,8 +462,9 @@ def select_files( paths, selector=None,  regex=None ):
                     addfile(pjoin(dirpath,filename))
         else:
             addfile(path)
-        
-    progress_end('%i file%s selected.' % (len( good), plural_s(len(good))))
+   
+    if show_progress:    
+        progress_end('%i file%s selected.' % (len( good), plural_s(len(good))))
     
     return good
 
