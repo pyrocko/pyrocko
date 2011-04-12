@@ -6,7 +6,10 @@ logger = logging.getLogger('pyrocko.slink')
 
 def preexec():
     os.setpgrp()
-    
+
+class SlowSlinkError(Exception):
+    pass
+
 class SlowSlink:
     def __init__(self, host='geofon.gfz-potsdam.de', port=18000):
         self.host = host
@@ -17,7 +20,11 @@ class SlowSlink:
     def query_streams(self):
         cmd = [ 'slinktool',  '-Q', self.host+':'+str(self.port) ]
         logger.debug('Running %s' % ' '.join(cmd))
-        slink = subprocess.Popen(cmd,stdout=subprocess.PIPE)
+        try:
+            slink = subprocess.Popen(cmd,stdout=subprocess.PIPE)
+        except OSError, e:
+            raise SlowSlinkError('Could not start "slinktool": %s' % str(e))
+            
         (a,b) = slink.communicate()
         streams = []
         for line in a.splitlines():
@@ -44,7 +51,11 @@ class SlowSlink:
         self.running = True
         self.header = None
         self.vals = []
-        self.slink = subprocess.Popen(cmd,stdout=subprocess.PIPE, preexec_fn=preexec, close_fds=True)
+        try:
+            self.slink = subprocess.Popen(cmd,stdout=subprocess.PIPE, preexec_fn=preexec, close_fds=True)
+        except OSError, e:
+            raise SlowSlinkError('Could not start "slinktool": %s' % str(e))
+            
         logger.debug('Started.')
 
     def acquisition_stop(self):

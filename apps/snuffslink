@@ -1,12 +1,5 @@
 #!/usr/bin/env python
 
-'''Effective MiniSEED trace viewer.'''
-
-# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
-#
-# This file is part of snuffler. For licensing information please see the file 
-# COPYING which is included with snuffler.
-
 import os, sys, signal, logging, re, time, random, struct
 import numpy as num
 from optparse import OptionParser
@@ -54,14 +47,14 @@ class AcquisitionThread(QThread):
                 self.acquisition_stop()
                 break
             
-            except pyrocko.serial_hamster.SerialHamsterError, e:
+            except (pyrocko.serial_hamster.SerialHamsterError, pyrocko.slink.SlowSlinkError), e:
                 logger.error(str(e))
                 logger.error('Acquistion terminated, restart in 5 s')
                 self.acquisition_stop()
                 time.sleep(5)
                 if not self._sun_is_shining:
                     break
-
+            
     def stop(self):
         self._sun_is_shining = False
 
@@ -171,7 +164,12 @@ class SlinkSnuffler(QApplication):
                     port = '18000'
                 stream_patterns = msl.group(5).split(',')
                 sl = SlinkAcquisition(host=host, port=port)
-                streams = sl.query_streams()
+                try:
+                    streams = sl.query_streams()
+                except pyrocko.slink.SlowSlinkError, e:
+                    logger.fatal(str(e))
+                    sys.exit(1)
+
                 streams = pyrocko.util.match_nslcs(stream_patterns, streams)
                 for stream in streams:
                     sl.add_stream(*stream)
@@ -196,12 +194,7 @@ class SlinkSnuffler(QApplication):
         self.timer.start()
         
         if options.follow:
-            self.follow_time = float(options.follow)
-            self.timer2 = QTimer(self)
-            self.connect( self.timer2, SIGNAL("timeout()"), self.periodical2 ) 
-            self.timer2.setInterval(50)
-            self.timer2.start()
-
+            self.pile_viewer.get_view().follow(float(options.follow))
 
         self.traces = {}
         self.traces_to_files = {}
@@ -232,11 +225,6 @@ class SlinkSnuffler(QApplication):
             for tr in traces:
                 self.pile.insert_trace(tr)
 
-        self.pile_viewer.update_contents()
-
-    def periodical2(self):
-        now = time.time()
-        self.pile_viewer.pile_overview.set_time_range(now-self.follow_time, now)
         self.pile_viewer.update_contents()
 
     def myquit(self, *args):
