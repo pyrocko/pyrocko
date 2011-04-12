@@ -319,10 +319,12 @@ class CamSerialHamster(SerialHamster):
 
 
 class USBHB628Hamster(SerialHamster):
-
-    def __init__(self, baudrate=9600, channels=[(0, 'Z')], *args, **kwargs):
+    
+    def __init__(self, baudrate=115200, channels=[(0, 'Z')], *args, **kwargs):
         SerialHamster.__init__(self, baudrate=baudrate, channels=[ x[1] for x in channels], tune_to_quickones=False, *args, **kwargs)
         self.channel_map = dict( [ (c[0],j) for (j,c) in enumerate(channels) ] )
+        self.first_initiated = None
+        self.ntaken = 0
 
     def process(self):
         import serial
@@ -332,15 +334,28 @@ class USBHB628Hamster(SerialHamster):
         if ser is None:
             return False
         
-        # determine next appropriate sampling instant
         t = time.time()
-        ts = math.ceil(t/self.fixed_deltat)*self.fixed_deltat
+
+        # determine next appropriate sampling instant
+        if self.first_initiated is not None:
+            ts = self.first_initiated + self.fixed_deltat * self.ntaken
+            if t - ts > self.fixed_deltat*10:
+                logger.warn('lagging more than ten samples on serial line %s - resetting' % self.port)
+                self.first_initiated = None
+        
+        if not self.first_initiated:
+            ts = math.ceil(t/self.fixed_deltat)*self.fixed_deltat
+            self.first_initiated = ts
+            self.ntaken = 0
 
         # wait for next sampling instant
         while t < ts:
             time.sleep(max(0., ts-t))
             t = time.time()
-
+        
+        if t - ts > self.fixed_deltat:
+            logger.warn('lagging more than one sample on serial line %s' % self.port)
+                 
         # get the sample
         ser.write('c09')        
         ser.flush()
@@ -351,6 +366,8 @@ class USBHB628Hamster(SerialHamster):
 
         except serial.serialutil.SerialException:
             raise SerialHamsterError('Reading from serial line failed.')
+
+        self.ntaken += 1
 
         for ichan in range(8):
             if ichan in self.channel_map:
@@ -366,3 +383,4 @@ class USBHB628Hamster(SerialHamster):
 
 
 
+    
