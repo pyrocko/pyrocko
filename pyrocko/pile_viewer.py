@@ -1436,6 +1436,12 @@ def MakePileOverviewClass(base):
             elif key_event.text() == '/':
                 self.emit(SIGNAL('want_input()'))
 
+            elif key_event.text() == 'f':
+                if self.window().windowState() & Qt.WindowFullScreen:
+                    self.window().showNormal()
+                else:
+                    self.window().showFullScreen()
+                
             self.update()
             self.update_status()
     
