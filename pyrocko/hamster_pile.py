@@ -82,10 +82,15 @@ class HamsterPile(pile.Pile):
             self.load_files(fns, show_progress=False)
         
     def drop_older(self, tmax, delete_disk_files=False):
+        self.drop(
+            condition = lambda file: file.tmax < tmax, 
+            delete_disk_files = delete_disk_files)
+                
+    def drop(self, condition, delete_disk_files=False):
         candidates = []
         buffers = self._buffers.values()
         for file in self.iter_files():
-            if file.tmax < tmax and file not in buffers:
+            if condition(file) and file not in buffers:
                 candidates.append(file)
         
         self.remove_files(candidates)
@@ -93,6 +98,7 @@ class HamsterPile(pile.Pile):
             for file in candidates:
                 if file.abspath and os.path.exists(file.abspath):
                     os.unlink(file.abspath)
+
                 
     def __del__(self):
         self.fixate_all()
