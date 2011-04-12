@@ -996,7 +996,11 @@ def MakePileOverviewClass(base):
             self.timer_cutout = Timer()
             
             self.interactive_range_change_time = 0.0
+            self.interactive_range_change_delay_time = 10.0
             self.follow_timer = None
+            
+            self.sortingmode_change_time = 0.0
+            self.sortingmode_change_delay_time = None
             
         def set_trace_filter(self, filter_func):
             self.trace_filter = filter_func
@@ -1151,7 +1155,11 @@ def MakePileOverviewClass(base):
             self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
             
             inrange = lambda x,r: r[0] <= x and x < r[1]
-            trace_selector = lambda trace: inrange(self.key_to_row[self.gather(trace)], self.shown_tracks_range)
+            
+            def trace_selector(trace):
+                gt = self.gather(trace)
+                return (gt in self.key_to_row and
+                   inrange(self.key_to_row[gt], self.shown_tracks_range))
         
             if self.trace_filter is not None:
                 self.trace_selector = lambda x: self.trace_filter(x) and trace_selector(x)
@@ -1582,8 +1590,11 @@ def MakePileOverviewClass(base):
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
             istyle = 0
             for itr, tr in enumerate(traces):
-                
-                itrack = self.key_to_row[self.gather(tr)]
+                gt = self.gather(tr)
+                if gt not in self.key_to_row:
+                    continue
+
+                itrack = self.key_to_row[gt]
                 if not itrack in track_projections: continue
                 
                 v_projection = track_projections[itrack]
@@ -1611,11 +1622,14 @@ def MakePileOverviewClass(base):
                 self.set_gathering()
     
             if self.pile_has_changed:
-                self.sortingmode_change()
-                if self.menuitem_showboxes.isChecked():
-                    self.determine_box_styles()
-                self.pile_has_changed = False
-    
+                if not self.sortingmode_change_delayed():
+                    self.sortingmode_change()
+                    
+                    if self.menuitem_showboxes.isChecked():
+                        self.determine_box_styles()
+                
+                    self.pile_has_changed = False
+
             if h is None: h = self.height()
             if w is None: w = self.width()
             
@@ -1678,7 +1692,12 @@ def MakePileOverviewClass(base):
                     yscaler = pyrocko.plot.AutoScaler()
                     data_ranges = pyrocko.trace.minmax(processed_traces, key=self.scaling_key, mode=self.scalingbase)
                     for trace in processed_traces:
-                        itrack = self.key_to_row[self.gather(trace)]
+                        
+                        gt = self.gather(trace)
+                        if gt not in self.key_to_row:
+                            continue
+                        
+                        itrack = self.key_to_row[gt]
                         if itrack in track_projections:
                             if itrack not in self.track_to_nslc_ids:
                                 self.track_to_nslc_ids[itrack] = set()
@@ -1903,7 +1922,9 @@ def MakePileOverviewClass(base):
             for menuitem, (gather, order, color) in self.menuitems_sorting:
                 if menuitem.isChecked():
                     self.set_gathering(gather, order, color)
-    
+                    
+            self.sortingmode_change_time = time.time()
+            
         def lowpass_change(self, value, ignore=None):
             if num.isfinite(value):
                 self.lowpass = value
@@ -2063,13 +2084,21 @@ def MakePileOverviewClass(base):
             sb.clearMessage()
             sb.showMessage(message)
             
+        def set_sortingmode_change_delay_time(self, dt):
+            self.sortingmode_change_delay_time = dt
+            
+        def sortingmode_change_delayed(self):
+            now = time.time()
+            return (self.sortingmode_change_delay_time is not None and 
+                now - self.sortingmode_change_time < self.sortingmode_change_delay_time)
+            
         def following(self):
             return self.follow_timer is not None and not self.following_interrupted()
         
         def following_interrupted(self, now=None):
             if now is None:
                 now = time.time()
-            return now - self.interactive_range_change_time < 10.
+            return now - self.interactive_range_change_time < self.interactive_range_change_delay_time
 
         def follow(self, tlen, interval=50):
             self.follow_time = tlen
