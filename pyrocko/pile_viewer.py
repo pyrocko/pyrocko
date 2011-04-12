@@ -106,8 +106,8 @@ def make_QPolygonF( xdata, ydata ):
     vptr.setsize(len(ydata)*8*2)
     aa = num.ndarray( shape=(len(ydata),2), dtype=num.float64, buffer=buffer(vptr))
     aa.setflags(write=True)
-    aa[:,0] = xdata[:2]
-    aa[:,1] = ydata[:2]
+    aa[:,0] = xdata
+    aa[:,1] = ydata
     return qpoints
 
 def draw_label( p, x,y, label_str, label_bg, anchor='BL' ):
