@@ -996,6 +996,7 @@ def MakePileOverviewClass(base):
             self.timer_cutout = Timer()
             
             self.interactive_range_change_time = 0.0
+            self.follow_timer = None
             
         def set_trace_filter(self, filter_func):
             self.trace_filter = filter_func
@@ -2061,6 +2062,14 @@ def MakePileOverviewClass(base):
             sb.clearMessage()
             sb.showMessage(message)
             
+        def following(self):
+            return self.follow_timer is not None and not self.following_interrupted()
+        
+        def following_interrupted(self, now=None):
+            if now is None:
+                now = time.time()
+            return now - self.interactive_range_change_time < 10.
+
         def follow(self, tlen, interval=50):
             self.follow_time = tlen
             self.follow_timer = QTimer(self)
@@ -2070,7 +2079,7 @@ def MakePileOverviewClass(base):
             
         def follow_update(self):
             now = time.time()
-            if now - self.interactive_range_change_time < 10.:
+            if self.following_interrupted(now):
                 return
             self.set_time_range(now-self.follow_time, now)
             self.update()
