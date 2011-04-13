@@ -894,7 +894,11 @@ def MakePileOverviewClass(base):
             self.menuitem_showscalerange = QAction('Show Scale Range', self.menu)
             self.menuitem_showscalerange.setCheckable(True)
             self.menu.addAction(self.menuitem_showscalerange)
-    
+            
+            self.menuitem_fixscalerange = QAction('Fix Scale Range', self.menu)
+            self.menuitem_fixscalerange.setCheckable(True)
+            self.menu.addAction(self.menuitem_fixscalerange)
+                
             self.menuitem_allowdownsampling = QAction('Allow Downsampling', self.menu)
             self.menuitem_allowdownsampling.setCheckable(True)
             self.menuitem_allowdownsampling.setChecked(True)
@@ -1001,6 +1005,8 @@ def MakePileOverviewClass(base):
             
             self.sortingmode_change_time = 0.0
             self.sortingmode_change_delay_time = None
+            
+            self.old_data_ranges = {}
             
         def set_trace_filter(self, filter_func):
             self.trace_filter = filter_func
@@ -1697,6 +1703,11 @@ def MakePileOverviewClass(base):
                 if processed_traces:
                     yscaler = pyrocko.plot.AutoScaler()
                     data_ranges = pyrocko.trace.minmax(processed_traces, key=self.scaling_key, mode=self.scalingbase)
+                    if not self.menuitem_fixscalerange.isChecked():
+                        self.old_data_ranges = data_ranges
+                    else:
+                        data_ranges.update(self.old_data_ranges)
+                        
                     for trace in processed_traces:
                         
                         gt = self.gather(trace)
