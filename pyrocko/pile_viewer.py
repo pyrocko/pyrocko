@@ -1783,45 +1783,55 @@ def MakePileOverviewClass(base):
             tmin_ = tmin
             tmax_ = tmax
             
+            # determine padding and downampling requirements
+            if self.lowpass is not None:
+                deltat_target = 1./self.lowpass * 0.25
+                ndecimate = min(50, max(1, int(round(deltat_target / self.min_deltat))))
+                tpad = 1./self.lowpass * 2.
+            else:
+                ndecimate = 1
+                tpad = self.min_deltat*5.
+                
+            if self.highpass is not None:
+                tpad = max(1./self.highpass * 2., tpad)
+            
+            # should we show the traces?
+            nsee_points_per_trace = 5000*10
+            see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
+            show_traces = (tmax_ - tmin_) < see_data_range
+            
+            # fetch more than needed?
             if self.menuitem_liberal_fetch.isChecked():
                 tlen = pyrocko.trace.nextpow2((tmax-tmin)*1.5)
                 tmin = math.floor(tmin/tlen) * tlen
                 tmax = math.ceil(tmax/tlen) * tlen
-            
+                     
             fft_filtering = self.menuitem_fft_filtering.isChecked()
             lphp = self.menuitem_lphp.isChecked()
+            ads = self.menuitem_allowdownsampling.isChecked()
             
+            # state vector to decide if cached traces can be used
             vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, fft_filtering, lphp,
-                self.min_deltat, self.rotate, self.shown_tracks_range,
-                self.menuitem_allowdownsampling.isChecked(), self.pile.get_update_count())
+                show_traces, self.rotate, self.shown_tracks_range,
+                ads, self.pile.get_update_count())
                 
-            if vec == self.old_vec and not (self.reloaded or self.menuitem_watch.isChecked()):
+            if (self.old_vec and 
+                self.old_vec[0] <= vec[0] and vec[1] <= self.old_vec[1] and
+                vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked())):
+                
                 logger.debug('Using cached traces')
                 processed_traces = self.old_processed_traces
                 
             else:
                 self.old_vec = vec
                 
-                if self.lowpass is not None:
-                    deltat_target = 1./self.lowpass * 0.25
-                    ndecimate = min(50, max(1, int(round(deltat_target / self.min_deltat))))
-                    tpad = 1./self.lowpass * 2.
-                else:
-                    ndecimate = 1
-                    tpad = self.min_deltat*5.
-                    
-                if self.highpass is not None:
-                    tpad = max(1./self.highpass * 2., tpad)
-                
                 tpad = min(tmax-tmin, tpad)
                 tpad = max(self.min_deltat*5., tpad)
                     
-                nsee_points_per_trace = 5000*10
-                see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
                 processed_traces = []
                 
-                if (tmax_ - tmin_) < see_data_range:
-                                
+                if show_traces:
+                    
                     for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
                                                     want_incomplete=True,
                                                     degap=degap,
