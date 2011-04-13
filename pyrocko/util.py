@@ -554,7 +554,7 @@ def unpack_fixed(format, line, *callargs):
 _pattern_cache = {}
 def _nslc_pattern(pattern):
     if pattern not in _pattern_cache:
-        rpattern = re.compile(fnmatch.translate(pattern))
+        rpattern = re.compile(fnmatch.translate(pattern), re.I)
         _pattern_cache[pattern] = rpattern
     else:
         rpattern = _pattern_cache[pattern]

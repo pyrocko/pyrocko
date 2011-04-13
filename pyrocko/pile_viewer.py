@@ -735,6 +735,9 @@ class EventMarker(Marker):
     def draw_trace(self, p, trace, time_projection, track_projection, gain):
         pass
 
+class PileOverviewException(Exception):
+    pass
+
 def MakePileOverviewClass(base):
     
     class PileOverview(base):
@@ -972,7 +975,10 @@ def MakePileOverviewClass(base):
             self.gather = None
     
             self.trace_filter = None
-
+            self.quick_filter = None
+            self.quick_filter_pattern = None, None
+            self.blacklist = []
+            
             self.track_to_screen = Projection()
             self.track_to_nslc_ids = {}
         
@@ -1008,10 +1014,63 @@ def MakePileOverviewClass(base):
             
             self.old_data_ranges = {}
             
+            self.error_messages = {}
+            
         def set_trace_filter(self, filter_func):
             self.trace_filter = filter_func
             self.sortingmode_change()
 
+        def update_trace_filter(self):
+            if self.blacklist:
+                blacklist_func = lambda tr: not pyrocko.util.match_nslc(self.blacklist, tr.nslc_id)
+            else:
+                blacklist_func = None
+            
+            if self.quick_filter is None and blacklist_func is None:
+                self.set_trace_filter( None )
+            elif self.quick_filter is None:
+                self.set_trace_filter( blacklist_func )
+            elif blacklist_func is None:
+                self.set_trace_filter( self.quick_filter )                
+            else:
+                self.set_trace_filter( lambda tr: blacklist_func(tr) and self.quick_filter(tr) )
+
+        def set_quick_filter(self, filter_func):
+            self.quick_filter = filter_func
+            self.update_trace_filter()
+            
+        def set_quick_filter_pattern(self, pattern, inputline=None):
+            if pattern is not None:
+                self.set_quick_filter(lambda tr: pyrocko.util.match_nslc(pattern, tr.nslc_id))
+            else:
+                self.set_quick_filter(None)
+                
+            self.quick_filter_pattern = pattern, inputline
+            
+        def get_quick_filter_pattern(self):
+            return self.quick_filter_pattern
+            
+        def add_blacklist_pattern(self, pattern):
+            if pattern in self.blacklist:
+                self.blacklist.remove(pattern)
+            self.blacklist.append(pattern)
+            
+            logger.info('Blacklist is [ %s ]' % ', '.join(self.blacklist))
+            self.update_trace_filter()
+            
+        def remove_blacklist_pattern(self, pattern):
+            if pattern in self.blacklist:
+                self.blacklist.remove(pattern)
+            else:
+                raise PileOverviewException('Pattern not found in blacklist.')
+            
+            logger.info('Blacklist is [ %s ]' % ', '.join(self.blacklist))
+            self.update_trace_filter()
+            
+        def clear_blacklist(self):
+            self.blacklist = []
+            self.update_trace_filter()
+            
         def ssort(self, tr):
             return self._ssort(tr)
         
@@ -2144,6 +2203,68 @@ def MakePileOverviewClass(base):
         def myclose(self):
             self.window().close()
             
+        def set_error_message(self, key, value):
+            if value is None:
+                if key in self.error_messages:
+                    del self.error_messages[key]
+            else:
+                self.error_messages[key] = value
+        
+        def inputline_changed(self, text):
+            line = str(text)
+            toks = line.split()
+            
+            if len(toks) in (1,2):
+                command= toks[0].lower()
+                x = { 'n': '*%s*.*.*.*', 's': '*.*%s*.*.*', 'l': '*.*.*%s*.*', 'c': '*.*.*.*%s*' }
+                if command in x:
+                    if len(toks) == 2:
+                        pattern = x[toks[0]] % toks[1]
+                        self.set_quick_filter_pattern(pattern, line)
+                    else:
+                        self.set_quick_filter_pattern(None)
+                    
+                    self.update()
+                
+        def inputline_finished(self, text):
+            toks = text.split()
+            clearit, hideit, error = False, True, None
+            if len(toks) >= 1:
+                command = toks[0].lower()
+                try:
+                    if command in ('hide', 'unhide'):
+                        if len(toks) in (2,3):
+                            if len(toks) == 2:
+                                pattern = toks[1]
+                            elif len(toks) == 3:
+                                x = { 'n': '%s.*.*.*', 's': '*.%s.*.*', 'l': '*.*.%s.*', 'c': '*.*.*.%s' }
+                                if toks[1] in x:
+                                    pattern = x[toks[1]] % toks[2]
+                            
+                            if command == 'hide':
+                                self.add_blacklist_pattern( pattern )
+                            else:
+                                self.remove_blacklist_pattern( pattern )
+                        
+                        elif command == 'unhide' and len(toks) == 1:
+                            self.clear_blacklist()
+                        
+                        clearit = True
+                        
+                        self.update()
+                        
+                    elif command in ('n', 's', 'l', 'c'):
+                        pass
+                    
+                    else:
+                        raise PileOverviewException('No such command: %s' % command)
+                        
+                except PileOverviewException, e:
+                    error = str(e)
+                    hideit = False
+                
+            return clearit, hideit, error
+        
         def fuck(self):
             import pysacio
             
@@ -2183,12 +2304,20 @@ class PileViewer(QFrame):
         self.setLayout( layout )
         
         self.inputline = QLineEdit()
+        self.connect(self.inputline, SIGNAL('returnPressed()'), self.inputline_returnpressed)
         self.connect(self.inputline, SIGNAL('editingFinished()'), self.inputline_finished)
         self.connect(self.inputline, SIGNAL('textEdited(QString)'), self.inputline_changed)
         self.inputline.setFocusPolicy(Qt.ClickFocus)
         self.inputline.hide()
+        
+        self.inputline_error_str = None
+        
+        self.inputline_error = QLabel()
+        self.inputline_error.hide()
+
         layout.addWidget( self.inputline, 0, 0, 1, 2 )
-        layout.addWidget( self.pile_overview, 1, 0 )
+        layout.addWidget( self.inputline_error, 1, 0, 1, 2 )        
+        layout.addWidget( self.pile_overview, 2, 0 )
         
         scrollbar = QScrollBar(Qt.Vertical)
         self.scrollbar = scrollbar
@@ -2198,33 +2327,56 @@ class PileViewer(QFrame):
         
         self.connect(self.pile_overview, SIGNAL('want_input()'), self.inputline_show)
         self.connect(self.pile_overview, SIGNAL("tracks_range_changed(int,int,int)"), self.tracks_range_changed)
-        
 
     def inputline_show(self):
         self.inputline.show()
         self.inputline.setFocus(Qt.OtherFocusReason)
         self.inputline.selectAll()
-
-    def inputline_changed(self, text):
-        line = str(text)
-        toks = line.split(None,1)
-        w,s = 's', ''
-        if len(toks) == 1:
-            s = toks[0].lower()
-        elif len(toks) == 2:
-            w,s = toks[0].lower(), toks[1].lower()
-
-        m = {'n': 'network', 's': 'station', 'l': 'location', 'c':'channel'}
-        if w in m:
-            filterfunc = lambda tr: getattr(tr, m[w]).lower().find(s) != -1
+ 
+    def inputline_set_error(self, string):
+        self.inputline_error_str = string
+        self.inputline.setPalette( pyrocko.gui_util.get_err_palette() )
+        self.inputline.selectAll()
+        self.inputline_error.setText(string)
+        self.inputline_error.show()
         
-            self.pile_overview.set_trace_filter(filterfunc)
-            self.update_contents()
-
-    def inputline_finished(self):
-        self.pile_overview.setFocus(Qt.OtherFocusReason) 
-        self.inputline.hide()
-
+    def inputline_clear_error(self):
+        if self.inputline_error_str:
+            self.inputline.setPalette( QApplication.palette() )
+            self.inputline_error_str = None
+            self.inputline_error.clear()
+            self.inputline_error.hide()
+            
+    def inputline_changed(self, line):
+        self.pile_overview.inputline_changed(str(line))
+        self.inputline_clear_error()
+        
+    def inputline_returnpressed(self):
+        self.inputline_finished(returnpressed=True)
+        
+    def inputline_finished(self, returnpressed=False):
+        if returnpressed:
+            line = str(self.inputline.text())
+            clearit, hideit, error = self.pile_overview.inputline_finished(line)
+        else:
+            clearit, hideit, error = False, True, None
+            
+        if error:
+            self.inputline_set_error(error)
+        
+        if clearit:
+            self.inputline.blockSignals(True)
+            qpat, qinp = self.pile_overview.get_quick_filter_pattern()
+            if qpat is None:
+                self.inputline.clear()
+            else:
+                self.inputline.setText(qinp)
+            self.inputline.blockSignals(False)
+        
+        if hideit:
+            self.pile_overview.setFocus(Qt.OtherFocusReason) 
+            self.inputline.hide()
+            
     def tracks_range_changed(self, ntracks, ilo, ihi):
         if self.block_scrollbar_changes:
             return

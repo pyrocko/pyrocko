@@ -5,6 +5,11 @@ import numpy as num
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+def get_err_palette():
+    err_palette = QPalette()
+    err_palette.setColor( QPalette.Base, QColor(255,200,200) )
+    return err_palette
+
 class MyValueEdit(QLineEdit):
 
     def __init__(self, *args):
@@ -13,8 +18,6 @@ class MyValueEdit(QLineEdit):
         self.mi = 0.
         self.ma = 1.
         self.connect( self, SIGNAL("editingFinished()"), self.myEditingFinished )
-        self.err_palette = QPalette()
-        self.err_palette.setColor( QPalette.Base, QColor(255,200,200) )
         self.lock = False
         
     def setRange( self, mi, ma ):
@@ -38,7 +41,7 @@ class MyValueEdit(QLineEdit):
                 self.emit(SIGNAL("edited(float)"), value )
                 self.setPalette( QApplication.palette() )
         except:
-            self.setPalette( self.err_palette )
+            self.setPalette( get_err_palette() )
         
         self.lock = False
         
