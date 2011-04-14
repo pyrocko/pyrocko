@@ -23,6 +23,8 @@ import pyrocko.model
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
+logger = logging.getLogger('pyrocko.snuffler')
+
 class AcquisitionThread(QThread):
     def __init__(self, post_process_sleep=0.0):
         QThread.__init__(self)
@@ -372,6 +374,10 @@ class MySnuffler(QApplication):
         return delete_panel
         
     def myquit(self, *args):
+        for source in self._sources:
+            source.stop()
+            
+        self.pile_viewer.get_pile().fixate_all()
         self.quit()
     
 def main(args):
