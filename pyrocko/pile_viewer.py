@@ -2321,7 +2321,7 @@ class PileViewer(QFrame):
         
         scrollbar = QScrollBar(Qt.Vertical)
         self.scrollbar = scrollbar
-        layout.addWidget( scrollbar, 1, 1 )
+        layout.addWidget( scrollbar, 2, 1 )
         self.connect(self.scrollbar, SIGNAL('valueChanged(int)'), self.scrollbar_changed)
         self.block_scrollbar_changes = False
         
