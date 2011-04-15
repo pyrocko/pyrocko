@@ -99,6 +99,14 @@ class USBHB628Acquisition(pyrocko.serial_hamster.USBHB628Hamster, AcquisitionThr
         AcquisitionThread.got_trace(self,tr)
 
 
+class SchoolSeismometerAcquisition(pyrocko.serial_hamster.SerialHamster, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self, post_process_sleep=0.1)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
 class SnufflerServer(pyrocko.ipc.RPCServer):
     
     def __init__(self, pile):
@@ -218,6 +226,7 @@ class MySnuffler(QApplication):
             msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
             mca = re.match(r'cam://([^:]+)', arg)
             mus = re.match(r'hb628://([^:?]+)(\?(\d+))?', arg)
+            msc = re.match(r'school://([^:]+)', arg)
             if msl:
                 host = msl.group(1)
                 port = msl.group(3)
@@ -248,6 +257,11 @@ class MySnuffler(QApplication):
                     deltat = 0.02
                 hb628 = USBHB628Acquisition(port=port, deltat=deltat, buffersize=16, lookback=50)
                 self._sources.append(hb628)
+            elif msc:
+                port = msc.group(1)
+                sco = SchoolSeismometerAcquisition(port=port)
+                self._sources.append(sco)
+                
             else:
                 rargs.append(arg)
         
@@ -376,8 +390,10 @@ class MySnuffler(QApplication):
     def myquit(self, *args):
         for source in self._sources:
             source.stop()
-            
-        self.pile_viewer.get_pile().fixate_all()
+        
+        p = self.pile_viewer.get_pile()
+        if hasattr(p, 'fixate_all'):
+            self.pile_viewer.get_pile().fixate_all()
         self.quit()
     
 def main(args):
