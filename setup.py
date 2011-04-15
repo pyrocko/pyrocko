@@ -28,5 +28,5 @@ setup( name = packname,
             
     ],
                 
-    scripts = [ 'apps/snuffler', 'apps/snuffslink', 'apps/snufflometer', 'apps/hamster' ]
+    scripts = [ 'apps/snuffler', 'apps/hamster' ]
 )

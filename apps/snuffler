@@ -349,12 +349,13 @@ class MySnuffler(QApplication):
     
     def periodical(self):
         p = self.pile_viewer.get_pile()
+        update = False
         try:
             if self._loader:
                 files = self._loader_iterator.next()
                 if files:
                     p.add_files(files)
-                    self.pile_viewer.update_contents()
+                    update = True
                     
         except StopIteration:
             if not self._sources:
@@ -364,6 +365,11 @@ class MySnuffler(QApplication):
             traces = source.poll()
             for tr in traces:
                 p.insert_trace(tr)
+            if traces:
+                update = True
+        
+        if update:
+            self.pile_viewer.update_contents()
 
             
     def periodical_s(self):
