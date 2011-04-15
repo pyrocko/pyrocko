@@ -300,8 +300,12 @@ class CamSerialHamster(SerialHamster):
         ser.write('2,X\n')
         isamp = 0
         while True:
-            uclow = ord(ser.read(1))
-            uchigh = ord(ser.read(1))
+            data = ser.read(2)
+            if len(data) != 2:
+                raise SerialHamsterError('Failed to read from serial line interface.')
+            
+            uclow = ord(data[0])
+            uchigh = ord(data[1])
             
             if uclow == 0xff and uchigh == 0xff:
                 break
