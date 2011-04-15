@@ -2216,10 +2216,10 @@ def MakePileOverviewClass(base):
             
             if len(toks) in (1,2):
                 command= toks[0].lower()
-                x = { 'n': '*%s*.*.*.*', 's': '*.*%s*.*.*', 'l': '*.*.*%s*.*', 'c': '*.*.*.*%s*' }
+                x = { 'n': '%s*.*.*.*', 's': '*.%s*.*.*', 'l': '*.*.%s*.*', 'c': '*.*.*.%s*' }
                 if command in x:
                     if len(toks) == 2:
-                        pattern = x[toks[0]] % toks[1]
+                        pattern = x[toks[0]] % toks[1].rstrip('*')
                         self.set_quick_filter_pattern(pattern, line)
                     else:
                         self.set_quick_filter_pattern(None)
