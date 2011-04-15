@@ -1498,7 +1498,7 @@ def MakePileOverviewClass(base):
             elif key_event.text() == '-':
                 self.zoom_tracks(0.,-1.)
                 
-            elif key_event.text() == '/':
+            elif key_event.text() == ':':
                 self.emit(SIGNAL('want_input()'))
 
             elif key_event.text() == 'f':
