@@ -371,11 +371,6 @@ class MySnuffler(QApplication):
         if update:
             self.pile_viewer.update_contents()
 
-            
-    def periodical_s(self):
-        
-        self.pile_viewer.update_contents()
-       
     def add_panel(self, name, panel):
         dockwidget = QDockWidget(name)
         dockwidget.setWidget(panel)
