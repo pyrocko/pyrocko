@@ -4,7 +4,7 @@ import time, math, copy, logging
 import numpy as num
 from util import reuse
 from scipy import signal
-from pyrocko import model
+from pyrocko import model, nano
 
 logger = logging.getLogger('pyrocko.trace')
 
@@ -543,12 +543,20 @@ class Trace(object):
             meta -- additional meta information (not used by pyrocko)
         '''
     
+        if deltat < 0.001:
+            tmin = asnano(tmin)
+            if tmax is not None:
+                tmax = asnano(tmax)
+
+    
         if mtime is None:
             mtime = time.time()
         
         self.network, self.station, self.location, self.channel = [reuse(x) for x in (network,station,location,channel)]
+        
         self.tmin = tmin
         self.deltat = deltat
+        
         if tmax is None:
             if ydata is not None:
                 self.tmax = self.tmin + (ydata.size-1)*self.deltat

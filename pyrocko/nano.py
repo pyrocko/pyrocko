@@ -19,7 +19,7 @@ def convertable(i):
 
 G = 1000000000L
 
-def asnt(x):
+def asnano(x):
     if not isinstance(x, Nano):
         return Nano(x)
     else:
@@ -42,7 +42,7 @@ class Nano(object):
         return self
 
     def __add__(x,y):        
-        return Nano(ns=x.v+asnt(y).v)
+        return Nano(ns=x.v+asnano(y).v)
 
     __radd__ = __add__
 
@@ -53,42 +53,42 @@ class Nano(object):
         return (-x).__add__(y)  
 
     def __mul__(x,y):
-        return Nano(ns=x.v*asnt(y).v)
+        return Nano(ns=x.v*asnano(y).v)
 
     __rmul__ = __mul__
 
     def __div__(x,y):
-        return Nano(ns=x.v/asnt(y).v)
+        return Nano(ns=x.v/asnano(y).v)
 
     def __rdiv__(x,y):
-        return Nano(ns=asnt(y).v/x.v)
+        return Nano(ns=asnano(y).v/x.v)
 
     def __mod__(x,y):
-        return Nano(ns=x.v%asnt(y.v))
+        return Nano(ns=x.v%asnano(y.v))
 
     def __rmod__(x,y):
-        return Nano(ns=asnt(y).v%x.v)
+        return Nano(ns=asnano(y).v%x.v)
 
     def __le__(x,y): 
-        return x.v <= asnt(y).v
+        return x.v <= asnano(y).v
 
     def __ge__(x,y):
-        return x.v >= asnt(y).v
+        return x.v >= asnano(y).v
 
     def __lt__(x,y):
-        return x.v < asnt(y).v
+        return x.v < asnano(y).v
 
     def __gt__(x,y):
-        return x.v > asnt(y).v
+        return x.v > asnano(y).v
 
     def __eq__(x,y):
-        return x.v == asnt(y).v
+        return x.v == asnano(y).v
 
     def __ne__(x,y):
-        return x.v != asnt(y).v
+        return x.v != asnano(y).v
 
     def __cmp__(x,y):
-        return cmp(x.v,asnt(y).v)
+        return cmp(x.v,asnano(y).v)
 
     def __hash__(self):
         return hash(self.v)
