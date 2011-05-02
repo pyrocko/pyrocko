@@ -119,44 +119,44 @@ class Nano(object):
         return '%s%s.%s' % (sign, s[:-9], s[-9:])
 
 
-class IntFloat(object):
+#class IntFloat(object):
     
     
-    def __init__(self, s=0, ns=0, f=None):
+    #def __init__(self, s=0, ns=0, f=None):
         
-        self.s = int(s)
-        if f is not None:
-            self.f = float(f)
-        else:
-            self.f = float(ns * 1.0e9)
+        #self.s = int(s)
+        #if f is not None:
+            #self.f = float(f)
+        #else:
+            #self.f = float(ns * 1.0e9)
         
-        ff = int(math.floor(self.f))
-        self.s += ff
-        self.f -= ff
+        #ff = int(math.floor(self.f))
+        #self.s += ff
+        #self.f -= ff
         
         
-    def __neg__(self):
-        return IntFloat(-self.s, f=-self.f)
+    #def __neg__(self):
+        #return IntFloat(-self.s, f=-self.f)
 
-    def __pos__(self):
-        return self
+    #def __pos__(self):
+        #return self
     
-    def __add__(x,y):
-        IntFloat( x.s + y.s, x.f + y.f)
+    #def __add__(x,y):
+        #IntFloat( x.s + y.s, x.f + y.f)
 
-    __radd__ = __add__
+    #__radd__ = __add__
 
-    def __sub__(x,y):
-        return x.__add__(-y)
+    #def __sub__(x,y):
+        #return x.__add__(-y)
 
-    def __rsub__(x,y):
-        return (-x).__add__(y)  
+    #def __rsub__(x,y):
+        #return (-x).__add__(y)  
 
-    def __mul__(x,y):
-        a = IntFloat(s=x.s * y.s, f=x.f * y.f)
-        b = IntFloat(f=x.s * y.f)
-        c = IntFloat(f=x.f * y.s)
-        return a+b+c
+    #def __mul__(x,y):
+        #a = IntFloat(s=x.s * y.s, f=x.f * y.f)
+        #b = IntFloat(f=x.s * y.f)
+        #c = IntFloat(f=x.f * y.s)
+        #return a+b+c
     
-    __rmul__ = __mul__
+    #__rmul__ = __mul__
         
