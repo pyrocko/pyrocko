@@ -2,6 +2,7 @@
 
 from pyrocko.file import File, numtype2type, NoDataAvailable
 import trace
+from util import ensuredirs
 
 record_formats = {
 
@@ -26,7 +27,7 @@ def extract(tr, format):
 class TracesFileIO(File):
     
     def __init__(self, file):
-        File.__init__(self, file, type_label='PTRA', version='0000', record_formats=record_formats)
+        File.__init__(self, file, type_label='YAFF', version='0000', record_formats=record_formats)
         
     def get_type(self, key, value):
         return numtype2type[value.dtype.type]
@@ -69,9 +70,31 @@ def load(fn, load_data=True):
     tf.close()
     f.close()
     
-def save(traces, fn):
-    f = open(fn, 'w')
-    tf = TracesFileIO(f)
-    tf.save(traces)    
-    tf.close()
-    f.close()
+def save(traces, filename_template, additional={}, max_open_files=10):
+    fns = set()
+    open_files = {}
+    
+    def close_files():
+        while open_files:
+            open_files.popitem()[1].close()
+            
+    for tr in traces:
+        fn = tr.fill_template(filename_template, **additional)
+        
+        if fn not in open_files:
+            if len(open_files) >= max_open_files:
+                close_files()
+                
+            if fn not in fns: 
+                ensuredirs(fn)
+            
+            open_files[fn] = open(fn, 'wa'[fn in fns])            
+            fns.add(fn)
+        
+        tf = TracesFileIO(open_files[fn])
+        tf.save([tr])
+        tf.close()
+        
+    close_files()
+            
+    return list(fns)

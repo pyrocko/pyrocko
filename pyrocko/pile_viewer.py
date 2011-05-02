@@ -31,6 +31,7 @@ import pyrocko.util
 import pyrocko.plot
 import pyrocko.snuffling
 import pyrocko.snufflings
+from pyrocko.nano import Nano
 from pyrocko.gui_util import ValControl, LinValControl
 
 from PyQt4.QtCore import *
@@ -100,6 +101,9 @@ class Integrator(pyrocko.shadow_pile.ShadowPile):
         return traces
         
 def make_QPolygonF( xdata, ydata ):
+    if isinstance(xdata, Nano):
+        xdata = xdata.float_array()
+        
     assert len(xdata) == len(ydata)
     qpoints = QPolygonF( len(ydata) )
     vptr = qpoints.data()
@@ -184,7 +188,14 @@ def fancy_time_ax_format(inc):
     l0_fmt_brief = ''
     l2_fmt = ''
     l2_trig = 0
-    if inc < 1:
+    if inc < 0.001:
+        l0_fmt = '.%u'
+        l0_center = False
+        l1_fmt = '%H:%M:%S'
+        l1_trig = 6
+        l2_fmt = '%b %d, %Y'
+        l2_trig = 3
+    elif inc < 1:
         l0_fmt = '.%r'
         l0_center = False
         l1_fmt = '%H:%M:%S'
@@ -226,22 +237,25 @@ def fancy_time_ax_format(inc):
     return l0_fmt, l0_fmt_brief, l0_center, l1_fmt, l1_trig, l2_fmt, l2_trig
 
 def day_start(timestamp):
-   tt = time.gmtime(timestamp)
+   tt = time.gmtime(int(timestamp))
    tts = tt[0:3] + (0,0,0) + tt[6:9]
    return calendar.timegm(tts)
 
 def month_start(timestamp):
-   tt = time.gmtime(timestamp)
+   tt = time.gmtime(int(timestamp))
    tts = tt[0:2] + (1,0,0,0) + tt[6:9]
    return calendar.timegm(tts)
 
 def year_start(timestamp):
-    tt = time.gmtime(timestamp)
+    tt = time.gmtime(int(timestamp))
     tts = tt[0:1] + (1,1,0,0,0) + tt[6:9]
     return calendar.timegm(tts)
 
 def gmtime_x(timestamp):
-    etimestamp = math.floor(timestamp)
+    if isinstance(timestamp, Nano):
+        etimestamp = int(timestamp)
+    else:
+        etimestamp = math.floor(timestamp)
     tt = time.gmtime(etimestamp)
     ms = (timestamp-etimestamp)*1000
     return tt,ms
@@ -315,7 +329,7 @@ class TimeScaler(pyrocko.plot.AutoScaler):
         
         if inc < sday:
             mi_day = day_start(max(mi, working_system_time_range[0]+sday*1.5))
-            base = mi_day+math.ceil((mi-mi_day)/inc)*inc
+            base = mi_day+math.ceil(float(mi-mi_day)/inc)*inc
             base_day = mi_day
             i = 0
             while True:
@@ -377,7 +391,8 @@ def mystrftime(fmt=None, tt=None, milliseconds=0):
     if tt is None: tt = time.time()
     
     fmt2 = fmt.replace('%r', '%03i' % int(round(milliseconds)))
-    return time.strftime(fmt2, tt)
+    fmt3 = fmt2.replace('%u', '%06i' % int(round(milliseconds*1000)))
+    return time.strftime(fmt3, tt)
         
         
 def myctime(timestamp):
@@ -493,7 +508,10 @@ class Projection(object):
         
     def set_in_range(self, xmin, xmax):
         if xmax == xmin: xmax = xmin + 1.
-        self.xr = float(xmin), float(xmax)
+        if isinstance(xmin, Nano) or isinstance(xmax, Nano):
+            self.xr = xmin, xmax
+        else:
+            self.xr = float(xmin), float(xmax)
 
     def get_in_range(self):
         return self.xr
@@ -509,6 +527,11 @@ class Projection(object):
         umin, umax = self.ur
         xmin, xmax = self.xr
         return umin + (x-xmin)*((umax-umin)/(xmax-xmin))
+    
+    def clipped(self, x):
+        umin, umax = self.ur
+        xmin, xmax = self.xr
+        return min(umax, max(umin, umin + (x-xmin)*((umax-umin)/(xmax-xmin))))
         
     def rev(self, u):
         umin, umax = self.ur
@@ -695,8 +718,12 @@ class Marker:
 
         try:
             snippet = trace.chop(self.tmin, self.tmax, inplace=False, include_last=True, snap=(math.ceil,math.floor))
-            udata = time_projection(snippet.get_xdata())
+            
             vdata = track_projection( gain*snippet.get_ydata() )
+            udata_min = float(time_projection(snippet.tmin))
+            udata_max = float(time_projection(snippet.tmin+snippet.deltat*(vdata.size-1)))
+            udata = num.linspace(udata_min, udata_max, vdata.size)
+            
             qpoints = make_QPolygonF( udata, vdata )
             p.drawPolyline( qpoints )
             drawpoint(*trace(self.tmin, clip=True, snap=math.ceil))
@@ -1670,15 +1697,17 @@ def MakePileOverviewClass(base):
                 
                 v_projection = track_projections[itrack]
                 
-                dtmin = time_projection(tr.tmin)
-                dtmax = time_projection(tr.tmax)
+                dtmin = time_projection.clipped(tr.tmin)
+                dtmax = time_projection.clipped(tr.tmax)
                 
                 dvmin = v_projection(0.)
                 dvmax = v_projection(1.)
             
                 istyle = self.trace_styles.get((tr.full_id, tr.deltat), 0)
                 style = box_styles[istyle%len(box_styles)]
-                rect = QRectF( dtmin, dvmin, dtmax-dtmin, dvmax-dvmin )
+                
+                rect = QRectF( dtmin, dvmin, float(dtmax-dtmin), dvmax-dvmin )
+                
                 p.fillRect(rect, style.fill_brush)
                 
                 p.setPen(style.frame_pen)
@@ -1784,8 +1813,11 @@ def MakePileOverviewClass(base):
                             ymin, ymax, yinc = yscaler.make_scale( data_range )
                             track_projection.set_in_range(ymax,ymin)
         
-                            udata = self.time_projection(trace.get_xdata())
                             vdata = track_projection( self.gain*trace.get_ydata() )
+                            
+                            udata_min = float(self.time_projection(trace.tmin))
+                            udata_max = float(self.time_projection(trace.tmin+trace.deltat*(vdata.size-1)))
+                            udata = num.linspace(udata_min, udata_max, vdata.size)
                             
                             umin, umax = self.time_projection.get_out_range()
                             vmin, vmax = track_projection.get_out_range()

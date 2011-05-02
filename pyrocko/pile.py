@@ -230,7 +230,7 @@ class TracesGroup(object):
     
     def empty(self):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
-        self.tmin, self.tmax = num.inf, -num.inf
+        self.tmin, self.tmax = None, None
         self.have_tuples = False
     
     def update(self, content, empty=True):
@@ -255,9 +255,16 @@ class TracesGroup(object):
                 self.locations.add(c.location)
                 self.channels.add(c.channel)
                 self.nslc_ids.add(c.nslc_id)
+            
+            if self.tmin is None:
+                self.tmin = c.tmin
+            else:
+                self.tmin = min(self.tmin, c.tmin)
                 
-            self.tmin = min(self.tmin, c.tmin)
-            self.tmax = max(self.tmax, c.tmax)
+            if self.tmax is None:
+                self.tmax = c.tmax
+            else:
+                self.tmax = max(self.tmax, c.tmax)
         
         if empty:    
             self._convert_small_sets_to_tuples()
@@ -737,7 +744,9 @@ class Pile(TracesGroup):
 
         
     def dispatch_key(self, file):
-        tt = time.gmtime(file.tmin)
+       
+        
+        tt = time.gmtime(int(file.tmin))
         return (tt[0],tt[1])
     
     def dispatch(self, file):

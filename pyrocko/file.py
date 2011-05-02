@@ -57,6 +57,10 @@ def encoding_packer(enc):
 def noop(x):
     return x
 
+def time_to_str_ns(x):
+    return util.time_to_str(x, format=9)
+    
+
 castings = {
         'i2': packer('h'),
         'i4': packer('i'),
@@ -67,7 +71,7 @@ castings = {
         'f4': packer('f'),
         'f8': packer('d'),
         'string': (noop, noop),
-        'time_string': (util.time_to_str, util.str_to_time),
+        'time_string': (time_to_str_ns, util.str_to_time),
         '@i2': array_packer('@i2'),
         '@i4': array_packer('@i4'),
         '@i8': array_packer('@i8'),

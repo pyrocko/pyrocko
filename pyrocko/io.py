@@ -1,6 +1,6 @@
 
 import os
-import mseed, sac, kan, segy
+import mseed, sac, kan, segy, yaff, file
 import trace
 from pyrocko.mseed_ext import MSeedError
 
@@ -22,25 +22,29 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     Out:
         trs -- list of loaded traces
     '''
+    def subs(tr):
+        make_substitutions(tr, substitutions)
+        return tr
     
     if format == 'from_extension':
         format = 'mseed'
         extension = os.path.splitext(filename)[1]
         if extension.lower() == '.sac':
             format = 'sac'
-        if extension.lower() == '.kan':
+        elif extension.lower() == '.kan':
             format = 'kan'
-        if extension.lower() in ('.sgy', '.segy'):
+        elif extension.lower() in ('.sgy', '.segy'):
             format = 'segy'
-    
-    trs = []
-    
+        elif extension.lower() == '.yaff':
+            format = 'yaff' 
+        
     if format in ('kan',):
         mtime = os.stat(filename)[8]
         kanf = kan.KanFile(filename, get_data=getdata)
         tr = kanf.to_trace()
         tr.set_mtime(mtime)
-        trs.append(tr)
+        yield subs(tr)
+        
         
     if format in ('segy',):
         mtime = os.stat(filename)[8]
@@ -48,15 +52,26 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
         ftrs = segyf.get_traces()
         for tr in ftrs:
             tr.set_mtime(mtime)
-        trs.extend(ftrs)
+            yield subs(tr)
     
+    if format in ('yaff', 'try'):
+        try:
+            for tr in yaff.load(filename, getdata):
+                yield subs(tr)
+            
+        except (OSError, file.FileError), e:
+            if format == 'try':
+                pass
+            else:
+                raise FileLoadError(e)
+            
     if format in ('sac', 'try'):
         mtime = os.stat(filename)[8]
         try:
             sacf = sac.SacFile(filename, get_data=getdata)
             tr = sacf.to_trace()
             tr.set_mtime(mtime)
-            trs.append(tr)
+            yield subs(tr)
             
         except (OSError,sac.SacError), e:
             if format == 'try':
@@ -67,16 +82,10 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     if format in ('mseed', 'try'):
         try:
             for tr in mseed.load(filename, getdata):
-                trs.append(tr)
+                yield subs(tr)
             
         except (OSError, MSeedError), e:
             raise FileLoadError(e)
-    
-    for tr in trs:
-        make_substitutions(tr, substitutions)
-        
-    return trs
-    
     
 def save(traces, filename_template, format='mseed', additional={}):
     '''Save traces to file(s).
@@ -106,4 +115,10 @@ def save(traces, filename_template, format='mseed', additional={}):
             fns.append(fn)
             
         return fns
+    
+    elif format == 'yaff':
+        return yaff.save(traces, filename_template, additional)
+    
+        
+        
         

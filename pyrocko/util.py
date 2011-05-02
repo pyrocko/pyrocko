@@ -5,6 +5,7 @@ from scipy import signal
 from os.path import join as pjoin
 import config
 import numpy as num
+from nano import Nano
 
 logger = logging.getLogger('pyrocko.util')
 
@@ -315,16 +316,24 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
     :returns: string representing UTC time
     
     Uses the semantics of :py:func:`time.strftime` but additionally allows 
-    for fractional seconds. If *format* contains ``'.xFRAC'``, where ``x`` is a digit between 1 and 3, 
+    for fractional seconds. If *format* contains ``'.xFRAC'``, where ``x`` is a digit between 1 and 9, 
     this is replaced with the fractional part of *t* with ``x`` digits precision.
     '''
     
+    if isinstance(format, int):
+        format = '%Y-%m-%d %H:%M:%S.'+str(format)+'FRAC'
+    
     if not GlobalVars.re_frac:
-        GlobalVars.re_frac = re.compile(r'\.[123]FRAC')
-        GlobalVars.frac_formats = { '.1FRAC': '%.1f', '.2FRAC': '%.2f', '.3FRAC': '%.3f' }
-        
-    ts = math.floor(t)
-    tfrac = t-ts
+        GlobalVars.re_frac = re.compile(r'\.[1-9]FRAC')
+        GlobalVars.frac_formats = dict([  ('.%sFRAC' % x, '%.'+x+'f') for x in '123456789' ] )
+    
+    if isinstance(t, Nano):
+        ts = int(t)     # it always gives rounds like floor
+        tfrac = float(t-ts)
+    else:
+        ts = math.floor(t)
+        tfrac = t-ts
+    
     m = GlobalVars.re_frac.search(format)
     if m:
         sfrac = (GlobalVars.frac_formats[m.group(0)] % tfrac)

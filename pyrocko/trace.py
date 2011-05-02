@@ -4,7 +4,8 @@ import time, math, copy, logging
 import numpy as num
 from util import reuse
 from scipy import signal
-from pyrocko import model, nano
+from pyrocko import model
+from nano import asnano, Nano
 
 logger = logging.getLogger('pyrocko.trace')
 
@@ -570,8 +571,10 @@ class Trace(object):
         self.update_ids()
         
     def __str__(self):
+        fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
+        
         s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
-        s += '  timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
+        s += '  timerange: %s - %s\n' % (util.time_to_str(self.tmin, format=fmt), util.time_to_str(self.tmax, format=fmt))
         s += '  delta t: %g\n' % self.deltat
         if self.meta:
             for k in sorted(self.meta.keys()):
@@ -723,6 +726,7 @@ class Trace(object):
         iplus = 0
         if include_last: iplus=1
         iend = min(len(self.ydata), t2ind(tmax-self.tmin,self.deltat, snap[1])+iplus)
+        
         if ibeg >= iend: raise NoData()
         obj = self
         if not inplace:
@@ -972,8 +976,8 @@ class Trace(object):
         
     def fill_template(self, template, **additional):
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
-        params['tmin'] = util.gmctime_fn(self.tmin)
-        params['tmax'] = util.gmctime_fn(self.tmax)
+        params['tmin'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S')
+        params['tmax'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S')
         params.update(additional)
         return template % params
 
