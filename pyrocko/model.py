@@ -345,4 +345,72 @@ def load_gfz_event_list(filename):
     f.close()
     return elist
 
-    
+def dump_kml(objects, filename):
+    station_template = '''
+  <Placemark>
+    <name>%(network)s.%(station)s.%(location)s</name>
+    <description></description>
+    <styleUrl>#msn_S</styleUrl>
+    <Point>
+      <coordinates>%(lon)f,%(lat)f,%(elevation)f</coordinates>
+    </Point>
+  </Placemark>
+'''
+
+    f = open(filename, 'w')
+    f.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+    f.write('<kml xmlns="http://www.opengis.net/kml/2.2">\n')
+    f.write('<Document>\n')
+    f.write(''' <Style id="sh_S">
+                <IconStyle>
+                        <scale>1.3</scale>
+                        <Icon>
+                                <href>http://maps.google.com/mapfiles/kml/paddle/S.png</href>
+                        </Icon>
+                        <hotSpot x="32" y="1" xunits="pixels" yunits="pixels"/>
+                </IconStyle>
+                <ListStyle>
+                        <ItemIcon>
+                                <href>http://maps.google.com/mapfiles/kml/paddle/S-lv.png</href>
+                        </ItemIcon>
+                </ListStyle>
+        </Style>
+        <Style id="sn_S">
+                <IconStyle>
+                        <scale>1.1</scale>
+                        <Icon>
+                                <href>http://maps.google.com/mapfiles/kml/paddle/S.png</href>
+                        </Icon>
+                        <hotSpot x="32" y="1" xunits="pixels" yunits="pixels"/>
+                </IconStyle>
+                <ListStyle>
+                        <ItemIcon>
+                                <href>http://maps.google.com/mapfiles/kml/paddle/S-lv.png</href>
+                        </ItemIcon>
+                </ListStyle>
+        </Style>
+        <StyleMap id="msn_S">
+                <Pair>
+                        <key>normal</key>
+                        <styleUrl>#sn_S</styleUrl>
+                </Pair>
+                <Pair>
+                        <key>highlight</key>
+                        <styleUrl>#sh_S</styleUrl>
+                </Pair>
+        </StyleMap>
+''')
+    for obj in objects:
+
+        if isinstance(obj, Station):
+             f.write(station_template % obj.__dict__) 
+    f.write('</Document>')
+    f.write('</kml>\n')
+    f.close()
+
+
+
+            
+
+
+
