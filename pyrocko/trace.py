@@ -789,10 +789,17 @@ class Trace(object):
                     rratio = round(ratio)
             
         deci_seq = util.decitab(int(rratio))
-        for ndecimate in deci_seq:
+        finals = []
+        for i, ndecimate in enumerate(deci_seq):
              if ndecimate != 1:
-                return self.downsample(ndecimate, snap=snap, initials=initials, demean=demean)
-            
+                 xinitials = None
+                 if initials is not None:
+                     xinitials = initials[i]
+                 finals.append(self.downsample(ndecimate, snap=snap, initials=xinitials, demean=demean))
+
+        if initials is not None:
+            return finals
+
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         if frequency >= 0.5/self.deltat:
             message = '%s (%g Hz) is equal to or higher than nyquist frequency (%g Hz). (Trace %s)' \
