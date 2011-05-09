@@ -61,7 +61,7 @@ class FileParseError(Exception):
     pass
 
 class Event:
-    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None):
+    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None, catalog=None):
         if load is not None:
             self.load(load)
         else:
@@ -72,6 +72,7 @@ class Event:
             self.depth = depth
             self.magnitude = magnitude
             self.region = region
+            self.catalog = catalog
             
     def time_as_string(self):
         return util.gmctime(self.time)
