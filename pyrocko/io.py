@@ -7,6 +7,10 @@ from pyrocko.mseed_ext import MSeedError
 class FileLoadError(Exception):
     pass
 
+class UnknownFormat(Exception):
+    def __init__(self, ext):
+        Exception.__init__(self, 'Unknown file format: %s' % ext)
+
 def make_substitutions(tr, substitutions):
     if substitutions:
         tr.set_codes(**substitutions)
@@ -37,7 +41,7 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
             format = 'segy'
         elif extension.lower() == '.yaff':
             format = 'yaff' 
-        
+
     if format in ('kan',):
         mtime = os.stat(filename)[8]
         kanf = kan.KanFile(filename, get_data=getdata)
@@ -102,7 +106,9 @@ def save(traces, filename_template, format='mseed', additional={}):
     Out:
         List of generated filenames
     '''
-    
+    if format == 'from_extension':
+        format = os.path.splitext(filename_template)[1][1:]
+
     if format == 'mseed':
         return mseed.save(traces, filename_template, additional)
     
@@ -118,7 +124,9 @@ def save(traces, filename_template, format='mseed', additional={}):
     
     elif format == 'yaff':
         return yaff.save(traces, filename_template, additional)
-    
+    else:
+        raise UnknownFormat(format)
+
         
         
         
