@@ -3,14 +3,26 @@ import os, logging
 
 logger = logging.getLogger('pyrocko.hamster_pile')
 
+class Processor:
+    def __init__(self):
+        pass
+
+    def process(self, trace):
+        return [ trace ]
+
+
+
 class HamsterPile(pile.Pile):
     
-    def __init__(self, fixation_length=None, path=None):
+    def __init__(self, fixation_length=None, path=None, processors=None):
         pile.Pile.__init__(self)
         self._buffers = {}          # keys: nslc,  values: MemTracesFile
         self._fixation_length = fixation_length
         self._path = path
-        
+        self._processors = []
+        for p in processors:
+            self.add_processor(p)
+
     def set_fixation_length(self, l):
         '''Set length after which the fixation method is called on buffer traces.
         
@@ -24,9 +36,19 @@ class HamsterPile(pile.Pile):
         self.fixate_all()
         self._path = path
         
+    def add_processor(self, processor):
+        self.fixate_all()
+        self._processors.append(processor):
+        processor.add_listener(self)
+
     def insert_trace(self, trace):
         logger.debug('Received a trace: %s' % trace)
-                
+    
+        for p in self._processors:
+            for trace in p.process(trace):
+                self._insert(trace)
+
+    def _insert_trace(self, trace):
         buf = self._append_to_buffer(trace)
         nslc = trace.nslc_id
         
