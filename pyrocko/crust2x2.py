@@ -64,7 +64,7 @@ class Crust2Profile:
             self._rho[LBELOWCRUST]])
         
         return num.array(layers).T
-    
+
     def get_layer(self, ilayer):
         '''Get parameters for a layer.
         
@@ -156,6 +156,8 @@ class Crust2:
     nlo = 180
     nla = 90
     
+    _instance = None
+
     def __init__(self, directory=None):
     
         self._directory = directory
@@ -249,13 +251,25 @@ class Crust2:
         f.close()
         
         self._typemap = amap
-        
+
+    @staticmethod
+    def instance():
+        if Crust2._instance is None:
+            Crust2._instance = Crust2()
+
+        return Crust2._instance
+
+
+def get_profile(lat, lon):
+   crust2 = Crust2.instance()
+   return crust2.get_profile(lat,lon)
+
         
 def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
     '''Create a quick and dirty plot of the crustal thicknesses defined in CRUST2.0.'''
 
     if crust2 is None:
-        crust2 = Crust2()
+        crust2 = Crust2.instance()
    
     def func(lat,lon):
         return crust2.get_profile(lat,lon).crustal_thickness(), 
@@ -265,7 +279,7 @@ def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
 def plot_vp_belowcrust(crust2=None, filename='vp_below_crust.pdf'):
     '''Create a quick and dirty plot of vp below the crust, as defined in CRUST2.0.'''
     if crust2 is None:
-        crust2 = Crust2()
+        crust2 = Crust2.instance()
         
     def func(lat,lon):
         return crust2.get_profile(lat,lon).get_layer(LBELOWCRUST)[1]
