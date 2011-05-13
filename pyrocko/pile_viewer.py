@@ -1262,24 +1262,29 @@ def MakePileOverviewClass(base):
                 self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
         
         def set_time_range(self, tmin, tmax):
-            self.tmin, self.tmax = tmin, tmax
-            
-            if self.tmin > self.tmax:
-                self.tmin, self.tmax = self.tmax, self.tmin
+            if tmin is None:
+                tmin = working_system_time_range[0]
+
+            if tmax is None:
+                tmax = working_system_time_range[1]
+
+            if tmin > tmax:
+                tmin, tmax = tmax, tmin
                 
-            if self.tmin == self.tmax:
-                self.tmin -= 1.
-                self.tmax += 1.
+            if tmin == tmax:
+                tmin -= 1.
+                tmax += 1.
             
-            self.tmin = max(working_system_time_range[0], self.tmin)
-            self.tmax = min(working_system_time_range[1], self.tmax)
+            tmin = max(working_system_time_range[0], tmin)
+            tmax = min(working_system_time_range[1], tmax)
                     
-            if (self.tmax - self.tmin < self.min_deltat):
-                m = (self.tmin + self.tmax) / 2.
-                self.tmin = m - self.min_deltat/2.
-                self.tmax = m + self.min_deltat/2.
+            if (tmax - tmin < self.min_deltat):
+                m = (tmin + tmax) / 2.
+                tmin = m - self.min_deltat/2.
+                tmax = m + self.min_deltat/2.
                 
             self.time_projection.set_in_range(tmin,tmax)
+            self.tmin, self.tmax = tmin, tmax
         
         def get_time_range(self):
             return self.tmin, self.tmax
