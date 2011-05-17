@@ -5,12 +5,79 @@ logger = logging.getLogger('pyrocko.hamster_pile')
 
 class Processor:
     def __init__(self):
-        pass
+        self._buffers = {}
 
     def process(self, trace):
-        return [ trace ]
+        return [ trace.copy() ]
 
+    def get_buffer(self, trace):
+        
+        nslc = trace.nslc_id
+        if nslc not in self._buffers:
+            return None
+        
+        trbuf = self._buffers[nslc]
+        if (abs((trbuf.tmax+trbuf.deltat) - trace.tmin) < 1.0e-1*trbuf.deltat and 
+                        trbuf.ydata.dtype == trace.ydata.dtype and
+                        trbuf.deltat == trace.deltat  ):
+            return trbuf
+        else:
+            return None
 
+    def set_buffer(self, trace):
+        nslc = trace.nslc_id
+        self._buffers[nslc] = trace
+
+class Chain(Processor):
+    def __init__(self, *processors):
+        self._processors = processors
+
+    def process(self, trace):
+        traces = [ trace ]
+        xtraces = []
+        for p in self._processors:
+            for tr in traces:
+                xtraces.extend(p.process(traces))
+
+        return xtraces
+
+class DownsampleProcessor(Processor):
+
+    def __init__(self, mapping, deltat):
+        Processor.__init__(self)
+        self._mapping = mapping
+        self._deltat = deltat
+        self._tout = {}
+
+    def process(self, trace):
+        target_id = self._mapping(trace)
+        if target_id is None:
+            return []
+
+        previous = self.get_buffer(trace)
+        if previous is not None:
+            previous.append(trace.ydata)
+            trace = previous
+
+        ds_trace = trace.copy()
+        ds_trace.downsample_to(self._deltat, snap=True, demean=False)
+        ds_trace.set_codes(*target_id)
+
+        if ds_trace.get_ydata().size == 0:
+            self.set_buffer(trace)
+            return []
+
+        tpad = ((trace.tmax-trace.tmin) - (ds_trace.tmax-ds_trace.tmin)) * 3.
+        print tpad 
+        self.set_buffer(trace.chop(trace.tmax-tpad, trace.tmax, inplace=False))
+        
+        #if target_id in self._tout:
+         #   tout = self._tout[target_id]
+         #   ds_trace.chop(tout, ds_trace.tmax, inplace=True)
+
+        self._tout[target_id] = ds_trace.tmax
+        
+        return [ ds_trace ]
 
 class HamsterPile(pile.Pile):
     
@@ -19,9 +86,12 @@ class HamsterPile(pile.Pile):
         self._buffers = {}          # keys: nslc,  values: MemTracesFile
         self._fixation_length = fixation_length
         self._path = path
-        self._processors = []
-        for p in processors:
-            self.add_processor(p)
+        if processors is None:
+            self._processors = [ Processor() ]
+        else:
+            self._processors = []
+            for p in processors:
+                self.add_processor(p)
 
     def set_fixation_length(self, l):
         '''Set length after which the fixation method is called on buffer traces.
@@ -38,15 +108,14 @@ class HamsterPile(pile.Pile):
         
     def add_processor(self, processor):
         self.fixate_all()
-        self._processors.append(processor):
-        processor.add_listener(self)
+        self._processors.append(processor)
 
     def insert_trace(self, trace):
         logger.debug('Received a trace: %s' % trace)
     
         for p in self._processors:
-            for trace in p.process(trace):
-                self._insert(trace)
+            for tr in p.process(trace):
+                self._insert_trace(tr)
 
     def _insert_trace(self, trace):
         buf = self._append_to_buffer(trace)

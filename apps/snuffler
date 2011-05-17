@@ -276,7 +276,15 @@ class MySnuffler(QApplication):
             cache = pyrocko.pile.get_cache(cachedirname)
             
         if self._sources:
-            pile = pyrocko.hamster_pile.HamsterPile()        
+            def mapping(t):
+                if t.channel == 'BHZ':
+                    return t.network, t.station, t.location, 'LHZ'
+
+            p = [ 
+                pyrocko.hamster_pile.DownsampleProcessor(mapping, 1.0),
+                pyrocko.hamster_pile.Processor()
+            ]
+            pile = pyrocko.hamster_pile.HamsterPile(processors=p)        
             pile.set_fixation_length(60.*60.)
             #pile.set_save_path('test_snuffslink_traces')
         else:
