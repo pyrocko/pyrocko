@@ -188,7 +188,7 @@ class HamsterPile(pile.Pile):
             fns = io.save([trbuf], self._path, format='from_extension')
             
             self.remove_file(buf)
-            self.load_files(fns, show_progress=False)
+            self.load_files(fns, show_progress=False, fileformat='from_extension')
         
     def drop_older(self, tmax, delete_disk_files=False):
         self.drop(
