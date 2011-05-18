@@ -277,7 +277,7 @@ class MySnuffler(QApplication):
             
         if self._sources:
             def mapping(t):
-                if t.channel == 'BHZ':
+                if t.channel == 'HHZ':
                     return t.network, t.station, t.location, 'LHZ'
 
             p = [ 

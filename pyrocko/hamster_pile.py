@@ -1,5 +1,6 @@
-import pile, trace, io, util
+import pile, io, util
 import os, logging
+import trace as tracemod
 
 logger = logging.getLogger('pyrocko.hamster_pile')
 
@@ -8,7 +9,7 @@ class Processor:
         self._buffers = {}
 
     def process(self, trace):
-        return [ trace.copy() ]
+        return [ trace ]
 
     def get_buffer(self, trace):
         
@@ -28,6 +29,19 @@ class Processor:
         nslc = trace.nslc_id
         self._buffers[nslc] = trace
 
+class Renamer:
+    def __init__(self, mapping):
+        self._mapping = mapping
+
+    def process(self, trace):
+        target_id = self._mapping(trace)
+        if target_id is None:
+            return []
+
+        out = trace.copy()
+        out.set_codes(*target_id)
+        return [ out ]
+
 class Chain(Processor):
     def __init__(self, *processors):
         self._processors = processors
@@ -41,7 +55,7 @@ class Chain(Processor):
 
         return xtraces
 
-class DownsampleProcessor(Processor):
+class Downsampler(Processor):
 
     def __init__(self, mapping, deltat):
         Processor.__init__(self)
@@ -54,26 +68,30 @@ class DownsampleProcessor(Processor):
         if target_id is None:
             return []
 
-        previous = self.get_buffer(trace)
-        if previous is not None:
-            previous.append(trace.ydata)
-            trace = previous
+        buffer = self.get_buffer(trace)
+        if buffer is None:
+            buffer = trace.copy()
+            self.set_buffer(buffer)
+        else:
+            buffer.append(trace.ydata)
 
-        ds_trace = trace.copy()
+        ds_trace = buffer.copy()
         ds_trace.downsample_to(self._deltat, snap=True, demean=False)
         ds_trace.set_codes(*target_id)
 
         if ds_trace.get_ydata().size == 0:
-            self.set_buffer(trace)
             return []
 
-        tpad = ((trace.tmax-trace.tmin) - (ds_trace.tmax-ds_trace.tmin)) * 3.
-        print tpad 
-        self.set_buffer(trace.chop(trace.tmax-tpad, trace.tmax, inplace=False))
+        tpad = ((buffer.tmax-buffer.tmin) - (ds_trace.tmax-ds_trace.tmin)) * 3.
+        try:
+            buffer.chop(buffer.tmax-tpad, buffer.tmax, include_last=True)
+        except tracemod.NoData:
+            pass
+
         
-        #if target_id in self._tout:
-         #   tout = self._tout[target_id]
-         #   ds_trace.chop(tout, ds_trace.tmax, inplace=True)
+        if target_id in self._tout:
+            tout = self._tout[target_id]
+            ds_trace.chop(tout+ds_trace.deltat, ds_trace.tmax, inplace=True)
 
         self._tout[target_id] = ds_trace.tmax
         
@@ -167,7 +185,7 @@ class HamsterPile(pile.Pile):
     def _fixate(self, buf):
         if self._path:
             trbuf = buf.get_traces()[0]
-            fns = io.save([trbuf], self._path)
+            fns = io.save([trbuf], self._path, format='from_extension')
             
             self.remove_file(buf)
             self.load_files(fns, show_progress=False)
