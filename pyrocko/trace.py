@@ -544,6 +544,8 @@ class Trace(object):
             meta -- additional meta information (not used by pyrocko)
         '''
     
+        self._growbuffer = None
+
         if deltat < 0.001:
             tmin = asnano(tmin)
             if tmax is not None:
@@ -672,14 +674,20 @@ class Trace(object):
         return self.ydata
         
     def set_ydata(self, new_ydata):
+        self.drop_growbuffer()
         self.ydata = new_ydata
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
         
     def drop_data(self):
+        self.drop_growbuffer()
         self.ydata = None
-    
+   
+    def drop_growbuffer(self):
+        self._growbuffer = None
+
     def copy(self, data=True):
         tracecopy = copy.copy(self)
+        self.drop_growbuffer()
         if data:
             tracecopy.ydata = self.ydata.copy()
         tracecopy.meta = copy.deepcopy(self.meta)
@@ -697,6 +705,7 @@ class Trace(object):
         if ibeg == 0 and iend == self.ydata.size-1:
             return # nothing to do
         
+        self.drop_growbuffer()
         self.ydata = self.ydata[ibeg:iend].copy()
         self.tmin = self.tmin+ibeg*self.deltat
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
@@ -707,11 +716,11 @@ class Trace(object):
         
         assert self.ydata.dtype == data.dtype
         newlen = data.size + self.ydata.size
-        if not hasattr(self, 'growbuffer') or self.growbuffer.size < newlen:
-            self.growbuffer = num.empty(newlen*2, dtype=self.ydata.dtype)
-            self.growbuffer[:self.ydata.size] = self.ydata
-        self.growbuffer[self.ydata.size:newlen] = data
-        self.ydata = self.growbuffer[:newlen]
+        if self._growbuffer is None or self._growbuffer.size < newlen:
+            self._growbuffer = num.empty(newlen*2, dtype=self.ydata.dtype)
+            self._growbuffer[:self.ydata.size] = self.ydata
+        self._growbuffer[self.ydata.size:newlen] = data
+        self.ydata = self._growbuffer[:newlen]
         self.tmax = self.tmin + (newlen-1)*self.deltat
         
     def chop(self, tmin, tmax, inplace=True, include_last=False, snap=(round,round), want_incomplete=True):
@@ -731,7 +740,8 @@ class Trace(object):
         obj = self
         if not inplace:
             obj = self.copy(data=False)
-        
+       
+        self.drop_growbuffer()
         obj.ydata = self.ydata[ibeg:iend].copy()
         obj.tmin = obj.tmin+ibeg*obj.deltat
         obj.tmax = obj.tmin+(len(obj.ydata)-1)*obj.deltat
@@ -778,6 +788,7 @@ class Trace(object):
                     raise util.UnavailableDecimation('ratio = %g' % ratio)
                 
                 if upsratio > 1:
+                    self.drop_growbuffer()
                     ydata = self.ydata
                     self.ydata = num.zeros(ydata.size*upsratio-(upsratio-1), ydata.dtype)
                     self.ydata[::upsratio] = ydata
@@ -814,6 +825,7 @@ class Trace(object):
         (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
+        self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
     def highpass(self, order, corner):
@@ -821,6 +833,7 @@ class Trace(object):
         (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
+        self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
     def bandpass(self, order, corner_hp, corner_lp):
@@ -829,6 +842,7 @@ class Trace(object):
         (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
+        self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
     def get_cached_freqs(self, nf, deltaf):
@@ -847,6 +861,7 @@ class Trace(object):
         fdata[0] = 0.0
         fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
         data = num.fft.irfft(fdata)
+        self.drop_growbuffer()
         self.ydata = data[:n]
         
     def shift(self, tshift):
@@ -871,6 +886,7 @@ class Trace(object):
         mavg_short = moving_avg(sqrdata,nshort)
         mavg_long = moving_avg(sqrdata,nlong)
     
+        self.drop_growbuffer()
         self.ydata = num.maximum((mavg_short/mavg_long - 1.) * float(nshort)/float(nlong), 0.0)
         
     def peaks(self, threshold, tsearch):
@@ -912,6 +928,7 @@ class Trace(object):
             data[:nl] = data[nl]
             data[n-nh:] = data[n-nh-1]
             
+        self.drop_growbuffer()
         self.ydata = data
         
         self.update_ids()
