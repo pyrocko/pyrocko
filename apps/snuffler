@@ -318,11 +318,14 @@ class MySnuffler(QApplication):
             stations = pyrocko.model.load_stations(stations_fn)
             self.pile_viewer.get_view().add_stations(stations)
         
+        first = True
         for event_fn in options.event_fns:
-            ev = pyrocko.model.Event()
-            ev.load(event_fn)
-            self.pile_viewer.get_view().add_event(ev)
-            
+            for ev in pyrocko.model.Event.load_catalog(event_fn):
+                self.pile_viewer.get_view().add_event(ev)
+                if first:
+                    self.pile_viewer.get_view().set_origin(ev)
+                    first = False
+
         self._win.setCentralWidget( self.pile_viewer )
         
         self.add_panel('Main Controls', self.pile_viewer.controls())

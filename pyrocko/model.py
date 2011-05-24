@@ -60,10 +60,18 @@ def fill_orthogonal(enus):
 class FileParseError(Exception):
     pass
 
+class EOF(Exception):
+    pass
+
+class EmptyEvent(Exception):
+    pass
+
 class Event:
-    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None, catalog=None):
+    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None, loadf=None, catalog=None):
         if load is not None:
             self.load(load)
+        elif loadf is not None:
+            self.loadf(loadf)
         else:
             self.lat = lat
             self.lon = lon
@@ -84,41 +92,75 @@ class Event:
         return '%s %s %s %g %g %s %s' % (self.name, util.gmctime(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
                 
     def dump(self, filename):
-        f = open(filename, 'w')
-        f.write('name = %s\n' % self.name)
-        f.write('time = %s\n' % util.gmctime(self.time))
-        f.write('latitude = %g\n' % self.lat)
-        f.write('longitude = %g\n' % self.lon)
-        if self.magnitude is not None:
-            f.write('magnitude = %g\n' % self.magnitude)
-            f.write('moment = %g\n' % moment_tensor.magnitude_to_moment(self.magnitude))
-        if self.depth is not None:
-            f.write('depth = %g\n' % self.depth)
-        if self.region is not None:
-            f.write('region = %s\n' % self.region)
-        f.close()
+        file = open(filename, 'w')
+        self.dumpf(file)
+        file.close()
         
+    def dumpf(self, file):
+        file.write('name = %s\n' % self.name)
+        file.write('time = %s\n' % util.gmctime(self.time))
+        file.write('latitude = %g\n' % self.lat)
+        file.write('longitude = %g\n' % self.lon)
+        if self.magnitude is not None:
+            file.write('magnitude = %g\n' % self.magnitude)
+            file.write('moment = %g\n' % moment_tensor.magnitude_to_moment(self.magnitude))
+        if self.depth is not None:
+            file.write('depth = %g\n' % self.depth)
+        if self.region is not None:
+            file.write('region = %s\n' % self.region)
+
+    @staticmethod
+    def dump_catalog(events, filename):
+        file = open(filename, 'w')
+        try:
+            i = 0
+            for ev in events:
+                if i != 0:
+                    file.write('--------------------------------------------\n')
+
+                ev.dumpf(file)
+                i += 1
+
+        finally: 
+            file.close()
+    
     def load(self, filename):
-        f = open(filename, 'r')
+        file = open(filename, 'r')
+        try:
+            self.loadf(file)
+        finally:
+            file.close()
+    
+    def loadf(self, file):
         d = {}
         try:
-            try:
-                for line in f:
-                    toks = line.split(' = ',1)
-                    if len(toks) == 2:
-                        k,v = toks[0].strip(), toks[1].strip()
-                        if k in ('name', 'region'):
-                            d[k] = v
-                        if k in ('latitude', 'longitude', 'magnitude', 'depth'):
-                            d[k] = float(v)
-                        if k == 'time':
-                            d[k] = util.ctimegm(v[:19])
-                        
-            except Exception, e:
-                raise FileParseError(e)
-        finally:
-            f.close()
+            for line in file:
+                if line.lstrip().startswith('#'):
+                    continue
+
+                toks = line.split(' = ',1)
+                if len(toks) == 2:
+                    k,v = toks[0].strip(), toks[1].strip()
+                    if k in ('name', 'region'):
+                        d[k] = v
+                    if k in ('latitude', 'longitude', 'magnitude', 'depth'):
+                        d[k] = float(v)
+                    if k == 'time':
+                        d[k] = util.ctimegm(v[:19])
             
+                if line.startswith('---'):
+                    d['have_separator'] = True
+                    break
+
+        except Exception, e:
+            raise FileParseError(e)
+
+        if not d:
+            raise EOF()
+        
+        if 'have_separator' in d and len(d) == 1:
+            raise EmptyEvent()
+
         self.lat = d.get('latitude', 0.0)
         self.lon = d.get('longitude', 0.0)
         self.time = d.get('time', 0.0)
@@ -126,7 +168,24 @@ class Event:
         self.depth = d.get('depth', None)
         self.magnitude = d.get('magnitude', None)
         self.region = d.get('region', None)
+
+    @staticmethod
+    def load_catalog(filename):
+
+        file = open(filename, 'r')
         
+        try:
+            while True:
+                try:
+                    ev = Event(loadf=file)
+                    yield ev
+                except EmptyEvent:
+                    pass
+
+        except EOF:
+            pass
+        
+        file.close()
 
 class Station:
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):
