@@ -503,6 +503,9 @@ def base36decode(number):
     
     return int(number,36)
 
+class UnpackError(Exception):
+    pass
+
 def unpack_fixed(format, line, *callargs):
     '''Unpack fixed format string, as produced by many fortran codes.
     
@@ -553,7 +556,7 @@ def unpack_fixed(format, line, *callargs):
                 try:
                     values.append(cast(s))
                 except:
-                    raise SeisanResponseFileError('Invalid cast at position [%i:%i] of line: %s' % (ipos, ipos+1, line))
+                    raise UnpackError('Invalid cast at position [%i:%i] of line: %s' % (ipos, ipos+1, line))
                 
         ipos += l
     

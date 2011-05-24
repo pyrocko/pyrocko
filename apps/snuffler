@@ -190,13 +190,13 @@ class MySnuffler(QApplication):
         
         parser = OptionParser(usage=usage)
         parser.add_option('--format', dest='format', default='from_extension',
-                choices=('mseed', 'sac', 'kan', 'segy', 'from_extension', 'try'),
+                choices=('mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan_l', 'seisan_b', 'from_extension', 'try'),
                 help='assume files are of given FORMAT [default: \'%default\']' )
         parser.add_option('--pattern', dest='pattern', metavar='REGEX',
                 help='only include files whose paths match REGEX')
         parser.add_option('--stations', dest='station_fns', action='append', default=[], metavar='STATIONS',
                 help='read station information from file STATIONS')
-        parser.add_option('--event', dest='event_fns', action='append', default=[], metavar='EVENT',
+        parser.add_option('--event', '--events', dest='event_fns', action='append', default=[], metavar='EVENT',
                 help='read event information from file EVENT')
         parser.add_option('--follow', dest='follow', metavar='N',
                 help='follow real time with a window of N seconds')
