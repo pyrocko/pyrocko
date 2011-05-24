@@ -194,6 +194,21 @@ def mk_decitab(nmax=100):
         
     GlobalVars.decitab_nmax = nmax
     
+def day_start(timestamp):
+   tt = time.gmtime(int(timestamp))
+   tts = tt[0:3] + (0,0,0) + tt[6:9]
+   return calendar.timegm(tts)
+
+def month_start(timestamp):
+   tt = time.gmtime(int(timestamp))
+   tts = tt[0:2] + (1,0,0,0) + tt[6:9]
+   return calendar.timegm(tts)
+
+def year_start(timestamp):
+    tt = time.gmtime(int(timestamp))
+    tts = tt[0:1] + (1,1,0,0,0) + tt[6:9]
+    return calendar.timegm(tts)
+
 def decitab(n):
     '''Get integer decimation sequence for given downampling factor.
     
