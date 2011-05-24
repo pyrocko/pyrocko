@@ -1,6 +1,6 @@
 '''Utility functions for pyrocko.'''
 
-import time, logging, os, sys, re, calendar, math, fnmatch, errno
+import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl
 from scipy import signal
 from os.path import join as pjoin
 import config
@@ -614,43 +614,46 @@ class Sole(object):
     
     def __init__(self, pid_path):
         self._pid_path = pid_path
-        
-        pid = None
         self._other_running = False
-        if os.path.exists(self._pid_path):
+        ensuredirs(self._pid_path)
+        self._lockfile = None
+
+        try:
+            self._lockfile = os.open(self._pid_path, os.O_CREAT | os.O_WRONLY)
+        except:
+            raise SoleError('Cannot open lockfile (path = %s)' % self._pid_path)
+
+        try:
+            fcntl.lockf(self._lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            
+        except IOError:
+            self._other_running = True
             try:
                 f = open(self._pid_path, 'r')
-                pid = int(f.read().strip())
-                f.close()
-            except ValueError:
-                self._other_running = True
-                raise SoreError('Cannot get pid from lockfile (path = %s)' % self._pid_path)
-            except:
-                self._other_running = True
-                raise SoleError('Cannot read lockfile (path = %s)' % self._pid_path)
-            
-            try:
-                os.kill(pid, 0)
-                self._other_running = True
-            except OSError, e:
-                if e.errno == errno.EPERM:
-                    self._other_running = True   # ? running under different user id
-                
-        if self._other_running:
-            raise SoleError('Other instance is running (pid = %i)' % pid)
-            
-        if not self._other_running:
-            try:
-                ensuredirs(self._pid_path)
-                f = open(self._pid_path, 'w')
-                f.write(str(os.getpid()))
+                pid = f.read().strip()
                 f.close()
             except:
-                raise SoleError('Cannot write lockfile (path = %s)' % self._pid_path)
+                pid = '?'
+
+            raise SoleError('Other instance is running (pid = %s)' % pid)
+
+        try:
+            os.ftruncate(self._lockfile, 0)
+            os.write(self._lockfile, '%i\n' % os.getpid())
+            os.fsync(self._lockfile)
+
+        except:
+            pass # the pid is only stored for user information, so this is allowed to fail
             
     def __del__(self):
         if not self._other_running:
-            import os
-            os.unlink(self._pid_path)
+            import os, fcntl
+            if self._lockfile is not None:
+                fcntl.lockf(self._lockfile, fcntl.LOCK_UN)
+                os.close(self._lockfile)
+            try:
+                os.unlink(self._pid_path)
+            except:
+                pass
 
             
