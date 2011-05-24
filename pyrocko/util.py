@@ -602,14 +602,17 @@ class Sole(object):
         if os.path.exists(self._pid_path):
             try:
                 f = open(self._pid_path, 'r')
-                pid = f.read().strip()
+                pid = int(f.read().strip())
                 f.close()
+            except ValueError:
+                self._other_running = True
+                raise SoreError('Cannot get pid from lockfile (path = %s)' % self._pid_path)
             except:
                 self._other_running = True
                 raise SoleError('Cannot read lockfile (path = %s)' % self._pid_path)
             
             try:
-                os.kill(int(pid), 0)
+                os.kill(pid, 0)
                 self._other_running = True
             except OSError, e:
                 if e.errno == errno.EPERM:
