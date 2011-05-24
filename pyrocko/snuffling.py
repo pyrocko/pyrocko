@@ -432,7 +432,8 @@ class Snuffling:
         pyrocko.pile.make_pile() to create a pile from command line arguments.
         '''
         
-        pile.make_pile()
+        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
+        return pile.make_pile(cachedirname=cachedirname)
         
     def make_panel(self, parent):
         '''Create a widget for the snuffling's control panel.

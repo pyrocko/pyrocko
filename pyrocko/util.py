@@ -194,6 +194,21 @@ def mk_decitab(nmax=100):
         
     GlobalVars.decitab_nmax = nmax
     
+def day_start(timestamp):
+   tt = time.gmtime(int(timestamp))
+   tts = tt[0:3] + (0,0,0) + tt[6:9]
+   return calendar.timegm(tts)
+
+def month_start(timestamp):
+   tt = time.gmtime(int(timestamp))
+   tts = tt[0:2] + (1,0,0,0) + tt[6:9]
+   return calendar.timegm(tts)
+
+def year_start(timestamp):
+    tt = time.gmtime(int(timestamp))
+    tts = tt[0:1] + (1,1,0,0,0) + tt[6:9]
+    return calendar.timegm(tts)
+
 def decitab(n):
     '''Get integer decimation sequence for given downampling factor.
     
@@ -503,6 +518,9 @@ def base36decode(number):
     
     return int(number,36)
 
+class UnpackError(Exception):
+    pass
+
 def unpack_fixed(format, line, *callargs):
     '''Unpack fixed format string, as produced by many fortran codes.
     
@@ -553,7 +571,7 @@ def unpack_fixed(format, line, *callargs):
                 try:
                     values.append(cast(s))
                 except:
-                    raise SeisanResponseFileError('Invalid cast at position [%i:%i] of line: %s' % (ipos, ipos+1, line))
+                    raise UnpackError('Invalid cast at position [%i:%i] of line: %s' % (ipos, ipos+1, line))
                 
         ipos += l
     

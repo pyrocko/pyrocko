@@ -24,6 +24,7 @@ import logging
 import traceback
 from optparse import OptionParser
 
+import pyrocko.model
 import pyrocko.pile
 import pyrocko.shadow_pile
 import pyrocko.trace
@@ -748,16 +749,22 @@ class EventMarker(Marker):
     def __init__(self, event):
         Marker.__init__(self, [], event.time, event.time)
         self._event = event
-        
+
     def draw(self, p, time_projection, y_projection):
         Marker.draw(self, p, time_projection, y_projection)
         
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
-        
-        label = 'M%3.1f %s' % (self._event.magnitude, self._event.region)
+        reg = self._event.region
+        if reg is None:
+            reg = ''
+
+        label = 'M%3.1f%s' % (self._event.magnitude, ' '+reg)
         label_bg = QBrush( QColor(220,220,220) )
         draw_label( p, u, v0-10., label, label_bg, 'CB')
+
+    def get_event(self):
+        return self._event
 
     def draw_trace(self, p, trace, time_projection, track_projection, gain):
         pass
@@ -849,7 +856,13 @@ def MakePileOverviewClass(base):
             self.scalingbase = self.menuitems_scalingbase[0][1]
             
             self.menu.addSeparator()
-            
+
+            self.menuitem_setorigin = QAction('Set Origin', self.menu)
+            self.menu.addAction(self.menuitem_setorigin)
+            self.connect( self.menuitem_setorigin, SIGNAL("triggered(bool)"), self.set_event_marker_as_origin)
+ 
+            self.menu.addSeparator()
+
             menudef = [
                 ('Sort by Names',
                     lambda tr: () ),
@@ -1043,6 +1056,11 @@ def MakePileOverviewClass(base):
             
             self.error_messages = {}
             
+        def fail(self, reason):
+            box = QMessageBox(self)
+            box.setText(reason)
+            box.exec_()
+    
         def set_trace_filter(self, filter_func):
             self.trace_filter = filter_func
             self.sortingmode_change()
@@ -1124,11 +1142,25 @@ def MakePileOverviewClass(base):
         def add_event(self, event):
             marker = EventMarker(event)
             self.add_marker( marker )
-            self.set_origin(event)
-        
+       
+        def set_event_marker_as_origin(self, ignore):
+            selected = self.selected_markers()
+            if not selected:
+                self.fail('An event marker must be selected.')
+                return
+
+            m = selected[0]
+            if not isinstance(m, EventMarker):
+                self.fail('Selected marker is not an event.')
+                return
+
+            location = m.get_event()
+            self.set_origin(location)
+
         def set_origin(self, location):
             for station in self.stations.values():
                 station.set_event_relative_data(location)
+            self.sortingmode_change()
         
         def toggletest(self, checked):
             if checked:

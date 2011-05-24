@@ -1,6 +1,6 @@
 
 import os
-import mseed, sac, kan, segy, yaff, file
+import mseed, sac, kan, segy, yaff, file, seisan_waveform
 import trace
 from pyrocko.mseed_ext import MSeedError
 
@@ -42,6 +42,15 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
         elif extension.lower() == '.yaff':
             format = 'yaff' 
 
+    if format in ('seisan', 'seisan_l', 'seisan_b'):
+        endianness = {'seisan_l' : '<', 'seisan_b' : '>', 'seisan' : '<'}[format]
+        npad = 4
+        try:
+            for tr in seisan_waveform.load(filename, load_data=getdata, endianness=endianness, npad=npad):
+                yield subs(tr)
+        except (OSError, seisan_waveform.SeisanFileError), e:
+            raise FileLoadError(e)
+    
     if format in ('kan',):
         mtime = os.stat(filename)[8]
         kanf = kan.KanFile(filename, get_data=getdata)
