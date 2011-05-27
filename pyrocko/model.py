@@ -99,8 +99,10 @@ class Event:
     def dumpf(self, file):
         file.write('name = %s\n' % self.name)
         file.write('time = %s\n' % util.gmctime(self.time))
-        file.write('latitude = %g\n' % self.lat)
-        file.write('longitude = %g\n' % self.lon)
+        if self.lat is not None:
+            file.write('latitude = %g\n' % self.lat)
+        if self.lon is not None:
+            file.write('longitude = %g\n' % self.lon)
         if self.magnitude is not None:
             file.write('magnitude = %g\n' % self.magnitude)
             file.write('moment = %g\n' % moment_tensor.magnitude_to_moment(self.magnitude))
