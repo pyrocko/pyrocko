@@ -521,6 +521,9 @@ def base36decode(number):
 class UnpackError(Exception):
     pass
 
+ruler = ''.join([ '%-10i' % i for i in range(8) ]) + '\n' + '0123456789' * 8 + '\n'
+
+
 def unpack_fixed(format, line, *callargs):
     '''Unpack fixed format string, as produced by many fortran codes.
     
@@ -571,7 +574,10 @@ def unpack_fixed(format, line, *callargs):
                 try:
                     values.append(cast(s))
                 except:
-                    raise UnpackError('Invalid cast at position [%i:%i] of line: %s' % (ipos, ipos+1, line))
+                    mark = [' '] * 80 
+                    mark[ipos:ipos+l] = ['^'] * l
+                    mark = ''.join(mark)
+                    raise UnpackError('Invalid cast to type "%s" at position [%i:%i] of line: \n%s%s\n%s' % (typ, ipos, ipos+l, ruler, line.rstrip(), mark))
                 
         ipos += l
     
