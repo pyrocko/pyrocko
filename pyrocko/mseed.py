@@ -12,7 +12,10 @@ def load(filename, getdata=True):
         network, station, location, channel = tr[1:5]
         tmin = float(tr[5])/float(HPTMODULUS)
         tmax = float(tr[6])/float(HPTMODULUS)
-        deltat = reuse(float(1.0)/float(tr[7]))
+        try:
+            deltat = reuse(float(1.0)/float(tr[7]))
+        except ZeroDivisionError, e:
+            raise MSeedError('Trace in file %s has a sampling rate of zero.' % filename)
         ydata = tr[8]
         
         traces.append(trace.Trace(network, station, location, channel, tmin, tmax, deltat, ydata, mtime=mtime))
