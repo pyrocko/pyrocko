@@ -692,7 +692,8 @@ class Marker:
             v0, v1 = y_projection.get_out_range()
             line = QLine(u,v0,u,v1)
             p.drawLine(line)
-            
+       
+        
         if self.selected or self.alerted or not self.nslc_ids:
             drawline(self.tmin)
             drawline(self.tmax)
@@ -740,10 +741,21 @@ class Marker:
 
         drawline(self.tmin)
         drawline(self.tmax)
+
+        label = self.get_label()
+        if label:
+            label_bg = QBrush( QColor(220,220,220) )
+            u = time_projection(self.tmin)
+            v0, v1 = track_projection.get_out_range()
+            draw_label( p, u-5., v0, label, label_bg, 'TR')
+
         try: drawpoint(self.tmin, trace.interpolate(self.tmin))
         except IndexError: pass
         try: drawpoint(self.tmax, trace.interpolate(self.tmax))
         except IndexError: pass            
+    
+    def get_label(self):
+        return None 
 
 class EventMarker(Marker):
     def __init__(self, event):
@@ -755,11 +767,16 @@ class EventMarker(Marker):
         
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
+        t = []
+        mag = self._event.magnitude
+        if mag is not None:
+            t.append('M%3.1f' % mag)
+        
         reg = self._event.region
-        if reg is None:
-            reg = ''
-
-        label = 'M%3.1f%s' % (self._event.magnitude, ' '+reg)
+        if reg is not None:
+            t.append(reg)
+        
+        label = ' '.join(t)
         label_bg = QBrush( QColor(220,220,220) )
         draw_label( p, u, v0-10., label, label_bg, 'CB')
 
@@ -768,6 +785,28 @@ class EventMarker(Marker):
 
     def draw_trace(self, p, trace, time_projection, track_projection, gain):
         pass
+
+class PhaseMarker(Marker):
+
+    def __init__(self, nslc_ids, tmin, tmax, event=None, phasename=None, polarity=None, automatic=None):
+        Marker.__init__(self, nslc_ids, tmin, tmax)
+        self._event = event
+        self._phasename = phasename
+        self._polarity = polarity
+        self._automatic = automatic
+
+    def get_label(self):
+        t = []
+        if self._phasename is not None:
+            t.append(self._phasename)
+        if self._polarity is not None:
+            t.append(self._polarity)
+
+        if self._automatic:
+            t.append('@')
+
+        return ''.join(t)
+
 
 class PileOverviewException(Exception):
     pass
