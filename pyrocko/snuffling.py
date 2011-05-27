@@ -172,8 +172,8 @@ class Snuffling:
         self._param_controls = {}
         
         self._live_update = True
-        
         self._previous_output_filename = None
+        self._previous_input_filename = None
         
         self.setup()
         
@@ -514,6 +514,30 @@ class Snuffling:
         self._previous_output_filename = fn
         return str(fn)
     
+    def input_filename(self, caption='Open File', dir='', filter='', selected_filter=None):
+        
+        '''Query user for an input filename.
+        
+        This is currently just a wrapper to QFileDialog.getOpenFileName.
+        A UserCancelled exception is raised if the user cancels the dialog.
+        '''
+        
+        if not dir and self._previous_input_filename:
+            dir = self._previous_input_filename
+            
+        fn = QFileDialog.getOpenFileName(
+            self.get_viewer(),
+            caption,
+            dir,
+            filter,
+            selected_filter)
+            
+        if not fn:
+            raise UserCancelled()
+        
+        self._previous_input_filename = fn
+        return str(fn)
+    
     def modified_snuffling_panel(self, value, iparam):
         '''Called when the user has played with an adjustable parameter.
         
@@ -596,6 +620,9 @@ class Snuffling:
         
         self.get_viewer().add_markers(markers)
         self._markers.extend(markers)
+
+    def add_marker(self, marker):
+        self.add_markers([marker])
 
     def cleanup(self):
         '''Remove all traces and markers which have been added so far by the snuffling.'''
