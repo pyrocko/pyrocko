@@ -70,6 +70,22 @@ class TraceTestCase(unittest.TestCase):
             assert x.tmin == 100
             assert x.get_ydata().size == 10
         
+        for meth, res in (('use_second', [1.,1.]), ('use_first', [0.,0.]), ('crossfade_cos', [0.25,0.75])):
+            a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=100)
+            b = trace.Trace(deltat=dt, ydata=num.ones(10), tmin=108)
+            traces = [a,b]
+            traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
+            xs = trace.degapper(traces, deoverlap=meth)
+            for x in xs:
+                assert x.ydata.size == 18
+                print x.ydata
+                assert numeq(x.ydata[8:10], res, 1e-6)
+                
+                print x.ydata
+
+
+
+
     def testRotation(self):
         s2 = math.sqrt(2.)
         ndata = num.array([s2,s2], dtype=num.float)
@@ -84,8 +100,8 @@ class TraceTestCase(unittest.TestCase):
             if tr.channel == 'T':
                 t = tr
         
-        assert( num.all(r.get_ydata() - num.array([ 2., 1. ]) < 1.0e-6 ) )
-        assert( num.all(t.get_ydata() - num.array([ 0., -1 ]) < 1.0e-6 ) )
+        assert numeq(r.get_ydata(), [2.,1.], 1.0e-6)
+        assert numeq(t.get_ydata(), [ 0., -1 ], 1.0e-6)
             
     def testProjection(self):
         s2 = math.sqrt(2.)

@@ -58,18 +58,22 @@ def minmaxtime(traces, key=lambda tr: (tr.network, tr.station, tr.location, tr.c
     
     return ranges
     
-def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
+def degapper(in_traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second'):
     
     '''Try to connect traces and remove gaps.
     
     This method will combine adjacent traces, which match in their network, 
-    station, location and channel attributes. Overlapping parts will be removed.
+    station, location and channel attributes. Overlapping parts are handled
+    according to the `deoverlap` argument.
     
     Arguments:
     
        in_traces:   input traces, must be sorted by their full_id attribute.
        maxgap:      maximum number of samples to interpolate.
        fillmethod:  what to put into the gaps: 'interpolate' or 'zeros'.
+       deoverlap:   how to handle overlaps: 'use_second' to use data from 
+                    second trace (default), 'use_first' to use data from first
+                    trace, 'crossfade_cos' to crossfade with cosine taper 
        
     '''
     
@@ -109,7 +113,21 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate'):
                     
                 elif idist <= 0:
                     if b.tmax > a.tmax:
-                        a.ydata = num.concatenate((a.ydata[:idist-1], b.ydata))
+                        na = a.ydata.size
+                        n = -idist+1
+                        if deoverlap == 'use_second':
+                            a.ydata = num.concatenate((a.ydata[:-n], b.ydata))
+                        elif deoverlap in ('use_first', 'crossfade_cos'):
+                            a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
+                        else:
+                            assert False, 'unknown deoverlap method'
+
+                        if deoverlap == 'crossfade_cos':
+                            n = -idist+1
+                            taper = 0.5-0.5*num.cos((1.+num.arange(n))/(1.+n)*num.pi)
+                            a.ydata[na-n:na] *= 1.-taper
+                            a.ydata[na-n:na] += b.ydata[:n] * taper
+
                         a.tmax = b.tmax
                         if a.mtime and b.mtime:
                             a.mtime = max(a.mtime, b.mtime)
