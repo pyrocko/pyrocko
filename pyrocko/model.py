@@ -213,7 +213,12 @@ class Station:
         self.dist_deg = self.dist_m / orthodrome.earthradius_equator *orthodrome.r2d
         self.azimuth = orthodrome.azimuth(event, self)
         self.backazimuth = orthodrome.azimuth(self, event)
-        
+       
+    def set_channels_by_name(self, *args):
+        self.set_channels([])
+        for name in args:
+            self.add_channel(Channel(name))
+
     def set_channels(self, channels):
         self.channels = {}
         for ch in channels:
