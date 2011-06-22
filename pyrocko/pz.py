@@ -1,7 +1,9 @@
 import scipy.signal as sig
 import numpy as num
-import sys
-import gmtpy
+import sys, math
+import trace
+
+d2r = math.pi/180.
 
 class SacPoleZeroError(Exception):
     pass
@@ -67,3 +69,74 @@ def read_sac_zpk(filename):
     
     return zeros, poles, constant
 
+def write_sac_zpk(zeros, poles, constant, filename):
+    if hasattr(filename, 'write'):
+        f = filename
+    else:
+        f = open('w', filename)
+    
+    def write_complex(x):
+        f.write('%12.8g %12.8g\n' % (complex(x).real, complex(x).imag))
+
+    f.write('POLES %i\n' % len(poles))
+    for p in poles:
+        if p != 0.0:
+            write_complex(p)
+
+    f.write('ZEROS %i\n' % len(zeros))
+    for z in zeros:
+        if z != 0.0:
+            write_complex(z)
+
+    f.write('CONSTANT %12.8g\n' % constant)
+    if not hasattr(filename, 'write'):
+        f.close()
+
+def evaluate(zeros, poles, constant, fmin=0.001, fmax=100., nf=100):
+    
+    logfmin = math.log(fmin)
+    logfmax = math.log(fmax)
+    logf = num.linspace(logfmin, logfmax, nf)
+    f = num.exp(logf)
+    trans = trace.PoleZeroResponse(zeros, poles, constant)
+    return f, trans.evaluate(f)
+
+def evaluate_at(zeros, poles, constant, f):
+    jomeg = 1.0j* 2.*math.pi*f
+    
+    a = constant
+    for z in zeros:
+        a *= jomeg-z
+    for p in poles:
+        a /= jomeg-p
+    
+    return a
+
+def plot_amplitudes_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100, fnorm=None):
+    
+    import gmtpy
+    
+    p = gmtpy.LogLogPlot(width=30*gmtpy.cm, yexp=0)
+    for i, (zeros, poles, constant) in enumerate(zpks):
+        f, h = evaluate(zeros, poles, constant, fmin, fmax, nf)
+        if fnorm is not None:
+            h /= evaluate_at(zeros, poles, constant, fnorm)
+
+        amp = num.abs(h)
+        p.plot((f, amp), '-W2p,%s' % gmtpy.color(i))
+
+    p.save(filename_pdf)
+    
+    
+def plot_phases_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100):
+    
+    import gmtpy
+    
+    p = gmtpy.LogLinPlot(width=30*gmtpy.cm)
+    for i, (zeros, poles, constant) in enumerate(zpks):
+        f, h = evaluate(zeros, poles, constant, fmin, fmax, nf)
+        phase = num.unwrap(num.angle(h)) /d2r
+        p.plot((f, phase), '-W1p,%s' % gmtpy.color(i))
+
+    p.save(filename_pdf)
+    
