@@ -1,6 +1,6 @@
 
 import os
-import mseed, sac, kan, segy, yaff, file, seisan_waveform
+import mseed, sac, kan, segy, yaff, file, seisan_waveform, util
 import trace
 from pyrocko.mseed_ext import MSeedError
 
@@ -100,7 +100,7 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
         except (OSError, MSeedError), e:
             raise FileLoadError(e)
     
-def save(traces, filename_template, format='mseed', additional={}):
+def save(traces, filename_template, format='mseed', additional={}, stations=None):
     '''Save traces to file(s).
     
     In:
@@ -125,7 +125,17 @@ def save(traces, filename_template, format='mseed', additional={}):
         fns = []
         for tr in traces:
             f = sac.SacFile(from_trace=tr)
+            if stations:
+                s = stations[tr.network, tr.station, tr.location]
+                f.stla = s.lat
+                f.stlo = s.lon
+                f.stel = s.elevation
+                f.stdp = s.depth
+                f.cmpinc = s.get_channel(tr.channel).dip + 90.
+                f.cmpaz = s.get_channel(tr.channel).azimuth
+
             fn = tr.fill_template(filename_template, **additional)
+            util.ensuredirs(fn)
             f.write(fn)
             fns.append(fn)
             
