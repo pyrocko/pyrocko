@@ -91,7 +91,10 @@ class Downsampler(Processor):
         
         if target_id in self._tout:
             tout = self._tout[target_id]
-            ds_trace.chop(tout+ds_trace.deltat, ds_trace.tmax, inplace=True)
+            try:
+                ds_trace.chop(tout+ds_trace.deltat, ds_trace.tmax, inplace=True)
+            except tracemod.NoData:
+                return []
 
         self._tout[target_id] = ds_trace.tmax
         
