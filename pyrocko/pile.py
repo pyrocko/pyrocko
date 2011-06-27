@@ -969,7 +969,7 @@ class Pile(TracesGroup):
 
 def make_pile( paths=None, selector=None, regex=None,
         fileformat = 'mseed',
-        cachedirname='/tmp/pyrocko_cache_%s' % os.environ['USER'] ):
+        cachedirname='/tmp/pyrocko_cache_%s' % os.environ['USER'], show_progress=True ):
     
     '''Create pile from given file and directory names.
     
@@ -984,6 +984,7 @@ def make_pile( paths=None, selector=None, regex=None,
             'from_extension', 'try')
         cachedirname -- loader cache is stored under this directory. It is
             created as neccessary.
+        show_progress -- show progress bar and other progress information
     '''
     if isinstance(paths, str):
         paths = [ paths ]
@@ -991,11 +992,11 @@ def make_pile( paths=None, selector=None, regex=None,
     if paths is None:
         paths = sys.argv[1:]
     
-    fns = util.select_files(paths, selector, regex)
+    fns = util.select_files(paths, selector, regex, show_progress=show_progress)
 
     cache = get_cache(cachedirname)
     p = Pile()
-    p.load_files( sorted(fns), cache=cache, fileformat=fileformat)
+    p.load_files( sorted(fns), cache=cache, fileformat=fileformat, show_progress=show_progress)
     return p
 
 
