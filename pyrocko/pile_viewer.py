@@ -807,6 +807,12 @@ class PhaseMarker(Marker):
 
         return ''.join(t)
 
+    def get_event(self):
+        return self._event
+
+    def get_phasename(self):
+        return self._phasename
+
 
 class PileOverviewException(Exception):
     pass
@@ -1401,7 +1407,10 @@ def MakePileOverviewClass(base):
     
         def selected_markers(self):
             return [ marker for marker in self.markers if marker.is_selected() ]
-    
+   
+        def get_markers(self):
+            return self.markers
+
         def mousePressEvent( self, mouse_ev ):
             #self.setMouseTracking(False)
             point = self.mapFromGlobal(mouse_ev.globalPos())
