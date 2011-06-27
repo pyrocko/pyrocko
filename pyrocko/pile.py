@@ -370,7 +370,7 @@ class MemTracesFile(TracesGroup):
                 
         return mtime
         
-    def chop(self,tmin,tmax,trace_selector=None):
+    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round)):
         chopped = []
         used = False
         needed = [ tr for tr in self.traces if not trace_selector or trace_selector(tr) ]
@@ -380,7 +380,7 @@ class MemTracesFile(TracesGroup):
             for tr in self.traces:
                 if not trace_selector or trace_selector(tr):
                     try:
-                        chopped.append(tr.chop(tmin,tmax,inplace=False))
+                        chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap))
                     except trace.NoData:
                         pass
             
@@ -506,7 +506,7 @@ class TracesFile(TracesGroup):
                 
         return mtime
 
-    def chop(self,tmin,tmax,trace_selector=None):
+    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round)):
         chopped = []
         used = False
         needed = [ tr for tr in self.traces if not trace_selector or trace_selector(tr) ]
@@ -517,7 +517,7 @@ class TracesFile(TracesGroup):
             for tr in self.traces:
                 if not trace_selector or trace_selector(tr):
                     try:
-                        chopped.append(tr.chop(tmin,tmax,inplace=False))
+                        chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap))
                     except trace.NoData:
                         pass
             
@@ -601,12 +601,12 @@ class SubPile(TracesGroup):
                 
         return mtime
     
-    def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
+    def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round)):
         used_files = set()
         chopped = []
         for file in self.files:
             if file.is_relevant(tmin, tmax, group_selector):
-                chopped_, used = file.chop(tmin, tmax, trace_selector)
+                chopped_, used = file.chop(tmin, tmax, trace_selector, snap=snap)
                 chopped.extend( chopped_ )
                 if used:
                     used_files.add(file)
@@ -764,12 +764,12 @@ class Pile(TracesGroup):
                 
         return mtime
         
-    def chop(self, tmin, tmax, group_selector=None, trace_selector=None):
+    def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round)):
         chopped = []
         used_files = set()
         for subpile in self.subpiles.values():
             if subpile.is_relevant(tmin,tmax, group_selector):
-                _chopped, _used_files =  subpile.chop(tmin, tmax, group_selector, trace_selector)
+                _chopped, _used_files =  subpile.chop(tmin, tmax, group_selector, trace_selector, snap=snap)
                 chopped.extend(_chopped)
                 used_files.update(_used_files)
                 
@@ -804,7 +804,7 @@ class Pile(TracesGroup):
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
-                      want_incomplete=True, degap=True, keep_current_files_open=False, accessor_id=None):
+                      want_incomplete=True, degap=True, keep_current_files_open=False, accessor_id=None, snap=(round,round)):
         
         if tmin is None:
             tmin = self.tmin+tpad
@@ -828,7 +828,7 @@ class Pile(TracesGroup):
             wmin, wmax = tmin+iwin*tinc, tmin+(iwin+1)*tinc
             eps = tinc*1e-6
             if wmin >= tmax-eps: break
-            chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector) 
+            chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector, snap=snap) 
             for file in used_files - open_files:
                 # increment datause counter on newly opened files
                 file.use_data()
