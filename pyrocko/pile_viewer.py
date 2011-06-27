@@ -1762,7 +1762,22 @@ def MakePileOverviewClass(base):
 
             traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=tselector))
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
-            istyle = 0
+
+            def drawbox(itrack, istyle, traces):
+                v_projection = track_projections[itrack]
+                dvmin = v_projection(0.)
+                dvmax = v_projection(1.)
+                dtmin = time_projection.clipped(traces[0].tmin)
+                dtmax = time_projection.clipped(traces[-1].tmax)
+                
+                style = box_styles[istyle%len(box_styles)]
+                rect = QRectF( dtmin, dvmin, float(dtmax-dtmin), dvmax-dvmin )
+                p.fillRect(rect, style.fill_brush)
+                p.setPen(style.frame_pen)
+                p.drawRect(rect)
+
+            
+            traces_by_style = {}
             for itr, tr in enumerate(traces):
                 gt = self.gather(tr)
                 if gt not in self.key_to_row:
@@ -1770,25 +1785,20 @@ def MakePileOverviewClass(base):
 
                 itrack = self.key_to_row[gt]
                 if not itrack in track_projections: continue
-                
-                v_projection = track_projections[itrack]
-                
-                dtmin = time_projection.clipped(tr.tmin)
-                dtmax = time_projection.clipped(tr.tmax)
-                
-                dvmin = v_projection(0.)
-                dvmax = v_projection(1.)
-            
+               
                 istyle = self.trace_styles.get((tr.full_id, tr.deltat), 0)
-                style = box_styles[istyle%len(box_styles)]
                 
-                rect = QRectF( dtmin, dvmin, float(dtmax-dtmin), dvmax-dvmin )
                 
-                p.fillRect(rect, style.fill_brush)
-                
-                p.setPen(style.frame_pen)
-                p.drawRect(rect)
-            
+                if len(traces) < 1000:
+                    drawbox(itrack, istyle, [tr])
+                else:
+                    if (itrack, istyle) not in traces_by_style:
+                        traces_by_style[itrack, istyle] = []
+                    traces_by_style[itrack, istyle].append(tr)
+
+            for (itrack, istyle), traces in traces_by_style.iteritems():
+                drawbox(itrack, istyle, traces) 
+        
         def drawit(self, p, printmode=False, w=None, h=None):
             """This performs the actual drawing."""
             
