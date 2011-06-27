@@ -887,6 +887,11 @@ class Trace(object):
         self.tmax += tshift
         self.update_ids()
         
+    def snap(self):
+        self.tmin = round(self.tmin/self.deltat)*self.deltat 
+        self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
+        self.update_ids()
+
     def sta_lta_centered(self, tshort, tlong, quad=True):
     
         nshort = tshort/self.deltat
