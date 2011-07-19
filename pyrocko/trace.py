@@ -1025,6 +1025,10 @@ class Trace(object):
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
         params['tmin'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S')
         params['tmax'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S')
+        params['tmin_ms'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+        params['tmax_ms'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+        params['tmin_us'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S.6FRAC')
+        params['tmax_us'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S.6FRAC')
         params.update(additional)
         return template % params
 
