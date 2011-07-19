@@ -29,6 +29,15 @@ class Processor:
         nslc = trace.nslc_id
         self._buffers[nslc] = trace
 
+    def empty_buffer(self, trace):
+        nslc = trace.nslc_id
+        del self._buffers[nslc]
+
+    def flush_buffers(self):
+        traces = self._buffers.values()
+        self._buffers = {}
+        return traces
+
 class Renamer:
     def __init__(self, mapping):
         self._mapping = mapping
@@ -100,13 +109,36 @@ class Downsampler(Processor):
         
         return [ ds_trace ]
 
+class Grower(Processor):
+
+    def __init__(self, tflush=None):
+        Processor.__init__(self)
+        self._tflush = tflush
+
+    def process(self, trace):
+        buffer = self.get_buffer(trace)
+        if buffer is None:
+            buffer = trace
+            self.set_buffer(buffer)
+        else:
+            buffer.append(trace.ydata)
+        
+        if buffer.tmax - buffer.tmin >= self._tflush:
+            self.empty_buffer(buffer)
+            return [ buffer ]
+
+        else:
+            return []
+
 class HamsterPile(pile.Pile):
     
-    def __init__(self, fixation_length=None, path=None, processors=None):
+    def __init__(self, fixation_length=None, path=None, format='from_extension', forget_fixed=False, processors=None):
         pile.Pile.__init__(self)
         self._buffers = {}          # keys: nslc,  values: MemTracesFile
         self._fixation_length = fixation_length
+        self._format = format
         self._path = path
+        self._forget_fixed = forget_fixed
         if processors is None:
             self._processors = [ Processor() ]
         else:
@@ -188,10 +220,11 @@ class HamsterPile(pile.Pile):
     def _fixate(self, buf):
         if self._path:
             trbuf = buf.get_traces()[0]
-            fns = io.save([trbuf], self._path, format='from_extension')
+            fns = io.save([trbuf], self._path, format=self._format)
             
             self.remove_file(buf)
-            self.load_files(fns, show_progress=False, fileformat='from_extension')
+            if not self._forget_fixed:
+                self.load_files(fns, show_progress=False, fileformat=self._format)
         
     def drop_older(self, tmax, delete_disk_files=False):
         self.drop(
