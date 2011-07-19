@@ -556,7 +556,7 @@ def add_radiobuttongroup(menu, menudef, obj, target):
 class MarkerParseError(Exception):
     pass
 
-class Marker:
+class Marker(object):
     
     @staticmethod
     def from_string(line):
@@ -744,7 +744,7 @@ class Marker:
 
         label = self.get_label()
         if label:
-            label_bg = QBrush( QColor(220,220,220) )
+            label_bg = QBrush( QColor(255,255,255) )
             u = time_projection(self.tmin)
             v0, v1 = track_projection.get_out_range()
             draw_label( p, u-5., v0, label, label_bg, 'TR')
@@ -755,7 +755,26 @@ class Marker:
         except IndexError: pass            
     
     def get_label(self):
-        return None 
+        return None
+
+    def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None):
+        if isinstance(self, PhaseMarker):
+            return
+
+        self.__class__ = PhaseMarker
+        self._event = event
+        self._phasename = phasename
+        self._polarity = polarity
+        self._automatic = automatic
+
+    def convert_to_event_marker(self):
+        if isinstance(self, EventMarker):
+            return
+
+        self.__class__ = EventMarker
+        self._event = pyrocko.model.Event(self.tmin, name='Event')
+        self.tmax = self.tmin
+        self.nslc_ids = []
 
 class EventMarker(Marker):
     def __init__(self, event):
@@ -775,9 +794,13 @@ class EventMarker(Marker):
         reg = self._event.region
         if reg is not None:
             t.append(reg)
-        
+       
+        nam = self._event.name
+        if nam is not None:
+            t.append(nam)
+
         label = ' '.join(t)
-        label_bg = QBrush( QColor(220,220,220) )
+        label_bg = QBrush( QColor(255,255,255) )
         draw_label( p, u, v0-10., label, label_bg, 'CB')
 
     def get_event(self):
@@ -813,6 +836,17 @@ class PhaseMarker(Marker):
     def get_phasename(self):
         return self._phasename
 
+    def set_phasename(self, phasename):
+        self._phasename = phasename
+
+    def convert_to_marker(self):
+        del self._event
+        del self._phasename
+        del self._polarity
+        del self._automatic
+        self.__class__ = Marker
+
+fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
 class PileOverviewException(Exception):
     pass
@@ -848,11 +882,12 @@ def MakePileOverviewClass(base):
             self.picking = None
             self.floating_marker = None
             self.markers = []
+            self.active_event = None
             self.ignore_releases = 0
             self.message = None
             self.reloaded = False
             self.pile_has_changed = False
-            
+            self.phase_names = { 1: 'P', 2: 'S', 3: 'R', 4: 'Q', 5: '?' } 
 
             self.tax = TimeAx()
             self.setBackgroundRole( QPalette.Base )
@@ -901,8 +936,8 @@ def MakePileOverviewClass(base):
             self.scalingbase = self.menuitems_scalingbase[0][1]
             
             self.menu.addSeparator()
-
-            self.menuitem_setorigin = QAction('Set Origin', self.menu)
+ 
+            self.menuitem_setorigin = QAction('Set Active Event and Origin', self.menu)
             self.menu.addAction(self.menuitem_setorigin)
             self.connect( self.menuitem_setorigin, SIGNAL("triggered(bool)"), self.set_event_marker_as_origin)
  
@@ -1199,8 +1234,15 @@ def MakePileOverviewClass(base):
                 self.fail('Selected marker is not an event.')
                 return
 
-            location = m.get_event()
-            self.set_origin(location)
+            event = m.get_event()
+            self.set_active_event(event)
+
+        def set_active_event(self, event):
+            self.active_event = event
+            self.set_origin(event)
+        
+        def get_active_event(self):
+            return self.active_event
 
         def set_origin(self, location):
             for station in self.stations.values():
@@ -1589,11 +1631,17 @@ def MakePileOverviewClass(base):
                 for marker in self.markers:
                     marker.set_selected(False)
                     
+            elif key_event.text() == 'e':
+                for marker in self.selected_markers():
+                    marker.convert_to_event_marker()
+            
             elif key_event.text() in ('0', '1', '2', '3', '4', '5'):
-                for marker in self.markers:
-                    if marker.is_selected():
-                        marker.set_kind(int(key_event.text()))
+                for marker in self.selected_markers():
+                    marker.set_kind(int(key_event.text()))
     
+            elif key_event.key() in fkey_map:
+                self.set_phase_kind(self.selected_markers(), fkey_map[key_event.key()])
+                
             elif key_event.key() == Qt.Key_Escape:
                 if self.picking:
                     self.stop_picking(0,0,abort=True)
@@ -1618,7 +1666,7 @@ def MakePileOverviewClass(base):
                     self.window().showNormal()
                 else:
                     self.window().showFullScreen()
-                
+             
             self.update()
             self.update_status()
     
@@ -1636,6 +1684,25 @@ def MakePileOverviewClass(base):
                 self.zoom_tracks( anchor, wdelta )
             else:
                 self.scroll_tracks( -wdelta )
+
+        def get_phase_name(self, kind):
+            return self.phase_names.get(kind, 'Unknown')
+
+        def set_phase_kind(self, markers, kind):
+            phasename = self.get_phase_name(kind)
+
+            for marker in markers:
+                if isinstance(marker, PhaseMarker):
+                    if kind == 0:
+                        marker.convert_to_marker()
+                    else:
+                        marker.set_phasename(phasename)
+                elif isinstance(marker, EventMarker):
+                    pass
+                else:
+                    if kind != 0:
+                        event = self.get_active_event()
+                        marker.convert_to_phase_marker(event, phasename, None, False)
 
         def set_ntracks(self, ntracks):
             if self.ntracks != ntracks:
