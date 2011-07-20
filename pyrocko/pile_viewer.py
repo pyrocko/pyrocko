@@ -115,7 +115,7 @@ def make_QPolygonF( xdata, ydata ):
     aa[:,1] = ydata
     return qpoints
 
-def draw_label( p, x,y, label_str, label_bg, anchor='BL' ):
+def draw_label( p, x,y, label_str, label_bg, anchor='BL', outline=False):
     fm = p.fontMetrics()
     
     label = QString( label_str )
@@ -132,7 +132,17 @@ def draw_label( p, x,y, label_str, label_bg, anchor='BL' ):
         tx -= rect.width()/2.
         
     rect.translate( tx, ty )
-    p.fillRect( rect, label_bg )
+    if outline:
+        oldpen = p.pen()
+        oldbrush = p.brush()
+        p.setBrush(label_bg)
+        rect.adjust(-2.,0.,2.,0.)
+        p.drawRect( rect )
+        p.setPen(oldpen)
+        p.setBrush(oldbrush)
+        
+    else:
+        p.fillRect(rect, label_bg)
     p.drawText( tx, ty, label )
 
 class ObjectStyle(object):
@@ -677,39 +687,65 @@ class Marker(object):
             return cl(1)
         return cl(2)
             
-    def draw(self, p, time_projection, y_projection):
-        color = self.select_color(self.color_b)            
-        pen = QPen(QColor(*color))
-        if self.selected or self.alerted:
-            pen.setStyle(Qt.CustomDashLine)
-            pat = [5.,3.]
-            pen.setDashPattern(pat)
-        pen.setWidth(2)
-        p.setPen(pen)
-        
-        def drawline(t):
-            u = time_projection(t)
-            v0, v1 = y_projection.get_out_range()
-            line = QLine(u,v0,u,v1)
-            p.drawLine(line)
-       
+    def draw(self, p, time_projection, y_projection, draw_line=True, draw_triangle=False):
         
         if self.selected or self.alerted or not self.nslc_ids:
-            drawline(self.tmin)
-            drawline(self.tmax)
+            
+            color = self.select_color(self.color_b)            
+            pen = QPen(QColor(*color))
+            if self.selected or self.alerted:
+                pen.setStyle(Qt.CustomDashLine)
+                pat = [5.,3.]
+                pen.setDashPattern(pat)
+            
 
-    def draw_trace(self, p, trace, time_projection, track_projection, gain):
+            pen.setWidth(2)
+            
+            s = 9.
+            utriangle = make_QPolygonF( [ -0.577*s, 0., 0.577*s ], [ 0., 1.*s, 0.] ) 
+            ltriangle = make_QPolygonF( [ -0.577*s, 0., 0.577*s ], [ 0., -1.*s, 0.] ) 
+
+            def drawline(t):
+                u = time_projection(t)
+                v0, v1 = y_projection.get_out_range()
+                line = QLineF(u,v0,u,v1)
+                p.drawLine(line)
+        
+            def drawtriangles(t):
+                u = time_projection(t)
+                v0, v1 = y_projection.get_out_range()
+                t = QPolygonF(utriangle)
+                t.translate(u,v0)
+                p.drawConvexPolygon(t) 
+                t = QPolygonF(ltriangle)
+                t.translate(u,v1)
+                p.drawConvexPolygon(t) 
+           
+            if draw_line or self.selected or self.alerted:
+                p.setPen(pen)
+                drawline(self.tmin)
+                drawline(self.tmax)
+
+            if draw_triangle:
+                pen.setStyle(Qt.SolidLine)
+                pen.setJoinStyle(Qt.MiterJoin)
+                pen.setWidth(2)
+                p.setPen(pen)
+                p.setBrush(QColor(*color))
+                drawtriangles(self.tmin)
+
+    def draw_trace(self, p, trace, time_projection, track_projection, gain, outline_label=False):
         if self.nslc_ids and trace.nslc_id not in self.nslc_ids: return
         
         color = self.select_color(self.color_b)
         pen = QPen(QColor(*color))
         pen.setWidth(2)
         p.setPen(pen)
-        
+        p.setBrush(Qt.NoBrush)
         def drawpoint(t,y):
             u = time_projection(t)
             v = track_projection(y)
-            rect = QRect(u-2,v-2,4,4)
+            rect = QRectF(u-2,v-2,4,4)
             p.drawRect(rect)
             
         def drawline(t):
@@ -745,14 +781,20 @@ class Marker(object):
         label = self.get_label()
         if label:
             label_bg = QBrush( QColor(255,255,255) )
+            
             u = time_projection(self.tmin)
             v0, v1 = track_projection.get_out_range()
-            draw_label( p, u-5., v0, label, label_bg, 'TR')
+            if outline_label:
+                du = -7
+            else:
+                du = -5
+            draw_label( p, u+du, v0, label, label_bg, 'TR', outline=outline_label)
 
-        try: drawpoint(self.tmin, trace.interpolate(self.tmin))
-        except IndexError: pass
-        try: drawpoint(self.tmax, trace.interpolate(self.tmax))
-        except IndexError: pass            
+        if self.tmin == self.tmax:
+            try: drawpoint(self.tmin, trace.interpolate(self.tmin))
+            except IndexError: pass
+        #try: drawpoint(self.tmax, trace.interpolate(self.tmax))
+        #except IndexError: pass            
     
     def get_label(self):
         return None
@@ -771,8 +813,12 @@ class Marker(object):
         if isinstance(self, EventMarker):
             return
 
+        if isinstance(self, PhaseMarker):
+            self.convert_to_marker()
+
         self.__class__ = EventMarker
         self._event = pyrocko.model.Event(self.tmin, name='Event')
+        self._active = False
         self.tmax = self.tmin
         self.nslc_ids = []
 
@@ -780,10 +826,17 @@ class EventMarker(Marker):
     def __init__(self, event):
         Marker.__init__(self, [], event.time, event.time)
         self._event = event
+        self._active = False
+
+    def set_active(self, active):
+        self._active = active
 
     def draw(self, p, time_projection, y_projection):
-        Marker.draw(self, p, time_projection, y_projection)
+      
+        Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
         
+        
+
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
         t = []
@@ -801,7 +854,7 @@ class EventMarker(Marker):
 
         label = ' '.join(t)
         label_bg = QBrush( QColor(255,255,255) )
-        draw_label( p, u, v0-10., label, label_bg, 'CB')
+        draw_label( p, u, v0-10., label, label_bg, 'CB', outline=self._active)
 
     def get_event(self):
         return self._event
@@ -818,6 +871,9 @@ class PhaseMarker(Marker):
         self._polarity = polarity
         self._automatic = automatic
 
+    def draw_trace(self, p, trace, time_projection, track_projection, gain):
+        Marker.draw_trace(self, p, trace, time_projection, track_projection, gain, outline_label=self._event is not None)
+         
     def get_label(self):
         t = []
         if self._phasename is not None:
@@ -832,6 +888,9 @@ class PhaseMarker(Marker):
 
     def get_event(self):
         return self._event
+
+    def set_event(self, event):
+        self._event = event
 
     def get_phasename(self):
         return self._phasename
@@ -882,7 +941,7 @@ def MakePileOverviewClass(base):
             self.picking = None
             self.floating_marker = None
             self.markers = []
-            self.active_event = None
+            self.active_event_marker = None
             self.ignore_releases = 0
             self.message = None
             self.reloaded = False
@@ -1234,16 +1293,26 @@ def MakePileOverviewClass(base):
                 self.fail('Selected marker is not an event.')
                 return
 
-            event = m.get_event()
-            self.set_active_event(event)
+            self.set_active_event_marker(m)
 
-        def set_active_event(self, event):
-            self.active_event = event
+        def set_active_event_marker(self, event_marker):
+            if self.active_event_marker:
+                self.active_event_marker.set_active(False)
+            self.active_event_marker = event_marker
+            event_marker.set_active(True)
+            event = event_marker.get_event()
             self.set_origin(event)
         
+        def get_active_event_marker(self):
+            return self.active_event_marker
+        
         def get_active_event(self):
-            return self.active_event
-
+            m = self.get_active_event_marker()
+            if m is not None:
+                return m.get_event()
+            else:
+                return None
+        
         def set_origin(self, location):
             for station in self.stations.values():
                 station.set_event_relative_data(location)
@@ -1437,13 +1506,19 @@ def MakePileOverviewClass(base):
             self.markers.extend(markers)
         
         def remove_marker(self, marker):
-            self.markers.remove(marker)
-        
+            try:
+                self.markers.remove(marker)
+                if marker is self.active_event_marker:
+                    self.active_event_marker.set_active(False)
+                    self.active_event_marker = None
+
+            except ValueError:
+                pass
+
         def remove_markers(self, markers):
             for marker in markers:
-                if marker in self.markers:
-                    self.markers.remove(marker)
-        
+                self.remove_marker(marker)
+
         def set_markers(self, markers):
             self.markers = markers
     
@@ -1614,13 +1689,8 @@ def MakePileOverviewClass(base):
                     self.reloaded = True
     
             elif key_event.key() == Qt.Key_Backspace:
-                markers = []
-                for marker in self.markers:
-                    if not marker.is_selected():
-                        markers.append(marker)
-                        
-                self.markers = markers
-    
+                self.remove_markers(self.selected_markers())
+
             elif key_event.text() == 'a':
                 for marker in self.markers:
                     if (self.tmin <= marker.get_tmin() <= self.tmax or
@@ -1632,8 +1702,22 @@ def MakePileOverviewClass(base):
                     marker.set_selected(False)
                     
             elif key_event.text() == 'e':
-                for marker in self.selected_markers():
-                    marker.convert_to_event_marker()
+                markers = self.selected_markers()
+                event_markers_in_spe = [ marker for marker in markers if not isinstance(marker, PhaseMarker) ]
+                phase_markers = [ marker for marker in markers if isinstance(marker, PhaseMarker) ]
+
+                if len(event_markers_in_spe) == 1:
+                    event_marker = event_markers_in_spe[0]
+                    if not isinstance(event_marker, EventMarker):
+                        event_marker.convert_to_event_marker()
+                    self.set_active_event_marker(event_marker)
+                    event = event_marker.get_event()
+                    for marker in phase_markers:
+                        marker.set_event(event)
+
+                else:
+                    for marker in event_markers_in_spe:
+                        marker.convert_to_event_marker()
             
             elif key_event.text() in ('0', '1', '2', '3', '4', '5'):
                 for marker in self.selected_markers():
