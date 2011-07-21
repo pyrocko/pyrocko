@@ -1681,6 +1681,12 @@ def MakePileOverviewClass(base):
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
             
             elif key_event.text() == 'n':
+                smarkers = self.selected_markers()
+                if smarkers:
+                    tmid = smarkers[0].tmax
+                    for smarker in smarkers:
+                        tmid = max(smarker.tmax, tmid)
+                    
                 for marker in sorted(self.markers, cmp=lambda a,b: cmp(a.tmin,b.tmin)):
                     t = marker.tmin
                     if t > tmid:
@@ -1690,6 +1696,12 @@ def MakePileOverviewClass(base):
                         break
                 
             elif key_event.text() == 'p':
+                smarkers = self.selected_markers()
+                if smarkers:
+                    tmid = smarkers[0].tmin
+                    for smarker in smarkers:
+                        tmid = min(smarker.tmin, tmid)
+                
                 for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmin,a.tmin)):
                     t = marker.tmin
                     if t < tmid:
