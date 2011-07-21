@@ -9,7 +9,7 @@ from nano import Nano
 
 logger = logging.getLogger('pyrocko.util')
 
-def setup_logging(programname, levelname,):
+def setup_logging(programname='pyrocko', levelname='warning'):
     '''Initialize logging.
     
     :param programname: program name to be written in log

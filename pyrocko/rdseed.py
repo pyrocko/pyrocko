@@ -1,11 +1,16 @@
 import logging
 
 import orthodrome, trace, pile, config, model, eventdata, io, util
-import os, sys, shutil, subprocess, tempfile, calendar, time
+import os, sys, shutil, subprocess, tempfile, calendar, time, re
 
 pjoin = os.path.join
 
 logger = logging.getLogger('pyrocko.rdseed')
+
+def cmp_version(a,b):
+    ai = [ int(x) for x in a.split('.') ]
+    bi = [ int(x) for x in b.split('.') ]
+    return cmp(ai, bi)
 
 def dumb_parser( data ):
     
@@ -53,7 +58,36 @@ def dumb_parser( data ):
     return rows
 
 class Programs:
-    rdseed   = 'rdseed4.8'
+    rdseed  = 'rdseed'
+    checked = False
+
+    @staticmethod
+    def check():
+        if not Programs.checked:
+            try:
+                rdseed_proc = subprocess.Popen([Programs.rdseed], 
+                                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                (out,err) = rdseed_proc.communicate()
+            
+            except OSError, e:
+                if e.errno == 2:
+                    reason =  "Could not find executable: '%s'." % Programs.rdseed
+                else:
+                    reason = str(e)
+            
+                logging.fatal('Failed to run rdseed program. %s' % reason)
+                sys.exit(1)
+
+
+            m = re.search(r'Release (\d+(\.\d+(\.\d+)?)?)', err)
+            if not m:
+                logger.warn('Cannot determine rdseed version number.')
+
+            version = m.group(1)
+
+            Programs.checked = True
+            if cmp_version('4.7.5', version) == 1 or cmp_version(version, '5.0') == 1:
+                logger.warn('Module pyrocko.rdseed has not been tested with version %s of rdseed.' % version)
 
 class SeedVolumeNotFound(Exception):
     pass
@@ -71,8 +105,12 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 provided by the SEED volume. (This is useful for dataless SEED
                 volumes.)
         '''
-    
+        
         eventdata.EventDataAccess.__init__(self, datapile=datapile)
+        self.tempdir = None
+        Programs.check()
+
+
         self.tempdir = None
         self.seedvolume = seedvolume
         if not os.path.isfile(self.seedvolume):
@@ -112,36 +150,46 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
 
         def strerr(s):
             return '\n'.join([ 'rdseed: '+line for line in s.splitlines() ])
-                
-        # seismograms:
-        if self._pile is None:
-            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '1', '-p', '-R', '-q', output_dir], 
-                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            
+            # seismograms:
+            if self._pile is None:
+                rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '1', '-p', '-R', '-q', output_dir], 
+                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                (out,err) = rdseed_proc.communicate()
+                logging.info(strerr(err))
+            
+            # event data:
+            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-e', '-q', output_dir], 
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (out,err) = rdseed_proc.communicate()
+            logging.info(strerr(err) )
+            
+            # station summary information:
+            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-S', '-q', output_dir], 
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             (out,err) = rdseed_proc.communicate()
             logging.info(strerr(err))
+            
+            # station headers:
+            rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-s', '-q', output_dir], 
+                                        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
-        # event data:
-        rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-e', '-q', output_dir], 
-                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out,err) = rdseed_proc.communicate()
-        logging.info(strerr(err) )
+            (out,err) = rdseed_proc.communicate()
+            fout = open(self.station_headers_file, 'w')
+            fout.write( out )
+            fout.close()
+            logging.info(strerr(err))
         
-        # station summary information:
-        rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-S', '-q', output_dir], 
-                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        (out,err) = rdseed_proc.communicate()
-        logging.info(strerr(err))
-        
-        # station headers:
-        rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-s', '-q', output_dir], 
-                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
-        (out,err) = rdseed_proc.communicate()
-        fout = open(self.station_headers_file, 'w')
-        fout.write( out )
-        fout.close()
-        logging.info(strerr(err))
-        
+        except OSError, e:
+            if e.errno == 2:
+                reason =  "Could not find executable: '%s'." % Programs.rdseed
+            else:
+                reason = str(e)
+            
+            logging.fatal('Failed to unpack SEED volume. %s' % reason)
+            sys.exit(1)
+
     def _get_events_from_file( self ):
         rdseed_event_file =  os.path.join(self.tempdir,'rdseed.events')
         if not os.path.isfile(rdseed_event_file):
