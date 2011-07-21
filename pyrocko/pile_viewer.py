@@ -46,6 +46,13 @@ class Global:
     sacflag = False
     appOnDemand = None
 
+class NSLC:
+    def __init__(self, n,s,l=None,c=None):
+        self.network = n
+        self.station = s
+        self.location = l
+        self.channel = c
+
 class m_float(float):
     
     def __str__(self):
@@ -821,7 +828,7 @@ class Marker(object):
         self._polarity = polarity
         self._automatic = automatic
 
-    def convert_to_event_marker(self):
+    def convert_to_event_marker(self, lat=0., lon=0.):
         if isinstance(self, EventMarker):
             return
 
@@ -829,7 +836,7 @@ class Marker(object):
             self.convert_to_marker()
 
         self.__class__ = EventMarker
-        self._event = pyrocko.model.Event(self.tmin, name='Event')
+        self._event = pyrocko.model.Event( lat, lon, self.tmin, name='Event')
         self._active = False
         self.tmax = self.tmin
         self.nslc_ids = []
@@ -1285,7 +1292,10 @@ def MakePileOverviewClass(base):
                 return getter(station)
             else:
                 return default_getter(tr)
-            
+        
+        def station_latlon(self, tr, default_getter=lambda tr: (0.,0.)):
+            return self.station_attrib(tr, lambda sta: (sta.lat, sta.lon), default_getter)
+
         def set_stations(self, stations):
             self.stations = {}
             self.add_stations(stations)
@@ -1744,7 +1754,12 @@ def MakePileOverviewClass(base):
                 if len(event_markers_in_spe) == 1:
                     event_marker = event_markers_in_spe[0]
                     if not isinstance(event_marker, EventMarker):
-                        event_marker.convert_to_event_marker()
+                        nslcs = list(event_marker.nslc_ids)
+                        lat, lon = 0.0, 0.0
+                        if len(nslcs) == 1:
+                            lat,lon = self.station_latlon(NSLC(*nslcs[0]))
+                        event_marker.convert_to_event_marker(lat,lon)
+                        
                     self.set_active_event_marker(event_marker)
                     event = event_marker.get_event()
                     for marker in phase_markers:
