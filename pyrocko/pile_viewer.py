@@ -1713,7 +1713,13 @@ def MakePileOverviewClass(base):
                     if (self.tmin <= marker.get_tmin() <= self.tmax or
                         self.tmin <= marker.get_tmax() <= self.tmax):
                         marker.set_selected(True)
-                    
+                    else:
+                        marker.set_selected(False)
+
+            elif key_event.text() == 'A':
+                for marker in self.markers:
+                    marker.set_selected(True)
+
             elif key_event.text() == 'd':
                 for marker in self.markers:
                     marker.set_selected(False)
