@@ -1800,6 +1800,9 @@ def MakePileOverviewClass(base):
                     self.window().showNormal()
                 else:
                     self.window().showFullScreen()
+
+            elif key_event.text() == 'g':
+                self.go_to_selection()
              
             self.update()
             self.update_status()
@@ -1895,7 +1898,43 @@ def MakePileOverviewClass(base):
             
             self.set_tracks_range((int(round(nu)), int(round(nv))), nu)
             self.update()       
-    
+        
+        def go_to_selection(self):
+            markers = self.selected_markers()
+            pile = self.get_pile()
+            tmax, tmin = pile.get_tmin(), pile.get_tmax()
+            for marker in markers:
+                tmin = min(tmin, marker.tmin)
+                tmax = max(tmax, marker.tmax)
+
+            if tmax < tmin:
+                tmin, tmax = tmax, tmin
+
+            dt = self.see_data_params()[-1] * 0.95
+            if dt == 0.0:
+                dt = 1.0
+
+            if tmax-tmin < dt:
+                vmin, vmax = self.get_time_range()
+                dt = min(vmax - vmin, dt)
+                tcenter = (tmin+tmax)/2.
+                etmin, etmax = tmin, tmax
+                tmin = min(etmin, tcenter - 0.5*dt)
+                tmax = max(etmax, tcenter + 0.5*dt)
+                dtm = tmax-tmin
+                if etmin == tmin:
+                    tmin -= dtm*0.1
+                if etmax == tmax:
+                    tmax += dtm*0.1
+                    
+            else:
+                dtm = tmax-tmin
+                tmin -= dtm*0.1
+                tmax += dtm*0.1
+            
+            self.set_time_range(tmin,tmax)
+            self.update()
+
         def printit(self):
             printer = QPrinter()
             printer.setOrientation(QPrinter.Landscape)
@@ -2173,14 +2212,9 @@ def MakePileOverviewClass(base):
                             draw_label( p, lx, ly, plabel, label_bg, 'BR')
             
             self.timer_draw.stop()
-                            
-        def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
-            
-            self.timer_cutout.start()
-            
-            tmin_ = tmin
-            tmax_ = tmax
-            
+        
+        def see_data_params(self):
+
             # determine padding and downampling requirements
             if self.lowpass is not None:
                 deltat_target = 1./self.lowpass * 0.25
@@ -2193,10 +2227,21 @@ def MakePileOverviewClass(base):
             if self.highpass is not None:
                 tpad = max(1./self.highpass * 2., tpad)
             
-            # should we show the traces?
             nsee_points_per_trace = 5000*10
-            see_data_range = ndecimate*nsee_points_per_trace*self.min_deltat
-            show_traces = (tmax_ - tmin_) < see_data_range
+            tsee = ndecimate*nsee_points_per_trace*self.min_deltat
+            
+            return ndecimate, tpad, tsee
+
+
+        def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
+            
+            self.timer_cutout.start()
+            
+            tmin_ = tmin
+            tmax_ = tmax
+            
+            ndecimate, tpad, tsee = self.see_data_params()
+            show_traces = (tmax_ - tmin_) < tsee
             
             # fetch more than needed?
             if self.menuitem_liberal_fetch.isChecked():
