@@ -59,6 +59,10 @@ def distance_accurate50m( a, b ):
     c = math.cos(g)**2 * math.cos(l)**2 + math.sin(f)**2 * math.sin(l)**2
 
     w = math.atan( math.sqrt( s/c ) )
+
+    if w == 0.0:
+        return 0.0
+
     r = math.sqrt(s*c)/w
     d = 2.*w*earthradius_equator
     h1 = (3.*r-1.)/(2.*c)
