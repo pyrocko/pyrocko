@@ -56,11 +56,23 @@ class m_float(float):
         else:
             return '%.5g m' % self
         
+def m_float_or_none(x):
+    if x is None:
+        return None
+    else:
+        return m_float(x)
+
 class deg_float(float):
     
     def __str__(self):
         return '%4.0f' % self
- 
+
+def deg_float_or_none(x):
+    if x is None:
+        return None
+    else:
+        return deg_float(x)
+
 class sector_int(int):
     
     def __str__(self):
@@ -1002,16 +1014,21 @@ def MakePileOverviewClass(base):
  
             self.menu.addSeparator()
 
+            def sector_dist(sta):
+                if sta.dist_m is None:
+                    return None, None
+                else:
+                    return (sector_int(round((sta.azimuth+15.)/30.)), m_float(sta.dist_m))
+
             menudef = [
                 ('Sort by Names',
                     lambda tr: () ),
                 ('Sort by Distance',
-                    lambda tr: self.station_attrib(tr, lambda sta: (m_float(sta.dist_m),), lambda tr: (None,) )),
+                    lambda tr: self.station_attrib(tr, lambda sta: (m_float_or_none(sta.dist_m),), lambda tr: (None,) )),
                 ('Sort by Azimuth',
-                    lambda tr: self.station_attrib(tr, lambda sta: (deg_float(sta.azimuth),), lambda tr: (None,) )),
+                    lambda tr: self.station_attrib(tr, lambda sta: (deg_float_or_none(sta.azimuth),), lambda tr: (None,) )),
                 ('Sort by Distance in 12 Azimuthal Blocks',
-                    lambda tr: self.station_attrib(tr, lambda sta: (sector_int(round((sta.azimuth+15.)/30.)), m_float(sta.dist_m)),
-                                                       lambda tr: (None,None) )),
+                    lambda tr: self.station_attrib(tr, sector_dist, lambda tr: (None,None) )),
             ]
             self.menuitems_ssorting = add_radiobuttongroup(self.menu, menudef, self, self.s_sortingmode_change)
             
