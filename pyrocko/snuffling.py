@@ -88,6 +88,7 @@ class SnufflingModule:
             try:
                 self._module = __import__(self._name)
                 for snuffling in self._module.__snufflings__():
+                    snuffling._path = self._path
                     self.add_snuffling(snuffling)
                     
             except:
@@ -100,6 +101,7 @@ class SnufflingModule:
             try:
                 reload(self._module)
                 for snuffling in self._module.__snufflings__():
+                    snuffling._path = self._path 
                     self.add_snuffling(snuffling)
                 
                 if len(self._snufflings) == len(settings):
@@ -153,6 +155,8 @@ class Snuffling:
     '''
 
     def __init__(self):
+        self._path = None
+
         self._name = 'Untitled Snuffling'
         self._viewer = None
         self._tickets = []
