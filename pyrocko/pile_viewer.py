@@ -1684,23 +1684,25 @@ def MakePileOverviewClass(base):
         def keyPressEvent(self, key_event):
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
-            
-            if key_event.text() == ' ':
+           
+            keytext = key_event.text() 
+
+            if keytext == ' ':
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
             
-            elif key_event.text() == 'b':
+            elif keytext == 'b':
                 dt = self.tmax - self.tmin
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
             
-            elif str(key_event.text()) in 'pn':
+            elif keytext == 'p' or keytext == 'n':
                 smarkers = self.selected_markers()
                 tgo = None
-                dir = str(key_event.text())
+                dir = str(keytext)
                 if smarkers:
-                    tmid = smarkers[0].tmax
+                    tmid = smarkers[0].tmin
                     for smarker in smarkers:
                         if dir == 'n':
-                            tmid = max(smarker.tmax, tmid)
+                            tmid = max(smarker.tmin, tmid)
                         else:
                             tmid = min(smarker.tmin, tmid)
 
@@ -1715,8 +1717,8 @@ def MakePileOverviewClass(base):
                             tgo = t
                             break
                 else: 
-                    for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmax,a.tmax)):
-                        t = marker.tmax
+                    for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmin,a.tmin)):
+                        t = marker.tmin
                         if t < tmid:
                             self.deselect_all()
                             marker.set_selected(True)
@@ -1726,17 +1728,17 @@ def MakePileOverviewClass(base):
                 if tgo is not None:
                     self.set_time_range(tgo-dt/2.,tgo+dt/2.)
                         
-            elif key_event.text() == 'q':
+            elif keytext == 'q':
                 self.myclose()
     
-            elif key_event.text() == 'r':
+            elif keytext == 'r':
                 if self.pile.reload_modified():
                     self.reloaded = True
     
             elif key_event.key() == Qt.Key_Backspace:
                 self.remove_markers(self.selected_markers())
 
-            elif key_event.text() == 'a':
+            elif keytext == 'a':
                 for marker in self.markers:
                     if (self.tmin <= marker.get_tmin() <= self.tmax or
                         self.tmin <= marker.get_tmax() <= self.tmax):
@@ -1744,15 +1746,15 @@ def MakePileOverviewClass(base):
                     else:
                         marker.set_selected(False)
 
-            elif key_event.text() == 'A':
+            elif keytext == 'A':
                 for marker in self.markers:
                     marker.set_selected(True)
 
-            elif key_event.text() == 'd':
+            elif keytext == 'd':
                 for marker in self.markers:
                     marker.set_selected(False)
                     
-            elif key_event.text() == 'e':
+            elif keytext == 'e':
                 markers = self.selected_markers()
                 event_markers_in_spe = [ marker for marker in markers if not isinstance(marker, PhaseMarker) ]
                 phase_markers = [ marker for marker in markers if isinstance(marker, PhaseMarker) ]
@@ -1775,9 +1777,9 @@ def MakePileOverviewClass(base):
                     for marker in event_markers_in_spe:
                         marker.convert_to_event_marker()
             
-            elif key_event.text() in ('0', '1', '2', '3', '4', '5'):
+            elif keytext in ('0', '1', '2', '3', '4', '5'):
                 for marker in self.selected_markers():
-                    marker.set_kind(int(key_event.text()))
+                    marker.set_kind(int(keytext))
     
             elif key_event.key() in fkey_map:
                 self.set_phase_kind(self.selected_markers(), fkey_map[key_event.key()])
@@ -1792,27 +1794,27 @@ def MakePileOverviewClass(base):
             elif key_event.key() == Qt.Key_PageUp:
                 self.scroll_tracks(self.shown_tracks_range[0]-self.shown_tracks_range[1])
                 
-            elif key_event.text() == '+':
+            elif keytext == '+':
                 self.zoom_tracks(0.,1.)
             
-            elif key_event.text() == '-':
+            elif keytext == '-':
                 self.zoom_tracks(0.,-1.)
                 
-            elif key_event.text() == '=':
+            elif keytext == '=':
                 ntracks_shown = self.shown_tracks_range[1]-self.shown_tracks_range[0]
                 dtracks = self.initial_ntracks_shown_max - ntracks_shown 
                 self.zoom_tracks(0.,dtracks)
             
-            elif key_event.text() == ':':
+            elif keytext == ':':
                 self.emit(SIGNAL('want_input()'))
 
-            elif key_event.text() == 'f':
+            elif keytext == 'f':
                 if self.window().windowState() & Qt.WindowFullScreen:
                     self.window().showNormal()
                 else:
                     self.window().showFullScreen()
 
-            elif key_event.text() == 'g':
+            elif keytext == 'g':
                 self.go_to_selection()
              
             self.update()
