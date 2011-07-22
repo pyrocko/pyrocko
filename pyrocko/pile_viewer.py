@@ -946,6 +946,7 @@ def MakePileOverviewClass(base):
             self.click_tolerance = 5
             
             self.ntracks_shown_max = ntracks_shown_max
+            self.initial_ntracks_shown_max = ntracks_shown_max
             self.ntracks = 0
             self.shown_tracks_range = None
             self.track_start = None
@@ -1456,8 +1457,7 @@ def MakePileOverviewClass(base):
                 l, h = 0, min(self.ntracks_shown_max, self.ntracks)
             else:
                 l, h = self.shown_tracks_range
-            
-            
+           
             self.set_tracks_range((l,h))
 
             self.track_keys = sorted(keys, cmp=order)
@@ -1794,6 +1794,11 @@ def MakePileOverviewClass(base):
             elif key_event.text() == '-':
                 self.zoom_tracks(0.,-1.)
                 
+            elif key_event.text() == '=':
+                ntracks_shown = self.shown_tracks_range[1]-self.shown_tracks_range[0]
+                dtracks = self.initial_ntracks_shown_max - ntracks_shown 
+                self.zoom_tracks(0.,dtracks)
+            
             elif key_event.text() == ':':
                 self.emit(SIGNAL('want_input()'))
 
@@ -1899,6 +1904,9 @@ def MakePileOverviewClass(base):
                 nv -= nv - self.ntracks
             
             self.set_tracks_range((int(round(nu)), int(round(nv))), nu)
+            
+            self.ntracks_shown_max = self.shown_tracks_range[1]-self.shown_tracks_range[0] 
+            
             self.update()       
         
         def go_to_selection(self):
