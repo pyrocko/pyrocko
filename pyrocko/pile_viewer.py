@@ -701,7 +701,7 @@ class Marker(object):
     def select_color(self, colorlist):
         cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
         if self.selected:
-            return cl(0)
+            return cl(1)
         if self.alerted:
             return cl(1)
         return cl(2)
@@ -712,13 +712,14 @@ class Marker(object):
             
             color = self.select_color(self.color_b)            
             pen = QPen(QColor(*color))
-            if self.selected or self.alerted:
-                pen.setStyle(Qt.CustomDashLine)
-                pat = [5.,3.]
-                pen.setDashPattern(pat)
-            
-
             pen.setWidth(2)
+            linepen = QPen(pen)
+            if self.selected or self.alerted:
+                linepen.setStyle(Qt.CustomDashLine)
+                pat = [5.,3.]
+                linepen.setDashPattern(pat)
+                if self.alerted and not self.selected:
+                    linepen.setColor(QColor(150,150,150))
             
             s = 9.
             utriangle = make_QPolygonF( [ -0.577*s, 0., 0.577*s ], [ 0., 1.*s, 0.] ) 
@@ -741,7 +742,7 @@ class Marker(object):
                 p.drawConvexPolygon(t) 
            
             if draw_line or self.selected or self.alerted:
-                p.setPen(pen)
+                p.setPen(linepen)
                 drawline(self.tmin)
                 drawline(self.tmax)
 
@@ -961,6 +962,7 @@ def MakePileOverviewClass(base):
             self.picking = None
             self.floating_marker = None
             self.markers = []
+            self.visible_marker_kinds = (0,1,2,3,4,5)
             self.active_event_marker = None
             self.ignore_releases = 0
             self.message = None
@@ -978,9 +980,9 @@ def MakePileOverviewClass(base):
     
             self.menu = QMenu(self)
              
-            self.menuitem_pick = QAction('Pick', self.menu)
-            self.menu.addAction(self.menuitem_pick)
-            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
+#            self.menuitem_pick = QAction('Pick', self.menu)
+#            self.menu.addAction(self.menuitem_pick)
+#            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
             
             self.menuitem_pick = QAction('Write picks', self.menu)
             self.menu.addAction(self.menuitem_pick)
@@ -1016,12 +1018,12 @@ def MakePileOverviewClass(base):
             
             self.menu.addSeparator()
  
-            self.menuitem_setorigin = QAction('Set Active Event and Origin', self.menu)
-            self.menu.addAction(self.menuitem_setorigin)
-            self.connect( self.menuitem_setorigin, SIGNAL("triggered(bool)"), self.set_event_marker_as_origin)
+#            self.menuitem_setorigin = QAction('Set Active Event and Origin', self.menu)
+#            self.menu.addAction(self.menuitem_setorigin)
+#            self.connect( self.menuitem_setorigin, SIGNAL("triggered(bool)"), self.set_event_marker_as_origin)
  
-            self.menu.addSeparator()
-
+#            self.menu.addSeparator()
+#
             def sector_dist(sta):
                 if sta.dist_m is None:
                     return None, None
@@ -1633,6 +1635,9 @@ def MakePileOverviewClass(base):
             deltat = (self.tmax-self.tmin)*self.click_tolerance/self.width()
             relevant_nslc_ids = None
             for marker in self.markers:
+                if marker.kind not in self.visible_marker_kinds:
+                    continue
+
                 if (abs(mouset-marker.get_tmin()) < deltat or 
                     abs(mouset-marker.get_tmax()) < deltat):
                     
@@ -1655,6 +1660,9 @@ def MakePileOverviewClass(base):
             relevant_nslc_ids = self.nslc_ids_under_cursor(x,y)
             
             for marker in self.markers:
+                if marker.kind not in self.visible_marker_kinds:
+                    continue
+
                 state = abs(mouset-marker.get_tmin()) < deltat or \
                         abs(mouset-marker.get_tmax()) < deltat and not haveone
                 
@@ -1751,8 +1759,7 @@ def MakePileOverviewClass(base):
                     marker.set_selected(True)
 
             elif keytext == 'd':
-                for marker in self.markers:
-                    marker.set_selected(False)
+                self.deselect_all()
                     
             elif keytext == 'e':
                 markers = self.selected_markers()
@@ -2126,7 +2133,8 @@ def MakePileOverviewClass(base):
                 
                 for marker in self.markers:
                     if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
-                        marker.draw(p, self.time_projection, vcenter_projection)
+                        if marker.kind in self.visible_marker_kinds:
+                            marker.draw(p, self.time_projection, vcenter_projection)
                     
                 primary_pen = QPen(QColor(*primary_color))
                 p.setPen(primary_pen)
@@ -2190,7 +2198,8 @@ def MakePileOverviewClass(base):
                                 
                             for marker in self.markers:
                                 if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
-                                    marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                                    if marker.kind in self.visible_marker_kinds:
+                                        marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
                             p.setPen(primary_pen)
                                 
                             if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
@@ -2566,7 +2575,11 @@ def MakePileOverviewClass(base):
             now = time.time()
             return (self.sortingmode_change_delay_time is not None and 
                 now - self.sortingmode_change_time < self.sortingmode_change_delay_time)
-            
+           
+        def set_visible_marker_kinds(self, kinds):
+            self.deselect_all()
+            self.visible_marker_kinds = tuple(kinds)
+
         def following(self):
             return self.follow_timer is not None and not self.following_interrupted()
         
@@ -2643,7 +2656,23 @@ def MakePileOverviewClass(base):
                         clearit = True
                         
                         self.update()
-                        
+                
+                    elif command == 'marks':
+                        if len(toks) == 2:
+                            kinds = []
+                            for x in toks[1]:
+                                try:
+                                    kinds.append(int(x))
+                                except:
+                                    pass
+
+                            self.set_visible_marker_kinds(kinds)
+
+                        elif len(toks) == 1:
+                            self.set_visible_marker_kinds(())
+
+                        self.update()
+
                     elif command in ('n', 's', 'l', 'c'):
                         self.update() 
                     
