@@ -1215,6 +1215,8 @@ def MakePileOverviewClass(base):
             self.sortingmode_change_time = 0.0
             self.sortingmode_change_delay_time = None
             
+            self.last_pattern_change_time = 0.0
+
             self.old_data_ranges = {}
             
             self.error_messages = {}
@@ -2597,8 +2599,10 @@ def MakePileOverviewClass(base):
                     else:
                         self.set_quick_filter_pattern(None)
                     
-                    self.update()
-                
+                    if self.last_pattern_change_time < time.time() - 2.0:
+                        self.update()
+                        self.last_pattern_change_time = time.time()
+
         def inputline_finished(self, text):
             toks = text.split()
             clearit, hideit, error = False, True, None
@@ -2627,7 +2631,7 @@ def MakePileOverviewClass(base):
                         self.update()
                         
                     elif command in ('n', 's', 'l', 'c'):
-                        pass
+                        self.update() 
                     
                     else:
                         raise PileOverviewException('No such command: %s' % command)
