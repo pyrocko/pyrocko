@@ -1692,35 +1692,39 @@ def MakePileOverviewClass(base):
                 dt = self.tmax - self.tmin
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
             
-            elif key_event.text() == 'n':
+            elif str(key_event.text()) in 'pn':
                 smarkers = self.selected_markers()
+                tgo = None
+                dir = str(key_event.text())
                 if smarkers:
                     tmid = smarkers[0].tmax
                     for smarker in smarkers:
-                        tmid = max(smarker.tmax, tmid)
-                    
-                for marker in sorted(self.markers, cmp=lambda a,b: cmp(a.tmin,b.tmin)):
-                    t = marker.tmin
-                    if t > tmid:
-                        self.deselect_all()
-                        marker.set_selected(True)
-                        self.set_time_range(t-dt/2.,t+dt/2.)
-                        break
-                
-            elif key_event.text() == 'p':
-                smarkers = self.selected_markers()
-                if smarkers:
-                    tmid = smarkers[0].tmin
-                    for smarker in smarkers:
-                        tmid = min(smarker.tmin, tmid)
-                
-                for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmin,a.tmin)):
-                    t = marker.tmin
-                    if t < tmid:
-                        self.deselect_all()
-                        marker.set_selected(True)
-                        self.set_time_range(t-dt/2.,t+dt/2.)
-                        break
+                        if dir == 'n':
+                            tmid = max(smarker.tmax, tmid)
+                        else:
+                            tmid = min(smarker.tmin, tmid)
+
+                    tgo = tmid
+
+                if dir == 'n':
+                    for marker in sorted(self.markers, cmp=lambda a,b: cmp(a.tmin,b.tmin)):
+                        t = marker.tmin
+                        if t > tmid:
+                            self.deselect_all()
+                            marker.set_selected(True)
+                            tgo = t
+                            break
+                else: 
+                    for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmax,a.tmax)):
+                        t = marker.tmax
+                        if t < tmid:
+                            self.deselect_all()
+                            marker.set_selected(True)
+                            tgo = t
+                            break
+                        
+                if tgo is not None:
+                    self.set_time_range(tgo-dt/2.,tgo+dt/2.)
                         
             elif key_event.text() == 'q':
                 self.myclose()
