@@ -771,7 +771,7 @@ class Marker(object):
         def drawline(t):
             u = time_projection(t)
             v0, v1 = track_projection.get_out_range()
-            line = QLine(u,v0,u,v1)
+            line = QLineF(u,v0,u,v1)
             p.drawLine(line)
 
         try:
@@ -781,9 +781,12 @@ class Marker(object):
             udata_min = float(time_projection(snippet.tmin))
             udata_max = float(time_projection(snippet.tmin+snippet.deltat*(vdata.size-1)))
             udata = num.linspace(udata_min, udata_max, vdata.size)
-            
             qpoints = make_QPolygonF( udata, vdata )
+            pen.setWidth(1)
+            p.setPen(pen)
             p.drawPolyline( qpoints )
+            pen.setWidth(2)
+            p.setPen(pen)
             drawpoint(*trace(self.tmin, clip=True, snap=math.ceil))
             drawpoint(*trace(self.tmax, clip=True, snap=math.floor))
             
@@ -962,7 +965,8 @@ def MakePileOverviewClass(base):
             self.picking = None
             self.floating_marker = None
             self.markers = []
-            self.visible_marker_kinds = (0,1,2,3,4,5)
+            self.all_marker_kinds = (0,1,2,3,4,5)
+            self.visible_marker_kinds = self.all_marker_kinds 
             self.active_event_marker = None
             self.ignore_releases = 0
             self.message = None
@@ -1719,7 +1723,7 @@ def MakePileOverviewClass(base):
                 if dir == 'n':
                     for marker in sorted(self.markers, cmp=lambda a,b: cmp(a.tmin,b.tmin)):
                         t = marker.tmin
-                        if t > tmid:
+                        if t > tmid and marker.kind in self.visible_marker_kinds:
                             self.deselect_all()
                             marker.set_selected(True)
                             tgo = t
@@ -1727,7 +1731,7 @@ def MakePileOverviewClass(base):
                 else: 
                     for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmin,a.tmin)):
                         t = marker.tmin
-                        if t < tmid:
+                        if t < tmid and marker.kind in self.visible_marker_kinds:
                             self.deselect_all()
                             marker.set_selected(True)
                             tgo = t
@@ -1749,14 +1753,16 @@ def MakePileOverviewClass(base):
             elif keytext == 'a':
                 for marker in self.markers:
                     if (self.tmin <= marker.get_tmin() <= self.tmax or
-                        self.tmin <= marker.get_tmax() <= self.tmax):
+                        self.tmin <= marker.get_tmax() <= self.tmax and
+                        marker.kind in self.visible_marker_kinds):
                         marker.set_selected(True)
                     else:
                         marker.set_selected(False)
 
             elif keytext == 'A':
                 for marker in self.markers:
-                    marker.set_selected(True)
+                    if marker.kind in self.visible_marker_kinds:
+                        marker.set_selected(True)
 
             elif keytext == 'd':
                 self.deselect_all()
@@ -2659,12 +2665,15 @@ def MakePileOverviewClass(base):
                 
                     elif command == 'marks':
                         if len(toks) == 2:
-                            kinds = []
-                            for x in toks[1]:
-                                try:
-                                    kinds.append(int(x))
-                                except:
-                                    pass
+                            if toks[1] == 'all':
+                                kinds = self.all_marker_kinds
+                            else:
+                                kinds = []
+                                for x in toks[1]:
+                                    try:
+                                        kinds.append(int(x))
+                                    except:
+                                        pass
 
                             self.set_visible_marker_kinds(kinds)
 
