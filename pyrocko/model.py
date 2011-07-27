@@ -110,6 +110,8 @@ class Event:
             file.write('depth = %g\n' % self.depth)
         if self.region is not None:
             file.write('region = %s\n' % self.region)
+        if self.catalog is not None:
+            file.write('catalog = %s\n' % self.catalog)
 
     @staticmethod
     def dump_catalog(events, filename):
@@ -143,7 +145,7 @@ class Event:
                 toks = line.split(' = ',1)
                 if len(toks) == 2:
                     k,v = toks[0].strip(), toks[1].strip()
-                    if k in ('name', 'region'):
+                    if k in ('name', 'region', 'catalog'):
                         d[k] = v
                     if k in ('latitude', 'longitude', 'magnitude', 'depth'):
                         d[k] = float(v)
@@ -170,6 +172,7 @@ class Event:
         self.depth = d.get('depth', None)
         self.magnitude = d.get('magnitude', None)
         self.region = d.get('region', None)
+        self.catalog = d.get('catalog', None)
 
     @staticmethod
     def load_catalog(filename):
