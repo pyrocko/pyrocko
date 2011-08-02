@@ -4,6 +4,7 @@
   This file is part of pymseed. For licensing information please see the file
   COPYING which is included with pyevalresp. */
 
+#define NPY_NO_DEPRECATED_API
 
 #include "Python.h"
 #include "numpy/arrayobject.h"

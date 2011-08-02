@@ -1,3 +1,5 @@
+#define NPY_NO_DEPRECATED_API
+    
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
