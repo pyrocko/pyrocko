@@ -39,6 +39,14 @@ class Switch(Param):
         self.ident = ident
         self.default = default
 
+class MyScrollArea(QScrollArea):
+
+    def sizeHint(self):
+        s = QSize()
+        s.setWidth(self.widget().sizeHint().width())
+        s.setHeight(30)
+        return s
+
 class SwitchControl(QCheckBox):
     def __init__(self, ident, default, *args):
         QCheckBox.__init__(self, *args)
@@ -448,7 +456,7 @@ class Snuffling:
         params = self.get_parameters()
         self._param_controls = {}
         if params:
-            sarea = QScrollArea(parent)
+            sarea = MyScrollArea(parent)
             frame = QFrame(sarea)
             sarea.setWidget(frame)
             sarea.setWidgetResizable(True)
