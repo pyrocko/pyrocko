@@ -10,6 +10,11 @@ def get_err_palette():
     err_palette.setColor( QPalette.Base, QColor(255,200,200) )
     return err_palette
 
+class MySlider(QSlider):
+    
+    def wheelEvent(self, ev):
+        ev.ignore()
+
 class MyValueEdit(QLineEdit):
 
     def __init__(self, *args):
@@ -59,7 +64,7 @@ class ValControl(QFrame):
         self.lname.setMinimumWidth(120)
         self.lvalue = MyValueEdit( self )
         self.lvalue.setFixedWidth(100)
-        self.slider = QSlider(Qt.Horizontal, self)
+        self.slider = MySlider(Qt.Horizontal, self)
         self.slider.setMaximum( 10000 )
         self.slider.setSingleStep( 100 )
         self.slider.setPageStep( 1000 )
