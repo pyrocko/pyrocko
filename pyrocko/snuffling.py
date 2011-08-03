@@ -12,7 +12,7 @@ from PyQt4.QtGui import *
 
 import pile
 
-from gui_util import ValControl
+from gui_util import ValControl, LinValControl
 
 logger = logging.getLogger('pyrocko.snufflings')
 
@@ -447,8 +447,12 @@ class Snuffling:
     
         params = self.get_parameters()
         self._param_controls = {}
-        if params:                
-            frame = QFrame(parent)
+        if params:
+            sarea = QScrollArea(parent)
+            frame = QFrame(sarea)
+            sarea.setWidget(frame)
+            sarea.setWidgetResizable(True)
+            #sarea.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
             layout = QGridLayout()
             frame.setLayout( layout )
                         
@@ -457,7 +461,10 @@ class Snuffling:
                     param_widget = SwitchControl(param.ident, param.default, param.name)
                     self.get_viewer().connect( param_widget, SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.switch_on_snuffling_panel )
                 else:
-                    param_widget = ValControl()
+                    if param.minimum <= 0.0:
+                        param_widget = LinValControl()
+                    else:
+                        param_widget = ValControl()
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
 
@@ -478,7 +485,7 @@ class Snuffling:
             layout.addWidget( call_button, len(params), 2 )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
 
-            return frame
+            return sarea 
             
         else:
             return None
