@@ -11,15 +11,14 @@ static PyObject *AutoPickError;
 #endif
 
 
-int autopick_recursive_stalta( int ns, int nl, float ks, float kl, int nsamples, float *inout, float *intermediates, int init)
+int autopick_recursive_stalta( int ns, int nl, float ks, float kl, float k, int nsamples, float *inout, float *intermediates, int init)
 {
     int i, istart;
     float eps = 1.0e-7;
-    float k, scf0, lcf0, sta0, lta0, nshort, nlong, maxlta;
+    float scf0, lcf0, sta0, lta0, nshort, nlong, maxlta;
     float cf[nsamples], sta[nsamples], lta[nsamples]; /* da sistemare */
    
     cf[0] = inout[0];
-    k = 3.;
     if (init == 0) {
         cf[0] = inout[0] + abs(k*(inout[0]-intermediates[ns-1]));
     }
@@ -113,9 +112,9 @@ static PyObject* autopick_recursive_stalta_wrapper(PyObject *dummy, PyObject *ar
     PyArrayObject *inout_array = NULL;
     PyArrayObject *temp_array = NULL;
     int ns, nl, initialize, nsamples, ntemp; 
-    double ks, kl; 
+    double ks, kl, k; 
 
-    if (!PyArg_ParseTuple(args, "iiddOOi", &ns, &nl, &ks, &kl, &inout_array_obj, &temp_array_obj, &initialize)) {
+    if (!PyArg_ParseTuple(args, "iidddOOi", &ns, &nl, &ks, &kl, &k, &inout_array_obj, &temp_array_obj, &initialize)) {
         PyErr_SetString(AutoPickError, "invalid arguments in recursive_stalta(ns, nl, ks, kl, inout_data, temp_data, initialize)" );
         return NULL;
     }
@@ -138,7 +137,7 @@ static PyObject* autopick_recursive_stalta_wrapper(PyObject *dummy, PyObject *ar
         return NULL;
     }
 
-    if (0 != autopick_recursive_stalta(ns, nl, ks, kl, nsamples, (float*)PyArray_DATA(inout_array), (float*)PyArray_DATA(temp_array), initialize)) {
+    if (0 != autopick_recursive_stalta(ns, nl, ks, kl, k, nsamples, (float*)PyArray_DATA(inout_array), (float*)PyArray_DATA(temp_array), initialize)) {
         PyErr_SetString(AutoPickError, "running STA/LTA failed.");
         return NULL;
     }
