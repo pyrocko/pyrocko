@@ -1458,7 +1458,6 @@ def MakePileOverviewClass(base):
         def remove_snuffling_menuitem(self, ident):
             item = self.snufflings_menu_items.pop(ident)
             self.snufflings_menu.removeAction(item)
-            return delete_item
         
         def add_traces(self, traces):
             if traces:

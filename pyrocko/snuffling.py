@@ -454,11 +454,10 @@ class Snuffling:
         params = self.get_parameters()
         self._param_controls = {}
         if params:
-            sarea = MyScrollArea(parent)
+            sarea = MyScrollArea(parent.get_panel_parent_widget())
             frame = QFrame(sarea)
             sarea.setWidget(frame)
             sarea.setWidgetResizable(True)
-            #sarea.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
             layout = QGridLayout()
             frame.setLayout( layout )
                         
