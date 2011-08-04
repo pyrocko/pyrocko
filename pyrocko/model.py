@@ -194,7 +194,8 @@ class Event:
 
     def get_hash(self):
         e = self
-        return hash((e.time, e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region))
+        return util.base36encode(abs(hash((e.time, e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region)))).lower()
+
 
 class Station:
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):

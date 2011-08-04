@@ -1,33 +1,7 @@
 #!/usr/bin/env python
 
-<<<<<<< Updated upstream:pyrocko/pile_viewer.py
 import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, csv
-=======
-'''Effective MiniSEED trace viewer.'''
 
-
-# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
-#
-# This file is part of snuffler. For licensing information please see the file 
-# COPYING which is included with snuffler.
-
-import os
-import sys
-import time
-import calendar
-import datetime
-import signal
-import re
-import math
-import numpy as num
-from itertools import izip
-import scipy.stats
-import tempfile
-import logging
-import traceback
-import csv
-
->>>>>>> Stashed changes:pyrocko/pile_viewer.py
 from optparse import OptionParser
 import numpy as num 
 from itertools import izip
@@ -46,6 +20,25 @@ logger = logging.getLogger('pyrocko.pile_viewer')
 
 csv.register_dialect('markers', delimiter=' ', quotechar="'", doublequote=False, escapechar='\\', lineterminator='\n', skipinitialspace=True)
 
+class TableWriter:
+    def __init__(self, f, dialect=None):
+        self._f = f
+
+    def writerow(self, row):
+        out = []
+        for x in row:
+            if isinstance(x, str):
+                if x.find(' ') != -1:
+                    x = "'%s'" % x.replace(' ', '\ ')
+            
+                x = x.ljust(20)
+            else:
+                x = str(x).rjust(20)
+            
+            out.append(x)
+
+        self._f.write( ' '.join(out) + '\n')
+                
 class Global:
     sacflag = False
     appOnDemand = None
@@ -710,7 +703,7 @@ class Marker(object):
         vals = []
         vals.extend(st(self.tmin).split())
         if self.tmin != self.tmax:    
-            vals.extend(st(self.tmax))
+            vals.extend(st(self.tmax).split())
             vals.append(self.tmax-self.tmin)
 
         vals.append(self.kind)
@@ -905,6 +898,7 @@ class EventMarker(Marker):
     def get_attributes(self):
         attributes = [ 'event:' ]
         attributes.extend(Marker.get_attributes(self))
+        del attributes[-1]
         e = self._event
         attributes.extend([e.get_hash(), e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region ])
         return attributes
@@ -955,7 +949,13 @@ class PhaseMarker(Marker):
     def get_attributes(self):
         attributes = [ 'phase:' ]
         attributes.extend(Marker.get_attributes(self))
-        attributes.extend([self._event.get_hash(), self._event.time, self._phasename, self._polarity, self._automatic])
+        h = None
+        et = None, None
+        if self._event:
+            h = self._event.get_hash()
+            et = pyrocko.util.time_to_str(self._event.time).split()
+
+        attributes.extend([h, et[0], et[1], self._phasename, self._polarity, self._automatic])
         return attributes
 
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
@@ -1554,9 +1554,17 @@ def MakePileOverviewClass(base):
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
                 f = open(fn,'w')
-                writer = csv.writer(f, dialect='markers')
+                writer = TableWriter(f, dialect='markers')
                 for marker in self.markers:
-                    writer.writerow(marker.get_attributes())
+                    a = marker.get_attributes()
+                    row = []
+                    for x in a:
+                        if x is None or x == '':
+                            row.append('None')
+                        else:
+                            row.append(x)
+
+                    writer.writerow(row)
     
                 f.close()
                 
