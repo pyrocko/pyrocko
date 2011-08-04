@@ -1,37 +1,12 @@
 #!/usr/bin/env python
 
-'''Effective MiniSEED trace viewer.'''
-
-
-# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
-#
-# This file is part of snuffler. For licensing information please see the file 
-# COPYING which is included with snuffler.
-
-import os
-import sys
-import time
-import calendar
-import datetime
-import signal
-import re
-import math
-import numpy as num
-from itertools import izip
-import scipy.stats
-import tempfile
-import logging
-import traceback
+import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback
 from optparse import OptionParser
+import numpy as num 
+from itertools import izip
 
-import pyrocko.model
-import pyrocko.pile
-import pyrocko.shadow_pile
-import pyrocko.trace
-import pyrocko.util
-import pyrocko.plot
-import pyrocko.snuffling
-import pyrocko.snufflings
+import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace, pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
+
 from pyrocko.nano import Nano
 from pyrocko.gui_util import ValControl, LinValControl
 
