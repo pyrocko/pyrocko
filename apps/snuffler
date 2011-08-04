@@ -184,8 +184,6 @@ class MySnuffler(QApplication):
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
         
-        self._dockwidgets = []
-        
         usage = '''usage: %prog [options] waveforms ...'''
         
         parser = OptionParser(usage=usage)
@@ -374,21 +372,23 @@ class MySnuffler(QApplication):
         if update:
             self.pile_viewer.update_contents()
 
+    def dockwidgets(self):
+        return [ w for w in self._win.findChildren(QDockWidget) if not w.isFloating() ]
+
     def add_panel(self, name, panel):
-        dockwidget = QDockWidget(name)
+        dockwidget = QDockWidget(name, self._win)
         dockwidget.setWidget(panel)
         self._win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
+
+        dws = self.dockwidgets()
+        if dws:
+            self._win.tabifyDockWidget(dws[-1], dockwidget)
         
-        if self._dockwidgets:
-            self._win.tabifyDockWidget(self._dockwidgets[-1], dockwidget)
-        
-        self._dockwidgets.append(dockwidget)
         dockwidget.raise_()
         
         def delete_panel():
             self._win.removeDockWidget(dockwidget)
-            self._dockwidgets.remove(dockwidget)
-        
+
         return delete_panel
         
     def myquit(self, *args):
