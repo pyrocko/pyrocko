@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, io
 import numpy as num
 import util, trace
 import struct
@@ -35,7 +35,7 @@ class SEGYFile:
         self.data = [ num.arange(0, dtype=num.int32) ]
         
     def read(self, filename, get_data=True, endianness='>'):
-        '''Read SAC file.
+        '''Read SEGY file.
         
            filename -- Name of SEGY file.
            get_data -- If True, the data is read, otherwise only read headers.
@@ -86,9 +86,7 @@ class SEGYFile:
             nauxtraces = 0
             fixed_length_traces = False
             sample_size = 4
-            dtype = order+'i4'
-            
-            
+            dtype = order+'i4'  
         traces = []
         for itrace in xrange(ntraces+nauxtraces):
             trace_header = filedata[ipos:ipos+nbtrh]
@@ -97,11 +95,14 @@ class SEGYFile:
             
             (scoordx,scoordy,gcoordx,gcoordy) = struct.unpack(order+'4f4', trace_header[72:72+4*4])
             (ensemblex,ensembley) = struct.unpack(order+'2f4', trace_header[180:180+2*4])
-
-            (trace_number,) = struct.unpack(order+'1I', trace_header[0:4])
+            (ensemble_num,) = struct.unpack(order+'1I', trace_header[20:24])
+            (trensemble_num,) = struct.unpack(order+'1I', trace_header[24:28])
+            (trace_number,)= struct.unpack(order+'1I', trace_header[0:4])
+            (trace_numbersegy,)= struct.unpack(order+'1I', trace_header[4:8])
+            (orfield_num,)= struct.unpack(order+'1I', trace_header[8:12])
+            (ortrace_num,)= struct.unpack(order+'1I', trace_header[12:16])
             (nsamples_this, deltat_us_this) = struct.unpack(order+'2H', trace_header[114:114+2*2])
             (year,doy,hour,minute,second) = struct.unpack(order+'5H', trace_header[156:156+2*5])
-            
             try:
                 tmin = calendar.timegm((year,1,doy,hour,minute,second))
             except:
@@ -121,12 +122,10 @@ class SEGYFile:
             else:
                 tmax = tmin + deltat_us_this/1000000.*(nsamples_this-1)
                 data = None
-                
-            tr = trace.Trace('','%i' % (itrace+1),'','', tmin=tmin, tmax=tmax, deltat=deltat_us_this/1000000., ydata=data)
+            tr = trace.Trace('','%i' % (ensemble_num),'','%i' %(trace_numbersegy), tmin=tmin, tmax=tmax, deltat=deltat_us_this/1000000., ydata=data)
+            nlsc=('','%i' %(ensemble_num),'','%i' %(trace_numbersegy))
             traces.append(tr)
-            
             ipos += nbtrh+nsamples_this*sample_size
-        
         self.traces = traces
         
     def get_traces(self):
