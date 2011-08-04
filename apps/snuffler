@@ -376,16 +376,20 @@ class MySnuffler(QApplication):
         return [ w for w in self._win.findChildren(QDockWidget) if not w.isFloating() ]
 
     def add_panel(self, name, panel):
+        dws = self.dockwidgets()
+
         dockwidget = QDockWidget(name, self._win)
         dockwidget.setWidget(panel)
+        panel.setParent(dockwidget)
         self._win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
 
-        dws = self.dockwidgets()
         if dws:
             self._win.tabifyDockWidget(dws[-1], dockwidget)
         
+        dockwidget.setVisible(True)
+        dockwidget.setFocus()
         dockwidget.raise_()
-        
+
         def delete_panel():
             self._win.removeDockWidget(dockwidget)
 
