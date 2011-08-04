@@ -192,6 +192,10 @@ class Event:
         
         file.close()
 
+    def get_hash(self):
+        e = self
+        return hash((e.time, e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region))
+
 class Station:
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):
         self.network = network

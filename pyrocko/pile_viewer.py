@@ -1,6 +1,33 @@
 #!/usr/bin/env python
 
-import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback
+<<<<<<< Updated upstream:pyrocko/pile_viewer.py
+import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, csv
+=======
+'''Effective MiniSEED trace viewer.'''
+
+
+# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
+#
+# This file is part of snuffler. For licensing information please see the file 
+# COPYING which is included with snuffler.
+
+import os
+import sys
+import time
+import calendar
+import datetime
+import signal
+import re
+import math
+import numpy as num
+from itertools import izip
+import scipy.stats
+import tempfile
+import logging
+import traceback
+import csv
+
+>>>>>>> Stashed changes:pyrocko/pile_viewer.py
 from optparse import OptionParser
 import numpy as num 
 from itertools import izip
@@ -16,6 +43,8 @@ from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
 
 logger = logging.getLogger('pyrocko.pile_viewer')
+
+csv.register_dialect('markers', delimiter=' ', quotechar="'", doublequote=False, escapechar='\\', lineterminator='\n', skipinitialspace=True)
 
 class Global:
     sacflag = False
@@ -604,6 +633,8 @@ class Marker(object):
     
         return Marker(nslc_ids, tmin, tmax, kind=kind)
     
+    
+
     @staticmethod
     def load_markers(fn):
         markers = []
@@ -666,13 +697,26 @@ class Marker(object):
         self.selected = state
         
     def __str__(self):
-        traces = ', '.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
+        traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
         st = myctime
         if self.tmin == self.tmax:
             return '%s %i %s' % (st(self.tmin), self.kind, traces)
         else:
             return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
-        
+
+    def get_attributes(self):
+        traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
+        st = pyrocko.util.time_to_str
+        vals = []
+        vals.extend(st(self.tmin).split())
+        if self.tmin != self.tmax:    
+            vals.extend(st(self.tmax))
+            vals.append(self.tmax-self.tmin)
+
+        vals.append(self.kind)
+        vals.append(traces)
+        return vals
+
     def select_color(self, colorlist):
         cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
         if self.selected:
@@ -833,8 +877,6 @@ class EventMarker(Marker):
       
         Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
         
-        
-
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
         t = []
@@ -859,6 +901,13 @@ class EventMarker(Marker):
 
     def draw_trace(self, p, trace, time_projection, track_projection, gain):
         pass
+    
+    def get_attributes(self):
+        attributes = [ 'event:' ]
+        attributes.extend(Marker.get_attributes(self))
+        e = self._event
+        attributes.extend([e.get_hash(), e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region ])
+        return attributes
 
 class PhaseMarker(Marker):
 
@@ -902,6 +951,12 @@ class PhaseMarker(Marker):
         del self._polarity
         del self._automatic
         self.__class__ = Marker
+
+    def get_attributes(self):
+        attributes = [ 'phase:' ]
+        attributes.extend(Marker.get_attributes(self))
+        attributes.extend([self._event.get_hash(), self._event.time, self._phasename, self._polarity, self._automatic])
+        return attributes
 
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
@@ -963,13 +1018,13 @@ def MakePileOverviewClass(base):
 #            self.menu.addAction(self.menuitem_pick)
 #            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
             
-            self.menuitem_pick = QAction('Write picks', self.menu)
+            self.menuitem_pick = QAction('Write markers', self.menu)
             self.menu.addAction(self.menuitem_pick)
-            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.write_picks )
+            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.write_markers )
             
-            self.menuitem_pick = QAction('Read picks', self.menu)
+            self.menuitem_pick = QAction('Read markers', self.menu)
             self.menu.addAction(self.menuitem_pick)
-            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.read_picks )
+            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.read_markers )
             
             self.menu.addSeparator()
             
@@ -1495,20 +1550,22 @@ def MakePileOverviewClass(base):
             else:
                 return 0
     
-        def write_picks(self):
+        def write_markers(self):
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
                 f = open(fn,'w')
+                writer = csv.writer(f, dialect='markers')
                 for marker in self.markers:
-                    f.write("%s\n" % marker)
+                    writer.writerow(marker.get_attributes())
+    
                 f.close()
                 
             
-        def read_picks(self):
+        def read_markers(self):
             fn = QFileDialog.getOpenFileName(self,)
             if fn:
-                self.markers.extend(Marker.load_markers(fn))
-            
+                self.add_markers(Marker.load_markers(fn))
+
         def add_marker(self, marker):
             self.markers.append(marker)
         
@@ -1727,8 +1784,8 @@ def MakePileOverviewClass(base):
 
             elif keytext == 'a':
                 for marker in self.markers:
-                    if (self.tmin <= marker.get_tmin() <= self.tmax or
-                        self.tmin <= marker.get_tmax() <= self.tmax and
+                    if ((self.tmin <= marker.get_tmin() <= self.tmax or
+                        self.tmin <= marker.get_tmax() <= self.tmax) and
                         marker.kind in self.visible_marker_kinds):
                         marker.set_selected(True)
                     else:
@@ -2638,7 +2695,7 @@ def MakePileOverviewClass(base):
                         
                         self.update()
                 
-                    elif command == 'marks':
+                    elif command == 'markers':
                         if len(toks) == 2:
                             if toks[1] == 'all':
                                 kinds = self.all_marker_kinds

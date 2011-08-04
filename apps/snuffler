@@ -196,6 +196,8 @@ class MySnuffler(QApplication):
                 help='read station information from file STATIONS')
         parser.add_option('--event', '--events', dest='event_fns', action='append', default=[], metavar='EVENT',
                 help='read event information from file EVENT')
+        parser.add_option('--markers', dest='marker_fns', action='append', default=[], metavar='MARKERS',
+                help='read marker information file MARKERS')
         parser.add_option('--follow', dest='follow', metavar='N',
                 help='follow real time with a window of N seconds')
         parser.add_option('--progressive', dest='progressive', action='store_true', default=False,
@@ -315,6 +317,9 @@ class MySnuffler(QApplication):
                 if first:
                     self.pile_viewer.get_view().set_origin(ev)
                     first = False
+
+        for marker_fn in options.marker_fns:
+            self.pile_viewer.get_view().add_markers(pyrocko.pile_viewer.Marker.load_markers(marker_fn))
 
         self._win.setCentralWidget( self.pile_viewer )
         
