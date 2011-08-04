@@ -184,7 +184,7 @@ class MySnuffler(QApplication):
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
         
-        self._panels = {}
+        self.dockwidget_to_toggler = {}
 
         usage = '''usage: %prog [options] waveforms ...'''
         
@@ -325,7 +325,9 @@ class MySnuffler(QApplication):
 
         self._win.setCentralWidget( self.pile_viewer )
         
-        self.add_panel('Main Controls', self.pile_viewer.controls())
+        self.pile_viewer.setup_snufflings()
+
+        self.add_panel('Main Controls', self.pile_viewer.controls(), visible=True)
         self._win.resize(1024, 768)       
         self._win.show()
 
@@ -385,7 +387,7 @@ class MySnuffler(QApplication):
     def get_panel_parent_widget(self):
         return self._win
 
-    def add_panel(self, name, panel):
+    def add_panel(self, name, panel, visible=False):
         dws = self.dockwidgets()
 
         dockwidget = QDockWidget(name, self._win)
@@ -396,18 +398,29 @@ class MySnuffler(QApplication):
         if dws:
             self._win.tabifyDockWidget(dws[-1], dockwidget)
         
-        dockwidget.setVisible(True)
-        dockwidget.setFocus()
-        dockwidget.raise_()
+        self.toggle_panel(dockwidget, visible)
 
-        ident = id(dockwidget)
-        self._panels[ident] = dockwidget
-        return ident
-
-    def remove_panel(self, ident):
-        dockwidget = self._panels.pop(ident)
-        self._win.removeDockWidget(dockwidget)
+        mitem = QAction(name, None)
         
+        def toggle_panel(checked):
+            self.toggle_panel(dockwidget, True)
+
+        self.connect( mitem, SIGNAL('triggered(bool)'), toggle_panel)
+        self.pile_viewer.get_view().add_panel_toggler(mitem)
+
+        self.dockwidget_to_toggler[dockwidget] = mitem
+
+
+    def toggle_panel(self, dockwidget, visible):
+        dockwidget.setVisible(visible)
+        if visible:
+            dockwidget.setFocus()
+            dockwidget.raise_()
+
+    def remove_panel(self, dockwidget):
+        self._win.removeDockWidget(dockwidget)
+        mitem = self.dockwidget_to_toggler[dockwidget]
+        self.pile_viewer.get_view().remove_panel_toggler(mitem)
         
     def myquit(self, *args):
         for source in self._sources:

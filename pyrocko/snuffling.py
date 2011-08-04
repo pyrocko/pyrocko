@@ -174,9 +174,7 @@ class Snuffling:
         self._delete_menuitem = None
         
         self._panel_parent = None
-        self._panel_ident = None
         self._menu_parent = None
-        self._menu_ident = None
         
         self._panel = None
         self._menuitem = None
@@ -221,12 +219,12 @@ class Snuffling:
         if self._panel_parent is not None:
             self._panel = self.make_panel(self._panel_parent)
             if self._panel:
-                self._panel_ident = self._panel_parent.add_panel(self.get_name(), self._panel)
+                self._panel_parent.add_panel(self.get_name(), self._panel)
        
         if self._menu_parent is not None:
             self._menuitem = self.make_menuitem(self._menu_parent)
             if self._menuitem:
-                self._menu_ident = self._menu_parent.add_snuffling_menuitem(self._menuitem)
+                self._menu_parent.add_snuffling_menuitem(self._menuitem)
         
     def delete_gui(self):
         '''Remove the gui elements of the snuffling.
@@ -237,12 +235,12 @@ class Snuffling:
         
         self.cleanup()
         
-        if self._panel_ident is not None:
-            self._panel_parent.remove_panel(self._panel_ident)
+        if self._panel_item is not None:
+            self._panel_parent.remove_panel(self._panel_item)
             self._panel = None
             
-        if self._menu_ident is not None:
-            self._menu_parent.remove_snuffling_menuitem(self._menu_ident)
+        if self._menu_item is not None:
+            self._menu_parent.remove_snuffling_menuitem(self._menu_item)
             self._menuitem = None
             
     def set_name(self, name):
@@ -502,7 +500,7 @@ class Snuffling:
         entry is wanted.
         '''
         
-        item = QAction(self.get_name(), parent)
+        item = QAction(self.get_name(), None)
         self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
         return item
     
