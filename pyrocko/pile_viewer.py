@@ -967,7 +967,7 @@ def MakePileOverviewClass(base):
     
     class PileOverview(base):
 
-        def __init__(self, pile, ntracks_shown_max, add_panel_hook, *args):
+        def __init__(self, pile, ntracks_shown_max, panel_parent, *args):
             if base == QGLWidget:
                 apply(base.__init__, (self, QGLFormat(QGL.SampleBuffers)) + args)
             else:
@@ -975,8 +975,8 @@ def MakePileOverviewClass(base):
 
             self.pile = pile
             self.ax_height = 80
-            self.add_panel_hook = add_panel_hook
-            
+            self.panel_parent = panel_parent 
+
             self.click_tolerance = 5
             
             self.ntracks_shown_max = ntracks_shown_max
@@ -1170,7 +1170,11 @@ def MakePileOverviewClass(base):
             self.menu.addSeparator()
             
             self.snufflings_menu = QMenu('Snufflings', self.menu)
+            self.snufflings_menu_items = {}
             self.menu.addMenu(self.snufflings_menu)
+            
+            self.snufflings_panel_menu = QMenu('Snuffling Panels', self.menu)
+            self.menu.addMenu(self.snufflings_panel_menu)
             
             self.menuitem_reload = QAction('Reload snufflings', self.menu)
             self.menu.addAction(self.menuitem_reload)
@@ -1430,9 +1434,15 @@ def MakePileOverviewClass(base):
                 self.default_snufflings = pyrocko.snufflings.__snufflings__()
                 for snuffling in self.default_snufflings:
                     self.add_snuffling(snuffling)
-                
+        
+        def set_panel_parent(self, panel_parent):
+            self.panel_parent = panel_parent 
+        
+        def get_panel_parent(self):
+            return self.panel_parent
+
         def add_snuffling(self, snuffling):
-            snuffling.init_gui(self, self, self.add_panel_hook, self.snufflings_menu, self.add_snuffling_menuitem)
+            snuffling.init_gui(self, self.get_panel_parent(), self)
             self.update()
             
         def remove_snuffling(self, snuffling):
@@ -1441,10 +1451,14 @@ def MakePileOverviewClass(base):
             
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
-            def delete_item():
-                self.snufflings_menu.removeAction(item)
+            ident = id(item)
+            self.snufflings_menu_items[ident] = item
+            return ident
+
+        def remove_snuffling_menuitem(self, ident):
+            item = self.snufflings_menu_items.pop(ident)
+            self.snufflings_menu.removeAction(item)
             return delete_item
-        
         
         def add_traces(self, traces):
             if traces:
@@ -2761,13 +2775,13 @@ GLPileOverview = MakePileOverviewClass(QGLWidget)
 class PileViewer(QFrame):
     '''PileOverview + Controls'''
     
-    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, add_panel_hook=None, *args):
+    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, panel_parent=None, *args):
         apply(QFrame.__init__, (self,) + args)
         
         if use_opengl:
-            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
+            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         else:
-            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
+            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         
         layout = QGridLayout()
         self.setLayout( layout )

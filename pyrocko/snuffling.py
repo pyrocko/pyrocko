@@ -174,9 +174,9 @@ class Snuffling:
         self._delete_menuitem = None
         
         self._panel_parent = None
-        self._panel_hook = None
+        self._panel_ident = None
         self._menu_parent = None
-        self._menu_hook = None
+        self._menu_ident = None
         
         self._panel = None
         self._menuitem = None
@@ -198,7 +198,7 @@ class Snuffling:
         
         pass
     
-    def init_gui(self, viewer, panel_parent, panel_hook, menu_parent, menu_hook):
+    def init_gui(self, viewer, panel_parent, menu_parent):
         '''Set parent viewer and hooks to add panel and menu entry.
         
         This method is called from the PileOverview object. Calls setup_gui().
@@ -206,9 +206,7 @@ class Snuffling:
         
         self._viewer = viewer
         self._panel_parent = panel_parent
-        self._panel_hook = panel_hook
         self._menu_parent = menu_parent
-        self._menu_hook = menu_hook
         
         self.setup_gui()
         
@@ -220,15 +218,15 @@ class Snuffling:
         has been changed.
         '''
         
-        self._delete_panel = None
-        if self._panel_hook is not None:
+        if self._panel_parent is not None:
             self._panel = self.make_panel(self._panel_parent)
             if self._panel:
-                self._delete_panel = self._panel_hook(self.get_name(), self._panel)
-        
-        self._menuitem = self.make_menuitem(self._menu_parent)
-        if self._menuitem:
-            self._delete_menuitem = self._menu_hook(self._menuitem)
+                self._panel_ident = self._panel_parent.add_panel(self.get_name(), self._panel)
+       
+        if self._menu_parent is not None:
+            self._menuitem = self.make_menuitem(self._menu_parent)
+            if self._menuitem:
+                self._menu_ident = self._menu_parent.add_snuffling_menuitem(self._menuitem)
         
     def delete_gui(self):
         '''Remove the gui elements of the snuffling.
@@ -239,12 +237,12 @@ class Snuffling:
         
         self.cleanup()
         
-        if self._delete_panel is not None:
-            self._delete_panel()
+        if self._panel_ident is not None:
+            self._panel_parent.remove_panel(self._panel_ident)
             self._panel = None
             
-        if self._delete_menuitem is not None:
-            self._delete_menuitem()
+        if self._menu_ident is not None:
+            self._menu_parent.remove_snuffling_menuitem(self._menu_ident)
             self._menuitem = None
             
     def set_name(self, name):

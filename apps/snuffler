@@ -184,6 +184,8 @@ class MySnuffler(QApplication):
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
         
+        self._panels = {}
+
         usage = '''usage: %prog [options] waveforms ...'''
         
         parser = OptionParser(usage=usage)
@@ -304,7 +306,7 @@ class MySnuffler(QApplication):
         self._win.setWindowTitle( "Snuffler" )        
 
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
-            pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl, add_panel_hook=self.add_panel)
+            pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl, panel_parent=self)
         
         for stations_fn in options.station_fns:
             stations = pyrocko.model.load_stations(stations_fn)
@@ -395,10 +397,14 @@ class MySnuffler(QApplication):
         dockwidget.setFocus()
         dockwidget.raise_()
 
-        def delete_panel():
-            self._win.removeDockWidget(dockwidget)
+        ident = id(dockwidget)
+        self._panels[ident] = dockwidget
+        return ident
 
-        return delete_panel
+    def remove_panel(self, ident):
+        dockwidget = self._panels.pop(ident)
+        self._win.removeDockWidget(dockwidget)
+        
         
     def myquit(self, *args):
         for source in self._sources:
