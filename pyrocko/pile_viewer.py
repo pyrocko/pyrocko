@@ -1052,12 +1052,6 @@ def MakePileOverviewClass(base):
             
             self.menu.addSeparator()
  
-#            self.menuitem_setorigin = QAction('Set Active Event and Origin', self.menu)
-#            self.menu.addAction(self.menuitem_setorigin)
-#            self.connect( self.menuitem_setorigin, SIGNAL("triggered(bool)"), self.set_event_marker_as_origin)
- 
-#            self.menu.addSeparator()
-#
             def sector_dist(sta):
                 if sta.dist_m is None:
                     return None, None
@@ -1169,12 +1163,11 @@ def MakePileOverviewClass(base):
             
             self.menu.addSeparator()
             
-            self.snufflings_menu = QMenu('Snufflings', self.menu)
-            self.snufflings_menu_items = {}
+            self.snufflings_menu = QMenu('Run Snuffling', self.menu)
             self.menu.addMenu(self.snufflings_menu)
             
-            self.snufflings_panel_menu = QMenu('Snuffling Panels', self.menu)
-            self.menu.addMenu(self.snufflings_panel_menu)
+            self.toggle_panel_menu = QMenu('Panels', self.menu)
+            self.menu.addMenu(self.toggle_panel_menu)
             
             self.menuitem_reload = QAction('Reload snufflings', self.menu)
             self.menu.addAction(self.menuitem_reload)
@@ -1242,7 +1235,6 @@ def MakePileOverviewClass(base):
             self.snuffling_modules = {}
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
             self.default_snufflings = None
-            self.setup_snufflings()
             
             self.stations = {}
             
@@ -1451,15 +1443,18 @@ def MakePileOverviewClass(base):
             
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
-            ident = id(item)
-            self.snufflings_menu_items[ident] = item
-            return ident
+            item.setParent(self.snufflings_menu)
 
-        def remove_snuffling_menuitem(self, ident):
-            item = self.snufflings_menu_items.pop(ident)
+        def remove_snuffling_menuitem(self, item):
             self.snufflings_menu.removeAction(item)
-            return delete_item
         
+        def add_panel_toggler(self, item):
+            self.toggle_panel_menu.addAction(item)
+            item.setParent(self.toggle_panel_menu)
+
+        def remove_panel_toggler(self, item):
+            self.toggle_panel_menu.removeAction(item)
+
         def add_traces(self, traces):
             if traces:
                 mtf = pyrocko.pile.MemTracesFile(None, traces)
@@ -2908,7 +2903,10 @@ class PileViewer(QFrame):
         layout.addWidget( self.gain_widget, 3,0 )
         layout.addWidget( self.rot_widget, 4,0 )
         return frame
-    
+   
+    def setup_snufflings(self):
+        self.pile_overview.setup_snufflings()
+
     def get_view(self):
         return self.pile_overview
     
