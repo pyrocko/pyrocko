@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, csv
+import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, shlex 
 
 from optparse import OptionParser
 import numpy as num 
@@ -16,29 +16,9 @@ from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
 
+
 logger = logging.getLogger('pyrocko.pile_viewer')
 
-csv.register_dialect('markers', delimiter=' ', quotechar="'", doublequote=False, escapechar='\\', lineterminator='\n', skipinitialspace=True)
-
-class TableWriter:
-    def __init__(self, f, dialect=None):
-        self._f = f
-
-    def writerow(self, row):
-        out = []
-        for x in row:
-            if isinstance(x, str):
-                if x.find(' ') != -1:
-                    x = "'%s'" % x.replace(' ', '\ ')
-            
-                x = x.ljust(20)
-            else:
-                x = str(x).rjust(20)
-            
-            out.append(x)
-
-        self._f.write( ' '.join(out) + '\n')
-                
 class Global:
     sacflag = False
     appOnDemand = None
@@ -710,6 +690,13 @@ class Marker(object):
         vals.append(traces)
         return vals
 
+    def get_attribute_widths(self):
+        ws = [ 12, 12 ]
+        if self.tmin != self.tmax:
+            ws.extend( [ 12, 12, 12 ] )
+        ws.extend( [ 2, 15 ] )
+        return ws
+
     def select_color(self, colorlist):
         cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
         if self.selected:
@@ -903,6 +890,13 @@ class EventMarker(Marker):
         attributes.extend([e.get_hash(), e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region ])
         return attributes
 
+    def get_attribute_widths(self):
+        ws = [ 6 ]
+        ws.extend( Marker.get_attribute_widths(self) )
+        del ws[-1]
+        ws.extend([ 14, 12, 12, 12, 4, 5, 0, 0 ])
+        return ws
+
 class PhaseMarker(Marker):
 
     def __init__(self, nslc_ids, tmin, tmax, event=None, phasename=None, polarity=None, automatic=None):
@@ -957,6 +951,12 @@ class PhaseMarker(Marker):
 
         attributes.extend([h, et[0], et[1], self._phasename, self._polarity, self._automatic])
         return attributes
+
+    def get_attribute_widths(self):
+        ws = [ 6 ]
+        ws.extend( Marker.get_attribute_widths(self) )
+        ws.extend([ 14, 12, 12, 8, 4, 5 ])
+        return ws
 
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
@@ -1568,9 +1568,10 @@ def MakePileOverviewClass(base):
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
                 f = open(fn,'w')
-                writer = TableWriter(f, dialect='markers')
+                writer = TableWriter(f)
                 for marker in self.markers:
                     a = marker.get_attributes()
+                    w = marker.get_attribute_widths()
                     row = []
                     for x in a:
                         if x is None or x == '':
@@ -1581,8 +1582,7 @@ def MakePileOverviewClass(base):
                     writer.writerow(row)
     
                 f.close()
-                
-            
+
         def read_markers(self):
             fn = QFileDialog.getOpenFileName(self,)
             if fn:

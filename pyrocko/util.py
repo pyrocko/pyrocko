@@ -662,4 +662,50 @@ class Sole(object):
             except:
                 pass
 
+
+re_escapequotes = re.compile(r"(['\\])")
+def escapequotes(s):
+    return re_escapequotes(r"\\\1", s)
+
+class TableWriter:
+    def __init__(self, f):
+        self._f = f
+
+    def writerow(self, row, minfieldwidths=None):
+        out = []
+        
+        for i, x in enumerate(row):
+            if minfieldwidths and i < len(minfieldwidths):
+                w = minfieldwidths[i]
+            
+            if isinstance(x, str):
+                if re.search(r"\s|'", x):
+                    x = "'%s'" % escapequotes(x)
+
+                x = x.ljust(w)
+            else:
+                x = str(x).rjust(w)
+            
+            out.append(x)
+
+        self._f.write( ' '.join(out) + '\n')
+                
+class TableReader:
+    def __init__(self, f):
+        self._shlex = shlex.shlex(f, posix=True)
+        self.eof = False
+
+    def readrow(self):
+        lineno = self._shlex.lineno
+        row = []
+        while shlex.lineno == lineno:
+            x = shlex.get_token()
+            if x is None:
+                self.eof = True
+                break
+            row.append(x)
+
+        return row
+
+
             
