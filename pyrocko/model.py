@@ -194,7 +194,7 @@ class Event:
 
     def get_hash(self):
         e = self
-        return util.base36encode(abs(hash((e.time, e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region)))).lower()
+        return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
 
 
 class Station:

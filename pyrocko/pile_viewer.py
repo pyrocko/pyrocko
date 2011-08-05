@@ -8,6 +8,8 @@ from itertools import izip
 
 import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace, pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
 
+from pyrocko.util import TableWriter, TableReader
+
 from pyrocko.nano import Nano
 from pyrocko.gui_util import ValControl, LinValControl
 
@@ -56,6 +58,21 @@ def deg_float_or_none(x):
         return None
     else:
         return deg_float(x)
+
+def str_to_float_or_none(s):
+    if s == 'None':
+        return None
+    else:
+        return float(s)
+
+def str_to_str_or_none(s):
+    if s == 'None':
+        return None
+    else:
+        return s
+
+def str_to_bool(s):
+    return s.lower() in ('true', 't', '1')
 
 class sector_int(int):
     
@@ -605,27 +622,66 @@ class Marker(object):
             fail()
     
         return Marker(nslc_ids, tmin, tmax, kind=kind)
-    
-    
+
+    @staticmethod
+    def save_markers(markers, fn):
+
+        f = open(fn,'w')
+        f.write('# Snuffler Markers File Version 0.2\n')
+        writer = TableWriter(f)
+        for marker in markers:
+            a = marker.get_attributes()
+            w = marker.get_attribute_widths()
+            row = []
+            for x in a:
+                if x is None or x == '':
+                    row.append('None')
+                else:
+                    row.append(x)
+
+            writer.writerow(row, w)
+
+        f.close()
 
     @staticmethod
     def load_markers(fn):
         markers = []
         f = open(fn, 'r')
-        for iline, line in enumerate(f):
-            sline = line.strip()
-            if not sline or sline.startswith('#'):
-                continue
-            try:
-                m = Marker.from_string(sline)
-                markers.append(m)
-                
-            except MarkerParseError:
-                logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
-                
-        f.close()
+        line  = f.readline()
+        if not line.startswith('# Snuffler Markers File Version'):
+            f.seek(0)
+            for iline, line in enumerate(f):
+                sline = line.strip()
+                if not sline or sline.startswith('#'):
+                    continue
+                try:
+                    m = Marker.from_string(sline)
+                    markers.append(m)
+                    
+                except MarkerParseError:
+                    logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
+                    
+            f.close()
+        
+        elif line.startswith('# Snuffler Markers File Version 0.2'):
+            reader = TableReader(f)
+            while not reader.eof:
+                row = reader.readrow()
+                if not row:
+                    continue
+                if row[0] == 'event:':
+                    marker = EventMarker.from_attributes(row)
+                elif row[0] == 'phase:':
+                    marker = PhaseMarker.from_attributes(row)
+                else:
+                    marker = Marker.from_attributes(row)
+                 
+                markers.append(marker)
+        else:
+            logger.warn('Unsupported Markers File Version')
+        
         return markers
-            
+
     def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
         c = pyrocko.plot.color
@@ -691,11 +747,33 @@ class Marker(object):
         return vals
 
     def get_attribute_widths(self):
-        ws = [ 12, 12 ]
+        ws = [ 10, 12 ]
         if self.tmin != self.tmax:
-            ws.extend( [ 12, 12, 12 ] )
+            ws.extend( [ 10, 12, 12 ] )
         ws.extend( [ 2, 15 ] )
         return ws
+
+    @staticmethod
+    def parse_attributes(vals):
+        tmin = pyrocko.util.str_to_time( vals[0] + ' ' + vals[1] )
+        i = 2
+        tmax = tmin
+        if len(vals) == 7:
+            tmax = pyrocko.util.str_to_time( vals[2] + ' ' + vals[3] )
+            i = 5
+
+        kind = int(vals[i])
+        traces = vals[i+1]
+        if traces == 'None':
+            nslc_ids = []
+        else:
+            nslc_ids = tuple([ tuple(nslc_id.split('.')) for nslc_id in traces.split(',') ])
+
+        return nslc_ids, tmin, tmax, kind
+
+    @staticmethod
+    def from_attributes(vals):
+        return Marker(*Marker.parse_attributes(vals))
 
     def select_color(self, colorlist):
         cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
@@ -845,10 +923,17 @@ class Marker(object):
         self.nslc_ids = []
 
 class EventMarker(Marker):
-    def __init__(self, event):
-        Marker.__init__(self, [], event.time, event.time)
+    def __init__(self, event, kind=0, event_hash=None):
+        Marker.__init__(self, [], event.time, event.time, kind)
         self._event = event
         self._active = False
+        self._event_hash = event_hash
+
+    def get_event_hash(self):
+        if self._event_hash is not None:
+            return self._event_hash
+        else:
+            self._event.get_hash()
 
     def set_active(self, active):
         self._active = active
@@ -897,11 +982,22 @@ class EventMarker(Marker):
         ws.extend([ 14, 12, 12, 12, 4, 5, 0, 0 ])
         return ws
 
+    @staticmethod
+    def from_attributes(vals):
+
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:] + [ 'None' ])
+        lat, lon, depth, magnitude = [ str_to_float_or_none( x ) for x in vals[5:9] ]
+        catalog, name, region = [ str_to_str_or_none(x) for x in vals[9:] ]
+        e = pyrocko.model.Event(lat, lon, tmin, name, depth, magnitude, region, catalog=catalog)
+        marker = EventMarker(e, kind, event_hash=str_to_str_or_none(vals[4]))
+        return marker
+
 class PhaseMarker(Marker):
 
-    def __init__(self, nslc_ids, tmin, tmax, event=None, phasename=None, polarity=None, automatic=None):
-        Marker.__init__(self, nslc_ids, tmin, tmax)
+    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None):
+        Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
+        self._event_hash = event_hash
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
@@ -923,6 +1019,15 @@ class PhaseMarker(Marker):
 
     def get_event(self):
         return self._event
+
+    def get_event_hash(self):
+        if self._event_hash is not None:
+            return self._event_hash
+        else:
+            return self._event.get_hash()
+
+    def set_event_hash(self, event_hash):
+        self._event_hash = event_hash
 
     def set_event(self, event):
         self._event = event
@@ -957,6 +1062,22 @@ class PhaseMarker(Marker):
         ws.extend( Marker.get_attribute_widths(self) )
         ws.extend([ 14, 12, 12, 8, 4, 5 ])
         return ws
+
+    @staticmethod
+    def from_attributes(vals):
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:])
+       
+        i = 8
+        if len(vals) == 14:
+            i = 11
+       
+        event_hash = str_to_str_or_none( vals[i-3] )
+        phasename, polarity = [ str_to_str_or_none( x ) for x in vals[i:i+2] ]
+        automatic = str_to_bool( vals[i+2] )
+        marker = PhaseMarker( nslc_ids, tmin, tmax, kind, event=None, event_hash=event_hash,
+            phasename=phasename, polarity=polarity, automatic=automatic )
+        return marker
+
 
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
@@ -1562,27 +1683,29 @@ def MakePileOverviewClass(base):
         def write_markers(self):
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
-                f = open(fn,'w')
-                writer = TableWriter(f)
-                for marker in self.markers:
-                    a = marker.get_attributes()
-                    w = marker.get_attribute_widths()
-                    row = []
-                    for x in a:
-                        if x is None or x == '':
-                            row.append('None')
-                        else:
-                            row.append(x)
-
-                    writer.writerow(row)
-    
-                f.close()
+                Marker.save_markers(self.markers, fn)
 
         def read_markers(self):
             fn = QFileDialog.getOpenFileName(self,)
             if fn:
                 self.add_markers(Marker.load_markers(fn))
 
+                self.associate_phases_to_events()
+
+        def associate_phases_to_events(self):
+            
+            events = {}
+            for marker in self.markers:
+                if isinstance(marker, EventMarker):
+                    events[marker.get_event_hash()] = marker.get_event()
+            
+            for marker in self.markers:
+                if isinstance(marker, PhaseMarker):
+                    h = marker.get_event_hash()
+                    if marker.get_event() is None and h is not None and marker and h in events:
+                        marker.set_event(events[h])
+                        marker.set_event_hash(None)
+        
         def add_marker(self, marker):
             self.markers.append(marker)
         
