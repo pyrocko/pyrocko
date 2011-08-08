@@ -458,12 +458,11 @@ class Snuffling:
             sarea.setWidgetResizable(True)
             layout = QGridLayout()
             frame.setLayout( layout )
-                        
+            
+            irow = 0
+            have_switches = False
             for iparam, param in enumerate(params):
-                if isinstance(param, Switch):
-                    param_widget = SwitchControl(param.ident, param.default, param.name)
-                    self.get_viewer().connect( param_widget, SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.switch_on_snuffling_panel )
-                else:
+                if not isinstance(param, Switch):
                     if param.minimum <= 0.0:
                         param_widget = LinValControl()
                     else:
@@ -471,21 +470,41 @@ class Snuffling:
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
 
-                self._param_controls[param.ident] = param_widget
-                layout.addWidget( param_widget, iparam, 0, 1, 3 )
-        
+                    self._param_controls[param.ident] = param_widget
+                    layout.addWidget( param_widget, iparam, 0, 1, 3 )
+                    irow += 1
+                else:
+                    have_switches = True
+
+            if have_switches:
+
+                swframe = QFrame(sarea)
+                swlayout = QGridLayout()
+                swframe.setLayout( swlayout )
+                isw = 0
+                for iparam, param in enumerate(params):
+                    if isinstance(param, Switch):
+                        param_widget = SwitchControl(param.ident, param.default, param.name)
+                        self.get_viewer().connect( param_widget, SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.switch_on_snuffling_panel )
+                        self._param_controls[param.ident] = param_widget
+                        swlayout.addWidget( param_widget, isw/10, isw%10 )
+                        isw += 1
+                
+                layout.addWidget( swframe, irow, 0, 1, 3 )
+                irow += 1
+
             live_update_checkbox = QCheckBox('Auto-Run')
             if self._live_update:
                 live_update_checkbox.setCheckState(Qt.Checked)
-            layout.addWidget( live_update_checkbox, len(params), 0 )
+            layout.addWidget( live_update_checkbox, irow, 0 )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
         
             clear_button = QPushButton('Clear')
-            layout.addWidget( clear_button, len(params), 1 )
+            layout.addWidget( clear_button, irow, 1 )
             self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
         
             call_button = QPushButton('Run')
-            layout.addWidget( call_button, len(params), 2 )
+            layout.addWidget( call_button, irow, 2 )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
 
             return sarea 
