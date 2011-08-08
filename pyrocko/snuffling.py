@@ -238,12 +238,12 @@ class Snuffling:
         
         self.cleanup()
         
-        if self._panel_item is not None:
-            self._panel_parent.remove_panel(self._panel_item)
+        if self._panel is not None:
+            self._panel_parent.remove_panel(self._panel)
             self._panel = None
             
-        if self._menu_item is not None:
-            self._menu_parent.remove_snuffling_menuitem(self._menu_item)
+        if self._menuitem is not None:
+            self._menu_parent.remove_snuffling_menuitem(self._menuitem)
             self._menuitem = None
             
     def set_name(self, name):
