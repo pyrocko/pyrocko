@@ -389,7 +389,6 @@ class MySnuffler(QApplication):
 
     def add_panel(self, name, panel, visible=False):
         dws = self.dockwidgets()
-
         dockwidget = QDockWidget(name, self._win)
         dockwidget.setWidget(panel)
         panel.setParent(dockwidget)
@@ -417,8 +416,10 @@ class MySnuffler(QApplication):
             dockwidget.setFocus()
             dockwidget.raise_()
 
-    def remove_panel(self, dockwidget):
+    def remove_panel(self, panel):
+        dockwidget = panel.parent()
         self._win.removeDockWidget(dockwidget)
+        dockwidget.setParent(None)
         mitem = self.dockwidget_to_toggler[dockwidget]
         self.pile_viewer.get_view().remove_panel_toggler(mitem)
         
