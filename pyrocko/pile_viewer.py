@@ -22,7 +22,6 @@ from PyQt4.QtSvg import *
 logger = logging.getLogger('pyrocko.pile_viewer')
 
 class Global:
-    sacflag = False
     appOnDemand = None
 
 class NSLC:
@@ -1315,10 +1314,6 @@ def MakePileOverviewClass(base):
             self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
             
             self.menu.addSeparator()
-    
-            self.menuitem_fuckup = QAction("Snuffler sucks! It can't do this and that...", self.menu)
-            self.menu.addAction(self.menuitem_fuckup)
-            self.connect( self.menuitem_fuckup, SIGNAL("triggered(bool)"), self.fuck )
     
             deltats = self.pile.get_deltats()
             if deltats:
@@ -2866,24 +2861,6 @@ def MakePileOverviewClass(base):
                 
             return clearit, hideit, error
         
-        def fuck(self):
-            import pysacio
-            
-            processed_traces = self.prepare_cutout(self.tmin,self.tmax)
-            sacdir = tempfile.mkdtemp(prefix='HERE_LIVES_SAC_')
-            os.chdir(sacdir)
-            
-            sys.stderr.write('\n\n --> Dumping SAC files to %s  <--\n\n\n' % sacdir)
-            
-            for trace in processed_traces:
-                # FIXME:
-                sactr = pysacio.from_mseed_trace(trace)
-                sactr.write('trace-%s-%s-%s-%s.sac' % trace.nslc_id)
-            
-            self.myclose()
-            Global.sacflag = True
-            
-            
     return PileOverview
 
 PileOverview = MakePileOverviewClass(QWidget)
@@ -3096,29 +3073,3 @@ def snuffle(traces=None, viewer_id='default'):
     if traces is not None:
         app.call('add_traces', traces, viewer_id)
     
-    
-def sac_exec():
-    import readline, subprocess, atexit
-    sac = subprocess.Popen(['sac'], stdin=subprocess.PIPE)
-    sac.stdin.write('read *.sac\n')
-    sac.stdin.flush()
-    
-    histfile = os.path.join(os.environ["HOME"], ".snuffler_sac_history")
-    try:
-        readline.read_history_file(histfile)
-    except IOError:
-        pass
-    
-    atexit.register(readline.write_history_file, histfile)
-    
-    while True:
-        try:
-            s = raw_input()
-        except EOFError:
-            break
-        
-        sac.stdin.write(s+"\n")
-        if s in ('q', 'quit', 'exit'): break
-        sac.stdin.flush()
-        
-    sac.stdin.close()

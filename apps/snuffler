@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 
-'''Effective MiniSEED trace viewer.'''
-
-# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
-#
-# This file is part of snuffler. For licensing information please see the file 
-# COPYING which is included with snuffler.
+'''Effective seismological trace viewer.'''
 
 import os, sys, signal, logging, time, re
 import numpy as num
@@ -436,9 +431,6 @@ def main(args):
     
     app = MySnuffler(args)
     app.exec_()
-    
-    if pyrocko.pile_viewer.Global.sacflag: pyrocko.pile_viewer.sac_exec()
-    sys.exit()
 
 if __name__=="__main__":
     main(sys.argv)
