@@ -472,7 +472,7 @@ class Snuffling:
                     else:
                         param_widget = ValControl()
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
-                    self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
+                    self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
                     self._param_controls[param.ident] = param_widget
                     layout.addWidget( param_widget, iparam, 0, 1, 3 )

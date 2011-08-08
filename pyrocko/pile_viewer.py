@@ -2459,7 +2459,6 @@ def MakePileOverviewClass(base):
             if (self.old_vec and 
                 self.old_vec[0] <= vec[0] and vec[1] <= self.old_vec[1] and
                 vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked())):
-                
                 logger.debug('Using cached traces')
                 processed_traces = self.old_processed_traces
                 
@@ -2583,18 +2582,12 @@ def MakePileOverviewClass(base):
             self.sortingmode_change_time = time.time()
             
         def lowpass_change(self, value, ignore=None):
-            if num.isfinite(value):
-                self.lowpass = value
-            else:
-                self.lowpass = None
+            self.lowpass = value
             self.passband_check()
             self.update()
             
         def highpass_change(self, value, ignore=None):
-            if num.isfinite(value):
-                self.highpass = value
-            else:
-                self.highpass = None
+            self.highpass = value
             self.passband_check()
             self.update()
     
@@ -2993,10 +2986,10 @@ class PileViewer(QFrame):
         self.gain_widget.setup('Gain', 0.001, 1000., 1., 2)
         self.rot_widget = LinValControl()
         self.rot_widget.setup('Rotate', -180., 180., 0., 3)
-        self.connect( self.lowpass_widget, SIGNAL("valchange(float,int)"), self.pile_overview.lowpass_change )
-        self.connect( self.highpass_widget, SIGNAL("valchange(float,int)"), self.pile_overview.highpass_change )
-        self.connect( self.gain_widget, SIGNAL("valchange(float,int)"), self.pile_overview.gain_change )
-        self.connect( self.rot_widget, SIGNAL("valchange(float,int)"), self.pile_overview.rot_change )
+        self.connect( self.lowpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.lowpass_change )
+        self.connect( self.highpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.highpass_change )
+        self.connect( self.gain_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.gain_change )
+        self.connect( self.rot_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.rot_change )
         
         layout.addWidget( self.highpass_widget, 1,0 )
         layout.addWidget( self.lowpass_widget, 2,0 )

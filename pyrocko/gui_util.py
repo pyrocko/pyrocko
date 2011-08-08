@@ -17,11 +17,13 @@ class MySlider(QSlider):
 
 class MyValueEdit(QLineEdit):
 
-    def __init__(self, *args):
-        apply(QLineEdit.__init__, (self,) + args)
+    def __init__(self, parent, low_is_none=False, high_is_none=False, *args):
+        QLineEdit.__init__(self, *args)
         self.value = 0.
         self.mi = 0.
         self.ma = 1.
+        self.low_is_none = low_is_none
+        self.high_is_none = high_is_none
         self.connect( self, SIGNAL("editingFinished()"), self.myEditingFinished )
         self.lock = False
         
@@ -37,9 +39,17 @@ class MyValueEdit(QLineEdit):
         
     def myEditingFinished(self):
         try:
-            value = float(str(self.text()).strip())
+            t = str(self.text()).strip()
+            if self.low_is_none and t in ('off', 'below'):
+                value = self.mi
+            elif self.high_is_none and t in ('off', 'above'):
+                value = self.ma
+            else:
+                value = float(t)
+
             if not (self.mi <= value <= self.ma):
                 raise Exception("out of range")
+
             if value != self.value:
                 self.value = value
                 self.lock = True
@@ -51,7 +61,20 @@ class MyValueEdit(QLineEdit):
         self.lock = False
         
     def adjust_text(self):
-        self.setText( ("%8.5g" % self.value).strip() )
+        t = ('%8.5g' % self.value).strip()
+        if self.low_is_none and self.value == self.mi:
+            if self.high_is_none:
+                t = 'below'
+            else:
+                t = 'off'
+
+        if self.high_is_none and self.value == self.ma:
+            if self.low_is_none:
+                t = 'above'
+            else:
+                t = 'off'
+
+        self.setText(t)
         
 class ValControl(QFrame):
 
@@ -59,10 +82,9 @@ class ValControl(QFrame):
         apply(QFrame.__init__, (self,) + args)
         self.layout = QHBoxLayout( self )
         self.layout.setMargin(0)
-        #self.layout.setSpacing(5)
         self.lname = QLabel( "name", self )
         self.lname.setMinimumWidth(120)
-        self.lvalue = MyValueEdit( self )
+        self.lvalue = MyValueEdit( self, low_is_none=low_is_none, high_is_none=high_is_none )
         self.lvalue.setFixedWidth(100)
         self.slider = MySlider(Qt.Horizontal, self)
         self.slider.setMaximum( 10000 )
@@ -76,7 +98,6 @@ class ValControl(QFrame):
         self.layout.addWidget( self.slider )
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
-        #self.setSizePolicy(QSizePolicy.Expanding,QSizePolicy.Fixed)
         self.connect( self.slider, SIGNAL("valueChanged(int)"),
                       self.slided )
         self.connect( self.lvalue, SIGNAL("edited(float)"),
@@ -89,14 +110,14 @@ class ValControl(QFrame):
                 
     def v2s(self, value):
         a = math.log(self.ma/self.mi) / 10000.
-        return math.log(value/self.mi) / a
+        return int(round(math.log(value/self.mi) / a))
     
     def setup(self, name, mi, ma, cur, ind):
         self.lname.setText( name )
         self.mi = mi
         self.ma = ma
         self.ind = ind
-        self.lvalue.setRange( mi, ma )
+        self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
         self.set_value(cur)
         
     def set_value(self, cur):
@@ -107,7 +128,10 @@ class ValControl(QFrame):
         self.slider.setValue( self.cursl )
         self.slider.blockSignals(False)
         self.lvalue.blockSignals(True)
-        self.lvalue.setValue( self.cur )
+        if self.cursl in (0, 10000):
+            self.lvalue.setValue( self.s2v(self.cursl) )
+        else:
+            self.lvalue.setValue( self.cur )
         self.lvalue.blockSignals(False)
         self.mute = False
         
@@ -132,23 +156,22 @@ class ValControl(QFrame):
                 self.slider.blockSignals(True)
                 self.slider.setValue( cursl )
                 self.slider.blockSignals(False)
+                self.cursl = cursl
             
             self.fire_valchange()
         
     def fire_valchange(self):
         if self.mute: return
         
+        cur = self.cur
+
         if self.low_is_none and self.cursl == 0:
-            cur = num.nan
-        else:
-            cur = self.cur
-            
+            cur = None
+
         if self.high_is_none and self.cursl == 10000:
-            cur = num.nan
-        else:
-            cur = self.cur
-                        
-        self.emit(SIGNAL("valchange(float,int)"), cur, int(self.ind) )
+            cur = None
+
+        self.emit(SIGNAL("valchange(PyQt_PyObject,int)"), cur, int(self.ind) )
         
 class LinValControl(ValControl):
     
@@ -156,5 +179,5 @@ class LinValControl(ValControl):
         return svalue/10000. * (self.ma-self.mi) + self.mi
                 
     def v2s(self, value):
-        return (value-self.mi)/(self.ma-self.mi) * 10000.
+        return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
