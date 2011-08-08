@@ -110,7 +110,7 @@ class SnufflingModule:
                 reload(self._module)
                 for snuffling in self._module.__snufflings__():
                     snuffling._path = self._path 
-                    self.add_snuffling(snuffling)
+                    self.add_snuffling(snuffling, reloaded=True)
                 
                 if len(self._snufflings) == len(settings):
                     for sett, snuf in zip(settings, self._snufflings):
@@ -124,9 +124,9 @@ class SnufflingModule:
         self._mtime = mtime
         sys.path[0:1] = []
     
-    def add_snuffling(self, snuffling):
+    def add_snuffling(self, snuffling, reloaded=False):
         self._snufflings.append(snuffling)
-        self._handler.add_snuffling(snuffling)
+        self._handler.add_snuffling(snuffling, reloaded=reloaded)
     
     def remove_snufflings(self):
         settings = []
@@ -199,7 +199,7 @@ class Snuffling:
         
         pass
     
-    def init_gui(self, viewer, panel_parent, menu_parent):
+    def init_gui(self, viewer, panel_parent, menu_parent, reloaded=False):
         '''Set parent viewer and hooks to add panel and menu entry.
         
         This method is called from the PileOverview object. Calls setup_gui().
@@ -209,9 +209,9 @@ class Snuffling:
         self._panel_parent = panel_parent
         self._menu_parent = menu_parent
         
-        self.setup_gui()
+        self.setup_gui(reloaded=reloaded)
         
-    def setup_gui(self):
+    def setup_gui(self, reloaded=False):
         '''Create and add gui elements to the viewer.
         
         This method is initially called from init_gui(). It is also called,
@@ -222,7 +222,7 @@ class Snuffling:
         if self._panel_parent is not None:
             self._panel = self.make_panel(self._panel_parent)
             if self._panel:
-                self._panel_parent.add_panel(self.get_name(), self._panel)
+                self._panel_parent.add_panel(self.get_name(), self._panel, reloaded)
        
         if self._menu_parent is not None:
             self._menuitem = self.make_menuitem(self._menu_parent)

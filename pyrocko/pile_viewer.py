@@ -1554,8 +1554,8 @@ def MakePileOverviewClass(base):
         def get_panel_parent(self):
             return self.panel_parent
 
-        def add_snuffling(self, snuffling):
-            snuffling.init_gui(self, self.get_panel_parent(), self)
+        def add_snuffling(self, snuffling, reloaded=False):
+            snuffling.init_gui(self, self.get_panel_parent(), self, reloaded=reloaded)
             self.update()
             
         def remove_snuffling(self, snuffling):
