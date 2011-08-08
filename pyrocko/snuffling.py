@@ -150,6 +150,9 @@ class UserCancelled(Exception):
     '''This exception is raised, when the user has cancelled a snuffling dialog.'''
     pass
 
+class SnufflingRunFailed(Exception):
+    '''This exception is raised, when Snuffling.fail() is called from Snuffling.run().'''
+
 class Snuffling:
     '''Base class for user snufflings.
     
@@ -264,6 +267,7 @@ class Snuffling:
         box = QMessageBox(self.get_viewer())
         box.setText(reason)
         box.exec_()
+        raise SnufflingRunFailed(reason) 
     
     def set_live_update(self, live_update):
         '''Enable/disable live updating.
