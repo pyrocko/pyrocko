@@ -114,6 +114,30 @@ class Event:
             file.write('catalog = %s\n' % self.catalog)
 
     @staticmethod
+    def unique(events, deltat=10., group_cmp=(lambda a,b: cmp(a.catalog, b.catalog))):
+        events = list(events)
+        groups = []
+        for ia,a in enumerate(events):
+            groups.append([])
+            haveit = False
+            for ib,b in enumerate(events[:ia]):
+                if abs(b.time - a.time) < deltat:
+                    groups[ib].append(a)
+                    haveit = True
+                    break
+
+            if not haveit:
+                groups[ia].append(a)
+        
+        events = []
+        for group in groups:
+            if group:
+                group.sort(group_cmp)
+                events.append(group[-1]) 
+        
+        return events
+
+    @staticmethod
     def dump_catalog(events, filename):
         file = open(filename, 'w')
         try:
