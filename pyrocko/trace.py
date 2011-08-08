@@ -534,6 +534,14 @@ class AnalogFilterResponse(FrequencyResponse):
     def evaluate(self, freqs):
         return signal.freqs(self._b, self._a, freqs)[1]
 
+class MultiplyResponse(FrequencyResponse):
+    def __init__(self, a, b):
+        self._a = a
+        self._b = b
+
+    def evaluate(self, freqs):
+        return self._a.evaluate(freqs) * self._b.evaluate(freqs)
+
 class NoData(Exception):
     pass
 
