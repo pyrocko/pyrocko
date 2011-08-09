@@ -150,8 +150,8 @@ class UserCancelled(Exception):
     '''This exception is raised, when the user has cancelled a snuffling dialog.'''
     pass
 
-class SnufflingRunFailed(Exception):
-    '''This exception is raised, when Snuffling.fail() is called from Snuffling.run().'''
+class SnufflingCallFailed(Exception):
+    '''This exception is raised, when Snuffling.fail() is called from Snuffling.call().'''
 
 class Snuffling:
     '''Base class for user snufflings.
@@ -267,7 +267,7 @@ class Snuffling:
         box = QMessageBox(self.get_viewer())
         box.setText(reason)
         box.exec_()
-        raise SnufflingRunFailed(reason) 
+        raise SnufflingCallFailed(reason) 
     
     def set_live_update(self, live_update):
         '''Enable/disable live updating.
@@ -585,7 +585,7 @@ class Snuffling:
         param = self.get_parameters()[iparam]
         self.set_parameter(param.ident, value)
         if self._live_update:
-            self.call()
+            self.check_call()
             self.get_viewer().update()
         
 
@@ -594,7 +594,7 @@ class Snuffling:
 
         self.set_parameter(ident, state)
         if self._live_update:
-            self.call()
+            self.check_call()
             self.get_viewer().update()
 
     def menuitem_triggered(self, arg):
@@ -602,7 +602,7 @@ class Snuffling:
         
         The default implementation calls the snuffling's call() method and triggers
         an update on the viewer widget.'''
-        self.call()
+        self.check_call()
         self.get_viewer().update()
         
     def call_button_triggered(self):
@@ -610,7 +610,7 @@ class Snuffling:
         
         The default implementation calls the snuffling's call() method and triggers
         an update on the viewer widget.'''
-        self.call()
+        self.check_call()
         self.get_viewer().update()
         
     def clear_button_triggered(self):
@@ -674,7 +674,13 @@ class Snuffling:
         
         self._tickets = []
         self._markers = []
-    
+   
+    def check_call(self):
+        try:
+            self.call()
+        except SnufflingCallFailed, e:
+            logger.error('%s: %s' % (self._name, str(e)))
+
     def call(self):
         '''Main work routine of the snuffling.
         
