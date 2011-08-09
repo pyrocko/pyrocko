@@ -30,7 +30,7 @@ class Param:
         self.minimum = minimum
         self.maximum = maximum
 
-class Switch(Param):
+class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
     checkbox for such a switch.'''
 
@@ -38,6 +38,13 @@ class Switch(Param):
         self.name = name
         self.ident = ident
         self.default = default
+
+class Choice:
+    def __init__(self, name, ident, default, choices):
+        self.name = name
+        self.ident = ident
+        self.default = default
+        self.choices = choices
 
 class MyScrollArea(QScrollArea):
 
@@ -61,6 +68,34 @@ class SwitchControl(QCheckBox):
         self.blockSignals(True)
         self.setChecked(state)
         self.blockSignals(False)
+
+class ChoiceControl(QFrame):
+    def __init__(self, ident, default, choices, name, *args):
+        QFrame.__init__(self, *args)
+        self.label = QLabel(name, self)
+        self.label.setMinimumWidth(120)
+        self.cbox = QComboBox(self)
+        self.layout = QHBoxLayout(self)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.cbox)
+        
+        self.ident = ident
+        self.choices = choices
+        for ichoice, choice in enumerate(choices):
+            self.cbox.addItem(QString(choice))
+        
+        self.set_value(default)
+        self.connect(self.cbox, SIGNAL('activated(int)'), self.choosen)
+        
+    def choosen(self, i):
+        self.emit(SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.ident, self.choices[i])
+
+    def set_value(self, v):
+        self.cbox.blockSignals(True)
+        for i, choice in enumerate(self.choices):
+            if choice == v:
+                self.cbox.setCurrentIndex(i)
+        self.cbox.blockSignals(False)
 
 class BrokenSnufflingModule(Exception):
     pass
@@ -466,7 +501,7 @@ class Snuffling:
             irow = 0
             have_switches = False
             for iparam, param in enumerate(params):
-                if not isinstance(param, Switch):
+                if isinstance(param, Param):
                     if param.minimum <= 0.0:
                         param_widget = LinValControl()
                     else:
@@ -475,9 +510,15 @@ class Snuffling:
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
                     self._param_controls[param.ident] = param_widget
-                    layout.addWidget( param_widget, iparam, 0, 1, 3 )
+                    layout.addWidget( param_widget, irow, 0, 1, 3 )
                     irow += 1
-                else:
+                elif isinstance(param, Choice):
+                    param_widget = ChoiceControl(param.ident, param.default, param.choices, param.name)
+                    self.get_viewer().connect( param_widget, SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.choose_on_snuffling_panel )
+                    self._param_controls[param.ident] = param_widget
+                    layout.addWidget( param_widget, irow, 0, 1, 3 )
+                    irow += 1
+                elif isinstance(param, Switch):
                     have_switches = True
 
             if have_switches:
@@ -591,6 +632,14 @@ class Snuffling:
 
     def switch_on_snuffling_panel(self, ident, state):
         '''Called when the user has toggled a switchable parameter.'''
+
+        self.set_parameter(ident, state)
+        if self._live_update:
+            self.check_call()
+            self.get_viewer().update()
+
+    def choose_on_snuffling_panel(self, ident, state):
+        '''Called when the user has made a choice about a choosable parameter.'''
 
         self.set_parameter(ident, state)
         if self._live_update:
