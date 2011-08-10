@@ -830,8 +830,12 @@ class Marker(object):
                 p.setBrush(QColor(*color))
                 drawtriangles(self.tmin)
 
+    def match_nslc(self, nslc):
+        patterns = [ '.'.join(x) for x in self.nslc_ids ]
+        return pyrocko.util.match_nslc(patterns, nslc)
+
     def draw_trace(self, p, trace, time_projection, track_projection, gain, outline_label=False):
-        if self.nslc_ids and trace.nslc_id not in self.nslc_ids: return
+        if self.nslc_ids and not self.match_nslc(trace.nslc_id): return
         
         color = self.select_color(self.color_b)
         pen = QPen(QColor(*color))
