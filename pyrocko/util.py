@@ -1,6 +1,6 @@
 '''Utility functions for pyrocko.'''
 
-import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl
+import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex
 from scipy import signal
 from os.path import join as pjoin
 import config
@@ -661,5 +661,57 @@ class Sole(object):
                 os.unlink(self._pid_path)
             except:
                 pass
+
+
+re_escapequotes = re.compile(r"(['\\])")
+def escapequotes(s):
+    return re_escapequotes(r"\\\1", s)
+
+class TableWriter:
+    def __init__(self, f):
+        self._f = f
+
+    def writerow(self, row, minfieldwidths=None):
+        out = []
+        
+        for i, x in enumerate(row):
+            w = 0
+            if minfieldwidths and i < len(minfieldwidths):
+                w = minfieldwidths[i]
+            
+            if isinstance(x, str):
+                if re.search(r"\s|'", x):
+                    x = "'%s'" % escapequotes(x)
+
+                x = x.ljust(w)
+            else:
+                x = str(x).rjust(w)
+            
+            out.append(x)
+
+        self._f.write( ' '.join(out).rstrip() + '\n')
+
+class TableReader:
+    def __init__(self, f):
+        self._f = f
+        self.eof = False
+
+    def readrow(self):
+        line = self._f.readline()
+        if not line:
+            self.eof = True
+            return []
+        s = shlex.shlex(line, posix=True)
+        s.whitespace_split = True
+        s.whitespace = ' \t\n\r\f\v' # compatible with re's \s
+        row = [] 
+        while True:
+            x = s.get_token()
+            if x is None:
+                break
+            row.append(x)
+            
+        return row
+
 
             

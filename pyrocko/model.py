@@ -110,6 +110,32 @@ class Event:
             file.write('depth = %g\n' % self.depth)
         if self.region is not None:
             file.write('region = %s\n' % self.region)
+        if self.catalog is not None:
+            file.write('catalog = %s\n' % self.catalog)
+
+    @staticmethod
+    def unique(events, deltat=10., group_cmp=(lambda a,b: cmp(a.catalog, b.catalog))):
+        events = list(events)
+        groups = []
+        for ia,a in enumerate(events):
+            groups.append([])
+            haveit = False
+            for ib,b in enumerate(events[:ia]):
+                if abs(b.time - a.time) < deltat:
+                    groups[ib].append(a)
+                    haveit = True
+                    break
+
+            if not haveit:
+                groups[ia].append(a)
+        
+        events = []
+        for group in groups:
+            if group:
+                group.sort(group_cmp)
+                events.append(group[-1]) 
+        
+        return events
 
     @staticmethod
     def dump_catalog(events, filename):
@@ -143,7 +169,7 @@ class Event:
                 toks = line.split(' = ',1)
                 if len(toks) == 2:
                     k,v = toks[0].strip(), toks[1].strip()
-                    if k in ('name', 'region'):
+                    if k in ('name', 'region', 'catalog'):
                         d[k] = v
                     if k in ('latitude', 'longitude', 'magnitude', 'depth'):
                         d[k] = float(v)
@@ -170,6 +196,7 @@ class Event:
         self.depth = d.get('depth', None)
         self.magnitude = d.get('magnitude', None)
         self.region = d.get('region', None)
+        self.catalog = d.get('catalog', None)
 
     @staticmethod
     def load_catalog(filename):
@@ -188,6 +215,11 @@ class Event:
             pass
         
         file.close()
+
+    def get_hash(self):
+        e = self
+        return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
+
 
 class Station:
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):

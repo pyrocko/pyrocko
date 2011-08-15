@@ -12,7 +12,7 @@ from PyQt4.QtGui import *
 
 import pile
 
-from gui_util import ValControl
+from gui_util import ValControl, LinValControl
 
 logger = logging.getLogger('pyrocko.snufflings')
 
@@ -30,7 +30,7 @@ class Param:
         self.minimum = minimum
         self.maximum = maximum
 
-class Switch(Param):
+class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
     checkbox for such a switch.'''
 
@@ -38,6 +38,21 @@ class Switch(Param):
         self.name = name
         self.ident = ident
         self.default = default
+
+class Choice:
+    def __init__(self, name, ident, default, choices):
+        self.name = name
+        self.ident = ident
+        self.default = default
+        self.choices = choices
+
+class MyScrollArea(QScrollArea):
+
+    def sizeHint(self):
+        s = QSize()
+        s.setWidth(self.widget().sizeHint().width())
+        s.setHeight(30)
+        return s
 
 class SwitchControl(QCheckBox):
     def __init__(self, ident, default, *args):
@@ -53,6 +68,34 @@ class SwitchControl(QCheckBox):
         self.blockSignals(True)
         self.setChecked(state)
         self.blockSignals(False)
+
+class ChoiceControl(QFrame):
+    def __init__(self, ident, default, choices, name, *args):
+        QFrame.__init__(self, *args)
+        self.label = QLabel(name, self)
+        self.label.setMinimumWidth(120)
+        self.cbox = QComboBox(self)
+        self.layout = QHBoxLayout(self)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.cbox)
+        
+        self.ident = ident
+        self.choices = choices
+        for ichoice, choice in enumerate(choices):
+            self.cbox.addItem(QString(choice))
+        
+        self.set_value(default)
+        self.connect(self.cbox, SIGNAL('activated(int)'), self.choosen)
+        
+    def choosen(self, i):
+        self.emit(SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.ident, self.choices[i])
+
+    def set_value(self, v):
+        self.cbox.blockSignals(True)
+        for i, choice in enumerate(self.choices):
+            if choice == v:
+                self.cbox.setCurrentIndex(i)
+        self.cbox.blockSignals(False)
 
 class BrokenSnufflingModule(Exception):
     pass
@@ -102,7 +145,7 @@ class SnufflingModule:
                 reload(self._module)
                 for snuffling in self._module.__snufflings__():
                     snuffling._path = self._path 
-                    self.add_snuffling(snuffling)
+                    self.add_snuffling(snuffling, reloaded=True)
                 
                 if len(self._snufflings) == len(settings):
                     for sett, snuf in zip(settings, self._snufflings):
@@ -116,9 +159,9 @@ class SnufflingModule:
         self._mtime = mtime
         sys.path[0:1] = []
     
-    def add_snuffling(self, snuffling):
+    def add_snuffling(self, snuffling, reloaded=False):
         self._snufflings.append(snuffling)
-        self._handler.add_snuffling(snuffling)
+        self._handler.add_snuffling(snuffling, reloaded=reloaded)
     
     def remove_snufflings(self):
         settings = []
@@ -141,6 +184,9 @@ class NoTracesSelected(Exception):
 class UserCancelled(Exception):
     '''This exception is raised, when the user has cancelled a snuffling dialog.'''
     pass
+
+class SnufflingCallFailed(Exception):
+    '''This exception is raised, when Snuffling.fail() is called from Snuffling.call().'''
 
 class Snuffling:
     '''Base class for user snufflings.
@@ -166,9 +212,7 @@ class Snuffling:
         self._delete_menuitem = None
         
         self._panel_parent = None
-        self._panel_hook = None
         self._menu_parent = None
-        self._menu_hook = None
         
         self._panel = None
         self._menuitem = None
@@ -190,7 +234,7 @@ class Snuffling:
         
         pass
     
-    def init_gui(self, viewer, panel_parent, panel_hook, menu_parent, menu_hook):
+    def init_gui(self, viewer, panel_parent, menu_parent, reloaded=False):
         '''Set parent viewer and hooks to add panel and menu entry.
         
         This method is called from the PileOverview object. Calls setup_gui().
@@ -198,13 +242,11 @@ class Snuffling:
         
         self._viewer = viewer
         self._panel_parent = panel_parent
-        self._panel_hook = panel_hook
         self._menu_parent = menu_parent
-        self._menu_hook = menu_hook
         
-        self.setup_gui()
+        self.setup_gui(reloaded=reloaded)
         
-    def setup_gui(self):
+    def setup_gui(self, reloaded=False):
         '''Create and add gui elements to the viewer.
         
         This method is initially called from init_gui(). It is also called,
@@ -212,15 +254,15 @@ class Snuffling:
         has been changed.
         '''
         
-        self._delete_panel = None
-        if self._panel_hook is not None:
+        if self._panel_parent is not None:
             self._panel = self.make_panel(self._panel_parent)
             if self._panel:
-                self._delete_panel = self._panel_hook(self.get_name(), self._panel)
-        
-        self._menuitem = self.make_menuitem(self._menu_parent)
-        if self._menuitem:
-            self._delete_menuitem = self._menu_hook(self._menuitem)
+                self._panel_parent.add_panel(self.get_name(), self._panel, reloaded)
+       
+        if self._menu_parent is not None:
+            self._menuitem = self.make_menuitem(self._menu_parent)
+            if self._menuitem:
+                self._menu_parent.add_snuffling_menuitem(self._menuitem)
         
     def delete_gui(self):
         '''Remove the gui elements of the snuffling.
@@ -231,12 +273,12 @@ class Snuffling:
         
         self.cleanup()
         
-        if self._delete_panel is not None:
-            self._delete_panel()
+        if self._panel is not None:
+            self._panel_parent.remove_panel(self._panel)
             self._panel = None
             
-        if self._delete_menuitem is not None:
-            self._delete_menuitem()
+        if self._menuitem is not None:
+            self._menu_parent.remove_snuffling_menuitem(self._menuitem)
             self._menuitem = None
             
     def set_name(self, name):
@@ -260,6 +302,7 @@ class Snuffling:
         box = QMessageBox(self.get_viewer())
         box.setText(reason)
         box.exec_()
+        raise SnufflingCallFailed(reason) 
     
     def set_live_update(self, live_update):
         '''Enable/disable live updating.
@@ -447,38 +490,69 @@ class Snuffling:
     
         params = self.get_parameters()
         self._param_controls = {}
-        if params:                
-            frame = QFrame(parent)
+        if params:
+            sarea = MyScrollArea(parent.get_panel_parent_widget())
+            frame = QFrame(sarea)
+            sarea.setWidget(frame)
+            sarea.setWidgetResizable(True)
             layout = QGridLayout()
             frame.setLayout( layout )
-                        
+            
+            irow = 0
+            have_switches = False
             for iparam, param in enumerate(params):
-                if isinstance(param, Switch):
-                    param_widget = SwitchControl(param.ident, param.default, param.name)
-                    self.get_viewer().connect( param_widget, SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.switch_on_snuffling_panel )
-                else:
-                    param_widget = ValControl()
+                if isinstance(param, Param):
+                    if param.minimum <= 0.0:
+                        param_widget = LinValControl()
+                    else:
+                        param_widget = ValControl()
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
-                    self.get_viewer().connect( param_widget, SIGNAL("valchange(float,int)"), self.modified_snuffling_panel )
+                    self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
-                self._param_controls[param.ident] = param_widget
-                layout.addWidget( param_widget, iparam, 0, 1, 3 )
-        
+                    self._param_controls[param.ident] = param_widget
+                    layout.addWidget( param_widget, irow, 0, 1, 3 )
+                    irow += 1
+                elif isinstance(param, Choice):
+                    param_widget = ChoiceControl(param.ident, param.default, param.choices, param.name)
+                    self.get_viewer().connect( param_widget, SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.choose_on_snuffling_panel )
+                    self._param_controls[param.ident] = param_widget
+                    layout.addWidget( param_widget, irow, 0, 1, 3 )
+                    irow += 1
+                elif isinstance(param, Switch):
+                    have_switches = True
+
+            if have_switches:
+
+                swframe = QFrame(sarea)
+                swlayout = QGridLayout()
+                swframe.setLayout( swlayout )
+                isw = 0
+                for iparam, param in enumerate(params):
+                    if isinstance(param, Switch):
+                        param_widget = SwitchControl(param.ident, param.default, param.name)
+                        self.get_viewer().connect( param_widget, SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.switch_on_snuffling_panel )
+                        self._param_controls[param.ident] = param_widget
+                        swlayout.addWidget( param_widget, isw/10, isw%10 )
+                        isw += 1
+                
+                layout.addWidget( swframe, irow, 0, 1, 3 )
+                irow += 1
+
             live_update_checkbox = QCheckBox('Auto-Run')
             if self._live_update:
                 live_update_checkbox.setCheckState(Qt.Checked)
-            layout.addWidget( live_update_checkbox, len(params), 0 )
+            layout.addWidget( live_update_checkbox, irow, 0 )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
         
             clear_button = QPushButton('Clear')
-            layout.addWidget( clear_button, len(params), 1 )
+            layout.addWidget( clear_button, irow, 1 )
             self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
         
             call_button = QPushButton('Run')
-            layout.addWidget( call_button, len(params), 2 )
+            layout.addWidget( call_button, irow, 2 )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
 
-            return frame
+            return sarea 
             
         else:
             return None
@@ -490,7 +564,7 @@ class Snuffling:
         entry is wanted.
         '''
         
-        item = QAction(self.get_name(), parent)
+        item = QAction(self.get_name(), None)
         self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
         return item
     
@@ -552,7 +626,7 @@ class Snuffling:
         param = self.get_parameters()[iparam]
         self.set_parameter(param.ident, value)
         if self._live_update:
-            self.call()
+            self.check_call()
             self.get_viewer().update()
         
 
@@ -561,7 +635,15 @@ class Snuffling:
 
         self.set_parameter(ident, state)
         if self._live_update:
-            self.call()
+            self.check_call()
+            self.get_viewer().update()
+
+    def choose_on_snuffling_panel(self, ident, state):
+        '''Called when the user has made a choice about a choosable parameter.'''
+
+        self.set_parameter(ident, state)
+        if self._live_update:
+            self.check_call()
             self.get_viewer().update()
 
     def menuitem_triggered(self, arg):
@@ -569,7 +651,7 @@ class Snuffling:
         
         The default implementation calls the snuffling's call() method and triggers
         an update on the viewer widget.'''
-        self.call()
+        self.check_call()
         self.get_viewer().update()
         
     def call_button_triggered(self):
@@ -577,7 +659,7 @@ class Snuffling:
         
         The default implementation calls the snuffling's call() method and triggers
         an update on the viewer widget.'''
-        self.call()
+        self.check_call()
         self.get_viewer().update()
         
     def clear_button_triggered(self):
@@ -641,7 +723,13 @@ class Snuffling:
         
         self._tickets = []
         self._markers = []
-    
+   
+    def check_call(self):
+        try:
+            self.call()
+        except SnufflingCallFailed, e:
+            logger.error('%s: %s' % (self._name, str(e)))
+
     def call(self):
         '''Main work routine of the snuffling.
         

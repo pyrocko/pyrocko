@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 
-'''Effective MiniSEED trace viewer.'''
-
-# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
-#
-# This file is part of snuffler. For licensing information please see the file 
-# COPYING which is included with snuffler.
+'''Effective seismological trace viewer.'''
 
 import os, sys, signal, logging, time, re
 import numpy as num
@@ -179,13 +174,23 @@ class ProgressiveLoader(QThread):
             yield tfiles
      
      
+class MyMainWindow(QMainWindow):
+
+    def __init__(self, app, *args):
+        QMainWindow.__init__(self, *args)
+        self.app = app
+
+    def keyPressEvent(self, ev):
+        self.app.pile_viewer.get_view().keyPressEvent(ev)
+
+
 class MySnuffler(QApplication):
     
     def __init__(self, *args):
         apply(QApplication.__init__, (self,) + args)
         
-        self._dockwidgets = []
-        
+        self.dockwidget_to_toggler = {}
+
         usage = '''usage: %prog [options] waveforms ...'''
         
         parser = OptionParser(usage=usage)
@@ -198,6 +203,8 @@ class MySnuffler(QApplication):
                 help='read station information from file STATIONS')
         parser.add_option('--event', '--events', dest='event_fns', action='append', default=[], metavar='EVENT',
                 help='read event information from file EVENT')
+        parser.add_option('--markers', dest='marker_fns', action='append', default=[], metavar='MARKERS',
+                help='read marker information file MARKERS')
         parser.add_option('--follow', dest='follow', metavar='N',
                 help='follow real time with a window of N seconds')
         parser.add_option('--progressive', dest='progressive', action='store_true', default=False,
@@ -300,11 +307,11 @@ class MySnuffler(QApplication):
         if options.server:
             self.pile_server = ServerThread(pile)
         
-        self._win = QMainWindow()
+        self._win = MyMainWindow(self)
         self._win.setWindowTitle( "Snuffler" )        
 
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
-            pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl, add_panel_hook=self.add_panel)
+            pile, ntracks_shown_max=options.ntracks, use_opengl=options.opengl, panel_parent=self)
         
         for stations_fn in options.station_fns:
             stations = pyrocko.model.load_stations(stations_fn)
@@ -318,9 +325,14 @@ class MySnuffler(QApplication):
                     self.pile_viewer.get_view().set_origin(ev)
                     first = False
 
+        for marker_fn in options.marker_fns:
+            self.pile_viewer.get_view().add_markers(pyrocko.pile_viewer.Marker.load_markers(marker_fn))
+
         self._win.setCentralWidget( self.pile_viewer )
         
-        self.add_panel('Main Controls', self.pile_viewer.controls())
+        self.pile_viewer.setup_snufflings()
+
+        self.add_panel('Main Controls', self.pile_viewer.controls(), visible=True)
         self._win.resize(1024, 768)       
         self._win.show()
 
@@ -374,22 +386,47 @@ class MySnuffler(QApplication):
         if update:
             self.pile_viewer.update_contents()
 
-    def add_panel(self, name, panel):
-        dockwidget = QDockWidget(name)
+    def dockwidgets(self):
+        return [ w for w in self._win.findChildren(QDockWidget) if not w.isFloating() ]
+
+    def get_panel_parent_widget(self):
+        return self._win
+
+    def add_panel(self, name, panel, visible=False):
+        dws = self.dockwidgets()
+        dockwidget = QDockWidget(name, self._win)
         dockwidget.setWidget(panel)
+        panel.setParent(dockwidget)
         self._win.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
+
+        if dws:
+            self._win.tabifyDockWidget(dws[-1], dockwidget)
         
-        if self._dockwidgets:
-            self._win.tabifyDockWidget(self._dockwidgets[-1], dockwidget)
+        self.toggle_panel(dockwidget, visible)
+
+        mitem = QAction(name, None)
         
-        self._dockwidgets.append(dockwidget)
-        dockwidget.raise_()
-        
-        def delete_panel():
-            self._win.removeDockWidget(dockwidget)
-            self._dockwidgets.remove(dockwidget)
-        
-        return delete_panel
+        def toggle_panel(checked):
+            self.toggle_panel(dockwidget, True)
+
+        self.connect( mitem, SIGNAL('triggered(bool)'), toggle_panel)
+        self.pile_viewer.get_view().add_panel_toggler(mitem)
+
+        self.dockwidget_to_toggler[dockwidget] = mitem
+
+
+    def toggle_panel(self, dockwidget, visible):
+        dockwidget.setVisible(visible)
+        if visible:
+            dockwidget.setFocus()
+            dockwidget.raise_()
+
+    def remove_panel(self, panel):
+        dockwidget = panel.parent()
+        self._win.removeDockWidget(dockwidget)
+        dockwidget.setParent(None)
+        mitem = self.dockwidget_to_toggler[dockwidget]
+        self.pile_viewer.get_view().remove_panel_toggler(mitem)
         
     def myquit(self, *args):
         for source in self._sources:
@@ -404,9 +441,6 @@ def main(args):
     
     app = MySnuffler(args)
     app.exec_()
-    
-    if pyrocko.pile_viewer.Global.sacflag: pyrocko.pile_viewer.sac_exec()
-    sys.exit()
 
 if __name__=="__main__":
     main(sys.argv)

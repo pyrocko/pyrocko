@@ -87,7 +87,7 @@ class MomentTensorEditor(QFrame):
             widget.setup(name, vmin, vmax, vcur, ind)
             widgets.append(widget)
             layout.addWidget(widget, i, 0)
-            self.connect( widget, SIGNAL('valchange(float,int)'), self.valchange )
+            self.connect( widget, SIGNAL('valchange(PyQt_PyObject,int)'), self.valchange )
             
         self.widgets = widgets
         self.adjust_values()

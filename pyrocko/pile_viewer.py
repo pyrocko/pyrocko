@@ -1,37 +1,15 @@
 #!/usr/bin/env python
 
-'''Effective MiniSEED trace viewer.'''
+import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, shlex 
 
-
-# Copyright (c) 2009, Sebastian Heimann <sebastian.heimann@zmaw.de>
-#
-# This file is part of snuffler. For licensing information please see the file 
-# COPYING which is included with snuffler.
-
-import os
-import sys
-import time
-import calendar
-import datetime
-import signal
-import re
-import math
-import numpy as num
-from itertools import izip
-import scipy.stats
-import tempfile
-import logging
-import traceback
 from optparse import OptionParser
+import numpy as num 
+from itertools import izip
 
-import pyrocko.model
-import pyrocko.pile
-import pyrocko.shadow_pile
-import pyrocko.trace
-import pyrocko.util
-import pyrocko.plot
-import pyrocko.snuffling
-import pyrocko.snufflings
+import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace, pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
+
+from pyrocko.util import TableWriter, TableReader
+
 from pyrocko.nano import Nano
 from pyrocko.gui_util import ValControl, LinValControl
 
@@ -40,10 +18,10 @@ from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
 
+
 logger = logging.getLogger('pyrocko.pile_viewer')
 
 class Global:
-    sacflag = False
     appOnDemand = None
 
 class NSLC:
@@ -79,6 +57,21 @@ def deg_float_or_none(x):
         return None
     else:
         return deg_float(x)
+
+def str_to_float_or_none(s):
+    if s == 'None':
+        return None
+    else:
+        return float(s)
+
+def str_to_str_or_none(s):
+    if s == 'None':
+        return None
+    else:
+        return s
+
+def str_to_bool(s):
+    return s.lower() in ('true', 't', '1')
 
 class sector_int(int):
     
@@ -628,25 +621,66 @@ class Marker(object):
             fail()
     
         return Marker(nslc_ids, tmin, tmax, kind=kind)
-    
+
+    @staticmethod
+    def save_markers(markers, fn):
+
+        f = open(fn,'w')
+        f.write('# Snuffler Markers File Version 0.2\n')
+        writer = TableWriter(f)
+        for marker in markers:
+            a = marker.get_attributes()
+            w = marker.get_attribute_widths()
+            row = []
+            for x in a:
+                if x is None or x == '':
+                    row.append('None')
+                else:
+                    row.append(x)
+
+            writer.writerow(row, w)
+
+        f.close()
+
     @staticmethod
     def load_markers(fn):
         markers = []
         f = open(fn, 'r')
-        for iline, line in enumerate(f):
-            sline = line.strip()
-            if not sline or sline.startswith('#'):
-                continue
-            try:
-                m = Marker.from_string(sline)
-                markers.append(m)
-                
-            except MarkerParseError:
-                logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
-                
-        f.close()
+        line  = f.readline()
+        if not line.startswith('# Snuffler Markers File Version'):
+            f.seek(0)
+            for iline, line in enumerate(f):
+                sline = line.strip()
+                if not sline or sline.startswith('#'):
+                    continue
+                try:
+                    m = Marker.from_string(sline)
+                    markers.append(m)
+                    
+                except MarkerParseError:
+                    logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
+                    
+            f.close()
+        
+        elif line.startswith('# Snuffler Markers File Version 0.2'):
+            reader = TableReader(f)
+            while not reader.eof:
+                row = reader.readrow()
+                if not row:
+                    continue
+                if row[0] == 'event:':
+                    marker = EventMarker.from_attributes(row)
+                elif row[0] == 'phase:':
+                    marker = PhaseMarker.from_attributes(row)
+                else:
+                    marker = Marker.from_attributes(row)
+                 
+                markers.append(marker)
+        else:
+            logger.warn('Unsupported Markers File Version')
+        
         return markers
-            
+
     def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
         c = pyrocko.plot.color
@@ -691,13 +725,55 @@ class Marker(object):
         self.selected = state
         
     def __str__(self):
-        traces = ', '.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
+        traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
         st = myctime
         if self.tmin == self.tmax:
             return '%s %i %s' % (st(self.tmin), self.kind, traces)
         else:
             return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
-        
+
+    def get_attributes(self):
+        traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
+        st = pyrocko.util.time_to_str
+        vals = []
+        vals.extend(st(self.tmin).split())
+        if self.tmin != self.tmax:    
+            vals.extend(st(self.tmax).split())
+            vals.append(self.tmax-self.tmin)
+
+        vals.append(self.kind)
+        vals.append(traces)
+        return vals
+
+    def get_attribute_widths(self):
+        ws = [ 10, 12 ]
+        if self.tmin != self.tmax:
+            ws.extend( [ 10, 12, 12 ] )
+        ws.extend( [ 2, 15 ] )
+        return ws
+
+    @staticmethod
+    def parse_attributes(vals):
+        tmin = pyrocko.util.str_to_time( vals[0] + ' ' + vals[1] )
+        i = 2
+        tmax = tmin
+        if len(vals) == 7:
+            tmax = pyrocko.util.str_to_time( vals[2] + ' ' + vals[3] )
+            i = 5
+
+        kind = int(vals[i])
+        traces = vals[i+1]
+        if traces == 'None':
+            nslc_ids = []
+        else:
+            nslc_ids = tuple([ tuple(nslc_id.split('.')) for nslc_id in traces.split(',') ])
+
+        return nslc_ids, tmin, tmax, kind
+
+    @staticmethod
+    def from_attributes(vals):
+        return Marker(*Marker.parse_attributes(vals))
+
     def select_color(self, colorlist):
         cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
         if self.selected:
@@ -754,8 +830,12 @@ class Marker(object):
                 p.setBrush(QColor(*color))
                 drawtriangles(self.tmin)
 
+    def match_nslc(self, nslc):
+        patterns = [ '.'.join(x) for x in self.nslc_ids ]
+        return pyrocko.util.match_nslc(patterns, nslc)
+
     def draw_trace(self, p, trace, time_projection, track_projection, gain, outline_label=False):
-        if self.nslc_ids and trace.nslc_id not in self.nslc_ids: return
+        if self.nslc_ids and not self.match_nslc(trace.nslc_id): return
         
         color = self.select_color(self.color_b)
         pen = QPen(QColor(*color))
@@ -846,10 +926,17 @@ class Marker(object):
         self.nslc_ids = []
 
 class EventMarker(Marker):
-    def __init__(self, event):
-        Marker.__init__(self, [], event.time, event.time)
+    def __init__(self, event, kind=0, event_hash=None):
+        Marker.__init__(self, [], event.time, event.time, kind)
         self._event = event
         self._active = False
+        self._event_hash = event_hash
+
+    def get_event_hash(self):
+        if self._event_hash is not None:
+            return self._event_hash
+        else:
+            self._event.get_hash()
 
     def set_active(self, active):
         self._active = active
@@ -858,8 +945,6 @@ class EventMarker(Marker):
       
         Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
         
-        
-
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
         t = []
@@ -884,12 +969,38 @@ class EventMarker(Marker):
 
     def draw_trace(self, p, trace, time_projection, track_projection, gain):
         pass
+    
+    def get_attributes(self):
+        attributes = [ 'event:' ]
+        attributes.extend(Marker.get_attributes(self))
+        del attributes[-1]
+        e = self._event
+        attributes.extend([e.get_hash(), e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region ])
+        return attributes
+
+    def get_attribute_widths(self):
+        ws = [ 6 ]
+        ws.extend( Marker.get_attribute_widths(self) )
+        del ws[-1]
+        ws.extend([ 14, 12, 12, 12, 4, 5, 0, 0 ])
+        return ws
+
+    @staticmethod
+    def from_attributes(vals):
+
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:] + [ 'None' ])
+        lat, lon, depth, magnitude = [ str_to_float_or_none( x ) for x in vals[5:9] ]
+        catalog, name, region = [ str_to_str_or_none(x) for x in vals[9:] ]
+        e = pyrocko.model.Event(lat, lon, tmin, name, depth, magnitude, region, catalog=catalog)
+        marker = EventMarker(e, kind, event_hash=str_to_str_or_none(vals[4]))
+        return marker
 
 class PhaseMarker(Marker):
 
-    def __init__(self, nslc_ids, tmin, tmax, event=None, phasename=None, polarity=None, automatic=None):
-        Marker.__init__(self, nslc_ids, tmin, tmax)
+    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None):
+        Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
+        self._event_hash = event_hash
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
@@ -912,6 +1023,15 @@ class PhaseMarker(Marker):
     def get_event(self):
         return self._event
 
+    def get_event_hash(self):
+        if self._event_hash is not None:
+            return self._event_hash
+        else:
+            return self._event.get_hash()
+
+    def set_event_hash(self, event_hash):
+        self._event_hash = event_hash
+
     def set_event(self, event):
         self._event = event
 
@@ -928,6 +1048,40 @@ class PhaseMarker(Marker):
         del self._automatic
         self.__class__ = Marker
 
+    def get_attributes(self):
+        attributes = [ 'phase:' ]
+        attributes.extend(Marker.get_attributes(self))
+        h = None
+        et = None, None
+        if self._event:
+            h = self._event.get_hash()
+            et = pyrocko.util.time_to_str(self._event.time).split()
+
+        attributes.extend([h, et[0], et[1], self._phasename, self._polarity, self._automatic])
+        return attributes
+
+    def get_attribute_widths(self):
+        ws = [ 6 ]
+        ws.extend( Marker.get_attribute_widths(self) )
+        ws.extend([ 14, 12, 12, 8, 4, 5 ])
+        return ws
+
+    @staticmethod
+    def from_attributes(vals):
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:])
+       
+        i = 8
+        if len(vals) == 14:
+            i = 11
+       
+        event_hash = str_to_str_or_none( vals[i-3] )
+        phasename, polarity = [ str_to_str_or_none( x ) for x in vals[i:i+2] ]
+        automatic = str_to_bool( vals[i+2] )
+        marker = PhaseMarker( nslc_ids, tmin, tmax, kind, event=None, event_hash=event_hash,
+            phasename=phasename, polarity=polarity, automatic=automatic )
+        return marker
+
+
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
 class PileOverviewException(Exception):
@@ -937,7 +1091,7 @@ def MakePileOverviewClass(base):
     
     class PileOverview(base):
 
-        def __init__(self, pile, ntracks_shown_max, add_panel_hook, *args):
+        def __init__(self, pile, ntracks_shown_max, panel_parent, *args):
             if base == QGLWidget:
                 apply(base.__init__, (self, QGLFormat(QGL.SampleBuffers)) + args)
             else:
@@ -945,8 +1099,8 @@ def MakePileOverviewClass(base):
 
             self.pile = pile
             self.ax_height = 80
-            self.add_panel_hook = add_panel_hook
-            
+            self.panel_parent = panel_parent 
+
             self.click_tolerance = 5
             
             self.ntracks_shown_max = ntracks_shown_max
@@ -988,13 +1142,13 @@ def MakePileOverviewClass(base):
 #            self.menu.addAction(self.menuitem_pick)
 #            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
             
-            self.menuitem_pick = QAction('Write picks', self.menu)
+            self.menuitem_pick = QAction('Write markers', self.menu)
             self.menu.addAction(self.menuitem_pick)
-            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.write_picks )
+            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.write_markers )
             
-            self.menuitem_pick = QAction('Read picks', self.menu)
+            self.menuitem_pick = QAction('Read markers', self.menu)
             self.menu.addAction(self.menuitem_pick)
-            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.read_picks )
+            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.read_markers )
             
             self.menu.addSeparator()
             
@@ -1022,12 +1176,6 @@ def MakePileOverviewClass(base):
             
             self.menu.addSeparator()
  
-#            self.menuitem_setorigin = QAction('Set Active Event and Origin', self.menu)
-#            self.menu.addAction(self.menuitem_setorigin)
-#            self.connect( self.menuitem_setorigin, SIGNAL("triggered(bool)"), self.set_event_marker_as_origin)
- 
-#            self.menu.addSeparator()
-#
             def sector_dist(sta):
                 if sta.dist_m is None:
                     return None, None
@@ -1139,8 +1287,11 @@ def MakePileOverviewClass(base):
             
             self.menu.addSeparator()
             
-            self.snufflings_menu = QMenu('Snufflings', self.menu)
+            self.snufflings_menu = QMenu('Run Snuffling', self.menu)
             self.menu.addMenu(self.snufflings_menu)
+            
+            self.toggle_panel_menu = QMenu('Panels', self.menu)
+            self.menu.addMenu(self.toggle_panel_menu)
             
             self.menuitem_reload = QAction('Reload snufflings', self.menu)
             self.menu.addAction(self.menuitem_reload)
@@ -1167,10 +1318,6 @@ def MakePileOverviewClass(base):
             self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
             
             self.menu.addSeparator()
-    
-            self.menuitem_fuckup = QAction("Snuffler sucks! It can't do this and that...", self.menu)
-            self.menu.addAction(self.menuitem_fuckup)
-            self.connect( self.menuitem_fuckup, SIGNAL("triggered(bool)"), self.fuck )
     
             deltats = self.pile.get_deltats()
             if deltats:
@@ -1208,7 +1355,6 @@ def MakePileOverviewClass(base):
             self.snuffling_modules = {}
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
             self.default_snufflings = None
-            self.setup_snufflings()
             
             self.stations = {}
             
@@ -1400,9 +1546,15 @@ def MakePileOverviewClass(base):
                 self.default_snufflings = pyrocko.snufflings.__snufflings__()
                 for snuffling in self.default_snufflings:
                     self.add_snuffling(snuffling)
-                
-        def add_snuffling(self, snuffling):
-            snuffling.init_gui(self, self, self.add_panel_hook, self.snufflings_menu, self.add_snuffling_menuitem)
+        
+        def set_panel_parent(self, panel_parent):
+            self.panel_parent = panel_parent 
+        
+        def get_panel_parent(self):
+            return self.panel_parent
+
+        def add_snuffling(self, snuffling, reloaded=False):
+            snuffling.init_gui(self, self.get_panel_parent(), self, reloaded=reloaded)
             self.update()
             
         def remove_snuffling(self, snuffling):
@@ -1411,11 +1563,18 @@ def MakePileOverviewClass(base):
             
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
-            def delete_item():
-                self.snufflings_menu.removeAction(item)
-            return delete_item
+            item.setParent(self.snufflings_menu)
+
+        def remove_snuffling_menuitem(self, item):
+            self.snufflings_menu.removeAction(item)
         
-        
+        def add_panel_toggler(self, item):
+            self.toggle_panel_menu.addAction(item)
+            item.setParent(self.toggle_panel_menu)
+
+        def remove_panel_toggler(self, item):
+            self.toggle_panel_menu.removeAction(item)
+
         def add_traces(self, traces):
             if traces:
                 mtf = pyrocko.pile.MemTracesFile(None, traces)
@@ -1520,20 +1679,32 @@ def MakePileOverviewClass(base):
             else:
                 return 0
     
-        def write_picks(self):
+        def write_markers(self):
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
-                f = open(fn,'w')
-                for marker in self.markers:
-                    f.write("%s\n" % marker)
-                f.close()
-                
-            
-        def read_picks(self):
+                Marker.save_markers(self.markers, fn)
+
+        def read_markers(self):
             fn = QFileDialog.getOpenFileName(self,)
             if fn:
-                self.markers.extend(Marker.load_markers(fn))
+                self.add_markers(Marker.load_markers(fn))
+
+                self.associate_phases_to_events()
+
+        def associate_phases_to_events(self):
             
+            events = {}
+            for marker in self.markers:
+                if isinstance(marker, EventMarker):
+                    events[marker.get_event_hash()] = marker.get_event()
+            
+            for marker in self.markers:
+                if isinstance(marker, PhaseMarker):
+                    h = marker.get_event_hash()
+                    if marker.get_event() is None and h is not None and marker and h in events:
+                        marker.set_event(events[h])
+                        marker.set_event_hash(None)
+        
         def add_marker(self, marker):
             self.markers.append(marker)
         
@@ -1752,8 +1923,8 @@ def MakePileOverviewClass(base):
 
             elif keytext == 'a':
                 for marker in self.markers:
-                    if (self.tmin <= marker.get_tmin() <= self.tmax or
-                        self.tmin <= marker.get_tmax() <= self.tmax and
+                    if ((self.tmin <= marker.get_tmin() <= self.tmax or
+                        self.tmin <= marker.get_tmax() <= self.tmax) and
                         marker.kind in self.visible_marker_kinds):
                         marker.set_selected(True)
                     else:
@@ -2292,7 +2463,6 @@ def MakePileOverviewClass(base):
             if (self.old_vec and 
                 self.old_vec[0] <= vec[0] and vec[1] <= self.old_vec[1] and
                 vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked())):
-                
                 logger.debug('Using cached traces')
                 processed_traces = self.old_processed_traces
                 
@@ -2416,18 +2586,12 @@ def MakePileOverviewClass(base):
             self.sortingmode_change_time = time.time()
             
         def lowpass_change(self, value, ignore=None):
-            if num.isfinite(value):
-                self.lowpass = value
-            else:
-                self.lowpass = None
+            self.lowpass = value
             self.passband_check()
             self.update()
             
         def highpass_change(self, value, ignore=None):
-            if num.isfinite(value):
-                self.highpass = value
-            else:
-                self.highpass = None
+            self.highpass = value
             self.passband_check()
             self.update()
     
@@ -2663,7 +2827,7 @@ def MakePileOverviewClass(base):
                         
                         self.update()
                 
-                    elif command == 'marks':
+                    elif command == 'markers':
                         if len(toks) == 2:
                             if toks[1] == 'all':
                                 kinds = self.all_marker_kinds
@@ -2694,24 +2858,6 @@ def MakePileOverviewClass(base):
                 
             return clearit, hideit, error
         
-        def fuck(self):
-            import pysacio
-            
-            processed_traces = self.prepare_cutout(self.tmin,self.tmax)
-            sacdir = tempfile.mkdtemp(prefix='HERE_LIVES_SAC_')
-            os.chdir(sacdir)
-            
-            sys.stderr.write('\n\n --> Dumping SAC files to %s  <--\n\n\n' % sacdir)
-            
-            for trace in processed_traces:
-                # FIXME:
-                sactr = pysacio.from_mseed_trace(trace)
-                sactr.write('trace-%s-%s-%s-%s.sac' % trace.nslc_id)
-            
-            self.myclose()
-            Global.sacflag = True
-            
-            
     return PileOverview
 
 PileOverview = MakePileOverviewClass(QWidget)
@@ -2721,13 +2867,13 @@ GLPileOverview = MakePileOverviewClass(QGLWidget)
 class PileViewer(QFrame):
     '''PileOverview + Controls'''
     
-    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, add_panel_hook=None, *args):
+    def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, panel_parent=None, *args):
         apply(QFrame.__init__, (self,) + args)
         
         if use_opengl:
-            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
+            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         else:
-            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, add_panel_hook=add_panel_hook)
+            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         
         layout = QGridLayout()
         self.setLayout( layout )
@@ -2844,17 +2990,20 @@ class PileViewer(QFrame):
         self.gain_widget.setup('Gain', 0.001, 1000., 1., 2)
         self.rot_widget = LinValControl()
         self.rot_widget.setup('Rotate', -180., 180., 0., 3)
-        self.connect( self.lowpass_widget, SIGNAL("valchange(float,int)"), self.pile_overview.lowpass_change )
-        self.connect( self.highpass_widget, SIGNAL("valchange(float,int)"), self.pile_overview.highpass_change )
-        self.connect( self.gain_widget, SIGNAL("valchange(float,int)"), self.pile_overview.gain_change )
-        self.connect( self.rot_widget, SIGNAL("valchange(float,int)"), self.pile_overview.rot_change )
+        self.connect( self.lowpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.lowpass_change )
+        self.connect( self.highpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.highpass_change )
+        self.connect( self.gain_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.gain_change )
+        self.connect( self.rot_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.rot_change )
         
         layout.addWidget( self.highpass_widget, 1,0 )
         layout.addWidget( self.lowpass_widget, 2,0 )
         layout.addWidget( self.gain_widget, 3,0 )
         layout.addWidget( self.rot_widget, 4,0 )
         return frame
-    
+   
+    def setup_snufflings(self):
+        self.pile_overview.setup_snufflings()
+
     def get_view(self):
         return self.pile_overview
     
@@ -2921,29 +3070,3 @@ def snuffle(traces=None, viewer_id='default'):
     if traces is not None:
         app.call('add_traces', traces, viewer_id)
     
-    
-def sac_exec():
-    import readline, subprocess, atexit
-    sac = subprocess.Popen(['sac'], stdin=subprocess.PIPE)
-    sac.stdin.write('read *.sac\n')
-    sac.stdin.flush()
-    
-    histfile = os.path.join(os.environ["HOME"], ".snuffler_sac_history")
-    try:
-        readline.read_history_file(histfile)
-    except IOError:
-        pass
-    
-    atexit.register(readline.write_history_file, histfile)
-    
-    while True:
-        try:
-            s = raw_input()
-        except EOFError:
-            break
-        
-        sac.stdin.write(s+"\n")
-        if s in ('q', 'quit', 'exit'): break
-        sac.stdin.flush()
-        
-    sac.stdin.close()

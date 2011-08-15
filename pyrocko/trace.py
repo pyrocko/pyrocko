@@ -534,6 +534,14 @@ class AnalogFilterResponse(FrequencyResponse):
     def evaluate(self, freqs):
         return signal.freqs(self._b, self._a, freqs)[1]
 
+class MultiplyResponse(FrequencyResponse):
+    def __init__(self, a, b):
+        self._a = a
+        self._b = b
+
+    def evaluate(self, freqs):
+        return self._a.evaluate(freqs) * self._b.evaluate(freqs)
+
 class NoData(Exception):
     pass
 
@@ -1015,15 +1023,20 @@ class Trace(object):
             output.ydata = output.ydata.copy()
         return output
         
-    def spectrum(self, pad_to_pow2=False):
+    def spectrum(self, pad_to_pow2=False, tfade=None):
         ndata = self.ydata.size
         
         if pad_to_pow2:
             ntrans = nextpow2(ndata)
         else:
             ntrans = ndata
+
+        if tfade is None:
+            ydata = self.ydata
+        else:
+            ydata = self.ydata * costaper(0., tfade, self.deltat*(ndata-1)-tfade, self.deltat*ndata, ndata, self.deltat)
             
-        fydata = num.fft.rfft(self.ydata, ntrans)
+        fydata = num.fft.rfft(ydata, ntrans)
         df = 1./(ntrans*self.deltat)
         fxdata = num.arange(len(fydata))*df
         return fxdata, fydata
