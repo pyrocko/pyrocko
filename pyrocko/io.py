@@ -3,6 +3,7 @@ import os
 import mseed, sac, kan, segy, yaff, file, seisan_waveform, util
 import trace
 from pyrocko.mseed_ext import MSeedError
+import numpy as num
 
 class FileLoadError(Exception):
     pass
@@ -140,7 +141,15 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
             fns.append(fn)
             
         return fns
-    
+   
+    elif format == 'text':
+        fns = []
+        for tr in traces:
+            fn = tr.fill_template(filename_template, **additional)
+            x,y = tr.get_xdata(), tr.get_ydata()
+            num.savetxt(fn, num.transpose((x,y)))
+            fns.append(fn)
+            
     elif format == 'yaff':
         return yaff.save(traces, filename_template, additional)
     else:
