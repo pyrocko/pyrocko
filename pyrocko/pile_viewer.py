@@ -1840,7 +1840,6 @@ def MakePileOverviewClass(base):
             needupdate = False
             haveone = False
             relevant_nslc_ids = self.nslc_ids_under_cursor(x,y)
-            
             for marker in self.markers:
                 if marker.kind not in self.visible_marker_kinds:
                     continue
