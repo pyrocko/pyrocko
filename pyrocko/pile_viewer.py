@@ -1867,7 +1867,24 @@ def MakePileOverviewClass(base):
                 if oldstate != state:
                     needupdate = True
                     marker.set_alerted(state)
-                    
+                    if state:
+                        if isinstance(marker, EventMarker):
+                            ev = marker.get_event()
+                            evs = []
+                            for k in 'magnitude lat lon depth name region catalog'.split():
+                                if ev.__dict__[k] is not None and ev.__dict__[k] != '':
+                                    if k == 'depth':
+                                        sv = '%g km' % (ev.depth * 0.001)
+                                    else:
+                                        sv = '%s' % ev.__dict__[k]
+                                    evs.append('%s = %s' % (k, sv))
+
+                            self.message = ', '.join(evs) 
+            
+
+            if not haveone:
+                self.message = None
+
             if needupdate:
                 self.update()
                 
