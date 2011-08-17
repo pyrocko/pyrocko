@@ -78,10 +78,8 @@ class TraceTestCase(unittest.TestCase):
             xs = trace.degapper(traces, deoverlap=meth)
             for x in xs:
                 assert x.ydata.size == 18
-                print x.ydata
                 assert numeq(x.ydata[8:10], res, 1e-6)
                 
-                print x.ydata
 
 
 
