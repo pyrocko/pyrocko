@@ -453,7 +453,7 @@ class InverseEvalresp(FrequencyResponse):
     def __init__(self, respfile, trace, target='dis'):
         self.respfile = respfile
         self.nslc_id = trace.nslc_id
-        self.instant = trace.tmin
+        self.instant = (trace.tmin + trace.tmax)/2.
         self.target = target
         
     def evaluate(self, freqs):
