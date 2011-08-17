@@ -5,7 +5,7 @@ some utilities for their handling.
 '''
 
 
-import os, sys, logging, traceback
+import os, sys, logging, traceback, tempfile
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -222,7 +222,9 @@ class Snuffling:
         self._live_update = True
         self._previous_output_filename = None
         self._previous_input_filename = None
-        
+
+        self._tempdir = None
+
         self.setup()
         
     def setup(self):
@@ -298,12 +300,21 @@ class Snuffling:
         
         return self._name
     
-    def fail(self, reason):
+    def error(self, reason):
         box = QMessageBox(self.get_viewer())
         box.setText(reason)
         box.exec_()
-        raise SnufflingCallFailed(reason) 
     
+    def fail(self, reason):
+        self.error(reason)
+        raise SnufflingCallFailed(reason) 
+   
+    def tempdir(self):
+        if self._tempdir is None:
+            self._tempdir = tempfile.mkdtemp('', 'snuffling-tmp-')
+        
+        return self._tempdir
+
     def set_live_update(self, live_update):
         '''Enable/disable live updating.
         
@@ -742,5 +753,8 @@ class Snuffling:
     
     def __del__(self):
         self.cleanup()
+        if self._tempdir is not None:
+            import shutil
+            shutil.rmtree(self._tempdir)
 
         
