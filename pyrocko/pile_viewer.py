@@ -1448,6 +1448,13 @@ def MakePileOverviewClass(base):
             else:
                 return default_getter(tr)
         
+        def get_station(self, sk):
+            return self.stations[sk]
+
+        def has_station(self, station):
+            sk = self.station_key(station)
+            return sk in self.stations
+
         def station_latlon(self, tr, default_getter=lambda tr: (0.,0.)):
             return self.station_attrib(tr, lambda sta: (sta.lat, sta.lon), default_getter)
 
