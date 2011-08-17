@@ -164,6 +164,7 @@ class EventDataAccess:
                                   out_stations=None,
                                   redundant_channel_priorities=None,
                                   restitution_off_hack=False,
+                                  preprocess=None,
                                   progress='Processing traces'):
         
         stations = self.get_stations(relative_event=relative_event)
@@ -206,7 +207,10 @@ class EventDataAccess:
                 
                 displacements = []
                 for tr in traces:
-                    
+                   
+                    if preprocess is not None:
+                        preprocess(tr)
+
                     tr.ydata = tr.ydata - num.mean(tr.ydata)
                     
                     if deltat is not None:
