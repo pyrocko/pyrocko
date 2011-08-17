@@ -234,7 +234,26 @@ class TraceTestCase(unittest.TestCase):
                 a.add(b, interpolate=False)
                 assert numeq(a.ydata, result, 0.001)
         
+    
+    def testPeaks(self):
+        n = 1000
+        t = trace.Trace(tmin=0, deltat=0.1, ydata=num.zeros(n, dtype=num.float))
+        t.ydata[1] = 1.
+        t.ydata[500] = 1.
+        t.ydata[999] = 1.
+        tp, ap = t.peaks(0.5, 1.)
+        assert numeq( tp, [0., 49.9, 99.8], 0.0001)
+        assert numeq( ap, [1., 1., 1.], 0.0001)
+
+        t.ydata[504] = 1.0 
+        t.ydata[511] = 1.0
         
+        tp, ap = t.peaks(0.5, 1.)
+
+        assert numeq( tp, [0., 49.9, 51., 99.8], 0.0001)
+        assert numeq( ap, [1., 1., 1., 1.], 0.0001)
+
+
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
     unittest.main()

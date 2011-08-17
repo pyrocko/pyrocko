@@ -920,23 +920,61 @@ class Trace(object):
         self.drop_growbuffer()
         self.ydata = num.maximum((mavg_short/mavg_long - 1.) * float(nshort)/float(nlong), 0.0)
         
-    def peaks(self, threshold, tsearch):
+    def peaks(self, threshold, tsearch, deadtime=False, nblock_duration_detection=100):
         y = self.ydata
         above =  num.where(y > threshold, 1, 0)
-        itrig_positions = num.nonzero((above[1:]-above[:-1])>0)[0]
+        deriv = num.zeros(y.size, dtype=num.int8)
+        deriv[1:] = above[1:]-above[:-1]
+        itrig_positions = num.nonzero(deriv>0)[0]
         tpeaks = []
         apeaks = []
+        tzeros = []
+        tzero = self.tmin
+        
         for itrig_pos in itrig_positions:
-            ibeg = max(0,itrig_pos - 0.5*tsearch/self.deltat)
-            iend = min(len(self.ydata)-1, itrig_pos + 0.5*tsearch/self.deltat)
+            ibeg = itrig_pos
+            iend = min(len(self.ydata), itrig_pos + tsearch/self.deltat)
             ipeak = num.argmax(y[ibeg:iend])
-            tpeak = self.tmin + (ipeak+ibeg)*self.deltat
+            tpeak = self.tmin + (ipeak+ibeg-1)*self.deltat
             apeak = y[ibeg+ipeak]
+
+            if tpeak < tzero:
+                continue
+
+            if deadtime:
+                ibeg = itrig_pos
+                iblock = 0
+                nblock = nblock_duration_detection
+                totalsum = 0. 
+                while True:
+                    if ibeg+iblock*nblock >= len(y):
+                        tzero = self.tmin + (len(y)-1)* self.deltat
+                        break
+
+                    logy = num.log(y[ibeg+iblock*nblock:ibeg+(iblock+1)*nblock])
+                    logy[0] += totalsum
+                    ysum = num.cumsum(logy)
+                    totalsum = ysum[-1]
+                    below = num.where(ysum <= 0., 1, 0)
+                    deriv = num.zeros(ysum.size, dtype=num.int8)
+                    deriv[1:] = below[1:]-below[:-1]
+                    izero_positions = num.nonzero(deriv>0)[0] + iblock*nblock
+                    if len(izero_positions) > 0:
+                        tzero = self.tmin + (ibeg + izero_positions[0])*self.deltat
+                        break
+                    iblock += 1
+            else:
+                tzero = ibeg*self.deltat + self.tmin + tsearch
+
             tpeaks.append(tpeak)
             apeaks.append(apeak)
-            
-        return tpeaks, apeaks
-    
+            tzeros.append(tzero)
+        
+        if deadtime:
+            return tpeaks, apeaks, tzeros
+        else:
+            return tpeaks, apeaks
+
     def extend(self, tmin, tmax, fillmethod='zeros'):
         '''Extend trace to given span
         
