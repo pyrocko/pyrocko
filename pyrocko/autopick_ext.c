@@ -92,7 +92,7 @@ int autopick_recursive_stalta( int ns, int nl, float ks, float kl, float k, int 
 
     for(i=0;i<nsamples;i++)
     {
-        inout[i] = sta[i]/(lta[i]+eps*maxlta);
+        inout[i] = (sta[i]+eps*maxlta)/(lta[i]+eps*maxlta);
     }
             
     for (i=0;i<ns;i++)
