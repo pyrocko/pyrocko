@@ -723,7 +723,15 @@ class Marker(object):
         
     def set_selected(self, state):
         self.selected = state
-        
+
+    def match_nsl(self, nsl):
+        patterns = [ '.'.join(x[:3]) for x in self.nslc_ids ]
+        return pyrocko.util.match_nslc(patterns, nsl)
+    
+    def match_nslc(self, nslc):
+        patterns = [ '.'.join(x) for x in self.nslc_ids ]
+        return pyrocko.util.match_nslc(patterns, nslc)
+
     def __str__(self):
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
         st = myctime
@@ -830,9 +838,6 @@ class Marker(object):
                 p.setBrush(QColor(*color))
                 drawtriangles(self.tmin)
 
-    def match_nslc(self, nslc):
-        patterns = [ '.'.join(x) for x in self.nslc_ids ]
-        return pyrocko.util.match_nslc(patterns, nslc)
 
     def draw_trace(self, p, trace, time_projection, track_projection, gain, outline_label=False):
         if self.nslc_ids and not self.match_nslc(trace.nslc_id): return
@@ -1891,7 +1896,7 @@ def MakePileOverviewClass(base):
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
            
-            keytext = key_event.text() 
+            keytext = str(key_event.text())
 
             if keytext == ' ':
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
@@ -1900,7 +1905,7 @@ def MakePileOverviewClass(base):
                 dt = self.tmax - self.tmin
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
             
-            elif keytext == 'p' or keytext == 'n':
+            elif keytext in ('p', 'n', 'P', 'N'):
                 smarkers = self.selected_markers()
                 tgo = None
                 dir = str(keytext)
@@ -1914,10 +1919,11 @@ def MakePileOverviewClass(base):
 
                     tgo = tmid
 
-                if dir == 'n':
+                if dir.lower() == 'n':
                     for marker in sorted(self.markers, cmp=lambda a,b: cmp(a.tmin,b.tmin)):
                         t = marker.tmin
-                        if t > tmid and marker.kind in self.visible_marker_kinds:
+                        if t > tmid and marker.kind in self.visible_marker_kinds \
+                                    and (dir == 'n' or isinstance(marker, EventMarker)):
                             self.deselect_all()
                             marker.set_selected(True)
                             tgo = t
@@ -1925,7 +1931,8 @@ def MakePileOverviewClass(base):
                 else: 
                     for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmin,a.tmin)):
                         t = marker.tmin
-                        if t < tmid and marker.kind in self.visible_marker_kinds:
+                        if t < tmid and marker.kind in self.visible_marker_kinds \
+                                    and (dir == 'p' or isinstance(marker, EventMarker)):
                             self.deselect_all()
                             marker.set_selected(True)
                             tgo = t
