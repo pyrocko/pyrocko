@@ -1167,6 +1167,7 @@ def MakePileOverviewClass(base):
             
             self.menuitems_scaling = add_radiobuttongroup(self.menu, menudef, self, self.scalingmode_change)
             self.scaling_key = self.menuitems_scaling[0][1]
+            self.scaling_hooks = {} 
             
             self.menu.addSeparator()
             
@@ -1176,8 +1177,8 @@ def MakePileOverviewClass(base):
                 ('Scaling based on Mean +- 4 x Std. Deviation', 4),
             ]
             
-            self.menuitems_scalingbase = add_radiobuttongroup(self.menu, menudef, self, self.scalingbase_change)
-            self.scalingbase = self.menuitems_scalingbase[0][1]
+            self.menuitems_scaling_base = add_radiobuttongroup(self.menu, menudef, self, self.scaling_base_change)
+            self.scaling_base = self.menuitems_scaling_base[0][1]
             
             self.menu.addSeparator()
  
@@ -2356,12 +2357,14 @@ def MakePileOverviewClass(base):
                 min_max_for_annot = {}
                 if processed_traces:
                     yscaler = pyrocko.plot.AutoScaler()
-                    data_ranges = pyrocko.trace.minmax(processed_traces, key=self.scaling_key, mode=self.scalingbase)
+                    data_ranges = pyrocko.trace.minmax(processed_traces, key=self.scaling_key, mode=self.scaling_base)
                     if not self.menuitem_fixscalerange.isChecked():
                         self.old_data_ranges = data_ranges
                     else:
                         data_ranges.update(self.old_data_ranges)
-                        
+                    
+                    self.apply_scaling_hooks(data_ranges)
+
                     for trace in processed_traces:
                         
                         gt = self.gather(trace)
@@ -2591,16 +2594,30 @@ def MakePileOverviewClass(base):
             self.timer_cutout.stop()
             return chopped_traces
         
-        def scalingbase_change(self, ignore):
-            for menuitem, scalingbase in self.menuitems_scalingbase:
+        def scaling_base_change(self, ignore):
+            for menuitem, scaling_base in self.menuitems_scaling_base:
                 if menuitem.isChecked():
-                    self.scalingbase = scalingbase
+                    self.scaling_base = scaling_base
         
         def scalingmode_change(self, ignore):
             for menuitem, scaling_key in self.menuitems_scaling:
                 if menuitem.isChecked():
                     self.scaling_key = scaling_key
-    
+   
+        def apply_scaling_hooks(self, data_ranges):
+            for k in sorted(self.scaling_hooks.keys()):
+                    hook = self.scaling_hooks[k]
+                    hook(data_ranges)
+
+        def set_scaling_hook(self, k, hook):
+            self.scaling_hooks[k] = hook
+
+        def remove_scaling_hook(self, k):
+            del self.scaling_hooks[k]
+        
+        def remove_scaling_hooks(self):
+            self.scaling_hooks = {}
+
         def s_sortingmode_change(self, ignore=None):
             for menuitem, valfunc in self.menuitems_ssorting:
                 if menuitem.isChecked():
@@ -2875,6 +2892,35 @@ def MakePileOverviewClass(base):
                             self.set_visible_marker_kinds(())
 
                         self.update()
+
+                    elif command == 'scaling':
+                        if len(toks) >= 3:
+                            vmin, vmax = [ pyrocko.model.float_or_none(x) for x in toks[-2:] ]
+
+                        def upd(d,k,vmin,vmax):
+                            if k in d:
+                                if vmin is not None:
+                                    d[k] = vmin, d[k][1]
+                                if vmax is not None:
+                                    d[k] = d[k][0], vmax
+
+                        if len(toks) == 1:
+                            self.remove_scaling_hooks()
+
+                        elif len(toks) == 3:
+                            def hook(data_ranges):
+                                for k in data_ranges:
+                                    upd(data_ranges, k, vmin, vmax)
+
+                            self.set_scaling_hook('_', hook)
+                            
+                        elif len(toks) == 4:
+                            pattern = toks[1]
+                            def hook(data_ranges):
+                                for k in pyrocko.util.match_nslcs(pattern, data_ranges.keys()):
+                                    upd(data_ranges, k, vmin, vmax)
+                            
+                            self.set_scaling_hook(pattern, hook)
 
                     elif command in ('n', 's', 'l', 'c'):
                         self.update() 
