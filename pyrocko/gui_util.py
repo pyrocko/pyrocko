@@ -15,6 +15,9 @@ class MySlider(QSlider):
     def wheelEvent(self, ev):
         ev.ignore()
 
+    def keyPressEvent(self, ev):
+        ev.ignore()
+
 class MyValueEdit(QLineEdit):
 
     def __init__(self, parent, low_is_none=False, high_is_none=False, *args):
