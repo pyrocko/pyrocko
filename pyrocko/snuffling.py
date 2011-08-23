@@ -131,7 +131,6 @@ class SnufflingModule:
             try:
                 self._module = __import__(self._name)
                 for snuffling in self._module.__snufflings__():
-                    snuffling._path = self._path
                     self.add_snuffling(snuffling)
                     
             except:
@@ -144,7 +143,6 @@ class SnufflingModule:
             try:
                 reload(self._module)
                 for snuffling in self._module.__snufflings__():
-                    snuffling._path = self._path 
                     self.add_snuffling(snuffling, reloaded=True)
                 
                 if len(self._snufflings) == len(settings):
@@ -160,6 +158,8 @@ class SnufflingModule:
         sys.path[0:1] = []
     
     def add_snuffling(self, snuffling, reloaded=False):
+        snuffling._path = self._path 
+        snuffling.setup()
         self._snufflings.append(snuffling)
         self._handler.add_snuffling(snuffling, reloaded=reloaded)
     
@@ -224,8 +224,6 @@ class Snuffling:
         self._previous_input_filename = None
 
         self._tempdir = None
-
-        self.setup()
         
     def setup(self):
         '''Setup the snuffling.
