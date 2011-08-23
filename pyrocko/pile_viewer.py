@@ -2532,7 +2532,7 @@ def MakePileOverviewClass(base):
                                     
                                 else:
                                     if self.lowpass is not None:
-                                        deltat_target = 1./self.lowpass * 0.2
+                                        deltat_target = 1./self.lowpass * 0.1
                                         ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
                                         ndecimate2 = int(math.log(ndecimate,2))
                                         
