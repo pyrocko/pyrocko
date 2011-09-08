@@ -124,6 +124,12 @@ class ValControl(QFrame):
         self.set_value(cur)
         
     def set_value(self, cur):
+        if cur is None:
+            if self.low_is_none:
+                cur = self.mi
+            elif self.high_is_none:
+                cur = self.ma
+
         self.mute = True
         self.cur = cur
         self.cursl = self.v2s(cur)
