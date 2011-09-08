@@ -7,6 +7,8 @@ d2r = math.pi/180.
 r2d = 1./d2r
 earth_oblateness = 1./298.257223563
 earthradius_equator = 6378.14 * 1000.
+d2m = earthradius_equator*math.pi/180.
+m2d = 1./d2m
 
 def clip(x, mi, ma):
     return num.minimum(num.maximum(mi,x),ma)
