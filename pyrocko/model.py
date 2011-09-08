@@ -67,7 +67,7 @@ class EmptyEvent(Exception):
     pass
 
 class Event:
-    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None, loadf=None, catalog=None):
+    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None, loadf=None, catalog=None, moment_tensor=None, duration=None):
         if load is not None:
             self.load(load)
         elif loadf is not None:
@@ -81,6 +81,8 @@ class Event:
             self.magnitude = magnitude
             self.region = region
             self.catalog = catalog
+            self.moment_tensor = moment_tensor
+            self.duration = duration
             
     def time_as_string(self):
         return util.gmctime(self.time)
@@ -112,9 +114,29 @@ class Event:
             file.write('region = %s\n' % self.region)
         if self.catalog is not None:
             file.write('catalog = %s\n' % self.catalog)
+        if self.moment_tensor is not None:
+            m = self.moment_tensor.m()
+            sdr1, sdr2 = self.moment_tensor.both_strike_dip_rake()
+            file.write(('mnn = %g\nmee = %g\nmdd = %g\nmne = %g\nmnd = %g\nmed = %g\n'+
+                        'strike1 = %g\ndip1 = %g\nrake1 = %g\nstrike2 = %g\ndip2 = %g\nrake2 = %g\n')
+                               % ((m[0,0],m[1,1],m[2,2],m[0,1],m[0,2],m[1,2]) + sdr1 + sdr2) )
+        if self.duration is not None:
+            file.write('duration = %g\n' % self.duration)
 
     @staticmethod
     def unique(events, deltat=10., group_cmp=(lambda a,b: cmp(a.catalog, b.catalog))):
+        groups = grouped(events, deltat)
+        
+        events = []
+        for group in groups:
+            if group:
+                group.sort(group_cmp)
+                events.append(group[-1]) 
+        
+        return events
+
+    @staticmethod
+    def grouped(events, deltat=10.):
         events = list(events)
         groups = []
         for ia,a in enumerate(events):
@@ -128,14 +150,8 @@ class Event:
 
             if not haveit:
                 groups[ia].append(a)
-        
-        events = []
-        for group in groups:
-            if group:
-                group.sort(group_cmp)
-                events.append(group[-1]) 
-        
-        return events
+
+        return [ g for g in groups if g ]
 
     @staticmethod
     def dump_catalog(events, filename):
@@ -171,7 +187,7 @@ class Event:
                     k,v = toks[0].strip(), toks[1].strip()
                     if k in ('name', 'region', 'catalog'):
                         d[k] = v
-                    if k in ('latitude', 'longitude', 'magnitude', 'depth'):
+                    if k in ('latitude longitude magnitude depth duration mnn mee mdd mne mnd med strike1 dip1 rake1 strike2 dip2 rake2 duration'.split()):
                         d[k] = float(v)
                     if k == 'time':
                         d[k] = util.ctimegm(v[:19])
@@ -189,14 +205,31 @@ class Event:
         if 'have_separator' in d and len(d) == 1:
             raise EmptyEvent()
 
+        mt = None
+        m6 = [ d[x] for x in 'mnn mee mdd mne mnd med'.split() if x in d ]
+        if len(m6) == 6:
+            mt = moment_tensor.MomentTensor( m = moment_tensor.symmat6(*m6) )
+        else:
+            sdr = [ d[x] for x in 'strike1 dip1 rake1'.split() if x in d ]
+            if len(sdr) == 3:
+                moment = 1.0
+                if 'moment' in d:
+                    moment = d['moment']
+                elif 'magnitude' in d:
+                    moment = moment_tensor.magnitude_to_moment(d['magnitude'])
+
+                mt = moment_tensor.MomentTensor(strike=sdr[0], dip=sdr[1], rake=sdr[2], scalar_moment=moment)
+                
         self.lat = d.get('latitude', 0.0)
         self.lon = d.get('longitude', 0.0)
         self.time = d.get('time', 0.0)
         self.name = d.get('name', '')
         self.depth = d.get('depth', None)
         self.magnitude = d.get('magnitude', None)
+        self.duration = d.get('duration', None)
         self.region = d.get('region', None)
         self.catalog = d.get('catalog', None)
+        self.moment_tensor = mt
 
     @staticmethod
     def load_catalog(filename):
@@ -423,9 +456,10 @@ def load_kps_event_list(filename):
         
         tim = util.ctimegm(toks[0]+' '+toks[1])
         lat, lon, depth, magnitude = [ float(x) for x in toks[2:6] ]
+        duration = float(toks[10])
         region = toks[-1]
         name = util.gmctime_fn(tim)
-        e = Event(lat, lon, tim, name, depth, magnitude)
+        e = Event(lat, lon, tim, name=name, depth=depth, magnitude=magnitude, duration=duration, region=region)
         
         elist.append(e)
         
