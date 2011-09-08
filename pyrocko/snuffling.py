@@ -23,12 +23,14 @@ class Param:
     '''Definition of an adjustable parameter for the snuffling. The snuffling
     may display controls for user input for such parameters.'''
     
-    def __init__(self, name, ident, default, minimum, maximum):
+    def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None):
         self.name = name
         self.ident = ident
         self.default = default
         self.minimum = minimum
         self.maximum = maximum
+        self.low_is_none = low_is_none
+        self.high_is_none = high_is_none
 
 class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
@@ -512,9 +514,9 @@ class Snuffling:
             for iparam, param in enumerate(params):
                 if isinstance(param, Param):
                     if param.minimum <= 0.0:
-                        param_widget = LinValControl()
+                        param_widget = LinValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
                     else:
-                        param_widget = ValControl()
+                        param_widget = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
