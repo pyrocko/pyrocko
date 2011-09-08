@@ -1,9 +1,12 @@
 import model
+from moment_tensor import MomentTensor
 import urllib2
 import time
 import calendar
 import re
 import logging
+
+import numpy as num
 
 from xml.dom import minidom
 from xml.parsers.expat import ExpatError 
@@ -27,18 +30,22 @@ def getTextR(node):
     return rc
         
 class EarthquakeCatalog:
-    
-    def get_event_names(self, time_range = None):
-        raise Exception('This method should be implemented in derived class.')
-    
     def get_event(self, name):
         raise Exception('This method should be implemented in derived class.')
     
-    def get_events(self, name):
+    def iter_event_names(self, time_range, **kwargs):
         raise Exception('This method should be implemented in derived class.')
 
-def parse_id_from_link(s):
-    pass
+    def get_event_names(self, time_range, **kwargs):
+        return list(self.iter_event_names(self, time_range, **kwargs))
+    
+    def get_events(self, time_range, **kwargs):
+        return list(self.iter_events(time_range, **kwargs))
+
+    def iter_events(self, time_range, **kwargs):
+        events = []
+        for name in self.iter_event_names(time_range, **kwargs):
+            yield self.get_event(name)
 
 def parse_location(s):
     direction = {'N':1,'S':-1,'E':1,'W':-1}
@@ -57,14 +64,13 @@ def parse_km(s):
     if m:
         a = float(m.group(1))*1000.
         return a
-        
     
 class Geofon(EarthquakeCatalog):
     
     def __init__(self):
         self.events = {}
     
-    def get_event_names(self, time_range=None, nmax=10000, magmin=None):
+    def iter_event_names(self, time_range=None, nmax=10000, magmin=None, latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
         dmin = time.strftime('%Y-%m-%d', time.gmtime(time_range[0]))
         dmax = time.strftime('%Y-%m-%d', time.gmtime(time_range[1]+24*60*60))
         
@@ -72,14 +78,14 @@ class Geofon(EarthquakeCatalog):
             magmin = ''
         else:
             magmin = '%g' % magmin
-        
+       
         url = ('http://geofon.gfz-potsdam.de/db/eqinfo.php?' + '&'.join([
             'datemin=%s' % dmin,
             'datemax=%s' % dmax,
-            'latmin=-90',
-            'latmax=%2B90',
-            'lonmin=-180',
-            'lonmax=%2B180',
+            'latmin=%g' % latmin,
+            'latmax=%g' % latmax,
+            'lonmin=%g' % lonmin,
+            'lonmax=%g' % lonmax,
             'magmin=%s' % magmin,
             'fmt=html',
             'nmax=%i' % nmax]))
@@ -89,9 +95,8 @@ class Geofon(EarthquakeCatalog):
         for ev in events:
             if time_range[0] <= ev.time and ev.time <= time_range[1]:
                 self.events[ev.name] = ev
-            
-        return self.events.keys()
-    
+                yield ev.name
+
     def get_event(self, name):
         if name in self.events:
             return self.events[name]
@@ -106,17 +111,11 @@ class Geofon(EarthquakeCatalog):
               name=name,
               depth=d['depth'],
               magnitude=d['magnitude'],
-              region=d['region'])
+              region=d['region'],
+              catalog='GEOFON')
               
         return ev
-        
-    def get_events(self, time_range, nmax=10000, magmin=None):
-        names = self.get_event_names(time_range, nmax=nmax, magmin=magmin)
-        events = []
-        for name in names:
-            events.append(self.events[name])
-        
-        return events
+
         
     def _parse_events_page(self, page):
         page = re.sub('&nbsp([^;])', '&nbsp;\\1', page)  # fix broken &nbsp; tags
@@ -157,7 +156,8 @@ class Geofon(EarthquakeCatalog):
                     name=eid,
                     depth=depth,
                     magnitude=mag,
-                    region=region)
+                    region=region,
+                    catalog='GEOFON')
                 
                 logger.debug('Adding event from GEOFON catalog: %s' % ev)
                 
@@ -186,17 +186,153 @@ class Geofon(EarthquakeCatalog):
                 v = getTextR(tds[1]).encode('ascii')
                 if k in wanted_map.keys():
                      d[k] = wanted_map[k](v)
-                    
         
         return d
-        
-        
+
+class Anon:
+    pass
+
 class GlobalCMT(EarthquakeCatalog):
     
-    def get_event_names(time_range=None):
+    def __init__(self):
+        self.events = {}
+    
+    def iter_event_names(self, time_range=None, magmin=0., magmax=10., latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
+         
+        yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
+        yearend, monend, dayend = time.gmtime(time_range[1])[:3]
         
-        ttbeg = time.gmtime(time_range[0])
-        ttend = time.gmtime(time_range[1])
-        
-        
+        url = 'http://www.globalcmt.org/cgi-bin/globalcmt-cgi-bin/CMT4/form?' + '&'.join( [
+            'itype=ymd', 'yr=%i' % yearbeg, 'mo=%i' % monbeg, 'day=%i' % daybeg,
+            'otype=ymd', 'oyr=%i' % yearend, 'omo=%i' % monend, 'oday=%i' % dayend,
+            'jyr=1976', 'jday=1', 'ojyr=1976', 'ojday=1', 'nday=1',
+            'lmw=%g' % magmin, 'umw=%g' % magmax,
+            'lms=0', 'ums=10',
+            'lmb=0', 'umb=10',
+            'llat=%g' % latmin, 'ulat=%g' % latmax,
+            'llon=%g' % lonmin, 'ulon=%g' % lonmax,
+            'lhd=0', 'uhd=1000',
+            'lts=-9999', 'uts=9999',
+            'lpe1=0', 'upe1=90',
+            'lpe2=0', 'upe2=90',
+            'list=5' ])
+
+        while True:
+            page = urllib2.urlopen(url).read()
+            events, more = self._parse_events_page(page)
+
+            for ev in events:
+                if time_range[0] <= ev.time and ev.time <= time_range[1]:
+                    self.events[ev.name] = ev
+                    yield ev.name
+            if more:
+                url = more
+            else:
+                break
+
+    def get_event(self, name):
+        return self.events[name]
+
+    def _parse_events_page(self, page):
+
+        lines = page.splitlines()
+        state = 0
+
+        events = []
+
+        def complete(data):
+            try:
+                t = calendar.timegm((data.year, data.month, data.day, data.hour, data.minute, data.seconds))
+                m = num.array([data.mrr, data.mrt, data.mrp, 
+                               data.mrt, data.mtt, data.mtp,
+                               data.mrp, data.mtp, data.mpp],
+                        dtype=num.float).reshape(3,3)
+
+                m *= 10**(data.exponent-7)
+                mt = MomentTensor(m_up_south_east=m)
+                ev = model.Event(
+                    lat=data.lat,
+                    lon=data.lon, 
+                    time=t,
+                    name=data.eventname,
+                    depth=data.depth_km*1000.,
+                    magnitude=mt.moment_magnitude(),
+                    duration=data.half_duration * 2.,
+                    region=data.region,
+                    catalog=data.catalog)
+
+                ev.moment_tensor = mt
+                events.append(ev)
+
+            except AttributeError:
+                pass
+
+        catalog = 'Global-CMT'
+
+        data = None
+        more = None
+        for line in lines:
+            if state == 0:
+
+                m = re.search(r'<a href="([^"]+)">More solutions', line) 
+                if m:
+                    more = m.group(1)
+                
+                m = re.search(r'From Quick CMT catalog', line)
+                if m:
+                    catalog = 'Global-CMT-Quick'
+
+                m = re.search(r'Event name:\s+(\S+)', line)
+                if m:
+                    if data:
+                        complete(data)
+
+                    data = Anon()
+                    data.eventname = m.group(1)
+                    data.catalog = catalog
+
+                if data:
+                    m = re.search(r'Region name:\s+([^<]+)', line)
+                    if m:
+                        data.region = m.group(1)
+
+                    m = re.search(r'Date \(y/m/d\): (\d\d\d\d)/(\d+)/(\d+)', line)
+                    if m:
+                        data.year, data.month, data.day = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            
+                    m = re.search(r'Timing and location information', line)
+                    if m:
+                        state = 1
+            
+            if state == 1:
+                toks = line.split()
+                if toks and toks[0] == 'CMT':
+                    data.hour, data.minute = [ int(x) for x in toks[1:3] ]
+                    data.seconds, data.lat, data.lon, data.depth_km = [ float(x) for x in toks[3:] ]
+               
+                m = re.search(r'Assumed half duration:\s+(\S+)', line)
+                if m:
+                    data.half_duration = float(m.group(1))
+
+                m = re.search(r'Mechanism information', line)
+                if m:
+                    state = 2
+
+            if state == 2:
+                m = re.search(r'Exponent for moment tensor:\s+(\d+)', line)
+                if m:
+                    data.exponent = int(m.group(1))
+
+                toks = line.split()
+                if toks and toks[0] == 'CMT':
+                    data.mrr, data.mtt, data.mpp, data.mrt, data.mrp, data.mtp = [ float(x) for x in toks[1:] ]
+            
+                m = re.search(r'^Eigenvector:', line)
+                if m:
+                    state = 0
+
+        if data is not None:
+            complete(data)
+
+        return events, more
         
