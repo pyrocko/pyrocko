@@ -2,10 +2,14 @@ from pyrocko import trace, io, util, model
 import unittest, math, time
 import numpy as num
 
+sometime = 1234567890.
 d2r = num.pi/180.
 
 def numeq(a,b, eps):
     return num.all(num.abs(num.array(a) - num.array(b)) < eps)
+
+def floats(l):
+    return num.array(l, dtype=num.float)
 
 class TraceTestCase(unittest.TestCase):
     
@@ -139,7 +143,7 @@ class TraceTestCase(unittest.TestCase):
         
         
     def testExtend(self):
-        tmin = 1234567890.
+        tmin = sometime
         t = trace.Trace(tmin=tmin, ydata=num.ones(10,dtype=num.float))
         tmax = t.tmax
         t.extend(tmin-10.2, tmax+10.7)
@@ -156,7 +160,7 @@ class TraceTestCase(unittest.TestCase):
         assert num.all(t.ydata[10:-10] == num.arange(10, dtype=num.float)+1.)
     
     def testAppend(self):
-        a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=1234567890)
+        a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=sometime)
         for i in xrange(10000):
             a.append(num.arange(1000, dtype=num.float))
         assert a.ydata.size == 10000*1000
@@ -170,14 +174,14 @@ class TraceTestCase(unittest.TestCase):
         upsratio = dt1/dtinter
         xdata = num.arange(n,dtype=num.float)
         ydata = num.exp(-((xdata-n/2)/10.)**2)
-        t = trace.Trace(ydata=ydata, tmin=1234567890, deltat=dt1, location='1')
+        t = trace.Trace(ydata=ydata, tmin=sometime, deltat=dt1, location='1')
         t2 = t.copy()
         t2.set_codes(location='2')
         t2.downsample_to(dt2, allow_upsample_max = 10)
         io.save([t,t2], 'test.mseed')
         
     def testFiltering(self):
-        tmin = 1234567890.
+        tmin = sometime
         b = time.time()
         for i in range(100):
             n = 10000
@@ -194,7 +198,7 @@ class TraceTestCase(unittest.TestCase):
         
     def testCropping(self):
         n = 20
-        tmin = 1234567890.
+        tmin = sometime
         t = trace.Trace(tmin=tmin, deltat=0.05, ydata=num.ones(n,dtype=num.float))
         tmax = t.tmax
         t.ydata[:3] = 0.0
@@ -218,7 +222,7 @@ class TraceTestCase(unittest.TestCase):
         
     def testAdd(self):
         n = 20
-        tmin = 1234567890.
+        tmin = sometime
         deltat = 0.05
         for distortion in [ -0.2, 0.2 ]:
             for ioffs, result in [ (  1, [0.,1.,1.,1.,0.]),
@@ -251,6 +255,68 @@ class TraceTestCase(unittest.TestCase):
         assert numeq( tp, [0., 49.9, 51., 99.8], 0.0001)
         assert numeq( ap, [1., 1., 1., 1.], 0.0001)
 
+    def testCorrelate(self):
+        
+        for la, lb, mode, res in [
+            ([0, 1, .5, 0, 0 ],    [0, 0, 0, 1, 0 ],    'same', 0.3),
+            ([0, 1, .5, 0, 0, 0 ], [0, 0, 0, 1, 0, 0 ], 'same', 0.3), 
+            ([0, 1, .5, 0, 0 ],    [0, 0, 0, 1, 0, 0 ], 'same', 0.3),
+            ([0, 1, .5, 0 ],       [0, 0, 0, 1, 0, 0 ], 'same', 0.3),
+            ([0, 1, .5, 0, 0, 0 ], [0, 0, 0, 1, 0 ],    'same', 0.3),
+            ([0, 1, .5, 0, 0, 0 ], [0, 0, 0, 1, ],      'same', 0.3),
+            ([0, 1, .5],           [0, 0, 0, 1, 0, 0 ], 'valid', 0.3),
+            ([0, 1, .5, 0],        [0, 0, 0, 1, 0, 0 ], 'valid', 0.3),
+            ([0, 1, .5, 0, 0, 0 ], [0, 1, 0 ],          'valid', 0.1),
+            ([0, 1, .5, 0, 0, 0 ], [0, 1, 0, 0 ],       'valid', 0.1),
+            ([0, 1, .5],           [0, 0, 0, 1, 0, 0 ], 'full', 0.3),
+            ([0, 1, .5, 0, 0, 0 ], [0, 1, 0 ],          'full', 0.1),
+            ([0, 1, .5, 0],        [0, 0, 0, 1, 0, 0 ], 'full', 0.3),
+            ([0, 1, .5, 0, 0, 0 ], [0, 1, 0, 0 ],       'full', 0.1)]:
+           
+            for ia in range(4):
+                for ib in range(4):
+
+                    ya = floats(la + [ 0 ] * ia)
+                    yb = floats(lb + [ 0 ] * ib)
+
+                    a = trace.Trace(tmin=10., deltat=0.1, ydata=ya)
+                    b = trace.Trace(tmin=10.1, deltat=0.1, ydata=yb)
+                    c = trace.correlate(a,b, mode=mode)
+                   
+                    if mode == 'valid' and c.ydata.size <=2:
+                        continue
+
+                    if not numeq(c.max(), [res, 1.], 0.0001):
+                        print mode
+                        print len(ya), ya
+                        print len(yb), yb
+                        print c.ydata, c.max()
+                        assert False
+
+    def testCorrelateNormalization(self):
+
+        ya = floats([1,2,1])
+        yb = floats([0,0,0,0,0,0,0,0,1,2,3,2,1])
+
+        for i in range(2):
+
+            a = trace.Trace(tmin=sometime, deltat=0.1, ydata=ya)
+            b = trace.Trace(tmin=sometime, deltat=0.1, ydata=yb)
+            
+            c = trace.correlate(a,b)
+            print c.ydata
+
+            c = trace.correlate(a,b, normalization='gliding')
+            print c.ydata
+            
+            ya,yb = yb,ya
+
+
+    def testMovingSum(self):
+
+        x = num.arange(5)
+        assert numeq( trace.moving_sum(x,3,mode='valid'), [3,6,9], 0.001 )
+        assert numeq( trace.moving_sum(x,3,mode='full'), [0,1,3,6,9,7,4], 0.001 )
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

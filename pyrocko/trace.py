@@ -9,6 +9,18 @@ from nano import asnano, Nano
 
 logger = logging.getLogger('pyrocko.trace')
 
+class globals:
+    _numpy_has_correlate_flip_bug = None
+
+def numpy_has_correlate_flip_bug():
+    if globals._numpy_has_correlate_flip_bug is None:
+        a = num.array([0,0,1,0,0,0,0])
+        b = num.array([0,0,0,0,1,0,0,0])
+        ab = num.correlate(a,b, mode='same')
+        ba = num.correlate(b,a, mode='same')
+        globals._numpy_has_correlate_flip_bug = num.all(ab == ba)
+    
+    return globals._numpy_has_correlate_flip_bug
 
 def minmax(traces, key=lambda tr: (tr.network, tr.station, tr.location, tr.channel), mode='minmax'):
     
@@ -405,14 +417,122 @@ def project3(traces, matrix, in_channels, out_channels):
      
     return projected
 
+def same_sampling_rate(a,b, eps=1.0e-6):
+    return (a.deltat - b.deltat) < (a.deltat + b.deltat)*eps
+
+def merge_codes(a,b, sep='-'):
+    o = []
+    for xa,xb in zip(a.nslc_id, b.nslc_id):
+        if xa == xb:
+            o.append(xa)
+        else:
+            o.append(sep.join((xa,xb)))
+    return o
+
+def correlate(a, b, mode='valid', normalization=None):
+    '''Cross correlation of two traces.
+    
+    This function computes the cross correlation with the NumPy function of the
+    same name.  A trace containing the cross correlation coefficients is
+    returned. The time information of the output trace is adjusted so that the
+    returned cross correlation can be viewed directly as a function of time
+    shift. This function tries to circumvent some problems caused by older
+    versions of numpy.correlate.
+
+    :param mode: 'valid', 'full', or 'same'
+    :param normalization: 'normal', 'gliding', or None
+
+    Example:
+        
+        # align two traces a and b containing a time shifted similar signal:
+        c = pyrocko.trace.correlate(a,b)
+        t, coef = c.max()  # get time and value of maximum
+        b.shift(-t)        # align b with a
+
+    '''
+
+    assert same_sampling_rate(a,b)
+
+    ya, yb = a.ydata, b.ydata
+
+    if mode == 'same' and ya.size != yb.size:
+        # because we have problems predicting k range in this mode when sizes are not the same
+        if ya.size < yb.size:
+            ya = num.concatenate((ya, num.zeros(yb.size-ya.size, dtype=ya.dtype)))
+        elif yb.size < ya.size:
+            yb = num.concatenate((yb, num.zeros(ya.size-yb.size, dtype=yb.dtype)))
+
+    yc = num.correlate(ya, yb, mode=mode)
+    if yb.size <= ya.size and numpy_has_correlate_flip_bug():
+        yc = yc[::-1]
+
+    if normalization == 'normal':
+        normfac = num.sqrt(num.sum(ya**2))*num.sqrt(num.sum(yb**2))
+        yc /= normfac
+
+    elif normalization == 'gliding':
+        if mode != 'valid':
+            assert False, 'gliding normalization currently only available with "valid" mode.'
+
+        if ya.size < yb.size:
+            yshort, ylong = ya, yb
+        else:
+            yshort, ylong = yb, ya
+        
+        epsilon = 0.00001
+        normfac_short = num.sqrt(num.sum(yshort**2)) 
+        normfac = normfac_short * num.sqrt(moving_sum(ylong**2,yshort.size, mode='valid')) + normfac_short*epsilon
+        
+        if yb.size <= ya.size:
+            normfac = normfac[::-1]
+
+        yc /= normfac
+    
+    c = a.copy()
+    c.set_ydata(yc)
+    c.set_codes(*merge_codes(a,b,'~'))
+    c.shift(-c.tmin)
+    c.shift(b.tmin-a.tmin)
+
+    if mode == 'same':
+        c.shift(-((min(ya.size,yb.size)-1)/2  + max(0,ya.size-yb.size))*c.deltat )
+
+    if mode == 'valid':
+        c.shift(-max(0,(ya.size-yb.size))* c.deltat)
+
+    if mode == 'full':
+        c.shift(-(min(yb.size,ya.size)-1 + max(0,(ya.size-yb.size)))* c.deltat)
+
+    return c
+
 def moving_avg(x,n):
     n = int(n)
     cx = x.cumsum()
     nn = len(x)
-    y = num.zeros(nn)
+    y = num.zeros(nn, dtype=cx.dtype)
     y[n/2:n/2+(nn-n)] = (cx[n:]-cx[:-n])/n
     y[:n/2] = y[n/2]
     y[n/2+(nn-n):] = y[n/2+(nn-n)-1]
+    return y
+
+def moving_sum(x,n, mode='valid'):
+    n = int(n)
+    cx = x.cumsum()
+    nn = len(x)
+
+    if mode == 'valid':
+        if nn-n+1 <= 0:
+            return num.zeros(0, dtype=cx.dtype) 
+        y = num.zeros(nn-n+1, dtype=cx.dtype)
+        y[0] = cx[n-1]
+        y[1:] = cx[n:]-cx[:-n]
+    
+    if mode == 'full':
+        y = num.zeros(nn+n-1, dtype=cx.dtype)
+        y[:n] = cx[:n]
+        y[n:-n+1] = cx[n:]-cx[:-n]
+        y[-n+1:] = cx[-1]-cx[-n:-1]
+    
     return y
 
 def nextpow2(i):
@@ -648,6 +768,7 @@ class Trace(object):
     def add(self, other, interpolate=True):
         
         if interpolate:
+            assert self.deltat <= other.deltat or same_sampling_rate(self,other)
             other_xdata = other.get_xdata()
             xdata = self.get_xdata()
             xmin, xmax = other_xdata[0], other_xdata[-1]
@@ -669,6 +790,7 @@ class Trace(object):
     def mult(self, other, interpolate=True):
         
         if interpolate:
+            assert self.deltat <= other.deltat or same_sampling_rate(self,other)
             other_xdata = other.get_xdata()
             xdata = self.get_xdata()
             xmin, xmax = other_xdata[0], other_xdata[-1]
@@ -686,7 +808,23 @@ class Trace(object):
             iend2 = self.index_clip(iend2)
             
             self.ydata[ibeg1:iend1] *= other.ydata[ibeg2:iend2]
-                                    
+    
+    def max(self):
+        i = num.argmax(self.ydata)
+        return self.tmin + i*self.deltat, self.ydata[i]
+
+    def min(self):
+        i = num.argmin(self.ydata)
+        return self.tmin + i*self.deltat, self.ydata[i]
+
+    def absmax(self):
+        tmi, mi = self.min()
+        tma, ma = self.max()
+        if abs(mi) > abs(ma):
+            return tmi, abs(mi)
+        else:
+            return tma, abs(ma)
+
     def set_codes(self, network=None, station=None, location=None, channel=None):
         if network is not None:
             self.network = network
