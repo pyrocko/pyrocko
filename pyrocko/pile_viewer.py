@@ -1147,13 +1147,17 @@ def MakePileOverviewClass(base):
 #            self.menu.addAction(self.menuitem_pick)
 #            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
             
-            self.menuitem_pick = QAction('Write markers', self.menu)
-            self.menu.addAction(self.menuitem_pick)
-            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.write_markers )
+            mi = QAction('Write markers', self.menu)
+            self.menu.addAction(mi)
+            self.connect( mi, SIGNAL("triggered(bool)"), self.write_markers )
             
-            self.menuitem_pick = QAction('Read markers', self.menu)
-            self.menu.addAction(self.menuitem_pick)
-            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.read_markers )
+            mi = QAction('Write selected markers', self.menu)
+            self.menu.addAction(mi)
+            self.connect( mi, SIGNAL("triggered(bool)"), self.write_selected_markers )
+            
+            mi = QAction('Read markers', self.menu)
+            self.menu.addAction(mi)
+            self.connect( mi, SIGNAL("triggered(bool)"), self.read_markers )
             
             self.menu.addSeparator()
             
@@ -1696,6 +1700,11 @@ def MakePileOverviewClass(base):
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
                 Marker.save_markers(self.markers, fn)
+
+        def write_selected_markers(self):
+            fn = QFileDialog.getSaveFileName(self,)
+            if fn:
+                Marker.save_markers(self.selected_markers(), fn)
 
         def read_markers(self):
             fn = QFileDialog.getOpenFileName(self,)
