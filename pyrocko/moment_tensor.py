@@ -17,6 +17,8 @@ def symmat6(*vals):
 
 def moment_to_magnitude( moment ):
     return num.log10(moment*1.0e7)/1.5 - 10.7
+    # global CMT uses 10.7333333... instead of 10.7, based on [Kanamori 1977]
+    # 10.7 comes from [Hanks and Kanamori 1979]
 
 def magnitude_to_moment( magnitude ):
     return 10.0**(1.5*(magnitude+10.7))*1.0e-7
