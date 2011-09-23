@@ -291,7 +291,7 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     fractional seconds. If the format ends with ``'.OPTFRAC'``, the fractional part,
     including the dot is made optional. The latter has the consequence, that the time 
     strings and the format may not contain any other dots. If the format ends
-    with `'.xFRAC'`` where x is 1, 2, or 3, it is ensured, that exactly that
+    with ``'.xFRAC'`` where x is 1, 2, or 3, it is ensured, that exactly that
     number of digits are present in the fractional seconds.
     '''
         
