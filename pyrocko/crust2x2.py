@@ -238,8 +238,8 @@ class Crust2:
             f = open(path_elevation, 'r')
     
         else:
-            f = StringIO(elevation)
-            
+            f = StringIO(decode(elevation))
+           
         f.readline()
         for ila, line in enumerate(f):
             for ilo, s in enumerate(line.split()[1:]):
