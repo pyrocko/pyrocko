@@ -13,6 +13,31 @@ All functions defined in this module return SI units (m, m/s, kg/m^3).
     Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000. A 
     description of CRUST 5.1 can be found in: Mooney, Laske and Masters, Crust 5.1:
     a global crustal model at 5x5 degrees, JGR, 103, 727-747, 1998.
+
+Usage::
+
+    >>> from pyrocko import crust2x2
+    >>> p = crust2x2.get_profile(10., 20.)
+    >>> print p
+    type, name:              G2, Archean 0.5 km seds.
+    elevation:                           529
+    crustal thickness:                 38500
+    average vp, vs, rho:              6460.7          3665.1          2867.5
+    mantle ave. vp, vs, rho:            8200            4700            3400
+
+                  0            3810            1940             920   ice
+                  0            1500               0            1020   water
+                500            2500            1200            2100   soft sed.
+                  0            4000            2100            2400   hard sed.
+              12500            6200            3600            2800   upper crust
+              13000            6400            3600            2850   middle crust
+              13000            6800            3800            2950   lower crust
+    >>> print p.get_weeded()
+    [[     0.    500.    500.  13000.  13000.  26000.  26000.  39000.  39000.]
+     [  2500.   2500.   6200.   6200.   6400.   6400.   6800.   6800.   8200.]
+     [  1200.   1200.   3600.   3600.   3600.   3600.   3800.   3800.   4700.]
+     [  2100.   2100.   2800.   2800.   2850.   2850.   2950.   2950.   3400.]]
+
 '''
 
 import numpy as num
@@ -132,14 +157,14 @@ mantle ave. vp, vs, rho: %15.5g %15.5g %15.5g
     
         return vvp, vvs, vrho, vthi
         
-def sa2arr(sa):
+def _sa2arr(sa):
     return num.array([ float(x) for x in sa ], dtype=num.float)
 
-def wrap(x, mi, ma):
+def _wrap(x, mi, ma):
     if mi <= x and x <= ma: return x
     return x - math.floor((x-mi)/(ma-mi)) * (ma-mi)
 
-def clip(x, mi, ma):
+def _clip(x, mi, ma):
     return min(max(mi,x),ma)
 
 class Crust2:
@@ -175,12 +200,12 @@ class Crust2:
         return self._typemap[self._indices(float(lat),float(lon))]
         
     def _indices(self, lat,lon):
-        lat = clip(lat, -90., 90.)
-        lon = wrap(lon, -180., 180.)
+        lat = _clip(lat, -90., 90.)
+        lon = _wrap(lon, -180., 180.)
         dlo = 360./Crust2.nlo
         dla = 180./Crust2.nla
         cola = 90.-lat
-        ilat = clip(int(cola/dla), 0, Crust2.nla-1)
+        ilat = _clip(int(cola/dla), 0, Crust2.nla-1)
         ilon = int((lon+180.)/dlo)%Crust2.nlo
         return ilat, ilon
         
@@ -204,14 +229,14 @@ class Crust2:
                 break
             ident, name = line.split(None, 1)
             line = f.readline()
-            vp = sa2arr(line.split()) * 1000.
+            vp = _sa2arr(line.split()) * 1000.
             line = f.readline()
-            vs = sa2arr(line.split()) * 1000.
+            vs = _sa2arr(line.split()) * 1000.
             line = f.readline()
-            rho = sa2arr(line.split()) * 1000.
+            rho = _sa2arr(line.split()) * 1000.
             line = f.readline()
             toks = line.split()
-            thickness = sa2arr(toks[:-2]) * 1000.
+            thickness = _sa2arr(toks[:-2]) * 1000.
             
             profiles[ident] = Crust2Profile(ident.strip(), name.strip(), vp, vs, rho, thickness, 0.0)
             
@@ -254,15 +279,18 @@ class Crust2:
 
     @staticmethod
     def instance():
+        '''Get the global default Crust2 instance.'''
+
         if Crust2._instance is None:
             Crust2._instance = Crust2()
 
         return Crust2._instance
 
-
 def get_profile(lat, lon):
-   crust2 = Crust2.instance()
-   return crust2.get_profile(lat,lon)
+    '''Get Crust2x2 profile for given location.'''
+    
+    crust2 = Crust2.instance()
+    return crust2.get_profile(lat,lon)
 
         
 def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
@@ -278,6 +306,7 @@ def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):
     
 def plot_vp_belowcrust(crust2=None, filename='vp_below_crust.pdf'):
     '''Create a quick and dirty plot of vp below the crust, as defined in CRUST2.0.'''
+
     if crust2 is None:
         crust2 = Crust2.instance()
         

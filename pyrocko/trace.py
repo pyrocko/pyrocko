@@ -9,28 +9,22 @@ from nano import asnano, Nano
 
 logger = logging.getLogger('pyrocko.trace')
 
-class globals:
-    _numpy_has_correlate_flip_bug = None
 
-def numpy_has_correlate_flip_bug():
-    if globals._numpy_has_correlate_flip_bug is None:
-        a = num.array([0,0,1,0,0,0,0])
-        b = num.array([0,0,0,0,1,0,0,0])
-        ab = num.correlate(a,b, mode='same')
-        ba = num.correlate(b,a, mode='same')
-        globals._numpy_has_correlate_flip_bug = num.all(ab == ba)
-    
-    return globals._numpy_has_correlate_flip_bug
-
-def minmax(traces, key=lambda tr: (tr.network, tr.station, tr.location, tr.channel), mode='minmax'):
+def minmax(traces, key=None, mode='minmax'):
     
     '''Get data range given traces grouped by selected pattern.
+   
+    :param key: a callable which takes as single argument a trace and returns a key for the grouping of the results.
+                If this is ``None``, the default, ``lambda tr: (tr.network, tr.station, tr.location, tr.channel)`` is used.
+    :param mode: 'minmax' or floating point number. If this is 'minmax', minimum and maximum of the traces are used, 
+                 if it is a number, mean +- stdandard deviation times *mode* is used.
     
-    A dict with the combined data ranges is returned. By default, the keys of
-    the output dict are tuples formed from the selected keys out of network,
-    station, location, and channel, in that particular order.
+    :returns: a dict with the combined data ranges.
     '''
-    
+   
+    if key is None:
+        key = _default_key
+
     ranges = {}
     for trace in traces:
         if isinstance(mode, str) and mode == 'minmax':
@@ -49,15 +43,19 @@ def minmax(traces, key=lambda tr: (tr.network, tr.station, tr.location, tr.chann
     
     return ranges
         
-def minmaxtime(traces, key=lambda tr: (tr.network, tr.station, tr.location, tr.channel)):
+def minmaxtime(traces, key=None):
     
     '''Get time range given traces grouped by selected pattern.
     
-    A dict with the combined time ranges is returned. By default, the keys of
-    the output dict are tuples formed from the selected keys out of network,
-    station, location, and channel, in that particular order.
+    :param key: a callable which takes as single argument a trace and returns a key for the grouping of the results.
+                If this is ``None``, the default, ``lambda tr: (tr.network, tr.station, tr.location, tr.channel)`` is used.
+    
+    :returns: a dict with the combined data ranges.
     '''
     
+    if key is None:
+        key = _default_key
+
     ranges = {}
     for trace in traces:
         mi, ma = trace.tmin, trace.tmax
@@ -70,7 +68,7 @@ def minmaxtime(traces, key=lambda tr: (tr.network, tr.station, tr.location, tr.c
     
     return ranges
     
-def degapper(in_traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second'):
+def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second'):
     
     '''Try to connect traces and remove gaps.
     
@@ -78,17 +76,17 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate', deoverlap='use_secon
     station, location and channel attributes. Overlapping parts are handled
     according to the `deoverlap` argument.
     
-    Arguments:
-    
-       in_traces:   input traces, must be sorted by their full_id attribute.
-       maxgap:      maximum number of samples to interpolate.
-       fillmethod:  what to put into the gaps: 'interpolate' or 'zeros'.
-       deoverlap:   how to handle overlaps: 'use_second' to use data from 
-                    second trace (default), 'use_first' to use data from first
-                    trace, 'crossfade_cos' to crossfade with cosine taper 
-       
+    :param traces:      input traces, must be sorted by their full_id attribute.
+    :param maxgap:      maximum number of samples to interpolate.
+    :param fillmethod:  what to put into the gaps: 'interpolate' or 'zeros'.
+    :param deoverlap:   how to handle overlaps: 'use_second' to use data from 
+                        second trace (default), 'use_first' to use data from first
+                        trace, 'crossfade_cos' to crossfade with cosine taper 
+      
+    :returns:           list of traces
     '''
-    
+
+    in_traces = traces 
     out_traces = []
     if not in_traces: return out_traces
     out_traces.append(in_traces.pop(0))
@@ -157,23 +155,22 @@ def degapper(in_traces, maxgap=5, fillmethod='interpolate', deoverlap='use_secon
     return out_traces
 
 def rotate(traces, azimuth, in_channels, out_channels):
-    '''Rotate corresponding traces
+    '''2D rotation of traces.
     
-    In:
-       traces -- not rotated traces
-       azimuth -- difference of the azimuths of the component directions
+    :param traces: list of input traces
+    :param azimuth: difference of the azimuths of the component directions
                      (azimuth of out_channels[0]) - (azimuth of in_channels[0])
-       in_channels -- names of the input channels (e.g. 'N', 'E')
-       out_channels -- names of the output channels (e.g. 'R', 'T')
-       
+    :param in_channels: names of the input channels (e.g. 'N', 'E')
+    :param out_channels: names of the output channels (e.g. 'R', 'T')
+    :returns: list of rotated traces 
     '''
     
     phi = azimuth/180.*math.pi
     cphi = math.cos(phi)
     sphi = math.sin(phi)
     rotated = []
-    in_channels = tuple(channels_to_names(in_channels))
-    out_channels = tuple(channels_to_names(out_channels))
+    in_channels = tuple(_channels_to_names(in_channels))
+    out_channels = tuple(_channels_to_names(out_channels))
     for a in traces:
         for b in traces:
             if ( (a.channel, b.channel) == in_channels and
@@ -202,7 +199,7 @@ def rotate(traces, azimuth, in_channels, out_channels):
     return rotated
 
 
-def decompose(a):
+def _decompose(a):
     '''Decompose matrix into independent submatrices.'''
     
     def depends(iout,a):
@@ -244,7 +241,7 @@ def decompose(a):
     
     return systems
 
-def channels_to_names(channels):
+def _channels_to_names(channels):
     names = []
     for ch in channels:
         if isinstance(ch, model.Channel):
@@ -254,41 +251,54 @@ def channels_to_names(channels):
     return names
 
 def project(traces, matrix, in_channels, out_channels):
+   
+    '''Affine transform of three-component traces.
+
+    Compute matrix-vector product of three-component traces, to e.g. rotate
+    traces into a different basis. The traces are distinguished and ordered by their channel attribute.
+    The tranform is applied to overlapping parts of any appropriate combinations of the input traces. This
+    should allow this function to be robust with data gaps.
+    It also tries to apply the tranformation
+    to subsets of the channels, if this is possible, so that, if for example a vertical
+    compontent is missing, horizontal components can still be rotated.
+
+    :param traces: list of traces in arbitrary order
+    :param matrix: tranformation matrix
+    :param in_channels: input channel names
+    :param out_channels: output channel names
+    :returns: list of transformed traces
+    '''
     
-    # try to apply transformation to subsets of the channels if this is 
-    # possible, such that if for example a vertical component is missing,
-    # the horizontal components can still be rotated.
-    
-    in_channels = tuple( channels_to_names(in_channels) )
-    out_channels = tuple( channels_to_names(out_channels) )
-    systems = decompose(matrix)
+    in_channels = tuple( _channels_to_names(in_channels) )
+    out_channels = tuple( _channels_to_names(out_channels) )
+    systems = _decompose(matrix)
     
     # fallback to full matrix if some are not quadratic
     for iins, iouts, submatrix in systems:
         if submatrix.shape[0] != submatrix.shape[1]:
-            return project3(traces, matrix, in_channels, out_channels)
+            return _project3(traces, matrix, in_channels, out_channels)
     
     projected = []
     for iins, iouts ,submatrix in systems:
         in_cha = tuple( [ in_channels[iin] for iin in iins ] )
         out_cha = tuple( [ out_channels[iout] for iout in iouts ] )
         if submatrix.shape[0] == 1:
-            projected.extend( project1(traces, submatrix, in_cha, out_cha) )
+            projected.extend( _project1(traces, submatrix, in_cha, out_cha) )
         elif submatrix.shape[1] == 2:
-            projected.extend( project2(traces, submatrix, in_cha, out_cha) )
+            projected.extend( _project2(traces, submatrix, in_cha, out_cha) )
         else:
-            projected.extend( project3(traces, submatrix, in_cha, out_cha) )
+            projected.extend( _project3(traces, submatrix, in_cha, out_cha) )
     
    
     return projected
 
 def project_dependencies(matrix, in_channels, out_channels):
     
-    # figure out what dependencies project() would produce
+    '''Figure out what dependencies project() would produce.'''
     
-    in_channels = tuple( channels_to_names(in_channels) )
-    out_channels = tuple( channels_to_names(out_channels) )
-    systems = decompose(matrix)
+    in_channels = tuple( _channels_to_names(in_channels) )
+    out_channels = tuple( _channels_to_names(out_channels) )
+    systems = _decompose(matrix)
     
     subpro = []
     for iins, iouts, submatrix in systems:
@@ -312,7 +322,7 @@ def project_dependencies(matrix, in_channels, out_channels):
     
     return deps
         
-def project1(traces, matrix, in_channels, out_channels):
+def _project1(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 1
     assert len(out_channels) == 1
     assert matrix.shape == (1,1)
@@ -329,7 +339,7 @@ def project1(traces, matrix, in_channels, out_channels):
         
     return projected
 
-def project2(traces, matrix, in_channels, out_channels):
+def _project2(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 2
     assert len(out_channels) == 2
     assert matrix.shape == (2,2)
@@ -367,7 +377,7 @@ def project2(traces, matrix, in_channels, out_channels):
     
     return projected
             
-def project3(traces, matrix, in_channels, out_channels):
+def _project3(traces, matrix, in_channels, out_channels):
     assert len(in_channels) == 3
     assert len(out_channels) == 3
     assert matrix.shape == (3,3)
@@ -417,17 +427,6 @@ def project3(traces, matrix, in_channels, out_channels):
      
     return projected
 
-def same_sampling_rate(a,b, eps=1.0e-6):
-    return (a.deltat - b.deltat) < (a.deltat + b.deltat)*eps
-
-def merge_codes(a,b, sep='-'):
-    o = []
-    for xa,xb in zip(a.nslc_id, b.nslc_id):
-        if xa == xb:
-            o.append(xa)
-        else:
-            o.append(sep.join((xa,xb)))
-    return o
 
 def correlate(a, b, mode='valid', normalization=None):
     '''Cross correlation of two traces.
@@ -439,10 +438,13 @@ def correlate(a, b, mode='valid', normalization=None):
     shift. This function tries to circumvent some problems caused by older
     versions of numpy.correlate.
 
+    :param a,b: input traces
     :param mode: 'valid', 'full', or 'same'
     :param normalization: 'normal', 'gliding', or None
 
-    Example:
+    :returns: trace containing cross correlation coefficients
+
+    Example::
         
         # align two traces a and b containing a time shifted similar signal:
         c = pyrocko.trace.correlate(a,b)
@@ -504,6 +506,26 @@ def correlate(a, b, mode='valid', normalization=None):
         c.shift(-(min(yb.size,ya.size)-1 + max(0,(ya.size-yb.size)))* c.deltat)
 
     return c
+
+def same_sampling_rate(a,b, eps=1.0e-6):
+    '''Check if two traces have the same sampling rate.
+    
+    :param a,b: input traces
+    :param eps: relative tolerance
+    '''
+    return (a.deltat - b.deltat) < (a.deltat + b.deltat)*eps
+
+def merge_codes(a,b, sep='-'):
+    '''Merge network-station-location-channel codes of a pair of traces.'''
+    
+    
+    o = []
+    for xa,xb in zip(a.nslc_id, b.nslc_id):
+        if xa == xb:
+            o.append(xa)
+        else:
+            o.append(sep.join((xa,xb)))
+    return o
 
 def moving_avg(x,n):
     n = int(n)
@@ -670,25 +692,24 @@ class AboveNyquist(Exception):
 
 class Trace(object):
     
+    '''Create new trace object
+           
+    :param network:  network code
+    :param station:  station code
+    :param location:  location code
+    :param channel:  channel code
+    :param tmin:  system time of first sample in [s]
+    :param tmax:  system time of last sample in [s] (if None it is computed from length)
+    :param deltat:  sampling interval in [s]
+    :param ydata:  1D numpy array with data samples
+    :param mtime:  opitional modification time 
+    :param meta:  additional meta information (not used by pyrocko)
+    '''
+
     cached_frequencies = {}
         
     def __init__(self, network='', station='STA', location='', channel='', 
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
-    
-        '''Create new trace object
-           
-        In:
-            network -- network code
-            station -- station code
-            location -- location code
-            channel -- channel code
-            tmin -- system time of first sample in [s]
-            tmax -- system time of last sample in [s] (if None it is computed from length)
-            deltat -- sampling interval in [s]
-            ydata -- 1D numpy array with data samples
-            mtime -- opitional modification time 
-            meta -- additional meta information (not used by pyrocko)
-        '''
     
         self._growbuffer = None
 
@@ -730,7 +751,9 @@ class Trace(object):
         return s
         
     def name(self):
-        s = '%s.%s.%s.%s, %s, %s' % (self.nslc_id + (util.gmctime(self.tmin), util.gmctime(self.tmax)))
+        '''Get a short string description.'''
+
+        s = '%s.%s.%s.%s, %s, %s' % (self.nslc_id + (util.str_to_time(self.tmin), util.str_to_time(self.tmax)))
         return s
         
     def __eq__(self, other):
@@ -754,6 +777,12 @@ class Trace(object):
         return self.tmin+it*self.deltat, self.ydata[it]
     
     def interpolate(self, t, clip=False):
+        '''Value of trace between supporting points through linear interpolation.
+        
+        :param t: time instant
+        :param clip: whether to clip indices to trace ends
+        '''
+
         t0, y0 = self(t, clip=clip, snap=math.floor)
         t1, y1 = self(t, clip=clip, snap=math.ceil)
         if t0 == t1:
@@ -762,10 +791,23 @@ class Trace(object):
             return y0+(t-t0)/(t1-t0)*(y1-y0)
         
     def index_clip(self, i):
+        '''Clip index to valid range.'''
+
         return min(max(0,i), self.ydata.size)
 
         
     def add(self, other, interpolate=True):
+        '''Add values of other trace (self += other).
+        
+        Add values of *other* trace to the values of *self*, where it
+        intersects with *other*.  This method does not change the extent of
+        *self*. If *interpolate* is ``True`` (the default), the values of
+        *other* to be added are interpolated at sampling instances of *self*.
+        Linear interpolation is performed. In this case the sampling rate of
+        *other* must be equal to or lower than that of *self*.  If
+        *interpolate* is ``False``, the sampling rates of the two traces must
+        match.
+        '''
         
         if interpolate:
             assert self.deltat <= other.deltat or same_sampling_rate(self,other)
@@ -788,7 +830,18 @@ class Trace(object):
             self.ydata[ibeg1:iend1] += other.ydata[ibeg2:iend2]
 
     def mult(self, other, interpolate=True):
+        '''Muliply with values of other trace (self \*= other).
         
+        Multiply values of *other* trace to the values of *self*, where it
+        intersects with *other*.  This method does not change the extent of
+        *self*. If *interpolate* is ``True`` (the default), the values of
+        *other* to be multiplied are interpolated at sampling instances of *self*.
+        Linear interpolation is performed. In this case the sampling rate of
+        *other* must be equal to or lower than that of *self*.  If
+        *interpolate* is ``False``, the sampling rates of the two traces must
+        match.
+        '''
+
         if interpolate:
             assert self.deltat <= other.deltat or same_sampling_rate(self,other)
             other_xdata = other.get_xdata()
@@ -810,14 +863,19 @@ class Trace(object):
             self.ydata[ibeg1:iend1] *= other.ydata[ibeg2:iend2]
     
     def max(self):
+        '''Get time and value of data maximum.'''
+
         i = num.argmax(self.ydata)
         return self.tmin + i*self.deltat, self.ydata[i]
 
     def min(self):
+        '''Get time and value of data minimum.'''
+
         i = num.argmin(self.ydata)
         return self.tmin + i*self.deltat, self.ydata[i]
 
     def absmax(self):
+        '''Get time and value of maximum of the absolute of data.'''
         tmi, mi = self.min()
         tma, ma = self.max()
         if abs(mi) > abs(ma):
@@ -1135,11 +1193,10 @@ class Trace(object):
             return tpeaks, apeaks
 
     def extend(self, tmin, tmax, fillmethod='zeros'):
-        '''Extend trace to given span
+        '''Extend trace to given span.
         
-        In:
-            tmin, tmax -- new span
-            fillmethod -- 'zeros' or 'repeat' 
+        :param tmin,tmax:  new span
+        :param fillmethod: 'zeros' or 'repeat' 
         '''
         
         assert tmin <= self.tmin and tmax >= self.tmax
@@ -1164,11 +1221,11 @@ class Trace(object):
     def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True):
         '''Return new trace with transfer function applied.
         
-        tfade -- rise/fall time in seconds of taper applied in timedomain at both ends of trace.
-        freqlimits -- 4-tuple with corner frequencies in Hz.
-        transfer_function -- FrequencyResponse object; must provide a method 'evaluate(freqs)', which returns the
-                             transfer function coefficients at the frequencies 'freqs'.
-        cut_off_fading -- cut off rise/fall interval in output trace.
+        :param tfade:             rise/fall time in seconds of taper applied in timedomain at both ends of trace.
+        :param freqlimits:        4-tuple with corner frequencies in Hz.
+        :param transfer_function: FrequencyResponse object; must provide a method 'evaluate(freqs)', which returns the
+                                  transfer function coefficients at the frequencies 'freqs'.
+        :param cut_off_fading:    whether to cut off rise/fall interval in output trace.
         '''
     
         if transfer_function is None:
@@ -1254,3 +1311,20 @@ def get_cached_filter_coefs(order, corners, btype):
     return cached_coefficients[ck]
     
     
+class _globals:
+    _numpy_has_correlate_flip_bug = None
+
+_default_key = lambda tr: (tr.network, tr.station, tr.location, tr.channel)
+
+def numpy_has_correlate_flip_bug():
+    '''Check if NumPy's correlate function reveals old behaviour'''
+
+    if _globals._numpy_has_correlate_flip_bug is None:
+        a = num.array([0,0,1,0,0,0,0])
+        b = num.array([0,0,0,0,1,0,0,0])
+        ab = num.correlate(a,b, mode='same')
+        ba = num.correlate(b,a, mode='same')
+        _globals._numpy_has_correlate_flip_bug = num.all(ab == ba)
+    
+    return _globals._numpy_has_correlate_flip_bug
+

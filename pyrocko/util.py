@@ -1,4 +1,4 @@
-'''Utility functions for pyrocko.'''
+'''Utility functions for Pyrocko.'''
 
 import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex
 from scipy import signal
@@ -32,13 +32,22 @@ def setup_logging(programname='pyrocko', levelname='warning'):
         format = programname+':%(name)-20s - %(levelname)-8s - %(message)s' )
 
 class Stopwatch:
+    '''Simple stopwatch to measure elapsed wall clock time.
+    
+    Usage::
+
+        s = Stopwatch()
+        time.sleep(1)
+        print s()
+        time.sleep(1)
+        print s()
+    '''
 
     def __init__(self):
         self.start = time.time()
     
     def __call__(self):
         return time.time() - self.start
-        
         
 def progressbar_module():
     '''Load the progressbar module, if available.
@@ -148,7 +157,7 @@ def decimate(x, q, n=None, ftype='iir', zi=None):
         return y[n/2::q].copy()
     
 class UnavailableDecimation(Exception):
-    '''Exception raised for unavailable decimation factors.'''
+    '''Exception raised by :py:func:`decitab` for unavailable decimation factors.'''
 
     pass
     
@@ -195,16 +204,37 @@ def mk_decitab(nmax=100):
     GlobalVars.decitab_nmax = nmax
     
 def day_start(timestamp):
-   tt = time.gmtime(int(timestamp))
-   tts = tt[0:3] + (0,0,0) + tt[6:9]
-   return calendar.timegm(tts)
+    '''Get beginning of day for any point in time.
+    
+    :param timestamp: time instant as system timestamp (in seconds)
+
+    :returns: instant of day start as system timestamp
+    '''
+
+    tt = time.gmtime(int(timestamp))
+    tts = tt[0:3] + (0,0,0) + tt[6:9]
+    return calendar.timegm(tts)
 
 def month_start(timestamp):
-   tt = time.gmtime(int(timestamp))
-   tts = tt[0:2] + (1,0,0,0) + tt[6:9]
-   return calendar.timegm(tts)
+    '''Get beginning of month for any point in time.
+    
+    :param timestamp: time instant as system timestamp (in seconds)
+
+    :returns: instant of month start as system timestamp
+    '''
+
+    tt = time.gmtime(int(timestamp))
+    tts = tt[0:2] + (1,0,0,0) + tt[6:9]
+    return calendar.timegm(tts)
 
 def year_start(timestamp):
+    '''Get beginning of year for any point in time.
+    
+    :param timestamp: time instant as system timestamp (in seconds)
+
+    :returns: instant of year start as system timestamp
+    '''
+    
     tt = time.gmtime(int(timestamp))
     tts = tt[0:1] + (1,1,0,0,0) + tt[6:9]
     return calendar.timegm(tts)
@@ -270,10 +300,12 @@ class FractionalSecondsMissing(Exception):
     '''Exception raised by :py:func:`str_to_time` when the given string lacks
     fractional seconds.'''
     pass
+
 class FractionalSecondsWrongNumberOfDigits(Exception):
+    '''Exception raised by :py:func:`str_to_time` when the given string has an incorrect number of digits in the fractional seconds part.'''
     pass
 
-def endswith_n(s, endings):
+def _endswith_n(s, endings):
     for ix, x in enumerate(endings):
         if s.endswith(x):
             return ix
@@ -298,7 +330,7 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     fracsec = 0.
     fixed_endings = '.FRAC', '.1FRAC', '.2FRAC', '.3FRAC'
     
-    iend = endswith_n(format, fixed_endings)
+    iend = _endswith_n(format, fixed_endings)
     if iend != -1:
         dotpos = s.rfind('.')
         if dotpos == -1:
@@ -417,7 +449,17 @@ def reuse(x):
     
     
 class Anon:
-    def __init__(self,dict):
+    '''Dict-to-object utility.
+
+    Any given arguments are stored as attributes.
+
+    Example::
+    
+        a = Anon(x=1, y=2)
+        print a.x, a.y
+    '''
+
+    def __init__(self, **dict):
         for k in dict:
             self.__dict__[k] = dict[k]
 
@@ -466,7 +508,7 @@ def select_files( paths, selector=None,  regex=None, show_progress=True ):
             logger.debug("looking at filename: '%s'" % path) 
             m = rselector.search(path)
             if m:
-                infos = Anon(m.groupdict())
+                infos = Anon(**m.groupdict())
                 logger.debug( "   regex '%s' matches." % regex)
                 for k,v in m.groupdict().iteritems():
                     logger.debug( "      attribute '%s' has value '%s'" % (k,v) )
@@ -519,6 +561,8 @@ def base36decode(number):
     return int(number,36)
 
 class UnpackError(Exception):
+    '''Exception raised when :py:func:`unpack_fixed` encounters an error.'''
+    
     pass
 
 ruler = ''.join([ '%-10i' % i for i in range(8) ]) + '\n' + '0123456789' * 8 + '\n'
@@ -595,6 +639,21 @@ def _nslc_pattern(pattern):
     return rpattern
 
 def match_nslc(patterns, nslc):
+    '''Match network-station-location-channel code against pattern or list of patterns.
+    
+    :param patterns: pattern or list of patterns
+    :param nslc: tuple with (network, station, location, channel) as strings
+
+    :returns: ``True`` if the pattern matches or if any of the given patterns match; or ``False``.
+
+    The patterns may contain shell-style wildcards: \*, ?, [seq], [!seq].
+
+    Example::
+
+        match_nslc('*.HAM3.*.BH?', ('GR','HAM3','','BHZ'))   # -> True        
+    
+    '''
+    
     if isinstance(patterns, str):
         patterns = [ patterns ]
     
@@ -606,6 +665,14 @@ def match_nslc(patterns, nslc):
     return False
 
 def match_nslcs(patterns, nslcs):
+    '''Get network-station-location-channel codes that match given pattern or any of several given patterns.
+
+    :param patterns: pattern or list of patterns
+    :param nslcs: list of (network, station, location, channel) tuples
+
+    See also :py:func:`match_nslc`
+    '''
+
     matching = []
     for nslc in nslcs:
         if match_nslc(patterns, nslc): 
@@ -614,10 +681,33 @@ def match_nslcs(patterns, nslcs):
     return matching
 
 class SoleError(Exception):
+    '''Exception raised by objects of type :py:class:`Sole`, when an concurrent instance is running.'''
+
     pass
 
 class Sole(object):
+   
+    '''Use POSIX advisory file locking to ensure that only a single instance of a program is running.
     
+    :param pid_path: path to lockfile to be used
+
+    Usage::
+
+        from pyrocko.util import Sole, SoleError, setup_logging
+        import os
+        
+        setup_logging('my_program')
+
+        pid_path =  os.path.join(os.environ['HOME'], '.my_program_lock')
+        try:
+            sole = Sole(pid_path)
+
+        except SoleError, e:
+            logger.fatal( str(e) )
+            sys.exit(1)
+
+    '''
+
     def __init__(self, pid_path):
         self._pid_path = pid_path
         self._other_running = False
@@ -668,10 +758,28 @@ def escapequotes(s):
     return re_escapequotes(r"\\\1", s)
 
 class TableWriter:
+    '''Write table of space separated values to a file.
+
+    :param f: file like object
+
+    Strings containing spaces are quoted on output.
+    '''
+
     def __init__(self, f):
         self._f = f
 
     def writerow(self, row, minfieldwidths=None):
+
+        '''Write one row of values to underlying file.
+        
+        :param row: iterable of values
+        :param minfieldwidths: minimum field widths for the values
+
+        Each value in in `row` is converted to a string and optionally padded with blanks. The resulting
+        strings are output separated with blanks. If any values given are strings and if they contain whitespace,
+        they are quoted with single quotes, and any internal single quotes are backslash-escaped.
+        '''
+
         out = []
         
         for i, x in enumerate(row):
@@ -692,11 +800,24 @@ class TableWriter:
         self._f.write( ' '.join(out).rstrip() + '\n')
 
 class TableReader:
+    
+    '''Read table of space separated values from a file.
+    
+    :param f: file-like object
+
+    This uses Pythons shlex module to tokenize lines. Should deal correctly with quoted strings.
+    '''
+
     def __init__(self, f):
         self._f = f
         self.eof = False
 
     def readrow(self):
+        '''Read one row from the underlying file, tokenize it with shlex.
+        
+        :returns: tokenized line as a list of strings.
+        '''
+
         line = self._f.readline()
         if not line:
             self.eof = True

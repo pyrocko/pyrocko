@@ -1,8 +1,11 @@
 
 
 The :mod:`util` Module
-----------------------
+======================
 
 .. automodule:: pyrocko.util
-   :members:
-   :undoc-members:
+    :members:
+    :undoc-members:
+
+
+
