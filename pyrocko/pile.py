@@ -1,3 +1,5 @@
+'''A pile contains subpiles which contain tracesfiles which contain traces.'''
+
 import trace, io, util, config
 
 import numpy as num
@@ -9,9 +11,6 @@ logger = logging.getLogger('pyrocko.pile')
 from util import reuse
 from trace import degapper
 
-'''
-A pile contains subpiles which contain tracesfiles which contain traces.
-'''
 
 progressbar = util.progressbar_module()
 
@@ -28,8 +27,7 @@ class TracesFileCache(object):
     def __init__(self, cachedir):
         '''Create new cache.
         
-        In:
-          cachedir -- directory to hold the cache files.
+        :param cachedir: directory to hold the cache files.
           
         '''
         
@@ -41,11 +39,9 @@ class TracesFileCache(object):
     def get(self, abspath):
         '''Try to get an item from the cache.
         
-        In:
-          abspath -- absolute path of the object to retrieve
+        :param abspath: absolute path of the object to retrieve
           
-        Returns:
-          A stored object is returned or None if nothing could be found.
+        :returns: a stored object is returned or None if nothing could be found.
           
         '''
         
@@ -57,9 +53,8 @@ class TracesFileCache(object):
     def put(self, abspath, tfile):
         '''Put an item into the cache.
         
-        In:
-          abspath -- absolute path of the object to be stored
-          tfile -- object to be stored
+        :param abspath: absolute path of the object to be stored
+        :param tfile: object to be stored
         '''
         
         cachepath = self._dircachepath(abspath)
@@ -973,18 +968,17 @@ def make_pile( paths=None, selector=None, regex=None,
     
     '''Create pile from given file and directory names.
     
-    Inputs
-        paths -- filenames and/or directories to look for traces. If paths is 
-            None sys.argv[1:] is used.
-        selector -- lambda expression taking group dict of regex match object as
-            a single argument and which returns true or false to keep or reject
-            a file
-        regex -- regular expression which filenames have to match
-        fileformat -- format of the files ('mseed', 'sac', 'kan', 
-            'from_extension', 'try')
-        cachedirname -- loader cache is stored under this directory. It is
-            created as neccessary.
-        show_progress -- show progress bar and other progress information
+    :param paths: filenames and/or directories to look for traces. If paths is 
+        ``None`` ``sys.argv[1:]`` is used.
+    :param selector: lambda expression taking group dict of regex match object as
+        a single argument and which returns true or false to keep or reject
+        a file
+    :param regex: regular expression which filenames have to match
+    :param fileformat: format of the files ('mseed', 'sac', 'kan', 
+        'from_extension', 'try')
+    :param cachedirname: loader cache is stored under this directory. It is
+        created as neccessary.
+    :param show_progress: show progress bar and other progress information
     '''
     if isinstance(paths, str):
         paths = [ paths ]

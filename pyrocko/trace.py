@@ -33,6 +33,10 @@ class Trace(object):
     :param ydata:  1D numpy array with data samples (can be ``None`` when *tmax* is not ``None``)
     :param mtime:  optional modification time 
     :param meta:  additional meta information (not used, but maintained by the library)
+
+    The length of the network, station, location and channel codes is not resricted by this software,
+    but data formats like SAC, Mini-SEED or GSE have different limits on the lengths of these codes. The codes set here
+    are silently truncated when the trace is stored
     '''
 
     cached_frequencies = {}

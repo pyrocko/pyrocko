@@ -99,97 +99,6 @@ class ChoiceControl(QFrame):
                 self.cbox.setCurrentIndex(i)
         self.cbox.blockSignals(False)
 
-class BrokenSnufflingModule(Exception):
-    pass
-
-class SnufflingModule:
-    '''Utility class to load/reload snufflings from a file.
-    
-    The snufflings are created by a user module which has a special function
-    :py:func:`__snufflings__` which return the snuffling instances to be exported. The
-    snuffling module is attached to a handler class, which makes use of the
-    snufflings (e.g. :py:class:`pyrocko.pile_viewer.PileOverwiew` from ``pile_viewer.py``). The handler class must
-    implement the methods ``add_snuffling()`` and ``remove_snuffling()`` which are used
-    as callbacks. The callbacks are utilized from the methods :py:meth:`load_if_needed`
-    and :py:meth:`remove_snufflings` which may be called from the handler class, when
-    needed.
-    '''
-    
-    mtimes = {}
-    
-    def __init__(self, path, name, handler):
-        self._path = path
-        self._name = name
-        self._mtime = None
-        self._module = None
-        self._snufflings = []
-        self._handler = handler
-        
-    def load_if_needed(self):
-        filename = os.path.join(self._path, self._name+'.py')
-        mtime = os.stat(filename)[8]
-        sys.path[0:0] = [ self._path ]
-        if self._module == None:
-            try:
-                self._module = __import__(self._name)
-                for snuffling in self._module.__snufflings__():
-                    self.add_snuffling(snuffling)
-                    
-            except:
-                logger.error(str_traceback())
-                raise BrokenSnufflingModule(self._name)
-                            
-        elif self._mtime != mtime:
-            logger.warn('reloading snuffling module %s' % self._name)
-            settings = self.remove_snufflings()
-            try:
-                reload(self._module)
-                for snuffling in self._module.__snufflings__():
-                    self.add_snuffling(snuffling, reloaded=True)
-                
-                if len(self._snufflings) == len(settings):
-                    for sett, snuf in zip(settings, self._snufflings):
-                        snuf.set_settings(sett)
-
-
-            except:
-                logger.error(str_traceback())
-                raise BrokenSnufflingModule(self._name)            
-            
-        self._mtime = mtime
-        sys.path[0:1] = []
-    
-    def add_snuffling(self, snuffling, reloaded=False):
-        snuffling._path = self._path 
-        snuffling.setup()
-        self._snufflings.append(snuffling)
-        self._handler.add_snuffling(snuffling, reloaded=reloaded)
-    
-    def remove_snufflings(self):
-        settings = []
-        for snuffling in self._snufflings:
-            settings.append(snuffling.get_settings())
-            self._handler.remove_snuffling(snuffling)
-            
-        self._snufflings = []
-        return settings
-    
-class NoViewerSet(Exception):
-    '''This exception is raised, when no viewer has been set on a Snuffling.'''
-    pass
-
-class NoTracesSelected(Exception):
-    '''This exception is raised, when no traces have been selected in the viewer 
-    and we cannot fallback to using the current view.'''
-    pass
-
-class UserCancelled(Exception):
-    '''This exception is raised, when the user has cancelled a snuffling dialog.'''
-    pass
-
-class SnufflingCallFailed(Exception):
-    '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
-
 class Snuffling:
     '''Base class for user snufflings.
     
@@ -760,4 +669,94 @@ class Snuffling:
             import shutil
             shutil.rmtree(self._tempdir)
 
+class NoViewerSet(Exception):
+    '''This exception is raised, when no viewer has been set on a Snuffling.'''
+    pass
+
+class NoTracesSelected(Exception):
+    '''This exception is raised, when no traces have been selected in the viewer 
+    and we cannot fallback to using the current view.'''
+    pass
+
+class UserCancelled(Exception):
+    '''This exception is raised, when the user has cancelled a snuffling dialog.'''
+    pass
+
+class SnufflingCallFailed(Exception):
+    '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
+
+
+class SnufflingModule:
+    '''Utility class to load/reload snufflings from a file.
+    
+    The snufflings are created by a user module which has a special function
+    :py:func:`__snufflings__` which return the snuffling instances to be exported. The
+    snuffling module is attached to a handler class, which makes use of the
+    snufflings (e.g. :py:class:`pyrocko.pile_viewer.PileOverwiew` from ``pile_viewer.py``). The handler class must
+    implement the methods ``add_snuffling()`` and ``remove_snuffling()`` which are used
+    as callbacks. The callbacks are utilized from the methods :py:meth:`load_if_needed`
+    and :py:meth:`remove_snufflings` which may be called from the handler class, when
+    needed.
+    '''
+    
+    mtimes = {}
+    
+    def __init__(self, path, name, handler):
+        self._path = path
+        self._name = name
+        self._mtime = None
+        self._module = None
+        self._snufflings = []
+        self._handler = handler
         
+    def load_if_needed(self):
+        filename = os.path.join(self._path, self._name+'.py')
+        mtime = os.stat(filename)[8]
+        sys.path[0:0] = [ self._path ]
+        if self._module == None:
+            try:
+                self._module = __import__(self._name)
+                for snuffling in self._module.__snufflings__():
+                    self.add_snuffling(snuffling)
+                    
+            except:
+                logger.error(str_traceback())
+                raise BrokenSnufflingModule(self._name)
+                            
+        elif self._mtime != mtime:
+            logger.warn('reloading snuffling module %s' % self._name)
+            settings = self.remove_snufflings()
+            try:
+                reload(self._module)
+                for snuffling in self._module.__snufflings__():
+                    self.add_snuffling(snuffling, reloaded=True)
+                
+                if len(self._snufflings) == len(settings):
+                    for sett, snuf in zip(settings, self._snufflings):
+                        snuf.set_settings(sett)
+
+
+            except:
+                logger.error(str_traceback())
+                raise BrokenSnufflingModule(self._name)            
+            
+        self._mtime = mtime
+        sys.path[0:1] = []
+    
+    def add_snuffling(self, snuffling, reloaded=False):
+        snuffling._path = self._path 
+        snuffling.setup()
+        self._snufflings.append(snuffling)
+        self._handler.add_snuffling(snuffling, reloaded=reloaded)
+    
+    def remove_snufflings(self):
+        settings = []
+        for snuffling in self._snufflings:
+            settings.append(snuffling.get_settings())
+            self._handler.remove_snuffling(snuffling)
+            
+        self._snufflings = []
+        return settings
+    
+class BrokenSnufflingModule(Exception):
+    pass
