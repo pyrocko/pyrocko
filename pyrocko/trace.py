@@ -150,7 +150,7 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
             out_traces.append(b)
             
     for tr in out_traces:
-        tr.update_ids()
+        tr._update_ids()
     
     return out_traces
 
@@ -737,7 +737,7 @@ class Trace(object):
         self.meta = meta
         self.ydata = ydata
         self.mtime = mtime
-        self.update_ids()
+        self._update_ids()
         
     def __str__(self):
         fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
@@ -884,6 +884,7 @@ class Trace(object):
             return tma, abs(ma)
 
     def set_codes(self, network=None, station=None, location=None, channel=None):
+        '''Set network, station, location, and channel codes.'''
         if network is not None:
             self.network = network
         if station is not None:
@@ -893,42 +894,52 @@ class Trace(object):
         if channel is not None:
             self.channel = channel
         
-        self.update_ids()
+        self._update_ids()
         
-    def overlaps(self, tmin,tmax):
+    def overlaps(self, tmin, tmax):
+        '''Check if trace has overlap with a given time span.'''
         return not (tmax < self.tmin or self.tmax < tmin)
            
     def is_relevant(self, tmin, tmax, selector=None):
+        '''Check if trace has overlap with a given time span and matches a condition callback. (internal use)'''
         return  not (tmax <= self.tmin or self.tmax < tmin) and (selector is None or selector(self))
 
-    def update_ids(self):
+    def _update_ids(self):
+        '''Update dependent ids.'''
         self.full_id = (self.network,self.station,self.location,self.channel,self.tmin)
         self.nslc_id = reuse((self.network,self.station,self.location,self.channel))
 
     def set_mtime(self, mtime):
+        '''Set modification time of the trace.'''
         self.mtime = mtime
 
     def get_xdata(self):
+        '''Create array for time axis.'''
         if self.ydata is None: raise NoData()
         return self.tmin + num.arange(len(self.ydata), dtype=num.float64) * self.deltat
 
     def get_ydata(self):
+        '''Get data array.'''
         if self.ydata is None: raise NoData()
         return self.ydata
         
     def set_ydata(self, new_ydata):
+        '''Replace data array.'''
         self.drop_growbuffer()
         self.ydata = new_ydata
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
         
     def drop_data(self):
+        '''Forget data, make dataless trace.'''
         self.drop_growbuffer()
         self.ydata = None
    
     def drop_growbuffer(self):
+        '''Detach the traces grow buffer.'''
         self._growbuffer = None
 
     def copy(self, data=True):
+        '''Make a deep copy of the trace.'''
         tracecopy = copy.copy(self)
         self.drop_growbuffer()
         if data:
@@ -937,7 +948,7 @@ class Trace(object):
         return tracecopy
     
     def crop_zeros(self):
-        '''Remove zeros at beginning and end.'''
+        '''Remove any zeros at beginning and end.'''
         
         indices = num.where(self.ydata != 0.0)[0]
         if indices.size == 0:
@@ -952,10 +963,14 @@ class Trace(object):
         self.ydata = self.ydata[ibeg:iend].copy()
         self.tmin = self.tmin+ibeg*self.deltat
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
-        self.update_ids()
+        self._update_ids()
     
     def append(self, data):
-        '''Append data to the end of the trace.'''
+        '''Append data to the end of the trace.
+        
+        To make this method efficient when successively very few or even single samples are appended,
+        a larger grow buffer is allocated upon first invocation. The traces data is then changed to
+        be a view into the currently filled portion of the grow buffer array.'''
         
         assert self.ydata.dtype == data.dtype
         newlen = data.size + self.ydata.size
@@ -967,6 +982,24 @@ class Trace(object):
         self.tmax = self.tmin + (newlen-1)*self.deltat
         
     def chop(self, tmin, tmax, inplace=True, include_last=False, snap=(round,round), want_incomplete=True):
+        '''Cut the trace to given time span.
+
+        If the *inplace* argument is True (the default) the trace is cut in
+        place, otherwise a new trace with the cut part is returned.  By
+        default, the indices where to start and end the trace data array are
+        determined by rounding of *tmin* and *tmax* to sampling instances using
+        Python's :py:func:`round` function. This behaviour can be changed with
+        the *snap* argument, which takes a tuple of two functions (one for the
+        lower and one for the upper end) to be used instead of
+        :py:func:`round`.  The last sample is by default not included unless
+        *include_last* is set to True.  If the given time span exceeds the
+        available time span of the trace, the available part is returned,
+        unless *want_incomplete* is set to False - in that case, a
+        :py:exception:`NoData` exception is raised. This exception is always
+        raised, when the requested time span does dot overlap with the trace's
+        time span.
+        '''
+        
         if want_incomplete:
             if tmax <= self.tmin-self.deltat or self.tmax+self.deltat < tmin: 
                 raise NoData()
@@ -988,11 +1021,21 @@ class Trace(object):
         obj.ydata = self.ydata[ibeg:iend].copy()
         obj.tmin = obj.tmin+ibeg*obj.deltat
         obj.tmax = obj.tmin+(len(obj.ydata)-1)*obj.deltat
-        obj.update_ids()
+        obj._update_ids()
+    
         
         return obj
     
     def downsample(self, ndecimate, snap=False, initials=None, demean=True):
+        '''Downsample trace by a given integer factor.
+        
+        :param ndecimate: decimation factor, avoid values larger than 8
+        :param snap: whether to put the new sampling instances closest to multiples of the sampling rate.
+        :param initials: ``None``, ``True``, or initial conditions for the anti-aliasing filter, obtained from a
+            previous run. In the latter two cases the final state of the filter is returned instead of ``None``.
+        :param demean: whether to demean the signal before filtering.
+        '''
+
         newdeltat = self.deltat*ndecimate
         if snap:
             ilag = (math.ceil(self.tmin / newdeltat) * newdeltat - self.tmin)/self.deltat
@@ -1014,11 +1057,20 @@ class Trace(object):
             
         self.deltat = reuse(self.deltat*ndecimate)
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
-        self.update_ids()
+        self._update_ids()
         
         return finals
         
     def downsample_to(self, deltat, snap=False, allow_upsample_max=1, initials=None, demean=True):
+        '''Downsample to given sampling rate.
+
+        Tries to downsample the trace to a target sampling interval of
+        *deltat*. This runs the :py:method:`Trace.downsample` one or several times. If
+        allow_upsample_max is set to a value larger than 1, intermediate
+        upsampling steps are allowed, in order to increase the number of
+        possible downsampling ratios.
+        '''
+
         ratio = deltat/self.deltat
         rratio = round(ratio)
         if abs(rratio - ratio)/ratio > 0.0001:
@@ -1055,6 +1107,13 @@ class Trace(object):
             return finals
 
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
+        '''Check if a given frequency is above the Nyquist frequency of the trace.
+
+        :param intro: string used to introduce the warning/error message
+        :param warn: whether to emit a warning
+        :param raise_exception: whether to raise an :py:exception:`AboveNyquist` exception.
+        '''
+
         if frequency >= 0.5/self.deltat:
             message = '%s (%g Hz) is equal to or higher than nyquist frequency (%g Hz). (Trace %s)' \
                     % (intro, frequency, 0.5/self.deltat, self.name())
@@ -1064,43 +1123,69 @@ class Trace(object):
                 raise AboveNyquist(message)
             
     def lowpass(self, order, corner):
+        '''Apply Butterworth lowpass to the trace.
+        
+        :param order: order of the filter
+        :param corner: corner frequency of the filter
+
+        Mean is removed before filtering.
+        '''
         self.nyquist_check(corner, 'Corner frequency of lowpass')
-        (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
+        (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
     def highpass(self, order, corner):
+        '''Apply butterworth highpass to the trace.
+
+        :param order: order of the filter
+        :param corner: corner frequency of the filter
+        
+        Mean is removed before filtering.
+        '''
+
         self.nyquist_check(corner, 'Corner frequency of highpass')
-        (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
+        (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
     def bandpass(self, order, corner_hp, corner_lp):
+        '''Apply butterworth bandpass to the trace.
+        
+        :param order: order of the filter
+        :param corner_hp: lower corner frequency of the filter
+        :param corner_lp: upper corner frequency of the filter
+
+        Mean is removed before filtering.
+        '''
+
         self.nyquist_check(corner_hp, 'Lower corner frequency of bandpass')
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandpass')
-        (b,a) = get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
+        (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
-    def get_cached_freqs(self, nf, deltaf):
+    def _get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
         if ck not in Trace.cached_frequencies:
             Trace.cached_frequencies[ck] = num.arange(nf, dtype=num.float)*deltaf
         return Trace.cached_frequencies[ck]
         
     def bandpass_fft(self, corner_hp, corner_lp):
+        '''Apply boxcar bandbpass to trace (in spectral domain).'''
+
         n = len(self.ydata)
         n2 = nextpow2(n)
         data = num.zeros(n2, dtype=num.float64)
         data[:n] = self.ydata
         fdata = num.fft.rfft(data)
-        freqs = self.get_cached_freqs(len(fdata), 1./(self.deltat*n2))
+        freqs = self._get_cached_freqs(len(fdata), 1./(self.deltat*n2))
         fdata[0] = 0.0
         fdata *= num.logical_and(corner_hp < freqs, freqs < corner_lp)
         data = num.fft.irfft(fdata)
@@ -1108,16 +1193,26 @@ class Trace(object):
         self.ydata = data[:n]
         
     def shift(self, tshift):
+        '''Time shift the trace.'''
+
         self.tmin += tshift
         self.tmax += tshift
-        self.update_ids()
+        self._update_ids()
         
     def snap(self):
+        '''Shift trace samples to nearest even multiples of the sampling rate.'''
+
         self.tmin = round(self.tmin/self.deltat)*self.deltat 
         self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
-        self.update_ids()
+        self._update_ids()
 
     def sta_lta_centered(self, tshort, tlong, quad=True):
+        '''Run special STA/LTA filter where the short time window is centered on the long time window.
+
+        :param tshort: length of short time window in [s]
+        :param tlong: length of long time window in [s]
+        :param quad: whether to square the data prior to applying the STA/LTA filter
+        '''
     
         nshort = tshort/self.deltat
         nlong = tlong/self.deltat
@@ -1138,6 +1233,15 @@ class Trace(object):
         self.ydata = num.maximum((mavg_short/mavg_long - 1.) * float(nshort)/float(nlong), 0.0)
         
     def peaks(self, threshold, tsearch, deadtime=False, nblock_duration_detection=100):
+        '''Detect peaks above given threshold.
+        
+        From every instant, where the signal rises above *threshold*, a of time
+        length of *tsearch* seconds is searched for a maximum. A list with
+        tuples (time, value) for each detected peak is returned. The *deadtime*
+        argument turns on a special deadtime duration detection algorithm useful
+        in combination with recursive STA/LTA filters.
+        
+        '''
         y = self.ydata
         above =  num.where(y > threshold, 1, 0)
         deriv = num.zeros(y.size, dtype=num.int8)
@@ -1216,7 +1320,7 @@ class Trace(object):
         self.drop_growbuffer()
         self.ydata = data
         
-        self.update_ids()
+        self._update_ids()
      
     def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True):
         '''Return new trace with transfer function applied.
@@ -1257,6 +1361,13 @@ class Trace(object):
         return output
         
     def spectrum(self, pad_to_pow2=False, tfade=None):
+        '''Get FFT spectrum of trace.
+
+        :param pad_to_pow2: whether to zero-pad the data to next larger power-of-two length
+        :param tfade: ``None`` or a time length in seconds, to apply cosine shaped tapers to both
+
+        :returns: a tuple with (frequencies, values)
+        '''
         ndata = self.ydata.size
         
         if pad_to_pow2:
@@ -1289,6 +1400,16 @@ class Trace(object):
         return tapered_transfer
         
     def fill_template(self, template, **additional):
+        '''Fill string template with trace metadata.
+        
+        Uses normal pyton '%(placeholder)s' string templates. The following
+        placeholders are considered: ``network``, ``station``, ``location``,
+        ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
+        sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``. The
+        versions with '_ms' include milliseconds, the versions with '_us'
+        include microseconds.
+        '''
+
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
         params['tmin'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S')
         params['tmax'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S')
@@ -1300,7 +1421,7 @@ class Trace(object):
         return template % params
 
 cached_coefficients = {}
-def get_cached_filter_coefs(order, corners, btype):
+def _get_cached_filter_coefs(order, corners, btype):
     ck = (order, tuple(corners), btype)
     if ck not in cached_coefficients:
         if len(corners) == 0:
