@@ -14,7 +14,10 @@ All functions defined in this module return SI units (m, m/s, kg/m^3).
     description of CRUST 5.1 can be found in: Mooney, Laske and Masters, Crust 5.1:
     a global crustal model at 5x5 degrees, JGR, 103, 727-747, 1998.
 
-Usage::
+Usage
+-----
+
+::
 
     >>> from pyrocko import crust2x2
     >>> p = crust2x2.get_profile(10., 20.)
@@ -24,7 +27,7 @@ Usage::
     crustal thickness:                 38500
     average vp, vs, rho:              6460.7          3665.1          2867.5
     mantle ave. vp, vs, rho:            8200            4700            3400
-
+     
                   0            3810            1940             920   ice
                   0            1500               0            1020   water
                 500            2500            1200            2100   soft sed.
@@ -38,6 +41,25 @@ Usage::
      [  1200.   1200.   3600.   3600.   3600.   3600.   3800.   3800.   4700.]
      [  2100.   2100.   2800.   2800.   2850.   2850.   2950.   2950.   3400.]]
 
+
+Constants
+---------
+
+============== ==============
+Layer id       Layer name
+============== ==============
+LICE           ice
+LWATER         water
+LSOFTSED       soft sediments
+LHARDSED       hard sediments
+LUPPERCRUST    upper crust
+LMIDDLECRUST   middle crust
+LLOWERCRUST    lower crust
+LBELOWCRUST    below crust
+============== ==============
+
+Contents
+--------
 '''
 
 import numpy as num

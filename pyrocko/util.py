@@ -18,7 +18,7 @@ def setup_logging(programname='pyrocko', levelname='warning'):
     
     This function is called at startup by most pyrocko programs to set up a 
     consistent logging format. This is simply a shortcut to a call to
-    logging.basicConfig().
+    :py:func:`logging.basicConfig()`.
     '''
 
     levels = {'debug': logging.DEBUG,

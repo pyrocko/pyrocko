@@ -1,6 +1,6 @@
 '''Snuffling infrastructure
 
-This module provides the base class 'Snuffling' for user-defined snufflings and 
+This module provides the base class :py:class:`Snuffling` for user-defined snufflings and 
 some utilities for their handling.
 '''
 
@@ -105,13 +105,13 @@ class BrokenSnufflingModule(Exception):
 class SnufflingModule:
     '''Utility class to load/reload snufflings from a file.
     
-    The snufflings are created by a user module which has a special method
-    __snufflings__() which return the snuffling instances to be exported. The
+    The snufflings are created by a user module which has a special function
+    :py:func:`__snufflings__` which return the snuffling instances to be exported. The
     snuffling module is attached to a handler class, which makes use of the
-    snufflings (e.g. PileOverwiew from pile_viewer.py). The handler class must
-    implement the methods add_snuffling() and remove_snuffling() which are used
-    as callbacks. The callbacks are utilized from the methods load_if_needed()
-    and remove_snufflings() which are called from the handler class, when
+    snufflings (e.g. :py:class:`pyrocko.pile_viewer.PileOverwiew` from ``pile_viewer.py``). The handler class must
+    implement the methods ``add_snuffling()`` and ``remove_snuffling()`` which are used
+    as callbacks. The callbacks are utilized from the methods :py:meth:`load_if_needed`
+    and :py:meth:`remove_snufflings` which may be called from the handler class, when
     needed.
     '''
     
@@ -188,15 +188,15 @@ class UserCancelled(Exception):
     pass
 
 class SnufflingCallFailed(Exception):
-    '''This exception is raised, when Snuffling.fail() is called from Snuffling.call().'''
+    '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
 
 class Snuffling:
     '''Base class for user snufflings.
     
     Snufflings are plugins for snuffler (and other applications using the
-    PileOverview class from pile_viewer.py). They can be added, removed and
-    reloaded at runtime and should provide a simple way of extending the
-    functionality of snuffler.
+    :py:class:`pyrocko.pile_viewer.PileOverview` class defined in
+    ``pile_viewer.py``). They can be added, removed and reloaded at runtime and
+    should provide a simple way of extending the functionality of snuffler.
     
     A snuffling has access to all data available in a pile viewer, can process 
     this data and can create and add new traces and markers to the viewer.
@@ -231,7 +231,7 @@ class Snuffling:
         '''Setup the snuffling.
         
         This method should be implemented in subclass and contain e.g. calls to 
-        set_name() and add_parameter().
+        :py:meth:`set_name` and :py:meth:`add_parameter`.
         '''
         
         pass
@@ -239,8 +239,9 @@ class Snuffling:
     def init_gui(self, viewer, panel_parent, menu_parent, reloaded=False):
         '''Set parent viewer and hooks to add panel and menu entry.
         
-        This method is called from the PileOverview object. Calls setup_gui().
-        '''
+        This method is called from the
+        :py:class:`pyrocko.pile_viewer.PileOverview` object. Calls
+        :py:meth:`setup_gui`.  '''
         
         self._viewer = viewer
         self._panel_parent = panel_parent
@@ -251,7 +252,7 @@ class Snuffling:
     def setup_gui(self, reloaded=False):
         '''Create and add gui elements to the viewer.
         
-        This method is initially called from init_gui(). It is also called,
+        This method is initially called from :py:meth:`init_gui`. It is also called,
         e.g. when new parameters have been added or if the name of the snuffling 
         has been changed.
         '''
@@ -270,7 +271,8 @@ class Snuffling:
         '''Remove the gui elements of the snuffling.
         
         This removes the panel and menu entry of the widget from the viewer and
-        also removes all traces added with the add_traces() method.
+        also removes all traces and markers added with the :py:meth:`add_traces` 
+        and :py:meth:`add_markers` methods.
         '''
         
         self.cleanup()
@@ -318,7 +320,7 @@ class Snuffling:
     def set_live_update(self, live_update):
         '''Enable/disable live updating.
         
-        When live updates are enabled, the call() method is called whenever
+        When live updates are enabled, the :py:meth:`call` method is called whenever
         the user changes a parameter. If it is disabled, the user has to 
         initiate such a call manually by triggering the snuffling's menu item
         or pressing the call button.
@@ -328,7 +330,7 @@ class Snuffling:
     def add_parameter(self, param):
         '''Add an adjustable parameter to the snuffling.
         
-            param -- object of type Param
+        :param param: object of type :py:class:`Param`
         
         For each parameter added, controls are added to the snuffling's panel,
         so that the parameter can be adjusted from the gui.
@@ -353,8 +355,8 @@ class Snuffling:
     def set_parameter(self, ident, value):
         '''Set one of the snuffling's adjustable parameters.
         
-            ident -- identifier of the parameter
-            value -- new value of the parameter
+        :param ident: identifier of the parameter
+        :param value: new value of the parameter
             
         This is usually called when the parameter has been set via the gui 
         controls.
@@ -386,10 +388,10 @@ class Snuffling:
     def get_viewer(self):
         '''Get the parent viewer.
         
-        Returns a reference to an object of type PileOverview, which is the
+        Returns a reference to an object of type :py:class:`PileOverview`, which is the
         main viewer widget.
         
-        If no gui has been initialized for the snuffling, a NoViewerSet 
+        If no gui has been initialized for the snuffling, a :py:exc:`NoViewerSet` 
         exception is raised.
         '''
         
@@ -401,7 +403,7 @@ class Snuffling:
         '''Get the pile.
         
         If a gui has been initialized, a reference to the viewer's internal pile
-        is returned. If not, the make_pile() method (which may be overloaded in
+        is returned. If not, the :py:meth:`make_pile` method (which may be overloaded in
         subclass) is called to create a pile. This can be utilized to make 
         hybrid snufflings, which may work also in a standalone mode.
         '''
@@ -418,12 +420,13 @@ class Snuffling:
         
         This is a shortcut to get all trace data contained in the selected 
         markers in the running snuffler. For each selected marker, 
-        Pile.chopper() is called with the arguments tmin, tmax, and 
-        trace_selector set to values according to the marker. Additional
-        arguments to the chopper are handed over from *args and **kwargs.
+        :py:meth:`pyrocko.pile.Pile.chopper` is called with the arguments *tmin*, *tmax*, and 
+        *trace_selector* set to values according to the marker. Additional
+        arguments to the chopper are handed over from *\*args* and *\*\*kwargs*.
         
-           fallback -- if True, if no selection has been marked, use the content
+        :param fallback: if ``True``, if no selection has been marked, use the content
                currently visible in the viewer.
+        :param marker_selector: if not ``None`` a callback to filter markers.
                
         '''
         
@@ -487,7 +490,7 @@ class Snuffling:
         '''Create a pile.
         
         To be overloaded in subclass. The default implementation just calls
-        pyrocko.pile.make_pile() to create a pile from command line arguments.
+        :py:func:`pyrocko.pile.make_pile` to create a pile from command line arguments.
         '''
         
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
@@ -496,7 +499,7 @@ class Snuffling:
     def make_panel(self, parent):
         '''Create a widget for the snuffling's control panel.
         
-        Normally called from the setup_gui() method. Returns None if no panel
+        Normally called from the :py:meth:`setup_gui` method. Returns ``None`` if no panel
         is needed (e.g. if the snuffling has no adjustable parameters).'''
     
         params = self.get_parameters()
@@ -571,7 +574,7 @@ class Snuffling:
     def make_menuitem(self, parent):
         '''Create the menu item for the snuffling.
         
-        This method may be overloaded in subclass and return None, if no menu 
+        This method may be overloaded in subclass and return ``None``, if no menu 
         entry is wanted.
         '''
         
@@ -583,8 +586,8 @@ class Snuffling:
         
         '''Query user for an output filename.
         
-        This is currently just a wrapper to QFileDialog.getSaveFileName.
-        A UserCancelled exception is raised if the user cancels the dialog.
+        This is currently just a wrapper to :py:func:`QFileDialog.getSaveFileName`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the dialog.
         '''
         
         if not dir and self._previous_output_filename:
@@ -607,8 +610,8 @@ class Snuffling:
         
         '''Query user for an input filename.
         
-        This is currently just a wrapper to QFileDialog.getOpenFileName.
-        A UserCancelled exception is raised if the user cancels the dialog.
+        This is currently just a wrapper to :py:func:`QFileDialog.getOpenFileName`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the dialog.
         '''
         
         if not dir and self._previous_input_filename:
@@ -631,7 +634,7 @@ class Snuffling:
         '''Called when the user has played with an adjustable parameter.
         
         The default implementation sets the parameter, calls the snuffling's 
-        call() method and finally triggers an update on the viewer widget.
+        :py:meth:`call` method and finally triggers an update on the viewer widget.
         '''
         
         param = self.get_parameters()[iparam]
@@ -660,7 +663,7 @@ class Snuffling:
     def menuitem_triggered(self, arg):
         '''Called when the user has triggered the snuffling's menu.
         
-        The default implementation calls the snuffling's call() method and triggers
+        The default implementation calls the snuffling's :py:meth:`call` method and triggers
         an update on the viewer widget.'''
         self.check_call()
         self.get_viewer().update()
@@ -668,7 +671,7 @@ class Snuffling:
     def call_button_triggered(self):
         '''Called when the user has clicked the snuffling's call button.
         
-        The default implementation calls the snuffling's call() method and triggers
+        The default implementation calls the snuffling's :py:meth:`call` method and triggers
         an update on the viewer widget.'''
         self.check_call()
         self.get_viewer().update()
@@ -676,7 +679,7 @@ class Snuffling:
     def clear_button_triggered(self):
         '''Called when the user has clicked the snuffling's clear button.
         
-        This calls the cleanup() method and triggers an update on the viewer 
+        This calls the :py:meth:`cleanup` method and triggers an update on the viewer 
         widget.'''
         self.cleanup()
         self.get_viewer().update()
@@ -689,16 +692,16 @@ class Snuffling:
     def add_traces(self, traces):
         '''Add traces to the viewer.
         
-            traces -- list of objects of type pyrocko.trace.Trace
+        :param traces: list of objects of type :py:class:`pyrocko.trace.Trace`
             
-        The traces are put into a MemTracesFile and added to the viewer's 
+        The traces are put into a :py:class:`pyrocko.pile.MemTracesFile` and added to the viewer's 
         internal pile for display. Note, that unlike with the traces from the 
         files given on the command line, these traces are kept in memory and so
         may quickly occupy a lot of ram if a lot of traces are added.
         
         This method should be preferred over modifying the viewer's internal 
         pile directly, because this way, the snuffling has a chance to
-        automatically remove its private traces again (see cleanup() method).
+        automatically remove its private traces again (see :py:meth:`cleanup` method).
         '''
         
         ticket = self.get_viewer().add_traces(traces)
@@ -711,7 +714,7 @@ class Snuffling:
     def add_markers(self, markers):
         '''Add some markers to the display.
         
-        Takes a list of objects of type pyrocko.pile_viewer.Marker and adds
+        Takes a list of objects of type :py:class:`pyrocko.pile_viewer.Marker` and adds
         these to the viewer.
         '''
         

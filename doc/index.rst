@@ -10,13 +10,22 @@ Contents
 --------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1 
    
-   pile
    trace
+   pile
    util
+   model
+   hamster_pile
    crust2x2
-   
+   moment_tensor
+   evalresp
+   pz
+   orthodrome
+   catalog
+   rdseed
+   snuffling
+   pile_viewer
 
 Indices and tables
 ------------------

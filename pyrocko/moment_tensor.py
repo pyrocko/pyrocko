@@ -26,17 +26,21 @@ def magnitude_to_moment( magnitude ):
 def euler_to_matrix( alpha, beta, gamma ):
     '''Given the euler angles alpha,beta,gamma, create rotation matrix
         
-Given coordinate system (x,y,z) and rotated system (xs,ys,zs)
-the line of nodes is the intersection between the x-y and the xs-ys
-planes.
-    alpha is the angle between the z-axis and the zs-axis.
-    beta is the angle between the x-axis and the line of nodes.
-    gamma is the angle between the line of nodes and the xs-axis.
+    Given coordinate system (x,y,z) and rotated system (xs,ys,zs)
+    the line of nodes is the intersection between the x-y and the xs-ys
+    planes.
+    
+    :param alpha: is the angle between the z-axis and the zs-axis.
+    :param beta:  is the angle between the x-axis and the line of nodes.
+    :param gamma: is the angle between the line of nodes and the xs-axis.
 
-Usage for moment tensors:
-    m_unrot = numpy.matrix([[0,0,-1],[0,0,0],[-1,0,0]])
-    euler_to_matrix(dip,strike,-rake, rotmat)
-    m = rotmat.T * m_unrot * rotmat'''
+    Usage for moment tensors::
+
+        m_unrot = numpy.matrix([[0,0,-1],[0,0,0],[-1,0,0]])
+        euler_to_matrix(dip,strike,-rake, rotmat)
+        m = rotmat.T * m_unrot * rotmat
+
+    '''
     
     ca = math.cos(alpha)
     cb = math.cos(beta)
