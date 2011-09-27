@@ -30,7 +30,7 @@ Input ``waveforms`` can be any combination of the following data sources:
 
 The following pseudo URLs are supported:
 
-.. describe:: ``seedlink://<host>[:<port>]/<pattern>``
+.. describe:: seedlink://<host>[:<port>]/<pattern>
     
     Acquire data through SeedLink from given ``<host>``.  The specified ``<pattern>`` is matched against strings of the form ``<network>.<station>.<location>.<channel>``,   where the placeholders stand for the corresponding IDs of each SeedLink data stream. To use this feature, ``slinktool`` must be installed.
 
@@ -101,6 +101,8 @@ Keystrokes
 ----------
 
 ==================== ==================================
+Key                  Effect
+==================== ==================================
 *q*                  Quit 
 *r*                  Reload modified files 
 *f*                  Toggle full screen mode 
@@ -124,6 +126,8 @@ Mouse
 -----
 
 ================================ =========================================
+Mouse                            Effect
+================================ =========================================
 Click and drag                   Zoom and pan 
 Click and drag on time axis      Pan only 
 Click on marker                  Select marker 
@@ -140,12 +144,12 @@ After pressing '*:*' in the trace viewer, a command can be entered. To leave com
 
 Some of snuffler's commands take a ``<pattern>`` argument. These may contain the following shell-style wildcards:
 
-======== ===================================
-\*       matches everything
-?        matches any single character
-[seq]    matches any character in seq
-[!seq]   matches any character not in seq
-======== ===================================
+============ ===================================
+``*``        matches everything
+``?``        matches any single character
+``[seq]``    matches any character in seq
+``[!seq]``   matches any character not in seq
+============ ===================================
 
 The pattern matching is done case-insensitive.
 

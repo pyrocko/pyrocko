@@ -18,8 +18,10 @@ body {
     font-size: 100%;
     background-color: {{ theme_footerbgcolor }};
     color: #000;
-    margin: 0;
-    padding: 0;
+    margin: auto;
+    margin-top:1em;
+    padding: 0 0 0 0;
+    width: 60em;
 }
 
 div.document {
@@ -282,10 +284,11 @@ pre {
 }
 
 tt {
-    background-color: #ecf0f3;
+    background-color: {{ theme_codebgcolor }};
     padding: 0 1px 0 1px;
     font-size: 0.95em;
 }
+
 
 th {
     background-color: #eeeeec;

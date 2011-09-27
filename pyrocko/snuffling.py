@@ -16,7 +16,7 @@ from gui_util import ValControl, LinValControl
 
 logger = logging.getLogger('pyrocko.snufflings')
 
-def str_traceback():
+def _str_traceback():
     return '%s' % (traceback.format_exc(sys.exc_info()[2]))
 
 class Param:
@@ -42,62 +42,14 @@ class Switch:
         self.default = default
 
 class Choice:
+    '''Definition of a choice for the snuffling. The snuffling may display a
+    menu for such a choice.'''
+
     def __init__(self, name, ident, default, choices):
         self.name = name
         self.ident = ident
         self.default = default
         self.choices = choices
-
-class MyScrollArea(QScrollArea):
-
-    def sizeHint(self):
-        s = QSize()
-        s.setWidth(self.widget().sizeHint().width())
-        s.setHeight(30)
-        return s
-
-class SwitchControl(QCheckBox):
-    def __init__(self, ident, default, *args):
-        QCheckBox.__init__(self, *args)
-        self.ident = ident
-        self.setChecked(default)
-        self.connect(self, SIGNAL('toggled(bool)'), self.sw_toggled)
-
-    def sw_toggled(self, state):
-        self.emit(SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.ident, state)
-
-    def set_value(self, state):
-        self.blockSignals(True)
-        self.setChecked(state)
-        self.blockSignals(False)
-
-class ChoiceControl(QFrame):
-    def __init__(self, ident, default, choices, name, *args):
-        QFrame.__init__(self, *args)
-        self.label = QLabel(name, self)
-        self.label.setMinimumWidth(120)
-        self.cbox = QComboBox(self)
-        self.layout = QHBoxLayout(self)
-        self.layout.addWidget(self.label)
-        self.layout.addWidget(self.cbox)
-        
-        self.ident = ident
-        self.choices = choices
-        for ichoice, choice in enumerate(choices):
-            self.cbox.addItem(QString(choice))
-        
-        self.set_value(default)
-        self.connect(self.cbox, SIGNAL('activated(int)'), self.choosen)
-        
-    def choosen(self, i):
-        self.emit(SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.ident, self.choices[i])
-
-    def set_value(self, v):
-        self.cbox.blockSignals(True)
-        for i, choice in enumerate(self.choices):
-            if choice == v:
-                self.cbox.setCurrentIndex(i)
-        self.cbox.blockSignals(False)
 
 class Snuffling:
     '''Base class for user snufflings.
@@ -720,7 +672,7 @@ class SnufflingModule:
                     self.add_snuffling(snuffling)
                     
             except:
-                logger.error(str_traceback())
+                logger.error(_str_traceback())
                 raise BrokenSnufflingModule(self._name)
                             
         elif self._mtime != mtime:
@@ -737,7 +689,7 @@ class SnufflingModule:
 
 
             except:
-                logger.error(str_traceback())
+                logger.error(_str_traceback())
                 raise BrokenSnufflingModule(self._name)            
             
         self._mtime = mtime
@@ -760,3 +712,56 @@ class SnufflingModule:
     
 class BrokenSnufflingModule(Exception):
     pass
+
+
+class MyScrollArea(QScrollArea):
+
+    def sizeHint(self):
+        s = QSize()
+        s.setWidth(self.widget().sizeHint().width())
+        s.setHeight(30)
+        return s
+
+class SwitchControl(QCheckBox):
+    def __init__(self, ident, default, *args):
+        QCheckBox.__init__(self, *args)
+        self.ident = ident
+        self.setChecked(default)
+        self.connect(self, SIGNAL('toggled(bool)'), self.sw_toggled)
+
+    def sw_toggled(self, state):
+        self.emit(SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.ident, state)
+
+    def set_value(self, state):
+        self.blockSignals(True)
+        self.setChecked(state)
+        self.blockSignals(False)
+
+class ChoiceControl(QFrame):
+    def __init__(self, ident, default, choices, name, *args):
+        QFrame.__init__(self, *args)
+        self.label = QLabel(name, self)
+        self.label.setMinimumWidth(120)
+        self.cbox = QComboBox(self)
+        self.layout = QHBoxLayout(self)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.cbox)
+        
+        self.ident = ident
+        self.choices = choices
+        for ichoice, choice in enumerate(choices):
+            self.cbox.addItem(QString(choice))
+        
+        self.set_value(default)
+        self.connect(self.cbox, SIGNAL('activated(int)'), self.choosen)
+        
+    def choosen(self, i):
+        self.emit(SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.ident, self.choices[i])
+
+    def set_value(self, v):
+        self.cbox.blockSignals(True)
+        for i, choice in enumerate(self.choices):
+            if choice == v:
+                self.cbox.setCurrentIndex(i)
+        self.cbox.blockSignals(False)
+

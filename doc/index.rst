@@ -12,6 +12,7 @@ Contents
    
    install
    snuffler
+   snuffling_howto
    examples
    reference
 
