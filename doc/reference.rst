@@ -6,6 +6,7 @@ Library Reference
    :maxdepth: 1
 
    trace
+   io
    pile
    util
    model
