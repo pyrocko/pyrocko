@@ -66,12 +66,16 @@ Options
 
 .. option:: --stations=STATIONS
 
-    read station information from file ``STATIONS``
+    read station information from file ``STATIONS``, this option can be given more than once
 
-.. option:: --event=EVENT
+.. option:: --event=EVENT, --events=EVENT
 
-    read event information from file ``EVENT``
+    read event information from file ``EVENT``, this option can be given more than once
 
+.. option:: --markers=MARKERS
+
+    read marker information from file ``MARKERS``, this option can be given more than once
+    
 .. option:: --follow=N
 
     follow real time with a window of N seconds
@@ -100,9 +104,9 @@ Options
 Keystrokes
 ----------
 
-==================== ==================================
+==================== ===============================================================
 Key                  Effect
-==================== ==================================
+==================== ===============================================================
 *q*                  Quit 
 *r*                  Reload modified files 
 *f*                  Toggle full screen mode 
@@ -112,15 +116,23 @@ Key                  Effect
 *<pagedown>*         Scroll tracks one page down 
 *<pageup>*           Scroll tracks one page up 
 *+*                  Show one track more 
-*-*                  Show one track less 
+*-*                  Show one track less
+*=*                  Show initial number of tracks
+*g*                  Go to selection / show all
 *n*                  Go to next marker 
 *p*                  Go to previous marker 
-*a*                  Select all markers in current view 
+*N*                  Go to next event marker
+*P*                  Go to previous event marker 
+*a*                  Select all markers currently visible 
+*A*                  Select all markers 
 *d*                  Deselect all markers 
-*<backspace>*        Delete selected markers 
-*0* ... *5*          Change type of selected marker 
+*0* ... *5*          Change color of marker 
+*<f1>* ... *<f5>*    Convert to phase marker
+*e*                  Convert to event marker / set active event / associate to event
+*<f10>*              Convert phase marker to normal marker
+*<backspace>*        Delete marker
 *<escape>*           Abort picking 
-==================== ==================================
+==================== ===============================================================
 
 Mouse
 -----
@@ -196,4 +208,37 @@ Unhide traces previously hidden with the ``hide`` command.
 
 The ``<pattern>`` argument must exactly correspond to a pattern previously given to the ``hide`` command. When ``unhide`` is called without any arguments, all currently active hide patterns are cleared.
 
+Markers
+^^^^^^^
+
+Toggle marker visibility.
+
+::
+
+  markers [0][1][2][3][4][5]
+  markers all
+  markers
+
+The visibility of the markers can be set selectively with regard to their kind
+(color). Each number given in the argument to this command turns on visibility
+of the corresponding marker kind, all other markers are hidden. If no arguments
+are given, all markers are hidden. If the argument is ``all``, all markers are shown.
+
+Scaling
+^^^^^^^
+
+Set scaling rules.
+
+::
+
+  scaling <vmin> <vmax>
+  scaling <pattern> <vmin> <vmax>
+  scaling
+
+Traces are scaled according to the range [``<vmin>``, ``<vmax>``]. Either of
+``<vmin>`` or ``<vmax>`` may be set to the string 'nan', to maintain automatic
+scaling for the corresponding limit.  If three arguments are given, the first
+argument should be a pattern, restricting application of the given scaling rule
+to matching traces.  If no arguments are given, any previously set scalings
+rules are cleared. 
 
