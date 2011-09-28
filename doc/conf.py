@@ -86,7 +86,7 @@ add_module_names = False
 pygments_style = 'sphinx'
 
 # A list of ignored prefixes for module index sorting.
-#modindex_common_prefix = []
+modindex_common_prefix = [ 'pyrocko.' ]
 
 
 # -- Options for HTML output ---------------------------------------------------
@@ -170,7 +170,7 @@ html_show_sphinx = False
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'http://emolch.github.com/pyrocko/'
+html_use_opensearch = 'http://emolch.github.com/pyrocko'
 
 # This is the file name suffix for HTML files (e.g. ".xhtml").
 #html_file_suffix = None
