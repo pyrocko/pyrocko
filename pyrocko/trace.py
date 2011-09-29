@@ -86,7 +86,7 @@ class Trace(object):
     def name(self):
         '''Get a short string description.'''
 
-        s = '%s.%s.%s.%s, %s, %s' % (self.nslc_id + (util.str_to_time(self.tmin), util.str_to_time(self.tmax)))
+        s = '%s.%s.%s.%s, %s, %s' % (self.nslc_id + (util.time_to_str(self.tmin), util.time_to_str(self.tmax)))
         return s
         
     def __eq__(self, other):
