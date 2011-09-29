@@ -37,7 +37,7 @@ class EarthquakeCatalog:
         raise Exception('This method should be implemented in derived class.')
 
     def get_event_names(self, time_range, **kwargs):
-        return list(self.iter_event_names(self, time_range, **kwargs))
+        return list(self.iter_event_names(time_range, **kwargs))
     
     def get_events(self, time_range, **kwargs):
         return list(self.iter_events(time_range, **kwargs))
