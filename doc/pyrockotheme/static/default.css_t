@@ -206,6 +206,15 @@ div.body h6 {
     padding: 3px 0 3px 10px;
 }
 
+div.body h2 {
+    clear: both;
+}
+
+img {
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
 div.body h1 { margin-top: 0; font-size: 200%; }
 div.body h2 { font-size: 160%; }
 div.body h3 { font-size: 140%; }

@@ -1,6 +1,10 @@
 
+.. image:: _static/snuffler.png
+    :align: left 
+
 Pyrocko Manual
 ==============
+
 
 Pyrocko is a seismology toolbox and library, written in the Python programming language. Snuffler is a seismogram browser built on top of Pyrocko.
 
