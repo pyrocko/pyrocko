@@ -753,9 +753,9 @@ class Sole(object):
                 pass
 
 
-re_escapequotes = re.compile(r"(['\\])")
+re_escapequotes = re.compile("(['\\])")
 def escapequotes(s):
-    return re_escapequotes(r"\\\1", s)
+    return re_escapequotes.sub(r"\\\1", s)
 
 class TableWriter:
     '''Write table of space separated values to a file.
