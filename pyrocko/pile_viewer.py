@@ -1477,6 +1477,10 @@ def MakePileOverviewClass(base):
                 sk = self.station_key(station)
                 self.stations[sk] = station
         
+            ev = self.get_active_event()
+            if ev:
+                self.set_origin(ev)
+
         def add_event(self, event):
             marker = EventMarker(event)
             self.add_marker( marker )
