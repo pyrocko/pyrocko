@@ -455,7 +455,7 @@ class Trace(object):
             if raise_exception:
                 raise AboveNyquist(message)
             
-    def lowpass(self, order, corner):
+    def lowpass(self, order, corner, nyquist_warn=True, nyquist_exception=False):
         '''Apply Butterworth lowpass to the trace.
         
         :param order: order of the filter
@@ -463,14 +463,14 @@ class Trace(object):
 
         Mean is removed before filtering.
         '''
-        self.nyquist_check(corner, 'Corner frequency of lowpass')
+        self.nyquist_check(corner, 'Corner frequency of lowpass', nyquist_warn, nyquist_exception)
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
-    def highpass(self, order, corner):
+    def highpass(self, order, corner, nyquist_warn=True, nyquist_exception=False):
         '''Apply butterworth highpass to the trace.
 
         :param order: order of the filter
@@ -479,7 +479,7 @@ class Trace(object):
         Mean is removed before filtering.
         '''
 
-        self.nyquist_check(corner, 'Corner frequency of highpass')
+        self.nyquist_check(corner, 'Corner frequency of highpass', nyquist_warn, nyquist_exception)
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
