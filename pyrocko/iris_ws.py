@@ -22,7 +22,7 @@ def get_dict(node):
     dupl = []
     for cn in node.childNodes:
         try:
-            k = cn.nodeName.lower()
+            k = str(cn.nodeName.lower())
             v = getText(cn)
             if k in d:
                 dupl.append(k) 
@@ -38,13 +38,13 @@ def get_dict(node):
     
     attr = node.attributes
     for k in attr.keys():
-        d[k] = getText(attr[k])
+        d[str(k)] = getText(attr[k])
 
     return d
 
 def cycle(node, name):
     for child in node.getElementsByTagName(name):
-        child.D = util.Anon(get_dict(child))
+        child.D = util.Anon(**get_dict(child))
         yield child
 
 def tear(node, path, _stack=()):
