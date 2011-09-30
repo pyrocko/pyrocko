@@ -539,12 +539,22 @@ class Trace(object):
         self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
         self._update_ids()
 
-    def sta_lta_centered(self, tshort, tlong, quad=True):
+    def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''Run special STA/LTA filter where the short time window is centered on the long time window.
 
         :param tshort: length of short time window in [s]
         :param tlong: length of long time window in [s]
         :param quad: whether to square the data prior to applying the STA/LTA filter
+        :param scalingmethod: integer key to select how output values are scaled / normalized (``1``, ``2``, or ``3``)
+        
+        =================== ============================================ ===================
+        Scalingmethod       Implementation                               Range
+        =================== ============================================ ===================
+        ``1``               As/Al* Tl/Ts                                 [0,1]
+        ``2``               (As/Al - 1) / (Tl/Ts - 1)                    [-Ts/Tl,1]
+        ``3``               Like ``2`` but clipping range at zero        [0,1]
+        =================== ============================================ ===================
+        
         '''
     
         nshort = tshort/self.deltat
@@ -563,8 +573,18 @@ class Trace(object):
         mavg_long = moving_avg(sqrdata,nlong)
     
         self.drop_growbuffer()
-        self.ydata = num.maximum((mavg_short/mavg_long - 1.) * float(nshort)/float(nlong), 0.0)
         
+        if scalingmethod not in (1,2,3):
+            raise Exception('Invalid argument to scalingrange argument.')
+
+        if scalingmethod == 1:
+            self.ydata = mavg_short/mavg_long * float(nshort)/float(nlong)
+        elif scalingmethod in (2,3):
+            self.ydata = (mavg_short/mavg_long - 1.) / ((float(nlong)/float(nshort)) - 1)
+        
+        if scalingmethod == 3:
+            self.ydata = num.maximum(self.ydata, 0.)
+
     def peaks(self, threshold, tsearch, deadtime=False, nblock_duration_detection=100):
         '''Detect peaks above given threshold.
         
