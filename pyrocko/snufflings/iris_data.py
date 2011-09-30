@@ -1,5 +1,5 @@
-
-from pyrocko import pile, trace, util, io, pile_viewer, iris_ws
+from pyrocko import pile, trace, util, io, iris_ws
+from pyrocko.gui_util import EventMarker
 import sys, os, math, time, urllib2
 import numpy as num
 from pyrocko.snuffling import Param, Snuffling, Switch
@@ -32,7 +32,7 @@ class IrisData(Snuffling):
             if len(markers) != 1:
                 self.fail('Exactly one marker must be selected.')
             marker = markers[0]
-            if not isinstance(marker, pile_viewer.EventMarker):
+            if not isinstance(marker, EventMarker):
                 self.fail('An event marker must be selected.')
 
             ev = marker.get_event()

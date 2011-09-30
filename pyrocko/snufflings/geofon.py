@@ -1,5 +1,5 @@
 from pyrocko.snuffling import Snuffling, Param
-from pyrocko.pile_viewer import Marker, EventMarker
+from pyrocko.gui_util import Marker, EventMarker
 
 
 from pyrocko import catalog

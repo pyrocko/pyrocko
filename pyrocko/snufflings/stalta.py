@@ -1,10 +1,15 @@
-from pyrocko import pile, trace, util, io, pile_viewer
+from pyrocko import pile, trace, util, io
 import sys, os, math, time
 import numpy as num
 from pyrocko.snuffling import Param, Snuffling, Switch, Choice
+from pyrocko.gui_util import Marker
 
 h = 3600.
 m = 60.
+
+scalingmethods = ('[0-1]', '[-1/ratio,1]', '[-1/ratio,1] clipped to [0,1]')
+scalingmethod_map = dict([ (m,i+1) for (i,m) in enumerate(scalingmethods) ] )
+
 class DetectorSTALTA(Snuffling):
 
     def setup(self):    
@@ -15,11 +20,11 @@ class DetectorSTALTA(Snuffling):
         self.add_parameter(Param('Lowpass [Hz]', 'lowpass', None, 0.001, 100., high_is_none=True))
         self.add_parameter(Param('Short window [s]', 'swin', 30., 1, 2*h))
         self.add_parameter(Param('Ratio',  'ratio', 3., 1.1, 20.))
-        self.add_parameter(Param('Level', 'level', 0.5, 0.01, 1.))
+        self.add_parameter(Param('Level', 'level', 0.5, 0., 1.))
         self.add_parameter(Param('Processing Block length (rel. to long window)', 'block_factor', 10., 2., 100.,))
         self.add_parameter(Switch('Show trigger level traces', 'show_level_traces', False))
         self.add_parameter(Switch('Apply to full dataset', 'apply_to_all', False))
-        self.add_parameter(Choice('Scaling/Normalization method', 'scalingmethod', '1', ('1', '2', '3')))
+        self.add_parameter(Choice('Scaling/Normalization method', 'scalingmethod', '[0-1]', scalingmethods))
         
         self.set_live_update(False)
 
@@ -60,7 +65,7 @@ class DetectorSTALTA(Snuffling):
                 if self.highpass is not None:
                     trace.highpass(4, self.highpass, nyquist_exception=True)
                 
-                trace.sta_lta_centered(swin, lwin, scalingmethod=int(self.scalingmethod))
+                trace.sta_lta_centered(swin, lwin, scalingmethod=scalingmethod_map[self.scalingmethod])
                 trace.chop(trace.wmin, min(trace.wmax,tmax))
                 trace.set_codes(location='cg')
                 trace.meta = { 'tabu': True }
@@ -80,7 +85,7 @@ class DetectorSTALTA(Snuffling):
                 tpeaks, apeaks = sumtrace.peaks(self.level*isum, swin)
     
                 for t, a in zip(tpeaks, apeaks):
-                    mark = pile_viewer.Marker([  ], t, t)
+                    mark = Marker([  ], t, t)
                     print mark, a #'%s.%s.%s.%s' % ('', trace.station, '', trace.channel)
                     markers.append(mark)
                 

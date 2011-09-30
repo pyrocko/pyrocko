@@ -1,5 +1,5 @@
-import minmax, rms #, iris_data, stalta
-modules = [minmax, rms ] #, iris_data, stalta]
+import minmax, rms, iris_data, stalta, geofon
+modules = [minmax, rms, iris_data, stalta, geofon]
 
 def __snufflings__():
     snufflings = []
