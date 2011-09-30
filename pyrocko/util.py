@@ -753,7 +753,7 @@ class Sole(object):
                 pass
 
 
-re_escapequotes = re.compile("(['\\])")
+re_escapequotes = re.compile(r"(['\\])")
 def escapequotes(s):
     return re_escapequotes.sub(r"\\\1", s)
 
