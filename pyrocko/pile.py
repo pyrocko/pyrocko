@@ -820,7 +820,7 @@ class Pile(TracesGroup):
         iwin = 0
         while True:
             chopped = []
-            wmin, wmax = tmin+iwin*tinc, tmin+(iwin+1)*tinc
+            wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
             eps = tinc*1e-6
             if wmin >= tmax-eps: break
             chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector, snap=snap) 
