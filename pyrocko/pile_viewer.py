@@ -1549,12 +1549,22 @@ def MakePileOverviewClass(base):
             
             self.ntracks_shown_max = self.shown_tracks_range[1]-self.shown_tracks_range[0] 
             
-            self.update()       
+            self.update()
+
+        def content_time_range(self):
+            pile = self.get_pile()
+            tmin, tmax = pile.get_tmin(), pile.get_tmax()
+            if tmin is None:
+                tmin = working_system_time_range[0]
+            if tmax is None:
+                tmax = working_system_time_range[1]
+
+            return tmin, tmax
         
         def go_to_selection(self):
             markers = self.selected_markers()
             pile = self.get_pile()
-            tmax, tmin = pile.get_tmin(), pile.get_tmax()
+            tmax, tmin = self.content_time_range()
             for marker in markers:
                 tmin = min(tmin, marker.tmin)
                 tmax = max(tmax, marker.tmax)
