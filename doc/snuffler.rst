@@ -195,6 +195,7 @@ The patterns given to successive invocations of ``hide`` are accumulated in a bl
 * To hide any ``BHZ`` channels of stations with ID ``HAM3``, use ``hide *.ham3.*.bhz``.
 * To hide all ``LHZ`` channels use ``hide c lhz``.
 * To hide any ``LHE`` and ``LHN`` channels use ``hide c lh[en]``
+* Assuming stations are named ``S01`` ... ``S15``, to remove all but ``S02`` and ``S04``, type ``hide s S0[!24]`` followed by ``hide s S1?``.
 
 Unhide
 ^^^^^^
