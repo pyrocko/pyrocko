@@ -1422,30 +1422,32 @@ class IntegrationResponse(FrequencyResponse):
 
     ::
 
-                  gain
-        T(f) = ----------
-               j*2*pi * f
+                    gain
+        T(f) = --------------
+               (j*2*pi * f)^n
     '''
 
-    def __init__(self, gain=1.0):
+    def __init__(self, n=1, gain=1.0):
+        self._n = n
         self._gain = gain
         
     def evaluate(self, freqs):
-        return self._gain/(1.0j * 2. * num.pi*freqs)
+        return self._gain / (1.0j * 2. * num.pi*freqs)**self._n
 
 class DifferentiationResponse(FrequencyResponse):
     '''The differentiation response, optionally multiplied by a constant gain.
 
     ::
 
-        T(f) = gain * j*2*pi * f
+        T(f) = gain * (j*2*pi * f)^n
     '''
 
-    def __init__(self, gain=1.0):
+    def __init__(self, n=1, gain=1.0):
+        self._n = n
         self._gain = gain
         
     def evaluate(self, freqs):
-        return self._gain * 1.0j * 2. * num.pi * freqs
+        return self._gain * (1.0j * 2. * num.pi * freqs)**self._n
 
 class AnalogFilterResponse(FrequencyResponse):
     '''Frequency response of an analog filter.
