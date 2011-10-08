@@ -4,7 +4,11 @@ import trace, io, util, config
 
 import numpy as num
 import os, pickle, logging, time, weakref, copy, re, sys
+from blist import sortedlist
+
 import cPickle as pickle
+from collections import Counter
+
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
 
@@ -224,17 +228,15 @@ class TracesGroup(object):
         return self.parent
     
     def empty(self):
-        self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
+        self.networks, self.stations, self.locations, self.channels, self.nslc_ids, self.deltats = [ Counter() for x in range(6) ]
+        self.tmins, self.tmaxs = sortedlist(), sortedlist()
         self.tmin, self.tmax = None, None
-        self.have_tuples = False
     
-    def update(self, content, empty=True):
-        if empty:
-            self.empty()
-        else:
-            if self.have_tuples:
-                self._convert_tuples_to_sets()
-            
+    def add(self, content):
+        
+        if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
+            content = [ content ]
+
         for c in content:
         
             if isinstance(c, TracesGroup):
@@ -243,45 +245,73 @@ class TracesGroup(object):
                 self.locations.update( c.locations )
                 self.channels.update( c.channels )
                 self.nslc_ids.update( c.nslc_ids )
+                self.deltats.update( c.deltats )
                 
-            elif isinstance(c, trace.Trace):
-                self.networks.add(c.network)
-                self.stations.add(c.station)
-                self.locations.add(c.location)
-                self.channels.add(c.channel)
-                self.nslc_ids.add(c.nslc_id)
+                self.tmins.update(c.tmins)
+                self.tmaxs.update(c.tmaxs)
             
-            if self.tmin is None:
-                self.tmin = c.tmin
-            else:
-                self.tmin = min(self.tmin, c.tmin)
-                
-            if self.tmax is None:
-                self.tmax = c.tmax
-            else:
-                self.tmax = max(self.tmax, c.tmax)
-        
-        if empty:    
-            self._convert_small_sets_to_tuples()
+            elif isinstance(c, trace.Trace):
+                self.networks[c.network] += 1
+                self.stations[c.station] += 1
+                self.locations[c.location] += 1
+                self.channels[c.channel] += 1
+                self.deltats[c.deltat] += 1
+    
+                self.tmins.add(c.tmin)
+                self.tmaxs.add(c.tmax)
+
+        self.tmin = self.tmins[0]
+        self.tmax = self.tmaxs[-1]
         
         self.nupdates += 1
+        self.notify_listeners('add')
     
+        if self.parent is not None:
+            self.parent.add(content)
+            
+    def remove(self, content):
+
+        if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
+            content = [ content ]
+
+        for c in content:
+        
+            if isinstance(c, TracesGroup):
+                self.networks.subtract( c.networks )
+                self.stations.subtract( c.stations )
+                self.locations.subtract( c.locations )
+                self.channels.subtract( c.channels )
+                self.nslc_ids.subtract( c.nslc_ids )
+                self.deltats.subtract( c.deltats )
+
+                for tmin in c.tmins:
+                    self.tmins.remove(tmin)
+                for tmax in c.tmaxs:
+                    self.tmaxs.remove(tmax)
+                
+            elif isinstance(c, trace.Trace):
+                self.networks[c.network] -= 1
+                self.stations[c.station] -= 1
+                self.locations[c.location] -= 1
+                self.channels[c.channel] -= 1
+                self.nslc_ids[c.nslc_id] -= 1
+                self.deltats[c.deltat] -= 1
+    
+                self.tmins.remove(c.tmin)
+                self.tmaxs.remove(c.tmax)
+
+            self.tmin = self.tmins[0]
+            self.tmax = self.tmaxs[-1]
+        
+        self.nupdates += 1
+        self.notify_listeners('remove')
+
+        if self.parent is not None:
+            self.parent.remove(content)
+
     def notify_listeners(self, what):
         pass
     
-    def recursive_grow_update(self, content=None):
-        
-        if content is not None:
-            self.update(content, empty=False)
-        
-        if self.parent is not None:
-            self.parent.recursive_grow_update((self,))
-            
-        self.notify_listeners('update')
-    
-    def recursive_full_update(self):
-        assert False, 'should be implemented in derived class'
-        
     def get_update_count(self):
         return self.nupdates
     
@@ -292,36 +322,6 @@ class TracesGroup(object):
     def is_relevant(self, tmin, tmax, group_selector=None):
         #return  not (tmax <= self.tmin or self.tmax < tmin) and (selector is None or selector(self))
         return  tmax >= self.tmin and self.tmax >= tmin and (group_selector is None or group_selector(self))
-
-    def _convert_tuples_to_sets(self):
-        if not isinstance(self.networks, set):
-            self.networks = set(self.networks)
-        if not isinstance(self.stations, set):
-            self.stations = set(self.stations)
-        if not isinstance(self.locations, set):
-            self.locations = set(self.locations)
-        if not isinstance(self.channels, set):
-            self.channels = set(self.channels)
-        if not isinstance(self.nslc_ids, set):
-            self.nslc_ids = set(self.nslc_ids)
-        self.have_tuples = False
-
-    def _convert_small_sets_to_tuples(self):
-        if len(self.networks) < 32:
-            self.networks = reuse(tuple(self.networks))
-            self.have_tuples = True
-        if len(self.stations) < 32:
-            self.stations = reuse(tuple(self.stations))
-            self.have_tuples = True
-        if len(self.locations) < 32:
-            self.locations = reuse(tuple(self.locations))
-            self.have_tuples = True
-        if len(self.channels) < 32:
-            self.channels = reuse(tuple(self.channels))
-            self.have_tuples = True
-        if len(self.nslc_ids) < 32:
-            self.nslc_ids = reuse(tuple(self.nslc_ids))
-            self.have_tuples = True
             
 class MemTracesFile(TracesGroup):
     
@@ -331,7 +331,7 @@ class MemTracesFile(TracesGroup):
     def __init__(self, parent, traces):
         TracesGroup.__init__(self, parent)
         self.traces = traces
-        self.update(self.traces)
+        self.add(self.traces)
         self.mtime = time.time()
         
     def load_headers(self, mtime=None):
@@ -348,14 +348,6 @@ class MemTracesFile(TracesGroup):
         
     def reload_if_modified(self):
         pass
-        
-    def recursive_full_update(self):
-        self.update(self.traces)
-        
-        if self.parent is not None:
-            self.parent.recursive_full_update()
-        
-        self.notify_listeners('fullupdate')
             
     def get_newest_mtime(self, tmin, tmax, trace_selector=None):
         mtime = None
@@ -380,13 +372,6 @@ class MemTracesFile(TracesGroup):
                         pass
             
         return chopped, used
-        
-    def get_deltats(self):
-        deltats = set()
-        for trace in self.traces:
-            deltats.add(trace.deltat)
-            
-        return deltats
     
     def iter_traces(self):
         for trace in self.traces:
@@ -428,36 +413,43 @@ class TracesFile(TracesGroup):
         self.data_use_count = 0
         self.substitutions = substitutions
         self.load_headers(mtime=mtime)
-        self.update(self.traces)
+        self.add(self.traces)
         self.mtime = mtime
-        
-    def recursive_full_update(self):
-        self.update(self.traces)
-        
-        if self.parent is not None:
-            self.parent.recursive_full_update()
-        
-        self.notify_listeners('fullupdate')
         
     def load_headers(self, mtime=None):
         logger.debug('loading headers from file: %s' % self.abspath)
         if mtime is None:
             self.mtime = os.stat(self.abspath)[8]
         
-        self.traces = []
+        self.remove(self.traces)
         for tr in io.load(self.abspath, format=self.format, getdata=False, substitutions=self.substitutions):
             self.traces.append(tr)
-            
+        self.add(self.traces)
+
         self.data_loaded = False
         self.data_use_count = 0
         
     def load_data(self, force=False):
         if not self.data_loaded or force:
             logger.debug('loading data from file: %s' % self.abspath)
-            self.traces = []
-            for tr in io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions):
-                self.traces.append(tr)
-                
+            
+            for itr, tr in enumerate(io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions)):
+                if itr < len(self.traces):
+                    xtr = self.traces[itr]
+                    if xtr.mtime != tr.mtime or xtr.tmin != tr.tmin or xtr.tmax != tr.tmax:
+                        logger.warn('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
+                        self.remove(xtr)
+                        self.traces.remove(xtr)
+                        self.traces.add(tr)
+                        self.add(tr)
+                    else:
+                        xtr.ydata = tr.ydata
+                    
+                else:
+                    self.traces.add(tr)
+                    self.add(tr)
+                    logger.warn('file may have changed since last access (new trace found): %s' % self.abspath)
+
             self.data_loaded = True
     
     def use_data(self):
@@ -487,8 +479,6 @@ class TracesFile(TracesGroup):
             else:
                 self.load_headers()
             
-            self.update(self.traces)
-            
             return True
             
         return False
@@ -496,8 +486,8 @@ class TracesFile(TracesGroup):
     def get_newest_mtime(self, tmin, tmax, trace_selector=None):
         mtime = None
         for tr in self.traces:
-            if not trace_selector or trace_selector(tr):
-                mtime = max(mtime, self.mtime)
+            if tr.overlaps(tmin,tmax) and (not trace_selector or trace_selector(tr)):
+                mtime = max(mtime, tr.mtime)
                 
         return mtime
 
@@ -518,13 +508,6 @@ class TracesFile(TracesGroup):
             
         return chopped, used
         
-    def get_deltats(self):
-        deltats = set()
-        for trace in self.traces:
-            deltats.add(trace.deltat)
-            
-        return deltats
-    
     def iter_traces(self):
         for trace in self.traces:
             yield trace
@@ -563,30 +546,22 @@ class SubPile(TracesGroup):
         TracesGroup.__init__(self, parent)
         self.files = []
         self.empty()
-        
-    def recursive_full_update(self):
-        self.update(self.files)
-        
-        if self.parent is not None:
-            self.parent.recursive_full_update()
-        
-        self.notify_listeners('fullupdate')
     
     def add_file(self, file):
         self.files.append(file)
         file.set_parent(self)
-        self.update((file,), empty=False)
+        self.add(file)
         
     def remove_file(self, file):
         self.files.remove(file)
         file.set_parent(None)
-        self.update(self.files)
+        self.remove(file)
     
     def remove_files(self, files):
         for file in files:
             self.files.remove(file)
             file.set_parent(None)
-        self.update(self.files)
+        self.remove(files)
     
     def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
         mtime = None
@@ -614,13 +589,6 @@ class SubPile(TracesGroup):
             keys |= file.gather_keys(gather, selector)
             
         return keys
-
-    def get_deltats(self):
-        deltats = set()
-        for file in self.files:
-            deltats.update(file.get_deltats())
-            
-        return deltats
 
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
         for file in self.files:
@@ -654,9 +622,6 @@ class SubPile(TracesGroup):
         modified = False
         for file in self.files:
             modified |= file.reload_if_modified()
-        
-        if modified:
-            self.update(self.files)
             
         return modified
         
@@ -679,13 +644,8 @@ class Pile(TracesGroup):
     def __init__(self):
         TracesGroup.__init__(self, None)
         self.subpiles = {}
-        self.update(self.subpiles.values())
         self.open_files = {}
         self.listeners = []
-        
-    def recursive_full_update(self):
-        self.update(self.subpiles.values())
-        self.notify_listeners('fullupdate')
     
     def add_listener(self, obj):
         self.listeners.append(weakref.ref(obj))
@@ -701,26 +661,17 @@ class Pile(TracesGroup):
         self.add_files(l)
         
     def add_files(self, files):
-        modified_subpiles = set()
         for file in files:
             subpile = self.dispatch(file)
             subpile.add_file(file)
-            modified_subpiles.add(subpile)
-        
-        self.update(modified_subpiles, empty=False)
-        self.notify_listeners('add')
         
     def add_file(self, file):
         subpile = self.dispatch(file)
         subpile.add_file(file)
-        self.update((file,), empty=False)
-        self.notify_listeners('add')
     
     def remove_file(self, file):
         subpile = file.get_parent()
         subpile.remove_file(file)
-        self.update(self.subpiles.values())
-        self.notify_listeners('remove')
         
     def remove_files(self, files):
         subpile_files = {}
@@ -733,14 +684,8 @@ class Pile(TracesGroup):
        
         for subpile, files in subpile_files.iteritems():
             subpile.remove_files(files)
-            
-        self.update(self.subpiles.values()) 
-        self.notify_listeners('remove')
-
         
     def dispatch_key(self, file):
-       
-        
         tt = time.gmtime(int(file.tmin))
         return (tt[0],tt[1])
     
@@ -758,7 +703,10 @@ class Pile(TracesGroup):
                 mtime = max(mtime, subpile.get_newest_mtime(tmin, tmax, group_selector, trace_selector))
                 
         return mtime
-        
+    
+    def get_deltats(self):
+        return self.deltats.keys()
+
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round)):
         chopped = []
         used_files = set()
@@ -912,13 +860,6 @@ class Pile(TracesGroup):
             
         return sorted(keys)
     
-    def get_deltats(self):
-        deltats = set()
-        for subpile in self.subpiles.values():
-            deltats.update(subpile.get_deltats())
-            
-        return sorted(list(deltats))
-    
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
         for subpile in self.subpiles.values():
             if not group_selector or group_selector(subpile):
@@ -935,10 +876,6 @@ class Pile(TracesGroup):
         for subpile in self.subpiles.values():
             modified |= subpile.reload_modified()
         
-        if modified:
-            self.update(self.subpiles.values())
-            self.notify_listeners('modified')
-            
         return modified
     
     def get_tmin(self):
