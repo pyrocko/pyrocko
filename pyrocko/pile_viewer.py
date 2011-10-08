@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, shlex 
+import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, shlex, operator
 
 from optparse import OptionParser
 import numpy as num 
