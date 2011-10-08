@@ -1342,7 +1342,7 @@ def MakePileOverviewClass(base):
                     tgo = tmid
 
                 if dir.lower() == 'n':
-                    for marker in sorted(self.markers, cmp=lambda a,b: cmp(a.tmin,b.tmin)):
+                    for marker in sorted(self.markers, key=operator.attrgetter('tmin')):
                         t = marker.tmin
                         if t > tmid and marker.kind in self.visible_marker_kinds \
                                     and (dir == 'n' or isinstance(marker, EventMarker)):
@@ -1351,7 +1351,7 @@ def MakePileOverviewClass(base):
                             tgo = t
                             break
                 else: 
-                    for marker in sorted(self.markers, cmp=lambda a,b: cmp(b.tmin,a.tmin)):
+                    for marker in sorted(self.markers, key=operator.attrgetter('tmin')):
                         t = marker.tmin
                         if t < tmid and marker.kind in self.visible_marker_kinds \
                                     and (dir == 'p' or isinstance(marker, EventMarker)):
@@ -1646,7 +1646,7 @@ def MakePileOverviewClass(base):
         def determine_box_styles(self):
             
             traces = list(self.pile.iter_traces())
-            traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
+            traces.sort( key=operator.attrgetter('full_id') ) 
             istyle = 0
             trace_styles = {}
             for itr, tr in enumerate(traces):
@@ -1654,7 +1654,7 @@ def MakePileOverviewClass(base):
                     other = traces[itr-1]
                     if not (other.nslc_id == tr.nslc_id and
                         other.deltat == tr.deltat and
-                        abs(other.tmax - tr.tmin) < gap_lap_tolerance): istyle+=1
+                        abs(other.tmax - tr.tmin) < gap_lap_tolerance*tr.deltat): istyle+=1
             
                 trace_styles[tr.full_id, tr.deltat] = istyle
             
@@ -1672,7 +1672,7 @@ def MakePileOverviewClass(base):
                 tselector = selector
 
             traces = list(self.pile.iter_traces(group_selector=selector, trace_selector=tselector))
-            traces.sort( lambda a,b: cmp(a.full_id, b.full_id))
+            traces.sort( key=operator.attrgetter('full_id') ) 
 
             def drawbox(itrack, istyle, traces):
                 v_projection = track_projections[itrack]
