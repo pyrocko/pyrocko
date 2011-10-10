@@ -520,7 +520,9 @@ def select_files( paths, selector=None,  regex=None, show_progress=True ):
         else:
             good.append(os.path.abspath(path))
         
-        
+    if isinstance(paths, str):
+        paths = [ paths ]
+
     for path in paths:
         if os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
