@@ -229,7 +229,8 @@ class TracesGroup(object):
     
     def empty(self):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids, self.deltats = [ Counter() for x in range(6) ]
-        self.tmins, self.tmaxs = sortedlist(), sortedlist()
+        self.by_tmin = sortedlist(operator.attrgetter('tmin'))
+        self.by_tmax = sortedlist(operator.attrgetter('tmax'))
         self.tmin, self.tmax = None, None
     
     def add(self, content):
@@ -247,8 +248,8 @@ class TracesGroup(object):
                 self.nslc_ids.update( c.nslc_ids )
                 self.deltats.update( c.deltats )
                 
-                self.tmins.update(c.tmins)
-                self.tmaxs.update(c.tmaxs)
+                self.by_tmin.update(c.by_tmin)
+                self.by_tmax.update(c.by_tmax)
             
             elif isinstance(c, trace.Trace):
                 self.networks[c.network] += 1
@@ -257,11 +258,13 @@ class TracesGroup(object):
                 self.channels[c.channel] += 1
                 self.deltats[c.deltat] += 1
     
-                self.tmins.add(c.tmin)
-                self.tmaxs.add(c.tmax)
+                self.by_tmin.add(c)
+                self.by_tmax.add(c)
 
-        self.tmin = self.tmins[0]
-        self.tmax = self.tmaxs[-1]
+        if self.by_tmin:
+            self.tmin = self.by_tmin[0].tmin
+        if self.by_tmax:
+            self.tmax = self.by_tmax[-1].tmax
         
         self.nupdates += 1
         self.notify_listeners('add')
@@ -284,7 +287,7 @@ class TracesGroup(object):
                 self.nslc_ids.subtract( c.nslc_ids )
                 self.deltats.subtract( c.deltats )
 
-                for tmin in c.tmins:
+                for tr in c.by_tmin:
                     self.tmins.remove(tmin)
                 for tmax in c.tmaxs:
                     self.tmaxs.remove(tmax)
