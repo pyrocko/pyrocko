@@ -239,6 +239,48 @@ def year_start(timestamp):
     tts = tt[0:1] + (1,1,0,0,0) + tt[6:9]
     return calendar.timegm(tts)
 
+def iter_days(tmin, tmax):
+    '''Yields begin and end of days until given time span is covered.
+
+    :param tmin,tmax: input time span
+    
+    :yields: tuples with (begin, end) of days as system timestamps
+    '''
+
+    t = day_start(tmin)
+    while t < tmax:
+        tend = day_start( t + 26*60*60 )
+        yield t, tend
+        t = tend
+
+def iter_months(tmin, tmax):
+    '''Yields begin and end of months until given time span is covered.
+
+    :param tmin,tmax: input time span
+    
+    :yields: tuples with (begin, end) of months as system timestamps
+    '''
+    
+    t = month_start(tmin)
+    while t < tmax:
+        tend = month_start(t + 24*60*60*33 )
+        yield t, tend
+        t = tend
+
+def iter_years(tmin, tmax):
+    '''Yields begin and end of years until given time span is covered.
+
+    :param tmin,tmax: input time span
+    
+    :yields: tuples with (begin, end) of years as system timestamps
+    '''
+    
+    t = year_start(tmin)
+    while t < tmax:
+        tend = year_start(t + 24*60*60*369 )
+        yield t, tend
+        t = tend
+
 def decitab(n):
     '''Get integer decimation sequence for given downampling factor.
     
