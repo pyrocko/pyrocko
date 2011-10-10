@@ -261,6 +261,12 @@ class Trace(object):
         self.drop_growbuffer()
         self.ydata = new_ydata
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
+
+    def data_len(self):
+        if self.ydata is not None:
+            return self.ydata.size
+        else:
+            return int(round((self.tmax-self.tmin)/self.deltat)) + 1
         
     def drop_data(self):
         '''Forget data, make dataless trace.'''
@@ -343,7 +349,8 @@ class Trace(object):
         ibeg = max(0, t2ind(tmin-self.tmin,self.deltat, snap[0]))
         iplus = 0
         if include_last: iplus=1
-        iend = min(len(self.ydata), t2ind(tmax-self.tmin,self.deltat, snap[1])+iplus)
+
+        iend = min(self.data_len(), t2ind(tmax-self.tmin,self.deltat, snap[1])+iplus)
         
         if ibeg >= iend: raise NoData()
         obj = self
@@ -351,9 +358,14 @@ class Trace(object):
             obj = self.copy(data=False)
        
         self.drop_growbuffer()
-        obj.ydata = self.ydata[ibeg:iend].copy()
+        if self.ydata is not None:
+            obj.ydata = self.ydata[ibeg:iend].copy()
+        else:
+            obj.ydata = None
+        
         obj.tmin = obj.tmin+ibeg*obj.deltat
-        obj.tmax = obj.tmin+(len(obj.ydata)-1)*obj.deltat
+        obj.tmax = obj.tmin+((iend-ibeg)-1)*obj.deltat
+            
         obj._update_ids()
     
         
@@ -884,28 +896,35 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
         
         a = out_traces[-1]
         b = in_traces.pop(0)
+        
+        avirt, bvirt = a.ydata is None, b.ydata is None
+        assert avirt == bvirt, 'traces given to degapper() must either all have data or have no data.'
+        virtual = avirt and bvirt
 
         if (a.nslc_id == b.nslc_id and a.deltat == b.deltat and 
-            len(a.ydata) >= 1 and len(b.ydata) >= 1 and a.ydata.dtype == b.ydata.dtype):
+            a.data_len() >= 1 and b.data_len() >= 1 and 
+            (virtual or a.ydata.dtype == b.ydata.dtype)):
             
-            dist = (b.tmin-(a.tmin+(len(a.ydata)-1)*a.deltat))/a.deltat
+            dist = (b.tmin-(a.tmin+(a.data_len()-1)*a.deltat))/a.deltat
             idist = int(round(dist))
             if abs(dist - idist) > 0.05 and idist <= maxgap:
                 pass #logger.warn('Cannot degap traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
             else:
                 if 1 < idist <= maxgap:
-                    if fillmethod == 'interpolate':
-                        filler = a.ydata[-1] + (((1.+num.arange(idist-1,dtype=num.float))/idist)*(b.ydata[0]-a.ydata[-1])).astype(a.ydata.dtype)
-                    elif fillmethod == 'zeros':
-                        filler = num.zeros(idist-1,dtype=a.ydist.dtype)
-                    a.ydata = num.concatenate((a.ydata,filler,b.ydata))
+                    if not virtual:
+                        if fillmethod == 'interpolate':
+                            filler = a.ydata[-1] + (((1.+num.arange(idist-1,dtype=num.float))/idist)*(b.ydata[0]-a.ydata[-1])).astype(a.ydata.dtype)
+                        elif fillmethod == 'zeros':
+                            filler = num.zeros(idist-1,dtype=a.ydist.dtype)
+                        a.ydata = num.concatenate((a.ydata,filler,b.ydata))
                     a.tmax = b.tmax
                     if a.mtime and b.mtime:
                         a.mtime = max(a.mtime, b.mtime)
                     continue
 
                 elif idist == 1:
-                    a.ydata = num.concatenate((a.ydata,b.ydata))
+                    if not virtual:
+                        a.ydata = num.concatenate((a.ydata,b.ydata))
                     a.tmax = b.tmax
                     if a.mtime and b.mtime:
                         a.mtime = max(a.mtime, b.mtime)
@@ -913,20 +932,21 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
                     
                 elif idist <= 0:
                     if b.tmax > a.tmax:
-                        na = a.ydata.size
-                        n = -idist+1
-                        if deoverlap == 'use_second':
-                            a.ydata = num.concatenate((a.ydata[:-n], b.ydata))
-                        elif deoverlap in ('use_first', 'crossfade_cos'):
-                            a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
-                        else:
-                            assert False, 'unknown deoverlap method'
-
-                        if deoverlap == 'crossfade_cos':
+                        if not virtual:
+                            na = a.ydata.size
                             n = -idist+1
-                            taper = 0.5-0.5*num.cos((1.+num.arange(n))/(1.+n)*num.pi)
-                            a.ydata[na-n:na] *= 1.-taper
-                            a.ydata[na-n:na] += b.ydata[:n] * taper
+                            if deoverlap == 'use_second':
+                                a.ydata = num.concatenate((a.ydata[:-n], b.ydata))
+                            elif deoverlap in ('use_first', 'crossfade_cos'):
+                                a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
+                            else:
+                                assert False, 'unknown deoverlap method'
+
+                            if deoverlap == 'crossfade_cos':
+                                n = -idist+1
+                                taper = 0.5-0.5*num.cos((1.+num.arange(n))/(1.+n)*num.pi)
+                                a.ydata[na-n:na] *= 1.-taper
+                                a.ydata[na-n:na] += b.ydata[:n] * taper
 
                         a.tmax = b.tmax
                         if a.mtime and b.mtime:
@@ -936,7 +956,7 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
                         # make short second trace vanish
                         continue
                     
-        if len(b.ydata) >= 1:
+        if b.data_len() >= 1:
             out_traces.append(b)
             
     for tr in out_traces:
