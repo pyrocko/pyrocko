@@ -7,8 +7,7 @@ import os, pickle, logging, time, weakref, copy, re, sys
 
 import cPickle as pickle
 from collections import Counter
-
-from rbtree import rbtree
+import avl
 
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
@@ -19,10 +18,14 @@ from trace import degapper
 
 progressbar = util.progressbar_module()
 
-
+def avl_remove_exact(avltree, element):
+    ilo, ihi = avltree.span(element)
+    i = avltree[ilo:ihi].index(element)
+    if i != -1:
+        avltree.remove_at(ilo+i)
 
 def cmpfunc(key):
-    if isinstance(key, string):
+    if isinstance(key, str):
         # special cases; these run about 50% faster than the generic one on Python 2.5
         if key == 'tmin':
             return lambda a,b: cmp(a.tmin, b.tmin)
@@ -33,15 +36,24 @@ def cmpfunc(key):
     
     return lambda a,b: cmp(key(a), key(b))
 
+class Dummy:
+    pass
+
 class Sorted(object):
     def __init__(self, values=[], key=None):
         self._avl = avl.new(values, cmpfunc(key))
         
+        if isinstance(key, str):
+            class Dummy:
+                def __init__(self, k):
+                    setattr(self, key, k)
+            self._dummy = Dummy
+
     def insert(self, value):
         self._avl.insert(value)
 
     def remove(self, v):
-        self._avl.remove(value)
+        avl_remove_exact(self._avl, value)
 
     def insert_many(self, values):
         for value in values:
@@ -49,11 +61,24 @@ class Sorted(object):
 
     def remove_many(self, values):
         for value in values:
-            self._avl.remove(value)
+            avl_remove_exact(self._avl, value)
 
+    def __iter__(self):
+        return iter(self._avl)
+
+    def key_within(self, kmin, kmax):
+        omin, omax = self._dummy(kmin), self._dummy(kmax)
+        ilo, ihi = self._avl.span(omin,omax)
+        return self._avl[ilo:ihi]
+
+    def min(self):
+        return self._avl.min()
     
+    def max(self):
+        return self._avl.max()
 
-
+    def __len__(self):
+        return len(self._avl)
 
 class TracesFileCache(object):
     '''Manages trace metainformation cache.
@@ -148,11 +173,15 @@ class TracesFileCache(object):
         f = open(cachefilename,'r')
         cache = pickle.load(f)
         f.close()
-        
+       
         # weed out files which no longer exist
         for fn in cache.keys():
             if not os.path.isfile(fn):
                 del cache[fn]
+        
+        for v in cache.values():
+            v.trees_from_content(v.traces)
+
         return cache
         
     def _dump_dircache(self, cache, cachefilename):
@@ -162,11 +191,14 @@ class TracesFileCache(object):
                 os.remove(cachefilename)
             return
         
-        # make a copy without the parents
+        # make a copy without the parents and the binsearch trees
         cache_copy = {}
         for fn in cache.keys():
             cache_copy[fn] = copy.copy(cache[fn])
             cache_copy[fn].parent = None
+            cache_copy[fn].by_tmin = None
+            cache_copy[fn].by_tmax = None
+            cache_copy[fn].by_tlen = None
         
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
         f = open(tmpfn, 'w')
@@ -266,10 +298,17 @@ class TracesGroup(object):
     
     def empty(self):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids, self.deltats = [ Counter() for x in range(6) ]
-        self.by_tmin = rbtree()
-        self.by_tmax = rbtree()
+        self.by_tmin = Sorted([], 'tmin')
+        self.by_tmax = Sorted([], 'tmax')
+        self.by_tlen = Sorted([], lambda x: x.tmax-x.tmin)
         self.tmin, self.tmax = None, None
     
+    def trees_from_content(self, content):
+        self.by_tmin = Sorted(content, 'tmin')
+        self.by_tmax = Sorted(content, 'tmax')
+        self.by_tlen = Sorted(content, lambda x: x.tmax-x.tmin)
+        self.adjust_minmax()
+
     def add(self, content):
         
         if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
@@ -285,8 +324,9 @@ class TracesGroup(object):
                 self.nslc_ids.update( c.nslc_ids )
                 self.deltats.update( c.deltats )
                 
-                self.by_tmin.update(c.by_tmin)
-                self.by_tmax.update(c.by_tmax)
+                self.by_tmin.insert_many(c.by_tmin)
+                self.by_tmax.insert_many(c.by_tmax)
+                self.by_tlen.insert_many(c.by_tlen)
             
             elif isinstance(c, trace.Trace):
                 self.networks[c.network] += 1
@@ -295,14 +335,12 @@ class TracesGroup(object):
                 self.channels[c.channel] += 1
                 self.deltats[c.deltat] += 1
     
-                self.by_tmin[c.tmin] = c
-                self.by_tmax[c.tmax] = c
+                self.by_tmin.insert(c)
+                self.by_tmax.insert(c)
+                self.by_tlen.insert(c)
 
-        if self.by_tmin:
-            self.tmin = self.by_tmin.min()
-        if self.by_tmax:
-            self.tmax = self.by_tmax.max()
-        
+        self.adjust_minmax()
+
         self.nupdates += 1
         self.notify_listeners('add')
     
@@ -324,11 +362,10 @@ class TracesGroup(object):
                 self.nslc_ids.subtract( c.nslc_ids )
                 self.deltats.subtract( c.deltats )
 
-                for tmin in c.by_tmin.keys():
-                    del self.by_tmin[tmin]
-                for tmax in c.by_tmax.keys():
-                    del self.by_tmax[tmax]
-                
+                self.by_tmin.remove_many( c )
+                self.by_tmax.remove_many( c )
+                self.by_tlen.remove_many( c )
+
             elif isinstance(c, trace.Trace):
                 self.networks[c.network] -= 1
                 self.stations[c.station] -= 1
@@ -337,17 +374,28 @@ class TracesGroup(object):
                 self.nslc_ids[c.nslc_id] -= 1
                 self.deltats[c.deltat] -= 1
     
-                del self.tmins.remove(c.tmin)
-                self.tmaxs.remove(c.tmax)
+                self.by_tmin.remove(c)
+                self.by_tmax.remove(c)
+                self.by_tlen.remove(c)
 
-            self.tmin = self.tmins[0]
-            self.tmax = self.tmaxs[-1]
-        
+        self.adjust_minmax()
+
         self.nupdates += 1
         self.notify_listeners('remove')
 
         if self.parent is not None:
             self.parent.remove(content)
+
+    def adjust_minmax(self):
+        if self.by_tmin:
+            self.tmin = self.by_tmin.min().tmin
+        else:
+            self.tmin = None
+
+        if self.by_tmax:
+            self.tmax = self.by_tmax.max().tmax
+        else:
+            self.tmax = None
 
     def notify_listeners(self, what):
         pass
