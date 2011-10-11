@@ -4,10 +4,11 @@ import trace, io, util, config
 
 import numpy as num
 import os, pickle, logging, time, weakref, copy, re, sys
-from blist import sortedlist
 
 import cPickle as pickle
 from collections import Counter
+
+from rbtree import rbtree
 
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
@@ -17,6 +18,42 @@ from trace import degapper
 
 
 progressbar = util.progressbar_module()
+
+
+
+def cmpfunc(key):
+    if isinstance(key, string):
+        # special cases; these run about 50% faster than the generic one on Python 2.5
+        if key == 'tmin':
+            return lambda a,b: cmp(a.tmin, b.tmin)
+        if key == 'tmax':
+            return lambda a,b: cmp(a.tmax, b.tmax)
+
+        key = operator.attrgetter(key)
+    
+    return lambda a,b: cmp(key(a), key(b))
+
+class Sorted(object):
+    def __init__(self, values=[], key=None):
+        self._avl = avl.new(values, cmpfunc(key))
+        
+    def insert(self, value):
+        self._avl.insert(value)
+
+    def remove(self, v):
+        self._avl.remove(value)
+
+    def insert_many(self, values):
+        for value in values:
+            self._avl.insert(value)
+
+    def remove_many(self, values):
+        for value in values:
+            self._avl.remove(value)
+
+    
+
+
 
 class TracesFileCache(object):
     '''Manages trace metainformation cache.
@@ -229,8 +266,8 @@ class TracesGroup(object):
     
     def empty(self):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids, self.deltats = [ Counter() for x in range(6) ]
-        self.by_tmin = sortedlist(operator.attrgetter('tmin'))
-        self.by_tmax = sortedlist(operator.attrgetter('tmax'))
+        self.by_tmin = rbtree()
+        self.by_tmax = rbtree()
         self.tmin, self.tmax = None, None
     
     def add(self, content):
@@ -258,13 +295,13 @@ class TracesGroup(object):
                 self.channels[c.channel] += 1
                 self.deltats[c.deltat] += 1
     
-                self.by_tmin.add(c)
-                self.by_tmax.add(c)
+                self.by_tmin[c.tmin] = c
+                self.by_tmax[c.tmax] = c
 
         if self.by_tmin:
-            self.tmin = self.by_tmin[0].tmin
+            self.tmin = self.by_tmin.min()
         if self.by_tmax:
-            self.tmax = self.by_tmax[-1].tmax
+            self.tmax = self.by_tmax.max()
         
         self.nupdates += 1
         self.notify_listeners('add')
@@ -287,10 +324,10 @@ class TracesGroup(object):
                 self.nslc_ids.subtract( c.nslc_ids )
                 self.deltats.subtract( c.deltats )
 
-                for tr in c.by_tmin:
-                    self.tmins.remove(tmin)
-                for tmax in c.tmaxs:
-                    self.tmaxs.remove(tmax)
+                for tmin in c.by_tmin.keys():
+                    del self.by_tmin[tmin]
+                for tmax in c.by_tmax.keys():
+                    del self.by_tmax[tmax]
                 
             elif isinstance(c, trace.Trace):
                 self.networks[c.network] -= 1
@@ -300,7 +337,7 @@ class TracesGroup(object):
                 self.nslc_ids[c.nslc_id] -= 1
                 self.deltats[c.deltat] -= 1
     
-                self.tmins.remove(c.tmin)
+                del self.tmins.remove(c.tmin)
                 self.tmaxs.remove(c.tmax)
 
             self.tmin = self.tmins[0]
