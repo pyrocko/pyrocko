@@ -96,6 +96,34 @@ class GlobalVars:
     decimate_iir_coeffs = {}
     re_frac = None
 
+def decimate_coeffs(q, n=None, ftype='iir'):
+
+    if type(q) != type(1):
+        raise Error, "q should be an integer"
+
+    if n is None:
+        if ftype == 'fir':
+            n = 30
+        else:
+            n = 8
+            
+    if ftype == 'fir':
+        coeffs = GlobalVars.decimate_fir_coeffs
+        if (n, 1./q) not in coeffs:
+            coeffs[n,1./q] = signal.firwin(n+1, 1./q, window='hamming')
+        
+        b = coeffs[n,1./q]
+        return b, [1.], n 
+
+    else:
+        coeffs = GlobalVars.decimate_iir_coeffs
+        if (n,0.05,0.8/q) not in coeffs:
+            coeffs[n,0.05,0.8/q] = signal.cheby1(n, 0.05, 0.8/q)
+           
+        b, a = coeffs[n,0.05,0.8/q]
+        return b, a, n
+
+
 def decimate(x, q, n=None, ftype='iir', zi=None):
     """Downsample the signal x by an integer factor q, using an order n filter
     
@@ -112,44 +140,14 @@ def decimate(x, q, n=None, ftype='iir', zi=None):
 
     """
 
-    if type(q) != type(1):
-        raise Error, "q should be an integer"
-
-    if n is None:
-        if ftype == 'fir':
-            n = 30
-        else:
-            n = 8
+    b, a, n = decimate_coeffs(q,n,ftype)
             
-            
-    if ftype == 'fir':
-        coeffs = GlobalVars.decimate_fir_coeffs
-        if (n, 1./q) not in coeffs:
-            coeffs[n,1./q] = signal.firwin(n+1, 1./q, window='hamming')
-        
-        b = coeffs[n,1./q]
-        
-        if zi is None or zi is True:
-            zi_ = num.zeros(len(b)-1, dtype=num.float)
-        else:
-            zi_ = zi
-        
-        y, zf = signal.lfilter(b, 1., x, zi=zi_)
-            
-            
+    if zi is None or zi is True:
+        zi_ = num.zeros(max(len(a),len(b))-1, dtype=num.float)
     else:
-        coeffs = GlobalVars.decimate_iir_coeffs
-        if (n,0.05,0.8/q) not in coeffs:
-            coeffs[n,0.05,0.8/q] = signal.cheby1(n, 0.05, 0.8/q)
-           
-        b, a = coeffs[n,0.05,0.8/q]
-        
-        if zi is None is True:
-            zi_ = num.zeros(max(len(a),len(b))-1, dtype=num.float)
-        else:
-            zi_ = zi
-        y, zf = signal.lfilter(b, a, x, zi=zi_)
-
+        zi_ = zi
+    
+    y, zf = signal.lfilter(b, a, x, zi=zi_)
 
     if zi is not None:
         return y[n/2::q].copy(), zf
