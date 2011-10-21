@@ -69,45 +69,22 @@ class Downsampler(Processor):
     def __init__(self, mapping, deltat):
         Processor.__init__(self)
         self._mapping = mapping
-        self._deltat = deltat
-        self._tout = {}
-
+        self._downsampler = tracemod.co_downsample_to(deltat)
+        
     def process(self, trace):
         target_id = self._mapping(trace)
         if target_id is None:
             return []
 
-        buffer = self.get_buffer(trace)
-        if buffer is None:
-            buffer = trace.copy()
-            self.set_buffer(buffer)
-        else:
-            buffer.append(trace.ydata)
-
-        ds_trace = buffer.copy()
-        ds_trace.downsample_to(self._deltat, snap=True, demean=False)
+        ds_trace = self._downsampler.send(trace) 
         ds_trace.set_codes(*target_id)
-
-        if ds_trace.get_ydata().size == 0:
+        if ds_trace.data_len() == 0:
             return []
-
-        tpad = ((buffer.tmax-buffer.tmin) - (ds_trace.tmax-ds_trace.tmin)) * 3.
-        try:
-            buffer.chop(buffer.tmax-tpad, buffer.tmax, include_last=True)
-        except tracemod.NoData:
-            pass
-
-        
-        if target_id in self._tout:
-            tout = self._tout[target_id]
-            try:
-                ds_trace.chop(tout+ds_trace.deltat, ds_trace.tmax, inplace=True)
-            except tracemod.NoData:
-                return []
-
-        self._tout[target_id] = ds_trace.tmax
         
         return [ ds_trace ]
+
+    def __del__(self):
+        self._downsampler.close()
 
 class Grower(Processor):
 
