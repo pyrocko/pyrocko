@@ -477,6 +477,9 @@ class Trace(object):
         '''
         self.nyquist_check(corner, 'Corner frequency of lowpass', nyquist_warn, nyquist_exception)
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
+        if len(a) != order+1 or len(b) != order+1:
+            logger.warn('Erroneous filter coefficients returned by scipy.signal.butter(). You may need to downsample the signal before filtering.')
+
         data = self.ydata.astype(num.float64)
         data -= num.mean(data)
         self.drop_growbuffer()
@@ -494,6 +497,9 @@ class Trace(object):
         self.nyquist_check(corner, 'Corner frequency of highpass', nyquist_warn, nyquist_exception)
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
+        if len(a) != order+1 or len(b) != order+1:
+            logger.warn('Erroneous filter coefficients returned by scipy.signal.butter(). You may need to downsample the signal before filtering.')
+
         data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
