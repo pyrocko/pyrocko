@@ -1351,7 +1351,7 @@ def MakePileOverviewClass(base):
                             tgo = t
                             break
                 else: 
-                    for marker in sorted(self.markers, key=operator.attrgetter('tmin')):
+                    for marker in sorted(self.markers, key=operator.attrgetter('tmin'), reverse=True):
                         t = marker.tmin
                         if t < tmid and marker.kind in self.visible_marker_kinds \
                                     and (dir == 'p' or isinstance(marker, EventMarker)):
