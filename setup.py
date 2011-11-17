@@ -25,11 +25,12 @@ setup( name = packname,
         Extension( packname+'/gse_ext',
             include_dirs = [ numpy.get_include() ],
             sources = [ packname+'/gse_ext.c' ]),
+
         Extension( packname+'/autopick_ext',
             include_dirs = [ numpy.get_include() ],
             sources = [ packname+'/autopick_ext.c' ]),
 
     ],
                 
-    scripts = [ 'apps/snuffler', 'apps/hamster' ]
+    scripts = [ 'apps/snuffler', 'apps/hamster', 'apps/cake' ]
 )
