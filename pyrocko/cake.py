@@ -105,6 +105,9 @@ def parstore_float(thelocals, obj, *args):
         if k != 'self' and (not args or k in args):
             setattr(obj, k, float_or_none(v))
 
+class InvalidArguments(Exception):
+    pass
+
 class Material:
     '''Isotropic elastic material.
 
@@ -124,35 +127,45 @@ class Material:
     Everything is in SI units (m/s, Pa, kg/m^3) unless explicitly stated.
     '''
 
-    def __init__(self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=0.25, lame=None, qk=None, qmu=None):
+    def __init__(self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=None, lame=None, qk=None, qmu=None):
 
         parstore_float(locals(), self, 'vp', 'vs', 'rho', 'qp', 'qs')
 
         if vp is not None and vs is not None:
-            pass
+            if poisson is not None or lame is not None:
+                raise InvalidArguments('If vp and vs are given, poisson ratio and lame paramters should not be given.')
 
         elif vp is None and vs is None and lame is None:
             self.vp = 5800.
-            self.vs = 3200.
+            if poisson is None:
+                poisson = 0.25
+            self.vs = self.vp / math.sqrt(2.0*(1.0-poisson)/(1.0-2.0*poisson))
 
         elif vp is None and vs is None and lame is not None:
+            if poisson is not None:
+                raise InvalidArguments('Poisson ratio should not be given, when lame parameters are given.')
             lam, mu = float(lame[0]), float(lame[1])
             self.vp = math.sqrt((lam + 2.0*mu)/rho)
             self.vs = math.sqrt(mu/rho)
 
         elif vp is not None and vs is None and poisson is not None:
+            if lame is not None:
+                raise InvalidArguments('If vp and poisson ratio are given, Lame parameters should not be given.')
             poisson = float(poisson)
             self.vs = vp / math.sqrt(2.0*(1.0-poisson)/(1.0-2.0*poisson))
         
         elif vp is None and vs is not None and poisson is not None:
+            if lame is not None:
+                raise InvalidArguments('If vs and poisson ratio are given, Lame parameters should not be given.')
             poisson = float(poisson)
             self.vp = vs * math.sqrt(2.0*(1.0-poisson)/(1.0-2.0*poisson))
     
         else:
-            assert False, 'invalid combination of arguments given to Material.__init__()'
-        
+            raise InvalidArguments('Invalid combination of input parameters in material definition.')
+
         if qp is not None or qs is not None:
-            assert qk is None and qmu is None, 'invalid combination of arguments given to Material.__init__()'
+            if not (qk is None and qmu is None):
+                raise InvalidArguments('if qp or qs are given, qk and qmu should not be given.')
             if qp is None:
                 self.qp = 1456.
             if qs is None:
@@ -167,7 +180,7 @@ class Material:
             self.qp = 1.0 / (l*(1.0/qmu) + (1-l)*(1.0/qk))
             self.qs = qmu
         else:
-            assert False, 'invalid combination of arguments given to Material.__init__()'
+            raise InvalidArguments('Invalid combination of input parameters in material definition.')
     
     def astuple(self):
         return self.vp, self.vs, self.rho, self.qp, self.qs
