@@ -169,7 +169,7 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
     return Anon(d)
 
 if __name__ == '__main__':
-    usage = 'cake (print|arrivals|plot-xt|plot-px|plot-rays|plot) [options]'
+    usage = 'cake (print|arrivals|plot-xt|plot-xp|plot-rays|plot) [options]'
     usage_sub = 'cake %s [options]'
     if len(sys.argv) < 2:
         sys.exit('Usage: %s' % usage)

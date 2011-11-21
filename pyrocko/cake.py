@@ -148,15 +148,19 @@ class Material:
             self.vp = math.sqrt((lam + 2.0*mu)/rho)
             self.vs = math.sqrt(mu/rho)
 
-        elif vp is not None and vs is None and poisson is not None:
+        elif vp is not None and vs is None:
+            if poisson is None:
+                poisson = 0.25
             if lame is not None:
-                raise InvalidArguments('If vp and poisson ratio are given, Lame parameters should not be given.')
+                raise InvalidArguments('If vp is given, Lame parameters should not be given.')
             poisson = float(poisson)
             self.vs = vp / math.sqrt(2.0*(1.0-poisson)/(1.0-2.0*poisson))
         
-        elif vp is None and vs is not None and poisson is not None:
+        elif vp is None and vs is not None:
+            if poisson is None:
+                poisson = 0.25
             if lame is not None:
-                raise InvalidArguments('If vs and poisson ratio are given, Lame parameters should not be given.')
+                raise InvalidArguments('If vs is given, Lame parameters should not be given.')
             poisson = float(poisson)
             self.vp = vs * math.sqrt(2.0*(1.0-poisson)/(1.0-2.0*poisson))
     
@@ -861,6 +865,7 @@ class Layer:
 def potint_coefs(c1, c2, r1, r2):  # r2 > r1
     eps = r2*1e-9
     b = math.log(c1/c2)/math.log((r1+eps)/r2)
+    print r1, r2, b, (r1+eps)**b
     a = c1/(r1+eps)**b
     return a,b
 
@@ -1856,6 +1861,8 @@ def load_model(fn, format):
         reader = read_nd_model(fn)
     elif format == 'hyposat':
         reader = read_hyposat_model(fn)
+    else:
+        assert False, 'unsupported model format'
 
     return LayeredModel.from_scanlines(reader)
 
