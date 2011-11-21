@@ -275,6 +275,8 @@ Qk                            : %12g
 
 
 class Leg:
+    '''Represents a continuous piece of wave propagation in a :py:class:`PhaseDef`.'''
+    
     def __init__(self, departure=None, mode=None):
         self.departure = departure
         self.mode = mode
@@ -310,6 +312,8 @@ class InvalidKneeDef(Exception):
     pass
 
 class Knee:
+    '''Represents a change in wave propagation within a :py:class:`PhaseDef`.'''
+
     defaults = dict(depth='surface', direction=UP, conversion=True, reflection=False, in_setup_state=True)
     defaults_surface = dict(depth='surface', direction=UP, conversion=False, reflection=True, in_setup_state=True)
     
