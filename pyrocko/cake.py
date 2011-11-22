@@ -737,6 +737,21 @@ def psv_solid(material1, material2, p, energy=False):
         
         return num.real(escatter)
 
+class BadPotIntCoefs(Exception):
+    pass
+
+def potint_coefs(c1, c2, r1, r2):  # r2 > r1
+    eps = r2*1e-9
+    if c1 == 0. and c2 == 0.:
+        c1c2 = 1.
+    else:
+        c1c2 = c1/c2
+    b = math.log(c1c2)/math.log((r1+eps)/r2)
+    if abs(b) > 10.:
+        raise BadPotIntCoefs()
+    a = c1/(r1+eps)**b
+    return a,b
+
 def imode(s):
     if s.lower() == 'p':
         return P
@@ -774,11 +789,17 @@ class Layer:
     def __init__(self, ztop, zbot, name=None):
         self.ztop = ztop
         self.zbot = zbot
+        self.zmid = ( self.ztop + self.zbot ) * 0.5
         self.name = name
 
     def _update_potint_coefs(self):
-        self._ppic = potint_coefs(self.mbot.vp, self.mtop.vp, radius(self.zbot), radius(self.ztop))
-        self._spic = potint_coefs(self.mbot.vp, self.mtop.vp, radius(self.zbot), radius(self.ztop))
+        self._use_potential_interpolation = False
+        try:
+            self._ppic = potint_coefs(self.mbot.vp, self.mtop.vp, radius(self.zbot), radius(self.ztop))
+            self._spic = potint_coefs(self.mbot.vs, self.mtop.vs, radius(self.zbot), radius(self.ztop))
+            self._use_potential_interpolation = True
+        except BadPotIntCoefs:
+            pass
 
     def potint_coefs(self, mode):
         if mode == P:
@@ -798,7 +819,16 @@ class Layer:
     def at_top(self, z):
         return abs(self.ztop - z) < ZEPS
 
-    def xt(self, p, mode, zpart=None):
+    def pflat_top(self, p):
+        return p / (earthradius-self.ztop)
+
+    def pflat_bottom(self, p):
+        return p / (earthradius-self.zbot)
+
+    def pflat(self, p, z):
+        return p / (earthradius-z)
+    
+    def xt_potint(self, p, mode, zpart=None):
         utop, ubot = self.us(mode)
         a,b = self.potint_coefs(mode)
         ztop = self.ztop
@@ -842,7 +872,7 @@ class Layer:
     def test(self, p, mode, z):
         return (self.u(mode, z)*radius(z) - p) >= 0
    
-    def zturn(self, p, mode):
+    def zturn_potint(self, p, mode):
         a,b = self.potint_coefs(mode)
         r = num.exp(num.log(a*p)/(1-b))
         return earthradius-r
@@ -862,12 +892,9 @@ class Layer:
         else:
             return direction
 
-def potint_coefs(c1, c2, r1, r2):  # r2 > r1
-    eps = r2*1e-9
-    b = math.log(c1/c2)/math.log((r1+eps)/r2)
-    print r1, r2, b, (r1+eps)**b
-    a = c1/(r1+eps)**b
-    return a,b
+class DoesNotTurn(Exception):
+    pass
+
 
 earthradius = 6371.*1000.
 def radius(z):
@@ -904,6 +931,31 @@ class HomogeneousLayer(Layer):
         v = self.v(mode)
         return v, v
 
+    def xt(self, p, mode, zpart=None):
+        if self._use_potential_interpolation:
+            return self.xt_potint(p, mode, zpart)
+        
+        u = self.u(mode)
+        pflat = self.pflat_bottom(p)
+        if zpart is None:
+            dz = (self.zbot - self.ztop)
+        else:
+            dz = abs(zpart[1]-zpart[0])
+
+        u = self.u(mode)
+        eps = u*0.001
+        denom = num.sqrt(u**2 - pflat**2) + eps
+
+        x = pflat/(earthradius-self.zmid) * dz / denom 
+        t = u**2 * dz / denom
+        return x, t
+
+    def zturn(self, p, mode):
+        if self._use_potential_interpolation:
+            return self.zturn_potint(p,mode)
+        
+        raise DoesNotTurn()
+
     def split(self, z):
         upper = HomogeneousLayer(self.ztop, z, self.m, name=self.name)
         lower = HomogeneousLayer(z, self.zbot, self.m, name=self.name)
@@ -917,7 +969,12 @@ class HomogeneousLayer(Layer):
         else:
             name = ''
 
-        return '  (%i) homogeneous layer %s(%g km - %g km)\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, self.m)
+        if self._use_potential_interpolation:
+            calcmode = 'P'
+        else:
+            calcmode = 'H'
+
+        return '  (%i) homogeneous layer %s(%g km - %g km) [%s]\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.m)
 
 class GradientLayer(Layer):
     def __init__(self, ztop, zbot, mtop, mbot, name=None):
@@ -959,6 +1016,50 @@ class GradientLayer(Layer):
         if mode == S:
             return self.interpolate(z, self.mtop.vs, self.mbot.vs)
     
+    def xt(self, p, mode, zpart=None):
+        if self._use_potential_interpolation:
+            return self.xt_potint(p, mode, zpart)
+
+        utop, ubot = self.us(mode)
+        b = (1./ubot - 1./utop)/(self.zbot - self.ztop)
+        pflat = self.pflat_bottom(p)
+        if zpart is not None:
+            utop = self.u(mode, zpart[0])
+            ubot = self.u(mode, zpart[1])
+        
+        peps = 1e-16
+        pdp = pflat + peps 
+        def func(u):
+            eta = num.sqrt(num.maximum(u**2 - pflat**2, 0.0))
+            xx = eta/u 
+            tt = num.where( pflat<=u, num.log(u+eta) - num.log(pdp) - eta/u, 0.0 )
+            return xx, tt
+
+        xxtop, tttop = func(utop)
+        xxbot, ttbot = func(ubot)
+
+        x =  (xxtop - xxbot)/(b*pdp)
+        t =  (tttop - ttbot)/b + pflat*x
+      
+        if isinstance(x, num.ndarray):
+            iturn = num.where(num.logical_or(utop - pflat <= 0, ubot - pflat <= 0))
+            x[iturn] *= 2.
+            t[iturn] *= 2.
+        else:
+            if utop - pflat <= 0 or ubot - pflat <= 0:
+                x *= 2.
+                t *= 2.
+
+        x /= (earthradius - self.zmid)
+        return x, t
+   
+    def zturn(self, p, mode):
+        if self._use_potential_interpolation:
+            return self.zturn_potint(p,mode)
+        pflat = self.pflat_bottom(p)
+        vtop, vbot = self.vs(mode)
+        return (1./pflat - vtop) * (self.zbot - self.ztop) / (vbot-vtop) + self.ztop
+
     def split(self, z):
         mmid = self.material(z)
         upper = GradientLayer(self.ztop, z, self.mtop, mmid, name=self.name)
@@ -973,7 +1074,12 @@ class GradientLayer(Layer):
         else:
             name = ''
 
-        return '  (%i) gradient layer %s(%g km - %g km)\n    %s\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, self.mtop, self.mbot)
+        if self._use_potential_interpolation:
+            calcmode = 'P'
+        else:
+            calcmode = 'G'
+
+        return '  (%i) gradient layer %s(%g km - %g km) [%s]\n    %s\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.mtop, self.mbot)
 
 class Discontinuity:
     def __init__(self, z, name=None):
