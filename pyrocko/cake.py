@@ -22,7 +22,7 @@ def castagna_vs_to_vp(vs):
 
         vp = 1.16 * vs + 1360 [m/s]
 
-    :param vp: input vs in [km/s]
+    :param vs: S-wave velocity [m/s]
     :returns: vp in [m/s]
     '''
 
@@ -46,6 +46,11 @@ def evenize(x,y, minsize=10):
     return x2
 
 def filled(v, *args, **kwargs):
+    '''Create NumPy array filled with given value.
+
+    This works like :py:func:`numpy.ones` but initializes the array with `v` instead
+    of ones.
+    '''
     x = num.empty(*args, **kwargs)
     x.fill(v)
     return x
@@ -63,6 +68,12 @@ def reci_or_none(x):
         return None
 
 def monotony(x):
+    '''Check if an array is strictly increasing or decreasing.
+    
+    Given an array `x`, returns `1` if the values of x are in strictly
+    increasing order and `-1` if they are in strictly decreasing order, or zero
+    otherwise.
+    '''
     n = x.size
     p = num.sum(num.sign(x))
     if n == p:
@@ -113,18 +124,21 @@ class Material:
 
     :param vp: P-wave velocity [m/s]
     :param vs: S-wave velocity [m/s]
-    :param rho: density [km/m^3]
+    :param rho: density [kg/m^3]
     :param qp: P-wave attenuation Qp
     :param qs: S-wave attenuation Qs
-    :param poisson: Poisson ratio (only used if either vp or vs is not given)
-    :param lame: tuple with Lame parameter lambda and shear_modulus (only used if vp and vs are not given)
-    :param qk: bulk attenuation Qk (only used if Qp and Qs are not given)
-    :param qmu: shear attenuation Qmu (only used if Qp and Qs are not given)
+    :param poisson: Poisson ratio (only used if either `vp` or `vs` is not given)
+    :param lame: tuple with Lame parameter `lambda` and `shear modulus` [Pa] (only used if `vp` and `vs` are not given)
+    :param qk: bulk attenuation Qk (only used if `qp` and `qs` are not given)
+    :param qmu: shear attenuation Qmu (only used if `qp` and `qs` are not given)
 
-    if no velocities and no lame parameters are given, standard crustal values of vp = 5800 m/s and vs = 3200 m/s are used.
+    If no velocities and no lame parameters are given, standard crustal values of vp = 5800 m/s and vs = 3200 m/s are used.
     If no Q values are given, standard crustal values of qp = 1456 and qs = 600 are used.
 
     Everything is in SI units (m/s, Pa, kg/m^3) unless explicitly stated.
+
+    The returned object has the public attributes ``vp``, ``vs``, ``rho``,
+    ``qp``, and ``qs``. Other material properties can be queried by instance methods.
     '''
 
     def __init__(self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=None, lame=None, qk=None, qmu=None):
@@ -199,12 +213,18 @@ class Material:
         return lam, mu
 
     def lame_lambda(self):
-        '''Get Lame's parameter lambda.'''
+        '''Get Lame's parameter lambda.
+        
+        Returned units are [Pa].
+        '''
         lam, _ = self.lame()
         return lam
 
     def shear_modulus(self):
-        '''Get shear modulus.'''
+        '''Get shear modulus.
+        
+        Returned units are [Pa].
+        '''
         return self.vs**2 * self.rho
 
     def poisson(self):
@@ -244,11 +264,13 @@ class Material:
         return (2.0-cr_b)**2 - 4.0 * math.sqrt(1.0-cr_a) * math.sqrt(1.0-cr_b)
 
     def rayleigh(self):
-        '''Get rayleigh velocity assuming a homogenous halfspace.'''
+        '''Get rayleigh velocity assuming a homogenous halfspace.
+        
+        Returned units are [m/s].'''
         return bisect(self._rayleigh_equation, 0.001*self.vs, self.vs)
 
     def describe(self):
-        '''Get a readable listing of material parameters.'''
+        '''Get a readable listing of the material properties.'''
         template = '''
 P wave velocity     [km/s]    : %12g
 S wave velocity     [km/s]    : %12g
@@ -423,7 +445,46 @@ class PhaseDefParseError(Exception):
         return 'Invalid phase definition: "%s" (at character %i: %s)' % (self.definition, self.position+1, str(self.exception))
 
 class PhaseDef:
+   
+    '''Definition of a seismic propagation path.
     
+    Seismic phases are conventionally named e.g. P, Pn, PP, PcP, etc. In this
+    module a slightly different terminology is adapted, which allows to specify
+    arbitrary conversion/reflection histories for seismic phases. The
+    conventions used here are inspired by the conventions used in the TauP
+    toolkit, but are not completely compatible with those.
+
+    The definition of a seismic phase in the syntax implemented here is a
+    string consisting of an alternating sequence of *legs* and *knees*. A *leg*
+    here represents seismic wave propagation without any conversion,
+    encountering only super-critical reflections. Legs are denoted by ``P``,
+    ``p`` or ``S`` or ``s``. The capital letters are used when the take-off of
+    the *leg* is in downward direction, while the lower case letter indicate a
+    take-off in upward direction. A *knee* is denoted by a string of the form
+    ``(INTERFACE)`` where INTERFACE is the name of an interface (which should
+    be defined in the models which are used with this phase) or ``DEPTH``,
+    where DEPTH is a number, for mode conversions, ``v(INTERFACE)`` or
+    ``vDEPTH`` for top-side reflections or ``^(INTERFACE)`` or ``^DEPTH`` for
+    underside reflections. When DEPTH is given as a numerical value, the
+    interface closest to that depth is chosen. If two legs appear
+    consecutively without an explicit *knee*, surface interaction is assumed.
+    The string may end with a backslash ``\\``, to indicate that the ray should
+    arrive at the receiver from above instead of from below, which is the
+    default. It is possible to restrict the maximum and minimum depth of a
+    *leg* by appending ``<(INTERFACE)`` or ``<DEPTH`` or ``>(INTERFACE)`` or
+    ``>DEPTH`` after the leg character, respectively.
+    
+    Examples:
+
+        * ``P`` - like the classical P, but includes PKP, PKIKP, Pg
+        * ``P<(moho)`` - like Pg, but must leave source downwards
+        * ``pP`` - leaves source upward, reflects at surface, then travels as P
+        * ``P(moho)s`` - conversion from P to S at the Moho on upgoing path
+        * ``P(moho)S`` - conversion from P to S at the Moho on downgoing path
+        * ``P^(conrad)P`` - underside reflection of P at the Conrad discontinuity
+         
+    '''
+
     classic_defs = {}
     for r in 'mc':
         # PmP PcP and the like:

@@ -12,6 +12,7 @@ Library Reference
    model
    hamster_pile
    crust2x2
+   cake
    moment_tensor
    evalresp
    pz
