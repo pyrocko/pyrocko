@@ -2251,6 +2251,9 @@ def MakePileOverviewClass(base):
             self.update()
      
         def myclose(self):
+            self.timer.stop()
+            if self.follow_timer is not None:
+                self.follow_timer.stop()
             self.window().close()
             
         def set_error_message(self, key, value):
