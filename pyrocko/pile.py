@@ -964,7 +964,21 @@ class Pile(TracesGroup):
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
         return s
+    
+    def snuffle(self, **kwargs):
+        '''Visualize it.
 
+        :param stations: list of `pyrocko.model.Station` objects or ``None``
+        :param events: list of `pyrocko.model.Event` objects or ``None``
+        :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+        :param ntracks: float, number of tracks to be shown initially (default: 12)
+        :param follow: time interval (in seconds) for real time follow mode or ``None``
+        :param controls: bool, whether to show the main controls (default: ``True``)
+        :param opengl: bool, whether to use opengl (default: ``False``)
+        '''
+
+        from pyrocko.snuffler import snuffle
+        snuffle(self, **kwargs)
 
 def make_pile( paths=None, selector=None, regex=None,
         fileformat = 'mseed',

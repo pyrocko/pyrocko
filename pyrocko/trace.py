@@ -792,10 +792,45 @@ class Trace(object):
         return template % params
 
     def plot(self):
+        '''Show trace with matplotlib.
+        
+        See also: :py:meth:`Trace.snuffle`.
+        '''
         import pylab
         pylab.plot(self.get_xdata(), self.get_ydata())
         pylab.show()
-        
+    
+    def snuffle(self, **kwargs):
+        '''Show trace in a snuffler window.
+
+        :param stations: list of `pyrocko.model.Station` objects or ``None``
+        :param events: list of `pyrocko.model.Event` objects or ``None``
+        :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+        :param ntracks: float, number of tracks to be shown initially (default: 12)
+        :param follow: time interval (in seconds) for real time follow mode or ``None``
+        :param controls: bool, whether to show the main controls (default: ``True``)
+        :param opengl: bool, whether to use opengl (default: ``False``)
+        '''
+
+        snuffle( [self], **kwargs)
+
+def snuffle(traces, **kwargs):
+    '''Show traces in a snuffler window.
+
+    :param stations: list of `pyrocko.model.Station` objects or ``None``
+    :param events: list of `pyrocko.model.Event` objects or ``None``
+    :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+    :param ntracks: float, number of tracks to be shown initially (default: 12)
+    :param follow: time interval (in seconds) for real time follow mode or ``None``
+    :param controls: bool, whether to show the main controls (default: ``True``)
+    :param opengl: bool, whether to use opengl (default: ``False``)
+    '''
+
+    from pyrocko import pile, snuffler
+    p = pile.Pile()
+    trf = pile.MemTracesFile(p, traces)
+    p.add_file(trf)
+    return snuffler.snuffle(p, **kwargs)
 
 class NoData(Exception):
     '''This exception is raised by some :py:class:`Trace` operations when no or not enough data is available.'''
