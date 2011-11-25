@@ -791,6 +791,12 @@ class Trace(object):
         params.update(additional)
         return template % params
 
+    def plot(self):
+        import pylab
+        pylab.plot(self.get_xdata(), self.get_ydata())
+        pylab.show()
+        
+
 class NoData(Exception):
     '''This exception is raised by some :py:class:`Trace` operations when no or not enough data is available.'''
     pass
