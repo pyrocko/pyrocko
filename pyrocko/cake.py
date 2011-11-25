@@ -1,3 +1,36 @@
+'''Classical seismic ray theory for layered earth models (*layer cake* models).
+
+This module can be used to e.g. calculate arrival times, ray paths, reflection
+and transmission coefficients, take-off and incidence angles and geometrical
+spreading factors for arbitrary seismic phases. Computations are done for a
+spherical earth, even though the module name may suggests something flat.
+
+The main classes defined in this module are:
+
+* :py:class:`Material` - Defines an isotropic elastic material.
+* :py:class:`PhaseDef` - Defines a seismic phase arrival / wave propagation history.
+* :py:class:`Leg` - Continuous propagation in a :py:class:`PhaseDef`.
+* :py:class:`Knee` - Conversion/reflection in a :py:class:`PhaseDef`.
+* :py:class:`LayeredModel` - Representation of a layer cake model.
+* :py:class:`Layer` - A layer in a :py:class:`LayeredModel`.
+ 
+   * :py:class:`HomogeneousLayer` - A homogeneous :py:class:`Layer`.
+   * :py:class:`GradientLayer` - A gradient :py:class:`Layer`.
+
+* :py:class:`Discontinuity` - A discontinuity in a :py:class:`LayeredModel`.
+
+   * :py:class:`Interface` - A :py:class:`Discontinuity` between two :py:class:`Layer` instances.
+   * :py:class:`Surface` - The surface :py:class:`Discontinuity` on top of a :py:class:`LayeredModel`.
+
+* :py:class:`RayPath` - A fan of rays running through a common sequence of layers / interfaces.
+* :py:class:`Ray` - A specific ray with a specific (ray parameter, distance, arrival time) choice.
+* :py:class:`RayElement` - An element of a :py:class:`RayPath`.
+
+   * :py:class:`Straight` - A ray segment representing propagation through one :py:class:`Layer`.
+   * :py:class:`Kink` - An interaction of a ray with a :py:class:`Discontinuity`.
+'''
+
+
 import sys, copy, inspect, math, cmath, operator
 from pyrocko import util
 from scipy.optimize import bisect
@@ -14,107 +47,6 @@ r2d = 180./math.pi
 d2r = 1./r2d
 km = 1000.
 
-def castagna_vs_to_vp(vs):
-    '''Calculate vp from vs using castagna's relation.
-
-    Castagna's relation (the mudrock line) is an empirical relation for vp/vs for 
-    siliciclastic rocks (i.e. sandstones and shales). [Castagna et al., 1985]
-
-        vp = 1.16 * vs + 1360 [m/s]
-
-    :param vs: S-wave velocity [m/s]
-    :returns: vp in [m/s]
-    '''
-
-    return vs*1.16 + 1360.0
-
-def evenize(x,y, minsize=10):
-    if x.size < minsize:
-        return x
-    ry = (y.max()-y.min())
-    if ry == 0:
-        return x
-    dx = (x[1:] - x[:-1])/(x.max()-x.min())
-    dy = (y[1:] + y[:-1])/ry
-    
-    s = num.zeros(x.size) 
-    s[1:] = num.cumsum(num.sqrt(dy**2 + dx**2))
-    s2 = num.linspace(0,s[-1],x.size)
-    x2 = num.interp(s2, s, x)
-    x2[0] = x[0]
-    x2[-1] = x[-1]
-    return x2
-
-def filled(v, *args, **kwargs):
-    '''Create NumPy array filled with given value.
-
-    This works like :py:func:`numpy.ones` but initializes the array with `v` instead
-    of ones.
-    '''
-    x = num.empty(*args, **kwargs)
-    x.fill(v)
-    return x
-
-def next_or_none(i):
-    try:
-        return i.next()
-    except StopIteration:
-        return None
-
-def reci_or_none(x):
-    try:
-        return 1./x
-    except ZeroDivisionError:
-        return None
-
-def monotony(x):
-    '''Check if an array is strictly increasing or decreasing.
-    
-    Given an array `x`, returns `1` if the values of x are in strictly
-    increasing order and `-1` if they are in strictly decreasing order, or zero
-    otherwise.
-    '''
-    n = x.size
-    p = num.sum(num.sign(x))
-    if n == p:
-        return 1
-    if n == -p:
-        return -1
-    else:
-        return 0
-
-def xytups(xx,yy):
-    d = []
-    for x,y in zip(xx,yy):
-        if num.isfinite(y):
-            d.append((x,y))
-    return d
-
-def interp(x, xp, fp, monoton):
-    if monoton==1:
-        return xytups(x, num.interp(x, xp, fp, left=num.nan, right=num.nan))
-    elif monoton==-1:
-        return xytups(x, num.interp(x, xp[::-1], fp[::-1], left=num.nan, right=num.nan))
-    else:
-        fs = []
-        for xv in x:
-            indices = num.where(num.logical_and(xp[:-1] <= xv , xv < xp[1:]))[0]
-            fvs = []
-            for i in indices:
-                xr = (xv - xp[i])/(xp[i+1]-xp[i])
-                fv = xr*fp[i] + (1.-xr)*fp[i+1]
-                fs.append((xv,fv))
-                
-        return fs
-
-def float_or_none(x):
-    if x is not None:
-        return float(x)
-
-def parstore_float(thelocals, obj, *args):
-    for k,v in thelocals.iteritems():
-        if k != 'self' and (not args or k in args):
-            setattr(obj, k, float_or_none(v))
 
 class InvalidArguments(Exception):
     pass
@@ -127,18 +59,21 @@ class Material:
     :param rho: density [kg/m^3]
     :param qp: P-wave attenuation Qp
     :param qs: S-wave attenuation Qs
-    :param poisson: Poisson ratio (only used if either `vp` or `vs` is not given)
-    :param lame: tuple with Lame parameter `lambda` and `shear modulus` [Pa] (only used if `vp` and `vs` are not given)
-    :param qk: bulk attenuation Qk (only used if `qp` and `qs` are not given)
-    :param qmu: shear attenuation Qmu (only used if `qp` and `qs` are not given)
+    :param poisson: Poisson ratio
+    :param lame: tuple with Lame parameter `lambda` and `shear modulus` [Pa]
+    :param qk: bulk attenuation Qk
+    :param qmu: shear attenuation Qmu
 
     If no velocities and no lame parameters are given, standard crustal values of vp = 5800 m/s and vs = 3200 m/s are used.
     If no Q values are given, standard crustal values of qp = 1456 and qs = 600 are used.
 
     Everything is in SI units (m/s, Pa, kg/m^3) unless explicitly stated.
 
-    The returned object has the public attributes ``vp``, ``vs``, ``rho``,
-    ``qp``, and ``qs``. Other material properties can be queried by instance methods.
+    The main material properties are considered independant and are accessible as attributes (it is allowed to assign to these):
+
+        .. py:attribute:: vp, vs, rho, qp, qs
+
+    Other material properties are considered dependant and can be queried by instance methods.
     '''
 
     def __init__(self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=None, lame=None, qk=None, qmu=None):
@@ -201,6 +136,10 @@ class Material:
             raise InvalidArguments('Invalid combination of input parameters in material definition.')
     
     def astuple(self):
+        '''Get independant material properties as a tuple.
+        
+        Returns a tuple with ``(vp, vs, rho, qp, qs)``.
+        '''
         return self.vp, self.vs, self.rho, self.qp, self.qs
 
     def __eq__(self, other):
@@ -301,7 +240,29 @@ Qk                            : %12g
 
 
 class Leg:
-    '''Represents a continuous piece of wave propagation in a :py:class:`PhaseDef`.'''
+    '''Represents a continuous piece of wave propagation in a :py:class:`PhaseDef`.
+    
+     **Attributes:**
+
+     To be considered as read-only.
+
+        .. py:attribute:: departure
+        
+           One of the constants :py:const:`UP` or :py:const:`DOWN` indicating upward or downward departure. 
+
+        .. py:attribute:: mode
+
+           One of the constants :py:const:`P` or :py:const:`S`, indicating the propagation mode.
+
+        .. py:attribute:: depthmin
+
+           `None`, a number (a depth in [m]) or a string (an interface name), minimum depth.
+
+        .. py:attribute:: depthmax
+
+           `None`, a number (a depth in [m]) or a string (an interface name), maximum depth.
+        
+    '''
     
     def __init__(self, departure=None, mode=None):
         self.departure = departure
@@ -338,7 +299,37 @@ class InvalidKneeDef(Exception):
     pass
 
 class Knee:
-    '''Represents a change in wave propagation within a :py:class:`PhaseDef`.'''
+    '''Represents a change in wave propagation within a :py:class:`PhaseDef`.
+   
+    **Attributes:**
+
+    To be considered as read-only.
+
+        .. py:attribute:: depth
+
+           Depth at which the conversion/reflection should happen. this can be a string or a number.
+    
+        .. py:attribute:: direction
+           
+           One of the constants :py:const:`UP` or :py:const:`DOWN` to indicate the incoming direction. 
+
+        .. py:attribute:: in_mode
+        
+           One of the constants :py:const:`P` or :py:const:`S` to indicate the type of mode of the incoming wave.
+
+        .. py:attribute:: out_mode
+
+           One of the constants :py:const:`P` or :py:const:`S` to indicate the type of mode of the outgoing wave.
+
+        .. py:attribute:: conversion
+        
+           Boolean, whether there is a mode conversion involved.
+
+        .. py:attribute:: reflection
+
+           Boolean, whether there is a reflection involved. 
+    
+    '''
 
     defaults = dict(depth='surface', direction=UP, conversion=True, reflection=False, in_setup_state=True)
     defaults_surface = dict(depth='surface', direction=UP, conversion=False, reflection=True, in_setup_state=True)
@@ -388,6 +379,8 @@ class Knee:
         return self.depth == 'surface'
 
     def matches(self, discontinuity, mode, direction):
+        '''Check whether it is relevant to a given combination of interface, propagation mode, and direction.'''
+
         if isinstance(self.depth, float):
             if abs(self.depth - discontinuity.z) > ZEPS:
                 return False
@@ -398,6 +391,11 @@ class Knee:
         return self.direction == direction and self.in_mode == mode
 
     def out_direction(self):
+        '''Get outgoing direction.
+        
+        Returns one of the constants :py:const:`UP` or :py:const:`DOWN`.
+        '''
+
         if self.reflection:
             return - self.direction
         else:
@@ -424,7 +422,7 @@ class Knee:
         if isinstance(self.depth, float):
             x.append('at interface in %g km depth' % (self.depth/1000.))
         else:
-            if not self.at_surface:
+            if not self.at_surface():
                 x.append('at %s' % self.depth)
         
         if not self.reflection:
@@ -436,6 +434,8 @@ class Knee:
         return ' '.join(x)
 
 class PhaseDefParseError(Exception):
+    '''Exception raised when an error occures during parsing of a phase definition string.'''
+
     def __init__(self, definition, position, exception):
         self.definition = definition
         self.position = position
@@ -446,13 +446,15 @@ class PhaseDefParseError(Exception):
 
 class PhaseDef:
    
-    '''Definition of a seismic propagation path.
+    '''Definition of a seismic phase arrival, based on ray propagation path.
+
+    :param definition: string representation of the phase in cake phase syntax
     
     Seismic phases are conventionally named e.g. P, Pn, PP, PcP, etc. In this
     module a slightly different terminology is adapted, which allows to specify
     arbitrary conversion/reflection histories for seismic phases. The
-    conventions used here are inspired by the conventions used in the TauP
-    toolkit, but are not completely compatible with those.
+    conventions used here are inspired by those used in the TauP toolkit, but
+    are not completely compatible with those.
 
     The definition of a seismic phase in the syntax implemented here is a
     string consisting of an alternating sequence of *legs* and *knees*. A *leg*
@@ -465,7 +467,7 @@ class PhaseDef:
     be defined in the models which are used with this phase) or ``DEPTH``,
     where DEPTH is a number, for mode conversions, ``v(INTERFACE)`` or
     ``vDEPTH`` for top-side reflections or ``^(INTERFACE)`` or ``^DEPTH`` for
-    underside reflections. When DEPTH is given as a numerical value, the
+    underside reflections. When DEPTH is given as a numerical value in [km], the
     interface closest to that depth is chosen. If two legs appear
     consecutively without an explicit *knee*, surface interaction is assumed.
     The string may end with a backslash ``\\``, to indicate that the ray should
@@ -474,15 +476,45 @@ class PhaseDef:
     *leg* by appending ``<(INTERFACE)`` or ``<DEPTH`` or ``>(INTERFACE)`` or
     ``>DEPTH`` after the leg character, respectively.
     
-    Examples:
+    **Examples:**
 
         * ``P`` - like the classical P, but includes PKP, PKIKP, Pg
         * ``P<(moho)`` - like Pg, but must leave source downwards
         * ``pP`` - leaves source upward, reflects at surface, then travels as P
         * ``P(moho)s`` - conversion from P to S at the Moho on upgoing path
         * ``P(moho)S`` - conversion from P to S at the Moho on downgoing path
+        * ``Pv12p`` - P with reflection at 12 km deep interface (or the interface closest to that)
         * ``P^(conrad)P`` - underside reflection of P at the Conrad discontinuity
-         
+
+    **Usage:**
+
+        >>> from pyrocko.cake import PhaseDef
+        >>> my_crazy_phase = PhaseDef('pPv(moho)sP\\\\')   # must escape the backslash
+        >>> print my_crazy_phase
+        Phase definition "pPv(moho)sP\":
+         - P mode propagation, departing upward
+         - surface reflection
+         - P mode propagation, departing downward
+         - upperside reflection with conversion from p to s at moho
+         - S mode propagation, departing upward
+         - surface reflection with conversion from s to p
+         - P mode propagation, departing downward
+         - arriving at target from above
+
+    .. note::
+    
+        (1) These conventions might be extended in a way to allow to fix wave
+            propagation to SH mode, possibly by specifying SH, or a single
+            character (e.g. H) instead of S. This would be benificial for the
+            selection of conversion and reflection coefficients, which currently 
+            only deal with the P-SV case.
+
+        (2) Need a way to specify headwaves (maybe ``P_(moho)p``).
+
+        (3) To support direct mappings between the classical phase names and
+            cake phase names, a way to constrain the turning point depth is 
+            needed.
+
     '''
 
     classic_defs = {}
@@ -2033,3 +2065,104 @@ def load_model(fn, format):
 
     return LayeredModel.from_scanlines(reader)
 
+def castagna_vs_to_vp(vs):
+    '''Calculate vp from vs using castagna's relation.
+
+    Castagna's relation (the mudrock line) is an empirical relation for vp/vs for 
+    siliciclastic rocks (i.e. sandstones and shales). [Castagna et al., 1985]
+
+        vp = 1.16 * vs + 1360 [m/s]
+
+    :param vs: S-wave velocity [m/s]
+    :returns: vp in [m/s]
+    '''
+
+    return vs*1.16 + 1360.0
+
+def evenize(x,y, minsize=10):
+    if x.size < minsize:
+        return x
+    ry = (y.max()-y.min())
+    if ry == 0:
+        return x
+    dx = (x[1:] - x[:-1])/(x.max()-x.min())
+    dy = (y[1:] + y[:-1])/ry
+    
+    s = num.zeros(x.size) 
+    s[1:] = num.cumsum(num.sqrt(dy**2 + dx**2))
+    s2 = num.linspace(0,s[-1],x.size)
+    x2 = num.interp(s2, s, x)
+    x2[0] = x[0]
+    x2[-1] = x[-1]
+    return x2
+
+def filled(v, *args, **kwargs):
+    '''Create NumPy array filled with given value.
+
+    This works like :py:func:`numpy.ones` but initializes the array with `v` instead
+    of ones.
+    '''
+    x = num.empty(*args, **kwargs)
+    x.fill(v)
+    return x
+
+def next_or_none(i):
+    try:
+        return i.next()
+    except StopIteration:
+        return None
+
+def reci_or_none(x):
+    try:
+        return 1./x
+    except ZeroDivisionError:
+        return None
+
+def monotony(x):
+    '''Check if an array is strictly increasing or decreasing.
+    
+    Given an array `x`, returns `1` if the values of x are in strictly
+    increasing order and `-1` if they are in strictly decreasing order, or zero
+    otherwise.
+    '''
+    n = x.size
+    p = num.sum(num.sign(x))
+    if n == p:
+        return 1
+    if n == -p:
+        return -1
+    else:
+        return 0
+
+def xytups(xx,yy):
+    d = []
+    for x,y in zip(xx,yy):
+        if num.isfinite(y):
+            d.append((x,y))
+    return d
+
+def interp(x, xp, fp, monoton):
+    if monoton==1:
+        return xytups(x, num.interp(x, xp, fp, left=num.nan, right=num.nan))
+    elif monoton==-1:
+        return xytups(x, num.interp(x, xp[::-1], fp[::-1], left=num.nan, right=num.nan))
+    else:
+        fs = []
+        for xv in x:
+            indices = num.where(num.logical_and(xp[:-1] <= xv , xv < xp[1:]))[0]
+            fvs = []
+            for i in indices:
+                xr = (xv - xp[i])/(xp[i+1]-xp[i])
+                fv = xr*fp[i] + (1.-xr)*fp[i+1]
+                fs.append((xv,fv))
+                
+        return fs
+
+def float_or_none(x):
+    if x is not None:
+        return float(x)
+
+def parstore_float(thelocals, obj, *args):
+    for k,v in thelocals.iteritems():
+        if k != 'self' and (not args or k in args):
+            setattr(obj, k, float_or_none(v))
