@@ -467,7 +467,7 @@ class Trace(object):
             if raise_exception:
                 raise AboveNyquist(message)
             
-    def lowpass(self, order, corner, nyquist_warn=True, nyquist_exception=False):
+    def lowpass(self, order, corner, nyquist_warn=True, nyquist_exception=False, demean=True):
         '''Apply Butterworth lowpass to the trace.
         
         :param order: order of the filter
@@ -481,11 +481,12 @@ class Trace(object):
             logger.warn('Erroneous filter coefficients returned by scipy.signal.butter(). You may need to downsample the signal before filtering.')
 
         data = self.ydata.astype(num.float64)
-        data -= num.mean(data)
+        if demean:
+            data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
-    def highpass(self, order, corner, nyquist_warn=True, nyquist_exception=False):
+    def highpass(self, order, corner, nyquist_warn=True, nyquist_exception=False, demean=True):
         '''Apply butterworth highpass to the trace.
 
         :param order: order of the filter
@@ -499,12 +500,12 @@ class Trace(object):
         data = self.ydata.astype(num.float64)
         if len(a) != order+1 or len(b) != order+1:
             logger.warn('Erroneous filter coefficients returned by scipy.signal.butter(). You may need to downsample the signal before filtering.')
-
-        data -= num.mean(data)
+        if demean:
+            data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
-    def bandpass(self, order, corner_hp, corner_lp):
+    def bandpass(self, order, corner_hp, corner_lp, demean=True):
         '''Apply butterworth bandpass to the trace.
         
         :param order: order of the filter
@@ -518,10 +519,16 @@ class Trace(object):
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandpass')
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
-        data -= num.mean(data)
+        if demean:
+            data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
-        
+
+    def envelope(self):
+        hilbert = signal.hilbert(self.ydata)
+        envelope = num.sqrt(self.ydata**2 + hilbert**2)
+        self.ydata = envelope
+
     def _get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
         if ck not in Trace.cached_frequencies:
