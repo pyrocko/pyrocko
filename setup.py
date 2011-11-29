@@ -1,6 +1,6 @@
 import numpy
 from distutils.core import setup, Extension
-import os
+import os, time
 
 def git_infos():
     '''Query git about sha1 of last commit and check if there are local modifications.'''
@@ -29,13 +29,17 @@ def make_info_module(packname, version):
 
     except OSError:
         pass
-    
+   
+    datestr = time.strftime('%Y-%m-%d_%H:%M:%S')
+    combi += '-%s' % datestr
+
     s = '''# This module is automatically created from setup.py
 git_sha1 = %s
 local_modifications = %s
 version = %s
 long_version = %s
-''' % tuple( [ repr(x) for x in (sha1, local_modifications, version, combi) ] )
+installed_date = %s
+''' % tuple( [ repr(x) for x in (sha1, local_modifications, version, combi, datestr) ] )
    
     try:
         f = open(os.path.join('pyrocko', 'info.py'), 'w')
