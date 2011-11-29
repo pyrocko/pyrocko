@@ -1,6 +1,6 @@
 import numpy
 from distutils.core import setup, Extension
-import os, time
+import os, time, sys
 
 def git_infos():
     '''Query git about sha1 of last commit and check if there are local modifications.'''
@@ -52,12 +52,17 @@ packname = 'pyrocko'
 version = '0.2'
 
 subpacknames = [ 'pyrocko.snufflings' ]
+if sys.version_info >= (2,5):
+    subpacknames.append( 'pyrocko.need_python_2_5' )
 
 make_info_module(packname, version)
 
 setup( name = packname,
     version = version,
     description = 'Seismological Processing Unit',
+    author = 'Sebastian Heimann',
+    author_email = 'sebastian.heimann@zmaw.de',
+    url = 'http://emolch.github.com/pyrocko/',
     packages = [ packname ] + subpacknames,
     ext_modules = [ 
         

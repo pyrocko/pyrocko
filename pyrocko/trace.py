@@ -4,7 +4,7 @@
 '''
 
 import util, evalresp
-import time, math, copy, logging
+import time, math, copy, logging, sys
 import numpy as num
 from util import reuse
 from scipy import signal
@@ -1545,11 +1545,8 @@ class MultiplyResponse(FrequencyResponse):
     def evaluate(self, freqs):
         return self._a.evaluate(freqs) * self._b.evaluate(freqs)
 
-
-
-import sys
 if sys.version_info >= (2,5):
-    from trace_need_python_2_5 import *
+    from need_python_2_5.trace import *
 
 cached_coefficients = {}
 def _get_cached_filter_coefs(order, corners, btype):
