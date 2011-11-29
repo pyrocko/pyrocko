@@ -298,25 +298,43 @@ class TraceTestCase(unittest.TestCase):
         ya = floats([1,2,1])
         yb = floats([0,0,0,0,0,0,0,0,1,2,3,2,1])
 
-        for i in range(2):
-
-            a = trace.Trace(tmin=sometime, deltat=0.1, ydata=ya)
-            b = trace.Trace(tmin=sometime, deltat=0.1, ydata=yb)
+        a = trace.Trace(tmin=sometime, deltat=0.1, ydata=ya)
+        b = trace.Trace(tmin=sometime, deltat=0.1, ydata=yb)
+        
+        c_ab = trace.correlate(a,b)
+        c_ab2 = trace.correlate(a,b, normalization='gliding')
+        c_ba = trace.correlate(b,a)
+        c_ba2 = trace.correlate(b,a, normalization='gliding')
             
-            c = trace.correlate(a,b)
-            print c.ydata
-
-            c = trace.correlate(a,b, normalization='gliding')
-            print c.ydata
-            
-            ya,yb = yb,ya
-
+        assert numeq( c_ab.ydata, c_ba.ydata[::-1], 0.001 )
+        assert numeq( c_ab2.ydata, c_ba2.ydata[::-1], 0.001 )
 
     def testMovingSum(self):
 
         x = num.arange(5)
         assert numeq( trace.moving_sum(x,3,mode='valid'), [3,6,9], 0.001 )
         assert numeq( trace.moving_sum(x,3,mode='full'), [0,1,3,6,9,7,4], 0.001 )
+
+    
+    def testContinuousDownsample(self):
+
+        y = num.random.random(1000)
+
+        for (dt1, dt2) in [ (0.1, 1.0), (0.2, 1.0), (0.5, 1.0), (0.2, 0.4), (0.4, 1.2) ]:
+            for tadd in (0.0, 0.01, 0.2, 0.5, 0.7, 0.75):
+                a = trace.Trace(tmin=sometime+tadd, deltat=dt1, ydata=y)
+                bs = [ trace.Trace(location='b', tmin=sometime+i*dt1*100+tadd, deltat=dt1, ydata=y[i*100:(i+1)*100]) for i in range(10) ]
+                
+                a.downsample_to(dt2,demean=False, snap=True)
+                downsampler = trace.co_downsample_to(dt2)
+                c2s = []
+                for b in bs:
+                    c = downsampler.send(b)
+                    if c.data_len() > 0:
+                        c2s.append(c)
+
+                downsampler.close()
+                assert  (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
