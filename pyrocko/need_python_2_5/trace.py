@@ -3,7 +3,7 @@
 # this part of the trace.py module needs coroutines, which were introduced with Python2.5
 
 import math
-import util
+from pyrocko import util
 import numpy as num
 from scipy import signal
 
