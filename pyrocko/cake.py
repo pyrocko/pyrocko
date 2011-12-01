@@ -701,18 +701,23 @@ class PhaseDef:
         self.events.append(ev)
 
     def first_leg(self):
+        '''Get the first leg in phase definition.'''
         return self.events[0]
 
     def last_leg(self):
+        '''Get the last leg in phase definition.'''
         return self.events[-1]
 
     def legs(self):
+        '''Iterate over the continuous pieces of wave propagation (legs) defined within this phase definition.'''
         return ( leg for leg in self if isinstance(leg, Leg) )
 
     def knees(self):
+        '''Iterate over conversions and reflections (knees) defined within this phase definition.'''
         return ( knee for knee in self if isinstance(knee, Knee) )
 
     def used_repr(self):
+        '''Translate into textual representation (cake phase syntax).'''
         x = []
         for el in self:
             if isinstance(el, Leg):
@@ -738,7 +743,10 @@ class PhaseDef:
         return ''.join(x)
    
     def __repr__(self):
-        return "PhaseDef('%s')" % self.definition
+        if self.definition is not None:
+            return "PhaseDef('%s')" % self.definition
+        else:
+            return "PhaseDef('%s')" % self.used_repr()
 
     def __str__(self):
         orig = ''
@@ -751,6 +759,7 @@ class PhaseDef:
         
 
     def copy(self):
+        '''Get a deep copy of it.'''
         return copy.deepcopy(self)
 
 def csswap(x):
@@ -879,6 +888,13 @@ class CannotPropagate(Exception):
         return 'Cannot enter layer %i from %s' % (self._ilayer, {UP: 'below', DOWN: 'above'}[self._direction])
 
 class Layer:
+    '''Representation of a layer in a layered earth model.
+    
+    :param ztop: depth of top of layer
+    :param zbot: depth of bottom of layer
+    :param name: name of layer (optional)
+    '''
+
     def __init__(self, ztop, zbot, name=None):
         self.ztop = ztop
         self.zbot = zbot
@@ -895,33 +911,58 @@ class Layer:
             pass
 
     def potint_coefs(self, mode):
+        '''Get coefficients for potential interpolation.'''
+
         if mode == P:
             return self._ppic
         else:
             return self._spic
 
     def contains(self, z):
+        '''Tolerantly check if a given depth is within the layer (including boundaries).'''
+
         return self.ztop <= z <= self.zbot or self.at_bottom(z) or self.at_top(z)
 
     def inner(self, z):
+        '''Tolerantly check if a given depth is within the layer (not including boundaries).'''
+        
         return self.ztop <= z <= self.zbot and not self.at_bottom(z) and not self.at_top(z)
 
     def at_bottom(self, z):
+        '''Tolerantly check if given depth is at the bottom of the layer.'''
+
         return abs(self.zbot - z) < ZEPS
 
     def at_top(self, z):
+        '''Tolerantly check if given depth is at the top of the layer.'''
         return abs(self.ztop - z) < ZEPS
 
     def pflat_top(self, p):
+        '''Convert spherical ray parameter to local flat ray parameter for top of layer.'''
         return p / (earthradius-self.ztop)
 
     def pflat_bottom(self, p):
+        '''Convert spherical ray parameter to local flat ray parameter for bottom of layer.'''
         return p / (earthradius-self.zbot)
 
     def pflat(self, p, z):
+        '''Convert spherical ray parameter to local flat ray parameter for given depth.'''
         return p / (earthradius-z)
     
     def xt_potint(self, p, mode, zpart=None):
+        '''Get travel time and distance for for traversal with given mode and ray parameter.
+        
+        :param p: ray parameter (spherical)
+        :param mode: mode of propagation (:py:const:`P` or :py:const:`S`)
+        :param zpart: if given, tuple with two depths to restrict computation
+            to a part of the layer
+
+        This implementation uses analytic formulas valid for a spherical earth
+        in the case where the velocity c within the layer is given by potential
+        interpolation of the form 
+
+            c(z) = a*z^b
+        '''
         utop, ubot = self.us(mode)
         a,b = self.potint_coefs(mode)
         ztop = self.ztop
@@ -963,15 +1004,26 @@ class Layer:
         return x,t
 
     def test(self, p, mode, z):
+        '''Check if wave mode can exist for given ray parameter at given depth within the layer.
+        
+        Uses potential interpolation.
+        '''
+
         return (self.u(mode, z)*radius(z) - p) >= 0
    
     def zturn_potint(self, p, mode):
+        '''Get turning depth for given ray parameter and propagation mode.'''
+
         a,b = self.potint_coefs(mode)
         r = num.exp(num.log(a*p)/(1-b))
         return earthradius-r
 
     def propagate(self, p, mode, direction):
-
+        '''Propagate ray through layer.
+        
+        :param p: ray parameter
+        :param mode: propagation mode
+        :param direction: in direction (:py:const:`UP` or :py:const:`DOWN`''' 
         if direction == DOWN:
             zin, zout = self.ztop, self.zbot
         else:
