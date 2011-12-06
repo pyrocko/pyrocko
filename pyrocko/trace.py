@@ -523,11 +523,12 @@ class Trace(object):
             data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
-
+    
+    def abshilbert(self):
+        self.ydata = num.abs(hilbert(self.ydata))
+    
     def envelope(self):
-        hilbert = signal.hilbert(self.ydata)
-        envelope = num.sqrt(self.ydata**2 + hilbert**2)
-        self.ydata = envelope
+        self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
 
     def _get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
@@ -1627,6 +1628,32 @@ def costaper(a,b,c,d, nfreqs, deltaf):
 def t2ind(t,tdelta, snap=round):
     return int(snap(t/tdelta))
 
+def hilbert(x, N=None):
+    '''Return the hilbert transform of x of length N.
+
+    (from scipy.signal, but changed to use fft and ifft from numpy.fft)
+    '''
+    x = num.asarray(x)
+    if N is None:
+        N = len(x)
+    if N <=0:
+        raise ValueError, "N must be positive."
+    if num.iscomplexobj(x):
+        print "Warning: imaginary part of x ignored."
+        x = real(x)
+    Xf = num.fft.fft(x,N,axis=0)
+    h = num.zeros(N)
+    if N % 2 == 0:
+        h[0] = h[N/2] = 1
+        h[1:N/2] = 2
+    else:
+        h[0] = 1
+        h[1:(N+1)/2] = 2
+
+    if len(x.shape) > 1:
+        h = h[:, newaxis]
+    x = num.fft.ifft(Xf*h)
+    return x
 
 
 
