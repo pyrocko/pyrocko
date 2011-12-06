@@ -766,9 +766,25 @@ def csswap(x):
     return cmath.sqrt(1.-x**2)
 
 def psv_surface_ind(in_mode, out_mode):
+    '''Get indices to select the appropriate element from scatter matrix for free surface.'''
+
     return (int(in_mode==S), int(out_mode==S))
 
 def psv_surface(material, p, energy=False):
+    '''Scatter matrix for free surface reflection/conversions.
+   
+    :param material: material, object of type :py:class:`Material`
+    :param p: flat ray parameter [s/m]
+    :param energy: bool, when ``True`` energy normalized coefficients are returned
+    :returns: Scatter matrix
+    
+    The scatter matrix is ordered as follows::
+
+        [[ PP, PS ],
+         [ SP, SS ]]
+
+    The formulas given in Aki & Richards are used.
+    '''
 
     vp, vs, rho = material.vp, material.vs, material.rho
     
@@ -792,12 +808,27 @@ def psv_surface(material, p, energy=False):
         return num.real(escatter)
 
 def psv_solid_ind(in_direction, out_direction, in_mode, out_mode):
+    '''Get indices to select the appropriate element from scatter matrix for solid-solid interface.'''
+
     return  (out_direction==DOWN)*2 + (out_mode==S), (in_direction==UP)*2 + (in_mode==S)
     
 def psv_solid(material1, material2, p, energy=False):
-    '''Solid-solid interface scatter matrix.
+    '''Scatter matrix for solid-solid interface.
+   
+    :param material1: material above, object of type :py:class:`Material`
+    :param material2: material below, object of type :py:class:`Material` 
+    :param p: flat ray parameter [s/m]
+    :param energy: bool, when ``True`` energy normalized coefficients are returned
+    :returns: Scatter matrix
 
-    Taken from Aki & Richards.
+    The scatter matrix is ordered as follows::
+
+       [[P1P1, S1P1, P2P1, S2P1],
+        [P1S1, S1S1, P2S1, S2S1],
+        [P1P2, S1P2, P2P2, S2P2],
+        [P1S2, S1S2, P2S2, S2S2]]
+
+    The formulas given in Aki & Richards are used.
     '''
 
     vp1, vs1, rho1 = material1.vp, material1.vs, material1.rho
@@ -911,7 +942,11 @@ class Layer:
             pass
 
     def potint_coefs(self, mode):
-        '''Get coefficients for potential interpolation.'''
+        '''Get coefficients for potential interpolation.
+        
+        :param mode: mode of wave propagation, :py:const:`P` or :py:const:`S`
+        :returns: coefficients ``(a,b)``
+        '''
 
         if mode == P:
             return self._ppic
@@ -1046,6 +1081,8 @@ def radius(z):
     return earthradius - z
 
 class HomogeneousLayer(Layer):
+    '''Representation of a homogeneous layer in a layered earth model.'''
+
     def __init__(self, ztop, zbot, m, name=None):
         Layer.__init__(self,ztop, zbot, name=name)
         self.m = m
@@ -1122,6 +1159,8 @@ class HomogeneousLayer(Layer):
         return '  (%i) homogeneous layer %s(%g km - %g km) [%s]\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.m)
 
 class GradientLayer(Layer):
+    '''Representation of a gradient layer in a layered earth model.'''
+
     def __init__(self, ztop, zbot, mtop, mbot, name=None):
         Layer.__init__(self, ztop, zbot, name=name)
         self.mtop = mtop
@@ -1227,6 +1266,8 @@ class GradientLayer(Layer):
         return '  (%i) gradient layer %s(%g km - %g km) [%s]\n    %s\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.mtop, self.mbot)
 
 class Discontinuity:
+    '''Base class for discontinuities in layered earth model.'''
+
     def __init__(self, z, name=None):
         self.z = z
         self.zbot = z
@@ -1234,6 +1275,8 @@ class Discontinuity:
         self.name = name
 
 class Interface(Discontinuity):
+    '''Representation of an interface in a layered earth model.'''
+
     def __init__(self, z, mabove, mbelow, name=None):
         Discontinuity.__init__(self, z, name)
         self.mabove = mabove
@@ -1272,6 +1315,8 @@ class Interface(Discontinuity):
         return scatter[psv_solid_ind(in_direction, out_direction, in_mode, out_mode)]
 
 class Surface(Discontinuity):
+    '''Representation of the surface discontinuity in a layered earth model.'''
+
     def __init__(self, z, mbelow):
         Discontinuity.__init__(self, z, 'surface')
         self.z = z
@@ -1333,10 +1378,14 @@ class Walker:
 
 
 class RayElement(object):
+    '''An element of a :py:class:`RayPath`.'''
+
     def __eq__(self, other):
         return type(self) == type(other) and self.__dict__ == other.__dict__
 
 class Straight(RayElement):
+    '''A ray segment representing wave propagation through one :py:class:`Layer`.'''
+
     def __init__(self, direction_in, direction_out, mode, layer):
         self.mode = mode
         self.direction_in = direction_in
@@ -1394,6 +1443,8 @@ class Straight(RayElement):
         return hash((self.direction_in, self.direction_out, self.mode, id(self.layer)))
 
 class Kink(RayElement):
+    '''An interaction of a ray with a :py:class:`Discontinuity`.'''
+
     def __init__(self, in_direction, out_direction, in_mode, out_mode, discontinuity):
         self.in_direction = in_direction
         self.out_direction = out_direction
@@ -1427,6 +1478,7 @@ class PRangeNotSet(Exception):
     pass
 
 class RayPath:
+    '''Representation of a fan of rays running through a common sequence of layers / interfaces.'''
 
     def __init__(self, phase, zstart, zstop, redistribute_p=False):
         self.elements = []
@@ -1456,41 +1508,51 @@ class RayPath:
         self.used_phase = phase
   
     def pmax(self):
+        '''Get maximum valid ray parameter.'''
         self._check_have_prange()
         return self._pmax
 
     def pmin(self):
+        '''Get minimum valid ray parameter.'''
         self._check_have_prange()
         return self._pmin
 
     def xmin(self):
+        '''Get minimal distance.'''
         self._analyse()
         return self._xmin
 
     def xmax(self):
+        '''Get maximal distance.'''
         self._analyse()
         return self._xmax
 
     def kinks(self):
+        '''Iterate over propagation mode changes (reflections/transmissions).'''
         return ( k for k in self.elements if isinstance(k, Kink) )
 
     def straights(self):
+        '''Iterate over ray segments.'''
         return ( s for s in self.elements if isinstance(s, Straight) )
 
     def first_straight(self):
+        '''Get first ray segment.'''
         for s in self.elements:
             if isinstance(s, Straight):
                 return s
 
     def last_straight(self):
+        '''Get last ray segment.'''
         for s in reversed(self.elements):
             if isinstance(s, Straight):
                 return s
 
     def efficiency(self, p):
+        '''Get product of all conversion/reflection coefficients encountered on path.'''
         return reduce( operator.mul, (k.efficiency(p) for k in self.kinks()), 1.)
 
     def spreading(self, p):
+        '''Get geometrical spreading factor.'''
         self._check_have_prange()
         dp = self._prange_dp * 0.01
         assert self._pmax - self._pmin > dp
@@ -1530,6 +1592,7 @@ class RayPath:
         return ppp
 
     def xt(self, p):
+        '''Calculate distance and traveltime for given ray parameter.'''
         if isinstance(p, num.ndarray):
             sx = num.zeros(p.size)
             st = num.zeros(p.size)
@@ -1713,6 +1776,27 @@ class RayPath:
 
 
 class Ray:
+    '''Representation of a specific ray with a specific (ray parameter, distance, arrival time) choice.
+   
+    **Attributes:**
+   
+        .. py:attribute:: path
+
+           :py:class:`RayPath` object containing complete propagation history.
+
+        .. py:attribute:: p
+
+           Ray parameter (spherical) [s/deg]
+
+        .. py:attribute:: x
+
+           Radial distance [deg]
+
+        .. py:attribute:: t
+
+           Traveltime [s]
+    '''
+
     def __init__(self, path, p, x, t):
         self.path = path
         self.p = p
@@ -1781,6 +1865,17 @@ class NotPhaseConform(Exception):
     pass
 
 class LayeredModel:
+    '''Representation of a layer cake model.
+    
+    There are several ways to initialize an instance of this class.
+    
+    1. Use the module function :py:func:`load_model` to read a model from a file.
+    2. Create an empty model with the default constructor and append layers and discontinuities with the 
+       :py:meth:`append` method (from top to bottom).
+    3. Use the constructor :py:meth:`LayeredModel.from_scanlines`, to automatically create the
+       :py:class:`Layer` and :py:class:`Discontinuity` objects from a given velocity profile.
+
+    '''
 
     def __init__(self):
         self._surface_material = None
@@ -1792,6 +1887,8 @@ class LayeredModel:
         return abs(z1-z2) < ZEPS
 
     def append(self, element):
+        '''Add a layer or discontinuity at bottom of model.'''
+
         if self._elements:
             self._elements[-1].below = element
         
@@ -1802,12 +1899,25 @@ class LayeredModel:
         self._elements.append(element)
 
     def layers(self, direction=DOWN):
+        '''Iterate over all layers of model.
+        
+        :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`.
+        '''
+
         if direction == DOWN:
             return ( el for el in self._elements if isinstance(el, Layer) )
         else:
             return ( el for el in reversed(self._elements) if isinstance(el, Layer) )
     
     def layer(self, z, direction=DOWN):
+        '''Get layer for given depth.
+
+        :param z: depth [m]
+        :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`.
+        
+        Returns first layer which touches depth `z` (tolerant at boundaries).
+        '''
+
         for l in self.layers(direction):
             if l.contains(z):
                 return l
@@ -1830,13 +1940,29 @@ class LayeredModel:
         return w
 
     def material(self, z, direction=DOWN):
+        '''Get material at given depth.
+        
+        :param z: depth [m]
+        :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`
+        :returns: object of type :py:class:`Material`
+
+        If given depth `z` happens to be at an interface, the material of the first layer with respect to the
+        the traversal ordering is returned.
+        '''
+
         l = self.layer(z, direction)
         return l.material(z)
 
     def discontinuities(self):
+        '''Iterate over all discontinuities of the model.'''
+        
         return ( el for el in self._elements if isinstance(el, Discontinuity) )
 
     def discontinuity(self, name_or_z):
+        '''Get discontinuity by name or depth.
+        
+        :param name_or_z: name of discontinuity or depth [m] as float value
+        '''
         
         if isinstance(name_or_z, float):
             candi = sorted(self.discontinuities(), key=lambda i: abs(i.z-name_or_z))
@@ -1849,6 +1975,12 @@ class LayeredModel:
         return candi[0]
         
     def adapt_phase(self, phase):
+        '''Adapt a phase definition for use with this model.
+        
+        This returns a copy of the phase definition, where named discontinuities are replaced
+        with the actual depth of these, as defined in the model.
+        '''
+
         phase = phase.copy()
         for knee in phase.knees():
             if knee.depth != 'surface':
@@ -1860,6 +1992,18 @@ class LayeredModel:
         return phase
 
     def path(self, p, phase=PhaseDef('P'), zstart=0.0, zstop=0.0):
+        '''Get ray path for given ray parameter, phase definition and fixed source and receiver depths.
+        
+        :param p: ray parameter (spherical) [s/deg]
+        :param phase: phase definition (:py:class:`PhaseDef` object)
+        :param zstart: source depth [m]
+        :param zstop: receiver depth [m]
+        :returns: :py:class:`RayPath` object
+
+        If it is not possible to find a solution, an exception of type :py:exc:`NotPhaseConform`, 
+        :py:exc:`MinDepthReached`, :py:exc:`MaxDepthReached`, :py:exc:`CannotPropagate`, 
+        :py:exc:`BottomReached` or :py:exc:`SurfaceReached` is raised.
+        '''
         
         phase = self.adapt_phase(phase)
         knees = phase.knees()
@@ -1950,6 +2094,15 @@ class LayeredModel:
         return path
 
     def gather_pathes(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000):
+        '''Get all possible ray pathes for fixed source and receiver depth for one or more phase definitions.
+        
+        :param phases: a :py:class:`PhaseDef` object or a list of such objects
+        :param zstart: source depth [m]
+        :param zstop: receiver depth [m]
+        :param np: controls granularity of ray path fan drafting
+        :returns: a list of :py:class:`RayPath` objects
+        '''
+
         if isinstance(phases, PhaseDef):
             phases = [ phases ]
         pathes = {}
@@ -2003,6 +2156,17 @@ class LayeredModel:
         return pathes
     
     def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, refine=True, interpolation='linear'):
+        '''Compute rays and traveltimes for given distances.
+
+        :param distances: list or array of distances [deg]
+        :param phases: a :py:class:`PhaseDef` object or a list of such objects
+        :param zstart: source depth [m]
+        :param zstop: receiver depth [m]
+        :param np: controls granularity of ray path fan drafting
+        :param refine: bool flag, whether to use bisectioning to improve (p,x,t) estimated from interpolation
+        :param interpolation: string key, type of interpolation to be used (``'linear'`` or ``'spline'``)
+        :returns: a list of :py:class:`Ray` objects, sorted by distance
+        '''
 
         arrivals = []
         for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np ):
@@ -2024,6 +2188,13 @@ class LayeredModel:
 
     @classmethod
     def from_scanlines(cls, producer):
+        '''Create layer cake model from sequence of materials at depths.
+        
+        :param producer: iterable yielding (depth, material, name) tuples
+
+        Creates a new :py:class:`LayeredModel` object and uses its :py:meth:`append` method
+        to add layers and discontinuities as needed.
+        '''
         
         self = cls()
         for z, material, name in producer:
@@ -2063,15 +2234,30 @@ class LayeredModel:
             yield getter(layer.mbot)
          
     def min(self, get='vp'):
+        '''Find minimum value of a material property defined in the model.
+
+        :param get: property to be querried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``)
+        '''
+
         return min(self.iter_material_parameter(get))
 
     def max(self, get='vp'):
+        '''Find maximum value of a material property defined in the model.
+        
+        :param get: property to be querried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``)
+        '''
+
         return max(self.iter_material_parameter(get))
 
     def __str__(self):
         return '\n'.join( str(element) for element in self._elements )
                 
 def read_hyposat_model(fn):
+    '''Reader for HYPOSAT earth model files.
+
+    To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
+    '''
+
     f = open(fn, 'r')
     translate = { 'MOHO': 'moho', 'CONR': 'conrad' }
     lname = None
@@ -2092,6 +2278,10 @@ def read_hyposat_model(fn):
     f.close()
         
 def read_nd_model(fn):
+    '''Reader for TauP style '.nd' (named discontinuity) files.
+
+    To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
+    '''
     f = open(fn, 'r')
     translate = { 'mantle': 'moho', 'outer-core': 'cmb', 'inner-core': 'icb' }
     name = None
@@ -2107,7 +2297,23 @@ def read_nd_model(fn):
 
     f.close()
 
-def load_model(fn, format):
+def load_model(fn, format='nd'):
+    '''Load layered earth model from file.
+    
+    :param fn: filename
+    :param format: format 
+    :returns: object of type :py:class:`LayeredModel`
+
+    The following formats are currently supported:
+
+    ============== ===========================================================================
+    format         description
+    ============== ===========================================================================
+    ``'nd'``       'named discontinuity' format used by the TauP programs  
+    ``'hyposat'``  format used by the HYPOSAT location program
+    ============== ===========================================================================
+    '''
+
     if format == 'nd':
         reader = read_nd_model(fn)
     elif format == 'hyposat':
@@ -2218,3 +2424,4 @@ def parstore_float(thelocals, obj, *args):
     for k,v in thelocals.iteritems():
         if k != 'self' and (not args or k in args):
             setattr(obj, k, float_or_none(v))
+
