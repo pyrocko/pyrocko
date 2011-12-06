@@ -228,7 +228,23 @@ class Trace(object):
             self.channel = channel
         
         self._update_ids()
-        
+
+    def set_network(self, network):
+        self.network = network
+        self._update_ids()
+
+    def set_station(self, station):
+        self.station = station
+        self._update_ids()
+
+    def set_location(self, location):
+        self.location = location
+        self._update_ids()
+
+    def set_channel(self, channel):
+        self.channel = channel
+        self._update_ids()
+
     def overlaps(self, tmin, tmax):
         '''Check if trace has overlap with a given time span.'''
         return not (tmax < self.tmin or self.tmax < tmin)
