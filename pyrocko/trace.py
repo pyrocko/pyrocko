@@ -545,6 +545,20 @@ class Trace(object):
         envelope = num.sqrt(self.ydata**2 + hilbert**2)
         self.ydata = envelope
 
+    def whiten(self, order=6):
+        '''Whiten signal using autoregression and recursive filter.
+        
+        :param order: order of the autoregression process
+        '''
+        
+        b,a = self.whitening_coefficients(order)
+        self.ydata = signal.lfilter(b,a, self.ydata)
+
+    def whitening_coefficients(self, order=6):
+        ar = yulewalker(self.ydata, order)
+        b, a = [1.] + ar.tolist(), [1.]
+        return b, a
+
     def _get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
         if ck not in Trace.cached_frequencies:
@@ -1592,6 +1606,44 @@ def numpy_has_correlate_flip_bug():
         _globals._numpy_has_correlate_flip_bug = num.all(ab == ba)
     
     return _globals._numpy_has_correlate_flip_bug
+
+def autocorr(x, nshifts):
+    '''Compute biased estimate of the first autocorrelation coefficients.
+    
+    :param x: input array
+    :param nshifts: number of coefficients to calculate
+    '''
+
+    mean = num.mean(x)
+    std = num.std(x)
+    n = x.size
+    xdm = x - mean
+    r = num.zeros(nshifts)
+    for k in range(nshifts):
+        r[k] = 1./((n-num.abs(k))*std) * num.sum( xdm[:n-k] * xdm[k:] )
+        
+    return r
+
+def yulewalker(x, order):
+    '''Compute autoregression coefficients using Yule-Walker method.
+    
+    :param x: input array
+    :param order: number of coefficients to produce
+
+    A biased estimate of the autocorrelation is used. The Yule-Walker equations
+    are solved by :py:func:`numpy.linalg.inv` instead of Levinson-Durbin
+    recursion which is normally used.
+    '''
+
+    gamma = autocorr(x, order+1)
+    d = gamma[1:1+order]
+    a = num.zeros((order,order))
+    gamma2 = num.concatenate( (gamma[::-1], gamma[1:order]) )
+    for i in range(order):
+        ioff = order-i
+        a[i,:] = gamma2[ioff:ioff+order]
+    
+    return num.dot(num.linalg.inv(a),-d)
 
 def moving_avg(x,n):
     n = int(n)
