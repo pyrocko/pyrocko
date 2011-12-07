@@ -909,6 +909,9 @@ class MaxDepthReached(Exception):
 class MinDepthReached(Exception):
     pass
 
+class Trapped(Exception):
+    pass
+
 class CannotPropagate(Exception):
     def __init__(self, direction, ilayer):
         Exception.__init__(self)
@@ -2030,8 +2033,16 @@ class LayeredModel:
         used_phase = PhaseDef()
         used_phase.append(Leg(direction, mode))
         path = RayPath(phase, zstart, zstop)
+        trapdetect = set()
         while True:
             if isinstance(current, Discontinuity):
+                if next_knee is None: # detect trapped wave
+                    k = (id(current), direction, mode)
+                    if k in trapdetect:
+                        raise Trapped()
+                    
+                    trapdetect.add(k)
+
                 oldmode, olddirection = mode, direction
                 if next_knee is not None and next_knee.matches(current, mode, direction):
                     direction = next_knee.out_direction()
@@ -2041,7 +2052,8 @@ class LayeredModel:
                 
                 else: # implicit reflection/transmission
                     direction = current.propagate(p, mode, direction)
-           
+          
+
                 if oldmode != mode or olddirection != direction:
                     if isinstance(current, Surface):
                         zz = 'surface'
@@ -2133,7 +2145,7 @@ class LayeredModel:
                         pathes[path] = []
                     pathes[path].append(p)
 
-                except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached), e:
+                except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached, Trapped), e:
                     path = None
                 
                 cached[p] = path
