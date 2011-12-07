@@ -6,6 +6,8 @@ from pyrocko import cake
 from pyrocko import cake_plot as plot
 from optparse import OptionParser, OptionGroup
 
+r2d = cake.r2d
+
 class Anon(dict):
     
     def __getattr__(self, x):
@@ -103,10 +105,8 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
     if 'vred' in want:
         d['vred'] = options.vred
         if d['vred'] is not None: 
-            if as_degrees:
-                d['vred'] *= cake.d2r
-            else:
-                d['vred'] *= cake.km / cake.earthradius
+            if not as_degrees:
+                d['vred'] *= r2d * cake.km / cake.earthradius
 
     if 'distances' in want:
         distances = None
@@ -120,10 +120,8 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
             else:
                 distances = num.array(map(float, options.sdist.split(',')), dtype=num.float)
         
-            if as_degrees:
-                distances *= cake.d2r
-            else:
-                distances *= cake.km / cake.earthradius
+            if not as_degrees:
+                distances *= r2d * cake.km / cake.earthradius
         
         if distances is not None:
             d['distances'] = distances

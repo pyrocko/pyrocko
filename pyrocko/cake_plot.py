@@ -2,6 +2,9 @@ import math
 import numpy as num
 from pyrocko import cake
 
+d2r = cake.d2r
+r2d = cake.r2d
+
 def globe_cross_section():
     # modified from http://stackoverflow.com/questions/2417794/how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-to
 
@@ -20,7 +23,7 @@ def globe_cross_section():
         class GlobeCrossSectionTransform(PolarAxes.PolarTransform):
             def transform(self, tr):
                 xy   = num.zeros(tr.shape, num.float_)
-                t    = tr[:, 0:1]
+                t    = tr[:, 0:1]*d2r
                 r    = cake.earthradius - tr[:, 1:2]
                 x    = xy[:, 0:1]
                 y    = xy[:, 1:2]
@@ -38,7 +41,7 @@ def globe_cross_section():
                 x = xy[:, 0:1]
                 y = xy[:, 1:]
                 r = num.sqrt(x*x + y*y)
-                theta = num.arctan2(y, x)
+                theta = num.arctan2(y, x)*r2d
                 return num.concatenate((theta, cake.earthradius-r), 1)
 
             def inverted(self):
@@ -151,18 +154,17 @@ def labels_xt(plot=None, vred=None, as_degrees=False):
     plot = getplot(plot)
     if as_degrees:
         plot.xlabel('Distance [deg]')
-        xscaled(r2d, plot)
     else:
         plot.xlabel('Distance [km]')
-        xscaled(cake.earthradius/cake.km, plot)
+        xscaled(d2r*cake.earthradius/cake.km, plot)
         
     if vred is None:
         plot.ylabel('Time [s]')
     else:
         if as_degrees:
-            plot.ylabel('Time - Distance / %g deg/s [ s ]' % (vred*r2d))
+            plot.ylabel('Time - Distance / %g deg/s [ s ]' % (vred))
         else:
-            plot.ylabel('Time - Distance / %g km/s [ s ]' % (vred*cake.earthradius/cake.km))
+            plot.ylabel('Time - Distance / %g km/s [ s ]' % (d2r*vred*cake.earthradius/cake.km))
 
 def troffset(dx,dy, plot=None):
     plot = getplot(plot)
@@ -189,10 +191,9 @@ def labels_xp(plot=None, as_degrees=False):
     plot = getplot(plot)
     if as_degrees:
         plot.xlabel('Distance [deg]')
-        xscaled(r2d, plot)
     else:
         plot.xlabel('Distance [km]')
-        xscaled(cake.earthradius*0.001, plot)
+        xscaled(d2r*cake.earthradius*0.001, plot)
     plot.ylabel('Ray Parameter [s/deg]')
 
 def plot_rays(pathes, rays, plot=None):
@@ -312,10 +313,9 @@ def labels_rays(plot=None, as_degrees=False):
     plot = getplot(plot)
     if as_degrees:
         plot.xlabel('Distance [deg]')
-        xscaled(r2d, plot)
     else:
         plot.xlabel('Distance [km]')
-        xscaled(cake.earthradius/cake.km, plot)
+        xscaled(d2r*cake.earthradius/cake.km, plot)
     plot.ylabel('Depth [km]')
     yscaled(1./cake.km, plot)
 

@@ -1036,6 +1036,8 @@ class Layer:
                 x *= 2.
                 t *= 2.
         
+        x *= r2d
+
         return x,t
 
     def test(self, p, mode, z):
@@ -1128,7 +1130,7 @@ class HomogeneousLayer(Layer):
         eps = u*0.001
         denom = num.sqrt(u**2 - pflat**2) + eps
 
-        x = pflat/(earthradius-self.zmid) * dz / denom 
+        x = r2d*pflat/(earthradius-self.zmid) * dz / denom 
         t = u**2 * dz / denom
         return x, t
 
@@ -1234,7 +1236,7 @@ class GradientLayer(Layer):
                 x *= 2.
                 t *= 2.
 
-        x /= (earthradius - self.zmid)
+        x *= r2d/(earthradius - self.zmid)
         return x, t
    
     def zturn(self, p, mode):
@@ -1562,6 +1564,8 @@ class RayPath:
 
         x0, t = self.xt(p)
         x1, t = self.xt(p+dp)
+        x0 *= d2r
+        x1 *= d2r
         dp_dx = dp/(x1-x0)
         
         x = x0
@@ -1846,9 +1850,9 @@ class Ray:
 
     def __str__(self, as_degrees=False):
         if as_degrees:
-            sd = '%6.3g deg' % (self.x*r2d)
+            sd = '%6.3g deg' % self.x
         else:
-            sd = '%7.5g km' % (self.x*earthradius/km)
+            sd = '%7.5g km' % (self.x*(d2r*earthradius/km))
         return '%7.5g s/deg %s %6.4g s %5.1f %5.1f %3.0f%% %3.0f%% %s' % (
                 self.p/r2d, sd, self.t, self.takeoff_angle(), self.incidence_angle(), 
                 100*self.efficiency(), 100*self.spreading()*self.surface_sphere(), self.path)
@@ -2167,7 +2171,9 @@ class LayeredModel:
         :param interpolation: string key, type of interpolation to be used (``'linear'`` or ``'spline'``)
         :returns: a list of :py:class:`Ray` objects, sorted by distance
         '''
-
+        
+        distances = num.asarray(distances, dtype=num.float)
+    
         arrivals = []
         for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np ):
             if interpolation == 'spline':
