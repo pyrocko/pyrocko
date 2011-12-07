@@ -1722,6 +1722,67 @@ def hilbert(x, N=None):
         h = h[:, newaxis]
     x = num.fft.ifft(Xf*h)
     return x
+    
+    
+def combinations(iterable, r):
+    # this is just an update of the function itertools.combinations from version 2.6 
+    # combinations('ABCD', 2) --> AB AC AD BC BD CD
+    # combinations(range(4), 3) --> 012 013 023 123
+    pool = tuple(iterable)
+    n = len(pool)
+    if r > n:
+        return
+    indices = range(r)
+    yield tuple(pool[i] for i in indices)
+    while True:
+        for i in reversed(range(r)):
+            if indices[i] != i + n - r:
+                break
+        else:
+            return
+        indices[i] += 1
+        for j in range(i+1, r):
+            indices[j] = indices[j-1] + 1
+        yield tuple(pool[i] for i in indices)
+        
+def signum(self):
+    for i in arange(len(self)):
+        if(self[i] < 0): self[i]=-1;
+        elif (self[i] > 0): self[i]=1; 
+        else: self[i]=0; 
+    return self
+        
+def amp_whitening(self,width_hz=0.05):
+                f,a = self.spectrum(pad_to_pow2=True)
+                tangens = imag(a)/real(a)
+                sign_re = signum(imag(a))
+                sign_im = signum(real(a))
+
+                ### whitening with moving average and window width ww
+                f_inc = f[1]-f[0]
+                ww = round(width_hz/f_inc)
+
+                nn = len(amp)
+                csamp = cumsum(amp)
+                ampw = zeros(nn, dtype=csamp.dtype)
+                ampw[ww/2:len(amp)-ww+ww/2] = (csamp[ww:]-csamp[:-ww])/ww
+                ampw[len(amp)-ww+ww/2+1:] = ampw[len(amp)-ww+ww/2]
+                ampw[:ww/2] = ampw[ww/2]
+
+                weight =  where(ampw > 0,1./ampw,0.)
+                amp_w =  where(ampw > 0,amp*1./ampw,0.)
+                amp_w *=  trace.costaper(0.,hpcorner/f_inc, f_inc*(len(amp_w)-1)-lpcorner/f_inc, f_inc*len(amp_w),len(amp_w), f_inc)
+
+                ampw_re = (amp_w**2/(1+tangens**2))**0.5
+                ampw_im = (amp_w**2 - ampw_re**2)**0.5
+
+                amp_wh =  sign_re*ampw_re + sign_im*ampw_im*1J
+                plotamp = abs(amp_wh)
+                whitened_ydata =  fft.irfft(amp_wh)
+                result = self.copy()
+                result.set_ydata(whitened_ydata[:len(self.get_ydata())])
+                
+                return result
 
 
 
