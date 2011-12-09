@@ -1782,6 +1782,9 @@ class RayPath:
                 self, self._xmin*r2d, self._xmax*r2d, self._tmin, self._tmax, self._pmin, self._pmax)
 
 
+class RefineFailed(Exception):
+    pass
+
 class Ray:
     '''Representation of a specific ray with a specific (ray parameter, distance, arrival time) choice.
    
@@ -1810,9 +1813,9 @@ class Ray:
         self.x = x
         self.t = t
 
-    def refine(self):
+    def refine(self, eps=0.0001):
         x, t = self.path.xt(self.p)
-        xeps = self.x/10000.
+        xeps = self.x*eps
         count = [ 0 ]
         if abs(self.x - x) > xeps:
             ip = num.searchsorted(self.path._p, self.p)
@@ -1827,9 +1830,15 @@ class Ray:
                 else:
                     return dx
             
-            p = bisect(f, pl, ph)
-            _, self.t = self.path.xt(p)
-            self.p = p
+            try:
+                p = bisect(f, pl, ph)
+                x, self.t = self.path.xt(p)
+                if abs(self.x - x) > xeps:
+                    raise RefineFailed()
+
+                self.p = p
+            except ValueError:
+                raise RefineFailed()
 
         return count[0]
 
@@ -2197,9 +2206,15 @@ class LayeredModel:
                 arrivals.append(Ray(path, p, x, t))
 
         if refine:
-            iref = 0
+            refined = []
             for ray in arrivals:
-                iref += ray.refine()
+                try:
+                    ray.refine()
+                    refined.append(ray) 
+                except RefineFailed:
+                    pass
+            
+            arrivals = refined
 
         arrivals.sort(key=lambda x: (x.x, x.t))
         return arrivals
