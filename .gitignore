@@ -6,3 +6,5 @@ libmseed
 *.swp
 doc/_build
 pyrocko/info.py
+pages
+
