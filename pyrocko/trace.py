@@ -589,42 +589,6 @@ class Trace(object):
         b, a = [1.] + ar.tolist(), [1.]
         return b, a
 
-    def amp_whitening(self, width_hz, hpcorner,timetaper_frac=None, lpcorner,easy=True):
-        ### whitening with moving average and window width width_hz in Hz
-        if timetaper_frac == None:
-            timetaper_frac = 0.1
-        length = len(self.get_ydata()) 
-        corner = round(length*timetaper_frac)
-        self.set_ydata() = self.get_ydata() * trace.costaper(0.,corner*self.deltat, self.deltat*(length-1-corner), self.deltat*length,length, self.deltat)
-        f,a = self.spectrum(pad_to_pow2=True)
-        f_inc = f[1]-f[0]
-        ww = round(width_hz/f_inc)
-        
-        amp = num.abs(a)
-        nn = len(amp)
-        csamp = num.cumsum(amp)
-        ampw = num.zeros(nn, dtype=csamp.dtype)
-        ampw[ww/2:len(amp)-ww+ww/2] = (csamp[ww:]-csamp[:-ww])/ww
-        ampw[len(amp)-ww+ww/2+1:] = ampw[len(amp)-ww+ww/2]
-        ampw[:ww/2] = ampw[ww/2]
-        amp_w =  num.where(ampw > 0,amp*1./ampw,0.)
-        
-        if hpcorner and lpcorner:
-            amp_w *=  costaper(0.,hpcorner/f_inc, f_inc*(len(amp_w)-1)-lpcorner/f_inc, f_inc*len(amp_w),len(amp_w), f_inc)
-
-        if easy:
-             amp_wh =   a * amp_w   
-        else:
-        tangens = num.imag(a)/num.real(a)
-        sign_re = num.sign(num.imag(a))
-        sign_im = num.sign(num.real(a))
-        ampw_re = (amp_w**2/(1+tangens**2))**0.5
-        ampw_im = (amp_w**2 - ampw_re**2)**0.5
-        amp_wh =  sign_re*ampw_re + sign_im*ampw_im*1J
-        
-        whitened_ydata =  num.fft.irfft(amp_wh)
-        self.set_ydata(whitened_ydata[:self.data_len()])
-        return self
 
     def _get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
