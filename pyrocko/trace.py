@@ -283,7 +283,7 @@ class Trace(object):
             return self.ydata.size
         else:
             return int(round((self.tmax-self.tmin)/self.deltat)) + 1
-        
+
     def drop_data(self):
         '''Forget data, make dataless trace.'''
         self.drop_growbuffer()
@@ -467,6 +467,29 @@ class Trace(object):
         if initials is not None:
             return finals
 
+    def resample(self, deltat, tfade=None):
+        
+        if tfade is not None and self.tmax - self.tmin <= tfade*2.:
+            raise TraceTooShort('Trace %s.%s.%s.%s too short for fading length setting. trace length = %g, fading length = %g' % (self.nslc_id + (self.tmax-self.tmin, tfade)))
+
+        ndata = self.ydata.size
+        ntrans = ndata
+        fntrans2 = ntrans * self.deltat/deltat
+        ntrans2 = num.int(num.round(fntrans2))
+        deltat2 = self.deltat * float(ntrans)/float(ntrans2)
+        if abs(fntrans2 - ntrans2) > 1e-7:
+            logger.warn('resample: requested deltat %g could not be matched exactly: %g' % (deltat, deltat2))
+        
+        data = self.ydata
+        fdata = num.fft.rfft(data)
+        fdata2 = num.zeros((ntrans2+1)/2, dtype=fdata.dtype)
+        n = min(fdata.size,fdata2.size)
+        fdata2[:n] = fdata[:n]
+        data2 = num.fft.irfft(fdata2)
+        data2 *= float(ntrans2) / float(ntrans)
+        self.deltat = deltat2
+        self.set_ydata(data2)
+
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         '''Check if a given frequency is above the Nyquist frequency of the trace.
 
@@ -541,9 +564,11 @@ class Trace(object):
         self.ydata = signal.lfilter(b,a, data)
     
     def abshilbert(self):
+        self.drop_growbuffer()
         self.ydata = num.abs(hilbert(self.ydata))
     
     def envelope(self):
+        self.drop_growbuffer()
         self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
 
     def whiten(self, order=6):
@@ -553,6 +578,7 @@ class Trace(object):
         '''
         
         b,a = self.whitening_coefficients(order)
+        self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, self.ydata)
 
     def whitening_coefficients(self, order=6):
