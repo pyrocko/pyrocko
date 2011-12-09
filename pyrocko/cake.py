@@ -2044,14 +2044,14 @@ class LayeredModel:
         path = RayPath(phase, zstart, zstop)
         trapdetect = set()
         while True:
+            if next_knee is None: # detect trapped wave
+                k = (id(current), direction, mode)
+                if k in trapdetect:
+                    raise Trapped()
+                
+                trapdetect.add(k)
+            
             if isinstance(current, Discontinuity):
-                if next_knee is None: # detect trapped wave
-                    k = (id(current), direction, mode)
-                    if k in trapdetect:
-                        raise Trapped()
-                    
-                    trapdetect.add(k)
-
                 oldmode, olddirection = mode, direction
                 if next_knee is not None and next_knee.matches(current, mode, direction):
                     direction = next_knee.out_direction()
