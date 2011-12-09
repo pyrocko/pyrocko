@@ -467,28 +467,31 @@ class Trace(object):
         if initials is not None:
             return finals
 
-    def resample(self, deltat, tfade=None):
-        
-        if tfade is not None and self.tmax - self.tmin <= tfade*2.:
-            raise TraceTooShort('Trace %s.%s.%s.%s too short for fading length setting. trace length = %g, fading length = %g' % (self.nslc_id + (self.tmax-self.tmin, tfade)))
+    def resample(self, deltat):
 
         ndata = self.ydata.size
-        ntrans = ndata
+
+        ntrans = nextpow2(ndata)
         fntrans2 = ntrans * self.deltat/deltat
-        ntrans2 = num.int(num.round(fntrans2))
+        ntrans2 = int(round(fntrans2))
         deltat2 = self.deltat * float(ntrans)/float(ntrans2)
+        ndata2 = int(round(ndata*self.deltat/deltat2))
         if abs(fntrans2 - ntrans2) > 1e-7:
             logger.warn('resample: requested deltat %g could not be matched exactly: %g' % (deltat, deltat2))
         
         data = self.ydata
-        fdata = num.fft.rfft(data)
+        data_pad = num.zeros(ntrans, dtype=num.float)
+        data_pad[:ndata]  = data
+        fdata = num.fft.rfft(data_pad)
         fdata2 = num.zeros((ntrans2+1)/2, dtype=fdata.dtype)
         n = min(fdata.size,fdata2.size)
         fdata2[:n] = fdata[:n]
         data2 = num.fft.irfft(fdata2)
+        data2 = data2[:ndata2]
         data2 *= float(ntrans2) / float(ntrans)
         self.deltat = deltat2
         self.set_ydata(data2)
+        print self.ydata.size, ndata2
 
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         '''Check if a given frequency is above the Nyquist frequency of the trace.
