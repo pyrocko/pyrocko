@@ -470,7 +470,6 @@ class Trace(object):
     def resample(self, deltat):
 
         ndata = self.ydata.size
-
         ntrans = nextpow2(ndata)
         fntrans2 = ntrans * self.deltat/deltat
         ntrans2 = int(round(fntrans2))
@@ -491,7 +490,6 @@ class Trace(object):
         data2 *= float(ntrans2) / float(ntrans)
         self.deltat = deltat2
         self.set_ydata(data2)
-        print self.ydata.size, ndata2
 
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         '''Check if a given frequency is above the Nyquist frequency of the trace.
