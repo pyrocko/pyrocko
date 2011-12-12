@@ -125,7 +125,7 @@ class Event:
 
     @staticmethod
     def unique(events, deltat=10., group_cmp=(lambda a,b: cmp(a.catalog, b.catalog))):
-        groups = grouped(events, deltat)
+        groups = Event.grouped(events, deltat)
         
         events = []
         for group in groups:
