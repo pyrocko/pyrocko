@@ -135,3 +135,137 @@ This is a built-in snuffling of Snuffler. It serves here as a demonstration of h
         
         return [ MinMaxSnuffling() ]
 
+Synthetic Seismograms of an STS2 seismometer
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This snuffling demonstrates the method add_paramter() which extends the snufflings' panel by scroll bars and options to choose between predefined parameters. 
+
+::
+    
+    class STS2:
+
+        ''' Apply the STS2's transfer function which is deduced from the
+    poles, zeros and gain of the transfer tunction. The Green's function 
+    database (gdfb) which is required for synthetic seismograms and the 
+    rake of the focal mechanism can be chosen and changed within snuffler.
+    Two gfdbs are needed.
+    Three synthetic seismograms of an STS2 seismometer will be the result.
+    '''
+        # 'evaluate() will apply the transfer function on each frequency.
+        def evaluate(self,freqs):
+
+            # transform the frequency to angular frequency.
+            w = 2j*pi*freqs
+
+            Poles = array([-3.7e-2+3.7e-2j, -3.7e-2-3.7e-2j,
+                           -2.51e2, -1.31e2+4.67e2j, -1.31e2-4.67e2])
+            Zeros = array([0,0])
+            K = 6.16817e7
+
+            # Multiply factored polynomials of the transfer function's numerator
+            # and denominator.
+            a = ones(freqs.size,dtype=complex)*K
+            for i_z in Zeros:
+                a *= w-i_z
+            for i_p in Poles:
+                a /= w-i_p
+            return a
+
+    class ParaEditCp_TF_GTTG(Snuffling):
+
+        def setup(self):
+
+            # Give the snuffling a name:
+            self.set_name('STS-2.1')
+
+            # Add scrollbars of the parameters that you desire to adjust.
+            # 1st argument: Description that appears within the snuffling.
+            # 2nd argument: Name of parameter as used in the following code.
+            # 3rd-5th argument: default, start, stop.
+            self.add_parameter(Param('Strike[deg]', 'strike', 179., -180., 180.))
+
+            # The parameter 'Choice' adds a menu to choose from different options.
+            # 1st argument: Description that appears within the snuffling.
+            # 2nd argument: Name of paramter as used in the following code.
+            # 3rd argument: Default
+            # 4th to ... argument: List containing all other options.
+            self.add_parameter(Choice('GFDB','database','gemini',['gemini','qseis']))
+            self.set_live_update(False)
+
+        def call(self):
+
+            self.cleanup()
+
+            # Set up receiver configuration.
+            tab = '''
+            HH  53.456  9.9247  0
+            '''.strip()
+
+            receivers = []
+            station, lat, lon, depth = tab.split()
+            r = receiver.Receiver(lat,lon, components='neu', name='.%s.' % station)
+            receivers.append(r)
+
+            # Composition of the source
+            olat, olon = 36.9800, -3.5400
+            otime = util.str_to_time('1954-03-29 06:16:05')
+
+            # The gfdb can be chosen within snuffler.
+            # This refers to the 'add_parameter' method.
+            if self.database == 'gemini':
+                db = gfdb.Gfdb('/scratch/local2/gfdb_workshop_iasp91/gfdb/db')
+            else:
+                db = gfdb.Gfdb('/scratch/local2/gfdb_building/deep/gfdb_iasp/db')
+
+            seis = seismosizer.Seismosizer(hosts=['localhost'])
+            seis.set_database(db)
+            seis.set_effective_dt(db.dt)
+            seis.set_local_interpolation('bilinear')
+            seis.set_receivers(receivers)
+            seis.set_source_location( olat, olon, otime)
+            seis.set_source_constraints (0, 0, 0, 0 ,0 ,-1)
+            self.seis = seis
+
+            # Change strike within snuffler with the added scroll bar.
+            strike = self.strike
+
+            # Other focal mechism parameters are constants
+            dip = 122; rake = 80; moment = 7.00e20; depth = 650000; risetime = 24
+            s = source.Source('bilateral',
+            sourceparams_str='0 0 0 %g %g %g %g %g 0 0 0 0 1 %g' % (depth, moment, strike, dip, rake, risetime))
+            self.seis.set_source(s)
+            recs = self.seis.get_receivers_snapshot( which_seismograms = ('syn',), which_spectra=(), which_processing='tapered')
+
+            trs = []
+            for rec in recs:
+                rec.save_traces_mseed(filename_tmpl='%(whichset)s_%(network)s_%(station)s_%(location)s_%(channel)s.mseed' )
+                trs.extend(rec.get_traces())
+
+            # Define fade in and out, band pass filter and cut off fader for the TF.
+            tfade = 8
+            freqlimit = (0.005,0.006,1,1.3)
+            cut_off_fading = 5
+            ntraces = []
+
+            for tr in trs:
+                TF = STS2()
+
+                # Save synthetic trace after transfer function was applied.
+                trace_filtered = tr.transfer(tfade, freqlimit, TF, cut_off_fading) 
+                # Set new codes to the filtered trace to make it identifiable.
+                rename={'e':'BHE','n':'BHN','u':'BHZ'}
+                trace_filtered.set_codes(channel=rename[trace_filtered.channel], network='', station='HHHA', location='syn')
+                ntraces.append(trace_filtered)
+
+    #             Extract the synthetic trace's data with get_?data() and store them.
+    #            xval = trace_filtered.get_xdata()
+    #            yval = trace_filtered.get_ydata()
+    #            savetxt('synthetic_data_'+trace_filtered.channel,xval)
+
+            self.add_traces(ntraces)
+            self.seis = None
+
+    def __snufflings__():
+        return [ ParaEditCp_TF_GTTG() ]
+
+
