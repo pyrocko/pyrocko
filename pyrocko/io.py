@@ -136,7 +136,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
 def save(traces, filename_template, format='mseed', additional={}, stations=None):
     '''Save traces to file(s).
     
-    :param traces: list or iterable of traces to store
+    :param traces: a trace or an iterable of traces to store
     :param filename_template: filename template with placeholders for trace
             metadata. Uses normal python '%(placeholder)s' string templates. The following
             placeholders are considered: ``network``, ``station``, ``location``,
@@ -152,6 +152,8 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
         Network, station, location, and channel codes may be silently truncated
         to file format specific maximum lengthes. 
     '''
+    if isinstance(traces, trace.Trace):
+        traces = [ traces ]
 
     if format == 'from_extension':
         format = os.path.splitext(filename_template)[1][1:]
