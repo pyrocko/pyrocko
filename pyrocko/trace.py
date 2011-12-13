@@ -572,8 +572,11 @@ class Trace(object):
         self.drop_growbuffer()
         self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
 
+    def taper(self, taperer):
+        taperer(self.ydata, self.tmin, self.deltat)
+    
     def whiten(self, order=6):
-        '''Whiten signal using autoregression and recursive filter.
+        '''Whiten signal in time domain using autoregression and recursive filter.
         
         :param order: order of the autoregression process
         '''
@@ -587,6 +590,77 @@ class Trace(object):
         b, a = [1.] + ar.tolist(), [1.]
         return b, a
 
+    def ampspec_whiten(self, width, td_taper='auto', fd_taper='auto', pad_to_pow2=True, demean=True):
+        '''Whiten signal via frequency domain using moving average on amplitude spectra.
+        
+        :param width: width of smoothing kernel [Hz]
+        :param td_taper: time domain taper, object of type :py:class:`Taper` or ``None`` or ``'auto'``.
+        :param fd_taper: frequency domain taper, object of type :py:class:`Taper` or ``None`` or ``'auto'``.
+        :param pad_to_pow2: whether to pad the signal with zeros up to a length of 2^n
+        :param demean: whether to demean the signal before tapering
+        
+        The signal is first demeaned and then tapered using *td_taper*. Then,
+        the spectrum is calculated and inversely weighted with a smoothed
+        version of its amplitude spectrum. A moving average is used for the
+        smoothing. The smoothed spectrum is then tapered using *fd_taper*.
+        Finally, the smoothed and tapered spectrum is back-transformed into the
+        time domain.
+
+        If *td_taper* is set to ``'auto'``, ``CosFader(1.0/width)`` is used. If
+        *fd_taper* is set to ``'auto'``, ``CosFader(width)`` is used.
+
+        '''
+        ndata = self.data_len()
+        
+        if pad_to_pow2:
+            ntrans = nextpow2(ndata)
+        else:
+            ntrans = ndata
+
+        df = 1./(ntrans*self.deltat)
+        nw = int(round(width/df))
+        if ndata/2+1 <= nw:
+            raise TraceTooShort('Samples in trace: %s, samples needed: %s' % (ndata, nw))
+
+        if td_taper == 'auto':
+            td_taper = CosFader(1./width)
+
+        if fd_taper == 'auto':
+            fd_taper = CosFader(width)
+        
+        if td_taper:
+            self.taper(td_taper)
+
+        ydata = self.get_ydata().astype(num.float)
+        if demean:
+            ydata -= ydata.mean()
+            
+        spec = num.fft.rfft(ydata, ntrans)
+        
+        amp = num.abs(spec)
+        nspec = amp.size
+        csamp = num.cumsum(amp)
+        amp_smoothed = num.empty(nspec, dtype=csamp.dtype)
+        n1, n2 = nw/2, nw/2 + nspec - nw
+        amp_smoothed[n1:n2] = (csamp[nw:] - csamp[:-nw]) / nw
+        amp_smoothed[:n1] = amp_smoothed[n1]
+        amp_smoothed[n2:] = amp_smoothed[n2-1]
+       
+        denom = amp_smoothed * amp
+        numer = amp
+        eps = num.mean(denom) * 1e-9
+        if eps == 0.0:
+            eps = 1e-9
+        
+        numer += eps
+        denom += eps
+        spec *= numer/denom
+        
+        if fd_taper:
+            fd_taper(spec, 0., df)
+
+        ydata =  num.fft.irfft(spec)
+        self.set_ydata(ydata[:ndata])
 
     def _get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
@@ -1452,6 +1526,39 @@ def merge_codes(a,b, sep='-'):
             o.append(sep.join((xa,xb)))
     return o
 
+class Taper(object):
+
+    def __call__(self, y, x0, dx):
+        pass
+
+class CosTaper(Taper):
+    def __init__(self, a,b,c,d):
+        self._corners = (a,b,c,d)
+
+    def __call__(self, y, x0, dx):
+        a,b,c,d = self._corners
+        apply_costaper(a, b, c, d, y, x0, dx)
+
+class CosFader(Taper):
+    def __init__(self, xfade=None, xfrac=None):
+        assert (xfade is None) != (xfrac is None)
+        self._xfade = xfade
+        self._xfrac = xfrac
+    
+    def __call__(self, y, x0, dx):
+        xfade = self._xfade
+
+        xlen = (y.size - 1)*dx
+        if xfade is None:
+            xfade = xlen * xfrac
+
+        a = x0
+        b = x0 + self._xfade
+        c = x0 + xlen - self._xfade
+        d = x0 + xlen
+
+        apply_costaper(a, b, c, d, y, x0, dx)
+
 class FrequencyResponse(object):
     '''Evaluates frequency response at given frequencies.'''
     
@@ -1709,10 +1816,22 @@ def moving_sum(x,n, mode='valid'):
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
     
+def snapper_w_offset(nmax, offset, delta, snapfun=math.ceil):
+    def snap(x):
+        return max(0,min(snapfun((x-offset)/delta),nmax))
+    return snap
+
 def snapper(nmax, delta, snapfun=math.ceil):
     def snap(x):
         return max(0,min(snapfun(x/delta),nmax))
     return snap
+
+def apply_costaper(a, b, c, d, y, x0, dx):
+    hi = snapper_w_offset(y.size, x0, dx)
+    y[:hi(a)] = 0.
+    y[hi(a):hi(b)] *= 0.5 - 0.5*num.cos((dx*num.arange(hi(a),hi(b))-(a-x0))/(b-a)*num.pi)
+    y[hi(c):hi(d)] *= 0.5 + 0.5*num.cos((dx*num.arange(hi(c),hi(d))-(c-x0))/(d-c)*num.pi)
+    y[hi(d):] = 0.
 
 def costaper(a,b,c,d, nfreqs, deltaf):
     hi = snapper(nfreqs, deltaf)
