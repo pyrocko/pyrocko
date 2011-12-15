@@ -1497,6 +1497,32 @@ class RayPath:
         self._pmin = None
         self._p = None
         self._redistribute_p = redistribute_p
+    
+    def copy(self):
+        c = copy.copy(self)
+        c.elements = list(self.elements)
+        return c
+
+    def simplify(self):
+        istart = None
+        last = None
+        groups = []
+        for (ii, el) in enumerate(self.elements):
+            if isinstance(el, Straight):
+                if last and (last.layer.ilayer == el.layer.ilayer and last.z_out() not in (self.zstart, self.zstop)):
+                    groups[-1].append(el)
+                else:
+                    groups.append([el])
+                    
+                    
+                last = el
+            else:
+                last = None
+                groups.append([el])
+        
+        for group in elements:
+            print len(group)
+
 
     def append(self, element):
         self.elements.append(element)
@@ -1950,7 +1976,7 @@ class LayeredModel:
                     a,b = l.split(br)    
                     elements[il:il+1] = a,b
                     break
-   
+
         w = Walker(elements)
         self.walkers[breaks] = w
         return w
@@ -2117,8 +2143,131 @@ class LayeredModel:
         path.set_used_phase(used_phase)
 
         return path
+    
+    def multi_path(self, p, phase=PhaseDef('P'), zstart=0.0, zstops=[ 0.0 ]):
+        '''Iterate ray paths for given ray parameter, phase definition and fixed source and multiple receiver depths.
+        
+        :param p: ray parameter (spherical) [s/deg]
+        :param phase: phase definition (:py:class:`PhaseDef` object)
+        :param zstart: source depth [m]
+        :param zstop: list of receiver depths [m]
+        :yields: :py:class:`RayPath` objects
+        '''
+        
+        zstops = list(zstops)
 
-    def gather_pathes(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000):
+        phase = self.adapt_phase(phase)
+        knees = phase.knees()
+        legs = phase.legs()
+        next_knee = next_or_none(knees)
+        leg = next_or_none(legs)
+        assert leg is not None
+
+        direction = leg.departure
+        direction_stop = phase.direction_stop
+        mode = leg.mode
+        mode_stop = phase.last_leg().mode
+
+        breaks = [ zstart ] + zstops
+        walker = self.walker(breaks)
+        walker.goto(zstart, -direction)
+        current = walker.current()
+        z = zstart
+        mode_layers = []
+        used_phase = PhaseDef()
+        used_phase.append(Leg(direction, mode))
+        path = RayPath(phase, zstart, None)
+        trapdetect = set()
+        
+        def finish(path, used_phase, zstop, direction_stop):
+            path = path.copy()
+            path.zstop = zstop
+            path.simplify()
+            used_phase = used_phase.copy()
+            used_phase.direction_stop = direction_stop
+            path.set_used_phase(used_phase)
+            return path
+       
+        try:
+            while zstops:
+
+                if next_knee is None: # detect trapped wave
+                    k = (id(current), direction, mode)
+                    if k in trapdetect:
+                        raise Trapped()
+                    
+                    trapdetect.add(k)
+                
+                if isinstance(current, Discontinuity):
+                    oldmode, olddirection = mode, direction
+                    if next_knee is not None and next_knee.matches(current, mode, direction):
+                        direction = next_knee.out_direction()
+                        mode = next_knee.out_mode
+                        next_knee = next_or_none(knees)
+                        leg = legs.next()
+                    
+                    else: # implicit reflection/transmission
+                        direction = current.propagate(p, mode, direction)
+
+                    if oldmode != mode or olddirection != direction:
+                        if isinstance(current, Surface):
+                            zz = 'surface'
+                        else:
+                            zz = z
+                        used_phase.append(Knee(zz, olddirection, olddirection!=direction, oldmode, mode))
+                        used_phase.append(Leg(direction, mode))
+                    
+                    path.append(Kink(olddirection, direction, oldmode, mode, current))
+
+                if isinstance(current, Layer):
+                    if current.at_bottom(z) and direction == DOWN:
+                        raise BottomReached()
+                    if current.at_top(z) and direction == UP:
+                        raise SurfaceReached()
+                    direction_in = direction
+                    direction = current.propagate(p, mode, direction_in)
+
+                    zmin, zmax = leg.depthmin, leg.depthmax
+                    if zmin is not None or zmax is not None:
+                        if direction_in != direction:
+                            zturn = current.zturn(p, mode)
+                            if zmin is not None and zturn < zmin:
+                                raise MinDepthReached()
+                            if zmax is not None and zturn > zmax:
+                                raise MaxDepthReached()
+                        else:
+                            if zmin is not None and current.ztop < zmin:
+                                raise MinDepthReached()
+                            if zmax is not None and current.zbot > zmax:
+                                raise MaxDepthReached()
+
+                    path.append(Straight(direction_in, direction, mode, current))
+
+                if direction == DOWN:
+                    z = current.zbot
+                    for zstop in list(zstops):
+                        if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
+                            path_ = finish(path, used_phase, zstop, direction_stop)
+                            yield path_
+                            zstops.remove(zstop)
+                            
+                    walker.down()
+                else:
+                    z = current.ztop
+                    for zstop in list(zstops):
+                        if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
+                            path_ = finish(path, used_phase, zstop, direction_stop)
+                            yield path_
+                            zstops.remove(zstop)
+                    
+                    walker.up()
+                    
+                current = walker.current()
+
+        except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached, Trapped), e:
+            pass
+
+    def gather_pathes(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, pdepth=18):
         '''Get all possible ray pathes for fixed source and receiver depth for one or more phase definitions.
         
         :param phases: a :py:class:`PhaseDef` object or a list of such objects
@@ -2127,7 +2276,7 @@ class LayeredModel:
         :param np: controls granularity of ray path fan drafting
         :returns: a list of :py:class:`RayPath` objects
         '''
-
+        
         if isinstance(phases, PhaseDef):
             phases = [ phases ]
         pathes = {}
@@ -2161,7 +2310,7 @@ class LayeredModel:
                 return path
             
             def recurse(pmin, pmax, i=0):
-                if i > 18:
+                if i > pdepth:
                     return
                 path1 = p_to_path(pmin)
                 path2 = p_to_path(pmax)
@@ -2180,7 +2329,7 @@ class LayeredModel:
         pathes.sort(key=lambda x: x.pmin)
         return pathes
     
-    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, refine=True, interpolation='linear'):
+    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, refine=True, interpolation='linear', pdepth=18):
         '''Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
@@ -2196,7 +2345,7 @@ class LayeredModel:
         distances = num.asarray(distances, dtype=num.float)
     
         arrivals = []
-        for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np ):
+        for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
             if interpolation == 'spline':
                 x2pt = path.interpolate_x2pt_spline
             elif interpolation == 'linear':
