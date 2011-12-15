@@ -1506,6 +1506,38 @@ def correlate(a, b, mode='valid', normalization=None):
 
     return c
 
+def deconvolve(a, b, waterlevel, fd_taper=None, pad_to_pow2=True):
+
+    assert abs(a.tmin - b.tmin) < a.deltat * 0.001
+    same_sampling_rate(a,b)
+
+    ndata = max(a.data_len(), b.data_len())
+    if pad_to_pow2:
+        ntrans = nextpow2(ndata)
+    else:
+        ntrans = ndata
+        
+    aspec = num.fft.rfft(a.ydata, ntrans)
+    bspec = num.fft.rfft(b.ydata, ntrans)
+    
+    out = aspec * num.conj(bspec)
+    
+    bautocorr = bspec*num.conj(bspec)
+    denom = num.maximum( bautocorr, waterlevel * bautocorr.max() )
+
+    out /= denom
+    df = 1/(ndata*a.deltat)
+    
+    if fd_taper is not None:
+        fd_taper( out, 0.0, df )
+
+    ydata = num.fft.irfft(out)
+    
+    c = a.copy(data=False)
+    c.set_ydata(ydata[:ndata])
+    c.set_codes(*merge_codes(a,b,'/'))
+    return c 
+
 def same_sampling_rate(a,b, eps=1.0e-6):
     '''Check if two traces have the same sampling rate.
     
@@ -1558,6 +1590,15 @@ class CosFader(Taper):
         d = x0 + xlen
 
         apply_costaper(a, b, c, d, y, x0, dx)
+
+class GaussTaper(Taper):
+
+    def __init__(self, alpha):
+        self._alpha = alpha
+
+    def __call__(self, y, x0, dx):
+        f = x0 + num.arange( y.size )*dx
+        y *= num.exp(-(2.*num.pi)**2/(4.*self._alpha**2) * f**2)
 
 class FrequencyResponse(object):
     '''Evaluates frequency response at given frequencies.'''
