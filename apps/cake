@@ -27,12 +27,15 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
                 default=[], metavar='PHASE1,PHASE2,...',
                 help='comma separated list of seismic phase definition(s) in cake syntax')
         parser.add_option_group(group)
+
     if 'model' in want:
         group = OptionGroup(parser, 'Model')
         group.add_option('--model', dest='model_filename', metavar='FILENAME', 
                 help='load model from file named FILENAME')
         group.add_option('--format', dest='model_format', metavar='FORMAT', default='nd',
                 help='set model file format (available: nd,hyposat; default: nd)')
+        group.add_option('--crust2loc', dest='crust2loc', metavar='LAT,LON',
+                help='set model from CRUST2.0 profile at location (LAT,LON)')
         parser.add_option_group(group)
     
     if any( x in want for x in ('zstart', 'zstop', 'distances', 'as_degrees') ):
@@ -102,6 +105,16 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
     if options.model_filename:
         d['model'] = cake.load_model(options.model_filename, options.model_format)
 
+    if options.crust2loc:
+        try:
+            lat,lon = [ float(x) for x in options.crust2loc.split(',') ]
+        except:
+            parser.error('format for --crust2loc option is "LATITUDE,LONGITUDE"')
+            
+        from pyrocko import crust2x2
+        profile = crust2x2.get_profile(lat,lon)
+        d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
+
     if 'vred' in want:
         d['vred'] = options.vred
         if d['vred'] is not None: 
@@ -114,7 +127,7 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
             if options.sdist.find(':') != -1:
                 ssn = options.sdist.split(':')
                 if len(ssn) != 3:
-                    parser.error('format for distances is min_distance:max_distance:n_distances')
+                    parser.error('format for distances is "min_distance:max_distance:n_distances"')
 
                 distances = num.linspace(*map(float, ssn))
             else:
