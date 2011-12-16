@@ -2483,6 +2483,25 @@ def read_nd_model(fn):
 
     f.close()
 
+def from_crust2x2_profile(profile, depthmantle=50000):
+    import crust2x2
+    z = 0.
+    for i in range(8):
+        dz, vp, vs, rho = profile.get_layer(i)
+        name = crust2x2.Crust2Profile.layer_names[i]
+        material = Material(vp, vs, rho)
+        iname = None
+        if i == 7:
+            iname = 'moho'
+        if dz != 0.0:
+            yield z, material, iname
+            if i != 7:
+                yield z+dz, material, name
+            else:
+                yield z+depthmantle, material, name
+
+            z += dz
+
 def load_model(fn, format='nd'):
     '''Load layered earth model from file.
     
