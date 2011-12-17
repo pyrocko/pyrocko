@@ -57,6 +57,11 @@ Ten receiver distances ranging from 100km to 1000km and a source depth of 10km.
 
     cake plot-rays --crust2loc=45,10 --phases=P,p --sdepth=10 --distances=100:1000:10
 
+This command will produce the following image:
+
+.. figure:: cake_plot_example.png
+    :scale: 60%
+
 The option ``--crust2loc`` refers to the `crust2x2 <http://emolch.github.com/pyrocko/crust2x2.html>`_ pyrocko module and expects latitude and longitude of the source location.
 
 Python Script Examples
@@ -66,6 +71,7 @@ Calculate P-phase arrivals for the whole earth
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The following python script calculates arrival times for the P-phase emitted by an event in a depth of 300km.
+
 
 ::
 
