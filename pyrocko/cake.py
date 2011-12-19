@@ -2059,8 +2059,8 @@ class LayeredModel:
         mode = leg.mode
         mode_stop = phase.last_leg().mode
 
-        breaks = [ zstart, zstop ]
-        walker = self.walker(breaks)
+        #breaks = [ zstart, zstop ]
+        walker = self.walker([])
         walker.goto(zstart, -direction)
         current = walker.current()
         z = zstart
@@ -2070,6 +2070,9 @@ class LayeredModel:
         path = RayPath(phase, zstart, zstop)
         trapdetect = set()
         while True:
+            at_layer = isinstance(current, Layer)
+            at_discontinuity = isinstance(current, Discontinuity)
+
             if next_knee is None: # detect trapped wave
                 k = (id(current), direction, mode)
                 if k in trapdetect:
@@ -2077,7 +2080,7 @@ class LayeredModel:
                 
                 trapdetect.add(k)
             
-            if isinstance(current, Discontinuity):
+            if at_discontinuity:
                 oldmode, olddirection = mode, direction
                 if next_knee is not None and next_knee.matches(current, mode, direction):
                     direction = next_knee.out_direction()
@@ -2099,7 +2102,8 @@ class LayeredModel:
                 
                 path.append(Kink(olddirection, direction, oldmode, mode, current))
 
-            if isinstance(current, Layer):
+            if at_layer:
+                zturn = None
                 if current.at_bottom(z) and direction == DOWN:
                     raise BottomReached()
                 if current.at_top(z) and direction == UP:
@@ -2123,25 +2127,25 @@ class LayeredModel:
 
                 path.append(Straight(direction_in, direction, mode, current))
 
+                if next_knee is None and mode == mode_stop and current.contains(zstop):
+                    if zturn is None:
+                        if direction == direction_stop:
+                            break
+                    else:
+                        if (direction_in == UP and zstop >= zturn) or (direction_in == DOWN and zstop <= zturn):
+                            break
+
             if direction == DOWN:
                 z = current.zbot
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
                 walker.down()
             else:
                 z = current.ztop
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
                 walker.up()
                 
             current = walker.current()
        
-        if next_knee is not None:
-            raise NotPhaseConform()
-       
         used_phase.direction_stop = direction_stop
         path.set_used_phase(used_phase)
-
         return path
     
     def multi_path(self, p, phase=PhaseDef('P'), zstart=0.0, zstops=[ 0.0 ]):
