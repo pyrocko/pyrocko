@@ -139,10 +139,8 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
         if distances is not None:
             d['distances'] = distances
         else:
-            if 'distances' in required:
-                parser.error('distances required')
-
-            d['distances'] = None
+            if 'distances' not in required:
+                d['distances'] = None
     
     if 'zstart' in want:
         d['zstart'] = options.sdepth*cake.km
@@ -175,7 +173,19 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
 
     for k in required:
         if k not in d:
-            parser.error('missing %s' % k)
+            if k == 'model':
+                from pyrocko import crust2x2
+                profile = crust2x2.get_profile(53.,10.)
+                d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
+
+            elif k == 'distances':
+                d['distances'] = num.linspace(10*cake.km, 100*cake.km, 10) / cake.earthradius * r2d
+            
+            elif k == 'phases':
+                d['phases'] = map(cake.PhaseDef, 'Pp')
+
+            else:
+                parser.error('missing %s' % k)
 
     return Anon(d)
 
