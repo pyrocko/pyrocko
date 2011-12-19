@@ -1883,7 +1883,7 @@ class Ray:
     def surface_sphere(self):
         x1, y1 = 0., earthradius - self.path.zstart
         r2 = earthradius - self.path.zstop
-        x2, y2 = r2*math.sin(self.x), r2*math.cos(self.x)
+        x2, y2 = r2*math.sin(self.x*d2r), r2*math.cos(self.x*d2r)
         return ((x2-x1)**2 + (y2-y1)**2)*4.0*math.pi
 
     def __str__(self, as_degrees=False):
