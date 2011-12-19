@@ -43,9 +43,13 @@ S = 2
 DOWN = 4
 UP = -4
 
+earthradius = 6371.*1000.
+
 r2d = 180./math.pi
 d2r = 1./r2d
 km = 1000.
+d2m = d2r*earthradius
+m2d = 1./d2m
 
 
 class InvalidArguments(Exception):
@@ -1081,7 +1085,6 @@ class DoesNotTurn(Exception):
     pass
 
 
-earthradius = 6371.*1000.
 def radius(z):
     return earthradius - z
 
