@@ -2084,8 +2084,7 @@ class LayeredModel:
         mode = leg.mode
         mode_stop = phase.last_leg().mode
 
-        breaks = [ zstart, zstop ]
-        walker = self.walker(breaks)
+        walker = self.walker([])
         walker.goto(zstart, -direction)
         current = walker.current()
         z = zstart
@@ -2151,16 +2150,21 @@ class LayeredModel:
                             raise MaxDepthReached()
 
                 path.append(Straight(direction_in, direction, mode, current))
-            
+           
+                if next_knee is None and mode == mode_stop and current.contains(zstop):
+                    if zturn is None:
+                        if direction == direction_stop:
+                            break
+                    else:
+                        if (direction_in == UP and zstop >= zturn) or (direction_in == DOWN and zstop <= zturn):
+                            break
+
+
             if direction == DOWN:
                 z = current.zbot
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
                 walker.down()
             else:
                 z = current.ztop
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
                 walker.up()
                 
             current = walker.current()
