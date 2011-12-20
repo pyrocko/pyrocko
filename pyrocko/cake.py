@@ -1447,6 +1447,18 @@ class Straight(RayElement):
     def xt(self, p, zpart=None):
         return self.layer.xt(p, self.mode, zpart=zpart)
 
+    def xt_gap(self, p, zstart, dirstart):
+        z1, z2 = zstart, self.z_in()
+        if z1 > z2:
+            z1, z2 = z2, z1
+
+        x,t = self.xt(p, zpart=(z1,z2))
+        if self.direction_in == dirstart:
+            return x,t
+        else:
+            xfull, tfull = self.xt(p)
+            return xfull-x, tfull-t
+
     def __hash__(self):
         return hash((self.direction_in, self.direction_out, self.mode, id(self.layer)))
 
@@ -1627,7 +1639,7 @@ class RayPath:
         ppp = num.linspace(self._pmin, self._pmax, n)
         return ppp
 
-    def xt(self, p):
+    def xt(self, p, zstart=None, zstop=None, dirstart=None, dirstop=None):
         '''Calculate distance and traveltime for given ray parameter.'''
         if isinstance(p, num.ndarray):
             sx = num.zeros(p.size)
@@ -1641,8 +1653,18 @@ class RayPath:
             sx += x
             st += t
 
-        return sx, st
+        if zstart is not None:
+            x,t = self.first_straight().xt_gap(p, zstart, dirstart)
+            sx -= x
+            st -= t
 
+        if zstop is not None:
+            x,t = self.last_straight().xt_gap(p, zstop, -dirstop)
+            sx -= x
+            st -= t
+
+        return sx, st
+    
     def iter_zxt(self, p):
         sx = num.zeros(p.size)
         st = num.zeros(p.size)
