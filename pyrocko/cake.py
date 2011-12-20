@@ -693,24 +693,24 @@ class PhaseDef:
             if events and depthmax is not None:
                 events[-1].set_depthmax(depthmax)
 
-        self.definition = definition
-        self.events = events
-        self.direction_stop = direction_stop
+        self._definition = definition
+        self._events = events
+        self._direction_stop = direction_stop
    
     def __iter__(self):
-        for ev in self.events:
+        for ev in self._events:
             yield ev
 
     def append(self, ev):
-        self.events.append(ev)
+        self._events.append(ev)
 
     def first_leg(self):
         '''Get the first leg in phase definition.'''
-        return self.events[0]
+        return self._events[0]
 
     def last_leg(self):
         '''Get the last leg in phase definition.'''
-        return self.events[-1]
+        return self._events[-1]
 
     def legs(self):
         '''Iterate over the continuous pieces of wave propagation (legs) defined within this phase definition.'''
@@ -719,6 +719,15 @@ class PhaseDef:
     def knees(self):
         '''Iterate over conversions and reflections (knees) defined within this phase definition.'''
         return ( knee for knee in self if isinstance(knee, Knee) )
+
+    def definition(self):
+        return self._definition
+
+    def direction_start(self):
+        return self.first_leg().departure
+
+    def direction_stop(self):
+        return self._direction_stop
 
     def used_repr(self):
         '''Translate into textual representation (cake phase syntax).'''
@@ -741,24 +750,24 @@ class PhaseDef:
                     else:
                         x.append('(%s)' % el.depth)
     
-        if self.direction_stop == DOWN:
+        if self._direction_stop == DOWN:
             x.append('\\')
 
         return ''.join(x)
    
     def __repr__(self):
-        if self.definition is not None:
-            return "PhaseDef('%s')" % self.definition
+        if self._definition is not None:
+            return "PhaseDef('%s')" % self._definition
         else:
             return "PhaseDef('%s')" % self.used_repr()
 
     def __str__(self):
         orig = ''
         used = self.used_repr()
-        if self.definition != used:
-            orig = ' (entered as "%s")' % self.definition
+        if self._definition != used:
+            orig = ' (entered as "%s")' % self._definition
 
-        sarrive = '\n - arriving at target from %s' % ('below', 'above')[self.direction_stop == DOWN]
+        sarrive = '\n - arriving at target from %s' % ('below', 'above')[self._direction_stop == DOWN]
         return 'Phase definition "%s"%s:\n - ' % (used, orig) + '\n - '.join(str(ev) for ev in self) + sarrive
         
 
@@ -1447,6 +1456,18 @@ class Straight(RayElement):
     def xt(self, p, zpart=None):
         return self.layer.xt(p, self.mode, zpart=zpart)
 
+    def xt_gap(self, p, zstart, zstop, samedir ):
+        z1, z2 = zstart, zstop
+        if z1 > z2:
+            z1, z2 = z2, z1
+
+        x,t = self.xt(p, zpart=(z1,z2))
+        if samedir:
+            return x,t
+        else:
+            xfull, tfull = self.xt(p)
+            return xfull-x, tfull-t
+
     def __hash__(self):
         return hash((self.direction_in, self.direction_out, self.mode, id(self.layer)))
 
@@ -1585,7 +1606,7 @@ class RayPath:
         '''Get product of all conversion/reflection coefficients encountered on path.'''
         return reduce( operator.mul, (k.efficiency(p) for k in self.kinks()), 1.)
 
-    def spreading(self, p):
+    def spreading(self, p, endgaps):
         '''Get geometrical spreading factor.'''
         self._check_have_prange()
         dp = self._prange_dp * 0.01
@@ -1594,8 +1615,8 @@ class RayPath:
         if p + dp > self._pmax:
             p = p-dp
 
-        x0, t = self.xt(p)
-        x1, t = self.xt(p+dp)
+        x0, t = self.xt(p, endgaps)
+        x1, t = self.xt(p+dp, endgaps)
         x0 *= d2r
         x1 *= d2r
         dp_dx = dp/(x1-x0)
@@ -1627,7 +1648,20 @@ class RayPath:
         ppp = num.linspace(self._pmin, self._pmax, n)
         return ppp
 
-    def xt(self, p):
+    def xt_endgaps(self, p, endgaps, which='both'):
+        zstart, zstop, dirstart, dirstop = endgaps
+        firsts = self.first_straight()
+        lasts = self.last_straight()
+        xs,ts = firsts.xt_gap(p, zstart, firsts.z_in(), dirstart == firsts.direction_in)
+        xe,te = lasts.xt_gap(p, zstop, lasts.z_out(), dirstop == lasts.direction_out)
+        if which == 'both':
+            return xs + xe, ts + te
+        elif which == 'left':
+            return xs, ts
+        elif which == 'right':
+            return xe, te
+
+    def xt(self, p, endgaps):
         '''Calculate distance and traveltime for given ray parameter.'''
         if isinstance(p, num.ndarray):
             sx = num.zeros(p.size)
@@ -1641,8 +1675,46 @@ class RayPath:
             sx += x
             st += t
 
-        return sx, st
+        if endgaps:
+            dx,dt = self.xt_endgaps(p, endgaps)
+            sx -= dx
+            st -= dt
 
+        return sx, st
+    
+    def xt_limits(self, p):
+        '''Calculate distance and traveltime for given ray parameter.'''
+        if isinstance(p, num.ndarray):
+            sx = num.zeros(p.size)
+            st = num.zeros(p.size)
+            sxe = num.zeros(p.size)
+            ste = num.zeros(p.size)
+        else:
+            sx = 0.0
+            st = 0.0
+            sxe = 0.0
+            ste = 0.0
+
+        sfirst = self.first_straight()
+        slast = self.last_straight()
+
+        for s in self.straights():
+            if s is not sfirst and s is not slast:
+                x,t = s.xt(p)
+                sx += x
+                st += t
+
+        sends = [ sfirst ]
+        if sfirst is not slast:
+            sends.append(slast)
+
+        for s in sends:
+            x,t = s.xt(p)
+            sxe += x
+            ste += t
+
+        return sx, sx + sxe, st, st + ste
+    
     def iter_zxt(self, p):
         sx = num.zeros(p.size)
         st = num.zeros(p.size)
@@ -1658,9 +1730,10 @@ class RayPath:
         if ok: 
             yield s.z_out(), sx.copy(), st.copy()
     
-    def iter_partial_zxt(self, p):
-        sx = num.zeros(p.size)
-        st = num.zeros(p.size)
+    def iter_partial_zxt(self, p, endgaps):
+        dx, dt = self.xt_endgaps(p, endgaps, which='left')
+        sx = num.zeros(p.size) - dx
+        st = num.zeros(p.size) - dt
         ok = False
         for s in self.straights():
             back = None
@@ -1701,39 +1774,41 @@ class RayPath:
             return
 
         p = self.make_p(nmin=10)
-        x, t = self.xt(p)
-        if self._redistribute_p:
-            p = evenize(p,x)
-            x, t= self.xt(p)
-        self._x, self._t, self._p = x, t, p
-        self._xmin, self._xmax = x.min(), x.max()
-        self._tmin, self._tmax = t.min(), t.max()
+        xmin, xmax, tmin, tmax = self.xt_limits(p)
+       
+        self._x, self._t, self._p = xmax, tmax, p
+        self._xmin, self._xmax = xmin.min(), xmax.max()
+        self._tmin, self._tmax = tmin.min(), tmax.max()
         
-        self._monoton_x = monotony(x[1:] - x[:-1])
-        self._monoton_t = monotony(t[1:] - t[:-1])
+        self._monoton_x = monotony(xmax[1:] - xmax[:-1])
+        self._monoton_t = monotony(tmax[1:] - tmax[:-1])
        
     def draft_pxt(self):
         self._analyse()
         return self._p, self._x, self._t
 
-    def interpolate_t2x_linear(self, t):
+    def interpolate_t2x_linear(self, t, endgaps):
         self._analyse()
-        return interp( t, self._t, self._x, self._monoton_t)
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        return interp( t, self._t+dt, self._x+dx, 0)
 
-    def interpolate_x2t_linear(self, x):
+    def interpolate_x2t_linear(self, x, endgaps):
         self._analyse()
-        return interp( x, self._x, self._t, self._monoton_x)
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        return interp( x, self._x+dx, self._t+dt, 0)
 
-    def interpolate_t2px_linear(self, t):
+    def interpolate_t2px_linear(self, t, endgaps):
         self._analyse()
-        tp = interp( t, self._t, self._p, self._monoton_t)
-        tx = interp( t, self._t, self._x, self._monoton_t)
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        tp = interp( t, self._t+dt, self._p, 0)
+        tx = interp( t, self._t+dt, self._x+dx, 0)
         return [ (t,p,x) for ((t,p), (_,x)) in zip(tp, tx) ]
 
-    def interpolate_x2pt_linear(self, x):
+    def interpolate_x2pt_linear(self, x, endgaps):
         self._analyse()
-        xp = interp( x, self._x, self._p, self._monoton_x)
-        xt = interp( x, self._x, self._t, self._monoton_x)
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        xp = interp( x, self._x + dx, self._p, 0)
+        xt = interp( x, self._x + dx, self._t + dt, 0)
         return [ (x,p,t) for ((x,p), (_,t)) in zip(xp, xt) ] 
 
     def update_splines(self):
@@ -1767,7 +1842,7 @@ class RayPath:
         return all( a == b for a, b in zip(self.elements, other.elements) )
 
     def __hash__(self):
-        return hash(tuple( hash(x) for x in self.elements ) + (self.phase.definition,) )
+        return hash(tuple( hash(x) for x in self.elements ) + (self.phase.definition(),) )
 
     def __str__(self):
         x = []
@@ -1803,7 +1878,7 @@ class RayPath:
             append_layers(start_i, end_i, turn_i)
        
         su = '(%s)' % self.used_phase.used_repr()
-        return '%-15s %-17s %s' % (self.phase.definition, su, ''.join(x))
+        return '%-15s %-17s %s' % (self.phase.definition(), su, ''.join(x))
 
     def describe(self):
         self._analyse()
@@ -1836,14 +1911,15 @@ class Ray:
            Traveltime [s]
     '''
 
-    def __init__(self, path, p, x, t):
+    def __init__(self, path, p, x, t, endgaps):
         self.path = path
         self.p = p
         self.x = x
         self.t = t
+        self.endgaps = endgaps
 
     def refine(self, eps=0.0001):
-        x, t = self.path.xt(self.p)
+        x, t = self.path.xt(self.p, self.endgaps)
         xeps = self.x*eps
         count = [ 0 ]
         if abs(self.x - x) > xeps:
@@ -1852,7 +1928,7 @@ class Ray:
             pl, ph = self.path._p[ip-1], self.path._p[ip]
             def f(p):
                 count[0] += 1
-                x, t = self.path.xt(p)
+                x, t = self.path.xt(p, self.endgaps)
                 dx = self.x - x
                 if abs(dx) < xeps:
                     return 0.0
@@ -1861,7 +1937,7 @@ class Ray:
             
             try:
                 p = bisect(f, pl, ph)
-                x, self.t = self.path.xt(p)
+                x, self.t = self.path.xt(p, self.endgaps)
                 if abs(self.x - x) > xeps:
                     raise RefineFailed()
 
@@ -1881,7 +1957,7 @@ class Ray:
         return self.path.efficiency(self.p)
 
     def spreading(self):
-        return self.path.spreading(self.p)
+        return self.path.spreading(self.p, self.endgaps)
 
     def surface_sphere(self):
         x1, y1 = 0., earthradius - self.path.zstart
@@ -2058,12 +2134,11 @@ class LayeredModel:
         assert leg is not None
 
         direction = leg.departure
-        direction_stop = phase.direction_stop
+        direction_stop = phase.direction_stop()
         mode = leg.mode
         mode_stop = phase.last_leg().mode
 
-        breaks = [ zstart, zstop ]
-        walker = self.walker(breaks)
+        walker = self.walker([])
         walker.goto(zstart, -direction)
         current = walker.current()
         z = zstart
@@ -2129,21 +2204,26 @@ class LayeredModel:
                             raise MaxDepthReached()
 
                 path.append(Straight(direction_in, direction, mode, current))
-            
+           
+                if next_knee is None and mode == mode_stop and current.contains(zstop):
+                    if zturn is None:
+                        if direction == direction_stop:
+                            break
+                    else:
+                        if (direction_in == UP and zstop >= zturn) or (direction_in == DOWN and zstop <= zturn):
+                            break
+
+
             if direction == DOWN:
                 z = current.zbot
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
                 walker.down()
             else:
                 z = current.ztop
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
                 walker.up()
                 
             current = walker.current()
        
-        used_phase.direction_stop = direction_stop
+        used_phase._direction_stop = direction_stop
         path.set_used_phase(used_phase)
         return path
     
@@ -2167,7 +2247,7 @@ class LayeredModel:
         assert leg is not None
 
         direction = leg.departure
-        direction_stop = phase.direction_stop
+        direction_stop = phase.direction_stop()
         mode = leg.mode
         mode_stop = phase.last_leg().mode
 
@@ -2187,7 +2267,7 @@ class LayeredModel:
             path.zstop = zstop
             path.simplify()
             used_phase = used_phase.copy()
-            used_phase.direction_stop = direction_stop
+            used_phase._direction_stop = direction_stop
             path.set_used_phase(used_phase)
             return path
        
@@ -2349,13 +2429,17 @@ class LayeredModel:
     
         arrivals = []
         for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
+            print path.describe()
+            
             if interpolation == 'spline':
+                assert False
                 x2pt = path.interpolate_x2pt_spline
             elif interpolation == 'linear':
                 x2pt = path.interpolate_x2pt_linear
 
-            for x,p,t in x2pt(distances):
-                arrivals.append(Ray(path, p, x, t))
+            endgaps = (zstart, zstop, path.phase.direction_start(), path.phase.direction_stop() )
+            for x,p,t in x2pt(distances, endgaps):
+                arrivals.append(Ray(path, p, x, t, endgaps))
 
         if refine:
             refined = []

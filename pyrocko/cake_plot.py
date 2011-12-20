@@ -214,7 +214,7 @@ def plot_rays(pathes, rays, plot=None):
             p = cake.filled(ray.p, 1)
             path = ray.path
             
-        for z,x,t in path.iter_partial_zxt(p):
+        for z,x,t in path.iter_partial_zxt(p, ray.endgaps):
             fanz.append(z)
             fanx.append(x)
         
