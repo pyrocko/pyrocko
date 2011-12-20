@@ -1513,7 +1513,7 @@ def deconvolve(a, b, waterlevel, fd_taper=None, pad_to_pow2=True):
 
     ndata = max(a.data_len(), b.data_len())
     if pad_to_pow2:
-        ntrans = nextpow2(ndata)
+        ntrans = nextpow2(ndata*1.5)
     else:
         ntrans = ndata
         
@@ -1526,7 +1526,7 @@ def deconvolve(a, b, waterlevel, fd_taper=None, pad_to_pow2=True):
     denom = num.maximum( bautocorr, waterlevel * bautocorr.max() )
 
     out /= denom
-    df = 1/(ndata*a.deltat)
+    df = 1.0/(ntrans*a.deltat)
     
     if fd_taper is not None:
         fd_taper( out, 0.0, df )
