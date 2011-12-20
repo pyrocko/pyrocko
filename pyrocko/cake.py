@@ -1527,27 +1527,6 @@ class RayPath:
         c.elements = list(self.elements)
         return c
 
-    def simplify(self):
-        istart = None
-        last = None
-        groups = []
-        for (ii, el) in enumerate(self.elements):
-            if isinstance(el, Straight):
-                if last and (last.layer.ilayer == el.layer.ilayer and last.z_out() not in (self.zstart, self.zstop)):
-                    groups[-1].append(el)
-                else:
-                    groups.append([el])
-                    
-                    
-                last = el
-            else:
-                last = None
-                groups.append([el])
-        
-        for group in elements:
-            print len(group)
-
-
     def append(self, element):
         self.elements.append(element)
 
@@ -1790,25 +1769,25 @@ class RayPath:
     def interpolate_t2x_linear(self, t, endgaps):
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
-        return interp( t, self._t+dt, self._x+dx, 0)
+        return interp( t, self._t - dt, self._x - dx, 0)
 
     def interpolate_x2t_linear(self, x, endgaps):
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
-        return interp( x, self._x+dx, self._t+dt, 0)
+        return interp( x, self._x - dx, self._t - dt, 0)
 
     def interpolate_t2px_linear(self, t, endgaps):
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
-        tp = interp( t, self._t+dt, self._p, 0)
-        tx = interp( t, self._t+dt, self._x+dx, 0)
+        tp = interp( t, self._t - dt, self._p, 0)
+        tx = interp( t, self._t - dt, self._x - dx, 0)
         return [ (t,p,x) for ((t,p), (_,x)) in zip(tp, tx) ]
 
     def interpolate_x2pt_linear(self, x, endgaps):
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
-        xp = interp( x, self._x + dx, self._p, 0)
-        xt = interp( x, self._x + dx, self._t + dt, 0)
+        xp = interp( x, self._x - dx, self._p, 0)
+        xt = interp( x, self._x - dx, self._t - dt, 0)
         return [ (x,p,t) for ((x,p), (_,t)) in zip(xp, xt) ] 
 
     def update_splines(self):
