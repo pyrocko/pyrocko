@@ -1063,6 +1063,11 @@ class Layer:
         '''
 
         return (self.u(mode, z)*radius(z) - p) >= 0
+
+    def tests(self, p, mode):
+
+        utop, ubot = self.us(mode)
+        return (utop * radius(self.ztop) - p) >= 0, (ubot * radius(self.zbot) - p) >= 0
    
     def zturn_potint(self, p, mode):
         '''Get turning depth for given ray parameter and propagation mode.'''
@@ -1359,6 +1364,12 @@ class Walker:
     def current(self):
         return self._elements[ self._i ]
 
+    def go(self, direction):
+        if direction == UP:
+            self.up()
+        else:
+            self.down()
+
     def down(self):
         if self._i < len(self._elements)-1:
             self._i += 1
@@ -1371,6 +1382,11 @@ class Walker:
         else:
             raise SurfaceReached()
 
+    def goto_layer(self, layer):
+        self._i = self._elements.index(layer)
+
+
+    # DELETE?:
     def goto(self, z, direction=DOWN):
 
         inew = None
@@ -1861,8 +1877,8 @@ class RayPath:
 
     def describe(self):
         self._analyse()
-        return '%s\n - x range: %g %g\n - t range: %g %g\n - p range: %g %g\n' % (
-                self, self._xmin*r2d, self._xmax*r2d, self._tmin, self._tmax, self._pmin, self._pmax)
+        return '%s\n - x range: [%g, %g] deg\n - t range: [%g, %g] s\n - p range: [%g, %g] s/deg\n' % (
+                self, self._xmin, self._xmax, self._tmin, self._tmax, self._pmin, self._pmax)
 
 
 class RefineFailed(Exception):
@@ -1981,7 +1997,6 @@ class LayeredModel:
         self._surface_material = None
         self._elements = []
         self.nlayers = 0
-        self.walkers = {}
 
     def zeq(self, z1, z2):
         return abs(z1-z2) < ZEPS
@@ -2022,22 +2037,8 @@ class LayeredModel:
             if l.contains(z):
                 return l
 
-    def walker(self, breaks):
-        breaks = tuple(breaks)
-        if breaks in self.walkers:
-            return self.walkers[breaks]
-
-        elements = list(self._elements)
-        for br in breaks:
-            for il, l in enumerate(elements):
-                if isinstance(l, Layer) and l.inner(br):
-                    a,b = l.split(br)    
-                    elements[il:il+1] = a,b
-                    break
-
-        w = Walker(elements)
-        self.walkers[breaks] = w
-        return w
+    def walker(self):
+        return Walker(self._elements)
 
     def material(self, z, direction=DOWN):
         '''Get material at given depth.
@@ -2104,7 +2105,10 @@ class LayeredModel:
         :py:exc:`MinDepthReached`, :py:exc:`MaxDepthReached`, :py:exc:`CannotPropagate`, 
         :py:exc:`BottomReached` or :py:exc:`SurfaceReached` is raised.
         '''
-        
+       
+        layer_start = self.layer(zstart, -phase.direction_start())
+        layer_stop = self.layer(zstop, phase.direction_stop())
+
         phase = self.adapt_phase(phase)
         knees = phase.knees()
         legs = phase.legs()
@@ -2117,10 +2121,14 @@ class LayeredModel:
         mode = leg.mode
         mode_stop = phase.last_leg().mode
 
-        walker = self.walker([])
-        walker.goto(zstart, -direction)
+        walker = self.walker()
+        walker.goto_layer(layer_start)
         current = walker.current()
-        z = zstart
+        
+        ttop, tbot = current.tests(p, mode)
+        if (direction == DOWN and not ttop) or (direction == UP and not tbot):
+            direction = -direction
+
         mode_layers = []
         used_phase = PhaseDef()
         used_phase.append(Leg(direction, mode))
@@ -2147,31 +2155,28 @@ class LayeredModel:
                 
                 else: # implicit reflection/transmission
                     direction = current.propagate(p, mode, direction)
-          
 
                 if oldmode != mode or olddirection != direction:
                     if isinstance(current, Surface):
                         zz = 'surface'
                     else:
-                        zz = z
+                        zz = current.z
                     used_phase.append(Knee(zz, olddirection, olddirection!=direction, oldmode, mode))
                     used_phase.append(Leg(direction, mode))
                 
                 path.append(Kink(olddirection, direction, oldmode, mode, current))
 
             if at_layer:
-                zturn = None
-                if current.at_bottom(z) and direction == DOWN:
-                    raise BottomReached()
-                if current.at_top(z) and direction == UP:
-                    raise SurfaceReached()
                 direction_in = direction
                 direction = current.propagate(p, mode, direction_in)
+                
+                zturn = None
+                if direction_in != direction:
+                    zturn = current.zturn(p, mode)
 
                 zmin, zmax = leg.depthmin, leg.depthmax
                 if zmin is not None or zmax is not None:
                     if direction_in != direction:
-                        zturn = current.zturn(p, mode)
                         if zmin is not None and zturn < zmin:
                             raise MinDepthReached()
                         if zmax is not None and zturn > zmax:
@@ -2184,22 +2189,14 @@ class LayeredModel:
 
                 path.append(Straight(direction_in, direction, mode, current))
            
-                if next_knee is None and mode == mode_stop and current.contains(zstop):
+                if next_knee is None and mode == mode_stop and current is layer_stop:
                     if zturn is None:
                         if direction == direction_stop:
                             break
                     else:
-                        if (direction_in == UP and zstop >= zturn) or (direction_in == DOWN and zstop <= zturn):
-                            break
+                        break
 
-
-            if direction == DOWN:
-                z = current.zbot
-                walker.down()
-            else:
-                z = current.ztop
-                walker.up()
-                
+            walker.go(direction)
             current = walker.current()
        
         used_phase._direction_stop = direction_stop
@@ -2408,7 +2405,6 @@ class LayeredModel:
     
         arrivals = []
         for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
-            print path.describe()
             
             if interpolation == 'spline':
                 assert False
@@ -2419,7 +2415,7 @@ class LayeredModel:
             endgaps = (zstart, zstop, path.phase.direction_start(), path.phase.direction_stop() )
             for x,p,t in x2pt(distances, endgaps):
                 arrivals.append(Ray(path, p, x, t, endgaps))
-
+        
         if refine:
             refined = []
             for ray in arrivals:
@@ -2674,7 +2670,7 @@ def interp(x, xp, fp, monoton):
     else:
         fs = []
         for xv in x:
-            indices = num.where(num.logical_and(xp[:-1] <= xv , xv < xp[1:]))[0]
+            indices = num.where(num.logical_or( num.logical_and(xp[:-1] >= xv , xv > xp[1:]), num.logical_and(xp[:-1] <= xv , xv < xp[1:])))[0]
             fvs = []
             for i in indices:
                 xr = (xv - xp[i])/(xp[i+1]-xp[i])
