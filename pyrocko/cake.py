@@ -1679,7 +1679,7 @@ class RayPath:
                 back = []
                 for i in xrange(n):
                     z = zin + (zturn - zin)*num.sin((i+1.0)/n*math.pi/2.0)*0.999
-                    x,t = s.xt(p, zpart=[zin, z])
+                    x,t = s.xt(p, zpart=sorted([zin, z]))
                     yield z, sx + x, st + t
                     back.append((z, x, t))
 
@@ -1848,7 +1848,9 @@ class Ray:
         count = [ 0 ]
         if abs(self.x - x) > xeps:
             ip = num.searchsorted(self.path._p, self.p)
-            assert 0 < ip < self.path._p.size
+            if not (0 < ip < self.path._p.size):
+                raise RefineFailed()
+
             pl, ph = self.path._p[ip-1], self.path._p[ip]
             def f(p):
                 count[0] += 1
@@ -2611,7 +2613,9 @@ def interp(x, xp, fp, monoton):
     else:
         fs = []
         for xv in x:
-            indices = num.where(num.logical_and(xp[:-1] <= xv , xv < xp[1:]))[0]
+            indices = num.where(num.logical_or(
+                num.logical_and(xp[:-1] >= xv , xv > xp[1:]),
+                num.logical_and(xp[:-1] <= xv , xv < xp[1:])))[0]
             fvs = []
             for i in indices:
                 xr = (xv - xp[i])/(xp[i+1]-xp[i])
