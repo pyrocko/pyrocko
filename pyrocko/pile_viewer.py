@@ -2372,7 +2372,14 @@ def MakePileOverviewClass(base):
 
 PileOverview = MakePileOverviewClass(QWidget)
 GLPileOverview = MakePileOverviewClass(QGLWidget)
-        
+
+class LineEditWithAbort(QLineEdit):
+
+    def keyPressEvent(self, key_event):
+        if key_event.key() == Qt.Key_Escape:
+            self.emit( SIGNAL('aborted()') )
+        else:
+            return QLineEdit.keyPressEvent(self, key_event)
 
 class PileViewer(QFrame):
     '''PileOverview + Controls'''
@@ -2387,34 +2394,46 @@ class PileViewer(QFrame):
         
         layout = QGridLayout()
         self.setLayout( layout )
+        layout.setContentsMargins(0,0,0,0)
+        layout.setSpacing(0)
         
-        self.inputline = QLineEdit()
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setFrameShadow(QFrame.Sunken)
+
+        self.input_area = QFrame(self)
+        ia_layout = QGridLayout()
+        ia_layout.setContentsMargins(11,11,11,11)
+        self.input_area.setLayout(ia_layout)
+
+        self.inputline = LineEditWithAbort(self.input_area)
         self.connect(self.inputline, SIGNAL('returnPressed()'), self.inputline_returnpressed)
         self.connect(self.inputline, SIGNAL('editingFinished()'), self.inputline_finished)
+        self.connect(self.inputline, SIGNAL('aborted()'), self.inputline_aborted)
         self.connect(self.inputline, SIGNAL('textEdited(QString)'), self.inputline_changed)
         self.inputline.setFocusPolicy(Qt.ClickFocus)
-        self.inputline.hide()
+        self.input_area.hide()
         
         self.inputline_error_str = None
         
         self.inputline_error = QLabel()
         self.inputline_error.hide()
 
-        layout.addWidget( self.inputline, 0, 0, 1, 2 )
-        layout.addWidget( self.inputline_error, 1, 0, 1, 2 )        
-        layout.addWidget( self.pile_overview, 2, 0 )
+        ia_layout.addWidget(self.inputline, 0, 0)
+        ia_layout.addWidget(self.inputline_error, 1, 0)        
+        layout.addWidget(self.input_area, 0,0,1,2)
+        layout.addWidget( self.pile_overview, 1, 0 )
         
         scrollbar = QScrollBar(Qt.Vertical)
         self.scrollbar = scrollbar
-        layout.addWidget( scrollbar, 2, 1 )
+        layout.addWidget( scrollbar, 1, 1 )
         self.connect(self.scrollbar, SIGNAL('valueChanged(int)'), self.scrollbar_changed)
         self.block_scrollbar_changes = False
         
         self.connect(self.pile_overview, SIGNAL('want_input()'), self.inputline_show)
-        self.connect(self.pile_overview, SIGNAL("tracks_range_changed(int,int,int)"), self.tracks_range_changed)
+        self.connect(self.pile_overview, SIGNAL('tracks_range_changed(int,int,int)'), self.tracks_range_changed)
 
     def inputline_show(self):
-        self.inputline.show()
+        self.input_area.show()
         self.inputline.setFocus(Qt.OtherFocusReason)
         self.inputline.selectAll()
  
@@ -2423,6 +2442,7 @@ class PileViewer(QFrame):
         self.inputline.setPalette( pyrocko.gui_util.get_err_palette() )
         self.inputline.selectAll()
         self.inputline_error.setText(string)
+        self.input_area.show()
         self.inputline_error.show()
         
     def inputline_clear_error(self):
@@ -2437,15 +2457,9 @@ class PileViewer(QFrame):
         self.inputline_clear_error()
         
     def inputline_returnpressed(self):
-        self.inputline_finished(returnpressed=True)
-        
-    def inputline_finished(self, returnpressed=False):
-        if returnpressed:
-            line = str(self.inputline.text())
-            clearit, hideit, error = self.pile_overview.inputline_finished(line)
-        else:
-            clearit, hideit, error = False, True, None
-            
+        line = str(self.inputline.text())
+        clearit, hideit, error = self.pile_overview.inputline_finished(line)
+
         if error:
             self.inputline_set_error(error)
         
@@ -2458,10 +2472,17 @@ class PileViewer(QFrame):
                 self.inputline.setText(qinp)
             self.inputline.blockSignals(False)
         
-        if hideit:
+        if hideit and not error:
             self.pile_overview.setFocus(Qt.OtherFocusReason) 
-            self.inputline.hide()
-            
+            self.input_area.hide()
+       
+    def inputline_aborted(self):
+        self.pile_overview.setFocus(Qt.OtherFocusReason) 
+        self.input_area.hide()
+
+    def inputline_finished(self):
+        pass
+
     def tracks_range_changed(self, ntracks, ilo, ihi):
         if self.block_scrollbar_changes:
             return
