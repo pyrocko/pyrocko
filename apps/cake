@@ -227,15 +227,18 @@ if __name__ == '__main__':
         mod = c.model
         pathes = mod.gather_pathes(**c.getn('phases', 'zstart', 'zstop'))
         
+        for path in pathes:
+            print path.describe()
+
         if c.distances is not None:
             arrivals = mod.arrivals( interpolation='linear', **c.getn('phases', 'zstart', 'zstop', 'distances'))
         else:
             arrivals = None
         
         if command == 'plot-xp':
-            plot.my_xp_plot(pathes, c.distances, c.as_degrees)
+            plot.my_xp_plot(pathes, c.zstart, c.zstop, c.distances, c.as_degrees)
         elif command == 'plot-xt':
-            plot.my_xt_plot(pathes, c.distances, c.as_degrees, vred=c.vred)
+            plot.my_xt_plot(pathes, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
         elif command == 'plot-rays':
             if c.as_degrees:
                 plot.my_rays_plot_gcs(mod, pathes, arrivals, c.zstart, c.zstop, c.distances)

@@ -1478,6 +1478,10 @@ class Straight(RayElement):
             z1, z2 = z2, z1
 
         x,t = self.xt(p, zpart=(z1,z2))
+        ok = num.logical_and( self.layer.test(p, self.mode, zstop), self.layer.test(p, self.mode, zstart))
+        x = num.where(ok, x, num.nan)
+        t = num.where(ok, t, num.nan)
+
         if samedir:
             return x,t
         else:
@@ -1542,6 +1546,9 @@ class RayPath:
         c = copy.copy(self)
         c.elements = list(self.elements)
         return c
+    
+    def endgaps(self, zstart, zstop):
+        return ( zstart, zstop, self.phase.direction_start(), self.phase.direction_stop() )
 
     def append(self, element):
         self.elements.append(element)
@@ -1725,30 +1732,33 @@ class RayPath:
         if ok: 
             yield s.z_out(), sx.copy(), st.copy()
     
-    def iter_partial_zxt(self, p, endgaps):
-        dx, dt = self.xt_endgaps(p, endgaps, which='left')
-        sx = num.zeros(p.size) - dx
-        st = num.zeros(p.size) - dt
-        ok = False
+    def partial_zxt(self, p, endgaps, points_per_straight=20):
+
+        # first create full path including the endgaps
+        dxl, dtl = self.xt_endgaps(p, endgaps, which='left')
+        sx = num.zeros(p.size) - dxl
+        st = num.zeros(p.size) - dtl
+        zxt = []
         for s in self.straights():
             back = None
-            yield filled(s.z_in(), p.size), sx.copy(), st.copy()
             zin, zout = s.z_in(), s.z_out()
-            if zin != zout:
-                n = 10
-                dz = (zout - zin)/n
-                for i in xrange(n-1):
-                    z = zin + (i+1)*dz
+            if zin != zout:  # normal traversal
+                n = points_per_straight
+                zs = num.linspace(zin, zout, n).tolist()
+                for z in zs:
                     x,t = s.xt(p, zpart=sorted([zin, z]))
-                    yield filled(z, p.size), sx + x, st + t
-            else:
-                n = 20 
+                    zxt.append( (filled(z, p.size), sx + x, st + t) )
+            else: # ray turns in layer
+                n = points_per_straight
                 zturn = s.zturn(p)
                 back = []
                 for i in xrange(n):
-                    z = zin + (zturn - zin)*num.sin((i+1.0)/n*math.pi/2.0)*0.999
-                    x,t = s.xt(p, zpart=sorted([zin, z]))
-                    yield z, sx + x, st + t
+                    z = zin + (zturn - zin)*num.sin(float(i)/(n-1)*math.pi/2.0)*0.999
+                    if zturn >= zin:
+                        x,t = s.xt(p, zpart=[zin, z])
+                    else:
+                        x,t = s.xt(p, zpart=[z, zin])
+                    zxt.append((z, sx + x, st + t))
                     back.append((z, x, t))
 
             x,t = s.xt(p)
@@ -1757,13 +1767,44 @@ class RayPath:
             
             if back:
                 for z,x,t in reversed(back):
-                    yield z, sx - x, st - t
-            
-            ok = True
+                    zxt.append((z, sx - x, st - t))
+        
+        # gather results as arrays with such that x[ip, ipoint]
+        fanz, fanx, fant = [], [], [] 
+        for z,x,t in zxt:
+            fanz.append(z)
+            fanx.append(x)
+            fant.append(t)
+       
+        z = num.array(fanz).T
+        x = num.array(fanx).T
+        t = num.array(fant).T
+      
+        return z,x,t
 
-        if ok: 
-            yield filled(s.z_out(), p.size), sx.copy(), st.copy()
-
+        # cut off the endgaps, add exact endpoints
+        dxr, dtr  = self.xt_endgaps(p, endgaps, which='right')
+        xmax = x[:,-1] - dxr
+        tmax = t[:,-1] - dtr
+        zstart, zstop = endgaps[:2]
+        zs, xs, ts = [], [], []
+        for i in xrange(p.size):
+            x_ = x[i]
+            indices = num.where(num.logical_and(0. <= x_, x_ <= xmax[i]))[0]
+            n = indices.size + 2
+            zs_, xs_, ts_ = [ num.empty(n, dtype=num.float) for j in range(3) ]
+            zs_[1:-1] = z[i,indices]
+            xs_[1:-1] = x[i,indices]
+            ts_[1:-1] = t[i,indices]
+            zs_[0], zs_[-1] = zstart, zstop
+            xs_[0], xs_[-1] = 0., xmax[i]
+            ts_[0], ts_[-1] = 0., tmax[i]
+            zs.append(zs_)
+            xs.append(xs_)
+            ts.append(ts_)
+        
+        return zs, xs, ts 
+    
     def _analyse(self):
         if self._p is not None:
             return
@@ -1778,9 +1819,12 @@ class RayPath:
         self._monoton_x = monotony(xmax[1:] - xmax[:-1])
         self._monoton_t = monotony(tmax[1:] - tmax[:-1])
        
-    def draft_pxt(self):
+    def draft_pxt(self, endgaps):
         self._analyse()
-        return self._p, self._x, self._t
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        p, x, t = self._p, self._x - dx, self._t - dt
+        indices = num.where(num.isfinite(dx))
+        return p[indices].copy(), x[indices].copy(), t[indices].copy()
 
     def interpolate_t2x_linear(self, t, endgaps):
         self._analyse()
@@ -2414,11 +2458,11 @@ class LayeredModel:
             elif interpolation == 'linear':
                 x2pt = path.interpolate_x2pt_linear
 
-            endgaps = (zstart, zstop, path.phase.direction_start(), path.phase.direction_stop() )
+            endgaps = path.endgaps(zstart, zstop)
             for x,p,t in x2pt(distances, endgaps):
                 arrivals.append(Ray(path, p, x, t, endgaps))
-        
-        if refine:
+
+        if False: #refine:
             refined = []
             for ray in arrivals:
                 try:

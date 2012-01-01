@@ -115,7 +115,7 @@ colors = [ to01(tango_colors[x+i]) for i in '321' for x in 'scarletred chameleon
 shades = [ light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1,9) ]
 shades2 = [ light(to01(tango_colors['orange1']), i*0.1) for i in xrange(1,9) ]
 
-def plot_xt(pathes, plot=None, vred=None, distances=None):
+def plot_xt(pathes, zstart, zstop, plot=None, vred=None, distances=None):
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     plot = getplot(plot)
@@ -126,7 +126,7 @@ def plot_xt(pathes, plot=None, vred=None, distances=None):
             if path.xmax() < xmin or path.xmin() > xmax:
                 continue
         color = colors[ipath%len(colors)]
-        p,x,t = path.draft_pxt()
+        p,x,t = path.draft_pxt(path.endgaps(zstart, zstop))
         all_x.append(x)
         all_t.append(t)
         if vred is not None:
@@ -171,12 +171,12 @@ def troffset(dx,dy, plot=None):
     from matplotlib import transforms
     return plot.gca().transData + transforms.ScaledTranslation(dx/72., dy/72., plot.gcf().dpi_scale_trans)
 
-def plot_xp(pathes, plot=None):
+def plot_xp(pathes, zstart, zstop, plot=None):
     plot = getplot(plot)
     all_x = []
     for ipath, path in enumerate(pathes):
         color = colors[ipath%len(colors)]
-        p, x, t = path.draft_pxt()
+        p, x, t = path.draft_pxt(path.endgaps(zstart, zstop))
         plot.plot(x, p, linewidth=2, color=color)
         plot.plot(x[:1], p[:1], 'o', color=color)
         plot.plot(x[-1:], p[-1:], 'o', color=color)
@@ -206,20 +206,14 @@ def plot_rays(pathes, rays, plot=None):
         rays = pathes
 
     for iray, ray in enumerate(rays):
-        fanz, fanx = [], []
         if isinstance(ray, cake.RayPath):
             path = ray
             p = num.linspace(path.pmin(), path.pmax(), 6)
         else:
             p = cake.filled(ray.p, 1)
             path = ray.path
-            
-        for z,x,t in path.iter_partial_zxt(p, ray.endgaps):
-            fanz.append(z)
-            fanx.append(x)
         
-        fanz = num.array(fanz).T
-        fanx = num.array(fanx).T
+        fanz, fanx, _ = path.partial_zxt(p, ray.endgaps)
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
             l = plot.plot( xs, zs, color=color)
@@ -351,10 +345,10 @@ def mpl_init():
     matplotlib.rc('ytick.major', size=5)
     matplotlib.rc('figure', facecolor='white')
 
-def my_xt_plot(pathes, distances=None, as_degrees=False, vred=None):
+def my_xt_plot(pathes, zstart, zstop, distances=None, as_degrees=False, vred=None):
     import pylab as lab
     labelspace()
-    xmin, xmax, ymin, ymax = plot_xt(pathes, vred=vred, distances=distances)
+    xmin, xmax, ymin, ymax = plot_xt(pathes, zstart, zstop, vred=vred, distances=distances)
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     lab.xlim(xmin, xmax)
@@ -362,10 +356,10 @@ def my_xt_plot(pathes, distances=None, as_degrees=False, vred=None):
     labels_xt(as_degrees=as_degrees, vred=vred)
     lab.show()
 
-def my_xp_plot(pathes, distances=None, as_degrees=False):
+def my_xp_plot(pathes, zstart, zstop, distances=None, as_degrees=False):
     import pylab as lab
     labelspace()
-    xmin, xmax = plot_xp(pathes) 
+    xmin, xmax = plot_xp(pathes, zstart, zstop) 
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     lab.xlim(xmin, xmax)
@@ -409,7 +403,7 @@ def my_combi_plot(mod, pathes, rays, zstart, zstop, distances=None, as_degrees=F
     from matplotlib.transforms import Affine2D
     ax1 = lab.subplot(211)
     labelspace()
-    xmin, xmax, ymin, ymax = plot_xt(pathes, vred=vred, distances=distances)
+    xmin, xmax, ymin, ymax = plot_xt(pathes, zstart, zstop, vred=vred, distances=distances)
     if distances is None:
         lab.xlim(xmin, xmax)
 
