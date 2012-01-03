@@ -227,9 +227,6 @@ if __name__ == '__main__':
         mod = c.model
         pathes = mod.gather_pathes(**c.getn('phases', 'zstart', 'zstop'))
         
-        for path in pathes:
-            print path.describe()
-
         if c.distances is not None:
             arrivals = mod.arrivals( interpolation='linear', **c.getn('phases', 'zstart', 'zstop', 'distances'))
         else:

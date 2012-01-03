@@ -127,6 +127,8 @@ def plot_xt(pathes, zstart, zstop, plot=None, vred=None, distances=None):
                 continue
         color = colors[ipath%len(colors)]
         p,x,t = path.draft_pxt(path.endgaps(zstart, zstop))
+        if p.size == 0:
+            continue
         all_x.append(x)
         all_t.append(t)
         if vred is not None:
@@ -196,7 +198,7 @@ def labels_xp(plot=None, as_degrees=False):
         xscaled(d2r*cake.earthradius*0.001, plot)
     plot.ylabel('Ray Parameter [s/deg]')
 
-def plot_rays(pathes, rays, plot=None):
+def plot_rays(pathes, rays, zstart, zstop, plot=None):
     plot = getplot(plot)
     path_to_color = {}
     for ipath, path in enumerate(pathes):
@@ -213,7 +215,7 @@ def plot_rays(pathes, rays, plot=None):
             p = cake.filled(ray.p, 1)
             path = ray.path
         
-        fanz, fanx, _ = path.partial_zxt(p, ray.endgaps)
+        fanz, fanx, _ = path.partial_zxt(p, path.endgaps(zstart, zstop))
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
             l = plot.plot( xs, zs, color=color)
@@ -371,7 +373,7 @@ def my_rays_plot_gcs(mod, pathes, rays, zstart, zstop, distances=None):
     mpl_init()
     globe_cross_section()
     plot = lab.subplot(1,1,1, projection='globe_cross_section')
-    plot_rays(pathes, rays, plot=plot)
+    plot_rays(pathes, rays, zstart, zstop, plot=plot)
     plot_source(zstart, plot=plot)
     if distances is not None:
         plot_receivers(zstop, distances, plot=plot)
@@ -383,7 +385,7 @@ def my_rays_plot(mod, pathes, rays, zstart, zstop, distances=None, as_degrees=Fa
     import pylab as lab
     mpl_init()
     labelspace()
-    plot_rays(pathes, rays)
+    plot_rays(pathes, rays, zstart, zstop)
     xmin, xmax = lab.xlim()
     ymin, ymax = lab.ylim()
     sketch_model(mod)
@@ -413,7 +415,7 @@ def my_combi_plot(mod, pathes, rays, zstart, zstop, distances=None, as_degrees=F
 
     ax2 = lab.subplot(212, sharex=ax1)
     labelspace()
-    plot_rays(pathes, rays)
+    plot_rays(pathes, rays, zstart, zstop)
     xmin, xmax = lab.xlim()
     ymin, ymax = lab.ylim()
     sketch_model(mod)

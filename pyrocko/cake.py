@@ -1043,14 +1043,14 @@ class Layer:
             x = p/sap * lr
             t = 1./(a**2 * sap)
        
-        if isinstance(x, num.ndarray):
-            iturn = num.where(num.logical_or(r2*utop - p < 0, r1*ubot - p < 0))
-            x[iturn] *= 2.
-            t[iturn] *= 2.
-        else:
-            if r2*utop - p < 0 or r1*ubot - p < 0:
-                x *= 2.
-                t *= 2.
+#        if isinstance(x, num.ndarray):
+#            iturn = num.where(num.logical_or(r2*utop - p <= 0., r1*ubot - p <= 0.))
+#            x[iturn] *= 2.
+#            t[iturn] *= 2.
+#        else:
+#            if r2*utop - p <= 0. or r1*ubot - p <= 0.:
+#                x *= 2.
+#                t *= 2.
         
         x *= r2d
 
@@ -1061,13 +1061,12 @@ class Layer:
         
         Uses potential interpolation.
         '''
-
-        return (self.u(mode, z)*radius(z) - p) >= 0
+        
+        return (self.u(mode, z)*radius(z) - p) > 0.
 
     def tests(self, p, mode):
-
         utop, ubot = self.us(mode)
-        return (utop * radius(self.ztop) - p) >= 0, (ubot * radius(self.zbot) - p) >= 0
+        return (utop * radius(self.ztop) - p) > 0., (ubot * radius(self.zbot) - p) > 0.
    
     def zturn_potint(self, p, mode):
         '''Get turning depth for given ray parameter and propagation mode.'''
@@ -1125,7 +1124,7 @@ class HomogeneousLayer(Layer):
         u = self.u(mode)
         return u, u
 
-    def v(self, mode):
+    def v(self, mode, z=None):
         if mode == P:
             return self.m.vp
         if mode == S:
@@ -1221,7 +1220,15 @@ class GradientLayer(Layer):
             return self.interpolate(z, self.mtop.vp, self.mbot.vp)
         if mode == S:
             return self.interpolate(z, self.mtop.vs, self.mbot.vs)
-    
+   
+    def test(self, p, mode, z):
+        return Layer.test(self, p, mode, z)
+        if self._use_potential_interpolation:
+            return Layer.test(self, p, mode, z)
+
+        pflat = self.pflat(p, z)
+        return self.u(mode, z) > pflat
+
     def xt(self, p, mode, zpart=None):
         if self._use_potential_interpolation:
             return self.xt_potint(p, mode, zpart)
@@ -1247,14 +1254,14 @@ class GradientLayer(Layer):
         x =  (xxtop - xxbot)/(b*pdp)
         t =  (tttop - ttbot)/b + pflat*x
       
-        if isinstance(x, num.ndarray):
-            iturn = num.where(num.logical_or(utop - pflat <= 0, ubot - pflat <= 0))
-            x[iturn] *= 2.
-            t[iturn] *= 2.
-        else:
-            if utop - pflat <= 0 or ubot - pflat <= 0:
-                x *= 2.
-                t *= 2.
+#        if isinstance(x, num.ndarray):
+#            iturn = num.where(num.logical_or(utop - pflat <= 0, ubot - pflat <= 0))
+#            x[iturn] *= 2.
+#            t[iturn] *= 2.
+#        else:
+#            if utop - pflat <= 0 or ubot - pflat <= 0:
+#                x *= 2.
+#                t *= 2.
 
         x *= r2d/(earthradius - self.zmid)
         return x, t
@@ -1421,66 +1428,95 @@ class Straight(RayElement):
 
     def __init__(self, direction_in, direction_out, mode, layer):
         self.mode = mode
-        self.direction_in = direction_in
-        self.direction_out = direction_out
+        self._direction_in = direction_in
+        self._direction_out = direction_out
         self.layer = layer
     
-    def angle_in(self, p):
-        p = self.pflat_in(p)
-        vtop, vbot = self.layer.vs(self.mode)
-        if self.direction_in == DOWN:
-            return num.arcsin(vtop*p)*r2d
+    def angle_in(self, p, endgaps=None):
+        z = self.z_in(endgaps) 
+        dir = self.eff_direction_in(endgaps)
+        v = self.layer.v(self.mode, z)
+        pf = self.layer.pflat(p, z)
+
+        if dir == DOWN:
+            return num.arcsin(v*pf)*r2d
         else:
-            return 180.-num.arcsin(vbot*p)*r2d
+            return 180.-num.arcsin(v*pf)*r2d
 
-    def angle_out(self, p):
-        p = self.pflat_out(p)
-        vtop, vbot = self.layer.vs(self.mode)
-        if self.direction_out == DOWN:
-            v = vbot
-            o = 90.
+
+    def angle_out(self, p, endgaps=None):
+        z = self.z_out(endgaps) 
+        dir = self.eff_direction_out(endgaps)
+        v = self.layer.v(self.mode, z)
+        pf = self.layer.pflat(p, z)
+
+        if dir == DOWN:
+            return o + num.arcsin(v*pf)*r2d
         else:
-            v = vtop
-            o = 0.
+            return num.arcsin(v*pf)*r2d
 
-        return o + num.arcsin(v*p)*r2d
+    def pflat_in(self, p, endgaps=None):
+        return p / (earthradius-self.z_in(endgaps))
 
-    def pflat_in(self, p):
-        return p / (earthradius-self.z_in())
+    def pflat_out(self, p, endgaps=None):
+        return p / (earthradius-self.z_out(endgaps))
 
-    def pflat_out(self, p):
-        return p / (earthradius-self.z_out())
+    def test(self, p, z):
+        return self.layer.test(p, self.mode, z)
 
-    def z_in(self):
-        l = self.layer
-        return (l.ztop, l.zbot)[self.direction_in == UP]
+    def z_in(self, endgaps=None):
+        if endgaps is not None:
+            return endgaps[0]
+        else:
+            l = self.layer
+            return (l.ztop, l.zbot)[self._direction_in == UP]
 
-    def z_out(self):
-        l = self.layer
-        return (l.ztop, l.zbot)[self.direction_out == DOWN]
+    def z_out(self, endgaps=None):
+        if endgaps is not None:
+            return endgaps[1]
+        else:
+            l = self.layer
+            return (l.ztop, l.zbot)[self._direction_out == DOWN]
+
+    def eff_direction_in(self, endgaps=None):
+        if endgaps is None:
+            return self._direction_in
+        else:
+            return endgaps[2]
+
+    def eff_direction_out(self, endgaps=None):
+        if endgaps is None:
+            return self._direction_out
+        else:
+            return endgaps[3]
 
     def zturn(self, p):
         l = self.layer
         return l.zturn(p, self.mode)
     
-    def u_in(self):
-        return self.layer.us(self.mode)[self.direction_in==UP]
+    def u_in(self, endgaps=None):
+        return self.layer.u(self.mode, self.z_in(endgaps))
 
-    def u_out(self):
-        return self.layer.us(self.mode)[self.direction_out==DOWN]
+    def u_out(self, endgaps=None):
+        return self.layer.u(self.mode, self.z_out(endgaps))
 
     def xt(self, p, zpart=None):
-        return self.layer.xt(p, self.mode, zpart=zpart)
+        x,t = self.layer.xt(p, self.mode, zpart=zpart)
+        if self._direction_in != self._direction_out and zpart is None: 
+            x *= 2.
+            t *= 2.
+        return x,t
 
     def xt_gap(self, p, zstart, zstop, samedir ):
         z1, z2 = zstart, zstop
         if z1 > z2:
             z1, z2 = z2, z1
 
-        x,t = self.xt(p, zpart=(z1,z2))
+        x,t = self.layer.xt(p, self.mode, zpart=(z1,z2)) 
+
         ok = num.logical_and( self.layer.test(p, self.mode, zstop), self.layer.test(p, self.mode, zstart))
-        x = num.where(ok, x, num.nan)
-        t = num.where(ok, t, num.nan)
+#        x = num.where(ok, x, num.nan)
+#        t = num.where(ok, t, num.nan)
 
         if samedir:
             return x,t
@@ -1489,7 +1525,7 @@ class Straight(RayElement):
             return xfull-x, tfull-t
 
     def __hash__(self):
-        return hash((self.direction_in, self.direction_out, self.mode, id(self.layer)))
+        return hash((self._direction_in, self._direction_out, self.mode, id(self.layer)))
 
 class Kink(RayElement):
     '''An interaction of a ray with a :py:class:`Discontinuity`.'''
@@ -1630,10 +1666,10 @@ class RayPath:
 
         first = self.first_straight()
         last = self.last_straight()
-        return  num.abs(dp_dx) * first.pflat_in(p) / (4.0 * math.pi * num.sin(x) * 
-                (earthradius-first.z_in()) * (earthradius-last.z_out())**2 * 
-                first.u_in()**2 * num.abs(num.cos(first.angle_in(p)*d2r)) * 
-                num.abs(num.cos(last.angle_out(p)*d2r)))
+        return  num.abs(dp_dx) * first.pflat_in(p, endgaps) / (4.0 * math.pi * num.sin(x) * 
+                (earthradius-first.z_in(endgaps)) * (earthradius-last.z_out(endgaps))**2 * 
+                first.u_in(endgaps)**2 * num.abs(num.cos(first.angle_in(p, endgaps)*d2r)) * 
+                num.abs(num.cos(last.angle_out(p, endgaps)*d2r)))
     
     def make_p(self, dp=None, n=None, nmin=None):
         assert dp is None or n is None
@@ -1654,14 +1690,20 @@ class RayPath:
         zstart, zstop, dirstart, dirstop = endgaps
         firsts = self.first_straight()
         lasts = self.last_straight()
-        xs,ts = firsts.xt_gap(p, zstart, firsts.z_in(), dirstart == firsts.direction_in)
-        xe,te = lasts.xt_gap(p, zstop, lasts.z_out(), dirstop == lasts.direction_out)
+        xs,ts = firsts.xt_gap(p, zstart, firsts.z_in(), dirstart == firsts._direction_in)
+        xe,te = lasts.xt_gap(p, zstop, lasts.z_out(), dirstop == lasts._direction_out)
         if which == 'both':
             return xs + xe, ts + te
         elif which == 'left':
             return xs, ts
         elif which == 'right':
             return xe, te
+
+    def xt_endgaps_ptest(self, p, endgaps):
+        zstart, zstop, dirstart, dirstop = endgaps
+        firsts = self.first_straight()
+        lasts = self.last_straight()
+        return num.logical_and(firsts.test(p, zstart), lasts.test(p, zstop))
 
     def xt(self, p, endgaps):
         '''Calculate distance and traveltime for given ray parameter.'''
@@ -1754,7 +1796,7 @@ class RayPath:
                 back = []
                 for i in xrange(n):
                     z = zin + (zturn - zin)*num.sin(float(i)/(n-1)*math.pi/2.0)*0.999
-                    if zturn >= zin:
+                    if zturn[0] >= zin:
                         x,t = s.xt(p, zpart=[zin, z])
                     else:
                         x,t = s.xt(p, zpart=[z, zin])
@@ -1779,8 +1821,6 @@ class RayPath:
         z = num.array(fanz).T
         x = num.array(fanx).T
         t = num.array(fant).T
-      
-        return z,x,t
 
         # cut off the endgaps, add exact endpoints
         dxr, dtr  = self.xt_endgaps(p, endgaps, which='right')
@@ -1809,7 +1849,7 @@ class RayPath:
         if self._p is not None:
             return
 
-        p = self.make_p(nmin=10)
+        p = self.make_p(nmin=20)
         xmin, xmax, tmin, tmax = self.xt_limits(p)
        
         self._x, self._t, self._p = xmax, tmax, p
@@ -1823,7 +1863,9 @@ class RayPath:
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
         p, x, t = self._p, self._x - dx, self._t - dt
-        indices = num.where(num.isfinite(dx))
+        ok = self.xt_endgaps_ptest(self._p, endgaps)
+
+        indices = num.where(ok)
         return p[indices].copy(), x[indices].copy(), t[indices].copy()
 
     def interpolate_t2x_linear(self, t, endgaps):
@@ -1848,7 +1890,7 @@ class RayPath:
         dx, dt = self.xt_endgaps(self._p, endgaps)
         xp = interp( x, self._x - dx, self._p, 0)
         xt = interp( x, self._x - dx, self._t - dt, 0)
-        return [ (x,p,t) for ((x,p), (_,t)) in zip(xp, xt) ] 
+        return [ (x,p,t) for ((x,p), (_,t)) in zip(xp, xt)  ] 
 
     def update_splines(self):
         self._analyse()
@@ -1901,7 +1943,7 @@ class RayPath:
             if isinstance(el, Straight):
                 if start_i is None:
                     start_i = el.layer.ilayer
-                if el.direction_in != el.direction_out:
+                if el._direction_in != el._direction_out:
                     turn_i = el.layer.ilayer
                 end_i = el.layer.ilayer
                 
@@ -1922,7 +1964,7 @@ class RayPath:
     def describe(self):
         self._analyse()
         return '%s\n - x range: [%g, %g] deg\n - t range: [%g, %g] s\n - p range: [%g, %g] s/deg\n' % (
-                self, self._xmin, self._xmax, self._tmin, self._tmax, self._pmin, self._pmax)
+                self, self._xmin, self._xmax, self._tmin, self._tmax, self._pmin/r2d, self._pmax/r2d)
 
 
 class RefineFailed(Exception):
@@ -1979,7 +2021,8 @@ class Ray:
             try:
                 p = bisect(f, pl, ph)
                 x, self.t = self.path.xt(p, self.endgaps)
-                if abs(self.x - x) > xeps:
+                ok = self.path.xt_endgaps_ptest(p, self.endgaps)
+                if not ok or abs(self.x - x) > xeps:
                     raise RefineFailed()
 
                 self.p = p
@@ -1989,10 +2032,10 @@ class Ray:
         return count[0]
 
     def takeoff_angle(self):
-        return self.path.first_straight().angle_in(self.p)
+        return self.path.first_straight().angle_in(self.p, self.endgaps)
 
     def incidence_angle(self):
-        return self.path.last_straight().angle_out(self.p)
+        return self.path.last_straight().angle_out(self.p, self.endgaps)
     
     def efficiency(self):
         return self.path.efficiency(self.p)
@@ -2172,6 +2215,9 @@ class LayeredModel:
         current = walker.current()
         
         ttop, tbot = current.tests(p, mode)
+        if not ttop and not tbot:
+            raise CannotPropagate(direction, current.ilayer)
+
         if (direction == DOWN and not ttop) or (direction == UP and not tbot):
             direction = -direction
 
@@ -2387,13 +2433,15 @@ class LayeredModel:
         pathes = {}
         for phase in phases:
             mode = phase.first_leg().mode
-            direction = phase.first_leg().departure
+            direction = phase.direction_start()
             mat = self.material(zstart, -direction)
             if mode == P:
-                pmax = radius(zstart)/mat.vp
+                vel = mat.vp
             else:
-                pmax = radius(zstart)/mat.vs
-            
+                vel = mat.vs
+
+            lay = self.layer(zstart, -direction)
+            pmax = max( [ radius(z)/vel for z in (lay.ztop, lay.zbot) ] )
 
             cached = {}
             counter = [ 0 ]
@@ -2419,13 +2467,14 @@ class LayeredModel:
                     return
                 path1 = p_to_path(pmin)
                 path2 = p_to_path(pmax)
-                if path1 is None and path2 is None and i > 7:
+                if path1 is None and path2 is None and i > 8:
                     return
                 if path1 is None or path2 is None or hash(path1) != hash(path2):
                     recurse(pmin, (pmin+pmax)/2., i+1)
                     recurse((pmin+pmax)/2., pmax, i+1)
 
             recurse(0., pmax)
+            print counter
 
         for path, ps in pathes.iteritems():
             path.set_prange(min(ps), max(ps), pmax/(np-1))
@@ -2434,7 +2483,7 @@ class LayeredModel:
         pathes.sort(key=lambda x: x.pmin)
         return pathes
     
-    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, refine=True, interpolation='linear', pdepth=18):
+    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=10000, refine=True, interpolation='linear', pdepth=18):
         '''Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
@@ -2448,10 +2497,10 @@ class LayeredModel:
         '''
         
         distances = num.asarray(distances, dtype=num.float)
-    
+   
+        print 'gather'
         arrivals = []
         for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
-            
             if interpolation == 'spline':
                 assert False
                 x2pt = path.interpolate_x2pt_spline
@@ -2462,7 +2511,8 @@ class LayeredModel:
             for x,p,t in x2pt(distances, endgaps):
                 arrivals.append(Ray(path, p, x, t, endgaps))
 
-        if False: #refine:
+        print 'refine'
+        if refine:
             refined = []
             for ray in arrivals:
                 try:
@@ -2470,7 +2520,7 @@ class LayeredModel:
                     refined.append(ray) 
                 except RefineFailed:
                     pass
-            
+
             arrivals = refined
 
         arrivals.sort(key=lambda x: (x.x, x.t))
