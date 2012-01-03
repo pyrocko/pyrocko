@@ -1451,7 +1451,7 @@ class Straight(RayElement):
         pf = self.layer.pflat(p, z)
 
         if dir == DOWN:
-            return o + num.arcsin(v*pf)*r2d
+            return 90. + num.arcsin(v*pf)*r2d
         else:
             return num.arcsin(v*pf)*r2d
 
@@ -1565,11 +1565,9 @@ class PRangeNotSet(Exception):
 class RayPath:
     '''Representation of a fan of rays running through a common sequence of layers / interfaces.'''
 
-    def __init__(self, phase, zstart, zstop, redistribute_p=False):
+    def __init__(self, phase, redistribute_p=False):
         self.elements = []
         self.phase = phase
-        self.zstart = zstart
-        self.zstop = zstop
         self.used_phase = None
         self._spline_px = None
         self._spline_pt = None
@@ -1703,6 +1701,7 @@ class RayPath:
         zstart, zstop, dirstart, dirstop = endgaps
         firsts = self.first_straight()
         lasts = self.last_straight()
+        print firsts.test(p, zstart), lasts.test(p, zstop)
         return num.logical_and(firsts.test(p, zstart), lasts.test(p, zstop))
 
     def xt(self, p, endgaps):
@@ -2000,6 +1999,7 @@ class Ray:
         self.endgaps = endgaps
 
     def refine(self, eps=0.0001):
+        print 'xx'
         x, t = self.path.xt(self.p, self.endgaps)
         xeps = self.x*eps
         count = [ 0 ]
@@ -2029,6 +2029,7 @@ class Ray:
             except ValueError:
                 raise RefineFailed()
 
+        
         return count[0]
 
     def takeoff_angle(self):
@@ -2044,8 +2045,8 @@ class Ray:
         return self.path.spreading(self.p, self.endgaps)
 
     def surface_sphere(self):
-        x1, y1 = 0., earthradius - self.path.zstart
-        r2 = earthradius - self.path.zstop
+        x1, y1 = 0., earthradius - self.endgaps[0]
+        r2 = earthradius - self.endgaps[1]
         x2, y2 = r2*math.sin(self.x*d2r), r2*math.cos(self.x*d2r)
         return ((x2-x1)**2 + (y2-y1)**2)*4.0*math.pi
 
@@ -2181,7 +2182,7 @@ class LayeredModel:
 
         return phase
 
-    def path(self, p, phase=PhaseDef('P'), zstart=0.0, zstop=0.0):
+    def path(self, p, phase, layer_start, layer_stop):
         '''Get ray path for given ray parameter, phase definition and fixed source and receiver depths.
         
         :param p: ray parameter (spherical) [s/deg]
@@ -2195,9 +2196,6 @@ class LayeredModel:
         :py:exc:`BottomReached` or :py:exc:`SurfaceReached` is raised.
         '''
        
-        layer_start = self.layer(zstart, -phase.direction_start())
-        layer_stop = self.layer(zstop, phase.direction_stop())
-
         phase = self.adapt_phase(phase)
         knees = phase.knees()
         legs = phase.legs()
@@ -2224,7 +2222,7 @@ class LayeredModel:
         mode_layers = []
         used_phase = PhaseDef()
         used_phase.append(Leg(direction, mode))
-        path = RayPath(phase, zstart, zstop)
+        path = RayPath(phase)
         trapdetect = set()
         while True:
             at_layer = isinstance(current, Layer)
@@ -2294,129 +2292,6 @@ class LayeredModel:
         used_phase._direction_stop = direction_stop
         path.set_used_phase(used_phase)
         return path
-    
-    def multi_path(self, p, phase=PhaseDef('P'), zstart=0.0, zstops=[ 0.0 ]):
-        '''Iterate ray paths for given ray parameter, phase definition and fixed source and multiple receiver depths.
-        
-        :param p: ray parameter (spherical) [s/deg]
-        :param phase: phase definition (:py:class:`PhaseDef` object)
-        :param zstart: source depth [m]
-        :param zstop: list of receiver depths [m]
-        :yields: :py:class:`RayPath` objects
-        '''
-        
-        zstops = list(zstops)
-
-        phase = self.adapt_phase(phase)
-        knees = phase.knees()
-        legs = phase.legs()
-        next_knee = next_or_none(knees)
-        leg = next_or_none(legs)
-        assert leg is not None
-
-        direction = leg.departure
-        direction_stop = phase.direction_stop()
-        mode = leg.mode
-        mode_stop = phase.last_leg().mode
-
-        breaks = [ zstart ] + zstops
-        walker = self.walker(breaks)
-        walker.goto(zstart, -direction)
-        current = walker.current()
-        z = zstart
-        mode_layers = []
-        used_phase = PhaseDef()
-        used_phase.append(Leg(direction, mode))
-        path = RayPath(phase, zstart, None)
-        trapdetect = set()
-        
-        def finish(path, used_phase, zstop, direction_stop):
-            path = path.copy()
-            path.zstop = zstop
-            path.simplify()
-            used_phase = used_phase.copy()
-            used_phase._direction_stop = direction_stop
-            path.set_used_phase(used_phase)
-            return path
-       
-        try:
-            while zstops:
-
-                if next_knee is None: # detect trapped wave
-                    k = (id(current), direction, mode)
-                    if k in trapdetect:
-                        raise Trapped()
-                    
-                    trapdetect.add(k)
-                
-                if isinstance(current, Discontinuity):
-                    oldmode, olddirection = mode, direction
-                    if next_knee is not None and next_knee.matches(current, mode, direction):
-                        direction = next_knee.out_direction()
-                        mode = next_knee.out_mode
-                        next_knee = next_or_none(knees)
-                        leg = legs.next()
-                    
-                    else: # implicit reflection/transmission
-                        direction = current.propagate(p, mode, direction)
-
-                    if oldmode != mode or olddirection != direction:
-                        if isinstance(current, Surface):
-                            zz = 'surface'
-                        else:
-                            zz = z
-                        used_phase.append(Knee(zz, olddirection, olddirection!=direction, oldmode, mode))
-                        used_phase.append(Leg(direction, mode))
-                    
-                    path.append(Kink(olddirection, direction, oldmode, mode, current))
-
-                if isinstance(current, Layer):
-                    if current.at_bottom(z) and direction == DOWN:
-                        raise BottomReached()
-                    if current.at_top(z) and direction == UP:
-                        raise SurfaceReached()
-                    direction_in = direction
-                    direction = current.propagate(p, mode, direction_in)
-
-                    zmin, zmax = leg.depthmin, leg.depthmax
-                    if zmin is not None or zmax is not None:
-                        if direction_in != direction:
-                            zturn = current.zturn(p, mode)
-                            if zmin is not None and zturn < zmin:
-                                raise MinDepthReached()
-                            if zmax is not None and zturn > zmax:
-                                raise MaxDepthReached()
-                        else:
-                            if zmin is not None and current.ztop < zmin:
-                                raise MinDepthReached()
-                            if zmax is not None and current.zbot > zmax:
-                                raise MaxDepthReached()
-
-                    path.append(Straight(direction_in, direction, mode, current))
-
-                if direction == DOWN:
-                    z = current.zbot
-                    for zstop in list(zstops):
-                        if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                            path_ = finish(path, used_phase, zstop, direction_stop)
-                            yield path_
-                            zstops.remove(zstop)
-                            
-                    walker.down()
-                else:
-                    z = current.ztop
-                    for zstop in list(zstops):
-                        if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                            path_ = finish(path, used_phase, zstop, direction_stop)
-                            yield path_
-                            zstops.remove(zstop)
-                    
-                    walker.up()
-                    
-                current = walker.current()
-
-        except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached, Trapped), e:
-            pass
 
     def gather_pathes(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, pdepth=18):
         '''Get all possible ray pathes for fixed source and receiver depth for one or more phase definitions.
@@ -2432,16 +2307,12 @@ class LayeredModel:
             phases = [ phases ]
         pathes = {}
         for phase in phases:
-            mode = phase.first_leg().mode
-            direction = phase.direction_start()
-            mat = self.material(zstart, -direction)
-            if mode == P:
-                vel = mat.vp
-            else:
-                vel = mat.vs
+            layer_start = self.layer(zstart, -phase.direction_start())
+            layer_stop = self.layer(zstop, phase.direction_stop())
 
-            lay = self.layer(zstart, -direction)
-            pmax = max( [ radius(z)/vel for z in (lay.ztop, lay.zbot) ] )
+            pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
+            pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
+            pmax = min(pmax_start, pmax_stop)
 
             cached = {}
             counter = [ 0 ]
@@ -2451,7 +2322,7 @@ class LayeredModel:
 
                 try:
                     counter[0] += 1
-                    path = self.path(p, phase, zstart, zstop)
+                    path = self.path(p, phase, layer_start, layer_stop)
                     if path not in pathes:
                         pathes[path] = []
                     pathes[path].append(p)
@@ -2517,7 +2388,9 @@ class LayeredModel:
             for ray in arrivals:
                 try:
                     ray.refine()
-                    refined.append(ray) 
+                    ok = ray.path.xt_endgaps_ptest(ray.p, endgaps)
+                    if ok:
+                        refined.append(ray) 
                 except RefineFailed:
                     pass
 
