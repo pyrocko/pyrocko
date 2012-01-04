@@ -910,22 +910,28 @@ def smode(i):
     elif i == S:
         return 's'
 
-class SurfaceReached(Exception):
+class PathFailed(Exception):
     pass
 
-class BottomReached(Exception):
+class SurfaceReached(PathFailed):
     pass
 
-class MaxDepthReached(Exception):
+class BottomReached(PathFailed):
     pass
 
-class MinDepthReached(Exception):
+class MaxDepthReached(PathFailed):
     pass
 
-class Trapped(Exception):
+class MinDepthReached(PathFailed):
     pass
 
-class CannotPropagate(Exception):
+class Trapped(PathFailed):
+    pass
+
+class NotPhaseConform(PathFailed):
+    pass
+
+class CannotPropagate(PathFailed):
     def __init__(self, direction, ilayer):
         Exception.__init__(self)
         self._direction = direction
@@ -2102,8 +2108,6 @@ class DiscontinuityNotFound(Exception):
     def __str__(self):
         return 'Cannot find discontinuity from given depth or name: %s' % self.depth_or_name
 
-class NotPhaseConform(Exception):
-    pass
 
 class LayeredModel:
     '''Representation of a layer cake model.
@@ -2122,6 +2126,8 @@ class LayeredModel:
         self._surface_material = None
         self._elements = []
         self.nlayers = 0
+        self._np = 10000
+        self._pdepth = 18
 
     def zeq(self, z1, z2):
         return abs(z1-z2) < ZEPS
@@ -2328,13 +2334,12 @@ class LayeredModel:
         path.set_used_phase(used_phase)
         return path
 
-    def gather_paths(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, pdepth=18):
+    def gather_paths(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0):
         '''Get all possible ray paths for fixed source and receiver depth for one or more phase definitions.
         
         :param phases: a :py:class:`PhaseDef` object or a list of such objects
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
-        :param np: controls granularity of ray path fan drafting
         :returns: a list of :py:class:`RayPath` objects
         '''
         
@@ -2362,14 +2367,14 @@ class LayeredModel:
                         paths[path] = []
                     paths[path].append(p)
 
-                except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached, Trapped), e:
+                except PathFailed:
                     path = None
                 
                 cached[p] = path
                 return path
             
             def recurse(pmin, pmax, i=0):
-                if i > pdepth:
+                if i > self._pdepth:
                     return
                 path1 = p_to_path(pmin)
                 path2 = p_to_path(pmax)
@@ -2382,20 +2387,19 @@ class LayeredModel:
             recurse(0., pmax)
 
         for path, ps in paths.iteritems():
-            path.set_prange(min(ps), max(ps), pmax/(np-1))
+            path.set_prange(min(ps), max(ps), pmax/(self._np-1))
         
         paths = paths.keys()
         paths.sort(key=lambda x: x.pmin)
         return paths
     
-    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=10000, refine=True, interpolation='linear', pdepth=18):
+    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, refine=True, interpolation='linear'):
         '''Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
         :param phases: a :py:class:`PhaseDef` object or a list of such objects
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
-        :param np: controls granularity of ray path fan drafting
         :param refine: bool flag, whether to use bisectioning to improve (p,x,t) estimated from interpolation
         :param interpolation: string key, type of interpolation to be used (``'linear'`` or ``'spline'``)
         :returns: a list of :py:class:`Ray` objects, sorted by distance
@@ -2405,7 +2409,7 @@ class LayeredModel:
    
         print 'gather'
         arrivals = []
-        for path in self.gather_paths( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
+        for path in self.gather_paths( phases, zstart=zstart, zstop=zstop):
             if interpolation == 'spline':
                 assert False
                 x2pt = path.interpolate_x2pt_spline

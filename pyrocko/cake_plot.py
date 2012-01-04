@@ -14,7 +14,7 @@ def globe_cross_section():
     class GlobeCrossSectionAxes(PolarAxes):
         '''
         A variant of PolarAxes where theta starts pointing north and goes
-        clockwise.
+        clockwise and the radial axis is reversed.
         '''
         name = 'globe_cross_section'
         
@@ -197,6 +197,13 @@ def labels_xp(plot=None, as_degrees=False):
         plot.xlabel('Distance [km]')
         xscaled(d2r*cake.earthradius*0.001, plot)
     plot.ylabel('Ray Parameter [s/deg]')
+
+def labels_model(plot=None):
+    plot = getplot(plot)
+    plot.xlabel('S-wave and P-wave velocity [km/s]')
+    xscaled(0.001, plot)
+    plot.ylabel('Depth [km]')
+    yscaled(0.001, plot)
 
 def plot_rays(paths, rays, zstart, zstop, plot=None):
     plot = getplot(plot)
@@ -433,6 +440,7 @@ def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fa
 def my_model_plot(mod):
 
     import pylab as lab
+    labels_model()
     sketch_model(mod)
     z = mod.profile('z')
     vp = mod.profile('vp')
@@ -447,3 +455,4 @@ def my_model_plot(mod):
     lab.ylim(ymax+my, ymin-my)
     lab.xlim(xmin, xmax+mx)
     lab.show()
+
