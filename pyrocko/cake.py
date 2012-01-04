@@ -1500,6 +1500,14 @@ class Straight(RayElement):
     def u_out(self, endgaps=None):
         return self.layer.u(self.mode, self.z_out(endgaps))
 
+    def critical_p_in(self, endgaps=None):
+        z = self.z_in(endgaps)
+        return self.layer.u(self.mode, z)*radius(z)
+
+    def critical_p_out(self, endgaps=None):
+        z = self.z_out(endgaps)
+        return self.layer.u(self.mode, z)*radius(z)
+
     def xt(self, p, zpart=None):
         x,t = self.layer.xt(p, self.mode, zpart=zpart)
         if self._direction_in != self._direction_out and zpart is None: 
@@ -1701,7 +1709,6 @@ class RayPath:
         zstart, zstop, dirstart, dirstop = endgaps
         firsts = self.first_straight()
         lasts = self.last_straight()
-        print firsts.test(p, zstart), lasts.test(p, zstop)
         return num.logical_and(firsts.test(p, zstart), lasts.test(p, zstop))
 
     def xt(self, p, endgaps):
@@ -1960,11 +1967,40 @@ class RayPath:
         su = '(%s)' % self.used_phase.used_repr()
         return '%-15s %-17s %s' % (self.phase.definition(), su, ''.join(x))
 
-    def describe(self):
-        self._analyse()
-        return '%s\n - x range: [%g, %g] deg\n - t range: [%g, %g] s\n - p range: [%g, %g] s/deg\n' % (
-                self, self._xmin, self._xmax, self._tmin, self._tmax, self._pmin/r2d, self._pmax/r2d)
+    def critical_pstart(self, endgaps):
+        return self.first_straight().critical_p_in(endgaps)
 
+    def critical_pstop(self, endgaps):
+        return self.last_straight().critical_p_out(endgaps)
+
+    def describe(self, endgaps=None, as_degrees=False):
+        self._analyse()
+
+        if as_degrees:
+            xunit = 'deg'
+            xfact = 1.
+        else:
+            xunit = 'km'
+            xfact = d2m/km
+            
+        
+        sg = '  Ranges for all depths in source and receiver layers:\n   - x [%g, %g] %s\n   - t [%g, %g] s\n   - p [%g, %g] s/deg\n' % (
+                self._xmin*xfact, self._xmax*xfact, xunit, self._tmin, self._tmax, self._pmin/r2d, self._pmax/r2d)
+
+        if endgaps is not None:
+            p,x,t = self.draft_pxt(endgaps)
+            pp = min(self.critical_pstart(endgaps), self.critical_pstop(endgaps))
+            xx, tt = self.xt(pp, endgaps)
+            x = num.concatenate((x, [xx]))
+            t = num.concatenate((t, [tt]))
+            p = num.concatenate((p, [pp]))
+
+            ss = '  Ranges for given source and receiver depths:\n   - x [%g, %g] %s\n   - t [%g, %g] s\n   - p [%g, %g] s/deg\n' % (
+                    x.min()*xfact, x.max()*xfact, xunit, t.min(), t.max(), p.min()/r2d, p.max()/r2d)
+        else:
+            ss = ''
+
+        return '%s\n' % self + ss + sg
 
 class RefineFailed(Exception):
     pass
@@ -1999,7 +2035,6 @@ class Ray:
         self.endgaps = endgaps
 
     def refine(self, eps=0.0001):
-        print 'xx'
         x, t = self.path.xt(self.p, self.endgaps)
         xeps = self.x*eps
         count = [ 0 ]
@@ -2293,8 +2328,8 @@ class LayeredModel:
         path.set_used_phase(used_phase)
         return path
 
-    def gather_pathes(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, pdepth=18):
-        '''Get all possible ray pathes for fixed source and receiver depth for one or more phase definitions.
+    def gather_paths(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, pdepth=18):
+        '''Get all possible ray paths for fixed source and receiver depth for one or more phase definitions.
         
         :param phases: a :py:class:`PhaseDef` object or a list of such objects
         :param zstart: source depth [m]
@@ -2305,7 +2340,7 @@ class LayeredModel:
         
         if isinstance(phases, PhaseDef):
             phases = [ phases ]
-        pathes = {}
+        paths = {}
         for phase in phases:
             layer_start = self.layer(zstart, -phase.direction_start())
             layer_stop = self.layer(zstop, phase.direction_stop())
@@ -2323,9 +2358,9 @@ class LayeredModel:
                 try:
                     counter[0] += 1
                     path = self.path(p, phase, layer_start, layer_stop)
-                    if path not in pathes:
-                        pathes[path] = []
-                    pathes[path].append(p)
+                    if path not in paths:
+                        paths[path] = []
+                    paths[path].append(p)
 
                 except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached, Trapped), e:
                     path = None
@@ -2345,14 +2380,13 @@ class LayeredModel:
                     recurse((pmin+pmax)/2., pmax, i+1)
 
             recurse(0., pmax)
-            print counter
 
-        for path, ps in pathes.iteritems():
+        for path, ps in paths.iteritems():
             path.set_prange(min(ps), max(ps), pmax/(np-1))
         
-        pathes = pathes.keys()
-        pathes.sort(key=lambda x: x.pmin)
-        return pathes
+        paths = paths.keys()
+        paths.sort(key=lambda x: x.pmin)
+        return paths
     
     def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=10000, refine=True, interpolation='linear', pdepth=18):
         '''Compute rays and traveltimes for given distances.
@@ -2371,7 +2405,7 @@ class LayeredModel:
    
         print 'gather'
         arrivals = []
-        for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
+        for path in self.gather_paths( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
             if interpolation == 'spline':
                 assert False
                 x2pt = path.interpolate_x2pt_spline
@@ -2440,12 +2474,20 @@ class LayeredModel:
         return self
 
     def iter_material_parameter(self, get):
-        assert get in ('vp', 'vs', 'rho', 'qp', 'qs')
-        getter = operator.attrgetter(get)
-        for layer in self.layers():
-            yield getter(layer.mtop)
-            yield getter(layer.mbot)
-         
+        assert get in ('vp', 'vs', 'rho', 'qp', 'qs', 'z')
+        if get == 'z':
+            for layer in self.layers():
+                yield layer.ztop
+                yield layer.zbot
+        else:
+            getter = operator.attrgetter(get)
+            for layer in self.layers():
+                yield getter(layer.mtop)
+                yield getter(layer.mbot)
+
+    def profile(self, get):
+        return num.array( list(self.iter_material_parameter(get)))
+
     def min(self, get='vp'):
         '''Find minimum value of a material property defined in the model.
 
