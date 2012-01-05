@@ -147,6 +147,7 @@ class ProgressiveLoader(QThread):
             self._mutex.lock()
             self._queue.append(tfile)
             self._mutex.unlock()
+            time.sleep(0.01)
         
         self._mutex.lock()
         self._done = True
@@ -281,7 +282,9 @@ class MySnuffler(QApplication):
             cache = None
         else:
             cache = pyrocko.pile.get_cache(cachedirname)
-            
+        
+        self.cache = cache
+
         if self._sources:
             pile = pyrocko.hamster_pile.HamsterPile()        
             pile.set_fixation_length(60.*60.)
@@ -333,7 +336,7 @@ class MySnuffler(QApplication):
         self.pile_viewer.setup_snufflings()
 
         self.add_panel('Main Controls', self.pile_viewer.controls(), visible=True)
-        self._win.resize(1024, 768)       
+        #self._win.resize(1024, 768)       
         self._win.show()
 
         self.pile_viewer.get_view().setFocus(Qt.OtherFocusReason)
@@ -385,6 +388,19 @@ class MySnuffler(QApplication):
         
         if update:
             self.pile_viewer.update_contents()
+
+    def event(self, e):
+        if isinstance(e, QFileOpenEvent):
+            filenames = pyrocko.util.select_files([str(e.file())])
+            p = self.pile_viewer.get_pile()
+            p.add_files(pyrocko.pile.loader(filenames, 
+                             fileformat='from_extension', 
+                             cache=self.cache,
+                             filename_attributes=None))
+            self.pile_viewer.update_contents() 
+            return True
+        else:
+            return QApplication.event(self, e)
 
     def dockwidgets(self):
         return [ w for w in self._win.findChildren(QDockWidget) if not w.isFloating() ]
