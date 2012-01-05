@@ -81,7 +81,9 @@ class Snuffling:
         self._menuitem = None
         self._parameters = []
         self._param_controls = {}
-        
+       
+        self._triggers = []
+
         self._live_update = True
         self._previous_output_filename = None
         self._previous_input_filename = None
@@ -203,7 +205,14 @@ class Snuffling:
         if self._panel is not None:
             self.delete_gui()
             self.setup_gui()
-    
+   
+    def add_trigger(self, name, method):
+        self._triggers.append((name, method))
+        
+        if self._panel is not None:
+            self.delete_gui()
+            self.setup_gui()
+
     def get_parameters(self):
         '''Get the snufflings adjustable parameter definitions.
         
@@ -371,10 +380,15 @@ class Snuffling:
             sarea.setWidget(frame)
             sarea.setWidgetResizable(True)
             layout = QGridLayout()
+            layout.setContentsMargins(0,0,0,0)
+            layout.setSpacing(0)
             frame.setLayout( layout )
+            
+            parlayout = QVBoxLayout()
             
             irow = 0
             have_switches = False
+            have_params = False
             for iparam, param in enumerate(params):
                 if isinstance(param, Param):
                     if param.minimum <= 0.0:
@@ -385,22 +399,25 @@ class Snuffling:
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
                     self._param_controls[param.ident] = param_widget
-                    layout.addWidget( param_widget, irow, 0, 1, 3 )
-                    irow += 1
+                    parlayout.addWidget(param_widget)
+                    have_params = True
                 elif isinstance(param, Choice):
                     param_widget = ChoiceControl(param.ident, param.default, param.choices, param.name)
                     self.get_viewer().connect( param_widget, SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.choose_on_snuffling_panel )
                     self._param_controls[param.ident] = param_widget
-                    layout.addWidget( param_widget, irow, 0, 1, 3 )
-                    irow += 1
+                    parlayout.addWidget(param_widget)
+                    have_params = True
                 elif isinstance(param, Switch):
                     have_switches = True
 
-            if have_switches:
+            if have_params: 
+                parframe = QFrame(sarea)
+                parframe.setLayout(parlayout)
+                layout.addWidget(parframe, irow, 0)
+                irow += 1
 
-                swframe = QFrame(sarea)
+            if have_switches:
                 swlayout = QGridLayout()
-                swframe.setLayout( swlayout )
                 isw = 0
                 for iparam, param in enumerate(params):
                     if isinstance(param, Switch):
@@ -410,22 +427,37 @@ class Snuffling:
                         swlayout.addWidget( param_widget, isw/10, isw%10 )
                         isw += 1
                 
-                layout.addWidget( swframe, irow, 0, 1, 3 )
+                swframe = QFrame(sarea)
+                swframe.setLayout( swlayout )
+                layout.addWidget( swframe, irow, 0 )
                 irow += 1
+            
+            butframe = QFrame(sarea)
+            butlayout = QHBoxLayout()
+            butframe.setLayout( butlayout )
 
             live_update_checkbox = QCheckBox('Auto-Run')
             if self._live_update:
                 live_update_checkbox.setCheckState(Qt.Checked)
-            layout.addWidget( live_update_checkbox, irow, 0 )
+
+            butlayout.addWidget( live_update_checkbox )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
         
             clear_button = QPushButton('Clear')
-            layout.addWidget( clear_button, irow, 1 )
+            butlayout.addWidget( clear_button )
             self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
         
             call_button = QPushButton('Run')
-            layout.addWidget( call_button, irow, 2 )
+            butlayout.addWidget( call_button )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
+
+            for name, method in self._triggers:
+                but = QPushButton(name)
+                self.get_viewer().connect( but, SIGNAL('clicked()'), method )
+                butlayout.addWidget( but )
+
+            layout.addWidget(butframe, irow, 0)
+            irow += 1
 
             return sarea 
             

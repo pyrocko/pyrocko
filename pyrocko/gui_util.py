@@ -278,6 +278,9 @@ class LinValControl(ValControl):
 class MarkerParseError(Exception):
     pass
 
+class MarkerOneNSLCRequired(Exception):
+    pass
+
 class Marker(object):
     
     @staticmethod
@@ -431,6 +434,12 @@ class Marker(object):
     def match_nslc(self, nslc):
         patterns = [ '.'.join(x) for x in self.nslc_ids ]
         return pyrocko.util.match_nslc(patterns, nslc)
+
+    def one_nslc(self):
+        if len(self.nslc_ids) != 1:
+            raise MarkerOneNSLCRequired()
+
+        return list(self.nslc_ids)[0]
 
     def __str__(self):
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )

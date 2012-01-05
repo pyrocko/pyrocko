@@ -78,16 +78,16 @@ class Programs:
                 logging.fatal('Failed to run rdseed program. %s' % reason)
                 sys.exit(1)
 
-
-            m = re.search(r'Release (\d+(\.\d+(\.\d+)?)?)', err)
-            if not m:
-                logger.warn('Cannot determine rdseed version number.')
-
-            version = m.group(1)
+            ms = [ re.search(r'Release (\d+(\.\d+(\.\d+)?)?)', s) for s in (err, out) ]
+            ms = filter(bool, ms)
+            if not ms:
+                logger.error('Cannot determine rdseed version number.')
+            else:
+                version = ms[0].group(1)
+                if cmp_version('4.7.5', version) == 1 or cmp_version(version, '5.1') == 1:
+                    logger.warn('Module pyrocko.rdseed has not been tested with version %s of rdseed.' % version)
 
             Programs.checked = True
-            if cmp_version('4.7.5', version) == 1 or cmp_version(version, '5.0') == 1:
-                logger.warn('Module pyrocko.rdseed has not been tested with version %s of rdseed.' % version)
 
 class SeedVolumeNotFound(Exception):
     pass
