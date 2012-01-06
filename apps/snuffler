@@ -2,7 +2,7 @@
 
 '''Effective seismological trace viewer.'''
 
-import os, sys, signal, logging, time, re, struct
+import os, sys, signal, logging, time, re, struct, base64
 import numpy as num
 import cPickle as pickle
 from optparse import OptionParser
@@ -215,7 +215,6 @@ class Connection(QObject):
             data = self.socket.read(self.nwanted)
             if self.reading_size:
                 self.nwanted = struct.unpack('>Q', data)[0]
-                print self.nwanted
                 self.reading_size = False
             else:
                 obj = pickle.loads(data)
@@ -252,8 +251,8 @@ class MyMainWindow(QMainWindow):
 
 class MySnuffler(QApplication):
     
-    def __init__(self, *args):
-        apply(QApplication.__init__, (self,) + args)
+    def __init__(self, args, forker):
+        QApplication.__init__(self, [])
         
         self.dockwidget_to_toggler = {}
 
@@ -284,7 +283,7 @@ class MySnuffler(QApplication):
         parser.add_option('--debug', dest='debug', action='store_true', default=False,
                 help='print debugging information to stderr')
         
-        options, args = parser.parse_args(list(args[0][1:]))
+        options, args = parser.parse_args(list(args[1:]))
         
         if options.debug:
             pyrocko.util.setup_logging('snuffler', 'debug')
@@ -423,16 +422,19 @@ class MySnuffler(QApplication):
         if options.follow:
             self.pile_viewer.get_view().follow(float(options.follow))
 
+        self.forker = forker
         self.start_server()
-        self.testfork()
+        self.start_loader()
    
     def start_server(self):
         self.connections = []
         s = QTcpServer(self)
         s.listen(QHostAddress.LocalHost)
         self.connect(s, SIGNAL('newConnection()'), self.handle_accept)
-        print str(s.serverAddress().toString()), s.serverPort()
         self.server = s
+
+    def start_loader(self):
+        self.forker.spawn('loader', self.server.serverPort())
 
     def handle_accept(self):
         sock = self.server.nextPendingConnection()
@@ -440,6 +442,8 @@ class MySnuffler(QApplication):
         self.connections.append(con)
         self.connect(con, SIGNAL('disconnected(PyQt_PyObject)'), self.handle_disconnected) 
         self.connect(con, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self.handle_received)
+        
+        con.push_object(('load', ['/Users/tofu/Desktop/testdata'], 'from_extension', None, None))
 
     def handle_disconnected(self, connection):
         self.connections.remove(connection)
@@ -447,21 +451,13 @@ class MySnuffler(QApplication):
         del connection
 
     def handle_received(self, connection, object):
-        print object
+        p = self.pile_viewer.get_pile()
+        files = object
+        p.add_files(files)
+        self.pile_viewer.update_contents()
 
     def testfork(self):
-
-        pid = os.fork()
-        if pid == 0:
-            c1 = Channel(port = self.server.serverPort())
-            for i in range(100):
-                c1.push_object('hello')
-                time.sleep(1)
-            c1.push_object(None)
-            asyncore.loop()
-            print 'done'
-            sys.exit()
-        
+        pass
     
     def periodical(self):
         p = self.pile_viewer.get_pile()
@@ -537,11 +533,94 @@ class MySnuffler(QApplication):
         if hasattr(p, 'fixate_all'):
             self.pile_viewer.get_pile().fixate_all()
         self.quit()
+
+class FileLoader(Channel):
+    def __init__(self, port):
+        Channel.__init__(self, port=port)
+        self.loader = None
     
+    def handle_object(self, obj):
+        if obj[0] == 'load':
+            pathes, format, cache, pattern = obj[1:]
+            filenames = pyrocko.util.select_files( pathes )
+            self.loader = pyrocko.pile.loader(sorted(filenames), 
+                                fileformat=format, 
+                                cache=cache, 
+                                filename_attributes=pattern)
+
+    def run(self):
+
+        while True:
+            if self.loader is not None:
+                timeout = 0.
+            else:
+                timeout = 30.
+
+            asyncore.loop(timeout=timeout, count=1)
+            
+            if self.loader:
+                try:
+                    tfile = self.loader.next()
+                    self.push_object([tfile])
+                except StopIteration:
+                    self.push_object(None)
+                    self.loader = None
+
+class Forker:
+
+    subsystems = {
+            'loader': FileLoader
+    }
+
+    def __init__(self):
+        
+        from_parent, to_child = os.pipe() 
+        pid = os.fork()
+        if pid == 0:
+            os.close(to_child)
+            self.from_parent = os.fdopen(from_parent, 'r')
+            self.run()
+            self.from_parent.close()
+            sys.exit()
+        else:
+            os.close(from_parent)
+            self.to_child = os.fdopen(to_child, 'w')
+    
+    def spawn(self, subsystem, *args):
+        data = pickle.dumps((subsystem,)+args)
+        line = base64.b64encode(data)
+        self.to_child.write(line)
+        self.to_child.write('\n')
+        self.to_child.flush()
+
+    def run(self):
+        while True:
+            line = self.from_parent.readline()
+            if not line:
+                return
+            data = base64.b64decode(line.strip())
+            toks = pickle.loads(data)
+            subsystem = toks[0]
+            args = toks[1:]
+            pid = os.fork()
+            if pid == 0:
+                self.from_parent.close()
+                cls = Forker.subsystems[subsystem]
+                s = cls(*args)
+                s.run()
+                sys.exit()
+    
+    def close(self):
+        self.to_child.close()
+
 def main(args):
-    
-    app = MySnuffler(args)
+    forker = Forker()    
+    app = MySnuffler(args, forker)
     app.exec_()
+    forker.close()
+
 
 if __name__=="__main__":
     main(sys.argv)
+
+
