@@ -15,6 +15,7 @@ import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.ipc
 import pyrocko.model
+from pyrocko.forked import Forked
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -103,53 +104,12 @@ class SchoolSeismometerAcquisition(pyrocko.serial_hamster.SerialHamster, Acquisi
 
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self,tr)
-      
-class ProgressiveLoader(QThread):
-    
-    def __init__(self, loader):
-        QThread.__init__(self)
-        self._loader = loader
-        self._mutex = QMutex()
-        self._queue = []
-        self._done = False
-        
-    def run(self):
-        for tfile in self._loader:
-            self._mutex.lock()
-            self._queue.append(tfile)
-            self._mutex.unlock()
-        
-        self._mutex.lock()
-        self._done = True
-        self._mutex.unlock()
-    
-    def poll(self):
-        self._mutex.lock()
-        tfiles = self._queue[:]
-        self._queue[:] = []
-        self._mutex.unlock()
-        return tfiles
-    
-    def done(self):
-        self._mutex.lock()
-        done = self._done
-        self._mutex.unlock()
-        return done
-
-    def __iter__(self):
-        while True:
-            tfiles = self.poll()
-            if not tfiles:
-                if self.done():
-                    return
-            yield tfiles
-     
 
 import asyncore, asynchat, socket, struct
 
 class Channel(asynchat.async_chat):
 
-    def __init__(self, sock=None, port=None):
+    def __init__(self, sock=None, port=None, ticket=None):
         if sock is not None:
             asynchat.async_chat.__init__(self, sock)
         else:
@@ -160,10 +120,12 @@ class Channel(asynchat.async_chat):
         self.ibuffer = []
         self.set_terminator(8)
         self.reading_size = True
+        self.ticket = ticket
 
     def handle_connect(self):
-        pass
-    
+        if self.ticket is not None:
+            self.ship(self.ticket)
+
     def collect_incoming_data(self, data):
         self.ibuffer.append(data)
 
@@ -179,23 +141,20 @@ class Channel(asynchat.async_chat):
                 self.close_when_done()
                 self.set_terminator(None)
             else:
-                self.handle_object(payload)
+                self.handle_received(payload)
                 self.set_terminator(8)
                 self.reading_size = True
         
         self.ibuffer = []
 
-    def push_object(self, obj):
+    def ship(self, obj):
         data = pickle.dumps(obj)
         sdata = struct.pack('>Q', len(data))
         self.push(sdata)
         self.push(data)
 
-    def handle_object(self, obj):
-        print 'received:', obj
-        self.push_object('hi')
-        self.push_object(None)
-
+    def handle_received(self, obj):
+        pass
 
 class Connection(QObject):
     def __init__(self, parent, sock):
@@ -205,6 +164,7 @@ class Connection(QObject):
         self.connect(sock, SIGNAL('disconnected()'), self.handle_disconnected)
         self.nwanted = 8
         self.reading_size = True
+        self.handler = None
 
     def handle_read(self):
         while True:
@@ -221,14 +181,14 @@ class Connection(QObject):
                 if obj is None:
                     self.socket.disconnectFromHost()
                 else:
-                    self.handle_object(obj)
+                    self.handle_received(obj)
                 self.nwanted = 8
                 self.reading_size = True
 
-    def handle_object(self, obj):
+    def handle_received(self, obj):
         self.emit(SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self, obj)
 
-    def push_object(self, obj):
+    def ship(self, obj):
         data = pickle.dumps(obj)
         self.socket.write(struct.pack('>Q', len(data)))
         self.socket.write(data)
@@ -239,6 +199,48 @@ class Connection(QObject):
     def close(self):
         self.socket.close()
 
+class ConnectionHandler(QObject):
+    def __init__(self, parent):
+        QObject.__init__(self, parent)
+        self.queue = []
+        self.connection = None
+
+    def connected(self):
+        return self.connection == None
+
+    def set_connection(self, connection):
+        self.connection = connection
+        self.connect(connection, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self._handle_received)
+        self.connect(connection, SIGNAL('disconnected(PyQt_PyObject)'), self.handle_disconnected)
+        for obj in self.queue:
+            self.connection.ship(obj)
+        self.queue = []
+
+    def _handle_received(self, conn, obj):
+        self.handle_received(obj)
+
+    def handle_received(self, obj):
+        pass
+
+    def handle_disconnected(self):
+        self.connection = None
+
+    def ship(self, obj):
+        if self.connection:
+            self.connection.ship(obj)
+        else:
+            self.queue.append(obj)
+
+class SimpleConnectionHandler(ConnectionHandler):
+    def __init__(self, parent, **mapping):
+        ConnectionHandler.__init__(self, parent)
+        self.mapping = mapping
+
+    def handle_received(self, obj):
+        command = obj[0]
+        args = obj[1:]
+        self.mapping[command](*args)
+    
 class MyMainWindow(QMainWindow):
 
     def __init__(self, app, *args):
@@ -335,15 +337,6 @@ class MySnuffler(QApplication):
             else:
                 rargs.append(arg)
         
-        filenames = []
-        if rargs:
-            filenames = pyrocko.util.select_files( rargs, regex=options.pattern )
-        
-        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
-        if options.pattern and not options.force_cache:
-            cache = None
-        else:
-            cache = pyrocko.pile.get_cache(cachedirname)
             
         if self._sources:
             pile = pyrocko.hamster_pile.HamsterPile()        
@@ -351,22 +344,6 @@ class MySnuffler(QApplication):
             #pile.set_save_path('test_snuffslink_traces')
         else:
             pile = pyrocko.pile.Pile()
-        
-        self._loader = None
-        if filenames:
-            if not options.progressive:
-                pile.load_files( sorted(filenames), 
-                            cache=cache, 
-                            filename_attributes=options.pattern,
-                            fileformat=options.format )
-            else:
-                l = pyrocko.pile.loader(sorted(filenames), 
-                            fileformat=options.format, 
-                            cache=cache, 
-                            filename_attributes=options.pattern)
-                    
-                self._loader = ProgressiveLoader(l)
-            
         
         self._win = MyMainWindow(self)
         self._win.setWindowTitle( "Snuffler" )        
@@ -405,15 +382,11 @@ class MySnuffler(QApplication):
 
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
-        
-        if self._loader:
-            self._loader.start()
-            self._loader_iterator = iter(self._loader)
             
         for source in self._sources:
             source.start()
 
-        if self._loader or self._sources:
+        if self._sources:
             self._timer = QTimer( self )
             self.connect( self._timer, SIGNAL("timeout()"), self.periodical ) 
             self._timer.setInterval(500)
@@ -421,10 +394,19 @@ class MySnuffler(QApplication):
             
         if options.follow:
             self.pile_viewer.get_view().follow(float(options.follow))
+        
+        self.connection_handlers = {}
 
         self.forker = forker
         self.start_server()
         self.start_loader()
+
+        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
+        if options.pattern and not options.force_cache:
+            cachedirname = None
+
+        if rargs:
+            self.loader.ship(('load', rargs, cachedirname, options.pattern, options.format ))
    
     def start_server(self):
         self.connections = []
@@ -434,25 +416,37 @@ class MySnuffler(QApplication):
         self.server = s
 
     def start_loader(self):
-        self.forker.spawn('loader', self.server.serverPort())
+        self.loader = SimpleConnectionHandler(self, add_files=self.add_files)
+        ticket = os.urandom(32)
+        self.forker.spawn('loader', self.server.serverPort(), ticket)
+        self.connection_handlers[ticket] = self.loader
 
     def handle_accept(self):
         sock = self.server.nextPendingConnection()
         con = Connection(self, sock)
         self.connections.append(con)
         self.connect(con, SIGNAL('disconnected(PyQt_PyObject)'), self.handle_disconnected) 
-        self.connect(con, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self.handle_received)
-        
-        con.push_object(('load', ['/Users/tofu/Desktop/testdata'], 'from_extension', None, None))
+        self.connect(con, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self.handle_received_ticket)
 
     def handle_disconnected(self, connection):
         self.connections.remove(connection)
         connection.close()
         del connection
 
-    def handle_received(self, connection, object):
+    def handle_received_ticket(self, connection, object):
+        if not isinstance(object, str):
+            self.handle_disconnected(connection)
+
+        ticket = object
+        if ticket in self.connection_handlers:
+            h = self.connection_handlers[ticket]
+            self.disconnect(connection, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self.handle_received_ticket)
+            h.set_connection(connection)
+        else:
+            self.handle_disconnected(connection)
+
+    def add_files(self, files):
         p = self.pile_viewer.get_pile()
-        files = object
         p.add_files(files)
         self.pile_viewer.update_contents()
 
@@ -462,17 +456,7 @@ class MySnuffler(QApplication):
     def periodical(self):
         p = self.pile_viewer.get_pile()
         update = False
-        try:
-            if self._loader:
-                files = self._loader_iterator.next()
-                if files:
-                    p.add_files(files)
-                    update = True
-                    
-        except StopIteration:
-            if not self._sources:
-                self._timer.stop()
-                
+          
         for source in self._sources:
             traces = source.poll()
             for tr in traces:
@@ -526,6 +510,9 @@ class MySnuffler(QApplication):
         self.pile_viewer.get_view().remove_panel_toggler(mitem)
         
     def myquit(self, *args):
+        for con in self.connections:
+            con.ship(None)
+        
         for source in self._sources:
             source.stop()
         
@@ -535,90 +522,69 @@ class MySnuffler(QApplication):
         self.quit()
 
 class FileLoader(Channel):
-    def __init__(self, port):
-        Channel.__init__(self, port=port)
+    def __init__(self, port, ticket):
+        Channel.__init__(self, port=port, ticket=ticket)
         self.loader = None
     
-    def handle_object(self, obj):
+    def handle_received(self, obj):
         if obj[0] == 'load':
-            pathes, format, cache, pattern = obj[1:]
-            filenames = pyrocko.util.select_files( pathes )
+            pathes, cachedirname, pattern, format = obj[1:]
+            
+            cache = None
+            if cachedirname is not None:
+                cache = pyrocko.pile.get_cache(cachedirname)
+
+            filenames = pyrocko.util.select_files( pathes, regex=pattern )
             self.loader = pyrocko.pile.loader(sorted(filenames), 
                                 fileformat=format, 
                                 cache=cache, 
-                                filename_attributes=pattern)
+                                filename_attributes=pattern )
 
     def run(self):
-
+        i =0
         while True:
-            if self.loader is not None:
+            if self.loader:
                 timeout = 0.
             else:
                 timeout = 30.
 
             asyncore.loop(timeout=timeout, count=1)
-            
+            if not asyncore.socket_map:
+                return
+
             if self.loader:
                 try:
                     tfile = self.loader.next()
-                    self.push_object([tfile])
+                    self.ship(('add_files', [tfile]))
                 except StopIteration:
-                    self.push_object(None)
                     self.loader = None
+            
+            i+=1
 
-class Forker:
+class Forker(Forked):
 
     subsystems = {
             'loader': FileLoader
     }
 
     def __init__(self):
-        
-        from_parent, to_child = os.pipe() 
+        Forked.__init__(self)
+        self.commands = ('spawn',)
+
+    def spawn_(self, subsystem, *args):
         pid = os.fork()
         if pid == 0:
-            os.close(to_child)
-            self.from_parent = os.fdopen(from_parent, 'r')
-            self.run()
-            self.from_parent.close()
-            sys.exit()
-        else:
-            os.close(from_parent)
-            self.to_child = os.fdopen(to_child, 'w')
-    
-    def spawn(self, subsystem, *args):
-        data = pickle.dumps((subsystem,)+args)
-        line = base64.b64encode(data)
-        self.to_child.write(line)
-        self.to_child.write('\n')
-        self.to_child.flush()
 
-    def run(self):
-        while True:
-            line = self.from_parent.readline()
-            if not line:
-                return
-            data = base64.b64decode(line.strip())
-            toks = pickle.loads(data)
-            subsystem = toks[0]
-            args = toks[1:]
-            pid = os.fork()
-            if pid == 0:
-                self.from_parent.close()
-                cls = Forker.subsystems[subsystem]
-                s = cls(*args)
-                s.run()
-                sys.exit()
-    
-    def close(self):
-        self.to_child.close()
+            cls = Forker.subsystems[subsystem]
+            s = cls(*args)
+            s.run()
+            sys.exit()
 
 def main(args):
     forker = Forker()    
     app = MySnuffler(args, forker)
     app.exec_()
     forker.close()
-
 
 if __name__=="__main__":
     main(sys.argv)
