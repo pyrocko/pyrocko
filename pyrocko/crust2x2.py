@@ -72,7 +72,7 @@ LICE, LWATER, LSOFTSED, LHARDSED, LUPPERCRUST, LMIDDLECRUST, LLOWERCRUST, LBELOW
 class Crust2Profile:
     '''Representation of a CRUST2.0 key profile.'''
     
-    layer_names = ('ice', 'water', 'soft sed.', 'hard sed.', 'upper crust', 'middle crust', 'lower crust')
+    layer_names = ('ice', 'water', 'soft sed.', 'hard sed.', 'upper crust', 'middle crust', 'lower crust', 'mantle')
     
     def __init__(self, ident, name, vp, vs, rho, thickness, elevation):
         self._ident = ident

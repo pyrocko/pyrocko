@@ -481,13 +481,15 @@ class MemTracesFile(TracesGroup):
                 
         return mtime
         
-    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round)):
+    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round), load_data=True):
         chopped = []
         used = False
         needed = [ tr for tr in self.traces if not trace_selector or trace_selector(tr) ]
                 
         if needed:
-            used = True
+            if load_data:
+                used = True
+
             for tr in self.traces:
                 if not trace_selector or trace_selector(tr):
                     try:
@@ -622,13 +624,13 @@ class TracesFile(TracesGroup):
                 
         return mtime
 
-    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round)):
+    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round), load_data=True):
         chopped = []
         used = False
         needed = self.relevant(tmin,tmax,trace_selector=trace_selector)
                 
         if needed:
-            if self.load_data():
+            if load_data and self.load_data():
                 needed = self.relevant(tmin,tmax, trace_selector=trace_selector)
 
             used = True
@@ -704,12 +706,12 @@ class SubPile(TracesGroup):
                 
         return mtime
     
-    def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round)):
+    def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round), load_data=True):
         used_files = set()
         chopped = []
         for file in self.files:
             if file.is_relevant(tmin, tmax, group_selector):
-                chopped_, used = file.chop(tmin, tmax, trace_selector, snap=snap)
+                chopped_, used = file.chop(tmin, tmax, trace_selector, snap, load_data)
                 chopped.extend( chopped_ )
                 if used:
                     used_files.add(file)
@@ -833,29 +835,37 @@ class Pile(TracesGroup):
     def get_deltats(self):
         return self.deltats.keys()
 
-    def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round)):
+    def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round), load_data=True):
         chopped = []
         used_files = set()
         traces = self.relevant(tmin, tmax, group_selector, trace_selector)
+        if load_data:
+            files_changed = False
+            for tr in traces:
+                if tr.file not in used_files:
+                    if tr.file.load_data():
+                        files_changed = True
 
-        files_changed = False
-        for tr in traces:
-            if tr.file not in used_files:
-                if tr.file.load_data():
-                    files_changed = True
-
-                used_files.add(tr.file)
-        
-        if files_changed:
-            traces = self.relevant(tmin, tmax, group_selector, trace_selector)
+                    used_files.add(tr.file)
+            
+            if files_changed:
+                traces = self.relevant(tmin, tmax, group_selector, trace_selector)
 
         for tr in traces:
             try:
                 chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap))
             except trace.NoData:
                 pass
-                
+
         return chopped, used_files
+        
+    def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
+        mtime = None
+        for subpile in self.subpiles.values():
+            if subpile.is_relevant(tmin,tmax, group_selector):
+                mtime = max(mtime, subpile.get_newest_mtime(tmin, tmax, group_selector, trace_selector))
+                
+        return mtime
 
     def _process_chopped(self, chopped, degap, want_incomplete, wmax, wmin, tpad):
         chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
@@ -886,7 +896,7 @@ class Pile(TracesGroup):
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
-                      want_incomplete=True, degap=True, keep_current_files_open=False, accessor_id=None, snap=(round,round)):
+                      want_incomplete=True, degap=True, keep_current_files_open=False, accessor_id=None, snap=(round,round), load_data=True):
         
         if tmin is None:
             tmin = self.tmin+tpad
@@ -910,7 +920,7 @@ class Pile(TracesGroup):
             wmin, wmax = tmin+iwin*tinc, min(tmin+(iwin+1)*tinc, tmax)
             eps = tinc*1e-6
             if wmin >= tmax-eps: break
-            chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector, snap=snap) 
+            chopped, used_files = self.chop(wmin-tpad, wmax+tpad, group_selector, trace_selector, snap, load_data) 
             for file in used_files - open_files:
                 # increment datause counter on newly opened files
                 file.use_data()
@@ -1036,7 +1046,21 @@ class Pile(TracesGroup):
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
         return s
+    
+    def snuffle(self, **kwargs):
+        '''Visualize it.
 
+        :param stations: list of `pyrocko.model.Station` objects or ``None``
+        :param events: list of `pyrocko.model.Event` objects or ``None``
+        :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+        :param ntracks: float, number of tracks to be shown initially (default: 12)
+        :param follow: time interval (in seconds) for real time follow mode or ``None``
+        :param controls: bool, whether to show the main controls (default: ``True``)
+        :param opengl: bool, whether to use opengl (default: ``False``)
+        '''
+
+        from pyrocko.snuffler import snuffle
+        snuffle(self, **kwargs)
 
 def make_pile( paths=None, selector=None, regex=None,
         fileformat = 'mseed',

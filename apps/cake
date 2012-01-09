@@ -1,0 +1,250 @@
+#!/usr/bin/env python
+
+import sys
+import numpy as num
+from pyrocko import cake
+from pyrocko import cake_plot as plot
+from optparse import OptionParser, OptionGroup
+
+r2d = cake.r2d
+
+class Anon(dict):
+    
+    def __getattr__(self, x):
+        return self[x]
+
+    def getn(self, *keys):
+        return Anon( [(k, self[k]) for k in keys] )
+
+def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
+    
+    want = required + optional
+
+    parser = OptionParser(usage=usage)
+    if 'phases' in want:
+        group = OptionGroup(parser, 'Phases')
+        group.add_option('--phase', '--phases', dest='phases', action="append",
+                default=[], metavar='PHASE1,PHASE2,...',
+                help='comma separated list of seismic phase definition(s) in cake syntax')
+        parser.add_option_group(group)
+
+    if 'model' in want:
+        group = OptionGroup(parser, 'Model')
+        group.add_option('--model', dest='model_filename', metavar='FILENAME', 
+                help='load model from file named FILENAME')
+        group.add_option('--format', dest='model_format', metavar='FORMAT', default='nd',
+                help='set model file format (available: nd,hyposat; default: nd)')
+        group.add_option('--crust2loc', dest='crust2loc', metavar='LAT,LON',
+                help='set model from CRUST2.0 profile at location (LAT,LON)')
+        parser.add_option_group(group)
+    
+    if any( x in want for x in ('zstart', 'zstop', 'distances', 'as_degrees') ):
+        group = OptionGroup(parser, 'Source-receiver geometry')
+        if 'zstart' in want:
+            group.add_option('--sdepth', dest='sdepth', type='float', default=0.0, metavar='FLOAT',
+                    help='source depth [km] (default: 0)')
+        if 'zstop' in want:
+            group.add_option('--rdepth', dest='rdepth', type='float', default=0.0, metavar='FLOAT',
+                    help='receiver depth [km] (default: 0)')
+        if 'distances' in want:
+            group.add_option('--distances', dest='sdist', metavar='DISTANCES',
+                    help='surface distances as "start:stop:n" or "dist1,dist2,..." [km]')
+        if 'as_degrees' in want:
+            group.add_option('--degrees', dest='as_degrees', action='store_true', default=False,
+                    help='distances are in [deg] instead of [km], velocities in [deg/s] instead of [km/s]')
+        parser.add_option_group(group)
+        
+    if 'vred' in want:
+        group = OptionGroup(parser, 'Plotting options')
+        group.add_option('--vred', dest='vred', type='float', metavar='FLOAT',
+                help='velocity for time reduction in plot [km/s]')
+        parser.add_option_group(group)
+
+    if 'material' in want:
+        group = OptionGroup(parser, 'Material', 
+                'An isotropic elastic material may be specified by giving '
+                'a combination of some of the following options. ')
+        group.add_option('--vp', dest='vp', default=None, type='float', metavar='FLOAT',
+                help='P-wave velocity [km/s]')
+        group.add_option('--vs', dest='vs', default=None, type='float', metavar='FLOAT',
+                help='S-wave velocity [km/s]')
+        group.add_option('--rho', dest='rho', default=None, type='float', metavar='FLOAT',
+                help='density [g/cm**3]')
+        group.add_option('--qp', dest='qp', default=None, type='float', metavar='FLOAT',
+                help='P-wave attenuation Qp (default: 1456)')
+        group.add_option('--qs', dest='qs', default=None, type='float', metavar='FLOAT',
+                help='S-wave attenuation Qs (default: 600)')
+        group.add_option('--poisson', dest='poisson', default=None, type='float', metavar='FLOAT',
+                help='Poisson ratio')
+        group.add_option('--lambda', dest='lame_lambda', default=None, type='float', metavar='FLOAT',
+                help='Lame parameter lambda [GPa]')
+        group.add_option('--mu', dest='lame_mu', default=None, type='float', metavar='FLOAT',
+                help='shear modulus [GPa]')
+        group.add_option('--qk', dest='qk', default=None, type='float', metavar='FLOAT',
+                help='bulk attenuation Qk')
+        group.add_option('--qmu', dest='qmu', default=None, type='float', metavar='FLOAT',
+                help='shear attenuation Qmu')
+        parser.add_option_group(group)
+
+    (options, args) = parser.parse_args(args)
+
+    d = {}
+    phases = []
+    for s in options.phases:
+        for s in s.split(','):
+            phases.append(cake.PhaseDef(s))
+
+    as_degrees = False
+    if 'as_degrees' in want:
+        as_degrees = options.as_degrees
+        d['as_degrees'] = as_degrees
+        
+    if phases:
+        d['phases'] = phases 
+   
+    if options.model_filename:
+        d['model'] = cake.load_model(options.model_filename, options.model_format)
+
+    if options.crust2loc:
+        try:
+            lat,lon = [ float(x) for x in options.crust2loc.split(',') ]
+        except:
+            parser.error('format for --crust2loc option is "LATITUDE,LONGITUDE"')
+            
+        from pyrocko import crust2x2
+        profile = crust2x2.get_profile(lat,lon)
+        d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
+
+    if 'vred' in want:
+        d['vred'] = options.vred
+        if d['vred'] is not None: 
+            if not as_degrees:
+                d['vred'] *= r2d * cake.km / cake.earthradius
+
+    if 'distances' in want:
+        distances = None
+        if options.sdist:
+            if options.sdist.find(':') != -1:
+                ssn = options.sdist.split(':')
+                if len(ssn) != 3:
+                    parser.error('format for distances is "min_distance:max_distance:n_distances"')
+
+                distances = num.linspace(*map(float, ssn))
+            else:
+                distances = num.array(map(float, options.sdist.split(',')), dtype=num.float)
+        
+            if not as_degrees:
+                distances *= r2d * cake.km / cake.earthradius
+        
+        if distances is not None:
+            d['distances'] = distances
+        else:
+            if 'distances' not in required:
+                d['distances'] = None
+    
+    if 'zstart' in want:
+        d['zstart'] = options.sdepth*cake.km
+
+    if 'zstop' in want:
+        d['zstop'] = options.rdepth*cake.km
+    
+    if 'material' in want:
+        md = {}
+        userfactor = dict(vp=1000., vs=1000., rho=1000., qp=1., qs=1., lame_lambda=1.0e9, lame_mu=1.0e9, poisson=1.)
+        for k in userfactor.keys():
+            if getattr(options, k) is not None:
+                md[k] = getattr(options, k) * userfactor[k]
+            
+        if not (bool('lame_lambda' in md) == bool('lame_mu' in md)):
+            parser.error('lambda and mu must be specified both.')
+        if 'lame_lambda' in md and 'lame_mu' in md:
+            md['lame'] = md.pop('lame_lambda'), md.pop('lame_mu')
+
+        if md:
+            try:
+                d['material'] = cake.Material(**md)
+            except cake.InvalidArguments, e:
+                parser.error(str(e))
+
+
+    for k in d.keys():
+        if k not in want:
+            del d[k]
+
+    for k in required:
+        if k not in d:
+            if k == 'model':
+                from pyrocko import crust2x2
+                profile = crust2x2.get_profile(53.,10.)
+                d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
+
+            elif k == 'distances':
+                d['distances'] = num.linspace(10*cake.km, 100*cake.km, 10) / cake.earthradius * r2d
+            
+            elif k == 'phases':
+                d['phases'] = map(cake.PhaseDef, 'Pp')
+
+            else:
+                parser.error('missing %s' % k)
+
+    return Anon(d)
+
+if __name__ == '__main__':
+    usage = 'cake (print|arrivals|plot-xt|plot-xp|plot-rays|plot) [options]'
+    usage_sub = 'cake %s [options]'
+    if len(sys.argv) < 2:
+        sys.exit('Usage: %s' % usage)
+
+    command = sys.argv[1]
+    if command == 'print':
+        c = optparse((), ('model', 'phases', 'material'), usage=usage_sub % command)
+        
+        if 'model' in c:
+            print c.model
+            print 
+     
+        if 'phases' in c:
+            for phase in c.phases:
+                print phase
+            print
+
+        if 'material' in c:
+            print c.material.describe()
+            print
+       
+    elif command == 'arrivals':
+        c = optparse(('model', 'phases', 'distances'), ('zstart', 'zstop', 'as_degrees'), usage=usage_sub % command)
+        mod = c.model
+        for arrival in mod.arrivals(**c.getn('zstart', 'zstop', 'phases', 'distances')):
+            print arrival.__str__(as_degrees=c.as_degrees)
+
+    elif command in ('plot-xt', 'plot-xp', 'plot-rays', 'plot'):
+        if command in ('plot-xt', 'plot'):
+            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'vred'), usage=usage_sub % command)
+        else:
+            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees'), usage=usage_sub % command)
+
+        mod = c.model
+        pathes = mod.gather_pathes(**c.getn('phases', 'zstart', 'zstop'))
+        
+        if c.distances is not None:
+            arrivals = mod.arrivals( **c.getn('phases', 'zstart', 'zstop', 'distances'))
+        else:
+            arrivals = None
+        
+        if command == 'plot-xp':
+            plot.my_xp_plot(pathes, c.distances, c.as_degrees)
+        elif command == 'plot-xt':
+            plot.my_xt_plot(pathes, c.distances, c.as_degrees, vred=c.vred)
+        elif command == 'plot-rays':
+            if c.as_degrees:
+                plot.my_rays_plot_gcs(mod, pathes, arrivals, c.zstart, c.zstop, c.distances)
+            else:
+                plot.my_rays_plot(mod, pathes, arrivals, c.zstart, c.zstop, c.distances)
+
+        elif command == 'plot':
+            plot.my_combi_plot(mod, pathes, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
+
+    else:
+        sys.exit('no such command')
+

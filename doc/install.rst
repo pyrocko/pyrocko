@@ -20,7 +20,9 @@ The following software packages are required to use Pyrocko. The more important 
 How to install prerequisites available through the package manager of your system
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The exact package names may differ from system to system. Whether there are separate packages for the development headers of NumPy and Python (the \*-dev packages) is also system specific.
+The exact package names may differ from system to system. Whether there are
+separate packages for the development headers of NumPy and Python (the \*-dev
+packages) is also system specific.
 
 * Debian GNU/Linux::
 
@@ -33,7 +35,7 @@ The exact package names may differ from system to system. Whether there are sepa
 
 * Ubuntu::
 
-    apt-get install python-numpy python-scipy python-qt4 python-qt4-gl
+    sudo apt-get install python-dev python-numpy python-scipy python-qt4 python-qt4-gl python-progressbar
 
 
 Getting Pyrocko
@@ -44,6 +46,9 @@ The simplest way of downloading Pyrocko is by using Git::
     cd ~/src/   # or wherever you keep your source packages
     git clone git://github.com/emolch/pyrocko.git pyrocko
 
+Alternatively, you may download Pyrocko as a `tar archive
+<http://github.com/emolch/pyrocko/tarball/master>`_, but updating is easier
+with the method described above.
 
 Installing the included prerequisites (libmseed and libevresp)
 --------------------------------------------------------------
@@ -58,7 +63,9 @@ First compile libmseed. Its tarball is included in the top directory of Pyrocko:
     make gcc
     cd ..
 
-Next, compile and install the evalresp library. Its tarball is also included in the top directory of Pyrocko. You may install it as a shared library (see below), or try with a static library (if you don't want to install evalresp)::
+Next, compile and install the evalresp library. Its tarball is also included in
+the top directory of Pyrocko. You may install it as a shared library (see
+below), or try with a static library (if you don't want to install evalresp)::
 
     tar -xzvf evalresp-3.3.0.tar.gz
     cd evalresp-3.3.0/
@@ -67,12 +74,16 @@ Next, compile and install the evalresp library. Its tarball is also included in 
     sudo make install
     cd ..
 
+    # now check that $LD_LIBRARY_PATH contains /usr/local/lib
+    echo $LD_LIBRARY_PATH 
+    # if it is not in there you have to adjust your environment variables
+
 Installing Pyrocko
 ------------------
 
 Now compile and install Pyrocko itself::
 
-    python setup.py install
+    sudo python setup.py install
 
 Installing Pyrocko to a custom location
 ---------------------------------------
@@ -88,5 +99,5 @@ Updating
 If you later want to update Pyrocko, run the following from within Pyrocko's top directory:: 
 
     git pull origin master 
-    python setup.py install  
+    sudo python setup.py install  
 

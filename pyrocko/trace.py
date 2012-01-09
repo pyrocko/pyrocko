@@ -4,7 +4,7 @@
 '''
 
 import util, evalresp
-import time, math, copy, logging
+import time, math, copy, logging, sys
 import numpy as num
 from util import reuse
 from scipy import signal
@@ -228,7 +228,23 @@ class Trace(object):
             self.channel = channel
         
         self._update_ids()
-        
+
+    def set_network(self, network):
+        self.network = network
+        self._update_ids()
+
+    def set_station(self, station):
+        self.station = station
+        self._update_ids()
+
+    def set_location(self, location):
+        self.location = location
+        self._update_ids()
+
+    def set_channel(self, channel):
+        self.channel = channel
+        self._update_ids()
+
     def overlaps(self, tmin, tmax):
         '''Check if trace has overlap with a given time span.'''
         return not (tmax < self.tmin or self.tmax < tmin)
@@ -261,7 +277,13 @@ class Trace(object):
         self.drop_growbuffer()
         self.ydata = new_ydata
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
-        
+
+    def data_len(self):
+        if self.ydata is not None:
+            return self.ydata.size
+        else:
+            return int(round((self.tmax-self.tmin)/self.deltat)) + 1
+
     def drop_data(self):
         '''Forget data, make dataless trace.'''
         self.drop_growbuffer()
@@ -343,7 +365,8 @@ class Trace(object):
         ibeg = max(0, t2ind(tmin-self.tmin,self.deltat, snap[0]))
         iplus = 0
         if include_last: iplus=1
-        iend = min(len(self.ydata), t2ind(tmax-self.tmin,self.deltat, snap[1])+iplus)
+
+        iend = min(self.data_len(), t2ind(tmax-self.tmin,self.deltat, snap[1])+iplus)
         
         if ibeg >= iend: raise NoData()
         obj = self
@@ -351,9 +374,14 @@ class Trace(object):
             obj = self.copy(data=False)
        
         self.drop_growbuffer()
-        obj.ydata = self.ydata[ibeg:iend].copy()
+        if self.ydata is not None:
+            obj.ydata = self.ydata[ibeg:iend].copy()
+        else:
+            obj.ydata = None
+        
         obj.tmin = obj.tmin+ibeg*obj.deltat
-        obj.tmax = obj.tmin+(len(obj.ydata)-1)*obj.deltat
+        obj.tmax = obj.tmin+((iend-ibeg)-1)*obj.deltat
+            
         obj._update_ids()
     
         
@@ -439,6 +467,30 @@ class Trace(object):
         if initials is not None:
             return finals
 
+    def resample(self, deltat):
+
+        ndata = self.ydata.size
+        ntrans = nextpow2(ndata)
+        fntrans2 = ntrans * self.deltat/deltat
+        ntrans2 = int(round(fntrans2))
+        deltat2 = self.deltat * float(ntrans)/float(ntrans2)
+        ndata2 = int(round(ndata*self.deltat/deltat2))
+        if abs(fntrans2 - ntrans2) > 1e-7:
+            logger.warn('resample: requested deltat %g could not be matched exactly: %g' % (deltat, deltat2))
+        
+        data = self.ydata
+        data_pad = num.zeros(ntrans, dtype=num.float)
+        data_pad[:ndata]  = data
+        fdata = num.fft.rfft(data_pad)
+        fdata2 = num.zeros((ntrans2+1)/2, dtype=fdata.dtype)
+        n = min(fdata.size,fdata2.size)
+        fdata2[:n] = fdata[:n]
+        data2 = num.fft.irfft(fdata2)
+        data2 = data2[:ndata2]
+        data2 *= float(ntrans2) / float(ntrans)
+        self.deltat = deltat2
+        self.set_ydata(data2)
+
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         '''Check if a given frequency is above the Nyquist frequency of the trace.
 
@@ -455,7 +507,7 @@ class Trace(object):
             if raise_exception:
                 raise AboveNyquist(message)
             
-    def lowpass(self, order, corner, nyquist_warn=True, nyquist_exception=False):
+    def lowpass(self, order, corner, nyquist_warn=True, nyquist_exception=False, demean=True):
         '''Apply Butterworth lowpass to the trace.
         
         :param order: order of the filter
@@ -465,12 +517,16 @@ class Trace(object):
         '''
         self.nyquist_check(corner, 'Corner frequency of lowpass', nyquist_warn, nyquist_exception)
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='low')
+        if len(a) != order+1 or len(b) != order+1:
+            logger.warn('Erroneous filter coefficients returned by scipy.signal.butter(). You may need to downsample the signal before filtering.')
+
         data = self.ydata.astype(num.float64)
-        data -= num.mean(data)
+        if demean:
+            data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
-    def highpass(self, order, corner, nyquist_warn=True, nyquist_exception=False):
+    def highpass(self, order, corner, nyquist_warn=True, nyquist_exception=False, demean=True):
         '''Apply butterworth highpass to the trace.
 
         :param order: order of the filter
@@ -482,11 +538,14 @@ class Trace(object):
         self.nyquist_check(corner, 'Corner frequency of highpass', nyquist_warn, nyquist_exception)
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat], btype='high')
         data = self.ydata.astype(num.float64)
-        data -= num.mean(data)
+        if len(a) != order+1 or len(b) != order+1:
+            logger.warn('Erroneous filter coefficients returned by scipy.signal.butter(). You may need to downsample the signal before filtering.')
+        if demean:
+            data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
         
-    def bandpass(self, order, corner_hp, corner_lp):
+    def bandpass(self, order, corner_hp, corner_lp, demean=True):
         '''Apply butterworth bandpass to the trace.
         
         :param order: order of the filter
@@ -500,10 +559,109 @@ class Trace(object):
         self.nyquist_check(corner_lp, 'Higher corner frequency of bandpass')
         (b,a) = _get_cached_filter_coefs(order, [corner*2.0*self.deltat for corner in (corner_hp, corner_lp)], btype='band')
         data = self.ydata.astype(num.float64)
-        data -= num.mean(data)
+        if demean:
+            data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
+    
+    def abshilbert(self):
+        self.drop_growbuffer()
+        self.ydata = num.abs(hilbert(self.ydata))
+    
+    def envelope(self):
+        self.drop_growbuffer()
+        self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
+
+    def taper(self, taperer):
+        taperer(self.ydata, self.tmin, self.deltat)
+    
+    def whiten(self, order=6):
+        '''Whiten signal in time domain using autoregression and recursive filter.
         
+        :param order: order of the autoregression process
+        '''
+        
+        b,a = self.whitening_coefficients(order)
+        self.drop_growbuffer()
+        self.ydata = signal.lfilter(b,a, self.ydata)
+
+    def whitening_coefficients(self, order=6):
+        ar = yulewalker(self.ydata, order)
+        b, a = [1.] + ar.tolist(), [1.]
+        return b, a
+
+    def ampspec_whiten(self, width, td_taper='auto', fd_taper='auto', pad_to_pow2=True, demean=True):
+        '''Whiten signal via frequency domain using moving average on amplitude spectra.
+        
+        :param width: width of smoothing kernel [Hz]
+        :param td_taper: time domain taper, object of type :py:class:`Taper` or ``None`` or ``'auto'``.
+        :param fd_taper: frequency domain taper, object of type :py:class:`Taper` or ``None`` or ``'auto'``.
+        :param pad_to_pow2: whether to pad the signal with zeros up to a length of 2^n
+        :param demean: whether to demean the signal before tapering
+        
+        The signal is first demeaned and then tapered using *td_taper*. Then,
+        the spectrum is calculated and inversely weighted with a smoothed
+        version of its amplitude spectrum. A moving average is used for the
+        smoothing. The smoothed spectrum is then tapered using *fd_taper*.
+        Finally, the smoothed and tapered spectrum is back-transformed into the
+        time domain.
+
+        If *td_taper* is set to ``'auto'``, ``CosFader(1.0/width)`` is used. If
+        *fd_taper* is set to ``'auto'``, ``CosFader(width)`` is used.
+
+        '''
+        ndata = self.data_len()
+        
+        if pad_to_pow2:
+            ntrans = nextpow2(ndata)
+        else:
+            ntrans = ndata
+
+        df = 1./(ntrans*self.deltat)
+        nw = int(round(width/df))
+        if ndata/2+1 <= nw:
+            raise TraceTooShort('Samples in trace: %s, samples needed: %s' % (ndata, nw))
+
+        if td_taper == 'auto':
+            td_taper = CosFader(1./width)
+
+        if fd_taper == 'auto':
+            fd_taper = CosFader(width)
+        
+        if td_taper:
+            self.taper(td_taper)
+
+        ydata = self.get_ydata().astype(num.float)
+        if demean:
+            ydata -= ydata.mean()
+            
+        spec = num.fft.rfft(ydata, ntrans)
+        
+        amp = num.abs(spec)
+        nspec = amp.size
+        csamp = num.cumsum(amp)
+        amp_smoothed = num.empty(nspec, dtype=csamp.dtype)
+        n1, n2 = nw/2, nw/2 + nspec - nw
+        amp_smoothed[n1:n2] = (csamp[nw:] - csamp[:-nw]) / nw
+        amp_smoothed[:n1] = amp_smoothed[n1]
+        amp_smoothed[n2:] = amp_smoothed[n2-1]
+       
+        denom = amp_smoothed * amp
+        numer = amp
+        eps = num.mean(denom) * 1e-9
+        if eps == 0.0:
+            eps = 1e-9
+        
+        numer += eps
+        denom += eps
+        spec *= numer/denom
+        
+        if fd_taper:
+            fd_taper(spec, 0., df)
+
+        ydata =  num.fft.irfft(spec)
+        self.set_ydata(ydata[:ndata])
+
     def _get_cached_freqs(self, nf, deltaf):
         ck = (nf, deltaf)
         if ck not in Trace.cached_frequencies:
@@ -773,6 +931,49 @@ class Trace(object):
         params.update(additional)
         return template % params
 
+    def plot(self):
+        '''Show trace with matplotlib.
+        
+        See also: :py:meth:`Trace.snuffle`.
+        '''
+        import pylab
+        pylab.plot(self.get_xdata(), self.get_ydata())
+        name = self.channel+' '+self.station+' '+time.strftime("%d-%m-%y %H:%M:%S", time.gmtime(self.tmin))+' - '+time.strftime("%d-%m-%y %H:%M:%S", time.gmtime(self.tmax))
+        pylab.title(name)
+        pylab.show()
+    
+    def snuffle(self, **kwargs):
+        '''Show trace in a snuffler window.
+
+        :param stations: list of `pyrocko.model.Station` objects or ``None``
+        :param events: list of `pyrocko.model.Event` objects or ``None``
+        :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+        :param ntracks: float, number of tracks to be shown initially (default: 12)
+        :param follow: time interval (in seconds) for real time follow mode or ``None``
+        :param controls: bool, whether to show the main controls (default: ``True``)
+        :param opengl: bool, whether to use opengl (default: ``False``)
+        '''
+
+        snuffle( [self], **kwargs)
+
+def snuffle(traces, **kwargs):
+    '''Show traces in a snuffler window.
+
+    :param stations: list of `pyrocko.model.Station` objects or ``None``
+    :param events: list of `pyrocko.model.Event` objects or ``None``
+    :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+    :param ntracks: float, number of tracks to be shown initially (default: 12)
+    :param follow: time interval (in seconds) for real time follow mode or ``None``
+    :param controls: bool, whether to show the main controls (default: ``True``)
+    :param opengl: bool, whether to use opengl (default: ``False``)
+    '''
+
+    from pyrocko import pile, snuffler
+    p = pile.Pile()
+    trf = pile.MemTracesFile(p, traces)
+    p.add_file(trf)
+    return snuffler.snuffle(p, **kwargs)
+
 class NoData(Exception):
     '''This exception is raised by some :py:class:`Trace` operations when no or not enough data is available.'''
     pass
@@ -884,28 +1085,35 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
         
         a = out_traces[-1]
         b = in_traces.pop(0)
+        
+        avirt, bvirt = a.ydata is None, b.ydata is None
+        assert avirt == bvirt, 'traces given to degapper() must either all have data or have no data.'
+        virtual = avirt and bvirt
 
         if (a.nslc_id == b.nslc_id and a.deltat == b.deltat and 
-            len(a.ydata) >= 1 and len(b.ydata) >= 1 and a.ydata.dtype == b.ydata.dtype):
+            a.data_len() >= 1 and b.data_len() >= 1 and 
+            (virtual or a.ydata.dtype == b.ydata.dtype)):
             
-            dist = (b.tmin-(a.tmin+(len(a.ydata)-1)*a.deltat))/a.deltat
+            dist = (b.tmin-(a.tmin+(a.data_len()-1)*a.deltat))/a.deltat
             idist = int(round(dist))
             if abs(dist - idist) > 0.05 and idist <= maxgap:
                 pass #logger.warn('Cannot degap traces with displaced sampling (%s,%s,%s,%s)' % a.nslc_id)
             else:
                 if 1 < idist <= maxgap:
-                    if fillmethod == 'interpolate':
-                        filler = a.ydata[-1] + (((1.+num.arange(idist-1,dtype=num.float))/idist)*(b.ydata[0]-a.ydata[-1])).astype(a.ydata.dtype)
-                    elif fillmethod == 'zeros':
-                        filler = num.zeros(idist-1,dtype=a.ydist.dtype)
-                    a.ydata = num.concatenate((a.ydata,filler,b.ydata))
+                    if not virtual:
+                        if fillmethod == 'interpolate':
+                            filler = a.ydata[-1] + (((1.+num.arange(idist-1,dtype=num.float))/idist)*(b.ydata[0]-a.ydata[-1])).astype(a.ydata.dtype)
+                        elif fillmethod == 'zeros':
+                            filler = num.zeros(idist-1,dtype=a.ydist.dtype)
+                        a.ydata = num.concatenate((a.ydata,filler,b.ydata))
                     a.tmax = b.tmax
                     if a.mtime and b.mtime:
                         a.mtime = max(a.mtime, b.mtime)
                     continue
 
                 elif idist == 1:
-                    a.ydata = num.concatenate((a.ydata,b.ydata))
+                    if not virtual:
+                        a.ydata = num.concatenate((a.ydata,b.ydata))
                     a.tmax = b.tmax
                     if a.mtime and b.mtime:
                         a.mtime = max(a.mtime, b.mtime)
@@ -913,20 +1121,21 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
                     
                 elif idist <= 0:
                     if b.tmax > a.tmax:
-                        na = a.ydata.size
-                        n = -idist+1
-                        if deoverlap == 'use_second':
-                            a.ydata = num.concatenate((a.ydata[:-n], b.ydata))
-                        elif deoverlap in ('use_first', 'crossfade_cos'):
-                            a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
-                        else:
-                            assert False, 'unknown deoverlap method'
-
-                        if deoverlap == 'crossfade_cos':
+                        if not virtual:
+                            na = a.ydata.size
                             n = -idist+1
-                            taper = 0.5-0.5*num.cos((1.+num.arange(n))/(1.+n)*num.pi)
-                            a.ydata[na-n:na] *= 1.-taper
-                            a.ydata[na-n:na] += b.ydata[:n] * taper
+                            if deoverlap == 'use_second':
+                                a.ydata = num.concatenate((a.ydata[:-n], b.ydata))
+                            elif deoverlap in ('use_first', 'crossfade_cos'):
+                                a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
+                            else:
+                                assert False, 'unknown deoverlap method'
+
+                            if deoverlap == 'crossfade_cos':
+                                n = -idist+1
+                                taper = 0.5-0.5*num.cos((1.+num.arange(n))/(1.+n)*num.pi)
+                                a.ydata[na-n:na] *= 1.-taper
+                                a.ydata[na-n:na] += b.ydata[:n] * taper
 
                         a.tmax = b.tmax
                         if a.mtime and b.mtime:
@@ -936,7 +1145,7 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
                         # make short second trace vanish
                         continue
                     
-        if len(b.ydata) >= 1:
+        if b.data_len() >= 1:
             out_traces.append(b)
             
     for tr in out_traces:
@@ -1297,6 +1506,38 @@ def correlate(a, b, mode='valid', normalization=None):
 
     return c
 
+def deconvolve(a, b, waterlevel, fd_taper=None, pad_to_pow2=True):
+
+    assert abs(a.tmin - b.tmin) < a.deltat * 0.001
+    same_sampling_rate(a,b)
+
+    ndata = max(a.data_len(), b.data_len())
+    if pad_to_pow2:
+        ntrans = nextpow2(ndata*1.5)
+    else:
+        ntrans = ndata
+        
+    aspec = num.fft.rfft(a.ydata, ntrans)
+    bspec = num.fft.rfft(b.ydata, ntrans)
+    
+    out = aspec * num.conj(bspec)
+    
+    bautocorr = bspec*num.conj(bspec)
+    denom = num.maximum( bautocorr, waterlevel * bautocorr.max() )
+
+    out /= denom
+    df = 1.0/(ntrans*a.deltat)
+    
+    if fd_taper is not None:
+        fd_taper( out, 0.0, df )
+
+    ydata = num.fft.irfft(out)
+    
+    c = a.copy(data=False)
+    c.set_ydata(ydata[:ndata])
+    c.set_codes(*merge_codes(a,b,'/'))
+    return c 
+
 def same_sampling_rate(a,b, eps=1.0e-6):
     '''Check if two traces have the same sampling rate.
     
@@ -1316,6 +1557,48 @@ def merge_codes(a,b, sep='-'):
         else:
             o.append(sep.join((xa,xb)))
     return o
+
+class Taper(object):
+
+    def __call__(self, y, x0, dx):
+        pass
+
+class CosTaper(Taper):
+    def __init__(self, a,b,c,d):
+        self._corners = (a,b,c,d)
+
+    def __call__(self, y, x0, dx):
+        a,b,c,d = self._corners
+        apply_costaper(a, b, c, d, y, x0, dx)
+
+class CosFader(Taper):
+    def __init__(self, xfade=None, xfrac=None):
+        assert (xfade is None) != (xfrac is None)
+        self._xfade = xfade
+        self._xfrac = xfrac
+    
+    def __call__(self, y, x0, dx):
+        xfade = self._xfade
+
+        xlen = (y.size - 1)*dx
+        if xfade is None:
+            xfade = xlen * xfrac
+
+        a = x0
+        b = x0 + self._xfade
+        c = x0 + xlen - self._xfade
+        d = x0 + xlen
+
+        apply_costaper(a, b, c, d, y, x0, dx)
+
+class GaussTaper(Taper):
+
+    def __init__(self, alpha):
+        self._alpha = alpha
+
+    def __call__(self, y, x0, dx):
+        f = x0 + num.arange( y.size )*dx
+        y *= num.exp(-(2.*num.pi)**2/(4.*self._alpha**2) * f**2)
 
 class FrequencyResponse(object):
     '''Evaluates frequency response at given frequencies.'''
@@ -1359,9 +1642,9 @@ class PoleZeroResponse(FrequencyResponse):
 
     ::
 
-                           (j*2*pi*f - zeros[0]) + (j*2*pi*f - zeros[1]) + ... 
+                           (j*2*pi*f - zeros[0]) * (j*2*pi*f - zeros[1]) * ... 
          T(f) = constant * -------------------------------------------------------
-                           (j*2*pi*f - poles[0]) + (j*2*pi*f - poles[1]) + ...
+                           (j*2*pi*f - poles[0]) * (j*2*pi*f - poles[1]) * ...
     
    
     The poles and zeros should be given as angular frequencies, not in Hz.
@@ -1471,6 +1754,8 @@ class MultiplyResponse(FrequencyResponse):
     def evaluate(self, freqs):
         return self._a.evaluate(freqs) * self._b.evaluate(freqs)
 
+if sys.version_info >= (2,5):
+    from need_python_2_5.trace import *
 
 cached_coefficients = {}
 def _get_cached_filter_coefs(order, corners, btype):
@@ -1500,6 +1785,44 @@ def numpy_has_correlate_flip_bug():
         _globals._numpy_has_correlate_flip_bug = num.all(ab == ba)
     
     return _globals._numpy_has_correlate_flip_bug
+
+def autocorr(x, nshifts):
+    '''Compute biased estimate of the first autocorrelation coefficients.
+    
+    :param x: input array
+    :param nshifts: number of coefficients to calculate
+    '''
+
+    mean = num.mean(x)
+    std = num.std(x)
+    n = x.size
+    xdm = x - mean
+    r = num.zeros(nshifts)
+    for k in range(nshifts):
+        r[k] = 1./((n-num.abs(k))*std) * num.sum( xdm[:n-k] * xdm[k:] )
+        
+    return r
+
+def yulewalker(x, order):
+    '''Compute autoregression coefficients using Yule-Walker method.
+    
+    :param x: input array
+    :param order: number of coefficients to produce
+
+    A biased estimate of the autocorrelation is used. The Yule-Walker equations
+    are solved by :py:func:`numpy.linalg.inv` instead of Levinson-Durbin
+    recursion which is normally used.
+    '''
+
+    gamma = autocorr(x, order+1)
+    d = gamma[1:1+order]
+    a = num.zeros((order,order))
+    gamma2 = num.concatenate( (gamma[::-1], gamma[1:order]) )
+    for i in range(order):
+        ioff = order-i
+        a[i,:] = gamma2[ioff:ioff+order]
+    
+    return num.dot(num.linalg.inv(a),-d)
 
 def moving_avg(x,n):
     n = int(n)
@@ -1534,10 +1857,22 @@ def moving_sum(x,n, mode='valid'):
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
     
+def snapper_w_offset(nmax, offset, delta, snapfun=math.ceil):
+    def snap(x):
+        return max(0,min(snapfun((x-offset)/delta),nmax))
+    return snap
+
 def snapper(nmax, delta, snapfun=math.ceil):
     def snap(x):
         return max(0,min(snapfun(x/delta),nmax))
     return snap
+
+def apply_costaper(a, b, c, d, y, x0, dx):
+    hi = snapper_w_offset(y.size, x0, dx)
+    y[:hi(a)] = 0.
+    y[hi(a):hi(b)] *= 0.5 - 0.5*num.cos((dx*num.arange(hi(a),hi(b))-(a-x0))/(b-a)*num.pi)
+    y[hi(c):hi(d)] *= 0.5 + 0.5*num.cos((dx*num.arange(hi(c),hi(d))-(c-x0))/(d-c)*num.pi)
+    y[hi(d):] = 0.
 
 def costaper(a,b,c,d, nfreqs, deltaf):
     hi = snapper(nfreqs, deltaf)
@@ -1551,4 +1886,31 @@ def costaper(a,b,c,d, nfreqs, deltaf):
 def t2ind(t,tdelta, snap=round):
     return int(snap(t/tdelta))
 
+def hilbert(x, N=None):
+    '''Return the hilbert transform of x of length N.
 
+    (from scipy.signal, but changed to use fft and ifft from numpy.fft)
+    '''
+    x = num.asarray(x)
+    if N is None:
+        N = len(x)
+    if N <=0:
+        raise ValueError, "N must be positive."
+    if num.iscomplexobj(x):
+        print "Warning: imaginary part of x ignored."
+        x = real(x)
+    Xf = num.fft.fft(x,N,axis=0)
+    h = num.zeros(N)
+    if N % 2 == 0:
+        h[0] = h[N/2] = 1
+        h[1:N/2] = 2
+    else:
+        h[0] = 1
+        h[1:(N+1)/2] = 2
+
+    if len(x.shape) > 1:
+        h = h[:, newaxis]
+    x = num.fft.ifft(Xf*h)
+    return x
+    
+        

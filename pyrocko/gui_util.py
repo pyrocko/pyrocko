@@ -278,6 +278,9 @@ class LinValControl(ValControl):
 class MarkerParseError(Exception):
     pass
 
+class MarkerOneNSLCRequired(Exception):
+    pass
+
 class Marker(object):
     
     @staticmethod
@@ -431,6 +434,12 @@ class Marker(object):
     def match_nslc(self, nslc):
         patterns = [ '.'.join(x) for x in self.nslc_ids ]
         return pyrocko.util.match_nslc(patterns, nslc)
+
+    def one_nslc(self):
+        if len(self.nslc_ids) != 1:
+            raise MarkerOneNSLCRequired()
+
+        return list(self.nslc_ids)[0]
 
     def __str__(self):
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
@@ -646,12 +655,7 @@ class EventMarker(Marker):
     def set_active(self, active):
         self._active = active
 
-    def draw(self, p, time_projection, y_projection):
-      
-        Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
-        
-        u = time_projection(self.tmin)
-        v0, v1 = y_projection.get_out_range()
+    def label(self):
         t = []
         mag = self._event.magnitude
         if mag is not None:
@@ -665,9 +669,16 @@ class EventMarker(Marker):
         if nam is not None:
             t.append(nam)
 
-        label = ' '.join(t)
+        return ' '.join(t)
+
+    def draw(self, p, time_projection, y_projection):
+      
+        Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
+        
+        u = time_projection(self.tmin)
+        v0, v1 = y_projection.get_out_range()
         label_bg = QBrush( QColor(255,255,255) )
-        draw_label( p, u, v0-10., label, label_bg, 'CB', outline=self._active)
+        draw_label( p, u, v0-10., self.label(), label_bg, 'CB', outline=self._active)
 
     def get_event(self):
         return self._event
