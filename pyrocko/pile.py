@@ -6,7 +6,23 @@ import numpy as num
 import os, pickle, logging, time, weakref, copy, re, sys
 
 import cPickle as pickle
-from collections import Counter
+
+try:
+    from collections import Counter
+except ImportError:
+    class Counter(dict):
+
+        def __missing__(self, k):
+            return 0
+        
+        def update(self, other):
+            for k, v in other.iteritems():
+                self[k] += v
+
+        def subtract(self, other):
+            for k, v in other.iteritems():
+                self[k] -= v
+
 import avl
 
 pjoin = os.path.join
@@ -14,7 +30,6 @@ logger = logging.getLogger('pyrocko.pile')
 
 from util import reuse
 from trace import degapper
-
 
 progressbar = util.progressbar_module()
 
