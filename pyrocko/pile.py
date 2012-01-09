@@ -81,7 +81,7 @@ class Sorted(object):
     def __iter__(self):
         return iter(self._avl)
 
-    def key_within(self, kmin, kmax):
+    def with_key_in(self, kmin, kmax):
         omin, omax = self._dummy(kmin), self._dummy(kmax)
         ilo, ihi = self._avl.span(omin,omax)
         return self._avl[ilo:ihi]
@@ -209,14 +209,19 @@ class TracesFileCache(object):
         # make a copy without the parents and the binsearch trees
         cache_copy = {}
         for fn in cache.keys():
-            cache_copy[fn] = copy.copy(cache[fn])
-            cache_copy[fn].parent = None
-            cache_copy[fn].by_tmin = None
-            cache_copy[fn].by_tmax = None
-            cache_copy[fn].by_tlen = None
+            trf = copy.copy(cache[fn])
+            trf.parent = None
+            trf.by_tmin = None
+            trf.by_tmax = None
+            trf.by_tlen = None
+            for tr in trf.traces:
+                tr.file = trf
+            cache_copy[fn] = trf
         
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
         f = open(tmpfn, 'w')
+        
+        print cache_copy[fn].__dict__
         pickle.dump(cache_copy, f)
         f.close()
         os.rename(tmpfn, cachefilename)
@@ -322,6 +327,7 @@ class TracesGroup(object):
         self.by_tmin = Sorted(content, 'tmin')
         self.by_tmax = Sorted(content, 'tmax')
         self.by_tlen = Sorted(content, lambda x: x.tmax-x.tmin)
+        self.by_mtime = Sorted(content, 'mtime')
         self.adjust_minmax()
 
     def add(self, content):
@@ -342,6 +348,7 @@ class TracesGroup(object):
                 self.by_tmin.insert_many(c.by_tmin)
                 self.by_tmax.insert_many(c.by_tmax)
                 self.by_tlen.insert_many(c.by_tlen)
+                self.by_mtime.insert_many(c.by_mtime)
             
             elif isinstance(c, trace.Trace):
                 self.networks[c.network] += 1
@@ -353,6 +360,7 @@ class TracesGroup(object):
                 self.by_tmin.insert(c)
                 self.by_tmax.insert(c)
                 self.by_tlen.insert(c)
+                self.by_mtime.insert(c)
 
         self.adjust_minmax()
 
@@ -380,6 +388,7 @@ class TracesGroup(object):
                 self.by_tmin.remove_many( c )
                 self.by_tmax.remove_many( c )
                 self.by_tlen.remove_many( c )
+                self.by_mtime.remove_many( c )
 
             elif isinstance(c, trace.Trace):
                 self.networks[c.network] -= 1
@@ -392,6 +401,7 @@ class TracesGroup(object):
                 self.by_tmin.remove(c)
                 self.by_tmax.remove(c)
                 self.by_tlen.remove(c)
+                self.by_mtime.remove(c)
 
         self.adjust_minmax()
 
@@ -401,16 +411,26 @@ class TracesGroup(object):
         if self.parent is not None:
             self.parent.remove(content)
 
+    def relevant(self, tmin, tmax, group_selector=None, trace_selector=None):
+
+        if not self.by_tmin or not self.is_relevant(tmin, tmax, group_selector):
+            return []
+        
+        return [ tr for tr in self.by_tmin.with_key_in(tmin-self.tlenmax, tmax) 
+                    if tr.is_relevant(tmin, tmax, trace_selector) ]
+
     def adjust_minmax(self):
         if self.by_tmin:
             self.tmin = self.by_tmin.min().tmin
+            self.tmax = self.by_tmax.max().tmax
+            t = self.by_tlen.max()
+            self.tlenmax = t.tmax - t.tmin
+            self.mtime = self.by_mtime.max().mtime
         else:
             self.tmin = None
-
-        if self.by_tmax:
-            self.tmax = self.by_tmax.max().tmax
-        else:
             self.tmax = None
+            self.tlenmax = None
+            self.mtime = None
 
     def notify_listeners(self, what):
         pass
@@ -527,12 +547,15 @@ class TracesFile(TracesGroup):
         self.remove(self.traces)
         for tr in io.load(self.abspath, format=self.format, getdata=False, substitutions=self.substitutions):
             self.traces.append(tr)
+            tr.file = self
+
         self.add(self.traces)
 
         self.data_loaded = False
         self.data_use_count = 0
         
     def load_data(self, force=False):
+        file_changed = False
         if not self.data_loaded or force:
             logger.debug('loading data from file: %s' % self.abspath)
             
@@ -543,8 +566,11 @@ class TracesFile(TracesGroup):
                         logger.warn('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
                         self.remove(xtr)
                         self.traces.remove(xtr)
-                        self.traces.add(tr)
+                        xtr.file = None
+                        self.traces.append(tr)
                         self.add(tr)
+                        tr.file = None
+                        file_changed = True
                     else:
                         xtr.ydata = tr.ydata
                     
@@ -552,8 +578,9 @@ class TracesFile(TracesGroup):
                     self.traces.add(tr)
                     self.add(tr)
                     logger.warn('file may have changed since last access (new trace found): %s' % self.abspath)
-
+                    file_changed = True
             self.data_loaded = True
+        return file_changed
     
     def use_data(self):
         if not self.data_loaded: raise Exception('Data not loaded')
@@ -597,12 +624,14 @@ class TracesFile(TracesGroup):
     def chop(self,tmin,tmax,trace_selector=None, snap=(round,round)):
         chopped = []
         used = False
-        needed = [ tr for tr in self.traces if not trace_selector or trace_selector(tr) ]
+        needed = self.relevant(tmin,tmax,trace_selector=trace_selector)
                 
         if needed:
-            self.load_data()
+            if self.load_data():
+                needed = self.relevant(tmin,tmax, trace_selector=trace_selector)
+
             used = True
-            for tr in self.traces:
+            for tr in needed:
                 if not trace_selector or trace_selector(tr):
                     try:
                         chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap))
@@ -789,8 +818,9 @@ class Pile(TracesGroup):
             subpile.remove_files(files)
         
     def dispatch_key(self, file):
-        tt = time.gmtime(int(file.tmin))
-        return (tt[0],tt[1])
+        return 1
+        #tt = time.gmtime(int(file.tmin))
+        #return (tt[0],tt[1])
     
     def dispatch(self, file):
         k = self.dispatch_key(file)
@@ -798,14 +828,6 @@ class Pile(TracesGroup):
             self.subpiles[k] = SubPile(self)
             
         return self.subpiles[k]
-        
-    def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
-        mtime = None
-        for subpile in self.subpiles.values():
-            if subpile.is_relevant(tmin,tmax, group_selector):
-                mtime = max(mtime, subpile.get_newest_mtime(tmin, tmax, group_selector, trace_selector))
-                
-        return mtime
     
     def get_deltats(self):
         return self.deltats.keys()
@@ -813,11 +835,25 @@ class Pile(TracesGroup):
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round)):
         chopped = []
         used_files = set()
-        for subpile in self.subpiles.values():
-            if subpile.is_relevant(tmin,tmax, group_selector):
-                _chopped, _used_files =  subpile.chop(tmin, tmax, group_selector, trace_selector, snap=snap)
-                chopped.extend(_chopped)
-                used_files.update(_used_files)
+        traces = self.relevant(tmin, tmax, group_selector, trace_selector)
+        print len(traces)
+
+        files_changed = False
+        for tr in traces:
+            if tr.file not in used_files:
+                if tr.file.load_data():
+                    files_changed = True
+
+                used_files.add(tr.file)
+        
+        if files_changed:
+            traces = self.relevant(tmin, tmax, group_selector, trace_selector)
+
+        for tr in traces:
+            try:
+                chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap))
+            except trace.NoData:
+                pass
                 
         return chopped, used_files
 
