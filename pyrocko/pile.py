@@ -3,7 +3,7 @@
 import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging, time, weakref, copy, re, sys
+import os, pickle, logging, time, weakref, copy, re, sys, operator
 
 import cPickle as pickle
 
@@ -214,6 +214,7 @@ class TracesFileCache(object):
             trf.by_tmin = None
             trf.by_tmax = None
             trf.by_tlen = None
+            trf.by_mtime = None
             for tr in trf.traces:
                 tr.file = trf
             cache_copy[fn] = trf
@@ -221,7 +222,6 @@ class TracesFileCache(object):
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
         f = open(tmpfn, 'w')
         
-        print cache_copy[fn].__dict__
         pickle.dump(cache_copy, f)
         f.close()
         os.rename(tmpfn, cachefilename)
@@ -321,6 +321,7 @@ class TracesGroup(object):
         self.by_tmin = Sorted([], 'tmin')
         self.by_tmax = Sorted([], 'tmax')
         self.by_tlen = Sorted([], lambda x: x.tmax-x.tmin)
+        self.by_mtime = Sorted([], 'mtime')
         self.tmin, self.tmax = None, None
     
     def trees_from_content(self, content):
@@ -836,7 +837,6 @@ class Pile(TracesGroup):
         chopped = []
         used_files = set()
         traces = self.relevant(tmin, tmax, group_selector, trace_selector)
-        print len(traces)
 
         files_changed = False
         for tr in traces:
