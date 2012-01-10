@@ -56,13 +56,26 @@ class Dummy:
 
 class Sorted(object):
     def __init__(self, values=[], key=None):
-        self._avl = avl.new(values, cmpfunc(key))
-        
+        self._set_key(key)
+        self._avl = avl.new(values, self._cmp)
+
+    def _set_key(self, key):
+        self._key = key
+        self._cmp = cmpfunc(key)
         if isinstance(key, str):
             class Dummy:
                 def __init__(self, k):
                     setattr(self, key, k)
             self._dummy = Dummy
+
+    def __getstate__(self):
+        state = list(self._avl.iter()), self._key
+        return state
+   
+    def __setstate__(self, state):
+        l, key = state
+        self._set_key(key)
+        self._avl = avl.from_iter(iter(l), len(l))
 
     def insert(self, value):
         self._avl.insert(value)
@@ -234,7 +247,7 @@ def get_cache(cachedir):
         
     return TracesFileCache.caches[cachedir]
     
-def loader(filenames, fileformat, cache, filename_attributes, show_progress=True):
+def loader(filenames, fileformat, cache, filename_attributes, show_progress=True, update_progress=None):
         
     if not filenames:
         logger.warn('No files to load from')
@@ -247,6 +260,9 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
                 progressbar.Percentage(), ' ',]
         
         pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(filenames)).start()
+    
+    if update_progress:
+        update_progress(0, len(filenames))
     
     regex = None
     if filename_attributes:
@@ -286,13 +302,22 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
             yield tfile
         
         if pbar: pbar.update(ifile+1)
+        if update_progress:
+            update_progress(ifile+1, len(filenames))
     
     if pbar: pbar.finish()
+    
+    if update_progress:
+        update_progress(ifile+1, len(filenames))
+    
     if failures:
         logger.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
     
     if cache:
         cache.dump_modified()
+
+def tlen(x):
+    return x.tmax-x.tmin
 
 class TracesGroup(object):
     
@@ -320,14 +345,14 @@ class TracesGroup(object):
         self.networks, self.stations, self.locations, self.channels, self.nslc_ids, self.deltats = [ Counter() for x in range(6) ]
         self.by_tmin = Sorted([], 'tmin')
         self.by_tmax = Sorted([], 'tmax')
-        self.by_tlen = Sorted([], lambda x: x.tmax-x.tmin)
+        self.by_tlen = Sorted([], tlen)
         self.by_mtime = Sorted([], 'mtime')
         self.tmin, self.tmax = None, None
     
     def trees_from_content(self, content):
         self.by_tmin = Sorted(content, 'tmin')
         self.by_tmax = Sorted(content, 'tmax')
-        self.by_tlen = Sorted(content, lambda x: x.tmax-x.tmin)
+        self.by_tlen = Sorted(content, tlen)
         self.by_mtime = Sorted(content, 'mtime')
         self.adjust_minmax()
 
@@ -1064,7 +1089,7 @@ class Pile(TracesGroup):
 
 def make_pile( paths=None, selector=None, regex=None,
         fileformat = 'mseed',
-        cachedirname='/tmp/pyrocko_cache_%s' % os.environ['USER'], show_progress=True ):
+        cachedirname=config.cache_dir, show_progress=True ):
     
     '''Create pile from given file and directory names.
     

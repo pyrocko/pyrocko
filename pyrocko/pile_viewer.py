@@ -517,6 +517,7 @@ def MakePileOverviewClass(base):
             self.ntracks_shown_max = ntracks_shown_max
             self.initial_ntracks_shown_max = ntracks_shown_max
             self.ntracks = 0
+            self.show_all = True
             self.shown_tracks_range = None
             self.track_start = None
             self.track_trange = None
@@ -1050,16 +1051,28 @@ def MakePileOverviewClass(base):
             self.color_keys = self.pile.gather_keys(color)
             previous_ntracks = self.ntracks
             self.set_ntracks(len(keys))
-            if self.shown_tracks_range is None or previous_ntracks == 0 or previous_ntracks != self.ntracks:
+
+            if self.shown_tracks_range is None or previous_ntracks == 0 or self.show_all:
                 l, h = 0, min(self.ntracks_shown_max, self.ntracks)
+                key_at_top = None
+                n = h-l
+
             else:
                 l, h = self.shown_tracks_range
-           
-            self.set_tracks_range((l,h))
+                key_at_top = self.track_keys[l] 
+                n = h-l
 
             self.track_keys = sorted(keys, cmp=order)
+
+            if key_at_top is not None:
+                ind = self.track_keys.index(key_at_top)
+                if ind != -1:
+                    l = ind
+                    h = l+n
+
+            self.set_tracks_range((l,h))
+
             self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
-            
             inrange = lambda x,r: r[0] <= x and x < r[1]
             
             def trace_selector(trace):
@@ -1072,7 +1085,7 @@ def MakePileOverviewClass(base):
             else:
                 self.trace_selector = trace_selector
 
-            if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1]:
+            if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1] or self.show_all:
                 self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
         
         def set_time_range(self, tmin, tmax):
@@ -1172,6 +1185,7 @@ def MakePileOverviewClass(base):
             return self.markers
 
         def mousePressEvent( self, mouse_ev ):
+            self.show_all = False
             #self.setMouseTracking(False)
             point = self.mapFromGlobal(mouse_ev.globalPos())
 
@@ -1205,6 +1219,7 @@ def MakePileOverviewClass(base):
             self.update_status()
             
         def mouseDoubleClickEvent(self, mouse_ev):
+            self.show_all = False
             self.start_picking(None)
             self.ignore_releases = 1
     
@@ -1722,6 +1737,7 @@ def MakePileOverviewClass(base):
                 self.set_gathering()
     
             if self.pile_has_changed:
+
                 if not self.sortingmode_change_delayed():
                     self.sortingmode_change()
                     

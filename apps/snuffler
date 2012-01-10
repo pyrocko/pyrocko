@@ -2,19 +2,14 @@
 
 '''Effective seismological trace viewer.'''
 
-import os, sys, signal, logging, time, re, struct, base64
+import os, sys, signal, logging, time, re, struct, base64, zlib
 import numpy as num
 import cPickle as pickle
 from optparse import OptionParser
 
-import pyrocko.pile
-import pyrocko.hamster_pile
-import pyrocko.slink
-import pyrocko.serial_hamster
-import pyrocko.util
-import pyrocko.pile_viewer
-import pyrocko.ipc
-import pyrocko.model
+import pyrocko.pile, pyrocko.hamster_pile, pyrocko.slink, pyrocko.serial_hamster, \
+       pyrocko.util, pyrocko.pile_viewer, pyrocko.ipc, pyrocko.model, pyrocko.config
+
 from pyrocko.forked import Forked
 
 from PyQt4.QtCore import *
@@ -121,6 +116,9 @@ class Channel(asynchat.async_chat):
         self.set_terminator(8)
         self.reading_size = True
         self.ticket = ticket
+        self.compressor = zlib.compressobj()
+        self.decompressor = zlib.decompressobj()
+
 
     def handle_connect(self):
         if self.ticket is not None:
@@ -136,7 +134,7 @@ class Channel(asynchat.async_chat):
             self.reading_size = False
         else:
             data = ''.join(self.ibuffer)
-            payload = pickle.loads(data)
+            payload = pickle.loads(self.decompressor.decompress(data))
             if payload is None:
                 self.close_when_done()
                 self.set_terminator(None)
@@ -148,10 +146,12 @@ class Channel(asynchat.async_chat):
         self.ibuffer = []
 
     def ship(self, obj):
-        data = pickle.dumps(obj)
-        sdata = struct.pack('>Q', len(data))
+        data = self.compressor.compress(pickle.dumps(obj))
+        data_end = self.compressor.flush(zlib.Z_FULL_FLUSH)
+        sdata = struct.pack('>Q', len(data)+len(data_end))
         self.push(sdata)
         self.push(data)
+        self.push(data_end)
 
     def handle_received(self, obj):
         pass
@@ -165,6 +165,10 @@ class Connection(QObject):
         self.nwanted = 8
         self.reading_size = True
         self.handler = None
+        self.nbytes_received = 0
+        self.nbytes_sent = 0
+        self.compressor = zlib.compressobj()
+        self.decompressor = zlib.decompressobj()
 
     def handle_read(self):
         while True:
@@ -173,11 +177,12 @@ class Connection(QObject):
                 return
 
             data = self.socket.read(self.nwanted)
+            self.nbytes_received += len(data)
             if self.reading_size:
                 self.nwanted = struct.unpack('>Q', data)[0]
                 self.reading_size = False
             else:
-                obj = pickle.loads(data)
+                obj = pickle.loads(self.decompressor.decompress(data))
                 if obj is None:
                     self.socket.disconnectFromHost()
                 else:
@@ -189,9 +194,12 @@ class Connection(QObject):
         self.emit(SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self, obj)
 
     def ship(self, obj):
-        data = pickle.dumps(obj)
-        self.socket.write(struct.pack('>Q', len(data)))
+        data = self.compressor.compress(pickle.dumps(obj))
+        data_end = self.compressor.flush(zlib.Z_FULL_FLUSH)
+        self.socket.write(struct.pack('>Q', len(data)+len(data_end)))
         self.socket.write(data)
+        self.socket.write(data_end)
+        self.nbytes_sent += len(data)+len(data_end) + 8
 
     def handle_disconnected(self):
         self.emit(SIGNAL('disconnected(PyQt_PyObject)'), self)
@@ -370,7 +378,6 @@ class MySnuffler(QApplication):
         self.pile_viewer.setup_snufflings()
 
         self.add_panel('Main Controls', self.pile_viewer.controls(), visible=True)
-        #self._win.resize(1024, 768)       
         self._win.show()
 
         self.pile_viewer.get_view().setFocus(Qt.OtherFocusReason)
@@ -400,7 +407,7 @@ class MySnuffler(QApplication):
         self.start_server()
         self.start_loader()
 
-        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
+        cachedirname = pyrocko.config.cache_dir
         if options.pattern and not options.force_cache:
             cachedirname = None
 
@@ -415,7 +422,7 @@ class MySnuffler(QApplication):
         self.server = s
 
     def start_loader(self):
-        self.loader = SimpleConnectionHandler(self, add_files=self.add_files)
+        self.loader = SimpleConnectionHandler(self, add_files=self.add_files, update_progress=self.update_progress)
         ticket = os.urandom(32)
         self.forker.spawn('loader', self.server.serverPort(), ticket)
         self.connection_handlers[ticket] = self.loader
@@ -449,8 +456,8 @@ class MySnuffler(QApplication):
         p.add_files(files)
         self.pile_viewer.update_contents()
 
-    def testfork(self):
-        pass
+    def update_progress(self, task, percent):
+        print task, percent
     
     def periodical(self):
         p = self.pile_viewer.get_pile()
@@ -537,6 +544,7 @@ class FileLoader(Channel):
     def __init__(self, port, ticket):
         Channel.__init__(self, port=port, ticket=ticket)
         self.loader = None
+        self.percent = 0
     
     def handle_received(self, obj):
         if obj[0] == 'load':
@@ -550,10 +558,19 @@ class FileLoader(Channel):
             self.loader = pyrocko.pile.loader(sorted(filenames), 
                                 fileformat=format, 
                                 cache=cache, 
-                                filename_attributes=pattern )
+                                filename_attributes=pattern, show_progress=False, update_progress=self.update_progress )
+
+    def update_progress(self, i, n):
+        
+        if (i*100)/n != self.percent:
+            self.percent = (i*100)/n
+            self.ship(('update_progress', 'scanning files', self.percent))
+
 
     def run(self):
         i =0
+        tship = time.time()
+        queue = []
         while True:
             if self.loader:
                 timeout = 0.
@@ -566,11 +583,18 @@ class FileLoader(Channel):
 
             if self.loader:
                 try:
-                    tfile = self.loader.next()
-                    self.ship(('add_files', [tfile]))
+                    queue.append( self.loader.next() )
+                    tnow = time.time()
+                    if tnow - tship > 0.05:
+                        self.ship(('add_files', queue))
+                        tship = tnow
+                        queue = []
+
                 except StopIteration:
                     self.loader = None
-            
+                    if queue:
+                        self.ship(('add_files', queue))
+                        queue = []
             i+=1
 
 class Forker(Forked):
