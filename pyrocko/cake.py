@@ -1979,6 +1979,15 @@ class RayPath:
     def critical_pstop(self, endgaps):
         return self.last_straight().critical_p_out(endgaps)
 
+    def ranges(self, endgaps):
+        p,x,t = self.draft_pxt(endgaps)
+        pp = min(self.critical_pstart(endgaps), self.critical_pstop(endgaps))
+        xx, tt = self.xt(pp, endgaps)
+        x = num.concatenate((x, [xx]))
+        t = num.concatenate((t, [tt]))
+        p = num.concatenate((p, [pp]))
+        return p.min(), p.max(), x.min(), x.max(), t.min(), t.max()
+
     def describe(self, endgaps=None, as_degrees=False):
         self._analyse()
 
@@ -1994,15 +2003,9 @@ class RayPath:
                 self._xmin*xfact, self._xmax*xfact, xunit, self._tmin, self._tmax, self._pmin/r2d, self._pmax/r2d)
 
         if endgaps is not None:
-            p,x,t = self.draft_pxt(endgaps)
-            pp = min(self.critical_pstart(endgaps), self.critical_pstop(endgaps))
-            xx, tt = self.xt(pp, endgaps)
-            x = num.concatenate((x, [xx]))
-            t = num.concatenate((t, [tt]))
-            p = num.concatenate((p, [pp]))
-
+            pmin, pmax, xmin, xmax, tmin, tmax = self.ranges(endgaps)
             ss = '  Ranges for given source and receiver depths:\n   - x [%g, %g] %s\n   - t [%g, %g] s\n   - p [%g, %g] s/deg\n' % (
-                    x.min()*xfact, x.max()*xfact, xunit, t.min(), t.max(), p.min()/r2d, p.max()/r2d)
+                    xmin*xfact, xmax*xfact, xunit, tmin, tmax, pmin/r2d, pmax/r2d)
         else:
             ss = ''
 
@@ -2128,6 +2131,7 @@ class LayeredModel:
         self.nlayers = 0
         self._np = 10000
         self._pdepth = 18
+        self._pathcache = {}
 
     def zeq(self, z1, z2):
         return abs(z1-z2) < ZEPS
@@ -2262,7 +2266,7 @@ class LayeredModel:
 
         mode_layers = []
         used_phase = PhaseDef()
-        used_phase.append(Leg(direction, mode))
+        used_phase.append(Leg(leg.departure, mode))
         path = RayPath(phase)
         trapdetect = set()
         while True:
@@ -2345,51 +2349,65 @@ class LayeredModel:
         
         if isinstance(phases, PhaseDef):
             phases = [ phases ]
-        paths = {}
+        
+        paths = [] 
         for phase in phases:
+            
             layer_start = self.layer(zstart, -phase.direction_start())
             layer_stop = self.layer(zstop, phase.direction_stop())
 
-            pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
-            pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
-            pmax = min(pmax_start, pmax_stop)
+            pathcachekey = (phase.definition(), layer_start, layer_stop)
 
-            cached = {}
-            counter = [ 0 ]
-            def p_to_path(p):
-                if p in cached:
-                    return cached[p]
+            if pathcachekey in self._pathcache:
+                phase_paths = self._pathcache[pathcachekey]
+            else:
 
-                try:
-                    counter[0] += 1
-                    path = self.path(p, phase, layer_start, layer_stop)
-                    if path not in paths:
-                        paths[path] = []
-                    paths[path].append(p)
+                pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
+                pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
+                pmax = min(pmax_start, pmax_stop)
 
-                except PathFailed:
-                    path = None
+                phase_paths = {}
+                cached = {}
+                counter = [ 0 ]
+                def p_to_path(p):
+                    if p in cached:
+                        return cached[p]
+
+                    try:
+                        counter[0] += 1
+                        path = self.path(p, phase, layer_start, layer_stop)
+                        if path not in phase_paths:
+                            phase_paths[path] = []
+                        phase_paths[path].append(p)
+
+                    except PathFailed:
+                        path = None
+                    
+                    cached[p] = path
+                    return path
                 
-                cached[p] = path
-                return path
-            
-            def recurse(pmin, pmax, i=0):
-                if i > self._pdepth:
-                    return
-                path1 = p_to_path(pmin)
-                path2 = p_to_path(pmax)
-                if path1 is None and path2 is None and i > 8:
-                    return
-                if path1 is None or path2 is None or hash(path1) != hash(path2):
-                    recurse(pmin, (pmin+pmax)/2., i+1)
-                    recurse((pmin+pmax)/2., pmax, i+1)
+                def recurse(pmin, pmax, i=0):
+                    if i > self._pdepth:
+                        return
+                    path1 = p_to_path(pmin)
+                    path2 = p_to_path(pmax)
+                    if path1 is None and path2 is None and i > 8:
+                        return
+                    if path1 is None or path2 is None or hash(path1) != hash(path2):
+                        recurse(pmin, (pmin+pmax)/2., i+1)
+                        recurse((pmin+pmax)/2., pmax, i+1)
 
-            recurse(0., pmax)
+                recurse(0., pmax)
 
-        for path, ps in paths.iteritems():
-            path.set_prange(min(ps), max(ps), pmax/(self._np-1))
+                for path, ps in phase_paths.iteritems():
+                    path.set_prange(min(ps), max(ps), pmax/(self._np-1))
+           
+                phase_paths = phase_paths.keys()
+
+                self._pathcache[pathcachekey] = phase_paths
+
+            paths.extend(phase_paths)
         
-        paths = paths.keys()
         paths.sort(key=lambda x: x.pmin)
         return paths
     

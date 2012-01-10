@@ -217,7 +217,8 @@ def plot_rays(paths, rays, zstart, zstop, plot=None):
     for iray, ray in enumerate(rays):
         if isinstance(ray, cake.RayPath):
             path = ray
-            p = num.linspace(path.pmin(), path.pmax(), 6)
+            pmin, pmax, xmin, xmax, tmin, tmax = path.ranges(path.endgaps(zstart, zstop))
+            p = num.linspace(pmin, pmax, 6)
         else:
             p = cake.filled(ray.p, 1)
             path = ray.path
