@@ -791,7 +791,10 @@ def MakePileOverviewClass(base):
             self.old_data_ranges = {}
             
             self.error_messages = {}
-            
+    
+        def sizeHint(self):
+            return QSize(1024,768)
+
         def fail(self, reason):
             box = QMessageBox(self)
             box.setText(reason)
