@@ -1484,6 +1484,9 @@ class Straight(RayElement):
             l = self.layer
             return (l.ztop, l.zbot)[self._direction_out == DOWN]
 
+    def turns(self):
+        return self.z_in() == self.z_out()
+
     def eff_direction_in(self, endgaps=None):
         if endgaps is None:
             return self._direction_in
@@ -2094,14 +2097,24 @@ class Ray:
         x2, y2 = r2*math.sin(self.x*d2r), r2*math.cos(self.x*d2r)
         return ((x2-x1)**2 + (y2-y1)**2)*4.0*math.pi
 
+    def almost_headwave(self, eps=1.):
+        for s in list(self.path.straights())[1:-1]:
+            if s.turns():
+                ai = s.angle_in(self.p)
+                if 90-eps < ai and ai < 90+eps:
+                    return True
+        return False
+
     def __str__(self, as_degrees=False):
         if as_degrees:
             sd = '%6.3g deg' % self.x
         else:
             sd = '%7.5g km' % (self.x*(d2r*earthradius/km))
-        return '%7.5g s/deg %s %6.4g s %5.1f %5.1f %3.0f%% %3.0f%% %s' % (
+
+        ahw = ' H'[self.almost_headwave()]
+        return '%7.5g s/deg %s %6.4g s %5.1f %5.1f %3.0f%% %3.0f%% %s %s' % (
                 self.p/r2d, sd, self.t, self.takeoff_angle(), self.incidence_angle(), 
-                100*self.efficiency(), 100*self.spreading()*self.surface_sphere(), self.path)
+                100*self.efficiency(), 100*self.spreading()*self.surface_sphere(), ahw, self.path)
 
 class DiscontinuityNotFound(Exception):
     def __init__(self, depth_or_name):
