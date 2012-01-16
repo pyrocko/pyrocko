@@ -210,6 +210,8 @@ class MySnuffler(QApplication):
                 help='follow real time with a window of N seconds')
         parser.add_option('--progressive', dest='progressive', action='store_true', default=False,
                 help='don\'t wait for file scanning to complete before opening the viewer')
+        parser.add_option('--cache', dest='cache_dir', default='/tmp/snuffle_cache_%s' % os.environ['USER'], metavar='DIR',
+                help='use directory DIR to cache trace metadata (default=\'%default\')')
         parser.add_option('--force-cache', dest='force_cache', action='store_true', default=False,
                 help='use the cache even when trace attribute spoofing is active (may have silly consequences)')
         parser.add_option('--ntracks', dest='ntracks', default=24, metavar='N',
@@ -277,11 +279,10 @@ class MySnuffler(QApplication):
         if rargs:
             filenames = pyrocko.util.select_files( rargs, regex=options.pattern )
         
-        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
         if options.pattern and not options.force_cache:
             cache = None
         else:
-            cache = pyrocko.pile.get_cache(cachedirname)
+            cache = pyrocko.pile.get_cache(options.cache_dir)
         
         self.cache = cache
 
