@@ -548,7 +548,7 @@ class Marker(object):
                 drawtriangles(self.tmin)
 
 
-    def draw_trace(self, p, trace, time_projection, track_projection, gain, outline_label=False):
+    def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain, outline_label=False):
         if self.nslc_ids and not self.match_nslc(trace.nslc_id): return
         
         color = self.select_color(self.color_b)
@@ -683,7 +683,7 @@ class EventMarker(Marker):
     def get_event(self):
         return self._event
 
-    def draw_trace(self, p, trace, time_projection, track_projection, gain):
+    def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
         pass
     
     def get_attributes(self):
@@ -721,8 +721,8 @@ class PhaseMarker(Marker):
         self._polarity = polarity
         self._automatic = automatic
 
-    def draw_trace(self, p, trace, time_projection, track_projection, gain):
-        Marker.draw_trace(self, p, trace, time_projection, track_projection, gain, outline_label=self._event is not None)
+    def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
+        Marker.draw_trace(self, viewer, p, trace, time_projection, track_projection, gain, outline_label=(self._event is not None and self._event == viewer.get_active_event()))
          
     def get_label(self):
         t = []

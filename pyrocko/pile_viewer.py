@@ -1838,12 +1838,12 @@ def MakePileOverviewClass(base):
                             p.drawPolyline( qpoints )
                             
                             if self.floating_marker:
-                                self.floating_marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                                self.floating_marker.draw_trace(self, p, trace, self.time_projection, track_projection, self.gain)
                                 
                             for marker in self.markers:
                                 if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
                                     if marker.kind in self.visible_marker_kinds:
-                                        marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                                        marker.draw_trace(self, p, trace, self.time_projection, track_projection, self.gain)
                             p.setPen(primary_pen)
                                 
                             if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
