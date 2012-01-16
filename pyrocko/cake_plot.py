@@ -223,7 +223,7 @@ def plot_rays(paths, rays, zstart, zstop, plot=None):
             p = cake.filled(ray.p, 1)
             path = ray.path
         
-        fanz, fanx, _ = path.partial_zxt(p, path.endgaps(zstart, zstop))
+        fanz, fanx, _ = path.zxt_path_subdivided(p, path.endgaps(zstart, zstop))
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
             l = plot.plot( xs, zs, color=color)
