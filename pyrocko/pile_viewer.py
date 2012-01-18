@@ -1403,8 +1403,12 @@ def MakePileOverviewClass(base):
                     if not isinstance(event_marker, EventMarker):
                         nslcs = list(event_marker.nslc_ids)
                         lat, lon = 0.0, 0.0
+                        old = self.get_active_event()
                         if len(nslcs) == 1:
                             lat,lon = self.station_latlon(NSLC(*nslcs[0]))
+                        elif old is not None:
+                            lat,lon = old.lat, old.lon
+
                         event_marker.convert_to_event_marker(lat,lon)
                         
                     self.set_active_event_marker(event_marker)
