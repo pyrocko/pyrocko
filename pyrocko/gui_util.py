@@ -1,7 +1,7 @@
 import math, calendar, time
 import numpy as num
 
-import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace
+import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace, pyrocko.plot
 from pyrocko.util import TableWriter, TableReader
 from pyrocko.nano import Nano
 
@@ -796,3 +796,69 @@ class PhaseMarker(Marker):
         marker = PhaseMarker( nslc_ids, tmin, tmax, kind, event=None, event_hash=event_hash,
             phasename=phasename, polarity=polarity, automatic=automatic )
         return marker
+
+def tohex(c):
+    return '%02x%02x%02x' % c
+
+def to01(c):
+    return c[0]/255., c[1]/255., c[2]/255.
+
+class PyLab(QFrame):
+
+    def __init__(self, parent=None):
+        QFrame.__init__(self, parent)
+        
+        bgrgb = self.palette().color(QPalette.Window).getRgb()[:3]
+        fgcolor = pyrocko.plot.tango_colors['aluminium5'] 
+        dpi = 0.5*(self.logicalDpiX() + self.logicalDpiY())
+    
+        font = QFont()
+        font.setBold(True)
+        fontsize = font.pointSize()
+
+        import matplotlib
+        matplotlib.rcdefaults()
+        matplotlib.rc('axes', linewidth=1)
+        matplotlib.rc('xtick', direction='out')
+        matplotlib.rc('ytick', direction='out')
+        matplotlib.rc('xtick.major', size=8)
+        matplotlib.rc('ytick.major', size=8)
+        #matplotlib.rc('figure', facecolor=tohex(bgrgb), edgecolor=tohex(fgcolor))
+        matplotlib.rc('figure', facecolor='white', edgecolor=tohex(fgcolor))
+        matplotlib.rc('axes', facecolor='white', edgecolor=tohex(fgcolor), labelcolor=tohex(fgcolor))
+        matplotlib.rc('font', family='sans-serif', weight='bold', size=fontsize)
+        matplotlib.rc('text', color=tohex(fgcolor))
+        matplotlib.rc('xtick', color=tohex(fgcolor))
+        matplotlib.rc('ytick', color=tohex(fgcolor))
+        matplotlib.rc('figure.subplot', bottom=0.15)
+
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        from matplotlib.figure import Figure
+        
+        layout = QGridLayout()
+        layout.setContentsMargins(0,0,0,0)
+        layout.setSpacing(0)
+        
+        self.setLayout(layout)
+        self.figure = Figure(dpi=100)
+        self.axes_subplot = self.figure.add_subplot(111)
+        ax = self.axes_subplot
+        ax.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
+
+        xa = ax.get_xaxis()
+        ya = ax.get_yaxis()
+        for attr in ('labelpad', 'LABELPAD'):
+            if hasattr(xa,attr):
+                setattr(xa, attr, xa.get_label().get_fontsize())
+                setattr(ya, attr, ya.get_label().get_fontsize())
+                break
+        canvas = FigureCanvas(self.figure)
+        canvas.setParent(self)
+        layout.addWidget(canvas, 0,0)
+
+    def gca(self):
+        return self.axes_subplot
+
+    def gcf(self):
+        return self.figure
+

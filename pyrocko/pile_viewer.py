@@ -2404,8 +2404,8 @@ class PileViewer(QFrame):
         layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(0)
         
-        self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Sunken)
+        #self.setFrameShape(QFrame.StyledPanel)
+        #self.setFrameShadow(QFrame.Sunken)
 
         self.input_area = QFrame(self)
         ia_layout = QGridLayout()

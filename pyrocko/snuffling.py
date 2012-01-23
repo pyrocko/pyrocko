@@ -12,7 +12,7 @@ from PyQt4.QtGui import *
 
 import pile
 
-from gui_util import ValControl, LinValControl
+from gui_util import ValControl, LinValControl, PyLab
 
 logger = logging.getLogger('pyrocko.snufflings')
 
@@ -89,6 +89,7 @@ class Snuffling:
         self._previous_input_filename = None
 
         self._tempdir = None
+        self._iplot = 0
         
     def setup(self):
         '''Setup the snuffling.
@@ -173,7 +174,16 @@ class Snuffling:
     def fail(self, reason):
         self.error(reason)
         raise SnufflingCallFailed(reason) 
-   
+  
+    def pylab(self, name=None):
+        if name is None:
+            self._iplot += 1
+            name = 'Plot %i (%s)' % (self._iplot, self.get_name())
+
+        pylab = PyLab()
+        self._panel_parent.add_tab(name, pylab)
+        return pylab.gca()
+
     def tempdir(self):
         if self._tempdir is None:
             self._tempdir = tempfile.mkdtemp('', 'snuffling-tmp-')

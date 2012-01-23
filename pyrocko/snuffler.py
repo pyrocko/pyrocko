@@ -40,6 +40,36 @@ class Snuffler(QApplication):
     def myQuit(self, *args):
         self.quit()
 
+
+class SnufflerTabs(QTabWidget):
+    def __init__(self, parent):
+        QTabWidget.__init__(self, parent)
+        self.setTabsClosable(True)
+        self.connect(self, SIGNAL('tabCloseRequested(int)'), self.removeTab)
+
+    def hide_close_button_on_first_tab(self):
+        self.tabBar().setTabButton(0, QTabBar.LeftSide, None)
+        self.tabBar().setTabButton(0, QTabBar.RightSide, None)
+
+    def append_tab(self, widget, name):
+        self.insertTab(self.count(), widget, name)
+        self.setCurrentIndex(self.count()-1)
+
+    def tabInserted(self, index):
+        if index == 0:
+            self.hide_close_button_on_first_tab()
+
+        self.tabbar_visibility()
+
+    def tabRemoved(self, index):
+        self.tabbar_visibility()
+
+    def tabbar_visibility(self):
+        if self.count() <= 1:
+            self.tabBar().hide()
+        elif self.count() > 1:
+            self.tabBar().show()
+
 class SnufflerWindow(QMainWindow):
 
     def __init__(self, pile, stations=None, events=None, markers=None, 
@@ -66,8 +96,11 @@ class SnufflerWindow(QMainWindow):
         if markers:
             self.pile_viewer.get_view().add_markers(markers)
 
-        self.setCentralWidget( self.pile_viewer )
         
+        self.tabs = SnufflerTabs(self)
+        self.setCentralWidget( self.tabs )
+        self.add_tab('Main', self.pile_viewer)
+
         self.pile_viewer.setup_snufflings()
 
         self.add_panel('Main Controls', self.pile_viewer.controls(), visible=controls)
@@ -82,12 +115,14 @@ class SnufflerWindow(QMainWindow):
         if follow:
             self.pile_viewer.get_view().follow(float(follow))
 
-
     def dockwidgets(self):
         return [ w for w in self.findChildren(QDockWidget) if not w.isFloating() ]
 
     def get_panel_parent_widget(self):
         return self
+
+    def add_tab(self, name, widget):
+        self.tabs.append_tab(widget, name)
 
     def add_panel(self, name, panel, visible=False):
         dws = self.dockwidgets()

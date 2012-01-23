@@ -174,6 +174,35 @@ class ProgressiveLoader(QThread):
                     return
             yield tfiles
      
+class SnufflerTabs(QTabWidget):
+    def __init__(self, parent):
+        QTabWidget.__init__(self, parent)
+        self.setTabsClosable(True)
+        self.connect(self, SIGNAL('tabCloseRequested(int)'), self.removeTab)
+
+    def hide_close_button_on_first_tab(self):
+        self.tabBar().setTabButton(0, QTabBar.LeftSide, None)
+        self.tabBar().setTabButton(0, QTabBar.RightSide, None)
+
+    def append_tab(self, widget, name):
+        widget.setParent(self)
+        self.insertTab(self.count(), widget, name)
+        self.setCurrentIndex(self.count()-1)
+
+    def tabInserted(self, index):
+        if index == 0:
+            self.hide_close_button_on_first_tab()
+
+        self.tabbar_visibility()
+
+    def tabRemoved(self, index):
+        self.tabbar_visibility()
+
+    def tabbar_visibility(self):
+        if self.count() <= 1:
+            self.tabBar().hide()
+        elif self.count() > 1:
+            self.tabBar().show()
      
 class MyMainWindow(QMainWindow):
 
@@ -332,7 +361,9 @@ class MySnuffler(QApplication):
         for marker_fn in options.marker_fns:
             self.pile_viewer.get_view().add_markers(pyrocko.pile_viewer.Marker.load_markers(marker_fn))
 
-        self._win.setCentralWidget( self.pile_viewer )
+        self._tabs = SnufflerTabs(self._win)
+        self._win.setCentralWidget( self._tabs )
+        self.add_tab('Main', self.pile_viewer)
         
         self.pile_viewer.setup_snufflings()
 
@@ -365,7 +396,10 @@ class MySnuffler(QApplication):
             
         if options.follow:
             self.pile_viewer.get_view().follow(float(options.follow))
-    
+   
+    def add_tab(self, name, widget):
+        self._tabs.append_tab(widget, name)
+
     def periodical(self):
         p = self.pile_viewer.get_pile()
         update = False
