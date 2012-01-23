@@ -16,6 +16,9 @@ class Anon(dict):
     def getn(self, *keys):
         return Anon( [(k, self[k]) for k in keys] )
 
+    def gett(self, *keys):
+        return tuple([ self[k] for k in keys])
+
 def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
     
     want = required + optional
@@ -218,32 +221,41 @@ if __name__ == '__main__':
         for arrival in mod.arrivals(**c.getn('zstart', 'zstop', 'phases', 'distances')):
             print arrival.__str__(as_degrees=c.as_degrees)
 
-    elif command in ('plot-xt', 'plot-xp', 'plot-rays', 'plot'):
+    elif command == 'paths':
+        c = optparse(('model', 'phases'), ('zstart', 'zstop', 'as_degrees'), usage=usage_sub % command)
+        mod = c.model
+        for path in mod.gather_paths(**c.getn('phases', 'zstart', 'zstop')):
+            print path.describe(path.endgaps(c.zstart, c.zstop), c.as_degrees)
+
+    elif command in ('plot-xt', 'plot-xp', 'plot-rays', 'plot', 'plot-model'):
         if command in ('plot-xt', 'plot'):
             c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'vred'), usage=usage_sub % command)
         else:
             c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees'), usage=usage_sub % command)
 
         mod = c.model
-        pathes = mod.gather_pathes(**c.getn('phases', 'zstart', 'zstop'))
+        paths = mod.gather_paths(**c.getn('phases', 'zstart', 'zstop'))
         
         if c.distances is not None:
-            arrivals = mod.arrivals( **c.getn('phases', 'zstart', 'zstop', 'distances'))
+            arrivals = mod.arrivals( interpolation='linear', **c.getn('phases', 'zstart', 'zstop', 'distances'))
         else:
             arrivals = None
         
         if command == 'plot-xp':
-            plot.my_xp_plot(pathes, c.distances, c.as_degrees)
+            plot.my_xp_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees)
         elif command == 'plot-xt':
-            plot.my_xt_plot(pathes, c.distances, c.as_degrees, vred=c.vred)
+            plot.my_xt_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
         elif command == 'plot-rays':
             if c.as_degrees:
-                plot.my_rays_plot_gcs(mod, pathes, arrivals, c.zstart, c.zstop, c.distances)
+                plot.my_rays_plot_gcs(mod, paths, arrivals, c.zstart, c.zstop, c.distances)
             else:
-                plot.my_rays_plot(mod, pathes, arrivals, c.zstart, c.zstop, c.distances)
+                plot.my_rays_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances)
 
         elif command == 'plot':
-            plot.my_combi_plot(mod, pathes, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
+            plot.my_combi_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
+
+        elif command == 'plot-model':
+            plot.my_model_plot(mod)
 
     else:
         sys.exit('no such command')
