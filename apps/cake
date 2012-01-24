@@ -237,7 +237,7 @@ if __name__ == '__main__':
         paths = mod.gather_paths(**c.getn('phases', 'zstart', 'zstop'))
         
         if c.distances is not None:
-            arrivals = mod.arrivals( interpolation='linear', **c.getn('phases', 'zstart', 'zstop', 'distances'))
+            arrivals = mod.arrivals( **c.getn('phases', 'zstart', 'zstop', 'distances'))
         else:
             arrivals = None
         
