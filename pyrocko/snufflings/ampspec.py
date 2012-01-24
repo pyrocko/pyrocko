@@ -22,7 +22,7 @@ class Save(Snuffling):
                 all.append(trace)
 
         p = self.pylab() 
-        for tr in traces:
+        for tr in all:
             tr.ydata -= tr.ydata.mean()
             f, a = tr.spectrum()
             p.plot(f,num.abs(a))
