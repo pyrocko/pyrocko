@@ -47,6 +47,8 @@ class SnufflerTabs(QTabWidget):
         if hasattr(self, 'setTabsClosable'):
             self.setTabsClosable(True)
         self.connect(self, SIGNAL('tabCloseRequested(int)'), self.removeTab)
+        if hasattr(self, 'setDocumentMode'):
+            self.setDocumentMode(True)
 
     def hide_close_button_on_first_tab(self):
         tbar = self.tabBar()
