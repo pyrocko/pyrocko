@@ -302,6 +302,8 @@ class MySnuffler(QApplication):
        
         self._sources = []
         rargs = []
+
+        self.commandline_dirfilenames = list(args)
         for arg in args:
             msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
             mca = re.match(r'cam://([^:]+)', arg)
@@ -374,7 +376,6 @@ class MySnuffler(QApplication):
             self.pile_viewer.get_view().add_markers(pyrocko.pile_viewer.Marker.load_markers(marker_fn))
 
         self._win.setCentralWidget( self.pile_viewer )
-        
         self.pile_viewer.setup_snufflings()
 
         self.add_panel('Main Controls', self.pile_viewer.controls(), visible=True)
@@ -407,12 +408,12 @@ class MySnuffler(QApplication):
         self.start_server()
         self.start_loader()
 
-        cachedirname = pyrocko.config.cache_dir
+        self.cachedirname = pyrocko.config.cache_dir
         if options.pattern and not options.force_cache:
-            cachedirname = None
+            self.cachedirname = None
 
         if rargs:
-            self.loader.ship(('load', rargs, cachedirname, options.pattern, options.format ))
+            self.loader.ship(('load', rargs, self.cachedirname, options.pattern, options.format ))
    
     def start_server(self):
         self.connections = []
@@ -457,7 +458,7 @@ class MySnuffler(QApplication):
         self.pile_viewer.update_contents()
 
     def update_progress(self, task, percent):
-        print task, percent
+        self.pile_viewer.progressbars.set_status(task, percent)
     
     def periodical(self):
         p = self.pile_viewer.get_pile()
@@ -475,13 +476,21 @@ class MySnuffler(QApplication):
 
     def event(self, e):
         if isinstance(e, QFileOpenEvent):
-            filenames = pyrocko.util.select_files([str(e.file())])
-            p = self.pile_viewer.get_pile()
-            p.add_files(pyrocko.pile.loader(filenames, 
-                             fileformat='from_extension', 
-                             cache=self.cache,
-                             filename_attributes=None))
-            self.pile_viewer.update_contents() 
+            fn = str(e.file())
+            if fn in self.commandline_dirfilenames:
+                # must filter these to not get duplicates
+                self.commandline_dirfilenames.remove(fn)
+            else:
+                filenames = pyrocko.util.select_files([str(e.file())])
+
+                p = self.pile_viewer.get_pile()
+                cache = pyrocko.pile.get_cache(self.cachedirname)
+                p.add_files(pyrocko.pile.loader(filenames, 
+                                 fileformat='from_extension', 
+                                 cache=cache,
+                                 filename_attributes=None))
+                self.pile_viewer.update_contents() 
+            
             return True
         else:
             return QApplication.event(self, e)
@@ -578,6 +587,7 @@ class FileLoader(Channel):
                 timeout = 30.
 
             asyncore.loop(timeout=timeout, count=1)
+            print '+++'
             if not asyncore.socket_map:
                 return
 

@@ -12,7 +12,7 @@ from pyrocko.util import TableWriter, TableReader
 
 from pyrocko.nano import Nano
 from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker, PhaseMarker, make_QPolygonF, draw_label, \
-    gmtime_x, myctime, mystrftime
+    gmtime_x, myctime, mystrftime, Progressbars
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -2441,6 +2441,10 @@ class PileViewer(QFrame):
         ia_layout.addWidget(self.inputline_error, 1, 0)        
         layout.addWidget(self.input_area, 0,0,1,2)
         layout.addWidget( self.pile_overview, 1, 0 )
+
+        pb = Progressbars(self)
+        layout.addWidget(pb, 2,0,1,2)
+        self.progressbars = pb
         
         scrollbar = QScrollBar(Qt.Vertical)
         self.scrollbar = scrollbar

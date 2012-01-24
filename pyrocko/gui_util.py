@@ -275,6 +275,50 @@ class LinValControl(ValControl):
     def v2s(self, value):
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
+class Progressbar:
+    def __init__(self, parent, name):
+        self.name = name
+        self.label = QLabel(name, parent)
+        self.pbar = QProgressBar(parent)
+
+    def widgets(self):
+        return self.label, self.pbar
+    
+    def bar(self):
+        return self.pbar
+
+class Progressbars(QFrame):
+    def __init__(self, parent):
+        QFrame.__init__(self, parent)
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        self.bars = {}
+
+    def set_status(self, name, value):
+        value = int(round(value))
+        if name not in self.bars:
+            self.bars[name] = Progressbar(self, name)
+            self.make_layout()
+
+        bar = self.bars[name]
+        bar.bar().setValue(value)
+        if value == 100:
+            del self.bars[name]
+            self.make_layout()
+            for w in bar.widgets():
+                w.setParent(None)
+
+    def make_layout(self):
+        while True:
+            c = self.layout.takeAt(0)
+            if c is None:
+                break
+
+        for ibar, bar in enumerate(self.bars.values()):
+            for iw, w in enumerate(bar.widgets()):
+                lab, pb = bar.widgets()
+                self.layout.addWidget(w, ibar, iw)
+
 class MarkerParseError(Exception):
     pass
 

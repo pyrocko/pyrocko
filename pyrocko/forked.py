@@ -11,6 +11,7 @@ def readn(fh, size):
     while nread < size:
         while True:
             try:
+                print '---'
                 data = os.read(fh, size-nread)
                 break
 
