@@ -22,14 +22,25 @@ class Save(Snuffling):
                 all.append(trace)
 
         p = self.pylab() 
+        extrema = []
         for tr in all:
             tr.ydata = tr.ydata.astype(num.float)
             tr.ydata -= tr.ydata.mean()
             f, a = tr.spectrum()
+            absa = num.abs(a)
+            labsa = num.log(absa)
+            stdabsa = num.std(labsa)
+            meanabsa = num.mean(labsa)
+            mi, ma = meanabsa - 3*stdabsa, meanabsa + 3*stdabsa
+            extrema.append(mi)
+            extrema.append(ma)
             p.plot(f,num.abs(a))
+
+        mi, ma = min(extrema), max(extrema)
 
         p.set_xscale('log')
         p.set_yscale('log')
+        p.set_ylim(num.exp(mi),num.exp(ma))
         p.set_xlabel('Frequency [Hz]')
         p.set_ylabel('Counts')
 
