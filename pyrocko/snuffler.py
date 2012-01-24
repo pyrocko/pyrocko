@@ -44,12 +44,15 @@ class Snuffler(QApplication):
 class SnufflerTabs(QTabWidget):
     def __init__(self, parent):
         QTabWidget.__init__(self, parent)
-        self.setTabsClosable(True)
+        if hasattr(self, 'setTabsClosable'):
+            self.setTabsClosable(True)
         self.connect(self, SIGNAL('tabCloseRequested(int)'), self.removeTab)
 
     def hide_close_button_on_first_tab(self):
-        self.tabBar().setTabButton(0, QTabBar.LeftSide, None)
-        self.tabBar().setTabButton(0, QTabBar.RightSide, None)
+        tbar = self.tabBar()
+        if hasattr(tbar ,'setTabButton'):
+            tbar.setTabButton(0, QTabBar.LeftSide, None)
+            tbar.setTabButton(0, QTabBar.RightSide, None)
 
     def append_tab(self, widget, name):
         self.insertTab(self.count(), widget, name)
