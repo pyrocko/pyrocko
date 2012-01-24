@@ -30,6 +30,7 @@ def getTextR(node):
     return rc
         
 class EarthquakeCatalog:
+
     def get_event(self, name):
         raise Exception('This method should be implemented in derived class.')
     
@@ -69,8 +70,13 @@ class Geofon(EarthquakeCatalog):
     
     def __init__(self):
         self.events = {}
+
+    def flush(self):
+        self.events = {}
     
-    def iter_event_names(self, time_range=None, nmax=10000, magmin=None, latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
+    def iter_event_names(self, time_range=None, nmax=1000, magmin=None, latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
+        logger.debug('In Geofon.iter_event_names(...)')
+
         dmin = time.strftime('%Y-%m-%d', time.gmtime(time_range[0]))
         dmax = time.strftime('%Y-%m-%d', time.gmtime(time_range[1]+24*60*60))
         
@@ -78,31 +84,49 @@ class Geofon(EarthquakeCatalog):
             magmin = ''
         else:
             magmin = '%g' % magmin
-       
-        url = ('http://geofon.gfz-potsdam.de/db/eqinfo.php?' + '&'.join([
-            'datemin=%s' % dmin,
-            'datemax=%s' % dmax,
-            'latmin=%g' % latmin,
-            'latmax=%g' % latmax,
-            'lonmin=%g' % lonmin,
-            'lonmax=%g' % lonmax,
-            'magmin=%s' % magmin,
-            'fmt=html',
-            'nmax=%i' % nmax]))
+     
+        ipage = 1 
+        while True:
+            url = ('http://geofon.gfz-potsdam.de/db/eqinfo.php?' + '&'.join([
+                'page=%i' % ipage,
+                'datemin=%s' % dmin,
+                'datemax=%s' % dmax,
+                'latmin=%g' % latmin,
+                'latmax=%g' % latmax,
+                'lonmin=%g' % lonmin,
+                'lonmax=%g' % lonmax,
+                'magmin=%s' % magmin,
+                'fmt=html',
+                'nmax=%i' % nmax]))
+           
+
+            logger.debug('Opening URL: %s' % url)
+            page = urllib2.urlopen(url).read()
+            logger.debug('Received page (%i bytes)' % len(page))
+            events = self._parse_events_page(page)
             
-        page = urllib2.urlopen(url).read()
-        events = self._parse_events_page(page)
-        for ev in events:
-            if time_range[0] <= ev.time and ev.time <= time_range[1]:
-                self.events[ev.name] = ev
-                yield ev.name
+            if not events:
+                break
+
+            for ev in events:
+                if time_range[0] <= ev.time and ev.time <= time_range[1]:
+                    self.events[ev.name] = ev
+                    yield ev.name
+
+            ipage += 1
 
     def get_event(self, name):
+        logger.debug('In Geofon.get_event("%s")' % name)
+
         if name in self.events:
+            logger.debug('Already have it.')
             return self.events[name]
         
         url = 'http://geofon.gfz-potsdam.de/db/eqpage.php?id=%s' % name
+        logger.debug('Opening URL: %s' % url)
         page = urllib2.urlopen(url).read()
+        logger.debug('Received page (%i bytes)' % len(page))
+
         d = self._parse_event_page(page)
         ev = model.Event(
               lat=d['epicenter'][0],
@@ -118,6 +142,7 @@ class Geofon(EarthquakeCatalog):
 
         
     def _parse_events_page(self, page):
+        logger.debug('In Geofon._parse_events_page(...)')
         page = re.sub('&nbsp([^;])', '&nbsp;\\1', page)  # fix broken &nbsp; tags
         page = re.sub('border=0', 'border="0"', page)
         try:
@@ -134,40 +159,50 @@ class Geofon(EarthquakeCatalog):
         
         events = []
         for tr in doc.getElementsByTagName("tr"):
+            logger.debug('Found <tr> tag') 
             tds = tr.getElementsByTagName("td")
-            if len(tds) == 9:
-                elinks = tds[0].getElementsByTagName("a")
-                if len(elinks) != 1: continue
-                if not 'href' in elinks[0].attributes.keys(): continue
-                link = elinks[0].attributes['href'].value.encode('ascii')
-                m = re.search(r'\?id=(gfz[0-9]+[a-z]+)$', link)
-                if not m: continue
-                eid = m.group(1)
-                vals = [ getTextR(td).encode('ascii') for td in tds ]
-                tevent = calendar.timegm(time.strptime(vals[0][:19], '%Y-%m-%d %H:%M:%S'))
-                mag = float(vals[1])
-                epicenter = parse_location( vals[2]+' '+vals[3] )
-                depth = float(vals[4])*1000.
-                region = vals[7]
-                ev = model.Event(
-                    lat=epicenter[0],
-                    lon=epicenter[1], 
-                    time=tevent,
-                    name=eid,
-                    depth=depth,
-                    magnitude=mag,
-                    region=region,
-                    catalog='GEOFON')
-                
-                logger.debug('Adding event from GEOFON catalog: %s' % ev)
-                
-                events.append(ev)
+            if len(tds) != 8:
+                logger.debug('Does not contain 8 <td> tags.')
+                continue
+            
+            elinks = tds[0].getElementsByTagName("a")
+            if len(elinks) != 1 or (not 'href' in elinks[0].attributes.keys()):
+                logger.debug('Could not find link to event details page.')
+                continue
+
+            link = elinks[0].attributes['href'].value.encode('ascii')
+            m = re.search(r'\?id=(gfz[0-9]+[a-z]+)$', link)
+            if not m: 
+                logger.debug('Could not find event id.')
+                continue
+
+            eid = m.group(1)
+            vals = [ getTextR(td).encode('ascii') for td in tds ]
+            tevent = calendar.timegm(time.strptime(vals[0][:19], '%Y-%m-%d %H:%M:%S'))
+            mag = float(vals[1])
+            epicenter = parse_location( vals[2]+' '+vals[3] )
+            depth = float(vals[4])*1000.
+            region = vals[7]
+            ev = model.Event(
+                lat=epicenter[0],
+                lon=epicenter[1], 
+                time=tevent,
+                name=eid,
+                depth=depth,
+                magnitude=mag,
+                region=region,
+                catalog='GEOFON')
+            
+            logger.debug('Adding event from GEOFON catalog: %s' % ev)
+            
+            events.append(ev)
                 
                 
                 
         return events
         
     def _parse_event_page(self, page):
+        logger.debug('In Geofon._parse_event_page(...)')
         
         wanted_map = { 
             'region': lambda v: v,
@@ -182,8 +217,9 @@ class Geofon(EarthquakeCatalog):
         for tr in doc.getElementsByTagName("tr"):
             tds = tr.getElementsByTagName("td")
             if len(tds) == 2:
-                k = getTextR(tds[0]).strip().rstrip(':').lower()
+                k = getTextR(tds[0]).strip().split()[-1].rstrip(':').lower()
                 v = getTextR(tds[1]).encode('ascii')
+                logger.debug('%s => %s' % (k,v))
                 if k in wanted_map.keys():
                      d[k] = wanted_map[k](v)
         
@@ -197,6 +233,9 @@ class GlobalCMT(EarthquakeCatalog):
     def __init__(self):
         self.events = {}
     
+    def flush(self):
+        self.events = {}
+
     def iter_event_names(self, time_range=None, magmin=0., magmax=10., latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
          
         yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
@@ -218,19 +257,31 @@ class GlobalCMT(EarthquakeCatalog):
             'list=5' ])
 
         while True:
+            logger.debug('Opening URL: %s' % url)
             page = urllib2.urlopen(url).read()
+            logger.debug('Received page (%i bytes)' % len(page))
+            
             events, more = self._parse_events_page(page)
-
+            
+            for ev in events:
+                self.events[ev.name] = ev
+            
             for ev in events:
                 if time_range[0] <= ev.time and ev.time <= time_range[1]:
-                    self.events[ev.name] = ev
                     yield ev.name
+
             if more:
                 url = more
             else:
                 break
 
     def get_event(self, name):
+        if not name in self.events:
+            t = self._name_to_date(name)
+            for name2 in self.iter_event_names(time_range=(t-24*60*60, t+2*24*60*60)):
+                if name2 == name:
+                    break
+        
         return self.events[name]
 
     def _parse_events_page(self, page):
@@ -258,7 +309,7 @@ class GlobalCMT(EarthquakeCatalog):
                     depth=data.depth_km*1000.,
                     magnitude=mt.moment_magnitude(),
                     duration=data.half_duration * 2.,
-                    region=data.region,
+                    region=data.region.rstrip(),
                     catalog=data.catalog)
 
                 ev.moment_tensor = mt
@@ -335,4 +386,17 @@ class GlobalCMT(EarthquakeCatalog):
             complete(data)
 
         return events, more
+       
+    def _name_to_date(self, name):
+
+        if len(name) == 7:
+            y, m, d = time.strptime(name[:6], '%m%d%y')[:3]
+            if y > 2005:
+                y -= 100
         
+        else:
+            y, m, d = time.strptime(name[:8], '%Y%m%d')[:3] 
+         
+        t = calendar.timegm((y, m, d, 0,0,0))
+        return t
+
