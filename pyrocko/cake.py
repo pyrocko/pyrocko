@@ -358,6 +358,9 @@ class Knee(object):
             self.__dict__[k] = v
 
     def __getattr__(self, k):
+        if k.startswith('__'):
+            raise AttributeError(k)
+
         if k not in self.__dict__:
             return self.default(k)
     
