@@ -2613,7 +2613,7 @@ def read_nd_model(fn):
             yield z*1000., material, name
             name = None
         elif len(toks) == 1:
-            name = translate[toks[0]]
+            name = translate.get(toks[0], toks[0])
 
     f.close()
 
