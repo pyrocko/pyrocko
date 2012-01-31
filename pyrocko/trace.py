@@ -1453,7 +1453,7 @@ def correlate(a, b, mode='valid', normalization=None):
 
     '''
 
-    assert same_sampling_rate(a,b)
+    assert_same_sampling_rate(a,b)
 
     ya, yb = a.ydata, b.ydata
 
@@ -1507,37 +1507,43 @@ def correlate(a, b, mode='valid', normalization=None):
 
     return c
 
-def deconvolve(a, b, waterlevel, fd_taper=None, pad_to_pow2=True):
-
-    assert abs(a.tmin - b.tmin) < a.deltat * 0.001
+def deconvolve(a, b, waterlevel, tshift=0., pad=0.5, fd_taper=None, pad_to_pow2=True):
+    
     same_sampling_rate(a,b)
-
+    assert abs(a.tmin - b.tmin) < a.deltat * 0.001
+    deltat = a.deltat
+    npad = int(round(a.data_len()*pad + tshift / deltat))
+    
     ndata = max(a.data_len(), b.data_len())
+    ndata_pad = ndata + npad
+    
     if pad_to_pow2:
-        ntrans = nextpow2(ndata*1.5)
+        ntrans = nextpow2(ndata_pad)
     else:
         ntrans = ndata
-        
+    
     aspec = num.fft.rfft(a.ydata, ntrans)
     bspec = num.fft.rfft(b.ydata, ntrans)
-    
+
     out = aspec * num.conj(bspec)
-    
+
     bautocorr = bspec*num.conj(bspec)
     denom = num.maximum( bautocorr, waterlevel * bautocorr.max() )
-
-    out /= denom
-    df = 1.0/(ntrans*a.deltat)
     
+    out /= denom
+    df = 1/(ntrans*deltat)
+
     if fd_taper is not None:
         fd_taper( out, 0.0, df )
 
-    ydata = num.fft.irfft(out)
-    
+    ydata = num.roll(num.fft.irfft(out),int(round(tshift/deltat)))
     c = a.copy(data=False)
     c.set_ydata(ydata[:ndata])
     c.set_codes(*merge_codes(a,b,'/'))
-    return c 
+    return c
+
+def assert_same_sampling_rate(a,b, eps=1.0e-6):
+    assert same_sampling_rate(a,b,eps), 'Sampling rates differ: %g != %g' % (a.deltat, b.deltat)
 
 def same_sampling_rate(a,b, eps=1.0e-6):
     '''Check if two traces have the same sampling rate.
@@ -1545,7 +1551,7 @@ def same_sampling_rate(a,b, eps=1.0e-6):
     :param a,b: input traces
     :param eps: relative tolerance
     '''
-    return (a.deltat - b.deltat) < (a.deltat + b.deltat)*eps
+    return abs(a.deltat - b.deltat) < (a.deltat + b.deltat)*eps
 
 def merge_codes(a,b, sep='-'):
     '''Merge network-station-location-channel codes of a pair of traces.'''
