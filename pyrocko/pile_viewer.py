@@ -791,6 +791,7 @@ def MakePileOverviewClass(base):
             self.old_data_ranges = {}
             
             self.error_messages = {}
+            self.return_tag = None
     
         def sizeHint(self):
             return QSize(1024,768)
@@ -1366,8 +1367,8 @@ def MakePileOverviewClass(base):
                 if tgo is not None:
                     self.set_time_range(tgo-dt/2.,tgo+dt/2.)
                         
-            elif keytext == 'q':
-                self.myclose()
+            elif keytext == 'q' or keytext == 'x':
+                self.myclose(keytext)
     
             elif keytext == 'r':
                 if self.pile.reload_modified():
@@ -2257,11 +2258,12 @@ def MakePileOverviewClass(base):
             self.set_time_range(now-self.follow_time, now)
             self.update()
      
-        def myclose(self):
+        def myclose(self, return_tag=''):
             self.timer.stop()
             if self.follow_timer is not None:
                 self.follow_timer.stop()
             self.window().close()
+            self.return_tag = return_tag
             
         def set_error_message(self, key, value):
             if value is None:

@@ -32,7 +32,7 @@ class Snuffler(QApplication):
         signal.signal(signal.SIGINT, self.myCloseAllWindows)
 
     def snuffle(self,*args, **kwargs):
-        win = SnufflerWindow(*args, **kwargs)
+        self.win = SnufflerWindow(*args, **kwargs)
     
     def myCloseAllWindows(self, *args):
         self.closeAllWindows()
@@ -40,6 +40,8 @@ class Snuffler(QApplication):
     def myQuit(self, *args):
         self.quit()
 
+    def return_tag(self):
+        return self.win.return_tag()
 
 class SnufflerTabs(QTabWidget):
     def __init__(self, parent):
@@ -165,7 +167,9 @@ class SnufflerWindow(QMainWindow):
         mitem = self.dockwidget_to_toggler[dockwidget]
         self.pile_viewer.get_view().remove_panel_toggler(mitem)
         
-
+    def return_tag(self):
+        return self.pile_viewer.get_view().return_tag
+    
 app = None
 
 def snuffle(pile, **kwargs):
@@ -187,4 +191,6 @@ def snuffle(pile, **kwargs):
 
     app.snuffle(pile, **kwargs)
     app.exec_()
+    return app.return_tag()
+
 
