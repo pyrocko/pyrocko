@@ -974,6 +974,8 @@ class Layer:
     :param ztop: depth of top of layer
     :param zbot: depth of bottom of layer
     :param name: name of layer (optional)
+
+    Subclasses are: :py:class:`HomogeneousLayer` and :py:class:`GradientLayer`.
     '''
 
     def __init__(self, ztop, zbot, name=None):
@@ -1136,7 +1138,10 @@ def radius(z):
     return earthradius - z
 
 class HomogeneousLayer(Layer):
-    '''Representation of a homogeneous layer in a layered earth model.'''
+    '''Representation of a homogeneous layer in a layered earth model.
+    
+    Base class: :py:class:`Layer`.
+    '''
 
     def __init__(self, ztop, zbot, m, name=None):
         Layer.__init__(self,ztop, zbot, name=name)
@@ -1219,7 +1224,10 @@ class HomogeneousLayer(Layer):
         return '  (%i) homogeneous layer %s(%g km - %g km) [%s]\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.m)
 
 class GradientLayer(Layer):
-    '''Representation of a gradient layer in a layered earth model.'''
+    '''Representation of a gradient layer in a layered earth model.
+
+    Base class: :py:class:`Layer`.
+    '''
 
     def __init__(self, ztop, zbot, mtop, mbot, name=None):
         Layer.__init__(self, ztop, zbot, name=name)
@@ -1339,7 +1347,10 @@ class GradientLayer(Layer):
         return '  (%i) gradient layer %s(%g km - %g km) [%s]\n    %s\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.mtop, self.mbot)
 
 class Discontinuity:
-    '''Base class for discontinuities in layered earth model.'''
+    '''Base class for discontinuities in layered earth model.
+    
+    Subclasses are: :py:class:`Interface` and :py:class:`Surface`.
+    '''
 
     def __init__(self, z, name=None):
         self.z = z
@@ -1348,7 +1359,10 @@ class Discontinuity:
         self.name = name
 
 class Interface(Discontinuity):
-    '''Representation of an interface in a layered earth model.'''
+    '''Representation of an interface in a layered earth model.
+    
+    Base class: :py:class:`Discontinuity`.
+    '''
 
     def __init__(self, z, mabove, mbelow, name=None):
         Discontinuity.__init__(self, z, name)
@@ -1388,7 +1402,10 @@ class Interface(Discontinuity):
         return scatter[psv_solid_ind(in_direction, out_direction, in_mode, out_mode)]
 
 class Surface(Discontinuity):
-    '''Representation of the surface discontinuity in a layered earth model.'''
+    '''Representation of the surface discontinuity in a layered earth model.
+    
+    Base class: :py:class:`Discontinuity`.
+    '''
 
     def __init__(self, z, mbelow):
         Discontinuity.__init__(self, z, 'surface')
@@ -1626,20 +1643,23 @@ class PRangeNotSet(Exception):
 class RayPath:
     '''Representation of a fan of rays running through a common sequence of layers / interfaces.'''
 
-    def __init__(self, phase, redistribute_p=False):
+    def __init__(self, phase):
         self.elements = []
         self.phase = phase
         self._pmax = None
         self._pmin = None
         self._p = None
-        self._redistribute_p = redistribute_p
     
     def copy(self):
+        '''Get a copy of it.'''
+
         c = copy.copy(self)
         c.elements = list(self.elements)
         return c
    
     def endgaps(self, zstart, zstop):
+        '''Get information needed for end point adjustments.'''
+
         return ( zstart, zstop, self.phase.direction_start(), self.phase.direction_stop() )
 
     def append(self, element):
@@ -1654,6 +1674,8 @@ class RayPath:
         self._prange_dp = dp
  
     def used_phase(self, p=None, eps=1.):
+        '''Calculate phase definition from ray path.'''
+
         used = PhaseDef()
         fleg = self.phase.first_leg()
         used.append(Leg(fleg.departure, fleg.mode))
@@ -1770,6 +1792,8 @@ class RayPath:
         return ppp
 
     def xt_endgaps(self, p, endgaps, which='both'):
+        '''Get amount of distance/traveltime to be subtracted at the generic ray path's ends.'''
+
         zstart, zstop, dirstart, dirstop = endgaps
         firsts = self.first_straight()
         lasts = self.last_straight()
@@ -1783,6 +1807,8 @@ class RayPath:
             return xe, te
 
     def xt_endgaps_ptest(self, p, endgaps):
+        '''Check if ray parameter is valid at source and receiver.'''
+
         zstart, zstop, dirstart, dirstop = endgaps
         firsts = self.first_straight()
         lasts = self.last_straight()
@@ -1790,6 +1816,7 @@ class RayPath:
 
     def xt(self, p, endgaps):
         '''Calculate distance and traveltime for given ray parameter.'''
+
         if isinstance(p, num.ndarray):
             sx = num.zeros(p.size)
             st = num.zeros(p.size)
@@ -1810,7 +1837,8 @@ class RayPath:
         return sx, st
     
     def xt_limits(self, p):
-        '''Calculate distance and traveltime for given ray parameter.'''
+        '''Calculate limits of distance and traveltime for given ray parameter.'''
+
         if isinstance(p, num.ndarray):
             sx = num.zeros(p.size)
             st = num.zeros(p.size)
@@ -1843,6 +1871,8 @@ class RayPath:
         return sx, sx + sxe, st, st + ste
     
     def iter_zxt(self, p):
+        '''Iterate over (depth, distance, traveltime) at each layer interface on ray path.'''
+
         sx = num.zeros(p.size)
         st = num.zeros(p.size)
         ok = False
@@ -1858,6 +1888,7 @@ class RayPath:
             yield s.z_out(), sx.copy(), st.copy()
     
     def zxt_path_subdivided(self, p, endgaps, points_per_straight=20):
+        '''Get geometrical representation of ray path.'''
 
         # first create full path including the endgaps
         dxl, dtl = self.xt_endgaps(p, endgaps, which='left')
@@ -1952,16 +1983,22 @@ class RayPath:
         return p[indices].copy(), x[indices].copy(), t[indices].copy()
 
     def interpolate_t2x_linear(self, t, endgaps):
+        '''Get approximate distance for arrival time.'''
+
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
         return interp( t, self._t - dt, self._x - dx, 0)
 
     def interpolate_x2t_linear(self, x, endgaps):
+        '''Get approximate arrival time for distance.'''
+
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
         return interp( x, self._x - dx, self._t - dt, 0)
 
     def interpolate_t2px_linear(self, t, endgaps):
+        '''Get approximate ray parameter and distance for arrivaltime.'''
+
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
         tp = interp( t, self._t - dt, self._p, 0)
@@ -1969,6 +2006,8 @@ class RayPath:
         return [ (t,p,x) for ((t,p), (_,x)) in zip(tp, tx) ]
 
     def interpolate_x2pt_linear(self, x, endgaps):
+        '''Get approximate ray parameter and traveltime for distance.'''
+
         self._analyse()
         dx, dt = self.xt_endgaps(self._p, endgaps)
         xp = interp( x, self._x - dx, self._p, 0)
@@ -2023,12 +2062,18 @@ class RayPath:
         return '%-15s %-17s %s' % (self.phase.definition(), su, ''.join(x))
 
     def critical_pstart(self, endgaps):
+        '''Get critical ray parameter for source depth choice.'''
+
         return self.first_straight().critical_p_in(endgaps)
 
     def critical_pstop(self, endgaps):
+        '''Get critical ray parameter for receiver depth choice.'''
+
         return self.last_straight().critical_p_out(endgaps)
 
     def ranges(self, endgaps):
+        '''Get valid ranges of ray parameter, distance, and traveltime.'''
+
         p,x,t = self.draft_pxt(endgaps)
         pp = min(self.critical_pstart(endgaps), self.critical_pstop(endgaps))
         xx, tt = self.xt(pp, endgaps)
@@ -2038,6 +2083,8 @@ class RayPath:
         return p.min(), p.max(), x.min(), x.max(), t.min(), t.max()
 
     def describe(self, endgaps=None, as_degrees=False):
+        '''Get textual representation.'''
+
         self._analyse()
 
         if as_degrees:
@@ -2064,7 +2111,7 @@ class RefineFailed(Exception):
     pass
 
 class Ray:
-    '''Representation of a specific ray with a specific (ray parameter, distance, arrival time) choice.
+    '''Representation of a ray with a specific (path, ray parameter, distance, arrival time) choice.
    
     **Attributes:**
    
@@ -2083,6 +2130,10 @@ class Ray:
         .. py:attribute:: t
 
            Traveltime [s]
+
+        .. py:attribute:: endgaps
+
+           Needed for source/receiver depth adjustments in many :py:class:`RayPath` methods.
     '''
 
     def __init__(self, path, p, x, t, endgaps):
@@ -2126,15 +2177,33 @@ class Ray:
         return count[0]
 
     def takeoff_angle(self):
+        '''Get takeoff angle of ray.
+        
+        The angle is returned in [degrees].
+        '''
+
         return self.path.first_straight().angle_in(self.p, self.endgaps)
 
     def incidence_angle(self):
+        '''Get incidence angle of ray.
+        
+        The angle is returned in [degrees].
+        '''
+
         return self.path.last_straight().angle_out(self.p, self.endgaps)
     
     def efficiency(self):
+        '''Get conversion/reflection efficiency of the ray.
+        
+        A value between 0 and 1 is returned, reflecting the relative amount of energy
+        which is transmitted along the ray and not lost by reflections or conversions.
+        '''
+
         return self.path.efficiency(self.p)
 
     def spreading(self):
+        '''Get geometrical spreading factor.'''
+
         return self.path.spreading(self.p, self.endgaps)
 
     def surface_sphere(self):
@@ -2144,6 +2213,11 @@ class Ray:
         return ((x2-x1)**2 + (y2-y1)**2)*4.0*math.pi
 
     def zxt_path_subdivided(self, points_per_straight=20):
+        '''Get geometrical representation of ray path.
+
+        Three arrays (depth, distance, time) with points on the ray's path of propagation are returned. The number of points which
+        are used in each ray segment (passage through one layer) may be controlled by the `points_per_straight` parameter.
+        '''
         return self.path.zxt_path_subdivided(num.atleast_1d(self.p), self.endgaps, points_per_straight=points_per_straight)
 
     def __str__(self, as_degrees=False):
@@ -2176,6 +2250,14 @@ class LayeredModel:
     3. Use the constructor :py:meth:`LayeredModel.from_scanlines`, to automatically create the
        :py:class:`Layer` and :py:class:`Discontinuity` objects from a given velocity profile.
 
+    An earth model is represented by as stack of :py:class:`Layer` and
+    :py:class:`Discontinuity` objects.  The method :py:meth:`arrivals` returns
+    :py:class:`Ray` objects which may be e.g. queried for arrival times of
+    specific phases. Each ray is associated with a :py:class:`RayPath` object.
+    Ray objects share common ray paths if they have the same
+    conversion/reflection/propagation history. Creating the ray path objects is
+    relatively expensive (this is done in :py:meth:`gather_paths`), but they are cached for reuse in successive
+    invocations.
     '''
 
     def __init__(self):
@@ -2187,10 +2269,20 @@ class LayeredModel:
         self._pathcache = {}
 
     def copy_with_elevation(self, elevation):
+        '''Get a copy of the model with surface layer stretched to given elevation.
+        
+        :param elevation: new surface elevation in [m]
+
+        Elevation is positiv upward, contrary to the layered models downward `z` axis.
+        '''
+
         c = copy.deepcopy(self)
         c._pathcache = {}
         surface = c._elements[0]
         toplayer = c._elements[1]
+
+        assert toplayer.zbot > -elevation
+
         surface.z = -elevation
         c._elements[1] = toplayer.copy(ztop=-elevation)
         c._elements[1].ilayer = 0
@@ -2200,7 +2292,10 @@ class LayeredModel:
         return abs(z1-z2) < ZEPS
 
     def append(self, element):
-        '''Add a layer or discontinuity at bottom of model.'''
+        '''Add a layer or discontinuity at bottom of model.
+        
+        :param element: object of subclass of  :py:class:`Layer` or :py:class:`Discontinuity`.
+        '''
         
         if isinstance(element, Layer):
             element.ilayer = self.nlayers
@@ -2212,6 +2307,8 @@ class LayeredModel:
         '''Iterate over all layers of model.
         
         :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`.
+
+        Objects derived from the :py:class:`Layer` class are yielded.
         '''
 
         if direction == DOWN:
@@ -2288,12 +2385,12 @@ class LayeredModel:
         return phase
 
     def path(self, p, phase, layer_start, layer_stop):
-        '''Get ray path for given ray parameter, phase definition and fixed source and receiver depths.
+        '''Get ray path for given combination of ray parameter, phase definition, source and receiver layers.
         
         :param p: ray parameter (spherical) [s/deg]
         :param phase: phase definition (:py:class:`PhaseDef` object)
-        :param zstart: source depth [m]
-        :param zstop: receiver depth [m]
+        :param layer_start: layer with source
+        :param layer_stop: layer with receiver
         :returns: :py:class:`RayPath` object
 
         If it is not possible to find a solution, an exception of type :py:exc:`NotPhaseConform`, 
@@ -2393,12 +2490,16 @@ class LayeredModel:
         return path
 
     def gather_paths(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0):
-        '''Get all possible ray paths for fixed source and receiver depth for one or more phase definitions.
+        '''Get all possible ray paths for given source and receiver depths for one or more phase definitions.
         
         :param phases: a :py:class:`PhaseDef` object or a list of such objects
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
         :returns: a list of :py:class:`RayPath` objects
+
+        Results of this method are cached internally. Cached results are
+        returned, when a given combination of source layer, receiver layer and
+        phase definition has been used before.  
         '''
         
         if isinstance(phases, PhaseDef):
@@ -2473,7 +2574,7 @@ class LayeredModel:
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
         :param refine: bool flag, whether to use bisectioning to improve (p,x,t) estimated from interpolation
-        :returns: a list of :py:class:`Ray` objects, sorted by distance
+        :returns: a list of :py:class:`Ray` objects, sorted by (distance, arrival time)
         '''
         
         distances = num.asarray(distances, dtype=num.float)
@@ -2554,17 +2655,17 @@ class LayeredModel:
         return num.array( list(self.iter_material_parameter(get)))
 
     def min(self, get='vp'):
-        '''Find minimum value of a material property defined in the model.
+        '''Find minimum value of a material property or depth defined in the model.
 
-        :param get: property to be querried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``)
+        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``, or ``'z'``)
         '''
 
         return min(self.iter_material_parameter(get))
 
     def max(self, get='vp'):
-        '''Find maximum value of a material property defined in the model.
+        '''Find maximum value of a material property or depth defined in the model.
         
-        :param get: property to be querried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``)
+        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, ``'qs'``, or ``'z'``)
         '''
 
         return max(self.iter_material_parameter(get))
@@ -2576,7 +2677,9 @@ def read_hyposat_model(fn):
     '''Reader for HYPOSAT earth model files.
 
     To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
-    '''
+
+    Interface names are translated as follows: ``'MOHO'`` -> ``'moho'``, ``'CONR'`` -> ``'conrad'`` 
+    ''' 
 
     f = open(fn, 'r')
     translate = { 'MOHO': 'moho', 'CONR': 'conrad' }
@@ -2601,7 +2704,11 @@ def read_nd_model(fn):
     '''Reader for TauP style '.nd' (named discontinuity) files.
 
     To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
+
+    Interface names are translated as follows: ``'mantle'`` -> ``'moho'``, 
+    ``'outer-core'`` -> ``'cmb'``, ``'inner-core'`` -> ``'icb'``.
     '''
+
     f = open(fn, 'r')
     translate = { 'mantle': 'moho', 'outer-core': 'cmb', 'inner-core': 'icb' }
     name = None
@@ -2651,6 +2758,11 @@ def load_model(fn, format='nd'):
     ``'nd'``       'named discontinuity' format used by the TauP programs  
     ``'hyposat'``  format used by the HYPOSAT location program
     ============== ===========================================================================
+
+    The naming of interfaces is translated from the file format's native naming to
+    Cake's own convention (See :py:func:`read_nd_model` and
+    :py:func:`read_hyposat_model` for details).  Cake likes the following internal names:
+    ``'conrad'``, ``'moho'``, ``'cmb'`` (core-mantle boundary), ``'icb'`` (inner core boundary).
     '''
 
     if format == 'nd':
