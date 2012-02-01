@@ -773,7 +773,8 @@ def MakePileOverviewClass(base):
             self.snuffling_modules = {}
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
             self.default_snufflings = None
-            
+            self.snufflings = []
+
             self.stations = {}
             
             self.timer_draw = Timer()
@@ -988,11 +989,13 @@ def MakePileOverviewClass(base):
 
         def add_snuffling(self, snuffling, reloaded=False):
             snuffling.init_gui(self, self.get_panel_parent(), self, reloaded=reloaded)
+            self.snufflings.append(snuffling)
             self.update()
             
         def remove_snuffling(self, snuffling):
             snuffling.delete_gui()
             self.update()
+            self.snufflings.remove(snuffling)
             
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
@@ -1906,6 +1909,9 @@ def MakePileOverviewClass(base):
             
             return ndecimate, tpad, tsee
 
+        def clean_update(self):
+            self.old_processed_traces = None
+            self.update()
 
         def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
             
@@ -1934,7 +1940,9 @@ def MakePileOverviewClass(base):
                 
             if (self.old_vec and 
                 self.old_vec[0] <= vec[0] and vec[1] <= self.old_vec[1] and
-                vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked())):
+                vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked()) and
+                self.old_processed_traces is not None):
+
                 logger.debug('Using cached traces')
                 processed_traces = self.old_processed_traces
                 
@@ -1954,6 +1962,9 @@ def MakePileOverviewClass(base):
                                                     keep_current_files_open=True, 
                                                     trace_selector=trace_selector,
                                                     accessor_id=id(self)):
+
+                        traces = self.pre_process_hooks(traces)
+
                         for trace in traces:
                             
                             if not (trace.meta and 'tabu' in trace.meta and trace.meta['tabu']):
@@ -2016,6 +2027,8 @@ def MakePileOverviewClass(base):
                                 bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
                                 a.set_ydata(aydata)
                                 b.set_ydata(bydata)
+
+                processed_traces = self.post_process_hooks(processed_traces)
                                 
                 self.old_processed_traces = processed_traces
             
@@ -2032,7 +2045,21 @@ def MakePileOverviewClass(base):
             
             self.timer_cutout.stop()
             return chopped_traces
-        
+       
+        def pre_process_hooks(self, traces):
+            for snuffling in self.snufflings:
+                if snuffling._pre_process_hook_enabled:
+                    traces = snuffling.pre_process_hook(traces)
+
+            return traces
+
+        def post_process_hooks(self, traces):
+            for snuffling in self.snufflings:
+                if snuffling._pre_process_hook_enabled:
+                    traces = snuffling.pre_process_hook(traces)
+
+            return traces
+
         def scaling_base_change(self, ignore):
             for menuitem, scaling_base in self.menuitems_scaling_base:
                 if menuitem.isChecked():

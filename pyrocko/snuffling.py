@@ -90,6 +90,11 @@ class Snuffling:
 
         self._tempdir = None
         self._iplot = 0
+
+        self._have_pre_process_hook = False
+        self._have_post_process_hook = False
+        self._pre_process_hook_enabled = False
+        self._post_process_hook_enabled = False
         
     def setup(self):
         '''Setup the snuffling.
@@ -156,15 +161,30 @@ class Snuffling:
         '''
         
         self._name = name
-        
-        if self._panel or self._menuitem:
-            self.delete_gui()
-            self.setup_gui()
+        self.reset_gui()
     
     def get_name(self):
         '''Get the snuffling's name.'''
         
         return self._name
+    
+    def set_have_pre_process_hook(self, bool):
+        self._have_pre_process_hook = bool
+        self._live_update = False
+        self._pre_process_hook_enabled = False
+        self.reset_gui()
+
+    def set_have_post_process_hook(self, bool):
+        self._have_post_process_hook = bool
+        self._live_update = False
+        self._post_process_hook_enabled = False
+        self.reset_gui()
+
+    def reset_gui(self):
+        if self._panel or self._menuitem:
+            self.delete_gui()
+            self.setup_gui()
+    
     
     def error(self, reason):
         box = QMessageBox(self.get_viewer())
@@ -199,6 +219,10 @@ class Snuffling:
         or pressing the call button.
         '''
         self._live_update = live_update
+        if self._have_pre_process_hook:
+            self._pre_process_hook_enabled = live_update
+        if self._have_post_process_hook:
+            self._post_process_hook_enabled = live_update
     
     def add_parameter(self, param):
         '''Add an adjustable parameter to the snuffling.
@@ -482,6 +506,8 @@ class Snuffling:
         '''
         
         item = QAction(self.get_name(), None)
+        item.setCheckable(self._have_pre_process_hook or self._have_post_process_hook)
+
         self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
         return item
     
@@ -569,7 +595,17 @@ class Snuffling:
         The default implementation calls the snuffling's :py:meth:`call` method and triggers
         an update on the viewer widget.'''
         self.check_call()
-        self.get_viewer().update()
+
+        if self._have_pre_process_hook:
+            self._pre_process_hook_enabled = arg
+
+        if self._have_post_process_hook:
+            self._post_process_hook_enabled = arg
+
+        if self._have_pre_process_hook or self._have_post_process_hook:
+            self.get_viewer().clean_update()
+        else:
+            self.get_viewer().update()
         
     def call_button_triggered(self):
         '''Called when the user has clicked the snuffling's call button.
@@ -656,6 +692,12 @@ class Snuffling:
         '''
         
         pass
+
+    def pre_process_hook(self, traces):
+        return traces
+
+    def post_process_hook(self, traces):
+        return traces
     
     def __del__(self):
         self.cleanup()
