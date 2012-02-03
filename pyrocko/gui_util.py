@@ -207,7 +207,16 @@ class ValControl(QFrame):
         self.ind = ind
         self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
         self.set_value(cur)
-        
+       
+    def set_range(self, mi, ma):
+        self.mi = mi
+        self.ma = ma
+        self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
+        if self.cur < mi:
+            self.set_value(mi)
+        if self.cur > ma:
+            self.set_value(ma)
+
     def set_value(self, cur):
         if cur is None:
             if self.low_is_none:

@@ -31,6 +31,21 @@ class Param:
         self.maximum = maximum
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self._control = None
+
+    def set_range(self, minimum, maximum):
+        self.minimum = minimum
+        self.maximum = maximum
+        if self._control:
+            self._control.set_range(self.minimum, self.maximum)
+
+    def set_value(self, value):
+        if self._control:
+            self._control.set_value(value)
+            self._control.fire_valchange()
+
+    def _set_control(self, control):
+        self._control = control
 
 class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
@@ -255,7 +270,13 @@ class Snuffling:
         '''
         
         return self._parameters
-    
+   
+    def get_parameter(self, ident):
+        for param in self._parameters:
+            if param.ident == ident:
+                return param
+        return None
+
     def set_parameter(self, ident, value):
         '''Set one of the snuffling's adjustable parameters.
         
@@ -268,14 +289,14 @@ class Snuffling:
         
         setattr(self, ident, value)
         
-    def get_parameter(self, ident):
+    def get_parameter_value(self, ident):
         return getattr(self, ident)
 
     def get_settings(self):
         params = self.get_parameters()
         settings = {}
         for param in params:
-            settings[param.ident] = self.get_parameter(param.ident)
+            settings[param.ident] = self.get_parameter_value(param.ident)
 
         return settings
 
@@ -429,6 +450,8 @@ class Snuffling:
                         param_widget = LinValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
                     else:
                         param_widget = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
+                    
+                    param._set_control( param_widget )
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
@@ -487,7 +510,11 @@ class Snuffling:
 
             for name, method in self._triggers:
                 but = QPushButton(name)
-                self.get_viewer().connect( but, SIGNAL('clicked()'), method )
+                def call_and_update():
+                    method()
+                    self.get_viewer().update()
+
+                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update )
                 butlayout.addWidget( but )
 
             layout.addWidget(butframe, irow, 0)
