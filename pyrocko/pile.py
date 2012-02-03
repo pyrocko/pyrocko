@@ -3,7 +3,7 @@
 import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging, time, weakref, copy, re, sys
+import os, pickle, logging, time, weakref, copy, re, sys, math
 import cPickle as pickle
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
@@ -224,7 +224,7 @@ class TracesGroup(object):
         return self.parent
     
     def empty(self):
-        self.networks, self.stations, self.locations, self.channels, self.nslc_ids = [ set() for x in range(5) ]
+        self.networks, self.stations, self.locations, self.channels, self.nslc_ids, self.deltats = [ set() for x in range(6) ]
         self.tmin, self.tmax = None, None
         self.have_tuples = False
     
@@ -243,6 +243,7 @@ class TracesGroup(object):
                 self.locations.update( c.locations )
                 self.channels.update( c.channels )
                 self.nslc_ids.update( c.nslc_ids )
+                self.deltats.update( c.deltats )
                 
             elif isinstance(c, trace.Trace):
                 self.networks.add(c.network)
@@ -250,6 +251,7 @@ class TracesGroup(object):
                 self.locations.add(c.location)
                 self.channels.add(c.channel)
                 self.nslc_ids.add(c.nslc_id)
+                self.deltats.add(c.deltat)
             
             if self.tmin is None:
                 self.tmin = c.tmin
@@ -261,9 +263,16 @@ class TracesGroup(object):
             else:
                 self.tmax = max(self.tmax, c.tmax)
         
-        if empty:    
+        if empty:
             self._convert_small_sets_to_tuples()
         
+        if self.deltats:
+            self.deltatmin = min(self.deltats)
+            self.deltatmax = max(self.deltats)
+        else:
+            self.deltatmin = None
+            self.deltatmax = None
+
         self.nupdates += 1
     
     def notify_listeners(self, what):
@@ -293,6 +302,9 @@ class TracesGroup(object):
         #return  not (tmax <= self.tmin or self.tmax < tmin) and (selector is None or selector(self))
         return  tmax >= self.tmin and self.tmax >= tmin and (group_selector is None or group_selector(self))
 
+    def get_deltats(self):
+        return sorted(list(self.deltats))
+
     def _convert_tuples_to_sets(self):
         if not isinstance(self.networks, set):
             self.networks = set(self.networks)
@@ -304,6 +316,8 @@ class TracesGroup(object):
             self.channels = set(self.channels)
         if not isinstance(self.nslc_ids, set):
             self.nslc_ids = set(self.nslc_ids)
+        if not isinstance(self.deltats, set):
+            self.deltats = set(self.deltats)
         self.have_tuples = False
 
     def _convert_small_sets_to_tuples(self):
@@ -321,6 +335,9 @@ class TracesGroup(object):
             self.have_tuples = True
         if len(self.nslc_ids) < 32:
             self.nslc_ids = reuse(tuple(self.nslc_ids))
+            self.have_tuples = True
+        if len(self.deltats) < 32:
+            self.nslc_ids = reuse(tuple(self.deltats))
             self.have_tuples = True
             
 class MemTracesFile(TracesGroup):
@@ -382,13 +399,6 @@ class MemTracesFile(TracesGroup):
                         pass
             
         return chopped, used
-        
-    def get_deltats(self):
-        deltats = set()
-        for trace in self.traces:
-            deltats.add(trace.deltat)
-            
-        return deltats
     
     def iter_traces(self):
         for trace in self.traces:
@@ -418,6 +428,7 @@ class MemTracesFile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
 
 class TracesFile(TracesGroup):
@@ -522,13 +533,6 @@ class TracesFile(TracesGroup):
             
         return chopped, used
         
-    def get_deltats(self):
-        deltats = set()
-        for trace in self.traces:
-            deltats.add(trace.deltat)
-            
-        return deltats
-    
     def iter_traces(self):
         for trace in self.traces:
             yield trace
@@ -555,6 +559,7 @@ class TracesFile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
 
 
@@ -619,13 +624,6 @@ class SubPile(TracesGroup):
             
         return keys
 
-    def get_deltats(self):
-        deltats = set()
-        for file in self.files:
-            deltats.update(file.get_deltats())
-            
-        return deltats
-
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
         for file in self.files:
             
@@ -676,6 +674,7 @@ class SubPile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
 
              
@@ -743,10 +742,9 @@ class Pile(TracesGroup):
 
         
     def dispatch_key(self, file):
-       
-        
         tt = time.gmtime(int(file.tmin))
-        return (tt[0],tt[1])
+        dt = int(math.floor(math.log(file.deltatmin)))
+        return (tt[0],tt[1], dt)
     
     def dispatch(self, file):
         k = self.dispatch_key(file)
@@ -916,13 +914,7 @@ class Pile(TracesGroup):
             
         return sorted(keys)
     
-    def get_deltats(self):
-        deltats = set()
-        for subpile in self.subpiles.values():
-            deltats.update(subpile.get_deltats())
-            
-        return sorted(list(deltats))
-    
+
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
         for subpile in self.subpiles.values():
             if not group_selector or group_selector(subpile):
@@ -963,6 +955,7 @@ class Pile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
     
     def snuffle(self, **kwargs):
@@ -982,7 +975,7 @@ class Pile(TracesGroup):
 
 def make_pile( paths=None, selector=None, regex=None,
         fileformat = 'mseed',
-        cachedirname='/tmp/pyrocko_cache_%s' % os.environ['USER'], show_progress=True ):
+        cachedirname='/tmp/pyrocko_0.2_cache_%s' % os.environ['USER'], show_progress=True ):
     
     '''Create pile from given file and directory names.
     
