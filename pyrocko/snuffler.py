@@ -131,7 +131,7 @@ class SnufflerWindow(QMainWindow):
     def add_tab(self, name, widget):
         self.tabs.append_tab(widget, name)
 
-    def add_panel(self, name, panel, visible=False):
+    def add_panel(self, name, panel, visible=False, volatile=False):
         dws = self.dockwidgets()
         dockwidget = QDockWidget(name, self)
         dockwidget.setWidget(panel)
@@ -149,6 +149,14 @@ class SnufflerWindow(QMainWindow):
             self.toggle_panel(dockwidget, True)
 
         self.connect( mitem, SIGNAL('triggered(bool)'), toggle_panel)
+
+        if volatile:
+            def visibility(visible):
+                if not visible:
+                    self.remove_panel(panel)
+
+            self.connect( dockwidget, SIGNAL('visibilityChanged(bool)'), visibility)
+
         self.pile_viewer.get_view().add_panel_toggler(mitem)
 
         self.dockwidget_to_toggler[dockwidget] = mitem

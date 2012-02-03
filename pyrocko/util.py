@@ -31,6 +31,9 @@ def setup_logging(programname='pyrocko', levelname='warning'):
         level=levels[levelname],
         format = programname+':%(name)-20s - %(levelname)-8s - %(message)s' )
 
+def data_file(fn):
+    return os.path.join(os.path.split(__file__)[0], 'data', fn)
+
 class Stopwatch:
     '''Simple stopwatch to measure elapsed wall clock time.
     

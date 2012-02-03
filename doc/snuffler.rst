@@ -132,6 +132,7 @@ Key                  Effect
 *<f10>*              Convert phase marker to normal marker
 *<backspace>*        Delete marker
 *<escape>*           Abort picking 
+*?*                  Help
 ==================== ===============================================================
 
 Mouse

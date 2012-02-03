@@ -729,6 +729,14 @@ def MakePileOverviewClass(base):
             self.menu.addAction(self.menuitem_svg)
             self.connect( self.menuitem_svg, SIGNAL("triggered(bool)"), self.savesvg )
             
+            self.menuitem_help = QAction('Help', self.menu)
+            self.menu.addAction(self.menuitem_help)
+            self.connect( self.menuitem_help, SIGNAL('triggered(bool)'), self.help )
+            
+            self.menuitem_about = QAction('About', self.menu)
+            self.menu.addAction(self.menuitem_about)
+            self.connect( self.menuitem_about, SIGNAL('triggered(bool)'), self.about )
+
             self.menuitem_close = QAction('Close', self.menu)
             self.menu.addAction(self.menuitem_close)
             self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
@@ -1327,7 +1335,10 @@ def MakePileOverviewClass(base):
            
             keytext = str(key_event.text())
 
-            if keytext == ' ':
+            if keytext == '?':
+                self.help()
+
+            elif keytext == ' ':
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
             
             elif keytext == 'b':
@@ -1466,7 +1477,58 @@ def MakePileOverviewClass(base):
              
             self.update()
             self.update_status()
-    
+  
+        def about(self):
+            fn = pyrocko.util.data_file('snuffler.png')
+            txt = open( pyrocko.util.data_file('snuffler_about.html') ).read()
+            label = QLabel(txt % { 'logo': fn } )
+            label.setAlignment( Qt.AlignVCenter | Qt.AlignHCenter )
+            self.show_doc('About', [label], target='tab')
+
+        def help(self):
+            class MyScrollArea(QScrollArea):
+
+                def sizeHint(self):
+                    s = QSize()
+                    s.setWidth(self.widget().sizeHint().width())
+                    s.setHeight(self.widget().sizeHint().height())
+                    return s
+
+            hcheat = QLabel(open(pyrocko.util.data_file('snuffler_help.html')).read())
+            hepilog = QLabel(open(pyrocko.util.data_file('snuffler_help_epilog.html')).read())
+            for h in [ hcheat, hepilog ]:
+                h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
+                h.setWordWrap(True)
+
+            self.show_doc('Help', [hcheat, hepilog], target='panel')
+
+        def show_doc(self, name, labels, target='panel'):
+            scroller = QScrollArea()
+            frame = QFrame(scroller)
+            frame.setLineWidth(0)
+            layout = QVBoxLayout()
+            layout.setContentsMargins(0,0,0,0)
+            layout.setSpacing(0)
+            frame.setLayout(layout)
+            scroller.setWidget(frame)
+            scroller.setWidgetResizable(True)
+            frame.setBackgroundRole(QPalette.Base) 
+            for h in labels:
+                h.setParent(frame)
+                h.setBackgroundRole( QPalette.Base )
+                layout.addWidget(h)
+                frame.connect(h, SIGNAL('linkActivated(QString)'), self.open_link)
+            
+            if self.panel_parent is not None:
+                if target == 'panel':
+                    self.panel_parent.add_panel(name, scroller, True, volatile=True)
+                else:
+                    self.panel_parent.add_tab(name, scroller)
+                
+
+        def open_link(self, link):
+            QDesktopServices.openUrl( QUrl(link) )
+
         def wheelEvent(self, wheel_event):
             amount = max(1.,abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
             

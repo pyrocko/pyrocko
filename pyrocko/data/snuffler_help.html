@@ -1,0 +1,169 @@
+<table border="0" width="33%" style="float:left">
+
+<thead>
+<tr><th align='left'>Key</th>
+<th align='left'></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><em>q</em></td>
+<td>Quit</td>
+</tr>
+<tr><td><em>r</em></td>
+<td>Reload modified files</td>
+</tr>
+<tr><td><em>R</em></td>
+<td>Reload snufflings</td>
+</tr>
+<tr><td><em>f</em></td>
+<td>Toggle full screen mode</td>
+</tr>
+<tr><td><em>:</em></td>
+<td>Enter command</td>
+</tr>
+<tr><td><em>&lt;space&gt;</em></td>
+<td>Forward one page in time</td>
+
+</tr>
+<tr><td><em>b</em></td>
+<td>Backward one page in time</td>
+</tr>
+<tr><td><em>&lt;pagedown&gt;</em></td>
+<td>Scroll tracks one page down</td>
+</tr>
+<tr><td><em>&lt;pageup&gt;</em></td>
+<td>Scroll tracks one page up</td>
+</tr>
+<tr><td><em>+</em></td>
+
+<td>Show one track more</td>
+</tr>
+<tr><td><em>-</em></td>
+<td>Show one track less</td>
+</tr>
+<tr><td><em>=</em></td>
+<td>Show initial number of tracks</td>
+</tr>
+<tr><td><em>g</em></td>
+<td>Go to selection / show all</td>
+
+</tr>
+<tr><td><em>n</em></td>
+<td>Go to next marker</td>
+</tr>
+<tr><td><em>p</em></td>
+<td>Go to previous marker</td>
+</tr>
+<tr><td><em>N</em></td>
+<td>Go to next event marker</td>
+</tr>
+<tr><td><em>P</em></td>
+
+<td>Go to previous event marker</td>
+</tr>
+<tr><td><em>a</em></td>
+<td>Select all markers currently visible</td>
+</tr>
+<tr><td><em>A</em></td>
+<td>Select all markers</td>
+</tr>
+<tr><td><em>d</em></td>
+<td>Deselect all markers</td>
+
+</tr>
+<tr><td><em>0</em> ... <em>5</em></td>
+<td>Change color of marker</td>
+</tr>
+<tr><td><em>&lt;f1&gt;</em> ... <em>&lt;f5&gt;</em></td>
+<td>Convert to phase marker</td>
+</tr>
+
+<tr><td><em>e</em></td>
+<td>Convert to event marker / set active event / associate to event</td>
+</tr>
+<tr><td><em>&lt;f10&gt;</em></td>
+<td>Convert phase marker to normal marker</td>
+</tr>
+<tr><td><em>&lt;backspace&gt;</em></td>
+<td>Delete marker</td>
+</tr>
+<tr><td><em>&lt;escape&gt;</em></td>
+
+<td>Abort picking</td>
+</tr>
+<tr><td><em>?</em></td>
+
+<td>Help</td>
+</tr>
+</tbody>
+</table>
+
+<table border="0" width="33%" style="float:left">
+<thead>
+<tr><th align="left">Mouse</th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody>
+<tr><td>Click and drag</td>
+<td>Zoom and pan</td>
+</tr>
+<tr><td>Click and drag on time axis</td>
+<td>Pan only</td>
+</tr>
+<tr><td>Click on marker</td>
+<td>Select marker</td>
+</tr>
+<tr><td><em>&lt;shift&gt;</em> + click on marker</td>
+<td>Select additional marker</td>
+</tr>
+<tr><td>Wheel</td>
+<td>Scroll tracks vertically</td>
+</tr>
+<tr><td><em>&lt;ctrl&gt;</em> + wheel</td>
+<td>Change number of tracks shown</td>
+</tr>
+<tr><td>Right-click</td>
+<td>Menu</td>
+</tr>
+<tr><td>Double-click</td>
+<td>Enter picking mode</td>
+</tr>
+</tbody>
+</table>
+
+<table border="0" width="33%" style="float:left">
+<thead>
+<tr><th align="left">Command</th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody>
+<tr><td><tt>n|s|l|c [ &lt;pattern&gt; ]</tt></td>
+<td>Reduce traces to those matching a given pattern. <a href="http://emolch.github.com/pyrocko/snuffler.html#quick-search-traces">man</a></td>
+</tr>
+<tr><td></td><td></td></tr>
+<tr><td><tt>hide &lt;pattern&gt;<br />
+hide n|s|l|c &lt;pattern&gt;</tt></td>
+<td>Hide traces whose network, station, location, and channel IDs match a given pattern. <a href="http://emolch.github.com/pyrocko/snuffler.html#hide">man</a></td>
+</tr>
+<tr><td></td><td></td></tr>
+<tr><td><tt>unhide &lt;pattern&gt;<br />
+unhide n|s|l|c &lt;pattern&gt;</tt></td>
+<td>Unhide traces previously hidden with the hide command. <a href="http://emolch.github.com/pyrocko/snuffler.html#unhide">man</a></td>
+</tr>
+<tr><td></td><td></td></tr>
+<tr><td><tt>markers [0][1][2][3][4][5]<br />
+markers all<br />
+markers</tt></td>
+<td>Toggle marker visibility. <a href="http://emolch.github.com/pyrocko/snuffler.html#markers">man</a></td>
+</tr>
+<tr><td></td><td></td></tr>
+<tr><td><tt>scaling &lt;vmin&gt; &lt;vmax&gt;<br />
+scaling &lt;pattern&gt; &lt;vmin&gt; &lt;vmax&gt;<br />
+scaling</tt></td>
+<td>Set scaling rules. <a href="http://emolch.github.com/pyrocko/snuffler.html#scaling">man</a></td>
+</tr>
+</tbody>
+</table>
+
