@@ -709,7 +709,7 @@ def MakePileOverviewClass(base):
             self.toggle_panel_menu = QMenu('Panels', self.menu)
             self.menu.addMenu(self.toggle_panel_menu)
             
-            self.menuitem_reload = QAction('Reload snufflings', self.menu)
+            self.menuitem_reload = QAction('Reload Snufflings', self.menu)
             self.menu.addAction(self.menuitem_reload)
             self.connect( self.menuitem_reload, SIGNAL("triggered(bool)"), self.setup_snufflings )
 
