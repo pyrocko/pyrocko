@@ -145,6 +145,7 @@ Mouse                            Effect
 Click and drag                   Zoom and pan 
 Click and drag on time axis      Pan only 
 Click on marker                  Select marker 
+*<shift>* + click on marker      Select additional marker
 Wheel                            Scroll tracks vertically 
 *<ctrl>* + wheel                 Change number of tracks shown 
 Right-click                      Menu 
