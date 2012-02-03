@@ -109,6 +109,7 @@ Key                  Effect
 ==================== ===============================================================
 *q*                  Quit 
 *r*                  Reload modified files 
+*R*                  Reload snufflings
 *f*                  Toggle full screen mode 
 *:*                  Enter command 
 *<space>*            Forward one page in time 

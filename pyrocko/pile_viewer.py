@@ -1387,7 +1387,10 @@ def MakePileOverviewClass(base):
             elif keytext == 'r':
                 if self.pile.reload_modified():
                     self.reloaded = True
-    
+   
+            elif keytext == 'R':
+                self.setup_snufflings() 
+
             elif key_event.key() == Qt.Key_Backspace:
                 self.remove_markers(self.selected_markers())
 
