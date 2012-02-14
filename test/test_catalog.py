@@ -36,7 +36,6 @@ class CatalogTestCase(unittest.TestCase):
         ev = cat.get_event(ident)
         is_the_haiti_event(ev)
 
-
     def testGlobalCMT(self):
         
         def is_the_haiti_event(ev): 
@@ -63,8 +62,34 @@ class CatalogTestCase(unittest.TestCase):
         cat.flush()
         ev = cat.get_event(ident)
         is_the_haiti_event(ev)
+
+    def testUSGS(self):
+
+        def is_the_haiti_event(ev): 
+            assert near(ev.magnitude, 7.0, 0.1)
+            assert near(ev.lat, 18.443, 0.01)
+            assert near(ev.lon, -72.571, 0.01)
+            assert near(ev.depth, 13000., 1.)
+
+        cat = catalog.USGS()
+
+        tmin = util.ctimegm('2010-01-12 21:50:00')
+        tmax = util.ctimegm('2010-01-13 03:17:00')
+
+        names = cat.get_event_names( time_range=(tmin,tmax), magmin=5.)
+        assert len(names) == 13
+        for name in names:
+            ev = cat.get_event(name)
+            if ev.magnitude >= 7.:
+                is_the_haiti_event(ev)
+                ident = ev.name
+
+        assert ident is not None
+        cat.flush()
+        ev = cat.get_event(ident)
+        is_the_haiti_event(ev)
                 
 if __name__ == "__main__":
     util.setup_logging('test_catalog', 'debug')
     unittest.main()
-
+    

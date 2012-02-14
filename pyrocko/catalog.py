@@ -1,4 +1,4 @@
-import model
+import model, util
 from moment_tensor import MomentTensor
 import urllib2
 import time
@@ -399,4 +399,114 @@ class GlobalCMT(EarthquakeCatalog):
          
         t = calendar.timegm((y, m, d, 0,0,0))
         return t
+
+
+class USGS(EarthquakeCatalog):
+
+    def __init__(self, catalog=('PDE', 'PDE-Q')[0]):
+       self.catalog = catalog 
+       self.events = {}
+
+    def flush(self):
+        self.events = {}
+
+    def iter_event_names(self, time_range=None, magmin=0., magmax=10., latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
+
+        catmap = {'PDE': 'HH', 'PDE-Q': 'PP'}
+        
+        yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
+        yearend, monend, dayend = time.gmtime(time_range[1])[:3]
+        
+        if latmin != -90. or latmax != 90. or lonmin != -180. or lonmax != 180.:
+            searchmethod = 2
+            # searchmethod=2 is for rectangular lat/lon area, but currently does not seem to work
+
+        searchmethod = 1
+        url = 'http://neic.usgs.gov/cgi-bin/epic/epic.cgi?' + '&'.join([
+                'SEARCHMETHOD=%i' % searchmethod,
+                'FILEFORMAT=6',
+                'SEARCHRANGE=%s' % catmap[self.catalog],
+                ] + ([],[
+                    'SLAT1=%g' % latmin,
+                    'SLAT2=%g' % latmax,
+                    'SLON1=%g' % lonmin,
+                    'SLON2=%g' % lonmax,
+                ])[searchmethod==2] + [
+                'SYEAR=%i' % yearbeg,
+                'SMONTH=%02i' % monbeg,
+                'SDAY=%02i' % daybeg,
+                'EYEAR=%i' % yearend,
+                'EMONTH=%02i' % monend,
+                'EDAY=%02i' % dayend,
+                'LMAG=%g' % magmin,
+                'UMAG=%g' % magmax,
+                'NDEP1=',
+                'NDEP2=',
+                'IO1=',
+                'IO2=',
+                'CLAT=0.0',
+                'CLON=0.0',
+                'CRAD=0.0',
+                'SUBMIT=Submit+Search'])
+
+
+        logger.debug('Opening URL: %s' % url)
+        page = urllib2.urlopen(url).read()
+        logger.debug('Received page (%i bytes)' % len(page))
+        
+        events = self._parse_events_page(page)
+
+        for ev in events:
+            self.events[ev.name] = ev
+        
+        for ev in events:
+            if time_range[0] <= ev.time and ev.time <= time_range[1]:
+                yield ev.name
+
+    def _parse_events_page(self, page):
+        events = []
+        for line in page.splitlines():
+            toks = line.strip().split(',')
+            if len(toks) != 9:
+                continue
+
+            try:
+                int(toks[0])
+            except:
+                continue
+
+            t = util.str_to_time(','.join(toks[:4]).strip(), format='%Y,%m,%d,%H%M%S.OPTFRAC')
+            lat = float(toks[4])
+            lon = float(toks[5])
+            mag = float(toks[6])
+            depth = float(toks[7])
+            catalog = toks[8]
+            name = 'USGS-%s-' % catalog + util.time_to_str(t, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+            ev = model.Event(
+                    lat=lat,
+                    lon=lon, 
+                    time=t,
+                    name=name,
+                    depth=depth*1000.,
+                    magnitude=mag,
+                    catalog=catalog)
+
+            events.append( ev )
+
+        return events
+    
+    def get_event(self, name):
+        if not name in self.events:
+            t = self._name_to_date(name)
+            for name2 in self.iter_event_names(time_range=(t-24*60*60, t+24*60*60)):
+                if name2 == name:
+                    break
+        
+        return self.events[name]
+
+    def _name_to_date(self, name):
+        ds = name[-23:]
+        t = util.str_to_time(ds, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+        return t
+
 
