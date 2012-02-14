@@ -493,6 +493,15 @@ def add_radiobuttongroup(menu, menudef, obj, target):
     menuitems[0][0].setChecked(True)
     return menuitems
 
+def sort_actions(menu):
+    actions = menu.actions()
+    for action in actions:
+        menu.removeAction(action)
+
+    actions.sort((lambda a,b: cmp(a.text(), b.text())))
+    for action in actions:
+        menu.addAction(action)
+
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
 class PileOverviewException(Exception):
@@ -1004,10 +1013,11 @@ def MakePileOverviewClass(base):
             snuffling.delete_gui()
             self.update()
             self.snufflings.remove(snuffling)
-            
+
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
             item.setParent(self.snufflings_menu)
+            sort_actions(self.snufflings_menu)
 
         def remove_snuffling_menuitem(self, item):
             self.snufflings_menu.removeAction(item)
@@ -1015,6 +1025,7 @@ def MakePileOverviewClass(base):
         def add_panel_toggler(self, item):
             self.toggle_panel_menu.addAction(item)
             item.setParent(self.toggle_panel_menu)
+            sort_actions(self.toggle_panel_menu)
 
         def remove_panel_toggler(self, item):
             self.toggle_panel_menu.removeAction(item)
