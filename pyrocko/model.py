@@ -362,7 +362,10 @@ class Station:
         
     def nsl_string(self):
         return '.'.join((self.network, self.station, self.location))
-        
+    
+    def nsl(self):
+        return self.network, self.station, self.location
+
     def __str__(self):
         sta = self
         elevation = 0.0
