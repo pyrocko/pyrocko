@@ -50,11 +50,18 @@ class Problems:
 class EventDataAccess:
     '''Abstract base class for event data access (see rdseed.py)'''
     
-    def __init__(self, datapile=None):
+    def __init__(self, events=None, stations=None, datapile=None):
         
         self._pile = datapile
-        self._events = None
-        self._stations = None
+        self._events = events
+
+        if stations is None:
+            self._stations = None
+        else:
+            self._stations = {}
+            for station in stations:
+                self._stations[station.nsl()] = station
+
         self._problems = Problems()
     
     def get_pile(self):
@@ -64,7 +71,10 @@ class EventDataAccess:
         if not self._events:
             self._events = self._get_events_from_file()
         return self._events
-        
+       
+    def get_event(self, i):
+        return self.get_events()[i]
+
     def get_station(self, tr, relative_event=None):
         self._update_stations()
         s = copy.deepcopy(self._stations[tr.nslc_id[:3]])
@@ -92,7 +102,7 @@ class EventDataAccess:
         if not self._stations:
             self._stations = {}
             for station in self._get_stations_from_file():
-                self._stations[station.network, station.station, station.location] = station
+                self._stations[station.nsl()] = station
             self._insert_channel_descriptions(self._stations)
     
     def _insert_channel_descriptions(self, stations):
@@ -286,3 +296,4 @@ class EventDataAccess:
             trace.IntegrationResponse()
         else:
             raise Exception('only "integration" restitution method is allowed')
+

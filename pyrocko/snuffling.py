@@ -110,7 +110,9 @@ class Snuffling:
         self._have_post_process_hook = False
         self._pre_process_hook_enabled = False
         self._post_process_hook_enabled = False
-        
+
+        self._no_viewer_pile = None 
+
     def setup(self):
         '''Setup the snuffling.
         
@@ -150,7 +152,35 @@ class Snuffling:
             self._menuitem = self.make_menuitem(self._menu_parent)
             if self._menuitem:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
+
+    def make_cli_parser(self):
+        import optparse
+        parser = optparse.OptionParser()
+        self.add_params_to_cli_parser(parser)
+        return parser
+
+    def add_params_to_cli_parser(self, parser):
+
+        for param in self._parameters:
+            if isinstance(param, Param):
+                parser.add_option('--' + param.ident,
+                        dest=param.ident,
+                        default = param.default,
+                        type = 'float',
+                        help = param.name)
         
+    def setup_cli(self):
+        self.setup()
+        
+        parser = self.make_cli_parser()
+        (options, args) = parser.parse_args()
+        
+        for param in self._parameters:
+            if isinstance(param, Param):
+                setattr(self, param.ident, getattr(options, param.ident))
+
+        return options, args, parser
+
     def delete_gui(self):
         '''Remove the gui elements of the snuffling.
         
@@ -336,7 +366,11 @@ class Snuffling:
         try:
             p =self.get_viewer().get_pile()
         except NoViewerSet:
-            p = self.make_pile()
+            if self._no_viewer_pile is None:
+                self._no_viewer_pile = self.make_pile()
+
+            p = self._no_viewer_pile
+
             
         return p
         
@@ -354,42 +388,49 @@ class Snuffling:
         :param marker_selector: if not ``None`` a callback to filter markers.
                
         '''
-        
-        viewer = self.get_viewer()
-        markers = viewer.selected_markers()
-        if marker_selector is not None:
-            markers = [  marker for marker in markers if marker_selector(marker) ] 
-        pile = self.get_pile()
-        
-        if markers:
+       
+        try:
+            viewer = self.get_viewer()
+            markers = viewer.selected_markers()
+            if marker_selector is not None:
+                markers = [  marker for marker in markers if marker_selector(marker) ] 
+            pile = self.get_pile()
             
-            for marker in markers:
-                if not marker.nslc_ids:
-                    trace_selector = None
-                else:
-                    trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
+            if markers:
                 
+                for marker in markers:
+                    if not marker.nslc_ids:
+                        trace_selector = None
+                    else:
+                        trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
+                    
+                    for traces in pile.chopper(
+                            tmin = marker.tmin,
+                            tmax = marker.tmax,
+                            trace_selector = trace_selector,
+                            *args,
+                            **kwargs):
+                        
+                        yield traces
+                        
+            elif fallback:
+                
+                tmin, tmax = viewer.get_time_range()
                 for traces in pile.chopper(
-                        tmin = marker.tmin,
-                        tmax = marker.tmax,
-                        trace_selector = trace_selector,
+                        tmin = tmin,
+                        tmax = tmax,
                         *args,
                         **kwargs):
                     
                     yield traces
-                    
-        elif fallback:
-            
-            tmin, tmax = viewer.get_time_range()
-            for traces in pile.chopper(
-                    tmin = tmin,
-                    tmax = tmax,
-                    *args,
-                    **kwargs):
-                
+            else:
+                raise NoTracesSelected()
+        
+        except NoViewerSet:
+
+            pile = self.get_pile()
+            for traces in  pile.chopper(*args, **kwargs):
                 yield traces
-        else:
-            raise NoTracesSelected()
                     
     def get_selected_time_range(self, fallback=False):
         '''Get the time range spanning all selected markers.'''

@@ -1,9 +1,12 @@
-from pyrocko import pile, trace, util, io, iris_ws
+from pyrocko import pile, trace, util, io, iris_ws, model
 from pyrocko.gui_util import EventMarker
-import sys, os, math, time, urllib2
+import sys, os, math, time, urllib2, logging
 import numpy as num
 from pyrocko.snuffling import Param, Snuffling, Switch
 pjoin = os.path.join
+
+logger = logging.getLogger('pyrocko.snufflings.iris_data')
+logger.setLevel(logging.INFO)
 
 class IrisData(Snuffling):
 
@@ -16,7 +19,9 @@ class IrisData(Snuffling):
         self.add_parameter(Param('Origin latitude [deg]', 'lat', 0, -90., 90.))
         self.add_parameter(Param('Origin longitude [deg]', 'lon', 0., -180., 180.))
         self.add_parameter(Switch('Use coordinates of selected event as origin', 'useevent', False))
+        self.add_trigger('Save', self.save)
         self.set_live_update(False)
+        self.current_stuff = None
 
     def call(self):
         '''Main work routine of the snuffling.'''
@@ -41,13 +46,13 @@ class IrisData(Snuffling):
         else:
             lat, lon = self.lat, self.lon
         
-        print lat, lon, self.minradius, self.maxradius, util.time_to_str(tmin), util.time_to_str(tmax)
-
         data = iris_ws.ws_station(lat=lat, lon=lon, minradius=self.minradius, maxradius=self.maxradius, 
                                                      timewindow=(tmin,tmax), level='chan' )
+        
         stations = iris_ws.grok_station_xml(data, tmin, tmax)
         networks = set( [ s.network for s in stations ] )
         
+        t2s = util.time_to_str
         dir = self.tempdir()
         fns = []
         for net in networks:
@@ -55,8 +60,8 @@ class IrisData(Snuffling):
             selection = sorted(iris_ws.data_selection( nstations, tmin, tmax ))
             if selection:
                 for x in selection:
-                    print x
-                
+                    logger.info('Adding data selection: %s.%s.%s.%s %s - %s' % (tuple(x[:4]) + (t2s(x[4]), t2s(x[5]))))
+
                 try:
                     d = iris_ws.ws_bulkdataselect(selection)
                     fn = pjoin(dir,'data-%s.mseed' % net) 
@@ -64,19 +69,49 @@ class IrisData(Snuffling):
                     f.write(d)
                     f.close()
                     fns.append(fn)
+
                 except urllib2.HTTPError:
                     pass
 
-        newstations = []
-        for sta in stations:
-            if not view.has_station(sta):
-                print sta
-                newstations.append(sta)
-
-        view.add_stations(newstations)
+        all_traces = []
         for fn in fns:
-            traces = list(io.load(fn))
-            self.add_traces(traces)
+            try:
+                traces = list(io.load(fn))
+
+                all_traces.extend(traces)
+
+            except io.FileLoadError, e:
+                logger.warning('File load error, %s' % e)
+        
+        if all_traces:
+            newstations = []
+            for sta in stations:
+                if not view.has_station(sta):
+                    logger.info('Adding station: %s.%s.%s' % (sta.network, sta.station, sta.location))
+                    newstations.append(sta)
+           
+            view.add_stations(newstations)
+            
+            for tr in all_traces:
+                logger.info('Adding trace: %s.%s.%s.%s %s - %s' % (tr.nslc_id + (t2s(tr.tmin), t2s(tr.tmax))))
+            
+            self.add_traces(all_traces)
+            self.current_stuff = (all_traces, stations)
+
+        else:
+            self.current_stuff = None
+            self.fail('Did not get any data for given selection.')
+        
+    def save(self):
+        if not self.current_stuff:
+            self.fail('Nothing to save.')
+        
+        data_fn = self.output_filename(caption='Save Data', dir='data-%(network)s-%(station)s-%(location)s-%(channel)s-%(tmin)s.mseed')
+        stations_fn = self.output_filename(caption='Save Stations File', dir='stations.txt')        
+
+        all_traces, stations = self.current_stuff
+        io.save(all_traces, data_fn)
+        model.dump_stations(stations, stations_fn)
 
 def __snufflings__():    
    return [ IrisData() ]

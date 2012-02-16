@@ -2,19 +2,28 @@ import scipy.signal as sig
 import numpy as num
 import sys, math
 import trace
+from cStringIO import StringIO
 
 d2r = math.pi/180.
 
 class SacPoleZeroError(Exception):
     pass
 
-def read_sac_zpk(filename):
+def read_sac_zpk(filename=None, file=None, string=None):
     '''Read SAC Pole-Zero file.
     
        Returns (zeros, poles, constant).
     '''
     
-    f = open(filename, 'r')
+    if filename is not None:
+        f = open(filename, 'r')
+    
+    elif file is not None:
+        f = file
+
+    elif string is not None:
+        f = StringIO(string)
+
     sects = ('ZEROS', 'POLES', 'CONSTANT')
     sectdata = {'ZEROS': [], 'POLES': []}
     npoles = 0
@@ -43,7 +52,9 @@ def read_sac_zpk(filename):
         else:
             if atsect:
                 sectdata[atsect].append(complex(float(toks[0]), float(toks[1])))
-    f.close()
+    
+    if f != file:
+        f.close()
     
     poles = sectdata['POLES']
     zeros = sectdata['ZEROS']
