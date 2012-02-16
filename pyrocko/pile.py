@@ -3,24 +3,28 @@
 import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging, time, weakref, copy, re, sys, operator, math
+import os, logging, time, weakref, copy, re, sys, operator, math
 import cPickle as pickle
 
-try:
-    from collections import Counter
-except ImportError:
-    class Counter(dict):
+class Counter(dict):
 
-        def __missing__(self, k):
-            return 0
-        
-        def update(self, other):
-            for k, v in other.iteritems():
-                self[k] += v
+    def __missing__(self, k):
+        return 0
+    
+    def update(self, other):
+        for k, v in other.iteritems():
+            self[k] += v
 
-        def subtract(self, other):
-            for k, v in other.iteritems():
-                self[k] -= v
+    def subtract(self, other):
+        for k, v in other.iteritems():
+            self[k] -= v
+            if self[k] <= 0:
+                del self[k]
+
+    def subtract1(self, k):
+        self[k] -= 1
+        if self[k] <= 0:
+            del self[k]
 
 import avl
 
@@ -328,7 +332,6 @@ class TracesGroup(object):
     of its contents.
     '''
     
-    
     def __init__(self, parent):
         self.parent = parent
         self.empty()
@@ -347,6 +350,7 @@ class TracesGroup(object):
         self.by_tlen = Sorted([], tlen)
         self.by_mtime = Sorted([], 'mtime')
         self.tmin, self.tmax = None, None
+        self.deltatmin, self.deltatmax = None, None
     
     def trees_from_content(self, content):
         self.by_tmin = Sorted(content, 'tmin')
@@ -416,12 +420,12 @@ class TracesGroup(object):
                 self.by_mtime.remove_many( c )
 
             elif isinstance(c, trace.Trace):
-                self.networks[c.network] -= 1
-                self.stations[c.station] -= 1
-                self.locations[c.location] -= 1
-                self.channels[c.channel] -= 1
-                self.nslc_ids[c.nslc_id] -= 1
-                self.deltats[c.deltat] -= 1
+                self.networks.subtract1(c.network)
+                self.stations.subtract1(c.station)
+                self.locations.subtract1(c.location)
+                self.channels.subtract1(c.channel)
+                self.nslc_ids.subtract1(c.nslc_id)
+                self.deltats.subtract1(c.deltat)
     
                 self.by_tmin.remove(c)
                 self.by_tmax.remove(c)
@@ -451,11 +455,16 @@ class TracesGroup(object):
             t = self.by_tlen.max()
             self.tlenmax = t.tmax - t.tmin
             self.mtime = self.by_mtime.max().mtime
+            deltats = self.deltats.keys()
+            self.deltatmin = min(deltats)
+            self.deltatmax = max(deltats)
         else:
             self.tmin = None
             self.tmax = None
             self.tlenmax = None
             self.mtime = None
+            self.deltatmin = None
+            self.deltatmax = None
 
     def notify_listeners(self, what):
         pass
