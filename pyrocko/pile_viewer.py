@@ -805,6 +805,7 @@ def MakePileOverviewClass(base):
             
             self.error_messages = {}
             self.return_tag = None
+            self.wheel_pos = 60
     
         def sizeHint(self):
             return QSize(1024,768)
@@ -1554,12 +1555,14 @@ def MakePileOverviewClass(base):
             QDesktopServices.openUrl( QUrl(link) )
 
         def wheelEvent(self, wheel_event):
+            self.wheel_pos += wheel_event.delta()
+            n = self.wheel_pos / 120
+            self.wheel_pos = self.wheel_pos % 120
+            if n == 0:
+                return
+
             amount = max(1.,abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
-            
-            if wheel_event.delta() < 0:
-                wdelta = -amount
-            else:
-                wdelta = +amount
+            wdelta = amount * n
             
             trmin,trmax = self.track_to_screen.get_in_range()
             anchor = (self.track_to_screen.rev(wheel_event.y())-trmin)/(trmax-trmin)
