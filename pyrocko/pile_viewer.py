@@ -2018,7 +2018,6 @@ def MakePileOverviewClass(base):
                     min_deltat_allow = min_deltat_w_decimate
           
             min_deltat_allow = math.exp(int(math.floor(math.log( min_deltat_allow) )) )
-            print min_deltat_allow
 
             tmin_ = tmin
             tmax_ = tmax
@@ -2051,7 +2050,6 @@ def MakePileOverviewClass(base):
                 
                 processed_traces = []
                 
-                print self.pile.deltatmax, min_deltat_allow
                 if self.pile.deltatmax >= min_deltat_allow:
                     
 
