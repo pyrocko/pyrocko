@@ -603,8 +603,10 @@ class MySnuffler(QApplication):
 class FileLoader(Channel):
     def __init__(self, port, ticket):
         Channel.__init__(self, port=port, ticket=ticket)
-        self.loader = None
-        self.percent = 0
+        self.loaders = []
+        self.tship_start = None
+        self.tship_progress = None
+        self.iloader = 0
     
     def handle_received(self, obj):
         if obj[0] == 'load':
@@ -615,47 +617,65 @@ class FileLoader(Channel):
                 cache = pyrocko.pile.get_cache(cachedirname)
 
             filenames = pyrocko.util.select_files( pathes, regex=pattern )
-            self.loader = pyrocko.pile.loader(sorted(filenames), 
-                                fileformat=format, 
-                                cache=cache, 
-                                filename_attributes=pattern, show_progress=False, update_progress=self.update_progress )
+            if filenames:
+                self.iloader += 1
+                iloader = self.iloader
+                def upp(i,n):
+                    return self.update_progress(iloader, i, n)
 
-    def update_progress(self, i, n):
-        
-        if (i*100)/n != self.percent:
-            self.percent = (i*100)/n
-            self.ship(('update_progress', 'scanning files', self.percent))
+                self.loaders.append(pyrocko.pile.loader(sorted(filenames), 
+                                    fileformat=format, 
+                                    cache=cache, 
+                                    filename_attributes=pattern, 
+                                    show_progress=False,
+                                    update_progress=upp ))
 
+    def update_progress(self, iloader, i, n):
+      
+        percent = (i*100)/n
+        tnow = time.time()
+        if ((percent == 100 and self.tship_progress is not None) or
+                (tnow > self.tship_start + 3. and 
+                    self.tship_progress is not None and tnow - self.tship_progress > 0.05)):
+
+            self.ship(('update_progress', 'scanning files %i' % iloader, percent))
+            self.tship_progress = tnow
 
     def run(self):
         i =0
-        tship = time.time()
+        self.tship_start = time.time()
+        tship = self.tship_start
         queue = []
         while True:
-            if self.loader:
+            if self.loaders:
                 timeout = 0.
             else:
-                timeout = 30.
+                timeout = 10. 
 
             asyncore.loop(timeout=timeout, count=1)
-            print '+++'
             if not asyncore.socket_map:
                 return
 
-            if self.loader:
-                try:
-                    queue.append( self.loader.next() )
-                    tnow = time.time()
-                    if tnow - tship > 0.05:
-                        self.ship(('add_files', queue))
-                        tship = tnow
-                        queue = []
+            if self.loaders:
+                done = []
+                for loader in self.loaders:
+                    try:
+                        queue.append( loader.next() )
+                        tnow = time.time()
+                        if tnow - self.tship_start > 3.0 and tnow - tship > 0.05:
+                            self.ship(('add_files', queue))
+                            tship = tnow
+                            queue = []
 
-                except StopIteration:
-                    self.loader = None
-                    if queue:
-                        self.ship(('add_files', queue))
-                        queue = []
+                    except StopIteration:
+                        done.append(loader)
+                        if queue:
+                            self.ship(('add_files', queue))
+                            queue = []
+
+                for loader in done:
+                    self.loaders.remove(loader)
+
             i+=1
 
 class Forker(Forked):
