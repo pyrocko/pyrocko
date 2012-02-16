@@ -319,7 +319,7 @@ class MySnuffler(QApplication):
                 help='follow real time with a window of N seconds')
         parser.add_option('--progressive', dest='progressive', action='store_true', default=False,
                 help='don\'t wait for file scanning to complete before opening the viewer')
-        parser.add_option('--cache', dest='cache_dir', default='/tmp/snuffle_cache_%s' % os.environ['USER'], metavar='DIR',
+        parser.add_option('--cache', dest='cache_dir', default='/tmp/pyrocko_0.2_cache_%s' % os.environ['USER'], metavar='DIR',
                 help='use directory DIR to cache trace metadata (default=\'%default\')')
         parser.add_option('--force-cache', dest='force_cache', action='store_true', default=False,
                 help='use the cache even when trace attribute spoofing is active (may have silly consequences)')

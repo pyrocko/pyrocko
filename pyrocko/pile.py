@@ -3,8 +3,7 @@
 import trace, io, util, config
 
 import numpy as num
-import os, pickle, logging, time, weakref, copy, re, sys, operator
-
+import os, pickle, logging, time, weakref, copy, re, sys, operator, math
 import cPickle as pickle
 
 try:
@@ -552,6 +551,7 @@ class MemTracesFile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
 
 class TracesFile(TracesGroup):
@@ -694,6 +694,7 @@ class TracesFile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
 
 
@@ -797,6 +798,7 @@ class SubPile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
 
              
@@ -846,9 +848,8 @@ class Pile(TracesGroup):
             subpile.remove_files(files)
         
     def dispatch_key(self, file):
-        return 1
-        #tt = time.gmtime(int(file.tmin))
-        #return (tt[0],tt[1])
+        dt = int(math.floor(math.log(file.deltatmin)))
+        return dt
     
     def dispatch(self, file):
         k = self.dispatch_key(file)
@@ -1070,6 +1071,7 @@ class Pile(TracesGroup):
         s += 'stations: %s\n' % ', '.join(sl(self.stations))
         s += 'locations: %s\n' % ', '.join(sl(self.locations))
         s += 'channels: %s\n' % ', '.join(sl(self.channels))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
         return s
     
     def snuffle(self, **kwargs):
