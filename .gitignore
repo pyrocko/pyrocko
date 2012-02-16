@@ -7,4 +7,5 @@ libmseed
 doc/_build
 pyrocko/info.py
 pages
+pyrocko/tags
 

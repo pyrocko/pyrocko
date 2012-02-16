@@ -16,11 +16,14 @@ class Anon(dict):
     def getn(self, *keys):
         return Anon( [(k, self[k]) for k in keys] )
 
-def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
+    def gett(self, *keys):
+        return tuple([ self[k] for k in keys])
+
+def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]', descr=None):
     
     want = required + optional
 
-    parser = OptionParser(usage=usage)
+    parser = OptionParser(usage=usage, description=descr.capitalize()+'.')
     if 'phases' in want:
         group = OptionGroup(parser, 'Phases')
         group.add_option('--phase', '--phases', dest='phases', action="append",
@@ -89,31 +92,33 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
     (options, args) = parser.parse_args(args)
 
     d = {}
-    phases = []
-    for s in options.phases:
-        for s in s.split(','):
-            phases.append(cake.PhaseDef(s))
-
     as_degrees = False
     if 'as_degrees' in want:
         as_degrees = options.as_degrees
         d['as_degrees'] = as_degrees
+    
+    if 'phases' in want:
+        phases = []
+        for s in options.phases:
+            for s in s.split(','):
+                phases.append(cake.PhaseDef(s))
         
-    if phases:
-        d['phases'] = phases 
-   
-    if options.model_filename:
-        d['model'] = cake.load_model(options.model_filename, options.model_format)
+        if phases:
+            d['phases'] = phases 
+  
+    if 'model' in want:
+        if options.model_filename:
+            d['model'] = cake.load_model(options.model_filename, options.model_format)
 
-    if options.crust2loc:
-        try:
-            lat,lon = [ float(x) for x in options.crust2loc.split(',') ]
-        except:
-            parser.error('format for --crust2loc option is "LATITUDE,LONGITUDE"')
-            
-        from pyrocko import crust2x2
-        profile = crust2x2.get_profile(lat,lon)
-        d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
+        if options.crust2loc:
+            try:
+                lat,lon = [ float(x) for x in options.crust2loc.split(',') ]
+            except:
+                parser.error('format for --crust2loc option is "LATITUDE,LONGITUDE"')
+                
+            from pyrocko import crust2x2
+            profile = crust2x2.get_profile(lat,lon)
+            d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
 
     if 'vred' in want:
         d['vred'] = options.vred
@@ -189,15 +194,49 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]'):
 
     return Anon(d)
 
+def d2u(d):
+    return dict((k.replace('-','_'), v) for (k,v) in d.iteritems())
+
 if __name__ == '__main__':
-    usage = 'cake (print|arrivals|plot-xt|plot-xp|plot-rays|plot) [options]'
+
+    subcommand_descriptions = {
+            'print':       'get information on model/phase/material properties',
+            'arrivals':    'print list of phase arrivals',
+            'paths':       'print ray path details',
+            'plot-xt':     'plot traveltime vs distance curves',
+            'plot-xp':     'plot ray parameter vs distance curves',
+            'plot-rays':   'plot ray propagation paths',
+            'plot':        'plot combination of ray and traveltime curves',
+            'plot-model':  'plot velocity model'}
+
+    usage = '''cake <subcommand> [options] 
+
+Subcommands:
+
+    print       %(print)s
+    arrivals    %(arrivals)s
+    paths       %(paths)s
+    plot-xt     %(plot_xt)s
+    plot-xp     %(plot_xp)s
+    plot-rays   %(plot_rays)s
+    plot        %(plot)s
+    plot-model  %(plot_model)s
+
+To get available options for each subcommand:
+
+    cake <subcommand> --help
+'''.strip() % d2u(subcommand_descriptions)
+
     usage_sub = 'cake %s [options]'
     if len(sys.argv) < 2:
         sys.exit('Usage: %s' % usage)
 
     command = sys.argv[1]
+    descr = subcommand_descriptions.get(command, None)
+    subusage = usage_sub % command
+
     if command == 'print':
-        c = optparse((), ('model', 'phases', 'material'), usage=usage_sub % command)
+        c = optparse((), ('model', 'phases', 'material'), usage=subusage, descr=descr)
         
         if 'model' in c:
             print c.model
@@ -213,19 +252,25 @@ if __name__ == '__main__':
             print
        
     elif command == 'arrivals':
-        c = optparse(('model', 'phases', 'distances'), ('zstart', 'zstop', 'as_degrees'), usage=usage_sub % command)
+        c = optparse(('model', 'phases', 'distances'), ('zstart', 'zstop', 'as_degrees'), usage=subusage, descr=descr) 
         mod = c.model
         for arrival in mod.arrivals(**c.getn('zstart', 'zstop', 'phases', 'distances')):
             print arrival.__str__(as_degrees=c.as_degrees)
 
+    elif command == 'paths':
+        c = optparse(('model', 'phases'), ('zstart', 'zstop', 'as_degrees'), usage=subusage, descr=descr) 
+        mod = c.model
+        for path in mod.gather_paths(**c.getn('phases', 'zstart', 'zstop')):
+            print path.describe(path.endgaps(c.zstart, c.zstop), c.as_degrees)
+
     elif command in ('plot-xt', 'plot-xp', 'plot-rays', 'plot'):
         if command in ('plot-xt', 'plot'):
-            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'vred'), usage=usage_sub % command)
+            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'vred'), usage=subusage, descr=descr) 
         else:
-            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees'), usage=usage_sub % command)
+            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees'), usage=subusage, descr=descr) 
 
         mod = c.model
-        pathes = mod.gather_pathes(**c.getn('phases', 'zstart', 'zstop'))
+        paths = mod.gather_paths(**c.getn('phases', 'zstart', 'zstop'))
         
         if c.distances is not None:
             arrivals = mod.arrivals( **c.getn('phases', 'zstart', 'zstop', 'distances'))
@@ -233,18 +278,27 @@ if __name__ == '__main__':
             arrivals = None
         
         if command == 'plot-xp':
-            plot.my_xp_plot(pathes, c.distances, c.as_degrees)
+            plot.my_xp_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees)
         elif command == 'plot-xt':
-            plot.my_xt_plot(pathes, c.distances, c.as_degrees, vred=c.vred)
+            plot.my_xt_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
         elif command == 'plot-rays':
             if c.as_degrees:
-                plot.my_rays_plot_gcs(mod, pathes, arrivals, c.zstart, c.zstop, c.distances)
+                plot.my_rays_plot_gcs(mod, paths, arrivals, c.zstart, c.zstop, c.distances)
             else:
-                plot.my_rays_plot(mod, pathes, arrivals, c.zstart, c.zstop, c.distances)
+                plot.my_rays_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances)
 
         elif command == 'plot':
-            plot.my_combi_plot(mod, pathes, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
+            plot.my_combi_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
+
+
+    elif command in ('plot-model',):
+        c = optparse(('model',), (), usage=subusage, descr=descr) 
+        mod = c.model
+        plot.my_model_plot(mod)
+
+    elif command in ('--help', '-h', 'help'):
+        sys.exit('Usage: %s' % usage)
 
     else:
-        sys.exit('no such command')
+        sys.exit('cake: no such subcommand: %s' % command)
 

@@ -243,7 +243,7 @@ Qk                            : %12g
                 tuple( repr(x) for x in (self.vp, self.vs, self.rho, self.qp, self.qs) )
 
 
-class Leg:
+class Leg(object):
     '''Represents a continuous piece of wave propagation in a :py:class:`PhaseDef`.
     
      **Attributes:**
@@ -302,7 +302,7 @@ class Leg:
 class InvalidKneeDef(Exception):
     pass
 
-class Knee:
+class Knee(object):
     '''Represents a change in wave propagation within a :py:class:`PhaseDef`.
    
     **Attributes:**
@@ -358,6 +358,9 @@ class Knee:
             self.__dict__[k] = v
 
     def __getattr__(self, k):
+        if k.startswith('__'):
+            raise AttributeError(k)
+
         if k not in self.__dict__:
             return self.default(k)
     
@@ -437,6 +440,23 @@ class Knee:
 
         return ' '.join(x)
 
+class Head(Knee):
+    def __init__(self, *args):
+        if args:
+            z, in_direction, mode = args
+            Knee.__init__(self, z, in_direction, True, mode, mode)
+        else:
+            Knee.__init__(self)
+
+    def __str__(self):
+        x = [ 'propagation as headwave' ]
+        if isinstance(self.depth, float):
+            x.append('at interface in %g km depth' % (self.depth/1000.))
+        else:
+            x.append('at %s' % self.depth)
+        
+        return ' '.join(x) 
+
 class PhaseDefParseError(Exception):
     '''Exception raised when an error occures during parsing of a phase definition string.'''
 
@@ -448,7 +468,7 @@ class PhaseDefParseError(Exception):
     def __str__(self):
         return 'Invalid phase definition: "%s" (at character %i: %s)' % (self.definition, self.position+1, str(self.exception))
 
-class PhaseDef:
+class PhaseDef(object):
    
     '''Definition of a seismic phase arrival, based on ray propagation path.
 
@@ -693,24 +713,24 @@ class PhaseDef:
             if events and depthmax is not None:
                 events[-1].set_depthmax(depthmax)
 
-        self.definition = definition
-        self.events = events
-        self.direction_stop = direction_stop
+        self._definition = definition
+        self._events = events
+        self._direction_stop = direction_stop
    
     def __iter__(self):
-        for ev in self.events:
+        for ev in self._events:
             yield ev
 
     def append(self, ev):
-        self.events.append(ev)
+        self._events.append(ev)
 
     def first_leg(self):
         '''Get the first leg in phase definition.'''
-        return self.events[0]
+        return self._events[0]
 
     def last_leg(self):
         '''Get the last leg in phase definition.'''
-        return self.events[-1]
+        return self._events[-1]
 
     def legs(self):
         '''Iterate over the continuous pieces of wave propagation (legs) defined within this phase definition.'''
@@ -720,16 +740,26 @@ class PhaseDef:
         '''Iterate over conversions and reflections (knees) defined within this phase definition.'''
         return ( knee for knee in self if isinstance(knee, Knee) )
 
+    def definition(self):
+        return self._definition
+
+    def direction_start(self):
+        return self.first_leg().departure
+
+    def direction_stop(self):
+        return self._direction_stop
+
     def used_repr(self):
         '''Translate into textual representation (cake phase syntax).'''
         x = []
         for el in self:
-            if isinstance(el, Leg):
+            if type(el) == Leg:
                 if el.departure == UP:
                     x.append(smode(el.mode).lower())
                 else:
                     x.append(smode(el.mode).upper())
-            else:
+
+            elif type(el) == Knee:
                 if el.reflection and not el.at_surface():
                     if el.direction == DOWN:
                         x.append('v')
@@ -740,25 +770,32 @@ class PhaseDef:
                         x.append('%g' % (el.depth/1000.))
                     else:
                         x.append('(%s)' % el.depth)
-    
-        if self.direction_stop == DOWN:
+                        
+            elif type(el) == Head:
+                x.append('_')
+                if isinstance(el.depth, float):
+                    x.append('%g' % (el.depth/1000.))
+                else:
+                    x.append('(%s)' % el.depth)
+
+        if self._direction_stop == DOWN:
             x.append('\\')
 
         return ''.join(x)
    
     def __repr__(self):
-        if self.definition is not None:
-            return "PhaseDef('%s')" % self.definition
+        if self._definition is not None:
+            return "PhaseDef('%s')" % self._definition
         else:
             return "PhaseDef('%s')" % self.used_repr()
 
     def __str__(self):
         orig = ''
         used = self.used_repr()
-        if self.definition != used:
-            orig = ' (entered as "%s")' % self.definition
+        if self._definition != used:
+            orig = ' (entered as "%s")' % self._definition
 
-        sarrive = '\n - arriving at target from %s' % ('below', 'above')[self.direction_stop == DOWN]
+        sarrive = '\n - arriving at target from %s' % ('below', 'above')[self._direction_stop == DOWN]
         return 'Phase definition "%s"%s:\n - ' % (used, orig) + '\n - '.join(str(ev) for ev in self) + sarrive
         
 
@@ -901,22 +938,28 @@ def smode(i):
     elif i == S:
         return 's'
 
-class SurfaceReached(Exception):
+class PathFailed(Exception):
     pass
 
-class BottomReached(Exception):
+class SurfaceReached(PathFailed):
     pass
 
-class MaxDepthReached(Exception):
+class BottomReached(PathFailed):
     pass
 
-class MinDepthReached(Exception):
+class MaxDepthReached(PathFailed):
     pass
 
-class Trapped(Exception):
+class MinDepthReached(PathFailed):
     pass
 
-class CannotPropagate(Exception):
+class Trapped(PathFailed):
+    pass
+
+class NotPhaseConform(PathFailed):
+    pass
+
+class CannotPropagate(PathFailed):
     def __init__(self, direction, ilayer):
         Exception.__init__(self)
         self._direction = direction
@@ -931,6 +974,8 @@ class Layer:
     :param ztop: depth of top of layer
     :param zbot: depth of bottom of layer
     :param name: name of layer (optional)
+
+    Subclasses are: :py:class:`HomogeneousLayer` and :py:class:`GradientLayer`.
     '''
 
     def __init__(self, ztop, zbot, name=None):
@@ -1034,14 +1079,14 @@ class Layer:
             x = p/sap * lr
             t = 1./(a**2 * sap)
        
-        if isinstance(x, num.ndarray):
-            iturn = num.where(num.logical_or(r2*utop - p < 0, r1*ubot - p < 0))
-            x[iturn] *= 2.
-            t[iturn] *= 2.
-        else:
-            if r2*utop - p < 0 or r1*ubot - p < 0:
-                x *= 2.
-                t *= 2.
+#        if isinstance(x, num.ndarray):
+#            iturn = num.where(num.logical_or(r2*utop - p <= 0., r1*ubot - p <= 0.))
+#            x[iturn] *= 2.
+#            t[iturn] *= 2.
+#        else:
+#            if r2*utop - p <= 0. or r1*ubot - p <= 0.:
+#                x *= 2.
+#                t *= 2.
         
         x *= r2d
 
@@ -1052,8 +1097,12 @@ class Layer:
         
         Uses potential interpolation.
         '''
+        
+        return (self.u(mode, z)*radius(z) - p) > 0.
 
-        return (self.u(mode, z)*radius(z) - p) >= 0
+    def tests(self, p, mode):
+        utop, ubot = self.us(mode)
+        return (utop * radius(self.ztop) - p) > 0., (ubot * radius(self.zbot) - p) > 0.
    
     def zturn_potint(self, p, mode):
         '''Get turning depth for given ray parameter and propagation mode.'''
@@ -1089,7 +1138,10 @@ def radius(z):
     return earthradius - z
 
 class HomogeneousLayer(Layer):
-    '''Representation of a homogeneous layer in a layered earth model.'''
+    '''Representation of a homogeneous layer in a layered earth model.
+    
+    Base class: :py:class:`Layer`.
+    '''
 
     def __init__(self, ztop, zbot, m, name=None):
         Layer.__init__(self,ztop, zbot, name=name)
@@ -1097,6 +1149,11 @@ class HomogeneousLayer(Layer):
         self.mtop = m
         self.mbot = m
         self._update_potint_coefs()
+
+    def copy(self, ztop=None, zbot=None):
+        if ztop is None: ztop = self.ztop
+        if zbot is None: zbot = self.zbot
+        return HomogeneousLayer(ztop, zbot, self.m, name=self.name)
 
     def material(self, z):
         return self.m
@@ -1111,7 +1168,7 @@ class HomogeneousLayer(Layer):
         u = self.u(mode)
         return u, u
 
-    def v(self, mode):
+    def v(self, mode, z=None):
         if mode == P:
             return self.m.vp
         if mode == S:
@@ -1167,13 +1224,21 @@ class HomogeneousLayer(Layer):
         return '  (%i) homogeneous layer %s(%g km - %g km) [%s]\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.m)
 
 class GradientLayer(Layer):
-    '''Representation of a gradient layer in a layered earth model.'''
+    '''Representation of a gradient layer in a layered earth model.
+
+    Base class: :py:class:`Layer`.
+    '''
 
     def __init__(self, ztop, zbot, mtop, mbot, name=None):
         Layer.__init__(self, ztop, zbot, name=name)
         self.mtop = mtop
         self.mbot = mbot
         self._update_potint_coefs()
+
+    def copy(self, ztop=None, zbot=None):
+        if ztop is None: ztop = self.ztop
+        if zbot is None: zbot = self.zbot
+        return GradientLayer(ztop, zbot, self.mtop, self.mbot, name=self.name)
 
     def interpolate(self, z, ptop, pbot):
         return ptop + (z - self.ztop)*(pbot - ptop)/(self.zbot-self.ztop) 
@@ -1207,7 +1272,15 @@ class GradientLayer(Layer):
             return self.interpolate(z, self.mtop.vp, self.mbot.vp)
         if mode == S:
             return self.interpolate(z, self.mtop.vs, self.mbot.vs)
-    
+   
+    def test(self, p, mode, z):
+        return Layer.test(self, p, mode, z)
+        if self._use_potential_interpolation:
+            return Layer.test(self, p, mode, z)
+
+        pflat = self.pflat(p, z)
+        return self.u(mode, z) > pflat
+
     def xt(self, p, mode, zpart=None):
         if self._use_potential_interpolation:
             return self.xt_potint(p, mode, zpart)
@@ -1233,14 +1306,14 @@ class GradientLayer(Layer):
         x =  (xxtop - xxbot)/(b*pdp)
         t =  (tttop - ttbot)/b + pflat*x
       
-        if isinstance(x, num.ndarray):
-            iturn = num.where(num.logical_or(utop - pflat <= 0, ubot - pflat <= 0))
-            x[iturn] *= 2.
-            t[iturn] *= 2.
-        else:
-            if utop - pflat <= 0 or ubot - pflat <= 0:
-                x *= 2.
-                t *= 2.
+#        if isinstance(x, num.ndarray):
+#            iturn = num.where(num.logical_or(utop - pflat <= 0, ubot - pflat <= 0))
+#            x[iturn] *= 2.
+#            t[iturn] *= 2.
+#        else:
+#            if utop - pflat <= 0 or ubot - pflat <= 0:
+#                x *= 2.
+#                t *= 2.
 
         x *= r2d/(earthradius - self.zmid)
         return x, t
@@ -1274,7 +1347,10 @@ class GradientLayer(Layer):
         return '  (%i) gradient layer %s(%g km - %g km) [%s]\n    %s\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.mtop, self.mbot)
 
 class Discontinuity:
-    '''Base class for discontinuities in layered earth model.'''
+    '''Base class for discontinuities in layered earth model.
+    
+    Subclasses are: :py:class:`Interface` and :py:class:`Surface`.
+    '''
 
     def __init__(self, z, name=None):
         self.z = z
@@ -1283,7 +1359,10 @@ class Discontinuity:
         self.name = name
 
 class Interface(Discontinuity):
-    '''Representation of an interface in a layered earth model.'''
+    '''Representation of an interface in a layered earth model.
+    
+    Base class: :py:class:`Discontinuity`.
+    '''
 
     def __init__(self, z, mabove, mbelow, name=None):
         Discontinuity.__init__(self, z, name)
@@ -1323,7 +1402,10 @@ class Interface(Discontinuity):
         return scatter[psv_solid_ind(in_direction, out_direction, in_mode, out_mode)]
 
 class Surface(Discontinuity):
-    '''Representation of the surface discontinuity in a layered earth model.'''
+    '''Representation of the surface discontinuity in a layered earth model.
+    
+    Base class: :py:class:`Discontinuity`.
+    '''
 
     def __init__(self, z, mbelow):
         Discontinuity.__init__(self, z, 'surface')
@@ -1350,6 +1432,12 @@ class Walker:
     def current(self):
         return self._elements[ self._i ]
 
+    def go(self, direction):
+        if direction == UP:
+            self.up()
+        else:
+            self.down()
+
     def down(self):
         if self._i < len(self._elements)-1:
             self._i += 1
@@ -1362,6 +1450,11 @@ class Walker:
         else:
             raise SurfaceReached()
 
+    def goto_layer(self, layer):
+        self._i = self._elements.index(layer)
+
+
+    # DELETE?:
     def goto(self, z, direction=DOWN):
 
         inew = None
@@ -1391,64 +1484,126 @@ class RayElement(object):
     def __eq__(self, other):
         return type(self) == type(other) and self.__dict__ == other.__dict__
 
+    def is_straight(self):
+        return isinstance(self, Straight)
+
+    def is_kink(self):
+        return isinstance(self, Kink)
+
 class Straight(RayElement):
     '''A ray segment representing wave propagation through one :py:class:`Layer`.'''
 
     def __init__(self, direction_in, direction_out, mode, layer):
         self.mode = mode
-        self.direction_in = direction_in
-        self.direction_out = direction_out
+        self._direction_in = direction_in
+        self._direction_out = direction_out
         self.layer = layer
     
-    def angle_in(self, p):
-        p = self.pflat_in(p)
-        vtop, vbot = self.layer.vs(self.mode)
-        if self.direction_in == DOWN:
-            return num.arcsin(vtop*p)*r2d
+    def angle_in(self, p, endgaps=None):
+        z = self.z_in(endgaps) 
+        dir = self.eff_direction_in(endgaps)
+        v = self.layer.v(self.mode, z)
+        pf = self.layer.pflat(p, z)
+
+        if dir == DOWN:
+            return num.arcsin(v*pf)*r2d
         else:
-            return 180.-num.arcsin(vbot*p)*r2d
+            return 180.-num.arcsin(v*pf)*r2d
 
-    def angle_out(self, p):
-        p = self.pflat_out(p)
-        vtop, vbot = self.layer.vs(self.mode)
-        if self.direction_out == DOWN:
-            v = vbot
-            o = 90.
+
+    def angle_out(self, p, endgaps=None):
+        z = self.z_out(endgaps) 
+        dir = self.eff_direction_out(endgaps)
+        v = self.layer.v(self.mode, z)
+        pf = self.layer.pflat(p, z)
+
+        if dir == DOWN:
+            return 90. + num.arcsin(v*pf)*r2d
         else:
-            v = vtop
-            o = 0.
+            return num.arcsin(v*pf)*r2d
 
-        return o + num.arcsin(v*p)*r2d
+    def pflat_in(self, p, endgaps=None):
+        return p / (earthradius-self.z_in(endgaps))
 
-    def pflat_in(self, p):
-        return p / (earthradius-self.z_in())
+    def pflat_out(self, p, endgaps=None):
+        return p / (earthradius-self.z_out(endgaps))
 
-    def pflat_out(self, p):
-        return p / (earthradius-self.z_out())
+    def test(self, p, z):
+        return self.layer.test(p, self.mode, z)
 
-    def z_in(self):
-        l = self.layer
-        return (l.ztop, l.zbot)[self.direction_in == UP]
+    def z_in(self, endgaps=None):
+        if endgaps is not None:
+            return endgaps[0]
+        else:
+            l = self.layer
+            return (l.ztop, l.zbot)[self._direction_in == UP]
 
-    def z_out(self):
-        l = self.layer
-        return (l.ztop, l.zbot)[self.direction_out == DOWN]
+    def z_out(self, endgaps=None):
+        if endgaps is not None:
+            return endgaps[1]
+        else:
+            l = self.layer
+            return (l.ztop, l.zbot)[self._direction_out == DOWN]
+
+    def turns(self):
+        return self.z_in() == self.z_out()
+
+    def eff_direction_in(self, endgaps=None):
+        if endgaps is None:
+            return self._direction_in
+        else:
+            return endgaps[2]
+
+    def eff_direction_out(self, endgaps=None):
+        if endgaps is None:
+            return self._direction_out
+        else:
+            return endgaps[3]
 
     def zturn(self, p):
         l = self.layer
         return l.zturn(p, self.mode)
     
-    def u_in(self):
-        return self.layer.us(self.mode)[self.direction_in==UP]
+    def u_in(self, endgaps=None):
+        return self.layer.u(self.mode, self.z_in(endgaps))
 
-    def u_out(self):
-        return self.layer.us(self.mode)[self.direction_out==DOWN]
+    def u_out(self, endgaps=None):
+        return self.layer.u(self.mode, self.z_out(endgaps))
+
+    def critical_p_in(self, endgaps=None):
+        z = self.z_in(endgaps)
+        return self.layer.u(self.mode, z)*radius(z)
+
+    def critical_p_out(self, endgaps=None):
+        z = self.z_out(endgaps)
+        return self.layer.u(self.mode, z)*radius(z)
 
     def xt(self, p, zpart=None):
-        return self.layer.xt(p, self.mode, zpart=zpart)
+        x,t = self.layer.xt(p, self.mode, zpart=zpart)
+        if self._direction_in != self._direction_out and zpart is None: 
+            x *= 2.
+            t *= 2.
+        return x,t
+
+    def xt_gap(self, p, zstart, zstop, samedir ):
+        z1, z2 = zstart, zstop
+        if z1 > z2:
+            z1, z2 = z2, z1
+
+        x,t = self.layer.xt(p, self.mode, zpart=(z1,z2)) 
+
+        ok = num.logical_and( self.layer.test(p, self.mode, zstop), self.layer.test(p, self.mode, zstart))
+#        x = num.where(ok, x, num.nan)
+#        t = num.where(ok, t, num.nan)
+
+        if samedir:
+            return x,t
+        else:
+            xfull, tfull = self.xt(p)
+            return xfull-x, tfull-t
 
     def __hash__(self):
-        return hash((self.direction_in, self.direction_out, self.mode, id(self.layer)))
+        return hash((self._direction_in, self._direction_out, self.mode, id(self.layer)))
 
 class Kink(RayElement):
     '''An interaction of a ray with a :py:class:`Discontinuity`.'''
@@ -1488,44 +1643,24 @@ class PRangeNotSet(Exception):
 class RayPath:
     '''Representation of a fan of rays running through a common sequence of layers / interfaces.'''
 
-    def __init__(self, phase, zstart, zstop, redistribute_p=False):
+    def __init__(self, phase):
         self.elements = []
         self.phase = phase
-        self.zstart = zstart
-        self.zstop = zstop
-        self.used_phase = None
-        self._spline_px = None
-        self._spline_pt = None
         self._pmax = None
         self._pmin = None
         self._p = None
-        self._redistribute_p = redistribute_p
     
     def copy(self):
+        '''Get a copy of it.'''
+
         c = copy.copy(self)
         c.elements = list(self.elements)
         return c
+   
+    def endgaps(self, zstart, zstop):
+        '''Get information needed for end point adjustments.'''
 
-    def simplify(self):
-        istart = None
-        last = None
-        groups = []
-        for (ii, el) in enumerate(self.elements):
-            if isinstance(el, Straight):
-                if last and (last.layer.ilayer == el.layer.ilayer and last.z_out() not in (self.zstart, self.zstop)):
-                    groups[-1].append(el)
-                else:
-                    groups.append([el])
-                    
-                    
-                last = el
-            else:
-                last = None
-                groups.append([el])
-        
-        for group in elements:
-            print len(group)
-
+        return ( zstart, zstop, self.phase.direction_start(), self.phase.direction_stop() )
 
     def append(self, element):
         self.elements.append(element)
@@ -1537,10 +1672,39 @@ class RayPath:
     def set_prange(self, pmin, pmax, dp):
         self._pmin, self._pmax = pmin, pmax
         self._prange_dp = dp
+ 
+    def used_phase(self, p=None, eps=1.):
+        '''Calculate phase definition from ray path.'''
 
-    def set_used_phase(self, phase):
-        self.used_phase = phase
-  
+        used = PhaseDef()
+        fleg = self.phase.first_leg()
+        used.append(Leg(fleg.departure, fleg.mode))
+        n_elements_n = [ None ] + self.elements + [ None ]
+        for before, element, after in zip(n_elements_n[:-2], n_elements_n[1:-1], n_elements_n[2:]):
+            if element.is_kink():
+                if element.reflection() or element.conversion():
+                    z = element.discontinuity.z
+                    used.append(Knee(z, 
+                        element.in_direction, 
+                        element.out_direction!=element.in_direction, 
+                        element.in_mode, 
+                        element.out_mode))
+                    
+                    used.append(Leg(element.out_direction, element.out_mode))
+
+            if (p is not None and before and after
+                and element.is_straight() and before.is_kink() and after.is_kink() and element.turns()
+                and not before.reflection() and not before.conversion() 
+                and not after.reflection() and not after.conversion()):
+                
+                ai = element.angle_in(p)
+                if 90.0-eps < ai and ai < 90+eps:
+                    used.append(Head(before.discontinuity.z, before.out_direction, element.mode))
+                    used.append(Leg(-before.out_direction, element.mode))
+                
+        used._direction_stop = self.phase.direction_stop()
+        return used
+
     def pmax(self):
         '''Get maximum valid ray parameter.'''
         self._check_have_prange()
@@ -1585,7 +1749,7 @@ class RayPath:
         '''Get product of all conversion/reflection coefficients encountered on path.'''
         return reduce( operator.mul, (k.efficiency(p) for k in self.kinks()), 1.)
 
-    def spreading(self, p):
+    def spreading(self, p, endgaps):
         '''Get geometrical spreading factor.'''
         self._check_have_prange()
         dp = self._prange_dp * 0.01
@@ -1594,8 +1758,8 @@ class RayPath:
         if p + dp > self._pmax:
             p = p-dp
 
-        x0, t = self.xt(p)
-        x1, t = self.xt(p+dp)
+        x0, t = self.xt(p, endgaps)
+        x1, t = self.xt(p+dp, endgaps)
         x0 *= d2r
         x1 *= d2r
         dp_dx = dp/(x1-x0)
@@ -1607,10 +1771,10 @@ class RayPath:
 
         first = self.first_straight()
         last = self.last_straight()
-        return  num.abs(dp_dx) * first.pflat_in(p) / (4.0 * math.pi * num.sin(x) * 
-                (earthradius-first.z_in()) * (earthradius-last.z_out())**2 * 
-                first.u_in()**2 * num.abs(num.cos(first.angle_in(p)*d2r)) * 
-                num.abs(num.cos(last.angle_out(p)*d2r)))
+        return  num.abs(dp_dx) * first.pflat_in(p, endgaps) / (4.0 * math.pi * num.sin(x) * 
+                (earthradius-first.z_in(endgaps)) * (earthradius-last.z_out(endgaps))**2 * 
+                first.u_in(endgaps)**2 * num.abs(num.cos(first.angle_in(p, endgaps)*d2r)) * 
+                num.abs(num.cos(last.angle_out(p, endgaps)*d2r)))
     
     def make_p(self, dp=None, n=None, nmin=None):
         assert dp is None or n is None
@@ -1627,8 +1791,32 @@ class RayPath:
         ppp = num.linspace(self._pmin, self._pmax, n)
         return ppp
 
-    def xt(self, p):
+    def xt_endgaps(self, p, endgaps, which='both'):
+        '''Get amount of distance/traveltime to be subtracted at the generic ray path's ends.'''
+
+        zstart, zstop, dirstart, dirstop = endgaps
+        firsts = self.first_straight()
+        lasts = self.last_straight()
+        xs,ts = firsts.xt_gap(p, zstart, firsts.z_in(), dirstart == firsts._direction_in)
+        xe,te = lasts.xt_gap(p, zstop, lasts.z_out(), dirstop == lasts._direction_out)
+        if which == 'both':
+            return xs + xe, ts + te
+        elif which == 'left':
+            return xs, ts
+        elif which == 'right':
+            return xe, te
+
+    def xt_endgaps_ptest(self, p, endgaps):
+        '''Check if ray parameter is valid at source and receiver.'''
+
+        zstart, zstop, dirstart, dirstop = endgaps
+        firsts = self.first_straight()
+        lasts = self.last_straight()
+        return num.logical_and(firsts.test(p, zstart), lasts.test(p, zstop))
+
+    def xt(self, p, endgaps):
         '''Calculate distance and traveltime for given ray parameter.'''
+
         if isinstance(p, num.ndarray):
             sx = num.zeros(p.size)
             st = num.zeros(p.size)
@@ -1641,9 +1829,50 @@ class RayPath:
             sx += x
             st += t
 
-        return sx, st
+        if endgaps:
+            dx,dt = self.xt_endgaps(p, endgaps)
+            sx -= dx
+            st -= dt
 
+        return sx, st
+    
+    def xt_limits(self, p):
+        '''Calculate limits of distance and traveltime for given ray parameter.'''
+
+        if isinstance(p, num.ndarray):
+            sx = num.zeros(p.size)
+            st = num.zeros(p.size)
+            sxe = num.zeros(p.size)
+            ste = num.zeros(p.size)
+        else:
+            sx = 0.0
+            st = 0.0
+            sxe = 0.0
+            ste = 0.0
+
+        sfirst = self.first_straight()
+        slast = self.last_straight()
+
+        for s in self.straights():
+            if s is not sfirst and s is not slast:
+                x,t = s.xt(p)
+                sx += x
+                st += t
+
+        sends = [ sfirst ]
+        if sfirst is not slast:
+            sends.append(slast)
+
+        for s in sends:
+            x,t = s.xt(p)
+            sxe += x
+            ste += t
+
+        return sx, sx + sxe, st, st + ste
+    
     def iter_zxt(self, p):
+        '''Iterate over (depth, distance, traveltime) at each layer interface on ray path.'''
+
         sx = num.zeros(p.size)
         st = num.zeros(p.size)
         ok = False
@@ -1658,29 +1887,34 @@ class RayPath:
         if ok: 
             yield s.z_out(), sx.copy(), st.copy()
     
-    def iter_partial_zxt(self, p):
-        sx = num.zeros(p.size)
-        st = num.zeros(p.size)
-        ok = False
+    def zxt_path_subdivided(self, p, endgaps, points_per_straight=20):
+        '''Get geometrical representation of ray path.'''
+
+        # first create full path including the endgaps
+        dxl, dtl = self.xt_endgaps(p, endgaps, which='left')
+        sx = num.zeros(p.size) - dxl
+        st = num.zeros(p.size) - dtl
+        zxt = []
         for s in self.straights():
             back = None
-            yield filled(s.z_in(), p.size), sx.copy(), st.copy()
             zin, zout = s.z_in(), s.z_out()
-            if zin != zout:
-                n = 10
-                dz = (zout - zin)/n
-                for i in xrange(n-1):
-                    z = zin + (i+1)*dz
+            if zin != zout:  # normal traversal
+                n = points_per_straight
+                zs = num.linspace(zin, zout, n).tolist()
+                for z in zs:
                     x,t = s.xt(p, zpart=sorted([zin, z]))
-                    yield filled(z, p.size), sx + x, st + t
-            else:
-                n = 20 
+                    zxt.append( (filled(z, p.size), sx + x, st + t) )
+            else: # ray turns in layer
+                n = points_per_straight
                 zturn = s.zturn(p)
                 back = []
                 for i in xrange(n):
-                    z = zin + (zturn - zin)*num.sin((i+1.0)/n*math.pi/2.0)*0.999
-                    x,t = s.xt(p, zpart=sorted([zin, z]))
-                    yield z, sx + x, st + t
+                    z = zin + (zturn - zin)*num.sin(float(i)/(n-1)*math.pi/2.0)*0.999
+                    if zturn[0] >= zin:
+                        x,t = s.xt(p, zpart=[zin, z])
+                    else:
+                        x,t = s.xt(p, zpart=[z, zin])
+                    zxt.append((z, sx + x, st + t))
                     back.append((z, x, t))
 
             x,t = s.xt(p)
@@ -1689,76 +1923,97 @@ class RayPath:
             
             if back:
                 for z,x,t in reversed(back):
-                    yield z, sx - x, st - t
-            
-            ok = True
+                    zxt.append((z, sx - x, st - t))
+        
+        # gather results as arrays with such that x[ip, ipoint]
+        fanz, fanx, fant = [], [], [] 
+        for z,x,t in zxt:
+            fanz.append(z)
+            fanx.append(x)
+            fant.append(t)
+       
+        z = num.array(fanz).T
+        x = num.array(fanx).T
+        t = num.array(fant).T
 
-        if ok: 
-            yield filled(s.z_out(), p.size), sx.copy(), st.copy()
-
+        # cut off the endgaps, add exact endpoints
+        dxr, dtr  = self.xt_endgaps(p, endgaps, which='right')
+        xmax = x[:,-1] - dxr
+        tmax = t[:,-1] - dtr
+        zstart, zstop = endgaps[:2]
+        zs, xs, ts = [], [], []
+        for i in xrange(p.size):
+            x_ = x[i]
+            indices = num.where(num.logical_and(0. <= x_, x_ <= xmax[i]))[0]
+            n = indices.size + 2
+            zs_, xs_, ts_ = [ num.empty(n, dtype=num.float) for j in range(3) ]
+            zs_[1:-1] = z[i,indices]
+            xs_[1:-1] = x[i,indices]
+            ts_[1:-1] = t[i,indices]
+            zs_[0], zs_[-1] = zstart, zstop
+            xs_[0], xs_[-1] = 0., xmax[i]
+            ts_[0], ts_[-1] = 0., tmax[i]
+            zs.append(zs_)
+            xs.append(xs_)
+            ts.append(ts_)
+        
+        return zs, xs, ts 
+    
     def _analyse(self):
         if self._p is not None:
             return
 
-        p = self.make_p(nmin=10)
-        x, t = self.xt(p)
-        if self._redistribute_p:
-            p = evenize(p,x)
-            x, t= self.xt(p)
-        self._x, self._t, self._p = x, t, p
-        self._xmin, self._xmax = x.min(), x.max()
-        self._tmin, self._tmax = t.min(), t.max()
-        
-        self._monoton_x = monotony(x[1:] - x[:-1])
-        self._monoton_t = monotony(t[1:] - t[:-1])
+        p = self.make_p(nmin=20)
+        xmin, xmax, tmin, tmax = self.xt_limits(p)
        
-    def draft_pxt(self):
+        self._x, self._t, self._p = xmax, tmax, p
+        self._xmin, self._xmax = xmin.min(), xmax.max()
+        self._tmin, self._tmax = tmin.min(), tmax.max()
+        
+        self._monoton_x = monotony(xmax[1:] - xmax[:-1])
+        self._monoton_t = monotony(tmax[1:] - tmax[:-1])
+       
+    def draft_pxt(self, endgaps):
         self._analyse()
-        return self._p, self._x, self._t
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        p, x, t = self._p, self._x - dx, self._t - dt
+        ok = self.xt_endgaps_ptest(self._p, endgaps)
 
-    def interpolate_t2x_linear(self, t):
-        self._analyse()
-        return interp( t, self._t, self._x, self._monoton_t)
+        indices = num.where(ok)
+        return p[indices].copy(), x[indices].copy(), t[indices].copy()
 
-    def interpolate_x2t_linear(self, x):
-        self._analyse()
-        return interp( x, self._x, self._t, self._monoton_x)
+    def interpolate_t2x_linear(self, t, endgaps):
+        '''Get approximate distance for arrival time.'''
 
-    def interpolate_t2px_linear(self, t):
         self._analyse()
-        tp = interp( t, self._t, self._p, self._monoton_t)
-        tx = interp( t, self._t, self._x, self._monoton_t)
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        return interp( t, self._t - dt, self._x - dx, 0)
+
+    def interpolate_x2t_linear(self, x, endgaps):
+        '''Get approximate arrival time for distance.'''
+
+        self._analyse()
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        return interp( x, self._x - dx, self._t - dt, 0)
+
+    def interpolate_t2px_linear(self, t, endgaps):
+        '''Get approximate ray parameter and distance for arrivaltime.'''
+
+        self._analyse()
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        tp = interp( t, self._t - dt, self._p, 0)
+        tx = interp( t, self._t - dt, self._x - dx, 0)
         return [ (t,p,x) for ((t,p), (_,x)) in zip(tp, tx) ]
 
-    def interpolate_x2pt_linear(self, x):
-        self._analyse()
-        xp = interp( x, self._x, self._p, self._monoton_x)
-        xt = interp( x, self._x, self._t, self._monoton_x)
-        return [ (x,p,t) for ((x,p), (_,t)) in zip(xp, xt) ] 
+    def interpolate_x2pt_linear(self, x, endgaps):
+        '''Get approximate ray parameter and traveltime for distance.'''
 
-    def update_splines(self):
         self._analyse()
-        if self._spline_px is None:
-            self._spline_px = fitpack.splrep(self._p,self._x)
-            self._spline_pt = fitpack.splrep(self._p,self._t)
+        dx, dt = self.xt_endgaps(self._p, endgaps)
+        xp = interp( x, self._x - dx, self._p, 0)
+        xt = interp( x, self._x - dx, self._t - dt, 0)
+        return [ (x,p,t) for ((x,p), (_,t)) in zip(xp, xt)  ] 
 
-    def interpolate_x2pt_spline(self, xs_in):
-        self._analyse()
-        self.update_splines()
-        t,c,k = self._spline_px
-        ps = []
-        for x_in in xs_in:
-            cc = c.copy()
-            cc -= x_in
-            p = fitpack.sproot((t,cc,k))
-            ps.extend(p)
-        
-        if ps:
-            xs = num.atleast_1d(fitpack.splev(ps, self._spline_px))
-            ts = num.atleast_1d(fitpack.splev(ps, self._spline_pt))
-            return num.transpose((xs,ps,ts))
-        else:
-            return []
     
     def __eq__(self, other):
         if len(self.elements) != len(other.elements):
@@ -1767,9 +2022,9 @@ class RayPath:
         return all( a == b for a, b in zip(self.elements, other.elements) )
 
     def __hash__(self):
-        return hash(tuple( hash(x) for x in self.elements ) + (self.phase.definition,) )
+        return hash(tuple( hash(x) for x in self.elements ) + (self.phase.definition(),) )
 
-    def __str__(self):
+    def __str__(self, p=None, eps=1.):
         x = []
         start_i = None
         end_i = None
@@ -1787,7 +2042,7 @@ class RayPath:
             if isinstance(el, Straight):
                 if start_i is None:
                     start_i = el.layer.ilayer
-                if el.direction_in != el.direction_out:
+                if el._direction_in != el._direction_out:
                     turn_i = el.layer.ilayer
                 end_i = el.layer.ilayer
                 
@@ -1802,20 +2057,61 @@ class RayPath:
         if start_i is not None:
             append_layers(start_i, end_i, turn_i)
        
-        su = '(%s)' % self.used_phase.used_repr()
-        return '%-15s %-17s %s' % (self.phase.definition, su, ''.join(x))
+        su = '(%s)' % self.used_phase(p=p, eps=eps).used_repr()
 
-    def describe(self):
+        return '%-15s %-17s %s' % (self.phase.definition(), su, ''.join(x))
+
+    def critical_pstart(self, endgaps):
+        '''Get critical ray parameter for source depth choice.'''
+
+        return self.first_straight().critical_p_in(endgaps)
+
+    def critical_pstop(self, endgaps):
+        '''Get critical ray parameter for receiver depth choice.'''
+
+        return self.last_straight().critical_p_out(endgaps)
+
+    def ranges(self, endgaps):
+        '''Get valid ranges of ray parameter, distance, and traveltime.'''
+
+        p,x,t = self.draft_pxt(endgaps)
+        pp = min(self.critical_pstart(endgaps), self.critical_pstop(endgaps))
+        xx, tt = self.xt(pp, endgaps)
+        x = num.concatenate((x, [xx]))
+        t = num.concatenate((t, [tt]))
+        p = num.concatenate((p, [pp]))
+        return p.min(), p.max(), x.min(), x.max(), t.min(), t.max()
+
+    def describe(self, endgaps=None, as_degrees=False):
+        '''Get textual representation.'''
+
         self._analyse()
-        return '%s\n - x range: %g %g\n - t range: %g %g\n - p range: %g %g\n' % (
-                self, self._xmin*r2d, self._xmax*r2d, self._tmin, self._tmax, self._pmin, self._pmax)
 
+        if as_degrees:
+            xunit = 'deg'
+            xfact = 1.
+        else:
+            xunit = 'km'
+            xfact = d2m/km
+            
+        
+        sg = '  Ranges for all depths in source and receiver layers:\n   - x [%g, %g] %s\n   - t [%g, %g] s\n   - p [%g, %g] s/deg\n' % (
+                self._xmin*xfact, self._xmax*xfact, xunit, self._tmin, self._tmax, self._pmin/r2d, self._pmax/r2d)
+
+        if endgaps is not None:
+            pmin, pmax, xmin, xmax, tmin, tmax = self.ranges(endgaps)
+            ss = '  Ranges for given source and receiver depths:\n   - x [%g, %g] %s\n   - t [%g, %g] s\n   - p [%g, %g] s/deg\n' % (
+                    xmin*xfact, xmax*xfact, xunit, tmin, tmax, pmin/r2d, pmax/r2d)
+        else:
+            ss = ''
+
+        return '%s\n' % self + ss + sg
 
 class RefineFailed(Exception):
     pass
 
 class Ray:
-    '''Representation of a specific ray with a specific (ray parameter, distance, arrival time) choice.
+    '''Representation of a ray with a specific (path, ray parameter, distance, arrival time) choice.
    
     **Attributes:**
    
@@ -1834,16 +2130,21 @@ class Ray:
         .. py:attribute:: t
 
            Traveltime [s]
+
+        .. py:attribute:: endgaps
+
+           Needed for source/receiver depth adjustments in many :py:class:`RayPath` methods.
     '''
 
-    def __init__(self, path, p, x, t):
+    def __init__(self, path, p, x, t, endgaps):
         self.path = path
         self.p = p
         self.x = x
         self.t = t
+        self.endgaps = endgaps
 
     def refine(self, eps=0.0001):
-        x, t = self.path.xt(self.p)
+        x, t = self.path.xt(self.p, self.endgaps)
         xeps = self.x*eps
         count = [ 0 ]
         if abs(self.x - x) > xeps:
@@ -1854,7 +2155,7 @@ class Ray:
             pl, ph = self.path._p[ip-1], self.path._p[ip]
             def f(p):
                 count[0] += 1
-                x, t = self.path.xt(p)
+                x, t = self.path.xt(p, self.endgaps)
                 dx = self.x - x
                 if abs(dx) < xeps:
                     return 0.0
@@ -1863,42 +2164,71 @@ class Ray:
             
             try:
                 p = bisect(f, pl, ph)
-                x, self.t = self.path.xt(p)
-                if abs(self.x - x) > xeps:
+                x, self.t = self.path.xt(p, self.endgaps)
+                ok = self.path.xt_endgaps_ptest(p, self.endgaps)
+                if not ok or abs(self.x - x) > xeps:
                     raise RefineFailed()
 
                 self.p = p
             except ValueError:
                 raise RefineFailed()
 
+        
         return count[0]
 
     def takeoff_angle(self):
-        return self.path.first_straight().angle_in(self.p)
+        '''Get takeoff angle of ray.
+        
+        The angle is returned in [degrees].
+        '''
+
+        return self.path.first_straight().angle_in(self.p, self.endgaps)
 
     def incidence_angle(self):
-        return self.path.last_straight().angle_out(self.p)
+        '''Get incidence angle of ray.
+        
+        The angle is returned in [degrees].
+        '''
+
+        return self.path.last_straight().angle_out(self.p, self.endgaps)
     
     def efficiency(self):
+        '''Get conversion/reflection efficiency of the ray.
+        
+        A value between 0 and 1 is returned, reflecting the relative amount of energy
+        which is transmitted along the ray and not lost by reflections or conversions.
+        '''
+
         return self.path.efficiency(self.p)
 
     def spreading(self):
-        return self.path.spreading(self.p)
+        '''Get geometrical spreading factor.'''
+
+        return self.path.spreading(self.p, self.endgaps)
 
     def surface_sphere(self):
-        x1, y1 = 0., earthradius - self.path.zstart
-        r2 = earthradius - self.path.zstop
+        x1, y1 = 0., earthradius - self.endgaps[0]
+        r2 = earthradius - self.endgaps[1]
         x2, y2 = r2*math.sin(self.x*d2r), r2*math.cos(self.x*d2r)
         return ((x2-x1)**2 + (y2-y1)**2)*4.0*math.pi
+
+    def zxt_path_subdivided(self, points_per_straight=20):
+        '''Get geometrical representation of ray path.
+
+        Three arrays (depth, distance, time) with points on the ray's path of propagation are returned. The number of points which
+        are used in each ray segment (passage through one layer) may be controlled by the `points_per_straight` parameter.
+        '''
+        return self.path.zxt_path_subdivided(num.atleast_1d(self.p), self.endgaps, points_per_straight=points_per_straight)
 
     def __str__(self, as_degrees=False):
         if as_degrees:
             sd = '%6.3g deg' % self.x
         else:
             sd = '%7.5g km' % (self.x*(d2r*earthradius/km))
+
         return '%7.5g s/deg %s %6.4g s %5.1f %5.1f %3.0f%% %3.0f%% %s' % (
                 self.p/r2d, sd, self.t, self.takeoff_angle(), self.incidence_angle(), 
-                100*self.efficiency(), 100*self.spreading()*self.surface_sphere(), self.path)
+                100*self.efficiency(), 100*self.spreading()*self.surface_sphere(), self.path.__str__(p=self.p))
 
 class DiscontinuityNotFound(Exception):
     def __init__(self, depth_or_name):
@@ -1908,8 +2238,6 @@ class DiscontinuityNotFound(Exception):
     def __str__(self):
         return 'Cannot find discontinuity from given depth or name: %s' % self.depth_or_name
 
-class NotPhaseConform(Exception):
-    pass
 
 class LayeredModel:
     '''Representation of a layer cake model.
@@ -1922,22 +2250,52 @@ class LayeredModel:
     3. Use the constructor :py:meth:`LayeredModel.from_scanlines`, to automatically create the
        :py:class:`Layer` and :py:class:`Discontinuity` objects from a given velocity profile.
 
+    An earth model is represented by as stack of :py:class:`Layer` and
+    :py:class:`Discontinuity` objects.  The method :py:meth:`arrivals` returns
+    :py:class:`Ray` objects which may be e.g. queried for arrival times of
+    specific phases. Each ray is associated with a :py:class:`RayPath` object.
+    Ray objects share common ray paths if they have the same
+    conversion/reflection/propagation history. Creating the ray path objects is
+    relatively expensive (this is done in :py:meth:`gather_paths`), but they are cached for reuse in successive
+    invocations.
     '''
 
     def __init__(self):
         self._surface_material = None
         self._elements = []
         self.nlayers = 0
-        self.walkers = {}
+        self._np = 10000
+        self._pdepth = 18
+        self._pathcache = {}
+
+    def copy_with_elevation(self, elevation):
+        '''Get a copy of the model with surface layer stretched to given elevation.
+        
+        :param elevation: new surface elevation in [m]
+
+        Elevation is positiv upward, contrary to the layered models downward `z` axis.
+        '''
+
+        c = copy.deepcopy(self)
+        c._pathcache = {}
+        surface = c._elements[0]
+        toplayer = c._elements[1]
+
+        assert toplayer.zbot > -elevation
+
+        surface.z = -elevation
+        c._elements[1] = toplayer.copy(ztop=-elevation)
+        c._elements[1].ilayer = 0
+        return c
 
     def zeq(self, z1, z2):
         return abs(z1-z2) < ZEPS
 
     def append(self, element):
-        '''Add a layer or discontinuity at bottom of model.'''
-
-        if self._elements:
-            self._elements[-1].below = element
+        '''Add a layer or discontinuity at bottom of model.
+        
+        :param element: object of subclass of  :py:class:`Layer` or :py:class:`Discontinuity`.
+        '''
         
         if isinstance(element, Layer):
             element.ilayer = self.nlayers
@@ -1949,6 +2307,8 @@ class LayeredModel:
         '''Iterate over all layers of model.
         
         :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`.
+
+        Objects derived from the :py:class:`Layer` class are yielded.
         '''
 
         if direction == DOWN:
@@ -1969,22 +2329,8 @@ class LayeredModel:
             if l.contains(z):
                 return l
 
-    def walker(self, breaks):
-        breaks = tuple(breaks)
-        if breaks in self.walkers:
-            return self.walkers[breaks]
-
-        elements = list(self._elements)
-        for br in breaks:
-            for il, l in enumerate(elements):
-                if isinstance(l, Layer) and l.inner(br):
-                    a,b = l.split(br)    
-                    elements[il:il+1] = a,b
-                    break
-
-        w = Walker(elements)
-        self.walkers[breaks] = w
-        return w
+    def walker(self):
+        return Walker(self._elements)
 
     def material(self, z, direction=DOWN):
         '''Get material at given depth.
@@ -2038,20 +2384,20 @@ class LayeredModel:
 
         return phase
 
-    def path(self, p, phase=PhaseDef('P'), zstart=0.0, zstop=0.0):
-        '''Get ray path for given ray parameter, phase definition and fixed source and receiver depths.
+    def path(self, p, phase, layer_start, layer_stop):
+        '''Get ray path for given combination of ray parameter, phase definition, source and receiver layers.
         
         :param p: ray parameter (spherical) [s/deg]
         :param phase: phase definition (:py:class:`PhaseDef` object)
-        :param zstart: source depth [m]
-        :param zstop: receiver depth [m]
+        :param layer_start: layer with source
+        :param layer_stop: layer with receiver
         :returns: :py:class:`RayPath` object
 
         If it is not possible to find a solution, an exception of type :py:exc:`NotPhaseConform`, 
         :py:exc:`MinDepthReached`, :py:exc:`MaxDepthReached`, :py:exc:`CannotPropagate`, 
         :py:exc:`BottomReached` or :py:exc:`SurfaceReached` is raised.
         '''
-        
+       
         phase = self.adapt_phase(phase)
         knees = phase.knees()
         legs = phase.legs()
@@ -2060,19 +2406,23 @@ class LayeredModel:
         assert leg is not None
 
         direction = leg.departure
-        direction_stop = phase.direction_stop
+        direction_stop = phase.direction_stop()
         mode = leg.mode
         mode_stop = phase.last_leg().mode
 
-        breaks = [ zstart, zstop ]
-        walker = self.walker(breaks)
-        walker.goto(zstart, -direction)
+        walker = self.walker()
+        walker.goto_layer(layer_start)
         current = walker.current()
-        z = zstart
+        
+        ttop, tbot = current.tests(p, mode)
+        if not ttop and not tbot:
+            raise CannotPropagate(direction, current.ilayer)
+
+        if (direction == DOWN and not ttop) or (direction == UP and not tbot):
+            direction = -direction
+
         mode_layers = []
-        used_phase = PhaseDef()
-        used_phase.append(Leg(direction, mode))
-        path = RayPath(phase, zstart, zstop)
+        path = RayPath(phase)
         trapdetect = set()
         while True:
             at_layer = isinstance(current, Layer)
@@ -2095,31 +2445,26 @@ class LayeredModel:
                 
                 else: # implicit reflection/transmission
                     direction = current.propagate(p, mode, direction)
-          
 
                 if oldmode != mode or olddirection != direction:
                     if isinstance(current, Surface):
                         zz = 'surface'
                     else:
-                        zz = z
-                    used_phase.append(Knee(zz, olddirection, olddirection!=direction, oldmode, mode))
-                    used_phase.append(Leg(direction, mode))
+                        zz = current.z
                 
                 path.append(Kink(olddirection, direction, oldmode, mode, current))
 
             if at_layer:
-                zturn = None
-                if current.at_bottom(z) and direction == DOWN:
-                    raise BottomReached()
-                if current.at_top(z) and direction == UP:
-                    raise SurfaceReached()
                 direction_in = direction
                 direction = current.propagate(p, mode, direction_in)
+                
+                zturn = None
+                if direction_in != direction:
+                    zturn = current.zturn(p, mode)
 
                 zmin, zmax = leg.depthmin, leg.depthmax
                 if zmin is not None or zmax is not None:
                     if direction_in != direction:
-                        zturn = current.zturn(p, mode)
                         if zmin is not None and zturn < zmin:
                             raise MinDepthReached()
                         if zmax is not None and zturn > zmax:
@@ -2131,243 +2476,126 @@ class LayeredModel:
                             raise MaxDepthReached()
 
                 path.append(Straight(direction_in, direction, mode, current))
-            
-            if direction == DOWN:
-                z = current.zbot
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
-                walker.down()
-            else:
-                z = current.ztop
-                if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                    break
-                walker.up()
-                
+           
+                if next_knee is None and mode == mode_stop and current is layer_stop:
+                    if zturn is None:
+                        if direction == direction_stop:
+                            break
+                    else:
+                        break
+
+            walker.go(direction)
             current = walker.current()
        
-        used_phase.direction_stop = direction_stop
-        path.set_used_phase(used_phase)
         return path
-    
-    def multi_path(self, p, phase=PhaseDef('P'), zstart=0.0, zstops=[ 0.0 ]):
-        '''Iterate ray paths for given ray parameter, phase definition and fixed source and multiple receiver depths.
-        
-        :param p: ray parameter (spherical) [s/deg]
-        :param phase: phase definition (:py:class:`PhaseDef` object)
-        :param zstart: source depth [m]
-        :param zstop: list of receiver depths [m]
-        :yields: :py:class:`RayPath` objects
-        '''
-        
-        zstops = list(zstops)
 
-        phase = self.adapt_phase(phase)
-        knees = phase.knees()
-        legs = phase.legs()
-        next_knee = next_or_none(knees)
-        leg = next_or_none(legs)
-        assert leg is not None
-
-        direction = leg.departure
-        direction_stop = phase.direction_stop
-        mode = leg.mode
-        mode_stop = phase.last_leg().mode
-
-        breaks = [ zstart ] + zstops
-        walker = self.walker(breaks)
-        walker.goto(zstart, -direction)
-        current = walker.current()
-        z = zstart
-        mode_layers = []
-        used_phase = PhaseDef()
-        used_phase.append(Leg(direction, mode))
-        path = RayPath(phase, zstart, None)
-        trapdetect = set()
-        
-        def finish(path, used_phase, zstop, direction_stop):
-            path = path.copy()
-            path.zstop = zstop
-            path.simplify()
-            used_phase = used_phase.copy()
-            used_phase.direction_stop = direction_stop
-            path.set_used_phase(used_phase)
-            return path
-       
-        try:
-            while zstops:
-
-                if next_knee is None: # detect trapped wave
-                    k = (id(current), direction, mode)
-                    if k in trapdetect:
-                        raise Trapped()
-                    
-                    trapdetect.add(k)
-                
-                if isinstance(current, Discontinuity):
-                    oldmode, olddirection = mode, direction
-                    if next_knee is not None and next_knee.matches(current, mode, direction):
-                        direction = next_knee.out_direction()
-                        mode = next_knee.out_mode
-                        next_knee = next_or_none(knees)
-                        leg = legs.next()
-                    
-                    else: # implicit reflection/transmission
-                        direction = current.propagate(p, mode, direction)
-
-                    if oldmode != mode or olddirection != direction:
-                        if isinstance(current, Surface):
-                            zz = 'surface'
-                        else:
-                            zz = z
-                        used_phase.append(Knee(zz, olddirection, olddirection!=direction, oldmode, mode))
-                        used_phase.append(Leg(direction, mode))
-                    
-                    path.append(Kink(olddirection, direction, oldmode, mode, current))
-
-                if isinstance(current, Layer):
-                    if current.at_bottom(z) and direction == DOWN:
-                        raise BottomReached()
-                    if current.at_top(z) and direction == UP:
-                        raise SurfaceReached()
-                    direction_in = direction
-                    direction = current.propagate(p, mode, direction_in)
-
-                    zmin, zmax = leg.depthmin, leg.depthmax
-                    if zmin is not None or zmax is not None:
-                        if direction_in != direction:
-                            zturn = current.zturn(p, mode)
-                            if zmin is not None and zturn < zmin:
-                                raise MinDepthReached()
-                            if zmax is not None and zturn > zmax:
-                                raise MaxDepthReached()
-                        else:
-                            if zmin is not None and current.ztop < zmin:
-                                raise MinDepthReached()
-                            if zmax is not None and current.zbot > zmax:
-                                raise MaxDepthReached()
-
-                    path.append(Straight(direction_in, direction, mode, current))
-
-                if direction == DOWN:
-                    z = current.zbot
-                    for zstop in list(zstops):
-                        if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                            path_ = finish(path, used_phase, zstop, direction_stop)
-                            yield path_
-                            zstops.remove(zstop)
-                            
-                    walker.down()
-                else:
-                    z = current.ztop
-                    for zstop in list(zstops):
-                        if next_knee is None and self.zeq(z, zstop) and mode == mode_stop and direction == direction_stop:
-                            path_ = finish(path, used_phase, zstop, direction_stop)
-                            yield path_
-                            zstops.remove(zstop)
-                    
-                    walker.up()
-                    
-                current = walker.current()
-
-        except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached, Trapped), e:
-            pass
-
-    def gather_pathes(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, pdepth=18):
-        '''Get all possible ray pathes for fixed source and receiver depth for one or more phase definitions.
+    def gather_paths(self, phases=PhaseDef('P'), zstart=0.0, zstop=0.0):
+        '''Get all possible ray paths for given source and receiver depths for one or more phase definitions.
         
         :param phases: a :py:class:`PhaseDef` object or a list of such objects
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
-        :param np: controls granularity of ray path fan drafting
         :returns: a list of :py:class:`RayPath` objects
+
+        Results of this method are cached internally. Cached results are
+        returned, when a given combination of source layer, receiver layer and
+        phase definition has been used before.  
         '''
         
         if isinstance(phases, PhaseDef):
             phases = [ phases ]
-        pathes = {}
-        for phase in phases:
-            mode = phase.first_leg().mode
-            direction = phase.first_leg().departure
-            mat = self.material(zstart, -direction)
-            if mode == P:
-                pmax = radius(zstart)/mat.vp
-            else:
-                pmax = radius(zstart)/mat.vs
-            
-
-            cached = {}
-            counter = [ 0 ]
-            def p_to_path(p):
-                if p in cached:
-                    return cached[p]
-
-                try:
-                    counter[0] += 1
-                    path = self.path(p, phase, zstart, zstop)
-                    if path not in pathes:
-                        pathes[path] = []
-                    pathes[path].append(p)
-
-                except (BottomReached, SurfaceReached, NotPhaseConform, CannotPropagate, MaxDepthReached, MinDepthReached, Trapped), e:
-                    path = None
-                
-                cached[p] = path
-                return path
-            
-            def recurse(pmin, pmax, i=0):
-                if i > pdepth:
-                    return
-                path1 = p_to_path(pmin)
-                path2 = p_to_path(pmax)
-                if path1 is None and path2 is None and i > 7:
-                    return
-                if path1 is None or path2 is None or hash(path1) != hash(path2):
-                    recurse(pmin, (pmin+pmax)/2., i+1)
-                    recurse((pmin+pmax)/2., pmax, i+1)
-
-            recurse(0., pmax)
-
-        for path, ps in pathes.iteritems():
-            path.set_prange(min(ps), max(ps), pmax/(np-1))
         
-        pathes = pathes.keys()
-        pathes.sort(key=lambda x: x.pmin)
-        return pathes
+        paths = [] 
+        for phase in phases:
+            
+            layer_start = self.layer(zstart, -phase.direction_start())
+            layer_stop = self.layer(zstop, phase.direction_stop())
+
+            pathcachekey = (phase.definition(), layer_start, layer_stop)
+
+            if pathcachekey in self._pathcache:
+                phase_paths = self._pathcache[pathcachekey]
+            else:
+
+                pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
+                pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
+                pmax = min(pmax_start, pmax_stop)
+
+                phase_paths = {}
+                cached = {}
+                counter = [ 0 ]
+                def p_to_path(p):
+                    if p in cached:
+                        return cached[p]
+
+                    try:
+                        counter[0] += 1
+                        path = self.path(p, phase, layer_start, layer_stop)
+                        if path not in phase_paths:
+                            phase_paths[path] = []
+                        phase_paths[path].append(p)
+
+                    except PathFailed:
+                        path = None
+                    
+                    cached[p] = path
+                    return path
+                
+                def recurse(pmin, pmax, i=0):
+                    if i > self._pdepth:
+                        return
+                    path1 = p_to_path(pmin)
+                    path2 = p_to_path(pmax)
+                    if path1 is None and path2 is None and i > 8:
+                        return
+                    if path1 is None or path2 is None or hash(path1) != hash(path2):
+                        recurse(pmin, (pmin+pmax)/2., i+1)
+                        recurse((pmin+pmax)/2., pmax, i+1)
+
+                recurse(0., pmax)
+
+                for path, ps in phase_paths.iteritems():
+                    path.set_prange(min(ps), max(ps), pmax/(self._np-1))
+           
+                phase_paths = phase_paths.keys()
+
+                self._pathcache[pathcachekey] = phase_paths
+
+            paths.extend(phase_paths)
+        
+        paths.sort(key=lambda x: x.pmin)
+        return paths
     
-    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, np=1000, refine=True, interpolation='linear', pdepth=18):
+    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, refine=True):
         '''Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
         :param phases: a :py:class:`PhaseDef` object or a list of such objects
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
-        :param np: controls granularity of ray path fan drafting
         :param refine: bool flag, whether to use bisectioning to improve (p,x,t) estimated from interpolation
-        :param interpolation: string key, type of interpolation to be used (``'linear'`` or ``'spline'``)
-        :returns: a list of :py:class:`Ray` objects, sorted by distance
+        :returns: a list of :py:class:`Ray` objects, sorted by (distance, arrival time)
         '''
         
         distances = num.asarray(distances, dtype=num.float)
-    
+   
         arrivals = []
-        for path in self.gather_pathes( phases, zstart=zstart, zstop=zstop, np=np, pdepth=pdepth):
-            if interpolation == 'spline':
-                x2pt = path.interpolate_x2pt_spline
-            elif interpolation == 'linear':
-                x2pt = path.interpolate_x2pt_linear
-
-            for x,p,t in x2pt(distances):
-                arrivals.append(Ray(path, p, x, t))
+        for path in self.gather_paths( phases, zstart=zstart, zstop=zstop):
+            endgaps = path.endgaps(zstart, zstop)
+            for x,p,t in path.interpolate_x2pt_linear(distances, endgaps):
+                arrivals.append(Ray(path, p, x, t, endgaps))
 
         if refine:
             refined = []
             for ray in arrivals:
                 try:
                     ray.refine()
-                    refined.append(ray) 
+                    ok = ray.path.xt_endgaps_ptest(ray.p, endgaps)
+                    if ok:
+                        refined.append(ray) 
                 except RefineFailed:
                     pass
-            
+
             arrivals = refined
 
         arrivals.sort(key=lambda x: (x.x, x.t))
@@ -2387,9 +2615,7 @@ class LayeredModel:
         for z, material, name in producer:
         
             if not self._elements:
-                self.append(Surface(0.0, material))
-                if not self.zeq(z, 0.0):
-                    self.append(HomogeneousLayer(0.0, depth, material, name=name))
+                self.append(Surface(z, material))
             else:
                 element = self._elements[-1]
                 if self.zeq(element.zbot, z):
@@ -2414,24 +2640,32 @@ class LayeredModel:
         return self
 
     def iter_material_parameter(self, get):
-        assert get in ('vp', 'vs', 'rho', 'qp', 'qs')
-        getter = operator.attrgetter(get)
-        for layer in self.layers():
-            yield getter(layer.mtop)
-            yield getter(layer.mbot)
-         
-    def min(self, get='vp'):
-        '''Find minimum value of a material property defined in the model.
+        assert get in ('vp', 'vs', 'rho', 'qp', 'qs', 'z')
+        if get == 'z':
+            for layer in self.layers():
+                yield layer.ztop
+                yield layer.zbot
+        else:
+            getter = operator.attrgetter(get)
+            for layer in self.layers():
+                yield getter(layer.mtop)
+                yield getter(layer.mbot)
 
-        :param get: property to be querried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``)
+    def profile(self, get):
+        return num.array( list(self.iter_material_parameter(get)))
+
+    def min(self, get='vp'):
+        '''Find minimum value of a material property or depth defined in the model.
+
+        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``, or ``'z'``)
         '''
 
         return min(self.iter_material_parameter(get))
 
     def max(self, get='vp'):
-        '''Find maximum value of a material property defined in the model.
+        '''Find maximum value of a material property or depth defined in the model.
         
-        :param get: property to be querried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``)
+        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, ``'qs'``, or ``'z'``)
         '''
 
         return max(self.iter_material_parameter(get))
@@ -2443,7 +2677,9 @@ def read_hyposat_model(fn):
     '''Reader for HYPOSAT earth model files.
 
     To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
-    '''
+
+    Interface names are translated as follows: ``'MOHO'`` -> ``'moho'``, ``'CONR'`` -> ``'conrad'`` 
+    ''' 
 
     f = open(fn, 'r')
     translate = { 'MOHO': 'moho', 'CONR': 'conrad' }
@@ -2468,7 +2704,11 @@ def read_nd_model(fn):
     '''Reader for TauP style '.nd' (named discontinuity) files.
 
     To be used as producer in :py:meth:`LayeredModel.from_scanlines`.
+
+    Interface names are translated as follows: ``'mantle'`` -> ``'moho'``, 
+    ``'outer-core'`` -> ``'cmb'``, ``'inner-core'`` -> ``'icb'``.
     '''
+
     f = open(fn, 'r')
     translate = { 'mantle': 'moho', 'outer-core': 'cmb', 'inner-core': 'icb' }
     name = None
@@ -2480,7 +2720,7 @@ def read_nd_model(fn):
             yield z*1000., material, name
             name = None
         elif len(toks) == 1:
-            name = translate[toks[0]]
+            name = translate.get(toks[0], toks[0])
 
     f.close()
 
@@ -2518,6 +2758,11 @@ def load_model(fn, format='nd'):
     ``'nd'``       'named discontinuity' format used by the TauP programs  
     ``'hyposat'``  format used by the HYPOSAT location program
     ============== ===========================================================================
+
+    The naming of interfaces is translated from the file format's native naming to
+    Cake's own convention (See :py:func:`read_nd_model` and
+    :py:func:`read_hyposat_model` for details).  Cake likes the following internal names:
+    ``'conrad'``, ``'moho'``, ``'cmb'`` (core-mantle boundary), ``'icb'`` (inner core boundary).
     '''
 
     if format == 'nd':
@@ -2613,9 +2858,10 @@ def interp(x, xp, fp, monoton):
     else:
         fs = []
         for xv in x:
-            indices = num.where(num.logical_or(
+            indices = num.where(num.logical_or( 
                 num.logical_and(xp[:-1] >= xv , xv > xp[1:]),
                 num.logical_and(xp[:-1] <= xv , xv < xp[1:])))[0]
+
             fvs = []
             for i in indices:
                 xr = (xv - xp[i])/(xp[i+1]-xp[i])

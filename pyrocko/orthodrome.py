@@ -10,6 +10,11 @@ earthradius_equator = 6378.14 * 1000.
 d2m = earthradius_equator*math.pi/180.
 m2d = 1./d2m
 
+class Loc:
+    def __init__(self, lat, lon):
+        self.lat = lat
+        self.lon = lon
+
 def clip(x, mi, ma):
     return num.minimum(num.maximum(mi,x),ma)
         
@@ -170,4 +175,9 @@ def ne_to_latlon_alternative_method( lat0, lon0, north_m, east_m ):
     lon = wrap(lon0 + r2d*alpha*alphasign,-180.,180.)
     return lat, lon
 
+def latlon_to_ne(refloc, loc):
+    azi = azimuth(refloc, loc)
+    dist = distance_accurate50m(refloc, loc)
+    n, e = math.cos(azi*d2r)*dist, math.sin(azi*d2r)*dist
+    return n,e
 

@@ -493,6 +493,15 @@ def add_radiobuttongroup(menu, menudef, obj, target):
     menuitems[0][0].setChecked(True)
     return menuitems
 
+def sort_actions(menu):
+    actions = menu.actions()
+    for action in actions:
+        menu.removeAction(action)
+
+    actions.sort((lambda a,b: cmp(a.text(), b.text())))
+    for action in actions:
+        menu.addAction(action)
+
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
 class PileOverviewException(Exception):
@@ -710,7 +719,7 @@ def MakePileOverviewClass(base):
             self.toggle_panel_menu = QMenu('Panels', self.menu)
             self.menu.addMenu(self.toggle_panel_menu)
             
-            self.menuitem_reload = QAction('Reload snufflings', self.menu)
+            self.menuitem_reload = QAction('Reload Snufflings', self.menu)
             self.menu.addAction(self.menuitem_reload)
             self.connect( self.menuitem_reload, SIGNAL("triggered(bool)"), self.setup_snufflings )
 
@@ -730,6 +739,14 @@ def MakePileOverviewClass(base):
             self.menu.addAction(self.menuitem_svg)
             self.connect( self.menuitem_svg, SIGNAL("triggered(bool)"), self.savesvg )
             
+            self.menuitem_help = QAction('Help', self.menu)
+            self.menu.addAction(self.menuitem_help)
+            self.connect( self.menuitem_help, SIGNAL('triggered(bool)'), self.help )
+            
+            self.menuitem_about = QAction('About', self.menu)
+            self.menu.addAction(self.menuitem_about)
+            self.connect( self.menuitem_about, SIGNAL('triggered(bool)'), self.about )
+
             self.menuitem_close = QAction('Close', self.menu)
             self.menu.addAction(self.menuitem_close)
             self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
@@ -774,7 +791,8 @@ def MakePileOverviewClass(base):
             self.snuffling_modules = {}
             self.snuffling_paths = [ os.path.join(user_home_dir, '.snufflings') ]
             self.default_snufflings = None
-            
+            self.snufflings = []
+
             self.stations = {}
             
             self.timer_draw = Timer()
@@ -792,6 +810,7 @@ def MakePileOverviewClass(base):
             self.old_data_ranges = {}
             
             self.error_messages = {}
+            self.return_tag = None
     
         def sizeHint(self):
             return QSize(1024,768)
@@ -988,15 +1007,18 @@ def MakePileOverviewClass(base):
 
         def add_snuffling(self, snuffling, reloaded=False):
             snuffling.init_gui(self, self.get_panel_parent(), self, reloaded=reloaded)
+            self.snufflings.append(snuffling)
             self.update()
             
         def remove_snuffling(self, snuffling):
             snuffling.delete_gui()
             self.update()
-            
+            self.snufflings.remove(snuffling)
+
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
             item.setParent(self.snufflings_menu)
+            sort_actions(self.snufflings_menu)
 
         def remove_snuffling_menuitem(self, item):
             self.snufflings_menu.removeAction(item)
@@ -1004,6 +1026,7 @@ def MakePileOverviewClass(base):
         def add_panel_toggler(self, item):
             self.toggle_panel_menu.addAction(item)
             item.setParent(self.toggle_panel_menu)
+            sort_actions(self.toggle_panel_menu)
 
         def remove_panel_toggler(self, item):
             self.toggle_panel_menu.removeAction(item)
@@ -1338,7 +1361,10 @@ def MakePileOverviewClass(base):
            
             keytext = str(key_event.text())
 
-            if keytext == ' ':
+            if keytext == '?':
+                self.help()
+
+            elif keytext == ' ':
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
             
             elif keytext == 'b':
@@ -1381,13 +1407,16 @@ def MakePileOverviewClass(base):
                 if tgo is not None:
                     self.set_time_range(tgo-dt/2.,tgo+dt/2.)
                         
-            elif keytext == 'q':
-                self.myclose()
+            elif keytext == 'q' or keytext == 'x':
+                self.myclose(keytext)
     
             elif keytext == 'r':
                 if self.pile.reload_modified():
                     self.reloaded = True
-    
+   
+            elif keytext == 'R':
+                self.setup_snufflings() 
+
             elif key_event.key() == Qt.Key_Backspace:
                 self.remove_markers(self.selected_markers())
 
@@ -1418,8 +1447,12 @@ def MakePileOverviewClass(base):
                     if not isinstance(event_marker, EventMarker):
                         nslcs = list(event_marker.nslc_ids)
                         lat, lon = 0.0, 0.0
+                        old = self.get_active_event()
                         if len(nslcs) == 1:
                             lat,lon = self.station_latlon(NSLC(*nslcs[0]))
+                        elif old is not None:
+                            lat,lon = old.lat, old.lon
+
                         event_marker.convert_to_event_marker(lat,lon)
                         
                     self.set_active_event_marker(event_marker)
@@ -1473,7 +1506,58 @@ def MakePileOverviewClass(base):
              
             self.update()
             self.update_status()
-    
+  
+        def about(self):
+            fn = pyrocko.util.data_file('snuffler.png')
+            txt = open( pyrocko.util.data_file('snuffler_about.html') ).read()
+            label = QLabel(txt % { 'logo': fn } )
+            label.setAlignment( Qt.AlignVCenter | Qt.AlignHCenter )
+            self.show_doc('About', [label], target='tab')
+
+        def help(self):
+            class MyScrollArea(QScrollArea):
+
+                def sizeHint(self):
+                    s = QSize()
+                    s.setWidth(self.widget().sizeHint().width())
+                    s.setHeight(self.widget().sizeHint().height())
+                    return s
+
+            hcheat = QLabel(open(pyrocko.util.data_file('snuffler_help.html')).read())
+            hepilog = QLabel(open(pyrocko.util.data_file('snuffler_help_epilog.html')).read())
+            for h in [ hcheat, hepilog ]:
+                h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
+                h.setWordWrap(True)
+
+            self.show_doc('Help', [hcheat, hepilog], target='panel')
+
+        def show_doc(self, name, labels, target='panel'):
+            scroller = QScrollArea()
+            frame = QFrame(scroller)
+            frame.setLineWidth(0)
+            layout = QVBoxLayout()
+            layout.setContentsMargins(0,0,0,0)
+            layout.setSpacing(0)
+            frame.setLayout(layout)
+            scroller.setWidget(frame)
+            scroller.setWidgetResizable(True)
+            frame.setBackgroundRole(QPalette.Base) 
+            for h in labels:
+                h.setParent(frame)
+                h.setBackgroundRole( QPalette.Base )
+                layout.addWidget(h)
+                frame.connect(h, SIGNAL('linkActivated(QString)'), self.open_link)
+            
+            if self.panel_parent is not None:
+                if target == 'panel':
+                    self.panel_parent.add_panel(name, scroller, True, volatile=True)
+                else:
+                    self.panel_parent.add_tab(name, scroller)
+                
+
+        def open_link(self, link):
+            QDesktopServices.openUrl( QUrl(link) )
+
         def wheelEvent(self, wheel_event):
             amount = max(1.,abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
             
@@ -1854,12 +1938,12 @@ def MakePileOverviewClass(base):
                             p.drawPolyline( qpoints )
                             
                             if self.floating_marker:
-                                self.floating_marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                                self.floating_marker.draw_trace(self, p, trace, self.time_projection, track_projection, self.gain)
                                 
                             for marker in self.markers:
                                 if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
                                     if marker.kind in self.visible_marker_kinds:
-                                        marker.draw_trace(p, trace, self.time_projection, track_projection, self.gain)
+                                        marker.draw_trace(self, p, trace, self.time_projection, track_projection, self.gain)
                             p.setPen(primary_pen)
                                 
                             if self.menuitem_cliptraces.isChecked(): p.setClipRect(0,0,w,h)
@@ -1917,6 +2001,9 @@ def MakePileOverviewClass(base):
             
             return ndecimate, tpad, tsee
 
+        def clean_update(self):
+            self.old_processed_traces = None
+            self.update()
 
         def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
             
@@ -1945,7 +2032,9 @@ def MakePileOverviewClass(base):
                 
             if (self.old_vec and 
                 self.old_vec[0] <= vec[0] and vec[1] <= self.old_vec[1] and
-                vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked())):
+                vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked()) and
+                self.old_processed_traces is not None):
+
                 logger.debug('Using cached traces')
                 processed_traces = self.old_processed_traces
                 
@@ -1965,6 +2054,9 @@ def MakePileOverviewClass(base):
                                                     keep_current_files_open=True, 
                                                     trace_selector=trace_selector,
                                                     accessor_id=id(self)):
+
+                        traces = self.pre_process_hooks(traces)
+
                         for trace in traces:
                             
                             if not (trace.meta and 'tabu' in trace.meta and trace.meta['tabu']):
@@ -2027,6 +2119,8 @@ def MakePileOverviewClass(base):
                                 bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
                                 a.set_ydata(aydata)
                                 b.set_ydata(bydata)
+
+                processed_traces = self.post_process_hooks(processed_traces)
                                 
                 self.old_processed_traces = processed_traces
             
@@ -2043,7 +2137,21 @@ def MakePileOverviewClass(base):
             
             self.timer_cutout.stop()
             return chopped_traces
-        
+       
+        def pre_process_hooks(self, traces):
+            for snuffling in self.snufflings:
+                if snuffling._pre_process_hook_enabled:
+                    traces = snuffling.pre_process_hook(traces)
+
+            return traces
+
+        def post_process_hooks(self, traces):
+            for snuffling in self.snufflings:
+                if snuffling._pre_process_hook_enabled:
+                    traces = snuffling.pre_process_hook(traces)
+
+            return traces
+
         def scaling_base_change(self, ignore):
             for menuitem, scaling_base in self.menuitems_scaling_base:
                 if menuitem.isChecked():
@@ -2269,11 +2377,12 @@ def MakePileOverviewClass(base):
             self.set_time_range(now-self.follow_time, now)
             self.update()
      
-        def myclose(self):
+        def myclose(self, return_tag=''):
             self.timer.stop()
             if self.follow_timer is not None:
                 self.follow_timer.stop()
             self.window().close()
+            self.return_tag = return_tag
             
         def set_error_message(self, key, value):
             if value is None:
@@ -2416,8 +2525,8 @@ class PileViewer(QFrame):
         layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(0)
         
-        self.setFrameShape(QFrame.StyledPanel)
-        self.setFrameShadow(QFrame.Sunken)
+        #self.setFrameShape(QFrame.StyledPanel)
+        #self.setFrameShadow(QFrame.Sunken)
 
         self.input_area = QFrame(self)
         ia_layout = QGridLayout()

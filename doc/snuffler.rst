@@ -109,6 +109,7 @@ Key                  Effect
 ==================== ===============================================================
 *q*                  Quit 
 *r*                  Reload modified files 
+*R*                  Reload snufflings
 *f*                  Toggle full screen mode 
 *:*                  Enter command 
 *<space>*            Forward one page in time 
@@ -132,6 +133,7 @@ Key                  Effect
 *<f10>*              Convert phase marker to normal marker
 *<backspace>*        Delete marker
 *<escape>*           Abort picking 
+*?*                  Help
 ==================== ===============================================================
 
 Mouse
@@ -143,6 +145,7 @@ Mouse                            Effect
 Click and drag                   Zoom and pan 
 Click and drag on time axis      Pan only 
 Click on marker                  Select marker 
+*<shift>* + click on marker      Select additional marker
 Wheel                            Scroll tracks vertically 
 *<ctrl>* + wheel                 Change number of tracks shown 
 Right-click                      Menu 

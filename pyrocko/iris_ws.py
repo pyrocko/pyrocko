@@ -1,6 +1,8 @@
-import urllib, urllib2
+import urllib, urllib2, logging, re
 from xml.dom import minidom
-import util, model
+import util, model, pz
+
+logger = logging.getLogger('pyrocko.iris_ws')
 
 base_url = 'http://www.iris.edu/ws'
 
@@ -67,12 +69,29 @@ def tdatetime(s):
 def sdatetime(t):
     return util.time_to_str(t, format='%Y-%m-%dT%H:%M:%S')
 
+class NotFound(Exception):
+    def __init__(self, url):
+        Exception.__init__(self)
+        self._url = url
+    
+    def __str__(self):
+        return 'No results for request %s' % self._url
+
 def ws_request(url, post=False, **kwargs):
     url_values = urllib.urlencode(kwargs)
-    if post:
-        return urllib2.urlopen(url,data=post).read()
-    else:
-        return urllib2.urlopen(url+'?'+url_values).read()
+    url = url + '?' + url_values
+    logger.debug('Accessing URL %s' % url)
+    try:
+        if post:
+            return urllib2.urlopen(url,data=post).read()
+        else:
+            return urllib2.urlopen(url).read()
+
+    except urllib2.HTTPError, e:
+        if e.code == 404:
+            raise NotFound(url)
+        else:
+            raise e 
 
 def ws_station( **kwargs ):
     
@@ -104,11 +123,110 @@ def ws_bulkdataselect( selection, quality=None, minimumlength=None, longestonly=
     
     return ws_request(base_url + '/bulkdataselect/query', post='\n'.join(l))
 
+def ws_sacpz(network=None, station=None, location=None, channel=None, tmin=None, tmax=None):
+    d = {}
+    if network:
+        d['network'] = network
+    if station:
+        d['station'] = station
+    if location:
+        d['location'] = location
+    else:
+        d['location'] = '--'
+    if channel:
+        d['channel'] = channel
+    
+    times = (tmin, tmax)
+    if len(times) == 2:
+        d['starttime'] = sdatetime(min(times))
+        d['endtime'] = sdatetime(max(times))
+    elif len(times) == 1:
+        d['time'] = sdatetime(times[0])
+    
+    return ws_request(base_url + '/sacpz/query', **d)
+
+class ChannelInfo:
+    def __init__(self, network, station, location, channel, start, end, azimuth, dip, elevation, depth, latitude, longitude, sample, input, output, zpk):
+        self.network = network
+        self.station = station
+        self.location = location
+        self.channel = channel
+        self.start = start
+        self.end = end
+        self.azimuth = azimuth
+        self.dip = dip
+        self.elevation = elevation
+        self.depth = depth
+        self.latitude = latitude
+        self.longitude = longitude
+        self.sample = sample
+        self.input = input
+        self.output = output
+        self.zpk = zpk
+
+    def __str__(self):
+        return '%s.%s.%s.%s' % (self.network, self.station, self.location, self.channel)
+
+def nslc(x):
+    return x.network, x.station, x.location, x.channel
+
+def grok_sacpz(data):
+    pzlines = []
+    d = {}
+    responses = []
+    float_keys = ('latitude', 'longitude', 'elevation', 'depth', 'dip', 'azimuth', 'sample')
+    string_keys = ('input', 'output', 'network', 'station', 'location', 'channel')
+    time_keys = ('start', 'end')
+    for line in data.splitlines():
+        line = line.strip()
+        if line.startswith('*'):
+            if pzlines:
+                if any(pzlines):
+                    d['zpk'] = pz.read_sac_zpk(string='\n'.join(pzlines))
+                    responses.append(d)
+                d = {}
+                pzlines = []
+
+            m = re.match(r'^\* ([A-Z]+)[^:]*:(.*)$', line)
+            if m:
+                k,v = m.group(1).lower(), m.group(2).strip()
+                if k in d:
+                    assert False, 'duplicate entry? %s' % k
+
+                if k in float_keys:
+                    d[k] = float(v)
+                elif k in string_keys:
+                    d[k] = v
+                elif k in time_keys:
+                    d[k] = tdatetime(v)
+
+        else:
+            pzlines.append(line)
+
+    if pzlines and any(pzlines):
+        d['zpk'] = pz.read_sac_zpk(string='\n'.join(pzlines))
+        responses.append(d)
+
+    cis = {}
+    for kwargs in responses:
+        try:
+            for k in float_keys + string_keys + time_keys:
+                if k not in kwargs:
+                    logger.error('Missing entry: %s' % k)
+                    raise Exception()
+
+            ci = ChannelInfo(**kwargs)
+
+            cis[nslc(ci)] = ci
+            
+        except:
+            logger.error('Error while parsing SACPZ data')
+
+    return cis
+
 def grok_station_xml( data, tmin, tmax ):
     dom = minidom.parseString(data)
     
-    channel_prio = [ [ 'BHZ', 'HHZ' ], [ 'BH1', 'BHN', 'HH1', 'HHN' ], ['BH2', 'BHE', 'HH2', 'HHE'] ]
-
     stations = {}
     station_channels = {}
         

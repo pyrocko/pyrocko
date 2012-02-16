@@ -12,7 +12,7 @@ from PyQt4.QtGui import *
 
 import pile
 
-from gui_util import ValControl, LinValControl
+from gui_util import ValControl, LinValControl, PyLab
 
 logger = logging.getLogger('pyrocko.snufflings')
 
@@ -31,6 +31,21 @@ class Param:
         self.maximum = maximum
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self._control = None
+
+    def set_range(self, minimum, maximum):
+        self.minimum = minimum
+        self.maximum = maximum
+        if self._control:
+            self._control.set_range(self.minimum, self.maximum)
+
+    def set_value(self, value):
+        if self._control:
+            self._control.set_value(value)
+            self._control.fire_valchange()
+
+    def _set_control(self, control):
+        self._control = control
 
 class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
@@ -89,7 +104,15 @@ class Snuffling:
         self._previous_input_filename = None
 
         self._tempdir = None
-        
+        self._iplot = 0
+
+        self._have_pre_process_hook = False
+        self._have_post_process_hook = False
+        self._pre_process_hook_enabled = False
+        self._post_process_hook_enabled = False
+
+        self._no_viewer_pile = None 
+
     def setup(self):
         '''Setup the snuffling.
         
@@ -129,7 +152,35 @@ class Snuffling:
             self._menuitem = self.make_menuitem(self._menu_parent)
             if self._menuitem:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
+
+    def make_cli_parser(self):
+        import optparse
+        parser = optparse.OptionParser()
+        self.add_params_to_cli_parser(parser)
+        return parser
+
+    def add_params_to_cli_parser(self, parser):
+
+        for param in self._parameters:
+            if isinstance(param, Param):
+                parser.add_option('--' + param.ident,
+                        dest=param.ident,
+                        default = param.default,
+                        type = 'float',
+                        help = param.name)
         
+    def setup_cli(self):
+        self.setup()
+        
+        parser = self.make_cli_parser()
+        (options, args) = parser.parse_args()
+        
+        for param in self._parameters:
+            if isinstance(param, Param):
+                setattr(self, param.ident, getattr(options, param.ident))
+
+        return options, args, parser
+
     def delete_gui(self):
         '''Remove the gui elements of the snuffling.
         
@@ -155,15 +206,30 @@ class Snuffling:
         '''
         
         self._name = name
-        
-        if self._panel or self._menuitem:
-            self.delete_gui()
-            self.setup_gui()
+        self.reset_gui()
     
     def get_name(self):
         '''Get the snuffling's name.'''
         
         return self._name
+    
+    def set_have_pre_process_hook(self, bool):
+        self._have_pre_process_hook = bool
+        self._live_update = False
+        self._pre_process_hook_enabled = False
+        self.reset_gui()
+
+    def set_have_post_process_hook(self, bool):
+        self._have_post_process_hook = bool
+        self._live_update = False
+        self._post_process_hook_enabled = False
+        self.reset_gui()
+
+    def reset_gui(self):
+        if self._panel or self._menuitem:
+            self.delete_gui()
+            self.setup_gui()
+    
     
     def error(self, reason):
         box = QMessageBox(self.get_viewer())
@@ -173,7 +239,16 @@ class Snuffling:
     def fail(self, reason):
         self.error(reason)
         raise SnufflingCallFailed(reason) 
-   
+  
+    def pylab(self, name=None):
+        if name is None:
+            self._iplot += 1
+            name = 'Plot %i (%s)' % (self._iplot, self.get_name())
+
+        pylab = PyLab()
+        self._panel_parent.add_tab(name, pylab)
+        return pylab.gca()
+
     def tempdir(self):
         if self._tempdir is None:
             self._tempdir = tempfile.mkdtemp('', 'snuffling-tmp-')
@@ -189,6 +264,10 @@ class Snuffling:
         or pressing the call button.
         '''
         self._live_update = live_update
+        if self._have_pre_process_hook:
+            self._pre_process_hook_enabled = live_update
+        if self._have_post_process_hook:
+            self._post_process_hook_enabled = live_update
     
     def add_parameter(self, param):
         '''Add an adjustable parameter to the snuffling.
@@ -221,7 +300,13 @@ class Snuffling:
         '''
         
         return self._parameters
-    
+   
+    def get_parameter(self, ident):
+        for param in self._parameters:
+            if param.ident == ident:
+                return param
+        return None
+
     def set_parameter(self, ident, value):
         '''Set one of the snuffling's adjustable parameters.
         
@@ -234,14 +319,14 @@ class Snuffling:
         
         setattr(self, ident, value)
         
-    def get_parameter(self, ident):
+    def get_parameter_value(self, ident):
         return getattr(self, ident)
 
     def get_settings(self):
         params = self.get_parameters()
         settings = {}
         for param in params:
-            settings[param.ident] = self.get_parameter(param.ident)
+            settings[param.ident] = self.get_parameter_value(param.ident)
 
         return settings
 
@@ -281,7 +366,11 @@ class Snuffling:
         try:
             p =self.get_viewer().get_pile()
         except NoViewerSet:
-            p = self.make_pile()
+            if self._no_viewer_pile is None:
+                self._no_viewer_pile = self.make_pile()
+
+            p = self._no_viewer_pile
+
             
         return p
         
@@ -299,42 +388,49 @@ class Snuffling:
         :param marker_selector: if not ``None`` a callback to filter markers.
                
         '''
-        
-        viewer = self.get_viewer()
-        markers = viewer.selected_markers()
-        if marker_selector is not None:
-            markers = [  marker for marker in markers if marker_selector(marker) ] 
-        pile = self.get_pile()
-        
-        if markers:
+       
+        try:
+            viewer = self.get_viewer()
+            markers = viewer.selected_markers()
+            if marker_selector is not None:
+                markers = [  marker for marker in markers if marker_selector(marker) ] 
+            pile = self.get_pile()
             
-            for marker in markers:
-                if not marker.nslc_ids:
-                    trace_selector = None
-                else:
-                    trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
+            if markers:
                 
+                for marker in markers:
+                    if not marker.nslc_ids:
+                        trace_selector = None
+                    else:
+                        trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
+                    
+                    for traces in pile.chopper(
+                            tmin = marker.tmin,
+                            tmax = marker.tmax,
+                            trace_selector = trace_selector,
+                            *args,
+                            **kwargs):
+                        
+                        yield traces
+                        
+            elif fallback:
+                
+                tmin, tmax = viewer.get_time_range()
                 for traces in pile.chopper(
-                        tmin = marker.tmin,
-                        tmax = marker.tmax,
-                        trace_selector = trace_selector,
+                        tmin = tmin,
+                        tmax = tmax,
                         *args,
                         **kwargs):
                     
                     yield traces
-                    
-        elif fallback:
-            
-            tmin, tmax = viewer.get_time_range()
-            for traces in pile.chopper(
-                    tmin = tmin,
-                    tmax = tmax,
-                    *args,
-                    **kwargs):
-                
+            else:
+                raise NoTracesSelected()
+        
+        except NoViewerSet:
+
+            pile = self.get_pile()
+            for traces in  pile.chopper(*args, **kwargs):
                 yield traces
-        else:
-            raise NoTracesSelected()
                     
     def get_selected_time_range(self, fallback=False):
         '''Get the time range spanning all selected markers.'''
@@ -395,6 +491,8 @@ class Snuffling:
                         param_widget = LinValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
                     else:
                         param_widget = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
+                    
+                    param._set_control( param_widget )
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
@@ -453,7 +551,11 @@ class Snuffling:
 
             for name, method in self._triggers:
                 but = QPushButton(name)
-                self.get_viewer().connect( but, SIGNAL('clicked()'), method )
+                def call_and_update():
+                    method()
+                    self.get_viewer().update()
+
+                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update )
                 butlayout.addWidget( but )
 
             layout.addWidget(butframe, irow, 0)
@@ -472,6 +574,8 @@ class Snuffling:
         '''
         
         item = QAction(self.get_name(), None)
+        item.setCheckable(self._have_pre_process_hook or self._have_post_process_hook)
+
         self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
         return item
     
@@ -559,7 +663,17 @@ class Snuffling:
         The default implementation calls the snuffling's :py:meth:`call` method and triggers
         an update on the viewer widget.'''
         self.check_call()
-        self.get_viewer().update()
+
+        if self._have_pre_process_hook:
+            self._pre_process_hook_enabled = arg
+
+        if self._have_post_process_hook:
+            self._post_process_hook_enabled = arg
+
+        if self._have_pre_process_hook or self._have_post_process_hook:
+            self.get_viewer().clean_update()
+        else:
+            self.get_viewer().update()
         
     def call_button_triggered(self):
         '''Called when the user has clicked the snuffling's call button.
@@ -646,6 +760,12 @@ class Snuffling:
         '''
         
         pass
+
+    def pre_process_hook(self, traces):
+        return traces
+
+    def post_process_hook(self, traces):
+        return traces
     
     def __del__(self):
         self.cleanup()

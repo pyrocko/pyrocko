@@ -248,7 +248,42 @@ class SimpleConnectionHandler(ConnectionHandler):
         command = obj[0]
         args = obj[1:]
         self.mapping[command](*args)
-    
+     
+class SnufflerTabs(QTabWidget):
+    def __init__(self, parent):
+        QTabWidget.__init__(self, parent)
+        if hasattr(self, 'setTabsClosable'):
+            self.setTabsClosable(True)
+        self.connect(self, SIGNAL('tabCloseRequested(int)'), self.removeTab)
+        if hasattr(self, 'setDocumentMode'):
+            self.setDocumentMode(True)
+
+    def hide_close_button_on_first_tab(self):
+        tbar = self.tabBar()
+        if hasattr(tbar ,'setTabButton'):
+            tbar.setTabButton(0, QTabBar.LeftSide, None)
+            tbar.setTabButton(0, QTabBar.RightSide, None)
+
+    def append_tab(self, widget, name):
+        widget.setParent(self)
+        self.insertTab(self.count(), widget, name)
+        self.setCurrentIndex(self.count()-1)
+
+    def tabInserted(self, index):
+        if index == 0:
+            self.hide_close_button_on_first_tab()
+
+        self.tabbar_visibility()
+
+    def tabRemoved(self, index):
+        self.tabbar_visibility()
+
+    def tabbar_visibility(self):
+        if self.count() <= 1:
+            self.tabBar().hide()
+        elif self.count() > 1:
+            self.tabBar().show()
+     
 class MyMainWindow(QMainWindow):
 
     def __init__(self, app, *args):
@@ -284,6 +319,8 @@ class MySnuffler(QApplication):
                 help='follow real time with a window of N seconds')
         parser.add_option('--progressive', dest='progressive', action='store_true', default=False,
                 help='don\'t wait for file scanning to complete before opening the viewer')
+        parser.add_option('--cache', dest='cache_dir', default='/tmp/snuffle_cache_%s' % os.environ['USER'], metavar='DIR',
+                help='use directory DIR to cache trace metadata (default=\'%default\')')
         parser.add_option('--force-cache', dest='force_cache', action='store_true', default=False,
                 help='use the cache even when trace attribute spoofing is active (may have silly consequences)')
         parser.add_option('--ntracks', dest='ntracks', default=24, metavar='N',
@@ -375,7 +412,10 @@ class MySnuffler(QApplication):
         for marker_fn in options.marker_fns:
             self.pile_viewer.get_view().add_markers(pyrocko.pile_viewer.Marker.load_markers(marker_fn))
 
-        self._win.setCentralWidget( self.pile_viewer )
+        self._tabs = SnufflerTabs(self._win)
+        self._win.setCentralWidget( self._tabs )
+        self.add_tab('Main', self.pile_viewer)
+        
         self.pile_viewer.setup_snufflings()
 
         self.add_panel('Main Controls', self.pile_viewer.controls(), visible=True)
@@ -460,6 +500,9 @@ class MySnuffler(QApplication):
     def update_progress(self, task, percent):
         self.pile_viewer.progressbars.set_status(task, percent)
     
+    def add_tab(self, name, widget):
+        self._tabs.append_tab(widget, name)
+
     def periodical(self):
         p = self.pile_viewer.get_pile()
         update = False
@@ -501,7 +544,7 @@ class MySnuffler(QApplication):
     def get_panel_parent_widget(self):
         return self._win
 
-    def add_panel(self, name, panel, visible=False):
+    def add_panel(self, name, panel, visible=False, volatile=False):
         dws = self.dockwidgets()
         dockwidget = QDockWidget(name, self._win)
         dockwidget.setWidget(panel)
@@ -519,6 +562,14 @@ class MySnuffler(QApplication):
             self.toggle_panel(dockwidget, True)
 
         self.connect( mitem, SIGNAL('triggered(bool)'), toggle_panel)
+        
+        if volatile:
+            def visibility(visible):
+                if not visible:
+                    self.remove_panel(panel)
+
+            self.connect( dockwidget, SIGNAL('visibilityChanged(bool)'), visibility)
+
         self.pile_viewer.get_view().add_panel_toggler(mitem)
 
         self.dockwidget_to_toggler[dockwidget] = mitem
