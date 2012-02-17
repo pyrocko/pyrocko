@@ -15,6 +15,100 @@ from PyQt4.QtGui import *
 
 logger = logging.getLogger('pyrocko.snuffler')
 
+class Connection(QObject):
+    def __init__(self, parent, sock):
+        QObject.__init__(self, parent)
+        self.socket = sock
+        self.connect(sock, SIGNAL('readyRead()'), self.handle_read)
+        self.connect(sock, SIGNAL('disconnected()'), self.handle_disconnected)
+        self.nwanted = 8
+        self.reading_size = True
+        self.handler = None
+        self.nbytes_received = 0
+        self.nbytes_sent = 0
+        self.compressor = zlib.compressobj()
+        self.decompressor = zlib.decompressobj()
+
+    def handle_read(self):
+        while True:
+            navail = self.socket.bytesAvailable()
+            if navail < self.nwanted:
+                return
+
+            data = self.socket.read(self.nwanted)
+            self.nbytes_received += len(data)
+            if self.reading_size:
+                self.nwanted = struct.unpack('>Q', data)[0]
+                self.reading_size = False
+            else:
+                obj = pickle.loads(self.decompressor.decompress(data))
+                if obj is None:
+                    self.socket.disconnectFromHost()
+                else:
+                    self.handle_received(obj)
+                self.nwanted = 8
+                self.reading_size = True
+
+    def handle_received(self, obj):
+        self.emit(SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self, obj)
+
+    def ship(self, obj):
+        data = self.compressor.compress(pickle.dumps(obj))
+        data_end = self.compressor.flush(zlib.Z_FULL_FLUSH)
+        self.socket.write(struct.pack('>Q', len(data)+len(data_end)))
+        self.socket.write(data)
+        self.socket.write(data_end)
+        self.nbytes_sent += len(data)+len(data_end) + 8
+
+    def handle_disconnected(self):
+        self.emit(SIGNAL('disconnected(PyQt_PyObject)'), self)
+
+    def close(self):
+        self.socket.close()
+
+class ConnectionHandler(QObject):
+    def __init__(self, parent):
+        QObject.__init__(self, parent)
+        self.queue = []
+        self.connection = None
+
+    def connected(self):
+        return self.connection == None
+
+    def set_connection(self, connection):
+        self.connection = connection
+        self.connect(connection, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self._handle_received)
+        self.connect(connection, SIGNAL('disconnected(PyQt_PyObject)'), self.handle_disconnected)
+        for obj in self.queue:
+            self.connection.ship(obj)
+        self.queue = []
+
+    def _handle_received(self, conn, obj):
+        self.handle_received(obj)
+
+    def handle_received(self, obj):
+        pass
+
+    def handle_disconnected(self):
+        self.connection = None
+
+    def ship(self, obj):
+        if self.connection:
+            self.connection.ship(obj)
+        else:
+            self.queue.append(obj)
+
+class SimpleConnectionHandler(ConnectionHandler):
+    def __init__(self, parent, **mapping):
+        ConnectionHandler.__init__(self, parent)
+        self.mapping = mapping
+
+    def handle_received(self, obj):
+        command = obj[0]
+        args = obj[1:]
+        self.mapping[command](*args)
+
+
 class MyMainWindow(QMainWindow):
 
     def __init__(self, app, *args):
@@ -24,24 +118,6 @@ class MyMainWindow(QMainWindow):
     def keyPressEvent(self, ev):
         self.app.pile_viewer.get_view().keyPressEvent(ev)
 
-class Snuffler(QApplication):
-    
-    def __init__(self):
-        QApplication.__init__(self, [])
-        self.connect(self, SIGNAL("lastWindowClosed()"), self.myQuit)
-        signal.signal(signal.SIGINT, self.myCloseAllWindows)
-
-    def snuffle(self,*args, **kwargs):
-        self.win = SnufflerWindow(*args, **kwargs)
-    
-    def myCloseAllWindows(self, *args):
-        self.closeAllWindows()
-    
-    def myQuit(self, *args):
-        self.quit()
-
-    def return_tag(self):
-        return self.win.return_tag()
 
 class SnufflerTabs(QTabWidget):
     def __init__(self, parent):
@@ -179,6 +255,76 @@ class SnufflerWindow(QMainWindow):
     def return_tag(self):
         return self.pile_viewer.get_view().return_tag
     
+class Snuffler(QApplication):
+    
+    def __init__(self):
+        QApplication.__init__(self, [])
+        self.connect(self, SIGNAL("lastWindowClosed()"), self.myQuit)
+        signal.signal(signal.SIGINT, self.myCloseAllWindows)
+        self.server = None
+        self.loader = None
+
+    def start_server(self):
+        self.connections = []
+        s = QTcpServer(self)
+        s.listen(QHostAddress.LocalHost)
+        self.connect(s, SIGNAL('newConnection()'), self.handle_accept)
+        self.server = s
+
+    def start_loader(self):
+        self.loader = SimpleConnectionHandler(self, add_files=self.add_files, update_progress=self.update_progress)
+        ticket = os.urandom(32)
+        self.forker.spawn('loader', self.server.serverPort(), ticket)
+        self.connection_handlers[ticket] = self.loader
+
+    def handle_accept(self):
+        sock = self.server.nextPendingConnection()
+        con = Connection(self, sock)
+        self.connections.append(con)
+        self.connect(con, SIGNAL('disconnected(PyQt_PyObject)'), self.handle_disconnected) 
+        self.connect(con, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self.handle_received_ticket)
+
+    def handle_disconnected(self, connection):
+        self.connections.remove(connection)
+        connection.close()
+        del connection
+
+    def handle_received_ticket(self, connection, object):
+        if not isinstance(object, str):
+            self.handle_disconnected(connection)
+
+        ticket = object
+        if ticket in self.connection_handlers:
+            h = self.connection_handlers[ticket]
+            self.disconnect(connection, SIGNAL('received(PyQt_PyObject,PyQt_PyObject)'), self.handle_received_ticket)
+            h.set_connection(connection)
+        else:
+            self.handle_disconnected(connection)
+
+    def load(rargs, self.cachedirname, options.pattern, options.format):
+        if not self.loader:
+            self.start_loader()
+
+        self.loader.ship(('load', rargs, self.cachedirname, options.pattern, options.format ))
+
+    def add_files(self, files):
+        p = self.pile_viewer.get_pile()
+        p.add_files(files)
+        self.pile_viewer.update_contents()
+
+    def update_progress(self, task, percent):
+        self.pile_viewer.progressbars.set_status(task, percent)
+
+    def snuffle(self,*args, **kwargs):
+        win = SnufflerWindow(*args, **kwargs)
+        return win
+
+    def myCloseAllWindows(self, *args):
+        self.closeAllWindows()
+    
+    def myQuit(self, *args):
+        self.quit()
+
 app = None
 
 def snuffle(pile=None, **kwargs):
