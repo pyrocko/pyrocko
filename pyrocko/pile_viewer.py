@@ -1009,6 +1009,7 @@ def MakePileOverviewClass(base):
             snuffling.delete_gui()
             self.update()
             self.snufflings.remove(snuffling)
+            snuffling.pre_destroy()
 
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
@@ -2525,6 +2526,10 @@ def MakePileOverviewClass(base):
             if self.follow_timer is not None:
                 self.follow_timer.stop()
             self.window().close()
+            
+            for snuffling in list(self.snufflings):
+                self.remove_snuffling( snuffling )
+
             self.return_tag = return_tag
             
         def set_error_message(self, key, value):

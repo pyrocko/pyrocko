@@ -767,7 +767,7 @@ class Snuffling:
     def post_process_hook(self, traces):
         return traces
     
-    def __del__(self):
+    def pre_destroy(self):
         self.cleanup()
         if self._tempdir is not None:
             import shutil
