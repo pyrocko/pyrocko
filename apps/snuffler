@@ -2,7 +2,7 @@
 
 '''Effective seismological trace viewer.'''
 
-import os, sys, signal, logging, time, re, struct, base64, zlib
+import os, sys, signal, logging, time, re, struct, base64, zlib, traceback
 import numpy as num
 import cPickle as pickle
 from optparse import OptionParser
@@ -630,21 +630,28 @@ class FileLoader(Channel):
                                     show_progress=False,
                                     update_progress=upp ))
 
+                if self.tship_start is None:
+                    self.tship_start = time.time()
+
     def update_progress(self, iloader, i, n):
-      
         percent = (i*100)/n
         tnow = time.time()
-        if ((percent == 100 and self.tship_progress is not None) or
-                (tnow > self.tship_start + 3. and 
-                    self.tship_progress is not None and tnow - self.tship_progress > 0.05)):
+        shipit = False
+        if self.tship_progress:
+            if percent == 100:
+                shipit = True
+            if tnow - self.tship_progress > 0.05:
+                shipit = True
 
+        if self.tship_start and tnow > self.tship_start + 1.0:
+            shipit = True
+
+        if shipit:
             self.ship(('update_progress', 'scanning files %i' % iloader, percent))
             self.tship_progress = tnow
 
     def run(self):
-        i =0
-        self.tship_start = time.time()
-        tship = self.tship_start
+        tship = 0.
         queue = []
         while True:
             if self.loaders:
@@ -653,30 +660,36 @@ class FileLoader(Channel):
                 timeout = 10. 
 
             asyncore.loop(timeout=timeout, count=1)
-            if not asyncore.socket_map:
-                return
+            try:
+                if not asyncore.socket_map:
+                    return
 
-            if self.loaders:
-                done = []
-                for loader in self.loaders:
-                    try:
-                        queue.append( loader.next() )
-                        tnow = time.time()
-                        if tnow - self.tship_start > 3.0 and tnow - tship > 0.05:
-                            self.ship(('add_files', queue))
-                            tship = tnow
-                            queue = []
+                if self.loaders:
+                    done = []
+                    for loader in self.loaders:
+                        try:
+                            queue.append( loader.next() )
+                            tnow = time.time()
+                            if tnow - self.tship_start > 1.0 and tnow - tship > 0.05:
+                                self.ship(('add_files', queue))
+                                tship = tnow
+                                queue = []
 
-                    except StopIteration:
-                        done.append(loader)
-                        if queue:
-                            self.ship(('add_files', queue))
-                            queue = []
+                        except StopIteration:
+                            done.append(loader)
+                            if queue:
+                                self.ship(('add_files', queue))
+                                queue = []
 
-                for loader in done:
-                    self.loaders.remove(loader)
-
-            i+=1
+                    for loader in done:
+                        self.loaders.remove(loader)
+                
+                if not self.loaders:
+                    self.tship_start = None
+            
+            except:
+                traceback.print_exc()
+                sys.exit(1)
 
 class Forker(Forked):
 
