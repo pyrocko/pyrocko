@@ -181,7 +181,7 @@ class SnufflerWindow(QMainWindow):
     
 app = None
 
-def snuffle(pile, **kwargs):
+def snuffle(pile=None, **kwargs):
     '''View pile in a snuffler window.
     
     :param pile: :py:class:`pyrocko.pile.Pile` object to be visualized
@@ -194,12 +194,21 @@ def snuffle(pile, **kwargs):
     :param opengl: bool, whether to use opengl (default: ``False``)
     '''
     
+    if pile is None:
+        pile = pyrocko.pile.make_pile()
+    
     global app
     if app is None:
         app = Snuffler()
 
-    app.snuffle(pile, **kwargs)
+    win = app.snuffle(pile, **kwargs)
     app.exec_()
-    return app.return_tag()
+    ret = win.return_tag()
+    
+    del win
+    gc.collect()
+
+    return ret
+
 
 
