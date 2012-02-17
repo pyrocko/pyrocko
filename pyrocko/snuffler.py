@@ -59,6 +59,7 @@ class SnufflerTabs(QTabWidget):
             tbar.setTabButton(0, QTabBar.RightSide, None)
 
     def append_tab(self, widget, name):
+        widget.setParent(self)
         self.insertTab(self.count(), widget, name)
         self.setCurrentIndex(self.count()-1)
 
