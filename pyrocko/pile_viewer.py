@@ -2131,8 +2131,8 @@ def MakePileOverviewClass(base):
 
         def post_process_hooks(self, traces):
             for snuffling in self.snufflings:
-                if snuffling._pre_process_hook_enabled:
-                    traces = snuffling.pre_process_hook(traces)
+                if snuffling._post_process_hook_enabled:
+                    traces = snuffling.post_process_hook(traces)
 
             return traces
 
