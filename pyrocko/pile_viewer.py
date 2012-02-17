@@ -1801,7 +1801,7 @@ def MakePileOverviewClass(base):
                 istyle = self.trace_styles.get((tr.full_id, tr.deltat), 0)
                 
                 
-                if len(traces) < 1000:
+                if len(traces) < 500:
                     drawbox(itrack, istyle, [tr])
                 else:
                     if (itrack, istyle) not in traces_by_style:
