@@ -3,12 +3,14 @@
 '''Effective seismological trace viewer.'''
 
 import os, sys, signal, logging, time, re, gc
+from optparse import OptionParser
 import numpy as num
 
 import pyrocko.pile
 import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.model
+import pyrocko.config
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -301,11 +303,11 @@ class Snuffler(QApplication):
         else:
             self.handle_disconnected(connection)
 
-    def load(rargs, self.cachedirname, options.pattern, options.format):
+    def load(pathes, cachedirname, pattern, format):
         if not self.loader:
             self.start_loader()
 
-        self.loader.ship(('load', rargs, self.cachedirname, options.pattern, options.format ))
+        self.loader.ship(('load', args, self.cachedirname, options.pattern, options.format ))
 
     def add_files(self, files):
         p = self.pile_viewer.get_pile()
@@ -314,10 +316,6 @@ class Snuffler(QApplication):
 
     def update_progress(self, task, percent):
         self.pile_viewer.progressbars.set_status(task, percent)
-
-    def snuffle(self,*args, **kwargs):
-        win = SnufflerWindow(*args, **kwargs)
-        return win
 
     def myCloseAllWindows(self, *args):
         self.closeAllWindows()
@@ -338,6 +336,12 @@ def snuffle(pile=None, **kwargs):
     :param follow: time interval (in seconds) for real time follow mode or ``None``
     :param controls: bool, whether to show the main controls (default: ``True``)
     :param opengl: bool, whether to use opengl (default: ``False``)
+    :param paths: list of files and directories to search for trace files
+    :param pattern: regex which filenames must match
+    :param progressive: bool, whether to load files in progressive mode
+    :param format: format of input files
+    :param cache_dir: cache directory with trace meta information
+    :param force_cache: bool, whether to use the cache when attribute spoofing is active
     '''
     
     if pile is None:
@@ -346,8 +350,17 @@ def snuffle(pile=None, **kwargs):
     global app
     if app is None:
         app = Snuffler()
+    
+    kwargs_load = {}
+    for k in ('paths', 'pattern', 'progressive', 'format', 'cache_dir', 'force_cache'):
+        try:
+            kwargs_load[k] = kwargs.pop(k)
+        except KeyError:
+            pass
 
-    win = app.snuffle(pile, **kwargs)
+    win = SnufflerWindow(pile, **kwargs)
+    win.load(**kwargs_load)
+
     app.exec_()
     ret = win.return_tag()
     
@@ -355,6 +368,121 @@ def snuffle(pile=None, **kwargs):
     gc.collect()
 
     return ret
+
+def snuffler_from_commandline(args=sys.argv):
+
+    usage = '''usage: %prog [options] waveforms ...'''
+    parser = OptionParser(usage=usage)
+
+    parser.add_option('--format',
+            dest='format',
+            default='from_extension',
+            choices=('mseed', 'sac', 'kan', 'segy', 
+                'seisan', 'seisan_l', 'seisan_b', 'from_extension', 'try'),
+            help='assume files are of given FORMAT [default: \'%default\']' )
+
+    parser.add_option('--pattern',
+            dest='pattern',
+            metavar='REGEX',
+            help='only include files whose paths match REGEX')
+
+    parser.add_option('--stations',
+            dest='station_fns',
+            action='append',
+            default=[],
+            metavar='STATIONS',
+            help='read station information from file STATIONS')
+
+    parser.add_option('--event', '--events',
+            dest='event_fns',
+            action='append',
+            default=[],
+            metavar='EVENT',
+            help='read event information from file EVENT')
+
+    parser.add_option('--markers',
+            dest='marker_fns',
+            action='append',
+            default=[],
+            metavar='MARKERS',
+            help='read marker information file MARKERS')
+
+    parser.add_option('--follow',
+            dest='follow',
+            metavar='N',
+            help='follow real time with a window of N seconds')
+
+    parser.add_option('--progressive',
+            dest='progressive',
+            action='store_true',
+            default=False,
+            help='don\'t wait for file scanning to complete before opening the viewer')
+    
+    parser.add_option('--cache',
+            dest='cache_dir',
+            default=pyrocko.config.cache_dir,
+            metavar='DIR',
+            help='use directory DIR to cache trace metadata (default=\'%default\')')
+
+    parser.add_option('--force-cache',
+            dest='force_cache',
+            action='store_true',
+            default=False,
+            help='use the cache even when trace attribute spoofing is active (may have silly consequences)')
+
+    parser.add_option('--ntracks',
+            dest='ntracks',
+            default=24,
+            metavar='N',
+            help='initially use N waveform tracks in viewer [default: %default]')
+
+    parser.add_option('--opengl',
+            dest='opengl',
+            action='store_true',
+            default=False,
+            help='use OpenGL for drawing')
+
+    parser.add_option('--debug',
+            dest='debug',
+            action='store_true',
+            default=False,
+            help='print debugging information to stderr')
+    
+    options, args = parser.parse_args(list(args[1:]))
+
+    if options.debug:
+        pyrocko.util.setup_logging('snuffler', 'debug')
+    else:
+        pyrocko.util.setup_logging('snuffler', 'warning')
+
+    
+    pile = pyrocko.pile.Pile()
+    stations = []
+    for stations_fn in options.station_fns:
+        stations.extend(pyrocko.model.load_stations(stations_fn))
+    
+    events = []
+    for event_fn in options.event_fns:
+        events.extend(pyrocko.model.Event.load_catalog(event_fn))
+    
+    markers = []
+    for marker_fn in options.marker_fns:
+        markers.extend(pyrocko.pile_viewer.Marker.load_markers(marker_fn))
+    
+    return snuffle( pile,
+            stations=stations,
+            events=events,
+            markers=markers,
+            ntracks=options.ntracks,
+            follow=options.follow,
+            controls=True,
+            opengl=options.opengl,
+            paths=args, 
+            progressive=options.progressive,
+            cache_dir=options.cache_dir,
+            pattern=options.pattern,
+            format=options.format,
+            force_cache=options.force_cache)
 
 
 
