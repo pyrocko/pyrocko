@@ -854,9 +854,23 @@ def MakePileOverviewClass(base):
             return self.quick_filter_pattern
             
         def add_blacklist_pattern(self, pattern):
-            if pattern in self.blacklist:
-                self.blacklist.remove(pattern)
-            self.blacklist.append(pattern)
+            if pattern == 'empty':
+                keys = set(self.pile.nslc_ids)
+                trs = self.pile.all(tmin=self.tmin, tmax=self.tmax, load_data=False, degap=False)
+                for tr in trs:
+                    if tr.nslc_id in keys:
+                        keys.remove(tr.nslc_id)
+
+                for key in keys:
+                    xpattern = '.'.join(key)
+                    if xpattern not in self.blacklist:
+                        self.blacklist.append(xpattern)
+
+            else: 
+                if pattern in self.blacklist:
+                    self.blacklist.remove(pattern)
+
+                self.blacklist.append(pattern)
             
             logger.info('Blacklist is [ %s ]' % ', '.join(self.blacklist))
             self.update_trace_filter()
@@ -935,6 +949,7 @@ def MakePileOverviewClass(base):
             event_marker.set_active(True)
             event = event_marker.get_event()
             self.set_origin(event)
+            self.emit(SIGNAL('active_event_changed()'))
         
         def get_active_event_marker(self):
             return self.active_event_marker
