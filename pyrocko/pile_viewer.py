@@ -806,6 +806,8 @@ def MakePileViewerMainClass(base):
             self.error_messages = {}
             self.return_tag = None
             self.wheel_pos = 60
+
+            self.closing = False
     
         def sizeHint(self):
             return QSize(1024,768)

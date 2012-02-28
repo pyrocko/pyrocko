@@ -258,7 +258,14 @@ class SnufflerWindow(QMainWindow):
         self.get_view().remove_panel_toggler(mitem)
         
     def return_tag(self):
-        return self.pile_viewer.get_view().return_tag
+        return self.get_view().return_tag
+
+    def closeEvent(self, event):
+        event.accept()
+        self.closing = True
+
+    def is_closing(self):
+        return self.closing
     
 class Snuffler(QApplication):
     
