@@ -2069,7 +2069,9 @@ def MakePileOverviewClass(base):
                                                     keep_current_files_open=True, 
                                                     group_selector=group_selector,
                                                     trace_selector=trace_selectorx,
-                                                    accessor_id=id(self)):
+                                                    accessor_id=id(self),
+                                                    snap=(math.floor, math.ceil),
+                                                    include_last=True):
 
                         traces = self.pre_process_hooks(traces)
 
