@@ -210,6 +210,8 @@ class TracesFileCache(object):
         
         for v in cache.values():
             v.trees_from_content(v.traces)
+            for tr in v.traces:
+                tr.file = v
 
         return cache
         
@@ -486,6 +488,8 @@ class MemTracesFile(TracesGroup):
     def __init__(self, parent, traces):
         TracesGroup.__init__(self, parent)
         self.traces = traces
+        for trace in self.traces:
+            trace.file = self
         self.add(self.traces)
         self.mtime = time.time()
         

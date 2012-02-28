@@ -82,7 +82,17 @@ class Trace(object):
             for k in sorted(self.meta.keys()):
                 s += '  %s: %s\n' % (k,self.meta[k])
         return s
-        
+       
+    def __getstate__(self):
+        return (self.network, self.station, self.location, self.channel, self.tmin, self.tmax, self.deltat, self.mtime)
+
+    def __setstate__(self, state):
+        self.network, self.station, self.location, self.channel, self.tmin, self.tmax, self.deltat, self.mtime = state
+        self.ydata = None
+        self.meta = None
+        self._growbuffer = None
+        self._update_ids()
+
     def name(self):
         '''Get a short string description.'''
 
