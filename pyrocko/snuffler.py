@@ -171,16 +171,16 @@ class SnufflerWindow(QMainWindow):
             pile, ntracks_shown_max=ntracks, use_opengl=opengl, panel_parent=self)
        
         if stations:
-            self.pile_viewer.get_view().add_stations(stations)
+            self.get_view().add_stations(stations)
        
         if events:
             for ev in events:
-                self.pile_viewer.get_view().add_event(ev)
+                self.get_view().add_event(ev)
             
-            self.pile_viewer.get_view().set_origin(events[0])
+            self.get_view().set_origin(events[0])
 
         if markers:
-            self.pile_viewer.get_view().add_markers(markers)
+            self.get_view().add_markers(markers)
 
         
         self.tabs = SnufflerTabs(self)
@@ -192,14 +192,19 @@ class SnufflerWindow(QMainWindow):
         self.add_panel('Main Controls', self.pile_viewer.controls(), visible=controls)
         self.show()
 
-        self.pile_viewer.get_view().setFocus(Qt.OtherFocusReason)
+        self.get_view().setFocus(Qt.OtherFocusReason)
 
         sb = self.statusBar()
         sb.clearMessage()
         sb.showMessage('Welcome to Snuffler! Click and drag to zoom and pan. Doubleclick to pick. Right-click for Menu. <space> to step forward. <b> to step backward. <q> to close.')
             
         if follow:
-            self.pile_viewer.get_view().follow(float(follow))
+            self.get_view().follow(float(follow))
+        
+        self.closing = False
+
+    def get_view(self):
+        return self.pile_viewer.get_view()
 
     def dockwidgets(self):
         return [ w for w in self.findChildren(QDockWidget) if not w.isFloating() ]
@@ -236,10 +241,8 @@ class SnufflerWindow(QMainWindow):
 
             self.connect( dockwidget, SIGNAL('visibilityChanged(bool)'), visibility)
 
-        self.pile_viewer.get_view().add_panel_toggler(mitem)
-
+        self.get_view().add_panel_toggler(mitem)
         self.dockwidget_to_toggler[dockwidget] = mitem
-
 
     def toggle_panel(self, dockwidget, visible):
         dockwidget.setVisible(visible)
@@ -252,7 +255,7 @@ class SnufflerWindow(QMainWindow):
         self.removeDockWidget(dockwidget)
         dockwidget.setParent(None)
         mitem = self.dockwidget_to_toggler[dockwidget]
-        self.pile_viewer.get_view().remove_panel_toggler(mitem)
+        self.get_view().remove_panel_toggler(mitem)
         
     def return_tag(self):
         return self.pile_viewer.get_view().return_tag

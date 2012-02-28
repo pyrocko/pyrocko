@@ -504,12 +504,12 @@ def sort_actions(menu):
 
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
-class PileOverviewException(Exception):
+class PileViewerMainException(Exception):
     pass
 
-def MakePileOverviewClass(base):
+def MakePileViewerMainClass(base):
     
-    class PileOverview(base):
+    class PileViewerMain(base):
 
         def __init__(self, pile, ntracks_shown_max, panel_parent, *args):
             if base == QGLWidget:
@@ -861,7 +861,7 @@ def MakePileOverviewClass(base):
             if pattern in self.blacklist:
                 self.blacklist.remove(pattern)
             else:
-                raise PileOverviewException('Pattern not found in blacklist.')
+                raise PileViewerMainException('Pattern not found in blacklist.')
             
             logger.info('Blacklist is [ %s ]' % ', '.join(self.blacklist))
             self.update_trace_filter()
@@ -2638,18 +2638,18 @@ def MakePileOverviewClass(base):
                         self.update() 
                     
                     else:
-                        raise PileOverviewException('No such command: %s' % command)
+                        raise PileViewerMainException('No such command: %s' % command)
                         
-                except PileOverviewException, e:
+                except PileViewerMainException, e:
                     error = str(e)
                     hideit = False
                 
             return clearit, hideit, error
         
-    return PileOverview
+    return PileViewerMain
 
-PileOverview = MakePileOverviewClass(QWidget)
-GLPileOverview = MakePileOverviewClass(QGLWidget)
+PileViewerMain = MakePileViewerMainClass(QWidget)
+GLPileViewerMain = MakePileViewerMainClass(QGLWidget)
 
 class LineEditWithAbort(QLineEdit):
 
@@ -2660,15 +2660,15 @@ class LineEditWithAbort(QLineEdit):
             return QLineEdit.keyPressEvent(self, key_event)
 
 class PileViewer(QFrame):
-    '''PileOverview + Controls'''
+    '''PileViewerMain + Controls + Inputline'''
     
     def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, panel_parent=None, *args):
         apply(QFrame.__init__, (self,) + args)
         
         if use_opengl:
-            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
+            self.viewer = GLPileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         else:
-            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
+            self.viewer = PileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         
         layout = QGridLayout()
         self.setLayout( layout )
@@ -2699,7 +2699,7 @@ class PileViewer(QFrame):
         ia_layout.addWidget(self.inputline, 0, 0)
         ia_layout.addWidget(self.inputline_error, 1, 0)        
         layout.addWidget(self.input_area, 0,0,1,2)
-        layout.addWidget( self.pile_overview, 1, 0 )
+        layout.addWidget( self.viewer, 1, 0 )
 
         pb = Progressbars(self)
         layout.addWidget(pb, 2,0,1,2)
@@ -2711,8 +2711,11 @@ class PileViewer(QFrame):
         self.connect(self.scrollbar, SIGNAL('valueChanged(int)'), self.scrollbar_changed)
         self.block_scrollbar_changes = False
         
-        self.connect(self.pile_overview, SIGNAL('want_input()'), self.inputline_show)
-        self.connect(self.pile_overview, SIGNAL('tracks_range_changed(int,int,int)'), self.tracks_range_changed)
+        self.connect(self.viewer, SIGNAL('want_input()'), self.inputline_show)
+        self.connect(self.viewer, SIGNAL('tracks_range_changed(int,int,int)'), self.tracks_range_changed)
+
+    def get_progressbars(self):
+        return self.progressbars
 
     def inputline_show(self):
         self.input_area.show()
@@ -2735,19 +2738,19 @@ class PileViewer(QFrame):
             self.inputline_error.hide()
             
     def inputline_changed(self, line):
-        self.pile_overview.inputline_changed(str(line))
+        self.viewer.inputline_changed(str(line))
         self.inputline_clear_error()
         
     def inputline_returnpressed(self):
         line = str(self.inputline.text())
-        clearit, hideit, error = self.pile_overview.inputline_finished(line)
+        clearit, hideit, error = self.viewer.inputline_finished(line)
 
         if error:
             self.inputline_set_error(error)
         
         if clearit:
             self.inputline.blockSignals(True)
-            qpat, qinp = self.pile_overview.get_quick_filter_pattern()
+            qpat, qinp = self.viewer.get_quick_filter_pattern()
             if qpat is None:
                 self.inputline.clear()
             else:
@@ -2755,11 +2758,11 @@ class PileViewer(QFrame):
             self.inputline.blockSignals(False)
         
         if hideit and not error:
-            self.pile_overview.setFocus(Qt.OtherFocusReason) 
+            self.viewer.setFocus(Qt.OtherFocusReason) 
             self.input_area.hide()
        
     def inputline_aborted(self):
-        self.pile_overview.setFocus(Qt.OtherFocusReason) 
+        self.viewer.setFocus(Qt.OtherFocusReason) 
         self.input_area.hide()
 
     def inputline_finished(self):
@@ -2781,7 +2784,7 @@ class PileViewer(QFrame):
         self.block_scrollbar_changes = True
         ilo = value
         ihi = ilo + self.scrollbar.pageStep()
-        self.pile_overview.set_tracks_range((ilo, ihi))
+        self.viewer.set_tracks_range((ilo, ihi))
         self.block_scrollbar_changes = False
         self.update_contents()
         
@@ -2791,7 +2794,7 @@ class PileViewer(QFrame):
         frame.setLayout(layout)
         
         minfreq = 0.001
-        maxfreq = 0.5/self.pile_overview.get_min_deltat()
+        maxfreq = 0.5/self.viewer.get_min_deltat()
         if maxfreq < 100.*minfreq:
             minfreq = maxfreq*0.00001
         
@@ -2803,10 +2806,10 @@ class PileViewer(QFrame):
         self.gain_widget.setup('Gain', 0.001, 1000., 1., 2)
         self.rot_widget = LinValControl()
         self.rot_widget.setup('Rotate', -180., 180., 0., 3)
-        self.connect( self.lowpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.lowpass_change )
-        self.connect( self.highpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.highpass_change )
-        self.connect( self.gain_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.gain_change )
-        self.connect( self.rot_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.rot_change )
+        self.connect( self.lowpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.lowpass_change )
+        self.connect( self.highpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.highpass_change )
+        self.connect( self.gain_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.gain_change )
+        self.connect( self.rot_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.rot_change )
         
         layout.addWidget( self.highpass_widget, 1,0 )
         layout.addWidget( self.lowpass_widget, 2,0 )
@@ -2815,16 +2818,16 @@ class PileViewer(QFrame):
         return frame
    
     def setup_snufflings(self):
-        self.pile_overview.setup_snufflings()
+        self.viewer.setup_snufflings()
 
     def get_view(self):
-        return self.pile_overview
+        return self.viewer
     
     def update_contents(self):
-        self.pile_overview.update()
+        self.viewer.update()
     
     def get_pile(self):
-        return self.pile_overview.get_pile()
+        return self.viewer.get_pile()
 
 from forked import Forked
 class SnufflerOnDemand(QApplication, Forked):
