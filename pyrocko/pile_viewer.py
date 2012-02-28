@@ -2106,7 +2106,13 @@ def MakePileViewerMainClass(base):
                     else:
                         trace_selectorx = lambda tr: tr.deltat >= min_deltat_allow
 
-                    for traces in self.pile.chopper( tmin=tmin, tmax=tmax, 
+                    freqs = [ f for f in (self.highpass, self.lowpass) if f is not None ]
+                    
+                    tpad = 0
+                    if freqs:
+                        tpad = max(1./min(freqs), tsee) 
+                    
+                    for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
                                                     want_incomplete=True,
                                                     degap=degap,
                                                     keep_current_files_open=True, 
@@ -2136,7 +2142,8 @@ def MakePileViewerMainClass(base):
                                 else:
                                     
                                     if self.menuitem_allowdownsampling.isChecked():
-                                        while trace.deltat < min_deltat_allow:
+                                        while trace.deltat < min_deltat_wo_decimate:
+                                            print 'ds'
                                             trace.downsample(2)
 
                                     
