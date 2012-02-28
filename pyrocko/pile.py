@@ -251,28 +251,40 @@ def get_cache(cachedir):
     return TracesFileCache.caches[cachedir]
     
 def loader(filenames, fileformat, cache, filename_attributes, show_progress=True, update_progress=None):
-        
+
+    class Progress:
+        def __init__(self, label, n):
+            self._label = label
+            self._n = n
+            if show_progress:
+                self._bar = util.progressbar(label, self._n)
+
+            if update_progress:
+                update_progress(label, 0, self._n)
+
+        def update(self, i):
+            if show_progress:
+                if i != self._n:
+                    self.bar.update(i)
+                else:
+                    self.bar.finish()
+            
+            if update_progress:
+                update_progress(self._label, i, self._n)
+
     if not filenames:
         logger.warn('No files to load from')
         return
-    
-    pbar = None
-    if show_progress and progressbar and config.show_progress:
-        widgets = ['Scanning files', ' ',
-                progressbar.Bar(marker='-',left='[',right=']'), ' ',
-                progressbar.Percentage(), ' ',]
-        
-        pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(filenames)).start()
-    
-    if update_progress:
-        update_progress(0, len(filenames))
     
     regex = None
     if filename_attributes:
         regex = re.compile(filename_attributes)
     
+    progress = Progress('Looking at files', len(filenames))
+
     failures = []
-    for ifile, filename in enumerate(filenames):
+    to_load = []
+    for i, filename in enumerate(filenames):
         try:
             abspath = os.path.abspath(filename)
             
@@ -292,27 +304,51 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
             tfile = None
             if cache:
                 tfile = cache.get(abspath)
-            
-            if not tfile or tfile.mtime != mtime or substitutions:
+           
+            to_load.append(((not tfile or tfile.mtime != mtime or substitutions), mtime, abspath, substitutions, tfile))
+    
+        except (OSError, FilenameAttributeError), xerror:
+            failures.append(abspath)
+            logger.warn(xerror)
+        progress.update(i+1)
+
+    progress.update(len(filenames))
+
+    to_load.sort()
+
+    nload = len( [ 1 for x in to_load if x[0] ] )
+    iload = 0
+   
+    count_all = False
+    if nload < 0.01*len(to_load):
+        nload = len(to_load)
+        count_all = True
+
+    progress = Progress('Scanning files', nload)
+
+    for (mustload, mtime, abspath, substitutions, tfile) in to_load:
+        try:
+            if mustload:
                 tfile = TracesFile(None, abspath, fileformat, substitutions=substitutions, mtime=mtime)
                 if cache and not substitutions:
                     cache.put(abspath, tfile)
                 
-        except (io.FileLoadError, OSError, FilenameAttributeError), xerror:
+                if not count_all:
+                    iload += 1
+
+            if count_all:
+                iload += 1
+                
+        except (io.FileLoadError, OSError), xerror:
             failures.append(abspath)
             logger.warn(xerror)
         else:
             yield tfile
         
-        if pbar: pbar.update(ifile+1)
-        if update_progress:
-            update_progress(ifile+1, len(filenames))
+        progress.update(iload+1)
     
-    if pbar: pbar.finish()
-    
-    if update_progress:
-        update_progress(ifile+1, len(filenames))
-    
+    progress.update(nload)
+
     if failures:
         logger.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
     
@@ -829,8 +865,8 @@ class Pile(TracesGroup):
             if obj:
                 obj.pile_changed(what)
     
-    def load_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True):
-        l = loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress)
+    def load_files(self, filenames, filename_attributes=None, fileformat='mseed', cache=None, show_progress=True, update_progress=None):
+        l = loader(filenames, fileformat, cache, filename_attributes, show_progress=show_progress, update_progress=update_progress)
         self.add_files(l)
         
     def add_files(self, files):

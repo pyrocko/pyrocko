@@ -1027,6 +1027,45 @@ def MakePileViewerMainClass(base):
         def remove_panel_toggler(self, item):
             self.toggle_panel_menu.removeAction(item)
 
+        def load(self, paths, regex=None, progressive=False, format='from_extension', cache_dir=pyrocko.config.cache_dir, force_cache=False):
+
+            if isinstance(paths, str):
+                paths = [ paths ]
+             
+            fns = pyrocko.util.select_files(paths, selector=None, regex=regex, show_progress=False)
+            if not fns:
+                return
+
+            cache = pyrocko.pile.get_cache(cache_dir)
+            
+            t = [ time.time() ]
+            def update_bar(label, value):
+                pbs = self.parent().get_progressbars()
+                if label.lower() == 'looking at files':
+                    label = 'Looking at %i files' % len(fns)
+                else:
+                    label = 'Scanning %i files' % len(fns)
+
+                return pbs.set_status(label, value)
+
+            def update_progress(label, i,n):
+                abort = False
+                
+                qApp.processEvents()
+
+                abort |= update_bar(label, i*100/n)
+                abort |= self.window().is_closing()
+
+                tnow = time.time()
+                if t[0]+1. < tnow:
+                    self.update()
+                    t[0] = tnow
+
+                return abort
+
+            self.pile.load_files( sorted(fns), cache=cache, fileformat=format, show_progress=False, update_progress=update_progress)
+            self.update()
+
         def add_traces(self, traces):
             if traces:
                 mtf = pyrocko.pile.MemTracesFile(None, traces)

@@ -355,16 +355,20 @@ def snuffle(pile=None, **kwargs):
         app = Snuffler()
     
     kwargs_load = {}
-    for k in ('paths', 'pattern', 'progressive', 'format', 'cache_dir', 'force_cache'):
+    for k in ('paths', 'regex', 'progressive', 'format', 'cache_dir', 'force_cache'):
         try:
             kwargs_load[k] = kwargs.pop(k)
         except KeyError:
             pass
 
     win = SnufflerWindow(pile, **kwargs)
-    win.load(**kwargs_load)
+    
+    if 'paths' in kwargs_load:
+        win.get_view().load(**kwargs_load)
 
-    app.exec_()
+    if not win.is_closing():
+        app.exec_()
+
     ret = win.return_tag()
     
     del win
@@ -385,7 +389,7 @@ def snuffler_from_commandline(args=sys.argv):
             help='assume files are of given FORMAT [default: \'%default\']' )
 
     parser.add_option('--pattern',
-            dest='pattern',
+            dest='regex',
             metavar='REGEX',
             help='only include files whose paths match REGEX')
 
@@ -483,7 +487,7 @@ def snuffler_from_commandline(args=sys.argv):
             paths=args, 
             progressive=options.progressive,
             cache_dir=options.cache_dir,
-            pattern=options.pattern,
+            regex=options.regex,
             format=options.format,
             force_cache=options.force_cache)
 
