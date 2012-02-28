@@ -285,16 +285,29 @@ class LinValControl(ValControl):
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
 class Progressbar:
-    def __init__(self, parent, name):
+    def __init__(self, parent, name, can_abort=True):
+        self.parent = parent
         self.name = name
         self.label = QLabel(name, parent)
         self.pbar = QProgressBar(parent)
+        self.aborted = False
+        if can_abort:
+            self.abort_button = QPushButton('Abort', parent)
+            self.parent.connect(self.abort_button, SIGNAL('clicked()'), self.abort)
+        else:
+            self.abort_button = False
 
     def widgets(self):
-        return self.label, self.pbar
+        widgets = [ self.label, self.pbar ]
+        if self.abort_button:
+            widgets.append(self.abort_button)
+        return widgets
     
     def bar(self):
         return self.pbar
+
+    def abort(self):
+        self.aborted = True
 
 class Progressbars(QFrame):
     def __init__(self, parent):
@@ -302,20 +315,26 @@ class Progressbars(QFrame):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
         self.bars = {}
+        self.hide()
 
     def set_status(self, name, value):
         value = int(round(value))
         if name not in self.bars:
+            if value == 100:
+                return False
             self.bars[name] = Progressbar(self, name)
             self.make_layout()
 
         bar = self.bars[name]
+
         bar.bar().setValue(value)
         if value == 100:
             del self.bars[name]
             self.make_layout()
             for w in bar.widgets():
                 w.setParent(None)
+
+        return bar.aborted
 
     def make_layout(self):
         while True:
@@ -325,8 +344,12 @@ class Progressbars(QFrame):
 
         for ibar, bar in enumerate(self.bars.values()):
             for iw, w in enumerate(bar.widgets()):
-                lab, pb = bar.widgets()
                 self.layout.addWidget(w, ibar, iw)
+        
+        if not self.bars:
+            self.hide()
+        else:
+            self.show()
 
 class MarkerParseError(Exception):
     pass

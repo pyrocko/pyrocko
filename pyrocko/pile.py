@@ -34,8 +34,6 @@ logger = logging.getLogger('pyrocko.pile')
 from util import reuse
 from trace import degapper
 
-progressbar = util.progressbar_module()
-
 def avl_remove_exact(avltree, element):
     ilo, ihi = avltree.span(element)
     i = avltree[ilo:ihi].index(element)
@@ -1007,14 +1005,9 @@ class Pile(TracesGroup):
         # during chopping
         gather_cache = {}
         pbar = None
-        progressbar = util.progressbar_module()
-        if progress and progressbar and config.show_progress:
-            widgets = [progress, ' ',
-                        progressbar.Bar(marker='-',left='[',right=']'), ' ',
-                        progressbar.Percentage(), ' ',]
-                
-            pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(keys)).start()
-        
+        if progress is not None:
+            pbar = util.progressbar(progress, len(keys))
+
         for ikey, key in enumerate(keys):
             def tsel(tr):
                 return gather(tr) == key and (outer_trace_selector is None or 

@@ -9,6 +9,14 @@ from nano import Nano
 
 logger = logging.getLogger('pyrocko.util')
 
+try:
+    import progressbar as progressbar_mod
+except:
+    import dummy_progressbar as progressbar_mod
+
+def progressbar_module():
+    return progressbar_mod
+
 def setup_logging(programname='pyrocko', levelname='warning'):
     '''Initialize logging.
     
@@ -52,20 +60,14 @@ class Stopwatch:
     def __call__(self):
         return time.time() - self.start
         
-def progressbar_module():
-    '''Load the progressbar module, if available.
-    
-    :returns: The progressbar module or `None`, if this module is not available.
-    '''
 
-    try:
-        import progressbar
-    except:
-        logger.warn('progressbar module not available.')
-        progressbar = None
-    
-    return progressbar
-
+def progressbar(label, maxval):
+    widgets = ['Scanning files', ' ',
+            progressbar_mod.Bar(marker='-',left='[',right=']'), ' ',
+            progressbar_mod.Percentage(), ' ',]
+       
+    pbar = progressbar_mod.ProgressBar(widgets=widgets, maxval=maxval).start()
+    return pbar
 
 def progress_beg(label):
     '''Notify user that an operation has started.
@@ -75,9 +77,8 @@ def progress_beg(label):
     To be used in conjuction with :py:func:`progress_end`.
     '''
 
-    if config.show_progress:
-        sys.stderr.write(label)
-        sys.stderr.flush()
+    sys.stderr.write(label)
+    sys.stderr.flush()
 
 def progress_end(label=''):
     '''Notify user that an operation has ended. 
@@ -87,9 +88,8 @@ def progress_end(label=''):
     To be used in conjuction with :py:func:`progress_beg`.
     '''
 
-    if config.show_progress:
-        sys.stderr.write(' done. %s\n' % label)
-        sys.stderr.flush()
+    sys.stderr.write(' done. %s\n' % label)
+    sys.stderr.flush()
         
 class GlobalVars:
     reuse_store = dict()
