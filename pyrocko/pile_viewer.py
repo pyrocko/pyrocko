@@ -2187,11 +2187,11 @@ def MakePileViewerMainClass(base):
             chopped_traces = []
             for trace in processed_traces:
                 try:
-                    ctrace = trace.chop(tmin_-trace.deltat*4.,tmax_+trace.deltat*4., inplace=False)
+                    ctrace = trace.chop(tmin_-trace.deltat*4.,tmax_+trace.deltat*4., inplace=False, )
                 except pyrocko.trace.NoData:
                     continue
                     
-                if len(ctrace.get_ydata()) < 2: continue
+                if ctrace.data_len() < 2: continue
                 
                 chopped_traces.append(ctrace)
             
@@ -2583,7 +2583,7 @@ def MakePileViewerMainClass(base):
                 self.remove_snuffling( snuffling )
 
             self.return_tag = return_tag
-            
+
         def set_error_message(self, key, value):
             if value is None:
                 if key in self.error_messages:

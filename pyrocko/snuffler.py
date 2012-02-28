@@ -197,7 +197,7 @@ class SnufflerWindow(QMainWindow):
         sb = self.statusBar()
         sb.clearMessage()
         sb.showMessage('Welcome to Snuffler! Click and drag to zoom and pan. Doubleclick to pick. Right-click for Menu. <space> to step forward. <b> to step backward. <q> to close.')
-            
+
         if follow:
             self.get_view().follow(float(follow))
         
