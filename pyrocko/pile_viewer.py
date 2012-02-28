@@ -1123,10 +1123,12 @@ def MakePileViewerMainClass(base):
             self.track_keys = sorted(keys, cmp=order)
 
             if key_at_top is not None:
-                ind = self.track_keys.index(key_at_top)
-                if ind != -1:
+                try:
+                    ind = self.track_keys.index(key_at_top)
                     l = ind
                     h = l+n
+                except:
+                    pass
 
             self.set_tracks_range((l,h))
 
