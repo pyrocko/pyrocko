@@ -291,6 +291,7 @@ class Progressbar:
         self.label = QLabel(name, parent)
         self.pbar = QProgressBar(parent)
         self.aborted = False
+        self.time_last_update = 0.
         if can_abort:
             self.abort_button = QPushButton('Abort', parent)
             self.parent.connect(self.abort_button, SIGNAL('clicked()'), self.abort)
@@ -326,8 +327,11 @@ class Progressbars(QFrame):
             self.make_layout()
 
         bar = self.bars[name]
+        now = time.time() 
+        if bar.time_last_update < now - 0.1 or value == 100:
+            bar.bar().setValue(value)
+            bar.time_last_update = now
 
-        bar.bar().setValue(value)
         if value == 100:
             del self.bars[name]
             self.make_layout()
