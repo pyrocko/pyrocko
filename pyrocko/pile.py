@@ -213,6 +213,8 @@ class TracesFileCache(object):
             for tr in v.traces:
                 tr.file = v
 
+            v.data_use_count = 0
+            v.data_loaded = False
         return cache
         
     def _dump_dircache(self, cache, cachefilename):
@@ -231,6 +233,8 @@ class TracesFileCache(object):
             trf.by_tmax = None
             trf.by_tlen = None
             trf.by_mtime = None
+            trf.data_use_count = 0
+            trf.data_loaded = False
             for tr in trf.traces:
                 tr.file = trf
             cache_copy[fn] = trf
