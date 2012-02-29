@@ -420,6 +420,7 @@ class TracesGroup(object):
                 self.stations[c.station] += 1
                 self.locations[c.location] += 1
                 self.channels[c.channel] += 1
+                self.nslc_ids[c.nslc_id] += 1
                 self.deltats[c.deltat] += 1
     
                 self.by_tmin.insert(c)
