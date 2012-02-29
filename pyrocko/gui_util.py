@@ -299,7 +299,7 @@ class Progressbar:
             self.abort_button = False
 
     def widgets(self):
-        widgets = [ self.label, self.pbar ]
+        widgets = [ self.label, self.bar() ]
         if self.abort_button:
             widgets.append(self.abort_button)
         return widgets
@@ -316,9 +316,19 @@ class Progressbars(QFrame):
         self.layout = QGridLayout()
         self.setLayout(self.layout)
         self.bars = {}
+        self.start_times = {}
         self.hide()
 
     def set_status(self, name, value):
+        now = time.time()
+        if name not in self.start_times:
+            self.start_times[name] = now
+            return False
+        else:
+            if now < self.start_times[name] + 1.0:
+                return False
+
+        self.start_times.get(name, 0.0)
         value = int(round(value))
         if name not in self.bars:
             if value == 100:
@@ -327,13 +337,13 @@ class Progressbars(QFrame):
             self.make_layout()
 
         bar = self.bars[name]
-        now = time.time() 
         if bar.time_last_update < now - 0.1 or value == 100:
             bar.bar().setValue(value)
             bar.time_last_update = now
 
         if value == 100:
             del self.bars[name]
+            del self.start_times[name]
             self.make_layout()
             for w in bar.widgets():
                 w.setParent(None)
