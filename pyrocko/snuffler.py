@@ -206,6 +206,9 @@ class SnufflerWindow(QMainWindow):
     def sizeHint(self):
         return QSize(1024,768)
 
+    def keyPressEvent(self, ev):
+        self.get_view().keyPressEvent(ev)
+
     def get_view(self):
         return self.pile_viewer.get_view()
 
