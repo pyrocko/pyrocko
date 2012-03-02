@@ -810,9 +810,6 @@ def MakePileOverviewClass(base):
             
             self.error_messages = {}
             self.return_tag = None
-    
-        def sizeHint(self):
-            return QSize(1024,768)
 
         def fail(self, reason):
             box = QMessageBox(self)
