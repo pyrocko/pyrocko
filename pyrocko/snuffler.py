@@ -202,6 +202,9 @@ class SnufflerWindow(QMainWindow):
             self.get_view().follow(float(follow))
         
         self.closing = False
+    
+    def sizeHint(self):
+        return QSize(1024,768)
 
     def get_view(self):
         return self.pile_viewer.get_view()
@@ -247,6 +250,14 @@ class SnufflerWindow(QMainWindow):
     def toggle_panel(self, dockwidget, visible):
         dockwidget.setVisible(visible)
         if visible:
+            w = dockwidget.widget()
+            minsize = w.minimumSize()
+            w.setMinimumHeight( w.sizeHint().height()+5 )
+            def reset_minimum_size():
+                w.setMinimumSize( minsize )
+            
+            t = QTimer.singleShot( 200, reset_minimum_size )
+
             dockwidget.setFocus()
             dockwidget.raise_()
 

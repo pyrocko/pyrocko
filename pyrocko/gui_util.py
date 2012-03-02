@@ -105,8 +105,8 @@ class MySlider(QSlider):
 
 class MyValueEdit(QLineEdit):
 
-    def __init__(self, parent, low_is_none=False, high_is_none=False, *args):
-        QLineEdit.__init__(self, *args)
+    def __init__(self, low_is_none=False, high_is_none=False, *args, **kwargs):
+        QLineEdit.__init__(self, *args, **kwargs)
         self.value = 0.
         self.mi = 0.
         self.ma = 1.
@@ -164,33 +164,34 @@ class MyValueEdit(QLineEdit):
 
         self.setText(t)
         
-class ValControl(QFrame):
+class ValControl(QObject):
 
     def __init__(self, low_is_none=False, high_is_none=False, *args):
-        apply(QFrame.__init__, (self,) + args)
-        self.layout = QHBoxLayout( self )
-        self.layout.setMargin(0)
-        self.lname = QLabel( "name", self )
-        self.lname.setMinimumWidth(120)
-        self.lvalue = MyValueEdit( self, low_is_none=low_is_none, high_is_none=high_is_none )
+        apply(QObject.__init__, (self,) + args)
+        
+        self.lname = QLabel( "name" )
+        self.lname.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum))
+        self.lvalue = MyValueEdit( low_is_none=low_is_none, high_is_none=high_is_none )
         self.lvalue.setFixedWidth(100)
-        self.slider = MySlider(Qt.Horizontal, self)
+        self.slider = MySlider(Qt.Horizontal)
+        self.slider.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.slider.setMaximum( 10000 )
         self.slider.setSingleStep( 100 )
         self.slider.setPageStep( 1000 )
         self.slider.setTickPosition( QSlider.NoTicks )
-        self.slider.sizePolicy().setHorizontalStretch(10)
         self.slider.setFocusPolicy(Qt.ClickFocus)
-        self.layout.addWidget( self.lname )
-        self.layout.addWidget( self.lvalue )
-        self.layout.addWidget( self.slider )
+        
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
         self.connect( self.slider, SIGNAL("valueChanged(int)"),
                       self.slided )
         self.connect( self.lvalue, SIGNAL("edited(float)"),
                       self.edited )
+
         self.mute = False
+
+    def widgets(self):
+        return self.lname, self.lvalue, self.slider
     
     def s2v(self, svalue):
         a = math.log(self.ma/self.mi) / 10000.

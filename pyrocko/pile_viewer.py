@@ -808,9 +808,6 @@ def MakePileViewerMainClass(base):
             self.wheel_pos = 60
 
             self.closing = False
-    
-        def sizeHint(self):
-            return QSize(1024,768)
 
         def fail(self, reason):
             box = QMessageBox(self)
@@ -2857,29 +2854,31 @@ class PileViewer(QFrame):
         frame = QFrame(self)
         layout = QGridLayout()
         frame.setLayout(layout)
-        
         minfreq = 0.001
         maxfreq = 0.5/self.viewer.get_min_deltat()
         if maxfreq < 100.*minfreq:
             minfreq = maxfreq*0.00001
         
-        self.lowpass_widget = ValControl(high_is_none=True)
-        self.lowpass_widget.setup('Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
-        self.highpass_widget = ValControl(low_is_none=True)
-        self.highpass_widget.setup('Highpass [Hz]:', minfreq, maxfreq, minfreq, 1)
-        self.gain_widget = ValControl()
-        self.gain_widget.setup('Gain', 0.001, 1000., 1., 2)
-        self.rot_widget = LinValControl()
-        self.rot_widget.setup('Rotate', -180., 180., 0., 3)
-        self.connect( self.lowpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.lowpass_change )
-        self.connect( self.highpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.highpass_change )
-        self.connect( self.gain_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.gain_change )
-        self.connect( self.rot_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.rot_change )
+        self.lowpass_control = ValControl(high_is_none=True)
+        self.lowpass_control.setup('Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
+        self.highpass_control = ValControl(low_is_none=True)
+        self.highpass_control.setup('Highpass [Hz]:', minfreq, maxfreq, minfreq, 1)
+        self.gain_control = ValControl()
+        self.gain_control.setup('Gain:', 0.001, 1000., 1., 2)
+        self.rot_control = LinValControl()
+        self.rot_control.setup('Rotate [deg]:', -180., 180., 0., 3)
+        self.connect( self.lowpass_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.lowpass_change )
+        self.connect( self.highpass_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.highpass_change )
+        self.connect( self.gain_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.gain_change )
+        self.connect( self.rot_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.rot_change )
+       
+        for icontrol, control in enumerate((self.highpass_control, self.lowpass_control, self.gain_control, self.rot_control)):
+            for iwidget, widget in enumerate(control.widgets()):
+                layout.addWidget( widget, icontrol, iwidget )
         
-        layout.addWidget( self.highpass_widget, 1,0 )
-        layout.addWidget( self.lowpass_widget, 2,0 )
-        layout.addWidget( self.gain_widget, 3,0 )
-        layout.addWidget( self.rot_widget, 4,0 )
+        spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addItem(spacer, 4,0, 1, 3)
+
         return frame
    
     def setup_snufflings(self):
