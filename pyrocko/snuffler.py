@@ -121,6 +121,9 @@ class SnufflerWindow(QMainWindow):
             
         if follow:
             self.pile_viewer.get_view().follow(float(follow))
+    
+    def sizeHint(self):
+        return QSize(1024, 768)
 
     def dockwidgets(self):
         return [ w for w in self.findChildren(QDockWidget) if not w.isFloating() ]
