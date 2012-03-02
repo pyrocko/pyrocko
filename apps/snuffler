@@ -292,7 +292,9 @@ class MyMainWindow(QMainWindow):
 
     def keyPressEvent(self, ev):
         self.app.pile_viewer.get_view().keyPressEvent(ev)
-
+    
+    def sizeHint(self):
+        return QSize(1024, 768)
 
 class MySnuffler(QApplication):
     

@@ -805,9 +805,12 @@ def MakePileViewerMainClass(base):
             
             self.error_messages = {}
             self.return_tag = None
+<<<<<<< HEAD:pyrocko/pile_viewer.py
             self.wheel_pos = 60
 
             self.closing = False
+=======
+>>>>>>> master:pyrocko/pile_viewer.py
 
         def fail(self, reason):
             box = QMessageBox(self)
