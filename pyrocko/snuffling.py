@@ -564,11 +564,13 @@ class Snuffling:
 
             for name, method in self._triggers:
                 but = QPushButton(name)
-                def call_and_update():
-                    method()
-                    self.get_viewer().update()
+                def call_and_update(method):
+                    def f():
+                        method()
+                        self.get_viewer().update()
+                    return f
 
-                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update )
+                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update(method) )
                 butlayout.addWidget( but )
 
             layout.addWidget(butframe, irow, 0)
