@@ -327,6 +327,20 @@ class Snuffler(QApplication):
         else:
             self.handle_disconnected(connection)
 
+    def snuffler_windows(self):
+        return [ w for w in self.topLevelWidgets() 
+                    if isinstance(w, SnufflerWindow) and not w.is_closing() ]
+
+    def event(self, e):
+        if isinstance(e, QFileOpenEvent):
+            paths = [ str(e.file()) ]
+            wins = self.snuffler_windows()
+            if wins:
+                wins[0].get_view().load(paths=paths)
+            return True
+        else:
+            return QApplication.event(self, e)
+
     def load(pathes, cachedirname, pattern, format):
         if not self.loader:
             self.start_loader()
