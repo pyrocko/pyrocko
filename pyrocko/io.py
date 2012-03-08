@@ -101,8 +101,10 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             yield subs(tr)
     
     if format in ('yaff', 'try'):
+        mtime = os.stat(filename)[8]
         try:
             for tr in yaff.load(filename, getdata):
+                tr.set_mtime(mtime)
                 yield subs(tr)
             
         except (OSError, file.FileError), e:

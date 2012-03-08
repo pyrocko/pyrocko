@@ -68,11 +68,17 @@ class PileTestCase( unittest.TestCase ):
             toff += nsamples
             
         s = 0
-        for traces in p.chopper(tmin=None, tmax=None, tinc=123.): #tpad=10.):
+        for traces in p.chopper(tmin=None, tmax=p.tmax+1., tinc=122. ): #tpad=10.):
             for trace in traces:
                 s += num.sum(trace.ydata)
-                
+        
         assert s == nfiles*nsamples
+
+        for fn in filenames:
+            os.utime(fn, None)
+        
+        p.reload_modified()
+
         pile.get_cache(cachedir).clean()
         shutil.rmtree(datadir)
     

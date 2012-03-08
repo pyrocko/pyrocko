@@ -6,6 +6,10 @@ import numpy as num
 import os, logging, time, weakref, copy, re, sys, operator, math
 import cPickle as pickle
 
+        
+def sl(s):
+    return map(str, sorted(list(s)))
+        
 class Counter(dict):
 
     def __missing__(self, k):
@@ -81,7 +85,7 @@ class Sorted(object):
     def insert(self, value):
         self._avl.insert(value)
 
-    def remove(self, v):
+    def remove(self, value):
         avl_remove_exact(self._avl, value)
 
     def insert_many(self, values):
@@ -235,6 +239,7 @@ class TracesFileCache(object):
             trf.by_mtime = None
             trf.data_use_count = 0
             trf.data_loaded = False
+            trf.traces = [ tr.copy(data=False) for tr in trf.traces ]
             for tr in trf.traces:
                 tr.file = trf
             cache_copy[fn] = trf
@@ -268,10 +273,10 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
 
         def update(self, i):
             if show_progress:
-                if i != self._n:
-                    self.bar.update(i)
+                if i < self._n-1:
+                    self._bar.update(i)
                 else:
-                    self.bar.finish()
+                    self._bar.finish()
             
             if update_progress:
                 update_progress(self._label, i, self._n)
@@ -308,7 +313,6 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
             tfile = None
             if cache:
                 tfile = cache.get(abspath)
-           
             to_load.append(((not tfile or tfile.mtime != mtime or substitutions), mtime, abspath, substitutions, tfile))
     
         except (OSError, FilenameAttributeError), xerror:
@@ -591,19 +595,16 @@ class MemTracesFile(TracesGroup):
         return keys
     
     def __str__(self):
-        def sl(s):
-            return sorted(list(s))
         
         s = 'MemTracesFile\n'
-        s += 'abspath: %s\n' % self.abspath
-        s += 'file mtime: %s\n' % util.gmctime(self.mtime)
+        s += 'file mtime: %s\n' % util.time_to_str(self.mtime)
         s += 'number of traces: %i\n' % len(self.traces)
-        s += 'timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
-        s += 'networks: %s\n' % ', '.join(sl(self.networks))
-        s += 'stations: %s\n' % ', '.join(sl(self.stations))
-        s += 'locations: %s\n' % ', '.join(sl(self.locations))
-        s += 'channels: %s\n' % ', '.join(sl(self.channels))
-        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
+        s += 'timerange: %s - %s\n' % (util.time_to_str(self.tmin), util.time_to_str(self.tmax))
+        s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
+        s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
+        s += 'locations: %s\n' % ', '.join(sl(self.locations.keys()))
+        s += 'channels: %s\n' % ', '.join(sl(self.channels.keys()))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats.keys()))
         return s
 
 class TracesFile(TracesGroup):
@@ -646,10 +647,11 @@ class TracesFile(TracesGroup):
                         logger.warn('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
                         self.remove(xtr)
                         self.traces.remove(xtr)
+                        print len(self.traces)
                         xtr.file = None
                         self.traces.append(tr)
                         self.add(tr)
-                        tr.file = None
+                        tr.file = self
                         file_changed = True
                     else:
                         xtr.ydata = tr.ydata
@@ -733,20 +735,16 @@ class TracesFile(TracesGroup):
         return keys
     
     def __str__(self):
-        
-        def sl(s):
-            return sorted(list(s))
-        
         s = 'TracesFile\n'
         s += 'abspath: %s\n' % self.abspath
-        s += 'file mtime: %s\n' % util.gmctime(self.mtime)
+        s += 'file mtime: %s\n' % util.time_to_str(self.mtime)
         s += 'number of traces: %i\n' % len(self.traces)
-        s += 'timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
-        s += 'networks: %s\n' % ', '.join(sl(self.networks))
-        s += 'stations: %s\n' % ', '.join(sl(self.stations))
-        s += 'locations: %s\n' % ', '.join(sl(self.locations))
-        s += 'channels: %s\n' % ', '.join(sl(self.channels))
-        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
+        s += 'timerange: %s - %s\n' % (util.time_to_str(self.tmin), util.time_to_str(self.tmax))
+        s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
+        s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
+        s += 'locations: %s\n' % ', '.join(sl(self.locations.keys()))
+        s += 'channels: %s\n' % ', '.join(sl(self.channels.keys()))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats.keys()))
         return s
 
 
@@ -839,18 +837,14 @@ class SubPile(TracesGroup):
         return modified
         
     def __str__(self):
-    
-        def sl(s):
-            return sorted([ x for x in s ])
-
         s = 'SubPile\n'
         s += 'number of files: %i\n' % len(self.files)
-        s += 'timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
-        s += 'networks: %s\n' % ', '.join(sl(self.networks))
-        s += 'stations: %s\n' % ', '.join(sl(self.stations))
-        s += 'locations: %s\n' % ', '.join(sl(self.locations))
-        s += 'channels: %s\n' % ', '.join(sl(self.channels))
-        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
+        s += 'timerange: %s - %s\n' % (util.time_to_str(self.tmin), util.time_to_str(self.tmax))
+        s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
+        s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
+        s += 'locations: %s\n' % ', '.join(sl(self.locations.keys()))
+        s += 'channels: %s\n' % ', '.join(sl(self.channels.keys()))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats.keys()))
         return s
 
              
@@ -916,6 +910,7 @@ class Pile(TracesGroup):
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round), include_last=False, load_data=True):
         chopped = []
         used_files = set()
+        
         traces = self.relevant(tmin, tmax, group_selector, trace_selector)
         if load_data:
             files_changed = False
@@ -1107,18 +1102,14 @@ class Pile(TracesGroup):
         return self.tmax
     
     def __str__(self):
-        
-        def sl(s):
-            return sorted([ x for x in s ])
-        
         s = 'Pile\n'
         s += 'number of subpiles: %i\n' % len(self.subpiles)
-        s += 'timerange: %s - %s\n' % (util.gmctime(self.tmin), util.gmctime(self.tmax))
-        s += 'networks: %s\n' % ', '.join(sl(self.networks))
-        s += 'stations: %s\n' % ', '.join(sl(self.stations))
-        s += 'locations: %s\n' % ', '.join(sl(self.locations))
-        s += 'channels: %s\n' % ', '.join(sl(self.channels))
-        s += 'deltats: %s\n' % ', '.join(sl(self.deltats))
+        s += 'timerange: %s - %s\n' % (util.time_to_str(self.tmin), util.time_to_str(self.tmax))
+        s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
+        s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
+        s += 'locations: %s\n' % ', '.join(sl(self.locations.keys()))
+        s += 'channels: %s\n' % ', '.join(sl(self.channels.keys()))
+        s += 'deltats: %s\n' % ', '.join(sl(self.deltats.keys()))
         return s
     
     def snuffle(self, **kwargs):
