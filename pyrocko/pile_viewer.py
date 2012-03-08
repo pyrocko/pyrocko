@@ -807,6 +807,8 @@ def MakePileViewerMainClass(base):
             self.return_tag = None
             self.wheel_pos = 60
 
+            self.setAcceptDrops(True)
+
             self.closing = False
 
         def fail(self, reason):
@@ -1626,6 +1628,18 @@ def MakePileViewerMainClass(base):
                 self.zoom_tracks( anchor, wdelta )
             else:
                 self.scroll_tracks( -wdelta )
+
+        def dragEnterEvent(self, event):
+            if event.mimeData().hasUrls():
+                if any(url.toLocalFile() for url in event.mimeData().urls()):
+                    event.setDropAction(Qt.LinkAction)
+                    event.accept()
+
+        def dropEvent(self, event):
+            if event.mimeData().hasUrls():
+                paths = list(str(url.toLocalFile()) for url in event.mimeData().urls())
+                event.acceptProposedAction()
+                self.load(paths)
 
         def get_phase_name(self, kind):
             return self.phase_names.get(kind, 'Unknown')
