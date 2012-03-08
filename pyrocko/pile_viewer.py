@@ -808,6 +808,7 @@ def MakePileViewerMainClass(base):
             self.wheel_pos = 60
 
             self.setAcceptDrops(True)
+            self._paths_to_load = []
 
             self.closing = False
 
@@ -1068,8 +1069,11 @@ def MakePileViewerMainClass(base):
                 abort = False
                 
                 qApp.processEvents()
-
-                abort |= update_bar(label, i*100/n)
+                if n != 0:
+                    perc = i*100/n
+                else:
+                    perc = 100
+                abort |= update_bar(label, perc)
                 abort |= self.window().is_closing()
 
                 tnow = time.time()
@@ -1081,6 +1085,17 @@ def MakePileViewerMainClass(base):
 
             self.pile.load_files( sorted(fns), cache=cache, fileformat=format, show_progress=False, update_progress=update_progress)
             self.update()
+
+        def load_queued(self):
+            if not self._paths_to_load:
+                return
+            paths = self._paths_to_load
+            self._paths_to_load = []
+            self.load(paths)
+
+        def load_soon(self, paths):
+            self._paths_to_load.extend(paths)
+            QTimer.singleShot( 200, self.load_queued )
 
         def add_traces(self, traces):
             if traces:
