@@ -105,13 +105,14 @@ class MySlider(QSlider):
 
 class MyValueEdit(QLineEdit):
 
-    def __init__(self, low_is_none=False, high_is_none=False, *args, **kwargs):
+    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args, **kwargs):
         QLineEdit.__init__(self, *args, **kwargs)
         self.value = 0.
         self.mi = 0.
         self.ma = 1.
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
         self.connect( self, SIGNAL("editingFinished()"), self.myEditingFinished )
         self.lock = False
         
@@ -132,6 +133,8 @@ class MyValueEdit(QLineEdit):
                 value = self.mi
             elif self.high_is_none and t in ('off', 'above'):
                 value = self.ma
+            elif self.low_is_zero and float(t) == 0.0:
+                value = self.mi
             else:
                 value = float(t)
 
@@ -150,6 +153,10 @@ class MyValueEdit(QLineEdit):
         
     def adjust_text(self):
         t = ('%8.5g' % self.value).strip()
+
+        if self.low_is_zero and self.value == self.mi:
+            t = '0'
+
         if self.low_is_none and self.value == self.mi:
             if self.high_is_none:
                 t = 'below'
@@ -166,12 +173,12 @@ class MyValueEdit(QLineEdit):
         
 class ValControl(QObject):
 
-    def __init__(self, low_is_none=False, high_is_none=False, *args):
+    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args):
         apply(QObject.__init__, (self,) + args)
         
         self.lname = QLabel( "name" )
         self.lname.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum))
-        self.lvalue = MyValueEdit( low_is_none=low_is_none, high_is_none=high_is_none )
+        self.lvalue = MyValueEdit( low_is_none=low_is_none, high_is_none=high_is_none, low_is_zero=low_is_zero )
         self.lvalue.setFixedWidth(100)
         self.slider = MySlider(Qt.Horizontal)
         self.slider.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
@@ -183,6 +190,8 @@ class ValControl(QObject):
         
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
+
         self.connect( self.slider, SIGNAL("valueChanged(int)"),
                       self.slided )
         self.connect( self.lvalue, SIGNAL("edited(float)"),
@@ -224,6 +233,10 @@ class ValControl(QObject):
                 cur = self.mi
             elif self.high_is_none:
                 cur = self.ma
+    
+        if cur == 0.0:
+            if self.low_is_zero:
+                cur = self.mi
 
         self.mute = True
         self.cur = cur
@@ -269,10 +282,14 @@ class ValControl(QObject):
         
         cur = self.cur
 
-        if self.low_is_none and self.cursl == 0:
-            cur = None
+        if self.cursl == 0:
+            if self.low_is_none:
+                cur = None
 
-        if self.high_is_none and self.cursl == 10000:
+            elif self.low_is_zero:
+                cur = 0.0
+
+        if self.cursl == 10000 and self.high_is_none:
             cur = None
 
         self.emit(SIGNAL("valchange(PyQt_PyObject,int)"), cur, int(self.ind) )

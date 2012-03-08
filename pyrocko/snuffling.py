@@ -23,7 +23,7 @@ class Param:
     '''Definition of an adjustable parameter for the snuffling. The snuffling
     may display controls for user input for such parameters.'''
     
-    def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None):
+    def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
         self.name = name
         self.ident = ident
         self.default = default
@@ -31,6 +31,7 @@ class Param:
         self.maximum = maximum
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
         self._control = None
 
     def set_range(self, minimum, maximum):
@@ -493,7 +494,7 @@ class Snuffling:
                     if param.minimum <= 0.0:
                         param_control = LinValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
                     else:
-                        param_control = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
+                        param_control = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none, low_is_zero=param.low_is_zero)
                     
                     param._set_control( param_control )
                     param_control.setup(param.name, param.minimum, param.maximum, param.default, iparam)
