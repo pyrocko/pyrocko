@@ -646,7 +646,6 @@ class TracesFile(TracesGroup):
                         logger.warn('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
                         self.remove(xtr)
                         self.traces.remove(xtr)
-                        print len(self.traces)
                         xtr.file = None
                         self.traces.append(tr)
                         self.add(tr)
