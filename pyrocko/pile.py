@@ -459,10 +459,10 @@ class TracesGroup(object):
                 self.nslc_ids.subtract( c.nslc_ids )
                 self.deltats.subtract( c.deltats )
 
-                self.by_tmin.remove_many( c )
-                self.by_tmax.remove_many( c )
-                self.by_tlen.remove_many( c )
-                self.by_mtime.remove_many( c )
+                self.by_tmin.remove_many( c.by_tmin )
+                self.by_tmax.remove_many( c.by_tmax )
+                self.by_tlen.remove_many( c.by_tlen )
+                self.by_mtime.remove_many( c.by_mtime )
 
             elif isinstance(c, trace.Trace):
                 self.networks.subtract1(c.network)
@@ -551,7 +551,7 @@ class MemTracesFile(TracesGroup):
         pass
         
     def reload_if_modified(self):
-        pass
+        return False
             
     def get_newest_mtime(self, tmin, tmax, trace_selector=None):
         mtime = None
@@ -617,7 +617,6 @@ class TracesFile(TracesGroup):
         self.data_use_count = 0
         self.substitutions = substitutions
         self.load_headers(mtime=mtime)
-        self.add(self.traces)
         self.mtime = mtime
         
     def load_headers(self, mtime=None):
@@ -647,7 +646,6 @@ class TracesFile(TracesGroup):
                         logger.warn('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
                         self.remove(xtr)
                         self.traces.remove(xtr)
-                        print len(self.traces)
                         xtr.file = None
                         self.traces.append(tr)
                         self.add(tr)
