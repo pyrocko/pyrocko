@@ -459,10 +459,10 @@ class TracesGroup(object):
                 self.nslc_ids.subtract( c.nslc_ids )
                 self.deltats.subtract( c.deltats )
 
-                self.by_tmin.remove_many( c )
-                self.by_tmax.remove_many( c )
-                self.by_tlen.remove_many( c )
-                self.by_mtime.remove_many( c )
+                self.by_tmin.remove_many( c.by_tmin )
+                self.by_tmax.remove_many( c.by_tmax )
+                self.by_tlen.remove_many( c.by_tlen )
+                self.by_mtime.remove_many( c.by_mtime )
 
             elif isinstance(c, trace.Trace):
                 self.networks.subtract1(c.network)
