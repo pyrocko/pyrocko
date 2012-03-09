@@ -551,7 +551,7 @@ class MemTracesFile(TracesGroup):
         pass
         
     def reload_if_modified(self):
-        pass
+        return False
             
     def get_newest_mtime(self, tmin, tmax, trace_selector=None):
         mtime = None
