@@ -617,7 +617,6 @@ class TracesFile(TracesGroup):
         self.data_use_count = 0
         self.substitutions = substitutions
         self.load_headers(mtime=mtime)
-        self.add(self.traces)
         self.mtime = mtime
         
     def load_headers(self, mtime=None):
