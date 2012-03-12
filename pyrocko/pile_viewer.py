@@ -2184,7 +2184,6 @@ def MakePileViewerMainClass(base):
                                     
                                     if self.menuitem_allowdownsampling.isChecked():
                                         while trace.deltat < min_deltat_wo_decimate:
-                                            print 'ds'
                                             trace.downsample(2)
 
                                     
