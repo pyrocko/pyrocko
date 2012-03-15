@@ -22,7 +22,8 @@ G = 1000000000L
 
 def asnano(x):
     if not isinstance(x, Nano):
-        return Nano(x)
+        #return Nano(x)
+        return x
     else:
         return x
     

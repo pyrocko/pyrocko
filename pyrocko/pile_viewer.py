@@ -2882,11 +2882,12 @@ class PileViewer(QFrame):
         frame = QFrame(self)
         layout = QGridLayout()
         frame.setLayout(layout)
-        minfreq = 0.001
-        maxfreq = 0.5/self.viewer.get_min_deltat()
-        if maxfreq < 100.*minfreq:
-            minfreq = maxfreq*0.00001
-        
+        #minfreq = 0.001
+        #maxfreq = 0.5/self.viewer.get_min_deltat()
+        #if maxfreq < 100.*minfreq:
+        #    minfreq = maxfreq*0.00001
+        minfreq = 1.
+        maxfreq = 10000000.
         self.lowpass_control = ValControl(high_is_none=True)
         self.lowpass_control.setup('Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
         self.highpass_control = ValControl(low_is_none=True)

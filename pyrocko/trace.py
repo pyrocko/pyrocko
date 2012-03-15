@@ -46,10 +46,10 @@ class Trace(object):
     
         self._growbuffer = None
 
-        if deltat < 0.001:
-            tmin = asnano(tmin)
-            if tmax is not None:
-                tmax = asnano(tmax)
+        #if deltat < 0.001:
+            #tmin = asnano(tmin)
+            #if tmax is not None:
+            #    tmax = asnano(tmax)
 
     
         if mtime is None:
