@@ -158,7 +158,6 @@ class Waveform:
         assert self.wid2.sub_format in 'INT CM6 CM8 AUT AU6 AU8'.split()
         from pyrocko import gse_ext
         self.data = gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )
-        print checksum_slow(self.data), gse_ext.checksum(self.data)
 
     def __str__(self):
         return ' '.join([self.wid2.station, self.wid2.channel, self.wid2.auxid, self.wid2.sub_format, util.gmctime(self.wid2.tmin)])
@@ -329,7 +328,7 @@ class DataSection:
                     strtmin, wid2.station, wid2.channel, wid2.auxid, wid2.sub_format, \
                         wid2.samps, wid2.samprate, wid2.calib, wid2.calper, \
                         wid2.instype, wid2.hang, wid2.vang = unpack_fixed( \
-                        'x5,a25,x1,a5,x1,a3,x1,a4,x1,a3,x1,i8,x1,f11,x1,f10,x1,f7,x1,a6,x1,f5,x1,f4',
+                        'x5,a23,x1,a5,x1,a3,x1,a4,x1,a3,x1,i8,x1,f11,x1,f10,x1,f7,x1,a6,x1,f5,x1,f4',
                         line)
                     
                     at = 1
@@ -339,7 +338,7 @@ class DataSection:
                 if line.startswith('STA2'):
                     sta2 = Anon()
                     sta2.network, sta2.lat, sta2.lon, sta2.coordsys, sta2.elev, sta2.depth = unpack_fixed(
-                        'x5,a9,f9,x1,f10,x1,a12,x1,f5,x1,f5', line)
+                        'x5,a9,x1,f9,x1,f10,x11,a12,x1,f5,x1,f5?', line)
                     
                 if line.startswith('EID2'):
                     logger.warn('Cannot handle GSE2 EID2 blocks')
