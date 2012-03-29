@@ -33,20 +33,6 @@ class Param:
         self.high_is_none = high_is_none
         self._control = None
 
-    def set_range(self, minimum, maximum):
-        self.minimum = minimum
-        self.maximum = maximum
-        if self._control:
-            self._control.set_range(self.minimum, self.maximum)
-
-    def set_value(self, value):
-        if self._control:
-            self._control.set_value(value)
-            self._control.fire_valchange()
-
-    def _set_control(self, control):
-        self._control = control
-
 class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
     checkbox for such a switch.'''
@@ -279,7 +265,7 @@ class Snuffling:
         '''
         
         self._parameters.append(param)
-        self.set_parameter(param.ident, param.default)
+        self._set_parameter_value(param.ident, param.default)
         
         if self._panel is not None:
             self.delete_gui()
@@ -312,13 +298,32 @@ class Snuffling:
         
         :param ident: identifier of the parameter
         :param value: new value of the parameter
-            
-        This is usually called when the parameter has been set via the gui 
-        controls.
+
+        Adjusts the control of a parameter without calling :py:meth:`call`.
         '''
         
+        self._set_parameter_value(ident, value)
+
+        control = self._param_controls.get(ident, None)
+        if control:
+            control.set_value(value)
+
+    def set_parameter_range(self, ident, vmin, vmax):
+        '''Set the range of one of the snnuffling's adjustable parameters.
+
+        :param ident: identifier of the parameter
+        :param vmin,vmax: new minimum and maximum value for the parameter
+
+        Adjusts the control of a parameter without calling :py:meth:`call`.
+        '''
+
+        control = self._param_controls.get(ident, None)
+        if control:
+            control.set_range(vmin, vmax)
+    
+    def _set_parameter_value(self, ident, value):
         setattr(self, ident, value)
-        
+
     def get_parameter_value(self, ident):
         return getattr(self, ident)
 
@@ -335,7 +340,7 @@ class Snuffling:
         dparams = dict( [ (param.ident, param) for param in params ] )
         for k,v in settings.iteritems():
             if k in dparams:
-                self.set_parameter(k,v)
+                self._set_parameter_value(k,v)
                 if k in self._param_controls:
                     control = self._param_controls[k]
                     control.set_value(v)
@@ -492,7 +497,6 @@ class Snuffling:
                     else:
                         param_widget = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
                     
-                    param._set_control( param_widget )
                     param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                     self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
@@ -635,7 +639,7 @@ class Snuffling:
         '''
         
         param = self.get_parameters()[iparam]
-        self.set_parameter(param.ident, value)
+        self._set_parameter_value(param.ident, value)
         if self._live_update:
             self.check_call()
             self.get_viewer().update()
@@ -644,7 +648,7 @@ class Snuffling:
     def switch_on_snuffling_panel(self, ident, state):
         '''Called when the user has toggled a switchable parameter.'''
 
-        self.set_parameter(ident, state)
+        self._set_parameter_value(ident, state)
         if self._live_update:
             self.check_call()
             self.get_viewer().update()
@@ -652,7 +656,7 @@ class Snuffling:
     def choose_on_snuffling_panel(self, ident, state):
         '''Called when the user has made a choice about a choosable parameter.'''
 
-        self.set_parameter(ident, state)
+        self._set_parameter_value(ident, state)
         if self._live_update:
             self.check_call()
             self.get_viewer().update()
