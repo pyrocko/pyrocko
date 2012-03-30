@@ -14,7 +14,7 @@ import pile
 
 from gui_util import ValControl, LinValControl, PyLab
 
-logger = logging.getLogger('pyrocko.snufflings')
+logger = logging.getLogger('pyrocko.snuffling')
 
 def _str_traceback():
     return '%s' % (traceback.format_exc(sys.exc_info()[2]))
@@ -139,11 +139,23 @@ class Snuffling:
             if self._menuitem:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
 
-    def make_cli_parser(self):
+    def make_cli_parser1(self):
         import optparse
-        parser = optparse.OptionParser()
+        class MyOptionParser(optparse.OptionParser):
+            def error(self, msg):
+                logger.error(msg)
+                self.exit(1)
+
+        parser = MyOptionParser()
         self.add_params_to_cli_parser(parser)
+        self.configure_cli_parser(parser)
         return parser
+
+    def configure_cli_parser(self):
+        pass
+
+    def cli_usage(self):
+        return None
 
     def add_params_to_cli_parser(self, parser):
 
@@ -157,8 +169,7 @@ class Snuffling:
         
     def setup_cli(self):
         self.setup()
-        
-        parser = self.make_cli_parser()
+        parser = self.make_cli_parser1()
         (options, args) = parser.parse_args()
         
         for param in self._parameters:
@@ -215,16 +226,27 @@ class Snuffling:
         if self._panel or self._menuitem:
             self.delete_gui()
             self.setup_gui()
+   
+    def show_message(self, kind, message):
+        try:
+            viewer = self.get_viewer()
+            box = QMessageBox(self.get_viewer())
+            box.setText('%s: %s' % (kind.capitalize(), message))
+            box.exec_()
+        except NoViewerSet:
+            pass
     
-    
-    def error(self, reason):
-        box = QMessageBox(self.get_viewer())
-        box.setText(reason)
-        box.exec_()
-    
-    def fail(self, reason):
-        self.error(reason)
-        raise SnufflingCallFailed(reason) 
+    def error(self, message):
+        logger.error('%s: %s' % (self._name, message))
+        self.show_message('error', message)
+
+    def warn(self, message):
+        logger.warn('%s: %s' % (self._name, message))
+        self.show_message('warning', message)
+
+    def fail(self, message):
+        self.error(message)
+        raise SnufflingCallFailed(message) 
   
     def pylab(self, name=None):
         if name is None:
@@ -556,7 +578,13 @@ class Snuffling:
             for name, method in self._triggers:
                 but = QPushButton(name)
                 def call_and_update():
-                    method()
+                    try:
+                        method()
+                    except SnufflingError, e:
+                        if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+                            logger.error('%s: %s' % (self._name, e))
+                        logger.error('%s: Snuffling action failed' % self._name)
+
                     self.get_viewer().update()
 
                 self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update )
@@ -752,8 +780,12 @@ class Snuffling:
     def check_call(self):
         try:
             self.call()
-        except SnufflingCallFailed, e:
-            logger.error('%s: %s' % (self._name, str(e)))
+            return 0
+        except SnufflingError, e:
+            if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+                logger.error('%s: %s' % (self._name, e))
+            logger.error('%s: Snuffling action failed' % self._name)
+            return 1
 
     def call(self):
         '''Main work routine of the snuffling.
@@ -777,20 +809,29 @@ class Snuffling:
             import shutil
             shutil.rmtree(self._tempdir)
 
-class NoViewerSet(Exception):
-    '''This exception is raised, when no viewer has been set on a Snuffling.'''
+class SnufflingError(Exception):
     pass
 
-class NoTracesSelected(Exception):
+class NoViewerSet(SnufflingError):
+    '''This exception is raised, when no viewer has been set on a Snuffling.'''
+    
+    def __str__(self):
+        return 'No GUI available. Maybe this Snuffling cannot be run in command line mode?'
+
+class NoTracesSelected(SnufflingError):
     '''This exception is raised, when no traces have been selected in the viewer 
     and we cannot fallback to using the current view.'''
-    pass
 
-class UserCancelled(Exception):
+    def __str__(self):
+        return 'No traces have been selected / are available.'
+
+class UserCancelled(SnufflingError):
     '''This exception is raised, when the user has cancelled a snuffling dialog.'''
-    pass
+    
+    def __str__(self):
+        return 'The user has cancelled a dialog.'
 
-class SnufflingCallFailed(Exception):
+class SnufflingCallFailed(SnufflingError):
     '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
 
 
@@ -832,7 +873,7 @@ class SnufflingModule:
                 raise BrokenSnufflingModule(self._name)
                             
         elif self._mtime != mtime:
-            logger.warn('reloading snuffling module %s' % self._name)
+            logger.warn('Reloading snuffling module %s' % self._name)
             settings = self.remove_snufflings()
             try:
                 reload(self._module)
