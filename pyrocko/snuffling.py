@@ -98,6 +98,7 @@ class Snuffling:
         self._post_process_hook_enabled = False
 
         self._no_viewer_pile = None 
+        self._cli_params = {}
 
     def setup(self):
         '''Setup the snuffling.
@@ -147,6 +148,19 @@ class Snuffling:
                 self.exit(1)
 
         parser = MyOptionParser()
+        
+        parser.add_option('--format',
+                dest='format',
+                default='from_extension',
+                choices=('mseed', 'sac', 'kan', 'segy', 
+                    'seisan', 'seisan_l', 'seisan_b', 'from_extension', 'try'),
+                help='assume files are of given FORMAT [default: \'%default\']' )
+
+        parser.add_option('--pattern',
+                dest='regex',
+                metavar='REGEX',
+                help='only include files whose paths match REGEX')
+        
         self.add_params_to_cli_parser(parser)
         self.configure_cli_parser(parser)
         return parser
@@ -175,6 +189,10 @@ class Snuffling:
         for param in self._parameters:
             if isinstance(param, Param):
                 setattr(self, param.ident, getattr(options, param.ident))
+
+        self._cli_params['regex'] = options.regex
+        self._cli_params['format'] = options.format
+        self._cli_params['sources'] = args
 
         return options, args, parser
 
@@ -487,7 +505,8 @@ class Snuffling:
         '''
         
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
-        return pile.make_pile(cachedirname=cachedirname)
+        sources = self._cli_params.get('sources', sys.argv[1:])
+        return pile.make_pile(sources, cachedirname=cachedirname, regex=self._cli_params['regex'], fileformat=self._cli_params['format'])
         
     def make_panel(self, parent):
         '''Create a widget for the snuffling's control panel.
