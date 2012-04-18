@@ -3,6 +3,9 @@ from distutils.core import setup, Extension
 import os, time, sys
 from os.path import join as pjoin
 
+class NotInAGitRepos(Exception):
+    pass
+
 def git_infos():
     '''Query git about sha1 of last commit and check if there are local modifications.'''
 
@@ -11,6 +14,9 @@ def git_infos():
     def q(c):
         return Popen(c, stdout=PIPE).communicate()[0]
     
+    if not os.path.exists('.git'):
+        raise NotInAGitRepos()
+
     sha1 = q(['git', 'log', '--pretty=oneline', '-n1']).split()[0]
     sha1 = re.sub('[^0-9a-f]', '', sha1)
     sstatus = q(['git', 'status'])
@@ -28,7 +34,7 @@ def make_info_module(packname, version):
         if local_modifications:
             combi += '-modified'
 
-    except OSError:
+    except (OSError, NotInAGitRepos):
         pass
    
     datestr = time.strftime('%Y-%m-%d_%H:%M:%S')
