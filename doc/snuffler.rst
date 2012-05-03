@@ -246,3 +246,20 @@ argument should be a pattern, restricting application of the given scaling rule
 to matching traces.  If no arguments are given, any previously set scalings
 rules are cleared. 
 
+Goto
+^^^^
+
+Jump to given time or event.
+
+::
+
+  goto YYYY-MM[-DD[ HH[:MM[:SS[.XXX]]]]]
+  goto HH:MM[:SS[.XXX]]
+  goto <eventname>
+
+The first form causes the viewer to jump to the given date and time. With the
+second form (when no date is given), the date is taken from the center of the
+currently visible time range. Using the third form, it jumps to the time of an
+event with the given ``<eventname>``. The event marker is neither selected nor
+made active through this command.
+
