@@ -777,7 +777,7 @@ class Trace(object):
             ibeg = itrig_pos
             iend = min(len(self.ydata), itrig_pos + tsearch/self.deltat)
             ipeak = num.argmax(y[ibeg:iend])
-            tpeak = self.tmin + (ipeak+ibeg-1)*self.deltat
+            tpeak = self.tmin + (ipeak+ibeg)*self.deltat
             apeak = y[ibeg+ipeak]
 
             if tpeak < tzero:
@@ -1441,18 +1441,27 @@ def _project3(traces, matrix, in_channels, out_channels):
 def correlate(a, b, mode='valid', normalization=None):
     '''Cross correlation of two traces.
     
-    This function computes the cross correlation with the NumPy function of the
-    same name.  A trace containing the cross correlation coefficients is
-    returned. The time information of the output trace is adjusted so that the
-    returned cross correlation can be viewed directly as a function of time
-    shift. This function tries to circumvent some problems caused by older
-    versions of numpy.correlate.
-
     :param a,b: input traces
-    :param mode: 'valid', 'full', or 'same'
-    :param normalization: 'normal', 'gliding', or None
+    :param mode: ``'valid'``, ``'full'``, or ``'same'``
+    :param normalization: ``'normal'``, ``'gliding'``, or ``None``
 
     :returns: trace containing cross correlation coefficients
+
+    This function computes the cross correlation between two traces. It
+    evaluates the discrete equivalent of
+
+    .. math::
+
+       c(t) = \\int_{-\\infty}^{\\infty} a^{\\ast}(\\tau) b(t+\\tau) d\\tau
+
+    where the star denotes complex conjugate. Note, that the arguments here are
+    swapped when compared with the :py:func:`numpy.correlate` function,
+    which is internally called. This function should be safe even with older
+    versions of NumPy, where the correlate function has some problems.
+
+    A trace containing the cross correlation coefficients is returned. The time
+    information of the output trace is set so that the returned cross
+    correlation can be viewed directly as a function of time lag. 
 
     Example::
         
@@ -1467,16 +1476,8 @@ def correlate(a, b, mode='valid', normalization=None):
 
     ya, yb = a.ydata, b.ydata
 
-    if mode == 'same' and ya.size != yb.size:
-        # because we have problems predicting k range in this mode when sizes are not the same
-        if ya.size < yb.size:
-            ya = num.concatenate((ya, num.zeros(yb.size-ya.size, dtype=ya.dtype)))
-        elif yb.size < ya.size:
-            yb = num.concatenate((yb, num.zeros(ya.size-yb.size, dtype=yb.dtype)))
-
-    yc = num.correlate(ya, yb, mode=mode)
-    if yb.size <= ya.size and numpy_has_correlate_flip_bug():
-        yc = yc[::-1]
+    yc = numpy_correlate_fixed(yb, ya, mode=mode) # need reversed order here
+    kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode)
 
     if normalization == 'normal':
         normfac = num.sqrt(num.sum(ya**2))*num.sqrt(num.sum(yb**2))
@@ -1503,17 +1504,7 @@ def correlate(a, b, mode='valid', normalization=None):
     c = a.copy()
     c.set_ydata(yc)
     c.set_codes(*merge_codes(a,b,'~'))
-    c.shift(-c.tmin)
-    c.shift(b.tmin-a.tmin)
-
-    if mode == 'same':
-        c.shift(-((min(ya.size,yb.size)-1)/2  + max(0,ya.size-yb.size))*c.deltat )
-
-    if mode == 'valid':
-        c.shift(-max(0,(ya.size-yb.size))* c.deltat)
-
-    if mode == 'full':
-        c.shift(-(min(yb.size,ya.size)-1 + max(0,(ya.size-yb.size)))* c.deltat)
+    c.shift(-c.tmin + b.tmin-a.tmin + kmin * c.deltat)
 
     return c
 
@@ -1802,6 +1793,67 @@ def numpy_has_correlate_flip_bug():
         _globals._numpy_has_correlate_flip_bug = num.all(ab == ba)
     
     return _globals._numpy_has_correlate_flip_bug
+
+def numpy_correlate_fixed(a,b, mode='valid'):
+    '''Call :py:func:`numpy.correlate` with fixes.
+   
+        c[k] = sum_i a[i+k] * conj(b[i]) 
+
+    Note that the result produced by newer numpy.correlate is always flipped
+    with respect to the formula given in its documentation
+    (if ascending k assumed for the output).
+    '''
+    
+    buggy = numpy_has_correlate_flip_bug()
+
+    a = num.asarray(a)
+    b = num.asarray(b)
+
+    if buggy:
+        b = num.conj(b)
+
+    c = num.correlate(a,b,mode=mode)
+
+    if buggy and a.size < b.size:
+        return c[::-1]
+    else:
+        return c
+
+def numpy_correlate_emulate(a,b, mode='valid'):
+    '''Slow version of :py:func:`numpy.correlate` for comparison.'''
+
+    a = num.asarray(a)
+    b = num.asarray(b)
+    kmin = -(b.size-1)
+    klen = a.size-kmin
+    kmin, kmax = numpy_correlate_lag_range(a,b, mode=mode)
+    klen = kmax - kmin + 1
+    c = num.zeros(klen, dtype=num.find_common_type((b.dtype, a.dtype), ()))
+    for k in xrange(kmin,kmin+klen):
+        imin = max(0, -k)
+        ilen = min(b.size, a.size-k) - imin 
+        c[k-kmin] = num.sum( a[imin+k:imin+ilen+k] * num.conj(b[imin:imin+ilen]) )
+
+    return c
+
+def numpy_correlate_lag_range(a,b, mode='valid'):
+    '''Get range of lags for which :py:func:`numpy.correlate` produces values.'''
+
+    a = num.asarray(a)
+    b = num.asarray(b)
+
+    kmin = -(b.size-1)
+    if mode == 'full':
+        klen = a.size-kmin
+    elif mode == 'same': 
+        klen = max(a.size, b.size)
+        kmin += (a.size+b.size-1 - max(a.size, b.size))/2 + \
+                int(a.size % 2 == 0 and b.size > a.size)
+    elif mode == 'valid':
+        klen = abs(a.size - b.size) + 1 
+        kmin += min(a.size, b.size) - 1
+
+    return kmin, kmin + klen - 1
 
 def autocorr(x, nshifts):
     '''Compute biased estimate of the first autocorrelation coefficients.

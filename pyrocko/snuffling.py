@@ -14,7 +14,7 @@ import pile
 
 from gui_util import ValControl, LinValControl, PyLab
 
-logger = logging.getLogger('pyrocko.snufflings')
+logger = logging.getLogger('pyrocko.snuffling')
 
 def _str_traceback():
     return '%s' % (traceback.format_exc(sys.exc_info()[2]))
@@ -33,20 +33,6 @@ class Param:
         self.high_is_none = high_is_none
         self.low_is_zero = low_is_zero
         self._control = None
-
-    def set_range(self, minimum, maximum):
-        self.minimum = minimum
-        self.maximum = maximum
-        if self._control:
-            self._control.set_range(self.minimum, self.maximum)
-
-    def set_value(self, value):
-        if self._control:
-            self._control.set_value(value)
-            self._control.fire_valchange()
-
-    def _set_control(self, control):
-        self._control = control
 
 class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
@@ -113,6 +99,7 @@ class Snuffling:
         self._post_process_hook_enabled = False
 
         self._no_viewer_pile = None 
+        self._cli_params = {}
 
     def setup(self):
         '''Setup the snuffling.
@@ -154,11 +141,36 @@ class Snuffling:
             if self._menuitem:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
 
-    def make_cli_parser(self):
+    def make_cli_parser1(self):
         import optparse
-        parser = optparse.OptionParser()
+        class MyOptionParser(optparse.OptionParser):
+            def error(self, msg):
+                logger.error(msg)
+                self.exit(1)
+
+        parser = MyOptionParser()
+        
+        parser.add_option('--format',
+                dest='format',
+                default='from_extension',
+                choices=('mseed', 'sac', 'kan', 'segy', 
+                    'seisan', 'seisan_l', 'seisan_b', 'from_extension', 'try'),
+                help='assume files are of given FORMAT [default: \'%default\']' )
+
+        parser.add_option('--pattern',
+                dest='regex',
+                metavar='REGEX',
+                help='only include files whose paths match REGEX')
+        
         self.add_params_to_cli_parser(parser)
+        self.configure_cli_parser(parser)
         return parser
+
+    def configure_cli_parser(self):
+        pass
+
+    def cli_usage(self):
+        return None
 
     def add_params_to_cli_parser(self, parser):
 
@@ -172,13 +184,16 @@ class Snuffling:
         
     def setup_cli(self):
         self.setup()
-        
-        parser = self.make_cli_parser()
+        parser = self.make_cli_parser1()
         (options, args) = parser.parse_args()
         
         for param in self._parameters:
             if isinstance(param, Param):
                 setattr(self, param.ident, getattr(options, param.ident))
+
+        self._cli_params['regex'] = options.regex
+        self._cli_params['format'] = options.format
+        self._cli_params['sources'] = args
 
         return options, args, parser
 
@@ -230,16 +245,27 @@ class Snuffling:
         if self._panel or self._menuitem:
             self.delete_gui()
             self.setup_gui()
+   
+    def show_message(self, kind, message):
+        try:
+            viewer = self.get_viewer()
+            box = QMessageBox(self.get_viewer())
+            box.setText('%s: %s' % (kind.capitalize(), message))
+            box.exec_()
+        except NoViewerSet:
+            pass
     
-    
-    def error(self, reason):
-        box = QMessageBox(self.get_viewer())
-        box.setText(reason)
-        box.exec_()
-    
-    def fail(self, reason):
-        self.error(reason)
-        raise SnufflingCallFailed(reason) 
+    def error(self, message):
+        logger.error('%s: %s' % (self._name, message))
+        self.show_message('error', message)
+
+    def warn(self, message):
+        logger.warn('%s: %s' % (self._name, message))
+        self.show_message('warning', message)
+
+    def fail(self, message):
+        self.error(message)
+        raise SnufflingCallFailed(message) 
   
     def pylab(self, name=None):
         if name is None:
@@ -280,7 +306,7 @@ class Snuffling:
         '''
         
         self._parameters.append(param)
-        self.set_parameter(param.ident, param.default)
+        self._set_parameter_value(param.ident, param.default)
         
         if self._panel is not None:
             self.delete_gui()
@@ -313,13 +339,32 @@ class Snuffling:
         
         :param ident: identifier of the parameter
         :param value: new value of the parameter
-            
-        This is usually called when the parameter has been set via the gui 
-        controls.
+
+        Adjusts the control of a parameter without calling :py:meth:`call`.
         '''
         
+        self._set_parameter_value(ident, value)
+
+        control = self._param_controls.get(ident, None)
+        if control:
+            control.set_value(value)
+
+    def set_parameter_range(self, ident, vmin, vmax):
+        '''Set the range of one of the snnuffling's adjustable parameters.
+
+        :param ident: identifier of the parameter
+        :param vmin,vmax: new minimum and maximum value for the parameter
+
+        Adjusts the control of a parameter without calling :py:meth:`call`.
+        '''
+
+        control = self._param_controls.get(ident, None)
+        if control:
+            control.set_range(vmin, vmax)
+    
+    def _set_parameter_value(self, ident, value):
         setattr(self, ident, value)
-        
+
     def get_parameter_value(self, ident):
         return getattr(self, ident)
 
@@ -336,7 +381,7 @@ class Snuffling:
         dparams = dict( [ (param.ident, param) for param in params ] )
         for k,v in settings.iteritems():
             if k in dparams:
-                self.set_parameter(k,v)
+                self._set_parameter_value(k,v)
                 if k in self._param_controls:
                     control = self._param_controls[k]
                     control.set_value(v)
@@ -461,7 +506,8 @@ class Snuffling:
         '''
         
         cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
-        return pile.make_pile(cachedirname=cachedirname)
+        sources = self._cli_params.get('sources', sys.argv[1:])
+        return pile.make_pile(sources, cachedirname=cachedirname, regex=self._cli_params['regex'], fileformat=self._cli_params['format'])
         
     def make_panel(self, parent):
         '''Create a widget for the snuffling's control panel.
@@ -567,7 +613,13 @@ class Snuffling:
                 but = QPushButton(name)
                 def call_and_update(method):
                     def f():
-                        method()
+                        try:
+                            method()
+                        except SnufflingError, e:
+                            if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+                                logger.error('%s: %s' % (self._name, e))
+                            logger.error('%s: Snuffling action failed' % self._name)
+
                         self.get_viewer().update()
                     return f
 
@@ -654,7 +706,7 @@ class Snuffling:
         '''
         
         param = self.get_parameters()[iparam]
-        self.set_parameter(param.ident, value)
+        self._set_parameter_value(param.ident, value)
         if self._live_update:
             self.check_call()
             self.get_viewer().update()
@@ -663,7 +715,7 @@ class Snuffling:
     def switch_on_snuffling_panel(self, ident, state):
         '''Called when the user has toggled a switchable parameter.'''
 
-        self.set_parameter(ident, state)
+        self._set_parameter_value(ident, state)
         if self._live_update:
             self.check_call()
             self.get_viewer().update()
@@ -671,7 +723,7 @@ class Snuffling:
     def choose_on_snuffling_panel(self, ident, state):
         '''Called when the user has made a choice about a choosable parameter.'''
 
-        self.set_parameter(ident, state)
+        self._set_parameter_value(ident, state)
         if self._live_update:
             self.check_call()
             self.get_viewer().update()
@@ -767,8 +819,12 @@ class Snuffling:
     def check_call(self):
         try:
             self.call()
-        except SnufflingCallFailed, e:
-            logger.error('%s: %s' % (self._name, str(e)))
+            return 0
+        except SnufflingError, e:
+            if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+                logger.error('%s: %s' % (self._name, e))
+            logger.error('%s: Snuffling action failed' % self._name)
+            return 1
 
     def call(self):
         '''Main work routine of the snuffling.
@@ -792,20 +848,29 @@ class Snuffling:
             import shutil
             shutil.rmtree(self._tempdir)
 
-class NoViewerSet(Exception):
-    '''This exception is raised, when no viewer has been set on a Snuffling.'''
+class SnufflingError(Exception):
     pass
 
-class NoTracesSelected(Exception):
+class NoViewerSet(SnufflingError):
+    '''This exception is raised, when no viewer has been set on a Snuffling.'''
+    
+    def __str__(self):
+        return 'No GUI available. Maybe this Snuffling cannot be run in command line mode?'
+
+class NoTracesSelected(SnufflingError):
     '''This exception is raised, when no traces have been selected in the viewer 
     and we cannot fallback to using the current view.'''
-    pass
 
-class UserCancelled(Exception):
+    def __str__(self):
+        return 'No traces have been selected / are available.'
+
+class UserCancelled(SnufflingError):
     '''This exception is raised, when the user has cancelled a snuffling dialog.'''
-    pass
+    
+    def __str__(self):
+        return 'The user has cancelled a dialog.'
 
-class SnufflingCallFailed(Exception):
+class SnufflingCallFailed(SnufflingError):
     '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
 
 
@@ -847,7 +912,7 @@ class SnufflingModule:
                 raise BrokenSnufflingModule(self._name)
                             
         elif self._mtime != mtime:
-            logger.warn('reloading snuffling module %s' % self._name)
+            logger.warn('Reloading snuffling module %s' % self._name)
             settings = self.remove_snufflings()
             try:
                 reload(self._module)

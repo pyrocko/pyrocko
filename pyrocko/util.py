@@ -292,7 +292,7 @@ def decitab(n):
 
     if n > GlobalVars.decitab_nmax:
         mk_decitab(n*2)
-    if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
+    if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % n)
     return GlobalVars.decitab[n]
 
 def ctimegm(s, format="%Y-%m-%d %H:%M:%S"):

@@ -135,13 +135,13 @@ def plot_xt(paths, zstart, zstop, plot=None, vred=None, distances=None):
             plot.plot(x,t-x/vred, linewidth=2, color=color)
             plot.plot([x[0]], [t[0]-x[0]/vred], 'o', color=color)
             plot.plot([x[-1]], [t[-1]-x[-1]/vred], 'o', color=color)
-            plot.text(x[len(x)/2], t[len(x)/2]-x[len(x)/2]/vred, path.used_phase.used_repr(), color=color,
+            plot.text(x[len(x)/2], t[len(x)/2]-x[len(x)/2]/vred, path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1), fontsize=10)
         else:
             plot.plot(x,t, linewidth=2, color=color)
             plot.plot([x[0]], [t[0]], 'o', color=color)
             plot.plot([x[-1]], [t[-1]], 'o', color=color)
-            plot.text(x[len(x)/2], t[len(x)/2], path.used_phase.used_repr(), color=color,
+            plot.text(x[len(x)/2], t[len(x)/2], path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1), fontsize=10)
    
     all_x = num.concatenate(all_x)
@@ -182,7 +182,7 @@ def plot_xp(paths, zstart, zstop, plot=None):
         plot.plot(x, p, linewidth=2, color=color)
         plot.plot(x[:1], p[:1], 'o', color=color)
         plot.plot(x[-1:], p[-1:], 'o', color=color)
-        plot.text(x[len(x)/2], p[len(x)/2], path.used_phase.used_repr(), color=color,
+        plot.text(x[len(x)/2], p[len(x)/2], path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1))
         all_x.append(x)
     

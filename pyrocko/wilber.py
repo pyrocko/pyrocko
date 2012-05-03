@@ -249,6 +249,10 @@ class IrisWilber(Wilber):
             page = urllib2.urlopen(self.urlbeg+event.urlend).read()
             
             params = self.extract_hidden_params(page)
+            
+            if not vnetcodes and not netcodes:
+                params.append(('netcode', 'ALL'))
+
             for vnetcode in vnetcodes:
                 params.append(('vnetcode', vnetcode))
             
@@ -283,8 +287,9 @@ class IrisWilber(Wilber):
             params = []
             
             hidden_params = dict(hidden_params)
-            for k in ('evname', 'qtrxyrad', 'vnetcode'):
-                params.append( (k, hidden_params[k]) )
+            for k in ('evname', 'qtrxyrad', 'vnetcode', 'netcode'):
+                if k in hidden_params:
+                    params.append( (k, hidden_params[k]) )
                 
             params.append( ('network', 'ALL') )
             
