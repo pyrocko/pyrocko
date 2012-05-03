@@ -104,37 +104,37 @@ Options
 Keystrokes
 ----------
 
-==================== ===============================================================
-Key                  Effect
-==================== ===============================================================
-*q*                  Quit 
-*r*                  Reload modified files 
-*R*                  Reload snufflings
-*f*                  Toggle full screen mode 
-*:*                  Enter command 
-*<space>*            Forward one page in time 
-*b*                  Backward one page in time 
-*<pagedown>*         Scroll tracks one page down 
-*<pageup>*           Scroll tracks one page up 
-*+*                  Show one track more 
-*-*                  Show one track less
-*=*                  Show initial number of tracks
-*g*                  Go to selection / show all
-*n*                  Go to next marker 
-*p*                  Go to previous marker 
-*N*                  Go to next event marker
-*P*                  Go to previous event marker 
-*a*                  Select all markers currently visible 
-*A*                  Select all markers 
-*d*                  Deselect all markers 
-*0* ... *5*          Change color of marker 
-*<f1>* ... *<f5>*    Convert to phase marker
-*e*                  Convert to event marker / set active event / associate to event
-*<f10>*              Convert phase marker to normal marker
-*<backspace>*        Delete marker
-*<escape>*           Abort picking 
-*?*                  Help
-==================== ===============================================================
+=========================== ===============================================================
+Key                         Effect
+=========================== ===============================================================
+:kbd:`q`                    Quit 
+:kbd:`r`                    Reload modified files 
+:kbd:`R`                    Reload snufflings
+:kbd:`f`                    Toggle full screen mode 
+:kbd:`:`                    Enter command 
+:kbd:`<space>`              Forward one page in time 
+:kbd:`b`                    Backward one page in time 
+:kbd:`<pagedown>`           Scroll tracks one page down 
+:kbd:`<pageup>`             Scroll tracks one page up 
+:kbd:`+`                    Show one track more 
+:kbd:`-`                    Show one track less
+:kbd:`=`                    Show initial number of tracks
+:kbd:`g`                    Go to selection / show all
+:kbd:`n`                    Go to next marker 
+:kbd:`p`                    Go to previous marker 
+:kbd:`N`                    Go to next event marker
+:kbd:`P`                    Go to previous event marker 
+:kbd:`a`                    Select all markers currently visible 
+:kbd:`A`                    Select all markers 
+:kbd:`d`                    Deselect all markers 
+:kbd:`0` ... :kbd:`5`       Change color of marker 
+:kbd:`<f1>` ... :kbd:`<f5>` Convert to phase marker
+:kbd:`e`                    Convert to event marker / set active event / associate to event
+:kbd:`<f10>`                Convert phase marker to normal marker
+:kbd:`<backspace>`          Delete marker
+:kbd:`<escape>`             Abort picking 
+:kbd:`?`                    Help
+=========================== ===============================================================
 
 Mouse
 -----
@@ -145,9 +145,9 @@ Mouse                            Effect
 Click and drag                   Zoom and pan 
 Click and drag on time axis      Pan only 
 Click on marker                  Select marker 
-*<shift>* + click on marker      Select additional marker
+:kbd:`<shift>` + click on marker Select additional marker
 Wheel                            Scroll tracks vertically 
-*<ctrl>* + wheel                 Change number of tracks shown 
+:kbd:`<ctrl>` + wheel            Change number of tracks shown 
 Right-click                      Menu 
 Double-click                     Enter picking mode 
 ================================ =========================================
@@ -245,4 +245,21 @@ scaling for the corresponding limit.  If three arguments are given, the first
 argument should be a pattern, restricting application of the given scaling rule
 to matching traces.  If no arguments are given, any previously set scalings
 rules are cleared. 
+
+Goto
+^^^^
+
+Jump to given time or event.
+
+::
+
+  goto YYYY-MM[-DD[ HH[:MM[:SS[.XXX]]]]]
+  goto HH:MM[:SS[.XXX]]
+  goto <eventname>
+
+The first form causes the viewer to jump to the given date and time. With the
+second form (when no date is given), the date is taken from the center of the
+currently visible time range. Using the third form, it jumps to the time of an
+event with the given ``<eventname>``. The event marker is neither selected nor
+made active through this command.
 

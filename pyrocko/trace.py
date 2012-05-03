@@ -1441,18 +1441,27 @@ def _project3(traces, matrix, in_channels, out_channels):
 def correlate(a, b, mode='valid', normalization=None):
     '''Cross correlation of two traces.
     
-    This function computes the cross correlation with the NumPy function of the
-    same name.  A trace containing the cross correlation coefficients is
-    returned. The time information of the output trace is adjusted so that the
-    returned cross correlation can be viewed directly as a function of time
-    shift. This function tries to circumvent some problems caused by older
-    versions of numpy.correlate.
-
     :param a,b: input traces
-    :param mode: 'valid', 'full', or 'same'
-    :param normalization: 'normal', 'gliding', or None
+    :param mode: ``'valid'``, ``'full'``, or ``'same'``
+    :param normalization: ``'normal'``, ``'gliding'``, or ``None``
 
     :returns: trace containing cross correlation coefficients
+
+    This function computes the cross correlation between two traces. It
+    evaluates the discrete equivalent of
+
+    .. math::
+
+       c(t) = \\int_{-\\infty}^{\\infty} a^{\\ast}(\\tau) b(t+\\tau) d\\tau
+
+    where the star denotes complex conjugate. Note, that the arguments here are
+    swapped when compared with the :py:func:`numpy.correlate` function,
+    which is internally called. This function should be safe even with older
+    versions of NumPy, where the correlate function has some problems.
+
+    A trace containing the cross correlation coefficients is returned. The time
+    information of the output trace is set so that the returned cross
+    correlation can be viewed directly as a function of time lag. 
 
     Example::
         

@@ -7,6 +7,94 @@ pjoin = os.path.join
 
 logger = logging.getLogger('pyrocko.rdseed')
 
+def read_station_header_file(fn):
+
+    def m(i, *args):
+        if len(ltoks) >= i + len(args) and (tuple(ltoks[i:i+len(args)]) == args):
+            return True
+        return False
+    
+    def f(i):
+        return float(toks[i])
+   
+    def s(i):
+        if len(toks) > i:
+            return toks[i]
+        else:
+            return ''
+
+    fi = open(fn, 'r')
+    
+    stations = []
+    atsec, station, channel = None, None, None
+
+    for line in fi:
+        toks = line.split()
+        ltoks = line.lower().split()
+        if m(2, 'station', 'header'):
+            atsec = 'station'
+            station  = {'channels': []}
+            stations.append(station)
+            continue
+
+        if m(2, 'station') and m(5, 'channel'):
+            atsec = 'channel'
+            channel = {}
+            station['channels'].append(channel)
+            continue
+
+        if atsec == 'station':
+            if m(1, 'station', 'code:'):
+                station['station'] = s(3)
+
+            elif m(1, 'network', 'code:'):
+                station['network'] = s(3)
+
+            elif m(1, 'name:'):
+                station['name'] = ' '.join( toks[2:])
+
+        if atsec == 'channel':
+            if m(1, 'channel:'):
+                channel['channel'] = s(2)
+
+            elif m(1, 'location:'):
+                channel['location'] = s(2)
+            
+            elif m(1, 'latitude:'):
+                station['lat'] = f(2)
+            
+            elif m(1, 'longitude:'):
+                station['lon'] = f(2)
+
+            elif m(1, 'elevation:'):
+                station['elevation'] = f(2)
+
+            elif m(1, 'local', 'depth:'):
+                channel['depth'] = f(3)
+            
+            elif m(1, 'azimuth:'):
+                channel['azimuth'] = f(2)
+
+            elif m(1, 'dip:'):
+                channel['dip'] = f(2)
+    
+    fi.close()
+    
+    nsl_stations = {}
+    for station in stations:
+        for channel in station['channels']:
+            def cs(k, default=None):
+                return channel.get(k, station.get(k, default))
+
+            nsl = station['network'], station['station'], channel['location']
+            if nsl not in nsl_stations:
+                nsl_stations[nsl] = model.Station(network=station['network'], station=station['station'], location=channel['location'], 
+                            lat=cs('lat'), lon=cs('lon'), elevation=cs('elevation'), depth=cs('depth', None), name=station['name'])
+
+            nsl_stations[nsl].add_channel(model.Channel(channel['channel'], azimuth=channel['azimuth'], dip=channel['dip']))
+        
+    return nsl_stations.values()
+
 def cmp_version(a,b):
     ai = [ int(x) for x in a.split('.') ]
     bi = [ int(x) for x in b.split('.') ]
@@ -137,8 +225,12 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         
     def get_restitution(self, tr, allowed_methods):
         
+
         if 'evalresp' in allowed_methods:
             respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
+            if not os.path.exists(respfile):
+               raise eventdata.NoRestitution('no response information available for trace %s.%s.%s.%s' % tr.nslc_id)
+
             trans = trace.InverseEvalresp(respfile, tr)
             return trans
         else:
@@ -155,6 +247,11 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             # seismograms:
             if self._pile is None:
                 rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-d', '-z', '3', '-o', '1', '-p', '-R', '-q', output_dir], 
+                                         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                (out,err) = rdseed_proc.communicate()
+                logging.info(strerr(err))
+            else:
+                rdseed_proc = subprocess.Popen([Programs.rdseed, '-f', input_fn, '-z', '3', '-p', '-R', '-q', output_dir], 
                                          stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 (out,err) = rdseed_proc.communicate()
                 logging.info(strerr(err))
@@ -218,78 +315,10 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             
         f.close()
         return events
-    
-    def _get_channel_orientations(self):
-        
-        orientations = {}
-        pile = self.get_pile()
-        
-        for trace in pile.iter_all():
-            dip = trace.meta['cmpinc']-90.
-            azimuth = trace.meta['cmpaz']
-            orientations[trace.nslc_id] = azimuth, dip
-        return orientations
         
     def _get_stations_from_file(self):
-        
-        orientations = self._get_channel_orientations()
-        
-        # make station to locations map, cause these are not included in the 
-        # rdseed.stations file
-        
-        p = self.get_pile()
-        ns_to_l = {}
-        for nslc in p.nslc_ids:
-            ns = nslc[:2]
-            if ns not in ns_to_l:
-                ns_to_l[ns] = set()
-            
-            ns_to_l[ns].add(nslc[2])
-        
-        
-        # make
-        
-        rdseed_station_file = os.path.join(self.tempdir, 'rdseed.stations')
-        
-        f = open(rdseed_station_file, 'r')
-        
-        # sometimes there are line breaks in the station description strings
-        
-        txt = f.read()
-        rows = dumb_parser( txt )
-        f.close()
-        
-        icolname = 6
-        icolcomp = 5
-        
-        stations = []
-        
-        for cols in rows:
-            network, station = cols[1], cols[0]
-            for location in ns_to_l[network, station]:
-                
-                channels = []
-                for channel in  cols[icolcomp].split():
-                    if (network, station, location, channel) in orientations:
-                        azimuth, dip = orientations[network, station, location, channel]
-                    else:
-                        azimuth, dip = None, None # let Channel guess from name
-                    channels.append(model.Channel(channel, azimuth, dip))
-                    
-                s = model.Station(
-                    network = cols[1],
-                    station = cols[0],
-                    location = location,
-                    lat = float(cols[2]),
-                    lon = float(cols[3]),
-                    elevation = float(cols[4]),
-                    name = cols[icolname],
-                    channels = channels
-                )
-                stations.append(s)
-                
+        stations = read_station_header_file(self.station_headers_file)
         return stations
-        
         
     def _insert_channel_descriptions(self, stations):
         # this is done beforehand in this class
