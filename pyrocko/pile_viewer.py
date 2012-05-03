@@ -1745,15 +1745,8 @@ def MakePileViewerMainClass(base):
                 tmax = working_system_time_range[1]
 
             return tmin, tmax
-        
-        def go_to_selection(self):
-            markers = self.selected_markers()
-            pile = self.get_pile()
-            tmax, tmin = self.content_time_range()
-            for marker in markers:
-                tmin = min(tmin, marker.tmin)
-                tmax = max(tmax, marker.tmax)
-
+       
+        def make_good_looking_time_range(self, tmin, tmax):
             if tmax < tmin:
                 tmin, tmax = tmax, tmin
 
@@ -1778,9 +1771,33 @@ def MakePileViewerMainClass(base):
                 dtm = tmax-tmin
                 tmin -= dtm*0.1
                 tmax += dtm*0.1
-            
+
+            return tmin, tmax
+        
+        def go_to_selection(self):
+            markers = self.selected_markers()
+            pile = self.get_pile()
+            tmax, tmin = self.content_time_range()
+            for marker in markers:
+                tmin = min(tmin, marker.tmin)
+                tmax = max(tmax, marker.tmax)
+
+            tmin, tmax = self.make_good_looking_time_range(tmin, tmax) 
             self.set_time_range(tmin,tmax)
             self.update()
+            
+        def go_to_time(self, t):
+            tmin, tmax = self.make_good_looking_time_range(t,t)
+            self.set_time_range(tmin,tmax)
+            self.update()
+
+        def go_to_event_by_name(self, name):
+            for marker in self.markers:
+                if isinstance(marker, EventMarker):
+                    event = marker.get_event()
+                    if event.name.lower() == name.lower():
+                        tmin, tmax = self.make_good_looking_time_range(event.time, event.time)
+                        self.set_time_range(tmin, tmax)
 
         def printit(self):
             printer = QPrinter()
@@ -2723,6 +2740,30 @@ def MakePileViewerMainClass(base):
                                     upd(data_ranges, k, vmin, vmax)
                             
                             self.set_scaling_hook(pattern, hook)
+
+                    elif command == 'goto':
+                        toks2 = text.split(None, 1)
+                        if len(toks2) == 2:
+                            arg = toks2[1]
+                            if re.match(r'^\d\d\d\d-\d\d(-\d\d( \d\d(:\d\d(:\d\d(.\d+)?)?)?)?)?$', arg):
+                                supl = '1970-01-01 00:00:00'
+                                if len(supl) > len(arg):
+                                    arg = arg + supl[-(len(supl)-len(arg)):]
+                                t = pyrocko.util.str_to_time(arg)
+                                self.go_to_time(t)
+                            
+                            elif re.match(r'^\d\d:\d\d(:\d\d(.\d+)?)?$', arg):
+                                supl = '00:00:00'
+                                if len(supl) > len(arg):
+                                    arg = arg + supl[-(len(supl)-len(arg)):]
+                                tmin, tmax = self.get_time_range()
+                                sdate = pyrocko.util.time_to_str(tmin/2.+tmax/2., format='%Y-%m-%d')
+                                t = pyrocko.util.str_to_time(sdate + ' ' + arg)
+                                self.go_to_time(t)
+
+                            else:
+                                self.go_to_event_by_name(arg)
+
 
                     elif command in ('n', 's', 'l', 'c'):
                         self.update() 
