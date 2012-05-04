@@ -542,7 +542,6 @@ class Snuffling:
                     else:
                         param_control = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none, low_is_zero=param.low_is_zero)
                     
-                    param._set_control( param_control )
                     param_control.setup(param.name, param.minimum, param.maximum, param.default, iparam)
                     self.get_viewer().connect( param_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
