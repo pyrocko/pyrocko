@@ -113,9 +113,10 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         if 'from_trace' in kwargs:
             self.clear()
             trace = kwargs['from_trace']
-            for (k,v) in trace.meta.iteritems():
-                if k in SacFile.header_keys:
-                    setattr(self, k, v)
+            if trace.meta:
+                for (k,v) in trace.meta.iteritems():
+                    if k in SacFile.header_keys:
+                        setattr(self, k, v)
 
             self.knetwk = trace.network
             self.kstnm = trace.station
