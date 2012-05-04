@@ -2442,12 +2442,12 @@ class LayeredModel:
             at_layer = isinstance(current, Layer)
             at_discontinuity = isinstance(current, Discontinuity)
 
-            if next_knee is None: # detect trapped wave
-                k = (id(current), direction, mode)
-                if k in trapdetect:
-                    raise Trapped()
-                
-                trapdetect.add(k)
+            # detect trapped wave
+            k = (id(next_knee), id(current), direction, mode)
+            if k in trapdetect:
+                raise Trapped()
+            
+            trapdetect.add(k)
             
             if at_discontinuity:
                 oldmode, olddirection = mode, direction
