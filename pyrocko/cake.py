@@ -2303,6 +2303,20 @@ class LayeredModel:
 
         self._elements.append(element)
 
+    def elements(self, direction=DOWN):
+        '''Iterate over all elements of the model.
+
+        :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`.
+        
+        Objects derived from the :py:class:`Discontinuity` and :py:class:`Layer` classes are yielded.
+        '''
+
+        if direction == DOWN:
+            return iter(self._elements)
+        else:
+            return reversed(self._elements)
+        
+
     def layers(self, direction=DOWN):
         '''Iterate over all layers of model.
         
