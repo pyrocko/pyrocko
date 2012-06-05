@@ -284,7 +284,7 @@ class SnufflerWindow(QMainWindow):
 class Snuffler(QApplication):
     
     def __init__(self):
-        QApplication.__init__(self, [])
+        QApplication.__init__(self, sys.argv)
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myQuit)
         signal.signal(signal.SIGINT, self.myCloseAllWindows)
         self.server = None
@@ -333,9 +333,6 @@ class Snuffler(QApplication):
 
     def event(self, e):
         if isinstance(e, QFileOpenEvent):
-            if str(e.file()) in self._args_to_be_ignored_in_qfileopenevents:
-                return False 
-
             paths = [ str(e.file()) ]
             wins = self.snuffler_windows()
             if wins:
@@ -392,9 +389,6 @@ def snuffle(pile=None, **kwargs):
     global app
     if app is None:
         app = Snuffler()
-        # because cocoa sends fileopenevents for command line args
-        app._args_to_be_ignored_in_qfileopenevents = \
-                [ p for p in map(os.path.abspath, sys.argv) if os.path.exists(p) ]
     
     kwargs_load = {}
     for k in ('paths', 'regex', 'progressive', 'format', 'cache_dir', 'force_cache'):
