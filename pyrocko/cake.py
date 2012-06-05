@@ -2303,6 +2303,20 @@ class LayeredModel:
 
         self._elements.append(element)
 
+    def elements(self, direction=DOWN):
+        '''Iterate over all elements of the model.
+
+        :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`.
+        
+        Objects derived from the :py:class:`Discontinuity` and :py:class:`Layer` classes are yielded.
+        '''
+
+        if direction == DOWN:
+            return iter(self._elements)
+        else:
+            return reversed(self._elements)
+        
+
     def layers(self, direction=DOWN):
         '''Iterate over all layers of model.
         
@@ -2428,12 +2442,12 @@ class LayeredModel:
             at_layer = isinstance(current, Layer)
             at_discontinuity = isinstance(current, Discontinuity)
 
-            if next_knee is None: # detect trapped wave
-                k = (id(current), direction, mode)
-                if k in trapdetect:
-                    raise Trapped()
-                
-                trapdetect.add(k)
+            # detect trapped wave
+            k = (id(next_knee), id(current), direction, mode)
+            if k in trapdetect:
+                raise Trapped()
+            
+            trapdetect.add(k)
             
             if at_discontinuity:
                 oldmode, olddirection = mode, direction
@@ -2783,10 +2797,24 @@ def castagna_vs_to_vp(vs):
         vp = 1.16 * vs + 1360 [m/s]
 
     :param vs: S-wave velocity [m/s]
-    :returns: vp in [m/s]
+    :returns: P-wave velocity [m/s]
     '''
 
     return vs*1.16 + 1360.0
+
+def castagna_vp_to_vs(vp):
+    '''Calculate vp from vs using castagna's relation.
+
+    Castagna's relation (the mudrock line) is an empirical relation for vp/vs for 
+    siliciclastic rocks (i.e. sandstones and shales). [Castagna et al., 1985]
+
+        vp = 1.16 * vs + 1360 [m/s]
+
+    :param vp: P-wave velocity [m/s]
+    :returns: S-wave velocity [m/s]
+    '''
+
+    return  (vp - 1360.0) / 1.16 
 
 def evenize(x,y, minsize=10):
     if x.size < minsize:
