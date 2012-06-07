@@ -339,6 +339,38 @@ class TraceTestCase(unittest.TestCase):
 
         assert not have_flips and not have_errs, '\n'.join(lines)
 
+    def testFFTCorrelate(self):
+        for na in range(1,20):
+            for nb in range(1,20):
+                a1 = num.random.random(na)
+                a2 = num.random.random(nb)
+                
+                t1 = trace.Trace(station='t1', ydata=a1)
+                t2 = trace.Trace(station='t2', ydata=a2)
+
+                for mode in 'full', 'same', 'valid':
+                    c1 = trace.correlate(t1,t2, mode=mode)
+                    c2 = trace.correlate(t1,t2, mode=mode, use_fft=True)
+                    c1.set_station('c1')
+                    c2.set_station('c2')
+                    d = num.abs(c1.get_ydata() - c2.get_ydata())
+
+                    if not num.all(d < 1e-5) :
+                        assert mode == 'same'
+                        
+                        assert abs(abs(c1.tmin-c2.tmin) - 1.0) < 1e-5
+                        assert abs(abs(c1.tmax-c2.tmax) - 1.0) < 1e-5
+
+                        tmin = max(c1.tmin, c2.tmin)
+                        tmax = min(c1.tmax, c2.tmax)
+                        c1.chop(tmin, tmax, include_last=True)
+                        c2.chop(tmin, tmax, include_last=True)
+                        
+                        d = num.abs(c1.get_ydata() - c2.get_ydata())
+                        assert(num.all(d< 1e-5))   
+                    else:
+                        assert num.all(d < 1e-5)
+
     def testMovingSum(self):
 
         x = num.arange(5)
