@@ -1796,7 +1796,7 @@ def numpy_correlate_fixed(a,b, mode='valid', use_fft=False):
 
     if use_fft:
         assert a.size == b.size, 'arrays must have same length when using frequency domain cross correlation.'
-        return num.fftconvolve(a, b[::-1])
+        return signal.fftconvolve(a, b[::-1])
 
     else:
         buggy = numpy_has_correlate_flip_bug()
