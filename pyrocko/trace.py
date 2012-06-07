@@ -1438,7 +1438,7 @@ def _project3(traces, matrix, in_channels, out_channels):
     return projected
 
 
-def correlate(a, b, mode='valid', normalization=None):
+def correlate(a, b, mode='valid', normalization=None, use_fft=False):
     '''Cross correlation of two traces.
     
     :param a,b: input traces
@@ -1476,7 +1476,7 @@ def correlate(a, b, mode='valid', normalization=None):
 
     ya, yb = a.ydata, b.ydata
 
-    yc = numpy_correlate_fixed(yb, ya, mode=mode) # need reversed order here
+    yc = numpy_correlate_fixed(yb, ya, mode=mode, use_fft=use_fft) # need reversed order here
     kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode)
 
     if normalization == 'normal':
@@ -1794,7 +1794,7 @@ def numpy_has_correlate_flip_bug():
     
     return _globals._numpy_has_correlate_flip_bug
 
-def numpy_correlate_fixed(a,b, mode='valid'):
+def numpy_correlate_fixed(a,b, mode='valid', use_fft=False):
     '''Call :py:func:`numpy.correlate` with fixes.
    
         c[k] = sum_i a[i+k] * conj(b[i]) 
@@ -1803,21 +1803,26 @@ def numpy_correlate_fixed(a,b, mode='valid'):
     with respect to the formula given in its documentation
     (if ascending k assumed for the output).
     '''
-    
-    buggy = numpy_has_correlate_flip_bug()
 
-    a = num.asarray(a)
-    b = num.asarray(b)
+    if use_fft:
+        assert a.size == b.size, 'arrays must have same length when using frequency domain cross correlation.'
+        return num.fftconvolve(a, b[::-1])[::-1]
 
-    if buggy:
-        b = num.conj(b)
-
-    c = num.correlate(a,b,mode=mode)
-
-    if buggy and a.size < b.size:
-        return c[::-1]
     else:
-        return c
+        buggy = numpy_has_correlate_flip_bug()
+
+        a = num.asarray(a)
+        b = num.asarray(b)
+
+        if buggy:
+            b = num.conj(b)
+
+        c = num.correlate(a,b,mode=mode)
+
+        if buggy and a.size < b.size:
+            return c[::-1]
+        else:
+            return c
 
 def numpy_correlate_emulate(a,b, mode='valid'):
     '''Slow version of :py:func:`numpy.correlate` for comparison.'''
