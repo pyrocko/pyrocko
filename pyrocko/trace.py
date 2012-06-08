@@ -1444,6 +1444,7 @@ def correlate(a, b, mode='valid', normalization=None, use_fft=False):
     :param a,b: input traces
     :param mode: ``'valid'``, ``'full'``, or ``'same'``
     :param normalization: ``'normal'``, ``'gliding'``, or ``None``
+    :param use_fft: bool, whether to do cross correlation in spectral domain
 
     :returns: trace containing cross correlation coefficients
 
@@ -1477,7 +1478,7 @@ def correlate(a, b, mode='valid', normalization=None, use_fft=False):
     ya, yb = a.ydata, b.ydata
 
     yc = numpy_correlate_fixed(yb, ya, mode=mode, use_fft=use_fft) # need reversed order here
-    kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode)
+    kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode, use_fft=use_fft)
 
     if normalization == 'normal':
         normfac = num.sqrt(num.sum(ya**2))*num.sqrt(num.sum(yb**2))
@@ -1805,8 +1806,7 @@ def numpy_correlate_fixed(a,b, mode='valid', use_fft=False):
     '''
 
     if use_fft:
-        assert a.size == b.size, 'arrays must have same length when using frequency domain cross correlation.'
-        return signal.fftconvolve(a, b[::-1])
+        return signal.fftconvolve(a, b[::-1], mode=mode)
 
     else:
         buggy = numpy_has_correlate_flip_bug()
@@ -1841,7 +1841,7 @@ def numpy_correlate_emulate(a,b, mode='valid'):
 
     return c
 
-def numpy_correlate_lag_range(a,b, mode='valid'):
+def numpy_correlate_lag_range(a,b, mode='valid', use_fft=False):
     '''Get range of lags for which :py:func:`numpy.correlate` produces values.'''
 
     a = num.asarray(a)
@@ -1853,7 +1853,7 @@ def numpy_correlate_lag_range(a,b, mode='valid'):
     elif mode == 'same': 
         klen = max(a.size, b.size)
         kmin += (a.size+b.size-1 - max(a.size, b.size))/2 + \
-                int(a.size % 2 == 0 and b.size > a.size)
+                int(not use_fft and a.size % 2 == 0 and b.size > a.size)
     elif mode == 'valid':
         klen = abs(a.size - b.size) + 1 
         kmin += min(a.size, b.size) - 1
