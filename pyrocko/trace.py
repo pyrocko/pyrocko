@@ -8,7 +8,7 @@ import time, math, copy, logging, sys
 import numpy as num
 from util import reuse
 from scipy import signal
-from pyrocko import model
+from pyrocko import model, orthodrome
 from nano import asnano, Nano
 
 logger = logging.getLogger('pyrocko.trace')
@@ -1208,6 +1208,18 @@ def rotate(traces, azimuth, in_channels, out_channels):
                     
     return rotated
 
+def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
+    azimuth = orthodrome.azimuth(receiver, source) + 180.
+    in_channels = n.channel, e.channel
+    out = rotate([n,e], azimuth, in_channels=in_channels, out_channels=out_channels)
+    assert len(out) == 2
+    for tr in out:
+        if tr.channel=='R':
+            r = tr
+        elif tr.channel == 'T':
+            t = tr
+
+    return r,t
 
 def _decompose(a):
     '''Decompose matrix into independent submatrices.'''
