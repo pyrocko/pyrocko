@@ -62,7 +62,7 @@ class Stopwatch:
         
 
 def progressbar(label, maxval):
-    widgets = ['Scanning files', ' ',
+    widgets = [label, ' ',
             progressbar_mod.Bar(marker='-',left='[',right=']'), ' ',
             progressbar_mod.Percentage(), ' ',]
        
