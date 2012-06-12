@@ -2144,6 +2144,22 @@ class Ray:
         self.t = t
         self.endgaps = endgaps
 
+    def given_phase(self):
+        '''Get phase definition which was used to create the ray.
+        
+        :returns: :py:class:`PhaseDef` object
+        '''
+
+        return self.path.phase
+
+    def used_phase(self):
+        '''Compute phase definition from propagation path.
+       
+        :returns: :py:class:`PhaseDef` object
+        '''
+
+        return self.path.used_phase(self.p)
+
     def refine(self, eps=0.0001):
         x, t = self.path.xt(self.p, self.endgaps)
         xeps = self.x*eps
