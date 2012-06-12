@@ -964,7 +964,7 @@ class Trace(object):
         :param opengl: bool, whether to use opengl (default: ``False``)
         '''
 
-        snuffle( [self], **kwargs)
+        return snuffle( [self], **kwargs)
 
 def snuffle(traces, **kwargs):
     '''Show traces in a snuffler window.
