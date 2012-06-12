@@ -1428,12 +1428,13 @@ def _project3(traces, matrix, in_channels, out_channels):
     return projected
 
 
-def correlate(a, b, mode='valid', normalization=None):
+def correlate(a, b, mode='valid', normalization=None, use_fft=False):
     '''Cross correlation of two traces.
     
     :param a,b: input traces
     :param mode: ``'valid'``, ``'full'``, or ``'same'``
     :param normalization: ``'normal'``, ``'gliding'``, or ``None``
+    :param use_fft: bool, whether to do cross correlation in spectral domain
 
     :returns: trace containing cross correlation coefficients
 
@@ -1466,8 +1467,8 @@ def correlate(a, b, mode='valid', normalization=None):
 
     ya, yb = a.ydata, b.ydata
 
-    yc = numpy_correlate_fixed(yb, ya, mode=mode) # need reversed order here
-    kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode)
+    yc = numpy_correlate_fixed(yb, ya, mode=mode, use_fft=use_fft) # need reversed order here
+    kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode, use_fft=use_fft)
 
     if normalization == 'normal':
         normfac = num.sqrt(num.sum(ya**2))*num.sqrt(num.sum(yb**2))
@@ -1784,7 +1785,7 @@ def numpy_has_correlate_flip_bug():
     
     return _globals._numpy_has_correlate_flip_bug
 
-def numpy_correlate_fixed(a,b, mode='valid'):
+def numpy_correlate_fixed(a,b, mode='valid', use_fft=False):
     '''Call :py:func:`numpy.correlate` with fixes.
    
         c[k] = sum_i a[i+k] * conj(b[i]) 
@@ -1793,21 +1794,25 @@ def numpy_correlate_fixed(a,b, mode='valid'):
     with respect to the formula given in its documentation
     (if ascending k assumed for the output).
     '''
-    
-    buggy = numpy_has_correlate_flip_bug()
 
-    a = num.asarray(a)
-    b = num.asarray(b)
+    if use_fft:
+        return signal.fftconvolve(a, b[::-1], mode=mode)
 
-    if buggy:
-        b = num.conj(b)
-
-    c = num.correlate(a,b,mode=mode)
-
-    if buggy and a.size < b.size:
-        return c[::-1]
     else:
-        return c
+        buggy = numpy_has_correlate_flip_bug()
+
+        a = num.asarray(a)
+        b = num.asarray(b)
+
+        if buggy:
+            b = num.conj(b)
+
+        c = num.correlate(a,b,mode=mode)
+
+        if buggy and a.size < b.size:
+            return c[::-1]
+        else:
+            return c
 
 def numpy_correlate_emulate(a,b, mode='valid'):
     '''Slow version of :py:func:`numpy.correlate` for comparison.'''
@@ -1826,7 +1831,7 @@ def numpy_correlate_emulate(a,b, mode='valid'):
 
     return c
 
-def numpy_correlate_lag_range(a,b, mode='valid'):
+def numpy_correlate_lag_range(a,b, mode='valid', use_fft=False):
     '''Get range of lags for which :py:func:`numpy.correlate` produces values.'''
 
     a = num.asarray(a)
@@ -1838,7 +1843,7 @@ def numpy_correlate_lag_range(a,b, mode='valid'):
     elif mode == 'same': 
         klen = max(a.size, b.size)
         kmin += (a.size+b.size-1 - max(a.size, b.size))/2 + \
-                int(a.size % 2 == 0 and b.size > a.size)
+                int(not use_fft and a.size % 2 == 0 and b.size > a.size)
     elif mode == 'valid':
         klen = abs(a.size - b.size) + 1 
         kmin += min(a.size, b.size) - 1
