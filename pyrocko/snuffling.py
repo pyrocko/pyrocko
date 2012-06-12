@@ -596,17 +596,19 @@ class Snuffling:
 
             for name, method in self._triggers:
                 but = QPushButton(name)
-                def call_and_update():
-                    try:
-                        method()
-                    except SnufflingError, e:
-                        if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
-                            logger.error('%s: %s' % (self._name, e))
-                        logger.error('%s: Snuffling action failed' % self._name)
+                def call_and_update(method):
+                    def f():
+                        try:
+                            method()
+                        except SnufflingError, e:
+                            if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+                                logger.error('%s: %s' % (self._name, e))
+                            logger.error('%s: Snuffling action failed' % self._name)
 
-                    self.get_viewer().update()
+                        self.get_viewer().update()
+                    return f
 
-                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update )
+                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update(method) )
                 butlayout.addWidget( but )
 
             layout.addWidget(butframe, irow, 0)
