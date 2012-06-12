@@ -1930,14 +1930,32 @@ def moving_sum(x,n, mode='valid'):
             return num.zeros(0, dtype=cx.dtype) 
         y = num.zeros(nn-n+1, dtype=cx.dtype)
         y[0] = cx[n-1]
-        y[1:] = cx[n:]-cx[:-n]
+        y[1:nn-n+1] = cx[n:nn]-cx[0:nn-n]
     
     if mode == 'full':
         y = num.zeros(nn+n-1, dtype=cx.dtype)
-        y[:n] = cx[:n]
-        y[n:-n+1] = cx[n:]-cx[:-n]
-        y[-n+1:] = cx[-1]-cx[-n:-1]
-    
+        if n <= nn:
+            y[0:n] = cx[0:n]
+            y[n:nn] = cx[n:nn]-cx[0:nn-n]
+            y[nn:nn+n-1] = cx[-1]-cx[nn-n:nn-1]
+        else:
+            y[0:nn] = cx[0:nn]
+            y[nn:n] = cx[nn-1]
+            y[n:nn+n-1] = cx[nn-1] - cx[0:nn-1]
+
+    if mode == 'same':
+        n1 = (n-1)/2
+        y = num.zeros(nn, dtype=cx.dtype)
+        if n <= nn:
+            y[0:n-n1] = cx[n1:n]
+            y[n-n1:nn-n1] = cx[n:nn]-cx[0:nn-n]
+            y[nn-n1:nn] = cx[nn-1] - cx[nn-n:nn-n+n1]
+        else:
+            y[0:max(0,nn-n1)] = cx[min(n1,nn):nn]
+            y[max(nn-n1,0):min(n-n1,nn)] = cx[nn-1]
+            y[min(n-n1,nn):nn] = cx[nn-1] - cx[0:max(0,nn-(n-n1))]
+
+
     return y
 
 def nextpow2(i):
