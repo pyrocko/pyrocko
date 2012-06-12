@@ -300,6 +300,8 @@ class LinValControl(ValControl):
         return svalue/10000. * (self.ma-self.mi) + self.mi
                 
     def v2s(self, value):
+        if self.ma == self.mi:
+            return 0
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
 class Progressbar:

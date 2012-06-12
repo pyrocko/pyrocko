@@ -741,6 +741,7 @@ class PhaseDef(object):
         return ( knee for knee in self if isinstance(knee, Knee) )
 
     def definition(self):
+        '''Get original definition of the phase.'''
         return self._definition
 
     def direction_start(self):
@@ -2126,7 +2127,7 @@ class Ray:
 
         .. py:attribute:: p
 
-           Ray parameter (spherical) [s/deg]
+           Ray parameter (spherical) [s/rad]
 
         .. py:attribute:: x
 
@@ -2147,6 +2148,22 @@ class Ray:
         self.x = x
         self.t = t
         self.endgaps = endgaps
+
+    def given_phase(self):
+        '''Get phase definition which was used to create the ray.
+        
+        :returns: :py:class:`PhaseDef` object
+        '''
+
+        return self.path.phase
+
+    def used_phase(self):
+        '''Compute phase definition from propagation path.
+       
+        :returns: :py:class:`PhaseDef` object
+        '''
+
+        return self.path.used_phase(self.p)
 
     def refine(self, eps=0.0001):
         x, t = self.path.xt(self.p, self.endgaps)
@@ -2406,7 +2423,7 @@ class LayeredModel:
     def path(self, p, phase, layer_start, layer_stop):
         '''Get ray path for given combination of ray parameter, phase definition, source and receiver layers.
         
-        :param p: ray parameter (spherical) [s/deg]
+        :param p: ray parameter (spherical) [s/rad]
         :param phase: phase definition (:py:class:`PhaseDef` object)
         :param layer_start: layer with source
         :param layer_stop: layer with receiver
