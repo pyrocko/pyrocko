@@ -81,11 +81,15 @@ def ws_request(url, post=False, **kwargs):
     url_values = urllib.urlencode(kwargs)
     url = url + '?' + url_values
     logger.debug('Accessing URL %s' % url)
+
+    req = urllib2.Request(url)
+    if post:
+        req.add_data(post)
+
+    req.add_header('Accept', '*/*')
+
     try:
-        if post:
-            return urllib2.urlopen(url,data=post).read()
-        else:
-            return urllib2.urlopen(url).read()
+        return urllib2.urlopen(req).read()
 
     except urllib2.HTTPError, e:
         if e.code == 404:
@@ -100,10 +104,24 @@ def ws_station( **kwargs ):
             kwargs[k] = sdate(kwargs[k])
 
     if 'timewindow' in kwargs:
-        tmin, tmax = kwargs['timewindow']
-        kwargs['timewindow'] = '%s,%s' % (sdate(tmin), sdate(tmax))
+        tmin, tmax = kwargs.pop('timewindow')
+        kwargs['startbefore'] = sdate(tmin)
+        kwargs['endafter'] = sdate(tmax)
 
     return ws_request(base_url + '/station/query', **kwargs)
+
+def ws_virtualnetwork( **kwargs ):
+    
+    for k in 'starttime', 'endtime':
+        if k in kwargs:
+            kwargs[k] = sdate(kwargs[k])
+
+    if 'timewindow' in kwargs:
+        tmin, tmax = kwargs.pop('timewindow')
+        kwargs['starttime'] = sdate(tmin)
+        kwargs['endtime'] = sdate(tmax)
+
+    return ws_request(base_url + '/virtualnetwork/query', **kwargs)
 
 def ws_bulkdataselect( selection, quality=None, minimumlength=None, longestonly=False ):
 
@@ -250,6 +268,14 @@ def grok_station_xml( data, tmin, tmax ):
         stations[nsl].add_channel(model.Channel(nslc[-1], azi, dip))
 
     return stations.values()
+
+def grok_virtualnet_xml(data):
+    net_sta = set() 
+    dom = minidom.parseString(data)
+    for net, sta in tear(dom, ('network', 'station')):
+        net_sta.add(( net.D.code, sta.D.code ))
+
+    return net_sta
 
 def data_selection(stations, tmin, tmax, channel_prio=[[ 'BHZ', 'HHZ' ],
             [ 'BH1', 'BHN', 'HH1', 'HHN' ], ['BH2', 'BHE', 'HH2', 'HHE']]):
