@@ -768,7 +768,7 @@ def MakePileOverviewClass(base):
     
             self.trace_filter = None
             self.quick_filter = None
-            self.quick_filter_pattern = None, None
+            self.quick_filter_patterns = None, None
             self.blacklist = []
             
             self.track_to_screen = Projection()
@@ -803,8 +803,6 @@ def MakePileOverviewClass(base):
             
             self.sortingmode_change_time = 0.0
             self.sortingmode_change_delay_time = None
-            
-            self.last_pattern_change_time = 0.0
 
             self.old_data_ranges = {}
             
@@ -839,16 +837,16 @@ def MakePileOverviewClass(base):
             self.quick_filter = filter_func
             self.update_trace_filter()
             
-        def set_quick_filter_pattern(self, pattern, inputline=None):
-            if pattern is not None:
-                self.set_quick_filter(lambda tr: pyrocko.util.match_nslc(pattern, tr.nslc_id))
+        def set_quick_filter_patterns(self, patterns, inputline=None):
+            if patterns is not None:
+                self.set_quick_filter(lambda tr: pyrocko.util.match_nslc(patterns, tr.nslc_id))
             else:
                 self.set_quick_filter(None)
                 
-            self.quick_filter_pattern = pattern, inputline
+            self.quick_filter_patterns = patterns, inputline
             
-        def get_quick_filter_pattern(self):
-            return self.quick_filter_pattern
+        def get_quick_filter_patterns(self):
+            return self.quick_filter_patterns
             
         def add_blacklist_pattern(self, pattern):
             if pattern == 'empty':
@@ -2405,29 +2403,26 @@ def MakePileOverviewClass(base):
                 self.error_messages[key] = value
         
         def inputline_changed(self, text):
-            line = str(text)
-            toks = line.split()
-            
-            if len(toks) in (1,2):
-                command= toks[0].lower()
-                x = { 'n': '%s*.*.*.*', 's': '*.%s*.*.*', 'l': '*.*.%s*.*', 'c': '*.*.*.%s*' }
-                if command in x:
-                    if len(toks) == 2:
-                        pattern = x[toks[0]] % toks[1].rstrip('*')
-                        self.set_quick_filter_pattern(pattern, line)
-                    else:
-                        self.set_quick_filter_pattern(None)
-                    
-                    if self.last_pattern_change_time < time.time() - 2.0:
-                        self.update()
-                        self.last_pattern_change_time = time.time()
+            pass
 
         def inputline_finished(self, text):
-            toks = text.split()
+            line = str(text)
+
+            toks = line.split()
             clearit, hideit, error = False, True, None
             if len(toks) >= 1:
                 command = toks[0].lower()
                 try:
+                    quick_filter_commands = { 'n': '%s.*.*.*', 's': '*.%s.*.*', 'l': '*.*.%s.*', 'c': '*.*.*.%s' }
+                    if command in quick_filter_commands:
+                        if len(toks) >= 2:
+                            patterns = [ quick_filter_commands[toks[0]] % pat for pat in toks[1:]  ]
+                            self.set_quick_filter_patterns(patterns, line)
+                        else:
+                            self.set_quick_filter_patterns(None)
+                        
+                        self.update()
+
                     if command in ('hide', 'unhide'):
                         if len(toks) in (2,3):
                             if len(toks) == 2:
@@ -2498,7 +2493,7 @@ def MakePileOverviewClass(base):
                             self.set_scaling_hook(pattern, hook)
 
                     elif command == 'goto':
-                        toks2 = text.split(None, 1)
+                        toks2 = line.split(None, 1)
                         if len(toks2) == 2:
                             arg = toks2[1]
                             if re.match(r'^\d\d\d\d-\d\d(-\d\d( \d\d(:\d\d(:\d\d(.\d+)?)?)?)?)?$', arg):
@@ -2630,7 +2625,7 @@ class PileViewer(QFrame):
         
         if clearit:
             self.inputline.blockSignals(True)
-            qpat, qinp = self.pile_overview.get_quick_filter_pattern()
+            qpat, qinp = self.pile_overview.get_quick_filter_patterns()
             if qpat is None:
                 self.inputline.clear()
             else:
