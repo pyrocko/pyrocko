@@ -2113,8 +2113,6 @@ def MakePileOverviewClass(base):
                     nlinesavail = trackheight/float(fm.lineSpacing())
                     if nlinesavail > 1:
                         break
-                   
-                    print font.pointSize()
 
                     font.setPointSize(font.pointSize()-1)
 
