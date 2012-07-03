@@ -1,3 +1,5 @@
+import math
+
 # some awsome colors
 tango_colors = {
 'butter1': (252, 233,  79),
