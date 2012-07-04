@@ -31,7 +31,7 @@ The main classes defined in this module are:
 '''
 
 
-import sys, copy, inspect, math, cmath, operator
+import sys, copy, inspect, math, cmath, operator, StringIO
 from pyrocko import util
 from scipy.optimize import bisect
 from scipy.interpolate import fitpack
@@ -741,6 +741,7 @@ class PhaseDef(object):
         return ( knee for knee in self if isinstance(knee, Knee) )
 
     def definition(self):
+        '''Get original definition of the phase.'''
         return self._definition
 
     def direction_start(self):
@@ -1621,9 +1622,14 @@ class Kink(RayElement):
     def conversion(self):
         return self.in_mode != self.out_mode
 
-    def efficiency(self, p):
-        return self.discontinuity.efficiency(self.in_direction, self.out_direction, self.in_mode, self.out_mode, p)
+    def efficiency(self, p, out_direction=None, out_mode=None):
+        if out_direction is None:
+            out_direction = self.out_direction
+        if out_mode is None:
+            out_mode = self.out_mode
 
+        return self.discontinuity.efficiency(self.in_direction, out_direction, self.in_mode, out_mode, p)
+                
     def __str__(self):
         r, c = self.reflection(), self.conversion()
         if r and c:
@@ -2121,7 +2127,7 @@ class Ray:
 
         .. py:attribute:: p
 
-           Ray parameter (spherical) [s/deg]
+           Ray parameter (spherical) [s/rad]
 
         .. py:attribute:: x
 
@@ -2142,6 +2148,22 @@ class Ray:
         self.x = x
         self.t = t
         self.endgaps = endgaps
+
+    def given_phase(self):
+        '''Get phase definition which was used to create the ray.
+        
+        :returns: :py:class:`PhaseDef` object
+        '''
+
+        return self.path.phase
+
+    def used_phase(self):
+        '''Compute phase definition from propagation path.
+       
+        :returns: :py:class:`PhaseDef` object
+        '''
+
+        return self.path.used_phase(self.p)
 
     def refine(self, eps=0.0001):
         x, t = self.path.xt(self.p, self.endgaps)
@@ -2303,6 +2325,20 @@ class LayeredModel:
 
         self._elements.append(element)
 
+    def elements(self, direction=DOWN):
+        '''Iterate over all elements of the model.
+
+        :param direction: direction of traversal :py:const:`DOWN` or :py:const:`UP`.
+        
+        Objects derived from the :py:class:`Discontinuity` and :py:class:`Layer` classes are yielded.
+        '''
+
+        if direction == DOWN:
+            return iter(self._elements)
+        else:
+            return reversed(self._elements)
+        
+
     def layers(self, direction=DOWN):
         '''Iterate over all layers of model.
         
@@ -2387,7 +2423,7 @@ class LayeredModel:
     def path(self, p, phase, layer_start, layer_stop):
         '''Get ray path for given combination of ray parameter, phase definition, source and receiver layers.
         
-        :param p: ray parameter (spherical) [s/deg]
+        :param p: ray parameter (spherical) [s/rad]
         :param phase: phase definition (:py:class:`PhaseDef` object)
         :param layer_start: layer with source
         :param layer_stop: layer with receiver
@@ -2428,12 +2464,12 @@ class LayeredModel:
             at_layer = isinstance(current, Layer)
             at_discontinuity = isinstance(current, Discontinuity)
 
-            if next_knee is None: # detect trapped wave
-                k = (id(current), direction, mode)
-                if k in trapdetect:
-                    raise Trapped()
-                
-                trapdetect.add(k)
+            # detect trapped wave
+            k = (id(next_knee), id(current), direction, mode)
+            if k in trapdetect:
+                raise Trapped()
+            
+            trapdetect.add(k)
             
             if at_discontinuity:
                 oldmode, olddirection = mode, direction
@@ -2699,7 +2735,7 @@ def read_hyposat_model(fn):
         lname = name
 
     f.close()
-        
+
 def read_nd_model(fn):
     '''Reader for TauP style '.nd' (named discontinuity) files.
 
@@ -2710,12 +2746,27 @@ def read_nd_model(fn):
     '''
 
     f = open(fn, 'r')
+    for x in read_nd_model_fh(f):
+        yield x
+    f.close()
+
+def read_nd_model_str(s):
+    f = StringIO.StringIO(s)
+    for x in read_nd_model_fh(f):
+        yield x
+    f.close()
+
+def read_nd_model_fh(f):
     translate = { 'mantle': 'moho', 'outer-core': 'cmb', 'inner-core': 'icb' }
     name = None
     for line in f:
         toks = line.split()
-        if len(toks) == 6:
-            z, vp, vs, rho, qp, qs = [ float(x) for x in toks ]
+        if len(toks) == 6 or len(toks) == 4:
+            z, vp, vs, rho = [ float(x) for x in toks[:4] ]
+            qp, qs = None, None
+            if len(toks) == 6:
+                qp, qs = [ float(x) for x in toks[4:] ]
+
             material = Material(vp*1000., vs*1000., rho*1000., qp, qs)
             yield z*1000., material, name
             name = None
@@ -2783,10 +2834,24 @@ def castagna_vs_to_vp(vs):
         vp = 1.16 * vs + 1360 [m/s]
 
     :param vs: S-wave velocity [m/s]
-    :returns: vp in [m/s]
+    :returns: P-wave velocity [m/s]
     '''
 
     return vs*1.16 + 1360.0
+
+def castagna_vp_to_vs(vp):
+    '''Calculate vp from vs using castagna's relation.
+
+    Castagna's relation (the mudrock line) is an empirical relation for vp/vs for 
+    siliciclastic rocks (i.e. sandstones and shales). [Castagna et al., 1985]
+
+        vp = 1.16 * vs + 1360 [m/s]
+
+    :param vp: P-wave velocity [m/s]
+    :returns: S-wave velocity [m/s]
+    '''
+
+    return  (vp - 1360.0) / 1.16 
 
 def evenize(x,y, minsize=10):
     if x.size < minsize:
