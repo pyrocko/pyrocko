@@ -380,6 +380,7 @@ class TracesGroup(object):
         self.parent = parent
         self.empty()
         self.nupdates = 0
+        self.abspath = None
     
     def set_parent(self, parent):
         self.parent = parent
@@ -852,6 +853,7 @@ class Pile(TracesGroup):
         self.subpiles = {}
         self.open_files = {}
         self.listeners = []
+        self.abspaths = set()
     
     def add_listener(self, obj):
         self.listeners.append(weakref.ref(obj))
@@ -868,16 +870,23 @@ class Pile(TracesGroup):
         
     def add_files(self, files):
         for file in files:
-            subpile = self.dispatch(file)
-            subpile.add_file(file)
+            self.add_file(file)
         
     def add_file(self, file):
+        if file.abspath is not None and file.abspath in self.abspaths:
+            logger.warn('File already in pile: %s' % file.abspath)
+            return
+
         subpile = self.dispatch(file)
         subpile.add_file(file)
+        if file.abspath is not None:
+            self.abspaths.add(file.abspath)
     
     def remove_file(self, file):
         subpile = file.get_parent()
         subpile.remove_file(file)
+        if file.abspath is not None:
+            self.abspaths.remove(file.abspath)
         
     def remove_files(self, files):
         subpile_files = {}
@@ -890,6 +899,9 @@ class Pile(TracesGroup):
        
         for subpile, files in subpile_files.iteritems():
             subpile.remove_files(files)
+            for file in files:
+                if file.abspath is not None:
+                    self.abspaths.remove(file.abspath)
         
     def dispatch_key(self, file):
         dt = int(math.floor(math.log(file.deltatmin)))

@@ -550,7 +550,6 @@ class Snuffling:
                         parlayout.addWidget(w, ipar, iw)
 
                     ipar +=1
-
                     have_params = True
 
                 elif isinstance(param, Choice):
