@@ -60,6 +60,58 @@ def make_QPolygonF( xdata, ydata ):
     aa[:,1] = ydata
     return qpoints
 
+class Label:
+    def __init__(self, p, x, y, label_str, label_bg=None, anchor='BL', outline=False, font=None, color=None):
+        text = QTextDocument()
+        if font:
+            text.setDefaultFont(font)
+        text.setDefaultStyleSheet('span { color: %s; }' % color.name())
+        text.setHtml('<span>%s</span>' % label_str)
+        s = text.size()
+        rect = QRectF(0., 0., s.width(), s.height())
+        tx,ty =x,y
+        
+        if 'B' in anchor:
+            ty -= rect.height()
+        if 'R' in anchor:
+            tx -= rect.width()
+        if 'M' in anchor:
+            ty -= rect.height()/2.
+        if 'C' in anchor:
+            tx -= rect.width()/2.
+            
+        rect.translate( tx, ty )
+        self.rect = rect
+        self.text = text
+        self.outline = outline
+        self.label_bg = label_bg
+        self.color = color
+        self.p = p
+
+    def draw(self):
+        p = self.p
+        rect = self.rect
+        tx = rect.left()
+        ty = rect.top()
+
+        if self.outline:
+            oldpen = p.pen()
+            oldbrush = p.brush()
+            p.setBrush(self.label_bg)
+            rect.adjust(-2.,0.,2.,0.)
+            p.drawRect( rect )
+            p.setPen(oldpen)
+            p.setBrush(oldbrush)
+            
+        else:
+            if self.label_bg:
+                p.fillRect(rect, self.label_bg)
+        
+        p.translate(tx,ty)
+        self.text.drawContents(p)
+        p.translate(-tx,-ty)
+
+
 def draw_label( p, x,y, label_str, label_bg, anchor='BL', outline=False):
     fm = p.fontMetrics()
     
@@ -300,6 +352,8 @@ class LinValControl(ValControl):
         return svalue/10000. * (self.ma-self.mi) + self.mi
                 
     def v2s(self, value):
+        if self.ma == self.mi:
+            return 0
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
 class Progressbar:

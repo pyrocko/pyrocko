@@ -618,9 +618,8 @@ class Snuffling:
                                 logger.error('%s: %s' % (self._name, e))
                             logger.error('%s: Snuffling action failed' % self._name)
 
+                        self.get_viewer().update()
                     return f
-
-                    self.get_viewer().update()
 
                 self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update(method) )
                 butlayout.addWidget( but )
