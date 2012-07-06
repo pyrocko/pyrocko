@@ -3,16 +3,12 @@ import numpy as num
 
 import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace, pyrocko.plot
 from pyrocko.util import TableWriter, TableReader
-from pyrocko.nano import Nano
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 def gmtime_x(timestamp):
-    if isinstance(timestamp, Nano):
-        etimestamp = int(timestamp)
-    else:
-        etimestamp = math.floor(timestamp)
+    etimestamp = float(num.floor(timestamp))
     tt = time.gmtime(etimestamp)
     ms = (timestamp-etimestamp)*1000
     return tt,ms
@@ -22,9 +18,10 @@ def mystrftime(fmt=None, tt=None, milliseconds=0):
     if fmt is None: fmt = '%Y-%m-%d %H:%M:%S .%r'
     if tt is None: tt = time.time()
     
-    fmt2 = fmt.replace('%r', '%03i' % int(round(milliseconds)))
-    fmt3 = fmt2.replace('%u', '%06i' % int(round(milliseconds*1000)))
-    return time.strftime(fmt3, tt)
+    fmt = fmt.replace('%r', '%03i' % int(round(milliseconds)))
+    fmt = fmt.replace('%u', '%06i' % int(round(milliseconds*1000)))
+    fmt = fmt.replace('%n', '%09i' % int(round(milliseconds*1000000)))
+    return time.strftime(fmt, tt)
         
 def myctime(timestamp):
     tt, ms = gmtime_x(timestamp)
@@ -47,9 +44,6 @@ def str_to_bool(s):
 
 
 def make_QPolygonF( xdata, ydata ):
-    if isinstance(xdata, Nano):
-        xdata = xdata.float_array()
-        
     assert len(xdata) == len(ydata)
     qpoints = QPolygonF( len(ydata) )
     vptr = qpoints.data()
@@ -59,6 +53,58 @@ def make_QPolygonF( xdata, ydata ):
     aa[:,0] = xdata
     aa[:,1] = ydata
     return qpoints
+
+class Label:
+    def __init__(self, p, x, y, label_str, label_bg=None, anchor='BL', outline=False, font=None, color=None):
+        text = QTextDocument()
+        if font:
+            text.setDefaultFont(font)
+        text.setDefaultStyleSheet('span { color: %s; }' % color.name())
+        text.setHtml('<span>%s</span>' % label_str)
+        s = text.size()
+        rect = QRectF(0., 0., s.width(), s.height())
+        tx,ty =x,y
+        
+        if 'B' in anchor:
+            ty -= rect.height()
+        if 'R' in anchor:
+            tx -= rect.width()
+        if 'M' in anchor:
+            ty -= rect.height()/2.
+        if 'C' in anchor:
+            tx -= rect.width()/2.
+            
+        rect.translate( tx, ty )
+        self.rect = rect
+        self.text = text
+        self.outline = outline
+        self.label_bg = label_bg
+        self.color = color
+        self.p = p
+
+    def draw(self):
+        p = self.p
+        rect = self.rect
+        tx = rect.left()
+        ty = rect.top()
+
+        if self.outline:
+            oldpen = p.pen()
+            oldbrush = p.brush()
+            p.setBrush(self.label_bg)
+            rect.adjust(-2.,0.,2.,0.)
+            p.drawRect( rect )
+            p.setPen(oldpen)
+            p.setBrush(oldbrush)
+            
+        else:
+            if self.label_bg:
+                p.fillRect(rect, self.label_bg)
+        
+        p.translate(tx,ty)
+        self.text.drawContents(p)
+        p.translate(-tx,-ty)
+
 
 def draw_label( p, x,y, label_str, label_bg, anchor='BL', outline=False):
     fm = p.fontMetrics()
@@ -219,13 +265,27 @@ class ValControl(QObject):
         self.set_value(cur)
        
     def set_range(self, mi, ma):
+        if self.mi == mi and self.ma == ma:
+            return
+
+        vput = None
+        if self.cursl == 0:
+            vput = mi
+        if self.cursl == 10000:
+            vput = ma
+
         self.mi = mi
         self.ma = ma
         self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
-        if self.cur < mi:
-            self.set_value(mi)
-        if self.cur > ma:
-            self.set_value(ma)
+
+        if vput is not None:
+            self.set_value(vput)
+        else:
+            if self.cur < mi:
+                self.set_value(mi)
+            if self.cur > ma:
+                self.set_value(ma)
+
 
     def set_value(self, cur):
         if cur is None:

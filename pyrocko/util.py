@@ -5,7 +5,6 @@ from scipy import signal
 from os.path import join as pjoin
 import config
 import numpy as num
-from nano import Nano
 
 logger = logging.getLogger('pyrocko.util')
 
@@ -41,6 +40,12 @@ def setup_logging(programname='pyrocko', levelname='warning'):
 
 def data_file(fn):
     return os.path.join(os.path.split(__file__)[0], 'data', fn)
+
+if hasattr(num, 'float128'):
+    hpfloat = num.float128
+else:
+    def hpfloat():
+        raise Exception('NumPy lacks support for float128 data type on this platform.')
 
 class Stopwatch:
     '''Simple stopwatch to measure elapsed wall clock time.
@@ -417,12 +422,8 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
         GlobalVars.re_frac = re.compile(r'\.[1-9]FRAC')
         GlobalVars.frac_formats = dict([  ('.%sFRAC' % x, '%.'+x+'f') for x in '123456789' ] )
     
-    if isinstance(t, Nano):
-        ts = int(t)     # it always gives rounds like floor
-        tfrac = float(t-ts)
-    else:
-        ts = math.floor(t)
-        tfrac = t-ts
+    ts = float(num.floor(t))
+    tfrac = t-ts
     
     m = GlobalVars.re_frac.search(format)
     if m:
@@ -431,7 +432,7 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
             ts += 1.
                         
         format, nsub = GlobalVars.re_frac.subn(sfrac[1:], format, 1)
-    
+   
     return time.strftime(format, time.gmtime(ts))
     
 def plural_s(n):

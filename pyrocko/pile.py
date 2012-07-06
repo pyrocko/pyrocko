@@ -1110,7 +1110,13 @@ class Pile(TracesGroup):
         
     def get_tmax(self):
         return self.tmax
+
+    def get_deltatmin(self):
+        return self.deltatmin
     
+    def get_deltatmax(self):
+        return self.deltatmax
+
     def __str__(self):
         s = 'Pile\n'
         s += 'number of subpiles: %i\n' % len(self.subpiles)
