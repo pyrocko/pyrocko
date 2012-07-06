@@ -1177,7 +1177,11 @@ def MakePileViewerMainClass(base):
                 self.trace_selector = trace_selector
 
             if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1] or self.show_all:
-                self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
+                tmin, tmax = self.pile.get_tmin(), self.pile.get_tmax()
+                if tmin is not None and tmax is not None:
+                    tlen = (tmax - tmin)
+                    tpad = tlen * 5./self.width()
+                    self.set_time_range(tmin-tpad, tmax+tpad)
         
         def set_time_range(self, tmin, tmax):
             if tmin is None:
