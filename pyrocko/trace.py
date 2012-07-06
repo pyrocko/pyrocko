@@ -6,12 +6,12 @@
 import util, evalresp
 import time, math, copy, logging, sys
 import numpy as num
-from util import reuse
+from util import reuse, hpfloat
 from scipy import signal
 from pyrocko import model, orthodrome
-from nano import asnano, Nano
 
 logger = logging.getLogger('pyrocko.trace')
+
 
 class Trace(object):
     
@@ -45,12 +45,11 @@ class Trace(object):
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
     
         self._growbuffer = None
-
-        #if deltat < 0.001:
-            #tmin = asnano(tmin)
-            #if tmax is not None:
-            #    tmax = asnano(tmax)
-
+        
+        if deltat < 0.001:
+            tmin = hpfloat(tmin)
+            if tmax is not None:
+                tmax = hpfloat(tmax)
     
         if mtime is None:
             mtime = time.time()
@@ -74,7 +73,6 @@ class Trace(object):
         
     def __str__(self):
         fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
-        
         s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
         s += '  timerange: %s - %s\n' % (util.time_to_str(self.tmin, format=fmt), util.time_to_str(self.tmax, format=fmt))
         s += '  delta t: %g\n' % self.deltat

@@ -8,9 +8,8 @@ from itertools import izip
 
 import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace, pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
 
-from pyrocko.util import TableWriter, TableReader
+from pyrocko.util import TableWriter, TableReader, hpfloat
 
-from pyrocko.nano import Nano
 from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker, PhaseMarker, make_QPolygonF, draw_label, Label, \
     gmtime_x, myctime, mystrftime, Progressbars
 
@@ -161,7 +160,14 @@ def fancy_time_ax_format(inc):
     l0_fmt_brief = ''
     l2_fmt = ''
     l2_trig = 0
-    if inc < 0.001:
+    if inc < 0.000001:
+        l0_fmt = '.%n'
+        l0_center = False
+        l1_fmt = '%H:%M:%S'
+        l1_trig = 6
+        l2_fmt = '%b %d, %Y'
+        l2_trig = 3
+    elif inc < 0.001:
         l0_fmt = '.%u'
         l0_center = False
         l1_fmt = '%H:%M:%S'
@@ -293,7 +299,13 @@ class TimeScaler(pyrocko.plot.AutoScaler):
         
         if inc < sday:
             mi_day = day_start(max(mi, working_system_time_range[0]+sday*1.5))
-            base = mi_day+math.ceil(float(mi-mi_day)/inc)*inc
+            if inc < 0.001:
+                mi_day = hpfloat(mi_day)
+
+            base = mi_day+num.ceil((mi-mi_day)/inc)*inc
+            if inc < 0.001:
+                base = hpfloat(base)
+
             base_day = mi_day
             i = 0
             while True:
@@ -334,7 +346,7 @@ class TimeScaler(pyrocko.plot.AutoScaler):
         else:
             mi_year = year_start(max(mi, working_system_time_range[0]+syear*1.5))
             incy = int(round(inc/syear))
-            y = int(math.floor(time.gmtime(mi_year)[0]/incy)*incy)
+            y = int(num.floor(time.gmtime(mi_year)[0]/incy)*incy)
             
             while True:
                 tick = calendar.timegm((y,1,1,0,0,0))
@@ -457,10 +469,7 @@ class Projection(object):
         
     def set_in_range(self, xmin, xmax):
         if xmax == xmin: xmax = xmin + 1.
-        if isinstance(xmin, Nano) or isinstance(xmax, Nano):
-            self.xr = xmin, xmax
-        else:
-            self.xr = float(xmin), float(xmax)
+        self.xr = xmin, xmax
 
     def get_in_range(self):
         return self.xr
@@ -1139,6 +1148,7 @@ def MakePileViewerMainClass(base):
         
         def pile_changed(self, what):
             self.pile_has_changed = True
+            self.emit(SIGNAL('pile_has_changed_signal()'))
            
         def set_gathering(self, gather=None, order=None, color=None):
             
@@ -1213,7 +1223,7 @@ def MakePileViewerMainClass(base):
             tmin = max(working_system_time_range[0], tmin)
             tmax = min(working_system_time_range[1], tmax)
             
-            min_deltat = self.get_min_deltat()
+            min_deltat = self.content_deltat_range()[0]
             if (tmax - tmin < min_deltat):
                 m = (tmin + tmax) / 2.
                 tmin = m - min_deltat/2.
@@ -1762,6 +1772,19 @@ def MakePileViewerMainClass(base):
                 tmax = working_system_time_range[1]
 
             return tmin, tmax
+
+        def content_deltat_range(self):
+            pile = self.get_pile()
+            
+            deltatmin, deltatmax = pile.get_deltatmin(), pile.get_deltatmax()
+
+            if deltatmin is None:
+                deltatmin = 0.001
+
+            if deltatmax is None:
+                deltatmax = 1000.0
+
+            return deltatmin, deltatmax
        
         def make_good_looking_time_range(self, tmin, tmax):
             if tmax < tmin:
@@ -2219,7 +2242,7 @@ def MakePileViewerMainClass(base):
         
         def see_data_params(self):
             
-            min_deltat = self.get_min_deltat()
+            min_deltat = self.content_deltat_range()[0]
 
             # determine padding and downampling requirements
             if self.lowpass is not None:
@@ -2427,7 +2450,7 @@ def MakePileViewerMainClass(base):
                 self.old_vec = vec
                 
                 tpad = min(tmax-tmin, tpad)
-                tpad = max(self.get_min_deltat()*5., tpad)
+                tpad = max(self.content_deltat_range()[0]*5., tpad)
                     
                 processed_traces = []
                 
@@ -2602,12 +2625,6 @@ def MakePileViewerMainClass(base):
         def rot_change(self, value, ignore):
             self.rotate = value
             self.update()
-    
-        def get_min_deltat(self):
-            if self.pile.deltatmin is None:
-                return 0.01
-            else:
-                return self.pile.deltatmin
         
         def deselect_all(self):
             for marker in self.markers:
@@ -2976,6 +2993,7 @@ class PileViewer(QFrame):
         
         self.connect(self.viewer, SIGNAL('want_input()'), self.inputline_show)
         self.connect(self.viewer, SIGNAL('tracks_range_changed(int,int,int)'), self.tracks_range_changed)
+        self.connect(self.viewer, SIGNAL('pile_has_changed_signal()'), self.adjust_controls)
 
     def get_progressbars(self):
         return self.progressbars
@@ -3055,12 +3073,9 @@ class PileViewer(QFrame):
         frame = QFrame(self)
         layout = QGridLayout()
         frame.setLayout(layout)
-        #minfreq = 0.001
-        #maxfreq = 0.5/self.viewer.get_min_deltat()
-        #if maxfreq < 100.*minfreq:
-        #    minfreq = maxfreq*0.00001
-        minfreq = 1.
-        maxfreq = 10000000.
+
+        minfreq = 0.001
+        maxfreq = 1000.0
         self.lowpass_control = ValControl(high_is_none=True)
         self.lowpass_control.setup('Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
         self.highpass_control = ValControl(low_is_none=True)
@@ -3081,7 +3096,15 @@ class PileViewer(QFrame):
         spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addItem(spacer, 4,0, 1, 3)
 
+        self.adjust_controls()
         return frame
+
+    def adjust_controls(self):
+        dtmin, dtmax = self.viewer.content_deltat_range()
+        maxfreq = 0.5/dtmin
+        minfreq = (0.5/dtmax)*0.001
+        self.lowpass_control.set_range(minfreq, maxfreq)
+        self.highpass_control.set_range(minfreq, maxfreq)
    
     def setup_snufflings(self):
         self.viewer.setup_snufflings()
