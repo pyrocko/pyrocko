@@ -196,7 +196,7 @@ class SnufflerWindow(QMainWindow):
 
         sb = self.statusBar()
         sb.clearMessage()
-        sb.showMessage('Welcome to Snuffler! Click and drag to zoom and pan. Doubleclick to pick. Right-click for Menu. <space> to step forward. <b> to step backward. <q> to close.')
+        sb.showMessage('Welcome to Snuffler! Press <?> for help.')
 
         if follow:
             self.get_view().follow(float(follow))
@@ -205,6 +205,7 @@ class SnufflerWindow(QMainWindow):
     
     def sizeHint(self):
         return QSize(1024,768)
+        #return QSize(800, 600) # used for screen shots in tutorial
 
     def keyPressEvent(self, ev):
         self.get_view().keyPressEvent(ev)
