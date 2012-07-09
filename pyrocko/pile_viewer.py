@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, shlex, operator, copy
 
 from optparse import OptionParser
@@ -3118,60 +3116,3 @@ class PileViewer(QFrame):
     def get_pile(self):
         return self.viewer.get_pile()
 
-from forked import Forked
-class SnufflerOnDemand(QApplication, Forked):
-    def __init__(self, *args):
-        apply(QApplication.__init__, (self,) + args)
-        Forked.__init__(self, flipped=True)
-        self.timer = QTimer( self )
-        self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
-        self.timer.setInterval(100)
-        self.timer.start()
-        self.caller_has_quit = False
-        self.viewers = {}
-        self.windows = []
-        
-    def dispatch(self, command, args, kwargs):
-        method = getattr(self, command)
-        method(*args, **kwargs)
-        
-    def add_traces(self, traces, viewer_id='default'):
-        viewer = self.get_viewer(viewer_id)
-        pile = viewer.get_pile()
-        memfile = pyrocko.pile.MemTracesFile(None, traces)
-        pile.add_file(memfile)
-        viewer.update_contents()
-        
-    def periodical(self):
-        if not self.caller_has_quit:
-            self.caller_has_quit = not self.process()
-            
-    def get_viewer(self, viewer_id):
-        if viewer_id not in self.viewers:
-            self.new_viewer(viewer_id)
-            
-        return self.viewers[viewer_id]
-            
-    def new_viewer(self, viewer_id):
-        pile = pyrocko.pile.Pile()
-        pile_viewer = PileViewer(pile)
-        win = QMainWindow()
-        win.setCentralWidget(pile_viewer)
-        win.setWindowTitle( "Snuffler (%s)" % (viewer_id) )        
-        win.show()
-        self.viewers[viewer_id] = pile_viewer
-        self.windows.append(win)
-        
-    def run(self):
-        self.exec_()
-    
-
-def snuffle(traces=None, viewer_id='default'):
-    
-    if Global.appOnDemand is None:
-        app = Global.appOnDemand = SnufflerOnDemand([])
-        
-    app = Global.appOnDemand
-    if traces is not None:
-        app.call('add_traces', traces, viewer_id)
-    
