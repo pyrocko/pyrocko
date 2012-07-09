@@ -2825,7 +2825,7 @@ def MakePileViewerMainClass(base):
                         
                         self.update()
 
-                    if command in ('hide', 'unhide'):
+                    elif command in ('hide', 'unhide'):
                         if len(toks) in (2,3):
                             if len(toks) == 2:
                                 pattern = toks[1]
@@ -2916,10 +2916,6 @@ def MakePileViewerMainClass(base):
 
                             else:
                                 self.go_to_event_by_name(arg)
-
-
-                    elif command in ('n', 's', 'l', 'c'):
-                        self.update() 
                     
                     else:
                         raise PileViewerMainException('No such command: %s' % command)
