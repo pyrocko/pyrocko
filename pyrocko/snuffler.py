@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 '''Effective seismological trace viewer.'''
 
 import os, sys, signal, logging, time, re, gc
