@@ -8,7 +8,7 @@ First steps
 -----------
 
 Suppose we want to have a quick look on some seismic waveforms in a file
-:file:`test.mseed` (`download <http://emolch.org/test.mseed>`_).  The file is
+`test.mseed <http://emolch.org/test.mseed>`_).  The file is
 in Mini-SEED format, which is the default file format, when working with
 Snuffler.  Download the file, then run the command ::
 
@@ -31,7 +31,8 @@ If you zoom in close enough, the trace data will appear:
     :align: center
 
 There are some more commands to navigate. The :kbd:`<space>` key brings you one
-page forward in time, :kbd:`b` does the opposite. Press :kbd:`?` for a list of key bindings.
+page forward in time, :kbd:`b` does the opposite. Press :kbd:`?` for a list of
+key bindings.
 
 Things to remember for now are:
 
@@ -81,7 +82,7 @@ a snap.
   to loose the meta data cache on restart. This can be set with the
   :option:`--cache` command line option.
 
-You may now use this small example dataset :file:`testdata.tar` (`download
+You may now use this small example dataset `testdata.tar
 <http://emolch.org/testdata.tar>`_) with 153 files from some stations in Germany
 (3 days, 17 stations with 3 channels each, 23MB).
 
@@ -175,7 +176,9 @@ The :file:`stations.txt` file is a simple ascii table.
 Event information can come from various sources. In our example dataset, we are
 most likely seeing a global earthquake, so we may query one of the global
 earthquake catalogs. In the main menu select :menuselection:`Panels --> Catalog
-Search (builtin)`. A panel opens in the bottom part of the Snuffler window. Make sure you have internet access, select a minimum magnitude and hit :guilabel:`Run`.
+Search (builtin)`. A panel opens in the bottom part of the Snuffler window.
+Make sure you have internet access, select a minimum magnitude and hit
+:guilabel:`Run`.
 
 .. image:: _static/screenshot7.png
     :align: center
