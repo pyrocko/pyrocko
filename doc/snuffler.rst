@@ -80,10 +80,6 @@ Options
 
     follow real time with a window of N seconds
 
-.. option:: --progressive
-
-    don't wait for file scanning to complete before opening the viewer
-
 .. option:: --force-cache
 
     use the cache even when trace attribute spoofing is active (may have silly consequences)

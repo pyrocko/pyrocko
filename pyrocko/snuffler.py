@@ -376,7 +376,6 @@ def snuffle(pile=None, **kwargs):
     :param opengl: bool, whether to use opengl (default: ``False``)
     :param paths: list of files and directories to search for trace files
     :param pattern: regex which filenames must match
-    :param progressive: bool, whether to load files in progressive mode
     :param format: format of input files
     :param cache_dir: cache directory with trace meta information
     :param force_cache: bool, whether to use the cache when attribute spoofing is active
@@ -390,7 +389,7 @@ def snuffle(pile=None, **kwargs):
         app = Snuffler()
     
     kwargs_load = {}
-    for k in ('paths', 'regex', 'progressive', 'format', 'cache_dir', 'force_cache'):
+    for k in ('paths', 'regex', 'format', 'cache_dir', 'force_cache'):
         try:
             kwargs_load[k] = kwargs.pop(k)
         except KeyError:
@@ -454,12 +453,6 @@ def snuffler_from_commandline(args=sys.argv):
             metavar='N',
             help='follow real time with a window of N seconds')
 
-    parser.add_option('--progressive',
-            dest='progressive',
-            action='store_true',
-            default=False,
-            help='don\'t wait for file scanning to complete before opening the viewer')
-    
     parser.add_option('--cache',
             dest='cache_dir',
             default=pyrocko.config.cache_dir,
@@ -520,7 +513,6 @@ def snuffler_from_commandline(args=sys.argv):
             controls=True,
             opengl=options.opengl,
             paths=args, 
-            progressive=options.progressive,
             cache_dir=options.cache_dir,
             regex=options.regex,
             format=options.format,
