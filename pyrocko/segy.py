@@ -3,11 +3,10 @@ import numpy as num
 import util, trace
 import struct
 import calendar
+from io_common import FileLoadError
 
 class SEGYError(Exception):
     pass
-
-
 
 class SEGYFile:
     
@@ -34,11 +33,11 @@ class SEGYFile:
         self.b = 0.0
         self.data = [ num.arange(0, dtype=num.int32) ]
         
-    def read(self, filename, get_data=True, endianness='>'):
+    def read(self, filename, load_data=True, endianness='>'):
         '''Read SEGY file.
         
            filename -- Name of SEGY file.
-           get_data -- If True, the data is read, otherwise only read headers.
+           load_data -- If True, the data is read, otherwise only read headers.
         '''
         
         order = endianness
@@ -112,7 +111,7 @@ class SEGYFile:
                 if (nsamples_this, deltat_us_this) != (nsamples, deltat_us):
                     raise SEGYError('Trace of incorrect length or sampling rate found in SEG-Y file (trace=%i, file=%s)' % (itrace+1, filename))
                 
-            if get_data:
+            if load_data:
                 datablock = filedata[ipos+nbtrh:ipos+nbtrh+nsamples_this*sample_size]
                 if len(datablock) != nsamples_this*sample_size:
                     raise SEGYError('SEG-Y file incomplete (file=%s)' % filename)
@@ -126,13 +125,20 @@ class SEGYFile:
             nlsc=('','%i' %(ensemble_num),'','%i' %(trace_numbersegy))
             traces.append(tr)
             ipos += nbtrh+nsamples_this*sample_size
+
         self.traces = traces
         
     def get_traces(self):
         return self.traces
                            
-if __name__ == '__main__':
-    
-    segy = SEGYFile(sys.argv[1])
-    #print segy.to_trace()
-        
+
+def iload(filename, load_data):
+    try:
+        segyf = SEGYFile(filename, load_data=load_data)
+        for tr in segyf.get_traces():
+            yield tr
+
+    except (OSError, SEGYError), e:
+        raise FileLoadError(e)
+
+

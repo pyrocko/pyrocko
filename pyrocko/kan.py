@@ -1,11 +1,10 @@
 import sys, os
 import numpy as num
 import util, trace
+from io_common import FileLoadError
 
 class KanError(Exception):
     pass
-
-
 
 class KanFile:
     
@@ -28,17 +27,17 @@ class KanFile:
         self.b = 0.0
         self.data = [ num.arange(0, dtype=num.int32) ]
         
-    def read(self, filename, get_data=True):
+    def read(self, filename, load_data=True):
         '''Read SAC file.
         
            filename -- Name of KAN file.
-           get_data -- If True, the data is read, otherwise only read headers.
+           load_data -- If True, the data is read, otherwise only read headers.
         '''
         nbh = KanFile.nbytes_header
         
         # read in all data
         f = open(filename,'rb')
-        if get_data:
+        if load_data:
             filedata = f.read()
         else:
             filedata = f.read(nbh)
@@ -72,7 +71,7 @@ class KanFile:
         self.kstnm = stationname
         self.ref_time = ref_time
         
-        if get_data:
+        if load_data:
             if byte_sex == 'little':
                 dtype = '<i4'
             else:
@@ -90,9 +89,12 @@ class KanFile:
                            self.ref_time, self.ref_time+self.delta*(self.npts-1), 
                            self.delta, self.data)
                            
-if __name__ == '__main__':
-    
-    kan = KanFile(sys.argv[1])
-    print kan.to_trace()
-        
-        
+def iload(filename, load_data):
+    try:
+        kanf = KanFile(filename, load_data=load_data)
+        tr = kanf.to_trace()
+        yield tr
+
+    except (OSError, KanError), e:
+        raise FileLoadError(e)
+

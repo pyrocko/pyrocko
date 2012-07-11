@@ -417,9 +417,9 @@ def snuffler_from_commandline(args=sys.argv):
 
     parser.add_option('--format',
             dest='format',
-            default='from_extension',
+            default='detect',
             choices=('mseed', 'sac', 'kan', 'segy', 
-                'seisan', 'seisan_l', 'seisan_b', 'from_extension', 'try'),
+                'seisan', 'seisan_l', 'seisan_b', 'from_extension', 'detect'),
             help='assume files are of given FORMAT [default: \'%default\']' )
 
     parser.add_option('--pattern',

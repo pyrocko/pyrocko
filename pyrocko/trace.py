@@ -98,13 +98,14 @@ class Trace(object):
         return s
         
     def __eq__(self, other):
+
         return (self.network == other.network and
                 self.station == other.station and
                 self.location == other.location and
                 self.channel == other.channel and
-                self.deltat == other.deltat and
-                abs(self.tmin-other.tmin) < self.deltat*0.001 and
-                abs(self.tmax-other.tmax) < self.deltat*0.001 and
+                abs(self.deltat - other.deltat) < (self.deltat + other.deltat)*1e-6 and
+                abs(self.tmin-other.tmin) < self.deltat*0.01 and
+                abs(self.tmax-other.tmax) < self.deltat*0.01 and
                 num.all(self.ydata == other.ydata))
     
     def __call__(self, t, clip=False, snap=round):
