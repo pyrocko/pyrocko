@@ -388,12 +388,11 @@ class TraceTestCase(unittest.TestCase):
                 bs = [ trace.Trace(location='b', tmin=sometime+i*dt1*100+tadd, deltat=dt1, ydata=y[i*100:(i+1)*100]) for i in range(10) ]
                 
                 a.downsample_to(dt2,demean=False, snap=True)
-                downsampler = trace.co_downsample_to(dt2)
                 c2s = []
+                downsampler = trace.co_downsample_to(trace.co_list_append(c2s), dt2)
                 for b in bs:
                     c = downsampler.send(b)
-                    if c.data_len() > 0:
-                        c2s.append(c)
+                    c2s.append(c)
 
                 downsampler.close()
                 assert  (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
