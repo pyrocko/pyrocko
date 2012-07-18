@@ -834,6 +834,8 @@ def MakePileViewerMainClass(base):
             self.setAcceptDrops(True)
             self._paths_to_load = []
 
+            self.automatic_updates = True
+
             self.closing = False
 
         def fail(self, reason):
@@ -1107,7 +1109,11 @@ def MakePileViewerMainClass(base):
 
                 return abort
 
+            self.automatic_updates = False
+
             self.pile.load_files( sorted(fns), cache=cache, fileformat=format, show_progress=False, update_progress=update_progress)
+
+            self.automatic_updates = True
             self.update()
 
         def load_queued(self):
@@ -1147,6 +1153,8 @@ def MakePileViewerMainClass(base):
         def pile_changed(self, what):
             self.pile_has_changed = True
             self.emit(SIGNAL('pile_has_changed_signal()'))
+            if self.automatic_updates:
+                self.update()
            
         def set_gathering(self, gather=None, order=None, color=None):
             
@@ -1363,8 +1371,8 @@ def MakePileViewerMainClass(base):
                 frac = x0/float(self.width())
                 dt = dx*(tmax0-tmin0)*scale
                 
+                self.interrupt_following()
                 self.set_time_range(tmin0 - dt - dtr*frac, tmax0 - dt + dtr*(1.-frac))
-                self.interactive_range_change_time = time.time()
                 
                 self.update()
             else:
@@ -1463,10 +1471,12 @@ def MakePileViewerMainClass(base):
                 self.help()
 
             elif keytext == ' ':
+                self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
             
             elif keytext == 'b':
                 dt = self.tmax - self.tmin
+                self.interrupt_following()
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
             
             elif keytext in ('p', 'n', 'P', 'N'):
@@ -1503,6 +1513,7 @@ def MakePileViewerMainClass(base):
                             break
                         
                 if tgo is not None:
+                    self.interrupt_following()
                     self.set_time_range(tgo-dt/2.,tgo+dt/2.)
                         
             elif keytext == 'q' or keytext == 'x':
@@ -1825,11 +1836,13 @@ def MakePileViewerMainClass(base):
                 tmax = max(tmax, marker.tmax)
 
             tmin, tmax = self.make_good_looking_time_range(tmin, tmax) 
+            self.interrupt_following()
             self.set_time_range(tmin,tmax)
             self.update()
             
         def go_to_time(self, t):
             tmin, tmax = self.make_good_looking_time_range(t,t)
+            self.interrupt_following()
             self.set_time_range(tmin,tmax)
             self.update()
 
@@ -1839,6 +1852,7 @@ def MakePileViewerMainClass(base):
                     event = marker.get_event()
                     if event.name.lower() == name.lower():
                         tmin, tmax = self.make_good_looking_time_range(event.time, event.time)
+                        self.interrupt_following()
                         self.set_time_range(tmin, tmax)
 
         def printit(self):
@@ -1972,8 +1986,8 @@ def MakePileViewerMainClass(base):
                 
                     self.pile_has_changed = False
 
-            if h is None: h = self.height()
-            if w is None: w = self.width()
+            if h is None: h = float(self.height())
+            if w is None: w = float(self.width())
             
             if printmode:
                 primary_color = (0,0,0)
@@ -1982,15 +1996,15 @@ def MakePileViewerMainClass(base):
                 primary_color = pyrocko.plot.tango_colors['aluminium5']
                 secondary_color = pyrocko.plot.tango_colors['aluminium3']
             
-            ax_h = self.ax_height
+            ax_h = float(self.ax_height)
             
             vbottom_ax_projection = Projection()
             vtop_ax_projection = Projection()
             vcenter_projection = Projection()
-            
-            self.time_projection.set_out_range(0, w)
+           
+            self.time_projection.set_out_range(0., w)
             vbottom_ax_projection.set_out_range(h-ax_h, h)
-            vtop_ax_projection.set_out_range(0, ax_h)
+            vtop_ax_projection.set_out_range(0., ax_h)
             vcenter_projection.set_out_range(ax_h, h-ax_h)
             vcenter_projection.set_in_range(0.,1.)
             self.track_to_screen.set_out_range(ax_h, h-ax_h)
@@ -2719,6 +2733,7 @@ def MakePileViewerMainClass(base):
                 self.floating_marker.set(nslc_ids, tmin, tmax)
                 
                 if dt != 0.0 and doshift:
+                    self.interrupt_following()
                     self.set_time_range(self.tmin+dt, self.tmax+dt)
                 
                 self.update()
@@ -2764,13 +2779,17 @@ def MakePileViewerMainClass(base):
 
         def following(self):
             return self.follow_timer is not None and not self.following_interrupted()
-        
+       
+        def interrupt_following(self):
+            self.interactive_range_change_time = time.time()
+
         def following_interrupted(self, now=None):
             if now is None:
                 now = time.time()
             return now - self.interactive_range_change_time < self.interactive_range_change_delay_time
 
         def follow(self, tlen, interval=50):
+            self.show_all = False
             self.follow_time = tlen
             self.follow_timer = QTimer(self)
             self.connect( self.follow_timer, SIGNAL("timeout()"), self.follow_update ) 

@@ -1,19 +1,177 @@
 '''Effective seismological trace viewer.'''
 
-import os, sys, signal, logging, time, re, gc
+import os, sys, signal, logging, time, re, gc, tempfile, shutil
+from os.path import join as pjoin
 from optparse import OptionParser
 import numpy as num
 
 import pyrocko.pile
+import pyrocko.trace
 import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.model
 import pyrocko.config
 
+import pyrocko.slink, pyrocko.serial_hamster
+
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 logger = logging.getLogger('pyrocko.snuffler')
+
+class AcquisitionThread(QThread):
+    def __init__(self, post_process_sleep=0.0):
+        QThread.__init__(self)
+        self.mutex = QMutex()
+        self.queue = []
+        self.post_process_sleep = post_process_sleep
+        self._sun_is_shining = True
+    
+    def run(self):
+        while True:
+            try:
+                self.acquisition_start()
+                while self._sun_is_shining:
+                    t0 = time.time()
+                    self.process()
+                    t1 = time.time()
+                    if self.post_process_sleep != 0.0:
+                        time.sleep(max(0, self.post_process_sleep-(t1-t0)))
+            
+                self.acquisition_stop()
+                break
+            
+            except (pyrocko.serial_hamster.SerialHamsterError, pyrocko.slink.SlowSlinkError), e:
+                logger.error(str(e))
+                logger.error('Acquistion terminated, restart in 5 s')
+                self.acquisition_stop()
+                time.sleep(5)
+                if not self._sun_is_shining:
+                    break
+            
+    def stop(self):
+        self._sun_is_shining = False
+
+        logger.debug("Waiting for thread to terminate...")
+        self.wait()
+        logger.debug("Thread has terminated.")
+ 
+    def got_trace(self, tr):
+        self.mutex.lock()
+        self.queue.append(tr)
+        self.mutex.unlock()
+    
+    def poll(self):
+        self.mutex.lock()
+        items = self.queue[:]
+        self.queue[:] = []
+        self.mutex.unlock()
+        return items
+
+class SlinkAcquisition(pyrocko.slink.SlowSlink, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.slink.SlowSlink.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
+class CamAcquisition(pyrocko.serial_hamster.CamSerialHamster, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.serial_hamster.CamSerialHamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self, post_process_sleep=0.1)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
+class USBHB628Acquisition(pyrocko.serial_hamster.USBHB628Hamster, AcquisitionThread):
+    def __init__(self, deltat=0.02, *args, **kwargs):
+        pyrocko.serial_hamster.USBHB628Hamster.__init__(self, deltat=deltat, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
+class SchoolSeismometerAcquisition(pyrocko.serial_hamster.SerialHamster, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self, post_process_sleep=0.1)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
+def setup_acquisition_sources(args):
+
+    sources = [] 
+    iarg = 0
+    while iarg < len(args):
+        arg = args[iarg]
+        
+        msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
+        mca = re.match(r'cam://([^:]+)', arg)
+        mus = re.match(r'hb628://([^:?]+)(\?(\d+))?', arg)
+        msc = re.match(r'school://([^:]+)', arg)
+        if msl:
+            host = msl.group(1)
+            port = msl.group(3)
+            if not port:
+                port = '18000'
+            stream_patterns = msl.group(5).split(',')
+            sl = SlinkAcquisition(host=host, port=port)
+            try:
+                streams = sl.query_streams()
+            except pyrocko.slink.SlowSlinkError, e:
+                logger.fatal(str(e))
+                sys.exit(1)
+
+            streams = list(set(pyrocko.util.match_nslcs(stream_patterns, streams)))
+            for stream in streams:
+                sl.add_stream(*stream)
+            sources.append(sl)
+        elif mca:
+            port = mca.group(1)
+            cam = CamAcquisition(port=port, deltat=0.0314504)
+            sources.append(cam)
+        elif mus:
+            port = mus.group(1)
+            if mus.group(3):
+                deltat = 1./float(mus.group(3))
+            else:
+                deltat = 0.02
+            hb628 = USBHB628Acquisition(port=port, deltat=deltat, buffersize=16, lookback=50)
+            sources.append(hb628)
+            
+        elif msc:
+            port = msc.group(1)
+            sco = SchoolSeismometerAcquisition(port=port)
+            sources.append(sco)
+        
+        if msl or mca or mus or msc:
+            args.pop(iarg)
+        else:
+            iarg += 1
+
+    return sources
+
+class PollInjector(QObject, pyrocko.pile.Injector):
+    
+    def __init__(self, *args, **kwargs):
+        QObject.__init__(self)
+        pyrocko.pile.Injector.__init__(self, *args, **kwargs)
+        self._sources = []       
+        self.startTimer(1000.)
+
+    def add_source(self, source):
+        self._sources.append(source)
+
+    def remove_source(self, source):
+        self._sources.remove(source)
+
+    def timerEvent(self, ev):
+        for source in self._sources:
+            trs = source.poll()
+            for tr in trs:
+                self.inject(tr)
 
 class Connection(QObject):
     def __init__(self, parent, sock):
@@ -379,6 +537,8 @@ def snuffle(pile=None, **kwargs):
     :param format: format of input files
     :param cache_dir: cache directory with trace meta information
     :param force_cache: bool, whether to use the cache when attribute spoofing is active
+    :param store_path: filename template, where to store trace data from input streams
+    :param store_interval: float, time interval (in seconds) between stream buffer dumps 
     '''
     
     if pile is None:
@@ -395,18 +555,43 @@ def snuffle(pile=None, **kwargs):
         except KeyError:
             pass
 
+    store_path = kwargs.pop('store_path', None)
+    store_interval = kwargs.pop('store_interval', 600)
+
     win = SnufflerWindow(pile, **kwargs)
-    
+   
+    sources = []
+    pollinjector = None
+    tempdir = None
     if 'paths' in kwargs_load:
+        sources.extend(setup_acquisition_sources(kwargs_load['paths']))
+        if sources:
+            tempdir = tempfile.mkdtemp('', 'snuffler-tmp-')
+            store_path = pjoin(tempdir, '%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
+            pollinjector = PollInjector(pile, fixation_length=store_interval, path=store_path)
+            for source in sources:
+                source.start()
+                pollinjector.add_source(source)
+
         win.get_view().load(**kwargs_load)
+        
 
     if not win.is_closing():
         app.exec_()
+
+    for source in sources:
+        source.stop()
+    
+    if pollinjector:
+        pollinjector.fixate_all()
 
     ret = win.return_tag()
     
     del win
     gc.collect()
+
+    if tempdir:
+        shutil.rmtree(tempdir)
 
     return ret
 
@@ -449,6 +634,7 @@ def snuffler_from_commandline(args=sys.argv):
             help='read marker information file MARKERS')
 
     parser.add_option('--follow',
+            type='float',
             dest='follow',
             metavar='N',
             help='follow real time with a window of N seconds')
@@ -465,7 +651,20 @@ def snuffler_from_commandline(args=sys.argv):
             default=False,
             help='use the cache even when trace attribute spoofing is active (may have silly consequences)')
 
+    parser.add_option('--store-path',
+            dest='store_path',
+            metavar='PATH_TEMPLATE',
+            help='store data received through streams to PATH_TEMPLATE')
+
+    parser.add_option('--store-interval',
+            type='float',
+            dest='store_interval',
+            default=600,
+            metavar='N',
+            help='dump stream data to file every N seconds [default: %default]')
+
     parser.add_option('--ntracks',
+            type='int',
             dest='ntracks',
             default=24,
             metavar='N',
@@ -516,7 +715,9 @@ def snuffler_from_commandline(args=sys.argv):
             cache_dir=options.cache_dir,
             regex=options.regex,
             format=options.format,
-            force_cache=options.force_cache)
+            force_cache=options.force_cache,
+            store_path=options.store_path,
+            store_interval=options.store_interval)
 
 
 

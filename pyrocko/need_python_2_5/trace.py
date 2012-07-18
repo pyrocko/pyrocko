@@ -21,7 +21,7 @@ def coroutine(func):
     wrapper.__doc__ = func.__doc__
     return wrapper
 
-class States:
+class States(object):
     '''Utility to store channel-specific state in coroutines.'''
     
     def __init__(self):
@@ -30,15 +30,23 @@ class States:
     def get(self, tr):
         k = tr.nslc_id
         if k in self._states:
-            tmin, deltat, value = self._states[k]
+            tmin, deltat, dtype, value = self._states[k]
             if (near(tmin, tr.tmin, deltat/100.) and
-                near(deltat, tr.deltat, deltat/10000.)):
+                near(deltat, tr.deltat, deltat/10000. and
+                dtype == tr.ydata.dtype)):
                 return value
         
         return None
 
     def set(self, tr, value):
-        self._states[tr.nslc_id] = (tr.tmax+tr.deltat, tr.deltat, value)
+        k = tr.nslc_id
+        if k in self._states and self._states[k][-1] is not value:
+            self.free(self._states[k][-1])
+
+        self._states[k] = (tr.tmax+tr.deltat, tr.deltat, tr.ydata.dtype, value)
+
+    def free(self, value):
+        pass
 
 
 @coroutine

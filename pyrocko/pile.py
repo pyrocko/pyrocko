@@ -1175,4 +1175,71 @@ def make_pile( paths=None, selector=None, regex=None,
     return p
 
 
+class Injector(trace.States):
+    
+    def __init__(self, pile, fixation_length=None, path=None, format='from_extension', forget_fixed=False):
+        trace.States.__init__(self)
+        self._pile = pile
+        self._fixation_length = fixation_length
+        self._format = format
+        self._path = path
+        self._forget_fixed = forget_fixed
+
+    def set_fixation_length(self, l):
+        '''Set length after which the fixation method is called on buffer traces.
+        
+        The length should be given in seconds. Give None to disable.
+        '''
+        self.fixate_all()
+        self._fixation_length = l   # in seconds
+        
+    def set_save_path(self, path=
+                'dump_%(network)s.%(station)s.%(location)s.%(channel)s_%(tmin)s_%(tmax)s.mseed'):
+        self.fixate_all()
+        self._path = path
+
+    def inject(self, trace):
+        logger.debug('Received a trace: %s' % trace)
+
+        buf = self.get(trace)
+        if buf is None:
+            trbuf = trace.copy()
+            buf = MemTracesFile(None,[trbuf])
+            self._pile.add_file(buf)
+            self.set(trace, buf)
+
+        else:
+            self._pile.remove_file(buf)
+            trbuf = buf.get_traces()[0]
+            trbuf.append(trace.ydata)
+            self._pile.add_file(buf)
+            self.set(trace, buf)
+        
+        trbuf = buf.get_traces()[0]
+        if self._fixation_length is not None:
+            if trbuf.tmax - trbuf.tmin > self._fixation_length:
+                self._fixate(buf)
+
+    def fixate_all(self):
+        for state in self._states.values():
+            self._fixate(state[-1])
+            
+        self._states = {}
+
+    def free(self, buf):
+        self._fixate(buf)
+
+    def _fixate(self, buf):
+        trbuf = buf.get_traces()[0]
+        if self._path:
+            fns = io.save([trbuf], self._path, format=self._format)
+            
+            self._pile.remove_file(buf)
+            if not self._forget_fixed:
+                self._pile.load_files(fns, show_progress=False, fileformat=self._format)
+
+        del self._states[trbuf.nslc_id]
+                
+    def __del__(self):
+        self.fixate_all()
 
