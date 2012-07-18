@@ -332,30 +332,31 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
         nload = len(to_load)
         count_all = True
 
-    progress = Progress('Scanning files', nload)
+    if to_load:
+        progress = Progress('Scanning files', nload)
 
-    for (mustload, mtime, abspath, substitutions, tfile) in to_load:
-        try:
-            if mustload:
-                tfile = TracesFile(None, abspath, fileformat, substitutions=substitutions, mtime=mtime)
-                if cache and not substitutions:
-                    cache.put(abspath, tfile)
-                
-                if not count_all:
+        for (mustload, mtime, abspath, substitutions, tfile) in to_load:
+            try:
+                if mustload:
+                    tfile = TracesFile(None, abspath, fileformat, substitutions=substitutions, mtime=mtime)
+                    if cache and not substitutions:
+                        cache.put(abspath, tfile)
+                    
+                    if not count_all:
+                        iload += 1
+
+                if count_all:
                     iload += 1
-
-            if count_all:
-                iload += 1
-                
-        except (io.FileLoadError, OSError), xerror:
-            failures.append(abspath)
-            logger.warn(xerror)
-        else:
-            yield tfile
+                    
+            except (io.FileLoadError, OSError), xerror:
+                failures.append(abspath)
+                logger.warn(xerror)
+            else:
+                yield tfile
+            
+            progress.update(iload+1)
         
-        progress.update(iload+1)
-    
-    progress.update(nload)
+        progress.update(nload)
 
     if failures:
         logger.warn('The following file%s caused problems and will be ignored:\n' % util.plural_s(len(failures)) + '\n'.join(failures))
