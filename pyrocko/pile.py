@@ -265,6 +265,7 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
         def __init__(self, label, n):
             self._label = label
             self._n = n
+            self._bar = None
             if show_progress:
                 self._bar = util.progressbar(label, self._n)
 
@@ -272,11 +273,12 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
                 update_progress(label, 0, self._n)
 
         def update(self, i):
-            if show_progress:
+            if self._bar:
                 if i < self._n-1:
                     self._bar.update(i)
                 else:
                     self._bar.finish()
+                    self._bar = None
             
             if update_progress:
                 update_progress(self._label, i, self._n)
