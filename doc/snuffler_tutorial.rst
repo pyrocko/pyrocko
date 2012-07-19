@@ -8,7 +8,7 @@ First steps
 -----------
 
 Suppose we want to have a quick look on some seismic waveforms in a file
-`test.mseed <http://emolch.org/test.mseed>`_).  The file is
+`test.mseed <https://github.com/downloads/emolch/pyrocko/test.mseed>`_).  The file is
 in Mini-SEED format, which is the default file format, when working with
 Snuffler.  Download the file, then run the command ::
 
@@ -83,7 +83,7 @@ a snap.
   :option:`--cache` command line option.
 
 You may now use this small example dataset `testdata.tar
-<http://emolch.org/testdata.tar>`_) with 153 files from some stations in Germany
+<https://github.com/downloads/emolch/pyrocko/testdata.tar>`_) with 153 files from some stations in Germany
 (3 days, 17 stations with 3 channels each, 23MB).
 
 Untar the file and look at the data using Snuffler::
