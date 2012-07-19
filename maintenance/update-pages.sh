@@ -17,8 +17,11 @@ cd doc || exit 1
 make clean || exit 1
 make html || exit 1
 cd ..
-cp -R doc/_build/html/* pages/ || exit 1
-cd pages || exit 1
+if [ ! -d pages/v0.3 ] ; then
+    mkdir pages/v0.3 || exit 1
+fi
+cp -R doc/_build/html/* pages/v0.3/ || exit 1
+cd pages/v0.3 || exit 1
 git add * || exit 1
 git commit || exit 1
 git push origin gh-pages
