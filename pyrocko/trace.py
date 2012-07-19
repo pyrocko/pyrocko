@@ -6,12 +6,12 @@
 import util, evalresp
 import time, math, copy, logging, sys
 import numpy as num
-from util import reuse
+from util import reuse, hpfloat
 from scipy import signal
-from pyrocko import model
-from nano import asnano, Nano
+from pyrocko import model, orthodrome
 
 logger = logging.getLogger('pyrocko.trace')
+
 
 class Trace(object):
     
@@ -45,12 +45,11 @@ class Trace(object):
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
     
         self._growbuffer = None
-
+        
         if deltat < 0.001:
-            tmin = asnano(tmin)
+            tmin = hpfloat(tmin)
             if tmax is not None:
-                tmax = asnano(tmax)
-
+                tmax = hpfloat(tmax)
     
         if mtime is None:
             mtime = time.time()
@@ -74,7 +73,6 @@ class Trace(object):
         
     def __str__(self):
         fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
-        
         s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
         s += '  timerange: %s - %s\n' % (util.time_to_str(self.tmin, format=fmt), util.time_to_str(self.tmax, format=fmt))
         s += '  delta t: %g\n' % self.deltat
@@ -82,7 +80,17 @@ class Trace(object):
             for k in sorted(self.meta.keys()):
                 s += '  %s: %s\n' % (k,self.meta[k])
         return s
-        
+       
+    def __getstate__(self):
+        return (self.network, self.station, self.location, self.channel, self.tmin, self.tmax, self.deltat, self.mtime)
+
+    def __setstate__(self, state):
+        self.network, self.station, self.location, self.channel, self.tmin, self.tmax, self.deltat, self.mtime = state
+        self.ydata = None
+        self.meta = None
+        self._growbuffer = None
+        self._update_ids()
+
     def name(self):
         '''Get a short string description.'''
 
@@ -90,13 +98,14 @@ class Trace(object):
         return s
         
     def __eq__(self, other):
+
         return (self.network == other.network and
                 self.station == other.station and
                 self.location == other.location and
                 self.channel == other.channel and
-                self.deltat == other.deltat and
-                abs(self.tmin-other.tmin) < self.deltat*0.001 and
-                abs(self.tmax-other.tmax) < self.deltat*0.001 and
+                abs(self.deltat - other.deltat) < (self.deltat + other.deltat)*1e-6 and
+                abs(self.tmin-other.tmin) < self.deltat*0.01 and
+                abs(self.tmax-other.tmax) < self.deltat*0.01 and
                 num.all(self.ydata == other.ydata))
     
     def __call__(self, t, clip=False, snap=round):
@@ -954,7 +963,7 @@ class Trace(object):
         :param opengl: bool, whether to use opengl (default: ``False``)
         '''
 
-        snuffle( [self], **kwargs)
+        return snuffle( [self], **kwargs)
 
 def snuffle(traces, **kwargs):
     '''Show traces in a snuffler window.
@@ -1198,6 +1207,18 @@ def rotate(traces, azimuth, in_channels, out_channels):
                     
     return rotated
 
+def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
+    azimuth = orthodrome.azimuth(receiver, source) + 180.
+    in_channels = n.channel, e.channel
+    out = rotate([n,e], azimuth, in_channels=in_channels, out_channels=out_channels)
+    assert len(out) == 2
+    for tr in out:
+        if tr.channel=='R':
+            r = tr
+        elif tr.channel == 'T':
+            t = tr
+
+    return r,t
 
 def _decompose(a):
     '''Decompose matrix into independent submatrices.'''
@@ -1908,14 +1929,32 @@ def moving_sum(x,n, mode='valid'):
             return num.zeros(0, dtype=cx.dtype) 
         y = num.zeros(nn-n+1, dtype=cx.dtype)
         y[0] = cx[n-1]
-        y[1:] = cx[n:]-cx[:-n]
+        y[1:nn-n+1] = cx[n:nn]-cx[0:nn-n]
     
     if mode == 'full':
         y = num.zeros(nn+n-1, dtype=cx.dtype)
-        y[:n] = cx[:n]
-        y[n:-n+1] = cx[n:]-cx[:-n]
-        y[-n+1:] = cx[-1]-cx[-n:-1]
-    
+        if n <= nn:
+            y[0:n] = cx[0:n]
+            y[n:nn] = cx[n:nn]-cx[0:nn-n]
+            y[nn:nn+n-1] = cx[-1]-cx[nn-n:nn-1]
+        else:
+            y[0:nn] = cx[0:nn]
+            y[nn:n] = cx[nn-1]
+            y[n:nn+n-1] = cx[nn-1] - cx[0:nn-1]
+
+    if mode == 'same':
+        n1 = (n-1)/2
+        y = num.zeros(nn, dtype=cx.dtype)
+        if n <= nn:
+            y[0:n-n1] = cx[n1:n]
+            y[n-n1:nn-n1] = cx[n:nn]-cx[0:nn-n]
+            y[nn-n1:nn] = cx[nn-1] - cx[nn-n:nn-n+n1]
+        else:
+            y[0:max(0,nn-n1)] = cx[min(n1,nn):nn]
+            y[max(nn-n1,0):min(n-n1,nn)] = cx[nn-1]
+            y[min(n-n1,nn):nn] = cx[nn-1] - cx[0:max(0,nn-(n-n1))]
+
+
     return y
 
 def nextpow2(i):

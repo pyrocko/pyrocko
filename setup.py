@@ -56,7 +56,7 @@ installed_date = %s
         pass
 
 packname = 'pyrocko' 
-version = '0.2'
+version = '0.3'
 
 subpacknames = [ 'pyrocko.snufflings' ]
 if sys.version_info >= (2,5):

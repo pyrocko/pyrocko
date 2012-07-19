@@ -1,41 +1,64 @@
-import os, select, pickle, struct, sys
+import os, select, pickle, struct, sys, errno
 
 class EOF(Exception):
     pass
-    
+   
+class NoSuchCommand(Exception):
+    pass
+
 def readn(fh, size):
     nread = 0
     while nread < size:
-        data = os.read(fh, size-nread)
+        while True:
+            try:
+                data = os.read(fh, size-nread)
+                break
+
+            except OSError, e:
+                if e.errno == errno.EINTR:
+                    pass
+                else:
+                    raise e
+
         if len(data) == 0:
             raise EOF()
         nread += len(data)
     return data
     
 def readobj(fh):
-    data = readn(fh, 4)
+    data = readn(fh, 8)
     if len(data) == 0:
         raise EOF()
-    size = struct.unpack('>i', data)[0]
+    size = struct.unpack('>Q', data)[0]
     data = readn(fh, size)
     payload = pickle.loads(data)
     return payload
 
 def writeobj(fh, obj):
     data = pickle.dumps(obj)
-    os.write(fh, struct.pack('>i', len(data)))
+    os.write(fh, struct.pack('>Q', len(data)))
     os.write(fh, data)
 
 class Forked:
     def __init__(self, flipped=False):
+        self.pid = None
         self.down_w = None
         self.up_r = None
         self.down_r = None
         self.up_w = None
         self.flipped = flipped
-    
+        self.commands = []
+   
+    def __getattr__(self, k):
+        def f( *args, **kwargs):
+            return self.call(k, *args, **kwargs)
+        return f
+
     def dispatch(self, command, args, kwargs):
-        return None
+        if command in self.commands:
+            return getattr(self, command+'_')(*args, **kwargs)
+        else:
+            raise NoSuchCommand(command)
 
     def start(self):
         down_r, down_w = os.pipe()
@@ -101,7 +124,7 @@ class Forked:
             self.down_w = None
             self.up_r = None
             
-        if self.pid != 0:
+        if self.pid is not None and self.pid != 0:
             os.wait()
         
     def __del__(self):

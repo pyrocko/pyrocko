@@ -3,16 +3,12 @@ import numpy as num
 
 import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace, pyrocko.plot
 from pyrocko.util import TableWriter, TableReader
-from pyrocko.nano import Nano
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 def gmtime_x(timestamp):
-    if isinstance(timestamp, Nano):
-        etimestamp = int(timestamp)
-    else:
-        etimestamp = math.floor(timestamp)
+    etimestamp = float(num.floor(timestamp))
     tt = time.gmtime(etimestamp)
     ms = (timestamp-etimestamp)*1000
     return tt,ms
@@ -22,9 +18,10 @@ def mystrftime(fmt=None, tt=None, milliseconds=0):
     if fmt is None: fmt = '%Y-%m-%d %H:%M:%S .%r'
     if tt is None: tt = time.time()
     
-    fmt2 = fmt.replace('%r', '%03i' % int(round(milliseconds)))
-    fmt3 = fmt2.replace('%u', '%06i' % int(round(milliseconds*1000)))
-    return time.strftime(fmt3, tt)
+    fmt = fmt.replace('%r', '%03i' % int(round(milliseconds)))
+    fmt = fmt.replace('%u', '%06i' % int(round(milliseconds*1000)))
+    fmt = fmt.replace('%n', '%09i' % int(round(milliseconds*1000000)))
+    return time.strftime(fmt, tt)
         
 def myctime(timestamp):
     tt, ms = gmtime_x(timestamp)
@@ -47,9 +44,6 @@ def str_to_bool(s):
 
 
 def make_QPolygonF( xdata, ydata ):
-    if isinstance(xdata, Nano):
-        xdata = xdata.float_array()
-        
     assert len(xdata) == len(ydata)
     qpoints = QPolygonF( len(ydata) )
     vptr = qpoints.data()
@@ -157,13 +151,14 @@ class MySlider(QSlider):
 
 class MyValueEdit(QLineEdit):
 
-    def __init__(self, parent, low_is_none=False, high_is_none=False, *args):
-        QLineEdit.__init__(self, *args)
+    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args, **kwargs):
+        QLineEdit.__init__(self, *args, **kwargs)
         self.value = 0.
         self.mi = 0.
         self.ma = 1.
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
         self.connect( self, SIGNAL("editingFinished()"), self.myEditingFinished )
         self.lock = False
         
@@ -184,6 +179,8 @@ class MyValueEdit(QLineEdit):
                 value = self.mi
             elif self.high_is_none and t in ('off', 'above'):
                 value = self.ma
+            elif self.low_is_zero and float(t) == 0.0:
+                value = self.mi
             else:
                 value = float(t)
 
@@ -202,6 +199,10 @@ class MyValueEdit(QLineEdit):
         
     def adjust_text(self):
         t = ('%8.5g' % self.value).strip()
+
+        if self.low_is_zero and self.value == self.mi:
+            t = '0'
+
         if self.low_is_none and self.value == self.mi:
             if self.high_is_none:
                 t = 'below'
@@ -216,33 +217,36 @@ class MyValueEdit(QLineEdit):
 
         self.setText(t)
         
-class ValControl(QFrame):
+class ValControl(QObject):
 
-    def __init__(self, low_is_none=False, high_is_none=False, *args):
-        apply(QFrame.__init__, (self,) + args)
-        self.layout = QHBoxLayout( self )
-        self.layout.setMargin(0)
-        self.lname = QLabel( "name", self )
-        self.lname.setMinimumWidth(120)
-        self.lvalue = MyValueEdit( self, low_is_none=low_is_none, high_is_none=high_is_none )
+    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args):
+        apply(QObject.__init__, (self,) + args)
+        
+        self.lname = QLabel( "name" )
+        self.lname.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum))
+        self.lvalue = MyValueEdit( low_is_none=low_is_none, high_is_none=high_is_none, low_is_zero=low_is_zero )
         self.lvalue.setFixedWidth(100)
-        self.slider = MySlider(Qt.Horizontal, self)
+        self.slider = MySlider(Qt.Horizontal)
+        self.slider.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.slider.setMaximum( 10000 )
         self.slider.setSingleStep( 100 )
         self.slider.setPageStep( 1000 )
         self.slider.setTickPosition( QSlider.NoTicks )
-        self.slider.sizePolicy().setHorizontalStretch(10)
         self.slider.setFocusPolicy(Qt.ClickFocus)
-        self.layout.addWidget( self.lname )
-        self.layout.addWidget( self.lvalue )
-        self.layout.addWidget( self.slider )
+        
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
+
         self.connect( self.slider, SIGNAL("valueChanged(int)"),
                       self.slided )
         self.connect( self.lvalue, SIGNAL("edited(float)"),
                       self.edited )
+
         self.mute = False
+
+    def widgets(self):
+        return self.lname, self.lvalue, self.slider
     
     def s2v(self, svalue):
         a = math.log(self.ma/self.mi) / 10000.
@@ -261,13 +265,27 @@ class ValControl(QFrame):
         self.set_value(cur)
        
     def set_range(self, mi, ma):
+        if self.mi == mi and self.ma == ma:
+            return
+
+        vput = None
+        if self.cursl == 0:
+            vput = mi
+        if self.cursl == 10000:
+            vput = ma
+
         self.mi = mi
         self.ma = ma
         self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
-        if self.cur < mi:
-            self.set_value(mi)
-        if self.cur > ma:
-            self.set_value(ma)
+
+        if vput is not None:
+            self.set_value(vput)
+        else:
+            if self.cur < mi:
+                self.set_value(mi)
+            if self.cur > ma:
+                self.set_value(ma)
+
 
     def set_value(self, cur):
         if cur is None:
@@ -275,6 +293,10 @@ class ValControl(QFrame):
                 cur = self.mi
             elif self.high_is_none:
                 cur = self.ma
+    
+        if cur == 0.0:
+            if self.low_is_zero:
+                cur = self.mi
 
         self.mute = True
         self.cur = cur
@@ -320,10 +342,14 @@ class ValControl(QFrame):
         
         cur = self.cur
 
-        if self.low_is_none and self.cursl == 0:
-            cur = None
+        if self.cursl == 0:
+            if self.low_is_none:
+                cur = None
 
-        if self.high_is_none and self.cursl == 10000:
+            elif self.low_is_zero:
+                cur = 0.0
+
+        if self.cursl == 10000 and self.high_is_none:
             cur = None
 
         self.emit(SIGNAL("valchange(PyQt_PyObject,int)"), cur, int(self.ind) )
@@ -337,6 +363,87 @@ class LinValControl(ValControl):
         if self.ma == self.mi:
             return 0
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
+
+class Progressbar:
+    def __init__(self, parent, name, can_abort=True):
+        self.parent = parent
+        self.name = name
+        self.label = QLabel(name, parent)
+        self.pbar = QProgressBar(parent)
+        self.aborted = False
+        self.time_last_update = 0.
+        if can_abort:
+            self.abort_button = QPushButton('Abort', parent)
+            self.parent.connect(self.abort_button, SIGNAL('clicked()'), self.abort)
+        else:
+            self.abort_button = False
+
+    def widgets(self):
+        widgets = [ self.label, self.bar() ]
+        if self.abort_button:
+            widgets.append(self.abort_button)
+        return widgets
+    
+    def bar(self):
+        return self.pbar
+
+    def abort(self):
+        self.aborted = True
+
+class Progressbars(QFrame):
+    def __init__(self, parent):
+        QFrame.__init__(self, parent)
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        self.bars = {}
+        self.start_times = {}
+        self.hide()
+
+    def set_status(self, name, value):
+        now = time.time()
+        if name not in self.start_times:
+            self.start_times[name] = now
+            return False
+        else:
+            if now < self.start_times[name] + 1.0:
+                return False
+
+        self.start_times.get(name, 0.0)
+        value = int(round(value))
+        if name not in self.bars:
+            if value == 100:
+                return False
+            self.bars[name] = Progressbar(self, name)
+            self.make_layout()
+
+        bar = self.bars[name]
+        if bar.time_last_update < now - 0.1 or value == 100:
+            bar.bar().setValue(value)
+            bar.time_last_update = now
+
+        if value == 100:
+            del self.bars[name]
+            del self.start_times[name]
+            self.make_layout()
+            for w in bar.widgets():
+                w.setParent(None)
+
+        return bar.aborted
+
+    def make_layout(self):
+        while True:
+            c = self.layout.takeAt(0)
+            if c is None:
+                break
+
+        for ibar, bar in enumerate(self.bars.values()):
+            for iw, w in enumerate(bar.widgets()):
+                self.layout.addWidget(w, ibar, iw)
+        
+        if not self.bars:
+            self.hide()
+        else:
+            self.show()
 
 class MarkerParseError(Exception):
     pass

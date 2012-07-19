@@ -5,9 +5,16 @@ from scipy import signal
 from os.path import join as pjoin
 import config
 import numpy as num
-from nano import Nano
 
 logger = logging.getLogger('pyrocko.util')
+
+try:
+    import progressbar as progressbar_mod
+except:
+    import dummy_progressbar as progressbar_mod
+
+def progressbar_module():
+    return progressbar_mod
 
 def setup_logging(programname='pyrocko', levelname='warning'):
     '''Initialize logging.
@@ -34,6 +41,12 @@ def setup_logging(programname='pyrocko', levelname='warning'):
 def data_file(fn):
     return os.path.join(os.path.split(__file__)[0], 'data', fn)
 
+if hasattr(num, 'float128'):
+    hpfloat = num.float128
+else:
+    def hpfloat():
+        raise Exception('NumPy lacks support for float128 data type on this platform.')
+
 class Stopwatch:
     '''Simple stopwatch to measure elapsed wall clock time.
     
@@ -52,20 +65,14 @@ class Stopwatch:
     def __call__(self):
         return time.time() - self.start
         
-def progressbar_module():
-    '''Load the progressbar module, if available.
-    
-    :returns: The progressbar module or `None`, if this module is not available.
-    '''
 
-    try:
-        import progressbar
-    except:
-        logger.warn('progressbar module not available.')
-        progressbar = None
-    
-    return progressbar
-
+def progressbar(label, maxval):
+    widgets = [label, ' ',
+            progressbar_mod.Bar(marker='-',left='[',right=']'), ' ',
+            progressbar_mod.Percentage(), ' ',]
+       
+    pbar = progressbar_mod.ProgressBar(widgets=widgets, maxval=maxval).start()
+    return pbar
 
 def progress_beg(label):
     '''Notify user that an operation has started.
@@ -75,9 +82,8 @@ def progress_beg(label):
     To be used in conjuction with :py:func:`progress_end`.
     '''
 
-    if config.show_progress:
-        sys.stderr.write(label)
-        sys.stderr.flush()
+    sys.stderr.write(label)
+    sys.stderr.flush()
 
 def progress_end(label=''):
     '''Notify user that an operation has ended. 
@@ -87,9 +93,8 @@ def progress_end(label=''):
     To be used in conjuction with :py:func:`progress_beg`.
     '''
 
-    if config.show_progress:
-        sys.stderr.write(' done. %s\n' % label)
-        sys.stderr.flush()
+    sys.stderr.write(' done. %s\n' % label)
+    sys.stderr.flush()
         
 class GlobalVars:
     reuse_store = dict()
@@ -417,12 +422,8 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
         GlobalVars.re_frac = re.compile(r'\.[1-9]FRAC')
         GlobalVars.frac_formats = dict([  ('.%sFRAC' % x, '%.'+x+'f') for x in '123456789' ] )
     
-    if isinstance(t, Nano):
-        ts = int(t)     # it always gives rounds like floor
-        tfrac = float(t-ts)
-    else:
-        ts = math.floor(t)
-        tfrac = t-ts
+    ts = float(num.floor(t))
+    tfrac = t-ts
     
     m = GlobalVars.re_frac.search(format)
     if m:
@@ -431,7 +432,7 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
             ts += 1.
                         
         format, nsub = GlobalVars.re_frac.subn(sfrac[1:], format, 1)
-    
+   
     return time.strftime(format, time.gmtime(ts))
     
 def plural_s(n):

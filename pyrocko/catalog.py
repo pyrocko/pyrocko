@@ -299,7 +299,7 @@ class GlobalCMT(EarthquakeCatalog):
                                data.mrp, data.mtp, data.mpp],
                         dtype=num.float).reshape(3,3)
 
-                m *= 10**(data.exponent-7)
+                m *= 10.0**(data.exponent-7)
                 mt = MomentTensor(m_up_south_east=m)
                 ev = model.Event(
                     lat=data.lat,

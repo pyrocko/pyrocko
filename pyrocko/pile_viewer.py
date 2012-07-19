@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, shlex, operator, copy
 
 from optparse import OptionParser
@@ -8,11 +6,10 @@ from itertools import izip
 
 import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace, pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
 
-from pyrocko.util import TableWriter, TableReader
+from pyrocko.util import TableWriter, TableReader, hpfloat
 
-from pyrocko.nano import Nano
 from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker, PhaseMarker, make_QPolygonF, draw_label, Label, \
-    gmtime_x, myctime, mystrftime
+    gmtime_x, myctime, mystrftime, Progressbars
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -161,7 +158,14 @@ def fancy_time_ax_format(inc):
     l0_fmt_brief = ''
     l2_fmt = ''
     l2_trig = 0
-    if inc < 0.001:
+    if inc < 0.000001:
+        l0_fmt = '.%n'
+        l0_center = False
+        l1_fmt = '%H:%M:%S'
+        l1_trig = 6
+        l2_fmt = '%b %d, %Y'
+        l2_trig = 3
+    elif inc < 0.001:
         l0_fmt = '.%u'
         l0_center = False
         l1_fmt = '%H:%M:%S'
@@ -293,7 +297,13 @@ class TimeScaler(pyrocko.plot.AutoScaler):
         
         if inc < sday:
             mi_day = day_start(max(mi, working_system_time_range[0]+sday*1.5))
-            base = mi_day+math.ceil(float(mi-mi_day)/inc)*inc
+            if inc < 0.001:
+                mi_day = hpfloat(mi_day)
+
+            base = mi_day+num.ceil((mi-mi_day)/inc)*inc
+            if inc < 0.001:
+                base = hpfloat(base)
+
             base_day = mi_day
             i = 0
             while True:
@@ -334,7 +344,7 @@ class TimeScaler(pyrocko.plot.AutoScaler):
         else:
             mi_year = year_start(max(mi, working_system_time_range[0]+syear*1.5))
             incy = int(round(inc/syear))
-            y = int(math.floor(time.gmtime(mi_year)[0]/incy)*incy)
+            y = int(num.floor(time.gmtime(mi_year)[0]/incy)*incy)
             
             while True:
                 tick = calendar.timegm((y,1,1,0,0,0))
@@ -457,10 +467,7 @@ class Projection(object):
         
     def set_in_range(self, xmin, xmax):
         if xmax == xmin: xmax = xmin + 1.
-        if isinstance(xmin, Nano) or isinstance(xmax, Nano):
-            self.xr = xmin, xmax
-        else:
-            self.xr = float(xmin), float(xmax)
+        self.xr = xmin, xmax
 
     def get_in_range(self):
         return self.xr
@@ -515,12 +522,12 @@ def sort_actions(menu):
 
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
-class PileOverviewException(Exception):
+class PileViewerMainException(Exception):
     pass
 
-def MakePileOverviewClass(base):
+def MakePileViewerMainClass(base):
     
-    class PileOverview(base):
+    class PileViewerMain(base):
 
         def __init__(self, pile, ntracks_shown_max, panel_parent, *args):
             if base == QGLWidget:
@@ -537,6 +544,7 @@ def MakePileOverviewClass(base):
             self.ntracks_shown_max = ntracks_shown_max
             self.initial_ntracks_shown_max = ntracks_shown_max
             self.ntracks = 0
+            self.show_all = True
             self.shown_tracks_range = None
             self.track_start = None
             self.track_trange = None
@@ -768,16 +776,10 @@ def MakePileOverviewClass(base):
             self.menuitem_close = QAction('Close', self.menu)
             self.menu.addAction(self.menuitem_close)
             self.connect( self.menuitem_close, SIGNAL("triggered(bool)"), self.myclose )
-            
+           
             self.menu.addSeparator()
             
             self.connect( self.menu, SIGNAL('triggered(QAction*)'), self.update )
-
-            deltats = self.pile.get_deltats()
-            if deltats:
-                self.min_deltat = min(deltats)
-            else:
-                self.min_deltat = 0.01
                 
             self.time_projection = Projection()
             self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
@@ -827,6 +829,14 @@ def MakePileOverviewClass(base):
             
             self.error_messages = {}
             self.return_tag = None
+            self.wheel_pos = 60
+
+            self.setAcceptDrops(True)
+            self._paths_to_load = []
+
+            self.automatic_updates = True
+
+            self.closing = False
 
         def fail(self, reason):
             box = QMessageBox(self)
@@ -893,7 +903,7 @@ def MakePileOverviewClass(base):
             if pattern in self.blacklist:
                 self.blacklist.remove(pattern)
             else:
-                raise PileOverviewException('Pattern not found in blacklist.')
+                raise PileViewerMainException('Pattern not found in blacklist.')
             
             logger.info('Blacklist is [ %s ]' % ', '.join(self.blacklist))
             self.update_trace_filter()
@@ -1042,6 +1052,7 @@ def MakePileOverviewClass(base):
             snuffling.delete_gui()
             self.update()
             self.snufflings.remove(snuffling)
+            snuffling.pre_destroy()
 
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
@@ -1058,6 +1069,63 @@ def MakePileOverviewClass(base):
 
         def remove_panel_toggler(self, item):
             self.toggle_panel_menu.removeAction(item)
+
+        def load(self, paths, regex=None, format='from_extension', cache_dir=pyrocko.config.cache_dir, force_cache=False):
+
+            if isinstance(paths, str):
+                paths = [ paths ]
+             
+            fns = pyrocko.util.select_files(paths, selector=None, regex=regex, show_progress=False)
+            if not fns:
+                return
+
+            cache = pyrocko.pile.get_cache(cache_dir)
+            
+            t = [ time.time() ]
+            def update_bar(label, value):
+                pbs = self.parent().get_progressbars()
+                if label.lower() == 'looking at files':
+                    label = 'Looking at %i files' % len(fns)
+                else:
+                    label = 'Scanning %i files' % len(fns)
+
+                return pbs.set_status(label, value)
+
+            def update_progress(label, i,n):
+                abort = False
+                
+                qApp.processEvents()
+                if n != 0:
+                    perc = i*100/n
+                else:
+                    perc = 100
+                abort |= update_bar(label, perc)
+                abort |= self.window().is_closing()
+
+                tnow = time.time()
+                if t[0]+1. < tnow:
+                    self.update()
+                    t[0] = tnow
+
+                return abort
+
+            self.automatic_updates = False
+
+            self.pile.load_files( sorted(fns), cache=cache, fileformat=format, show_progress=False, update_progress=update_progress)
+
+            self.automatic_updates = True
+            self.update()
+
+        def load_queued(self):
+            if not self._paths_to_load:
+                return
+            paths = self._paths_to_load
+            self._paths_to_load = []
+            self.load(paths)
+
+        def load_soon(self, paths):
+            self._paths_to_load.extend(paths)
+            QTimer.singleShot( 200, self.load_queued )
 
         def add_traces(self, traces):
             if traces:
@@ -1084,6 +1152,9 @@ def MakePileOverviewClass(base):
         
         def pile_changed(self, what):
             self.pile_has_changed = True
+            self.emit(SIGNAL('pile_has_changed_signal()'))
+            if self.automatic_updates:
+                self.update()
            
         def set_gathering(self, gather=None, order=None, color=None):
             
@@ -1102,16 +1173,30 @@ def MakePileOverviewClass(base):
             self.color_keys = self.pile.gather_keys(color)
             previous_ntracks = self.ntracks
             self.set_ntracks(len(keys))
-            if self.shown_tracks_range is None or previous_ntracks == 0 or previous_ntracks != self.ntracks:
+
+            if self.shown_tracks_range is None or previous_ntracks == 0 or self.show_all:
                 l, h = 0, min(self.ntracks_shown_max, self.ntracks)
+                key_at_top = None
+                n = h-l
+
             else:
                 l, h = self.shown_tracks_range
-           
-            self.set_tracks_range((l,h))
+                key_at_top = self.track_keys[l] 
+                n = h-l
 
             self.track_keys = sorted(keys, cmp=order)
+
+            if key_at_top is not None:
+                try:
+                    ind = self.track_keys.index(key_at_top)
+                    l = ind
+                    h = l+n
+                except:
+                    pass
+
+            self.set_tracks_range((l,h))
+
             self.key_to_row = dict([ (key, i) for (i,key) in enumerate(self.track_keys) ])
-            
             inrange = lambda x,r: r[0] <= x and x < r[1]
             
             def trace_selector(trace):
@@ -1124,8 +1209,12 @@ def MakePileOverviewClass(base):
             else:
                 self.trace_selector = trace_selector
 
-            if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1]:
-                self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
+            if self.tmin == working_system_time_range[0] and self.tmax == working_system_time_range[1] or self.show_all:
+                tmin, tmax = self.pile.get_tmin(), self.pile.get_tmax()
+                if tmin is not None and tmax is not None:
+                    tlen = (tmax - tmin)
+                    tpad = tlen * 5./self.width()
+                    self.set_time_range(tmin-tpad, tmax+tpad)
         
         def set_time_range(self, tmin, tmax):
             if tmin is None:
@@ -1143,11 +1232,12 @@ def MakePileOverviewClass(base):
             
             tmin = max(working_system_time_range[0], tmin)
             tmax = min(working_system_time_range[1], tmax)
-                    
-            if (tmax - tmin < self.min_deltat):
+            
+            min_deltat = self.content_deltat_range()[0]
+            if (tmax - tmin < min_deltat):
                 m = (tmin + tmax) / 2.
-                tmin = m - self.min_deltat/2.
-                tmax = m + self.min_deltat/2.
+                tmin = m - min_deltat/2.
+                tmax = m + min_deltat/2.
                 
             self.time_projection.set_in_range(tmin,tmax)
             self.tmin, self.tmax = tmin, tmax
@@ -1224,6 +1314,7 @@ def MakePileOverviewClass(base):
             return self.markers
 
         def mousePressEvent( self, mouse_ev ):
+            self.show_all = False
             #self.setMouseTracking(False)
             point = self.mapFromGlobal(mouse_ev.globalPos())
 
@@ -1257,6 +1348,7 @@ def MakePileOverviewClass(base):
             self.update_status()
             
         def mouseDoubleClickEvent(self, mouse_ev):
+            self.show_all = False
             self.start_picking(None)
             self.ignore_releases = 1
     
@@ -1279,8 +1371,8 @@ def MakePileOverviewClass(base):
                 frac = x0/float(self.width())
                 dt = dx*(tmax0-tmin0)*scale
                 
+                self.interrupt_following()
                 self.set_time_range(tmin0 - dt - dtr*frac, tmax0 - dt + dtr*(1.-frac))
-                self.interactive_range_change_time = time.time()
                 
                 self.update()
             else:
@@ -1379,10 +1471,12 @@ def MakePileOverviewClass(base):
                 self.help()
 
             elif keytext == ' ':
+                self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
             
             elif keytext == 'b':
                 dt = self.tmax - self.tmin
+                self.interrupt_following()
                 self.set_time_range(self.tmin-dt, self.tmax-dt)
             
             elif keytext in ('p', 'n', 'P', 'N'):
@@ -1419,6 +1513,7 @@ def MakePileOverviewClass(base):
                             break
                         
                 if tgo is not None:
+                    self.interrupt_following()
                     self.set_time_range(tgo-dt/2.,tgo+dt/2.)
                         
             elif keytext == 'q' or keytext == 'x':
@@ -1573,12 +1668,14 @@ def MakePileOverviewClass(base):
             QDesktopServices.openUrl( QUrl(link) )
 
         def wheelEvent(self, wheel_event):
+            self.wheel_pos += wheel_event.delta()
+            n = self.wheel_pos / 120
+            self.wheel_pos = self.wheel_pos % 120
+            if n == 0:
+                return
+
             amount = max(1.,abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
-            
-            if wheel_event.delta() < 0:
-                wdelta = -amount
-            else:
-                wdelta = +amount
+            wdelta = amount * n
             
             trmin,trmax = self.track_to_screen.get_in_range()
             anchor = (self.track_to_screen.rev(wheel_event.y())-trmin)/(trmax-trmin)
@@ -1586,6 +1683,18 @@ def MakePileOverviewClass(base):
                 self.zoom_tracks( anchor, wdelta )
             else:
                 self.scroll_tracks( -wdelta )
+
+        def dragEnterEvent(self, event):
+            if event.mimeData().hasUrls():
+                if any(url.toLocalFile() for url in event.mimeData().urls()):
+                    event.setDropAction(Qt.LinkAction)
+                    event.accept()
+
+        def dropEvent(self, event):
+            if event.mimeData().hasUrls():
+                paths = list(str(url.toLocalFile()) for url in event.mimeData().urls())
+                event.acceptProposedAction()
+                self.load(paths)
 
         def get_phase_name(self, kind):
             return self.phase_names.get(kind, 'Unknown')
@@ -1676,6 +1785,19 @@ def MakePileOverviewClass(base):
                 tmax = working_system_time_range[1]
 
             return tmin, tmax
+
+        def content_deltat_range(self):
+            pile = self.get_pile()
+            
+            deltatmin, deltatmax = pile.get_deltatmin(), pile.get_deltatmax()
+
+            if deltatmin is None:
+                deltatmin = 0.001
+
+            if deltatmax is None:
+                deltatmax = 1000.0
+
+            return deltatmin, deltatmax
        
         def make_good_looking_time_range(self, tmin, tmax):
             if tmax < tmin:
@@ -1714,11 +1836,13 @@ def MakePileOverviewClass(base):
                 tmax = max(tmax, marker.tmax)
 
             tmin, tmax = self.make_good_looking_time_range(tmin, tmax) 
+            self.interrupt_following()
             self.set_time_range(tmin,tmax)
             self.update()
             
         def go_to_time(self, t):
             tmin, tmax = self.make_good_looking_time_range(t,t)
+            self.interrupt_following()
             self.set_time_range(tmin,tmax)
             self.update()
 
@@ -1728,6 +1852,7 @@ def MakePileOverviewClass(base):
                     event = marker.get_event()
                     if event.name.lower() == name.lower():
                         tmin, tmax = self.make_good_looking_time_range(event.time, event.time)
+                        self.interrupt_following()
                         self.set_time_range(tmin, tmax)
 
         def printit(self):
@@ -1833,7 +1958,7 @@ def MakePileOverviewClass(base):
                 istyle = self.trace_styles.get((tr.full_id, tr.deltat), 0)
                 
                 
-                if len(traces) < 1000:
+                if len(traces) < 500:
                     drawbox(itrack, istyle, [tr])
                 else:
                     if (itrack, istyle) not in traces_by_style:
@@ -1852,6 +1977,7 @@ def MakePileOverviewClass(base):
                 self.set_gathering()
     
             if self.pile_has_changed:
+
                 if not self.sortingmode_change_delayed():
                     self.sortingmode_change()
                     
@@ -1860,8 +1986,8 @@ def MakePileOverviewClass(base):
                 
                     self.pile_has_changed = False
 
-            if h is None: h = self.height()
-            if w is None: w = self.width()
+            if h is None: h = float(self.height())
+            if w is None: w = float(self.width())
             
             if printmode:
                 primary_color = (0,0,0)
@@ -1870,15 +1996,15 @@ def MakePileOverviewClass(base):
                 primary_color = pyrocko.plot.tango_colors['aluminium5']
                 secondary_color = pyrocko.plot.tango_colors['aluminium3']
             
-            ax_h = self.ax_height
+            ax_h = float(self.ax_height)
             
             vbottom_ax_projection = Projection()
             vtop_ax_projection = Projection()
             vcenter_projection = Projection()
-            
-            self.time_projection.set_out_range(0, w)
+           
+            self.time_projection.set_out_range(0., w)
             vbottom_ax_projection.set_out_range(h-ax_h, h)
-            vtop_ax_projection.set_out_range(0, ax_h)
+            vtop_ax_projection.set_out_range(0., ax_h)
             vcenter_projection.set_out_range(ax_h, h-ax_h)
             vcenter_projection.set_in_range(0.,1.)
             self.track_to_screen.set_out_range(ax_h, h-ax_h)
@@ -1924,7 +2050,7 @@ def MakePileOverviewClass(base):
                 p.setFont(font)
                 label_bg = QBrush( QColor(255,255,255,100) )
                 
-                processed_traces = self.prepare_cutout(self.tmin, self.tmax, 
+                processed_traces = self.prepare_cutout2(self.tmin, self.tmax, 
                                                     trace_selector=self.trace_selector, 
                                                     degap=self.menuitem_degap.isChecked())
                 
@@ -2131,27 +2257,177 @@ def MakePileOverviewClass(base):
             self.timer_draw.stop()
         
         def see_data_params(self):
+            
+            min_deltat = self.content_deltat_range()[0]
 
             # determine padding and downampling requirements
             if self.lowpass is not None:
                 deltat_target = 1./self.lowpass * 0.25
-                ndecimate = min(50, max(1, int(round(deltat_target / self.min_deltat))))
+                ndecimate = min(50, max(1, int(round(deltat_target / min_deltat))))
                 tpad = 1./self.lowpass * 2.
             else:
                 ndecimate = 1
-                tpad = self.min_deltat*5.
+                tpad = min_deltat*5.
                 
             if self.highpass is not None:
                 tpad = max(1./self.highpass * 2., tpad)
             
             nsee_points_per_trace = 5000*10
-            tsee = ndecimate*nsee_points_per_trace*self.min_deltat
+            tsee = ndecimate*nsee_points_per_trace*min_deltat
             
             return ndecimate, tpad, tsee
 
         def clean_update(self):
             self.old_processed_traces = None
             self.update()
+
+
+        def prepare_cutout2(self, tmin, tmax, trace_selector=None, degap=True, nmax=6000):
+
+            self.timer_cutout.start()
+
+            tsee = tmax-tmin
+            min_deltat_wo_decimate = tsee/nmax
+            min_deltat_w_decimate = min_deltat_wo_decimate / 32
+            
+            min_deltat_allow = min_deltat_wo_decimate
+            if self.lowpass is not None:
+                target_deltat_lp = 0.25/self.lowpass
+                if target_deltat_lp > min_deltat_wo_decimate:
+                    min_deltat_allow = min_deltat_w_decimate
+          
+            min_deltat_allow = math.exp(int(math.floor(math.log( min_deltat_allow) )) )
+
+            tmin_ = tmin
+            tmax_ = tmax
+
+            # fetch more than needed?
+            if self.menuitem_liberal_fetch.isChecked():
+                tlen = pyrocko.trace.nextpow2((tmax-tmin)*1.5)
+                tmin = math.floor(tmin/tlen) * tlen
+                tmax = math.ceil(tmax/tlen) * tlen
+                     
+            fft_filtering = self.menuitem_fft_filtering.isChecked()
+            lphp = self.menuitem_lphp.isChecked()
+            ads = self.menuitem_allowdownsampling.isChecked()
+            
+            # state vector to decide if cached traces can be used
+            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, fft_filtering, lphp,
+                min_deltat_allow, self.rotate, self.shown_tracks_range,
+                ads, self.pile.get_update_count())
+                
+            if (self.old_vec and 
+                self.old_vec[0] <= vec[0] and vec[1] <= self.old_vec[1] and
+                vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked()) and
+                self.old_processed_traces is not None):
+
+                logger.debug('Using cached traces')
+                processed_traces = self.old_processed_traces
+                
+            else:
+                self.old_vec = vec
+                
+                processed_traces = []
+                
+                if self.pile.deltatmax >= min_deltat_allow:
+                    
+
+                    group_selector = lambda gr: gr.deltatmax >= min_deltat_allow 
+                    if trace_selector is not None:
+                        trace_selectorx = lambda tr: tr.deltat >= min_deltat_allow and trace_selector(tr)
+                    else:
+                        trace_selectorx = lambda tr: tr.deltat >= min_deltat_allow
+
+                    freqs = [ f for f in (self.highpass, self.lowpass) if f is not None ]
+                    
+                    tpad = 0
+                    if freqs:
+                        tpad = max(1./min(freqs), tsee) 
+                    
+                    for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
+                                                    want_incomplete=True,
+                                                    degap=degap,
+                                                    keep_current_files_open=True, 
+                                                    group_selector=group_selector,
+                                                    trace_selector=trace_selectorx,
+                                                    accessor_id=id(self),
+                                                    snap=(math.floor, math.ceil),
+                                                    include_last=True):
+
+                        traces = self.pre_process_hooks(traces)
+
+                        for trace in traces:
+                            
+                            if not (trace.meta and 'tabu' in trace.meta and trace.meta['tabu']):
+                            
+                                if fft_filtering:
+                                    if self.lowpass is not None or self.highpass is not None:
+                                        high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
+                                        
+                                        if self.lowpass is not None:
+                                            low = self.lowpass
+                                        if self.highpass is not None:
+                                            high = self.highpass
+                                            
+                                        trace.bandpass_fft(high, low)
+                                    
+                                else:
+                                    
+                                    if self.menuitem_allowdownsampling.isChecked():
+                                        while trace.deltat < min_deltat_wo_decimate:
+                                            trace.downsample(2)
+
+                                    
+                                    if not lphp and (self.lowpass is not None and self.highpass is not None and
+                                        self.lowpass < 0.5/trace.deltat and
+                                        self.highpass < 0.5/trace.deltat and
+                                        self.highpass < self.lowpass):
+                                        trace.bandpass(2,self.highpass, self.lowpass)
+                                    else:
+                                        if self.lowpass is not None:
+                                            if self.lowpass < 0.5/trace.deltat:
+                                                trace.lowpass(4,self.lowpass)
+                                        
+                                        if self.highpass is not None:
+                                            if self.lowpass is None or self.highpass < self.lowpass:
+                                                if self.highpass < 0.5/trace.deltat:
+                                                    trace.highpass(4,self.highpass)
+                            
+                            processed_traces.append(trace)
+                    
+                if self.rotate != 0.0:
+                    phi = self.rotate/180.*math.pi
+                    cphi = math.cos(phi)
+                    sphi = math.sin(phi)
+                    for a in processed_traces:
+                        for b in processed_traces: 
+                            if (a.network == b.network and a.station == b.station and a.location == b.location and
+                                a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
+                                abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
+                                len(a.get_ydata()) == len(b.get_ydata())):
+                                
+                                aydata = a.get_ydata()*cphi+b.get_ydata()*sphi
+                                bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
+                                a.set_ydata(aydata)
+                                b.set_ydata(bydata)
+
+                processed_traces = self.post_process_hooks(processed_traces)
+                                
+                self.old_processed_traces = processed_traces
+            
+            chopped_traces = []
+            for trace in processed_traces:
+                try:
+                    ctrace = trace.chop(tmin_-trace.deltat*4.,tmax_+trace.deltat*4., inplace=False, )
+                except pyrocko.trace.NoData:
+                    continue
+                    
+                if ctrace.data_len() < 2: continue
+                
+                chopped_traces.append(ctrace)
+            
+            self.timer_cutout.stop()
+            return chopped_traces
 
         def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
             
@@ -2190,7 +2466,7 @@ def MakePileOverviewClass(base):
                 self.old_vec = vec
                 
                 tpad = min(tmax-tmin, tpad)
-                tpad = max(self.min_deltat*5., tpad)
+                tpad = max(self.content_deltat_range()[0]*5., tpad)
                     
                 processed_traces = []
                 
@@ -2365,9 +2641,6 @@ def MakePileOverviewClass(base):
         def rot_change(self, value, ignore):
             self.rotate = value
             self.update()
-    
-        def get_min_deltat(self):
-            return self.min_deltat
         
         def deselect_all(self):
             for marker in self.markers:
@@ -2460,6 +2733,7 @@ def MakePileOverviewClass(base):
                 self.floating_marker.set(nslc_ids, tmin, tmax)
                 
                 if dt != 0.0 and doshift:
+                    self.interrupt_following()
                     self.set_time_range(self.tmin+dt, self.tmax+dt)
                 
                 self.update()
@@ -2505,13 +2779,17 @@ def MakePileOverviewClass(base):
 
         def following(self):
             return self.follow_timer is not None and not self.following_interrupted()
-        
+       
+        def interrupt_following(self):
+            self.interactive_range_change_time = time.time()
+
         def following_interrupted(self, now=None):
             if now is None:
                 now = time.time()
             return now - self.interactive_range_change_time < self.interactive_range_change_delay_time
 
         def follow(self, tlen, interval=50):
+            self.show_all = False
             self.follow_time = tlen
             self.follow_timer = QTimer(self)
             self.connect( self.follow_timer, SIGNAL("timeout()"), self.follow_update ) 
@@ -2530,8 +2808,12 @@ def MakePileOverviewClass(base):
             if self.follow_timer is not None:
                 self.follow_timer.stop()
             self.window().close()
-            self.return_tag = return_tag
             
+            for snuffling in list(self.snufflings):
+                self.remove_snuffling( snuffling )
+
+            self.return_tag = return_tag
+
         def set_error_message(self, key, value):
             if value is None:
                 if key in self.error_messages:
@@ -2560,7 +2842,7 @@ def MakePileOverviewClass(base):
                         
                         self.update()
 
-                    if command in ('hide', 'unhide'):
+                    elif command in ('hide', 'unhide'):
                         if len(toks) in (2,3):
                             if len(toks) == 2:
                                 pattern = toks[1]
@@ -2651,24 +2933,20 @@ def MakePileOverviewClass(base):
 
                             else:
                                 self.go_to_event_by_name(arg)
-
-
-                    elif command in ('n', 's', 'l', 'c'):
-                        self.update() 
                     
                     else:
-                        raise PileOverviewException('No such command: %s' % command)
+                        raise PileViewerMainException('No such command: %s' % command)
                         
-                except PileOverviewException, e:
+                except PileViewerMainException, e:
                     error = str(e)
                     hideit = False
                 
             return clearit, hideit, error
         
-    return PileOverview
+    return PileViewerMain
 
-PileOverview = MakePileOverviewClass(QWidget)
-GLPileOverview = MakePileOverviewClass(QGLWidget)
+PileViewerMain = MakePileViewerMainClass(QWidget)
+GLPileViewerMain = MakePileViewerMainClass(QGLWidget)
 
 class LineEditWithAbort(QLineEdit):
 
@@ -2679,15 +2957,15 @@ class LineEditWithAbort(QLineEdit):
             return QLineEdit.keyPressEvent(self, key_event)
 
 class PileViewer(QFrame):
-    '''PileOverview + Controls'''
+    '''PileViewerMain + Controls + Inputline'''
     
     def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, panel_parent=None, *args):
         apply(QFrame.__init__, (self,) + args)
         
         if use_opengl:
-            self.pile_overview = GLPileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
+            self.viewer = GLPileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         else:
-            self.pile_overview = PileOverview(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
+            self.viewer = PileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         
         layout = QGridLayout()
         self.setLayout( layout )
@@ -2718,7 +2996,11 @@ class PileViewer(QFrame):
         ia_layout.addWidget(self.inputline, 0, 0)
         ia_layout.addWidget(self.inputline_error, 1, 0)        
         layout.addWidget(self.input_area, 0,0,1,2)
-        layout.addWidget( self.pile_overview, 1, 0 )
+        layout.addWidget( self.viewer, 1, 0 )
+
+        pb = Progressbars(self)
+        layout.addWidget(pb, 2,0,1,2)
+        self.progressbars = pb
         
         scrollbar = QScrollBar(Qt.Vertical)
         self.scrollbar = scrollbar
@@ -2726,8 +3008,12 @@ class PileViewer(QFrame):
         self.connect(self.scrollbar, SIGNAL('valueChanged(int)'), self.scrollbar_changed)
         self.block_scrollbar_changes = False
         
-        self.connect(self.pile_overview, SIGNAL('want_input()'), self.inputline_show)
-        self.connect(self.pile_overview, SIGNAL('tracks_range_changed(int,int,int)'), self.tracks_range_changed)
+        self.connect(self.viewer, SIGNAL('want_input()'), self.inputline_show)
+        self.connect(self.viewer, SIGNAL('tracks_range_changed(int,int,int)'), self.tracks_range_changed)
+        self.connect(self.viewer, SIGNAL('pile_has_changed_signal()'), self.adjust_controls)
+
+    def get_progressbars(self):
+        return self.progressbars
 
     def inputline_show(self):
         self.input_area.show()
@@ -2750,19 +3036,19 @@ class PileViewer(QFrame):
             self.inputline_error.hide()
             
     def inputline_changed(self, line):
-        self.pile_overview.inputline_changed(str(line))
+        self.viewer.inputline_changed(str(line))
         self.inputline_clear_error()
         
     def inputline_returnpressed(self):
         line = str(self.inputline.text())
-        clearit, hideit, error = self.pile_overview.inputline_finished(line)
+        clearit, hideit, error = self.viewer.inputline_finished(line)
 
         if error:
             self.inputline_set_error(error)
         
         if clearit:
             self.inputline.blockSignals(True)
-            qpat, qinp = self.pile_overview.get_quick_filter_patterns()
+            qpat, qinp = self.viewer.get_quick_filter_patterns()
             if qpat is None:
                 self.inputline.clear()
             else:
@@ -2770,11 +3056,11 @@ class PileViewer(QFrame):
             self.inputline.blockSignals(False)
         
         if hideit and not error:
-            self.pile_overview.setFocus(Qt.OtherFocusReason) 
+            self.viewer.setFocus(Qt.OtherFocusReason) 
             self.input_area.hide()
        
     def inputline_aborted(self):
-        self.pile_overview.setFocus(Qt.OtherFocusReason) 
+        self.viewer.setFocus(Qt.OtherFocusReason) 
         self.input_area.hide()
 
     def inputline_finished(self):
@@ -2796,7 +3082,7 @@ class PileViewer(QFrame):
         self.block_scrollbar_changes = True
         ilo = value
         ihi = ilo + self.scrollbar.pageStep()
-        self.pile_overview.set_tracks_range((ilo, ihi))
+        self.viewer.set_tracks_range((ilo, ihi))
         self.block_scrollbar_changes = False
         self.update_contents()
         
@@ -2804,97 +3090,48 @@ class PileViewer(QFrame):
         frame = QFrame(self)
         layout = QGridLayout()
         frame.setLayout(layout)
-        
+
         minfreq = 0.001
-        maxfreq = 0.5/self.pile_overview.get_min_deltat()
-        if maxfreq < 100.*minfreq:
-            minfreq = maxfreq*0.00001
+        maxfreq = 1000.0
+        self.lowpass_control = ValControl(high_is_none=True)
+        self.lowpass_control.setup('Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
+        self.highpass_control = ValControl(low_is_none=True)
+        self.highpass_control.setup('Highpass [Hz]:', minfreq, maxfreq, minfreq, 1)
+        self.gain_control = ValControl()
+        self.gain_control.setup('Gain:', 0.001, 1000., 1., 2)
+        self.rot_control = LinValControl()
+        self.rot_control.setup('Rotate [deg]:', -180., 180., 0., 3)
+        self.connect( self.lowpass_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.lowpass_change )
+        self.connect( self.highpass_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.highpass_change )
+        self.connect( self.gain_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.gain_change )
+        self.connect( self.rot_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.viewer.rot_change )
+       
+        for icontrol, control in enumerate((self.highpass_control, self.lowpass_control, self.gain_control, self.rot_control)):
+            for iwidget, widget in enumerate(control.widgets()):
+                layout.addWidget( widget, icontrol, iwidget )
         
-        self.lowpass_widget = ValControl(high_is_none=True)
-        self.lowpass_widget.setup('Lowpass [Hz]:', minfreq, maxfreq, maxfreq, 0)
-        self.highpass_widget = ValControl(low_is_none=True)
-        self.highpass_widget.setup('Highpass [Hz]:', minfreq, maxfreq, minfreq, 1)
-        self.gain_widget = ValControl()
-        self.gain_widget.setup('Gain', 0.001, 1000., 1., 2)
-        self.rot_widget = LinValControl()
-        self.rot_widget.setup('Rotate', -180., 180., 0., 3)
-        self.connect( self.lowpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.lowpass_change )
-        self.connect( self.highpass_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.highpass_change )
-        self.connect( self.gain_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.gain_change )
-        self.connect( self.rot_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.pile_overview.rot_change )
-        
-        layout.addWidget( self.highpass_widget, 1,0 )
-        layout.addWidget( self.lowpass_widget, 2,0 )
-        layout.addWidget( self.gain_widget, 3,0 )
-        layout.addWidget( self.rot_widget, 4,0 )
+        spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addItem(spacer, 4,0, 1, 3)
+
+        self.adjust_controls()
         return frame
+
+    def adjust_controls(self):
+        dtmin, dtmax = self.viewer.content_deltat_range()
+        maxfreq = 0.5/dtmin
+        minfreq = (0.5/dtmax)*0.001
+        self.lowpass_control.set_range(minfreq, maxfreq)
+        self.highpass_control.set_range(minfreq, maxfreq)
    
     def setup_snufflings(self):
-        self.pile_overview.setup_snufflings()
+        self.viewer.setup_snufflings()
 
     def get_view(self):
-        return self.pile_overview
+        return self.viewer
     
     def update_contents(self):
-        self.pile_overview.update()
+        self.viewer.update()
     
     def get_pile(self):
-        return self.pile_overview.get_pile()
+        return self.viewer.get_pile()
 
-from forked import Forked
-class SnufflerOnDemand(QApplication, Forked):
-    def __init__(self, *args):
-        apply(QApplication.__init__, (self,) + args)
-        Forked.__init__(self, flipped=True)
-        self.timer = QTimer( self )
-        self.connect( self.timer, SIGNAL("timeout()"), self.periodical ) 
-        self.timer.setInterval(100)
-        self.timer.start()
-        self.caller_has_quit = False
-        self.viewers = {}
-        self.windows = []
-        
-    def dispatch(self, command, args, kwargs):
-        method = getattr(self, command)
-        method(*args, **kwargs)
-        
-    def add_traces(self, traces, viewer_id='default'):
-        viewer = self.get_viewer(viewer_id)
-        pile = viewer.get_pile()
-        memfile = pyrocko.pile.MemTracesFile(None, traces)
-        pile.add_file(memfile)
-        viewer.update_contents()
-        
-    def periodical(self):
-        if not self.caller_has_quit:
-            self.caller_has_quit = not self.process()
-            
-    def get_viewer(self, viewer_id):
-        if viewer_id not in self.viewers:
-            self.new_viewer(viewer_id)
-            
-        return self.viewers[viewer_id]
-            
-    def new_viewer(self, viewer_id):
-        pile = pyrocko.pile.Pile()
-        pile_viewer = PileViewer(pile)
-        win = QMainWindow()
-        win.setCentralWidget(pile_viewer)
-        win.setWindowTitle( "Snuffler (%s)" % (viewer_id) )        
-        win.show()
-        self.viewers[viewer_id] = pile_viewer
-        self.windows.append(win)
-        
-    def run(self):
-        self.exec_()
-    
-
-def snuffle(traces=None, viewer_id='default'):
-    
-    if Global.appOnDemand is None:
-        app = Global.appOnDemand = SnufflerOnDemand([])
-        
-    app = Global.appOnDemand
-    if traces is not None:
-        app.call('add_traces', traces, viewer_id)
-    

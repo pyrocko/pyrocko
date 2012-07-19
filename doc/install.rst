@@ -11,6 +11,7 @@ The following software packages are required to use Pyrocko. The more important 
 * `NumPy <http://numpy.scipy.org/>`_ including development headers
 * `SciPy <http://scipy.org/>`_
 * `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (>= v4.4.4, Only needed for the GUI apps)
+* `pyavl <http://pypi.python.org/pypi/pyavl/>`_ 
 * libmseed (tarball is included)
 * evalresp (only libevresp from this package, tarball is included, could be made optional)
 * `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)

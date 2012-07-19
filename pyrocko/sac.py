@@ -7,6 +7,7 @@ from calendar import timegm
 from time import gmtime
 import numpy as num
 from util import reuse
+from io_common import FileLoadError
 
 logger = logging.getLogger('pyrocko.pile')
 
@@ -168,18 +169,18 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             logging.warn('This module has only been tested with SAC header version 6.'+
                          'This file has header version %i. It might still work though...' % self.nvhdr)
 
-    def read(self, filename, get_data=True, byte_sex='try'):
+    def read(self, filename, load_data=True, byte_sex='try'):
         '''Read SAC file.
         
            filename -- Name of SAC file.
-           get_data -- If True, the data is read, otherwise only read headers.
+           load_data -- If True, the data is read, otherwise only read headers.
            byte_sex -- Endianness: 'try', 'little' or 'big' 
         '''
         nbh = SacFile.nbytes_header
         
         # read in all data
         f = open(filename,'rb')
-        if get_data:
+        if load_data:
             filedata = f.read()
         else:
             filedata = f.read(nbh)
@@ -228,7 +229,7 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             logger.info('This seems to be a %s endian SAC file: %s' % (sex, filename))
                 
         # possibly get data
-        if get_data:
+        if load_data:
             nblocks = self.ndatablocks()
             nbb = self.npts*4 # word length is always 4 bytes in sac files
             for iblock in range(nblocks):
@@ -325,17 +326,43 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                                   self.delta,
                                   data,
                                   meta=meta)
-                        
-if __name__ == "__main__":
-    print SacFile(sys.argv[1])
 
-    s = SacFile()
-    fn = '/tmp/x.sac'
-    secs = timegm((2009,2,19,8,50,0))+0.1
-    s.set_ref_time(secs)
-    s.write(fn)
-    s2 = SacFile(fn)
-    assert(s2.nzjday == 50)
-    assert(s2.nzmsec == 100)
+def iload(filename, load_data=True):
+
+    try:
+        sacf = SacFile(filename, load_data=load_data)
+        tr = sacf.to_trace()
+        yield tr
+
+    except (OSError, SacError), e:
+        raise FileLoadError(e)
+
+def detect(first512):
+
+    if len(first512) < 512: # SAC header is 632 bytes long
+        return False
+
+    for sex in 'little', 'big':
+        format = SacFile.header_num_format[sex]
+        nbn = struct.calcsize(format)
+
+        hv = list(struct.unpack(format, first512[:nbn]))
+        iftype, nvhdr, npts, leven, delta, e, b = [ hv[i] for i in (85, 76, 79, 105, 0, 6, 5) ]
+
+        if iftype not in [SacFile.header_name2num[x] for x in ('itime','irlim','iamph','ixy','ixyz')]:
+            continue
+        if nvhdr < 1 or 20 < nvhdr:
+            continue
+        if npts < 0:
+            continue
+        if leven not in (0,1,-12345):
+            continue
+        if leven and delta <= 0.0:
+            continue
+        if e != -12345.0 and b > e:
+            continue
+
+        return True
     
-    
+    return False
+

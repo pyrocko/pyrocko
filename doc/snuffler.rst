@@ -80,10 +80,6 @@ Options
 
     follow real time with a window of N seconds
 
-.. option:: --progressive
-
-    don't wait for file scanning to complete before opening the viewer
-
 .. option:: --force-cache
 
     use the cache even when trace attribute spoofing is active (may have silly consequences)
@@ -175,7 +171,7 @@ Reduce traces shown in viewer to those matching a given pattern.
 
 ``n|s|l|c [ <pattern> ]``
 
-``<pattern>`` is matched against network, station, location, or channel ID of the traces depending on whether the ``n``, ``s``, ``l``, or ``c`` command is used, respectively. Here, implicitly a ``*``-wildcard is inserted after the pattern, so if for example pattern ``LH`` would be given, it would be evaluated as ``LH*``. Only one quick-search pattern is active at any time. The currently active pattern is cleared by calling any of these commands without an argument.
+``<pattern>`` is matched against network, station, location, or channel ID of the traces depending on whether the ``n``, ``s``, ``l``, or ``c`` command is used, respectively. Only one quick-search pattern is active at any time. The currently active pattern is cleared by calling any of these commands without an argument.
 
 Hide
 ^^^^
