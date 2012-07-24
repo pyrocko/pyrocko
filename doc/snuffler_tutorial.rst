@@ -39,6 +39,7 @@ Things to remember for now are:
 * Full screen display is toggled by pressing :kbd:`f`.
 * Snuffler has a main menu, which is accessed by pressing the right mouse
   button within the trace view.
+* Snuffler has a command line, which is accessed by pressing :kbd:`:` (colon).
 * Using the mouse wheel while holding down :kbd:`<control>` allows you to
   quickly change the number of tracks shown on display. 
 
@@ -46,7 +47,7 @@ How to get help:
 
 * Press :kbd:`?` or select :guilabel:`Help` from the main menu.
 * Use ``snuffler --help`` to see what command line options are available.
-* There is a `manual <http://emolch.github.com/pyrocko/snuffler>`_.
+* There is a `manual <http://emolch.github.com/pyrocko/current/snuffler>`_.
 
 Before continuing, you should make yourself a bit familiar with basic
 navigation in Snuffler.
@@ -211,7 +212,7 @@ Markers
 
 Three different types of markers are available in Snuffler: *normal markers*,
 *phase markers*, and *event markers*. To create a new *normal marker*
-interactively, double-click the mouse to activate the picking mode, then click
+interactively, double-click the mouse to activate picking mode, then click
 where you want to put it. With click and drag, markers spanning a time interval
 may be created. The markers may either be attached to a certain trace (via
 network/station/location/channel ID) or may serve as time (span) markers only.
