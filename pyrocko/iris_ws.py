@@ -163,7 +163,7 @@ def ws_bulkdataselect( selection, quality=None, minimumlength=None, longestonly=
     
     return ws_request(base_url + '/bulkdataselect/query', post='\n'.join(l))
 
-def ws_sacpz(network=None, station=None, location=None, channel=None, tmin=None, tmax=None):
+def ws_sacpz(network=None, station=None, location=None, channel=None, time=None, tmin=None, tmax=None):
     d = {}
     if network:
         d['network'] = network
@@ -176,14 +176,35 @@ def ws_sacpz(network=None, station=None, location=None, channel=None, tmin=None,
     if channel:
         d['channel'] = channel
     
+    if tmin is not None and tmax is not None:
+        d['starttime'] = sdatetime(tmin)
+        d['endtime'] = sdatetime(tmax)
+    elif time is not None:
+        d['time'] = sdatetime(time)
     times = (tmin, tmax)
-    if len(times) == 2:
-        d['starttime'] = sdatetime(min(times))
-        d['endtime'] = sdatetime(max(times))
-    elif len(times) == 1:
-        d['time'] = sdatetime(times[0])
     
     return ws_request(base_url + '/sacpz/query', **d)
+
+def ws_resp(network=None, station=None, location=None, channel=None, time=None, tmin=None, tmax=None):
+    d = {}
+    if network:
+        d['network'] = network
+    if station:
+        d['station'] = station
+    if location:
+        d['location'] = location
+    else:
+        d['location'] = '--'
+    if channel:
+        d['channel'] = channel
+    
+    if tmin is not None and tmax is not None:
+        d['starttime'] = sdatetime(tmin)
+        d['endtime'] = sdatetime(tmax)
+    elif time is not None:
+        d['time'] = sdatetime(time)
+        
+    return ws_request(base_url + '/resp/query', **d)
 
 class ChannelInfo:
     def __init__(self, network, station, location, channel, start, end, azimuth, dip, elevation, depth, latitude, longitude, sample, input, output, zpk):
