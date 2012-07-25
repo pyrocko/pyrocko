@@ -566,8 +566,12 @@ def snuffle(pile=None, **kwargs):
     if 'paths' in kwargs_load:
         sources.extend(setup_acquisition_sources(kwargs_load['paths']))
         if sources:
-            tempdir = tempfile.mkdtemp('', 'snuffler-tmp-')
-            store_path = pjoin(tempdir, '%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
+            if store_path is None:
+                tempdir = tempfile.mkdtemp('', 'snuffler-tmp-')
+                store_path = pjoin(tempdir, '%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
+            elif os.path.isdir(store_path):
+                store_path = pjoin(store_path, '%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
+
             pollinjector = PollInjector(pile, fixation_length=store_interval, path=store_path)
             for source in sources:
                 source.start()
