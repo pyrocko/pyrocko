@@ -218,12 +218,19 @@ def plot_rays(paths, rays, zstart, zstop, plot=None):
         if isinstance(ray, cake.RayPath):
             path = ray
             pmin, pmax, xmin, xmax, tmin, tmax = path.ranges(path.endgaps(zstart, zstop))
-            p = num.linspace(pmin, pmax, 6)
+            if not path._is_headwave:
+                p = num.linspace(pmin, pmax, 6)
+                x = None
+            else:
+                x = num.linspace(xmin, xmin*10, 6)
+                p = num.atleast_1d(pmin)
+
+            fanz, fanx, _ = path.zxt_path_subdivided(p, path.endgaps(zstart, zstop), x_for_headwave=x)
         else:
-            p = cake.filled(ray.p, 1)
+            fanz, fanx, _ = ray.zxt_path_subdivided()
             path = ray.path
         
-        fanz, fanx, _ = path.zxt_path_subdivided(p, path.endgaps(zstart, zstop))
+        
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
             l = plot.plot( xs, zs, color=color)
