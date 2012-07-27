@@ -134,7 +134,10 @@ class Material:
 
         elif qp is None and qs is None and qk is not None and qmu is not None:
             l = (4.0/3.0)*(self.vs/self.vp)**2
-            self.qp = 1.0 / (l*(1.0/qmu) + (1-l)*(1.0/qk))
+            if qmu == 0. and self.vs == 0.:
+                self.qp = qk
+            else:
+                self.qp = 1.0 / (l/qmu + (1.0-l)/qk)
             self.qs = qmu
         else:
             raise InvalidArguments('Invalid combination of input parameters in material definition.')
@@ -195,8 +198,11 @@ class Material:
 
     def qk(self):
         '''Get bulk attenuation coefficient Qk.'''
-        l = (4.0/3.0)*(self.vs/self.vp)**2
-        return (1.0-l)/((1.0/self.qp) - l*(1.0/self.qs))
+        if self.vs == 0. and self.qs == 0.:
+            return self.qp
+        else:
+            l = (4.0/3.0)*(self.vs/self.vp)**2
+            return (1.-l)/(1.0/self.qp - l/self.qs)
 
     def _rayleigh_equation(self, cr):
         cr_a = (cr/self.vp)**2
