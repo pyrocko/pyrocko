@@ -96,6 +96,62 @@ def progress_end(label=''):
     sys.stderr.write(' done. %s\n' % label)
     sys.stderr.flush()
         
+def polylinefit(x,y, n_or_xnodes):
+    '''Fit piece-wise linear function to data.
+    
+    :param x,y: arrays with coordinates of data
+    :param n_or_xnodes: int, number of segments or x coordinates of polyline
+
+    :returns: `(xnodes, ynodes, rms_error)` arrays with coordinates of polyline, root-mean-square error
+    '''
+
+    x = num.asarray(x)
+    y = num.asarray(y)
+
+    if isinstance(n_or_xnodes, int):
+        n = n_or_xnodes
+        xmin = x.min()
+        xmax = x.max()
+        xnodes = num.linspace(xmin, xmax, n+1)
+    else:
+        xnodes = num.asarray(n_or_xnodes)
+        n = xnodes.size - 1
+
+    assert len(x) == len(y)
+    assert n > 0
+
+    ndata = len(x)
+    a = num.zeros((ndata+(n-1), n*2))
+    for i in xrange(n):
+        xmin_block = xnodes[i]
+        xmax_block = xnodes[i+1]
+        if i == n-1:  # don't loose last point
+            indices = num.where( num.logical_and(xmin_block <= x, x <= xmax_block) )[0]
+        else:
+            indices = num.where( num.logical_and(xmin_block <= x, x < xmax_block) )[0]
+
+        a[indices, i*2] = x[indices]
+        a[indices, i*2+1] = 1.0
+
+        w = float(ndata)*100.
+        if i < n-1:
+            a[ndata+i, i*2] = xmax_block*w
+            a[ndata+i, i*2+1] = 1.0*w
+            a[ndata+i, i*2+2] = -xmax_block*w
+            a[ndata+i, i*2+3] = -1.0*w
+
+    d = num.concatenate((y,num.zeros(n-1)))
+    model = num.linalg.lstsq(a,d)[0].reshape((n,2))
+
+    ynodes = num.zeros(n+1)
+    ynodes[:n] = model[:,0]*xnodes[:n] + model[:,1]
+    ynodes[1:] += model[:,0]*xnodes[1:] + model[:,1]
+    ynodes[1:n] *= 0.5
+    
+    rms_error = num.sqrt(num.mean((num.interp(x, xnodes, ynodes) - y)**2))
+
+    return xnodes, ynodes, rms_error
+
 class GlobalVars:
     reuse_store = dict()
     decitab_nmax = 0

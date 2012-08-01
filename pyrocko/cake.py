@@ -31,7 +31,7 @@ The main classes defined in this module are:
 '''
 
 
-import sys, copy, inspect, math, cmath, operator, StringIO
+import sys, os, copy, inspect, math, cmath, operator, StringIO, glob
 from pyrocko import util
 from scipy.optimize import bisect
 from scipy.interpolate import fitpack
@@ -129,15 +129,23 @@ class Material:
                 self.qs = 600.
         
         elif qp is None and qs is None and qk is None and qmu is None:
-            self.qp = 1456.
-            self.qs = 600.
+            if self.vs == 0.:
+                self.qs = 0.
+                self.qp = 5782e4
+            else:
+                self.qs = 600.
+                l = (4.0/3.0)*(self.vs/self.vp)**2
+                self.qp = self.qs/l
 
         elif qp is None and qs is None and qk is not None and qmu is not None:
             l = (4.0/3.0)*(self.vs/self.vp)**2
             if qmu == 0. and self.vs == 0.:
                 self.qp = qk
             else:
-                self.qp = 1.0 / (l/qmu + (1.0-l)/qk)
+                if num.isinf(qk):
+                    self.qp = qmu/l
+                else:
+                    self.qp = 1.0 / (l/qmu + (1.0-l)/qk)
             self.qs = qmu
         else:
             raise InvalidArguments('Invalid combination of input parameters in material definition.')
@@ -202,7 +210,11 @@ class Material:
             return self.qp
         else:
             l = (4.0/3.0)*(self.vs/self.vp)**2
-            return (1.-l)/(1.0/self.qp - l/self.qs)
+            denom = (1/self.qp - l/self.qs)
+            if denom <= 0.0:
+                return num.inf
+            else:
+                return (1.-l)/(1.0/self.qp - l/self.qs)
 
     def _rayleigh_equation(self, cr):
         cr_a = (cr/self.vp)**2
@@ -1410,7 +1422,7 @@ class Interface(Discontinuity):
 
     def critical_ps(self, mode):
         uabove, ubelow = self.us(mode)
-        return uabove*radius(self.z), ubelow*radius(self.z)
+        return mult_or_none(uabove,radius(self.z)), mult_or_none(ubelow,radius(self.z))
 
     def propagate(self, p, mode, direction):
         uabove, ubelow = self.us(mode)
@@ -1656,7 +1668,7 @@ class HeadwaveStraight(Straight):
 
     def x2t_headwave(self, xstretch): 
         xstretch_m = xstretch*d2r*radius(self.interface.z)
-        return min(self.interface.us(self.mode))*xstretch_m
+        return min_not_none(*self.interface.us(self.mode))*xstretch_m
 
 class Kink(RayElement):
     '''An interaction of a ray with a :py:class:`Discontinuity`.'''
@@ -2681,11 +2693,13 @@ class LayeredModel:
                     interface = self.discontinuity(name_or_z)
                     mode = hwknee.in_mode
                     in_direction = hwknee.direction
+                    
                     pabove, pbelow = interface.critical_ps(mode)
-                    if in_direction == DOWN:
-                        p = pbelow
-                    else:
-                        p = pabove
+                    
+                    p = min_not_none(pabove, pbelow)
+
+                    if in_direction == DOWN and (pbelow is None or pbelow > pabove): # diffracted wave
+                        p *= 0.999
 
                     path = self.path(p, phase, layer_start, layer_stop)
                     path.set_prange(p,p,1.)
@@ -2847,6 +2861,129 @@ class LayeredModel:
         '''
 
         return max(self.iter_material_parameter(get))
+    
+    def simplify_layers(self, layers, max_rel_error=0.001):
+        if len(layers) <= 1:
+            return layers
+
+        ztop = layers[0].ztop
+        zbot = layers[-1].zbot
+        zorigs = [ l.ztop for l in layers ]
+        zorigs.append(zbot)
+        zs = num.linspace(ztop, zbot, 100)
+        data = []
+        for z in zs:
+            if z == ztop:
+                direction = UP
+            else:
+                direction = DOWN
+            
+            mat = self.material(z, direction)
+            data.append(mat.astuple())
+
+        data = num.array(data, dtype=num.float)
+        data_means = num.mean(data, axis=0)
+        nmax = len(layers)/2
+        accept = False
+
+        zcut_best = []
+        for n in range(1, nmax+1):
+            ncutintervals = 20 
+            zdelta = (zbot-ztop)/ncutintervals
+            if n == 2:
+                zcuts = [ [ ztop, ztop + i*zdelta, zbot ] for i in xrange(1,ncutintervals) ]
+            elif n == 3:
+                zcuts = []
+                for j in xrange(1,ncutintervals):
+                    for i in xrange(j+1,ncutintervals):
+                        zcuts.append([ztop, ztop + j*zdelta, ztop + i*zdelta, zbot])
+            else:
+                zcuts = []
+                zcuts.append(num.linspace(ztop, zbot, n+1))
+                if zcut_best:
+                    zcuts.append(sorted(num.linspace(ztop, zbot, n).tolist() + zcut_best[1]))
+                    zcuts.append(sorted(num.linspace(ztop, zbot, n-1).tolist() + zcut_best[2]))
+            
+            best = None
+            for icut, zcut in enumerate(zcuts): 
+                rel_par_errors = num.zeros(5)
+                mpar_nodes = num.zeros((n+1,5))
+
+                for ipar in range(5):
+                    znodes, vnodes, error_rms = util.polylinefit(zs, data[:,ipar], zcut)
+                    mpar_nodes[:,ipar] = vnodes
+                    if data_means[ipar] == 0.0:
+                        rel_par_errors[ipar] = -1
+                    else:
+                        rel_par_errors[ipar] = error_rms/data_means[ipar]
+                
+                rel_error = rel_par_errors.max()
+                if best is None or rel_error < best[0]:
+                    best = (rel_error, zcut, mpar_nodes)
+                
+            rel_error, zcut, mpar_nodes = best 
+
+            zcut_best.append(list(zcut))
+            zcut_best[-1].pop(0)
+            zcut_best[-1].pop()
+
+            if rel_error <= max_rel_error:
+                accept=True
+                break
+
+        if not accept:
+            return layers
+
+        rel_error, zcut, mpar_nodes = best 
+
+        material_nodes = [] 
+        for i in range(n+1):
+            material_nodes.append(Material(*mpar_nodes[i,:]))
+        
+        out_layers = []
+        for i in range(n):
+            mtop = material_nodes[i]
+            mbot = material_nodes[i+1]
+            ztop = zcut[i]
+            zbot = zcut[i+1]
+            if mtop == mbot:
+                l = HomogeneousLayer(ztop, zbot, mtop)
+            else:
+                l = GradientLayer(ztop, zbot, mtop, mbot)
+
+            out_layers.append(l) 
+        return out_layers
+
+    def simplify(self, max_rel_error=0.001):
+        '''Get representation of model with lower resolution.
+        
+        Returns an approximation of the model. All discontinuities are kept,
+        but layer stacks with continuous model parameters are represented, if
+        possible, by a lower number of layers.  Piecewise linear functions are
+        fitted against the original model parameter's piecewise linear
+        functions.  Successively larger numbers of layers are tried, until the
+        difference to the original model is below `max_rel_error`. The
+        difference is measured as the RMS error of the fit normalized by the
+        mean of the input (i.e. the fitted curves should deviate, on average,
+        less than 0.1% from the input curves if `max_rel_error` = 0.001).'''
+
+        mod_simple = LayeredModel()
+
+        glayers = []
+        for element in self.elements():
+
+            if isinstance(element, Discontinuity):
+                for l in self.simplify_layers(glayers, max_rel_error=max_rel_error):
+                    mod_simple.append(l)
+                glayers = []
+                mod_simple.append(element)
+            else:
+                glayers.append(element)
+
+        for l in self.simplify_layers(glayers, max_rel_error=max_rel_error):
+            mod_simple.append(l)
+
+        return mod_simple
 
     def __str__(self):
         return '\n'.join( str(element) for element in self._elements )
@@ -2936,6 +3073,37 @@ def from_crust2x2_profile(profile, depthmantle=50000):
 
             z += dz
 
+def write_nd_model_fh(mod, fh):
+    def fmt(z, mat):
+        return ' '.join( util.gform(x, 4) for x in [z/1000., mat.vp/1000., mat.vs/1000., mat.rho/1000., mat.qp, mat.qs] )+'\n'
+    
+    translate = { 'moho': 'mantle', 'cmb': 'outer-core', 'icb': 'inner-core' }
+    last = None
+    for element in mod.elements():
+        if isinstance(element, Interface):
+            if element.name is not None:
+                n = translate.get(element.name, element.name)
+                fh.write('%s\n' % n)
+
+        elif isinstance(element, Layer):
+            if not isinstance(last, Layer):
+                fh.write(fmt(element.ztop, element.mtop))
+
+            fh.write(fmt(element.zbot, element.mbot))
+
+        last = element
+
+def write_nd_model(mod, fn):
+    f = open(fn, 'w')
+    write_nd_model_fh(mod, f)
+    f.close()
+
+def builtin_models():
+    return  sorted([ os.path.splitext(os.path.basename(x))[0] for x in glob.glob(builtin_model_filename('*')) ])
+
+def builtin_model_filename(modelname):
+    return util.data_file(os.path.join('earthmodels', modelname+'.nd'))
+
 def load_model(fn, format='nd'):
     '''Load layered earth model from file.
     
@@ -2959,6 +3127,8 @@ def load_model(fn, format='nd'):
     '''
 
     if format == 'nd':
+        if not os.path.exists(fn) and fn in builtin_models():
+            fn = builtin_model_filename(fn)
         reader = read_nd_model(fn)
     elif format == 'hyposat':
         reader = read_hyposat_model(fn)
@@ -3033,6 +3203,18 @@ def reci_or_none(x):
         return 1./x
     except ZeroDivisionError:
         return None
+
+def mult_or_none(a,b):
+    if a is None or b is None:
+        return None
+    return a*b
+
+def min_not_none(a,b):
+    if a is None:
+        return b
+    if b is None:
+        return a
+    return min(a,b)
 
 def monotony(x):
     '''Check if an array is strictly increasing or decreasing.
