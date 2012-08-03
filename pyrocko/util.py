@@ -1,6 +1,6 @@
 '''Utility functions for Pyrocko.'''
 
-import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex
+import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex, optparse
 from scipy import signal
 from os.path import join as pjoin
 import config
@@ -64,7 +64,100 @@ class Stopwatch:
     
     def __call__(self):
         return time.time() - self.start
+   
+def wrap(text, line_length=80):
+    '''Paragraph and list-aware wrapping of text.'''
+    
+    text = text.strip('\n')
+    at_lineend = re.compile(r' *\n')
+    at_para = re.compile(r'((^|(\n\s*)?\n)(\s+[*] )|\n\s*\n)')
         
+    paragraphs =  at_para.split(text)[::5]
+    listindents = at_para.split(text)[4::5]
+    newlist = at_para.split(text)[3::5]
+   
+    listindents[0:0] = [None]
+    listindents.append(True)
+    newlist.append(None)
+  
+    det_indent = re.compile(r'^ *')
+    
+    iso_latin_1_enc_failed = False
+    outlines = []
+    for ip, p in enumerate(paragraphs):
+        if not p:
+            continue
+        
+        if listindents[ip] is None:
+            _indent = det_indent.findall(p)[0]
+            findent = _indent
+        else:
+            findent = listindents[ip]
+            _indent = ' '* len(findent)
+        
+        ll = line_length - len(_indent)
+        llf = ll
+        
+        oldlines = [ s.strip() for s in at_lineend.split(p.rstrip()) ]
+        p1 = ' '.join( oldlines )
+        possible = re.compile(r'(^.{1,%i}|.{1,%i})( |$)' % (llf, ll))
+        for imatch, match in enumerate(possible.finditer(p1)):
+            parout = match.group(1)
+            if imatch == 0:
+                outlines.append(findent + parout)
+            else:
+                outlines.append(_indent + parout)
+            
+        if ip != len(paragraphs)-1 and (listindents[ip] is None or newlist[ip] is not None or listindents[ip+1] is None):
+            outlines.append('')
+    
+    return outlines
+
+class BetterHelpFormatter(optparse.IndentedHelpFormatter):
+
+    def __init__(self, *args, **kwargs):
+        optparse.IndentedHelpFormatter.__init__(self, *args, **kwargs)
+
+    def format_option(self, option):
+        '''From IndentedHelpFormatter but using a different wrap method.'''
+
+        help_text_position = 4 + self.current_indent
+        help_text_width = self.width - help_text_position
+       
+        opts = self.option_strings[option]
+        opts = "%*s%s" % (self.current_indent, "", opts)
+        if option.help:
+            help_text = self.expand_default(option)
+
+        if self.help_position + len(help_text) + 1 <= self.width:
+            lines = [ '', '%-*s %s' % (self.help_position, opts, help_text), '' ]
+        else:
+            lines = ['']
+            lines.append(opts)
+            lines.append('')
+            if option.help:
+                help_lines = wrap(help_text, help_text_width)
+                lines.extend(["%*s%s" % (help_text_position, "", line)
+                               for line in help_lines])
+            lines.append('')
+
+        return "\n".join(lines)
+
+    def format_description(self, description):
+        if not description:
+            return ''
+        
+        if self.current_indent == 0:
+            lines = []
+        else:
+            lines = ['']
+
+        lines.extend(wrap(description, self.width - self.current_indent))
+        if self.current_indent == 0:
+            lines.append('\n')
+
+        return '\n'.join(['%*s%s' % (self.current_indent, '', line) for line in lines]) 
+
 
 def progressbar(label, maxval):
     widgets = [label, ' ',
@@ -939,8 +1032,10 @@ class TableReader:
 def gform( number, significant_digits=3 ):
     '''Pretty print floating point numbers.
     
-Align floating point numbers at the decimal dot.
-       
+    Align floating point numbers at the decimal dot.
+    
+    ::
+
       |  -d.dde+xxx|
       |  -d.dde+xx |
       |-ddd.       |
@@ -950,7 +1045,8 @@ Align floating point numbers at the decimal dot.
       |  -0.0ddd   |
       |  -0.00ddd  |
       |  -d.dde-xx |
-      |  -d.dde-xxx|'''
+      |  -d.dde-xxx|
+    ''' 
     
     no_exp_range = (pow(10.,-1), 
                     pow(10.,significant_digits))

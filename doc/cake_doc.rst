@@ -132,8 +132,8 @@ The following Python script calculates arrival times for the P-phase emitted by 
     import numpy as num
     km = 1000.
 
-    # Load 'nd'-format earth model.
-    cake.mod = cake.load_model('prem.nd','nd')
+    # Load builtin 'prem-no-ocean' model ('.m': medium resolution variant)
+    model = cake.load_model('prem-no-ocean.m')
 
     # Source depth [m].
     source_depth = 300. * km
@@ -146,6 +146,6 @@ The following Python script calculates arrival times for the P-phase emitted by 
 
     # calculate distances and arrivals and print them:
     print 'distance [km]      time [s]'
-    for arrival in cake.mod.arrivals(distances, phases=Phase, zstart=source_depth):
+    for arrival in model.arrivals(distances, phases=Phase, zstart=source_depth):
         print '%13g %13g' % (arrival.x*cake.d2m/km, arrival.t)
 

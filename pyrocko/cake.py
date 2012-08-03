@@ -398,8 +398,8 @@ class Knee(object):
                 ['conversion', 'reflection'][self.reflection],
                 {UP: 'below', DOWN: 'above'}[self.direction]))
 
-        if in_leg.mode == out_leg.mode and not self.reflection:
-            raise InvalidKneeDef('mode of propagation should change at a conversion')
+        #if in_leg.mode == out_leg.mode and not self.reflection:
+        #    raise InvalidKneeDef('mode of propagation should change at a conversion')
 
         self.in_mode = in_leg.mode 
         self.out_mode = out_leg.mode
@@ -443,19 +443,22 @@ class Knee(object):
                         x.append('upperside')
 
         if self.headwave:
-            x.append('headwave propagation')
+            x.append('headwave propagation along')
         elif self.reflection and self.conversion:
-            x.append('reflection with conversion from %s to %s' % (smode(self.in_mode), smode(self.out_mode)))
+            x.append('reflection with conversion from %s to %s at' % (smode(self.in_mode), smode(self.out_mode)))
         elif self.reflection:
-            x.append('reflection')
+            x.append('reflection at')
         elif self.conversion:
-            x.append('conversion from %s to %s' % (smode(self.in_mode), smode(self.out_mode)))
+            x.append('conversion from %s to %s at' % (smode(self.in_mode), smode(self.out_mode)))
+        else:
+            x.append('passing through')
+
 
         if isinstance(self.depth, float):
-            x.append('at interface in %g km depth' % (self.depth/1000.))
+            x.append('interface in %g km depth' % (self.depth/1000.))
         else:
             if not self.at_surface():
-                x.append('at %s' % self.depth)
+                x.append('%s' % self.depth)
         
         if not self.reflection:
             if self.direction == UP:
@@ -497,42 +500,52 @@ class PhaseDef(object):
    
     '''Definition of a seismic phase arrival, based on ray propagation path.
 
-    :param definition: string representation of the phase in cake phase syntax
+    :param definition: string representation of the phase in Cake's phase syntax
     
-    Seismic phases are conventionally named e.g. P, Pn, PP, PcP, etc. In this
-    module a slightly different terminology is adapted, which allows to specify
-    arbitrary conversion/reflection histories for seismic phases. The
+    Seismic phases are conventionally named e.g. P, Pn, PP, PcP, etc. In Cake,
+    a slightly different terminology is adapted, which allows to specify
+    arbitrary conversion/reflection histories for seismic ray paths. The
     conventions used here are inspired by those used in the TauP toolkit, but
     are not completely compatible with those.
 
-    The definition of a seismic phase in the syntax implemented here is a
-    string consisting of an alternating sequence of *legs* and *knees*. A *leg*
-    here represents seismic wave propagation without any conversion,
+    The definition of a seismic ray propagation path in Cake's phase syntax is
+    a string consisting of an alternating sequence of *legs* and *knees*.
+    
+    A *leg* represents seismic wave propagation without any conversions,
     encountering only super-critical reflections. Legs are denoted by ``P``,
-    ``p`` or ``S`` or ``s``. The capital letters are used when the take-off of
-    the *leg* is in downward direction, while the lower case letter indicate a
-    take-off in upward direction. A *knee* is denoted by a string of the form
-    ``(INTERFACE)`` where INTERFACE is the name of an interface (which should
-    be defined in the models which are used with this phase) or ``DEPTH``,
-    where DEPTH is a number, for mode conversions, ``v(INTERFACE)`` or
-    ``vDEPTH`` for top-side reflections or ``^(INTERFACE)`` or ``^DEPTH`` for
-    underside reflections. When DEPTH is given as a numerical value in [km], the
-    interface closest to that depth is chosen. If two legs appear
+    ``p``,  ``S``, or ``s``. The capital letters are used when the take-off of
+    the *leg* is in downward direction, while the lower case letters indicate a
+    take-off in upward direction. 
+    
+    A *knee* is an interaction with an interface. It can be a mode conversion,
+    a reflection, or propagation as a headwave or diffracted wave.
+       
+       * conversion is simply denoted as: ``(INTERFACE)`` or ``DEPTH``
+       * upperside reflection: ``v(INTERFACE)`` or ``vDEPTH``
+       * underside reflection: ``^(INTERFACE)`` or ``^DEPTH``
+       * normal kind headwave or diffracted wave: ``v_(INTERFACE)`` or ``v_DEPTH``
+    
+    The interface may be given by name or by depth: INTERFACE is the name of an
+    interface defined in the model, DEPTH is the depth of an interface in
+    [km] (the interface closest to that depth is chosen).  If two legs appear
     consecutively without an explicit *knee*, surface interaction is assumed.
-    The string may end with a backslash ``\\``, to indicate that the ray should
-    arrive at the receiver from above instead of from below, which is the
-    default. It is possible to restrict the maximum and minimum depth of a
-    *leg* by appending ``<(INTERFACE)`` or ``<DEPTH`` or ``>(INTERFACE)`` or
-    ``>DEPTH`` after the leg character, respectively.
+    
+    The phase definition may end with a backslash ``\\``, to indicate that the
+    ray should arrive at the receiver from above instead of from below. It is
+    possible to restrict the maximum and minimum depth of a *leg* by appending
+    ``<(INTERFACE)`` or ``<DEPTH`` or ``>(INTERFACE)`` or ``>DEPTH`` after the
+    leg character, respectively.
     
     **Examples:**
 
         * ``P`` - like the classical P, but includes PKP, PKIKP, Pg
-        * ``P<(moho)`` - like Pg, but must leave source downwards
+        * ``P<(moho)`` - like classical Pg, but must leave source downwards
         * ``pP`` - leaves source upward, reflects at surface, then travels as P
         * ``P(moho)s`` - conversion from P to S at the Moho on upgoing path
         * ``P(moho)S`` - conversion from P to S at the Moho on downgoing path
         * ``Pv12p`` - P with reflection at 12 km deep interface (or the interface closest to that)
+        * ``Pv_(moho)p`` - classical Pn
+        * ``Pv_(cmb)p`` - classical Pdiff
         * ``P^(conrad)P`` - underside reflection of P at the Conrad discontinuity
 
     **Usage:**
@@ -558,23 +571,51 @@ class PhaseDef(object):
             selection of conversion and reflection coefficients, which currently 
             only deal with the P-SV case.
 
-        (2) Need a way to specify headwaves (maybe ``P_(moho)p``).
-
-        (3) To support direct mappings between the classical phase names and
+        (2) To support direct mappings between the classical phase names and
             cake phase names, a way to constrain the turning point depth is 
             needed.
 
     '''
 
-    classic_defs = {}
-    for r in 'mc':
-        # PmP PcP and the like:
+   
+    @staticmethod
+    def classic_definitions():
+        defs = {}
+        # PmP, PmS, PcP, PcS, SmP, ...
+        for r in 'mc':
+            for a,b in 'PP PS SS SP'.split():
+                defs[a+r+b] = [ '%sv(%s)%s' % (a, {'m': 'moho', 'c': 'cmb'}[r], b.lower() ) ]
+        
+        # Pg, P, S, Sg
+        for a in 'PS':
+            defs[a+'g'] = [ '%s<(moho)' % x for x in (a, a.lower()) ]
+            defs[a] = [ '%s<(cmb)' % x for x in (a, a.lower()) ]
+            defs[a.lower()] = [ a.lower() ]
+
         for a,b in 'PP PS SS SP'.split():
-            classic_defs[a+r+b] = [ '%sv(%s)%s' % (a, {'m': 'moho', 'c': 'cmb'}[r], b.lower() ) ]
-       
-    for c in 'PS':
-        classic_defs[a+'g'] = [ '%s<(moho)' % x for x in (c, c.lower()) ]
-        classic_defs[a] = [ '%s<(cmb)' % x for x in (c, c.lower()) ]
+            defs[a+'K'+b] = [ '%s(cmb)P<(icb)(cmb)%s' % (a,b.lower()) ]
+            defs[a+'KIK'+b] = [ '%s(cmb)P(icb)P(icb)p(cmb)%s' % (a,b.lower()) ]
+            defs[a+'KJK'+b] = [ '%s(cmb)P(icb)S(icb)p(cmb)%s' % (a,b.lower()) ]
+            defs[a+'KiK'+b] = [ '%s(cmb)Pv(icb)p(cmb)%s' % (a,b.lower()) ]
+
+        # PP, SS, PS, SP, PPP, ...
+        for a in 'PS':
+            for b in 'PS':
+                for c in 'PS':
+                    defs[a+b+c] = [ ''.join(defs[x][0] for x in a+b+c) ]
+            
+                defs[a+b] = [ ''.join(defs[x][0] for x in a+b) ]
+
+        # Pc, Pdiff, Sc, ...
+        for x in 'PS':
+            defs[x+'c'] =  defs[x+'diff'] = [ x+'v_(cmb)'+x.lower() ]
+            defs[x+'n'] = [ x+'v_(moho)'+x.lower() ]
+
+        for k in defs.keys():
+            for x in 'ps':
+                defs[x+k] = [ x + defs[k][0] ]
+
+        return defs
 
     def __init__(self, definition=None):
         
@@ -676,12 +717,12 @@ class PhaseDef(object):
                                     in_leg.set_depthmax(depthmax)
                                     depthmax = None
                                 
-                                if in_leg.mode == leg.mode:
-                                    knee.conversion = False
-                                else:
+                                if in_leg.mode != leg.mode:
                                     knee.conversion = True
+                                else:
+                                    knee.conversion = False
                                
-                                if not knee.reflection and knee.conversion:
+                                if not knee.reflection:
                                     if c in 'ps':
                                         knee.direction = UP
                                     else:
