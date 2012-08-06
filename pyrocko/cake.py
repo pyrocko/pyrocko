@@ -445,11 +445,15 @@ class Knee(object):
         if self.headwave:
             x.append('headwave propagation along')
         elif self.reflection and self.conversion:
-            x.append('reflection with conversion from %s to %s at' % (smode(self.in_mode), smode(self.out_mode)))
+            x.append('reflection with conversion from %s to %s' % (smode(self.in_mode).upper(), smode(self.out_mode).upper()))
+            if not self.at_surface():
+                x.append('at')
         elif self.reflection:
-            x.append('reflection at')
+            x.append('reflection')
+            if not self.at_surface():
+                x.append('at')
         elif self.conversion:
-            x.append('conversion from %s to %s at' % (smode(self.in_mode), smode(self.out_mode)))
+            x.append('conversion from %s to %s at' % (smode(self.in_mode).upper(), smode(self.out_mode).upper()))
         else:
             x.append('passing through')
 
@@ -484,6 +488,13 @@ class Head(Knee):
             x.append('at %s' % self.depth)
         
         return ' '.join(x) 
+
+class UnknownClassicPhase(Exception):
+    def __init__(self, phasename):
+        self.phasename = phasename
+
+    def __str__(self):
+        return 'Cake does not know this phase: %s' % self.phasename
 
 class PhaseDefParseError(Exception):
     '''Exception raised when an error occures during parsing of a phase definition string.'''
@@ -570,11 +581,6 @@ class PhaseDef(object):
             character (e.g. H) instead of S. This would be benificial for the
             selection of conversion and reflection coefficients, which currently 
             only deal with the P-SV case.
-
-        (2) To support direct mappings between the classical phase names and
-            cake phase names, a way to constrain the turning point depth is 
-            needed.
-
     '''
 
    
@@ -589,7 +595,7 @@ class PhaseDef(object):
         # Pg, P, S, Sg
         for a in 'PS':
             defs[a+'g'] = [ '%s<(moho)' % x for x in (a, a.lower()) ]
-            defs[a] = [ '%s<(cmb)' % x for x in (a, a.lower()) ]
+            defs[a] = [ '%s<(cmb)(moho)p' % x for x in (a, a.lower()) ]
             defs[a.lower()] = [ a.lower() ]
 
         for a,b in 'PP PS SS SP'.split():
@@ -616,6 +622,14 @@ class PhaseDef(object):
                 defs[x+k] = [ x + defs[k][0] ]
 
         return defs
+
+    @staticmethod
+    def classic(phasename):
+        defs = PhaseDef.classic_definitions()
+        if not phasename in defs:
+            raise UnknownClassicPhase(phasename)
+
+        return [ PhaseDef(d) for d in defs[phasename] ]
 
     def __init__(self, definition=None):
         
@@ -829,6 +843,12 @@ class PhaseDef(object):
 
     def used_repr(self):
         '''Translate into textual representation (cake phase syntax).'''
+        def strdepth(x):
+            if isinstance(x, float):
+                return '%g' % (x/1000.)
+            else:
+                return '(%s)' % x
+
         x = []
         for el in self:
             if type(el) == Leg:
@@ -836,6 +856,12 @@ class PhaseDef(object):
                     x.append(smode(el.mode).lower())
                 else:
                     x.append(smode(el.mode).upper())
+
+                if el.depthmax is not None:
+                    x.append('<'+strdepth(el.depthmax))
+
+                if el.depthmin is not None:
+                    x.append('>'+strdepth(el.depthmin))
 
             elif type(el) == Knee:
                 if el.reflection and not el.at_surface():
@@ -846,17 +872,11 @@ class PhaseDef(object):
                 if el.headwave:
                     x.append('_')
                 if not el.at_surface():
-                    if isinstance(el.depth, float):
-                        x.append('%g' % (el.depth/1000.))
-                    else:
-                        x.append('(%s)' % el.depth)
+                    x.append(strdepth(el.depth))
                         
             elif type(el) == Head:
                 x.append('_')
-                if isinstance(el.depth, float):
-                    x.append('%g' % (el.depth/1000.))
-                else:
-                    x.append('(%s)' % el.depth)
+                x.append(strdepth(el.depth))
 
         if self._direction_stop == DOWN:
             x.append('\\')
@@ -2677,14 +2697,14 @@ class LayeredModel:
                 zmin, zmax = leg.depthmin, leg.depthmax
                 if zmin is not None or zmax is not None:
                     if direction_in != direction:
-                        if zmin is not None and zturn < zmin:
+                        if zmin is not None and zturn <= zmin:
                             raise MinDepthReached()
-                        if zmax is not None and zturn > zmax:
+                        if zmax is not None and zturn >= zmax:
                             raise MaxDepthReached()
                     else:
-                        if zmin is not None and current.ztop < zmin:
+                        if zmin is not None and current.ztop <= zmin:
                             raise MinDepthReached()
-                        if zmax is not None and current.zbot > zmax:
+                        if zmax is not None and current.zbot >= zmax:
                             raise MaxDepthReached()
 
                 path.append(Straight(direction_in, direction, mode, current))

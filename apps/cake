@@ -121,18 +121,17 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]', d
 
     if 'phases' in want:
         phases = []
-        for ss in options.phases:
-            for s in ss.split(','):
-                phases.append(cake.PhaseDef(s))
+        try:
+            for ss in options.phases:
+                for s in ss.split(','):
+                    phases.append(cake.PhaseDef(s))
 
-        for pp in options.classic_phases:
-            for p in pp.split(','):
-                try:
-                    for s in cake.PhaseDef.classic_definitions()[p]:
-                        phases.append(cake.PhaseDef(s))
+            for pp in options.classic_phases:
+                for p in pp.split(','):
+                        phases.extend( cake.PhaseDef.classic(p) )
 
-                except KeyError:
-                    parser.error('Cake does not know this phase: %s' % p)
+        except (cake.PhaseDefParseError, cake.UnknownClassicPhase), e:
+            parser.error(e)
         
         if phases:
             d['phases'] = phases 
