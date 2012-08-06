@@ -32,20 +32,58 @@ def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]', d
     parser.add_option('-h', '--help', action='help', help='Show help message and exit.')
 
     if 'phases' in want:
-        group = OptionGroup(parser, 'Phases')
+        group = OptionGroup(parser, 'Phases', '''
+
+Seismic phase arrivals may be either specified as traditional phase names (e.g.
+P, S, PP, PcP, ...) or in Cake's own syntax which is more powerful.  Use the
+--classic option, for traditional phase names. Use the --phase option if you
+want to define phases in Cake's syntax.
+
+''')
         group.add_option('--phase', '--phases', dest='phases', action="append",
                 default=[], metavar='PHASE1,PHASE2,...',
-                help='Comma separated list of seismic phases in cake syntax.')
+                help='''Comma separated list of seismic phases in Cake\'s syntax.
+
+The definition of a seismic propagation path in Cake's phase syntax is a string
+consisting of an alternating sequence of "legs" and "knees".
+
+A "leg" represents seismic wave propagation without any conversions,
+encountering only super-critical reflections. Legs are denoted by "P", "p",
+"S", or "s". The capital letters are used when the take-off of the "leg" is
+in downward direction, while the lower case letters indicate a take-off in
+upward direction. 
+
+A "knee" is an interaction with an interface. It can be a mode conversion, a
+reflection, or propagation as a headwave or diffracted wave.
+   
+   * conversion is simply denoted as: "(INTERFACE)" or "DEPTH"
+   * upperside reflection: "v(INTERFACE)" or "vDEPTH"
+   * underside reflection: "^(INTERFACE)" or "^DEPTH"
+   * normal kind headwave or diffracted wave: "v_(INTERFACE)" or "v_DEPTH"
+
+The interface may be given by name or by depth: INTERFACE is the name of an
+interface defined in the model, DEPTH is the depth of an interface in [km] (the
+interface closest to that depth is chosen).  If two legs appear consecutively
+without an explicit "knee", surface interaction is assumed.
+
+The phase definition may end with a backslash "\\", to indicate that the ray
+should arrive at the receiver from above instead of from below. It is possible
+to restrict the maximum and minimum depth of a "leg" by appending
+"<(INTERFACE)" or "<DEPTH" or ">(INTERFACE)" or ">DEPTH" after the leg
+character, respectively.  ''')
+
         group.add_option('--classic', dest='classic_phases', action='append',
                 default=[], metavar='PHASE1,PHASE2,...',
-                help='Comma separated list of seismic phases in classic nomenclature.')
+                help='Comma separated list of seismic phases in classic nomenclature. '
+                     'Run "cake list-phase-map for a list of available phase names.')
 
         parser.add_option_group(group)
 
     if 'model' in want:
         group = OptionGroup(parser, 'Model')
         group.add_option('--model', dest='model_filename', metavar='(NAME or FILENAME)', 
-                help='Use builtin model named NAME or user model from file FILENAME. Run "cake list-models" for a list of builtin models.')
+                help='Use builtin model named NAME or user model from file FILENAME. '
+                     'Run "cake list-models" for a list of builtin models.')
         group.add_option('--format', dest='model_format', metavar='FORMAT', choices=['nd', 'hyposat'], default='nd',
                 help='Set model file format (available: nd, hyposat; default: nd).')
         group.add_option('--crust2loc', dest='crust2loc', metavar='LAT,LON',
@@ -240,6 +278,7 @@ if __name__ == '__main__':
             'plot':           'plot combination of ray and traveltime curves',
             'plot-model':     'plot velocity model',
             'list-models':    'list available velocity models',
+            'list-phase-map': 'show translation table for classic phase names',
             'simplify-model': 'create a simplified version of a layered model'}
 
     usage = '''cake <subcommand> [options] 
@@ -254,6 +293,8 @@ Subcommands:
     plot-rays      %(plot_rays)s
     plot           %(plot)s
     plot-model     %(plot_model)s
+    list-models    %(list_models)s
+    list-phase-map %(list_phase_map)s
     simplify-model %(simplify_model)s
 
 To get available options for each subcommand:
@@ -337,6 +378,11 @@ To get available options for each subcommand:
     elif command in ('list-models',):
         for x in cake.builtin_models():
             print x
+
+    elif command in ('list-phase-map',):
+        defs = cake.PhaseDef.classic_definitions()
+        for k in sorted(defs.keys()):
+            print '%-15s: %s' % (k, ', '.join(defs[k]))
 
     elif command in ('--help', '-h', 'help'):
         sys.exit('Usage: %s' % usage)

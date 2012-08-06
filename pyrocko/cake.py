@@ -568,9 +568,9 @@ class PhaseDef(object):
          - P mode propagation, departing upward
          - surface reflection
          - P mode propagation, departing downward
-         - upperside reflection with conversion from p to s at moho
+         - upperside reflection with conversion from P to S at moho
          - S mode propagation, departing upward
-         - surface reflection with conversion from s to p
+         - surface reflection with conversion from S to P
          - P mode propagation, departing downward
          - arriving at target from above
 
@@ -617,14 +617,25 @@ class PhaseDef(object):
             defs[x+'c'] =  defs[x+'diff'] = [ x+'v_(cmb)'+x.lower() ]
             defs[x+'n'] = [ x+'v_(moho)'+x.lower() ]
 
+        # depth phases
         for k in defs.keys():
-            for x in 'ps':
-                defs[x+k] = [ x + defs[k][0] ]
+            if k not in 'ps':
+                for x in 'ps':
+                    defs[x+k] = [ x + defs[k][0] ]
 
         return defs
 
     @staticmethod
     def classic(phasename):
+        '''Get phase definitions based on classic phase name.
+
+        :param phasename: classic name of a phase
+        :returns: list of PhaseDef objects
+
+        This returns a list of PhaseDef objects, because some classic phases (like e.g. Pg) can only be
+        represented by two Cake style PhaseDef objects (one with downgoing and one with upgoing first leg).
+        '''
+
         defs = PhaseDef.classic_definitions()
         if not phasename in defs:
             raise UnknownClassicPhase(phasename)
