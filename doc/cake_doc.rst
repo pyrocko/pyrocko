@@ -146,8 +146,9 @@ Model:
 
 .. option::    --model=(NAME or FILENAME)
 
-        Use builtin model named NAME or user model from file FILENAME. Run
-        ``cake list-models`` for a list of builtin models.
+        Use builtin model named NAME or user model from file FILENAME.  By
+        default, the "ak135-f-continental.m" model is used. Run ``cake
+        list-models`` for a list of builtin models.
 
 .. option::    --format=FORMAT
 

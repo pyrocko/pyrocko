@@ -86,6 +86,7 @@ character, respectively.  ''')
         group = OptionGroup(parser, 'Model')
         group.add_option('--model', dest='model_filename', metavar='(NAME or FILENAME)', 
                 help='Use builtin model named NAME or user model from file FILENAME. '
+                     'By default, the "ak135-f-continental.m" model is used. '
                      'Run "cake list-models" for a list of builtin models.')
         group.add_option('--format', dest='model_format', metavar='FORMAT', choices=['nd', 'hyposat'], default='nd',
                 help='Set model file format (available: nd, hyposat; default: nd).')
