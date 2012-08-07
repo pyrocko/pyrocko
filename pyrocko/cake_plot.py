@@ -366,6 +366,7 @@ def mpl_init():
 
 def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None):
     import pylab as lab
+    mpl_init()
     labelspace()
     xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
     if distances is not None:
@@ -377,6 +378,7 @@ def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None
 
 def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False):
     import pylab as lab
+    mpl_init()
     labelspace()
     xmin, xmax = plot_xp(paths, zstart, zstop) 
     if distances is not None:
@@ -420,6 +422,7 @@ def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fal
 def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, vred=None):
     import pylab as lab 
     from matplotlib.transforms import Affine2D
+    mpl_init()
     ax1 = lab.subplot(211)
     labelspace()
     xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
@@ -450,6 +453,7 @@ def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fa
 def my_model_plot(mod):
 
     import pylab as lab
+    mpl_init()
     labels_model()
     sketch_model(mod)
     z = mod.profile('z')
