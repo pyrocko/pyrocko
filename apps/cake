@@ -229,7 +229,7 @@ character, respectively.  ''')
     
     if 'material' in want:
         md = {}
-        userfactor = dict(vp=1000., vs=1000., rho=1000., qp=1., qs=1., lame_lambda=1.0e9, lame_mu=1.0e9, poisson=1.)
+        userfactor = dict(vp=1000., vs=1000., rho=1000., qp=1., qs=1., qmu=1., qk=1., lame_lambda=1.0e9, lame_mu=1.0e9, poisson=1.)
         for k in userfactor.keys():
             if getattr(options, k) is not None:
                 md[k] = getattr(options, k) * userfactor[k]
