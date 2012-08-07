@@ -20,86 +20,221 @@ Invocation
 .. program:: cake
 
 ::  
+
+    cake <subcommand> [options] 
+
+Subcommands:
+
+.. describe::    print          
+
+    get information on model/phase/material properties
+
+.. describe::    arrivals       
+
+    print list of phase arrivals
+
+.. describe::    paths          
     
-    cake <command> [options]
+    print ray path details
 
-where ``<command>`` is one of the following subcommands:
+.. describe::    plot-xt        
 
-**print**
+    plot traveltime vs distance curves
 
-    print detailed description of earth model, seismic phase definition, or material parameters.
+.. describe::    plot-xp        
 
-**arrivals**
+    plot ray parameter vs distance curves
 
-    calculate and print travel times and and propation path information.
+.. describe::    plot-rays      
 
-**plot-xt**
+    plot ray propagation paths
 
-    plot arrival times over epicentral distance.
+.. describe::    plot           
 
-**plot-xp**
+    plot combination of ray and traveltime curves
 
-    plot ray parameter over epicentral distance.
-    
-**plot-rays**
+.. describe::    plot-model     
 
-    plot ray propagation paths.
+    plot velocity model
 
-**plot**
+.. describe::    list-models    
 
-    plot arrival times over epicentral distance together with ray propagation paths.
+    list builtin velocity models
 
-For further help on any of these commands and a list of the available options, run ``cake <command> --help``.
+.. describe::    list-phase-map 
+
+    show translation table for classic phase names
+
+.. describe::    simplify-model 
+
+    create a simplified version of a layered model
+
+To get further help and a list of available options for any subcommand run::
+
+    cake <subcommand> --help
+
 
 Options
 ^^^^^^^
 
-.. option:: -h, --help
+Each subcommand has its own set of options. Use ``cake <subcommand> --help`` to
+see which of the following options apply to any of the subcommands listed
+above.
 
-    show help message and exit 
+General options:
+""""""""""""""""
 
-.. option:: --phases=PHASE1,PHASE2,...
+.. option::  -h, --help
 
-    comma separated list of seismic phase definition(s) in cake syntax
+    Show help message and exit.
 
-.. option:: --model=FILENAME
+
+Phases:
+"""""""
     
-    load model from file named FILENAME
+Seismic phase arrivals may be either specified as traditional phase names
+(e.g. P, S, PP, PcP, ...) or in Cake's own syntax which is more powerful. 
+Use the :option:`--classic` option, for traditional phase names. Use the :option:`--phase`
+option if you want to define phases in Cake's syntax.
 
-.. option:: --format=FORMAT
+.. option::    --phase=PHASE1,PHASE2,..., --phases=PHASE1,PHASE2,...
+
+        Comma separated list of seismic phases in Cake's syntax.
+        
+        The definition of a seismic propagation path in Cake's phase syntax is
+        a string consisting of an alternating sequence of *legs* and *knees*.
+        
+        A *leg* represents seismic wave propagation without any conversions,
+        encountering only super-critical reflections. Legs are denoted by ``P``,
+        ``p``, ``S``, or ``s``. The capital letters are used when the take-off of
+        the *leg* is in downward direction, while the lower case letters
+        indicate a take-off in upward direction.
+        
+        A *knee* is an interaction with an interface. It can be a mode
+        conversion, a reflection, or propagation as a headwave or diffracted
+        wave.
+        
+           * conversion is simply denoted as: ``(INTERFACE)`` or ``DEPTH``
+           * upperside reflection: ``v(INTERFACE)`` or ``vDEPTH``
+           * underside reflection: ``^(INTERFACE)`` or ``^DEPTH``
+           * normal kind headwave or diffracted wave: ``v_(INTERFACE)`` or
+             ``v_DEPTH``
+        
+        The interface may be given by name or by depth: INTERFACE is the name
+        of an interface defined in the model, DEPTH is the depth of an
+        interface in [km] (the interface closest to that depth is chosen).  If
+        two legs appear consecutively without an explicit *knee*, surface
+        interaction is assumed.
+
+        The preferred standard interface names in cake are ``conrad``,
+        ``moho``, ``ocb`` (outer core boundary), and ``icb`` (inner core
+        boundary).
+        
+        The phase definition may end with a backslash ``\``, to indicate that
+        the ray should arrive at the receiver from above instead of from
+        below. It is possible to restrict the maximum and minimum depth of a
+        *leg* by appending ``<(INTERFACE)`` or ``<DEPTH`` or ``>(INTERFACE)`` or
+        ``>DEPTH`` after the leg character, respectively.
+
+.. option::    --classic=PHASE1,PHASE2,...
+
+        Comma separated list of seismic phases in classic nomenclature. Run
+        ``cake list-phase-map`` for a list of available phase names.
+
+Model:
+""""""
+
+.. option::    --model=(NAME or FILENAME)
+
+        Use builtin model named NAME or user model from file FILENAME. Run
+        ``cake list-models`` for a list of builtin models.
+
+.. option::    --format=FORMAT
+
+        Set model file format (available: nd, hyposat; default: nd).
+
+.. option::    --crust2loc=LAT,LON
+
+        Set model from CRUST2.0 profile at location (LAT,LON).
+
+Source-receiver geometry:
+"""""""""""""""""""""""""
+
+.. option::    --sdepth=FLOAT
     
-    set model file format (available: ``nd``, ``hyposat``; default: ``nd``)
+    Source depth [km] (default: 0)
 
-.. option:: --crust2loc=LAT,LON
+.. option::    --rdepth=FLOAT
     
-    set model from CRUST2.0 profile at location (LAT,LON)
+    Receiver depth [km] (default: 0)
 
-.. option:: --sdepth=FLOAT
+.. option::    --distances=DISTANCES
 
-    source depth [km] (default: 0)
+    Surface distances as ``start:stop:n`` or ``dist1,dist2,...`` [km]
 
-.. option:: --rdepth=FLOAT
+.. option::    --degrees
 
-    receiver depth [km] (default: 0)
+    Distances are in [deg] instead of [km], velocities in [deg/s] instead of [km/s].
 
-.. option:: --distances=DISTANCES
+Plotting options:
+"""""""""""""""""
 
-    surface distances as ``start:stop:n`` or ``dist1,dist2,...`` [km]
+.. option::    --vred=FLOAT
 
-.. option:: --degrees
+    Velocity for time reduction in plot [km/s]
 
-    distances are in [deg] instead of [km], velocities in [deg/s] instead of [km/s]
+Material:
+"""""""""
 
-.. option:: --vred=FLOAT
+An isotropic elastic material may be specified by giving a combination of
+some of the following options.
 
-    velocity for time reduction in plot [km/s]
+.. option::    --vp=FLOAT
+    
+    P-wave velocity [km/s]
+
+.. option::    --vs=FLOAT
+    
+    S-wave velocity [km/s]
+
+.. option::    --rho=FLOAT
+    
+    density [g/cm**3]
+
+.. option::    --qp=FLOAT
+
+    P-wave attenuation Qp (default: 1456)
+
+.. option::    --qs=FLOAT
+
+    S-wave attenuation Qs (default: 600)
+
+.. option::    --poisson=FLOAT
+
+    Poisson ratio
+
+.. option::    --lambda=FLOAT
+
+    Lame parameter lambda [GPa]
+
+.. option::    --mu=FLOAT
+
+    Shear modulus [GPa]
+
+.. option::    --qk=FLOAT
+
+    Bulk attenuation Qk
+
+.. option::    --qmu=FLOAT
+
+    Shear attenuation Qmu
 
 
 Command Line Examples
 ---------------------
 
 Plot P and p Phases
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 Ten receiver distances ranging from 100 km to 1000 km and a source depth of 10km.
 
@@ -107,12 +242,85 @@ Ten receiver distances ranging from 100 km to 1000 km and a source depth of 10km
 
     cake plot-rays --crust2loc=45,10 --phases=P,p --sdepth=10 --distances=100:1000:10
 
-This command will produce the following image:
-
 .. figure:: _static/cake_plot_example.png
     :scale: 80%
 
 The option ``--crust2loc`` refers to the :py:mod:`pyrocko.crust2x2` module and expects latitude and longitude of the source location.
+
+
+Some water multiples
+^^^^^^^^^^^^^^^^^^^^
+
+Receivers may be at any depth. Arbitrary reflection/conversion histories may be choosen.
+
+::
+
+   cake plot-rays --sdepth=15 --distances=10 --rdepth=4.443 --crust2loc=0,0 --phase='pP\,pPv3pP\,pPv3pPv3pP\,p'
+
+.. figure:: _static/cake_plot_example_2.png
+    :scale: 80%
+
+Classic phase names
+^^^^^^^^^^^^^^^^^^^
+
+To use classic phase names, use the :option:`--classic` option::
+
+    cake plot-rays --classic=Pdiff,PKP,PKIKP --distances=110:150:5 --degrees
+
+
+.. figure:: _static/cake_plot_example_3.png
+    :scale: 80%
+
+Model plots
+^^^^^^^^^^^
+
+::
+
+    cake plot-model --model=prem-no-ocean.m
+
+.. figure:: _static/cake_plot_example_4.png
+    :scale: 80%
+
+Cake phases
+^^^^^^^^^^^
+
+It is possible to see the exact definition of a phase using ``cake print ...``::
+
+   
+    > cake print --classic=Pg
+    Phase definition "P<(moho)":
+     - P mode propagation, departing downward (may not propagate deeper than interface moho)
+     - arriving at target from below
+    Phase definition "p<(moho)":
+     - P mode propagation, departing upward (may not propagate deeper than interface moho)
+     - arriving at target from below
+
+This tells us that the classic Pg phase is represented with two Cake style
+phase definitions, one for downgoing and one for upgoing takeoff direction and
+that there is a constraint on maximum depth.
+
+Material calculator
+^^^^^^^^^^^^^^^^^^^
+
+Cake can also be used to convert between different material parameters:: 
+
+    > cake print --vp=5 --poisson=0.25
+    P wave velocity     [km/s]    :            5
+    S wave velocity     [km/s]    :      2.88675
+    P/S wave vel. ratio           :      1.73205     
+    Lame lambda         [GPa]     :      21.6667
+    Lame shear modulus  [GPa]     :      21.6667
+    Poisson ratio                 :         0.25
+    Bulk modulus        [GPa]     :      36.1111
+    Young's modulus     [GPa]     :      54.1667
+    Rayleigh wave vel.  [km/s]    :      2.65408
+    Density             [g/cm**3] :          2.6
+    Qp                            :         1350
+    Qs = Qmu                      :          600
+    Qk                            :          inf
+
+
+
 
 Python Script Examples
 ----------------------
