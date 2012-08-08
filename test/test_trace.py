@@ -236,6 +236,12 @@ class TraceTestCase(unittest.TestCase):
                 a.add(b, interpolate=False)
                 assert numeq(a.ydata, result, 0.001)
         
+    def testAdd2(self):
+        for toff in num.random.random(100): 
+            t1 = trace.Trace(tmin=sometime, deltat=0.05, ydata=num.ones(5,dtype=num.float))
+            t2 = trace.Trace(tmin=sometime-toff*0.1, deltat=0.05, ydata=num.ones(5,dtype=num.float))
+            t1.add(t2, interpolate=False)
+
     def testPeaks(self):
         n = 1000
         t = trace.Trace(tmin=0, deltat=0.1, ydata=num.zeros(n, dtype=num.float))

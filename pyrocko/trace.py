@@ -159,17 +159,10 @@ class Trace(object):
             self.ydata += num.interp(xdata, other_xdata, other.ydata, left=0., right=0.)
         else:
             assert self.deltat == other.deltat
-            ibeg1 = int(round((other.tmin-self.tmin)/self.deltat))
-            ibeg2 = int(round((self.tmin-other.tmin)/self.deltat))
-            iend1 = int(round((other.tmax-self.tmin)/self.deltat))+1
-            iend2 = int(round((self.tmax-other.tmin)/self.deltat))+1
-            
-            ibeg1 = self.index_clip(ibeg1)
-            iend1 = self.index_clip(iend1)
-            ibeg2 = self.index_clip(ibeg2)
-            iend2 = self.index_clip(iend2)
-            
-            self.ydata[ibeg1:iend1] += other.ydata[ibeg2:iend2]
+            ioff = int(round((other.tmin-self.tmin)/self.deltat))
+            ibeg = max(0, ioff)
+            iend = min(self.data_len(), ioff+other.data_len())
+            self.ydata[ibeg:iend] += other.ydata[ibeg-ioff:iend-ioff]
 
     def mult(self, other, interpolate=True):
         '''Muliply with values of other trace (self \*= other).
