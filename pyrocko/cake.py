@@ -1161,7 +1161,7 @@ class Layer:
 
             c(z) = a*z^b
         '''
-        utop, ubot = self.us(mode)
+        utop, ubot = self.u_top_bottom(mode)
         a,b = self.potint_coefs(mode)
         ztop = self.ztop
         zbot = self.zbot
@@ -1189,15 +1189,6 @@ class Layer:
             sap = num.sqrt(1/a**2 - p**2)
             x = p/sap * lr
             t = 1./(a**2 * sap)
-       
-#        if isinstance(x, num.ndarray):
-#            iturn = num.where(num.logical_or(r2*utop - p <= 0., r1*ubot - p <= 0.))
-#            x[iturn] *= 2.
-#            t[iturn] *= 2.
-#        else:
-#            if r2*utop - p <= 0. or r1*ubot - p <= 0.:
-#                x *= 2.
-#                t *= 2.
         
         x *= r2d
 
@@ -1212,7 +1203,7 @@ class Layer:
         return (self.u(mode, z)*radius(z) - p) > 0.
 
     def tests(self, p, mode):
-        utop, ubot = self.us(mode)
+        utop, ubot = self.u_top_bottom(mode)
         return (utop * radius(self.ztop) - p) > 0., (ubot * radius(self.zbot) - p) > 0.
    
     def zturn_potint(self, p, mode):
@@ -1275,7 +1266,7 @@ class HomogeneousLayer(Layer):
         if mode == S:
             return 1./self.m.vs
 
-    def us(self, mode):
+    def u_top_bottom(self, mode):
         u = self.u(mode)
         return u, u
 
@@ -1285,7 +1276,7 @@ class HomogeneousLayer(Layer):
         if mode == S:
             return self.m.vs
 
-    def vs(self, mode):
+    def v_top_bottom(self, mode):
         v = self.v(mode)
         return v, v
 
@@ -1360,7 +1351,7 @@ class GradientLayer(Layer):
         d = [ self.interpolate(z, ptop, pbot) for (ptop, pbot) in zip(dtop,dbot) ]
         return Material(*d)
 
-    def us(self, mode):
+    def u_top_bottom(self, mode):
         if mode == P:
             return 1./self.mtop.vp, 1./self.mbot.vp
         if mode == S:
@@ -1372,7 +1363,7 @@ class GradientLayer(Layer):
         if mode == S:
             return 1./self.interpolate(z, self.mtop.vs, self.mbot.vs)
 
-    def vs(self, mode):
+    def v_top_bottom(self, mode):
         if mode == P:
             return self.mtop.vp, self.mbot.vp
         if mode == S:
@@ -1396,7 +1387,7 @@ class GradientLayer(Layer):
         if self._use_potential_interpolation:
             return self.xt_potint(p, mode, zpart)
 
-        utop, ubot = self.us(mode)
+        utop, ubot = self.u_top_bottom(mode)
         b = (1./ubot - 1./utop)/(self.zbot - self.ztop)
         pflat = self.pflat_bottom(p)
         if zpart is not None:
@@ -1416,15 +1407,6 @@ class GradientLayer(Layer):
 
         x =  (xxtop - xxbot)/(b*pdp)
         t =  (tttop - ttbot)/b + pflat*x
-      
-#        if isinstance(x, num.ndarray):
-#            iturn = num.where(num.logical_or(utop - pflat <= 0, ubot - pflat <= 0))
-#            x[iturn] *= 2.
-#            t[iturn] *= 2.
-#        else:
-#            if utop - pflat <= 0 or ubot - pflat <= 0:
-#                x *= 2.
-#                t *= 2.
 
         x *= r2d/(earthradius - self.zmid)
         return x, t
@@ -1433,7 +1415,7 @@ class GradientLayer(Layer):
         if self._use_potential_interpolation:
             return self.zturn_potint(p,mode)
         pflat = self.pflat_bottom(p)
-        vtop, vbot = self.vs(mode)
+        vtop, vbot = self.v_top_bottom(mode)
         return (1./pflat - vtop) * (self.zbot - self.ztop) / (vbot-vtop) + self.ztop
 
     def split(self, z):
@@ -1486,18 +1468,18 @@ class Interface(Discontinuity):
         else:
             return 'interface "%s"' % self.name
 
-    def us(self, mode):
+    def u_top_bottom(self, mode):
         if mode == P:
             return reci_or_none(self.mabove.vp), reci_or_none(self.mbelow.vp)
         if mode == S:
             return reci_or_none(self.mabove.vs), reci_or_none(self.mbelow.vs)
 
     def critical_ps(self, mode):
-        uabove, ubelow = self.us(mode)
+        uabove, ubelow = self.u_top_bottom(mode)
         return mult_or_none(uabove,radius(self.z)), mult_or_none(ubelow,radius(self.z))
 
     def propagate(self, p, mode, direction):
-        uabove, ubelow = self.us(mode)
+        uabove, ubelow = self.u_top_bottom(mode)
         if direction == DOWN:
             if ubelow is not None and ubelow*radius(self.z) - p >= 0:
                 return direction
@@ -1740,7 +1722,7 @@ class HeadwaveStraight(Straight):
 
     def x2t_headwave(self, xstretch): 
         xstretch_m = xstretch*d2r*radius(self.interface.z)
-        return min_not_none(*self.interface.us(self.mode))*xstretch_m
+        return min_not_none(*self.interface.u_top_bottom(self.mode))*xstretch_m
 
 class Kink(RayElement):
     '''An interaction of a ray with a :py:class:`Discontinuity`.'''
