@@ -212,6 +212,9 @@ class Geofon(EarthquakeCatalog):
             'depth': parse_km,
         }
         
+        # fix broken tag
+        page = re.sub('align=center', 'align="center"', page)
+
         doc = minidom.parseString(page)
         d = {}
         for tr in doc.getElementsByTagName("tr"):
