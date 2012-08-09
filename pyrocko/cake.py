@@ -3172,7 +3172,7 @@ def builtin_models():
 def builtin_model_filename(modelname):
     return util.data_file(os.path.join('earthmodels', modelname+'.nd'))
 
-def load_model(fn, format='nd'):
+def load_model(fn='ak135-f-continental.m', format='nd'):
     '''Load layered earth model from file.
     
     :param fn: filename
