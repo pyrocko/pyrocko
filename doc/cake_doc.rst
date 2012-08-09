@@ -127,7 +127,7 @@ option if you want to define phases in Cake's syntax.
         interaction is assumed.
 
         The preferred standard interface names in cake are ``conrad``,
-        ``moho``, ``ocb`` (outer core boundary), and ``icb`` (inner core
+        ``moho``, ``cmb`` (core-mantle boundary), and ``icb`` (inner core
         boundary).
         
         The phase definition may end with a backslash ``\``, to indicate that
@@ -299,6 +299,22 @@ It is possible to see the exact definition of a phase using ``cake print ...``::
 This tells us that the classic Pg phase is represented with two Cake style
 phase definitions, one for downgoing and one for upgoing takeoff direction and
 that there is a constraint on maximum depth.
+
+
+Here's another example to illustrate why cake needs its special phase definition syntax:
+
+::
+
+    > cat >waveguide.nd <<EOF
+    0 4 2.3  2.6
+    1 3 1.73 2.6
+    2 4 2.3  2.6
+    EOF
+    > cake plot-rays --phases='P,p,P\,p\' --sdepth=0.5 --rdepth=1.5 --distances=3,5 --model=waveguide.nd
+
+.. figure:: _static/cake_plot_example_5.png
+    :scale: 80%
+
 
 Material calculator
 ^^^^^^^^^^^^^^^^^^^

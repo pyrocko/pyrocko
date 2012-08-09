@@ -66,8 +66,8 @@ interface defined in the model, DEPTH is the depth of an interface in [km] (the
 interface closest to that depth is chosen).  If two legs appear consecutively
 without an explicit "knee", surface interaction is assumed.
 
-The preferred standard interface names in cake are "conrad", "moho", "ocb"
-(outer core boundary), and "cb" (inner core boundary).
+The preferred standard interface names in cake are "conrad", "moho", "cmb"
+(core-mantle boundary), and "cb" (inner core boundary).
 
 The phase definition may end with a backslash "\\", to indicate that the ray
 should arrive at the receiver from above instead of from below. It is possible
