@@ -1146,6 +1146,14 @@ class Layer:
     def pflat(self, p, z):
         '''Convert spherical ray parameter to local flat ray parameter for given depth.'''
         return p / (earthradius-z)
+
+    def v_potint(self, mode, z):
+        a,b = self.potint_coefs(mode)
+        return a*(earthradius-z)**b
+
+    def u_potint(self, mode, z):
+        a,b = self.potint_coefs(mode)
+        return 1./(a*(earthradius-z)**b)
     
     def xt_potint(self, p, mode, zpart=None):
         '''Get travel time and distance for for traversal with given mode and ray parameter.
@@ -1195,10 +1203,7 @@ class Layer:
         return x,t
 
     def test(self, p, mode, z):
-        '''Check if wave mode can exist for given ray parameter at given depth within the layer.
-        
-        Uses potential interpolation.
-        '''
+        '''Check if wave mode can exist for given ray parameter at given depth within the layer. '''
         
         return (self.u(mode, z)*radius(z) - p) > 0.
 
@@ -1272,9 +1277,14 @@ class HomogeneousLayer(Layer):
 
     def v(self, mode, z=None):
         if mode == P:
-            return self.m.vp
+            v = self.m.vp
         if mode == S:
-            return self.m.vs
+            v = self.m.vs
+
+        if num.isscalar(z):
+            return v
+        else:
+            return filled(v, len(z))
 
     def v_top_bottom(self, mode):
         v = self.v(mode)
@@ -1358,6 +1368,9 @@ class GradientLayer(Layer):
             return 1./self.mtop.vs, 1./self.mbot.vs
 
     def u(self, mode, z):
+        if self._use_potential_interpolation:
+            return self.u_potint(mode,z)
+
         if mode == P:
             return 1./self.interpolate(z, self.mtop.vp, self.mbot.vp)
         if mode == S:
@@ -1370,18 +1383,13 @@ class GradientLayer(Layer):
             return self.mtop.vs, self.mbot.vs
 
     def v(self, mode, z):
+        if self._use_potential_interpolation:
+            return self.v_potint(mode,z)
+        
         if mode == P:
             return self.interpolate(z, self.mtop.vp, self.mbot.vp)
         if mode == S:
             return self.interpolate(z, self.mtop.vs, self.mbot.vs)
-   
-    def test(self, p, mode, z):
-        return Layer.test(self, p, mode, z)
-        if self._use_potential_interpolation:
-            return Layer.test(self, p, mode, z)
-
-        pflat = self.pflat(p, z)
-        return self.u(mode, z) > pflat
 
     def xt(self, p, mode, zpart=None):
         if self._use_potential_interpolation:
@@ -2500,6 +2508,12 @@ class LayeredModel:
         '''
         
         if isinstance(element, Layer):
+            if element.zbot >= earthradius:
+                element.zbot = earthradius - 1.
+
+            if element.ztop >= earthradius:
+                raise Exception('Layer deeper than earthradius')
+
             element.ilayer = self.nlayers
             self.nlayers += 1
 
