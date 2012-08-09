@@ -595,7 +595,7 @@ class PhaseDef(object):
         # Pg, P, S, Sg
         for a in 'PS':
             defs[a+'g'] = [ '%s<(moho)' % x for x in (a, a.lower()) ]
-            defs[a] = [ '%s<(cmb)(moho)p' % x for x in (a, a.lower()) ]
+            defs[a] = [ '%s<(cmb)(moho)%s' % (x,x.lower()) for x in (a, a.lower()) ]
             defs[a.lower()] = [ a.lower() ]
 
         for a,b in 'PP PS SS SP'.split():
