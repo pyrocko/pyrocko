@@ -611,6 +611,9 @@ class Marker(object):
 
         return list(self.nslc_ids)[0]
 
+    def hoover_message(self):
+        return ''
+
     def __str__(self):
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
         st = myctime
@@ -786,7 +789,8 @@ class Marker(object):
     def get_label(self):
         return None
 
-    def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None):
+    def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
+
         if isinstance(self, PhaseMarker):
             return
 
@@ -795,6 +799,8 @@ class Marker(object):
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
+        self._incidence_angle = incidence_angle
+        self._takeoff_angle = takeoff_angle
 
     def convert_to_event_marker(self, lat=0., lon=0.):
         if isinstance(self, EventMarker):
@@ -855,7 +861,20 @@ class EventMarker(Marker):
 
     def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
         pass
-    
+   
+    def hoover_message(self):
+        ev = self.get_event()
+        evs = []
+        for k in 'magnitude lat lon depth name region catalog'.split():
+            if ev.__dict__[k] is not None and ev.__dict__[k] != '':
+                if k == 'depth':
+                    sv = '%g km' % (ev.depth * 0.001)
+                else:
+                    sv = '%s' % ev.__dict__[k]
+                evs.append('%s = %s' % (k, sv))
+
+        return ', '.join(evs) 
+
     def get_attributes(self):
         attributes = [ 'event:' ]
         attributes.extend(Marker.get_attributes(self))
@@ -883,13 +902,15 @@ class EventMarker(Marker):
 
 class PhaseMarker(Marker):
 
-    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None):
+    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
         Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
         self._event_hash = event_hash
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
+        self._incidence_angle = incidence_angle
+        self._takeoff_angle = takeoff_angle
 
     def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
         Marker.draw_trace(self, viewer, p, trace, time_projection, track_projection, gain, outline_label=(self._event is not None and self._event == viewer.get_active_event()))
@@ -929,10 +950,23 @@ class PhaseMarker(Marker):
 
     def convert_to_marker(self):
         del self._event
+        del self._event_hash
         del self._phasename
         del self._polarity
         del self._automatic
+        del self._incidence_angle
+        del self._takeoff_angle
         self.__class__ = Marker
+
+    def hoover_message(self):
+        toks = []
+        for k in 'incidence_angle takeoff_angle polarity'.split():
+            v = getattr(self, '_' + k)
+            if v is not None:
+                toks.append('%s = %s' % (k,v))
+
+        return ', '.join(toks)
+
 
     def get_attributes(self):
         attributes = [ 'phase:' ]

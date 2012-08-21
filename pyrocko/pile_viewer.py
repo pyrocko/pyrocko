@@ -1428,8 +1428,8 @@ def MakePileViewerMainClass(base):
                     if not marker_nslc_ids:
                         xstate = True
                     
-                    for nslc_id in marker_nslc_ids:
-                        if nslc_id in relevant_nslc_ids:
+                    for nslc in relevant_nslc_ids:
+                        if marker.match_nslc(nslc):
                             xstate = True
                             
                     state = xstate
@@ -1441,19 +1441,7 @@ def MakePileViewerMainClass(base):
                     needupdate = True
                     marker.set_alerted(state)
                     if state:
-                        if isinstance(marker, EventMarker):
-                            ev = marker.get_event()
-                            evs = []
-                            for k in 'magnitude lat lon depth name region catalog'.split():
-                                if ev.__dict__[k] is not None and ev.__dict__[k] != '':
-                                    if k == 'depth':
-                                        sv = '%g km' % (ev.depth * 0.001)
-                                    else:
-                                        sv = '%s' % ev.__dict__[k]
-                                    evs.append('%s = %s' % (k, sv))
-
-                            self.message = ', '.join(evs) 
-            
+                        self.message = marker.hoover_message()
 
             if not haveone:
                 self.message = None
