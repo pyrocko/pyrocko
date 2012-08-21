@@ -1010,7 +1010,7 @@ def MakePileViewerMainClass(base):
             for path in self.snuffling_paths:
                 
                 if not os.path.isdir(path): 
-                    continue
+                    os.mkdir(path)
                 
                 for fn in os.listdir(path):
                     if not fn.endswith('.py'):
