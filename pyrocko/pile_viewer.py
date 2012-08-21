@@ -1840,8 +1840,11 @@ def MakePileViewerMainClass(base):
             self.set_time_range(tmin,tmax)
             self.update()
             
-        def go_to_time(self, t):
-            tmin, tmax = self.make_good_looking_time_range(t,t)
+        def go_to_time(self, t, tlen=None):
+            tmax = t
+            if tlen is not None:
+                tmax = t+tlen
+            tmin, tmax = self.make_good_looking_time_range(t,tmax)
             self.interrupt_following()
             self.set_time_range(tmin,tmax)
             self.update()
@@ -2915,12 +2918,23 @@ def MakePileViewerMainClass(base):
                         toks2 = line.split(None, 1)
                         if len(toks2) == 2:
                             arg = toks2[1]
-                            if re.match(r'^\d\d\d\d-\d\d(-\d\d( \d\d(:\d\d(:\d\d(.\d+)?)?)?)?)?$', arg):
+                            m = re.match(r'^\d\d\d\d-\d\d(-\d\d( \d\d(:\d\d(:\d\d(.\d+)?)?)?)?)?$', arg)
+                            if m:
+                                tlen = None
+                                if not m.group(1):
+                                    tlen = 32*24*60*60
+                                elif not m.group(2):
+                                    tlen = 24*60*60
+                                elif not m.group(3):
+                                    tlen = 60*60
+                                elif not m.group(4):
+                                    tlen = 60
+                                    
                                 supl = '1970-01-01 00:00:00'
                                 if len(supl) > len(arg):
                                     arg = arg + supl[-(len(supl)-len(arg)):]
                                 t = pyrocko.util.str_to_time(arg)
-                                self.go_to_time(t)
+                                self.go_to_time(t, tlen=tlen)
                             
                             elif re.match(r'^\d\d:\d\d(:\d\d(.\d+)?)?$', arg):
                                 supl = '00:00:00'
