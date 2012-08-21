@@ -254,6 +254,13 @@ class Event:
         return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
 
 
+def load_events(filename):
+    return list(Event.load_catalog(filename))
+
+def load_one_event(filename):
+    l = Event.load_catalog(filename)
+    return l.next()
+
 class Station:
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):
         self.network = network
