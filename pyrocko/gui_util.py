@@ -988,7 +988,11 @@ class PhaseMarker(Marker):
 
     @staticmethod
     def from_attributes(vals):
-        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:])
+        if len(vals) == 14:
+            nbasicvals = 7
+        else:
+            nbasicvals = 4
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:1+nbasicvals])
        
         i = 8
         if len(vals) == 14:
