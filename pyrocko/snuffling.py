@@ -419,6 +419,21 @@ class Snuffling:
 
             
         return p
+
+    def get_active_event_and_stations(self, trange=(-3600.,3600.)):
+        '''Get event and stations with available data for active event.'''
+
+        p = self.get_pile()
+        v = self.get_viewer()
+        
+        event = v.get_active_event()
+        stations = []
+        for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False):
+            for tr in traces:
+                station = v.get_station(v.station_key(tr))
+                stations.append(station)
+
+        return event, stations
         
     def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
         '''Iterate over selected traces.
