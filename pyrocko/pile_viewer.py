@@ -974,6 +974,12 @@ def MakePileViewerMainClass(base):
             event = event_marker.get_event()
             self.set_origin(event)
             self.emit(SIGNAL('active_event_changed()'))
+
+        def set_active_event(self, event):
+            for marker in self.markers:
+                if isinstance(marker, EventMarker):
+                    if marker.get_event() is event:
+                        self.set_active_event_marker(marker)
         
         def get_active_event_marker(self):
             return self.active_event_marker

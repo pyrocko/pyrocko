@@ -333,11 +333,11 @@ class SnufflerWindow(QMainWindow):
             for ev in events:
                 self.get_view().add_event(ev)
             
-            self.get_view().set_origin(events[0])
+            if len(events) == 1:
+                self.get_view().set_active_event(events[0])
 
         if markers:
             self.get_view().add_markers(markers)
-
         
         self.tabs = SnufflerTabs(self)
         self.setCentralWidget( self.tabs )
