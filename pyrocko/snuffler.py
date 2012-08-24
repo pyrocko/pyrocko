@@ -539,6 +539,7 @@ def snuffle(pile=None, **kwargs):
     :param force_cache: bool, whether to use the cache when attribute spoofing is active
     :param store_path: filename template, where to store trace data from input streams
     :param store_interval: float, time interval (in seconds) between stream buffer dumps 
+    :param want_markers: bool, whether markers should be returned
     '''
     
     if pile is None:
@@ -557,6 +558,7 @@ def snuffle(pile=None, **kwargs):
 
     store_path = kwargs.pop('store_path', None)
     store_interval = kwargs.pop('store_interval', 600)
+    want_markers = kwargs.pop('want_markers', False)
 
     win = SnufflerWindow(pile, **kwargs)
    
@@ -590,14 +592,20 @@ def snuffle(pile=None, **kwargs):
         pollinjector.fixate_all()
 
     ret = win.return_tag()
+
+    if want_markers:
+        markers = win.get_view().get_markers()
     
     del win
     gc.collect()
 
     if tempdir:
         shutil.rmtree(tempdir)
-
-    return ret
+    
+    if want_markers:
+        return ret, markers
+    else:
+        return ret
 
 def snuffler_from_commandline(args=sys.argv):
 
