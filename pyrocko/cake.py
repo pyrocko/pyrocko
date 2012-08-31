@@ -1204,7 +1204,6 @@ class Layer:
 
     def test(self, p, mode, z):
         '''Check if wave mode can exist for given ray parameter at given depth within the layer. '''
-        
         return (self.u(mode, z)*radius(z) - p) > 0.
 
     def tests(self, p, mode):
@@ -1229,7 +1228,7 @@ class Layer:
         else:
             zin, zout = self.zbot, self.ztop
 
-        if not self.test(p, mode, zin):
+        if self.v(mode, zin) == 0.0 or not self.test(p, mode, zin):
             raise CannotPropagate(direction, self.ilayer)
 
         if not self.test(p, mode, zout):
