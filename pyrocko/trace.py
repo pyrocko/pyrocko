@@ -1368,7 +1368,7 @@ def _project2(traces, matrix, in_channels, out_channels):
             tmin = max(a.tmin, b.tmin)
             tmax = min(a.tmax, b.tmax)
             
-            if tmin >= tmax:
+            if tmin > tmax:
                 continue
         
             ac = a.chop(tmin, tmax, inplace=False, include_last=True)
