@@ -10,8 +10,9 @@ The following software packages are required to use Pyrocko. The more important 
 * `Python <http://www.python.org/>`_ including development headers
 * `NumPy <http://numpy.scipy.org/>`_ including development headers
 * `SciPy <http://scipy.org/>`_
-* `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (>= v4.4.4, Only needed for the GUI apps)
 * `pyavl <http://pypi.python.org/pypi/pyavl/>`_ 
+* `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (>= v4.4.4, only needed for the GUI apps)
+* `matplotlib <http://matplotlib.sourceforge.net/>`_ (optional, if you want to produce plots with the Cake app)
 * libmseed (tarball is included)
 * evalresp (only libevresp from this package, tarball is included, could be made optional)
 * `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)
@@ -25,18 +26,21 @@ The exact package names may differ from system to system. Whether there are
 separate packages for the development headers of NumPy and Python (the \*-dev
 packages) is also system specific.
 
-* Debian GNU/Linux::
+* Debian GNU/Linux (wheezy)::
 
-    apt-get install python-dev python-numpy python-numpy-dev python-scipy python-qt4 python-qt4-opengl
-
+    apt-get install git python-dev python-numpy python-numpy-dev python-scipy
+    apt-get install python-qt4 python-qt4-gl python-progressbar
+    apt-get install python-matplotlib
 
 * Fedora::
 
     yum install python numpy scipy PyQt4
 
-* Ubuntu::
+* Ubuntu (12.04.1 LTS)::
 
-    sudo apt-get install python-dev python-numpy python-scipy python-qt4 python-qt4-gl python-progressbar
+    apt-get install git python-dev python-numpy python-scipy 
+    apt-get install python-qt4 python-qt4-gl python-progressbar
+    apt-get install python-matplotlib
 
 
 Getting Pyrocko
@@ -59,7 +63,7 @@ If you already have these libraries installed, these steps might not be necessar
 First compile libmseed. Its tarball is included in the top directory of Pyrocko::
 
     cd pyrocko/
-    tar -xzvf libmseed-2.5.1.tar.gz
+    tar -xzvf libmseed-2.6.2.tar.gz
     cd libmseed/
     make gcc
     cd ..
@@ -73,11 +77,8 @@ below), or try with a static library (if you don't want to install evalresp)::
     ./configure --enable-shared
     make
     sudo make install
+    sudo ldconfig
     cd ..
-
-    # now check that $LD_LIBRARY_PATH contains /usr/local/lib
-    echo $LD_LIBRARY_PATH 
-    # if it is not in there you have to adjust your environment variables
 
 Installing Pyrocko
 ------------------
@@ -89,7 +90,11 @@ Now compile and install Pyrocko itself::
 Installing Pyrocko to a custom location
 ---------------------------------------
 
-If you would like to install it to a different location than ``/usr/local`` (or whatever Python thinks it should be), you may use the ``--prefix`` option of ``setup.py``. You will, of course,  have to adjust the environment variables ``$PATH``, ``$PYTHONPATH``, and ``$LD_LIBRARY_PATH`` to use your custom installation::
+If you would like to install it to a different location than ``/usr/local`` (or
+whatever Python thinks it should be), you may use the ``--prefix`` option of
+``setup.py``. You will, of course,  have to adjust the environment variables
+``$PATH``, ``$PYTHONPATH``, and ``$LD_LIBRARY_PATH`` to use your custom
+installation::
 
     python setup.py install --prefix=/bonus
 
@@ -97,7 +102,8 @@ If you would like to install it to a different location than ``/usr/local`` (or 
 Updating
 --------
 
-If you later want to update Pyrocko, run the following from within Pyrocko's top directory:: 
+If you later want to update Pyrocko, run the following from within Pyrocko's
+top directory:: 
 
     git pull origin master 
     sudo python setup.py install  

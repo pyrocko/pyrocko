@@ -19,8 +19,8 @@ Contents
    snuffler
    snuffler_tutorial
    snuffling_howto
-   examples
    cake_doc
+   examples
    reference
 
 Indices and tables

@@ -256,7 +256,8 @@ Receivers may be at any depth. Arbitrary reflection/conversion histories may be 
 
 ::
 
-   cake plot-rays --sdepth=15 --distances=10 --rdepth=4.443 --crust2loc=0,0 --phase='pP\,pPv3pP\,pPv3pPv3pP\,p'
+   cake plot-rays --sdepth=15 --distances=10 --rdepth=4.443 --crust2loc=0,0 \
+                  --phase='pP\,pPv3pP\,pPv3pPv3pP\,p'
 
 .. figure:: _static/cake_plot_example_2.png
     :scale: 80%
@@ -310,7 +311,8 @@ Here's another example to illustrate why cake needs its special phase definition
     1 3 1.73 2.6
     2 4 2.3  2.6
     EOF
-    > cake plot-rays --phases='P,p,P\,p\' --sdepth=0.5 --rdepth=1.5 --distances=3,5 --model=waveguide.nd
+    > cake plot-rays --phases='P,p,P\,p\' --sdepth=0.5 --rdepth=1.5 --distances=3,5 \
+                     --model=waveguide.nd
 
 .. figure:: _static/cake_plot_example_5.png
     :scale: 80%
