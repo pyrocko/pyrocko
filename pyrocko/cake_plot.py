@@ -65,9 +65,10 @@ def globe_cross_section():
                 Affine2D().scale(num.pi * 2.0, 1.0) +
                 self.transData)
           
-            rlp = 0.0
-            for k in ('_r_label1_position', '_r_label_position'):
-                rlp = getattr(self, k, 0.0)
+            try:
+                rlp = getattr(self, '_r_label1_position')
+            except AttributeError:
+                rlp = getattr(self, '_r_label_position')
             
             self._yaxis_text1_transform = (
                 rlp +
