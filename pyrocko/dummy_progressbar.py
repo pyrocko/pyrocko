@@ -18,6 +18,8 @@ class ProgressBar:
         self._val = val
         sys.stderr.write( '%s  %i/%i %3.0f%%\n' % (self.label(), self._val, self._maxval, 100.*float(self._val)/float(self._maxval)) )
 
+    def finish(self):
+        sys.stderr.write('%s done\n' % self.label())
 
 class Bar:
     def __init__(self, *args, **kwargs):
