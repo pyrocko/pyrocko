@@ -17,10 +17,9 @@ def globe_cross_section():
         clockwise and the radial axis is reversed.
         '''
         name = 'globe_cross_section'
-        
-        RESOLUTION = 1 
 
         class GlobeCrossSectionTransform(PolarAxes.PolarTransform):
+
             def transform(self, tr):
                 xy   = num.zeros(tr.shape, num.float_)
                 t    = tr[:, 0:1]*d2r
@@ -34,7 +33,7 @@ def globe_cross_section():
             transform_non_affine = transform
 
             def inverted(self):
-                return GlobeCrossSectionAxes.InvertedGlobeCrossSectionTransform(GlobeCrossSectionAxes.RESOLUTION)
+                return GlobeCrossSectionAxes.InvertedGlobeCrossSectionTransform()
 
         class InvertedGlobeCrossSectionTransform(PolarAxes.InvertedPolarTransform):
             def transform(self, xy):
@@ -45,11 +44,11 @@ def globe_cross_section():
                 return num.concatenate((theta, cake.earthradius-r), 1)
 
             def inverted(self):
-                return GlobeCrossSectionAxes.GlobeCrossSectionTransform(GlobeCrossSectionAxes.RESOLUTION)
+                return GlobeCrossSectionAxes.GlobeCrossSectionTransform()
 
         def _set_lim_and_transforms(self):
             PolarAxes._set_lim_and_transforms(self)
-            self.transProjection = self.GlobeCrossSectionTransform(GlobeCrossSectionAxes.RESOLUTION)
+            self.transProjection = self.GlobeCrossSectionTransform()
             self.transData = (
                 self.transScale + 
                 self.transProjection + 
