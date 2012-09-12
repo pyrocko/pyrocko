@@ -897,6 +897,50 @@ class Trace(object):
         df = 1./(ntrans*self.deltat)
         fxdata = num.arange(len(fydata))*df
         return fxdata, fydata
+
+    def multi_filter(self, filter_freqs, bandwidth): 
+
+        class Gauss(FrequencyResponse):
+            def __init__(self, f0, a=1.0):
+                self._omega0 = 2.*math.pi*f0
+                self._a = a
+
+            def evaluate(self, freqs):
+                omega = 2.*math.pi*freqs
+                return num.exp(-((omega-self._omega0)/(self._a*self._omega0))**2)
+
+        freqs, coefs = self.spectrum()
+        y = self.get_ydata()
+        trs = []
+        n = self.data_len()
+        nfilt = 50
+        bandwidth = 0.2 
+        signal_tf = num.zeros((nfilt, n))
+        filter_freqs = num.exp(num.linspace(num.log(0.02),num.log(0.1),nfilt))
+        centroid_freqs = num.zeros(nfilt)
+        for ifilt, f0 in enumerate(filter_freqs):
+            taper = Gauss(f0, a=bandwidth)
+            weights = taper.evaluate(freqs)
+            nhalf = freqs.size
+            analytic_spec = num.zeros(n, dtype=num.complex)
+            analytic_spec[:nhalf] = coefs*weights
+
+            enorm = num.abs(analytic_spec[:nhalf])**2
+            enorm /= num.sum(enorm)
+
+            if n % 2 == 0:
+                analytic_spec[1:nhalf-1] *= 2.
+            else:
+                analytic_spec[1:nhalf] *= 2.
+
+            analytic = num.fft.ifft(analytic_spec)
+            signal_tf[ifilt,:] = num.abs(analytic)
+
+            enorm = num.abs(analytic_spec[:nhalf])**2
+            enorm /= num.sum(enorm)
+            centroid_freqs[ifilt] = num.sum(freqs*enorm)
+
+        return centroid_freqs, signal_tf
         
     def _get_tapered_coefs(self, ntrans, freqlimits, transfer_function):
     
