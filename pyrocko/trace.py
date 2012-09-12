@@ -913,10 +913,8 @@ class Trace(object):
         y = self.get_ydata()
         trs = []
         n = self.data_len()
-        nfilt = 50
-        bandwidth = 0.2 
+        nfilt = len(filter_freqs)
         signal_tf = num.zeros((nfilt, n))
-        filter_freqs = num.exp(num.linspace(num.log(0.02),num.log(0.1),nfilt))
         centroid_freqs = num.zeros(nfilt)
         for ifilt, f0 in enumerate(filter_freqs):
             taper = Gauss(f0, a=bandwidth)
