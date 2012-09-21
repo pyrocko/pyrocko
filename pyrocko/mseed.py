@@ -1,7 +1,7 @@
 import mseed_ext
 from mseed_ext import HPTMODULUS, MSeedError
 import trace
-import os
+import os, re
 from util import reuse, ensuredirs
 from struct import unpack
 from io_common import FileLoadError
