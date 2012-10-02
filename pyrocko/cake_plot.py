@@ -17,10 +17,9 @@ def globe_cross_section():
         clockwise and the radial axis is reversed.
         '''
         name = 'globe_cross_section'
-        
-        RESOLUTION = 1 
 
         class GlobeCrossSectionTransform(PolarAxes.PolarTransform):
+
             def transform(self, tr):
                 xy   = num.zeros(tr.shape, num.float_)
                 t    = tr[:, 0:1]*d2r
@@ -34,7 +33,7 @@ def globe_cross_section():
             transform_non_affine = transform
 
             def inverted(self):
-                return GlobeCrossSectionAxes.InvertedGlobeCrossSectionTransform(GlobeCrossSectionAxes.RESOLUTION)
+                return GlobeCrossSectionAxes.InvertedGlobeCrossSectionTransform()
 
         class InvertedGlobeCrossSectionTransform(PolarAxes.InvertedPolarTransform):
             def transform(self, xy):
@@ -45,11 +44,11 @@ def globe_cross_section():
                 return num.concatenate((theta, cake.earthradius-r), 1)
 
             def inverted(self):
-                return GlobeCrossSectionAxes.GlobeCrossSectionTransform(GlobeCrossSectionAxes.RESOLUTION)
+                return GlobeCrossSectionAxes.GlobeCrossSectionTransform()
 
         def _set_lim_and_transforms(self):
             PolarAxes._set_lim_and_transforms(self)
-            self.transProjection = self.GlobeCrossSectionTransform(GlobeCrossSectionAxes.RESOLUTION)
+            self.transProjection = self.GlobeCrossSectionTransform()
             self.transData = (
                 self.transScale + 
                 self.transProjection + 
@@ -64,8 +63,14 @@ def globe_cross_section():
             self._yaxis_transform = (
                 Affine2D().scale(num.pi * 2.0, 1.0) +
                 self.transData)
+          
+            try:
+                rlp = getattr(self, '_r_label1_position')
+            except AttributeError:
+                rlp = getattr(self, '_r_label_position')
+            
             self._yaxis_text1_transform = (
-                self._r_label1_position +
+                rlp +
                 Affine2D().scale(1.0 / 360.0, 1.0) +
                 self._yaxis_transform)
 
@@ -135,13 +140,13 @@ def plot_xt(paths, zstart, zstop, plot=None, vred=None, distances=None):
             plot.plot(x,t-x/vred, linewidth=2, color=color)
             plot.plot([x[0]], [t[0]-x[0]/vred], 'o', color=color)
             plot.plot([x[-1]], [t[-1]-x[-1]/vred], 'o', color=color)
-            plot.text(x[len(x)/2], t[len(x)/2]-x[len(x)/2]/vred, path.used_phase.used_repr(), color=color,
+            plot.text(x[len(x)/2], t[len(x)/2]-x[len(x)/2]/vred, path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1), fontsize=10)
         else:
             plot.plot(x,t, linewidth=2, color=color)
             plot.plot([x[0]], [t[0]], 'o', color=color)
             plot.plot([x[-1]], [t[-1]], 'o', color=color)
-            plot.text(x[len(x)/2], t[len(x)/2], path.used_phase.used_repr(), color=color,
+            plot.text(x[len(x)/2], t[len(x)/2], path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1), fontsize=10)
    
     all_x = num.concatenate(all_x)
@@ -182,7 +187,7 @@ def plot_xp(paths, zstart, zstop, plot=None):
         plot.plot(x, p, linewidth=2, color=color)
         plot.plot(x[:1], p[:1], 'o', color=color)
         plot.plot(x[-1:], p[-1:], 'o', color=color)
-        plot.text(x[len(x)/2], p[len(x)/2], path.used_phase.used_repr(), color=color,
+        plot.text(x[len(x)/2], p[len(x)/2], path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1))
         all_x.append(x)
     
@@ -218,12 +223,19 @@ def plot_rays(paths, rays, zstart, zstop, plot=None):
         if isinstance(ray, cake.RayPath):
             path = ray
             pmin, pmax, xmin, xmax, tmin, tmax = path.ranges(path.endgaps(zstart, zstop))
-            p = num.linspace(pmin, pmax, 6)
+            if not path._is_headwave:
+                p = num.linspace(pmin, pmax, 6)
+                x = None
+            else:
+                x = num.linspace(xmin, xmin*10, 6)
+                p = num.atleast_1d(pmin)
+
+            fanz, fanx, _ = path.zxt_path_subdivided(p, path.endgaps(zstart, zstop), x_for_headwave=x)
         else:
-            p = cake.filled(ray.p, 1)
+            fanz, fanx, _ = ray.zxt_path_subdivided()
             path = ray.path
         
-        fanz, fanx, _ = path.zxt_path_subdivided(p, path.endgaps(zstart, zstop))
+        
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
             l = plot.plot( xs, zs, color=color)
@@ -357,6 +369,7 @@ def mpl_init():
 
 def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None):
     import pylab as lab
+    mpl_init()
     labelspace()
     xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
     if distances is not None:
@@ -368,6 +381,7 @@ def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None
 
 def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False):
     import pylab as lab
+    mpl_init()
     labelspace()
     xmin, xmax = plot_xp(paths, zstart, zstop) 
     if distances is not None:
@@ -411,6 +425,7 @@ def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fal
 def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, vred=None):
     import pylab as lab 
     from matplotlib.transforms import Affine2D
+    mpl_init()
     ax1 = lab.subplot(211)
     labelspace()
     xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
@@ -441,6 +456,7 @@ def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fa
 def my_model_plot(mod):
 
     import pylab as lab
+    mpl_init()
     labels_model()
     sketch_model(mod)
     z = mod.profile('z')

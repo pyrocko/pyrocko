@@ -3,16 +3,12 @@ import numpy as num
 
 import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace, pyrocko.plot
 from pyrocko.util import TableWriter, TableReader
-from pyrocko.nano import Nano
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 def gmtime_x(timestamp):
-    if isinstance(timestamp, Nano):
-        etimestamp = int(timestamp)
-    else:
-        etimestamp = math.floor(timestamp)
+    etimestamp = float(num.floor(timestamp))
     tt = time.gmtime(etimestamp)
     ms = (timestamp-etimestamp)*1000
     return tt,ms
@@ -22,9 +18,10 @@ def mystrftime(fmt=None, tt=None, milliseconds=0):
     if fmt is None: fmt = '%Y-%m-%d %H:%M:%S .%r'
     if tt is None: tt = time.time()
     
-    fmt2 = fmt.replace('%r', '%03i' % int(round(milliseconds)))
-    fmt3 = fmt2.replace('%u', '%06i' % int(round(milliseconds*1000)))
-    return time.strftime(fmt3, tt)
+    fmt = fmt.replace('%r', '%03i' % int(round(milliseconds)))
+    fmt = fmt.replace('%u', '%06i' % int(round(milliseconds*1000)))
+    fmt = fmt.replace('%n', '%09i' % int(round(milliseconds*1000000)))
+    return time.strftime(fmt, tt)
         
 def myctime(timestamp):
     tt, ms = gmtime_x(timestamp)
@@ -47,9 +44,6 @@ def str_to_bool(s):
 
 
 def make_QPolygonF( xdata, ydata ):
-    if isinstance(xdata, Nano):
-        xdata = xdata.float_array()
-        
     assert len(xdata) == len(ydata)
     qpoints = QPolygonF( len(ydata) )
     vptr = qpoints.data()
@@ -59,6 +53,58 @@ def make_QPolygonF( xdata, ydata ):
     aa[:,0] = xdata
     aa[:,1] = ydata
     return qpoints
+
+class Label:
+    def __init__(self, p, x, y, label_str, label_bg=None, anchor='BL', outline=False, font=None, color=None):
+        text = QTextDocument()
+        if font:
+            text.setDefaultFont(font)
+        text.setDefaultStyleSheet('span { color: %s; }' % color.name())
+        text.setHtml('<span>%s</span>' % label_str)
+        s = text.size()
+        rect = QRectF(0., 0., s.width(), s.height())
+        tx,ty =x,y
+        
+        if 'B' in anchor:
+            ty -= rect.height()
+        if 'R' in anchor:
+            tx -= rect.width()
+        if 'M' in anchor:
+            ty -= rect.height()/2.
+        if 'C' in anchor:
+            tx -= rect.width()/2.
+            
+        rect.translate( tx, ty )
+        self.rect = rect
+        self.text = text
+        self.outline = outline
+        self.label_bg = label_bg
+        self.color = color
+        self.p = p
+
+    def draw(self):
+        p = self.p
+        rect = self.rect
+        tx = rect.left()
+        ty = rect.top()
+
+        if self.outline:
+            oldpen = p.pen()
+            oldbrush = p.brush()
+            p.setBrush(self.label_bg)
+            rect.adjust(-2.,0.,2.,0.)
+            p.drawRect( rect )
+            p.setPen(oldpen)
+            p.setBrush(oldbrush)
+            
+        else:
+            if self.label_bg:
+                p.fillRect(rect, self.label_bg)
+        
+        p.translate(tx,ty)
+        self.text.drawContents(p)
+        p.translate(-tx,-ty)
+
 
 def draw_label( p, x,y, label_str, label_bg, anchor='BL', outline=False):
     fm = p.fontMetrics()
@@ -105,13 +151,14 @@ class MySlider(QSlider):
 
 class MyValueEdit(QLineEdit):
 
-    def __init__(self, parent, low_is_none=False, high_is_none=False, *args):
-        QLineEdit.__init__(self, *args)
+    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args, **kwargs):
+        QLineEdit.__init__(self, *args, **kwargs)
         self.value = 0.
         self.mi = 0.
         self.ma = 1.
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
         self.connect( self, SIGNAL("editingFinished()"), self.myEditingFinished )
         self.lock = False
         
@@ -132,6 +179,8 @@ class MyValueEdit(QLineEdit):
                 value = self.mi
             elif self.high_is_none and t in ('off', 'above'):
                 value = self.ma
+            elif self.low_is_zero and float(t) == 0.0:
+                value = self.mi
             else:
                 value = float(t)
 
@@ -150,6 +199,10 @@ class MyValueEdit(QLineEdit):
         
     def adjust_text(self):
         t = ('%8.5g' % self.value).strip()
+
+        if self.low_is_zero and self.value == self.mi:
+            t = '0'
+
         if self.low_is_none and self.value == self.mi:
             if self.high_is_none:
                 t = 'below'
@@ -164,33 +217,36 @@ class MyValueEdit(QLineEdit):
 
         self.setText(t)
         
-class ValControl(QFrame):
+class ValControl(QObject):
 
-    def __init__(self, low_is_none=False, high_is_none=False, *args):
-        apply(QFrame.__init__, (self,) + args)
-        self.layout = QHBoxLayout( self )
-        self.layout.setMargin(0)
-        self.lname = QLabel( "name", self )
-        self.lname.setMinimumWidth(120)
-        self.lvalue = MyValueEdit( self, low_is_none=low_is_none, high_is_none=high_is_none )
+    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args):
+        apply(QObject.__init__, (self,) + args)
+        
+        self.lname = QLabel( "name" )
+        self.lname.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum))
+        self.lvalue = MyValueEdit( low_is_none=low_is_none, high_is_none=high_is_none, low_is_zero=low_is_zero )
         self.lvalue.setFixedWidth(100)
-        self.slider = MySlider(Qt.Horizontal, self)
+        self.slider = MySlider(Qt.Horizontal)
+        self.slider.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
         self.slider.setMaximum( 10000 )
         self.slider.setSingleStep( 100 )
         self.slider.setPageStep( 1000 )
         self.slider.setTickPosition( QSlider.NoTicks )
-        self.slider.sizePolicy().setHorizontalStretch(10)
         self.slider.setFocusPolicy(Qt.ClickFocus)
-        self.layout.addWidget( self.lname )
-        self.layout.addWidget( self.lvalue )
-        self.layout.addWidget( self.slider )
+        
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
+
         self.connect( self.slider, SIGNAL("valueChanged(int)"),
                       self.slided )
         self.connect( self.lvalue, SIGNAL("edited(float)"),
                       self.edited )
+
         self.mute = False
+
+    def widgets(self):
+        return self.lname, self.lvalue, self.slider
     
     def s2v(self, svalue):
         a = math.log(self.ma/self.mi) / 10000.
@@ -209,13 +265,27 @@ class ValControl(QFrame):
         self.set_value(cur)
        
     def set_range(self, mi, ma):
+        if self.mi == mi and self.ma == ma:
+            return
+
+        vput = None
+        if self.cursl == 0:
+            vput = mi
+        if self.cursl == 10000:
+            vput = ma
+
         self.mi = mi
         self.ma = ma
         self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
-        if self.cur < mi:
-            self.set_value(mi)
-        if self.cur > ma:
-            self.set_value(ma)
+
+        if vput is not None:
+            self.set_value(vput)
+        else:
+            if self.cur < mi:
+                self.set_value(mi)
+            if self.cur > ma:
+                self.set_value(ma)
+
 
     def set_value(self, cur):
         if cur is None:
@@ -223,6 +293,10 @@ class ValControl(QFrame):
                 cur = self.mi
             elif self.high_is_none:
                 cur = self.ma
+    
+        if cur == 0.0:
+            if self.low_is_zero:
+                cur = self.mi
 
         self.mute = True
         self.cur = cur
@@ -268,10 +342,14 @@ class ValControl(QFrame):
         
         cur = self.cur
 
-        if self.low_is_none and self.cursl == 0:
-            cur = None
+        if self.cursl == 0:
+            if self.low_is_none:
+                cur = None
 
-        if self.high_is_none and self.cursl == 10000:
+            elif self.low_is_zero:
+                cur = 0.0
+
+        if self.cursl == 10000 and self.high_is_none:
             cur = None
 
         self.emit(SIGNAL("valchange(PyQt_PyObject,int)"), cur, int(self.ind) )
@@ -282,7 +360,90 @@ class LinValControl(ValControl):
         return svalue/10000. * (self.ma-self.mi) + self.mi
                 
     def v2s(self, value):
+        if self.ma == self.mi:
+            return 0
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
+
+class Progressbar:
+    def __init__(self, parent, name, can_abort=True):
+        self.parent = parent
+        self.name = name
+        self.label = QLabel(name, parent)
+        self.pbar = QProgressBar(parent)
+        self.aborted = False
+        self.time_last_update = 0.
+        if can_abort:
+            self.abort_button = QPushButton('Abort', parent)
+            self.parent.connect(self.abort_button, SIGNAL('clicked()'), self.abort)
+        else:
+            self.abort_button = False
+
+    def widgets(self):
+        widgets = [ self.label, self.bar() ]
+        if self.abort_button:
+            widgets.append(self.abort_button)
+        return widgets
+    
+    def bar(self):
+        return self.pbar
+
+    def abort(self):
+        self.aborted = True
+
+class Progressbars(QFrame):
+    def __init__(self, parent):
+        QFrame.__init__(self, parent)
+        self.layout = QGridLayout()
+        self.setLayout(self.layout)
+        self.bars = {}
+        self.start_times = {}
+        self.hide()
+
+    def set_status(self, name, value):
+        now = time.time()
+        if name not in self.start_times:
+            self.start_times[name] = now
+            return False
+        else:
+            if now < self.start_times[name] + 1.0:
+                return False
+
+        self.start_times.get(name, 0.0)
+        value = int(round(value))
+        if name not in self.bars:
+            if value == 100:
+                return False
+            self.bars[name] = Progressbar(self, name)
+            self.make_layout()
+
+        bar = self.bars[name]
+        if bar.time_last_update < now - 0.1 or value == 100:
+            bar.bar().setValue(value)
+            bar.time_last_update = now
+
+        if value == 100:
+            del self.bars[name]
+            del self.start_times[name]
+            self.make_layout()
+            for w in bar.widgets():
+                w.setParent(None)
+
+        return bar.aborted
+
+    def make_layout(self):
+        while True:
+            c = self.layout.takeAt(0)
+            if c is None:
+                break
+
+        for ibar, bar in enumerate(self.bars.values()):
+            for iw, w in enumerate(bar.widgets()):
+                self.layout.addWidget(w, ibar, iw)
+        
+        if not self.bars:
+            self.hide()
+        else:
+            self.show()
 
 class MarkerParseError(Exception):
     pass
@@ -449,6 +610,9 @@ class Marker(object):
             raise MarkerOneNSLCRequired()
 
         return list(self.nslc_ids)[0]
+
+    def hoover_message(self):
+        return ''
 
     def __str__(self):
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
@@ -625,7 +789,8 @@ class Marker(object):
     def get_label(self):
         return None
 
-    def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None):
+    def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
+
         if isinstance(self, PhaseMarker):
             return
 
@@ -634,6 +799,8 @@ class Marker(object):
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
+        self._incidence_angle = incidence_angle
+        self._takeoff_angle = takeoff_angle
 
     def convert_to_event_marker(self, lat=0., lon=0.):
         if isinstance(self, EventMarker):
@@ -694,7 +861,20 @@ class EventMarker(Marker):
 
     def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
         pass
-    
+   
+    def hoover_message(self):
+        ev = self.get_event()
+        evs = []
+        for k in 'magnitude lat lon depth name region catalog'.split():
+            if ev.__dict__[k] is not None and ev.__dict__[k] != '':
+                if k == 'depth':
+                    sv = '%g km' % (ev.depth * 0.001)
+                else:
+                    sv = '%s' % ev.__dict__[k]
+                evs.append('%s = %s' % (k, sv))
+
+        return ', '.join(evs) 
+
     def get_attributes(self):
         attributes = [ 'event:' ]
         attributes.extend(Marker.get_attributes(self))
@@ -722,13 +902,15 @@ class EventMarker(Marker):
 
 class PhaseMarker(Marker):
 
-    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None):
+    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
         Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
         self._event_hash = event_hash
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
+        self._incidence_angle = incidence_angle
+        self._takeoff_angle = takeoff_angle
 
     def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
         Marker.draw_trace(self, viewer, p, trace, time_projection, track_projection, gain, outline_label=(self._event is not None and self._event == viewer.get_active_event()))
@@ -752,7 +934,10 @@ class PhaseMarker(Marker):
         if self._event_hash is not None:
             return self._event_hash
         else:
-            return self._event.get_hash()
+            if self._event is None:
+                return None
+            else:
+                return self._event.get_hash()
 
     def set_event_hash(self, event_hash):
         self._event_hash = event_hash
@@ -768,10 +953,23 @@ class PhaseMarker(Marker):
 
     def convert_to_marker(self):
         del self._event
+        del self._event_hash
         del self._phasename
         del self._polarity
         del self._automatic
+        del self._incidence_angle
+        del self._takeoff_angle
         self.__class__ = Marker
+
+    def hoover_message(self):
+        toks = []
+        for k in 'incidence_angle takeoff_angle polarity'.split():
+            v = getattr(self, '_' + k)
+            if v is not None:
+                toks.append('%s = %s' % (k,v))
+
+        return ', '.join(toks)
+
 
     def get_attributes(self):
         attributes = [ 'phase:' ]
@@ -793,7 +991,11 @@ class PhaseMarker(Marker):
 
     @staticmethod
     def from_attributes(vals):
-        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:])
+        if len(vals) == 14:
+            nbasicvals = 7
+        else:
+            nbasicvals = 4
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:1+nbasicvals])
        
         i = 8
         if len(vals) == 14:

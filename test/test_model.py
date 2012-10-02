@@ -1,4 +1,4 @@
-from pyrocko import model, io, util
+from pyrocko import model, io, util, trace, orthodrome
 import unittest, math, tempfile, shutil
 import numpy as num
 from os.path import join as pjoin
@@ -12,6 +12,9 @@ def assertOrtho(a,b,c):
     assert abs(num.dot(a,b)) < xeps
     assert abs(num.dot(a,c)) < xeps
     assert abs(num.dot(b,c)) < xeps
+
+def near(a,b,eps):
+    return abs(a-b) < eps
 
 class ModelTestCase(unittest.TestCase):
     
@@ -58,6 +61,40 @@ class ModelTestCase(unittest.TestCase):
         shutil.rmtree(tempdir)
         
 
+    def testProjections(self):
+        km = 1000.
+
+        ev = model.Event(lat=-10, lon=150., depth=0.0)
+        
+        for azi in num.linspace(0., 360., 37):
+            lat,lon = orthodrome.ne_to_latlon(ev.lat, ev.lon, 10.*km * math.cos(azi), 10.*km * math.sin(azi) )
+
+            sta = model.Station(lat=lat, lon=lon) 
+            sta.set_event_relative_data(ev)
+            sta.set_channels_by_name('BHZ', 'BHE', 'BHN')
+           
+            r = 1.
+            t = 1.
+            traces = [
+                    trace.Trace(channel='BHE', ydata=num.array([math.sin(azi)*r+math.cos(azi)*t])),
+                    trace.Trace(channel='BHN', ydata=num.array([math.cos(azi)*r-math.sin(azi)*t])),
+            ]
+
+            for m, in_channels, out_channels in sta.guess_projections_to_rtu():
+                projected = trace.project(traces, m, in_channels, out_channels)
+
+            def g(traces, cha):
+                for tr in traces:
+                    if tr.channel == cha:
+                        return tr
+
+            r = g(projected, 'R')
+            t = g(projected, 'T')
+            assert( near(r.ydata[0], 1.0, 0.001) )
+            assert( near(t.ydata[0], 1.0, 0.001) )
+
+
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
     unittest.main()
+

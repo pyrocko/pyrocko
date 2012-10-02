@@ -5,6 +5,7 @@ import numpy as num
 from pyrocko.util import unpack_fixed
 
 from pyrocko import util, trace
+from io_common import FileLoadError
 
 class SeisanFileError(Exception):
     pass
@@ -83,36 +84,53 @@ def read_channel_data(f, endianness, sample_bytes, nsamples, gain, load_data=Tru
         return data
 
 
-def load(filename, load_data=True, endianness='<', npad=4):
-    mtime = os.stat(filename)[8]
-    f = open(filename, 'r')
+def iload(filename, load_data=True, subformat='l4'):
+   
     try:
-        read_file_header(f, npad=npad)
-    except util.UnpackError, e:
-        raise SeisanFileError('Error loading header from file %s: %s' % (filename, str(e))) 
-
-    
-    try:
-        itrace = 0
-        while True:
+        if subformat is not None:
             try:
-                (net, sta, loc, cha, tmin, tflag, deltat, nsamples,
-                        sample_bytes, lat, lon, elevation, gain) = read_channel_header(f, npad=npad)
-                
-                data = read_channel_data(f, endianness, sample_bytes, nsamples, gain, load_data, npad=npad)
-                tmax = None
-                if data is None:
-                    tmax = tmin + (nsamples-1)*deltat
+                endianness = {'l': '<', 'b': '>'}[subformat[0]]
+                if len(subformat) > 1:
+                    npad = int(subformat[1:])
+            except:
+                raise SeisanFileError('Bad subformat specification: "%s"' % subformat)
+        else:
+            endianness = '<'
+            npad = 4
+        
+        f = open(filename, 'r')
+        try:
+            read_file_header(f, npad=npad)
 
-                t = trace.Trace(net,sta,loc,cha, tmin=tmin, tmax=tmax, deltat=deltat, ydata=data, mtime=mtime)
-                yield t
-            except util.UnpackError, e:
-                raise SeisanFileError('Error loading trace %i from file %s: %s' % (itrace, filename, str(e))) 
+        except util.UnpackError, e:
+            raise SeisanFileError('Error loading header from file %s: %s' % (filename, str(e))) 
+        
+        try:
+            itrace = 0
+            while True:
+                try:
+                    (net, sta, loc, cha, tmin, tflag, deltat, nsamples,
+                            sample_bytes, lat, lon, elevation, gain) = read_channel_header(f, npad=npad)
+                    
+                    data = read_channel_data(f, endianness, sample_bytes, nsamples, gain, load_data, npad=npad)
+                    tmax = None
+                    if data is None:
+                        tmax = tmin + (nsamples-1)*deltat
 
-            itrace += 1
+                    t = trace.Trace(net,sta,loc,cha, tmin=tmin, tmax=tmax, deltat=deltat, ydata=data)
+                    yield t
+                except util.UnpackError, e:
+                    raise SeisanFileError('Error loading trace %i from file %s: %s' % (itrace, filename, str(e))) 
 
-    except EOF:
-        pass
-    f.close()
+                itrace += 1
+
+        except EOF:
+            pass
+    
+    except (OSError, SeisanFileError), e:
+        raise FileLoadError(e)
+
+    finally:
+        f.close()
 
 

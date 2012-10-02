@@ -236,6 +236,12 @@ class TraceTestCase(unittest.TestCase):
                 a.add(b, interpolate=False)
                 assert numeq(a.ydata, result, 0.001)
         
+    def testAdd2(self):
+        for toff in num.random.random(100): 
+            t1 = trace.Trace(tmin=sometime, deltat=0.05, ydata=num.ones(5,dtype=num.float))
+            t2 = trace.Trace(tmin=sometime-toff*0.1, deltat=0.05, ydata=num.ones(5,dtype=num.float))
+            t1.add(t2, interpolate=False)
+
     def testPeaks(self):
         n = 1000
         t = trace.Trace(tmin=0, deltat=0.1, ydata=num.zeros(n, dtype=num.float))
@@ -339,6 +345,38 @@ class TraceTestCase(unittest.TestCase):
 
         assert not have_flips and not have_errs, '\n'.join(lines)
 
+    def testFFTCorrelate(self):
+        for na in range(1,20):
+            for nb in range(1,20):
+                a1 = num.random.random(na)
+                a2 = num.random.random(nb)
+                
+                t1 = trace.Trace(station='t1', ydata=a1)
+                t2 = trace.Trace(station='t2', ydata=a2)
+
+                for mode in 'full', 'same', 'valid':
+                    c1 = trace.correlate(t1,t2, mode=mode)
+                    c2 = trace.correlate(t1,t2, mode=mode, use_fft=True)
+                    c1.set_station('c1')
+                    c2.set_station('c2')
+                    d = num.abs(c1.get_ydata() - c2.get_ydata())
+
+                    if not num.all(d < 1e-5) :
+                        assert mode == 'same'
+                        
+                        assert abs(abs(c1.tmin-c2.tmin) - 1.0) < 1e-5
+                        assert abs(abs(c1.tmax-c2.tmax) - 1.0) < 1e-5
+
+                        tmin = max(c1.tmin, c2.tmin)
+                        tmax = min(c1.tmax, c2.tmax)
+                        c1.chop(tmin, tmax, include_last=True)
+                        c2.chop(tmin, tmax, include_last=True)
+                        
+                        d = num.abs(c1.get_ydata() - c2.get_ydata())
+                        assert(num.all(d< 1e-5))   
+                    else:
+                        assert num.all(d < 1e-5)
+
     def testMovingSum(self):
 
         x = num.arange(5)
@@ -356,12 +394,11 @@ class TraceTestCase(unittest.TestCase):
                 bs = [ trace.Trace(location='b', tmin=sometime+i*dt1*100+tadd, deltat=dt1, ydata=y[i*100:(i+1)*100]) for i in range(10) ]
                 
                 a.downsample_to(dt2,demean=False, snap=True)
-                downsampler = trace.co_downsample_to(dt2)
                 c2s = []
+                downsampler = trace.co_downsample_to(trace.co_list_append(c2s), dt2)
                 for b in bs:
                     c = downsampler.send(b)
-                    if c.data_len() > 0:
-                        c2s.append(c)
+                    c2s.append(c)
 
                 downsampler.close()
                 assert  (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001

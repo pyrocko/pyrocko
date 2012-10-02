@@ -66,11 +66,11 @@ class IrisData(Snuffling):
                     d = iris_ws.ws_bulkdataselect(selection)
                     fn = pjoin(dir,'data-%s.mseed' % net) 
                     f = open(fn, 'w')
-                    f.write(d)
+                    f.write(d.read())
                     f.close()
                     fns.append(fn)
 
-                except urllib2.HTTPError:
+                except iris_ws.NotFound:
                     pass
 
         all_traces = []

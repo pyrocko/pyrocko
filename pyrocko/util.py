@@ -1,13 +1,20 @@
 '''Utility functions for Pyrocko.'''
 
-import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex
+import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex, optparse
 from scipy import signal
 from os.path import join as pjoin
 import config
 import numpy as num
-from nano import Nano
 
 logger = logging.getLogger('pyrocko.util')
+
+try:
+    import progressbar as progressbar_mod
+except:
+    import dummy_progressbar as progressbar_mod
+
+def progressbar_module():
+    return progressbar_mod
 
 def setup_logging(programname='pyrocko', levelname='warning'):
     '''Initialize logging.
@@ -34,6 +41,12 @@ def setup_logging(programname='pyrocko', levelname='warning'):
 def data_file(fn):
     return os.path.join(os.path.split(__file__)[0], 'data', fn)
 
+if hasattr(num, 'float128'):
+    hpfloat = num.float128
+else:
+    def hpfloat():
+        raise Exception('NumPy lacks support for float128 data type on this platform.')
+
 class Stopwatch:
     '''Simple stopwatch to measure elapsed wall clock time.
     
@@ -51,21 +64,108 @@ class Stopwatch:
     
     def __call__(self):
         return time.time() - self.start
+   
+def wrap(text, line_length=80):
+    '''Paragraph and list-aware wrapping of text.'''
+    
+    text = text.strip('\n')
+    at_lineend = re.compile(r' *\n')
+    at_para = re.compile(r'((^|(\n\s*)?\n)(\s+[*] )|\n\s*\n)')
         
-def progressbar_module():
-    '''Load the progressbar module, if available.
+    paragraphs =  at_para.split(text)[::5]
+    listindents = at_para.split(text)[4::5]
+    newlist = at_para.split(text)[3::5]
+   
+    listindents[0:0] = [None]
+    listindents.append(True)
+    newlist.append(None)
+  
+    det_indent = re.compile(r'^ *')
     
-    :returns: The progressbar module or `None`, if this module is not available.
-    '''
-
-    try:
-        import progressbar
-    except:
-        logger.warn('progressbar module not available.')
-        progressbar = None
+    iso_latin_1_enc_failed = False
+    outlines = []
+    for ip, p in enumerate(paragraphs):
+        if not p:
+            continue
+        
+        if listindents[ip] is None:
+            _indent = det_indent.findall(p)[0]
+            findent = _indent
+        else:
+            findent = listindents[ip]
+            _indent = ' '* len(findent)
+        
+        ll = line_length - len(_indent)
+        llf = ll
+        
+        oldlines = [ s.strip() for s in at_lineend.split(p.rstrip()) ]
+        p1 = ' '.join( oldlines )
+        possible = re.compile(r'(^.{1,%i}|.{1,%i})( |$)' % (llf, ll))
+        for imatch, match in enumerate(possible.finditer(p1)):
+            parout = match.group(1)
+            if imatch == 0:
+                outlines.append(findent + parout)
+            else:
+                outlines.append(_indent + parout)
+            
+        if ip != len(paragraphs)-1 and (listindents[ip] is None or newlist[ip] is not None or listindents[ip+1] is None):
+            outlines.append('')
     
-    return progressbar
+    return outlines
 
+class BetterHelpFormatter(optparse.IndentedHelpFormatter):
+
+    def __init__(self, *args, **kwargs):
+        optparse.IndentedHelpFormatter.__init__(self, *args, **kwargs)
+
+    def format_option(self, option):
+        '''From IndentedHelpFormatter but using a different wrap method.'''
+
+        help_text_position = 4 + self.current_indent
+        help_text_width = self.width - help_text_position
+       
+        opts = self.option_strings[option]
+        opts = "%*s%s" % (self.current_indent, "", opts)
+        if option.help:
+            help_text = self.expand_default(option)
+
+        if self.help_position + len(help_text) + 1 <= self.width:
+            lines = [ '', '%-*s %s' % (self.help_position, opts, help_text), '' ]
+        else:
+            lines = ['']
+            lines.append(opts)
+            lines.append('')
+            if option.help:
+                help_lines = wrap(help_text, help_text_width)
+                lines.extend(["%*s%s" % (help_text_position, "", line)
+                               for line in help_lines])
+            lines.append('')
+
+        return "\n".join(lines)
+
+    def format_description(self, description):
+        if not description:
+            return ''
+        
+        if self.current_indent == 0:
+            lines = []
+        else:
+            lines = ['']
+
+        lines.extend(wrap(description, self.width - self.current_indent))
+        if self.current_indent == 0:
+            lines.append('\n')
+
+        return '\n'.join(['%*s%s' % (self.current_indent, '', line) for line in lines]) 
+
+
+def progressbar(label, maxval):
+    widgets = [label, ' ',
+            progressbar_mod.Bar(marker='-',left='[',right=']'), ' ',
+            progressbar_mod.Percentage(), ' ',]
+       
+    pbar = progressbar_mod.ProgressBar(widgets=widgets, maxval=maxval).start()
+    return pbar
 
 def progress_beg(label):
     '''Notify user that an operation has started.
@@ -75,9 +175,8 @@ def progress_beg(label):
     To be used in conjuction with :py:func:`progress_end`.
     '''
 
-    if config.show_progress:
-        sys.stderr.write(label)
-        sys.stderr.flush()
+    sys.stderr.write(label)
+    sys.stderr.flush()
 
 def progress_end(label=''):
     '''Notify user that an operation has ended. 
@@ -87,10 +186,65 @@ def progress_end(label=''):
     To be used in conjuction with :py:func:`progress_beg`.
     '''
 
-    if config.show_progress:
-        sys.stderr.write(' done. %s\n' % label)
-        sys.stderr.flush()
+    sys.stderr.write(' done. %s\n' % label)
+    sys.stderr.flush()
         
+def polylinefit(x,y, n_or_xnodes):
+    '''Fit piece-wise linear function to data.
+    
+    :param x,y: arrays with coordinates of data
+    :param n_or_xnodes: int, number of segments or x coordinates of polyline
+
+    :returns: `(xnodes, ynodes, rms_error)` arrays with coordinates of polyline, root-mean-square error
+    '''
+
+    x = num.asarray(x)
+    y = num.asarray(y)
+
+    if isinstance(n_or_xnodes, int):
+        n = n_or_xnodes
+        xmin = x.min()
+        xmax = x.max()
+        xnodes = num.linspace(xmin, xmax, n+1)
+    else:
+        xnodes = num.asarray(n_or_xnodes)
+        n = xnodes.size - 1
+
+    assert len(x) == len(y)
+    assert n > 0
+
+    ndata = len(x)
+    a = num.zeros((ndata+(n-1), n*2))
+    for i in xrange(n):
+        xmin_block = xnodes[i]
+        xmax_block = xnodes[i+1]
+        if i == n-1:  # don't loose last point
+            indices = num.where( num.logical_and(xmin_block <= x, x <= xmax_block) )[0]
+        else:
+            indices = num.where( num.logical_and(xmin_block <= x, x < xmax_block) )[0]
+
+        a[indices, i*2] = x[indices]
+        a[indices, i*2+1] = 1.0
+
+        w = float(ndata)*100.
+        if i < n-1:
+            a[ndata+i, i*2] = xmax_block*w
+            a[ndata+i, i*2+1] = 1.0*w
+            a[ndata+i, i*2+2] = -xmax_block*w
+            a[ndata+i, i*2+3] = -1.0*w
+
+    d = num.concatenate((y,num.zeros(n-1)))
+    model = num.linalg.lstsq(a,d)[0].reshape((n,2))
+
+    ynodes = num.zeros(n+1)
+    ynodes[:n] = model[:,0]*xnodes[:n] + model[:,1]
+    ynodes[1:] += model[:,0]*xnodes[1:] + model[:,1]
+    ynodes[1:n] *= 0.5
+    
+    rms_error = num.sqrt(num.mean((num.interp(x, xnodes, ynodes) - y)**2))
+
+    return xnodes, ynodes, rms_error
+
 class GlobalVars:
     reuse_store = dict()
     decitab_nmax = 0
@@ -292,7 +446,7 @@ def decitab(n):
 
     if n > GlobalVars.decitab_nmax:
         mk_decitab(n*2)
-    if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % ratio)
+    if n not in GlobalVars.decitab: raise UnavailableDecimation('ratio = %g' % n)
     return GlobalVars.decitab[n]
 
 def ctimegm(s, format="%Y-%m-%d %H:%M:%S"):
@@ -417,12 +571,8 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
         GlobalVars.re_frac = re.compile(r'\.[1-9]FRAC')
         GlobalVars.frac_formats = dict([  ('.%sFRAC' % x, '%.'+x+'f') for x in '123456789' ] )
     
-    if isinstance(t, Nano):
-        ts = int(t)     # it always gives rounds like floor
-        tfrac = float(t-ts)
-    else:
-        ts = math.floor(t)
-        tfrac = t-ts
+    ts = float(num.floor(t))
+    tfrac = t-ts
     
     m = GlobalVars.re_frac.search(format)
     if m:
@@ -431,7 +581,7 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
             ts += 1.
                         
         format, nsub = GlobalVars.re_frac.subn(sfrac[1:], format, 1)
-    
+   
     return time.strftime(format, time.gmtime(ts))
     
 def plural_s(n):
@@ -879,5 +1029,33 @@ class TableReader:
             
         return row
 
+def gform( number, significant_digits=3 ):
+    '''Pretty print floating point numbers.
+    
+    Align floating point numbers at the decimal dot.
+    
+    ::
 
-            
+      |  -d.dde+xxx|
+      |  -d.dde+xx |
+      |-ddd.       |
+      | -dd.d      |
+      |  -d.dd     |
+      |  -0.ddd    |
+      |  -0.0ddd   |
+      |  -0.00ddd  |
+      |  -d.dde-xx |
+      |  -d.dde-xxx|
+    ''' 
+    
+    no_exp_range = (pow(10.,-1), 
+                    pow(10.,significant_digits))
+    width = significant_digits+significant_digits-1+1+1+5
+    
+    if (no_exp_range[0] <= abs(number) < no_exp_range[1]) or number == 0.:
+        s = ('%#.*g' % (significant_digits, number)).rstrip('0')
+    else:
+        s = '%.*E' % (significant_digits-1, number)
+    s = (' '*(-s.find('.')+(significant_digits+1))+s).ljust(width)
+    return s
+
