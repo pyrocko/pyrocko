@@ -140,22 +140,24 @@ class Geofon(EarthquakeCatalog):
               
         return ev
 
-        
-    def _parse_events_page(self, page):
-        logger.debug('In Geofon._parse_events_page(...)')
-        page = re.sub('&nbsp([^;])', '&nbsp;\\1', page)  # fix broken &nbsp; tags
-        page = re.sub('border=0', 'border="0"', page)
+    def parse_xml(self, page):
         try:
-            doc = minidom.parseString(page)
+            return minidom.parseString(page)
         except ExpatError, e:
             lines = page.splitlines()
             r = max(e.lineno - 1 - 2,0), min(e.lineno - 1 +3, len(lines))
             ilineline = zip( range(r[0]+1,r[1]+1), lines[r[0]:r[1]] )
             
             logger.error('A problem occured while parsing HTML from GEOFON page (line=%i, col=%i):\n\n' % (e.lineno, e.offset) +
-            '\n'.join( ['  line %i: %s' % (iline, line[:e.offset] + '### HERE ###' + line[e.offset:]) for (iline, line) in ilineline ] ))
+            '\n'.join( ['  line %i: %s' % (iline, line) for (iline, line) in ilineline ] ))
             logger.error('... maybe the format of the GEOFON web catalog has changed.')
             raise
+
+    def _parse_events_page(self, page):
+        logger.debug('In Geofon._parse_events_page(...)')
+        page = re.sub('&nbsp([^;])', '&nbsp;\\1', page)  # fix broken &nbsp; tags
+        page = re.sub('border=0', 'border="0"', page)
+        doc = self.parse_xml(page)
         
         events = []
         for tr in doc.getElementsByTagName("tr"):
@@ -212,7 +214,11 @@ class Geofon(EarthquakeCatalog):
             'depth': parse_km,
         }
         
-        doc = minidom.parseString(page)
+        # fix broken tag
+        page = re.sub('align=center', 'align="center"', page)
+
+        doc = self.parse_xml(page)
+
         d = {}
         for tr in doc.getElementsByTagName("tr"):
             tds = tr.getElementsByTagName("td")
@@ -299,7 +305,7 @@ class GlobalCMT(EarthquakeCatalog):
                                data.mrp, data.mtp, data.mpp],
                         dtype=num.float).reshape(3,3)
 
-                m *= 10**(data.exponent-7)
+                m *= 10.0**(data.exponent-7)
                 mt = MomentTensor(m_up_south_east=m)
                 ev = model.Event(
                     lat=data.lat,

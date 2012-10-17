@@ -6,12 +6,12 @@
 import util, evalresp
 import time, math, copy, logging, sys
 import numpy as num
-from util import reuse
+from util import reuse, hpfloat
 from scipy import signal
-from pyrocko import model
-from nano import asnano, Nano
+from pyrocko import model, orthodrome
 
 logger = logging.getLogger('pyrocko.trace')
+
 
 class Trace(object):
     
@@ -45,12 +45,11 @@ class Trace(object):
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None, meta=None):
     
         self._growbuffer = None
-
+        
         if deltat < 0.001:
-            tmin = asnano(tmin)
+            tmin = hpfloat(tmin)
             if tmax is not None:
-                tmax = asnano(tmax)
-
+                tmax = hpfloat(tmax)
     
         if mtime is None:
             mtime = time.time()
@@ -74,7 +73,6 @@ class Trace(object):
         
     def __str__(self):
         fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
-        
         s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
         s += '  timerange: %s - %s\n' % (util.time_to_str(self.tmin, format=fmt), util.time_to_str(self.tmax, format=fmt))
         s += '  delta t: %g\n' % self.deltat
@@ -82,7 +80,17 @@ class Trace(object):
             for k in sorted(self.meta.keys()):
                 s += '  %s: %s\n' % (k,self.meta[k])
         return s
-        
+       
+    def __getstate__(self):
+        return (self.network, self.station, self.location, self.channel, self.tmin, self.tmax, self.deltat, self.mtime)
+
+    def __setstate__(self, state):
+        self.network, self.station, self.location, self.channel, self.tmin, self.tmax, self.deltat, self.mtime = state
+        self.ydata = None
+        self.meta = None
+        self._growbuffer = None
+        self._update_ids()
+
     def name(self):
         '''Get a short string description.'''
 
@@ -90,13 +98,14 @@ class Trace(object):
         return s
         
     def __eq__(self, other):
+
         return (self.network == other.network and
                 self.station == other.station and
                 self.location == other.location and
                 self.channel == other.channel and
-                self.deltat == other.deltat and
-                abs(self.tmin-other.tmin) < self.deltat*0.001 and
-                abs(self.tmax-other.tmax) < self.deltat*0.001 and
+                abs(self.deltat - other.deltat) < (self.deltat + other.deltat)*1e-6 and
+                abs(self.tmin-other.tmin) < self.deltat*0.01 and
+                abs(self.tmax-other.tmax) < self.deltat*0.01 and
                 num.all(self.ydata == other.ydata))
     
     def __call__(self, t, clip=False, snap=round):
@@ -150,17 +159,10 @@ class Trace(object):
             self.ydata += num.interp(xdata, other_xdata, other.ydata, left=0., right=0.)
         else:
             assert self.deltat == other.deltat
-            ibeg1 = int(round((other.tmin-self.tmin)/self.deltat))
-            ibeg2 = int(round((self.tmin-other.tmin)/self.deltat))
-            iend1 = int(round((other.tmax-self.tmin)/self.deltat))+1
-            iend2 = int(round((self.tmax-other.tmin)/self.deltat))+1
-            
-            ibeg1 = self.index_clip(ibeg1)
-            iend1 = self.index_clip(iend1)
-            ibeg2 = self.index_clip(ibeg2)
-            iend2 = self.index_clip(iend2)
-            
-            self.ydata[ibeg1:iend1] += other.ydata[ibeg2:iend2]
+            ioff = int(round((other.tmin-self.tmin)/self.deltat))
+            ibeg = max(0, ioff)
+            iend = min(self.data_len(), ioff+other.data_len())
+            self.ydata[ibeg:iend] += other.ydata[ibeg-ioff:iend-ioff]
 
     def mult(self, other, interpolate=True):
         '''Muliply with values of other trace (self \*= other).
@@ -895,6 +897,48 @@ class Trace(object):
         df = 1./(ntrans*self.deltat)
         fxdata = num.arange(len(fydata))*df
         return fxdata, fydata
+
+    def multi_filter(self, filter_freqs, bandwidth): 
+
+        class Gauss(FrequencyResponse):
+            def __init__(self, f0, a=1.0):
+                self._omega0 = 2.*math.pi*f0
+                self._a = a
+
+            def evaluate(self, freqs):
+                omega = 2.*math.pi*freqs
+                return num.exp(-((omega-self._omega0)/(self._a*self._omega0))**2)
+
+        freqs, coefs = self.spectrum()
+        y = self.get_ydata()
+        trs = []
+        n = self.data_len()
+        nfilt = len(filter_freqs)
+        signal_tf = num.zeros((nfilt, n))
+        centroid_freqs = num.zeros(nfilt)
+        for ifilt, f0 in enumerate(filter_freqs):
+            taper = Gauss(f0, a=bandwidth)
+            weights = taper.evaluate(freqs)
+            nhalf = freqs.size
+            analytic_spec = num.zeros(n, dtype=num.complex)
+            analytic_spec[:nhalf] = coefs*weights
+
+            enorm = num.abs(analytic_spec[:nhalf])**2
+            enorm /= num.sum(enorm)
+
+            if n % 2 == 0:
+                analytic_spec[1:nhalf-1] *= 2.
+            else:
+                analytic_spec[1:nhalf] *= 2.
+
+            analytic = num.fft.ifft(analytic_spec)
+            signal_tf[ifilt,:] = num.abs(analytic)
+
+            enorm = num.abs(analytic_spec[:nhalf])**2
+            enorm /= num.sum(enorm)
+            centroid_freqs[ifilt] = num.sum(freqs*enorm)
+
+        return centroid_freqs, signal_tf
         
     def _get_tapered_coefs(self, ntrans, freqlimits, transfer_function):
     
@@ -954,7 +998,7 @@ class Trace(object):
         :param opengl: bool, whether to use opengl (default: ``False``)
         '''
 
-        snuffle( [self], **kwargs)
+        return snuffle( [self], **kwargs)
 
 def snuffle(traces, **kwargs):
     '''Show traces in a snuffler window.
@@ -1198,6 +1242,18 @@ def rotate(traces, azimuth, in_channels, out_channels):
                     
     return rotated
 
+def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
+    azimuth = orthodrome.azimuth(receiver, source) + 180.
+    in_channels = n.channel, e.channel
+    out = rotate([n,e], azimuth, in_channels=in_channels, out_channels=out_channels)
+    assert len(out) == 2
+    for tr in out:
+        if tr.channel=='R':
+            r = tr
+        elif tr.channel == 'T':
+            t = tr
+
+    return r,t
 
 def _decompose(a):
     '''Decompose matrix into independent submatrices.'''
@@ -1354,7 +1410,7 @@ def _project2(traces, matrix, in_channels, out_channels):
             tmin = max(a.tmin, b.tmin)
             tmax = min(a.tmax, b.tmax)
             
-            if tmin >= tmax:
+            if tmin > tmax:
                 continue
         
             ac = a.chop(tmin, tmax, inplace=False, include_last=True)
@@ -1428,21 +1484,31 @@ def _project3(traces, matrix, in_channels, out_channels):
     return projected
 
 
-def correlate(a, b, mode='valid', normalization=None):
+def correlate(a, b, mode='valid', normalization=None, use_fft=False):
     '''Cross correlation of two traces.
     
-    This function computes the cross correlation with the NumPy function of the
-    same name.  A trace containing the cross correlation coefficients is
-    returned. The time information of the output trace is adjusted so that the
-    returned cross correlation can be viewed directly as a function of time
-    shift. This function tries to circumvent some problems caused by older
-    versions of numpy.correlate.
-
     :param a,b: input traces
-    :param mode: 'valid', 'full', or 'same'
-    :param normalization: 'normal', 'gliding', or None
+    :param mode: ``'valid'``, ``'full'``, or ``'same'``
+    :param normalization: ``'normal'``, ``'gliding'``, or ``None``
+    :param use_fft: bool, whether to do cross correlation in spectral domain
 
     :returns: trace containing cross correlation coefficients
+
+    This function computes the cross correlation between two traces. It
+    evaluates the discrete equivalent of
+
+    .. math::
+
+       c(t) = \\int_{-\\infty}^{\\infty} a^{\\ast}(\\tau) b(t+\\tau) d\\tau
+
+    where the star denotes complex conjugate. Note, that the arguments here are
+    swapped when compared with the :py:func:`numpy.correlate` function,
+    which is internally called. This function should be safe even with older
+    versions of NumPy, where the correlate function has some problems.
+
+    A trace containing the cross correlation coefficients is returned. The time
+    information of the output trace is set so that the returned cross
+    correlation can be viewed directly as a function of time lag. 
 
     Example::
         
@@ -1457,8 +1523,8 @@ def correlate(a, b, mode='valid', normalization=None):
 
     ya, yb = a.ydata, b.ydata
 
-    yc = numpy_correlate_fixed(yb, ya, mode=mode) # need reversed order here
-    kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode)
+    yc = numpy_correlate_fixed(yb, ya, mode=mode, use_fft=use_fft) # need reversed order here
+    kmin, kmax = numpy_correlate_lag_range(yb, ya, mode=mode, use_fft=use_fft)
 
     if normalization == 'normal':
         normfac = num.sqrt(num.sum(ya**2))*num.sqrt(num.sum(yb**2))
@@ -1775,7 +1841,7 @@ def numpy_has_correlate_flip_bug():
     
     return _globals._numpy_has_correlate_flip_bug
 
-def numpy_correlate_fixed(a,b, mode='valid'):
+def numpy_correlate_fixed(a,b, mode='valid', use_fft=False):
     '''Call :py:func:`numpy.correlate` with fixes.
    
         c[k] = sum_i a[i+k] * conj(b[i]) 
@@ -1784,21 +1850,25 @@ def numpy_correlate_fixed(a,b, mode='valid'):
     with respect to the formula given in its documentation
     (if ascending k assumed for the output).
     '''
-    
-    buggy = numpy_has_correlate_flip_bug()
 
-    a = num.asarray(a)
-    b = num.asarray(b)
+    if use_fft:
+        return signal.fftconvolve(a, b[::-1], mode=mode)
 
-    if buggy:
-        b = num.conj(b)
-
-    c = num.correlate(a,b,mode=mode)
-
-    if buggy and a.size < b.size:
-        return c[::-1]
     else:
-        return c
+        buggy = numpy_has_correlate_flip_bug()
+
+        a = num.asarray(a)
+        b = num.asarray(b)
+
+        if buggy:
+            b = num.conj(b)
+
+        c = num.correlate(a,b,mode=mode)
+
+        if buggy and a.size < b.size:
+            return c[::-1]
+        else:
+            return c
 
 def numpy_correlate_emulate(a,b, mode='valid'):
     '''Slow version of :py:func:`numpy.correlate` for comparison.'''
@@ -1817,7 +1887,7 @@ def numpy_correlate_emulate(a,b, mode='valid'):
 
     return c
 
-def numpy_correlate_lag_range(a,b, mode='valid'):
+def numpy_correlate_lag_range(a,b, mode='valid', use_fft=False):
     '''Get range of lags for which :py:func:`numpy.correlate` produces values.'''
 
     a = num.asarray(a)
@@ -1829,7 +1899,7 @@ def numpy_correlate_lag_range(a,b, mode='valid'):
     elif mode == 'same': 
         klen = max(a.size, b.size)
         kmin += (a.size+b.size-1 - max(a.size, b.size))/2 + \
-                int(a.size % 2 == 0 and b.size > a.size)
+                int(not use_fft and a.size % 2 == 0 and b.size > a.size)
     elif mode == 'valid':
         klen = abs(a.size - b.size) + 1 
         kmin += min(a.size, b.size) - 1
@@ -1894,14 +1964,32 @@ def moving_sum(x,n, mode='valid'):
             return num.zeros(0, dtype=cx.dtype) 
         y = num.zeros(nn-n+1, dtype=cx.dtype)
         y[0] = cx[n-1]
-        y[1:] = cx[n:]-cx[:-n]
+        y[1:nn-n+1] = cx[n:nn]-cx[0:nn-n]
     
     if mode == 'full':
         y = num.zeros(nn+n-1, dtype=cx.dtype)
-        y[:n] = cx[:n]
-        y[n:-n+1] = cx[n:]-cx[:-n]
-        y[-n+1:] = cx[-1]-cx[-n:-1]
-    
+        if n <= nn:
+            y[0:n] = cx[0:n]
+            y[n:nn] = cx[n:nn]-cx[0:nn-n]
+            y[nn:nn+n-1] = cx[-1]-cx[nn-n:nn-1]
+        else:
+            y[0:nn] = cx[0:nn]
+            y[nn:n] = cx[nn-1]
+            y[n:nn+n-1] = cx[nn-1] - cx[0:nn-1]
+
+    if mode == 'same':
+        n1 = (n-1)/2
+        y = num.zeros(nn, dtype=cx.dtype)
+        if n <= nn:
+            y[0:n-n1] = cx[n1:n]
+            y[n-n1:nn-n1] = cx[n:nn]-cx[0:nn-n]
+            y[nn-n1:nn] = cx[nn-1] - cx[nn-n:nn-n+n1]
+        else:
+            y[0:max(0,nn-n1)] = cx[min(n1,nn):nn]
+            y[max(nn-n1,0):min(n-n1,nn)] = cx[nn-1]
+            y[min(n-n1,nn):nn] = cx[nn-1] - cx[0:max(0,nn-(n-n1))]
+
+
     return y
 
 def nextpow2(i):

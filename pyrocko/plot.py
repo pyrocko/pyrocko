@@ -1,3 +1,5 @@
+import math
+
 # some awsome colors
 tango_colors = {
 'butter1': (252, 233,  79),
@@ -68,10 +70,8 @@ def nice_value(x):
     
     if x >= 0.75:
         return sign * 1.0 * exp
-    if x >= 0.375:
+    if x >= 0.35:
         return sign * 0.5 * exp
-    if x >= 0.225:
-        return sign * 0.25 * exp
     if x >= 0.15:
         return sign * 0.2 * exp
     

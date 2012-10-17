@@ -23,7 +23,7 @@ class Param:
     '''Definition of an adjustable parameter for the snuffling. The snuffling
     may display controls for user input for such parameters.'''
     
-    def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None):
+    def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
         self.name = name
         self.ident = ident
         self.default = default
@@ -31,6 +31,7 @@ class Param:
         self.maximum = maximum
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
+        self.low_is_zero = low_is_zero
         self._control = None
 
 class Switch:
@@ -418,6 +419,21 @@ class Snuffling:
 
             
         return p
+
+    def get_active_event_and_stations(self, trange=(-3600.,3600.)):
+        '''Get event and stations with available data for active event.'''
+
+        p = self.get_pile()
+        v = self.get_viewer()
+        
+        event = v.get_active_event()
+        stations = []
+        for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False):
+            for tr in traces:
+                station = v.get_station(v.station_key(tr))
+                stations.append(station)
+
+        return event, stations
         
     def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
         '''Iterate over selected traces.
@@ -518,7 +534,9 @@ class Snuffling:
         self._param_controls = {}
         if params:
             sarea = MyScrollArea(parent.get_panel_parent_widget())
+            sarea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
             frame = QFrame(sarea)
+            frame.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
             sarea.setWidget(frame)
             sarea.setWidgetResizable(True)
             layout = QGridLayout()
@@ -526,35 +544,43 @@ class Snuffling:
             layout.setSpacing(0)
             frame.setLayout( layout )
             
-            parlayout = QVBoxLayout()
+            parlayout = QGridLayout()
             
             irow = 0
+            ipar = 0
             have_switches = False
             have_params = False
             for iparam, param in enumerate(params):
                 if isinstance(param, Param):
                     if param.minimum <= 0.0:
-                        param_widget = LinValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
+                        param_control = LinValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
                     else:
-                        param_widget = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
+                        param_control = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none, low_is_zero=param.low_is_zero)
                     
-                    param_widget.setup(param.name, param.minimum, param.maximum, param.default, iparam)
-                    self.get_viewer().connect( param_widget, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
+                    param_control.setup(param.name, param.minimum, param.maximum, param.default, iparam)
+                    self.get_viewer().connect( param_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
 
-                    self._param_controls[param.ident] = param_widget
-                    parlayout.addWidget(param_widget)
+                    self._param_controls[param.ident] = param_control
+                    for iw, w in enumerate(param_control.widgets()):
+                        parlayout.addWidget(w, ipar, iw)
+
+                    ipar +=1
                     have_params = True
+
                 elif isinstance(param, Choice):
                     param_widget = ChoiceControl(param.ident, param.default, param.choices, param.name)
                     self.get_viewer().connect( param_widget, SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.choose_on_snuffling_panel )
                     self._param_controls[param.ident] = param_widget
-                    parlayout.addWidget(param_widget)
+                    parlayout.addWidget(param_widget, ipar, 0, 1, 3)
+                    ipar += 1
                     have_params = True
+
                 elif isinstance(param, Switch):
                     have_switches = True
 
             if have_params: 
                 parframe = QFrame(sarea)
+                parframe.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
                 parframe.setLayout(parlayout)
                 layout.addWidget(parframe, irow, 0)
                 irow += 1
@@ -571,11 +597,13 @@ class Snuffling:
                         isw += 1
                 
                 swframe = QFrame(sarea)
+                swframe.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
                 swframe.setLayout( swlayout )
                 layout.addWidget( swframe, irow, 0 )
                 irow += 1
             
             butframe = QFrame(sarea)
+            butframe.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
             butlayout = QHBoxLayout()
             butframe.setLayout( butlayout )
 
@@ -596,21 +624,26 @@ class Snuffling:
 
             for name, method in self._triggers:
                 but = QPushButton(name)
-                def call_and_update():
-                    try:
-                        method()
-                    except SnufflingError, e:
-                        if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
-                            logger.error('%s: %s' % (self._name, e))
-                        logger.error('%s: Snuffling action failed' % self._name)
+                def call_and_update(method):
+                    def f():
+                        try:
+                            method()
+                        except SnufflingError, e:
+                            if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+                                logger.error('%s: %s' % (self._name, e))
+                            logger.error('%s: Snuffling action failed' % self._name)
 
-                    self.get_viewer().update()
+                        self.get_viewer().update()
+                    return f
 
-                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update )
+                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update(method) )
                 butlayout.addWidget( but )
 
             layout.addWidget(butframe, irow, 0)
+
             irow += 1
+            spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
+            layout.addItem(spacer, irow, 0)
 
             return sarea 
             
@@ -822,7 +855,7 @@ class Snuffling:
     def post_process_hook(self, traces):
         return traces
     
-    def __del__(self):
+    def pre_destroy(self):
         self.cleanup()
         if self._tempdir is not None:
             import shutil
@@ -935,7 +968,7 @@ class MyScrollArea(QScrollArea):
     def sizeHint(self):
         s = QSize()
         s.setWidth(self.widget().sizeHint().width())
-        s.setHeight(30)
+        s.setHeight(self.widget().sizeHint().height())
         return s
 
 class SwitchControl(QCheckBox):
@@ -962,7 +995,8 @@ class ChoiceControl(QFrame):
         self.layout = QHBoxLayout(self)
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.cbox)
-        
+        self.layout.setContentsMargins(0,0,0,0)
+        self.layout.setSpacing(0)
         self.ident = ident
         self.choices = choices
         for ichoice, choice in enumerate(choices):

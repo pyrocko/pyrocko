@@ -1,4 +1,5 @@
 from pyrocko import mseed, trace, util, io
+from pyrocko.io import FileLoadError
 import unittest
 import numpy as num
 import time
@@ -24,33 +25,33 @@ class IOTestCase( unittest.TestCase ):
         networks = [ rn(2) for i in range(5) ]
         
         traces1 = [ trace.Trace(rc(networks), rn(4), rn(2), rn(3), tmin=now+i*deltat*n*2, deltat=deltat, ydata=num.arange(n, dtype=num.int32), mtime=now)
-            for i in range(100) ]
+            for i in range(3) ]
             
         tempdir = tempfile.mkdtemp()
-        fns = mseed.save(traces1, pjoin(tempdir, '%(network)s'))
-        traces2 = []
-        for fn in fns:
-            traces2.extend(mseed.load(fn))
-            
-        for tr in traces1:
-            assert tr in traces2
-            
-        for fn in fns:
-            os.remove(fn)
-        shutil.rmtree(tempdir)
+
+        for format in ('mseed', 'sac', 'yaff'):
+            fns = io.save(traces1, pjoin(tempdir, '%(network)s_%(station)s_%(location)s_%(channel)s'), format=format)
+
+            for fn in fns:
+                assert io.detect_format(fn) == format
+
+            traces2 = []
+            for fn in fns:
+                traces2.extend(io.load(fn, format='detect'))
                 
-    def testReadNonexistant(self):
-        try:
-            trs = mseed.load('/tmp/thisfileshouldnotexist')
-        except OSError, e:
-            pass
-        assert isinstance(e, OSError)
+            for tr in traces1:
+                assert tr in traces2, 'failed for format %s' % format
+                
+            for fn in fns:
+                os.remove(fn)
+
+        shutil.rmtree(tempdir)
         
     def testReadEmpty(self):
         tempfn = tempfile.mkstemp()[1]
         try:
-            trs = mseed.load(tempfn)
-        except mseed.MSeedError, e:
+            trs = list(mseed.iload(tempfn))
+        except FileLoadError, e:
             pass
             
         assert str(e).find('No SEED data detected') != -1
@@ -63,6 +64,7 @@ class IOTestCase( unittest.TestCase ):
         tr = io.load(fn, format='sac')[0]
         assert tr.meta['cmpaz'] == 0.0
         assert tr.meta['cmpinc'] == 0.0
+
 
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')

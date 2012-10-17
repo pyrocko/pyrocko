@@ -14,7 +14,7 @@ format       format identifier           load      save     note
 Mini-SEED    mseed                       yes       yes      
 SAC          sac                         yes       yes      [#f1]_
 SEG Y rev1   segy                        some               
-SEISAN       seisan, seisan_l, seisan_b  yes                [#f2]_
+SEISAN       seisan, seisan.l, seisan.b  yes                [#f2]_
 KAN          kan                         yes                [#f3]_
 YAFF         yaff                        yes       yes      [#f4]_
 ASCII Table  text                                  yes      [#f5]_
@@ -23,28 +23,32 @@ ASCII Table  text                                  yes      [#f5]_
 .. rubric:: Notes
 
 .. [#f1] For SAC files, the endianness is guessed. Additional header information is stored in the :py:class:`Trace`'s ``meta`` attribute. 
-.. [#f2] Seisan waveform files can be in little (``seisan_l``) or big endian (``seisan_b``) format. ``seisan`` currently is an alias for ``seisan_l``.
+.. [#f2] Seisan waveform files can be in little (``seisan.l``) or big endian (``seisan.b``) format. ``seisan`` currently is an alias for ``seisan.l``.
 .. [#f3] The KAN file format has only been seen once by the author, and support for it may be removed again.
 .. [#f4] YAFF is an in-house, experimental file format, which should not be released into the wild.
 .. [#f5] ASCII tables with two columns (time and amplitude) are output - meta information will be lost.
 '''
 
 import os
-import mseed, sac, kan, segy, yaff, file, seisan_waveform, util
+import mseed, sac, kan, segy, yaff, file, seisan_waveform, util, logging
 import trace
 from pyrocko.mseed_ext import MSeedError
+from io_common import FileLoadError
+
 import numpy as num
+
+logger = logging.getLogger('pyrocko.io')
 
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
 
-    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'from_extension'``, or ``'try'``)
+    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'from_extension'``)
     :param getdata: if ``True`` (the default), read data, otherwise only read traces metadata
     :param substitutions:  dict with substitutions to be applied to the traces metadata
     
     :returns: list of loaded traces
     
-    When *format* is set to ``'try'``, this function tries to read the files in Mini-SEED, SAC, and YAFF format.
+    When *format* is set to ``'detect'``, the file type is guessed from the first 512 bytes of the file. Only Mini-SEED, SAC, and YAFF format are detected.
     When *format* is set to ``'from_extension'``, the filename extension is used to decide what format should be assumed. The filename extensions
     considered are (matching is case insensitiv): ``'.sac'``, ``'.kan'``, ``'.sgy'``, ``'.segy'``, ``'.yaff'``, everything else is assumed to be in Mini-SEED format.
     
@@ -53,85 +57,80 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     
     return list(iload(filename, format=format, getdata=getdata, substitutions=substitutions))
 
+def detect_format(filename):
+    try:
+        f = open(filename, 'r')
+        data = f.read(512)
+        f.close()
+    except OSError, e:
+        raise FileLoadError(e)
+
+    format = None
+    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac')):
+        if mod.detect(data):
+            return fmt
+
+    raise FileLoadError(UnknownFormat(filename))
+
 def iload(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file (iterator version).
     
     This function works like :py:func:`load`, but returns an iterator which yields the loaded traces.
     '''
+    load_data = getdata
+
+    toks = format.split('.', 1)
+    if toks == 2:
+        format, subformat = toks
+    else:
+        subformat = None
+
+    try:
+        mtime = os.stat(filename)[8]
+    except OSError, e:
+        raise FileLoadError(e)
 
     def subs(tr):
         make_substitutions(tr, substitutions)
+        tr.set_mtime(mtime)
         return tr
     
+    extension_to_format = {
+            '.yaff': 'yaff',
+            '.sac': 'sac',
+            '.kan': 'kan',
+            '.segy': 'segy',
+            '.sgy': 'segy'}
+
     if format == 'from_extension':
         format = 'mseed'
         extension = os.path.splitext(filename)[1]
-        if extension.lower() == '.sac':
-            format = 'sac'
-        elif extension.lower() == '.kan':
-            format = 'kan'
-        elif extension.lower() in ('.sgy', '.segy'):
-            format = 'segy'
-        elif extension.lower() == '.yaff':
-            format = 'yaff' 
+        format = extension_to_format.get(extension.lower(), 'mseed')
 
-    if format in ('seisan', 'seisan_l', 'seisan_b'):
-        endianness = {'seisan_l' : '<', 'seisan_b' : '>', 'seisan' : '<'}[format]
-        npad = 4
-        try:
-            for tr in seisan_waveform.load(filename, load_data=getdata, endianness=endianness, npad=npad):
-                yield subs(tr)
-        except (OSError, seisan_waveform.SeisanFileError), e:
-            raise FileLoadError(e)
+    if format == 'detect':
+        format = detect_format(filename)
+   
+    format_to_module = {
+            'kan': kan,
+            'segy': segy,
+            'yaff': yaff,
+            'sac': sac,
+            'mseed': mseed,
+    }
+
+    add_args = {
+            'seisan': { 'subformat': subformat },
+    }
+
+    if format not in format_to_module:
+        raise UnsupportedFormat(format)
+
+    mod = format_to_module[format]
     
-    if format in ('kan',):
-        mtime = os.stat(filename)[8]
-        kanf = kan.KanFile(filename, get_data=getdata)
-        tr = kanf.to_trace()
-        tr.set_mtime(mtime)
+    for tr in mod.iload(filename, load_data=load_data,
+            **add_args.get(format, {})):
         yield subs(tr)
-        
-        
-    if format in ('segy',):
-        mtime = os.stat(filename)[8]
-        segyf = segy.SEGYFile(filename, get_data=getdata)
-        ftrs = segyf.get_traces()
-        for tr in ftrs:
-            tr.set_mtime(mtime)
-            yield subs(tr)
-    
-    if format in ('yaff', 'try'):
-        try:
-            for tr in yaff.load(filename, getdata):
-                yield subs(tr)
-            
-        except (OSError, file.FileError), e:
-            if format == 'try':
-                pass
-            else:
-                raise FileLoadError(e)
-            
-    if format in ('sac', 'try'):
-        mtime = os.stat(filename)[8]
-        try:
-            sacf = sac.SacFile(filename, get_data=getdata)
-            tr = sacf.to_trace()
-            tr.set_mtime(mtime)
-            yield subs(tr)
-            
-        except (OSError,sac.SacError), e:
-            if format == 'try':
-                pass
-            else:
-                raise FileLoadError(e)
-        
-    if format in ('mseed', 'try'):
-        try:
-            for tr in mseed.load(filename, getdata):
-                yield subs(tr)
-            
-        except (OSError, MSeedError), e:
-            raise FileLoadError(e)
+
     
 def save(traces, filename_template, format='mseed', additional={}, stations=None):
     '''Save traces to file(s).
@@ -192,16 +191,15 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
     elif format == 'yaff':
         return yaff.save(traces, filename_template, additional)
     else:
-        raise UnknownFormat(format)
-
-class FileLoadError(Exception):
-    '''Raised when a problem occurred while loading of a file.'''
-    pass
+        raise UnsupportedFormat(format)
 
 class UnknownFormat(Exception):
-    '''Raised when an unsupported format is given.'''
-    def __init__(self, ext):
-        Exception.__init__(self, 'Unknown file format: %s' % ext)
+    def __init__(self, filename):
+        Exception.__init__(self, 'Unknown file format: %s' % filename)
+
+class UnsupportedFormat(Exception):
+    def __init__(self, format):
+        Exception.__init__(self, 'Unsupported file format: %s' % format)
 
 def make_substitutions(tr, substitutions):
     if substitutions:

@@ -1,4 +1,4 @@
-import trace, util, model
+import trace, util, model, evalresp_ext
 
 import logging, copy
 import numpy as num
@@ -244,8 +244,15 @@ class EventDataAccess:
                         if restitution_off_hack:
                             displacement = tr.copy()
                         else:
-                            displacement = tr.transfer( tfade, freqband, transfer_function=trans, cut_off_fading=crop )
-                        
+                            try:
+                                displacement = tr.transfer( tfade, freqband, transfer_function=trans, cut_off_fading=crop )
+                            except Exception, e:
+                                if isinstance(e, trace.TraceTooShort):
+                                    raise
+
+                                logger.warn('An error while applying transfer function to trace %s.%s.%s.%s.' % tr.nslc_id)
+                                continue
+
                         amax = num.max(num.abs(displacement.get_ydata()))
                         if maxdisplacement is not None and amax > maxdisplacement:
                             self.problems().add('unrealistic_amplitude', tr.full_id)

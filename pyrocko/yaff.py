@@ -1,8 +1,10 @@
 '''File IO module for SICK traces format.'''
 
-from pyrocko.file import File, numtype2type, NoDataAvailable
+from pyrocko.file import File, numtype2type, NoDataAvailable, size_record_header, FileError
 import trace
 from util import ensuredirs
+from struct import unpack
+from io_common import FileLoadError
 
 record_formats = {
 
@@ -62,13 +64,19 @@ class TracesFileIO(File):
             r.pack(self.to_dict(tr))
             r.close()
 
-def load(fn, load_data=True):
-    f = open(fn, 'r')
-    tf = TracesFileIO(f)
-    for tr in tf.load(load_data=load_data):
-        yield tr
-    tf.close()
-    f.close()
+def iload(filename, load_data=True):
+    try:
+        f = open(filename, 'r')
+        tf = TracesFileIO(f)
+        for tr in tf.load(load_data=load_data):
+            yield tr
+
+    except (OSError, FileError), e:
+        raise FileLoadError(e)
+
+    finally:
+        tf.close()
+        f.close()
     
 def save(traces, filename_template, additional={}, max_open_files=10):
     fns = set()
@@ -98,3 +106,16 @@ def save(traces, filename_template, additional={}, max_open_files=10):
     close_files()
             
     return list(fns)
+
+
+def detect(first512):
+    
+    if len(first512) < size_record_header:
+        return False
+
+    label, version, size_record, size_payload, hash, type = unpack('>4s4sQQ20s20s', first512[:size_record_header])
+    if label == 'YAFF' and version == '0000' and type.strip() == 'trace':
+        return True
+
+    return False
+

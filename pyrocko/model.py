@@ -1,5 +1,5 @@
 import catalog, orthodrome, config, util, moment_tensor
-import math
+import math, copy
 import numpy as num
 
 from orthodrome import wrap
@@ -254,6 +254,13 @@ class Event:
         return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
 
 
+def load_events(filename):
+    return list(Event.load_catalog(filename))
+
+def load_one_event(filename):
+    l = Event.load_catalog(filename)
+    return l.next()
+
 class Station:
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):
         self.network = network
@@ -272,6 +279,9 @@ class Station:
         self.dist_m = None
         self.azimuth = None
         self.backazimuth = None
+
+    def copy(self):
+        return copy.deepcopy(self)
 
     def set_event_relative_data( self, event ):
         self.dist_m = orthodrome.distance_accurate50m( event, self )
@@ -345,7 +355,45 @@ class Station:
                 Channel(out_channel_names[2], 0., -90., 1.) ]
         
         return m, in_channels, out_channels
-    
+
+    def guess_channel_groups(self):
+        cg = {}
+        for channel in self.get_channels():
+            if len(channel.name) >= 1:
+                kind = channel.name[:-1]
+                if kind not in cg:
+                    cg[kind] = []
+                cg[kind].append(channel.name[-1])
+
+        def allin(a,b):
+            return all( x in b for x in a )
+
+        out_groups = []
+        for kind, components in cg.iteritems():
+            for sys in ('ENZ', '12Z'):
+                if allin(sys, components):
+                    out_groups.append( tuple([ kind+c for c in sys ]) )
+
+        return out_groups
+
+    def guess_projections_to_enu(self, out_channels=('E', 'N', 'U'), **kwargs):
+        proj = []
+        for cg in self.guess_channel_groups():
+            proj.append(self.projection_to_enu(cg, out_channels=out_channels, **kwargs))
+
+        return proj
+
+    def guess_projections_to_rtu(self, out_channels=('R', 'T', 'U'), **kwargs):
+        proj = []
+        for (m, in_channels, _) in self.guess_projections_to_enu( **kwargs ):
+            phi = (self.backazimuth + 180.)*d2r
+            r = num.array([[math.sin(phi),  math.cos(phi), 0.0],
+                           [math.cos(phi), -math.sin(phi), 0.0],
+                           [          0.0,            0.0, 1.0]])
+            proj.append((num.dot(r,m), in_channels, out_channels))
+
+        return proj
+
     def projection_to_enu(self, in_channels, out_channels=('E', 'N', 'U'), **kwargs):
         return self._projection_to('enu', in_channels, out_channels, **kwargs)
 
@@ -357,7 +405,7 @@ class Station:
         return num.linalg.inv(m), in_channels, out_channels
     
     def projection_from_ned(self, in_channels=('N','E','D'), out_channels=('X','Y','Z'), **kwargs):
-        m, out_channels, in_channels = self._projection_to('enu', out_channels,in_channels, **kwargs)
+        m, out_channels, in_channels = self._projection_to('ned', out_channels,in_channels, **kwargs)
         return num.linalg.inv(m), in_channels, out_channels
         
     def nsl_string(self):

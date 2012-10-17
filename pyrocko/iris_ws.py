@@ -1,61 +1,12 @@
 import urllib, urllib2, logging, re
-from xml.dom import minidom
 import util, model, pz
+
+from xml.parsers.expat import ParserCreate
 
 logger = logging.getLogger('pyrocko.iris_ws')
 
 base_url = 'http://www.iris.edu/ws'
 
-class NotTextNode(Exception):
-    pass
-
-def getText(node):
-    l = []
-    for child in node.childNodes:
-        if child.nodeType == node.TEXT_NODE:
-            l.append(child.data)
-        else:
-            raise NotTextNode
-
-    return ''.join(l)
-
-def get_dict(node):
-    d = {}
-    dupl = []
-    for cn in node.childNodes:
-        try:
-            k = str(cn.nodeName.lower())
-            v = getText(cn)
-            if k in d:
-                dupl.append(k) 
-            else:
-                d[k] = v 
-
-        except NotTextNode:
-            pass
-
-    for k in dupl:
-        if k in d:
-            del d[k]
-    
-    attr = node.attributes
-    for k in attr.keys():
-        d[str(k)] = getText(attr[k])
-
-    return d
-
-def cycle(node, name):
-    for child in node.getElementsByTagName(name):
-        child.D = util.Anon(**get_dict(child))
-        yield child
-
-def tear(node, path, _stack=()):
-    if len(path) == 0:
-        yield _stack
-    else:
-        for element in cycle(node, path[0]):
-            for x in tear(element, path[1:], _stack + ( element, )):
-                yield x
 
 def tdate(s):
     return util.str_to_time(s, '%Y-%m-%d')
@@ -69,6 +20,77 @@ def tdatetime(s):
 def sdatetime(t):
     return util.time_to_str(t, format='%Y-%m-%dT%H:%M:%S')
 
+class Element(object):
+    
+    def __init__(self, name, depth, attrs): 
+        self.name = name
+        self.depth = depth
+        self.attrs = attrs
+
+    def __getattr__(self,k):
+        return self.attrs[k]
+    
+    def __str__(self):
+        return '%s:\n ' % self.name + '\n '.join( '%s : %s' % (k,v) for (k,v) in self.attrs.iteritems() )
+
+class XMLZipHandler(object):
+    
+    def __init__(self, watch):
+        self.watch = watch
+        self.stack = []
+        self.wstack = []
+        self.outstack = []
+
+    def startElement(self, name, attrs):
+        self.stack.append((name, []))
+        if len(self.wstack) < len(self.watch) and name == self.watch[len(self.wstack)]:
+            el = Element(name, len(self.stack), dict(attrs.items()))
+            self.wstack.append(el)
+
+    def characters(self, content):
+        if self.wstack and len(self.stack) == self.wstack[-1].depth + 1:
+            if content.strip():
+                self.stack[-1][1].append(content)
+
+    def endElement(self, name):
+        if self.wstack:
+            if len(self.stack) == self.wstack[-1].depth + 1 and self.stack[-1][1]:
+                self.wstack[-1].attrs[name] = ''.join(self.stack[-1][1])
+
+            if name == self.watch[len(self.wstack)-1]:
+                if len(self.wstack) == len(self.watch):
+                    self.outstack.append(list(self.wstack))
+
+                self.wstack.pop()
+
+        self.stack.pop()
+
+    def getQueuedElements(self):
+        outstack = self.outstack
+        self.outstack = []
+        return outstack
+
+def xmlzip(source, watch, bufsize=10000):
+    parser = ParserCreate()
+    handler = XMLZipHandler(watch)
+
+    parser.StartElementHandler = handler.startElement
+    parser.EndElementHandler = handler.endElement
+    parser.CharacterDataHandler = handler.characters
+
+    while True:
+        data = source.read(bufsize)
+        if not data:
+            break
+
+        parser.Parse(data, False)
+        for elements in handler.getQueuedElements():
+            yield elements
+
+    parser.Parse('', True)
+    for elements in handler.getQueuedElements():
+        yield elements
+
 class NotFound(Exception):
     def __init__(self, url):
         Exception.__init__(self)
@@ -81,11 +103,15 @@ def ws_request(url, post=False, **kwargs):
     url_values = urllib.urlencode(kwargs)
     url = url + '?' + url_values
     logger.debug('Accessing URL %s' % url)
+
+    req = urllib2.Request(url)
+    if post:
+        req.add_data(post)
+
+    req.add_header('Accept', '*/*')
+
     try:
-        if post:
-            return urllib2.urlopen(url,data=post).read()
-        else:
-            return urllib2.urlopen(url).read()
+        return urllib2.urlopen(req)
 
     except urllib2.HTTPError, e:
         if e.code == 404:
@@ -100,10 +126,24 @@ def ws_station( **kwargs ):
             kwargs[k] = sdate(kwargs[k])
 
     if 'timewindow' in kwargs:
-        tmin, tmax = kwargs['timewindow']
-        kwargs['timewindow'] = '%s,%s' % (sdate(tmin), sdate(tmax))
+        tmin, tmax = kwargs.pop('timewindow')
+        kwargs['startbefore'] = sdate(tmin)
+        kwargs['endafter'] = sdate(tmax)
 
     return ws_request(base_url + '/station/query', **kwargs)
+
+def ws_virtualnetwork( **kwargs ):
+    
+    for k in 'starttime', 'endtime':
+        if k in kwargs:
+            kwargs[k] = sdate(kwargs[k])
+
+    if 'timewindow' in kwargs:
+        tmin, tmax = kwargs.pop('timewindow')
+        kwargs['starttime'] = sdate(tmin)
+        kwargs['endtime'] = sdate(tmax)
+
+    return ws_request(base_url + '/virtualnetwork/query', **kwargs)
 
 def ws_bulkdataselect( selection, quality=None, minimumlength=None, longestonly=False ):
 
@@ -123,7 +163,7 @@ def ws_bulkdataselect( selection, quality=None, minimumlength=None, longestonly=
     
     return ws_request(base_url + '/bulkdataselect/query', post='\n'.join(l))
 
-def ws_sacpz(network=None, station=None, location=None, channel=None, tmin=None, tmax=None):
+def ws_sacpz(network=None, station=None, location=None, channel=None, time=None, tmin=None, tmax=None):
     d = {}
     if network:
         d['network'] = network
@@ -136,14 +176,35 @@ def ws_sacpz(network=None, station=None, location=None, channel=None, tmin=None,
     if channel:
         d['channel'] = channel
     
+    if tmin is not None and tmax is not None:
+        d['starttime'] = sdatetime(tmin)
+        d['endtime'] = sdatetime(tmax)
+    elif time is not None:
+        d['time'] = sdatetime(time)
     times = (tmin, tmax)
-    if len(times) == 2:
-        d['starttime'] = sdatetime(min(times))
-        d['endtime'] = sdatetime(max(times))
-    elif len(times) == 1:
-        d['time'] = sdatetime(times[0])
     
     return ws_request(base_url + '/sacpz/query', **d)
+
+def ws_resp(network=None, station=None, location=None, channel=None, time=None, tmin=None, tmax=None):
+    d = {}
+    if network:
+        d['network'] = network
+    if station:
+        d['station'] = station
+    if location:
+        d['location'] = location
+    else:
+        d['location'] = '--'
+    if channel:
+        d['channel'] = channel
+    
+    if tmin is not None and tmax is not None:
+        d['starttime'] = sdatetime(tmin)
+        d['endtime'] = sdatetime(tmax)
+    elif time is not None:
+        d['time'] = sdatetime(time)
+        
+    return ws_request(base_url + '/resp/query', **d)
 
 class ChannelInfo:
     def __init__(self, network, station, location, channel, start, end, azimuth, dip, elevation, depth, latitude, longitude, sample, input, output, zpk):
@@ -225,23 +286,22 @@ def grok_sacpz(data):
     return cis
 
 def grok_station_xml( data, tmin, tmax ):
-    dom = minidom.parseString(data)
     
     stations = {}
     station_channels = {}
-        
-    for (sta, sta_epo, cha, cha_epo) in tear(dom, ('Station', 'StationEpoch', 'Channel', 'Epoch') ):
+
+    for (sta, sta_epo, cha, cha_epo) in xmlzip(data, ('Station', 'StationEpoch', 'Channel', 'Epoch')):
+
         sta_beg, sta_end, cha_beg, cha_end = [ tdatetime(x) for x in 
-                (sta_epo.D.startdate, sta_epo.D.enddate, cha_epo.D.startdate, cha_epo.D.enddate) ]
+                (sta_epo.StartDate, sta_epo.EndDate, cha_epo.StartDate, cha_epo.EndDate) ]
 
         if not (sta_beg <= tmin and tmax <= sta_end and cha_beg <= tmin and tmax <= cha_end):
             continue
 
         nslc = tuple([ str(x.strip()) for x in 
-                (sta.D.net_code, sta.D.sta_code, cha.D.loc_code, cha.D.chan_code) ])
-        lat, lon, ele, dep, azi, dip = [ float(x) for x in 
-                (cha_epo.D.lat, cha_epo.D.lon, cha_epo.D.elevation, cha_epo.D.depth,
-                 cha_epo.D.azimuth, cha_epo.D.dip) ]
+                (sta.net_code, sta.sta_code, cha.loc_code, cha.chan_code) ])
+
+        lat, lon, ele, dep, azi, dip = [ float(cha_epo.attrs[x]) for x in 'Lat Lon Elevation Depth Azimuth Dip'.split() ]
 
         nsl = nslc[:3]
         if nsl not in stations:
@@ -250,6 +310,15 @@ def grok_station_xml( data, tmin, tmax ):
         stations[nsl].add_channel(model.Channel(nslc[-1], azi, dip))
 
     return stations.values()
+
+
+def grok_virtualnet_xml(data):
+    net_sta = set()
+
+    for network, station in xmlzip(data, ('network', 'station')):
+        net_sta.add((network.code, station.code))
+   
+    return net_sta
 
 def data_selection(stations, tmin, tmax, channel_prio=[[ 'BHZ', 'HHZ' ],
             [ 'BH1', 'BHN', 'HH1', 'HHN' ], ['BH2', 'BHE', 'HH2', 'HHE']]):

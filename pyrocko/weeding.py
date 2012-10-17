@@ -68,7 +68,21 @@ def weed(x, y, badnesses, neighborhood=1, nwanted=None, interaction_radius=3.):
     meandists_kept = neighborhood_density(dists_kept, neighborhood)
     return deleted, meandists_kept
 
-def weed_stations(stations, nwanted, badnesses=None, neighborhood=3, stream_badnesses=None):
+def badnesses_c_mean(badnesses_nslc):
+    # convert stream badnesses to station badnesses by averaging
+    badnesses_nsl = {}
+    for nslc, b in badnesses_nslc.iteritems():
+        nsl = nslc[:3]
+        badnesses_nsl.setdefault(nsl,[]).append(b)
+
+    for nsl in badnesses_nsl.keys():
+        this_station_badness = badnesses_nsl[nsl]
+        badnesses_nsl[nsl] = sum(this_station_badness)/len(this_station_badness)
+
+    return badnesses_nsl
+
+def weed_stations(stations, nwanted, neighborhood=3, default_badness=1.0, badnesses=None,
+                  badnesses_ns={}, badnesses_nsl={}, badnesses_nslc={}):
     
     azimuths = num.zeros(len(stations), dtype=num.float)
     dists = num.zeros(len(stations), dtype=num.float)
@@ -76,26 +90,20 @@ def weed_stations(stations, nwanted, badnesses=None, neighborhood=3, stream_badn
         azimuths[ista] = sta.azimuth
         dists[ista] = sta.dist_deg
     
-    if badnesses is None:
-        badnesses = num.ones(len(stations), dtype=float)
-    
-    if stream_badnesses is not None:
-        # convert stream badnesses to station badnesses by averaging
-        station_badness = {}
-        for nslc, b in stream_badnesses.iteritems():
-            nsl = nslc[:3]
-            if nsl not in station_badness:
-                station_badness[nsl] = []
-            station_badness[nsl].append(b)
-        
-        badnesses = num.ones(len(stations), dtype=num.float)*99.
-        for ista, sta in enumerate(stations):
-            nsl = sta.network, sta.station, sta.location
-            if nsl in station_badness:
-                this_station_badness = station_badness[nsl]
-                badnesses[ista] = sum(this_station_badness)/len(this_station_badness)
-    
-    deleted, meandists_kept = weed(azimuths, dists, badnesses, nwanted=nwanted, neighborhood=neighborhood)
+    badnesses_nslc_mean_c = badnesses_c_mean(badnesses_nslc)
+    badnesses2 = num.ones(len(stations), dtype=float) 
+    for ista, sta in enumerate(stations):
+        nsl = sta.network, sta.station, sta.location
+        if badnesses is not None:
+            b = badnesses[ista]
+        else:
+            b = 1.0
+        b *= badnesses_ns.get(nsl, 1.0)
+        b *= badnesses_nsl.get(nsl, 1.0)
+        b *= badnesses_nslc_mean_c.get(nsl, 1.0)
+        badnesses2[ista] = b
+   
+    deleted, meandists_kept = weed(azimuths, dists, badnesses2, nwanted=nwanted, neighborhood=neighborhood)
     
     stations_weeded = [ station for (delete, station) in zip(deleted, stations) if not delete ]
     return stations_weeded, meandists_kept, deleted
