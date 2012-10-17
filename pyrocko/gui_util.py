@@ -496,14 +496,14 @@ class Marker(object):
         return Marker(nslc_ids, tmin, tmax, kind=kind)
 
     @staticmethod
-    def save_markers(markers, fn):
+    def save_markers(markers, fn, fdigits=3):
 
         f = open(fn,'w')
         f.write('# Snuffler Markers File Version 0.2\n')
         writer = TableWriter(f)
         for marker in markers:
-            a = marker.get_attributes()
-            w = marker.get_attribute_widths()
+            a = marker.get_attributes(fdigits=fdigits)
+            w = marker.get_attribute_widths(fdigits=fdigits)
             row = []
             for x in a:
                 if x is None or x == '':
@@ -622,9 +622,9 @@ class Marker(object):
         else:
             return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
 
-    def get_attributes(self):
+    def get_attributes(self, fdigits=3):
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
-        st = pyrocko.util.time_to_str
+        st = lambda t: pyrocko.util.time_to_str(t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
         vals = []
         vals.extend(st(self.tmin).split())
         if self.tmin != self.tmax:    
@@ -635,10 +635,10 @@ class Marker(object):
         vals.append(traces)
         return vals
 
-    def get_attribute_widths(self):
-        ws = [ 10, 12 ]
+    def get_attribute_widths(self, fdigits=3):
+        ws = [ 10, 9+fdigits ]
         if self.tmin != self.tmax:
-            ws.extend( [ 10, 12, 12 ] )
+            ws.extend( [ 10, 9+fdigits, 12 ] )
         ws.extend( [ 2, 15 ] )
         return ws
 
@@ -875,17 +875,17 @@ class EventMarker(Marker):
 
         return ', '.join(evs) 
 
-    def get_attributes(self):
+    def get_attributes(self, fdigits=3):
         attributes = [ 'event:' ]
-        attributes.extend(Marker.get_attributes(self))
+        attributes.extend(Marker.get_attributes(self, fdigits=fdigits))
         del attributes[-1]
         e = self._event
         attributes.extend([e.get_hash(), e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region ])
         return attributes
 
-    def get_attribute_widths(self):
+    def get_attribute_widths(self, fdigits=3):
         ws = [ 6 ]
-        ws.extend( Marker.get_attribute_widths(self) )
+        ws.extend( Marker.get_attribute_widths(self, fdigits=fdigits) )
         del ws[-1]
         ws.extend([ 14, 12, 12, 12, 4, 5, 0, 0 ])
         return ws
@@ -971,21 +971,22 @@ class PhaseMarker(Marker):
         return ', '.join(toks)
 
 
-    def get_attributes(self):
+    def get_attributes(self, fdigits=3):
         attributes = [ 'phase:' ]
-        attributes.extend(Marker.get_attributes(self))
+        attributes.extend(Marker.get_attributes(self, fdigits=fdigits))
         h = None
         et = None, None
         if self._event:
+            st = lambda t: pyrocko.util.time_to_str(t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
             h = self._event.get_hash()
-            et = pyrocko.util.time_to_str(self._event.time).split()
+            et = st(self._event.time).split()
 
         attributes.extend([h, et[0], et[1], self._phasename, self._polarity, self._automatic])
         return attributes
 
-    def get_attribute_widths(self):
+    def get_attribute_widths(self, fdigits=3):
         ws = [ 6 ]
-        ws.extend( Marker.get_attribute_widths(self) )
+        ws.extend( Marker.get_attribute_widths(self, fdigits=fdigits) )
         ws.extend([ 14, 12, 12, 8, 4, 5 ])
         return ws
 

@@ -96,6 +96,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
         return tr
     
     extension_to_format = {
+            '.yaff': 'yaff',
             '.sac': 'sac',
             '.kan': 'kan',
             '.segy': 'segy',
