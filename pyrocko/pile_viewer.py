@@ -1708,7 +1708,11 @@ def MakePileViewerMainClass(base):
                     if kind == 0:
                         marker.convert_to_marker()
                     else:
-                        marker.set_phasename(phasename)
+                        if self.get_active_event() is None:
+                            marker.set_phasename(phasename)
+                        else:
+                            event = self.get_active_event()
+                            marker.convert_to_phase_marker(event, phasename, None, False)
                 elif isinstance(marker, EventMarker):
                     pass
                 else:
