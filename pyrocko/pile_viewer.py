@@ -1270,16 +1270,23 @@ def MakePileViewerMainClass(base):
                 return 1
             else:
                 return 0
+
+        def time_fractional_digits(self):
+            min_deltat = self.content_deltat_range()[0]
+            return min(9, max(1, int(-math.floor(math.log10(min_deltat)))+2))
     
         def write_markers(self):
+
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
-                Marker.save_markers(self.markers, fn)
+                Marker.save_markers(self.markers, fn,
+                        fdigits=self.time_fractional_digits())
 
         def write_selected_markers(self):
             fn = QFileDialog.getSaveFileName(self,)
             if fn:
-                Marker.save_markers(self.selected_markers(), fn)
+                Marker.save_markers(self.selected_markers(), fn,
+                        fdigits=self.time_fractional_digits())
 
         def read_markers(self):
             fn = QFileDialog.getOpenFileName(self,)
