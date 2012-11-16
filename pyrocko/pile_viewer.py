@@ -736,6 +736,18 @@ def MakePileViewerMainClass(base):
             self.menuitem_watch.setCheckable(True)
             self.menuitem_watch.setChecked(False)
             self.menu.addAction(self.menuitem_watch)
+
+
+            self.visible_length_menu = QMenu('Visible Length', self.menu)
+            menudef = [
+                ('Short', 6000),
+                ('Medium', 20000),
+                ('Long', 60000),
+            ]
+            
+            self.menuitems_visible_length = add_radiobuttongroup(self.visible_length_menu, menudef, self, self.visible_length_change)
+            self.visible_length = menudef[0][1]
+            self.menu.addMenu( self.visible_length_menu )
             
             self.menu.addSeparator()
             
@@ -2281,6 +2293,8 @@ def MakePileViewerMainClass(base):
 
         def prepare_cutout2(self, tmin, tmax, trace_selector=None, degap=True, nmax=6000):
 
+            nmax = self.visible_length
+
             self.timer_cutout.start()
 
             tsee = tmax-tmin
@@ -2572,6 +2586,11 @@ def MakePileViewerMainClass(base):
                     traces = snuffling.post_process_hook(traces)
 
             return traces
+
+        def visible_length_change(self, ignore):
+            for menuitem, vlen in self.menuitems_visible_length:
+                if menuitem.isChecked():
+                    self.visible_length = vlen
 
         def scaling_base_change(self, ignore):
             for menuitem, scaling_base in self.menuitems_scaling_base:
