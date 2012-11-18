@@ -1625,7 +1625,21 @@ def MakePileViewerMainClass(base):
 
             elif keytext == 'g':
                 self.go_to_selection()
-             
+               
+            elif key_event.key() == Qt.Key_Left:
+                dtmin = min(self.pile.get_deltats())
+                for marker in self.selected_markers():
+                    if not isinstance(marker,EventMarker):
+                        marker.tmin-= dtmin/2.
+                        marker.tmax-= dtmin/2. 
+            
+            elif key_event.key() == Qt.Key_Right:
+                dtmin = min(self.pile.get_deltats())
+                for marker in self.selected_markers():
+                    if not isinstance(marker,EventMarker):
+                        marker.tmin+= dtmin/2.
+                        marker.tmax+= dtmin/2.
+
             self.update()
             self.update_status()
   
