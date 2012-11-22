@@ -424,7 +424,7 @@ class Station:
         if sta.depth is not None:
             depth = sta.depth
         nsl = '%s.%s.%s' % (sta.network, sta.station, sta.location)
-        s = '%-15s  %14g %14g %14g %14g %s' % (nsl, sta.lat, sta.lon, elevation, depth, sta.name)
+        s = '%-15s  %14.5f %14.5f %14.1f %14.1f %s' % (nsl, sta.lat, sta.lon, elevation, depth, sta.name)
         return s
 
 def dump_stations(stations, filename):
