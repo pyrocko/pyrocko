@@ -2674,7 +2674,7 @@ def MakePileViewerMainClass(base):
     
         def passband_check(self):
             if self.highpass and self.lowpass and self.highpass >= self.lowpass:
-                self.message = 'Corner frequency of highpass larger than corner frequency of lowpass! I will now deactivate the higpass.'
+                self.message = 'Corner frequency of highpass larger than corner frequency of lowpass! I will now deactivate the highpass.'
                 self.update_status()
             else:
                 oldmess = self.message
