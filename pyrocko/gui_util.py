@@ -1053,6 +1053,11 @@ class PyLab(QFrame):
         
         self.setLayout(layout)
         self.figure = Figure(dpi=100)
+        canvas = FigureCanvas(self.figure)
+        canvas.setParent(self)
+        layout.addWidget(canvas, 0,0)
+
+    def gca(self):
         self.axes_subplot = self.figure.add_subplot(111)
         ax = self.axes_subplot
         ax.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
@@ -1064,11 +1069,7 @@ class PyLab(QFrame):
                 setattr(xa, attr, xa.get_label().get_fontsize())
                 setattr(ya, attr, ya.get_label().get_fontsize())
                 break
-        canvas = FigureCanvas(self.figure)
-        canvas.setParent(self)
-        layout.addWidget(canvas, 0,0)
 
-    def gca(self):
         return self.axes_subplot
 
     def gcf(self):
