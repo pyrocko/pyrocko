@@ -67,7 +67,7 @@ Options
 .. option:: --stations=STATIONS
 
     read station information from file ``STATIONS``, this option can be given more than once
-
+    
 .. option:: --event=EVENT, --events=EVENT
 
     read event information from file ``EVENT``, this option can be given more than once
@@ -95,6 +95,13 @@ Options
 .. option:: --debug
 
     print debugging information to stderr
+
+Read Station Information
+^^^^^^^^^^^^^^^^^^^^^^^^
+``snuffler --stations=station_file.txt``
+will read location and nslc informations from a file named ``station_file.txt``. The required format of this file is
+*n.s.l.c latitude longitude elevation elevationcorrection*
+
 
 
 Keystrokes

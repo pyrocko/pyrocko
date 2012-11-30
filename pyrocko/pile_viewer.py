@@ -1071,6 +1071,10 @@ def MakePileViewerMainClass(base):
             self.update()
             self.snufflings.remove(snuffling)
             snuffling.pre_destroy()
+            try:
+                snuffling.__del__()
+            except AttributeError:
+                pass
 
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
@@ -1481,8 +1485,8 @@ def MakePileViewerMainClass(base):
             keytext = str(key_event.text())
 
             if keytext == '?':
-                self.help()
-
+                self.toggle_help()
+                
             elif keytext == ' ':
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
@@ -1625,7 +1629,21 @@ def MakePileViewerMainClass(base):
 
             elif keytext == 'g':
                 self.go_to_selection()
-             
+               
+            elif key_event.key() == Qt.Key_Left:
+                dtmin = min(self.pile.get_deltats())
+                for marker in self.selected_markers():
+                    if not isinstance(marker,EventMarker):
+                        marker.tmin-= dtmin/2.
+                        marker.tmax-= dtmin/2. 
+            
+            elif key_event.key() == Qt.Key_Right:
+                dtmin = min(self.pile.get_deltats())
+                for marker in self.selected_markers():
+                    if not isinstance(marker,EventMarker):
+                        marker.tmin+= dtmin/2.
+                        marker.tmax+= dtmin/2.
+
             self.update()
             self.update_status()
   
@@ -1650,9 +1668,16 @@ def MakePileViewerMainClass(base):
             for h in [ hcheat, hepilog ]:
                 h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
                 h.setWordWrap(True)
-
+            
             self.show_doc('Help', [hcheat, hepilog], target='panel')
-
+        
+        def toggle_help(self):
+            for widget in self.panel_parent.dockwidgets():
+                if 'Help' == widget.windowTitle():
+                    widget.close()
+                    return
+            self.help()
+            
         def show_doc(self, name, labels, target='panel'):
             scroller = QScrollArea()
             frame = QFrame(scroller)
@@ -1720,7 +1745,11 @@ def MakePileViewerMainClass(base):
                     if kind == 0:
                         marker.convert_to_marker()
                     else:
-                        marker.set_phasename(phasename)
+                        if self.get_active_event() is None:
+                            marker.set_phasename(phasename)
+                        else:
+                            event = self.get_active_event()
+                            marker.convert_to_phase_marker(event, phasename, None, False)
                 elif isinstance(marker, EventMarker):
                     pass
                 else:
@@ -2649,7 +2678,7 @@ def MakePileViewerMainClass(base):
     
         def passband_check(self):
             if self.highpass and self.lowpass and self.highpass >= self.lowpass:
-                self.message = 'Corner frequency of highpass larger than corner frequency of lowpass! I will now deactivate the higpass.'
+                self.message = 'Corner frequency of highpass larger than corner frequency of lowpass! I will now deactivate the highpass.'
                 self.update_status()
             else:
                 oldmess = self.message
