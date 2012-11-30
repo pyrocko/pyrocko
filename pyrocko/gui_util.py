@@ -791,7 +791,7 @@ class Marker(object):
 
     def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
 
-        if isinstance(self, PhaseMarker) and self._event is not None and phasename is self._phasename:
+        if isinstance(self, PhaseMarker):
             return
 
         self.__class__ = PhaseMarker
