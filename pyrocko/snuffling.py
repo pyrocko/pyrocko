@@ -475,6 +475,8 @@ class Snuffling:
                         yield traces
                         
             elif fallback:
+                if 'trace_selector' not in kwargs:
+                    kwargs['trace_selector'] = viewer.trace_selector
                 
                 tmin, tmax = viewer.get_time_range()
                 for traces in pile.chopper(
