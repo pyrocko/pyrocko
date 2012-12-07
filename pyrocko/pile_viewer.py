@@ -1071,10 +1071,6 @@ def MakePileViewerMainClass(base):
             self.update()
             self.snufflings.remove(snuffling)
             snuffling.pre_destroy()
-            try:
-                snuffling.__del__()
-            except AttributeError:
-                pass
 
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
