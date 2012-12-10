@@ -12,7 +12,7 @@ import pyrocko.pile_viewer
 import pyrocko.model
 import pyrocko.config
 
-import pyrocko.slink, pyrocko.serial_hamster
+import pyrocko.slink, pyrocko.serial_hamster, pyrocko.edl
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -100,6 +100,14 @@ class SchoolSeismometerAcquisition(pyrocko.serial_hamster.SerialHamster, Acquisi
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self,tr)
 
+class EDLAcquisition(pyrocko.edl.EDLHamster, AcquisitionThread):
+    def __init__(self, *args, **kwargs):
+        pyrocko.edl.EDLHamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self)
+
+    def got_trace(self, tr):
+        AcquisitionThread.got_trace(self,tr)
+
 def setup_acquisition_sources(args):
 
     sources = [] 
@@ -111,6 +119,7 @@ def setup_acquisition_sources(args):
         mca = re.match(r'cam://([^:]+)', arg)
         mus = re.match(r'hb628://([^:?]+)(\?(\d+))?', arg)
         msc = re.match(r'school://([^:]+)', arg)
+        med = re.match(r'edl://([^:]+)', arg)
         if msl:
             host = msl.group(1)
             port = msl.group(3)
@@ -140,13 +149,16 @@ def setup_acquisition_sources(args):
                 deltat = 0.02
             hb628 = USBHB628Acquisition(port=port, deltat=deltat, buffersize=16, lookback=50)
             sources.append(hb628)
-            
         elif msc:
             port = msc.group(1)
             sco = SchoolSeismometerAcquisition(port=port)
             sources.append(sco)
+        elif med:
+            port = med.group(1)
+            edl = EDLAcquisition(port=port)
+            sources.append(edl)
         
-        if msl or mca or mus or msc:
+        if msl or mca or mus or msc or med:
             args.pop(iarg)
         else:
             iarg += 1
