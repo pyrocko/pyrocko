@@ -635,6 +635,8 @@ def MakePileViewerMainClass(base):
                     lambda tr: self.station_attrib(tr, lambda sta: (deg_float_or_none(sta.azimuth),), lambda tr: (None,) )),
                 ('Sort by Distance in 12 Azimuthal Blocks',
                     lambda tr: self.station_attrib(tr, sector_dist, lambda tr: (None,None) )),
+                ('Sort by Backazimuth',
+                    lambda tr: self.station_attrib(tr, lambda sta: (deg_float_or_none(sta.backazimuth),), lambda tr: (None,) )),
             ]
             self.menuitems_ssorting = add_radiobuttongroup(self.menu, menudef, self, self.s_sortingmode_change)
             
