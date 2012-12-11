@@ -1,6 +1,7 @@
 import serial, re, string, sys, struct, collections, time, logging
 import numpy as num
-from pyrocko import trace
+from pyrocko import trace, util
+from scipy import stats
 
 logger = logging.getLogger('pyrocko.edl')
 
@@ -134,6 +135,70 @@ def unpack_values(ncomps, bytes_per_sample, data):
     else:
         raise
 
+
+class TimeEstimator:
+    def __init__(self, nlookback):
+        self._nlookback = nlookback
+        self._queue = []
+        self._t0 = None
+        self._n = 0
+        self._deltat = None
+        
+    def insert(self, deltat, nadd, t):
+        if self._deltat is None or self._deltat != deltat:
+            self.reset()
+            self._deltat = deltat
+
+        if self._t0 is None:
+            self._t0 = int(round(t/self._deltat))*self._deltat
+        
+
+        self._queue.append((self._n, t))
+        self._n += nadd
+        while len(self._queue) > self._nlookback:
+            self._queue.pop()
+
+        ns, ts = num.array(self._queue, dtype=num.float).T
+
+        tpredicts = self._t0 + ns * self._deltat
+
+        terrors = ts - tpredicts
+        mterror = num.median(terrors)
+        if num.abs(mterror) > 0.7*deltat and len(self._queue) == self._nlookback:
+            deltat, t0, r, tt, stderr = stats.linregress(ns, ts)
+            self._queue[:] = []
+            self._t0 = t0
+        
+        return self._t0 + (self._n-nadd)*self._deltat
+            
+    def reset(self):
+        self._queue[:] = []
+        self._t0 = None
+
+    def __len__(self):
+        return len(self._queue)
+
+class Record:
+    def __init__(self, approx_time, mod, mde, dat, sum, values):
+        self.approx_time = approx_time
+        self.mod = mod
+        self.mde = mde
+        self.dat = dat
+        self.sum = sum
+        self.values = values
+
+    def get_time(self):
+        return self.approx_time
+
+    def get_traces(self):
+        traces = []
+        for i in range(self.mod.ncomps):
+            tr = trace.Trace('', 'ed', '', 'p%i' % i, 
+                    deltat=num.float(self.mod.ncomps)/self.mod.sample_rate, tmin=self.get_time(), ydata=self.values[i::3])
+            traces.append(tr)
+
+        return traces
+
 class NotAquiring(Exception):
     pass
 
@@ -142,7 +207,7 @@ class ReadTimeout(Exception):
 
 class Reader:
 
-    def __init__(self, port=0, timeout=3., baudrate=115200):
+    def __init__(self, port=0, timeout=3., baudrate=115200, lookback=10):
         if isinstance(port, int):
             self._port = portnames()[port]
         else:
@@ -152,6 +217,9 @@ class Reader:
         self._baudrate = int(baudrate)
         self._serial = None
         self._buffer = ''
+        self._irecord = 0
+        
+        self._time_estimator = TimeEstimator(lookback)
 
     def running(self):
         return self._serial is not None
@@ -166,7 +234,7 @@ class Reader:
         self._serial = serial.Serial(port=self._port, baudrate=self._baudrate, timeout=self._timeout)
 
         self._sync_on_mod()
-
+    
     def _sync_on_mod(self):
         self._fill_buffer(MINBLOCKSIZE)
 
@@ -201,12 +269,17 @@ class Reader:
         return unpack_block(block_data)
 
     def read_record(self):
+        self._irecord += 1
         mod, _ = self._read_block()
+        measured_system_time = time.time()
         mde, _ = self._read_block()
         dat, values_data = self._read_block()
         sum, _ = self._read_block()
         values = unpack_values(mod.ncomps, mod.bytes_per_sample, values_data)
-        return (mod, mde, dat, sum, values)
+        deltat = 1./mod.sample_rate * mod.ncomps
+        approx_time = self._time_estimator.insert(deltat, values.size/mod.ncomps, measured_system_time)
+        r = Record(approx_time, mod, mde, dat, sum, values)
+        return r
 
     def stop(self):
         if not self.running():
@@ -220,7 +293,6 @@ class Reader:
 class EDLHamster:
     def __init__(self, *args, **kwargs):
         self.reader = Reader(*args, **kwargs)
-        self._i = 0
 
     def acquisition_start(self):
         self.reader.start()
@@ -230,16 +302,8 @@ class EDLHamster:
 
     def process(self):
         try:
-            mod, mde, dat, sum, values = self.reader.read_record()
-
-            traces = [
-                trace.Trace('','Test','','X', deltat=0.005, tmin=float(self._i), ydata=values[::3]),
-                trace.Trace('','Test','','Y', deltat=0.005, tmin=float(self._i), ydata=values[1::3]),
-                trace.Trace('','Test','','Z', deltat=0.005, tmin=float(self._i), ydata=values[2::3])
-            ]
-            self._i += 1
-
-            for tr in traces:
+            rec = self.reader.read_record()
+            for tr in rec.get_traces():
                 self.got_trace(tr)
 
             return True
