@@ -1,4 +1,4 @@
-import serial, re, string, sys, struct, collections, time, logging
+import re, string, sys, struct, collections, time, logging
 import numpy as num
 from pyrocko import trace, util
 from scipy import stats
@@ -231,6 +231,7 @@ class Reader:
     def start(self):
         self.stop()
 
+        import serial
         self._serial = serial.Serial(port=self._port, baudrate=self._baudrate, timeout=self._timeout)
 
         self._sync_on_mod()
