@@ -1073,10 +1073,6 @@ def MakePileViewerMainClass(base):
             self.update()
             self.snufflings.remove(snuffling)
             snuffling.pre_destroy()
-            try:
-                snuffling.__del__()
-            except AttributeError:
-                pass
 
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
@@ -1633,18 +1629,20 @@ def MakePileViewerMainClass(base):
                 self.go_to_selection()
                
             elif key_event.key() == Qt.Key_Left:
-                dtmin = min(self.pile.get_deltats())
+                a,b = self.time_projection.ur
+                c,d = self.time_projection.xr
                 for marker in self.selected_markers():
                     if not isinstance(marker,EventMarker):
-                        marker.tmin-= dtmin/2.
-                        marker.tmax-= dtmin/2. 
+                        marker.tmin -= (d-c)/b
+                        marker.tmax -= (d-c)/b
             
             elif key_event.key() == Qt.Key_Right:
-                dtmin = min(self.pile.get_deltats())
+                a,b = self.time_projection.ur
+                c,d = self.time_projection.xr
                 for marker in self.selected_markers():
                     if not isinstance(marker,EventMarker):
-                        marker.tmin+= dtmin/2.
-                        marker.tmax+= dtmin/2.
+                        marker.tmin += (d-c)/b
+                        marker.tmax += (d-c)/b
 
             self.update()
             self.update_status()
