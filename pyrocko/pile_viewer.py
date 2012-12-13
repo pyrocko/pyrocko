@@ -1628,24 +1628,25 @@ def MakePileViewerMainClass(base):
             elif keytext == 'g':
                 self.go_to_selection()
                
-            elif key_event.key() == Qt.Key_Left:
-                a,b = self.time_projection.ur
-                c,d = self.time_projection.xr
-                for marker in self.selected_markers():
-                    if not isinstance(marker,EventMarker):
-                        marker.tmin -= (d-c)/b
-                        marker.tmax -= (d-c)/b
-            
-            elif key_event.key() == Qt.Key_Right:
-                a,b = self.time_projection.ur
-                c,d = self.time_projection.xr
-                for marker in self.selected_markers():
-                    if not isinstance(marker,EventMarker):
-                        marker.tmin += (d-c)/b
-                        marker.tmax += (d-c)/b
+            elif key_event.key() in (Qt.Key_Left, Qt.Key_Right):
+                dir = 1
+                amount = 1
+                if key_event.key() == Qt.Key_Left:
+                    dir = -1
+                if key_event.modifiers() & Qt.ShiftModifier:
+                    amount = 10
+                self.nudge_selected_markers(dir*amount)
 
             self.update()
             self.update_status()
+
+        def nudge_selected_markers(self, npixels):
+            a,b = self.time_projection.ur
+            c,d = self.time_projection.xr
+            for marker in self.selected_markers():
+                if not isinstance(marker,EventMarker):
+                    marker.tmin += npixels * (d-c)/b
+                    marker.tmax += npixels * (d-c)/b
   
         def about(self):
             fn = pyrocko.util.data_file('snuffler.png')
