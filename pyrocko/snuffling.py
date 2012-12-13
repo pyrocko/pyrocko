@@ -267,14 +267,17 @@ class Snuffling:
         self.error(message)
         raise SnufflingCallFailed(message) 
   
-    def pylab(self, name=None):
+    def pylab(self, name=None, get='axes'):
         if name is None:
             self._iplot += 1
             name = 'Plot %i (%s)' % (self._iplot, self.get_name())
 
         pylab = PyLab()
         self._panel_parent.add_tab(name, pylab)
-        return pylab.gca()
+        if get == 'axes':
+            return pylab.gca()
+        elif get == 'figure':
+            return pylab.gcf()
 
     def tempdir(self):
         if self._tempdir is None:
@@ -475,6 +478,8 @@ class Snuffling:
                         yield traces
                         
             elif fallback:
+                if 'trace_selector' not in kwargs:
+                    kwargs['trace_selector'] = viewer.trace_selector
                 
                 tmin, tmax = viewer.get_time_range()
                 for traces in pile.chopper(

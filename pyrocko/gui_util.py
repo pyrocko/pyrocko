@@ -791,7 +791,7 @@ class Marker(object):
 
     def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
 
-        if isinstance(self, PhaseMarker) and self._event is not None and phasename is self._phasename:
+        if isinstance(self, PhaseMarker):
             return
 
         self.__class__ = PhaseMarker
@@ -1053,6 +1053,11 @@ class PyLab(QFrame):
         
         self.setLayout(layout)
         self.figure = Figure(dpi=100)
+        canvas = FigureCanvas(self.figure)
+        canvas.setParent(self)
+        layout.addWidget(canvas, 0,0)
+
+    def gca(self):
         self.axes_subplot = self.figure.add_subplot(111)
         ax = self.axes_subplot
         ax.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
@@ -1064,11 +1069,7 @@ class PyLab(QFrame):
                 setattr(xa, attr, xa.get_label().get_fontsize())
                 setattr(ya, attr, ya.get_label().get_fontsize())
                 break
-        canvas = FigureCanvas(self.figure)
-        canvas.setParent(self)
-        layout.addWidget(canvas, 0,0)
 
-    def gca(self):
         return self.axes_subplot
 
     def gcf(self):
