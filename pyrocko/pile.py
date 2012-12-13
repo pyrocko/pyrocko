@@ -1214,7 +1214,9 @@ class Injector(trace.States):
         else:
             self._pile.remove_file(buf)
             trbuf = buf.get_traces()[0]
+            buf.remove(trbuf)
             trbuf.append(trace.ydata)
+            buf.add(trbuf)
             self._pile.add_file(buf)
             self.set(trace, buf)
         
