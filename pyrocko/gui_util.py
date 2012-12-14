@@ -452,7 +452,9 @@ class MarkerOneNSLCRequired(Exception):
     pass
 
 class Marker(object):
-    
+    '''
+    Base class for GUI-elements :class:'EventMarker' and :class:'PhaseMarker'
+    '''
     @staticmethod
     def from_string(line):
         
@@ -816,6 +818,14 @@ class Marker(object):
         self.nslc_ids = []
 
 class EventMarker(Marker):
+    """
+    An EventMarker as a GUI-element represents a seismological event within snuffler.
+
+    :param event:       A :class:'~pyrocko.model.Event' Object contains meta information 
+                        of a seismological event.
+    :param kind:        (optional) integer to distinguish groups of markers.       
+    :param event_hash:  (optional) hash code of event (see: 'pyrocko.model.Event.get_hash')
+    """
     def __init__(self, event, kind=0, event_hash=None):
         Marker.__init__(self, [], event.time, event.time, kind)
         self._event = event
@@ -832,6 +842,7 @@ class EventMarker(Marker):
         self._active = active
 
     def label(self):
+        """ :return: string representation of an event. """
         t = []
         mag = self._event.magnitude
         if mag is not None:
@@ -901,7 +912,24 @@ class EventMarker(Marker):
         return marker
 
 class PhaseMarker(Marker):
+    '''
+    A PhaseMarker as a GUI-element represents the arrival of a seismological phase within snuffler. 
 
+    :param nslc_ids:    List of strings representing network, station, location, channel
+    :param tmin:        Starting time of PhaseMarker
+    :param tmax:        Ending time of PhaseMarker
+    :param kind:        (optional) Integer to distinguish groups of markers (color-coded).       
+    :param event:       (optional) A :class:'~pyrocko.model.Event' Object contains meta information 
+                        of a seismological event.
+    :param event_hash:  (optional) Hash code of event (see: 'pyrocko.model.Event.get_hash')
+    :param phasename:   (optional) Name of the phase associated with the marker
+    :param polarity:    (optional) Polarity of arriving phase
+    :param automatic:   (optional) 
+    :param incident_angle:
+                        (optional) Incident angle of phase
+    :param takeoff_angle:
+                        (optional) Take off angle of phase                   
+    '''
     def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
         Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
