@@ -453,7 +453,7 @@ class MarkerOneNSLCRequired(Exception):
 
 class Marker(object):
     '''
-    Base class for GUI-elements :class:'EventMarker' and :class:'PhaseMarker'
+    Base class for GUI-elements :py:class:'EventMarker' and :py:class:'PhaseMarker'
     '''
     @staticmethod
     def from_string(line):
@@ -821,10 +821,10 @@ class EventMarker(Marker):
     """
     An EventMarker as a GUI-element represents a seismological event within snuffler.
 
-    :param event:       A :class:'~pyrocko.model.Event' Object contains meta information 
+    :param event:       A :py:class:'pyrocko.model.Event' Object contains meta information 
                         of a seismological event.
     :param kind:        (optional) integer to distinguish groups of markers.       
-    :param event_hash:  (optional) hash code of event (see: 'pyrocko.model.Event.get_hash')
+    :param event_hash:  (optional) hash code of event (see: :py:func:'pyrocko.model.Event.get_hash')
     """
     def __init__(self, event, kind=0, event_hash=None):
         Marker.__init__(self, [], event.time, event.time, kind)
@@ -919,9 +919,9 @@ class PhaseMarker(Marker):
     :param tmin:        Starting time of PhaseMarker
     :param tmax:        Ending time of PhaseMarker
     :param kind:        (optional) Integer to distinguish groups of markers (color-coded).       
-    :param event:       (optional) A :class:'~pyrocko.model.Event' Object contains meta information 
+    :param event:       (optional) A :py:class:'pyrocko.model.Event' Object contains meta information 
                         of a seismological event.
-    :param event_hash:  (optional) Hash code of event (see: 'pyrocko.model.Event.get_hash')
+    :param event_hash:  (optional) Hash code of event (see: :py:func:'pyrocko.model.Event.get_hash')
     :param phasename:   (optional) Name of the phase associated with the marker
     :param polarity:    (optional) Polarity of arriving phase
     :param automatic:   (optional) 
