@@ -519,6 +519,10 @@ class Marker(object):
 
     @staticmethod
     def load_markers(fn):
+        """ Load markers from a file. 
+        :param fn:  filename as string
+        :return:    list with :py:class:`Marker` Objects
+        """
         markers = []
         f = open(fn, 'r')
         line  = f.readline()
@@ -585,6 +589,8 @@ class Marker(object):
         return self.tmax
 
     def get_nslc_ids(self):
+        """:return: Tuple contains tuple contains 
+        four strings (network, station, channel, location)"""
         return self.nslc_ids
 
     def is_alerted(self):
@@ -600,10 +606,12 @@ class Marker(object):
         self.selected = state
 
     def match_nsl(self, nsl):
+        """See documentation of :py:func:`pyrocko.util.match_nslc`"""
         patterns = [ '.'.join(x[:3]) for x in self.nslc_ids ]
         return pyrocko.util.match_nslc(patterns, nsl)
     
     def match_nslc(self, nslc):
+        """See documentation of :py:func:`pyrocko.util.match_nslc`"""
         patterns = [ '.'.join(x) for x in self.nslc_ids ]
         return pyrocko.util.match_nslc(patterns, nslc)
 
@@ -625,6 +633,9 @@ class Marker(object):
             return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
 
     def get_attributes(self, fdigits=3):
+        """Get a list containing a markers' attributes
+        :param fdigits: (optional) number of decimal places of time string
+        """
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
         st = lambda t: pyrocko.util.time_to_str(t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
         vals = []
