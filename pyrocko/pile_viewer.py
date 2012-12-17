@@ -2450,7 +2450,8 @@ def MakePileViewerMainClass(base):
                     for a in processed_traces:
                         for b in processed_traces: 
                             if (a.network == b.network and a.station == b.station and a.location == b.location and
-                                a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
+                                ((a.channel.lower().endswith('n') and b.channel.lower().endswith('e')) or
+                                (a.channel.endswith('1') and b.channel.endswith('2'))) and
                                 abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
                                 len(a.get_ydata()) == len(b.get_ydata())):
                                 
