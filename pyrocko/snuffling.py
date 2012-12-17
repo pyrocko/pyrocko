@@ -101,6 +101,7 @@ class Snuffling:
         self._no_viewer_pile = None 
         self._cli_params = {}
 
+
     def setup(self):
         '''Setup the snuffling.
         
@@ -865,6 +866,19 @@ class Snuffling:
         if self._tempdir is not None:
             import shutil
             shutil.rmtree(self._tempdir)
+
+    def show_doc(self):
+        '''Add a 'snuffling help' trigger to the snufflings' panel.
+        When pressed, a new widget opens containing the documentation
+        as given in self.__doc__
+        '''
+        print 'test'
+        viewer = self.get_viewer()
+        doc = QLabel(self.__doc__)
+        for h in [ doc ]:
+            h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
+            h.setWordWrap(True)
+        self.viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
 
 class SnufflingError(Exception):
     pass
