@@ -1104,7 +1104,7 @@ def minmaxtime(traces, key=None):
     
     return ranges
     
-def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second'):
+def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second', maxlap=None):
     
     '''Try to connect traces and remove gaps.
     
@@ -1118,6 +1118,7 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
     :param deoverlap:   how to handle overlaps: 'use_second' to use data from 
                         second trace (default), 'use_first' to use data from first
                         trace, 'crossfade_cos' to crossfade with cosine taper 
+    :param maxlap:      maximum number of samples of overlap which are removed
       
     :returns:           list of traces
     '''
@@ -1164,7 +1165,7 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second')
                         a.mtime = max(a.mtime, b.mtime)
                     continue
                     
-                elif idist <= 0:
+                elif idist <= 0 and (maxlap is None or -maxlap < idist):
                     if b.tmax > a.tmax:
                         if not virtual:
                             na = a.ydata.size
