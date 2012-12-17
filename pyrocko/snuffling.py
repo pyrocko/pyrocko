@@ -316,6 +316,12 @@ class Snuffling:
             self.setup_gui()
    
     def add_trigger(self, name, method):
+        '''Add a button to the snufflings' panel. 
+
+        :param name:    string that labels the button
+        :param method:  method associated with the button
+        '''
+
         self._triggers.append((name, method))
         
         if self._panel is not None:
