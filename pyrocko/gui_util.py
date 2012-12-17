@@ -453,8 +453,14 @@ class MarkerOneNSLCRequired(Exception):
 
 class Marker(object):
     '''
-    Base class for GUI-elements :py:class:'EventMarker' and :py:class:'PhaseMarker'
+    General purpose marker GUI element and base class for :py:class:`EventMarker` and :py:class:`PhaseMarker`.
+
+    :param nslc_ids:    list of (network, station, location, channel) tuples (may contain wildcards)
+    :param tmin:        start time 
+    :param tmax:        end time
+    :param kind:        (optional) integer to distinguish groups of markers (color-coded)
     '''
+
     @staticmethod
     def from_string(line):
         
@@ -519,10 +525,12 @@ class Marker(object):
 
     @staticmethod
     def load_markers(fn):
-        """ Load markers from a file. 
+        '''Load markers from a file. 
+
         :param fn:  filename as string
-        :return:    list with :py:class:`Marker` Objects
-        """
+        :returns:   list of :py:class:`Marker` Objects
+        '''
+
         markers = []
         f = open(fn, 'r')
         line  = f.readline()
@@ -589,8 +597,12 @@ class Marker(object):
         return self.tmax
 
     def get_nslc_ids(self):
-        """:return: Tuple contains tuple contains 
-        four strings (network, station, channel, location)"""
+        '''Get marker's network-station-location-channel pattern.
+
+        :returns: list or set of (network, station, location, channel) tuples
+
+        The network, station, location, or channel strings may contain wildcard expressions.
+        '''
         return self.nslc_ids
 
     def is_alerted(self):
@@ -633,9 +645,6 @@ class Marker(object):
             return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
 
     def get_attributes(self, fdigits=3):
-        """Get a list containing a markers' attributes
-        :param fdigits: (optional) number of decimal places of time string
-        """
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
         st = lambda t: pyrocko.util.time_to_str(t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
         vals = []
@@ -830,12 +839,12 @@ class Marker(object):
 
 class EventMarker(Marker):
     """
-    An EventMarker as a GUI-element represents a seismological event within snuffler.
+    An EventMarker is a GUI element representing a seismological event within snuffler.
 
-    :param event:       A :py:class:'pyrocko.model.Event' Object contains meta information 
-                        of a seismological event.
-    :param kind:        (optional) integer to distinguish groups of markers.       
-    :param event_hash:  (optional) hash code of event (see: :py:func:'pyrocko.model.Event.get_hash')
+    :param event:       A :py:class:`pyrocko.model.Event` object containing meta information 
+                        of a seismological event
+    :param kind:        (optional) integer to distinguish groups of markers
+    :param event_hash:  (optional) hash code of event (see: :py:meth:`pyrocko.model.Event.get_hash`)
     """
     def __init__(self, event, kind=0, event_hash=None):
         Marker.__init__(self, [], event.time, event.time, kind)
@@ -926,20 +935,18 @@ class PhaseMarker(Marker):
     '''
     A PhaseMarker as a GUI-element represents the arrival of a seismological phase within snuffler. 
 
-    :param nslc_ids:    List of strings representing network, station, location, channel
-    :param tmin:        Starting time of PhaseMarker
-    :param tmax:        Ending time of PhaseMarker
-    :param kind:        (optional) Integer to distinguish groups of markers (color-coded).       
-    :param event:       (optional) A :py:class:'pyrocko.model.Event' Object contains meta information 
-                        of a seismological event.
-    :param event_hash:  (optional) Hash code of event (see: :py:func:'pyrocko.model.Event.get_hash')
-    :param phasename:   (optional) Name of the phase associated with the marker
-    :param polarity:    (optional) Polarity of arriving phase
-    :param automatic:   (optional) 
-    :param incident_angle:
-                        (optional) Incident angle of phase
-    :param takeoff_angle:
-                        (optional) Take off angle of phase                   
+    :param nslc_ids:       list of (network, station, location, channel) tuples (may contain wildcards)
+    :param tmin:           start time 
+    :param tmax:           end time
+    :param kind:           (optional) integer to distinguish groups of markers (color-coded)
+    :param event:          a :py:class:`pyrocko.model.Event` object containing meta information 
+                           of a seismological event
+    :param event_hash:     (optional) hash code of event (see: :py:meth:`pyrocko.model.Event.get_hash`)
+    :param phasename:      (optional) name of the phase associated with the marker
+    :param polarity:       (optional) polarity of arriving phase
+    :param automatic:      (optional) 
+    :param incident_angle: (optional) incident angle of phase
+    :param takeoff_angle:  (optional) take off angle of phase                   
     '''
     def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
         Marker.__init__(self, nslc_ids, tmin, tmax, kind)
