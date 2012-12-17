@@ -40,9 +40,12 @@ from trace import degapper
 
 def avl_remove_exact(avltree, element):
     ilo, ihi = avltree.span(element)
-    i = avltree[ilo:ihi].index(element)
-    if i != -1:
-        avltree.remove_at(ilo+i)
+    for i in xrange(ilo,ihi):
+        if avltree[i] is element:
+            avltree.remove_at(i)
+            return
+
+    raise ValueError('avl_remove_exact(avltree, element): element not in avltree')
 
 def cmpfunc(key):
     if isinstance(key, str):
