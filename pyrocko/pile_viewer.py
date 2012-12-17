@@ -2395,6 +2395,8 @@ def MakePileViewerMainClass(base):
                     for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
                                                     want_incomplete=True,
                                                     degap=degap,
+                                                    maxgap=gap_lap_tolerance,
+                                                    maxlap=gap_lap_tolerance,
                                                     keep_current_files_open=True, 
                                                     group_selector=group_selector,
                                                     trace_selector=trace_selectorx,

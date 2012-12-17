@@ -956,10 +956,10 @@ class Pile(TracesGroup):
                 
         return mtime
 
-    def _process_chopped(self, chopped, degap, want_incomplete, wmax, wmin, tpad):
+    def _process_chopped(self, chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin, tpad):
         chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
         if degap:
-            chopped = degapper(chopped)
+            chopped = degapper(chopped, maxgap=maxgap, maxlap=maxlap)
             
         if not want_incomplete:
             wlen = (wmax+tpad)-(wmin-tpad)
@@ -985,7 +985,7 @@ class Pile(TracesGroup):
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
-                      want_incomplete=True, degap=True, keep_current_files_open=False, accessor_id=None, snap=(round,round), include_last=False, load_data=True):
+                      want_incomplete=True, degap=True, maxgap=5, maxlap=None, keep_current_files_open=False, accessor_id=None, snap=(round,round), include_last=False, load_data=True):
         
         if tmin is None:
             tmin = self.tmin+tpad
@@ -1016,7 +1016,7 @@ class Pile(TracesGroup):
                 
             open_files.update(used_files)
             
-            processed = self._process_chopped(chopped, degap, want_incomplete, wmax, wmin, tpad)
+            processed = self._process_chopped(chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin, tpad)
             yield processed
                         
             unused_files = open_files - used_files
