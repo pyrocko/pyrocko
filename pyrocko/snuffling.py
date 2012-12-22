@@ -21,7 +21,16 @@ def _str_traceback():
 
 class Param:
     '''Definition of an adjustable parameter for the snuffling. The snuffling
-    may display controls for user input for such parameters.'''
+    may display controls for user input for such parameters.
+    
+    :param name:            labels the parameter within snuffler
+    :param ident:           identifier of the parameter
+    :param default:         default value 
+    :param minimum:         minimum value for that parameter
+    :param maximum:         maximum value for that parameter
+    :param low_is_none:     (optional) 
+    :param high_is_none:    (optional)
+    :param low_is_zero:     (optional)'''
     
     def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
         self.name = name
@@ -36,7 +45,11 @@ class Param:
 
 class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
-    checkbox for such a switch.'''
+    checkbox for such a switch.
+    
+    :param name:    labels the switch within snuffler
+    :param ident:   identifier of the parameter
+    :param default: default value '''
 
     def __init__(self, name, ident, default):
         self.name = name
@@ -45,7 +58,13 @@ class Switch:
 
 class Choice:
     '''Definition of a choice for the snuffling. The snuffling may display a
-    menu for such a choice.'''
+    menu for such a choice.
+    
+    :param name:    name labels the menu within snuffler
+    :param ident:   identifier of the parameter
+    :param default: default value 
+    :param choices: list of other options
+    '''
 
     def __init__(self, name, ident, default, choices):
         self.name = name
