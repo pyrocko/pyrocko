@@ -120,6 +120,8 @@ class Snuffling:
         self._no_viewer_pile = None 
         self._cli_params = {}
 
+        self._help_button_from_doc = False
+
     def setup(self):
         '''Setup the snuffling.
         
@@ -334,6 +336,13 @@ class Snuffling:
             self.delete_gui()
             self.setup_gui()
    
+    def help_button_from_doc(self, bool):
+        ''' If True: add a help button to the snuffling's panel.
+        '''
+        self._help_button_from_doc = bool
+        if self._help_button_from_doc:
+            self.add_trigger('Help on Snuffling: %s'%self._name, self.show_doc)
+
     def add_trigger(self, name, method):
         '''Add a button to the snufflings' panel. 
 
@@ -890,6 +899,16 @@ class Snuffling:
         if self._tempdir is not None:
             import shutil
             shutil.rmtree(self._tempdir)
+
+    def show_doc(self):
+        '''Creates a :py:class:`QLabel` which contains the documentation as 
+        given in the snufflings' __doc__ string.
+        '''
+        doc = QLabel(self.__doc__)
+        for h in [ doc ]:
+            h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
+            h.setWordWrap(True)
+        self._viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
 
 class SnufflingError(Exception):
     pass
