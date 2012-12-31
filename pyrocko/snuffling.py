@@ -63,7 +63,7 @@ class Choice:
     :param name:    name labels the menu within snuffler
     :param ident:   identifier of the parameter
     :param default: default value 
-    :param choices: list of other options
+    :param choices: tuple of other options
     '''
 
     def __init__(self, name, ident, default, choices):
@@ -906,7 +906,7 @@ class Snuffling:
         '''
         doc = QLabel(self.__doc__)
         for h in [ doc ]:
-            h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
+            h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
         self._viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
 
