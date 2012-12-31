@@ -1,4 +1,4 @@
-import serial, re, string, sys, struct, collections, time, logging
+import re, string, sys, struct, collections, time, logging
 import numpy as num
 from pyrocko import trace, util
 from scipy import stats
@@ -135,6 +135,8 @@ def unpack_values(ncomps, bytes_per_sample, data):
     else:
         raise
 
+global T0
+T0 = None
 
 class TimeEstimator:
     def __init__(self, nlookback):
@@ -145,18 +147,24 @@ class TimeEstimator:
         self._deltat = None
         
     def insert(self, deltat, nadd, t):
+        global T0
+
+        if T0 is None:
+            T0 = time.time()
+
         if self._deltat is None or self._deltat != deltat:
             self.reset()
             self._deltat = deltat
 
         if self._t0 is None:
+            print 't0 set'
             self._t0 = int(round(t/self._deltat))*self._deltat
         
 
         self._queue.append((self._n, t))
         self._n += nadd
         while len(self._queue) > self._nlookback:
-            self._queue.pop()
+            self._queue.pop(0)
 
         ns, ts = num.array(self._queue, dtype=num.float).T
 
@@ -164,15 +172,19 @@ class TimeEstimator:
 
         terrors = ts - tpredicts
         mterror = num.median(terrors)
+        print mterror
+
         if num.abs(mterror) > 0.7*deltat and len(self._queue) == self._nlookback:
+            logger.warn('Setting new system origin time (only used if no GPS time is available).')
             deltat, t0, r, tt, stderr = stats.linregress(ns, ts)
             self._queue[:] = []
-            self._t0 = t0
+            self._t0 = int(round(t0/self._deltat))*self._deltat
         
         return self._t0 + (self._n-nadd)*self._deltat
             
     def reset(self):
         self._queue[:] = []
+        self._n = 0
         self._t0 = None
 
     def __len__(self):
@@ -186,6 +198,8 @@ class Record:
         self.dat = dat
         self.sum = sum
         self.values = values
+
+        print mde
 
     def get_time(self):
         return self.approx_time
@@ -202,12 +216,18 @@ class Record:
 class NotAquiring(Exception):
     pass
 
-class ReadTimeout(Exception):
+class ReadError(Exception):
+    pass
+    
+class ReadTimeout(ReadError):
+    pass
+
+class ReadUnexpected(ReadError):
     pass
 
 class Reader:
 
-    def __init__(self, port=0, timeout=3., baudrate=115200, lookback=10):
+    def __init__(self, port=0, timeout=2., baudrate=115200, lookback=10):
         if isinstance(port, int):
             self._port = portnames()[port]
         else:
@@ -231,6 +251,7 @@ class Reader:
     def start(self):
         self.stop()
 
+        import serial
         self._serial = serial.Serial(port=self._port, baudrate=self._baudrate, timeout=self._timeout)
 
         self._sync_on_mod()
@@ -252,16 +273,23 @@ class Reader:
             return
 
         nread = minlen-len(self._buffer)
-        data = self._serial.read(nread)
+        try:
+            data = self._serial.read(nread)
+        except:
+            raise ReadError()
+
         if len(data) != nread:
             self.stop()
             raise ReadTimeout()
         self._buffer += data
 
-    def _read_block(self):
+    def _read_block(self, need_block_type=None):
         self.assert_running()
         self._fill_buffer(8)
         block_type, block_len = struct.unpack('<4sI', self._buffer[:8])
+        if need_block_type is not None and block_type != need_block_type:
+            raise ReadUnexpected()
+
         block_len += 8
         self._fill_buffer(block_len)
         block_data = self._buffer
@@ -270,11 +298,11 @@ class Reader:
 
     def read_record(self):
         self._irecord += 1
-        mod, _ = self._read_block()
+        mod, _ = self._read_block('MOD\0')
         measured_system_time = time.time()
-        mde, _ = self._read_block()
-        dat, values_data = self._read_block()
-        sum, _ = self._read_block()
+        mde, _ = self._read_block('MDE\0')
+        dat, values_data = self._read_block('DAT\0')
+        sum, _ = self._read_block('SUM\0')
         values = unpack_values(mod.ncomps, mod.bytes_per_sample, values_data)
         deltat = 1./mod.sample_rate * mod.ncomps
         approx_time = self._time_estimator.insert(deltat, values.size/mod.ncomps, measured_system_time)
@@ -288,6 +316,7 @@ class Reader:
         self._serial.close()
         self._serial = None
         self._buffer = ''
+        self._time_estimator.reset()
 
 
 class EDLHamster:
@@ -301,15 +330,9 @@ class EDLHamster:
         self.reader.stop()
 
     def process(self):
-        try:
-            rec = self.reader.read_record()
-            for tr in rec.get_traces():
-                self.got_trace(tr)
-
-            return True
-
-        except ReadTimeout:
-            return False
+        rec = self.reader.read_record()
+        for tr in rec.get_traces():
+            self.got_trace(tr)
 
     def got_trace(self, tr):
         logger.info('Got trace from EDL: %s' % tr)

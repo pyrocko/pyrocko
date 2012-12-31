@@ -1628,24 +1628,25 @@ def MakePileViewerMainClass(base):
             elif keytext == 'g':
                 self.go_to_selection()
                
-            elif key_event.key() == Qt.Key_Left:
-                a,b = self.time_projection.ur
-                c,d = self.time_projection.xr
-                for marker in self.selected_markers():
-                    if not isinstance(marker,EventMarker):
-                        marker.tmin -= (d-c)/b
-                        marker.tmax -= (d-c)/b
-            
-            elif key_event.key() == Qt.Key_Right:
-                a,b = self.time_projection.ur
-                c,d = self.time_projection.xr
-                for marker in self.selected_markers():
-                    if not isinstance(marker,EventMarker):
-                        marker.tmin += (d-c)/b
-                        marker.tmax += (d-c)/b
+            elif key_event.key() in (Qt.Key_Left, Qt.Key_Right):
+                dir = 1
+                amount = 1
+                if key_event.key() == Qt.Key_Left:
+                    dir = -1
+                if key_event.modifiers() & Qt.ShiftModifier:
+                    amount = 10
+                self.nudge_selected_markers(dir*amount)
 
             self.update()
             self.update_status()
+
+        def nudge_selected_markers(self, npixels):
+            a,b = self.time_projection.ur
+            c,d = self.time_projection.xr
+            for marker in self.selected_markers():
+                if not isinstance(marker,EventMarker):
+                    marker.tmin += npixels * (d-c)/b
+                    marker.tmax += npixels * (d-c)/b
   
         def about(self):
             fn = pyrocko.util.data_file('snuffler.png')
@@ -2393,6 +2394,8 @@ def MakePileViewerMainClass(base):
                     for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
                                                     want_incomplete=True,
                                                     degap=degap,
+                                                    maxgap=gap_lap_tolerance,
+                                                    maxlap=gap_lap_tolerance,
                                                     keep_current_files_open=True, 
                                                     group_selector=group_selector,
                                                     trace_selector=trace_selectorx,
@@ -2448,7 +2451,8 @@ def MakePileViewerMainClass(base):
                     for a in processed_traces:
                         for b in processed_traces: 
                             if (a.network == b.network and a.station == b.station and a.location == b.location and
-                                a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
+                                ((a.channel.lower().endswith('n') and b.channel.lower().endswith('e')) or
+                                (a.channel.endswith('1') and b.channel.endswith('2'))) and
                                 abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
                                 len(a.get_ydata()) == len(b.get_ydata())):
                                 
@@ -2469,139 +2473,6 @@ def MakePileViewerMainClass(base):
                     continue
                     
                 if ctrace.data_len() < 2: continue
-                
-                chopped_traces.append(ctrace)
-            
-            self.timer_cutout.stop()
-            return chopped_traces
-
-        def prepare_cutout(self, tmin, tmax, trace_selector=None, degap=True):
-            
-            self.timer_cutout.start()
-            
-            tmin_ = tmin
-            tmax_ = tmax
-            
-            ndecimate, tpad, tsee = self.see_data_params()
-            show_traces = (tmax_ - tmin_) < tsee
-            
-            # fetch more than needed?
-            if self.menuitem_liberal_fetch.isChecked():
-                tlen = pyrocko.trace.nextpow2((tmax-tmin)*1.5)
-                tmin = math.floor(tmin/tlen) * tlen
-                tmax = math.ceil(tmax/tlen) * tlen
-                     
-            fft_filtering = self.menuitem_fft_filtering.isChecked()
-            lphp = self.menuitem_lphp.isChecked()
-            ads = self.menuitem_allowdownsampling.isChecked()
-            
-            # state vector to decide if cached traces can be used
-            vec = (tmin, tmax, trace_selector, degap, self.lowpass, self.highpass, fft_filtering, lphp,
-                show_traces, self.rotate, self.shown_tracks_range,
-                ads, self.pile.get_update_count())
-                
-            if (self.old_vec and 
-                self.old_vec[0] <= vec[0] and vec[1] <= self.old_vec[1] and
-                vec[2:] == self.old_vec[2:] and not (self.reloaded or self.menuitem_watch.isChecked()) and
-                self.old_processed_traces is not None):
-
-                logger.debug('Using cached traces')
-                processed_traces = self.old_processed_traces
-                
-            else:
-                self.old_vec = vec
-                
-                tpad = min(tmax-tmin, tpad)
-                tpad = max(self.content_deltat_range()[0]*5., tpad)
-                    
-                processed_traces = []
-                
-                if show_traces:
-                    
-                    for traces in self.pile.chopper( tmin=tmin, tmax=tmax, tpad=tpad,
-                                                    want_incomplete=True,
-                                                    degap=degap,
-                                                    keep_current_files_open=True, 
-                                                    trace_selector=trace_selector,
-                                                    accessor_id=id(self)):
-
-                        traces = self.pre_process_hooks(traces)
-
-                        for trace in traces:
-                            
-                            if not (trace.meta and 'tabu' in trace.meta and trace.meta['tabu']):
-                            
-                                if fft_filtering:
-                                    if self.lowpass is not None or self.highpass is not None:
-                                        high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
-                                        
-                                        if self.lowpass is not None:
-                                            low = self.lowpass
-                                        if self.highpass is not None:
-                                            high = self.highpass
-                                            
-                                        trace.bandpass_fft(high, low)
-                                    
-                                else:
-                                    if self.lowpass is not None:
-                                        deltat_target = 1./self.lowpass * 0.1
-                                        ndecimate = max(1, int(math.floor(deltat_target / trace.deltat)))
-                                        ndecimate2 = int(math.log(ndecimate,2))
-                                        
-                                    else:
-                                        ndecimate = 1
-                                        ndecimate2 = 0
-                                    
-                                    if ndecimate2 > 0 and self.menuitem_allowdownsampling.isChecked():
-                                        for i in range(ndecimate2):
-                                            trace.downsample(2)
-                                    
-                                    
-                                    if not lphp and (self.lowpass is not None and self.highpass is not None and
-                                        self.lowpass < 0.5/trace.deltat and
-                                        self.highpass < 0.5/trace.deltat and
-                                        self.highpass < self.lowpass):
-                                        trace.bandpass(2,self.highpass, self.lowpass)
-                                    else:
-                                        if self.lowpass is not None:
-                                            if self.lowpass < 0.5/trace.deltat:
-                                                trace.lowpass(4,self.lowpass)
-                                        
-                                        if self.highpass is not None:
-                                            if self.lowpass is None or self.highpass < self.lowpass:
-                                                if self.highpass < 0.5/trace.deltat:
-                                                    trace.highpass(4,self.highpass)
-                            
-                            processed_traces.append(trace)
-                    
-                if self.rotate != 0.0:
-                    phi = self.rotate/180.*math.pi
-                    cphi = math.cos(phi)
-                    sphi = math.sin(phi)
-                    for a in processed_traces:
-                        for b in processed_traces: 
-                            if (a.network == b.network and a.station == b.station and a.location == b.location and
-                                a.channel.lower().endswith('n') and b.channel.lower().endswith('e') and
-                                abs(a.deltat-b.deltat) < a.deltat*0.001 and abs(a.tmin-b.tmin) < a.deltat*0.01 and
-                                len(a.get_ydata()) == len(b.get_ydata())):
-                                
-                                aydata = a.get_ydata()*cphi+b.get_ydata()*sphi
-                                bydata =-a.get_ydata()*sphi+b.get_ydata()*cphi
-                                a.set_ydata(aydata)
-                                b.set_ydata(bydata)
-
-                processed_traces = self.post_process_hooks(processed_traces)
-                                
-                self.old_processed_traces = processed_traces
-            
-            chopped_traces = []
-            for trace in processed_traces:
-                try:
-                    ctrace = trace.chop(tmin_-trace.deltat*4.,tmax_+trace.deltat*4., inplace=False)
-                except pyrocko.trace.NoData:
-                    continue
-                    
-                if len(ctrace.get_ydata()) < 2: continue
                 
                 chopped_traces.append(ctrace)
             

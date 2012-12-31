@@ -41,7 +41,7 @@ class AcquisitionThread(QThread):
                 self.acquisition_stop()
                 break
             
-            except (pyrocko.serial_hamster.SerialHamsterError, pyrocko.slink.SlowSlinkError), e:
+            except (pyrocko.edl.ReadError, pyrocko.serial_hamster.SerialHamsterError, pyrocko.slink.SlowSlinkError), e:
                 logger.error(str(e))
                 logger.error('Acquistion terminated, restart in 5 s')
                 self.acquisition_stop()

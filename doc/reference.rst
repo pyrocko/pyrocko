@@ -21,4 +21,5 @@ Library Reference
    rdseed
    snuffling
    pile_viewer
+   gui_util
    slink
