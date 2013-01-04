@@ -725,7 +725,7 @@ class Snuffling:
         
         self._previous_output_filename = fn
         return str(fn)
-    
+
     def input_filename(self, caption='Open File', dir='', filter='', selected_filter=None):
         
         '''Query user for an input filename.
@@ -750,6 +750,21 @@ class Snuffling:
         self._previous_input_filename = fn
         return str(fn)
     
+    def input_dialog(self, caption='', request=''):
+        
+        '''Query user for a text input.
+        
+        This is currently just a wrapper to :py:func:`QInputDialog.getText`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the dialog.
+        '''
+            
+        inp, ok = QInputDialog.getText(self.get_viewer(), 'Input', caption)
+            
+        if not ok:
+            raise UserCancelled()
+        
+        return inp
+
     def modified_snuffling_panel(self, value, iparam):
         '''Called when the user has played with an adjustable parameter.
         
