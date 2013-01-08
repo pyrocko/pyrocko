@@ -116,6 +116,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             'yaff': yaff,
             'sac': sac,
             'mseed': mseed,
+            'seisan': seisan_waveform,
     }
 
     add_args = {
