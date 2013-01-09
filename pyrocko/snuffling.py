@@ -120,7 +120,7 @@ class Snuffling:
         self._no_viewer_pile = None 
         self._cli_params = {}
 
-        self._help_button_from_doc = False
+        #self._help_button_from_doc = False
 
     def setup(self):
         '''Setup the snuffling.
@@ -156,6 +156,7 @@ class Snuffling:
             self._panel = self.make_panel(self._panel_parent)
             if self._panel:
                 self._panel_parent.add_panel(self.get_name(), self._panel, reloaded)
+                self.help_button_from_doc()
        
         if self._menu_parent is not None:
             self._menuitem = self.make_menuitem(self._menu_parent)
@@ -336,12 +337,12 @@ class Snuffling:
             self.delete_gui()
             self.setup_gui()
    
-    def help_button_from_doc(self, bool):
-        ''' If True: add a help button to the snuffling's panel.
+    def help_button_from_doc(self):
+        ''' Add a help button to the snuffling's panel.
         '''
-        self._help_button_from_doc = bool
-        if self._help_button_from_doc:
-            self.add_trigger('Help on Snuffling: %s'%self._name, self.show_doc)
+        print self.__doc__
+        if self.__doc__ is not '':
+            self.add_trigger('Help on Snuffling: %s'%self._name, self.show_doc(self.__doc__)
 
     def add_trigger(self, name, method):
         '''Add a button to the snufflings' panel. 
@@ -915,11 +916,11 @@ class Snuffling:
             import shutil
             shutil.rmtree(self._tempdir)
 
-    def show_doc(self):
+    def show_doc(self, doc):
         '''Creates a :py:class:`QLabel` which contains the documentation as 
         given in the snufflings' __doc__ string.
         '''
-        doc = QLabel(self.__doc__)
+        doc = QLabel(doc)
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
