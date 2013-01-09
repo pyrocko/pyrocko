@@ -876,7 +876,10 @@ class EventMarker(Marker):
         if nam is not None:
             t.append(nam)
 
-        return ' '.join(t)
+        s = ' '.join(t)
+        if not s:
+            s = '(Event)'
+        return s
 
     def draw(self, p, time_projection, y_projection):
       
