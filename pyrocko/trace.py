@@ -493,6 +493,58 @@ class Trace(object):
         self.deltat = deltat2
         self.set_ydata(data2)
 
+    def resample_simple(self, deltat):
+        tyear = 3600*24*365.
+
+        if abs(self.deltat - deltat) * tyear/deltat < deltat:
+            logger.warn('resample_simple: less than one sample would have to be inserted/deleted per year. Doing nothing.')
+            return
+
+        ninterval = int(round(deltat / (self.deltat - deltat)))
+        delete = False
+        if ninterval < 0:
+            ninterval = - ninterval
+            delete = True
+        
+        tyearbegin = util.year_start(self.tmin)
+        
+        nmin = int(round((self.tmin - tyearbegin)/deltat))
+
+        n = (nmin / ninterval) * ninterval
+        indices = []
+        while True:
+            i = n - nmin
+            if 0 <= i < len(self.ydata):
+                indices.append(i)
+            
+            if i >= len(self.ydata):
+                break
+
+            n += ninterval
+        
+        if indices:
+            data_split = num.split(self.ydata, indices)
+            data = []
+            for l, h in zip(data_split[:-1], data_split[1:]):
+                if delete:
+                    l = l[:-1]
+                    
+                data.append(l)
+                if not delete:
+                    if l.size == 0:
+                        v = h[0]
+                    else:
+                        v = 0.5*(l[-1] + h[0])
+                    data.append(num.array([v], dtype=l.dtype))
+
+            data.append(data_split[-1])
+
+            ydata_new = num.concatenate( data )
+
+            self.tmin = tyearbegin + nmin * deltat
+            self.deltat = deltat
+            self.set_ydata(ydata_new)
+
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         '''Check if a given frequency is above the Nyquist frequency of the trace.
 
