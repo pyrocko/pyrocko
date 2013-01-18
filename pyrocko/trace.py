@@ -496,11 +496,18 @@ class Trace(object):
     def resample_simple(self, deltat):
         tyear = 3600*24*365.
 
+        if deltat == self.deltat:
+            return
+
         if abs(self.deltat - deltat) * tyear/deltat < deltat:
             logger.warn('resample_simple: less than one sample would have to be inserted/deleted per year. Doing nothing.')
             return
 
         ninterval = int(round(deltat / (self.deltat - deltat)))
+        if abs(ninterval) < 20:
+            logger.error('resample_simple: sample insertion/deletion interval less than 20. results would be erroneous.')
+            raise ResamplingFailed()
+
         delete = False
         if ninterval < 0:
             ninterval = - ninterval
@@ -510,19 +517,10 @@ class Trace(object):
         
         nmin = int(round((self.tmin - tyearbegin)/deltat))
 
-        n = (nmin / ninterval) * ninterval
-        indices = []
-        while True:
-            i = n - nmin
-            if 0 <= i < len(self.ydata):
-                indices.append(i)
-            
-            if i >= len(self.ydata):
-                break
-
-            n += ninterval
-        
-        if indices:
+        ibegin = (((nmin-1)/ninterval)+1) * ninterval - nmin
+        nindices = (len(self.ydata) - ibegin - 1) / ninterval + 1
+        if nindices > 0:
+            indices = ibegin + num.arange(nindices) * ninterval
             data_split = num.split(self.ydata, indices)
             data = []
             for l, h in zip(data_split[:-1], data_split[1:]):
@@ -1081,6 +1079,9 @@ class AboveNyquist(Exception):
 
 class TraceTooShort(Exception):
     '''This exception is raised by some :py:class:`Trace` operations when the trace is too short.'''
+    pass
+
+class ResamplingFailed(Exception):
     pass
 
 def minmax(traces, key=None, mode='minmax'):
