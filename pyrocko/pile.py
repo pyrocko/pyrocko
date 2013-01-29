@@ -539,12 +539,18 @@ class MemTracesFile(TracesGroup):
     
     def __init__(self, parent, traces):
         TracesGroup.__init__(self, parent)
-        self.traces = traces
-        for trace in self.traces:
-            trace.file = self
-        self.add(self.traces)
+        self.add(traces)
         self.mtime = time.time()
         
+    def add(self, traces):
+        if isinstance( traces, trace.Trace):
+            traces = [ traces ]
+
+        for tr in traces:
+            tr.file = self
+
+        TracesGroup.add(self, traces)
+
     def load_headers(self, mtime=None):
         pass
         
@@ -560,42 +566,16 @@ class MemTracesFile(TracesGroup):
     def reload_if_modified(self):
         return False
             
-    def get_newest_mtime(self, tmin, tmax, trace_selector=None):
-        mtime = None
-        for tr in self.traces:
-            if not trace_selector or trace_selector(tr):
-                mtime = max(mtime, self.mtime)
-                
-        return mtime
-        
-    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round), include_last=False, load_data=True):
-        chopped = []
-        used = False
-        needed = [ tr for tr in self.traces if not trace_selector or trace_selector(tr) ]
-                
-        if needed:
-            if load_data:
-                used = True
-
-            for tr in self.traces:
-                if not trace_selector or trace_selector(tr):
-                    try:
-                        chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap, include_last=include_last))
-                    except trace.NoData:
-                        pass
-            
-        return chopped, used
-    
     def iter_traces(self):
-        for trace in self.traces:
+        for trace in self.by_tmin:
             yield trace
     
     def get_traces(self):
-        return self.traces
+        return list(self.by_tmin)
     
     def gather_keys(self, gather, selector=None):
         keys = set()
-        for trace in self.traces:
+        for trace in self.by_tmin:
             if selector is None or selector(trace):
                 keys.add(gather(trace))
             
@@ -605,7 +585,7 @@ class MemTracesFile(TracesGroup):
         
         s = 'MemTracesFile\n'
         s += 'file mtime: %s\n' % util.time_to_str(self.mtime)
-        s += 'number of traces: %i\n' % len(self.traces)
+        s += 'number of traces: %i\n' % len(self.by_tmin)
         s += 'timerange: %s - %s\n' % (util.time_to_str(self.tmin), util.time_to_str(self.tmax))
         s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
         s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
@@ -700,40 +680,13 @@ class TracesFile(TracesGroup):
             
         return False
        
-    def get_newest_mtime(self, tmin, tmax, trace_selector=None):
-        mtime = None
-        for tr in self.traces:
-            if tr.overlaps(tmin,tmax) and (not trace_selector or trace_selector(tr)):
-                mtime = max(mtime, tr.mtime)
-                
-        return mtime
-
-    def chop(self,tmin,tmax,trace_selector=None, snap=(round,round), include_last=False, load_data=True):
-        chopped = []
-        used = False
-        needed = self.relevant(tmin,tmax,trace_selector=trace_selector)
-                
-        if needed:
-            if load_data and self.load_data():
-                needed = self.relevant(tmin,tmax, trace_selector=trace_selector)
-
-            used = True
-            for tr in needed:
-                if not trace_selector or trace_selector(tr):
-                    try:
-                        chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap, include_last=include_last))
-                    except trace.NoData:
-                        pass
-            
-        return chopped, used
-        
     def iter_traces(self):
         for trace in self.traces:
             yield trace
     
     def gather_keys(self, gather, selector=None):
         keys = set()
-        for trace in self.traces:
+        for trace in self.by_tmin:
             if selector is None or selector(trace):
                 keys.add(gather(trace))
             
@@ -778,26 +731,6 @@ class SubPile(TracesGroup):
             self.files.remove(file)
             file.set_parent(None)
         self.remove(files)
-    
-    def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
-        mtime = None
-        for file in self.files:
-            if file.is_relevant(tmin, tmax, group_selector):
-                mtime = max(mtime, file.get_newest_mtime(tmin, tmax, trace_selector))
-                
-        return mtime
-    
-    def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round), include_last=False, load_data=True):
-        used_files = set()
-        chopped = []
-        for file in self.files:
-            if file.is_relevant(tmin, tmax, group_selector):
-                chopped_, used = file.chop(tmin, tmax, trace_selector, snap, include_last, load_data)
-                chopped.extend( chopped_ )
-                if used:
-                    used_files.add(file)
-                
-        return chopped, used_files
         
     def gather_keys(self, gather, selector=None):
         keys = set()
@@ -947,14 +880,6 @@ class Pile(TracesGroup):
                 pass
 
         return chopped, used_files
-        
-    def get_newest_mtime(self, tmin, tmax, group_selector=None, trace_selector=None):
-        mtime = None
-        for subpile in self.subpiles.values():
-            if subpile.is_relevant(tmin,tmax, group_selector):
-                mtime = max(mtime, subpile.get_newest_mtime(tmin, tmax, group_selector, trace_selector))
-                
-        return mtime
 
     def _process_chopped(self, chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin, tpad):
         chopped.sort(lambda a,b: cmp(a.full_id, b.full_id))
@@ -1226,7 +1151,7 @@ class Injector(trace.States):
         trbuf = buf.get_traces()[0]
         if self._fixation_length is not None:
             if trbuf.tmax - trbuf.tmin > self._fixation_length:
-                self._fixate(buf)
+                self._fixate(buf, complete=False)
 
     def fixate_all(self):
         for state in self._states.values():
@@ -1237,16 +1162,46 @@ class Injector(trace.States):
     def free(self, buf):
         self._fixate(buf)
 
-    def _fixate(self, buf):
+    def _fixate(self, buf, complete=True):
         trbuf = buf.get_traces()[0]
+        del_state = True
         if self._path:
-            fns = io.save([trbuf], self._path, format=self._format)
+            if self._fixation_length is not None:
+                ttmin = trbuf.tmin
+                ytmin = util.year_start(ttmin)
+                n = int(math.floor((ttmin - ytmin) / self._fixation_length))
+                tmin = ytmin + n*self._fixation_length
+                traces = []
+                t = tmin
+                while t <= trbuf.tmax:
+                    try:
+                        traces.append(trbuf.chop(t, t+self._fixation_length, inplace=False, snap=(math.ceil,math.ceil)))
+                    except trace.NoData:
+                        pass
+                    t += self._fixation_length
+
+                if abs(traces[-1].tmax - (t - trbuf.deltat)) < trbuf.deltat/100. or complete:
+                    self._pile.remove_file(buf)
+
+                else: # reinsert incomplete last part
+                    new_trbuf = traces.pop()
+                    self._pile.remove_file(buf)
+                    buf.remove(trbuf)
+                    buf.add(new_trbuf)
+                    self._pile.add_file(buf)
+                    del_state = False
+                
+            else:
+                traces = [ trbuf ]
+                self._pile.remove_file(buf)
+
+            fns = io.save(traces, self._path, format=self._format)
             
-            self._pile.remove_file(buf)
             if not self._forget_fixed:
                 self._pile.load_files(fns, show_progress=False, fileformat=self._format)
 
-        del self._states[trbuf.nslc_id]
+        if del_state:
+            del self._states[trbuf.nslc_id]
                 
     def __del__(self):
         self.fixate_all()
