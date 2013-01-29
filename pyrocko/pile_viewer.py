@@ -2493,17 +2493,17 @@ def MakePileViewerMainClass(base):
 
             return traces
 
-        def visible_length_change(self, ignore):
+        def visible_length_change(self, ignore=None):
             for menuitem, vlen in self.menuitems_visible_length:
                 if menuitem.isChecked():
                     self.visible_length = vlen
 
-        def scaling_base_change(self, ignore):
+        def scaling_base_change(self, ignore=None):
             for menuitem, scaling_base in self.menuitems_scaling_base:
                 if menuitem.isChecked():
                     self.scaling_base = scaling_base
         
-        def scalingmode_change(self, ignore):
+        def scalingmode_change(self, ignore=None):
             for menuitem, scaling_key in self.menuitems_scaling:
                 if menuitem.isChecked():
                     self.scaling_key = scaling_key
