@@ -431,7 +431,7 @@ class Snuffling:
         
         event = v.get_active_event()
         stations = []
-        for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False):
+        for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False, degap=False):
             for tr in traces:
                 station = v.get_station(v.station_key(tr))
                 stations.append(station)
