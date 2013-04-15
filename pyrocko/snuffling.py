@@ -835,7 +835,7 @@ class Snuffling:
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
-        self._viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
+        self._viewer.show_doc('Help: %s'%self._name, [doc], target='panel')
         
     def live_update_toggled(self, on):
         '''Called when the checkbox for live-updates has been toggled.'''
