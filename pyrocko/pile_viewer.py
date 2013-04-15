@@ -1673,11 +1673,16 @@ def MakePileViewerMainClass(base):
             self.show_doc('Help', [hcheat, hepilog], target='panel')
         
         def toggle_help(self):
-            for widget in self.panel_parent.dockwidgets():
+            widgets = self.panel_parent.dockwidgets() 
+            pP = self.get_panel_parent()
+            for widget in widgets:
                 if 'Help' == widget.windowTitle():
-                    widget.close()
+                    #widget.destroy(True)
+                    pP.removeDockDockWidgetWidget(widget)
                     return
             self.help()
+
+
             
         def show_doc(self, name, labels, target='panel'):
             scroller = QScrollArea()
