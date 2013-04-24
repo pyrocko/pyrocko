@@ -1064,7 +1064,19 @@ def tohex(c):
 def to01(c):
     return c[0]/255., c[1]/255., c[2]/255.
 
-class PyLab(QFrame):
+def beautify_axes(axes):
+    axes.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
+
+    xa = axes.get_xaxis()
+    ya = axes.get_yaxis()
+    for attr in ('labelpad', 'LABELPAD'):
+        if hasattr(xa,attr):
+            setattr(xa, attr, xa.get_label().get_fontsize())
+            setattr(ya, attr, ya.get_label().get_fontsize())
+            break
+
+
+class FigureFrame(QFrame):
 
     def __init__(self, parent=None):
         QFrame.__init__(self, parent)
@@ -1102,25 +1114,20 @@ class PyLab(QFrame):
         
         self.setLayout(layout)
         self.figure = Figure(dpi=100)
-        canvas = FigureCanvas(self.figure)
-        canvas.setParent(self)
-        layout.addWidget(canvas, 0,0)
+        self.canvas = FigureCanvas(self.figure)
+        self.canvas.setParent(self)
+        layout.addWidget(self.canvas, 0,0)
 
     def gca(self):
-        self.axes_subplot = self.figure.add_subplot(111)
-        ax = self.axes_subplot
-        ax.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
-
-        xa = ax.get_xaxis()
-        ya = ax.get_yaxis()
-        for attr in ('labelpad', 'LABELPAD'):
-            if hasattr(xa,attr):
-                setattr(xa, attr, xa.get_label().get_fontsize())
-                setattr(ya, attr, ya.get_label().get_fontsize())
-                break
-
-        return self.axes_subplot
+        axes = self.figure.gca()
+        beautify_axes(axes)
+        return axes
 
     def gcf(self):
         return self.figure
+
+    def draw(self):
+        '''Draw with AGG, then queue for Qt update.'''
+        self.canvas.draw()
+
 

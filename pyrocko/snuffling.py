@@ -12,7 +12,7 @@ from PyQt4.QtGui import *
 
 import pile
 
-from gui_util import ValControl, LinValControl, PyLab
+from gui_util import ValControl, LinValControl, FigureFrame
 
 logger = logging.getLogger('pyrocko.snuffling')
 
@@ -272,12 +272,23 @@ class Snuffling:
             self._iplot += 1
             name = 'Plot %i (%s)' % (self._iplot, self.get_name())
 
-        pylab = PyLab()
-        self._panel_parent.add_tab(name, pylab)
+        fframe = FigureFrame()
+        self._panel_parent.add_tab(name, fframe)
         if get == 'axes':
-            return pylab.gca()
+            return fframe.gca()
         elif get == 'figure':
-            return pylab.gcf()
+            return fframe.gcf()
+        elif get == 'figure_frame':
+            return fframe
+
+    def figure(self, name=None):
+        return self.pylab(name=name, get='figure')
+
+    def axes(self, name=None):
+        return self.pylab(name=name, get='axes')
+
+    def figure_frame(self, name=None):
+        return self.pylab(name=name, get='figure_frame')
 
     def tempdir(self):
         if self._tempdir is None:
