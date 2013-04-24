@@ -21,7 +21,16 @@ def _str_traceback():
 
 class Param:
     '''Definition of an adjustable parameter for the snuffling. The snuffling
-    may display controls for user input for such parameters.'''
+    may display controls for user input for such parameters.
+    
+    :param name:            labels the parameter within snuffler
+    :param ident:           identifier of the parameter
+    :param default:         default value 
+    :param minimum:         minimum value for that parameter
+    :param maximum:         maximum value for that parameter
+    :param low_is_none:     (optional) 
+    :param high_is_none:    (optional)
+    :param low_is_zero:     (optional)'''
     
     def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
         self.name = name
@@ -36,7 +45,11 @@ class Param:
 
 class Switch:
     '''Definition of a switch for the snuffling. The snuffling may display a
-    checkbox for such a switch.'''
+    checkbox for such a switch.
+    
+    :param name:    labels the switch within snuffler
+    :param ident:   identifier of the parameter
+    :param default: default value '''
 
     def __init__(self, name, ident, default):
         self.name = name
@@ -45,7 +58,13 @@ class Switch:
 
 class Choice:
     '''Definition of a choice for the snuffling. The snuffling may display a
-    menu for such a choice.'''
+    menu for such a choice.
+    
+    :param name:    name labels the menu within snuffler
+    :param ident:   identifier of the parameter
+    :param default: default value 
+    :param choices: tuple of other options
+    '''
 
     def __init__(self, name, ident, default, choices):
         self.name = name
@@ -100,6 +119,7 @@ class Snuffling:
 
         self._no_viewer_pile = None 
         self._cli_params = {}
+
 
     def setup(self):
         '''Setup the snuffling.
@@ -327,6 +347,12 @@ class Snuffling:
             self.setup_gui()
    
     def add_trigger(self, name, method):
+        '''Add a button to the snufflings' panel. 
+
+        :param name:    string that labels the button
+        :param method:  method associated with the button
+        '''
+
         self._triggers.append((name, method))
         
         if self._panel is not None:
@@ -638,6 +664,12 @@ class Snuffling:
             butlayout.addWidget( call_button )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
 
+            if self.__doc__ is not None: 
+                help_button = QPushButton('Help')
+                butlayout.addWidget( help_button )
+                self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
+
+
             for name, method in self._triggers:
                 but = QPushButton(name)
                 def call_and_update(method):
@@ -702,7 +734,7 @@ class Snuffling:
         
         self._previous_output_filename = fn
         return str(fn)
-    
+
     def input_filename(self, caption='Open File', dir='', filter='', selected_filter=None):
         
         '''Query user for an input filename.
@@ -727,6 +759,21 @@ class Snuffling:
         self._previous_input_filename = fn
         return str(fn)
     
+    def input_dialog(self, caption='', request=''):
+        
+        '''Query user for a text input.
+        
+        This is currently just a wrapper to :py:func:`QInputDialog.getText`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the dialog.
+        '''
+            
+        inp, ok = QInputDialog.getText(self.get_viewer(), 'Input', caption)
+            
+        if not ok:
+            raise UserCancelled()
+        
+        return inp
+
     def modified_snuffling_panel(self, value, iparam):
         '''Called when the user has played with an adjustable parameter.
         
@@ -790,6 +837,16 @@ class Snuffling:
         widget.'''
         self.cleanup()
         self.get_viewer().update()
+
+    def help_button_triggered(self):
+        '''Creates a :py:class:`QLabel` which contains the documentation as 
+        given in the snufflings' __doc__ string.
+        '''
+        doc = QLabel(self.__doc__)
+        for h in [ doc ]:
+            h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
+            h.setWordWrap(True)
+        self._viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
         
     def live_update_toggled(self, on):
         '''Called when the checkbox for live-updates has been toggled.'''
@@ -876,6 +933,7 @@ class Snuffling:
         if self._tempdir is not None:
             import shutil
             shutil.rmtree(self._tempdir)
+
 
 class SnufflingError(Exception):
     pass

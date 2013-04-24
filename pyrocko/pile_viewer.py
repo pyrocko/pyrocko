@@ -1483,8 +1483,8 @@ def MakePileViewerMainClass(base):
             keytext = str(key_event.text())
 
             if keytext == '?':
-                self.toggle_help()
-                
+                self.help()
+
             elif keytext == ' ':
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
@@ -1669,16 +1669,9 @@ def MakePileViewerMainClass(base):
             for h in [ hcheat, hepilog ]:
                 h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
                 h.setWordWrap(True)
-            
+
             self.show_doc('Help', [hcheat, hepilog], target='panel')
-        
-        def toggle_help(self):
-            for widget in self.panel_parent.dockwidgets():
-                if 'Help' == widget.windowTitle():
-                    widget.close()
-                    return
-            self.help()
-            
+
         def show_doc(self, name, labels, target='panel'):
             scroller = QScrollArea()
             frame = QFrame(scroller)
