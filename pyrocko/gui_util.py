@@ -1088,22 +1088,27 @@ class FigureFrame(QFrame):
         font = QFont()
         font.setBold(True)
         fontsize = font.pointSize()
-
+        
         import matplotlib
         matplotlib.rcdefaults()
-        matplotlib.rc('axes', linewidth=1)
-        matplotlib.rc('xtick', direction='out')
-        matplotlib.rc('ytick', direction='out')
+        matplotlib.rc('xtick', direction='out', labelsize=fontsize)
+        matplotlib.rc('ytick', direction='out', labelsize=fontsize)
         matplotlib.rc('xtick.major', size=8)
+        matplotlib.rc('xtick.minor', size=4)
         matplotlib.rc('ytick.major', size=8)
+        matplotlib.rc('ytick.minor', size=4)
         #matplotlib.rc('figure', facecolor=tohex(bgrgb), edgecolor=tohex(fgcolor))
         matplotlib.rc('figure', facecolor='white', edgecolor=tohex(fgcolor))
-        matplotlib.rc('axes', facecolor='white', edgecolor=tohex(fgcolor), labelcolor=tohex(fgcolor))
-        matplotlib.rc('font', family='sans-serif', weight='bold', size=fontsize)
+        matplotlib.rc('font', family='sans-serif', weight='bold', size=fontsize, **{ 'sans-serif': [font.family()] })
         matplotlib.rc('text', color=tohex(fgcolor))
         matplotlib.rc('xtick', color=tohex(fgcolor))
         matplotlib.rc('ytick', color=tohex(fgcolor))
         matplotlib.rc('figure.subplot', bottom=0.15)
+
+        matplotlib.rc('axes', linewidth=0.5)
+        matplotlib.rc('axes', facecolor='white', edgecolor=tohex(fgcolor), labelcolor=tohex(fgcolor))
+        matplotlib.rc('axes', color_cycle=[ to01(x) for x in pyrocko.plot.graph_colors ])
+        matplotlib.rc('axes', labelweight='bold', labelsize=fontsize)
 
         from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
         from matplotlib.figure import Figure
@@ -1113,7 +1118,7 @@ class FigureFrame(QFrame):
         layout.setSpacing(0)
         
         self.setLayout(layout)
-        self.figure = Figure(dpi=100)
+        self.figure = Figure(dpi=dpi)
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setParent(self)
         layout.addWidget(self.canvas, 0,0)
