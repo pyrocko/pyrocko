@@ -1105,9 +1105,13 @@ class FigureFrame(QFrame):
         matplotlib.rc('ytick', color=tohex(fgcolor))
         matplotlib.rc('figure.subplot', bottom=0.15)
 
-        matplotlib.rc('axes', linewidth=0.5)
+        matplotlib.rc('axes', linewidth=0.5, unicode_minus=False)
         matplotlib.rc('axes', facecolor='white', edgecolor=tohex(fgcolor), labelcolor=tohex(fgcolor))
-        matplotlib.rc('axes', color_cycle=[ to01(x) for x in pyrocko.plot.graph_colors ])
+        try:
+            matplotlib.rc('axes', color_cycle=[ to01(x) for x in pyrocko.plot.graph_colors ])
+        except KeyError:
+            pass
+
         matplotlib.rc('axes', labelweight='bold', labelsize=fontsize)
 
         from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
