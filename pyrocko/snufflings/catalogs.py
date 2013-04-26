@@ -11,7 +11,8 @@ class CatalogSearch(Snuffling):
         self.catalogs = { 'Geofon': catalog.Geofon(),
                         'USGS/NEIC PDE': catalog.USGS('PDE'), 
                         'USGS/NEIC PDE-Q': catalog.USGS('PDE-Q'),
-                        'Global-CMT': catalog.GlobalCMT(), }
+                        'Global-CMT': catalog.GlobalCMT(),
+                        'Kinherd': catalog.Kinherd(), }
 
         catkeys = sorted(self.catalogs.keys())
         self.set_name('Catalog Search')

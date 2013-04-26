@@ -1064,7 +1064,19 @@ def tohex(c):
 def to01(c):
     return c[0]/255., c[1]/255., c[2]/255.
 
-class PyLab(QFrame):
+def beautify_axes(axes):
+    axes.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
+
+    xa = axes.get_xaxis()
+    ya = axes.get_yaxis()
+    for attr in ('labelpad', 'LABELPAD'):
+        if hasattr(xa,attr):
+            setattr(xa, attr, xa.get_label().get_fontsize())
+            setattr(ya, attr, ya.get_label().get_fontsize())
+            break
+
+
+class FigureFrame(QFrame):
 
     def __init__(self, parent=None):
         QFrame.__init__(self, parent)
@@ -1076,22 +1088,40 @@ class PyLab(QFrame):
         font = QFont()
         font.setBold(True)
         fontsize = font.pointSize()
-
+        
         import matplotlib
         matplotlib.rcdefaults()
-        matplotlib.rc('axes', linewidth=1)
-        matplotlib.rc('xtick', direction='out')
-        matplotlib.rc('ytick', direction='out')
+        matplotlib.rc('xtick', direction='out', labelsize=fontsize)
+        matplotlib.rc('ytick', direction='out', labelsize=fontsize)
         matplotlib.rc('xtick.major', size=8)
+        matplotlib.rc('xtick.minor', size=4)
         matplotlib.rc('ytick.major', size=8)
+        matplotlib.rc('ytick.minor', size=4)
         #matplotlib.rc('figure', facecolor=tohex(bgrgb), edgecolor=tohex(fgcolor))
         matplotlib.rc('figure', facecolor='white', edgecolor=tohex(fgcolor))
-        matplotlib.rc('axes', facecolor='white', edgecolor=tohex(fgcolor), labelcolor=tohex(fgcolor))
-        matplotlib.rc('font', family='sans-serif', weight='bold', size=fontsize)
+        matplotlib.rc('font', family='sans-serif', weight='bold', size=fontsize, **{ 'sans-serif': [font.family()] })
         matplotlib.rc('text', color=tohex(fgcolor))
         matplotlib.rc('xtick', color=tohex(fgcolor))
         matplotlib.rc('ytick', color=tohex(fgcolor))
         matplotlib.rc('figure.subplot', bottom=0.15)
+
+        matplotlib.rc('axes', linewidth=0.5, unicode_minus=False)
+        matplotlib.rc('axes', facecolor='white', edgecolor=tohex(fgcolor), labelcolor=tohex(fgcolor))
+
+        try:
+            matplotlib.rc('axes', color_cycle=[ to01(x) for x in pyrocko.plot.graph_colors ])
+        except KeyError:
+            pass
+
+        try:
+            matplotlib.rc('axes', labelsize=fontsize)
+        except KeyError:
+            pass
+
+        try:
+            matplotlib.rc('axes', labelweight='bold')
+        except KeyError:
+            pass
 
         from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
         from matplotlib.figure import Figure
@@ -1101,26 +1131,21 @@ class PyLab(QFrame):
         layout.setSpacing(0)
         
         self.setLayout(layout)
-        self.figure = Figure(dpi=100)
-        canvas = FigureCanvas(self.figure)
-        canvas.setParent(self)
-        layout.addWidget(canvas, 0,0)
+        self.figure = Figure(dpi=dpi)
+        self.canvas = FigureCanvas(self.figure)
+        self.canvas.setParent(self)
+        layout.addWidget(self.canvas, 0,0)
 
     def gca(self):
-        self.axes_subplot = self.figure.add_subplot(111)
-        ax = self.axes_subplot
-        ax.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
-
-        xa = ax.get_xaxis()
-        ya = ax.get_yaxis()
-        for attr in ('labelpad', 'LABELPAD'):
-            if hasattr(xa,attr):
-                setattr(xa, attr, xa.get_label().get_fontsize())
-                setattr(ya, attr, ya.get_label().get_fontsize())
-                break
-
-        return self.axes_subplot
+        axes = self.figure.gca()
+        beautify_axes(axes)
+        return axes
 
     def gcf(self):
         return self.figure
+
+    def draw(self):
+        '''Draw with AGG, then queue for Qt update.'''
+        self.canvas.draw()
+
 
