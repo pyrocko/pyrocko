@@ -12,13 +12,42 @@ scalingmethod_map = dict([ (m,i+1) for (i,m) in enumerate(scalingmethods) ] )
 
 class DetectorSTALTA(Snuffling):
 
+    '''
+    <html>
+    <body>
+    <h1 align="center">STA/LTA</h1>
+    Detect onsets automatically using the Short-Time-Average/Long-Time-Average ratio.<br/><br />
+    <u>Parameters</u>
+    <table>
+        <tr>
+            <td><b>&middot; Highpass [Hz] </td>
+            <td>Apply high pass filter before analysing.</td>
+        </tr>
+        <tr>
+            <td><b>&middot; Lowpass [Hz]:</b> </td>
+            <td>Apply low pass filter before analysing.</td>
+        </tr>
+        <tr>
+            <td><b>&middot; Short Window [s]:</b> </td> 
+            <td>Window length of the short window.</td>
+        </tr>
+        <tr>
+            <td><b>&middot; Ratio:</b> </td>
+            <td> The length of the long window is the short window length times the <b>Ratio</b>.</td>
+        </tr>
+        <tr>
+            <td><b>&middot; Level:</b> </td>
+            <td> ....  </tr>
+    </table>
+    </body>
+    </html>
+    '''
     def setup(self):    
-        '''Customization of the snuffling.'''
         
         self.set_name('STA LTA')
         self.add_parameter(Param('Highpass [Hz]', 'highpass', None, 0.001, 100., low_is_none=True))
         self.add_parameter(Param('Lowpass [Hz]', 'lowpass', None, 0.001, 100., high_is_none=True))
-        self.add_parameter(Param('Short window [s]', 'swin', 30., 1, 2*h))
+        self.add_parameter(Param('Short Window [s]', 'swin', 30., 1, 2*h))
         self.add_parameter(Param('Ratio',  'ratio', 3., 1.1, 20.))
         self.add_parameter(Param('Level', 'level', 0.5, 0., 1.))
         self.add_parameter(Param('Processing Block length (rel. to long window)', 'block_factor', 10., 2., 100.,))
@@ -50,9 +79,9 @@ class DetectorSTALTA(Snuffling):
         
         show_level_traces = self.show_level_traces
         
-       # if show_level_traces and tmax-tmin > lwin * 150:
-       #     self.error('Processing time window is longer than 50 x LTA window. Turning off display of level traces.')
-       #     show_level_traces = False
+        if show_level_traces and tmax-tmin > lwin * 150:
+            self.error('Processing time window is longer than 50 x LTA window. Turning off display of level traces.')
+            show_level_traces = False
         
         markers = []
         for traces in pile.chopper(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad, want_incomplete=False):
