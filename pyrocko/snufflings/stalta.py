@@ -14,31 +14,33 @@ class DetectorSTALTA(Snuffling):
 
     '''
     <html>
+    <head>
+    <style type="text/css">
+        body { margin-left:10px };
+    </style>
+    </head>
     <body>
     <h1 align="center">STA/LTA</h1>
-    Detect onsets automatically using the Short-Time-Average/Long-Time-Average ratio.<br/><br />
-    <u>Parameters</u>
-    <table>
-        <tr>
-            <td><b>&middot; Highpass [Hz] </td>
-            <td>Apply high pass filter before analysing.</td>
-        </tr>
-        <tr>
-            <td><b>&middot; Lowpass [Hz]:</b> </td>
-            <td>Apply low pass filter before analysing.</td>
-        </tr>
-        <tr>
-            <td><b>&middot; Short Window [s]:</b> </td> 
-            <td>Window length of the short window.</td>
-        </tr>
-        <tr>
-            <td><b>&middot; Ratio:</b> </td>
-            <td> The length of the long window is the short window length times the <b>Ratio</b>.</td>
-        </tr>
-        <tr>
-            <td><b>&middot; Level:</b> </td>
-            <td> ....  </tr>
-    </table>
+    <p>
+    Detect onsets automatically using the Short-Time-Average/Long-Time-Average ratio.<br/>
+    This snuffling uses the method: 
+      <a href="http://emolch.github.io/pyrocko/v0.3/trace.html#pyrocko.trace.Trace.sta_lta_centered" style="text-decoration:none">
+            <pre>pyrocko.trace.Trace.sta_lta_centered</pre> 
+      </a></p>
+    <p>
+    <b>Parameters:</b><br />
+            <b>&middot; Highpass [Hz]</b>  -  Apply high pass filter before analysing.<br />
+            <b>&middot; Lowpass [Hz]</b>  -  Apply low pass filter before analysing.<br />
+            <b>&middot; Short Window [s]</b>  -  Window length of the short window.<br />
+            <b>&middot; Ratio</b>  -  The length of the long window is the short window length times the <b>Ratio</b>.<br /> 
+            <b>&middot; Level</b>  -  Define a trigger threshold. A marker is added where STA/LTA ratios exceed this threshold. <br /> 
+            <b>&middot; Processing Block length</b>  -  Subdivide dataset in blocks for analysis. The block length corresponds to the length of the long window, multiplied with the <b>Processiong Block length</b><br />
+            <b>&middot; Show trigger level traces </b>  -  Add level traces showing the STA/LTA ration for each trace.<br />
+            <b>&middot; Apply to full dataset</b>  -  If marked entire loaded dataset will be analyzed. <br />
+            <b>&middot; Scaling/Normalization method</b>  -  Select how output of the STA/LTA should be scaled.</ br> 
+            </p>
+    <p>Generally, the STA duration must be a longer than a few periods of a typically expected seismic signal.
+    </p>
     </body>
     </html>
     '''
