@@ -655,7 +655,12 @@ class Snuffling:
 
             butlayout.addWidget( live_update_checkbox )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
-        
+
+            if self.__doc__ is not None: 
+                help_button = QPushButton('Help')
+                butlayout.addWidget( help_button )
+                self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
+
             clear_button = QPushButton('Clear')
             butlayout.addWidget( clear_button )
             self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
@@ -663,12 +668,6 @@ class Snuffling:
             call_button = QPushButton('Run')
             butlayout.addWidget( call_button )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
-
-            if self.__doc__ is not None: 
-                help_button = QPushButton('Help')
-                butlayout.addWidget( help_button )
-                self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
-
 
             for name, method in self._triggers:
                 but = QPushButton(name)
