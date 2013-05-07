@@ -140,7 +140,7 @@ class Snuffling:
         self._viewer = viewer
         self._panel_parent = panel_parent
         self._menu_parent = menu_parent
-        
+
         self.setup_gui(reloaded=reloaded)
         
     def setup_gui(self, reloaded=False):
@@ -158,8 +158,10 @@ class Snuffling:
        
         if self._menu_parent is not None:
             self._menuitem = self.make_menuitem(self._menu_parent)
+            self._helpmenuitem = self.make_helpmenuitem(self._menu_parent)
             if self._menuitem:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
+                self._menu_parent.add_snuffling_help_menuitem(self._helpmenuitem)
 
     def make_cli_parser1(self):
         import optparse
@@ -687,6 +689,15 @@ class Snuffling:
         else:
             return None
     
+    def make_helpmenuitem(self, parent):
+        '''Create the help menu item for the snuffling.
+        '''
+        
+        item = QAction(self.get_name(), None)
+
+        self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.help_button_triggered)
+        return item
+    
     def make_menuitem(self, parent):
         '''Create the menu item for the snuffling.
         
@@ -835,7 +846,7 @@ class Snuffling:
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
-        self._viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
+        self._viewer.show_doc('Help: %s'%self._name, [doc], target='panel')
         
     def live_update_toggled(self, on):
         '''Called when the checkbox for live-updates has been toggled.'''

@@ -517,8 +517,13 @@ def sort_actions(menu):
         menu.removeAction(action)
 
     actions.sort((lambda a,b: cmp(a.text(), b.text())))
+
+    help_action = filter(lambda a : a.text()=="Snuffler Controls", actions)
+    if help_action:
+        actions.insert(0,actions.pop(actions.index(help_action[0])))
     for action in actions:
         menu.addAction(action)
+
 
 fkey_map = dict(zip((Qt.Key_F1, Qt.Key_F2, Qt.Key_F3, Qt.Key_F4, Qt.Key_F5, Qt.Key_F10),(1,2,3,4,5,0)))
 
@@ -779,10 +784,13 @@ def MakePileViewerMainClass(base):
             self.menu.addAction(self.menuitem_svg)
             self.connect( self.menuitem_svg, SIGNAL("triggered(bool)"), self.savesvg )
             
-            self.menuitem_help = QAction('Help', self.menu)
-            self.menu.addAction(self.menuitem_help)
+            self.snuffling_help_menu = QMenu('Help', self.menu)
+            self.menu.addMenu(self.snuffling_help_menu)
+            self.menuitem_help = QAction('Snuffler Controls', self.snuffling_help_menu)
+            self.snuffling_help_menu.addAction(self.menuitem_help)
             self.connect( self.menuitem_help, SIGNAL('triggered(bool)'), self.help )
-            
+            self.snuffling_help_menu.addSeparator()
+
             self.menuitem_about = QAction('About', self.menu)
             self.menu.addAction(self.menuitem_about)
             self.connect( self.menuitem_about, SIGNAL('triggered(bool)'), self.about )
@@ -1073,6 +1081,11 @@ def MakePileViewerMainClass(base):
             self.update()
             self.snufflings.remove(snuffling)
             snuffling.pre_destroy()
+
+        def add_snuffling_help_menuitem(self, item):
+            self.snuffling_help_menu.addAction(item)
+            item.setParent(self.snuffling_help_menu)
+            sort_actions(self.snuffling_help_menu)
 
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
