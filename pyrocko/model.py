@@ -151,7 +151,10 @@ class Event:
             if not haveit:
                 groups[ia].append(a)
 
-        return [ g for g in groups if g ]
+        
+        groups = [ g for g in groups if g ]
+        groups.sort( key=lambda g: sum(e.time for e in g)/len(g) )
+        return groups
 
     @staticmethod
     def dump_catalog(events, filename):
@@ -384,13 +387,18 @@ class Station:
         return proj
 
     def guess_projections_to_rtu(self, out_channels=('R', 'T', 'U'), **kwargs):
+        out_channels_ = [
+            Channel(out_channels[0], wrap(self.backazimuth+180., -180.,180.),  0., 1.),
+            Channel(out_channels[1], wrap(self.backazimuth+270., -180.,180.),  0., 1.),
+            Channel(out_channels[2], 0.,  -90., 1.) ]
+        
         proj = []
         for (m, in_channels, _) in self.guess_projections_to_enu( **kwargs ):
             phi = (self.backazimuth + 180.)*d2r
             r = num.array([[math.sin(phi),  math.cos(phi), 0.0],
                            [math.cos(phi), -math.sin(phi), 0.0],
                            [          0.0,            0.0, 1.0]])
-            proj.append((num.dot(r,m), in_channels, out_channels))
+            proj.append((num.dot(r,m), in_channels, out_channels_))
 
         return proj
 

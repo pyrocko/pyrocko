@@ -33,7 +33,7 @@ def read_sac_zpk(filename=None, file=None, string=None):
     for iline, line in enumerate(f):
         toks = line.split()
         if len(toks) == 0: continue
-        if toks[0][0] == '#': continue
+        if toks[0][0] in '*#': continue
         if len(toks) != 2:
             f.close()
             raise SacPoleZeroError('Expected 2 tokens in line %i of file %s' % (iline+1, filename))

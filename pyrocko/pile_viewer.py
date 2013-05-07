@@ -1496,8 +1496,8 @@ def MakePileViewerMainClass(base):
             keytext = str(key_event.text())
 
             if keytext == '?':
-                self.toggle_help()
-                
+                self.help()
+
             elif keytext == ' ':
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
@@ -1682,16 +1682,9 @@ def MakePileViewerMainClass(base):
             for h in [ hcheat, hepilog ]:
                 h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
                 h.setWordWrap(True)
-            
+
             self.show_doc('Help', [hcheat, hepilog], target='panel')
-        
-        def toggle_help(self):
-            for widget in self.panel_parent.dockwidgets():
-                if 'Help' == widget.windowTitle():
-                    widget.close()
-                    return
-            self.help()
-            
+
         def show_doc(self, name, labels, target='panel'):
             scroller = QScrollArea()
             frame = QFrame(scroller)
@@ -2506,17 +2499,17 @@ def MakePileViewerMainClass(base):
 
             return traces
 
-        def visible_length_change(self, ignore):
+        def visible_length_change(self, ignore=None):
             for menuitem, vlen in self.menuitems_visible_length:
                 if menuitem.isChecked():
                     self.visible_length = vlen
 
-        def scaling_base_change(self, ignore):
+        def scaling_base_change(self, ignore=None):
             for menuitem, scaling_base in self.menuitems_scaling_base:
                 if menuitem.isChecked():
                     self.scaling_base = scaling_base
         
-        def scalingmode_change(self, ignore):
+        def scalingmode_change(self, ignore=None):
             for menuitem, scaling_key in self.menuitems_scaling:
                 if menuitem.isChecked():
                     self.scaling_key = scaling_key
@@ -2778,18 +2771,20 @@ def MakePileViewerMainClass(base):
                         self.update()
 
                     elif command in ('hide', 'unhide'):
-                        if len(toks) in (2,3):
+                        if len(toks) >= 2:
+                            patterns = []
                             if len(toks) == 2:
-                                pattern = toks[1]
-                            elif len(toks) == 3:
+                                patterns = [ toks[1] ]
+                            elif len(toks) >= 3:
                                 x = { 'n': '%s.*.*.*', 's': '*.%s.*.*', 'l': '*.*.%s.*', 'c': '*.*.*.%s' }
                                 if toks[1] in x:
-                                    pattern = x[toks[1]] % toks[2]
-                            
-                            if command == 'hide':
-                                self.add_blacklist_pattern( pattern )
-                            else:
-                                self.remove_blacklist_pattern( pattern )
+                                    patterns.extend( x[toks[1]] % tok for tok in toks[2:] )
+
+                            for pattern in patterns:
+                                if command == 'hide':
+                                    self.add_blacklist_pattern( pattern )
+                                else:
+                                    self.remove_blacklist_pattern( pattern )
                         
                         elif command == 'unhide' and len(toks) == 1:
                             self.clear_blacklist()

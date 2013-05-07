@@ -939,17 +939,21 @@ def psv_surface(material, p, energy=False):
     '''
 
     vp, vs, rho = material.vp, material.vs, material.rho
-    
     sinphi = p * vp
     sinlam = p * vs
     cosphi = csswap( sinphi )
     coslam = csswap( sinlam )
-    vsp_term = (1.0/vs**2 - 2.0*p**2) 
-    pcc_term = 4.0 * p**2 * cosphi/vp * coslam/vs
-    denom = vsp_term**2 + pcc_term
 
-    scatter = num.array([[- vsp_term**2 + pcc_term, 4.0*p*coslam/vp*vsp_term],
-            [4.0*p*cosphi/vs*vsp_term, vsp_term**2 - pcc_term ]], dtype=num.complex) / denom
+    if vs == 0.0:
+        scatter = num.array([[-1.0, 0.0], [0.0, 1.0]])
+
+    else:
+        vsp_term = (1.0/vs**2 - 2.0*p**2) 
+        pcc_term = 4.0 * p**2 * cosphi/vp * coslam/vs
+        denom = vsp_term**2 + pcc_term
+
+        scatter = num.array([[- vsp_term**2 + pcc_term, 4.0*p*coslam/vp*vsp_term],
+                [4.0*p*cosphi/vs*vsp_term, vsp_term**2 - pcc_term ]], dtype=num.complex) / denom
 
     if not energy:
         return scatter
@@ -1519,11 +1523,24 @@ class Surface(Discontinuity):
     def propagate(self, p, mode, direction):
         return direction  # no implicit reflection at surface
 
+    def u_top_bottom(self, mode):
+        if mode == P:
+            return None, reci_or_none(self.mbelow.vp)
+        if mode == S:
+            return None, reci_or_none(self.mbelow.vs)
+
+    def critical_ps(self, mode):
+        _, ubelow = self.u_top_bottom(mode)
+        return None, mult_or_none(ubelow,radius(self.z))
+
     def pflat(self, p):
         return p / (earthradius-self.z)
 
     def efficiency(self, in_direction, out_direction, in_mode, out_mode, p):
-        return psv_surface(self.mbelow, self.pflat(p), energy=True)[psv_surface_ind(in_mode, out_mode)]
+        if in_direction == DOWN or out_direction == UP:
+            return 0.0
+        else:
+            return psv_surface(self.mbelow, self.pflat(p), energy=True)[psv_surface_ind(in_mode, out_mode)]
 
     def __str__(self):
         return 'surface'
