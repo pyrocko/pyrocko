@@ -580,16 +580,24 @@ def MakePileViewerMainClass(base):
 #            self.menuitem_pick = QAction('Pick', self.menu)
 #            self.menu.addAction(self.menuitem_pick)
 #            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
+
+            mi = QAction('Open waveform files...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_waveforms )
+
+            mi = QAction('Open waveform directory...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_waveform_directory )
             
-            mi = QAction('Write markers', self.menu)
+            mi = QAction('Write markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.write_markers )
             
-            mi = QAction('Write selected markers', self.menu)
+            mi = QAction('Write selected markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.write_selected_markers )
             
-            mi = QAction('Read markers', self.menu)
+            mi = QAction('Read markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.read_markers )
             
@@ -661,6 +669,10 @@ def MakePileViewerMainClass(base):
                     ( lambda tr: self.ssort(tr) + (tr.location, tr.network, tr.station, tr.channel),
                     lambda a,b: cmp(a,b),
                     lambda tr: tr.channel )),
+                ('Subsort by Channel, Network, Station, Location', 
+                    ( lambda tr: self.ssort(tr) + (tr.channel, tr.network, tr.station, tr.location),
+                    lambda a,b: cmp(a,b),
+                    lambda tr: (tr.network, tr.station, tr.location) )),
                 ('Subsort by Network, Station, Channel (Grouped by Location)',
                     ( lambda tr: self.ssort(tr) + (tr.network, tr.station, tr.channel),
                     lambda a,b: cmp(a,b),
@@ -1146,6 +1158,26 @@ def MakePileViewerMainClass(base):
         def load_soon(self, paths):
             self._paths_to_load.extend(paths)
             QTimer.singleShot( 200, self.load_queued )
+        
+        def open_waveforms(self, _=None):
+
+            caption = 'Select one or more files to open'
+
+            fns = QFileDialog.getOpenFileNames(
+                self,
+                caption)
+
+            self.load(list(str(fn) for fn in fns))
+
+        def open_waveform_directory(self, _=None):
+
+            caption = 'Select directory to scan for waveform files'
+
+            fn = QFileDialog.getExistingDirectory(
+                self,
+                caption)
+
+            self.load([str(fn)])
 
         def add_traces(self, traces):
             if traces:
