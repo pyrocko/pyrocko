@@ -842,7 +842,6 @@ class Snuffling:
         given in the snufflings' __doc__ string.
         '''
         if ("<html>" in self.__doc__ and "</html>" in self.__doc__):
-            print 'asdf'
             doc = QLabel(self.__doc__)
         else:
             doc = QLabel(markdown.markdown(self.__doc__))
