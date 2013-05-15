@@ -5,7 +5,7 @@ some utilities for their handling.
 '''
 
 
-import os, sys, logging, traceback, tempfile, markdown
+import os, sys, logging, traceback, tempfile
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -13,6 +13,11 @@ from PyQt4.QtGui import *
 import pile
 
 from gui_util import ValControl, LinValControl, FigureFrame
+
+try: 
+    import markdown
+except ImportError:
+    pass
 
 logger = logging.getLogger('pyrocko.snuffling')
 
@@ -841,10 +846,10 @@ class Snuffling:
         '''Creates a :py:class:`QLabel` which contains the documentation as 
         given in the snufflings' __doc__ string.
         '''
-        if ("<html>" in self.__doc__ and "</html>" in self.__doc__):
-            doc = QLabel(self.__doc__)
-        else:
+        try:
             doc = QLabel(markdown.markdown(self.__doc__))
+        except NameError:
+            doc = QLabel(self.__doc__)
 
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
