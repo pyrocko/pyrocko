@@ -58,7 +58,7 @@ installed_date = %s
 packname = 'pyrocko' 
 version = '0.3'
 
-subpacknames = [ 'pyrocko.snufflings' ]
+subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf' ]
 if sys.version_info >= (2,5):
     subpacknames.append( 'pyrocko.need_python_2_5' )
 
