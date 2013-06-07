@@ -589,6 +589,10 @@ def MakePileViewerMainClass(base):
             self.menu.addAction(mi)
             self.connect(mi, SIGNAL("triggered(bool)"), self.open_waveform_directory )
             
+            mi = QAction('Open station files...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_stations)
+
             mi = QAction('Write markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.write_markers )
@@ -1158,7 +1162,7 @@ def MakePileViewerMainClass(base):
         def load_soon(self, paths):
             self._paths_to_load.extend(paths)
             QTimer.singleShot( 200, self.load_queued )
-        
+
         def open_waveforms(self, _=None):
 
             caption = 'Select one or more files to open'
@@ -1168,7 +1172,7 @@ def MakePileViewerMainClass(base):
                 caption)
 
             self.load(list(str(fn) for fn in fns))
-
+        
         def open_waveform_directory(self, _=None):
 
             caption = 'Select directory to scan for waveform files'
@@ -1178,6 +1182,16 @@ def MakePileViewerMainClass(base):
                 caption)
 
             self.load([str(fn)])
+
+        def open_stations(self, _=None):
+            caption = 'Select one or more files to open'
+
+            fns = QFileDialog.getOpenFileNames(
+                self,
+                caption)
+
+            stations = map( lambda x: pyrocko.model.load_stations(str(x)), fns)           
+            self.add_stations(stations[0])
 
         def add_traces(self, traces):
             if traces:
