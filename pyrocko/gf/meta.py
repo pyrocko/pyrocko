@@ -1,9 +1,10 @@
 
+import math
 import numpy as num
 from guts import *
 
 class StringID(StringPattern):
-    pattern = r'^[A-Za-z][A-Za-z0-9.-]*$'
+    pattern = r'^[A-Za-z][A-Za-z0-9.-]{0,64}$'
 
 class ScopeType(StringChoice):
     choices = [
@@ -36,8 +37,8 @@ class NearfieldTermsType(StringChoice):
 
 class GFType(StringChoice):
     choices = [
-            'Kiwi-HDF',
             'Pyrocko',
+            'Kiwi-HDF',
         ]
 
 
@@ -110,6 +111,9 @@ class ModellingCode(Object):
     author_email = String.T(optional=True)
     citation_ids = List.T(StringID.T())
 
+class OutOfBounds(Exception):
+    def __str__(self):
+        return 'out of bounds'
 
 class GFSet(Object):
     id = StringID.T()
@@ -117,7 +121,7 @@ class GFSet(Object):
     version = String.T(default='1.0', optional=True)
     author = Unicode.T(optional=True)
     author_email = String.T(optional=True)
-    type = GFType.T(default='Kiwi-HDF', optional=True)
+    type = GFType.T(default='Pyrocko', optional=True)
     modelling_code_id = StringID.T(optional=True)
     scope_type = ScopeType.T(default='undefined')
     waveform_type = WaveformType.T(default='undefined')
@@ -132,8 +136,64 @@ class GFSet(Object):
     description = String.T(default='', optional=True)
     ncomponents = Int.T(default=1)
 
+    def __init__(self, **kwargs):
+        self._do_auto_updates = False
+        Object.__init__(self, **kwargs)
+        self._index_function = None
+        self._indices_function = None
+        self._vicinity_function = None
+        self._do_auto_updates = True
+        self.update()
+
+    def __setattr__(self, name, value):
+        Object.__setattr__(self, name, value)
+        try:
+            t = self.T.get_property(name)
+            if self._do_auto_updates:
+                self.update()
+
+        except ValueError:
+            pass
+
+    def update(self):
+        self._update()
+        self._make_index_functions()
+
+    def irecord(self, *args):
+        return self._index_function(*args)
+
+    def irecords(self, *args):
+        return self._indices_function(*args)
+
+    def vicinity(self, *args):
+        return self._vicinity_function(*args)
+
+    def iter_nodes(self, depth=None):
+        return nditer_outer(self.coords[:depth])
+
+    def iter_extraction(self, gdef):
+        i = 0
+        arrs = []
+        ntotal = 1 
+        for mi, ma, inc in zip(self.mins, self.maxs, self.deltas):
+            if gdef and len(gdef) > i:
+                sssn = gdef[i]
+            else:
+                sssn = (None,)*4
+
+            arr =  num.linspace(*start_stop_num(*(sssn + (mi,ma,inc)))) 
+            ntotal *= len(arr)
+
+            arrs.append(arr)
+            i += 1
+
+        arrs.append(self.coords[-1])
+        return nditer_outer(arrs)
+
 class GFSetTypeA(GFSet):
-    '''Rotational symmetry, fixed receiver depth'''
+    '''Rotational symmetry, fixed receiver depth
+    
+    Index variables are (source_depth, distance, component).'''
 
     earth_model_id = StringID.T(optional=True)
     receiver_depth = Float.T(default=0.0)
@@ -144,8 +204,68 @@ class GFSetTypeA(GFSet):
     distance_max = Float.T()
     distance_delta = Float.T()
 
+    def distance(args):
+        return args[1]
+
+    def _update(self):
+        self.mins = num.array([self.source_depth_min, self.distance_min])
+        self.maxs =  num.array([self.source_depth_max, self.distance_max])
+        self.deltas = num.array([self.source_depth_delta, self.distance_delta])
+        self.ns = num.round((self.maxs - self.mins) / self.deltas).astype(num.int) + 1 
+        self.deltat =  1.0/self.sample_rate
+        self.nrecords = num.product(self.ns) * self.ncomponents
+        self.coords = tuple( num.linspace(mi,ma,n) for 
+                (mi,ma,n) in zip(self.mins, self.maxs, self.ns) ) + \
+                    ( num.arange(self.ncomponents), )
+        self.nsource_depths, self.ndistances = self.ns
+
+    def _make_index_functions(self):
+
+        amin, bmin = self.mins
+        da, db = self.deltas
+        na,nb = self.ns
+
+        ng = self.ncomponents
+
+        def index_function(a,b, ig):
+            ia = int(round((a - amin) / da))
+            ib = int(round((b - bmin) / db))
+            try:
+                return num.ravel_multi_index((ia,ib,ig), (na,nb,ng))
+            except ValueError:
+                raise OutOfBounds()
+
+        def indices_function(a,b, ig):
+            ia = num.round((a - amin) / da).astype(int)
+            ib = num.round((b - bmin) / db).astype(int)
+            try:
+                return num.ravel_multi_index((ia,ib,ig), (na,nb,ng))
+            except ValueError:
+                raise OutOfBounds()
+
+        def vicinity_function(a,b, ig):
+            ias = indi12((a - amin) / da, na)
+            ibs = indi12((b - bmin) / db, nb)
+
+            if not (0 <= ig < ng):
+                raise OutOfBounds()
+
+            indis = []
+            for ia, va in ias:
+                iia = ia*nb*ng
+                for ib, vb in ibs:
+                    indis.append( ( iia + ib*ng + ig, va*vb ) )
+            
+            return indis
+
+        self._index_function = index_function
+        self._indices_function = indices_function
+        self._vicinity_function = vicinity_function
+
 class GFSetTypeB(GFSet):
-    '''Rotational symmetry, variable receiver depth'''
+    '''Rotational symmetry
+
+    Index variables are (receiver_depth, source_depth, distance, component).'''
 
     earth_model_id = StringID.T(optional=True)
     receiver_depth_min = Float.T()
@@ -158,116 +278,67 @@ class GFSetTypeB(GFSet):
     distance_max = Float.T()
     distance_delta = Float.T()
 
-    def __init__(self, **kwargs):
-        GFSet.__init__(self, **kwargs)
-        self._index_function = None
-        self._indices_function = None
+    def distance(args):
+        return args[2]
 
-    @property
-    def deltas(self):
-        return num.array([self.receiver_depth_delta, self.source_depth_delta, self.distance_delta])
-
-    @property
-    def mins(self):
-        return num.array([self.receiver_depth_min, self.source_depth_min, self.distance_min])
-        
-    @property
-    def maxs(self):
-        return num.array([self.receiver_depth_max, self.source_depth_max, self.distance_max])
-
-    @property
-    def ns(self):
-        return num.round((self.maxs - self.mins) / self.deltas).astype(num.int) + 1 
-
-    @property
-    def deltat(self):
-        return 1.0/self.sample_rate
-    
-    @property
-    def nreceiver_depths(self):
-        return int(round((self.receiver_depth_max - self.receiver_depth_min) / self.receiver_depth_delta)) + 1
-
-    @property
-    def nsource_depths(self):
-        return int(round((self.source_depth_max - self.source_depth_min) / self.source_depth_delta)) + 1
-
-    @property
-    def ndistances(self):
-        return int(round((self.distance_max - self.distance_min) / self.distance_delta)) + 1
-
-    @property
-    def nrecords(self):
-        return self.ndistances * self.nreceiver_depths * self.nsource_depths * self.ncomponents
-
-    def irecord(self, receiver_depth, source_depth, distance, icomponent):
-
-        if self._index_function is None:
-            self._make_index_functions()
-
-        return self._index_function(receiver_depth, source_depth, distance, icomponent)
-
-    def irecords(self, receiver_depths, source_depths, distances, icomponents):
-
-        if self._indices_function is None:
-            self._make_index_functions()
-
-        return self._indices_function(receiver_depths, source_depths, distances, icomponents)
-
-    def iter_nodes(self):
-        for ia in xrange(self.nreceiver_depths):
-            receiver_depth = self.receiver_depth_min + ia * self.receiver_depth_delta
-            for ib in xrange(self.nsource_depths):
-                source_depth = self.source_depth_min + ib * self.source_depth_delta
-                for ic in xrange(self.ndistances):
-                    distance = self.distance_min + ic * self.distance_delta
-                    yield receiver_depth, source_depth, distance
-
-    def iter_nodes_components(self):
-        for args in self.iter_nodes():
-            for icomponent in xrange(self.ncomponents):
-                yield args + (icomponent,)
+    def _update(self):
+        self.mins = num.array([self.receiver_depth_min, self.source_depth_min, self.distance_min])
+        self.maxs =  num.array([self.receiver_depth_max, self.source_depth_max, self.distance_max])
+        self.deltas = num.array([self.receiver_depth_delta, self.source_depth_delta, self.distance_delta])
+        self.ns = num.round((self.maxs - self.mins) / self.deltas).astype(num.int) + 1 
+        self.deltat =  1.0/self.sample_rate
+        self.nrecords = num.product(self.ns) * self.ncomponents
+        self.coords = tuple( num.linspace(mi,ma,n) for 
+                (mi,ma,n) in zip(self.mins, self.maxs, self.ns) ) + \
+                    ( num.arange(self.ncomponents), )
+        self.nreceiver_depths, self.nsource_depths, self.ndistances = self.ns
 
     def _make_index_functions(self):
 
-        amin = self.receiver_depth_min
-        bmin = self.source_depth_min
-        cmin = self.distance_min
-
-        da = self.receiver_depth_delta
-        db = self.source_depth_delta
-        dc = self.distance_delta
-
-        na = self.nreceiver_depths
-        nb = self.nsource_depths
-        nc = self.ndistances
+        amin, bmin, cmin = self.mins
+        da, db, dc = self.deltas
+        na,nb,nc = self.ns
         ng = self.ncomponents
 
         def index_function(a,b,c, ig):
             ia = int(round((a - amin) / da))
             ib = int(round((b - bmin) / db))
             ic = int(round((c - cmin) / dc))
-            
-            assert (0 <= ia < na)
-            assert (0 <= ib < nb)
-            assert (0 <= ic < nc)
-            assert (0 <= ig < ng)
-
-            return ia*nb*nc*ng + ib*nc*ng + ic*ng + ig
+            try:
+                return num.ravel_multi_index((ia,ib,ic,ig), (na,nb,nc,ng))
+            except ValueError:
+                raise OutOfBounds()
 
         def indices_function(a,b,c, ig):
             ia = num.round((a - amin) / da).astype(int)
             ib = num.round((b - bmin) / db).astype(int)
             ic = num.round((c - cmin) / dc).astype(int)
-            
-            assert num.all(0 <= ia) and num.all(ia < na)
-            assert num.all(0 <= ib) and num.all(ib < nb)
-            assert num.all(0 <= ic) and num.all(ic < nc)
-            assert num.all(0 <= ig) and num.all(ig < ng)
+            try:
+                return num.ravel_multi_index((ia,ib,ic,ig), (na,nb,nc,ng))
+            except ValueError:
+                raise OutOfBounds()
 
-            return ia*nb*nc*ng + ib*nc*ng + ic*ng + ig
+        def vicinity_function(a,b,c, ig):
+            ias = indi12((a - amin) / da, na)
+            ibs = indi12((b - bmin) / db, nb)
+            ics = indi12((c - cmin) / dc, nc)
+
+            if not (0 <= ig < ng):
+                raise OutOfBounds()
+
+            indis = []
+            for ia, va in ias:
+                iia = ia*nb*nc*ng
+                for ib, vb in ibs:
+                    iib = ib*nc*ng
+                    for ic, vc in ics:
+                        indis.append( ( iia + iib + ic*ng + ig, va*vb*vc ) )
+            
+            return indis
 
         self._index_function = index_function
         self._indices_function = indices_function
+        self._vicinity_function = vicinity_function
 
 
 class Inventory(Object):
@@ -275,6 +346,115 @@ class Inventory(Object):
     earth_models = List.T(EarthModel.T())
     modelling_codes = List.T(ModellingCode.T())
     gf_sets = List.T(GFSet.T())
+
+vicinity_eps = 1e-5
+
+def indi12(x, n):
+    r = round(x)
+    if abs(r - x) < vicinity_eps:
+        i = int(r)
+        if not (0 <= i < n):
+            raise OutOfBounds()
+
+        return ( (int(r), 1.), )
+    else:
+        f = math.floor(x)
+        i = int(f)
+        if not (0 <= i < n-1):
+            raise OutOfBounds()
+
+        v = x-f
+        return ( (i, 1.-v), (i + 1, v) )
+
+def float_or_none(s):
+    units = {
+            'k' : 1e3,
+            'M' : 1e6,
+            }
+
+    factor = 1.0
+    if s and s[-1] in units:
+        factor = units[s[-1]]
+        s = s[:-1]
+        if not s:
+            raise ValueError('unit without a number: \'%s\'' % s)
+
+    if s:
+        return float(s) * factor
+    else:
+        return None
+
+class GridSpecError(Exception):
+    def __init__(self, s):
+        Exception.__init__(self, 'invalid grid specification: %s' % s)
+
+def parse_grid_spec(spec):
+    try:
+        result = []
+        for dspec in spec.split(','):
+            t = dspec.split('@')
+            num = start = stop = step = None
+            if len(t) == 2:
+                num = int(t[1])
+                if num <= 0:
+                    raise GridSpecError(spec)
+
+            elif len(t) > 2:
+                raise GridSpecError(spec)
+            
+            s = t[0]
+            v = [ float_or_none(x) for x in s.split(':') ]
+            if len(v) == 1:
+                start = stop = v[0]
+            if len(v) >= 2:
+                start, stop = v[0:2]
+            if len(v) == 3:
+                step = v[2]
+
+            if len(v) > 3 or (len(v) > 2 and num is not None):
+                raise GridSpecError(spec)
+
+            if step == 0.0:
+                raise GridSpecError(spec)
+
+            result.append((start, stop, step, num))
+
+    except ValueError:
+        raise GridSpecError(spec)
+
+    return result
+
+def start_stop_num(start, stop, step, num, mi, ma, inc, eps=1e-5):
+    swap = step is not None and step < 0.
+    if start is None:
+        start = [mi,ma][swap]
+    if stop is None:
+        stop = [ma,mi][swap]
+    if step is None:
+        step = [inc,-inc][ma<mi]
+    if num is None:
+        if (step < 0) != (stop-start < 0):
+            raise GridSpecError()
+
+        num = int(round((stop-start)/step))+1
+        stop2 = start + (num-1)*step
+        if abs(stop-stop2) > eps:
+            num = int(math.floor((stop-start)/step))+1
+            stop = start + (num-1)*step
+        else:
+            stop = stop2
+
+    if start == stop:
+        num = 1
+            
+    return start, stop, num
+
+def nditer_outer(x):
+    return num.nditer(x, 
+            op_axes=(num.identity(len(x), dtype=num.int)-1).tolist())
+
+__all__ = 'GFSet GFSetTypeA GFSetTypeB'.split()
+
 
 
 

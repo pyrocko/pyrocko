@@ -1,11 +1,13 @@
-import os, struct, math, shutil, fcntl, copy
+import os, struct, math, shutil, fcntl, copy, logging, re
 from collections import Counter
 
 import numpy as num
 from scipy import signal
 
 from pyrocko import util
-from pyrocko.gf.meta import dump, load
+from pyrocko.gf import meta as meta_module
+
+logger = logging.getLogger('pyrocko.gf.store')
 
 gf_dtype = num.dtype(num.float32)
 gf_dtype_nbytes_per_sample = 4
@@ -25,6 +27,10 @@ gf_record_dtype = num.dtype([
         ('begin_value', '<f4'),
         ('end_value', '<f4'),
     ])
+
+def check_string_id(s):
+    if not re.match(meta_module.StringID.pattern, s):
+        raise ValueError('invalid name %s' % s)
 
 # - data_offset
 #
@@ -98,13 +104,30 @@ class GFTrace:
 
 Zero = GFTrace(is_zero=True)
 
-class CannotCreate(Exception):
+class StoreError(Exception):
     pass
 
-class CannotOpen(Exception):
+class CannotCreate(StoreError):
     pass
 
-class GFStore_:
+class CannotOpen(StoreError):
+    pass
+
+class DuplicateInsert(StoreError):
+    pass
+
+class NotAllowedToInterpolate(StoreError):
+    def __str__(self):
+        return 'not allowed to interpolate'
+
+def remove_if_exists(fn, force=False):
+    if os.path.exists(fn):
+        if force:
+            os.remove(fn)
+        else:
+            raise CannotCreate('file %s already exists' % fn)
+
+class Store_:
 
     @staticmethod
     def index_fn_(store_dir):
@@ -117,19 +140,17 @@ class GFStore_:
     @staticmethod
     def create(store_dir, deltat, nrecords, force=False):
 
-        if os.path.exists(store_dir):
-            if force:
-                shutil.rmtree(store_dir)
-            else:
-                raise CannotCreate('directory %s already exists' % store_dir)
 
         try:
             util.ensuredir(store_dir)
         except:
             raise CannotCreate('cannot create directory %s' % store_dir)
         
-        index_fn = GFStore_.index_fn_(store_dir)
-        data_fn = GFStore_.data_fn_(store_dir)
+        index_fn = Store_.index_fn_(store_dir)
+        data_fn = Store_.data_fn_(store_dir)
+
+        for fn in (index_fn, data_fn):
+            remove_if_exists(fn, force)
 
         with open(index_fn, 'wb') as f:
             f.write(struct.pack(gf_store_header_fmt, nrecords, deltat))
@@ -158,7 +179,7 @@ class GFStore_:
             self._f_data = open(data_fn, fmode)
         except:
             self.mode = ''
-            raise CannotOpen('cannot open gf database: %s' % self.store_dir)
+            raise CannotOpen('cannot open gf store: %s' % self.store_dir)
 
         dataheader = self._f_index.read(gf_store_header_fmt_size)
         nrecords, deltat = struct.unpack(gf_store_header_fmt, dataheader)
@@ -303,9 +324,11 @@ class GFStore_:
         assert self.mode == 'w'
         assert abs(trace.deltat - self.deltat) < 1e-7 * self.deltat
         assert 0 <= irecord < self.nrecords, 'irecord = %i, nrecords = %i' % (irecord, self.nrecords)
-        assert self._records[irecord][0] == 0, 'record %i already in store' % irecord
 
-        if trace.is_zero:
+        if self._records[irecord][0] != 0:
+            raise DuplicateInsert('record %i already in store' % irecord)
+
+        if trace.is_zero or num.all(trace.data == 0.0):
             self._records[irecord] = (1,0,0,0.,0.)
             return
         
@@ -491,7 +514,6 @@ class GFStore_:
                 data_orig[1] = end_value
                 return data_orig[ilo:ihi]
             else:
-
                 self._f_data.seek(ipos + ilo*gf_dtype_nbytes_per_sample)
                 return num.fromfile(self._f_data, gf_dtype, ihi-ilo)
         else:
@@ -499,18 +521,21 @@ class GFStore_:
             return num.empty((0,), dtype=gf_dtype)
 
     def index_fn(self):
-        return GFStore_.index_fn_(self.store_dir)
+        return Store_.index_fn_(self.store_dir)
     
     def data_fn(self):
-        return GFStore_.data_fn_(self.store_dir)
+        return Store_.data_fn_(self.store_dir)
 
-class GFStore(GFStore_):
+    def count_special_records(self):
+        return num.histogram( self._records['data_offset'], bins=[0,1,2,3, num.uint64(-1) ] )[0]
+
+class Store(Store_):
 
     '''
     Green's function disk storage and summation machine.
     
-    The `GFStore` can be used to efficiently store, retrieve, and sum Green's
-    function traces. A `GFStore` contains many 1D time traces sampled at even
+    The `Store` can be used to efficiently store, retrieve, and sum Green's
+    function traces. A `Store` contains many 1D time traces sampled at even
     multiples of a global sampling rate, where each time trace has an
     individual start and end time.  The traces are treated as having repeating
     end points, so the functions they represent can be non-constant only
@@ -524,11 +549,11 @@ class GFStore(GFStore_):
     providing a mapping from physical coordinates to the low level index. E.g.
     for a problem with cylindrical symmetry, one might define a mapping from
     (z1, z2, r) -> i. Index translation is done in the
-    :py:class:`pyrocko.gf.meta.GFSet` subclass object associated with the GFStore.
+    :py:class:`pyrocko.gf.meta.GFSet` subclass object associated with the Store.
     '''
 
     @staticmethod
-    def create(store_dir, meta, force=False, additional=None):
+    def create(store_dir, meta, force=False, extra=None):
         '''Create new GF store.
         
         Creates a new GF store at path `store_dir`. The layout of the GF is
@@ -537,29 +562,58 @@ class GFStore(GFStore_):
         refuse to overwrite an existing GF store, unless `force` is set  to
         ``True``. If more information, e.g. parameters used for the modelling
         code, earth models or other, should be saved along with the GF store,
-        these may be provided though a dict given to `additional`. The keys of 
+        these may be provided though a dict given to `extra`. The keys of 
         this dict must be names and the values must be *guts* type objects.
         '''
 
-        store = GFStore_.create(store_dir, meta.deltat, meta.nrecords, 
+        store = Store_.create(store_dir, meta.deltat, meta.nrecords, 
                 force=force)
 
         meta_fn = os.path.join(store_dir, 'meta')
-        dump(meta, filename=meta_fn)
+        remove_if_exists(meta_fn, force)
 
-        if additional:
-            for k,v in additional.iteritems():
-                fn = os.path.join(store_dir, k)
-                dump(v, filename=fn)
+        meta_module.dump(meta, filename=meta_fn)
+
+        for sub_dir in 'decimated', 'extra':
+            dpath = os.path.join(store_dir, sub_dir)
+            if os.path.exists(dpath):
+                if force:
+                    shutil.rmtree(dpath)
+                else:
+                    raise CannotCreate('directory %s already exists' % dpath)
+
+            os.mkdir(dpath)
+
+        if extra:
+            for k,v in extra.iteritems():
+                check_string_id(k)
+                fn = os.path.join(store_dir, 'extra', k)
+                remove_if_exists(fn, force)
+                meta_module.dump(v, filename=fn)
 
     def __init__(self, store_dir, mode='r'):
-        GFStore_.__init__(self, store_dir, mode=mode)
+        Store_.__init__(self, store_dir, mode=mode)
         meta_fn = os.path.join(store_dir, 'meta')
-        self.meta = load(filename=meta_fn)
+        self.meta = meta_module.load(filename=meta_fn)
         self._decimated = {}
+        self._extra = {}
         for decimate in range(2,9):
             if os.path.isdir(self._decimated_store_dir(decimate)):
                 self._decimated[decimate] = None
+
+    def get_extra(self, key):
+        '''Get extra information stored under given key.'''
+
+        check_string_id(key)
+        x = self._extra
+        if key not in x:
+            fn = os.path.join(self.store_dir, 'extra', key)
+            if not os.path.exists(fn):
+                raise KeyError(k)
+
+            x[key] = meta_module.load(filename=fn)
+
+        return x[key]
 
     def put(self, args, trace):
         '''Insert trace into GF store.
@@ -573,7 +627,7 @@ class GFStore(GFStore_):
         irecord = self.meta.irecord(*args)
         return self._get_record(irecord)
 
-    def get(self, args, itmin=None, nsamples=None, decimate=1):
+    def get(self, args, itmin=None, nsamples=None, decimate=1, interpolate='nearest_neighbor'):
         '''Retrieve GF trace from store.
 
         Retrieve a single GF trace from the store at (high-level) index `args`.
@@ -584,8 +638,16 @@ class GFStore(GFStore_):
         '''
 
         store, decimate = self._decimated_store(decimate)
-        irecord = store.meta.irecord(*args)
-        return store._get(irecord, itmin=itmin, nsamples=nsamples, decimate=decimate)
+        if interpolate == 'nearest_neighbor':
+            irecord = store.meta.irecord(*args)
+            return store._get(irecord, itmin=itmin, nsamples=nsamples, decimate=decimate)
+
+        else:
+            irecords, weights = zip(*store.meta.vicinity(*args))
+            if interpolate == 'off' and len(irecords) != 1:
+                raise NotAllowedToInterpolate()
+
+            return store._sum(irecords, num.zeros(len(irecords)), weights, itmin, nsamples, decimate)
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None, decimate=1):
         '''Sum delayed and weighted GF traces.
@@ -616,7 +678,7 @@ class GFStore(GFStore_):
         Create a downsampled version of the GF store. Downsampling is done for
         the integer factor `decimate` which should be in the range [2,8].  If
         `meta` is ``None``, all traces of the GF store are decimated and held
-        available (i.e. the index mapping of the original database is used),
+        available (i.e. the index mapping of the original store is used),
         otherwise, a different spacial stepping can be specified by giving a
         modified GF store configuration in `meta` (see :py:meth:`create`).
         Decimated GF sub-stores are created under the `decimated` subdirectory
@@ -626,21 +688,33 @@ class GFStore(GFStore_):
         computation are done for lower frequency signals.
         '''
 
-        assert 2 <= decimate <= 8
+        if not (2 <= decimate <= 8):
+            raise StoreError('decimate argument must be in the range [2,8]')
+
         assert self.mode == 'r'
 
         if meta is None:
             meta = self.meta
 
         meta = copy.deepcopy(meta)
-        meta.sample_rate /= decimate
+        meta.sample_rate = self.meta.sample_rate / decimate
+
+        if decimate in self._decimated:
+            del self._decimated[decimate]
 
         store_dir = self._decimated_store_dir(decimate)
-        store_dir_incomplete = store_dir + '-incomplete'
-        GFStore.create(store_dir_incomplete, meta, force=force)
+        if os.path.exists(store_dir):
+            if force:
+                shutil.rmtree(store_dir)
+            else:
+                raise CannotCreate('store already exists at %s' % store_dir)
 
-        decimated = GFStore(store_dir_incomplete, 'w')
-        for args in decimated.meta.iter_nodes_components():
+
+        store_dir_incomplete = store_dir + '-incomplete'
+        Store.create(store_dir_incomplete, meta, force=force)
+
+        decimated = Store(store_dir_incomplete, 'w')
+        for args in decimated.meta.iter_nodes():
             tr = self.get(args, decimate=decimate)
             decimated.put(args, tr)
 
@@ -650,13 +724,8 @@ class GFStore(GFStore_):
 
         self._decimated[decimate] = None
 
-
     def stats(self):
-        counter = Counter()
-        for args in self.meta.iter_nodes_components():
-            rec = self.get_record(args)
-
-            counter[min(rec[0],3)] += 1
+        counter = self.count_special_records()
 
         sdata = os.stat(self.data_fn()).st_size
         sindex = os.stat(self.index_fn()).st_size
@@ -677,15 +746,22 @@ class GFStore(GFStore_):
     stats_keys = 'total inserted empty short zero size_data size_index decimated'.split()
 
     def check(self):
-        for args in self.meta.iter_nodes_components():
+        problems = 0
+        i =0
+        for args in self.meta.iter_nodes():
             tr = self.get(args)
             if tr and not tr.is_zero:
                 if not tr.begin_value == tr.data[0]:
-                    logger.warn('wrong begin value for trace at %s (data corruption?)' % args)
+                    logger.warn('wrong begin value for trace at %s (data corruption?)' % str(args))
+                    problems += 1
                 if not tr.end_value == tr.data[-1]:
-                    logger.warn('wrong end value for trace at %s (data corruption?)' % args)
+                    logger.warn('wrong end value for trace at %s (data corruption?)' % str(args))
+                    problems += 1
                 if not num.all(num.isfinite(tr.data)):
-                    logger.warn('nans or infs in trace at %s' % args)
+                    logger.warn('nans or infs in trace at %s' % str(args))
+                    problems += 1
+
+        return problems
 
     def _decimated_store_dir(self, decimate):
         return os.path.join(self.store_dir, 'decimated', str(decimate))
@@ -696,9 +772,10 @@ class GFStore(GFStore_):
         else:
             store = self._decimated[decimate]
             if store is None:
-                store = GFStore(self._decimated_store_dir(decimate), 'r')
+                store = Store(self._decimated_store_dir(decimate), 'r')
                 self._decimated[decimate] = store
 
             return store, 1
 
+__all__ = 'Store GFTrace Zero StoreError CannotCreate CannotOpen'.split()
 

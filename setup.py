@@ -58,7 +58,7 @@ installed_date = %s
 packname = 'pyrocko' 
 version = '0.3'
 
-subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf' ]
+subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf', 'pyrocko.fomosto' ]
 if sys.version_info >= (2,5):
     subpacknames.append( 'pyrocko.need_python_2_5' )
 
@@ -96,7 +96,7 @@ setup( name = packname,
 
     ],
                 
-    scripts = [ 'apps/snuffler', 'apps/hamster', 'apps/cake' ],
+    scripts = [ 'apps/snuffler', 'apps/hamster', 'apps/cake', 'apps/fomosto' ],
     package_data = { packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd'] },
 )
 
