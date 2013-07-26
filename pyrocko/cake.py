@@ -2921,6 +2921,23 @@ class LayeredModel:
     
         return self
 
+    def to_scanlines(self):
+        def fmt(z, m):
+            return (z, m.vp, m.vs, m.rho, m.qp, m.qs)
+
+        last = None
+        lines = []
+        for element in self.elements():
+            if isinstance(element, Layer):
+                if not isinstance(last, Layer):
+                    lines.append(fmt(element.ztop, element.mtop))
+
+                lines.append(fmt(element.zbot, element.mbot))
+
+            last = element
+
+        return lines
+
     def iter_material_parameter(self, get):
         assert get in ('vp', 'vs', 'rho', 'qp', 'qs', 'z')
         if get == 'z':
