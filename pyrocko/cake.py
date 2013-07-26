@@ -3182,7 +3182,7 @@ def from_crust2x2_profile(profile, depthmantle=50000):
 
 def write_nd_model_fh(mod, fh):
     def fmt(z, mat):
-        return ' '.join( util.gform(x, 4) for x in [z/1000., mat.vp/1000., mat.vs/1000., mat.rho/1000., mat.qp, mat.qs] )+'\n'
+        return ' '.join( util.gform(x, 4) for x in [z/1000., mat.vp/1000., mat.vs/1000., mat.rho/1000., mat.qp, mat.qs] ).rstrip()+'\n'
     
     translate = { 'moho': 'mantle', 'cmb': 'outer-core', 'icb': 'inner-core' }
     last = None
