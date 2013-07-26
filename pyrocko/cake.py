@@ -1269,6 +1269,9 @@ class HomogeneousLayer(Layer):
         return self.m
 
     def u(self, mode, z=None):
+        if self._use_potential_interpolation and z is not None:
+            return self.u_potint(mode,z)
+
         if mode == P:
             return 1./self.m.vp
         if mode == S:
@@ -1279,6 +1282,9 @@ class HomogeneousLayer(Layer):
         return u, u
 
     def v(self, mode, z=None):
+        if self._use_potential_interpolation and z is not None:
+            return self.v_potint(mode,z)
+        
         if mode == P:
             v = self.m.vp
         if mode == S:
