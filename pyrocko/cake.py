@@ -3200,6 +3200,11 @@ def write_nd_model_fh(mod, fh):
 
         last = element
 
+def write_nd_model_str(mod):
+    f = StringIO.StringIO()
+    write_nd_model_fh(mod, f)
+    return f.getvalue()
+
 def write_nd_model(mod, fn):
     f = open(fn, 'w')
     write_nd_model_fh(mod, f)
