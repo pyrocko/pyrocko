@@ -2144,8 +2144,8 @@ class RayPath:
         zstart, zstop = endgaps[:2]
         zs, xs, ts = [], [], []
         for i in xrange(nout):
-            x_ = x[i]
-            indices = num.where(num.logical_and(0. <= x_, x_ <= xmax[i]))[0]
+            t_ = t[i]
+            indices = num.where(num.logical_and(0. <= t_, t_ <= tmax[i]))[0]
             n = indices.size + 2
             zs_, xs_, ts_ = [ num.empty(n, dtype=num.float) for j in range(3) ]
             zs_[1:-1] = z[i,indices]
