@@ -9,8 +9,8 @@ class CatalogSearch(Snuffling):
     def setup(self):
         
         self.catalogs = { 'Geofon': catalog.Geofon(),
-                        'USGS/NEIC PDE': catalog.USGS('PDE'), 
-                        'USGS/NEIC PDE-Q': catalog.USGS('PDE-Q'),
+                        'USGS/NEIC PDE': catalog.USGS('pde'), 
+                        'USGS/NEIC US': catalog.USGS('us'),
                         'Global-CMT': catalog.GlobalCMT(),
                         'Kinherd': catalog.Kinherd(), }
 

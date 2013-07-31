@@ -451,7 +451,7 @@ class GlobalCMT(EarthquakeCatalog):
 
 class USGS(EarthquakeCatalog):
 
-    def __init__(self, catalog=('PDE', 'PDE-Q')[0]):
+    def __init__(self, catalog='pde'):
        self.catalog = catalog 
        self.events = {}
 
@@ -460,15 +460,13 @@ class USGS(EarthquakeCatalog):
 
     def iter_event_names(self, time_range=None, magmin=0., magmax=10., latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
 
-        catmap = {'PDE': 'HH', 'PDE-Q': 'PP'}
-        
         yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
         yearend, monend, dayend = time.gmtime(time_range[1])[:3]
         
-
         p = []
         a = p.append
         a('format=geojson')
+        a('catalog=%s' % self.catalog.lower())
 
         a('starttime=%s' % util.time_to_str(time_range[0], format='%Y-%m-%dT%H:%M:%S'))
         a('endtime=%s' % util.time_to_str(time_range[1], format='%Y-%m-%dT%H:%M:%S'))
@@ -512,7 +510,17 @@ class USGS(EarthquakeCatalog):
             geo = feat['geometry']
             lon, lat, depth = [ float(x) for x in geo['coordinates'] ]
             t = util.str_to_time('1970-01-01 00:00:00') + props['time'] *0.001
-            mag = float(props['mag'])
+            if props['mag'] is not None:
+                mag = float(props['mag'])
+            else:
+                mag = None
+
+
+            if props['place'] != None:
+                region = str(props['place'])
+            else:
+                region = None
+
             catalog= str(props['net'].upper())
             name = 'USGS-%s-' % catalog + util.time_to_str(t, format='%Y-%m-%d_%H-%M-%S.3FRAC')
 
@@ -523,6 +531,7 @@ class USGS(EarthquakeCatalog):
                     name=name,
                     depth=depth*1000.,
                     magnitude=mag,
+                    region=region,
                     catalog=catalog)
 
             events.append(ev)
