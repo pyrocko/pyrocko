@@ -607,6 +607,12 @@ class Kinherd(EarthquakeCatalog):
                 name = eq['name'],
                 catalog='KPS',
                 moment_tensor = mt)
+
+            event.ext_confidence_intervals = {}
+            trans = { 'latitude': 'lat', 'longitude': 'lon' }
+            for par in 'latitude longitude depth magnitude'.split():
+                event.ext_confidence_intervals[trans.get(par, par)] = \
+                        (params[par+'_ci_low'], params[par+'_ci_high'])
             
             name = eq['name']
             self.events[name] = event
