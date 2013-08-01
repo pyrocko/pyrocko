@@ -1143,7 +1143,9 @@ def MakePileViewerMainClass(base):
 
             self.automatic_updates = False
 
-            self.pile.load_files( sorted(fns), cache=cache, fileformat=format, show_progress=False, update_progress=update_progress)
+            self.pile.load_files( sorted(fns), filename_attributes=regex, 
+                    cache=cache, fileformat=format, 
+                    show_progress=False, update_progress=update_progress)
 
             self.automatic_updates = True
             self.update()
