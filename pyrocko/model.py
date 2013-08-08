@@ -193,11 +193,7 @@ class Event:
                     if k in ('latitude longitude magnitude depth duration mnn mee mdd mne mnd med strike1 dip1 rake1 strike2 dip2 rake2 duration'.split()):
                         d[k] = float(v)
                     if k == 'time':
-                        t = util.ctimegm(v[:19])
-                        # workaround for floating point seconds
-                        if len(v) > 19 and v[19] == ".":
-                            t = t + float(v[19:])
-                        d[k] = t
+                        d[k] = util.str_to_time(v)
             
                 if line.startswith('---'):
                     d['have_separator'] = True
