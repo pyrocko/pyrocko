@@ -1954,11 +1954,15 @@ def MakePileViewerMainClass(base):
             
             generator = QSvgGenerator()
             generator.setFileName(fn)
-            generator.setSize(QSize(842, 595))
+            w,h = 842, 595
+            margin = 0.025
+            generator.setSize(QSize(w,h))
+            m = max(w,h)*margin
+            generator.setViewBox(QRectF(-m,-m, w+2*m,h+2*m))
 
             painter = QPainter()
             painter.begin(generator)
-            self.drawit(painter, printmode=False, w=generator.size().width(), h=generator.size().height())
+            self.drawit(painter, printmode=False, w=w, h=h)
             painter.end()
             
         def paintEvent(self, paint_ev ):
