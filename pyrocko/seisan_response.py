@@ -195,7 +195,7 @@ amplifier gain: %g
 digitizer gain: %g
 gain at 1 Hz: %g
 filters: %s
-'''     % (self.station, self.component, util.gmctime(self.tmin), self.latitude, 
+'''     % (self.station, self.component, util.time_to_str(self.tmin), self.latitude, 
             self.longitude, self.elevation, self.filetype, self.comment, 
             self.period, self.damping, self.sensor_sensitivity, 
             self.amplifier_gain, self.digitizer_gain, self.gain_1hz,

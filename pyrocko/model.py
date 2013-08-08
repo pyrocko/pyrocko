@@ -85,13 +85,13 @@ class Event:
             self.duration = duration
             
     def time_as_string(self):
-        return util.gmctime(self.time)
+        return util.time_to_str(self.time)
     
     def set_name(self, name):
         self.name = name
         
     def __str__(self):
-        return '%s %s %s %g %g %s %s' % (self.name, util.gmctime(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
+        return '%s %s %s %g %g %s %s' % (self.name, util.time_to_str(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
                 
     def dump(self, filename):
         file = open(filename, 'w')
@@ -100,7 +100,7 @@ class Event:
         
     def dumpf(self, file):
         file.write('name = %s\n' % self.name)
-        file.write('time = %s\n' % util.gmctime(self.time))
+        file.write('time = %s\n' % util.time_to_str(self.time))
         if self.lat is not None:
             file.write('latitude = %g\n' % self.lat)
         if self.lon is not None:
