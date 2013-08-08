@@ -2382,7 +2382,9 @@ class Ray:
 
         pl, ph = cp[ip-1], cp[ip]
         p_to_t = {}
+        i = [ 0]
         def f(p):
+            i[0] += 1
             x, t = self.path.xt(p, self.endgaps)
             p_to_t[p] = t
             return self.x - x
@@ -2485,7 +2487,7 @@ class LayeredModel:
         self._elements = []
         self.nlayers = 0
         self._np = 10000
-        self._pdepth = 18
+        self._pdepth = 5
         self._pathcache = {}
 
     def copy_with_elevation(self, elevation):
@@ -2653,6 +2655,7 @@ class LayeredModel:
         walker = self.walker()
         walker.goto_layer(layer_start)
         current = walker.current()
+
         
         ttop, tbot = current.tests(p, mode)
         if not ttop and not tbot:
@@ -2751,6 +2754,8 @@ class LayeredModel:
         phase definition has been used before.  
         '''
         
+        eps = 1e-7 #num.finfo(float).eps * 1000.
+
         if isinstance(phases, PhaseDef):
             phases = [ phases ]
         
@@ -2776,8 +2781,8 @@ class LayeredModel:
                     
                     p = min_not_none(pabove, pbelow)
 
-                    if in_direction == DOWN and (pbelow is None or pbelow > pabove): # diffracted wave
-                        p *= 0.999
+                    if in_direction == DOWN and (pbelow is None or pbelow >= pabove): # diffracted wave
+                        p *= (1.0 - eps)
 
                     path = self.path(p, phase, layer_start, layer_stop)
                     path.set_prange(p,p,1.)
@@ -2785,9 +2790,25 @@ class LayeredModel:
                     phase_paths = [ path ] 
                     
                 else:
+
                     pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
                     pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
                     pmax = min(pmax_start, pmax_stop)
+
+                    pedges = [ 0. ]
+                    for l in self.layers():
+                        for z in (l.ztop, l.zbot):
+                            for mode in (P,S):
+                                for eps2 in [ eps ]:
+                                    v = l.v(mode,z)
+                                    if v != 0.0:
+                                        p = radius(z)/v
+                                        if p <= pmax:
+                                            pedges.append(p*(1.0-eps2))
+                                            pedges.append(p)
+                                            pedges.append(p*(1.0+eps2))
+
+                    pedges = num.unique( sorted(pedges) )
 
                     phase_paths = {}
                     cached = {}
@@ -2814,13 +2835,18 @@ class LayeredModel:
                             return
                         path1 = p_to_path(pmin)
                         path2 = p_to_path(pmax)
-                        if path1 is None and path2 is None and i > 8:
+                        if path1 is None and path2 is None and i > 0:
                             return
                         if path1 is None or path2 is None or hash(path1) != hash(path2):
                             recurse(pmin, (pmin+pmax)/2., i+1)
                             recurse((pmin+pmax)/2., pmax, i+1)
 
-                    recurse(0., pmax)
+                    #recurse(0., pmax)
+
+                    for (pl, ph) in zip(pedges[:-1], pedges[1:]):
+                        recurse(pl,ph)
+
+                    print 'count: %i' % counter[0]
 
                     for path, ps in phase_paths.iteritems():
                         path.set_prange(min(ps), max(ps), pmax/(self._np-1))
@@ -2859,6 +2885,7 @@ class LayeredModel:
         if refine:
             refined = []
             for ray in arrivals:
+                
                 if ray.path._is_headwave:
                     refined.append(ray)
 
