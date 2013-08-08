@@ -2841,12 +2841,8 @@ class LayeredModel:
                             recurse(pmin, (pmin+pmax)/2., i+1)
                             recurse((pmin+pmax)/2., pmax, i+1)
 
-                    #recurse(0., pmax)
-
                     for (pl, ph) in zip(pedges[:-1], pedges[1:]):
                         recurse(pl,ph)
-
-                    print 'count: %i' % counter[0]
 
                     for path, ps in phase_paths.iteritems():
                         path.set_prange(min(ps), max(ps), pmax/(self._np-1))
