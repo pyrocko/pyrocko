@@ -2,6 +2,8 @@
 import math
 import numpy as num
 from guts import *
+from guts_array import literal, literal_presenter
+from pyrocko import cake
 
 class StringID(StringPattern):
     pattern = r'^[A-Za-z][A-Za-z0-9.-]{0,64}$'
@@ -168,8 +170,8 @@ class GFSet(Object):
     def vicinity(self, *args):
         return self._vicinity_function(*args)
 
-    def iter_nodes(self, depth=None):
-        return nditer_outer(self.coords[:depth])
+    def iter_nodes(self, level=None):
+        return nditer_outer(self.coords[:level])
 
     def iter_extraction(self, gdef):
         i = 0
@@ -204,8 +206,14 @@ class GFSetTypeA(GFSet):
     distance_max = Float.T()
     distance_delta = Float.T()
 
-    def distance(args):
+    def get_distance(self, args):
         return args[1]
+
+    def get_source_depth(self, args):
+        return args[0]
+
+    def get_receiver_depth(self, args):
+        return self.receiver_depth
 
     def _update(self):
         self.mins = num.array([self.source_depth_min, self.distance_min])
@@ -278,8 +286,14 @@ class GFSetTypeB(GFSet):
     distance_max = Float.T()
     distance_delta = Float.T()
 
-    def distance(args):
+    def get_distance(self, args):
         return args[2]
+
+    def get_source_depth(self, args):
+        return args[1]
+
+    def get_receiver_depth(self, args):
+        return args[0]
 
     def _update(self):
         self.mins = num.array([self.receiver_depth_min, self.source_depth_min, self.distance_min])
@@ -340,6 +354,20 @@ class GFSetTypeB(GFSet):
         self._indices_function = indices_function
         self._vicinity_function = vicinity_function
 
+
+class CakeNDModel(Object):
+    dummy_for = cake.LayeredModel
+
+    class __T(TBase):
+        def regularize_extra(self, val):
+            if isinstance(val, basestring):
+                val = cake.LayeredModel.from_scanlines(
+                        cake.read_nd_model_str(val))
+
+            return val
+
+        def to_save(self, val):
+            return literal(cake.write_nd_model_str(val))
 
 class Inventory(Object):
     citations = List.T(Citation.T())
