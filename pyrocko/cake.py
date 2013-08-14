@@ -1939,6 +1939,9 @@ class RayPath:
         x1, t = self.xt(p+dp, endgaps)
         x0 *= d2r
         x1 *= d2r
+        if x1 == x0:
+            return num.nan
+
         dp_dx = dp/(x1-x0)
         
         x = x0
@@ -1948,7 +1951,7 @@ class RayPath:
 
         first = self.first_straight()
         last = self.last_straight()
-        return  num.abs(dp_dx) * first.pflat_in(p, endgaps) / (4.0 * math.pi * num.sin(x) * 
+        return num.abs(dp_dx) * first.pflat_in(p, endgaps) / (4.0 * math.pi * num.sin(x) * 
                 (earthradius-first.z_in(endgaps)) * (earthradius-last.z_out(endgaps))**2 * 
                 first.u_in(endgaps)**2 * num.abs(num.cos(first.angle_in(p, endgaps)*d2r)) * 
                 num.abs(num.cos(last.angle_out(p, endgaps)*d2r)))
@@ -2225,10 +2228,15 @@ class RayPath:
             if num.all(x < self._xmin) or num.all(self._xmax < x):
                 return []
 
+
             rp, rx, rt = self.draft_pxt(endgaps)
 
             xp = interp( x, rx, rp, 0)
             xt = interp( x, rx, rt, 0)
+
+            if rp.size and len(xp) == 0 and rx[0] == 0.0 and x == 0.0 and rp[0] == 0.0:
+                xp = [ (x, rp[0]) ]
+                xt = [ (x, rt[0]) ]
 
             return [ (x,p,t, (rp,rx,rt)) for ((x,p), (_,t)) in zip(xp, xt)  ] 
     
@@ -2373,6 +2381,9 @@ class Ray:
 
     def refine(self):
         if self.path._is_headwave:
+            return
+
+        if self.t == 0.0 and self.p == 0.0 and self.x == 0.0:
             return
 
         cp,cx,ct = self.draft_pxt
@@ -2877,6 +2888,7 @@ class LayeredModel:
             endgaps = path.endgaps(zstart, zstop)
             for x,p,t, draft_pxt in path.interpolate_x2pt_linear(distances, endgaps):
                 arrivals.append(Ray(path, p, x, t, endgaps, draft_pxt))
+
 
         if refine:
             refined = []
