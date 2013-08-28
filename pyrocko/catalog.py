@@ -1,6 +1,7 @@
 import model, util
-from moment_tensor import MomentTensor
+from moment_tensor import MomentTensor, symmat6
 import urllib2
+import urllib
 import time
 import calendar
 import re
@@ -118,26 +119,34 @@ class Geofon(EarthquakeCatalog):
     def get_event(self, name):
         logger.debug('In Geofon.get_event("%s")' % name)
 
-        if name in self.events:
-            logger.debug('Already have it.')
-            return self.events[name]
-        
-        url = 'http://geofon.gfz-potsdam.de/db/eqpage.php?id=%s' % name
-        logger.debug('Opening URL: %s' % url)
-        page = urllib2.urlopen(url).read()
-        logger.debug('Received page (%i bytes)' % len(page))
+        if not name in self.events:
+            url = 'http://geofon.gfz-potsdam.de/db/eqpage.php?id=%s' % name
+            logger.debug('Opening URL: %s' % url)
+            page = urllib2.urlopen(url).read()
+            logger.debug('Received page (%i bytes)' % len(page))
 
-        d = self._parse_event_page(page)
-        ev = model.Event(
-              lat=d['epicenter'][0],
-              lon=d['epicenter'][1], 
-              time=d['time'],
-              name=name,
-              depth=d['depth'],
-              magnitude=d['magnitude'],
-              region=d['region'],
-              catalog='GEOFON')
-              
+            d = self._parse_event_page(page)
+            ev = model.Event(
+                  lat=d['epicenter'][0],
+                  lon=d['epicenter'][1], 
+                  time=d['time'],
+                  name=name,
+                  depth=d['depth'],
+                  magnitude=d['magnitude'],
+                  region=d['region'],
+                  catalog='GEOFON')
+
+            if d['have_moment_tensor']:
+                ev.moment_tensor = True
+
+
+            self.events[name] = ev
+
+        ev = self.events[name]
+
+        if ev.moment_tensor is True:
+            ev.moment_tensor = self.get_mt(ev)
+
         return ev
 
     def parse_xml(self, page):
@@ -194,15 +203,42 @@ class Geofon(EarthquakeCatalog):
                 magnitude=mag,
                 region=region,
                 catalog='GEOFON')
+
+            if vals[6] == 'MT':
+                syear = vals[0][:4]
+                ev.moment_tensor = True
             
             logger.debug('Adding event from GEOFON catalog: %s' % ev)
             
             events.append(ev)
                 
-                
-                
         return events
+
+    def get_mt(self, ev):
+        syear = time.strftime('%Y', time.gmtime(ev.time))
+        url = 'http://geofon.gfz-potsdam.de/data/alerts/%s/%s/mt.txt' % (syear, ev.name)
+        logger.debug('Opening URL: %s' % url)
+        page = urllib2.urlopen(url).read()
+        logger.debug('Received page (%i bytes)' % len(page))
         
+        return self._parse_mt_page(page)
+
+        
+    def _parse_mt_page(self, page):
+        d = {}
+        for k in 'Scale', 'Mrr', 'Mtt', 'Mpp', 'Mrt', 'Mrp', 'Mtp':
+            r = k+r'\s*=?\s*(\S+)'
+            m = re.search(r, page)
+            if m: 
+                s = m.group(1).replace('10**', '1e')
+                d[k.lower()] = float(s)
+
+        m = symmat6(*(d[x] for x in 'mrr mtt mpp mrt mrp mtp'.split()))
+        m *= d['scale']
+        mt = MomentTensor(m_up_south_east=m)
+
+        return mt
+
     def _parse_event_page(self, page):
         logger.debug('In Geofon._parse_event_page(...)')
         
@@ -217,17 +253,23 @@ class Geofon(EarthquakeCatalog):
         # fix broken tag
         page = re.sub('align=center', 'align="center"', page)
 
+
         doc = self.parse_xml(page)
 
         d = {}
         for tr in doc.getElementsByTagName("tr"):
             tds = tr.getElementsByTagName("td")
-            if len(tds) == 2:
-                k = getTextR(tds[0]).strip().split()[-1].rstrip(':').lower()
-                v = getTextR(tds[1]).encode('ascii')
-                logger.debug('%s => %s' % (k,v))
-                if k in wanted_map.keys():
-                     d[k] = wanted_map[k](v)
+            if len(tds) >= 2:
+                s = getTextR(tds[0]).strip()
+                t = s.split()
+                if t:
+                    k = t[-1].rstrip(':').lower()
+                    v = getTextR(tds[1]).encode('ascii')
+                    logger.debug('%s => %s' % (k,v))
+                    if k in wanted_map.keys():
+                         d[k] = wanted_map[k](v)
+
+        d['have_moment_tensor'] = page.find('Moment tensor solution') != -1
         
         return d
 
@@ -409,7 +451,7 @@ class GlobalCMT(EarthquakeCatalog):
 
 class USGS(EarthquakeCatalog):
 
-    def __init__(self, catalog=('PDE', 'PDE-Q')[0]):
+    def __init__(self, catalog='pde'):
        self.catalog = catalog 
        self.events = {}
 
@@ -418,43 +460,31 @@ class USGS(EarthquakeCatalog):
 
     def iter_event_names(self, time_range=None, magmin=0., magmax=10., latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
 
-        catmap = {'PDE': 'HH', 'PDE-Q': 'PP'}
-        
         yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
         yearend, monend, dayend = time.gmtime(time_range[1])[:3]
         
-        if latmin != -90. or latmax != 90. or lonmin != -180. or lonmax != 180.:
-            searchmethod = 2
-            # searchmethod=2 is for rectangular lat/lon area, but currently does not seem to work
+        p = []
+        a = p.append
+        a('format=geojson')
+        a('catalog=%s' % self.catalog.lower())
 
-        searchmethod = 1
-        url = 'http://neic.usgs.gov/cgi-bin/epic/epic.cgi?' + '&'.join([
-                'SEARCHMETHOD=%i' % searchmethod,
-                'FILEFORMAT=6',
-                'SEARCHRANGE=%s' % catmap[self.catalog],
-                ] + ([],[
-                    'SLAT1=%g' % latmin,
-                    'SLAT2=%g' % latmax,
-                    'SLON1=%g' % lonmin,
-                    'SLON2=%g' % lonmax,
-                ])[searchmethod==2] + [
-                'SYEAR=%i' % yearbeg,
-                'SMONTH=%02i' % monbeg,
-                'SDAY=%02i' % daybeg,
-                'EYEAR=%i' % yearend,
-                'EMONTH=%02i' % monend,
-                'EDAY=%02i' % dayend,
-                'LMAG=%g' % magmin,
-                'UMAG=%g' % magmax,
-                'NDEP1=',
-                'NDEP2=',
-                'IO1=',
-                'IO2=',
-                'CLAT=0.0',
-                'CLON=0.0',
-                'CRAD=0.0',
-                'SUBMIT=Submit+Search'])
+        a('starttime=%s' % util.time_to_str(time_range[0], format='%Y-%m-%dT%H:%M:%S'))
+        a('endtime=%s' % util.time_to_str(time_range[1], format='%Y-%m-%dT%H:%M:%S'))
 
+        if latmin != -90.:
+            a('minlatitude=%g' % latmin)
+        if latmax != 90.:
+            a('maxlatitude=%g' % latmax)
+        if lonmin != -180.:
+            a('minlongitude=%g' % lonmin)
+        if lonmax != 180.:
+            a('maxlongitude=%g' % lonmax)
+        if magmin != 0.:
+            a('minmagnitude=%g' % magmin)
+        if magmax != 10.:
+            a('maxmagnitude=%g' % magmax)
+        
+        url = 'http://comcat.cr.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
         page = urllib2.urlopen(url).read()
@@ -470,24 +500,30 @@ class USGS(EarthquakeCatalog):
                 yield ev.name
 
     def _parse_events_page(self, page):
+
+        import json
+        doc = json.loads(page)
+        
         events = []
-        for line in page.splitlines():
-            toks = line.strip().split(',')
-            if len(toks) != 9:
-                continue
+        for feat in doc['features']:
+            props = feat['properties']
+            geo = feat['geometry']
+            lon, lat, depth = [ float(x) for x in geo['coordinates'] ]
+            t = util.str_to_time('1970-01-01 00:00:00') + props['time'] *0.001
+            if props['mag'] is not None:
+                mag = float(props['mag'])
+            else:
+                mag = None
 
-            try:
-                int(toks[0])
-            except:
-                continue
 
-            t = util.str_to_time(','.join(toks[:4]).strip(), format='%Y,%m,%d,%H%M%S.OPTFRAC')
-            lat = float(toks[4])
-            lon = float(toks[5])
-            mag = float(toks[6])
-            depth = float(toks[7])
-            catalog = toks[8]
+            if props['place'] != None:
+                region = str(props['place'])
+            else:
+                region = None
+
+            catalog= str(props['net'].upper())
             name = 'USGS-%s-' % catalog + util.time_to_str(t, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+
             ev = model.Event(
                     lat=lat,
                     lon=lon, 
@@ -495,9 +531,10 @@ class USGS(EarthquakeCatalog):
                     name=name,
                     depth=depth*1000.,
                     magnitude=mag,
+                    region=region,
                     catalog=catalog)
 
-            events.append( ev )
+            events.append(ev)
 
         return events
     
@@ -515,4 +552,105 @@ class USGS(EarthquakeCatalog):
         t = util.str_to_time(ds, format='%Y-%m-%d_%H-%M-%S.3FRAC')
         return t
 
+class NotFound(Exception):
+    def __init__(self, url):
+        Exception.__init__(self)
+        self._url = url
+    
+    def __str__(self):
+        return 'No results for request %s' % self._url
+
+def ws_request(url, post=False, **kwargs):
+    url_values = urllib.urlencode(kwargs)
+    url = url + '?' + url_values
+    logger.debug('Accessing URL %s' % url)
+
+    req = urllib2.Request(url)
+    if post:
+        req.add_data(post)
+
+    req.add_header('Accept', '*/*')
+
+    try:
+        return urllib2.urlopen(req)
+
+    except urllib2.HTTPError, e:
+        if e.code == 404:
+            raise NotFound(url)
+        else:
+            raise e 
+
+class Kinherd(EarthquakeCatalog):
+
+    def __init__(self):
+       self.events = {}
+
+    def retrieve(self, **kwargs):
+        import yaml
+
+        kwargs['format'] = 'yaml'
+
+        url = 'http://kinherd.org/quakes/KPS'
+
+        f = ws_request(url, **kwargs)
+
+        names = []
+        for eq in yaml.safe_load_all(f):
+            tref_eq = calendar.timegm(eq['reference_time'].timetuple())
+            pset = eq['parametersets'][0]
+            tref = calendar.timegm(pset['reference_time'].timetuple())
+            params = pset['parameters']
+
+            mt = MomentTensor(
+                    strike=params['strike'],
+                    dip=params['dip'], 
+                    rake=params['slip_rake'],
+                    scalar_moment=params['moment'])
+
+            event = model.Event(
+                time = tref + params['time'],
+                lat=params['latitude'],
+                lon=params['longitude'],
+                depth=params['depth'],
+                magnitude=params['magnitude'],
+                name = eq['name'],
+                catalog='KPS',
+                moment_tensor = mt)
+
+            event.ext_confidence_intervals = {}
+            trans = { 'latitude': 'lat', 'longitude': 'lon' }
+            for par in 'latitude longitude depth magnitude'.split():
+                event.ext_confidence_intervals[trans.get(par, par)] = \
+                        (params[par+'_ci_low'], params[par+'_ci_high'])
+            
+            name = eq['name']
+            self.events[name] = event
+            names.append(name)
+
+        return names
+
+    
+    def iter_event_names(self, time_range=None, **kwargs):
+
+        qkwargs = {}
+        for k in 'magmin magmax latmin latmax lonmin lonmax'.split():
+            if k in kwargs and kwargs[k] is not None:
+                qkwargs[k] = '%f' % kwargs[k]
+        
+        if time_range is not None:
+            form = '%Y-%m-%d_%H-%M-%S'
+            if time_range[0] is not None:
+                qkwargs['tmin'] = util.time_to_str(time_range[0], form)
+            if time_range[1] is not None:
+                qkwargs['tmax'] = util.time_to_str(time_range[1], form)
+
+        for name in self.retrieve(**qkwargs):
+            yield name
+
+
+    def get_event(self, name):
+        if name not in self.events:
+            self.retrieve(name=name)
+
+        return self.events[name]
 

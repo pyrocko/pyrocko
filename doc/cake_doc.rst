@@ -1,7 +1,8 @@
 Cake
 ====
 
-Cake is a module which can be used to solve classical seismic ray theory problems for layered earth models (layer cake models).
+Cake is a module which can be used to solve classical seismic ray theory
+problems for layered earth models (layer cake models).
 
 For various seismic phases it can calculate:
 
@@ -11,8 +12,9 @@ For various seismic phases it can calculate:
 * take-off and incidence angles
 * geometrical spreading factors
 
-Computations are done for a spherical earth.
-Cake can either be run as a command line tool or used as a Python module. Both is demonstrated in the examples below.
+Computations are done for a spherical earth.  Cake can either be run as a
+command line tool or used as a Python module. Both is demonstrated in the
+examples below.
 
 Invocation
 ----------
@@ -69,6 +71,10 @@ Subcommands:
 
     create a simplified version of a layered model
 
+.. describe::    scatter
+ 
+    show details about scattering at model interfaces
+
 To get further help and a list of available options for any subcommand run::
 
     cake <subcommand> --help
@@ -80,13 +86,6 @@ Options
 Each subcommand has its own set of options. Use ``cake <subcommand> --help`` to
 see which of the following options apply to any of the subcommands listed
 above.
-
-General options:
-""""""""""""""""
-
-.. option::  -h, --help
-
-    Show help message and exit.
 
 
 Phases:
@@ -173,17 +172,6 @@ Source-receiver geometry:
 
     Surface distances as ``start:stop:n`` or ``dist1,dist2,...`` [km]
 
-.. option::    --degrees
-
-    Distances are in [deg] instead of [km], velocities in [deg/s] instead of [km/s].
-
-Plotting options:
-"""""""""""""""""
-
-.. option::    --vred=FLOAT
-
-    Velocity for time reduction in plot [km/s]
-
 Material:
 """""""""
 
@@ -230,6 +218,33 @@ some of the following options.
 
     Shear attenuation Qmu
 
+General:
+""""""""
+
+.. option::  -h, --help
+
+    Show help message and exit.
+
+.. option::    --vred=FLOAT
+
+    Velocity for time reduction in plot [km/s]
+
+.. option::    --degrees
+
+    Distances are in [deg] instead of [km], velocities in [deg/s] instead of [km/s].
+
+.. option::    --accuracy=MAXIMUM_RELATIVE_RMS
+
+    Set accuracy for model simplification.
+
+.. option::    --slowness=FLOAT
+
+    Select surface slowness [s/km] (default: 0)
+
+.. option::    --interface=(NAME or DEPTH)
+
+    Name or depth [km] of interface to select
+
 
 Command Line Examples
 ---------------------
@@ -261,6 +276,23 @@ Receivers may be at any depth. Arbitrary reflection/conversion histories may be 
 
 .. figure:: _static/cake_plot_example_2.png
     :scale: 80%
+
+To print arrival times and other ray parameters, replace ``plot-rays`` with 
+``arrivals`` in the command line above.
+
+::
+
+    > cake arrivals --sdepth=15 --distances=10 --rdepth=4.443 --crust2loc=0,0 \
+                  --phase='pP\,pPv3pP\,pPv3pPv3pP\,p'
+
+    slow    dist  time   take inci effi spre phase             used             
+    s/km    km    s      deg  deg  %    %   
+    ----------------------------------------------------------------------------
+    0.09711 10.00 2.3147  128 10.6 58.7  103 p                 (p)              
+    0.09099 10.00 8.1792  132 97.8 49.2  725 pP\               (p^0P\)          
+    0.08461 10.00 14.052  136 97.3 8.03  729 pPv3pP\           (p^0Pv4.443p^0P\)
+    0.07835 10.00 19.931  140 96.8 1.32  710 pPv3pPv3pP\       (p^0Pv4.443p^0Pv4.443p^0P\)
+    
 
 Classic phase names
 ^^^^^^^^^^^^^^^^^^^
@@ -337,6 +369,34 @@ Cake can also be used to convert between different material parameters::
     Qp                            :         1350
     Qs = Qmu                      :          600
     Qk                            :          inf
+
+
+Energy scatter at interface
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``scatter`` subcommand may be used to see how much energy (in percent) is
+transmitted through or reflected by an interface for any given surface
+slowness (P-SV case)::
+    
+    > cake scatter --interface=moho --slowness=0.0
+    interface "moho" (35 km)
+
+                 4.349       3.209                     95.65       96.79       
+      \P         /P      \S  /S                        /P          /S          
+      ----------------   ----------------   ----------------   ----------------
+                 \P          \S             /P         \P      /S  \S          
+                 95.65       96.79                     4.349       3.209       
+
+
+
+    > cake scatter --interface=moho --slowness=0.15
+    interface "moho" (35 km)
+
+          3.899  92.69       1.859  3.899       94.24  3.411
+      \P  /S     /P      \S  /S     /P          /S     /P   
+      ----------------   ----------------   ----------------
+          \S                 \S             /S  \S          
+          3.411              94.24              2.347       
 
 
 

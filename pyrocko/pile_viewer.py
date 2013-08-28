@@ -580,16 +580,24 @@ def MakePileViewerMainClass(base):
 #            self.menuitem_pick = QAction('Pick', self.menu)
 #            self.menu.addAction(self.menuitem_pick)
 #            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
+
+            mi = QAction('Open waveform files...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_waveforms )
+
+            mi = QAction('Open waveform directory...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_waveform_directory )
             
-            mi = QAction('Write markers', self.menu)
+            mi = QAction('Write markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.write_markers )
             
-            mi = QAction('Write selected markers', self.menu)
+            mi = QAction('Write selected markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.write_selected_markers )
             
-            mi = QAction('Read markers', self.menu)
+            mi = QAction('Read markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.read_markers )
             
@@ -661,6 +669,10 @@ def MakePileViewerMainClass(base):
                     ( lambda tr: self.ssort(tr) + (tr.location, tr.network, tr.station, tr.channel),
                     lambda a,b: cmp(a,b),
                     lambda tr: tr.channel )),
+                ('Subsort by Channel, Network, Station, Location', 
+                    ( lambda tr: self.ssort(tr) + (tr.channel, tr.network, tr.station, tr.location),
+                    lambda a,b: cmp(a,b),
+                    lambda tr: (tr.network, tr.station, tr.location) )),
                 ('Subsort by Network, Station, Channel (Grouped by Location)',
                     ( lambda tr: self.ssort(tr) + (tr.network, tr.station, tr.channel),
                     lambda a,b: cmp(a,b),
@@ -1131,7 +1143,9 @@ def MakePileViewerMainClass(base):
 
             self.automatic_updates = False
 
-            self.pile.load_files( sorted(fns), cache=cache, fileformat=format, show_progress=False, update_progress=update_progress)
+            self.pile.load_files( sorted(fns), filename_attributes=regex, 
+                    cache=cache, fileformat=format, 
+                    show_progress=False, update_progress=update_progress)
 
             self.automatic_updates = True
             self.update()
@@ -1146,6 +1160,26 @@ def MakePileViewerMainClass(base):
         def load_soon(self, paths):
             self._paths_to_load.extend(paths)
             QTimer.singleShot( 200, self.load_queued )
+        
+        def open_waveforms(self, _=None):
+
+            caption = 'Select one or more files to open'
+
+            fns = QFileDialog.getOpenFileNames(
+                self,
+                caption)
+
+            self.load(list(str(fn) for fn in fns))
+
+        def open_waveform_directory(self, _=None):
+
+            caption = 'Select directory to scan for waveform files'
+
+            fn = QFileDialog.getExistingDirectory(
+                self,
+                caption)
+
+            self.load([str(fn)])
 
         def add_traces(self, traces):
             if traces:
@@ -1483,8 +1517,8 @@ def MakePileViewerMainClass(base):
             keytext = str(key_event.text())
 
             if keytext == '?':
-                self.toggle_help()
-                
+                self.help()
+
             elif keytext == ' ':
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
@@ -1669,16 +1703,9 @@ def MakePileViewerMainClass(base):
             for h in [ hcheat, hepilog ]:
                 h.setAlignment( Qt.AlignTop | Qt.AlignHCenter )
                 h.setWordWrap(True)
-            
+
             self.show_doc('Help', [hcheat, hepilog], target='panel')
-        
-        def toggle_help(self):
-            for widget in self.panel_parent.dockwidgets():
-                if 'Help' == widget.windowTitle():
-                    widget.close()
-                    return
-            self.help()
-            
+
         def show_doc(self, name, labels, target='panel'):
             scroller = QScrollArea()
             frame = QFrame(scroller)
@@ -1927,11 +1954,15 @@ def MakePileViewerMainClass(base):
             
             generator = QSvgGenerator()
             generator.setFileName(fn)
-            generator.setSize(QSize(842, 595))
+            w,h = 842, 595
+            margin = 0.025
+            generator.setSize(QSize(w,h))
+            m = max(w,h)*margin
+            generator.setViewBox(QRectF(-m,-m, w+2*m,h+2*m))
 
             painter = QPainter()
             painter.begin(generator)
-            self.drawit(painter, printmode=False, w=generator.size().width(), h=generator.size().height())
+            self.drawit(painter, printmode=False, w=w, h=h)
             painter.end()
             
         def paintEvent(self, paint_ev ):
@@ -2493,17 +2524,17 @@ def MakePileViewerMainClass(base):
 
             return traces
 
-        def visible_length_change(self, ignore):
+        def visible_length_change(self, ignore=None):
             for menuitem, vlen in self.menuitems_visible_length:
                 if menuitem.isChecked():
                     self.visible_length = vlen
 
-        def scaling_base_change(self, ignore):
+        def scaling_base_change(self, ignore=None):
             for menuitem, scaling_base in self.menuitems_scaling_base:
                 if menuitem.isChecked():
                     self.scaling_base = scaling_base
         
-        def scalingmode_change(self, ignore):
+        def scalingmode_change(self, ignore=None):
             for menuitem, scaling_key in self.menuitems_scaling:
                 if menuitem.isChecked():
                     self.scaling_key = scaling_key
@@ -2765,18 +2796,20 @@ def MakePileViewerMainClass(base):
                         self.update()
 
                     elif command in ('hide', 'unhide'):
-                        if len(toks) in (2,3):
+                        if len(toks) >= 2:
+                            patterns = []
                             if len(toks) == 2:
-                                pattern = toks[1]
-                            elif len(toks) == 3:
+                                patterns = [ toks[1] ]
+                            elif len(toks) >= 3:
                                 x = { 'n': '%s.*.*.*', 's': '*.%s.*.*', 'l': '*.*.%s.*', 'c': '*.*.*.%s' }
                                 if toks[1] in x:
-                                    pattern = x[toks[1]] % toks[2]
-                            
-                            if command == 'hide':
-                                self.add_blacklist_pattern( pattern )
-                            else:
-                                self.remove_blacklist_pattern( pattern )
+                                    patterns.extend( x[toks[1]] % tok for tok in toks[2:] )
+
+                            for pattern in patterns:
+                                if command == 'hide':
+                                    self.add_blacklist_pattern( pattern )
+                                else:
+                                    self.remove_blacklist_pattern( pattern )
                         
                         elif command == 'unhide' and len(toks) == 1:
                             self.clear_blacklist()
