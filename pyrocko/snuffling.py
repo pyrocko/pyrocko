@@ -14,6 +14,11 @@ import pile
 
 from gui_util import ValControl, LinValControl, FigureFrame
 
+try: 
+    import markdown
+except ImportError:
+    pass
+
 logger = logging.getLogger('pyrocko.snuffling')
 
 def _str_traceback():
@@ -655,7 +660,12 @@ class Snuffling:
 
             butlayout.addWidget( live_update_checkbox )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
-        
+
+            if self.__doc__ is not None: 
+                help_button = QPushButton('Help')
+                butlayout.addWidget( help_button )
+                self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
+
             clear_button = QPushButton('Clear')
             butlayout.addWidget( clear_button )
             self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
@@ -663,12 +673,6 @@ class Snuffling:
             call_button = QPushButton('Run')
             butlayout.addWidget( call_button )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
-
-            if self.__doc__ is not None: 
-                help_button = QPushButton('Help')
-                butlayout.addWidget( help_button )
-                self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
-
 
             for name, method in self._triggers:
                 but = QPushButton(name)
@@ -842,11 +846,15 @@ class Snuffling:
         '''Creates a :py:class:`QLabel` which contains the documentation as 
         given in the snufflings' __doc__ string.
         '''
-        doc = QLabel(self.__doc__)
+        try:
+            doc = QLabel(markdown.markdown(self.__doc__))
+        except NameError:
+            doc = QLabel(self.__doc__)
+
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
-        self._viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
+        self._viewer.show_doc('Help: %s'%self._name, [doc], target='panel')
         
     def live_update_toggled(self, on):
         '''Called when the checkbox for live-updates has been toggled.'''
