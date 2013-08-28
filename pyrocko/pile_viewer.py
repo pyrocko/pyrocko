@@ -1193,7 +1193,8 @@ def MakePileViewerMainClass(base):
                 caption)
 
             stations = map( lambda x: pyrocko.model.load_stations(str(x)), fns)           
-            self.add_stations(stations[0])
+            for stat in stations:
+                self.add_stations(stat)
 
         def add_traces(self, traces):
             if traces:
