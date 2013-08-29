@@ -33,7 +33,7 @@ The main classes defined in this module are:
 
 import sys, os, copy, inspect, math, cmath, operator, StringIO, glob
 from pyrocko import util
-from scipy.optimize import bisect
+from scipy.optimize import bisect, brentq
 from scipy.interpolate import fitpack
 import numpy as num
 
@@ -1269,6 +1269,9 @@ class HomogeneousLayer(Layer):
         return self.m
 
     def u(self, mode, z=None):
+        if self._use_potential_interpolation and z is not None:
+            return self.u_potint(mode,z)
+
         if mode == P:
             return 1./self.m.vp
         if mode == S:
@@ -1279,6 +1282,9 @@ class HomogeneousLayer(Layer):
         return u, u
 
     def v(self, mode, z=None):
+        if self._use_potential_interpolation and z is not None:
+            return self.v_potint(mode,z)
+        
         if mode == P:
             v = self.m.vp
         if mode == S:
@@ -2138,8 +2144,8 @@ class RayPath:
         zstart, zstop = endgaps[:2]
         zs, xs, ts = [], [], []
         for i in xrange(nout):
-            x_ = x[i]
-            indices = num.where(num.logical_and(0. <= x_, x_ <= xmax[i]))[0]
+            t_ = t[i]
+            indices = num.where(num.logical_and(0. <= t_, t_ <= tmax[i]))[0]
             n = indices.size + 2
             zs_, xs_, ts_ = [ num.empty(n, dtype=num.float) for j in range(3) ]
             zs_[1:-1] = z[i,indices]
@@ -2167,62 +2173,64 @@ class RayPath:
        
     def draft_pxt(self, endgaps):
         self._analyse()
-        dx, dt = self.xt_endgaps(self._p, endgaps)
-        p, x, t = self._p, self._x - dx, self._t - dt
-        ok = self.xt_endgaps_ptest(self._p, endgaps)
-        indices = num.where(ok)[0]
+
         if not self._is_headwave:
-            return p[indices].copy(), x[indices].copy(), t[indices].copy()
+            cp,cx,ct = self._p, self._x, self._t
+            pcrit = min(self.critical_pstart(endgaps), self.critical_pstop(endgaps))
+            temp = None
+            if pcrit < self._pmin:
+                empty = num.array([], dtype=num.float)
+                return empty, empty, empty
+
+            elif pcrit >= self._pmax:
+                dx, dt = self.xt_endgaps(cp, endgaps)
+                return cp, cx-dx, ct-dt
+
+            else:
+                n = num.searchsorted(cp, pcrit) + 1
+                rp,rx,rt = num.empty((3,n), dtype=num.float)
+                rp[:-1] = cp[:n-1]
+                rx[:-1] = cx[:n-1]
+                rt[:-1] = ct[:n-1]
+                rp[-1] = pcrit
+                rx[-1], rt[-1] = self.xt(pcrit, endgaps)
+                dx, dt = self.xt_endgaps(rp, endgaps)
+                rx[:-1] -= dx[:-1]
+                rt[:-1] -= dt[:-1]
+                return rp, rx, rt
+
         else:
-            assert len(indices) == 1
+            dx, dt = self.xt_endgaps(self._p, endgaps)
+            p, x, t = self._p, self._x - dx, self._t - dt
             p,x,t = p[0], x[0], t[0] 
             xh = num.linspace(0., x*10-x, 10)
             th = self.headwave_straight().x2t_headwave(xh)
             return filled(p, xh.size), x+xh, t+th
-
-    def interpolate_t2x_linear(self, t, endgaps):
-        '''Get approximate distance for arrival time.'''
-
-        self._analyse()
-        dx, dt = self.xt_endgaps(self._p, endgaps)
-        return interp( t, self._t - dt, self._x - dx, 0)
-
-    def interpolate_x2t_linear(self, x, endgaps):
-        '''Get approximate arrival time for distance.'''
-
-        self._analyse()
-        dx, dt = self.xt_endgaps(self._p, endgaps)
-        return interp( x, self._x - dx, self._t - dt, 0)
-
-    def interpolate_t2px_linear(self, t, endgaps):
-        '''Get approximate ray parameter and distance for arrivaltime.'''
-
-        self._analyse()
-        dx, dt = self.xt_endgaps(self._p, endgaps)
-        tp = interp( t, self._t - dt, self._p, 0)
-        tx = interp( t, self._t - dt, self._x - dx, 0)
-        return [ (t,p,x) for ((t,p), (_,x)) in zip(tp, tx) ]
 
     def interpolate_x2pt_linear(self, x, endgaps):
         '''Get approximate ray parameter and traveltime for distance.'''
 
         self._analyse()
 
-        dx, dt = self.xt_endgaps(self._p, endgaps)
-
         if self._is_headwave: 
+            dx, dt = self.xt_endgaps(self._p, endgaps)
             xmin = self._x[0] - dx[0]
             tmin = self._t[0] - dt[0]
             el = self.headwave_straight()
-            xok = x[ num.where(x >= xmin)[0] ]
-            th = el.x2t_headwave(xstretch=(xok-xmin))
-            return num.transpose((xok, filled(self._p[0], len(xok)), tmin+th))
+            xok = x[ x >= xmin ]
+            th = el.x2t_headwave(xstretch=(xok-xmin)) + tmin
+            return [ (x,self._p[0],t, None) for (x,t) in zip(xok, th) ]
         
         else:            
-            xp = interp( x, self._x - dx, self._p, 0)
-            xt = interp( x, self._x - dx, self._t - dt, 0)
-            return [ (x,p,t) for ((x,p), (_,t)) in zip(xp, xt)  ] 
+            if num.all(x < self._xmin) or num.all(self._xmax < x):
+                return []
 
+            rp, rx, rt = self.draft_pxt(endgaps)
+
+            xp = interp( x, rx, rp, 0)
+            xt = interp( x, rx, rt, 0)
+
+            return [ (x,p,t, (rp,rx,rt)) for ((x,p), (_,t)) in zip(xp, xt)  ] 
     
     def __eq__(self, other):
         if len(self.elements) != len(other.elements):
@@ -2283,11 +2291,6 @@ class RayPath:
     def ranges(self, endgaps):
         '''Get valid ranges of ray parameter, distance, and traveltime.'''
         p,x,t = self.draft_pxt(endgaps)
-        pp = min(self._pmax, self.critical_pstart(endgaps), self.critical_pstop(endgaps))
-        xx, tt = self.xt(pp, endgaps)
-        x = num.concatenate((x, [xx]))
-        t = num.concatenate((t, [tt]))
-        p = num.concatenate((p, [pp]))
         return p.min(), p.max(), x.min(), x.max(), t.min(), t.max()
 
     def describe(self, endgaps=None, as_degrees=False):
@@ -2344,12 +2347,13 @@ class Ray:
            Needed for source/receiver depth adjustments in many :py:class:`RayPath` methods.
     '''
 
-    def __init__(self, path, p, x, t, endgaps):
+    def __init__(self, path, p, x, t, endgaps, draft_pxt):
         self.path = path
         self.p = p
         self.x = x
         self.t = t
         self.endgaps = endgaps
+        self.draft_pxt = draft_pxt
 
     def given_phase(self):
         '''Get phase definition which was used to create the ray.
@@ -2367,38 +2371,30 @@ class Ray:
 
         return self.path.used_phase(self.p)
 
-    def refine(self, eps=0.0001):
-        x, t = self.path.xt(self.p, self.endgaps)
-        xeps = self.x*eps
-        count = [ 0 ]
-        if abs(self.x - x) > xeps:
-            ip = num.searchsorted(self.path._p, self.p)
-            if not (0 < ip < self.path._p.size):
-                raise RefineFailed()
+    def refine(self):
+        if self.path._is_headwave:
+            return
 
-            pl, ph = self.path._p[ip-1], self.path._p[ip]
-            def f(p):
-                count[0] += 1
-                x, t = self.path.xt(p, self.endgaps)
-                dx = self.x - x
-                if abs(dx) < xeps:
-                    return 0.0
-                else:
-                    return dx
-            
-            try:
-                p = bisect(f, pl, ph)
-                x, self.t = self.path.xt(p, self.endgaps)
-                ok = self.path.xt_endgaps_ptest(p, self.endgaps)
-                if not ok or abs(self.x - x) > xeps:
-                    raise RefineFailed()
+        cp,cx,ct = self.draft_pxt
+        ip = num.searchsorted(cp, self.p)
+        if not (0 < ip < cp.size):
+            raise RefineFailed()
 
-                self.p = p
-            except ValueError:
-                raise RefineFailed()
+        pl, ph = cp[ip-1], cp[ip]
+        p_to_t = {}
+        i = [ 0]
+        def f(p):
+            i[0] += 1
+            x, t = self.path.xt(p, self.endgaps)
+            p_to_t[p] = t
+            return self.x - x
 
-        
-        return count[0]
+        try:
+            self.p = brentq(f, pl, ph)
+            self.t = p_to_t[self.p]
+
+        except ValueError:
+            raise RefineFailed()
 
     def takeoff_angle(self):
         '''Get takeoff angle of ray.
@@ -2491,7 +2487,7 @@ class LayeredModel:
         self._elements = []
         self.nlayers = 0
         self._np = 10000
-        self._pdepth = 18
+        self._pdepth = 5
         self._pathcache = {}
 
     def copy_with_elevation(self, elevation):
@@ -2659,6 +2655,7 @@ class LayeredModel:
         walker = self.walker()
         walker.goto_layer(layer_start)
         current = walker.current()
+
         
         ttop, tbot = current.tests(p, mode)
         if not ttop and not tbot:
@@ -2757,6 +2754,8 @@ class LayeredModel:
         phase definition has been used before.  
         '''
         
+        eps = 1e-7 #num.finfo(float).eps * 1000.
+
         if isinstance(phases, PhaseDef):
             phases = [ phases ]
         
@@ -2782,8 +2781,8 @@ class LayeredModel:
                     
                     p = min_not_none(pabove, pbelow)
 
-                    if in_direction == DOWN and (pbelow is None or pbelow > pabove): # diffracted wave
-                        p *= 0.999
+                    if in_direction == DOWN and (pbelow is None or pbelow >= pabove): # diffracted wave
+                        p *= (1.0 - eps)
 
                     path = self.path(p, phase, layer_start, layer_stop)
                     path.set_prange(p,p,1.)
@@ -2791,9 +2790,25 @@ class LayeredModel:
                     phase_paths = [ path ] 
                     
                 else:
+
                     pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
                     pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
                     pmax = min(pmax_start, pmax_stop)
+
+                    pedges = [ 0. ]
+                    for l in self.layers():
+                        for z in (l.ztop, l.zbot):
+                            for mode in (P,S):
+                                for eps2 in [ eps ]:
+                                    v = l.v(mode,z)
+                                    if v != 0.0:
+                                        p = radius(z)/v
+                                        if p <= pmax:
+                                            pedges.append(p*(1.0-eps2))
+                                            pedges.append(p)
+                                            pedges.append(p*(1.0+eps2))
+
+                    pedges = num.unique( sorted(pedges) )
 
                     phase_paths = {}
                     cached = {}
@@ -2820,13 +2835,14 @@ class LayeredModel:
                             return
                         path1 = p_to_path(pmin)
                         path2 = p_to_path(pmax)
-                        if path1 is None and path2 is None and i > 8:
+                        if path1 is None and path2 is None and i > 0:
                             return
                         if path1 is None or path2 is None or hash(path1) != hash(path2):
                             recurse(pmin, (pmin+pmax)/2., i+1)
                             recurse((pmin+pmax)/2., pmax, i+1)
 
-                    recurse(0., pmax)
+                    for (pl, ph) in zip(pedges[:-1], pedges[1:]):
+                        recurse(pl,ph)
 
                     for path, ps in phase_paths.iteritems():
                         path.set_prange(min(ps), max(ps), pmax/(self._np-1))
@@ -2840,7 +2856,9 @@ class LayeredModel:
         paths.sort(key=lambda x: x.pmin)
         return paths
     
-    def arrivals(self, distances=[], phases=PhaseDef('P'), zstart=0.0, zstop=0.0, refine=True):
+    def arrivals(self, distances=[], phases=PhaseDef('P'), 
+            zstart=0.0, zstop=0.0, refine=True):
+
         '''Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
@@ -2855,20 +2873,22 @@ class LayeredModel:
    
         arrivals = []
         for path in self.gather_paths( phases, zstart=zstart, zstop=zstop):
+            
             endgaps = path.endgaps(zstart, zstop)
-            for x,p,t in path.interpolate_x2pt_linear(distances, endgaps):
-                arrivals.append(Ray(path, p, x, t, endgaps))
+            for x,p,t, draft_pxt in path.interpolate_x2pt_linear(distances, endgaps):
+                arrivals.append(Ray(path, p, x, t, endgaps, draft_pxt))
 
         if refine:
             refined = []
             for ray in arrivals:
+                
                 if ray.path._is_headwave:
                     refined.append(ray)
+
                 try:
                     ray.refine()
-                    ok = ray.path.xt_endgaps_ptest(ray.p, endgaps)
-                    if ok:
-                        refined.append(ray) 
+                    refined.append(ray) 
+
                 except RefineFailed:
                     pass
 
@@ -2914,6 +2934,23 @@ class LayeredModel:
                     self.append(layer)
     
         return self
+
+    def to_scanlines(self):
+        def fmt(z, m):
+            return (z, m.vp, m.vs, m.rho, m.qp, m.qs)
+
+        last = None
+        lines = []
+        for element in self.elements():
+            if isinstance(element, Layer):
+                if not isinstance(last, Layer):
+                    lines.append(fmt(element.ztop, element.mtop))
+
+                lines.append(fmt(element.zbot, element.mbot))
+
+            last = element
+
+        return lines
 
     def iter_material_parameter(self, get):
         assert get in ('vp', 'vs', 'rho', 'qp', 'qs', 'z')
@@ -3159,7 +3196,7 @@ def from_crust2x2_profile(profile, depthmantle=50000):
 
 def write_nd_model_fh(mod, fh):
     def fmt(z, mat):
-        return ' '.join( util.gform(x, 4) for x in [z/1000., mat.vp/1000., mat.vs/1000., mat.rho/1000., mat.qp, mat.qs] )+'\n'
+        return ' '.join( util.gform(x, 4) for x in [z/1000., mat.vp/1000., mat.vs/1000., mat.rho/1000., mat.qp, mat.qs] ).rstrip()+'\n'
     
     translate = { 'moho': 'mantle', 'cmb': 'outer-core', 'icb': 'inner-core' }
     last = None
@@ -3176,6 +3213,11 @@ def write_nd_model_fh(mod, fh):
             fh.write(fmt(element.zbot, element.mbot))
 
         last = element
+
+def write_nd_model_str(mod):
+    f = StringIO.StringIO()
+    write_nd_model_fh(mod, f)
+    return f.getvalue()
 
 def write_nd_model(mod, fn):
     f = open(fn, 'w')

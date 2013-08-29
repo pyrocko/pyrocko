@@ -238,7 +238,7 @@ class SerialHamster:
         if self.tmin is None and self.deltat is not None:
             self.tmin = r_tmin
             self.ncontinuous = 0
-            logger.info('Setting new time origin to %s' % util.gmctime(self.tmin))
+            logger.info('Setting new time origin to %s' % util.time_to_str(self.tmin))
         
         if self.tmin is not None and self.deltat is not None:
             for channel, values in zip(self.channels, self.values):

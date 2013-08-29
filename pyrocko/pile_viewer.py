@@ -585,16 +585,28 @@ def MakePileViewerMainClass(base):
 #            self.menuitem_pick = QAction('Pick', self.menu)
 #            self.menu.addAction(self.menuitem_pick)
 #            self.connect( self.menuitem_pick, SIGNAL("triggered(bool)"), self.start_picking )
+
+            mi = QAction('Open waveform files...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_waveforms )
+
+            mi = QAction('Open waveform directory...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_waveform_directory )
             
-            mi = QAction('Write markers', self.menu)
+            mi = QAction('Open station files...', self.menu)
+            self.menu.addAction(mi)
+            self.connect(mi, SIGNAL("triggered(bool)"), self.open_stations)
+
+            mi = QAction('Write markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.write_markers )
             
-            mi = QAction('Write selected markers', self.menu)
+            mi = QAction('Write selected markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.write_selected_markers )
             
-            mi = QAction('Read markers', self.menu)
+            mi = QAction('Read markers...', self.menu)
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.read_markers )
             
@@ -666,6 +678,10 @@ def MakePileViewerMainClass(base):
                     ( lambda tr: self.ssort(tr) + (tr.location, tr.network, tr.station, tr.channel),
                     lambda a,b: cmp(a,b),
                     lambda tr: tr.channel )),
+                ('Subsort by Channel, Network, Station, Location', 
+                    ( lambda tr: self.ssort(tr) + (tr.channel, tr.network, tr.station, tr.location),
+                    lambda a,b: cmp(a,b),
+                    lambda tr: (tr.network, tr.station, tr.location) )),
                 ('Subsort by Network, Station, Channel (Grouped by Location)',
                     ( lambda tr: self.ssort(tr) + (tr.network, tr.station, tr.channel),
                     lambda a,b: cmp(a,b),
@@ -1144,7 +1160,9 @@ def MakePileViewerMainClass(base):
 
             self.automatic_updates = False
 
-            self.pile.load_files( sorted(fns), cache=cache, fileformat=format, show_progress=False, update_progress=update_progress)
+            self.pile.load_files( sorted(fns), filename_attributes=regex, 
+                    cache=cache, fileformat=format, 
+                    show_progress=False, update_progress=update_progress)
 
             self.automatic_updates = True
             self.update()
@@ -1159,6 +1177,37 @@ def MakePileViewerMainClass(base):
         def load_soon(self, paths):
             self._paths_to_load.extend(paths)
             QTimer.singleShot( 200, self.load_queued )
+
+        def open_waveforms(self, _=None):
+
+            caption = 'Select one or more files to open'
+
+            fns = QFileDialog.getOpenFileNames(
+                self,
+                caption)
+
+            self.load(list(str(fn) for fn in fns))
+        
+        def open_waveform_directory(self, _=None):
+
+            caption = 'Select directory to scan for waveform files'
+
+            fn = QFileDialog.getExistingDirectory(
+                self,
+                caption)
+
+            self.load([str(fn)])
+
+        def open_stations(self, _=None):
+            caption = 'Select one or more files to open'
+
+            fns = QFileDialog.getOpenFileNames(
+                self,
+                caption)
+
+            stations = map( lambda x: pyrocko.model.load_stations(str(x)), fns)           
+            for stat in stations:
+                self.add_stations(stat)
 
         def add_traces(self, traces):
             if traces:
@@ -1933,11 +1982,15 @@ def MakePileViewerMainClass(base):
             
             generator = QSvgGenerator()
             generator.setFileName(fn)
-            generator.setSize(QSize(842, 595))
+            w,h = 842, 595
+            margin = 0.025
+            generator.setSize(QSize(w,h))
+            m = max(w,h)*margin
+            generator.setViewBox(QRectF(-m,-m, w+2*m,h+2*m))
 
             painter = QPainter()
             painter.begin(generator)
-            self.drawit(painter, printmode=False, w=generator.size().width(), h=generator.size().height())
+            self.drawit(painter, printmode=False, w=w, h=h)
             painter.end()
             
         def paintEvent(self, paint_ev ):

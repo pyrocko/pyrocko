@@ -14,6 +14,11 @@ import pile
 
 from gui_util import ValControl, LinValControl, FigureFrame
 
+try: 
+    import markdown
+except ImportError:
+    pass
+
 logger = logging.getLogger('pyrocko.snuffling')
 
 def _str_traceback():
@@ -852,7 +857,11 @@ class Snuffling:
         '''Creates a :py:class:`QLabel` which contains the documentation as 
         given in the snufflings' __doc__ string.
         '''
-        doc = QLabel(self.__doc__)
+        try:
+            doc = QLabel(markdown.markdown(self.__doc__))
+        except NameError:
+            doc = QLabel(self.__doc__)
+
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)

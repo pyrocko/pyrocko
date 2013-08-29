@@ -451,7 +451,7 @@ class GlobalCMT(EarthquakeCatalog):
 
 class USGS(EarthquakeCatalog):
 
-    def __init__(self, catalog=('PDE', 'PDE-Q')[0]):
+    def __init__(self, catalog='pde'):
        self.catalog = catalog 
        self.events = {}
 
@@ -460,43 +460,31 @@ class USGS(EarthquakeCatalog):
 
     def iter_event_names(self, time_range=None, magmin=0., magmax=10., latmin=-90., latmax=90., lonmin=-180., lonmax=180.):
 
-        catmap = {'PDE': 'HH', 'PDE-Q': 'PP'}
-        
         yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
         yearend, monend, dayend = time.gmtime(time_range[1])[:3]
         
-        if latmin != -90. or latmax != 90. or lonmin != -180. or lonmax != 180.:
-            searchmethod = 2
-            # searchmethod=2 is for rectangular lat/lon area, but currently does not seem to work
+        p = []
+        a = p.append
+        a('format=geojson')
+        a('catalog=%s' % self.catalog.lower())
 
-        searchmethod = 1
-        url = 'http://neic.usgs.gov/cgi-bin/epic/epic.cgi?' + '&'.join([
-                'SEARCHMETHOD=%i' % searchmethod,
-                'FILEFORMAT=6',
-                'SEARCHRANGE=%s' % catmap[self.catalog],
-                ] + ([],[
-                    'SLAT1=%g' % latmin,
-                    'SLAT2=%g' % latmax,
-                    'SLON1=%g' % lonmin,
-                    'SLON2=%g' % lonmax,
-                ])[searchmethod==2] + [
-                'SYEAR=%i' % yearbeg,
-                'SMONTH=%02i' % monbeg,
-                'SDAY=%02i' % daybeg,
-                'EYEAR=%i' % yearend,
-                'EMONTH=%02i' % monend,
-                'EDAY=%02i' % dayend,
-                'LMAG=%g' % magmin,
-                'UMAG=%g' % magmax,
-                'NDEP1=',
-                'NDEP2=',
-                'IO1=',
-                'IO2=',
-                'CLAT=0.0',
-                'CLON=0.0',
-                'CRAD=0.0',
-                'SUBMIT=Submit+Search'])
+        a('starttime=%s' % util.time_to_str(time_range[0], format='%Y-%m-%dT%H:%M:%S'))
+        a('endtime=%s' % util.time_to_str(time_range[1], format='%Y-%m-%dT%H:%M:%S'))
 
+        if latmin != -90.:
+            a('minlatitude=%g' % latmin)
+        if latmax != 90.:
+            a('maxlatitude=%g' % latmax)
+        if lonmin != -180.:
+            a('minlongitude=%g' % lonmin)
+        if lonmax != 180.:
+            a('maxlongitude=%g' % lonmax)
+        if magmin != 0.:
+            a('minmagnitude=%g' % magmin)
+        if magmax != 10.:
+            a('maxmagnitude=%g' % magmax)
+        
+        url = 'http://comcat.cr.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
         page = urllib2.urlopen(url).read()
@@ -512,24 +500,30 @@ class USGS(EarthquakeCatalog):
                 yield ev.name
 
     def _parse_events_page(self, page):
+
+        import json
+        doc = json.loads(page)
+        
         events = []
-        for line in page.splitlines():
-            toks = line.strip().split(',')
-            if len(toks) != 9:
-                continue
+        for feat in doc['features']:
+            props = feat['properties']
+            geo = feat['geometry']
+            lon, lat, depth = [ float(x) for x in geo['coordinates'] ]
+            t = util.str_to_time('1970-01-01 00:00:00') + props['time'] *0.001
+            if props['mag'] is not None:
+                mag = float(props['mag'])
+            else:
+                mag = None
 
-            try:
-                int(toks[0])
-            except:
-                continue
 
-            t = util.str_to_time(','.join(toks[:4]).strip(), format='%Y,%m,%d,%H%M%S.OPTFRAC')
-            lat = float(toks[4])
-            lon = float(toks[5])
-            mag = float(toks[6])
-            depth = float(toks[7])
-            catalog = toks[8]
+            if props['place'] != None:
+                region = str(props['place'])
+            else:
+                region = None
+
+            catalog= str(props['net'].upper())
             name = 'USGS-%s-' % catalog + util.time_to_str(t, format='%Y-%m-%d_%H-%M-%S.3FRAC')
+
             ev = model.Event(
                     lat=lat,
                     lon=lon, 
@@ -537,9 +531,10 @@ class USGS(EarthquakeCatalog):
                     name=name,
                     depth=depth*1000.,
                     magnitude=mag,
+                    region=region,
                     catalog=catalog)
 
-            events.append( ev )
+            events.append(ev)
 
         return events
     
@@ -621,6 +616,12 @@ class Kinherd(EarthquakeCatalog):
                 name = eq['name'],
                 catalog='KPS',
                 moment_tensor = mt)
+
+            event.ext_confidence_intervals = {}
+            trans = { 'latitude': 'lat', 'longitude': 'lon' }
+            for par in 'latitude longitude depth magnitude'.split():
+                event.ext_confidence_intervals[trans.get(par, par)] = \
+                        (params[par+'_ci_low'], params[par+'_ci_high'])
             
             name = eq['name']
             self.events[name] = event

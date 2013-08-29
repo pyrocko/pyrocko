@@ -1,0 +1,458 @@
+#!/usr/bin/env python
+
+import sys, re, os, logging, copy, math
+from optparse import OptionParser
+import numpy as num
+
+import yaml
+
+from pyrocko import util, trace, gf
+
+logger = logging.getLogger('main')
+
+
+def d2u(d):
+    return dict((k.replace('-','_'), v) for (k,v) in d.iteritems())
+
+subcommand_descriptions = {
+        'init':          'create a new empty GF store',
+        'build':         'compute GFs and fill into store',
+        'stats':         'print information about a GF store',
+        'check':         'check for problems in GF store',
+        'decimate':      'build decimated variant of a GF store',
+        'redeploy':      'copy traces from one GF store into another',
+        'view':          'view selected traces',
+        'import':        'convert Kiwi GFDB to GF store format',
+    }
+
+subcommand_usages = {
+        'init':          ['init <type> <store-dir> [options]',
+                         'init redeploy <source> <destination> [options]'],
+        'build':         'build [store-dir] [options]',
+        'stats':         'stats [store-dir] [options]',
+        'check':         'check [store-dir] [options]',
+        'decimate':      'decimate [store-dir] <factor> [options]',
+        'redeploy':      'redeploy <source> <destination> [options]',
+        'view':          'view [store-dir] ... [options]',
+        'import':        'import <source> <destination> [options]',
+    }
+
+subcommands = subcommand_descriptions.keys()
+
+program_name = 'fomosto'
+
+usage = program_name + ''' <subcommand> <arguments> ... [options] 
+
+Subcommands:
+
+    init          %(init)s
+    build         %(build)s
+    stats         %(stats)s
+    check         %(check)s
+    decimate      %(decimate)s
+    redeploy      %(redeploy)s
+    view          %(view)s
+    import        %(import)s
+
+To get further help and a list of available options for any subcommand run:
+
+    fomosto <subcommand> --help
+
+''' % d2u(subcommand_descriptions)
+
+def add_common_options(parser):
+    parser.add_option('--loglevel', 
+        action = 'store', 
+        dest = 'loglevel', 
+        type = 'choice',
+        choices = ('error', 'warning', 'info', 'debug'), 
+        default = 'info',
+        help ='set logger level to "error", "warning", "info", or "debug". '
+              'Default is "%default".')
+
+def process_common_options(options):
+    util.setup_logging(program_name, options.loglevel)
+
+def cl_parse(command, args, setup=None):
+    usage = subcommand_usages[command]
+    descr = subcommand_descriptions[command]
+
+    if isinstance(usage, basestring):
+        usage = [ usage ]
+
+    susage = '%s %s' % (program_name, usage[0])
+    for s in usage[1:]:
+        susage += '\n%s%s %s' % (' '*7, program_name, s)
+        
+    parser = OptionParser(usage=susage,
+            description=descr[0].upper() + descr[1:] + '.' )
+
+    if setup:
+        setup(parser)
+
+    add_common_options(parser)
+    (options, args) = parser.parse_args(args)
+    process_common_options(options)
+    return parser, options, args
+
+def die(message):
+    sys.exit('%s: error: %s' % (program_name, message))
+
+def fomo_wrapper_module(name):
+    try:
+        if not re.match(gf.meta.StringID.pattern, name):
+            raise ValueError('invalid name')
+
+        name_clean = re.sub(r'[.-]', '_', name)
+        modname = '.'.join(['pyrocko', 'fomosto', name_clean])
+        mod = __import__(modname, level=0)
+        return getattr(mod.fomosto, name_clean)
+
+    except ValueError:
+        die('invalid modelling code wrapper name')
+
+    except ImportError:
+        die('''modelling code wrapper "%s" not available or not installed
+                (module probed: "%s")''' % (name, modname))
+
+def command_init(args):
+
+    parser, options, args = cl_parse('init', args)
+
+    if len(args) == 0:
+        parser.print_help()
+        sys.exit(1)
+    
+    if args[0] == 'redeploy':
+        if len(args) != 3:
+            parser.error('incorrect number of arguments')
+
+        source_dir, dest_dir = args[1:]
+
+        try:
+            source = gf.Store(source_dir)
+        except gf.StoreError, e:
+            die(e)
+
+        input_fn = os.path.join(dest_dir, 'input')
+
+        if os.path.exists(input_fn):
+            die('file "%s" already exists' % input_fn)
+
+        util.ensuredirs(input_fn)
+            
+        meta = copy.deepcopy(source.meta)
+        meta.derived_from_id = source.meta.id
+        meta.id = 'derived-from-' + meta.id
+        gf.meta.dump(meta, filename=input_fn)
+        
+        logger.info('(1) configure settings in "%s"...' % input_fn)
+        logger.info('(2) run "fomosto redeploy <source> <dest>", as needed')
+
+    else:
+        if len(args) != 2:
+            parser.error('incorrect number of arguments')
+
+        (modelling_code_id, store_dir) = args
+
+        module = fomo_wrapper_module(modelling_code_id)
+        try:
+            module.init(store_dir)
+        except gf.StoreError, e:
+            die(e)
+
+        logger.info('(1) configure settings in "%s"...' % os.path.join(store_dir, 'input'))
+        logger.info('(2) run "fomosto build" in the directory "%s"' % store_dir)
+
+def get_store_dir(args):
+    if len(args) == 1:
+        store_dir = args.pop(0)
+    else:
+        store_dir = os.path.abspath(os.path.curdir) 
+
+    if not os.path.isdir(store_dir):
+        die('not a directory: %s' % store_dir)
+
+    return store_dir
+
+def get_store_dirs(args):
+    if len(args) == 0:
+        store_dirs = [ os.path.abspath(os.path.curdir) ]
+    else:
+        store_dirs = args
+
+    for store_dir in store_dirs:
+        if not os.path.isdir(store_dir):
+            die('not a directory: %s' % store_dir)
+
+    return store_dirs
+
+def command_build(args):
+
+    def setup(parser):
+        parser.add_option('--force', dest='force', action='store_true',
+                help='overwrite existing files')
+
+        parser.add_option('--nworkers', dest='nworkers', type='int', metavar='N',
+                help='run N worker processes in parallel')
+
+    parser, options, args = cl_parse('build', args, setup=setup)
+
+    store_dir = get_store_dir(args)
+
+    input_fn = os.path.join(store_dir, 'input')
+    try:
+        inp = yaml.load(open(input_fn, 'r'), Loader=yaml.BaseLoader)
+    except IOError, e:
+        die(e)
+
+    module = fomo_wrapper_module(inp['modelling_code_id'])
+    try:
+        module.build(store_dir, 
+                force=options.force, 
+                nworkers=options.nworkers)
+
+    except gf.StoreError, e:
+        die(e)
+
+def command_stats(args):
+
+    parser, options, args = cl_parse('stats', args)
+    store_dir = get_store_dir(args)
+
+    try:
+        store = gf.Store(store_dir)
+        s = store.stats()
+
+    except gf.StoreError, e:
+        die(e)
+
+    for k in store.stats_keys:
+        print '%s: %s' % (k, s[k])
+
+
+def command_check(args):
+
+    parser, options, args = cl_parse('check', args)
+    store_dir = get_store_dir(args)
+
+    try:
+        store = gf.Store(store_dir)
+        problems = store.check()
+        if problems:
+            die('problems detected with gf store: %s' % store_dir)
+
+    except gf.StoreError, e:
+        die(e)
+
+def load_meta(fn):
+    try:
+        meta = gf.meta.load(filename=fn)
+        assert isinstance(meta, gf.GFSet)
+
+    except:
+        die('cannot load meta information from file: %s' % fn)
+
+    return meta
+
+def command_decimate(args):
+
+    def setup(parser):
+        parser.add_option('--meta', dest='meta_fn', metavar='FILE',
+                help='use modified spacial sampling given in FILE')
+
+        parser.add_option('--force', dest='force', action='store_true',
+                help='overwrite existing files')
+
+    parser, options, args = cl_parse('decimate', args, setup=setup)
+    try:
+        decimate = int(args.pop())
+    except:
+        parser.error('cannot get decimate argument')
+
+    store_dir = get_store_dir(args)
+
+    meta = None
+    if options.meta_fn:
+        meta = load_meta(options.meta_fn)
+
+    try:
+        store = gf.Store(store_dir)
+        store.make_decimated(decimate, meta=meta, force=options.force)
+
+    except gf.StoreError, e:
+        die(e)
+
+def command_redeploy(args):
+
+    parser, options, args = cl_parse('redeploy', args)
+
+    if not len(args) == 2:
+        parser.print_help()
+        sys.exit(1)
+
+    source_store_dir, dest_store_dir = args
+
+    try:
+        source = gf.Store(source_store_dir)
+    except gf.StoreError, e:
+        die(e)
+
+    i = 0
+    while True:
+        try:
+            dest = gf.Store(dest_store_dir, 'w')
+            break
+
+        except gf.StoreError, e:
+            if i == 0:
+                input_fn = os.path.join(dest_store_dir, 'input')
+                meta = load_meta(input_fn)
+                try:
+                    gf.store.Store.create(dest_store_dir, meta=meta)
+                except gf.StoreError, e2:
+                    die(e2)
+
+            else:
+                die(e)
+
+        i += 1
+
+    for args in dest.meta.iter_nodes():
+        try:
+            tr = source.get(args, interpolate='off')
+            dest.put(args, tr)
+
+        except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate), e:
+            logger.debug('skipping %s, (%s)' % (str(args), e))
+
+        except gf.store.StoreError, e:
+            logger.warn('cannot insert %s, (%s)' % (str(args), e))
+
+def command_view(args):
+    def setup(parser):
+        parser.add_option('--extract', dest='extract', metavar='start:stop[:step|@num],...',
+                help='specify which traces to show')
+
+    parser, options, args = cl_parse('view', args, setup=setup)
+    
+    gdef = None
+    if options.extract:
+        try:
+            gdef = gf.meta.parse_grid_spec(options.extract)
+        except gf.meta.GridSpecError, e:
+            die(e)
+
+    store_dirs = get_store_dirs(args)
+
+    alpha = 'abcdefghijklmnopqrstxyz'.upper()
+
+    traces = []
+
+    try:
+        for istore, store_dir in enumerate(store_dirs):
+            store = gf.Store(store_dir)
+            ii = 0
+            for args in store.meta.iter_extraction(gdef):
+                gtr = store.get(args)
+
+                loc_code = ''
+                if len(store_dirs) > 1:
+                    loc_code = alpha[istore%len(alpha)]
+                
+                if gtr:
+                    
+                    sta_code = '%04i (%s)' % (ii, ','.join('%gk' % (x/1000.) for x in args[:-1]))
+
+                    tr = trace.Trace(
+                            '',
+                            sta_code,
+                            loc_code,
+                            '%02i' % args[-1],
+                            ydata = gtr.data,
+                            deltat = gtr.deltat,
+                            tmin = gtr.deltat * gtr.itmin)
+
+                    traces.append(tr)
+
+                ii += 1 
+                
+    except (gf.meta.GridSpecError, gf.StoreError), e:
+        die(e)
+
+    trace.snuffle(traces)
+
+def command_import(args):
+    try:
+        from tunguska import gfdb
+    except ImportError:
+        die('the kiwi tools must be installed to use this feature')
+
+    parser, options, args = cl_parse('view', args)
+
+    if not len(args) == 2:
+        parser.print_help()
+        sys.exit(1)
+
+    source_path, dest_store_dir = args
+
+    if os.path.isdir(source_path):
+        source_path = os.path.join(source_path, 'db')
+    
+    source_path = re.sub(r'(\.\d+\.chunk|\.index)$', '', source_path)
+        
+    db = gfdb.Gfdb(source_path)
+
+    meta = gf.meta.GFSetTypeA(
+            id = 'imported-gfs',
+            distance_min = db.firstx,
+            distance_max = db.firstx + (db.nx-1) * db.dx,
+            distance_delta = db.dx,
+            source_depth_min = db.firstz,
+            source_depth_max = db.firstz + (db.nz-1) * db.dz,
+            source_depth_delta = db.dz,
+            sample_rate = 1.0/db.dt,
+            ncomponents = db.ng
+        )
+
+    try:
+        gf.store.Store.create(dest_store_dir, meta=meta)
+        dest = gf.Store(dest_store_dir, 'w')
+        for args in dest.meta.iter_nodes(depth=2):
+            source_depth, distance = [ float(x) for x in args ]
+            traces = db.get_traces_pyrocko(distance, source_depth)
+            for tr in traces:
+                gf_tr = gf.store.GFTrace(tr.get_ydata(),
+                        int(round(tr.tmin / tr.deltat)), tr.deltat)
+
+                dest.put((source_depth, distance, tr.meta['ig']-1), gf_tr)
+
+        dest.close()
+
+    except gf.StoreError, e:
+        die(e)
+
+if __name__ == '__main__':
+
+    usage_sub = 'fomosto %s [options]'
+    if len(sys.argv) < 2:
+        sys.exit('Usage: %s' % usage)
+
+    args = list(sys.argv)
+    args.pop(0)
+    command = args.pop(0)
+
+    if command in subcommands:
+        globals()['command_'+ command](args)
+
+    elif command in ('--help', '-h', 'help'):
+        if command == 'help' and args:
+            acommand = args[0]
+            if acommand in subcommands:
+                globals()['command_'+ acommand]([ '--help' ] )
+            
+        sys.exit('Usage: %s' % usage)
+
+    else:
+        sys.exit('fomosto: error: no such subcommand: %s' % command)
+
