@@ -1756,7 +1756,7 @@ def MakePileViewerMainClass(base):
             
             if self.panel_parent is not None:
                 if target == 'panel':
-                    self.panel_parent.add_panel(name, scroller, True, volatile=True)
+                    self.panel_parent.add_panel(name, scroller, True, volatile=False)
                 else:
                     self.panel_parent.add_tab(name, scroller)
                 
