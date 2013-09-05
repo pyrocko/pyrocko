@@ -1098,11 +1098,6 @@ def MakePileViewerMainClass(base):
             self.snufflings.remove(snuffling)
             snuffling.pre_destroy()
 
-        def add_snuffling_help_menuitem(self, item):
-            self.snuffling_help_menu.addAction(item)
-            item.setParent(self.snuffling_help_menu)
-            sort_actions(self.snuffling_help_menu)
-
         def add_snuffling_menuitem(self, item):
             self.snufflings_menu.addAction(item)
             item.setParent(self.snufflings_menu)
@@ -1110,6 +1105,14 @@ def MakePileViewerMainClass(base):
 
         def remove_snuffling_menuitem(self, item):
             self.snufflings_menu.removeAction(item)
+
+        def add_snuffling_help_menuitem(self, item):
+            self.snuffling_help_menu.addAction(item)
+            item.setParent(self.snuffling_help_menu)
+            sort_actions(self.snuffling_help_menu)
+
+        def remove_snuffling_help_menuitem(self, item):
+            self.snuffling_help_menu.removeAction(item)
         
         def add_panel_toggler(self, item):
             self.toggle_panel_menu.addAction(item)

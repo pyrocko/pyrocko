@@ -105,6 +105,7 @@ class Snuffling:
         
         self._panel = None
         self._menuitem = None
+        self._helpmenuitem = None
         self._parameters = []
         self._param_controls = {}
        
@@ -166,6 +167,8 @@ class Snuffling:
             self._helpmenuitem = self.make_helpmenuitem(self._menu_parent)
             if self._menuitem:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
+
+            if self._helpmenuitem:
                 self._menu_parent.add_snuffling_help_menuitem(self._helpmenuitem)
 
     def make_cli_parser1(self):
@@ -241,6 +244,9 @@ class Snuffling:
         if self._menuitem is not None:
             self._menu_parent.remove_snuffling_menuitem(self._menuitem)
             self._menuitem = None
+
+        if self._helpmenuitem is not None:
+            self._menu_parent.remove_snuffling_help_menuitem(self._helpmenuitem)
             
     def set_name(self, name):
         '''Set the snuffling's name.
@@ -865,6 +871,7 @@ class Snuffling:
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
+
         self._viewer.show_doc('Help: %s'%self._name, [doc], target='panel')
         
     def live_update_toggled(self, on):
