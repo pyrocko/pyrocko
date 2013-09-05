@@ -1750,6 +1750,8 @@ def MakePileViewerMainClass(base):
             frame.setBackgroundRole(QPalette.Base) 
             for h in labels:
                 h.setParent(frame)
+                h.setMargin(3)
+                h.setTextInteractionFlags(Qt.LinksAccessibleByMouse | Qt.TextSelectableByMouse)
                 h.setBackgroundRole( QPalette.Base )
                 layout.addWidget(h)
                 frame.connect(h, SIGNAL('linkActivated(QString)'), self.open_link)

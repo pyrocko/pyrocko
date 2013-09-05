@@ -121,6 +121,7 @@ class Snuffling:
 
         self._no_viewer_pile = None 
         self._cli_params = {}
+        self._filename = None
 
 
     def setup(self):
@@ -665,10 +666,9 @@ class Snuffling:
             butlayout.addWidget( live_update_checkbox )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
 
-            if self.__doc__ is not None: 
-                help_button = QPushButton('Help')
-                butlayout.addWidget( help_button )
-                self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
+            help_button = QPushButton('Help')
+            butlayout.addWidget( help_button )
+            self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
 
             clear_button = QPushButton('Clear')
             butlayout.addWidget( clear_button )
@@ -871,15 +871,33 @@ class Snuffling:
                 except ImportError:
                     doc = QLabel(self.__doc__)
         else:
-            print __file__
-            doc = QLabel('<html><body>This snuffling does not provide any online help. '
-                         '<p><em>May the source be with you, young Skywalker!</p></em></body></html>')
+            doc = QLabel('This snuffling does not provide any online help.')
 
-        for h in [ doc ]:
+        labels = [ doc ]
+
+        if self._filename:
+            import cgi, urllib
+            code = open(self._filename, 'r').read()
+
+            doc_src = QLabel('''<html><body>
+<hr />
+<center><em>May the source be with you, young Skywalker!</em><br /><br />
+<a href="file://%s"><code>%s</code></a></center>
+<br />
+<p style="margin-left: 2em; margin-right: 2em; background-color:#eed;">
+<pre style="white-space: pre-wrap"><code>%s
+</code></pre></p></body></html>''' \
+            % (urllib.quote(self._filename), 
+               cgi.escape(self._filename), cgi.escape(code)))
+
+            labels.append(doc_src)
+
+
+        for h in labels:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
 
-        self._viewer.show_doc('Help: %s'%self._name, [doc], target='panel')
+        self._viewer.show_doc('Help: %s'%self._name, labels, target='panel')
         
     def live_update_toggled(self, on):
         '''Called when the checkbox for live-updates has been toggled.'''
@@ -1025,6 +1043,7 @@ class SnufflingModule:
             try:
                 self._module = __import__(self._name)
                 for snuffling in self._module.__snufflings__():
+                    snuffling._filename = filename
                     self.add_snuffling(snuffling)
                     
             except:
@@ -1037,6 +1056,7 @@ class SnufflingModule:
             try:
                 reload(self._module)
                 for snuffling in self._module.__snufflings__():
+                    snuffling._filename = filename
                     self.add_snuffling(snuffling, reloaded=True)
                 
                 if len(self._snufflings) == len(settings):
