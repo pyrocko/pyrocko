@@ -1,12 +1,29 @@
 
-import math
+import math, re
 import numpy as num
 from guts import *
-from guts_array import literal, literal_presenter
+from guts_array import literal
 from pyrocko import cake
 
+
+class CakeNDModel(Object):
+    dummy_for = cake.LayeredModel
+
+    class __T(TBase):
+        def regularize_extra(self, val):
+            if isinstance(val, basestring):
+                val = cake.LayeredModel.from_scanlines(
+                        cake.read_nd_model_str(val))
+
+            return val
+
+        def to_save(self, val):
+            return literal(cake.write_nd_model_str(val))
+
+
 class StringID(StringPattern):
-    pattern = r'^[A-Za-z][A-Za-z0-9.-]{0,64}$'
+    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,64}$'
+
 
 class ScopeType(StringChoice):
     choices = [
@@ -97,6 +114,107 @@ class Citation(Object):
 
         return citations
 
+_fpat = r'[+-](\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
+_spat = StringID.pattern[1:-1]
+pat = r'^((first|last)?\((' + _spat + r'(\|' + _spat + r')*)\)|(' +  \
+                 _spat + r'))?(' + _fpat + ')?$'
+timing_regex = re.compile( pat )
+
+class PhaseSelect(StringChoice):
+    choices = [ '', 'first', 'last' ]
+
+class InvalidTimingSpecification(ValidationError):
+    pass
+
+class Timing(SObject):
+
+    def __init__(self, s=None, **kwargs):
+        
+        if s is not None:
+            m = timing_regex.match(s)
+            if m:
+                if m.group(3):
+                    phase_ids = m.group(3).split('|')
+                elif m.group(5):
+                    phase_ids = [ m.group(5) ]
+                else:
+                    phase_ids = []
+
+                select = m.group(2) or ''
+
+                offset = 0.0
+                if m.group(6):
+                    offset = float(m.group(6))
+
+                kwargs = dict(
+                    phase_ids=phase_ids,
+                    select=select,
+                    offset=offset)
+
+            else:
+                raise InvalidTimingSpecification(s)
+
+        SObject.__init__(self, **kwargs)
+
+    def __str__(self):
+        l = []
+        if self.phase_ids:
+            sphases = '|'.join(self.phase_ids)
+            if len(self.phase_ids) > 1 or self.select:
+                sphases = '(%s)' % sphases
+
+            if self.select:
+                sphases = self.select + sphases
+
+            l.append(sphases)
+
+        if self.offset != 0.0 or not self.phase_ids:
+            l.append('%+g' % self.offset)
+
+        return ''.join(l)
+
+    def evaluate(self, get_phase, args):
+        phases = [ get_phase(phase_id) for phase_id in self.phase_ids ]
+        times = [ phase(args) for phase in phases ]
+        times = [ t+self.offset for t in times if t is not None ]
+        if not times:
+            return None
+        elif self.select == 'first':
+            return min(times)
+        elif self.select == 'last':
+            return max(times)
+        else:
+            return times[0]
+
+    phase_ids = List.T(String.T())
+    offset = Float.T(default=0.0)
+    select = PhaseSelect.T(default='')
+
+def mkdefs(s):
+    defs = []
+    for x in s.split(','):
+        try:
+            defs.append(float(x))
+        except ValueError:
+            if x.startswith('!'):
+                defs.extend(cake.PhaseDef.classic(x[1:]))
+            else:
+                defs.append(cake.PhaseDef(x))
+
+    return defs
+
+class PhaseTabDef(Object):
+    id = StringID.T()
+    definition = String.T()
+
+    @property
+    def phases(self):
+        return [ x for x in mkdefs(self.definition) if isinstance(x, cake.PhaseDef) ]
+
+    @property
+    def horizontal_velocities(self):
+        return [ x for x in mkdefs(self.definition) if isinstance(x, float) ]
+
 class EarthModel(Object):
     id = StringID.T()
     region = String.T(optional=True)
@@ -114,8 +232,15 @@ class ModellingCode(Object):
     citation_ids = List.T(StringID.T())
 
 class OutOfBounds(Exception):
+    def __init__(self, values=None):
+        Exception.__init__(self)
+        self.values = values
+
     def __str__(self):
-        return 'out of bounds'
+        if self.values:
+            return 'out of bounds: (%s)' % ','.join('%g' % x for x in self.values)
+        else:
+            return 'out of bounds'
 
 class GFSet(Object):
     id = StringID.T()
@@ -137,6 +262,8 @@ class GFSet(Object):
     citation_ids = List.T(StringID.T())
     description = String.T(default='', optional=True)
     ncomponents = Int.T(default=1)
+    earthmodel_cake = CakeNDModel.T(optional=True)
+    phase_tab_defs = List.T(PhaseTabDef.T())
 
     def __init__(self, **kwargs):
         self._do_auto_updates = False
@@ -249,7 +376,11 @@ class GFSetTypeA(GFSet):
             try:
                 return num.ravel_multi_index((ia,ib,ig), (na,nb,ng))
             except ValueError:
-                raise OutOfBounds()
+                for ia_, ib_, ig_ in zip(ia,ib,ig):
+                    try:
+                        num.ravel_multi_index((ia_,ib_,ig_), (na,nb,ng))
+                    except ValueError:
+                        raise OutOfBounds()
 
         def vicinity_function(a,b, ig):
             ias = indi12((a - amin) / da, na)
@@ -355,19 +486,6 @@ class GFSetTypeB(GFSet):
         self._vicinity_function = vicinity_function
 
 
-class CakeNDModel(Object):
-    dummy_for = cake.LayeredModel
-
-    class __T(TBase):
-        def regularize_extra(self, val):
-            if isinstance(val, basestring):
-                val = cake.LayeredModel.from_scanlines(
-                        cake.read_nd_model_str(val))
-
-            return val
-
-        def to_save(self, val):
-            return literal(cake.write_nd_model_str(val))
 
 class Inventory(Object):
     citations = List.T(Citation.T())
