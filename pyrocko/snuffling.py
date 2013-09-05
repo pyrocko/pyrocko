@@ -860,15 +860,20 @@ class Snuffling:
         given in the snufflings' __doc__ string.
         '''
 
-        if self.__doc__.strip().startswith('<html>'):
-                doc = QLabel(self.__doc__)
-        else:
-            try:
-                import markdown
-                doc = QLabel(markdown.markdown(self.__doc__))
+        if self.__doc__:
+            if self.__doc__.strip().startswith('<html>'):
+                    doc = QLabel(self.__doc__)
+            else:
+                try:
+                    import markdown
+                    doc = QLabel(markdown.markdown(self.__doc__))
 
-            except ImportError:
-                doc = QLabel(self.__doc__)
+                except ImportError:
+                    doc = QLabel(self.__doc__)
+        else:
+            print __file__
+            doc = QLabel('<html><body>This snuffling does not provide any online help. '
+                         '<p><em>May the source be with you, young Skywalker!</p></em></body></html>')
 
         for h in [ doc ]:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
