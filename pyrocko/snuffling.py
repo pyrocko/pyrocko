@@ -14,6 +14,7 @@ import pile
 
 from gui_util import ValControl, LinValControl, FigureFrame
 
+
 logger = logging.getLogger('pyrocko.snuffling')
 
 def _str_traceback():
@@ -100,6 +101,7 @@ class Snuffling:
         
         self._panel = None
         self._menuitem = None
+        self._helpmenuitem = None
         self._parameters = []
         self._param_controls = {}
        
@@ -119,6 +121,7 @@ class Snuffling:
 
         self._no_viewer_pile = None 
         self._cli_params = {}
+        self._filename = None
 
 
     def setup(self):
@@ -140,7 +143,7 @@ class Snuffling:
         self._viewer = viewer
         self._panel_parent = panel_parent
         self._menu_parent = menu_parent
-        
+
         self.setup_gui(reloaded=reloaded)
         
     def setup_gui(self, reloaded=False):
@@ -158,8 +161,12 @@ class Snuffling:
        
         if self._menu_parent is not None:
             self._menuitem = self.make_menuitem(self._menu_parent)
+            self._helpmenuitem = self.make_helpmenuitem(self._menu_parent)
             if self._menuitem:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
+
+            if self._helpmenuitem:
+                self._menu_parent.add_snuffling_help_menuitem(self._helpmenuitem)
 
     def make_cli_parser1(self):
         import optparse
@@ -234,6 +241,9 @@ class Snuffling:
         if self._menuitem is not None:
             self._menu_parent.remove_snuffling_menuitem(self._menuitem)
             self._menuitem = None
+
+        if self._helpmenuitem is not None:
+            self._menu_parent.remove_snuffling_help_menuitem(self._helpmenuitem)
             
     def set_name(self, name):
         '''Set the snuffling's name.
@@ -655,7 +665,11 @@ class Snuffling:
 
             butlayout.addWidget( live_update_checkbox )
             self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
-        
+
+            help_button = QPushButton('Help')
+            butlayout.addWidget( help_button )
+            self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
+
             clear_button = QPushButton('Clear')
             butlayout.addWidget( clear_button )
             self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
@@ -663,12 +677,6 @@ class Snuffling:
             call_button = QPushButton('Run')
             butlayout.addWidget( call_button )
             self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
-
-            if self.__doc__ is not None: 
-                help_button = QPushButton('Help')
-                butlayout.addWidget( help_button )
-                self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
-
 
             for name, method in self._triggers:
                 but = QPushButton(name)
@@ -697,6 +705,15 @@ class Snuffling:
             
         else:
             return None
+    
+    def make_helpmenuitem(self, parent):
+        '''Create the help menu item for the snuffling.
+        '''
+        
+        item = QAction(self.get_name(), None)
+
+        self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.help_button_triggered)
+        return item
     
     def make_menuitem(self, parent):
         '''Create the menu item for the snuffling.
@@ -842,11 +859,45 @@ class Snuffling:
         '''Creates a :py:class:`QLabel` which contains the documentation as 
         given in the snufflings' __doc__ string.
         '''
-        doc = QLabel(self.__doc__)
-        for h in [ doc ]:
+
+        if self.__doc__:
+            if self.__doc__.strip().startswith('<html>'):
+                    doc = QLabel(self.__doc__)
+            else:
+                try:
+                    import markdown
+                    doc = QLabel(markdown.markdown(self.__doc__))
+
+                except ImportError:
+                    doc = QLabel(self.__doc__)
+        else:
+            doc = QLabel('This snuffling does not provide any online help.')
+
+        labels = [ doc ]
+
+        if self._filename:
+            import cgi, urllib
+            code = open(self._filename, 'r').read()
+
+            doc_src = QLabel('''<html><body>
+<hr />
+<center><em>May the source be with you, young Skywalker!</em><br /><br />
+<a href="file://%s"><code>%s</code></a></center>
+<br />
+<p style="margin-left: 2em; margin-right: 2em; background-color:#eed;">
+<pre style="white-space: pre-wrap"><code>%s
+</code></pre></p></body></html>''' \
+            % (urllib.quote(self._filename), 
+               cgi.escape(self._filename), cgi.escape(code)))
+
+            labels.append(doc_src)
+
+
+        for h in labels:
             h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
             h.setWordWrap(True)
-        self._viewer.show_doc('snuffling Help: %s'%self._name, [doc], target='panel')
+
+        self._viewer.show_doc('Help: %s'%self._name, labels, target='panel')
         
     def live_update_toggled(self, on):
         '''Called when the checkbox for live-updates has been toggled.'''
@@ -992,6 +1043,7 @@ class SnufflingModule:
             try:
                 self._module = __import__(self._name)
                 for snuffling in self._module.__snufflings__():
+                    snuffling._filename = filename
                     self.add_snuffling(snuffling)
                     
             except:
@@ -1004,6 +1056,7 @@ class SnufflingModule:
             try:
                 reload(self._module)
                 for snuffling in self._module.__snufflings__():
+                    snuffling._filename = filename
                     self.add_snuffling(snuffling, reloaded=True)
                 
                 if len(self._snufflings) == len(settings):
