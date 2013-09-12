@@ -128,6 +128,14 @@ class NoSuchExtra(StoreError):
     def __str__(self):
         return 'extra information for key "%s" not found.' % self.value
 
+class NoSuchPhase(StoreError):
+    def __init__(self, s):
+        StoreError.__init__(self)
+        self.value = s
+
+    def __str__(self):
+        return 'phase for key "%s" not found. Running "fomosto ttt" may be needed.' % self.value
+
 def remove_if_exists(fn, force=False):
     if os.path.exists(fn):
         if force:
@@ -853,13 +861,17 @@ class Store(Store_):
             return store, 1
 
     def _phase_filename(self, phase_id):
+        check_string_id(phase_id)
 
-        return os.path.join(self.store_dir, 'phases', phase_id + '.phase')
+        fn = os.path.join(self.store_dir, 'phases', phase_id + '.phase')
+        if not os.path.isfile(fn):
+            raise NoSuchPhase(phase_id)
+
+        return fn
 
     def get_phase(self, phase_id):
         
         if phase_id not in self._phases:
-            check_string_id(phase_id)
             fn = self._phase_filename(phase_id)
             spt = spit.SPTree(filename=fn)
             self._phases[phase_id] = spt
@@ -868,6 +880,60 @@ class Store(Store_):
 
     def t(self, timing, args):
         return timing.evaluate(self.get_phase, args)
+
+    def make_timing_params(self, begin, end, snap_vred=True):
+        
+        '''Compute tight parameterized time ranges to include given timings.
+
+        Calculates appropriate time ranges to cover given begin and end timings
+        over all GF points in the store. A dict with the following keys is 
+        returned:
+
+          tmin: time [s] minimum of begin timing over all GF points
+          tmax: time [s] maximum of end timing over all GF points
+          vred, tmin_vred: slope [m/s] and offset [s] of reduction velocity [m/s] 
+              appropriate to catch begin timing over all GF points
+          tlenmax_vred: maximum time length needed to cover all end timings,
+              when using linear slope given with (vred, tmin_vred) as start
+        
+        '''
+
+        data = []
+        for args in self.meta.iter_nodes(level=-1):
+            tmin = self.t(begin, args)
+            tmax = self.t(end, args)
+            x = self.meta.get_distance(args)
+            data.append((x, tmin, tmax))
+        
+        xs, tmins, tmaxs = num.array(data).T
+        
+        i = num.nanargmin(tmins)
+        tminmin = tmins[i]
+        x_tminmin = xs[i]
+        dx = (xs - x_tminmin)
+        dx = num.where( dx != 0.0, dx, num.nan )
+        s = (tmin - tminmin) / dx
+        i = num.nanargmin(num.abs(s))
+        sred = s[i]
+        
+        if snap_vred:
+            tdif = sred*self.meta.distance_delta
+            tdif2 = self.meta.deltat * int(tdif / self.meta.deltat)
+            sred = tdif2/self.meta.distance_delta
+
+        tmin_vred = tminmin - sred*x_tminmin 
+        tlenmax_vred = num.nanmax( tmax - (tmin_vred + sred*x) )
+        if sred != 0.0:
+            vred = 1.0/sred
+        else:
+            vred = 0.0
+
+        return dict(
+                tmin = tminmin,
+                tmax = num.nanargmax(tmaxs),
+                tmin_vred = tmin_vred,
+                tlenmax_vred = tlenmax_vred,
+                vred = vred)
 
 __all__ = 'Store GFTrace Zero StoreError CannotCreate CannotOpen'.split()
 
