@@ -930,7 +930,7 @@ class Store(Store_):
 
         return dict(
                 tmin = tminmin,
-                tmax = num.nanargmax(tmaxs),
+                tmax = num.nanmax(tmaxs),
                 tmin_vred = tmin_vred,
                 tlenmax_vred = tlenmax_vred,
                 vred = vred)
