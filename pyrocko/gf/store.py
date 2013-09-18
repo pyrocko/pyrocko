@@ -1,11 +1,13 @@
+
 import os, struct, math, shutil, fcntl, copy, logging, re
+import logging
 from collections import Counter
 
 import numpy as num
 from scipy import signal
 
 from pyrocko import util, spit
-from pyrocko.gf import meta as meta_module
+from pyrocko.gf import meta
 
 logger = logging.getLogger('pyrocko.gf.store')
 
@@ -29,7 +31,7 @@ gf_record_dtype = num.dtype([
     ])
 
 def check_string_id(s):
-    if not re.match(meta_module.StringID.pattern, s):
+    if not re.match(meta.StringID.pattern, s):
         raise ValueError('invalid name %s' % s)
 
 # - data_offset
@@ -618,33 +620,32 @@ class Store(Store_):
     is to provide a fast, easy to use, and flexible machanism to compute
     weighted delay-and-sum stacks with many Green's function traces involved.
     
-    Indiviual Green's functions are accessed through a single integer index at
+    Individual Green's functions are accessed through a single integer index at
     low level.  At higher level, various indexing schemes can be implemented by
     providing a mapping from physical coordinates to the low level index. E.g.
     for a problem with cylindrical symmetry, one might define a mapping from
     (z1, z2, r) -> i. Index translation is done in the
-    :py:class:`pyrocko.gf.meta.GFSet` subclass object associated with the Store.
+    :py:class:`pyrocko.gf.meta.Config` subclass object associated with the Store.
     '''
 
     @staticmethod
-    def create(store_dir, meta, force=False, extra=None):
+    def create(store_dir, config, force=False, extra=None):
         '''Create new GF store.
         
         Creates a new GF store at path `store_dir`. The layout of the GF is
-        defined with the parameters given in `meta`, which should be an
-        object of a subclass of :py:class:`pyrocko.gf.meta.GFSet`. This function will
+        defined with the parameters given in `config`, which should be an object
+        of a subclass of :py:class:`pyrocko.gf.meta.Config`. This function will
         refuse to overwrite an existing GF store, unless `force` is set  to
         ``True``. If more information, e.g. parameters used for the modelling
         code, earth models or other, should be saved along with the GF store,
-        these may be provided though a dict given to `extra`. The keys of 
-        this dict must be names and the values must be *guts* type objects.
-        '''
+        these may be provided though a dict given to `extra`. The keys of this
+        dict must be names and the values must be *guts* type objects.  '''
 
-        Store.create_editables(store_dir, meta, force=force, extra=extra)
+        Store.create_editables(store_dir, config, force=force, extra=extra)
         Store.create_dependants(store_dir, force=force)
 
     @staticmethod
-    def create_editables(store_dir, meta, force=False, extra=None):
+    def create_editables(store_dir, config, force=False, extra=None):
         try:
             util.ensuredir(store_dir)
         except:
@@ -652,11 +653,11 @@ class Store(Store_):
 
         fns = []
 
-        meta_fn = os.path.join(store_dir, 'meta')
-        remove_if_exists(meta_fn, force)
-        meta_module.dump(meta, filename=meta_fn)
+        config_fn = os.path.join(store_dir, 'config')
+        remove_if_exists(config_fn, force)
+        meta.dump(config, filename=config_fn)
 
-        fns.append(meta_fn)
+        fns.append(config_fn)
 
         for sub_dir in ['extra']:
             dpath = os.path.join(store_dir, sub_dir)
@@ -667,7 +668,7 @@ class Store(Store_):
                 check_string_id(k)
                 fn = os.path.join(store_dir, 'extra', k)
                 remove_if_exists(fn, force)
-                meta_module.dump(v, filename=fn)
+                meta.dump(v, filename=fn)
 
                 fns.append(fn)
 
@@ -675,10 +676,10 @@ class Store(Store_):
 
     @staticmethod
     def create_dependants(store_dir, force=False):
-        meta_fn = os.path.join(store_dir, 'meta')
-        meta = meta_module.load(filename=meta_fn)
+        config_fn = os.path.join(store_dir, 'config')
+        config = meta.load(filename=config_fn)
 
-        Store_.create(store_dir, meta.deltat, meta.nrecords, force=force)
+        Store_.create(store_dir, config.deltat, config.nrecords, force=force)
 
         for sub_dir in ['decimated']:
             dpath = os.path.join(store_dir, sub_dir)
@@ -686,8 +687,8 @@ class Store(Store_):
 
     def __init__(self, store_dir, mode='r'):
         Store_.__init__(self, store_dir, mode=mode)
-        meta_fn = os.path.join(store_dir, 'meta')
-        self.meta = meta_module.load(filename=meta_fn)
+        config_fn = os.path.join(store_dir, 'config')
+        self.config = meta.load(filename=config_fn)
         self._decimated = {}
         self._extra = {}
         self._phases = {}
@@ -705,7 +706,7 @@ class Store(Store_):
             if not os.path.exists(fn):
                 raise NoSuchExtra(key)
 
-            x[key] = meta_module.load(filename=fn)
+            x[key] = meta.load(filename=fn)
 
         return x[key]
 
@@ -714,11 +715,11 @@ class Store(Store_):
         
         Store a single GF trace at (high-level) index `args`.'''
 
-        irecord = self.meta.irecord(*args)
+        irecord = self.config.irecord(*args)
         self._put(irecord, trace)
 
     def get_record(self, args):
-        irecord = self.meta.irecord(*args)
+        irecord = self.config.irecord(*args)
         return self._get_record(irecord)
 
     def get(self, args, itmin=None, nsamples=None, decimate=1, interpolate='nearest_neighbor'):
@@ -733,11 +734,11 @@ class Store(Store_):
 
         store, decimate = self._decimated_store(decimate)
         if interpolate == 'nearest_neighbor':
-            irecord = store.meta.irecord(*args)
+            irecord = store.config.irecord(*args)
             return store._get(irecord, itmin=itmin, nsamples=nsamples, decimate=decimate)
 
         else:
-            irecords, weights = zip(*store.meta.vicinity(*args))
+            irecords, weights = zip(*store.config.vicinity(*args))
             if interpolate == 'off' and len(irecords) != 1:
                 raise NotAllowedToInterpolate()
 
@@ -756,25 +757,25 @@ class Store(Store_):
         '''
 
         store, decimate = self._decimated_store(decimate)
-        irecords = store.meta.irecords(*args)
+        irecords = store.config.irecords(*args)
         return store._sum(irecords, delays, weights, itmin, nsamples, decimate)
     
     def sum_reference(self, args, delays, weights, itmin=None, nsamples=None, decimate=1):
         '''Alternative version of :py:meth:`sum`.'''
 
         store, decimate = self._decimated_store(decimate)
-        irecords = store.meta.irecords(*args)
+        irecords = store.config.irecords(*args)
         return store._sum_reference(irecords, delays, weights, itmin, nsamples, decimate)
 
-    def make_decimated(self, decimate, meta=None, force=False):
+    def make_decimated(self, decimate, config=None, force=False):
         '''Create decimated version of GF store.
 
         Create a downsampled version of the GF store. Downsampling is done for
         the integer factor `decimate` which should be in the range [2,8].  If
-        `meta` is ``None``, all traces of the GF store are decimated and held
+        `config` is ``None``, all traces of the GF store are decimated and held
         available (i.e. the index mapping of the original store is used),
         otherwise, a different spacial stepping can be specified by giving a
-        modified GF store configuration in `meta` (see :py:meth:`create`).
+        modified GF store configuration in `config` (see :py:meth:`create`).
         Decimated GF sub-stores are created under the `decimated` subdirectory
         within the GF store directory. Holding available decimated versions of
         the GF store can save computation time, IO bandwidth, or decrease
@@ -789,11 +790,11 @@ class Store(Store_):
 
         assert self.mode == 'r'
 
-        if meta is None:
-            meta = self.meta
+        if config is None:
+            config = self.config
 
-        meta = copy.deepcopy(meta)
-        meta.sample_rate = self.meta.sample_rate / decimate
+        config = copy.deepcopy(config)
+        config.sample_rate = self.config.sample_rate / decimate
 
         if decimate in self._decimated:
             del self._decimated[decimate]
@@ -807,10 +808,10 @@ class Store(Store_):
 
 
         store_dir_incomplete = store_dir + '-incomplete'
-        Store.create(store_dir_incomplete, meta, force=force)
+        Store.create(store_dir_incomplete, config, force=force)
 
         decimated = Store(store_dir_incomplete, 'w')
-        for args in decimated.meta.iter_nodes():
+        for args in decimated.config.iter_nodes():
             tr = self.get(args, decimate=decimate)
             decimated.put(args, tr)
 
@@ -831,7 +832,7 @@ class Store(Store_):
 
         problems = 0
         i =0
-        for args in self.meta.iter_nodes():
+        for args in self.config.iter_nodes():
             tr = self.get(args)
             if tr and not tr.is_zero:
                 if not tr.begin_value == tr.data[0]:
@@ -899,10 +900,10 @@ class Store(Store_):
         '''
 
         data = []
-        for args in self.meta.iter_nodes(level=-1):
+        for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
-            x = self.meta.get_distance(args)
+            x = self.config.get_distance(args)
             data.append((x, tmin, tmax))
         
         xs, tmins, tmaxs = num.array(data).T
@@ -917,9 +918,9 @@ class Store(Store_):
         sred = s[i]
         
         if snap_vred:
-            tdif = sred*self.meta.distance_delta
-            tdif2 = self.meta.deltat * int(tdif / self.meta.deltat)
-            sred = tdif2/self.meta.distance_delta
+            tdif = sred*self.config.distance_delta
+            tdif2 = self.config.deltat * int(tdif / self.config.deltat)
+            sred = tdif2/self.config.distance_delta
 
         tmin_vred = tminmin - sred*x_tminmin 
         tlenmax_vred = num.nanmax( tmax - (tmin_vred + sred*x) )
