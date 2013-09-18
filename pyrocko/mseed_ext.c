@@ -150,7 +150,7 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
     char          *network, *station, *location, *channel;
     char          mstype;
     int           msdetype;
-    int           psamples, precords;
+    int64_t       psamples;
     int           numpytype;
     int           length;
     FILE          *outfile;
@@ -250,7 +250,7 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
         memcpy(mst->datasamples, PyArray_DATA(contiguous_array), length*ms_samplesize(mstype));
         Py_DECREF(contiguous_array);
 
-        precords = mst_pack (mst, &record_handler, outfile, 4096, msdetype,
+        mst_pack (mst, &record_handler, outfile, 4096, msdetype,
                                      1, &psamples, 1, 0, NULL);
         mst_free( &mst );
         Py_DECREF(in_trace);
