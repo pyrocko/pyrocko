@@ -2,12 +2,25 @@
 Writing a Snuffling
 ===================
 
-Snufflings are small Python scripts which extend the functionality of Snuffler. Snuffler looks into the directory ``$HOME/.snufflings`` for snufflings. Snufflings can be reloaded at run-time using the menu entry 'Reload Snufflings' in the main menu of Snuffler - no need to restart Snuffler when a snuffling is modified or added.
+Snufflings are small Python scripts which extend the functionality of Snuffler.
+Snuffler looks into the directory ``$HOME/.snufflings`` for snufflings.
+Snufflings can be reloaded at run-time using the menu entry 'Reload Snufflings'
+in the main menu of Snuffler - no need to restart Snuffler when a snuffling is
+modified or added.
+
+
+
+
 
 An example snuffling to show earthquake catalog information within Snuffler
 ---------------------------------------------------------------------------
 
-Put the following code into ``$HOME/.snufflings/geofon.py``. It will add four items into the *Snufflings* sub-menu of Snuffler (*Get GEOFON events*, *Get GEOFON events (> M6)*, ...). When one of these is selected by the user, the `GEOFON catalog <http://geofon.gfz-potsdam.de/eqinfo/form.php>`_ is queried for earthquake information for the time range visible in Snuffler. For each earthquake found, a marker is shown in the viewer.
+Put the following code into ``$HOME/.snufflings/geofon.py``. It will add four
+items into the *Snufflings* sub-menu of Snuffler (*Get GEOFON events*, *Get
+GEOFON events (> M6)*, ...). When one of these is selected by the user, the
+`GEOFON catalog <http://geofon.gfz-potsdam.de/eqinfo/form.php>`_ is queried for
+earthquake information for the time range visible in Snuffler. For each
+earthquake found, a marker is shown in the viewer.
 
 ::
 
@@ -86,7 +99,8 @@ More examples
 Print minimum, maximum, and peak-to-peak amplitudes to the terminal
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This is a built-in snuffling of Snuffler. It serves here as a demonstration of how selected trace data can be accessed from within the snuffling.
+This is a built-in snuffling of Snuffler. It serves here as a demonstration of
+how selected trace data can be accessed from within the snuffling.
 
 ::
 
@@ -136,6 +150,57 @@ This is a built-in snuffling of Snuffler. It serves here as a demonstration of h
         '''Returns a list of snufflings to be exported by this module.'''
         
         return [ MinMaxSnuffling() ]
+
+
+How to add simple markers to the viewer
+---------------------------------------
+
+::
+
+    from pyrocko.snuffling import Snuffling
+    from pyrocko.pile_viewer import Marker
+
+    class Example1(Snuffling):
+        
+        '''Example Snuffling to demonstrate how to add markers to the viewer.
+
+    It looks at all selected traces and puts a Marker at the peak amplitude of the
+    raw traces. If no traces are selected all traces in view are used.  It is not
+    affected by filter settings of the viewer.
+
+    This works well for short continuous traces, but if longer or gappy traces are
+    in the viewer, there may be some problems which are not 
+    '''
+
+        def setup(self):
+            # this sets the name for the menu entry:
+            self.set_name('Example 1: mark peak amplitudes')
+
+        def call(self):
+            
+            # remove all markers which have been previously added by this snuffling
+            self.cleanup()
+
+            # this is a shortcut to get selected traces or all traces in view
+            for traces in self.chopper_selected_traces(fallback=True):
+
+                for tr in traces:
+                    net, sta, loc, cha = tr.nslc_id
+
+                    # using a trace method to get time and amplitude
+                    time, amplitude = tr.absmax()
+
+                    # the marker kind sets the color of the marker
+                    kind = 3 
+
+                    # create the marker object
+                    m = Marker([ (net, sta, loc, cha) ], time, time, kind )
+
+                    # add it to the viewer
+                    self.add_marker(m)
+
+    def __snufflings__():
+        return [ Example1() ]
 
 Synthetic Seismograms of an STS2 seismometer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
