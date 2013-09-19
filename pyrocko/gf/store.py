@@ -58,9 +58,30 @@ def check_string_id(s):
 # Values of first and last sample. These values are included in data[] 
 # redunantly.
 
+class NotMultipleOfSamplingInterval(Exception):
+    pass
+
+sampling_check_eps = 1e-5
+
 class GFTrace:
-    def __init__(self, data=None, itmin=0, deltat=1.0, 
-            is_zero=False, begin_value=None, end_value=None):
+
+    @classmethod
+    def from_trace(cls, tr):
+        return cls(data=tr.ydata.copy(), tmin=tr.tmin, deltat=tr.deltat)
+
+
+    def __init__(self, data=None, itmin=None, deltat=1.0, 
+            is_zero=False, begin_value=None, end_value=None, tmin=None):
+
+        assert sum((x is None) for x in (tmin, itmin)) == 1, \
+                'GFTrace: either tmin or itmin must be given'
+
+        if tmin is not None:
+            itmin = int(round(tmin / deltat))
+            if abs(itmin*deltat - tmin) > sampling_check_eps*deltat:
+                raise NotMultipleOfSamplingInterval( 
+                 'GFTrace: tmin (%g) is not a multiple of sampling interval (%g)'
+                         % (tmin, deltat) )
 
         if data is not None:
             data = num.asarray(data, dtype=gf_dtype)
@@ -104,7 +125,7 @@ class GFTrace:
         return '|'.join(s)
 
 
-Zero = GFTrace(is_zero=True)
+Zero = GFTrace(is_zero=True, itmin=0)
 
 class StoreError(Exception):
     pass
@@ -136,7 +157,8 @@ class NoSuchPhase(StoreError):
         self.value = s
 
     def __str__(self):
-        return 'phase for key "%s" not found. Running "fomosto ttt" may be needed.' % self.value
+        return 'phase for key "%s" not found. ' \
+               'Running "fomosto ttt" may be needed.' % self.value
 
 def remove_if_exists(fn, force=False):
     if os.path.exists(fn):
@@ -297,7 +319,7 @@ class Store_:
             ihi = min(itmin+nsamples, itmin_data+nsamples_data) - itmin_data
             data = self._get_data(ipos, begin_value, end_value, ilo, ihi)
 
-            return GFTrace(data, itmin_data+ilo, self._deltat,
+            return GFTrace(data, itmin=itmin_data+ilo, deltat=self._deltat,
                 begin_value=begin_value, end_value=end_value)
 
         else:
@@ -923,6 +945,9 @@ class Store(Store_):
             sred = tdif2/self.config.distance_delta
 
         tmin_vred = tminmin - sred*x_tminmin 
+        if snap_vred:
+            tmin_vred = self.config.deltat * int(tmin_vred / self.config.deltat)
+
         tlenmax_vred = num.nanmax( tmax - (tmin_vred + sred*x) )
         if sred != 0.0:
             vred = 1.0/sred

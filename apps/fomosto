@@ -173,7 +173,7 @@ def command_init(args):
 
 def get_store_dir(args):
     if len(args) == 1:
-        store_dir = args.pop(0)
+        store_dir = os.path.abspath(args.pop(0))
     else:
         store_dir = os.path.abspath(os.path.curdir) 
 
@@ -186,7 +186,7 @@ def get_store_dirs(args):
     if len(args) == 0:
         store_dirs = [ os.path.abspath(os.path.curdir) ]
     else:
-        store_dirs = args
+        store_dirs = [ os.path.abspath(x) for x in args ]
 
     for store_dir in store_dirs:
         if not os.path.isdir(store_dir):
@@ -248,7 +248,7 @@ def command_check(args):
 
 def load_config(fn):
     try:
-        config = gf.config.load(filename=fn)
+        config = gf.meta.load(filename=fn)
         assert isinstance(config, gf.Config)
 
     except:
