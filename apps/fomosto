@@ -146,7 +146,7 @@ def command_init(args):
             
         config = copy.deepcopy(source.config)
         config.derived_from_id = source.config.id
-        config.id = 'derived-from-' + config.id
+        config.id = 'derived_from_' + config.id
         try:
             config_filenames = gf.store.Store.create_editables(dest_dir, config=config)
         except gf.StoreError, e:
