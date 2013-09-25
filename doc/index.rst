@@ -24,6 +24,7 @@ Contents
    snuffler_tutorial
    snuffling_howto
    cake_doc
+   fomosto
    examples
    reference
 

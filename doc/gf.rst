@@ -1,3 +1,8 @@
+The :mod:`gf` Subpackage
+========================
+
+.. automodule:: pyrocko.gf.meta
+
 
 The :mod:`gf.meta` Module
 =========================
