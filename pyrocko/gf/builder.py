@@ -3,7 +3,7 @@ import numpy as num
 def int_arr(*args):
     return num.array(args, dtype=num.int)
 
-class GFBuilder:
+class Builder:
     def __init__(self, gf_set, block_size=None):
         if block_size is None:
             if len(gf_set.ns) == 3:
@@ -40,4 +40,4 @@ class GFBuilder:
         ends = self.gf_set.mins + (iends-1) * self.gf_set.deltas
         return begins, ends, iends - ibegins
 
-__all__ = [ 'GFBuilder' ]
+__all__ = [ 'Builder' ]

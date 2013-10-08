@@ -1,19 +1,33 @@
 
-import math
+import math, re
 import numpy as num
 from guts import *
-from guts_array import literal, literal_presenter
+from guts_array import literal
 from pyrocko import cake
 
+class Earthmodel1D(Object):
+    dummy_for = cake.LayeredModel
+
+    class __T(TBase):
+        def regularize_extra(self, val):
+            if isinstance(val, basestring):
+                val = cake.LayeredModel.from_scanlines(
+                        cake.read_nd_model_str(val))
+
+            return val
+
+        def to_save(self, val):
+            return literal(cake.write_nd_model_str(val))
+
 class StringID(StringPattern):
-    pattern = r'^[A-Za-z][A-Za-z0-9.-]{0,64}$'
+    pattern = r'^[A-Za-z][A-Za-z0-9._]{0,64}$'
+
 
 class ScopeType(StringChoice):
     choices = [
             'global',
             'regional',
             'local',
-            'undefined',
         ]
 
 
@@ -24,7 +38,6 @@ class WaveformType(StringChoice):
             'P wave', 
             'S wave', 
             'surface wave',
-            'undefined',
         ]
     
 
@@ -33,18 +46,10 @@ class NearfieldTermsType(StringChoice):
             'complete',
             'incomplete',
             'missing',
-            'undefined',
         ]
 
 
-class GFType(StringChoice):
-    choices = [
-            'Pyrocko',
-            'Kiwi-HDF',
-        ]
-
-
-class Citation(Object):
+class Reference(Object):
     id = StringID.T()
     type = String.T()
     title = Unicode.T()
@@ -76,7 +81,7 @@ class Citation(Object):
         elif stream is not None:
             bib_data = parser.parse_stream(stream)
 
-        citations = []
+        references = []
 
         for id_, entry in bib_data.entries.iteritems():
             d = {} 
@@ -92,51 +97,149 @@ class Citation(Object):
                 for person in entry.persons['author']:
                     d['authors'].append(unicode(person))
             
-            c = Citation(id=id_, type=entry.type, **d)
-            citations.append(c)
+            c = Reference(id=id_, type=entry.type, **d)
+            references.append(c)
 
-        return citations
+        return references
 
-class EarthModel(Object):
+_fpat = r'[+-](\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
+_spat = StringID.pattern[1:-1]
+pat = r'^((first|last)?\((' + _spat + r'(\|' + _spat + r')*)\)|(' +  \
+                 _spat + r'))?(' + _fpat + ')?$'
+timing_regex = re.compile( pat )
+
+class PhaseSelect(StringChoice):
+    choices = [ '', 'first', 'last' ]
+
+class InvalidTimingSpecification(ValidationError):
+    pass
+
+class Timing(SObject):
+
+    def __init__(self, s=None, **kwargs):
+        
+        if s is not None:
+            m = timing_regex.match(s)
+            if m:
+                if m.group(3):
+                    phase_ids = m.group(3).split('|')
+                elif m.group(5):
+                    phase_ids = [ m.group(5) ]
+                else:
+                    phase_ids = []
+
+                select = m.group(2) or ''
+
+                offset = 0.0
+                if m.group(6):
+                    offset = float(m.group(6))
+
+                kwargs = dict(
+                    phase_ids=phase_ids,
+                    select=select,
+                    offset=offset)
+
+            else:
+                raise InvalidTimingSpecification(s)
+
+        SObject.__init__(self, **kwargs)
+
+    def __str__(self):
+        l = []
+        if self.phase_ids:
+            sphases = '|'.join(self.phase_ids)
+            if len(self.phase_ids) > 1 or self.select:
+                sphases = '(%s)' % sphases
+
+            if self.select:
+                sphases = self.select + sphases
+
+            l.append(sphases)
+
+        if self.offset != 0.0 or not self.phase_ids:
+            l.append('%+g' % self.offset)
+
+        return ''.join(l)
+
+    def evaluate(self, get_phase, args):
+        phases = [ get_phase(phase_id) for phase_id in self.phase_ids ]
+        times = [ phase(args) for phase in phases ]
+        times = [ t+self.offset for t in times if t is not None ]
+        if not times:
+            return None
+        elif self.select == 'first':
+            return min(times)
+        elif self.select == 'last':
+            return max(times)
+        else:
+            return times[0]
+
+    phase_ids = List.T(String.T())
+    offset = Float.T(default=0.0)
+    select = PhaseSelect.T(default='')
+
+def mkdefs(s):
+    defs = []
+    for x in s.split(','):
+        try:
+            defs.append(float(x))
+        except ValueError:
+            if x.startswith('!'):
+                defs.extend(cake.PhaseDef.classic(x[1:]))
+            else:
+                defs.append(cake.PhaseDef(x))
+
+    return defs
+
+class TPDef(Object):
     id = StringID.T()
-    region = String.T(optional=True)
-    description = String.T(optional=True)
-    citation_ids = List.T(StringID.T())
+    definition = String.T()
 
+    @property
+    def phases(self):
+        return [ x for x in mkdefs(self.definition) if isinstance(x, cake.PhaseDef) ]
 
-class ModellingCode(Object):
-    id = StringID.T()
-    name = String.T(optional=True)
-    version = String.T(optional=True)
-    method = String.T(optional=True)
-    author = Unicode.T(optional=True)
-    author_email = String.T(optional=True)
-    citation_ids = List.T(StringID.T())
+    @property
+    def horizontal_velocities(self):
+        return [ x for x in mkdefs(self.definition) if isinstance(x, float) ]
 
 class OutOfBounds(Exception):
-    def __str__(self):
-        return 'out of bounds'
+    def __init__(self, values=None):
+        Exception.__init__(self)
+        self.values = values
 
-class GFSet(Object):
+    def __str__(self):
+        if self.values:
+            return 'out of bounds: (%s)' % ','.join('%g' % x for x in self.values)
+        else:
+            return 'out of bounds'
+
+class Config(Object):
+    '''Greens function store meta information.'''
+
     id = StringID.T()
+
     derived_from_id = StringID.T(optional=True)
     version = String.T(default='1.0', optional=True)
+    modelling_code_id = StringID.T(optional=True)
     author = Unicode.T(optional=True)
     author_email = String.T(optional=True)
-    type = GFType.T(default='Pyrocko', optional=True)
-    modelling_code_id = StringID.T(optional=True)
-    scope_type = ScopeType.T(default='undefined')
-    waveform_type = WaveformType.T(default='undefined')
-    nearfield_terms = NearfieldTermsType.T(default='undefined')
-    can_interpolate_source = Bool.T(default=False)
-    can_interpolate_receiver = Bool.T(default=False)
+    scope_type = ScopeType.T(optional=True)
+    waveform_type = WaveformType.T(optional=True)
+    nearfield_terms = NearfieldTermsType.T(optional=True)
+    description = String.T(default='', optional=True)
+    reference_ids = List.T(StringID.T())
+    size = Int.T(optional=True)
+
+    earthmodel_1d = Earthmodel1D.T(optional=True)
+
+    can_interpolate_source = Bool.T(optional=True)
+    can_interpolate_receiver = Bool.T(optional=True)
     frequency_min = Float.T(optional=True)
     frequency_max = Float.T(optional=True)
     sample_rate = Float.T(optional=True)
-    size = Int.T(optional=True)
-    citation_ids = List.T(StringID.T())
-    description = String.T(default='', optional=True)
     ncomponents = Int.T(default=1)
+    tabulated_phases = List.T(TPDef.T())
 
     def __init__(self, **kwargs):
         self._do_auto_updates = False
@@ -192,12 +295,11 @@ class GFSet(Object):
         arrs.append(self.coords[-1])
         return nditer_outer(arrs)
 
-class GFSetTypeA(GFSet):
-    '''Rotational symmetry, fixed receiver depth
+class ConfigTypeA(Config):
+    '''Cylindrical symmetry, fixed receiver depth
     
-    Index variables are (source_depth, distance, component).'''
+Index variables are (source_depth, distance, component).'''
 
-    earth_model_id = StringID.T(optional=True)
     receiver_depth = Float.T(default=0.0)
     source_depth_min = Float.T()
     source_depth_max = Float.T()
@@ -249,7 +351,11 @@ class GFSetTypeA(GFSet):
             try:
                 return num.ravel_multi_index((ia,ib,ig), (na,nb,ng))
             except ValueError:
-                raise OutOfBounds()
+                for ia_, ib_, ig_ in zip(ia,ib,ig):
+                    try:
+                        num.ravel_multi_index((ia_,ib_,ig_), (na,nb,ng))
+                    except ValueError:
+                        raise OutOfBounds()
 
         def vicinity_function(a,b, ig):
             ias = indi12((a - amin) / da, na)
@@ -270,12 +376,11 @@ class GFSetTypeA(GFSet):
         self._indices_function = indices_function
         self._vicinity_function = vicinity_function
 
-class GFSetTypeB(GFSet):
-    '''Rotational symmetry
+class ConfigTypeB(Config):
+    '''Cylindrical symmetry
 
-    Index variables are (receiver_depth, source_depth, distance, component).'''
+Index variables are (receiver_depth, source_depth, distance, component).'''
 
-    earth_model_id = StringID.T(optional=True)
     receiver_depth_min = Float.T()
     receiver_depth_max = Float.T()
     receiver_depth_delta = Float.T()
@@ -354,26 +459,6 @@ class GFSetTypeB(GFSet):
         self._indices_function = indices_function
         self._vicinity_function = vicinity_function
 
-
-class CakeNDModel(Object):
-    dummy_for = cake.LayeredModel
-
-    class __T(TBase):
-        def regularize_extra(self, val):
-            if isinstance(val, basestring):
-                val = cake.LayeredModel.from_scanlines(
-                        cake.read_nd_model_str(val))
-
-            return val
-
-        def to_save(self, val):
-            return literal(cake.write_nd_model_str(val))
-
-class Inventory(Object):
-    citations = List.T(Citation.T())
-    earth_models = List.T(EarthModel.T())
-    modelling_codes = List.T(ModellingCode.T())
-    gf_sets = List.T(GFSet.T())
 
 vicinity_eps = 1e-5
 
@@ -481,7 +566,9 @@ def nditer_outer(x):
     return num.nditer(x, 
             op_axes=(num.identity(len(x), dtype=num.int)-1).tolist())
 
-__all__ = 'GFSet GFSetTypeA GFSetTypeB'.split()
+__all__ = '''StringID ScopeType WaveformType NearfieldTermsType 
+             Reference PhaseSelect Timing TPDef 
+             Config ConfigTypeA ConfigTypeB'''.split()
 
 
 

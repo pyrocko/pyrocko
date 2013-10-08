@@ -7,7 +7,7 @@ from scipy import spatial
 
 import yaml
 
-from pyrocko import util, trace, gf, cake
+from pyrocko import util, trace, gf, cake, spit
 
 pjoin = os.path.join
 
@@ -27,6 +27,7 @@ subcommand_descriptions = {
         'view':          'view selected traces',
         'import':        'convert Kiwi GFDB to GF store format',
         'ttt':           'create travel time tables',
+        'tttview':       'plot travel time table',
     }
 
 subcommand_usages = {
@@ -40,6 +41,7 @@ subcommand_usages = {
         'view':          'view [store-dir] ... [options]',
         'import':        'import <source> <destination> [options]',
         'ttt':           'ttt [store-dir] [options]',
+        'tttview':       'tttview [store-dir] <phase-id>',
     }
 
 subcommands = subcommand_descriptions.keys()
@@ -59,6 +61,7 @@ Subcommands:
     view          %(view)s
     import        %(import)s
     ttt           %(ttt)s
+    tttview       %(tttview)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -140,19 +143,16 @@ def command_init(args):
         except gf.StoreError, e:
             die(e)
 
-        input_fn = pjoin(dest_dir, 'input')
-
-        if os.path.exists(input_fn):
-            die('file "%s" already exists' % input_fn)
-
-        util.ensuredirs(input_fn)
             
-        meta = copy.deepcopy(source.meta)
-        meta.derived_from_id = source.meta.id
-        meta.id = 'derived-from-' + meta.id
-        gf.meta.dump(meta, filename=input_fn)
+        config = copy.deepcopy(source.config)
+        config.derived_from_id = source.config.id
+        config.id = 'derived_from_' + config.id
+        try:
+            config_filenames = gf.store.Store.create_editables(dest_dir, config=config)
+        except gf.StoreError, e:
+            die(e)
         
-        logger.info('(1) configure settings in "%s"...' % input_fn)
+        logger.info('(1) configure settings in files:\n  %s' % '\n  '.join(config_filenames))
         logger.info('(2) run "fomosto redeploy <source> <dest>", as needed')
 
     else:
@@ -163,16 +163,17 @@ def command_init(args):
 
         module = fomo_wrapper_module(modelling_code_id)
         try:
-            module.init(store_dir)
+            config_filenames = module.init(store_dir)
         except gf.StoreError, e:
             die(e)
 
-        logger.info('(1) configure settings in "%s"...' % pjoin(store_dir, 'input'))
-        logger.info('(2) run "fomosto build" in the directory "%s"' % store_dir)
+        logger.info('(1) configure settings in files:\n  %s' % '\n  '.join(config_filenames))
+        logger.info('(2) run "fomosto ttt" in directory "%s"' % store_dir)
+        logger.info('(3) run "fomosto build" in directory "%s"' % store_dir)
 
 def get_store_dir(args):
     if len(args) == 1:
-        store_dir = args.pop(0)
+        store_dir = os.path.abspath(args.pop(0))
     else:
         store_dir = os.path.abspath(os.path.curdir) 
 
@@ -185,7 +186,7 @@ def get_store_dirs(args):
     if len(args) == 0:
         store_dirs = [ os.path.abspath(os.path.curdir) ]
     else:
-        store_dirs = args
+        store_dirs = [ os.path.abspath(x) for x in args ]
 
     for store_dir in store_dirs:
         if not os.path.isdir(store_dir):
@@ -205,15 +206,9 @@ def command_build(args):
     parser, options, args = cl_parse('build', args, setup=setup)
 
     store_dir = get_store_dir(args)
-
-    input_fn = pjoin(store_dir, 'input')
     try:
-        inp = yaml.load(open(input_fn, 'r'), Loader=yaml.BaseLoader)
-    except IOError, e:
-        die(e)
-
-    module = fomo_wrapper_module(inp['modelling_code_id'])
-    try:
+        store = gf.Store(store_dir)
+        module = fomo_wrapper_module(store.config.modelling_code_id)
         module.build(store_dir, 
                 force=options.force, 
                 nworkers=options.nworkers)
@@ -251,20 +246,20 @@ def command_check(args):
     except gf.StoreError, e:
         die(e)
 
-def load_meta(fn):
+def load_config(fn):
     try:
-        meta = gf.meta.load(filename=fn)
-        assert isinstance(meta, gf.GFSet)
+        config = gf.meta.load(filename=fn)
+        assert isinstance(config, gf.Config)
 
     except:
-        die('cannot load meta information from file: %s' % fn)
+        die('cannot load gf config from file: %s' % fn)
 
-    return meta
+    return config
 
 def command_decimate(args):
 
     def setup(parser):
-        parser.add_option('--meta', dest='meta_fn', metavar='FILE',
+        parser.add_option('--config', dest='config_fn', metavar='FILE',
                 help='use modified spacial sampling given in FILE')
 
         parser.add_option('--force', dest='force', action='store_true',
@@ -274,20 +269,23 @@ def command_decimate(args):
     try:
         decimate = int(args.pop())
     except:
-        parser.error('cannot get decimate argument')
+        parser.error('cannot get <factor> argument')
 
     store_dir = get_store_dir(args)
 
-    meta = None
-    if options.meta_fn:
-        meta = load_meta(options.meta_fn)
+    config = None
+    if options.config_fn:
+        config = load_config(options.config_fn)
 
     try:
         store = gf.Store(store_dir)
-        store.make_decimated(decimate, meta=meta, force=options.force)
+        store.make_decimated(decimate, config=config, force=options.force)
 
     except gf.StoreError, e:
         die(e)
+
+def sindex(args):
+    return str(tuple(x.tolist() for x in args))
 
 def command_redeploy(args):
 
@@ -304,36 +302,27 @@ def command_redeploy(args):
     except gf.StoreError, e:
         die(e)
 
-    i = 0
-    while True:
-        try:
-            dest = gf.Store(dest_store_dir, 'w')
-            break
+    try:
+        gf.store.Store.create_dependants(dest_store_dir)
+    except gf.StoreError:
+        pass
 
-        except gf.StoreError, e:
-            if i == 0:
-                input_fn = pjoin(dest_store_dir, 'input')
-                meta = load_meta(input_fn)
-                try:
-                    gf.store.Store.create(dest_store_dir, meta=meta)
-                except gf.StoreError, e2:
-                    die(e2)
+    try:
+        dest = gf.Store(dest_store_dir, 'w')
 
-            else:
-                die(e)
+    except gf.StoreError, e:
+        die(e)
 
-        i += 1
-
-    for args in dest.meta.iter_nodes():
+    for args in dest.config.iter_nodes():
         try:
             tr = source.get(args, interpolate='off')
             dest.put(args, tr)
 
         except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate), e:
-            logger.debug('skipping %s, (%s)' % (str(args), e))
+            logger.debug('skipping %s, (%s)' % (sindex(args), e))
 
         except gf.store.StoreError, e:
-            logger.warn('cannot insert %s, (%s)' % (str(args), e))
+            logger.warn('cannot insert %s, (%s)' % (sindex(args), e))
 
 def command_view(args):
     def setup(parser):
@@ -359,7 +348,7 @@ def command_view(args):
         for istore, store_dir in enumerate(store_dirs):
             store = gf.Store(store_dir)
             ii = 0
-            for args in store.meta.iter_extraction(gdef):
+            for args in store.config.iter_extraction(gdef):
                 gtr = store.get(args)
 
                 loc_code = ''
@@ -383,7 +372,7 @@ def command_view(args):
 
                 ii += 1 
                 
-    except (gf.meta.GridSpecError, gf.StoreError), e:
+    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds), e:
         die(e)
 
     trace.snuffle(traces)
@@ -394,7 +383,7 @@ def command_import(args):
     except ImportError:
         die('the kiwi tools must be installed to use this feature')
 
-    parser, options, args = cl_parse('view', args)
+    parser, options, args = cl_parse('import', args)
 
     if not len(args) == 2:
         parser.print_help()
@@ -409,7 +398,7 @@ def command_import(args):
         
     db = gfdb.Gfdb(source_path)
 
-    meta = gf.meta.GFSetTypeA(
+    config = gf.meta.ConfigTypeA(
             id = 'imported-gfs',
             distance_min = db.firstx,
             distance_max = db.firstx + (db.nx-1) * db.dx,
@@ -422,9 +411,9 @@ def command_import(args):
         )
 
     try:
-        gf.store.Store.create(dest_store_dir, meta=meta)
+        gf.store.Store.create(dest_store_dir, config=config)
         dest = gf.Store(dest_store_dir, 'w')
-        for args in dest.meta.iter_nodes(level=-1):
+        for args in dest.config.iter_nodes(level=-1):
             source_depth, distance = [ float(x) for x in args ]
             traces = db.get_traces_pyrocko(distance, source_depth)
             for tr in traces:
@@ -447,414 +436,93 @@ def phasedef_or_horvel(x):
 def mkp(s):
     return [ phasedef_or_horvel(ps) for ps in s.split(',') ]
 
-def getset(d, k, f):
-    try: 
-        return d[k]
-    except KeyError:
-        v = d[k] = f(k)
-        return v
-
-class InterPhase:
-
-    def __init__(self, model, phases, eps):
-        self._model = model
-        self._phases = phases
-        self._eps = eps
-        self._ncpoints = 0
-        self._cpoints_buffer = num.zeros((128,4), dtype=num.float)
-        self._cpoints = self._cpoints_buffer[:0,:]
-        self._ip_params = {}
-        self._ok = collections.Counter()
-        self._factors = num.array([1.0,33.33,1.0])
-        self._kdtree = None
-
-    def evaluate(self, args):
-        rays = self._model.arrivals(
-                phases = self._phases,
-                distances = [ args[2]*cake.m2d ],
-                zstart = args[1],
-                zstop = args[0])
-
-        if rays:
-            ray = rays[0]
-            return ray.t
-
-        return None
-
-    def interpolate(self, args):
-        ineighbors = tuple(self.neighborhood_kdtree(args, 3))
-        if len(ineighbors) < 3:
-            return None, ineighbors
-
-        params = getset(self._ip_params, ineighbors, self._make_ip_params)
-        if params is None:
-            return None, ineighbors
-        else:
-            return num.dot(args*self._factors, params[:-1]) + params[-1], ineighbors
-
-    def _make_ip_params(self, ineighbors):
-        a = num.empty((len(ineighbors), 4))
-        a[:,:-1] = self._cpoints[ineighbors,:-1]
-        a[:,-1] = 1.0
-        b = self._cpoints[ineighbors,-1]
-        if num.all(num.isfinite(b)):
-            return num.linalg.lstsq(a,b)[0]
-        else:
-            return None
-
-    def neighborhood_brute(self, args, n):
-        if self._cpoints.shape[0] < n:
-            return []
-
-        d = num.sqrt(num.sum((self._cpoints[:,:3] - args*self._factors)**2, axis=1))
-        return num.argsort(d)[:n]
-
-    def neighborhood_kdtree(self, args, n):
-        if not self._kdtree:
-            return []
-
-        iii = self._kdtree.query(args*self._factors, n)[1]
-        return iii[iii<self._cpoints.shape[0]]
-
-    def test(self, args):
-        fi, ineighbors = self.interpolate(args)
-        if self._ok[ineighbors] > 5.:
-            print '.',
-            return
-
-        fe = self.evaluate(args)
-        if (fe is not None and fi is not None and abs(fe-fi) < self._eps) or \
-           (fe is None and fi is None):
-            #self.insert(args, fe)
-            self._ok[ineighbors] += 1
-            print 'I',
-            
-        else:
-            self.insert(args, fe)
-            self._ok[ineighbors] -= 1
-            print 'E',
-        sys.stdout.flush()
-
-    def insert(self, args, value):
-        navail = self._cpoints_buffer.shape[0]
-        if self._ncpoints >= navail:
-            self._cpoints_buffer.resize((navail*2,4), refcheck=False)
-
-        self._cpoints_buffer[self._ncpoints,:3] = args * self._factors
-        self._cpoints_buffer[self._ncpoints,3] = value
-
-        self._ncpoints += 1
-        self._cpoints = self._cpoints_buffer[:self._ncpoints]
-        self._kdtree = spatial.cKDTree(self._cpoints[:,:3])
-
-    def fill(self, coords):
-        for args in nditer_outer(coords):
-            fe = self.evaluate(args)
-            self.insert(args, fe)
-
-        if False:
-            for i in range(5000): 
-                args = []
-                for vals in coords:
-                    if len(vals) > 1:
-                        args.append( num.random.uniform(vals[0],vals[-1]) )
-                    else:
-                        args.append(vals[0])
-
-                self.test(args)
-
-        print
-        self.plot()
-
-    def plot(self):
-        from matplotlib import pyplot, mlab
-
-        rdepth_c, sdepth_c, dist_c = (self._cpoints[:,:3] / self._factors).T
-        t_c  = self._cpoints[:,3]
-
-        ndists, nsdepths = 500,100
-        sdepth_i = num.linspace(sdepth_c.min(), sdepth_c.max(), nsdepths)
-        dist_i = num.linspace(dist_c.min(), dist_c.max(), ndists)
-
-        it = nditer_outer((sdepth_i, dist_i, None)) 
-        neighborhoods = {}
-        i = 0
-        for sdepth, dist, t in it:
-            vt, ineigh = self.interpolate((rdepth_c[0], sdepth, dist))
-            if ineigh not in neighborhoods:
-                neighborhoods[ineigh] = i
-                i += 1
-            t[...] = vt #neighborhoods[ineigh] % 24
-        
-        print i
-
-        t_i = it.operands[2]
-        t_i = num.ma.masked_invalid(t_i)
- 
-        valid = num.isfinite(t_c)
-        invalid = num.logical_not(valid)
-        pyplot.plot(dist_c[valid], sdepth_c[valid], 'o')
-        pyplot.plot(dist_c[invalid], sdepth_c[invalid], 'x')
-
-        pyplot.pcolor(dist_i, sdepth_i, t_i)
-        pyplot.show()
-
-class InterPhase2:
-
-    def __init__(self, model, phases, eps, mins, maxs):
-        self._model = model
-        self._phases = phases
-        self._eps = eps
-        self._mins = mins
-        self._maxs = maxs
-        self._maxdepth = 8
-        self._ip_params = { (1,1) : None }
-        self._values = {}
-
-    def evaluate(self, args):
-        rays = self._model.arrivals(
-                phases = self._phases,
-                distances = [ args[1]*cake.m2d ],
-                zstart = args[0],
-                zstop = 100000.)
-
-        if rays:
-            ray = rays[0]
-            return ray.t
-
-        return None
-
-    def get_value(self, args):
-        return getset(self._values, args, self.evaluate)
-
-    def interpolate(self, args):
-        rels = (args - self._mins) / (self._maxs - self._mins)
-
-        icell = (1,1)
-        depths = num.array([0,0])
-        while True:
-            if not self._ip_params[icell]:
-                break
-
-            for icell_child, depths in self._ip_params[icell]:
-                n = 2**depths
-                icell_test = n + num.clip((rels*n).astype(int), 0, n-1)
-                if num.all(icell_test == icell_child):
-                    icell = icell_child
-                    break
-
-        n = 2**depths
-        delta = (self._maxs - self._mins)/n
-        i = num.array(icell) - n
-        args_low = self._mins + i * delta
-        args_hi = self._mins + (i+1) * delta
-        corners = num.transpose([args_low, args_hi])
-
-        fracs = (args - args_low)/delta
-        weights = num.transpose([1.0-fracs, fracs])
-        
-        if len(args) == 2:
-            v_interpol = 0.0
-            for (iy,ix) in ((0,0), (0,1), (1,0), (1,1)):
-                args = corners[0,iy], corners[1,ix]
-                weight = weights[0,iy] * weights[1,ix]
-                v = self.get_value(args)
-                if v is None:
-                    return None
-
-                v_interpol += v * weight
-                
-            return v_interpol
-                
-        else:
-            assert False
-    
-    def fill(self, icell=(1,1)):
-
-
-        self._ip_params[icell] = []
-
-        depths = num.array([ celldepth(x) for x in icell ])
-        n = 2**depths
-        delta = (self._maxs - self._mins)/n
-        i = num.array(icell) - n
-        args_low = self._mins + i * delta
-        args_hi = self._mins + (i+1) * delta
-
-        point_fracs = num.array(((0.5, 0.5), (0., 0.5), (1., 0.5), (0.5, 0.), (0.5, 1.)))
-
-        ok = True
-
-        works = []
-        nas = []
-        for fracs in point_fracs:
-            args = args_low * (1.0-fracs) + args_hi * fracs
-            fracs_i = num.minimum(0.9999, fracs)
-            args_i = args_low * (1.0-fracs_i) + args_hi * fracs_i
-
-            fe = self.get_value(tuple(args))
-            fi = self.interpolate(args_i)
-
-            nas.append(fe is None)
-
-            works.append(
-                (fe is not None and fi is not None and abs(fe-fi) < self._eps) or 
-                ((fe is None and fi is None)))
-
-        
-        some_are_undef = 0 < sum(nas) < len(nas)
-
-        if not all(works):
-
-            if works[3] and works[4] and not works[0] and not some_are_undef:
-                children = ((0,0,0,1), (0,1,0,1))
-            elif works[1] and works[2] and not works[0] and not some_are_undef:
-                children = ((0,0,1,0), (1,0,1,0))
-            else:
-                children = ((0,0,1,1), (0,1,1,1), (1,0,1,1), (1,1,1,1))
-
-            #children = ((0,0,1,1), (0,1,1,1), (1,0,1,1), (1,1,1,1))
-        
-            for (iy,ix, sy, sx) in children:
-                if ( depths[0] + sy < self._maxdepth and 
-                        depths[1] + sx < self._maxdepth ):
-
-                    icell_child = (icell[0] << sy) + iy, (icell[1] << sx) + ix
-                    depths_child = num.array([ depths[0] + sy, depths[1] + sx ])
-                    self._ip_params[icell].append((icell_child, depths_child))
-                    self.fill(icell_child)
-                
-        else:
-            print 'x'.join( '.' * depth for depth in depths ), 'ok'
-
-    def plot(self):
-        from matplotlib import pyplot, mlab
-
-
-        ndists, nsdepths = 500,100
-        sdepth_i = num.linspace(self._mins[0], self._maxs[0], nsdepths)
-        dist_i = num.linspace(self._mins[1], self._maxs[1], ndists)
-
-        it = nditer_outer((sdepth_i, dist_i, None)) 
-        for sdepth, dist, t in it:
-            vt = self.interpolate((sdepth, dist))
-            t[...] = vt 
-
-        t_i = it.operands[2]
-        t_i = num.ma.masked_invalid(t_i)
-
-        pyplot.pcolor(dist_i, sdepth_i, t_i)
-
-        cpoints = num.zeros( (len(self._values), 3), dtype=num.float)
-
-        i = 0
-        for args, t in self._values.iteritems():
-            cpoints[i,0:2] = args
-            cpoints[i,2] = t
-            i += 1
-
-        for icell in self._ip_params.keys():
-            depths = num.array([ celldepth(x) for x in icell ])
-            n = 2**depths
-            delta = (self._maxs - self._mins)/n
-            i = num.array(icell) - n
-            args_low = self._mins + i * delta
-            args_hi = self._mins + (i+1) * delta
-            coords = num.transpose((args_low, args_hi))
-            points = []
-            for iy, ix in ((0,0), (0,1), (1,1), (1,0), (0,0)):
-                points.append((coords[1,iy], coords[0,ix]))
-            
-            points = num.transpose(points)
-            pyplot.plot(points[0], points[1], color='black')
-
-        sdepth_c, dist_c, t_c = cpoints.T
-        valid = num.isfinite(t_c)
-
-        invalid = num.logical_not(valid)
-        #pyplot.plot(dist_c[valid], sdepth_c[valid], 'o', color='black', markersize=3)
-        pyplot.plot(dist_c[invalid], sdepth_c[invalid], 'x', color='black')
- 
-        pyplot.show()
-        
-def celldepth(icell):
-    d = 0
-    while True:
-        icell = (icell & ~1) >> 1
-        if icell == 0:
-            return d 
-
-        d += 1
-        
-def up(l):
-    l[0] = (l[0] & ~1) >> 1
-    return l[0]
-        
-def nditer_outer(x):
-    add = []
-    if x[-1] is None:
-        x_ = x[:-1]
-        add = [ None ]
-    else:
-        x_ = x
-
-    return num.nditer(x, 
-            op_axes=(num.identity(len(x_), dtype=num.int)-1).tolist() + add)
-
-
 km = 1000.
 
 def command_ttt(args):
+    def setup(parser):
+        parser.add_option('--force', dest='force', action='store_true',
+                help='overwrite existing files')
 
-    parser, options, args = cl_parse('ttt', args)
+    parser, options, args = cl_parse('ttt', args, setup=setup)
+
+    store_dir = get_store_dir(args)
+    try:
+        store = gf.Store(store_dir)
+        config = store.config
+        
+        mod = config.earthmodel_1d
+        if not mod:
+            die('no earth model found')
+
+        for pdef in config.tabulated_phases:
+
+            phase_id = pdef.id
+            phases = pdef.phases
+            horvels = pdef.horizontal_velocities
+
+            fn = pjoin( store_dir, 'phases', '%s.phase' % phase_id)
+
+            if os.path.exists(fn) and not options.force:
+                logger.info('file already exists: %s' % fn)
+                continue
+
+            def evaluate(args):
+
+                if len(args) == 2:
+                    zr, zs, x = (config.receiver_depth,) + args
+                elif len(args) == 3:
+                    zr, zs, x = args
+                else:
+                    assert False
+
+                t = []
+                if phases:
+                    rays = mod.arrivals(
+                            phases = phases,
+                            distances = [ x*cake.m2d ],
+                            zstart = zs,
+                            zstop = zr)
+
+                    for ray in rays:
+                        t.append(ray.t)
+
+                for v in pdef.horizontal_velocities:
+                    t.append(x/(v*1000.))
+                
+                if t:
+                    return min(t)
+                else:
+                    return None
+
+            logger.info('making travel time table for phasegroup "%s"' % phase_id)
+            ip = spit.SPTree(
+                f = evaluate,
+                ftol = config.deltat*0.5,
+                xbounds = num.transpose((config.mins, config.maxs)),
+                xtols = config.deltas)
+
+            util.ensuredirs(fn)
+            ip.dump(fn)
+            
+    except gf.StoreError, e:
+        die(e)
+
+def command_tttview(args):
+
+    parser, options, args = cl_parse('tttview', args)
+    
+    try:
+        phase_id = args.pop()
+    except:
+        parser.error('cannot get <phase-id> argument')
 
     store_dir = get_store_dir(args)
 
     try:
         store = gf.Store(store_dir)
+        phase = store.get_phase(phase_id)
+        phase.plot_2d()
 
-        mod = cake.load_model(pjoin(store_dir, 'earthmodel'))
-        
-        pgroup_defs = { 
-                #'begin' : mkp('p,P,p\\,P\\,Pv_(cmb)p'),
-                'begin' : mkp('P'),
-                #'end' : mkp('2.5')
-                }
-
-        for pgroup in sorted(pgroup_defs.keys()):
-            defs = pgroup_defs[pgroup]
-            phases = [ x for x in defs if isinstance(x, cake.PhaseDef) ]
-            horvels = [ x for x in defs if isinstance(x, float) ]
-
-            ip = InterPhase(mod, phases, store.meta.deltat*0.1)
-            
-
-            
-            #coords = []
-            #for args in nditer_outer(zip(store.meta.mins, store.meta.maxs)):
-            #    rdepth = store.meta.get_receiver_depth(args)
-            #    sdepth = store.meta.get_source_depth(args)
-            #    dist = store.meta.get_distance(args)
-            #    coords.append((rdepth,sdepth,dist))
-
-            #coords = [ num.unique(num.array(x)) for x in zip(*coords) ]
-            
-            #coords2 = []
-            #for x in coords:
-            #    if len(x) == 2:
-            #        coords2.append(num.linspace(x[0],x[1], 5))
-            #    else:
-            #        coords2.append(x)
-            
-            #ip.fill(coords2)
-
-            ip2 = InterPhase2(mod, phases, store.meta.deltat*0.1, 
-                    store.meta.mins, store.meta.maxs)
-
-            ip2.fill()
-            ip2.plot()
-
-            
     except gf.StoreError, e:
         die(e)
 

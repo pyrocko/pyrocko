@@ -2962,6 +2962,9 @@ class LayeredModel:
 
             last = element
 
+        if not isinstance(last, Layer):
+            lines.append(fmt(last.z, last.mbelow))
+
         return lines
 
     def iter_material_parameter(self, get):
@@ -3118,6 +3121,28 @@ class LayeredModel:
 
         return mod_simple
 
+    def extract(self, depth_min=None, depth_max=None):
+
+        if isinstance(depth_min, basestring):
+            depth_min = self.discontinuity(depth_min).z
+        
+        if isinstance(depth_max, basestring):
+            depth_max = self.discontinuity(depth_max).z
+
+        mod_extracted = LayeredModel()
+        for element in self.elements():
+            if ((depth_min is None 
+                    or self.zeq(depth_min, element.ztop)
+                    or depth_min <= element.ztop )
+                and 
+                (depth_max is None 
+                    or self.zeq(depth_max, element.zbot) 
+                    or depth_max >= element.zbot)):
+
+                mod_extracted.append(element)
+
+        return mod_extracted
+
     def __str__(self):
         return '\n'.join( str(element) for element in self._elements )
                 
@@ -3225,6 +3250,9 @@ def write_nd_model_fh(mod, fh):
             fh.write(fmt(element.zbot, element.mbot))
 
         last = element
+
+    if not isinstance(last, Layer):
+        fh.write(fmt(last.z, last.mbelow))
 
 def write_nd_model_str(mod):
     f = StringIO.StringIO()
@@ -3353,22 +3381,6 @@ def min_not_none(a,b):
     if b is None:
         return a
     return min(a,b)
-
-def monotony(x):
-    '''Check if an array is strictly increasing or decreasing.
-    
-    Given an array `x`, returns `1` if the values of x are in strictly
-    increasing order and `-1` if they are in strictly decreasing order, or zero
-    otherwise.
-    '''
-    n = x.size
-    p = num.sum(num.sign(x))
-    if n == p:
-        return 1
-    if n == -p:
-        return -1
-    else:
-        return 0
 
 def xytups(xx,yy):
     d = []
