@@ -1,7 +1,6 @@
 
 import os, struct, math, shutil, fcntl, copy, logging, re
 import logging
-from collections import Counter
 
 import numpy as num
 from scipy import signal
