@@ -1051,21 +1051,30 @@ def MakePileViewerMainClass(base):
             self.pile = self.pile.get_basepile()
             
         def iter_snuffling_modules(self):
+            pjoin = os.path.join
             for path in self.snuffling_paths:
                 
                 if not os.path.isdir(path): 
                     os.mkdir(path)
                 
-                for fn in os.listdir(path):
+                for entry in os.listdir(path):
+                    directory = path
+                    fn = entry
+                    d = pjoin(path, entry)
+                    if os.path.isdir(d):
+                        directory = d
+                        if os.path.isfile(os.path.join(directory, 'snuffling.py')):
+                            fn = 'snuffling.py'
+
                     if not fn.endswith('.py'):
                         continue
                     
                     name = fn[:-3]
-                    if (path, name) not in self.snuffling_modules:
-                        self.snuffling_modules[path, name] = \
-                            pyrocko.snuffling.SnufflingModule(path, name, self)
+                    if (directory, name) not in self.snuffling_modules:
+                        self.snuffling_modules[directory, name] = \
+                            pyrocko.snuffling.SnufflingModule(directory, name, self)
                     
-                    yield self.snuffling_modules[path, name]
+                    yield self.snuffling_modules[directory, name]
                     
         def setup_snufflings(self):
             # user snufflings

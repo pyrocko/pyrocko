@@ -6,6 +6,55 @@ import numpy as num
 
 dynecm = 1e-7
 
+def rotation_from_axis_and_angle(angle, axis):
+
+    if len(axis) == 2:
+        theta, phi = axis
+        ux = math.sin(theta)*math.cos(phi)
+        uy = math.sin(theta)*math.sin(phi)
+        uz = math.cos(theta)
+
+    elif len(axis) == 3:
+        axis = num.asarray(axis)
+        uabs = math.sqrt(num.sum(axis**2))
+        ux, uy, uz = axis / uabs
+    else:
+        assert False
+
+    ct = math.cos(angle)
+    st = math.sin(angle)
+    return num.matrix([
+        [ct + ux**2*(1.-ct), ux*uy*(1.-ct)-uz*st, ux*uz*(1.-ct)+uy*st],
+        [uy*ux*(1.-ct)+uz*st, ct+uy**2*(1.-ct), uy*uz*(1.-ct)-ux*st],
+        [uz*ux*(1.-ct)-uy*st, uz*uy*(1.-ct)+ux*st, ct+uz**2*(1.-ct)]
+        ])
+
+def random_rotation(x=None):
+
+    # after Arvo 1992 - "Fast random rotation matrices"
+
+    if x:
+        x1,x2,x3 = x
+    else:
+        x1,x2,x3 = num.random.random(3)
+
+    phi = math.pi*2.0*x1
+
+    zrot = num.matrix([
+            [ math.cos(phi), math.sin(phi), 0.],
+            [ -math.sin(phi), math.cos(phi), 0.],
+            [ 0., 0., 1.]])
+
+    lam = math.pi*2.0*x2
+
+    v = num.matrix([[ 
+        math.cos(lam)*math.sqrt(x3), 
+        math.sin(lam)*math.sqrt(x3), 
+        math.sqrt(1.-x3) ]]).T
+
+    house = num.identity(3) - 2.0 * v * v.T
+    return -house*zrot
+
 def symmat6(*vals):
     '''Create symmetric 3x3 matrix from its 6 non-redundant values.
      
@@ -161,6 +210,11 @@ class MomentTensor:
     _to_up_south_east = num.matrix( [[0.,0.,-1.],[-1.,0.,0.],[0.,1.,0.]], dtype=num.float ).T
     _m_unrot = num.matrix( [[0.,0.,-1.],[0.,0.,0.],[-1.,0.,0.]], dtype=num.float )
     _u_evals, _u_evecs = eigh_check(_m_unrot)
+
+    @classmethod
+    def random_dc(self, x=None):
+        rotmat = random_rotation(x)
+        return MomentTensor(m=rotmat * MomentTensor._m_unrot * rotmat.T)
 
     def __init__(self, m=None, m_up_south_east=None, strike=0., dip=0., rake=0., scalar_moment=1. ):
         '''Create moment tensor object based on 3x3 moment tensor matrix or orientation of 
