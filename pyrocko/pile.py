@@ -411,7 +411,9 @@ class TracesGroup(object):
         self.adjust_minmax()
 
     def add(self, content):
-        
+        """
+        Add `py:class` pyrocko.trace.Trace objects or `py:class` pyrocko.pile.TracesGroup objects.
+        """
         if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
             content = [ content ]
 
@@ -452,7 +454,9 @@ class TracesGroup(object):
             self.parent.add(content)
             
     def remove(self, content):
-
+        """
+        Remove `py:class` pyrocko.trace.Trace objects or `py:class` pyrocko.pile.TracesGroup objects.
+        """
         if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
             content = [ content ]
 
@@ -493,7 +497,15 @@ class TracesGroup(object):
             self.parent.remove(content)
 
     def relevant(self, tmin, tmax, group_selector=None, trace_selector=None):
+        """
+        Return list of `py:class`: pyrocko.trace.Trace objects where given arguments *tmin* and
+        *tmax* match.
 
+        :param tmin: starting time
+        :param tmax: ending time
+        :param group_selector: (optional)
+        :param trace_selector: (optional)
+        """
         if not self.by_tmin or not self.is_relevant(tmin, tmax, group_selector):
             return []
         
@@ -740,6 +752,16 @@ class SubPile(TracesGroup):
         return keys
 
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
+        """
+        Generator function iterating over `py:class` pyrocko.trace.Trace objects within subpile.
+
+        Example::
+
+            test_pile = pile.make_pile('/local/test_trace_directory')
+                for t in test_pile.iter_traces():
+                print t
+
+        """
         for file in self.files:
             
             if group_selector and not group_selector(file):
@@ -1019,6 +1041,15 @@ class Pile(TracesGroup):
         return sorted(keys)
     
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
+        """
+        Generator function iterating over `py:class` pyrocko.trace.Trace objects within pile.
+
+        Example::
+
+            test_pile = pile.make_pile('/local/test_trace_directory')
+                for t in test_pile.iter_traces():
+                print t
+        """
         for subpile in self.subpiles.values():
             if not group_selector or group_selector(subpile):
                 for tr in subpile.iter_traces(load_data, return_abspath, group_selector, trace_selector):
