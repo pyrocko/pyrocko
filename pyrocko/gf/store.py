@@ -927,8 +927,8 @@ class Store(Store_):
             x = self.config.get_distance(args)
             data.append((x, tmin, tmax))
         
-        xs, tmins, tmaxs = num.array(data).T
-        
+        xs, tmins, tmaxs = num.array(data, dtype=num.float).T
+
         i = num.nanargmin(tmins)
         tminmin = tmins[i]
         x_tminmin = xs[i]
