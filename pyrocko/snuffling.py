@@ -467,7 +467,6 @@ class Snuffling:
 
             p = self._no_viewer_pile
 
-            
         return p
 
     def get_active_event_and_stations(self, trange=(-3600.,3600.)):
@@ -475,7 +474,9 @@ class Snuffling:
 
         p = self.get_pile()
         v = self.get_viewer()
-        
+
+        if v.active_event_marker is None:
+            raise Exception("No active event marker.")
         event = v.get_active_event()
         stations = []
         for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False, degap=False):
@@ -506,7 +507,7 @@ class Snuffling:
             if marker_selector is not None:
                 markers = [  marker for marker in markers if marker_selector(marker) ] 
             pile = self.get_pile()
-            
+
             if markers:
                 
                 for marker in markers:
