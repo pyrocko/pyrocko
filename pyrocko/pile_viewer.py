@@ -1617,10 +1617,6 @@ def MakePileViewerMainClass(base):
             elif keytext == 'R':
                 self.setup_snufflings()
 
-            elif keytext == 's':
-                # TODO: call active snuffling
-                pass
-
             elif key_event.key() == Qt.Key_Backspace:
                 self.remove_markers(self.selected_markers())
 
