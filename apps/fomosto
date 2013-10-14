@@ -26,6 +26,7 @@ subcommand_descriptions = {
         'redeploy':      'copy traces from one GF store into another',
         'view':          'view selected traces',
         'import':        'convert Kiwi GFDB to GF store format',
+        'export':        'convert GF store to Kiwi GFDB format',
         'ttt':           'create travel time tables',
         'tttview':       'plot travel time table',
     }
@@ -40,6 +41,7 @@ subcommand_usages = {
         'redeploy':      'redeploy <source> <destination> [options]',
         'view':          'view [store-dir] ... [options]',
         'import':        'import <source> <destination> [options]',
+        'export':        'export [store-dir] <destination> [options]',
         'ttt':           'ttt [store-dir] [options]',
         'tttview':       'tttview [store-dir] <phase-id>',
     }
@@ -60,6 +62,7 @@ Subcommands:
     redeploy      %(redeploy)s
     view          %(view)s
     import        %(import)s
+    export        %(export)s
     ttt           %(ttt)s
     tttview       %(tttview)s
 
@@ -399,7 +402,7 @@ def command_import(args):
     db = gfdb.Gfdb(source_path)
 
     config = gf.meta.ConfigTypeA(
-            id = 'imported-gfs',
+            id = 'imported_gfs',
             distance_min = db.firstx,
             distance_max = db.firstx + (db.nx-1) * db.dx,
             distance_delta = db.dx,
@@ -426,6 +429,70 @@ def command_import(args):
 
     except gf.StoreError, e:
         die(e)
+
+def command_export(args):
+    from subprocess import Popen, PIPE
+
+    try:
+        from tunguska import gfdb
+    except ImportError:
+        die('the kiwi tools must be installed to use this feature')
+
+    def setup(parser):
+        parser.add_option('--nchunks', dest='nchunks', type='int', 
+                default=1, metavar='N',
+                help='split output gfdb into N chunks')
+
+    parser, options, args = cl_parse('export', args, setup=setup)
+
+    if len(args) not in (1,2):
+        parser.print_help()
+        sys.exit(1)
+
+    target_path = args.pop()
+    source_store_dir = get_store_dir(args)
+
+    source = gf.Store(source_store_dir, 'r')
+    config = source.config
+    
+    if not isinstance(config, gf.meta.ConfigTypeA):
+        die('only stores of type A can be exported to Kiwi format')
+
+    if os.path.isfile( target_path + '.index' ):
+        die('destation already exists')
+
+    cmd = [str(x) for x in ['gfdb_build',   target_path, 
+                                                options.nchunks,
+                                                config.ndistances,
+                                                config.nsource_depths,
+                                                config.ncomponents,
+                                                config.deltat,
+                                                config.distance_delta,
+                                                config.source_depth_delta,
+                                                config.distance_min,
+                                                config.source_depth_min]]
+
+    p = Popen( cmd, stdin=PIPE )
+    p.communicate()
+
+    out_db = gfdb.Gfdb( target_path )
+
+    for z,x in config.iter_nodes(level=-1):
+
+        data_out = []
+        for ig in xrange(config.ncomponents):
+            try:
+                tr = source.get((z,x,ig), interpolate='off')
+                data_out.append((tr.t,tr.data))
+
+            except gf.store.StoreError, e:
+                logger.warn('cannot get %s, (%s)' % (sindex((z,x,ig)), e))
+                data_out.append(None)
+            
+        out_db.put_traces_slow(x,z, data_out)
+
+    source.close()
+            
 
 def phasedef_or_horvel(x):
     try:
