@@ -580,7 +580,7 @@ class Store_:
                 data_orig[1] = end_value
                 return data_orig[ilo:ihi]
             else:
-                self._f_data.seek(ipos + ilo*gf_dtype_nbytes_per_sample)
+                self._f_data.seek(int(ipos + ilo*gf_dtype_nbytes_per_sample))
                 return num.fromfile(self._f_data, gf_dtype, ihi-ilo)
         else:
             x  = num.empty((0,), dtype=gf_dtype)
