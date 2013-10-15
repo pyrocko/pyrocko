@@ -4,7 +4,7 @@
   This file is part of pyrocko. For licensing information please see the file
   COPYING which is included with pyrocko. */
 
-#define NPY_NO_DEPRECATED_API
+#define NPY_NO_DEPRECATED_API 7
 
 #include "Python.h"
 #include "numpy/arrayobject.h"
