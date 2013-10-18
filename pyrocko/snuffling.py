@@ -1012,6 +1012,9 @@ class SnufflingCallFailed(SnufflingError):
     '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
 
 
+class InvalidSnufflingFilename(Exception):
+    pass
+
 class SnufflingModule:
     '''Utility class to load/reload snufflings from a file.
     
@@ -1041,20 +1044,30 @@ class SnufflingModule:
         sys.path[0:0] = [ self._path ]
         if self._module == None:
             try:
+                logger.debug('Loading snuffling module %s' % filename)
+                if self._name in sys.modules:
+                    raise InvalidSnufflingFilename(self._name)
+
                 self._module = __import__(self._name)
+                del sys.modules[self._name]
+
                 for snuffling in self._module.__snufflings__():
                     snuffling._filename = filename
                     self.add_snuffling(snuffling)
                     
             except:
                 logger.error(_str_traceback())
-                raise BrokenSnufflingModule(self._name)
+                raise BrokenSnufflingModule(filename)
                             
         elif self._mtime != mtime:
-            logger.warn('Reloading snuffling module %s' % self._name)
+            logger.warn('Reloading snuffling module %s' % filename)
             settings = self.remove_snufflings()
             try:
+
+                sys.modules[self._name] = self._module
                 reload(self._module)
+                del sys.modules[self._name]
+
                 for snuffling in self._module.__snufflings__():
                     snuffling._filename = filename
                     self.add_snuffling(snuffling, reloaded=True)
@@ -1063,10 +1076,9 @@ class SnufflingModule:
                     for sett, snuf in zip(settings, self._snufflings):
                         snuf.set_settings(sett)
 
-
             except:
                 logger.error(_str_traceback())
-                raise BrokenSnufflingModule(self._name)            
+                raise BrokenSnufflingModule(filename)            
             
         self._mtime = mtime
         sys.path[0:1] = []
