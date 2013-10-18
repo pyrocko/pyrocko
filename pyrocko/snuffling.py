@@ -132,6 +132,9 @@ class Snuffling:
         '''
         
         pass
+
+    def module_dir(self):
+        return self._path
     
     def init_gui(self, viewer, panel_parent, menu_parent, reloaded=False):
         '''Set parent viewer and hooks to add panel and menu entry.
