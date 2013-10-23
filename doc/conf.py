@@ -230,3 +230,24 @@ man_pages = [
     ('index', 'pyrocko', u'Pyrocko Documentation',
      [u'Sebastian Heimann'], 1)
 ]
+
+def process_signature(app, what, name, obj, options, signature, return_annotation):
+    import guts
+    if what == 'attribute' and isinstance(obj, guts.TBase):
+            return '', str(obj)
+
+    if what == 'class' and issubclass(obj, guts.Object):
+        if obj.dummy_for is not None:
+            return ('(dummy)', '%s' % obj.dummy_for.__name__)
+        
+    return 
+
+def skip_member(app, what, name, obj, skip, options):
+    if what == 'class' and name == 'dummy_for':
+        return True
+
+
+def setup(app):
+    app.connect('autodoc-process-signature', process_signature)
+    app.connect('autodoc-skip-member', skip_member)
+

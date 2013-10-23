@@ -23,3 +23,5 @@ Library Reference
    pile_viewer
    gui_util
    slink
+   gf
+
