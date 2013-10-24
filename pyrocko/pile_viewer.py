@@ -1070,6 +1070,7 @@ def MakePileViewerMainClass(base):
                         continue
                     
                     name = fn[:-3]
+                    
                     if (directory, name) not in self.snuffling_modules:
                         self.snuffling_modules[directory, name] = \
                             pyrocko.snuffling.SnufflingModule(directory, name, self)
@@ -1097,6 +1098,7 @@ def MakePileViewerMainClass(base):
             return self.panel_parent
 
         def add_snuffling(self, snuffling, reloaded=False):
+            logger.debug('Adding snuffling %s' % snuffling.get_name())
             snuffling.init_gui(self, self.get_panel_parent(), self, reloaded=reloaded)
             self.snufflings.append(snuffling)
             self.update()
@@ -1549,7 +1551,7 @@ def MakePileViewerMainClass(base):
 
             if needupdate:
                 self.update()
-                
+
         def keyPressEvent(self, key_event):
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
@@ -1613,7 +1615,7 @@ def MakePileViewerMainClass(base):
                     self.reloaded = True
    
             elif keytext == 'R':
-                self.setup_snufflings() 
+                self.setup_snufflings()
 
             elif key_event.key() == Qt.Key_Backspace:
                 self.remove_markers(self.selected_markers())

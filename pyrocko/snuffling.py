@@ -50,7 +50,7 @@ class Switch:
     
     :param name:    labels the switch within snuffler
     :param ident:   identifier of the parameter
-    :param default: default value '''
+    :param default: default value'''
 
     def __init__(self, name, ident, default):
         self.name = name
@@ -132,6 +132,9 @@ class Snuffling:
         '''
         
         pass
+
+    def module_dir(self):
+        return self._path
     
     def init_gui(self, viewer, panel_parent, menu_parent, reloaded=False):
         '''Set parent viewer and hooks to add panel and menu entry.
@@ -357,7 +360,7 @@ class Snuffling:
             self.setup_gui()
    
     def add_trigger(self, name, method):
-        '''Add a button to the snufflings' panel. 
+        '''Add a button to the snuffling's panel.
 
         :param name:    string that labels the button
         :param method:  method associated with the button
@@ -370,7 +373,7 @@ class Snuffling:
             self.setup_gui()
 
     def get_parameters(self):
-        '''Get the snufflings adjustable parameter definitions.
+        '''Get the snuffling's adjustable parameter definitions.
         
         
         Returns a list of objects of type Param.
@@ -467,7 +470,6 @@ class Snuffling:
 
             p = self._no_viewer_pile
 
-            
         return p
 
     def get_active_event_and_stations(self, trange=(-3600.,3600.)):
@@ -475,7 +477,9 @@ class Snuffling:
 
         p = self.get_pile()
         v = self.get_viewer()
-        
+
+        if v.active_event_marker is None:
+            raise Exception("No active event marker.")
         event = v.get_active_event()
         stations = []
         for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False, degap=False):
@@ -506,7 +510,7 @@ class Snuffling:
             if marker_selector is not None:
                 markers = [  marker for marker in markers if marker_selector(marker) ] 
             pile = self.get_pile()
-            
+
             if markers:
                 
                 for marker in markers:
@@ -1012,6 +1016,9 @@ class SnufflingCallFailed(SnufflingError):
     '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
 
 
+class InvalidSnufflingFilename(Exception):
+    pass
+
 class SnufflingModule:
     '''Utility class to load/reload snufflings from a file.
     
@@ -1041,20 +1048,30 @@ class SnufflingModule:
         sys.path[0:0] = [ self._path ]
         if self._module == None:
             try:
+                logger.debug('Loading snuffling module %s' % filename)
+                if self._name in sys.modules:
+                    raise InvalidSnufflingFilename(self._name)
+
                 self._module = __import__(self._name)
+                del sys.modules[self._name]
+
                 for snuffling in self._module.__snufflings__():
                     snuffling._filename = filename
                     self.add_snuffling(snuffling)
                     
             except:
                 logger.error(_str_traceback())
-                raise BrokenSnufflingModule(self._name)
+                raise BrokenSnufflingModule(filename)
                             
         elif self._mtime != mtime:
-            logger.warn('Reloading snuffling module %s' % self._name)
+            logger.warn('Reloading snuffling module %s' % filename)
             settings = self.remove_snufflings()
             try:
+
+                sys.modules[self._name] = self._module
                 reload(self._module)
+                del sys.modules[self._name]
+
                 for snuffling in self._module.__snufflings__():
                     snuffling._filename = filename
                     self.add_snuffling(snuffling, reloaded=True)
@@ -1063,10 +1080,9 @@ class SnufflingModule:
                     for sett, snuf in zip(settings, self._snufflings):
                         snuf.set_settings(sett)
 
-
             except:
                 logger.error(_str_traceback())
-                raise BrokenSnufflingModule(self._name)            
+                raise BrokenSnufflingModule(filename)            
             
         self._mtime = mtime
         sys.path[0:1] = []

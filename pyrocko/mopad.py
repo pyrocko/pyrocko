@@ -3074,7 +3074,7 @@ class BeachBall:
         lon=45, azimuth=0.
     
         The Earth must be rotated around some axis, not to be determined.
-        The rotation matrixx is the matrix for the change of basis to the
+        The rotation matrix is the matrix for the change of basis to the
         new local orthonormal system.
         
     
