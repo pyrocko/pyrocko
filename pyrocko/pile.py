@@ -878,6 +878,11 @@ class Pile(TracesGroup):
         return self.deltats.keys()
 
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round), include_last=False, load_data=True):
+        """
+        Cut traces to given time span.
+
+        Uses funtion :py:func:`trace.Trace.chop`
+        """
         chopped = []
         used_files = set()
         
@@ -931,8 +936,35 @@ class Pile(TracesGroup):
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
-                      want_incomplete=True, degap=True, maxgap=5, maxlap=None, keep_current_files_open=False, accessor_id=None, snap=(round,round), include_last=False, load_data=True):
-        
+                      want_incomplete=True, degap=True, maxgap=5, maxlap=None, keep_current_files_open=False,
+                      accessor_id=None, snap=(round,round), include_last=False, load_data=True):
+        '''
+        Create generator function to chop :py:class:`pile.Pile` objects.
+
+        :param tmin: start time (default: ``None'')
+        :param tmax: end time (default: ``None``)
+        :param tinc: time increment (default: ``None``)
+        :param tpad: padding time (default: 0)
+        :param group_selector: lambda expression taking group dict of regex match object as
+        a single argument and which returns true or false to keep or reject
+        a file (default: ``None``)
+        :param trace_selector:lambda expression taking group dict of regex match object as
+        a single argument and which returns true or false to keep or reject
+        a file (default: ``None``)
+        :param want_incomplete: (default: ``True``)
+        :param degap: if True: try to connect traces and to remove gaps (default: ``True``)
+        :param maxgap: (default: 5)
+        :param maxlap: (default: ``None``)
+        :param keep_current_files_open: (default: ``False``)
+        :param accessor_id:
+        :param snap: replaces Python's :py:func:`round` function which is used to determine
+                    indices where to start and end the trace data array
+        :param include_last: include last sample (default: ``False``)
+        :param load_data: (default: ``True``)
+        :return: generator function yielding piles
+
+        Further documentation on chopping process: :py:class:`trace.Trace.chop`
+        '''
         if tmin is None:
             tmin = self.tmin+tpad
                 
@@ -981,6 +1013,14 @@ class Pile(TracesGroup):
         
         
     def all(self, *args, **kwargs):
+        """
+        Retrieve an unsorted list of all objects in this pile. Objects can be chopped using
+        (keyword-) arguments which are passed to the function :py:func:`chopper`.
+
+        :param args:
+        :param kwargs:
+        :return: list of all objects within this pile.
+        """
         alltraces = []
         for traces in self.chopper( *args, **kwargs ):
             alltraces.extend( traces )
