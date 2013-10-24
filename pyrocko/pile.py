@@ -411,7 +411,7 @@ class TracesGroup(object):
 
     def add(self, content):
         """
-        Add `py:class` pyrocko.trace.Trace objects or `py:class` pyrocko.pile.TracesGroup objects.
+        Add :py:class:`pyrocko.trace.Trace` objects or :py:class:`pyrocko.pile.TracesGroup` objects.
         """
         if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
             content = [ content ]
@@ -453,9 +453,9 @@ class TracesGroup(object):
             self.parent.add(content)
             
     def remove(self, content):
-        """
-        Remove `py:class` pyrocko.trace.Trace objects or `py:class` pyrocko.pile.TracesGroup objects.
-        """
+        '''
+        Remove :py:class:`pyrocko.trace.Trace` objects or :py:class:`pyrocko.pile.TracesGroup` objects.
+        '''
         if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
             content = [ content ]
 
@@ -496,15 +496,19 @@ class TracesGroup(object):
             self.parent.remove(content)
 
     def relevant(self, tmin, tmax, group_selector=None, trace_selector=None):
-        """
-        Return list of `py:class`: pyrocko.trace.Trace objects where given arguments *tmin* and
+        '''Return list of :py:class:`pyrocko.trace.Trace` objects where given arguments *tmin* and
         *tmax* match.
 
-        :param tmin: starting time
-        :param tmax: ending time
-        :param group_selector: (optional)
-        :param trace_selector: (optional)
-        """
+        :param tmin: start time
+        :param tmax: end time
+        :param group_selector: lambda expression taking group dict of regex match object as
+            a single argument and which returns true or false to keep or reject
+            a file (default: ``None``)
+        :param trace_selector: lambda expression taking group dict of regex match object as
+            a single argument and which returns true or false to keep or reject
+            a file (default: ``None``)
+        '''
+
         if not self.by_tmin or not self.is_relevant(tmin, tmax, group_selector):
             return []
         
@@ -651,7 +655,7 @@ class TracesFile(TracesGroup):
                         file_changed = True
                     else:
                         xtr.ydata = tr.ydata
-                    
+
                 else:
                     self.traces.add(tr)
                     self.add(tr)
@@ -751,16 +755,20 @@ class SubPile(TracesGroup):
         return keys
 
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
-        """
-        Generator function iterating over `py:class` pyrocko.trace.Trace objects within subpile.
+        '''Create generator function iterating over :py:class:`pyrocko.trace.Trace` objects within subpile.
+
+        :param load_data: (Default:``False``)
+        :param return_abspath: if ``True`` yield sets containing absolute file path and :py:class:`pyrocko.trace.Trace` objects
+        :param group_selector: lambda expression
+        :param trace_selector: lambda expression to neglect specific traces
 
         Example::
 
             test_pile = pile.make_pile('/local/test_trace_directory')
-                for t in test_pile.iter_traces():
+                for t in test_pile.iter_traces(trace_selector=lambda tr:  tr.station=='HH1'):
                 print t
+        '''
 
-        """
         for file in self.files:
             
             if group_selector and not group_selector(file):
@@ -881,7 +889,7 @@ class Pile(TracesGroup):
         """
         Cut traces to given time span.
 
-        Uses funtion :py:func:`trace.Trace.chop`
+        Uses function :py:func:`pyrocko.trace.Trace.chop`
         """
         chopped = []
         used_files = set()
@@ -938,19 +946,16 @@ class Pile(TracesGroup):
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
                       want_incomplete=True, degap=True, maxgap=5, maxlap=None, keep_current_files_open=False,
                       accessor_id=None, snap=(round,round), include_last=False, load_data=True):
-        '''
-        Create generator function to chop :py:class:`pile.Pile` objects.
+        '''Create generator function to chop :py:class:`pyrocko.pile.Pile` objects.
 
-        :param tmin: start time (default: ``None'')
+        :param tmin: start time (default: ``None``)
         :param tmax: end time (default: ``None``)
         :param tinc: time increment (default: ``None``)
         :param tpad: padding time (default: 0)
         :param group_selector: lambda expression taking group dict of regex match object as
-        a single argument and which returns true or false to keep or reject
-        a file (default: ``None``)
-        :param trace_selector:lambda expression taking group dict of regex match object as
-        a single argument and which returns true or false to keep or reject
-        a file (default: ``None``)
+        a single argument and which returns true or false to keep or reject a file (default: ``None``)
+        :param trace_selector: lambda expression taking group dict of regex match object as
+        a single argument and which returns true or false to keep or reject a file (default: ``None``)
         :param want_incomplete: (default: ``True``)
         :param degap: if True: try to connect traces and to remove gaps (default: ``True``)
         :param maxgap: (default: 5)
@@ -958,12 +963,12 @@ class Pile(TracesGroup):
         :param keep_current_files_open: (default: ``False``)
         :param accessor_id:
         :param snap: replaces Python's :py:func:`round` function which is used to determine
-                    indices where to start and end the trace data array
+        indices where to start and end the trace data array
         :param include_last: include last sample (default: ``False``)
         :param load_data: (default: ``True``)
-        :return: generator function yielding piles
+        :return: generator function yielding sets containing :py:class:`pyrocko.pile.TracesFile` objects
 
-        Further documentation on chopping process: :py:class:`trace.Trace.chop`
+        Further documentation on chopping process: :py:func:`pyrocko.trace.Trace.chop`
         '''
         if tmin is None:
             tmin = self.tmin+tpad
@@ -1010,17 +1015,15 @@ class Pile(TracesGroup):
             while open_files:
                 file = open_files.pop()
                 file.drop_data()
-        
-        
+
     def all(self, *args, **kwargs):
-        """
-        Retrieve an unsorted list of all objects in this pile. Objects can be chopped using
+        '''Retrieve an unsorted list of all objects in this pile. Objects can be chopped using
         (keyword-) arguments which are passed to the function :py:func:`chopper`.
 
         :param args:
         :param kwargs:
         :return: list of all objects within this pile.
-        """
+        '''
         alltraces = []
         for traces in self.chopper( *args, **kwargs ):
             alltraces.extend( traces )
@@ -1080,15 +1083,22 @@ class Pile(TracesGroup):
         return sorted(keys)
     
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
-        """
-        Generator function iterating over `py:class` pyrocko.trace.Trace objects within pile.
+        '''Create generator function iterating over :py:class:`pyrocko.trace.Trace` objects within subpile.
+
+        :param load_data: (Default: ``False``)
+        :param return_abspath: if ``True`` yield sets containing absolute file path and :py:class:`pyrocko.trace.Trace` objects
+        :param group_selector: lambda expression
+        :param trace_selector: lambda expression
+
+        The following example yields only traces, where the station code is 'HH1'.
 
         Example::
 
             test_pile = pile.make_pile('/local/test_trace_directory')
-                for t in test_pile.iter_traces():
+                for t in test_pile.iter_traces(trace_selector=lambda tr:  tr.station=='HH1'):
                 print t
-        """
+        '''
+
         for subpile in self.subpiles.values():
             if not group_selector or group_selector(subpile):
                 for tr in subpile.iter_traces(load_data, return_abspath, group_selector, trace_selector):
