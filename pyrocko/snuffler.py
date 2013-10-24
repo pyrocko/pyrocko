@@ -1,6 +1,6 @@
 '''Effective seismological trace viewer.'''
 
-import os, sys, signal, logging, time, re, gc, tempfile, shutil
+import os, sys, signal, logging, time, re, gc, tempfile, shutil, urlparse
 from os.path import join as pjoin
 from optparse import OptionParser
 import numpy as num
@@ -117,7 +117,7 @@ def setup_acquisition_sources(args):
         
         msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
         mca = re.match(r'cam://([^:]+)', arg)
-        mus = re.match(r'hb628://([^:?]+)(\?(\d+))?', arg)
+        mus = re.match(r'hb628://([^:?]+)(\?([^?]+))?', arg)
         msc = re.match(r'school://([^:]+)', arg)
         med = re.match(r'edl://([^:]+)', arg)
         if msl:
@@ -143,12 +143,20 @@ def setup_acquisition_sources(args):
             sources.append(cam)
         elif mus:
             port = mus.group(1)
-            if mus.group(3):
-                deltat = 1./float(mus.group(3))
-            else:
-                deltat = 0.02
-            hb628 = USBHB628Acquisition(port=port, deltat=deltat, buffersize=16, lookback=50)
-            sources.append(hb628)
+            try:
+                d = {}
+                if mus.group(3):
+                    d = dict(urlparse.parse_qsl(mus.group(3)))
+
+                deltat = 1.0/float(d.get('rate', '50'))
+                channels = [ (int(c), c) for c in d.get('channels', '01234567')]
+                hb628 = USBHB628Acquisition(port=port, deltat=deltat, 
+                    channels=channels, buffersize=16, lookback=50)
+                sources.append(hb628)
+            except:
+                raise
+                sys.exit('invalid acquisition source: %s' % arg)
+
         elif msc:
             port = msc.group(1)
             sco = SchoolSeismometerAcquisition(port=port)
@@ -582,9 +590,9 @@ def snuffle(pile=None, **kwargs):
         if sources:
             if store_path is None:
                 tempdir = tempfile.mkdtemp('', 'snuffler-tmp-')
-                store_path = pjoin(tempdir, '%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
+                store_path = pjoin(tempdir, 'trace-%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
             elif os.path.isdir(store_path):
-                store_path = pjoin(store_path, '%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
+                store_path = pjoin(store_path, 'trace-%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed')
 
             pollinjector = PollInjector(pile, fixation_length=store_interval, path=store_path)
             for source in sources:
