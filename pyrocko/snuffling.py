@@ -50,7 +50,7 @@ class Switch:
     
     :param name:    labels the switch within snuffler
     :param ident:   identifier of the parameter
-    :param default: default value '''
+    :param default: default value'''
 
     def __init__(self, name, ident, default):
         self.name = name
@@ -360,7 +360,7 @@ class Snuffling:
             self.setup_gui()
    
     def add_trigger(self, name, method):
-        '''Add a button to the snufflings' panel. 
+        '''Add a button to the snuffling's panel.
 
         :param name:    string that labels the button
         :param method:  method associated with the button
@@ -373,7 +373,7 @@ class Snuffling:
             self.setup_gui()
 
     def get_parameters(self):
-        '''Get the snufflings adjustable parameter definitions.
+        '''Get the snuffling's adjustable parameter definitions.
         
         
         Returns a list of objects of type Param.

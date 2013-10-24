@@ -35,7 +35,6 @@ import avl
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
 
-from util import reuse
 from trace import degapper
 
 def avl_remove_exact(avltree, element):
