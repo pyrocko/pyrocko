@@ -184,13 +184,15 @@ def bread(f, fmt):
 
 class SPTree:
 
-    def __init__(self, f=None, ftol=None, xbounds=None, xtols=None, filename=None):
+    def __init__(self, f=None, ftol=None, xbounds=None, xtols=None, filename=None,
+            addargs=()):
         '''Create n-dimensional space partitioning interpolator.
         
         :param f: callable function f(x) where x is a vector of size n
         :param ftol: target accuracy |f_interp(x) - f(x)| <= ftol
         :param xbounds: bounds of x, shape (n,2)
         :param xtols: target coarsenesses in x, vector of size n
+        :param addargs: additional arguments to pass to f
         '''
 
         if filename is None:
@@ -200,6 +202,7 @@ class SPTree:
             self.ftol = float(ftol)
             self.f_values = {}
             self.ncells = 0
+            self.addargs = addargs
 
             self.xbounds = num.asarray(xbounds, dtype=num.float)
             assert self.xbounds.ndim == 2
@@ -302,7 +305,7 @@ class SPTree:
                     path.append(cell)
 
     def _f_cached(self, x):
-        return getset(self.f_values, tuple(float(xx) for xx in x), self.f)
+        return getset(self.f_values, tuple(float(xx) for xx in x), self.f, self.addargs)
 
     def interpolate(self, x):
         x = num.asarray(x, dtype=num.float)
@@ -433,11 +436,11 @@ class SPTree:
             p.show()
 
 
-def getset(d, k, f):
+def getset(d, k, f, addargs):
     try: 
         return d[k]
     except KeyError:
-        v = d[k] = f(k)
+        v = d[k] = f(k, *addargs)
         return v
 
 def nditer_outer(x):

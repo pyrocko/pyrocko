@@ -1,4 +1,4 @@
-'''A pile contains subpiles which contain tracesfiles which contain traces.'''
+
 
 import trace, io, util, config
 
@@ -35,7 +35,6 @@ import avl
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
 
-from util import reuse
 from trace import degapper
 
 def avl_remove_exact(avltree, element):
@@ -411,7 +410,9 @@ class TracesGroup(object):
         self.adjust_minmax()
 
     def add(self, content):
-        
+        """
+        Add :py:class:`pyrocko.trace.Trace` objects or :py:class:`pyrocko.pile.TracesGroup` objects.
+        """
         if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
             content = [ content ]
 
@@ -452,7 +453,9 @@ class TracesGroup(object):
             self.parent.add(content)
             
     def remove(self, content):
-
+        '''
+        Remove :py:class:`pyrocko.trace.Trace` objects or :py:class:`pyrocko.pile.TracesGroup` objects.
+        '''
         if isinstance(content, trace.Trace) or isinstance(content, TracesGroup):
             content = [ content ]
 
@@ -493,6 +496,18 @@ class TracesGroup(object):
             self.parent.remove(content)
 
     def relevant(self, tmin, tmax, group_selector=None, trace_selector=None):
+        '''Return list of :py:class:`pyrocko.trace.Trace` objects where given arguments *tmin* and
+        *tmax* match.
+
+        :param tmin: start time
+        :param tmax: end time
+        :param group_selector: lambda expression taking group dict of regex match object as
+            a single argument and which returns true or false to keep or reject
+            a file (default: ``None``)
+        :param trace_selector: lambda expression taking group dict of regex match object as
+            a single argument and which returns true or false to keep or reject
+            a file (default: ``None``)
+        '''
 
         if not self.by_tmin or not self.is_relevant(tmin, tmax, group_selector):
             return []
@@ -640,7 +655,7 @@ class TracesFile(TracesGroup):
                         file_changed = True
                     else:
                         xtr.ydata = tr.ydata
-                    
+
                 else:
                     self.traces.add(tr)
                     self.add(tr)
@@ -740,6 +755,7 @@ class SubPile(TracesGroup):
         return keys
 
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
+
         for file in self.files:
             
             if group_selector and not group_selector(file):
@@ -787,6 +803,8 @@ class SubPile(TracesGroup):
 
              
 class Pile(TracesGroup):
+    '''Waveform archive lookup, data loading and caching infrastructure.'''
+
     def __init__(self):
         TracesGroup.__init__(self, None)
         self.subpiles = {}
@@ -857,6 +875,7 @@ class Pile(TracesGroup):
         return self.deltats.keys()
 
     def chop(self, tmin, tmax, group_selector=None, trace_selector=None, snap=(round,round), include_last=False, load_data=True):
+
         chopped = []
         used_files = set()
         
@@ -910,8 +929,35 @@ class Pile(TracesGroup):
         return chopped
             
     def chopper(self, tmin=None, tmax=None, tinc=None, tpad=0., group_selector=None, trace_selector=None,
-                      want_incomplete=True, degap=True, maxgap=5, maxlap=None, keep_current_files_open=False, accessor_id=None, snap=(round,round), include_last=False, load_data=True):
-        
+                      want_incomplete=True, degap=True, maxgap=5, maxlap=None, keep_current_files_open=False,
+                      accessor_id=None, snap=(round,round), include_last=False, load_data=True):
+
+        '''Get iterator for shifting window wise data extraction from waveform archive.
+
+        :param tmin: start time (default uses start time of available data)
+        :param tmax: end time (default uses end time of available data)
+        :param tinc: time increment (window shift time) (default uses ``tmax-tmin``)
+        :param tpad: padding time appended on either side of the data windows (window overlap is ``2*tpad``)
+        :param group_selector: filter callback taking :py:class:`TracesGroup` objects
+        :param trace_selector: filter callback taking :py:class:`pyrocko.trace.Trace` objects
+        :param want_incomplete: if set to ``False``, gappy/incomplete traces are discarded from the results
+        :param degap: whether to try to connect traces and to remove gaps and overlaps
+        :param maxgap: maximum gap size in samples which is filled with interpolated samples when *degap* is ``True``
+        :param maxlap: maximum overlap size in samples which is removed when *degap* is ``True``
+        :param keep_current_files_open: whether to keep cached trace data in memory after the iterator has ended
+        :param accessor_id: if given, used as a key to identify different
+            points of extraction for the decision of when to release cached
+            trace data (should be used when data is alternately extracted from 
+            more than one region / selection)
+        :param snap: replaces Python's :py:func:`round` function which is used to determine
+            indices where to start and end the trace data array
+        :param include_last: whether to include last sample
+        :param load_data: whether to load the waveform data. If set to 
+            ``False``, traces with no data samples, but with correct 
+            meta-information are returned
+        :returns: itererator yielding a list of :py:class:`pyrocko.trace.Trace` 
+            objects for every extracted time window
+        '''
         if tmin is None:
             tmin = self.tmin+tpad
                 
@@ -957,9 +1003,10 @@ class Pile(TracesGroup):
             while open_files:
                 file = open_files.pop()
                 file.drop_data()
-        
-        
+
     def all(self, *args, **kwargs):
+        '''Shortcut to aggregate :py:meth:`chopper` output into a single list.'''
+
         alltraces = []
         for traces in self.chopper( *args, **kwargs ):
             alltraces.extend( traces )
@@ -1019,6 +1066,22 @@ class Pile(TracesGroup):
         return sorted(keys)
     
     def iter_traces(self, load_data=False, return_abspath=False, group_selector=None, trace_selector=None):
+        '''Iterate over all traces in pile.
+
+        :param load_data: whether to load the waveform data, by default empty traces are yielded
+        :param return_abspath: if ``True`` yield tuples containing absolute file path and :py:class:`pyrocko.trace.Trace` objects
+        :param group_selector: filter callback taking :py:class:`TracesGroup` objects
+        :param trace_selector: filter callback taking :py:class:`pyrocko.trace.Trace` objects
+
+        The following example yields only traces, where the station code is 'HH1'.
+
+        Example::
+
+            test_pile = pile.make_pile('/local/test_trace_directory')
+                for t in test_pile.iter_traces(trace_selector=lambda tr:  tr.station=='HH1'):
+                print t
+        '''
+
         for subpile in self.subpiles.values():
             if not group_selector or group_selector(subpile):
                 for tr in subpile.iter_traces(load_data, return_abspath, group_selector, trace_selector):

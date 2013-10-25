@@ -1551,7 +1551,7 @@ def MakePileViewerMainClass(base):
 
             if needupdate:
                 self.update()
-                
+
         def keyPressEvent(self, key_event):
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
@@ -1615,7 +1615,7 @@ def MakePileViewerMainClass(base):
                     self.reloaded = True
    
             elif keytext == 'R':
-                self.setup_snufflings() 
+                self.setup_snufflings()
 
             elif key_event.key() == Qt.Key_Backspace:
                 self.remove_markers(self.selected_markers())

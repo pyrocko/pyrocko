@@ -38,9 +38,12 @@ The following pseudo URLs are supported:
 
     Acquire data through serial line from "school seismometer".
 
-.. describe:: usb628://<device>?<rate>
+.. describe:: hb628://<device>[?rate=<rate>[&channels=<channels>]]
 
-   Acquire data from a USB628 module.
+   Acquire data from eight-channel USB-HB628 module. Example: to read channels
+   0, 3 and 5 from serial device ``/dev/ttyS0`` at default rate (50Hz), use
+   ``snuffler 'hb628:///dev/ttyS0?channels=035'``. By default all channels are
+   shown.
 
 .. describe:: cam://<device>
 
@@ -66,8 +69,19 @@ Options
 
 .. option:: --stations=STATIONS
 
-    read station information from file ``STATIONS``, this option can be given more than once
-    
+    read station information from file ``STATIONS``, this option can be given
+    more than once.  The format of the stations file is a simple five-column
+    ASCII table where each line has the form
+
+    ::
+
+       <net>.<sta>.<loc>  <latitude>  <longitude>  <altitude>  <sensor-depth>
+
+    ``<net>``, ``<sta>``, and ``<loc>`` are the network, station and location
+    codes, respectively. ``<altitude>`` and ``<sensor-depth>`` are given in
+    [m]. If network and location code are empty, use ``.<sta>.``, i.e. the dots
+    should not be omitted.
+
 .. option:: --event=EVENT, --events=EVENT
 
     read event information from file ``EVENT``, this option can be given more than once
@@ -80,9 +94,21 @@ Options
 
     follow real time with a window of N seconds
 
+.. option:: --cache=DIR 
+
+    use directory DIR to cache trace metadata (default: ``pyrocko_0.3_cache_<username>`` in the system's default temporary directory)
+
 .. option:: --force-cache
 
     use the cache even when trace attribute spoofing is active (may have silly consequences)
+
+.. option:: --store-path=TARGET
+
+    store data received through streams to TARGET. If TARGET is a directory, filnames are automatically choosen. If    more control over the filenames is needed, TARGET can be a filename template containing placeholders like ``%(KEY)s``, where KEY is any of ``network``, ``station``, ``location``, ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last sample).
+
+.. option:: --store-interval=N
+
+    dump stream data to file every N seconds [default: ``600``]
 
 .. option:: --ntracks=N
 
@@ -95,13 +121,6 @@ Options
 .. option:: --debug
 
     print debugging information to stderr
-
-Read Station Information
-^^^^^^^^^^^^^^^^^^^^^^^^
-``snuffler --stations=station_file.txt``
-will read location and nslc informations from a file named ``station_file.txt``. The required format of this file is
-*n.s.l.c latitude longitude elevation elevationcorrection*
-
 
 
 Keystrokes
