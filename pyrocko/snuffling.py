@@ -472,22 +472,50 @@ class Snuffling:
 
         return p
 
-    def get_active_event_and_stations(self, trange=(-3600.,3600.)):
-        '''Get event and stations with available data for active event.'''
+    def get_active_event_and_stations(self, trange=(-3600.,3600.), missing='warn'):
+        '''Get event and stations with available data for active event.
+
+        :param trange: (begin, end), time range around event origin time to query for
+                       available data 
+        :param missing: string, what to do in case of missing station
+                        information: ``'warn'``, ``'raise'`` or ``'ignore'``.
+
+        :returns: ``(event, stations)``
+        '''
 
         p = self.get_pile()
         v = self.get_viewer()
 
-        if v.active_event_marker is None:
-            raise Exception("No active event marker.")
         event = v.get_active_event()
-        stations = []
+        if event is None:
+            self.fail('No active event set. '
+                'Select an event and press "e" to make it the "active event"')
+
+        stations = {}
         for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False, degap=False):
             for tr in traces:
-                station = v.get_station(v.station_key(tr))
-                stations.append(station)
+                try:
+                    skey = v.station_key(tr)
+                    if skey in stations:
+                        continue
 
-        return event, stations
+                    station = v.get_station(skey)
+                    stations[skey] = station
+
+                except KeyError:
+                    s = 'No station information for station key "%s".' % '.'.join(skey)
+                    if missing == 'warn':
+                        logger.warn(s)
+                    elif missing == 'raise':
+                        raise MissingStationInformation(s)
+                    elif missing == 'ignore':
+                        pass
+                    else:
+                        assert False, 'invalid argument to "missing"'
+
+                    stations[skey] = None
+
+        return event, [ s for s in stations.values() if s is not None ]
         
     def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
         '''Iterate over selected traces.
@@ -998,6 +1026,9 @@ class NoViewerSet(SnufflingError):
     
     def __str__(self):
         return 'No GUI available. Maybe this Snuffling cannot be run in command line mode?'
+
+class MissingStationInformation(SnufflingError):
+    '''Raised when station information is missing.'''
 
 class NoTracesSelected(SnufflingError):
     '''This exception is raised, when no traces have been selected in the viewer 
