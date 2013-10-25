@@ -3,5 +3,9 @@ The :mod:`pile` Module
 ======================
 
 .. automodule:: pyrocko.pile
-   :members:
-   :undoc-members:
+
+   .. autoclass:: Pile
+      :members:
+
+
+   .. autofunction:: make_pile
