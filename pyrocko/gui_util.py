@@ -505,11 +505,11 @@ class Marker(object):
 
     @staticmethod
     def save_markers(markers, fn, fdigits=3):
-        """ Save :py:class`pyrocko.gui_util.Marker` to file.
+        '''Save :py:class:`Marker` to file.
 
-        :param markers: list of :py:class`pyrocko.gui_util.Marker` Objects
+        :param markers: list of :py:class:`Marker` Objects
         :param fn: filename as string
-        """
+        '''
 
         f = open(fn,'w')
         f.write('# Snuffler Markers File Version 0.2\n')
