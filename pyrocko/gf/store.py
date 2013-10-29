@@ -960,5 +960,64 @@ class Store(Store_):
                 tlenmax_vred = tlenmax_vred,
                 vred = vred)
 
+    def make_ttt(self, force=False):
+        from pyrocko import cake
+        config = self.config
+
+        mod = config.earthmodel_1d
+        if not mod:
+            die('no earth model found')
+
+        for pdef in config.tabulated_phases:
+
+            phase_id = pdef.id
+            phases = pdef.phases
+            horvels = pdef.horizontal_velocities
+
+            fn = os.path.join( self.store_dir, 'phases', '%s.phase' % phase_id)
+
+            if os.path.exists(fn) and not force:
+                logger.info('file already exists: %s' % fn)
+                continue
+
+            def evaluate(args):
+
+                if len(args) == 2:
+                    zr, zs, x = (config.receiver_depth,) + args
+                elif len(args) == 3:
+                    zr, zs, x = args
+                else:
+                    assert False
+
+                t = []
+                if phases:
+                    rays = mod.arrivals(
+                            phases = phases,
+                            distances = [ x*cake.m2d ],
+                            zstart = zs,
+                            zstop = zr)
+
+                    for ray in rays:
+                        t.append(ray.t)
+
+                for v in pdef.horizontal_velocities:
+                    t.append(x/(v*1000.))
+                
+                if t:
+                    return min(t)
+                else:
+                    return None
+
+            logger.info('making travel time table for phasegroup "%s"' % phase_id)
+            ip = spit.SPTree(
+                f = evaluate,
+                ftol = config.deltat*0.5,
+                xbounds = num.transpose((config.mins, config.maxs)),
+                xtols = config.deltas)
+
+            util.ensuredirs(fn)
+            ip.dump(fn)
+
+
 __all__ = 'Store GFTrace Zero StoreError CannotCreate CannotOpen'.split()
 
