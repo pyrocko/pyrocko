@@ -51,6 +51,16 @@ class MomentTensorTestCase( unittest.TestCase ):
                                 num.array(m2.both_strike_dip_rake())) < 1e-7*100 ), \
             "angles don't match after forward-backward calculation:\nfirst:\n"+str(m1)+ "\nsecond:\n"+str(m2)
 
+    def assertSame(self, a,b, eps, errstr):
+        assert num.all(num.abs(num.array(a)-num.array(b)) < eps), errstr
+
+    def testChile(self):
+        m_use =  symmat6( 1.040, -0.030, -1.010, 0.227, -1.510, -0.120 )*1e29*dynecm
+        mt = MomentTensor(m_up_south_east=m_use)
+        sdr = mt.both_strike_dip_rake()
+        self.assertSame( sdr[0], (174.,73.,83.), 1., 'chile fail 1')
+        self.assertSame( sdr[1], (18.,18.,112.), 1., 'chile fail 2')
+        
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')
     unittest.main()
