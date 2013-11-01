@@ -3,6 +3,7 @@
 import sys, re, os, logging, copy, math, collections
 from optparse import OptionParser
 import numpy as num
+import matplotlib.pyplot as pyplt
 from scipy import spatial
 
 import yaml
@@ -577,21 +578,30 @@ def command_ttt(args):
 def command_tttview(args):
 
     parser, options, args = cl_parse('tttview', args)
-    
+
+    phase_ids = []
+    import pdb
+    pdb.set_trace()
     try:
-        phase_id = args.pop()
+        for phase_id in args.pop().split(','):
+            phase_ids.append(phase_id)
     except:
         parser.error('cannot get <phase-id> argument')
 
-    store_dir = get_store_dir(args)
+    nr = int(math.sqrt(len(phase_ids)))
+    nl = len(phase_ids) % nr
+    np = 1
+    for phase_id in phase_ids:
+        store_dir = get_store_dir(phase_ids)
 
-    try:
-        store = gf.Store(store_dir)
-        phase = store.get_phase(phase_id)
-        phase.plot_2d()
-
-    except gf.StoreError, e:
-        die(e)
+        try:
+            store = gf.Store(store_dir)
+            phase = store.get_phase(phase_id)
+            pyplt.subplot(nr, nl, np)
+            phase.plot_2d()
+            np += 1
+        except gf.StoreError, e:
+            die(e)
 
 if __name__ == '__main__':
 
@@ -611,7 +621,7 @@ if __name__ == '__main__':
             acommand = args[0]
             if acommand in subcommands:
                 globals()['command_'+ acommand]([ '--help' ] )
-            
+
         sys.exit('Usage: %s' % usage)
 
     else:
