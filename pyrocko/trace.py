@@ -66,8 +66,7 @@ class Trace(object):
         self.ydata = ydata
         self.mtime = mtime
         self._update_ids()
-        self.file = None
-
+        
     def __str__(self):
         fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
         s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
