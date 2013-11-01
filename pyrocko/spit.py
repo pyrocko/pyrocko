@@ -385,7 +385,7 @@ class SPTree:
             cell.children.append(child)
             self._fill(child)
 
-    def plot_2d(self, plt=None, x=None, dims=None):
+    def plot_2d(self, plt=None, x=None, dims=None, title=None):
         assert self.ndim >= 2
 
         if x is None:
@@ -407,6 +407,8 @@ class SPTree:
 
         p.xlabel('Dim %i' % dims[1])
         p.ylabel('Dim %i' % dims[0])
+        if title:
+            p.title(title)
 
         if plt is None:
             p.show()
