@@ -163,7 +163,7 @@ def labels_xt(plot=None, vred=None, as_degrees=False):
         plot.xlabel('Distance [deg]')
     else:
         plot.xlabel('Distance [km]')
-        xscaled(d2r*cake.earthradius/cake.km, plot)
+        xscaled(d2r*cake.earthradius/cake.km, plot.gca())
         
     if vred is None:
         plot.ylabel('Time [s]')
@@ -200,15 +200,15 @@ def labels_xp(plot=None, as_degrees=False):
         plot.xlabel('Distance [deg]')
     else:
         plot.xlabel('Distance [km]')
-        xscaled(d2r*cake.earthradius*0.001, plot)
+        xscaled(d2r*cake.earthradius*0.001, plot.gca())
     plot.ylabel('Ray Parameter [s/deg]')
 
 def labels_model(plot=None):
     plot = getplot(plot)
     plot.xlabel('S-wave and P-wave velocity [km/s]')
-    xscaled(0.001, plot)
+    xscaled(0.001, plot.gca())
     plot.ylabel('Depth [km]')
-    yscaled(0.001, plot)
+    yscaled(0.001, plot.gca())
 
 def plot_rays(paths, rays, zstart, zstop, plot=None):
     plot = getplot(plot)
@@ -301,24 +301,21 @@ def mk_sc_classes():
 
     return Scaled, ScaledLocator
     
-def xscaled(factor, plot=None):
+def xscaled(factor, axes):
     Scaled, ScaledLocator = mk_sc_classes()
-    plot = getplot(plot)
-    xaxis = plot.gca().xaxis
+    xaxis = axes.get_xaxis()
     xaxis.set_major_formatter( Scaled(factor) )
     xaxis.set_major_locator( ScaledLocator(factor) )
 
-def yscaled(factor, plot=None):
+def yscaled(factor, axes):
     Scaled, ScaledLocator = mk_sc_classes()
-    plot = getplot(plot)
-    yaxis = plot.gca().yaxis
+    yaxis = axes.get_yaxis()
     yaxis.set_major_formatter( Scaled(factor) )
     yaxis.set_major_locator( ScaledLocator(factor) )
 
-def labelspace(plot=None):
-    plot = getplot(plot)
-    xa = plot.gca().get_xaxis()
-    ya = plot.gca().get_yaxis()
+def labelspace(axes):
+    xa = axes.get_xaxis()
+    ya = axes.get_yaxis()
     for attr in ('labelpad', 'LABELPAD'):
         if hasattr(xa,attr):
             setattr(xa, attr, xa.get_label().get_fontsize())
@@ -331,9 +328,9 @@ def labels_rays(plot=None, as_degrees=False):
         plot.xlabel('Distance [deg]')
     else:
         plot.xlabel('Distance [km]')
-        xscaled(d2r*cake.earthradius/cake.km, plot)
+        xscaled(d2r*cake.earthradius/cake.km, plot.gca())
     plot.ylabel('Depth [km]')
-    yscaled(1./cake.km, plot)
+    yscaled(1./cake.km, plot.gca())
 
 def plot_surface_efficiency(mat):
     import pylab as lab
@@ -370,7 +367,7 @@ def mpl_init():
 def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None):
     import pylab as lab
     mpl_init()
-    labelspace()
+    labelspace(lab.gca())
     xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
@@ -382,7 +379,7 @@ def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None
 def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False):
     import pylab as lab
     mpl_init()
-    labelspace()
+    labelspace(lab.gca())
     xmin, xmax = plot_xp(paths, zstart, zstop) 
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
@@ -406,7 +403,7 @@ def my_rays_plot_gcs(mod, paths, rays, zstart, zstop, distances=None):
 def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False):
     import pylab as lab
     mpl_init()
-    labelspace()
+    labelspace(lab.gca())
     plot_rays(paths, rays, zstart, zstop)
     xmin, xmax = lab.xlim()
     ymin, ymax = lab.ylim()
@@ -427,7 +424,7 @@ def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fa
     from matplotlib.transforms import Affine2D
     mpl_init()
     ax1 = lab.subplot(211)
-    labelspace()
+    labelspace(lab.gca())
     xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
     if distances is None:
         lab.xlim(xmin, xmax)
@@ -437,7 +434,7 @@ def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fa
     lab.xlabel('')
 
     ax2 = lab.subplot(212, sharex=ax1)
-    labelspace()
+    labelspace(lab.gca())
     plot_rays(paths, rays, zstart, zstop)
     xmin, xmax = lab.xlim()
     ymin, ymax = lab.ylim()
@@ -457,6 +454,7 @@ def my_model_plot(mod):
 
     import pylab as lab
     mpl_init()
+    labelspace(lab.gca())
     labels_model()
     sketch_model(mod)
     z = mod.profile('z')

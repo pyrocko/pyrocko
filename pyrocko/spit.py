@@ -105,10 +105,10 @@ class Cell:
                         x <= cell.xbounds[:,1])))
         ]
 
-    def plot_rects(self, plt, x, dims):
+    def plot_rects(self, axes, x, dims):
         if self.children:
             for cell in self.slice(x):
-                cell.plot_rects(plt,x,dims)
+                cell.plot_rects(axes,x,dims)
 
         else:
             points = []
@@ -116,12 +116,12 @@ class Cell:
                 points.append((self.xbounds[dims[0],iy], self.xbounds[dims[1],ix]))
 
             points = num.transpose(points)
-            plt.plot(points[1], points[0], color=(0.1,0.1,0.0,0.1))
+            axes.plot(points[1], points[0], color=(0.1,0.1,0.0,0.1))
 
-    def plot_2d(self, plt, x, dims):
+    def plot_2d(self, axes, x, dims):
 
         idims = num.array(dims)
-        self.plot_rects(plt, x, dims)
+        self.plot_rects(axes, x, dims)
         coords = [ num.linspace(xb[0],xb[1],1+int((xb[1]-xb[0])/d)) for 
                 (xb,d) in zip(self.xbounds[idims,:], self.tree.xtols[idims]) ]
         npoints = coords[0].size * coords[1].size
@@ -141,14 +141,14 @@ class Cell:
         if any_(num.isfinite(fi)):
             fi = num.ma.masked_invalid(fi)
 
-            plt.imshow(fi, origin='lower',
+            axes.imshow(fi, origin='lower',
                     extent=[coords[1].min(), coords[1].max(), 
                             coords[0].min(), coords[0].max()],
                     interpolation='nearest',
                     aspect='auto',
                     cmap='RdYlBu')
 
-    def plot_1d(self, plt, x, dim):
+    def plot_1d(self, axes, x, dim):
         xb = self.xbounds[dim]
         d = self.tree.xtols[dim]
         coords = num.linspace(xb[0],xb[1],1+int((xb[1]-xb[0])/d))
@@ -164,7 +164,7 @@ class Cell:
         fi = self.interpolate_many(points)
         if any_(num.isfinite(fi)):
             fi = num.ma.masked_invalid(fi)
-            plt.plot(coords, fi)
+            axes.plot(coords, fi)
 
     def __iter__(self):
         yield self
@@ -385,7 +385,7 @@ class SPTree:
             cell.children.append(child)
             self._fill(child)
 
-    def plot_2d(self, plt=None, x=None, dims=None):
+    def plot_2d(self, axes=None, x=None, dims=None):
         assert self.ndim >= 2
 
         if x is None:
@@ -398,20 +398,20 @@ class SPTree:
 
         assert len(dims) == 2
 
-        if plt is None:
-            from matplotlib import pyplot as p
-        else:
-            p = plt
+        plt = None
+        if axes is None:
+            from matplotlib import pyplot as plt
+            axes = plt.gca()
             
-        self.root.plot_2d(p, x, dims)
+        self.root.plot_2d(axes, x, dims)
 
-        p.xlabel('Dim %i' % dims[1])
-        p.ylabel('Dim %i' % dims[0])
+        axes.set_xlabel('Dim %i' % dims[1])
+        axes.set_ylabel('Dim %i' % dims[0])
 
-        if plt is None:
-            p.show()
+        if plt:
+            plt.show()
 
-    def plot_1d(self, plt=None, x=None, dims=None):
+    def plot_1d(self, axes=None, x=None, dims=None):
 
         if x is None:
             x = num.zeros(self.ndim)
@@ -423,17 +423,17 @@ class SPTree:
 
         assert len(dims) == 1
 
-        if plt is None:
-            from matplotlib import pyplot as p
-        else:
-            p = plt
+        plt = None
+        if axes is None:
+            from matplotlib import pyplot as plt
+            axes = plt.gca()
             
-        self.root.plot_1d(p, x, dims[0])
+        self.root.plot_1d(axes, x, dims[0])
 
-        p.xlabel('Dim %i' % dims[0])
+        axes.set_xlabel('Dim %i' % dims[0])
 
-        if plt is None:
-            p.show()
+        if plt:
+            plt.show()
 
 
 def getset(d, k, f, addargs):
@@ -478,15 +478,15 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
 
     v = 0.5
-    plt.subplot(2,2,1)
-    tree.plot_2d(plt, x=(v,None,None) )
-    plt.subplot(2,2,2)
-    tree.plot_2d(plt, x=(None,v,None) )
-    plt.subplot(2,2,3)
-    tree.plot_2d(plt, x=(None,None,v) )
+    axes = plt.subplot(2,2,1)
+    tree.plot_2d(axes, x=(v,None,None) )
+    axes = plt.subplot(2,2,2)
+    tree.plot_2d(axes, x=(None,v,None) )
+    axes = plt.subplot(2,2,3)
+    tree.plot_2d(axes, x=(None,None,v) )
 
-    plt.subplot(2,2,4)
-    tree.plot_1d(plt, x=(v,v,None))
+    axes = plt.subplot(2,2,4)
+    tree.plot_1d(axes, x=(v,v,None))
 
     plt.show()
 

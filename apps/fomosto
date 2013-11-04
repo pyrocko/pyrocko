@@ -575,23 +575,35 @@ def command_ttt(args):
         die(e)
 
 def command_tttview(args):
+    import matplotlib.pyplot as plt
+    from pyrocko.cake_plot import mpl_init, labelspace, xscaled, yscaled
+    mpl_init()
 
     parser, options, args = cl_parse('tttview', args)
-    
+
     try:
-        phase_id = args.pop()
+        phase_ids = args.pop().split(',')
     except:
         parser.error('cannot get <phase-id> argument')
 
+    np = 1
     store_dir = get_store_dir(args)
+    for phase_id in phase_ids:
+        try:
+            store = gf.Store(store_dir)
+            phase = store.get_phase(phase_id)
+            axes = plt.subplot(1, len(phase_ids), np)
+            labelspace(axes)
+            xscaled(1./km, axes)
+            yscaled(1./km, axes)
+            phase.plot_2d(axes)
+            axes.set_title(phase_id)
+            np += 1
+        except gf.StoreError, e:
+            die(e)
 
-    try:
-        store = gf.Store(store_dir)
-        phase = store.get_phase(phase_id)
-        phase.plot_2d()
-
-    except gf.StoreError, e:
-        die(e)
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == '__main__':
 
@@ -611,7 +623,7 @@ if __name__ == '__main__':
             acommand = args[0]
             if acommand in subcommands:
                 globals()['command_'+ acommand]([ '--help' ] )
-            
+
         sys.exit('Usage: %s' % usage)
 
     else:
