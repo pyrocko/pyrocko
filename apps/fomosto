@@ -579,10 +579,8 @@ def command_tttview(args):
 
     parser, options, args = cl_parse('tttview', args)
 
-    phase_ids = []
     try:
-        for phase_id in args.pop().split(','):
-            phase_ids.append(phase_id)
+        phase_ids = args.pop().split(',')
     except:
         parser.error('cannot get <phase-id> argument')
 
@@ -592,8 +590,9 @@ def command_tttview(args):
         try:
             store = gf.Store(store_dir)
             phase = store.get_phase(phase_id)
-            plt.subplot(1, len(phase_ids), np)
-            phase.plot_2d(plt=plt, title=phase_id)
+            axes = plt.subplot(1, len(phase_ids), np)
+            phase.plot_2d(axes)
+            axes.set_title(phase_id)
             np += 1
         except gf.StoreError, e:
             die(e)
