@@ -3,7 +3,6 @@
 import sys, re, os, logging, copy, math, collections
 from optparse import OptionParser
 import numpy as num
-import matplotlib.pyplot as plt
 from scipy import spatial
 
 import yaml
@@ -576,6 +575,9 @@ def command_ttt(args):
         die(e)
 
 def command_tttview(args):
+    import matplotlib.pyplot as plt
+    from pyrocko.cake_plot import mpl_init, labelspace, xscaled, yscaled
+    mpl_init()
 
     parser, options, args = cl_parse('tttview', args)
 
@@ -591,11 +593,15 @@ def command_tttview(args):
             store = gf.Store(store_dir)
             phase = store.get_phase(phase_id)
             axes = plt.subplot(1, len(phase_ids), np)
+            labelspace(axes)
+            xscaled(1./km, axes)
+            yscaled(1./km, axes)
             phase.plot_2d(axes)
             axes.set_title(phase_id)
             np += 1
         except gf.StoreError, e:
             die(e)
+
     plt.tight_layout()
     plt.show()
 
