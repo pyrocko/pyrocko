@@ -403,7 +403,7 @@ class Snuffling:
             control.set_value(value)
 
     def set_parameter_range(self, ident, vmin, vmax):
-        '''Set the range of one of the snnuffling's adjustable parameters.
+        '''Set the range of one of the snuffling's adjustable parameters.
 
         :param ident: identifier of the parameter
         :param vmin,vmax: new minimum and maximum value for the parameter
@@ -414,6 +414,12 @@ class Snuffling:
         control = self._param_controls.get(ident, None)
         if control:
             control.set_range(vmin, vmax)
+
+    def set_parameter_choices(self, ident, choices):
+        control = self._param_controls.get(ident, None)
+        if control:
+            control.set_choices(choices)
+            self._set_parameter_value(ident, choices[0])
     
     def _set_parameter_value(self, ident, value):
         setattr(self, ident, value)
@@ -1178,6 +1184,14 @@ class ChoiceControl(QFrame):
         
         self.set_value(default)
         self.connect(self.cbox, SIGNAL('activated(int)'), self.choosen)
+
+    def set_choices(self, choices):
+        self.choices = choices
+        self.cbox.clear()
+        for ichoice, choice in enumerate(choices):
+            self.cbox.addItem(QString(choice))
+
+        self.set_value(choices[0])
         
     def choosen(self, i):
         self.emit(SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.ident, self.choices[i])

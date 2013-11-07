@@ -717,6 +717,10 @@ class Store(Store_):
             if os.path.isdir(self._decimated_store_dir(decimate)):
                 self._decimated[decimate] = None
 
+    def save_config(self):
+        config_fn = os.path.join(self.store_dir, 'config')
+        meta.dump(self.config, filename=config_fn)
+
     def get_extra(self, key):
         '''Get extra information stored under given key.'''
 

@@ -3,6 +3,8 @@ from guts_array import Array
 from pyrocko import gf, orthodrome, trace
 import math, os, urllib
 
+pjoin = os.path.join
+
 d2r = math.pi / 180.
 
 class NotImplemented(Exception):
@@ -39,10 +41,10 @@ def make_weights(azi, bazi, m6):
     g_n = (0, 1, 2, 8, 3, 4)
     w_e = (sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4)
     g_e = (0, 1, 2, 8, 3, 4)
-    w_d = (f0, f1, f2, f5)
-    g_d = (0, 1, 2, 9)
+    w_u = (-f0, -f1, -f2, -f5)
+    g_u = (5, 6, 7, 9)
 
-    return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_d, g_d))
+    return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
 
 
 class SeismosizerConfig(Object):
@@ -56,6 +58,14 @@ class SeismosizerConfig(Object):
         store = gf.store.Store(store_dir)
         return store
 
+    def get_store_ids(self):
+        ids = []
+        for entry in os.listdir(self.stores_dir):
+            p = pjoin(self.stores_dir, entry)
+            if os.path.isdir(p) and all(os.path.isfile(pjoin(p,x)) for x in ('index', 'traces', 'config')):
+                ids.append(entry)
+
+        return sorted(ids)
 
 class SeismosizerRequest(Object):
     '''Get seismogram for a moment tensor point source.'''
@@ -170,10 +180,16 @@ def make_seismogram(req, config):
 class StoresResponse(Object):
     store_configs = List.T(gf.meta.Config.T())
 
-def request_seismogram(req, baseurl='http://localhost:8000/seismosizer/'):
-    f = urllib.urlopen('%s?%s' % (baseurl, req.sparams()))
+def request_seismogram(req, baseurl='http://localhost:8000/gf/seismosizer'):
+    url = '%s?%s' % (baseurl, req.sparams())
+    f = urllib.urlopen(url)
     resp = load(stream=f)
     f.close()
     return resp
 
+def get_store_ids(baseurl='http://localhost:8000/gf/stores'):
+    f = urllib.urlopen('%s' % baseurl)
+    resp = load(stream=f)
+    f.close()
+    return [ conf.id for conf in resp.store_configs ]
 
