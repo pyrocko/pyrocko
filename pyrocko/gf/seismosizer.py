@@ -106,6 +106,14 @@ class SeismosizerRequest(Object):
     def sparams(self):
         return urllib.urlencode([(name, val) for (name, val) in self.T.inamevals_to_save(self)])
 
+    def geometry(self):
+        source = orthodrome.Loc(lat=self.source_lat, lon=self.source_lon)
+        receiver = orthodrome.Loc(lat=self.receiver_lat, lon=self.receiver_lon)
+
+        azi = orthodrome.azimuth(source, receiver)
+        bazi = orthodrome.azimuth(receiver, source)
+        distance = orthodrome.distance_accurate50m(source, receiver)
+        return azi, bazi, distance
 
 class SeismosizerTrace(Object):
     net_code = String.T(default='')
@@ -134,12 +142,8 @@ class SeismosizerResponse(Object):
 
 
 def make_seismogram(req, config):
-    source = orthodrome.Loc(lat=req.source_lat, lon=req.source_lon)
-    receiver = orthodrome.Loc(lat=req.receiver_lat, lon=req.receiver_lon)
 
-    azi = orthodrome.azimuth(source, receiver)
-    bazi = orthodrome.azimuth(receiver, source)
-    distance = orthodrome.distance_accurate50m(source, receiver)
+    azi, bazi, distance = req.geometry()
 
     m = (req.mnn, req.mee, req.mdd, req.mne, req.mnd, req.med)
 
@@ -180,14 +184,14 @@ def make_seismogram(req, config):
 class StoresResponse(Object):
     store_configs = List.T(gf.meta.Config.T())
 
-def request_seismogram(req, baseurl='http://localhost:8000/gf/seismosizer'):
+def request_seismogram(req, baseurl='http://kinherd.org/gfs/seismosizer'):
     url = '%s?%s' % (baseurl, req.sparams())
     f = urllib.urlopen(url)
     resp = load(stream=f)
     f.close()
     return resp
 
-def get_store_ids(baseurl='http://localhost:8000/gf/stores'):
+def get_store_ids(baseurl='http://kinherd.org/gfs/stores'):
     f = urllib.urlopen('%s' % baseurl)
     resp = load(stream=f)
     f.close()

@@ -905,6 +905,8 @@ class Store(Store_):
         return self._phases[phase_id]
 
     def t(self, timing, args):
+        if not isinstance(timing, meta.Timing):
+            timing = meta.Timing(timing)
         return timing.evaluate(self.get_phase, args)
 
     def make_timing_params(self, begin, end, snap_vred=True):
