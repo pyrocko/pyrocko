@@ -1367,7 +1367,11 @@ def MakePileViewerMainClass(base):
                         fdigits=self.time_fractional_digits())
 
         def read_markers(self):
-            fn = QFileDialog.getOpenFileName(self,)
+            '''
+            Open QFileDialog to open, read and add markers to the pile viewer.
+            '''
+            caption = "Selet one or more files to open"
+            fn = QFileDialog.getOpenFileName(self, caption)
             if fn:
                 self.add_markers(Marker.load_markers(fn))
 
