@@ -77,9 +77,10 @@ def add_common_options(parser):
         action = 'store', 
         dest = 'loglevel', 
         type = 'choice',
-        choices = ('error', 'warning', 'info', 'debug'), 
+        choices = ('critical', 'error', 'warning', 'info', 'debug'), 
         default = 'info',
-        help ='set logger level to "error", "warning", "info", or "debug". '
+        help ='set logger level to '
+              '"critical", "error", "warning", "info", or "debug". '
               'Default is "%default".')
 
 def process_common_options(options):
@@ -206,6 +207,9 @@ def command_build(args):
         parser.add_option('--nworkers', dest='nworkers', type='int', metavar='N',
                 help='run N worker processes in parallel')
 
+        parser.add_option('--continue', dest='continue_', action='store_true',
+                help='continue suspended build')
+
     parser, options, args = cl_parse('build', args, setup=setup)
 
     store_dir = get_store_dir(args)
@@ -214,7 +218,7 @@ def command_build(args):
         module = fomo_wrapper_module(store.config.modelling_code_id)
         module.build(store_dir, 
                 force=options.force, 
-                nworkers=options.nworkers)
+                nworkers=options.nworkers, continue_=options.continue_)
 
     except gf.StoreError, e:
         die(e)

@@ -8,6 +8,7 @@ from test_trace import TraceTestCase
 from test_model import ModelTestCase
 from test_util import UtilTestCase
 from test_gf import GFTestCase
+from test_parimap import ParimapTestCase
 
 import unittest
 
