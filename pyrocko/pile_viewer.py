@@ -1354,14 +1354,15 @@ def MakePileViewerMainClass(base):
             return min(9, max(1, int(-math.floor(math.log10(min_deltat)))+2))
     
         def write_markers(self):
-
-            fn = QFileDialog.getSaveFileName(self,)
+            caption = "Choose a file name to write markers"
+            fn = QFileDialog.getSaveFileName(self, caption)
             if fn:
                 Marker.save_markers(self.markers, fn,
                         fdigits=self.time_fractional_digits())
 
         def write_selected_markers(self):
-            fn = QFileDialog.getSaveFileName(self,)
+            caption = "Choose a file name to write selected markers"
+            fn = QFileDialog.getSaveFileName(self, caption)
             if fn:
                 Marker.save_markers(self.selected_markers(), fn,
                         fdigits=self.time_fractional_digits())
