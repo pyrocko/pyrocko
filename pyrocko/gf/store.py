@@ -941,8 +941,7 @@ class Store(Store_):
         dx = (xs - x_tminmin)
         dx = num.where( dx != 0.0, dx, num.nan )
         s = (tmin - tminmin) / dx
-        i = num.nanargmin(num.abs(s))
-        sred = s[i]
+        sred = num.min(num.abs(s[num.isfinite(s)]))
         
         if snap_vred:
             tdif = sred*self.config.distance_delta
