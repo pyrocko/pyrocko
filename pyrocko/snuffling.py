@@ -551,8 +551,8 @@ class Snuffling:
                     if not marker.nslc_ids:
                         trace_selector = None
                     else:
-                        trace_selector = lambda tr: tr.nslc_id in marker.nslc_ids
-                    
+                        trace_selector = lambda tr: marker.match_nslc(tr.nslc_id)
+
                     for traces in pile.chopper(
                             tmin = marker.tmin,
                             tmax = marker.tmax,
