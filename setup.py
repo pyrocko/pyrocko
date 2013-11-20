@@ -1,7 +1,13 @@
+import sys
+
+if sys.version_info < (2,6) or (3,0) <= sys.version_info:
+    sys.exit('This version of Pyrocko requires Python version >=2.6 and <3.0')
+
 import numpy
 from distutils.core import setup, Extension
-import os, time, sys
+import os, time
 from os.path import join as pjoin
+
 
 class NotInAGitRepos(Exception):
     pass
@@ -59,8 +65,6 @@ packname = 'pyrocko'
 version = '0.3'
 
 subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf', 'pyrocko.fomosto' ]
-if sys.version_info >= (2,5):
-    subpacknames.append( 'pyrocko.need_python_2_5' )
 
 make_info_module(packname, version)
 
@@ -81,8 +85,7 @@ setup( name = packname,
             sources = [ pjoin(packname, 'mseed_ext.c') ]),
                 
         Extension( 'evalresp_ext',
-            include_dirs = [ numpy.get_include(), './evalresp-3.3.0' ],
-            library_dirs = ['./evalresp-3.3.0/.libs'],
+            include_dirs = [ numpy.get_include() ],
             libraries = ['evresp'],
             sources = [ pjoin(packname, 'evalresp_ext.c') ]),
             
