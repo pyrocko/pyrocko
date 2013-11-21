@@ -207,20 +207,24 @@ class Crust2:
 
     def __init__(self, directory=None):
     
+        self.profile_keys = []
         self._directory = directory
         self._typemap = None
         self._load_crustal_model()
         
-    def get_profile(self, lat, lon):
-        '''Get crustal profile at a specific location.
-        
-        :param lat: latitude
-        :param lon: longitude
+    def get_profile(self, *args):
+        '''Get crustal profile at a specific location or raw profile for given key.
+
+        Get profile for location (lat,lon), or raw profile for given string key.
         :rtype: instance of :py:class:`Crust2Profile`
         '''
-        
-        return self._typemap[self._indices(float(lat),float(lon))]
-        
+
+        if len(args) == 2:
+            lat, lon = args
+            return self._typemap[self._indices(float(lat),float(lon))]
+        else:
+            return self._raw_profiles[args[0]]
+
     def _indices(self, lat,lon):
         lat = _clip(lat, -90., 90.)
         lon = _wrap(lon, -180., 180.)
@@ -259,10 +263,15 @@ class Crust2:
             line = f.readline()
             toks = line.split()
             thickness = _sa2arr(toks[:-2]) * 1000.
+
+            assert ident not in profiles
             
             profiles[ident] = Crust2Profile(ident.strip(), name.strip(), vp, vs, rho, thickness, 0.0)
             
         f.close()
+
+        self._raw_profiles = profiles
+        self.profile_keys = sorted(profiles.keys())
         
         if self._directory is not None:
             path_map = os.path.join(self._directory, Crust2.fn_map)
@@ -308,11 +317,20 @@ class Crust2:
 
         return Crust2._instance
 
-def get_profile(lat, lon):
-    '''Get Crust2x2 profile for given location.'''
-    
+def get_profile_keys():
+    '''Get list of all profile keys.'''
+
     crust2 = Crust2.instance()
-    return crust2.get_profile(lat,lon)
+    return list(crust2.profile_keys)
+
+def get_profile(*args):
+    '''Get Crust2x2 profile for given location or profile key.
+    
+    Get profile for (lat,lon) or raw profile for given string key.
+    '''
+
+    crust2 = Crust2.instance()
+    return crust2.get_profile(*args)
 
         
 def plot_crustal_thickness(crust2=None, filename='crustal_thickness.pdf'):

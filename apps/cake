@@ -92,7 +92,8 @@ character, respectively.  ''')
                 help='Set model file format (available: nd, hyposat; default: nd).')
         group.add_option('--crust2loc', dest='crust2loc', metavar='LAT,LON',
                 help='Set model from CRUST2.0 profile at location (LAT,LON).')
-
+        group.add_option('--crust2profile', dest='crust2profile', metavar='KEY',
+                help='Set model from CRUST2.0 profile with given KEY.')
 
         parser.add_option_group(group)
     
@@ -198,15 +199,23 @@ character, respectively.  ''')
         if options.model_filename:
             d['model'] = cake.load_model(options.model_filename, options.model_format)
 
-        if options.crust2loc:
-            try:
-                lat,lon = [ float(x) for x in options.crust2loc.split(',') ]
-            except:
-                parser.error('format for --crust2loc option is "LATITUDE,LONGITUDE"')
+        if options.crust2loc or options.crust2profile:
+            if options.crust2loc:
+                try:
+                    args = tuple([ float(x) for x in options.crust2loc.split(',') ])
+                except:
+                    parser.error('format for --crust2loc option is "LATITUDE,LONGITUDE"')
+            elif options.crust2profile:
+                args = (options.crust2profile.upper(),)
+            else:
+                assert False
                 
-            from pyrocko import crust2x2
-            profile = crust2x2.get_profile(lat,lon)
-            d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
+            if 'model' in d:
+                d['model'] = d['model'].replaced_crust(*args)
+            else:
+                from pyrocko import crust2x2
+                profile = crust2x2.get_profile(*args)
+                d['model'] = cake.LayeredModel.from_scanlines(cake.from_crust2x2_profile(profile))
 
     if 'vred' in want:
         d['vred'] = options.vred

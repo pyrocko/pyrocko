@@ -3143,6 +3143,49 @@ class LayeredModel:
 
         return mod_extracted
 
+    def replaced_crust(self, crust2_profile):
+        import crust2x2
+        if isinstance(crust2_profile, tuple):
+            lat, lon = [ float(x) for x in crust2_profile ]
+            profile = crust2x2.get_profile(lat, lon)
+        if isinstance(crust2_profile, basestring):
+            profile = crust2x2.get_profile(crust2_profile)
+        elif isinstance(crust2_profile, crust2x2.Crust2Profile):
+            profile = crust2_profile
+        else:
+            assert False, 'crust2_profile must be (lat,lon) a profile key or a crust2x2 Profile object)'
+
+        crustmod = LayeredModel.from_scanlines(from_crust2x2_profile(profile))
+
+        newmod = LayeredModel()
+        for element in crustmod.extract(depth_max='moho').elements():
+            if element.name != 'moho':
+                newmod.append(element)
+            else:
+                moho1 = element
+
+        mod = self.extract(depth_min='moho')
+        first = True
+        for element in mod.elements():
+            if element.name == 'moho':
+                if element.z <= moho1.z:
+                    mbelow = mod.material(moho1.z, direction=UP)
+                else:
+                    mbelow = element.mbelow
+
+                moho = Interface(moho1.z, moho1.mabove, mbelow, name='moho')
+                newmod.append(moho)
+            else:
+                if first:
+                    if isinstance(element, Layer) and element.zbot > moho.z:
+                            newmod.append(GradientLayer(moho.z, element.zbot, 
+                                moho.mbelow, element.mbot, name=element.name))
+
+                            first = False
+                else:
+                    newmod.append(element)
+        return newmod
+
     def __str__(self):
         return '\n'.join( str(element) for element in self._elements )
                 
@@ -3270,11 +3313,14 @@ def builtin_models():
 def builtin_model_filename(modelname):
     return util.data_file(os.path.join('earthmodels', modelname+'.nd'))
 
-def load_model(fn='ak135-f-continental.m', format='nd'):
+def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
     '''Load layered earth model from file.
     
     :param fn: filename
     :param format: format 
+    :param crust2_profile: ``(lat, lon)`` or 
+        :py:class:`pyrocko.crust2x2.Crust2Profile` object, merge model with crustal 
+        profile
     :returns: object of type :py:class:`LayeredModel`
 
     The following formats are currently supported:
@@ -3301,7 +3347,11 @@ def load_model(fn='ak135-f-continental.m', format='nd'):
     else:
         assert False, 'unsupported model format'
 
-    return LayeredModel.from_scanlines(reader)
+    mod = LayeredModel.from_scanlines(reader)
+    if crust2_profile is not None:
+        return mod.replaced_crust(crust2_profile)
+
+    return mod
 
 def castagna_vs_to_vp(vs):
     '''Calculate vp from vs using castagna's relation.
