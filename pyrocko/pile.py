@@ -645,7 +645,7 @@ class TracesFile(TracesGroup):
                 if itr < len(self.traces):
                     xtr = self.traces[itr]
                     if xtr.mtime != tr.mtime or xtr.tmin != tr.tmin or xtr.tmax != tr.tmax:
-                        logger.warn('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
+                        logger.debug('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
                         self.remove(xtr)
                         self.traces.remove(xtr)
                         xtr.file = None
@@ -659,7 +659,7 @@ class TracesFile(TracesGroup):
                 else:
                     self.traces.add(tr)
                     self.add(tr)
-                    logger.warn('file may have changed since last access (new trace found): %s' % self.abspath)
+                    logger.debug('file may have changed since last access (new trace found): %s' % self.abspath)
                     file_changed = True
             self.data_loaded = True
         return file_changed
