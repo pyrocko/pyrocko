@@ -61,12 +61,20 @@ installed_date = %s
     except:
         pass
 
+def make_prerequisites():
+    from subprocess import check_call
+    try:
+        check_call(['sh', 'prerequisites.sh'])
+    except:
+        sys.exit('error: failed to build the included prerequisites with "sh prerequisites.sh"')
+
 packname = 'pyrocko' 
 version = '0.3'
 
 subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf', 'pyrocko.fomosto' ]
 
 make_info_module(packname, version)
+make_prerequisites()
 
 setup( name = packname,
     version = version,
@@ -79,13 +87,14 @@ setup( name = packname,
     ext_modules = [ 
         
         Extension( 'mseed_ext',
-            include_dirs = [ numpy.get_include(), './libmseed' ],
-            library_dirs = ['./libmseed'],
+            include_dirs = [ numpy.get_include(), 'libmseed' ],
+            library_dirs = ['libmseed'],
             libraries = ['mseed'],
             sources = [ pjoin(packname, 'mseed_ext.c') ]),
                 
         Extension( 'evalresp_ext',
-            include_dirs = [ numpy.get_include() ],
+            include_dirs = [ numpy.get_include(), 'evalresp-3.3.0/include' ],
+            library_dirs = [ 'evalresp-3.3.0/lib' ],
             libraries = ['evresp'],
             sources = [ pjoin(packname, 'evalresp_ext.c') ]),
             
