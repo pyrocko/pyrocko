@@ -1692,7 +1692,7 @@ class CosFader(Taper):
 
         xlen = (y.size - 1)*dx
         if xfade is None:
-            xfade = xlen * xfrac
+            xfade = xlen * self._xfrac
 
         a = x0
         b = x0 + self._xfade
@@ -1852,7 +1852,7 @@ class AnalogFilterResponse(FrequencyResponse):
         self._a = a
     
     def evaluate(self, freqs):
-        return signal.freqs(self._b, self._a, freqs/(2.*pi))[1]
+        return signal.freqs(self._b, self._a, freqs/(2.*num.pi))[1]
 
 class MultiplyResponse(FrequencyResponse):
     '''Multiplication of two :py:class:`FrequencyResponse` objects.'''
@@ -2091,7 +2091,7 @@ def hilbert(x, N=None):
         raise ValueError, "N must be positive."
     if num.iscomplexobj(x):
         print "Warning: imaginary part of x ignored."
-        x = real(x)
+        x = num.real(x)
     Xf = num.fft.fft(x,N,axis=0)
     h = num.zeros(N)
     if N % 2 == 0:
@@ -2102,7 +2102,7 @@ def hilbert(x, N=None):
         h[1:(N+1)/2] = 2
 
     if len(x.shape) > 1:
-        h = h[:, newaxis]
+        h = h[:, num.newaxis]
     x = num.fft.ifft(Xf*h)
     return x
     
