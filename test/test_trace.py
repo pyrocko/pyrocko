@@ -178,7 +178,7 @@ class TraceTestCase(unittest.TestCase):
         t2 = t.copy()
         t2.set_codes(location='2')
         t2.downsample_to(dt2, allow_upsample_max = 10)
-        io.save([t,t2], 'test.mseed')
+        #io.save([t,t2], 'test.mseed')
         
     def testFiltering(self):
         tmin = sometime
