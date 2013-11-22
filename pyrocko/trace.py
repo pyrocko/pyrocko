@@ -995,7 +995,7 @@ class Trace(object):
         a,b,c,d = freqlimits
         freqs = num.arange(hi(d)-hi(a), dtype=num.float)*deltaf + hi(a)*deltaf
         transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
-        
+
         tapered_transfer = costaper(a,b,c,d, nfreqs, deltaf)*transfer
         tapered_transfer[0] = 0.0 # don't introduce static offsets
         return tapered_transfer
@@ -1820,7 +1820,14 @@ class IntegrationResponse(FrequencyResponse):
         self._gain = gain
         
     def evaluate(self, freqs):
-        return self._gain / (1.0j * 2. * num.pi*freqs)**self._n
+        
+        nonzero = freqs != 0.0
+
+        resp = num.empty(freqs.size, dtype=num.complex)
+
+        resp[nonzero] = self._gain / (1.0j * 2. * num.pi*freqs[nonzero])**self._n
+        resp[num.logical_not(nonzero)] = 0.0
+        return resp
 
 class DifferentiationResponse(FrequencyResponse):
     '''The differentiation response, optionally multiplied by a constant gain.
@@ -2085,7 +2092,7 @@ def hilbert(x, N=None):
     if N <=0:
         raise ValueError, "N must be positive."
     if num.iscomplexobj(x):
-        print "Warning: imaginary part of x ignored."
+        logger.warn('imaginary part of x ignored.')
         x = real(x)
     Xf = num.fft.fft(x,N,axis=0)
     h = num.zeros(N)
