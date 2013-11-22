@@ -1866,9 +1866,6 @@ class MultiplyResponse(FrequencyResponse):
     def evaluate(self, freqs):
         return self._a.evaluate(freqs) * self._b.evaluate(freqs)
 
-if sys.version_info >= (2,5):
-    from need_python_2_5.trace import *
-
 cached_coefficients = {}
 def _get_cached_filter_coefs(order, corners, btype):
     ck = (order, tuple(corners), btype)
