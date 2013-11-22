@@ -1,4 +1,3 @@
-import evalresp_ext as ext
 import time
 
 def evalresp(
@@ -19,6 +18,7 @@ def evalresp(
         listinterp_in_flag = 0,
         listinterp_tension = 1000.0):
   
+    import evalresp_ext as ext
     datime = time.strftime('%Y,%j,%H:%M:%S', time.gmtime(instant))
     
     return ext.evalresp(sta_list, cha_list, net_code, locid, datime,
