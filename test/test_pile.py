@@ -44,10 +44,12 @@ class PileTestCase( unittest.TestCase ):
         
         tmin = 1234567890
         datadir = makeManyFiles(nfiles, nsamples, networks, stations, channels, tmin)
-        filenames = util.select_files([datadir])
+        filenames = util.select_files([datadir], show_progress=False)
         cachedir = pjoin(datadir,'_cache_')
         p = pile.Pile()
-        p.load_files(filenames=filenames, cache=pile.get_cache(cachedir))
+        p.load_files(filenames=filenames, cache=pile.get_cache(cachedir),
+                     show_progress=False)
+
         assert set(p.networks) == set(networks)
         assert set(p.stations) == set(stations)
         assert set(p.channels) == set(channels)
