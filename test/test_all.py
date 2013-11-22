@@ -9,6 +9,7 @@ from test_model import ModelTestCase
 from test_util import UtilTestCase
 from test_gf import GFTestCase
 from test_parimap import ParimapTestCase
+from test_response import ResponseTestCase
 
 import unittest
 
