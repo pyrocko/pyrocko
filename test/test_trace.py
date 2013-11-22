@@ -276,14 +276,8 @@ class TraceTestCase(unittest.TestCase):
                     a = trace.Trace(tmin=10., deltat=0.1, ydata=ya)
                     b = trace.Trace(tmin=10.1, deltat=0.1, ydata=yb)
                     c = trace.correlate(a,b, mode=mode)
-                   
 
-                    if not numeq(c.max(), [res, 1.], 0.0001):
-                        print
-                        print mode
-                        print len(ya), ya
-                        print len(yb), yb
-                        print c.ydata, c.max()
+                    assert numeq(c.max(), [res, 1.], 0.0001)
 
     def testCorrelateNormalization(self):
 
