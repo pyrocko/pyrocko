@@ -5,6 +5,9 @@ import numpy as num
 import tempfile, random, os
 from random import choice as rc
 from os.path import join as pjoin
+
+def numeq(a,b, eps):
+    return num.all(num.abs(num.array(a) - num.array(b)) < eps)
     
 def makeManyFiles( nfiles, nsamples, networks, stations, channels, tmin):
     
@@ -88,9 +91,8 @@ class PileTestCase( unittest.TestCase ):
         f = pile.MemTracesFile(None,[tr])
         p = pile.Pile()
         p.add_file(f)
-        for tr in p.iter_all():
-            print tr.ydata
-            #assert( tr.ydata == num.arange(100, dtype=num.float) )
+        for tr in p.iter_all(include_last=True):
+            assert numeq(tr.ydata, num.arange(100, dtype=num.float), 0.001)
         
         
 if __name__ == "__main__":
