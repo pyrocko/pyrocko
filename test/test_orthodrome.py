@@ -39,15 +39,11 @@ class OrthodromeTestCase(unittest.TestCase):
                 b.lat = lat
                 b.lon = lon
                 
-                d = num.arccos(orthodrome.cosdelta(a,b))*config.earthradius
+                cd = orthodrome.cosdelta(a,b)
+                assert cd <= 1.0
+                d = num.arccos(cd)*config.earthradius
                 d2 = math.sqrt(no**2+ea**2)
-                
-                if abs(d-d2) > 1.0e-3 and d2 > 1.:
-                    print 'x',a.lat, a.lon, b.lat,b.lon
-                    print 'y',d, d2, d-d2
-                    
-        
-        
+                assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
 
 def plot_erroneous_ne_to_latlon():
     import sys
