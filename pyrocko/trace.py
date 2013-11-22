@@ -1691,7 +1691,7 @@ class CosFader(Taper):
 
         xlen = (y.size - 1)*dx
         if xfade is None:
-            xfade = xlen * self._xfrac
+            self._xfade = xlen * self._xfrac
 
         a = x0
         b = x0 + self._xfade
