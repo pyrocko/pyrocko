@@ -1,110 +1,80 @@
 Installation
 ============
 
+Pyrocko can be installed on every operating system where its prerequisites are
+available. This document describes how to install Pyrocko on Unix-like
+operating systems, like Linux and MacOSX.
 
 Prerequisites
 -------------
 
-The following software packages are required to use Pyrocko. The more important ones might be available through the package manager on your system (see below).
+The following software packages must be installed before Pyrocko can be installed:
 
-* `Python <http://www.python.org/>`_ including development headers
-* `NumPy <http://numpy.scipy.org/>`_ including development headers
-* `SciPy <http://scipy.org/>`_
-* `pyavl <http://pypi.python.org/pypi/pyavl/>`_ 
-* `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (>= v4.4.4, only needed for the GUI apps)
-* `matplotlib <http://matplotlib.sourceforge.net/>`_ (optional, if you want to produce plots with the Cake app)
-* libmseed (tarball is included)
-* evalresp (only libevresp from this package, tarball is included, could be made optional)
-* `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)
-* `slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.slink` module)
-* `rdseed <http://www.iris.edu/software/downloads/rdseed_request.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.rdseed` module)
+* Try to use normal system packages for these:
+   * `Python <http://www.python.org/>`_ (>= 2.6, < 3.0, with development headers)
+   * `NumPy <http://numpy.scipy.org/>`_ (with development headers)
+   * `SciPy <http://scipy.org/>`_
+   * `matplotlib <http://matplotlib.sourceforge.net/>`_
+   * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
+   * `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
+   * `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)
 
-How to install prerequisites available through the package manager of your system
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* Try to use `easy_install <http://pythonhosted.org/setuptools/easy_install.html>`_ or `pip install <http://www.pip-installer.org/en/latest/installing.html>`_ for these:
+   * `pyavl <http://pypi.python.org/pypi/pyavl/>`_ 
+   * `guts <http://pypi.python.org/pypi/guts/>`_
 
-The exact package names may differ from system to system. Whether there are
-separate packages for the development headers of NumPy and Python (the \*-dev
-packages) is also system specific.
+* Manually install these:
+   * `slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.slink` module)
+   * `rdseed <http://www.iris.edu/software/downloads/rdseed_request.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.rdseed` module)
 
-* Debian GNU/Linux (wheezy)::
+The names of the system packages to be installed differ from system to system.
+Whether there are separate packages for the development headers of NumPy and
+Python (the \*-dev packages) is also system specific.
 
-    apt-get install git python-dev python-numpy python-numpy-dev python-scipy
-    apt-get install python-qt4 python-qt4-gl python-progressbar
-    apt-get install python-matplotlib
+Here some details, what to install on a few popular distributions:
 
-* Fedora::
+* **Ubuntu** (12.04.1 LTS), **Debian** (7, wheezy)::
 
-    yum install python numpy scipy PyQt4
+    sudo apt-get install git python-dev python-setuptools
+    sudo apt-get install python-numpy python-numpy-dev python-scipy python-matplotlib
+    sudo apt-get install python-qt4 python-qt4-gl 
+    sudo apt-get install python-yaml python-progressbar
+    sudo easy_install pyavl
+    sudo easy_install guts
 
-* Ubuntu (12.04.1 LTS)::
+* **Fedora** (*outdated, can someone check this?*)::
 
-    apt-get install git python-dev python-numpy python-scipy 
-    apt-get install python-qt4 python-qt4-gl python-progressbar
-    apt-get install python-matplotlib
+    sudo yum install python numpy scipy PyQt4
+    sudo easy_install progressbar
+    sudo easy_install pyavl
+    sudo easy_install guts
 
 
-Getting Pyrocko
----------------
+Download and install Pyrocko
+----------------------------
 
-The simplest way of downloading Pyrocko is by using Git::
+**Either:** the easy way, using *easy_install*::
+
+    sudo easy_install http://github.com/emolch/pyrocko/tarball/master
+
+**Or:** the proper way, using *git* and *setup.py*::
 
     cd ~/src/   # or wherever you keep your source packages
     git clone git://github.com/emolch/pyrocko.git pyrocko
-
-Alternatively, you may download Pyrocko as a `tar archive
-<http://github.com/emolch/pyrocko/tarball/master>`_, but updating is easier
-with the method described above.
-
-Installing the included prerequisites (libmseed and libevresp)
---------------------------------------------------------------
-
-If you already have these libraries installed, these steps might not be necessary.
-
-First compile libmseed. Its tarball is included in the top directory of Pyrocko::
-
-    cd pyrocko/
-    tar -xzvf libmseed-2.6.2.tar.gz
-    cd libmseed/
-    make gcc
-    cd ..
-
-Next, compile and install the evalresp library. Its tarball is also included in
-the top directory of Pyrocko. You may install it as a shared library (see
-below), or try with a static library (if you don't want to install evalresp)::
-
-    tar -xzvf evalresp-3.3.0.tar.gz
-    cd evalresp-3.3.0/
-    ./configure --enable-shared
-    make
-    sudo make install
-    sudo ldconfig
-    cd ..
-
-Installing Pyrocko
-------------------
-
-Now compile and install Pyrocko itself::
-
+    cd pyrocko
     sudo python setup.py install
 
-Installing Pyrocko to a custom location
----------------------------------------
-
-If you would like to install it to a different location than ``/usr/local`` (or
-whatever Python thinks it should be), you may use the ``--prefix`` option of
-``setup.py``. You will, of course,  have to adjust the environment variables
-``$PATH``, ``$PYTHONPATH``, and ``$LD_LIBRARY_PATH`` to use your custom
-installation::
-
-    python setup.py install --prefix=/bonus
-
+**Warning:** If you switch from one installation method to the other, you have
+to manually remove the old installation - otherwise you will end up with two
+parallel installations of Pyrocko which will cause trouble.
 
 Updating
 --------
 
-If you later want to update Pyrocko, run the following from within Pyrocko's
-top directory:: 
+If you later want to update Pyrocko, run the following commands (this assumes
+that you have used *git* to download Pyrocko):: 
 
+    cd ~/src/pyrocko   # or wherever the Pyrocko source are 
     git pull origin master 
     sudo python setup.py install  
 
