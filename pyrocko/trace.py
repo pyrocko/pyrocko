@@ -1530,7 +1530,7 @@ def _project3(traces, matrix, in_channels, out_channels):
                 projected.append(ac)
                 projected.append(bc)
                 projected.append(cc)
-     
+
     return projected
 
 
@@ -2281,4 +2281,112 @@ def co_downsample_to(target, deltat):
     except GeneratorExit:
         for g in decimators.values():
             g.close()
+
+
+from guts import *
+
+class MisfitSetup(Object):
+    """
+    contains misfit details.
+    If only corner_hp (corner_lp) info is given -> apply highpass (lowpass, respectively).
+    Else, apply bandpass
+    """
+    xmltagname = 'misfitsetup'
+    description = String.T(optional=True)
+    corner_hp = Float.T(optional=True)
+    corner_lp = Float.T(optional=True)
+    order = Int.T(optional=False)
+    norm = Int.T(optional=False)
+    filter = String.T(optional=True)
+
+    # oder als string? ja:
+    taper = String.T(optional=False)
+
+    def save_xml(self, file_name):
+        dump_xml(self, file_name)
+
+
+def chop_to_same_length(t1, t2):
+    """
+    Chop two traces to same length (the length of the shorter trace)
+    (tested)
+    """
+    dt1 = t1.tmax - t1.tmin
+    dt2 = t2.tmax - t2.tmin
+    if dt1 < dt2:
+        t2_chopped = t2.chop(tmin=t2.tmin, tmax=t2.tmin+dt1, include_last=True)
+        return t1, t2_chopped
+    elif dt1 > dt2:
+        t1_chopped = t1.chop(tmin=t1.tmin, tmax=t1.tmin+dt2, include_last=True)
+        return t1_chopped, t2
+    else:
+        return t1, t2
+
+
+def equalize_sampling_rates(t1, t2):
+    '''
+    Equalize sampling rates of two traces. Means to reduce higher sampling rate to lower.
+    (tested)
+    '''
+    if t1.deltat < t2.deltat:
+        t1.downsample_to(deltat=t2.deltat)
+    elif t1.deltat > t2.deltat:
+        t2.downsample_to(deltat=t1.deltat)
+    return t1, t2
+
+def Lx_norm(test_trace, reference_trace, norm=2):
+    """
+    return m,n according to norm, defined by norm.
+    (L1-norm tested,
+    L2-norm failed....)
+    """
+    return pow(sum(abs(pow(reference_trace.ydata - test_trace.ydata, norm))), 1./norm), \
+           sum(pow(abs(reference_trace.ydata), 1./norm))
+
+def misfit(test_trace, reference_trace, misfit_setup):
+    """
+    Calculate misfit values m and n.
+    """
+    assert isinstance(Trace, test_trace)
+    assert isinstance(Trace, reference_trace)
+
+    corner_hp = misfit_setup.corner_hp
+    corner_lp = misfit_setup.corner_lp
+    order = misfit_setup.order
+    norm = misfit_setup.norm
+    taper = misfit_setup.taper
+
+    #1. chop
+    test_trace, reference_trace = chop_to_same_length(test_trace, reference_trace)
+
+    #1a downsample
+    equalize_sampling_rates(test_trace, reference_trace)
+
+    #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
+    map(reference_trace.taper, taper)
+    map(test_trace.taper, taper)
+
+    #2a filter
+    if not corner_hp:
+        reference_trace.lowpass(order=order,
+                                corner=corner_lp)
+    elif not corner_lp:
+        reference_trace.highpass(order=order,
+                                 corner=corner_hp)
+    elif corner_hp and corner_lp:
+        reference_trace.bandpass(order, corner_hp, corner_lp)
+
+    #3. fft
+    reference_trace_fftd = reference_trace.spectrum()
+    test_trace_fftd = test_trace.spectrum()
+
+    #3a. taper
+    #reference_trace_fftd.taper(1./taper)
+    #test_trace_fftd.taper(1./taper)
+
+    #m,n = L1_norm()
+    #3b ifft
+
+
+    #return m, n
 

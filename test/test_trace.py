@@ -395,7 +395,45 @@ class TraceTestCase(unittest.TestCase):
                     c2s.append(c)
 
                 downsampler.close()
-                assert  (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
+                assert(round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
+
+    def testChopToSameLength(self):
+        y = num.random.random(1000)
+        t1 = trace.Trace(tmin=0, tmax=100, ydata=y)
+        t2 = trace.Trace(tmin=0, tmax=110, ydata=y)
+        t1chopped, t2chopped = trace.chop_to_same_length(t1, t2)
+        dt1 = t1chopped.tmax-t1chopped.tmin
+        dt2 = t2chopped.tmax-t2chopped.tmin
+        self.assertEqual(dt1, dt2, 'Chopped files differ in tmin by %s' % str(dt2-dt1))
+
+
+    def testEqualizeSamplingRates(self):
+        y = num.random.random(1000)
+        t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        t2 = trace.Trace(tmin=0, ydata=y, deltat=0.5)
+        trace.equalize_sampling_rates(t1, t2)
+
+        self.assertEqual(t1.deltat,
+                         t2.deltat,
+                         'Equalization of sampling rates failed: dt1=%s, dt2=%s' % (t1.deltat,
+                                                                                    t2.deltat))
+
+    def testLxnorm(self):
+        """
+        expected results calculated by hand.
+        """
+        yref = num.array([0., 1.5 , 2.3, 0., -1.])
+        ytest= num.array([-1., 0.3, -0.3, 1., 0.2])
+        tref = trace.Trace(ydata=yref)
+        ttest= trace.Trace(ydata=ytest)
+        m, n = trace.Lx_norm(ttest, tref, norm=1)
+        self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
+        self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
+
+        m, n = trace.Lx_norm(ttest, tref, norm=2)
+        self.assertEqual(m, 11.64, 'L1-norm: m is not 11.64., but %s' % str(m))
+        self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
+
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
