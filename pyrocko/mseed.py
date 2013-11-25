@@ -6,6 +6,9 @@ from util import reuse, ensuredirs
 from struct import unpack
 from io_common import FileLoadError
 
+class CodeTooLong(MSeedError):
+    pass
+
 def iload(filename, load_data=True):
 
     try:
@@ -35,7 +38,20 @@ def as_tuple(tr):
     return (tr.network, tr.station, tr.location, tr.channel, 
             itmin, itmax, srate, tr.get_ydata())
 
+
+
 def save(traces, filename_template, additional={}):
+    for tr in traces:
+        for code, maxlen, val in zip(
+                ['network', 'station', 'location', 'channel'],
+                [2, 5, 2, 3],
+                tr.nslc_id):
+
+            if len(val) > maxlen:
+                raise CodeTooLong(
+                        '%s code too long to be stored in MSeed file: %s' % 
+                        (code, val))
+            
     fn_tr = {}
     for tr in traces:
         fn = tr.fill_template(filename_template, **additional)

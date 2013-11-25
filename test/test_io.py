@@ -65,6 +65,16 @@ class IOTestCase( unittest.TestCase ):
         assert tr.meta['cmpaz'] == 0.0
         assert tr.meta['cmpinc'] == 0.0
 
+    def testLongCode(self):
+        c = '1234567'
+        tr = trace.Trace(c,c,c,c, ydata=num.zeros(10))
+        e = None
+        try:
+            io.save(tr, 'test.mseed')
+        except mseed.CodeTooLong, e:
+            pass
+
+        assert isinstance(e, mseed.CodeTooLong)
 
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')
