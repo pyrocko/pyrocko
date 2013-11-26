@@ -1,10 +1,11 @@
 '''This module provides basic signal processing for seismic traces.'''
 
-import time, math, copy, logging, sys
+import time, math, copy, logging
 import numpy as num
 from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
 from pyrocko.util import reuse, hpfloat
+from guts import *
 
 logger = logging.getLogger('pyrocko.trace')
 
@@ -611,7 +612,7 @@ class Trace(object):
             data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
-    
+
     def abshilbert(self):
         self.drop_growbuffer()
         self.ydata = num.abs(hilbert(self.ydata))
@@ -918,7 +919,69 @@ class Trace(object):
         else:
             output.ydata = output.ydata.copy()
         return output
-        
+
+    def misfit(self, test_traces, misfit_setup):
+        """
+        Calculate misfit values m and n.
+
+        Downsamples higher sampled trace to sampling rate of lower samled trace.
+        """
+        corner_hp = misfit_setup.corner_hp
+        corner_lp = misfit_setup.corner_lp
+        order = misfit_setup.order
+        norm = misfit_setup.norm
+        taper = misfit_setup.taper
+
+        for test_trace in test_traces:
+
+            equalize_sampling_rates(test_trace, self)
+
+            wanted_tmin = min(test_trace.tmin, self.tmin)
+            wanted_tmax = max(test_trace.tmax, self.tmax)
+
+            if test_trace.tmax < wanted_tmax or test_trace.tmin > wanted_tmin:
+                test_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+
+            if self.tmax < wanted_tmax or self.tmin > test_trace.tmin:
+                self.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+
+            #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
+
+            if td_taper == 'auto':
+                td_taper = CosFader(1./width)
+
+            if fd_taper == 'auto':
+                fd_taper = CosFader(width)
+
+            if td_taper:
+                self.taper(td_taper)
+            map(self.taper, taper)
+            map(test_trace.taper, taper)
+
+            #2a filter
+            if not corner_hp:
+                self.lowpass(order=order,
+                                        corner=corner_lp)
+            elif not corner_lp:
+                self.highpass(order=order,
+                                         corner=corner_hp)
+            elif corner_hp and corner_lp:
+                self.bandpass(order, corner_hp, corner_lp)
+
+            #3. fft
+            reference_trace_fftd = self.spectrum()
+            test_trace_fftd = test_trace.spectrum()
+
+            #3a. taper
+            #reference_trace_fftd.taper(1./taper)
+            #test_trace_fftd.taper(1./taper)
+
+            #m,n = L1_norm()
+            #3b ifft
+
+
+            yield m, n
+
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
 
@@ -1663,13 +1726,24 @@ def merge_codes(a,b, sep='-'):
             o.append(sep.join((xa,xb)))
     return o
 
-class Taper(object):
+class Taper(Object):
+
+    a = Float.T()
+    b = Float.T()
+    c = Float.T()
+    d = Float.T()
+
+    def __init__(self, a, b, c, d):
+        Object.__init__(self, a=a, b=b, c=c, d=d)
+        pass
 
     def __call__(self, y, x0, dx):
         pass
 
 class CosTaper(Taper):
-    def __init__(self, a,b,c,d):
+
+    def __init__(self, a, b, c, d):
+        Taper.__init__(self, a=a, b=b, c=c, d=d)
         self._corners = (a,b,c,d)
 
     def __call__(self, y, x0, dx):
@@ -2283,13 +2357,12 @@ def co_downsample_to(target, deltat):
             g.close()
 
 
-from guts import *
 
 class MisfitSetup(Object):
     """
     contains misfit details.
     If only corner_hp (corner_lp) info is given -> apply highpass (lowpass, respectively).
-    Else, apply bandpass
+    Else, apply bandpass.
     """
     xmltagname = 'misfitsetup'
     description = String.T(optional=True)
@@ -2298,30 +2371,7 @@ class MisfitSetup(Object):
     order = Int.T(optional=False)
     norm = Int.T(optional=False)
     filter = String.T(optional=True)
-
-    # oder als string? ja:
-    taper = String.T(optional=False)
-
-    def save_xml(self, file_name):
-        dump_xml(self, file_name)
-
-
-def chop_to_same_length(t1, t2):
-    """
-    Chop two traces to same length (the length of the shorter trace)
-    (tested)
-    """
-    dt1 = t1.tmax - t1.tmin
-    dt2 = t2.tmax - t2.tmin
-    if dt1 < dt2:
-        t2_chopped = t2.chop(tmin=t2.tmin, tmax=t2.tmin+dt1, include_last=True)
-        return t1, t2_chopped
-    elif dt1 > dt2:
-        t1_chopped = t1.chop(tmin=t1.tmin, tmax=t1.tmin+dt2, include_last=True)
-        return t1_chopped, t2
-    else:
-        return t1, t2
-
+    taper = Taper.T(optional=False)
 
 def equalize_sampling_rates(t1, t2):
     '''
@@ -2336,57 +2386,11 @@ def equalize_sampling_rates(t1, t2):
 
 def Lx_norm(test_trace, reference_trace, norm=2):
     """
-    return m,n according to norm, defined by norm.
+    return m,n according to norm.
     (L1-norm tested,
     L2-norm failed....)
     """
     return pow(sum(abs(pow(reference_trace.ydata - test_trace.ydata, norm))), 1./norm), \
            sum(pow(abs(reference_trace.ydata), 1./norm))
 
-def misfit(test_trace, reference_trace, misfit_setup):
-    """
-    Calculate misfit values m and n.
-    """
-    assert isinstance(Trace, test_trace)
-    assert isinstance(Trace, reference_trace)
-
-    corner_hp = misfit_setup.corner_hp
-    corner_lp = misfit_setup.corner_lp
-    order = misfit_setup.order
-    norm = misfit_setup.norm
-    taper = misfit_setup.taper
-
-    #1. chop
-    test_trace, reference_trace = chop_to_same_length(test_trace, reference_trace)
-
-    #1a downsample
-    equalize_sampling_rates(test_trace, reference_trace)
-
-    #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
-    map(reference_trace.taper, taper)
-    map(test_trace.taper, taper)
-
-    #2a filter
-    if not corner_hp:
-        reference_trace.lowpass(order=order,
-                                corner=corner_lp)
-    elif not corner_lp:
-        reference_trace.highpass(order=order,
-                                 corner=corner_hp)
-    elif corner_hp and corner_lp:
-        reference_trace.bandpass(order, corner_hp, corner_lp)
-
-    #3. fft
-    reference_trace_fftd = reference_trace.spectrum()
-    test_trace_fftd = test_trace.spectrum()
-
-    #3a. taper
-    #reference_trace_fftd.taper(1./taper)
-    #test_trace_fftd.taper(1./taper)
-
-    #m,n = L1_norm()
-    #3b ifft
-
-
-    #return m, n
 
