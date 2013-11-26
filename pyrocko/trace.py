@@ -920,21 +920,26 @@ class Trace(object):
             output.ydata = output.ydata.copy()
         return output
 
+
     def misfit(self, test_traces, misfit_setup):
         """
         Calculate misfit values m and n.
 
-        Downsamples higher sampled trace to sampling rate of lower samled trace.
+        Downsamples higher sampled trace to sampling rate of lower sampled trace.
         """
+
         corner_hp = misfit_setup.corner_hp
         corner_lp = misfit_setup.corner_lp
         order = misfit_setup.order
         norm = misfit_setup.norm
         taper = misfit_setup.taper
+        domain = misfit_setup.domain
 
         for test_trace in test_traces:
 
             equalize_sampling_rates(test_trace, self)
+            test_trace.snap()
+            self.snap()
 
             wanted_tmin = min(test_trace.tmin, self.tmin)
             wanted_tmax = max(test_trace.tmax, self.tmax)
@@ -946,41 +951,36 @@ class Trace(object):
                 self.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
 
             #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
-
-            if td_taper == 'auto':
-                td_taper = CosFader(1./width)
-
-            if fd_taper == 'auto':
-                fd_taper = CosFader(width)
-
-            if td_taper:
-                self.taper(td_taper)
             map(self.taper, taper)
             map(test_trace.taper, taper)
 
             #2a filter
             if not corner_hp:
                 self.lowpass(order=order,
-                                        corner=corner_lp)
+                             corner=corner_lp)
             elif not corner_lp:
                 self.highpass(order=order,
-                                         corner=corner_hp)
+                              corner=corner_hp)
             elif corner_hp and corner_lp:
                 self.bandpass(order, corner_hp, corner_lp)
 
             #3. fft
-            reference_trace_fftd = self.spectrum()
+            self_fftd = self.spectrum()
             test_trace_fftd = test_trace.spectrum()
 
             #3a. taper
-            #reference_trace_fftd.taper(1./taper)
-            #test_trace_fftd.taper(1./taper)
+            #reference_trace_fftd.taper()
+            #test_trace_fftd.taper()
 
-            #m,n = L1_norm()
-            #3b ifft
+            if domain == 'frequency_domain':
+                yield Lx_norm(test_trace_fftd[0], self_fftd[0], norm=norm)
 
+            ifft_test_trace = num.fft.ifft(test_trace_fftd)
+            ifft_ref_trace = num.fft.ifft(self.fftd)
 
-            yield m, n
+            if domain == 'time_domain':
+                yield Lx_norm(ifft_test_trace.ydata, ifft_ref_trace.ydata)
+
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
@@ -1728,22 +1728,18 @@ def merge_codes(a,b, sep='-'):
 
 class Taper(Object):
 
-    a = Float.T()
-    b = Float.T()
-    c = Float.T()
-    d = Float.T()
-
-    def __init__(self, a, b, c, d):
-        Object.__init__(self, a=a, b=b, c=c, d=d)
-        pass
-
     def __call__(self, y, x0, dx):
         pass
 
 class CosTaper(Taper):
 
-    def __init__(self, a, b, c, d):
-        Taper.__init__(self, a=a, b=b, c=c, d=d)
+    a = Float.T()
+    b = Float.T()
+    c = Float.T()
+    d = Float.T()
+
+    def __init__(self, a=a, b=b, c=c, d=d):
+        Object.__init__(self, a=a, b=b, c=c, d=d)
         self._corners = (a,b,c,d)
 
     def __call__(self, y, x0, dx):
@@ -1751,12 +1747,18 @@ class CosTaper(Taper):
         apply_costaper(a, b, c, d, y, x0, dx)
 
 class CosFader(Taper):
+
+    xfade = Float.T(optional=True)
+    xfrac = Float.T(optional=True)
+
     def __init__(self, xfade=None, xfrac=None):
+        Object.__init__(self, xfade=xfade, xfrac=xfrac)
         assert (xfade is None) != (xfrac is None)
         self._xfade = xfade
         self._xfrac = xfrac
-    
+
     def __call__(self, y, x0, dx):
+
         xfade = self._xfade
 
         xlen = (y.size - 1)*dx
@@ -1772,7 +1774,10 @@ class CosFader(Taper):
 
 class GaussTaper(Taper):
 
+    alpha = Float.T()
+
     def __init__(self, alpha):
+        Object.__init__(self, alpha=alpha)
         self._alpha = alpha
 
     def __call__(self, y, x0, dx):
@@ -2364,6 +2369,7 @@ class MisfitSetup(Object):
     If only corner_hp (corner_lp) info is given -> apply highpass (lowpass, respectively).
     Else, apply bandpass.
     """
+
     xmltagname = 'misfitsetup'
     description = String.T(optional=True)
     corner_hp = Float.T(optional=True)
@@ -2372,25 +2378,32 @@ class MisfitSetup(Object):
     norm = Int.T(optional=False)
     filter = String.T(optional=True)
     taper = Taper.T(optional=False)
+    domain = String.T(default='timedomain')
+
 
 def equalize_sampling_rates(t1, t2):
     '''
     Equalize sampling rates of two traces. Means to reduce higher sampling rate to lower.
-    (tested)
+    Returns downsampled copies of races.
     '''
+
     if t1.deltat < t2.deltat:
+        t1_out = t1.copy()
+        t2_out = t2
         t1.downsample_to(deltat=t2.deltat)
     elif t1.deltat > t2.deltat:
+        t1_out = t1
+        t2_out = t2.copy()
         t2.downsample_to(deltat=t1.deltat)
-    return t1, t2
+    return t1_out, t2_out
 
-def Lx_norm(test_trace, reference_trace, norm=2):
+def Lx_norm(u, v, norm=2):
     """
     return m,n according to norm.
     (L1-norm tested,
     L2-norm failed....)
     """
-    return pow(sum(abs(pow(reference_trace.ydata - test_trace.ydata, norm))), 1./norm), \
-           sum(pow(abs(reference_trace.ydata), 1./norm))
+    return pow(sum(abs(pow(v - u, norm))), 1./norm), \
+           pow(sum(abs(v)), 1./norm)
 
 

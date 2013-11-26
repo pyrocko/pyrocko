@@ -1,4 +1,4 @@
-from pyrocko import trace, io, util, model
+from pyrocko import trace, util, model
 import unittest, math, time
 import numpy as num
 
@@ -396,15 +396,6 @@ class TraceTestCase(unittest.TestCase):
 
                 downsampler.close()
                 assert(round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
-    #
-    #def testChopToSameLength(self):
-    #    y = num.random.random(1000)
-    #    t1 = trace.Trace(tmin=0, tmax=100, ydata=y)
-    #    t2 = trace.Trace(tmin=0, tmax=110, ydata=y)
-    #    t1chopped, t2chopped = trace.chop_to_same_length(t1, t2)
-    #    dt1 = t1chopped.tmax-t1chopped.tmin
-    #    dt2 = t2chopped.tmax-t2chopped.tmin
-    #    self.assertEqual(dt1, dt2, 'Chopped files differ in tmin by %s' % str(dt2-dt1))
 
 
     def testEqualizeSamplingRates(self):
@@ -428,13 +419,13 @@ class TraceTestCase(unittest.TestCase):
         ytest= num.array([-1., 0.3, -0.3, 1., 0.2])
         tref = trace.Trace(ydata=yref)
         ttest= trace.Trace(ydata=ytest)
-        m, n = trace.Lx_norm(ttest, tref, norm=1)
+        m, n = trace.Lx_norm(ytest, yref, norm=1)
         self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
         self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
 
-        #m, n = trace.Lx_norm(ttest, tref, norm=2)
-        #self.assertEqual(m, 11.64, 'L1-norm: m is not 11.64., but %s' % str(m))
-        #self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
+        #m, n = trace.Lx_norm(ytest, yref, norm=2)
+        #self.assertEqual(m, 11.64, 'L2-norm: m is not 11.64., but %s' % str(m))
+        #self.assertEqual(n, 4.8, 'L2-norm: m is not 4.8, but %s' % str(n))
 
 
 if __name__ == "__main__":
