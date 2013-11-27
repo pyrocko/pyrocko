@@ -921,65 +921,66 @@ class Trace(object):
         return output
 
 
-    def misfit(self, test_traces, misfit_setup):
+    def misfit(self, candidates, misfit_setup):
         """
         Calculate misfit values m and n.
 
         Downsamples higher sampled trace to sampling rate of lower sampled trace.
         """
-
-        corner_hp = misfit_setup.corner_hp
-        corner_lp = misfit_setup.corner_lp
-        order = misfit_setup.order
+        # schwierig, weil yield nicht eindeutig:
+        # oder als dict mit setup description als key?
+        # for misfit_setup in misfit_setups:
+        freqlimits = misfit_setup.freqlimits
         norm = misfit_setup.norm
         taper = misfit_setup.taper
         domain = misfit_setup.domain
 
         for test_trace in test_traces:
+            
+            test_trace, reference_trace = equalize_sampling_rates(test_trace, self)
 
-            equalize_sampling_rates(test_trace, self)
             test_trace.snap()
-            self.snap()
+            reference_trace.snap()
 
-            wanted_tmin = min(test_trace.tmin, self.tmin)
-            wanted_tmax = max(test_trace.tmax, self.tmax)
+            wanted_tmin = min(test_trace.tmin, reference_trace.tmin)
+            wanted_tmax = max(test_trace.tmax, reference_trace.tmax)
+            
 
             if test_trace.tmax < wanted_tmax or test_trace.tmin > wanted_tmin:
                 test_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
 
-            if self.tmax < wanted_tmax or self.tmin > test_trace.tmin:
-                self.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+            if reference_trace.tmax < wanted_tmax or reference_trace.tmin > test_trace.tmin:
+                reference_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
 
             #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
-            map(self.taper, taper)
-            map(test_trace.taper, taper)
+            reference_trace.taper(taper) 
+            test_trace.taper(taper)
 
-            #2a filter
-            if not corner_hp:
-                self.lowpass(order=order,
-                             corner=corner_lp)
-            elif not corner_lp:
-                self.highpass(order=order,
-                              corner=corner_hp)
-            elif corner_hp and corner_lp:
-                self.bandpass(order, corner_hp, corner_lp)
+            # padding mit zeros:
+            ndata = reference_trace.ydata.size
+            pad_size = nextpow2(ndata)
+            reference_pad = num.zeros(pad_size, dtype=num.float)
+            reference_pad[:ndata] = reference_trace.ydata
+            test_pad = num.zeros(pad_size, dtype=num.float)
+            test_pad[:ndata] = test_trace.ydata
 
             #3. fft
-            self_fftd = self.spectrum()
-            test_trace_fftd = test_trace.spectrum()
-
-            #3a. taper
-            #reference_trace_fftd.taper()
-            #test_trace_fftd.taper()
+            reference_fft = num.fft.rfft(reference_pad)
+            test_fft = num.fft.rfft(test_pad)
+            # taper
+            transfer_function = FrequencyResponse()
+            coefs = reference_trace._get_tapered_coefs(pad_size, freqlimits, transfer_function)
+            reference_fft *= coefs
+            test_fft *= coefs
 
             if domain == 'frequency_domain':
-                yield Lx_norm(test_trace_fftd[0], self_fftd[0], norm=norm)
+                yield Lx_norm(test_fft, reference_fft, norm=norm)
 
-            ifft_test_trace = num.fft.ifft(test_trace_fftd)
-            ifft_ref_trace = num.fft.ifft(self.fftd)
+            test_ifft = num.fft.irfft(test_fft)
+            reference_ifft = num.fft.irfft(reference_fft)
 
             if domain == 'time_domain':
-                yield Lx_norm(ifft_test_trace.ydata, ifft_ref_trace.ydata)
+                yield Lx_norm(reference_ifft, test_ifft, norm=norm)
 
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
@@ -1726,10 +1727,12 @@ def merge_codes(a,b, sep='-'):
             o.append(sep.join((xa,xb)))
     return o
 
+
 class Taper(Object):
 
     def __call__(self, y, x0, dx):
         pass
+
 
 class CosTaper(Taper):
 
@@ -1745,6 +1748,7 @@ class CosTaper(Taper):
     def __call__(self, y, x0, dx):
         a,b,c,d = self._corners
         apply_costaper(a, b, c, d, y, x0, dx)
+
 
 class CosFader(Taper):
 
@@ -1772,6 +1776,7 @@ class CosFader(Taper):
 
         apply_costaper(a, b, c, d, y, x0, dx)
 
+
 class GaussTaper(Taper):
 
     alpha = Float.T()
@@ -1783,6 +1788,7 @@ class GaussTaper(Taper):
     def __call__(self, y, x0, dx):
         f = x0 + num.arange( y.size )*dx
         y *= num.exp(-(2.*num.pi)**2/(4.*self._alpha**2) * f**2)
+
 
 class FrequencyResponse(object):
     '''Evaluates frequency response at given frequencies.'''
@@ -2372,38 +2378,38 @@ class MisfitSetup(Object):
 
     xmltagname = 'misfitsetup'
     description = String.T(optional=True)
-    corner_hp = Float.T(optional=True)
-    corner_lp = Float.T(optional=True)
-    order = Int.T(optional=False)
+    freqlimits = List.T(Float.T(optional=True))
     norm = Int.T(optional=False)
-    filter = String.T(optional=True)
     taper = Taper.T(optional=False)
-    domain = String.T(default='timedomain')
+    domain = String.T(default='time_domain')
 
 
-def equalize_sampling_rates(t1, t2):
+def equalize_sampling_rates(trace_1, trace_2):
     '''
     Equalize sampling rates of two traces. Means to reduce higher sampling rate to lower.
     Returns downsampled copies of races.
     '''
 
-    if t1.deltat < t2.deltat:
-        t1_out = t1.copy()
-        t2_out = t2
-        t1.downsample_to(deltat=t2.deltat)
-    elif t1.deltat > t2.deltat:
-        t1_out = t1
-        t2_out = t2.copy()
-        t2.downsample_to(deltat=t1.deltat)
-    return t1_out, t2_out
+    if trace_1.deltat < trace_2.deltat:
+        t1_out = trace_1.copy()
+        t1_out.downsample_to(deltat=trace_2.deltat)
+        logger.warning('trace_1 downsampled!')
+        return t1_out, trace_2
+    elif trace_1.deltat > trace_2.deltat:
+        t2_out = trace_2.copy()
+        trace_2.downsample_to(deltat=trace_1.deltat)
+        logger.warning('trace_2 downsampled!')
+        return trace_1, t2_out
+    else:
+        return trace_1, trace_2
+
 
 def Lx_norm(u, v, norm=2):
     """
     return m,n according to norm.
     (L1-norm tested,
-    L2-norm failed....)
+    L2-norm tested)
     """
     return pow(sum(abs(pow(v - u, norm))), 1./norm), \
            pow(sum(abs(v)), 1./norm)
-
 
