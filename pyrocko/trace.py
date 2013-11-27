@@ -739,12 +739,18 @@ class Trace(object):
         self.tmax += tshift
         self._update_ids()
         
-    def snap(self):
+    def snap(self, inplace=True):
         '''Shift trace samples to nearest even multiples of the sampling rate.'''
-
-        self.tmin = round(self.tmin/self.deltat)*self.deltat 
-        self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
-        self._update_ids()
+        if inplace:
+            self.tmin = round(self.tmin/self.deltat)*self.deltat 
+            self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
+            self._update_ids()
+        else:
+            snapped_trace = self.copy()
+            snapped_trace.tmin = round(self.tmin/self.deltat)*self.deltat
+            snapped_trace.tmax = self.tmin + (self.ydata.size-1)*self.deltat
+            snapped_trace._update_ids()
+            return snapped_trace
 
     def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''Run special STA/LTA filter where the short time window is centered on the long time window.
