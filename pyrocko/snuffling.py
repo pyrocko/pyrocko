@@ -377,7 +377,6 @@ class Snuffling:
     def get_parameters(self):
         '''Get the snuffling's adjustable parameter definitions.
         
-        
         Returns a list of objects of type Param.
         '''
         
@@ -418,6 +417,12 @@ class Snuffling:
             control.set_range(vmin, vmax)
 
     def set_parameter_choices(self, ident, choices):
+        '''Update the choices of a Choice parameter.
+
+        :param ident: identifier of the parameter
+        :param choices: list of strings
+        '''
+
         control = self._param_controls.get(ident, None)
         if control:
             control.set_choices(choices)
