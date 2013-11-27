@@ -931,47 +931,57 @@ class Trace(object):
         """
         Calculate misfit values m and n.
 
+        :param candidates: iterable object of traces
+        :param setup: (List of) objects of MisfitSetup
+
         Downsamples higher sampled trace to sampling rate of lower sampled trace.
         """
-        # schwierig, weil yield nicht eindeutig:
-        # oder als dict mit setup description als key?
-        # for setup in misfit_setups:
-        freqlimits = setup.freqlimits
-        norm = setup.norm
-        taper = setup.taper
-        domain = setup.domain
     
-        if isinstance(setup, MisfitSetup):
-            setup = [setup]
+        if isinstance(setups, MisfitSetup):
+            setups = [setups]
             single_setup = True            
 
         m = []
         n = []
 
-        for test_trace in test_traces:
-            for setup in setups:
-                test_trace, reference_trace = equalize_sampling_rates(test_trace, self)
+        for candidate in candidates:
+            
 
-                test_trace = test_trace.snap(inplace=False)
+            for setup in setups:
+            
+                norm = setup.norm
+                taper = setup.taper
+                domain = setup.domain
+                frequency_response = setup.frequency_response
+                freqlimits = setup.freqlimits
+                tfade = setup.tfade
+
+                candidate, reference_trace = equalize_sampling_rates(candidate, self)
+
+                reference_trace.transfer(tfade=tfade,
+                                         freqlimits=freqlimits, 
+                                         transfer_function=frequency_response)
+
+                candidate = candidate.snap(inplace=False)
                 reference_trace = reference_trace.snap(inplace=False)
 
-                wanted_tmin = min(test_trace.tmin, reference_trace.tmin)
-                wanted_tmax = max(test_trace.tmax, reference_trace.tmax)
+                wanted_tmin = min(candidate.tmin, reference_trace.tmin)
+                wanted_tmax = max(candidate.tmax, reference_trace.tmax)
                 
-                if test_trace.tmax < wanted_tmax or test_trace.tmin > wanted_tmin:
-                    test_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+                if candidate.tmax < wanted_tmax or candidate.tmin > wanted_tmin:
+                    candidate.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
 
-                if reference_trace.tmax < wanted_tmax or reference_trace.tmin > test_trace.tmin:
+                if reference_trace.tmax < wanted_tmax or reference_trace.tmin > candidate.tmin:
                     reference_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
 
-                if abs(reference_trace.tmin-test_trace.tmin) > reference_trace.deltat*1E-4 or \
-                        abs(reference_trace.tmax - test_trace.tmax) > reference_trace.tmax or \
-                        reference_trace.ydata.shape is not test_trace.ydata.shape:
-                            raise MisAlignedTraces('Cannot calculate misfit of %s \n and %s \n due to misaligned traces.')
+                if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat*1E-4 or \
+                        abs(reference_trace.tmax - candidate.tmax) > reference_trace.tmax or \
+                        reference_trace.ydata.shape is not candidate.ydata.shape:
+                            raise MisAlignedTraces('Cannot calculate misfit of %s \n and %s \n due to misaligned traces.' % (reference_trace, candidate))
 
                 #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
                 reference_trace.taper(taper) 
-                test_trace.taper(taper)
+                candidate.taper(taper)
 
                 # padding mit zeros:
                 ndata = reference_trace.ydata.size
@@ -979,14 +989,15 @@ class Trace(object):
                 reference_pad = num.zeros(pad_size, dtype=num.float)
                 reference_pad[:ndata] = reference_trace.ydata
                 test_pad = num.zeros(pad_size, dtype=num.float)
-                test_pad[:ndata] = test_trace.ydata
+                test_pad[:ndata] = candidate.ydata
 
+                
                 #3. fft
                 reference_fft = num.fft.rfft(reference_pad)
                 test_fft = num.fft.rfft(test_pad)
+
                 # taper
-                transfer_function = FrequencyResponse()
-                coefs = reference_trace._get_tapered_coefs(pad_size, freqlimits, transfer_function)
+                
                 reference_fft *= coefs
                 test_fft *= coefs
 
@@ -1821,27 +1832,35 @@ class GaussTaper(Taper):
         y *= num.exp(-(2.*num.pi)**2/(4.*self._alpha**2) * f**2)
 
 
-class FrequencyResponse(object):
+class FrequencyResponse(Object):
     '''Evaluates frequency response at given frequencies.'''
     
+    freqs = List.T()
+
     def evaluate(self, freqs):
         coefs = num.ones(freqs.size, dtype=num.complex)
         return coefs
    
 class InverseEvalresp(FrequencyResponse):
-    '''Calls evalresp and generates values of the inverse instrument response for 
-       deconvolution of instrument response.
-       
-       :param respfile: response file in evalresp format
-       :param trace: trace for which the response is to be extracted from the file
-       :param target: ``'dis'`` for displacement or ``'vel'`` for velocity
-       '''
+    '''
+    Calls evalresp and generates values of the inverse instrument response for 
+    deconvolution of instrument response.
+   
+    :param respfile: response file in evalresp format
+    :param trace: trace for which the response is to be extracted from the file
+    :param target: ``'dis'`` for displacement or ``'vel'`` for velocity
+    '''
+    respfile = String.T()
+    nslc_id = Tuple.T(4, String.T())
+    target = String.T(default='dis')
+    instant = Float.T()
     
     def __init__(self, respfile, trace, target='dis'):
         self.respfile = respfile
         self.nslc_id = trace.nslc_id
         self.instant = (trace.tmin + trace.tmax)/2.
         self.target = target
+        Object.__init__(self, respfile=self.respfile, nslc_id=self.nslc_id, instant=self.instant, target=self.target)
         
     def evaluate(self, freqs):
         network, station, location, channel = self.nslc_id
@@ -1871,7 +1890,12 @@ class PoleZeroResponse(FrequencyResponse):
     The poles and zeros should be given as angular frequencies, not in Hz.
     '''
     
+    zeros = Tuple.T()
+    poles = Tuple.T()
+    contant = Float.T()
+
     def __init__(self, zeros, poles, constant):
+        Object.__init__(self, zeros=zeros, poles=poles, contant=constant)
         self.zeros = zeros
         self.poles = poles
         self.constant = constant
@@ -2399,38 +2423,44 @@ def co_downsample_to(target, deltat):
             g.close()
 
 
-
 class MisfitSetup(Object):
     """
-    contains misfit details.
-    If only corner_hp (corner_lp) info is given -> apply highpass (lowpass, respectively).
-    Else, apply bandpass.
-    """
+    Contains misfit details. 
 
+    Can be dumped to xml or yaml file.
+    """
     xmltagname = 'misfitsetup'
     description = String.T(optional=True)
-    freqlimits = List.T(Float.T(optional=True))
     norm = Int.T(optional=False)
     taper = Taper.T(optional=False)
+    freqlimits = List.T(Float.T())
+    frequency_response = FrequencyResponse.T()
     domain = String.T(default='time_domain')
+    tfade = Float.T()
 
 
 def equalize_sampling_rates(trace_1, trace_2):
     '''
     Equalize sampling rates of two traces. Means to reduce higher sampling rate to lower.
     Returns downsampled copies of races.
+    
+    If resampling, returns a copy of the resampled trace. 
     '''
+    if same_sampling_rate(trace_1, trace_2):
+        return trace_1, trace_2
 
     if trace_1.deltat < trace_2.deltat:
         t1_out = trace_1.copy()
         t1_out.downsample_to(deltat=trace_2.deltat)
         logger.warning('trace_1 downsampled!')
         return t1_out, trace_2
+    
     elif trace_1.deltat > trace_2.deltat:
         t2_out = trace_2.copy()
         trace_2.downsample_to(deltat=trace_1.deltat)
         logger.warning('trace_2 downsampled!')
         return trace_1, t2_out
+    
     else:
         return trace_1, trace_2
 

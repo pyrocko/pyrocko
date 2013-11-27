@@ -428,14 +428,18 @@ class TraceTestCase(unittest.TestCase):
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         ttraces = [t2]
         taper = trace.GaussTaper(alpha=2.)
+        fresponse = trace.FrequencyResponse()
         #taper = trace.CosTaper(xfade=2.)
         mfsetup = trace.MisfitSetup(
-                freqlimits=(1,2,40,80),
                 norm=2,
                 taper=taper,
-                domain='time_domain')
-        for m, n in t1.misfit( ttraces, misfit_setup = mfsetup):
+                domain='time_domain',
+                tfade=1.,
+                freqlimits=(1,2,20,40),
+                frequency_response=fresponse)
+        for m, n in t1.misfit( candidates=ttraces, setups= mfsetup):
             self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
+        del mfsetup
 
 
     def testMisfitOfSameTracesDtDiffNearlyZero(self):
@@ -444,17 +448,30 @@ class TraceTestCase(unittest.TestCase):
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.05)
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         ttraces = [t2]
-        #taper = trace.GaussTaper(alpha=2.)
-        taper = trace.CosTaper(xfade=2.)
+        taper = trace.GaussTaper(alpha=2.)
+        #taper = trace.CosTaper(xfade=2.)
+        fresponse = trace.FrequencyResponse()
         mfsetup = trace.MisfitSetup(
-                freqlimits=(1,2,40,80),
                 norm=2,
                 taper=taper,
-                domain='time_domain')
-        for m, n in t1.misfit( ttraces, misfit_setup = mfsetup):
+                domain='time_domain',
+                tfade=1.,
+                freqlimits=(1,2,20,40),
+                frequency_response=fresponse)
+        for m, n in t1.misfit( candidates=ttraces, setups=mfsetup):
             self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
+        del mfsetup
 
+    def testValidateFrequencyResponses(self):
+        ttrace = trace.Trace(ydata=num.random.random(1000))
+        inverse_eval = trace.InverseEvalresp(respfile='test.txt',
+                                             trace=ttrace,
+                                             target='vel')
+        inverse_eval.validate()
         
+        pzk_response = trace.PoleZeroResponse(zeros=[0.,0], poles=[1.,2.], constant=10.)
+        pzk_response.validate()
+
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
