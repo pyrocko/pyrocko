@@ -494,7 +494,7 @@ class UnknownClassicPhase(Exception):
         self.phasename = phasename
 
     def __str__(self):
-        return 'Cake does not know this phase: %s' % self.phasename
+        return 'Unknown classic phase name: %s' % self.phasename
 
 class PhaseDefParseError(Exception):
     '''Exception raised when an error occures during parsing of a phase definition string.'''
