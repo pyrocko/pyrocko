@@ -274,10 +274,12 @@ class Snuffling:
         self._post_process_hook_enabled = False
         self.reset_gui()
 
-    def reset_gui(self):
+    def reset_gui(self, reloaded=False):
         if self._panel or self._menuitem:
+            sett = self.get_settings()
             self.delete_gui()
-            self.setup_gui()
+            self.setup_gui(reloaded=reloaded)
+            self.set_settings(sett)
    
     def show_message(self, kind, message):
         try:
