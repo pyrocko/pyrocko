@@ -402,12 +402,9 @@ class TraceTestCase(unittest.TestCase):
         y = num.random.random(1000)
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.5)
-        import pdb
-        pdb.set_trace()
-        trace.equalize_sampling_rates(t1, t2)
-
-        self.assertEqual(t1.deltat,
-                         t2.deltat,
+        t1_new, t2_new = trace.equalize_sampling_rates(t1, t2)
+        self.assertEqual(t1_new.deltat,
+                         t2_new.deltat,
                          'Equalization of sampling rates failed: dt1=%s, dt2=%s' % (t1.deltat,
                                                                                     t2.deltat))
 
@@ -423,10 +420,41 @@ class TraceTestCase(unittest.TestCase):
         self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
         self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
 
-        #m, n = trace.Lx_norm(ytest, yref, norm=2)
-        #self.assertEqual(m, 11.64, 'L2-norm: m is not 11.64., but %s' % str(m))
-        #self.assertEqual(n, 4.8, 'L2-norm: m is not 4.8, but %s' % str(n))
 
+    def testMisfitOfSameTracesZero(self):
+        y = num.random.random(10000)
+        y -= max(y)*.5
+        t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        ttraces = [t2]
+        taper = trace.GaussTaper(alpha=2.)
+        #taper = trace.CosTaper(xfade=2.)
+        mfsetup = trace.MisfitSetup(
+                freqlimits=(1,2,40,80),
+                norm=2,
+                taper=taper,
+                domain='time_domain')
+        for m, n in t1.misfit( ttraces, misfit_setup = mfsetup):
+            self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
+
+
+    def testMisfitOfSameTracesDtDiffNearlyZero(self):
+        y = num.random.random(10000)
+        y -= max(y)*.5
+        t1 = trace.Trace(tmin=0, ydata=y, deltat=0.05)
+        t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        ttraces = [t2]
+        #taper = trace.GaussTaper(alpha=2.)
+        taper = trace.CosTaper(xfade=2.)
+        mfsetup = trace.MisfitSetup(
+                freqlimits=(1,2,40,80),
+                norm=2,
+                taper=taper,
+                domain='time_domain')
+        for m, n in t1.misfit( ttraces, misfit_setup = mfsetup):
+            self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
+
+        
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
