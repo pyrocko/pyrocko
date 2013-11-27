@@ -1921,7 +1921,9 @@ def MakePileViewerMainClass(base):
             if tmax < tmin:
                 tmin, tmax = tmax, tmin
 
-            dt = self.see_data_params()[-1] * 0.95
+            deltatmin = self.content_deltat_range()[0]
+            dt = deltatmin * self.visible_length * 0.95
+
             if dt == 0.0:
                 dt = 1.0
 
