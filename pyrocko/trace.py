@@ -927,7 +927,7 @@ class Trace(object):
         return output
 
 
-    def misfit(self, candidates, misfit_setup):
+    def misfit(self, candidates, setups):
         """
         Calculate misfit values m and n.
 
@@ -935,58 +935,79 @@ class Trace(object):
         """
         # schwierig, weil yield nicht eindeutig:
         # oder als dict mit setup description als key?
-        # for misfit_setup in misfit_setups:
-        freqlimits = misfit_setup.freqlimits
-        norm = misfit_setup.norm
-        taper = misfit_setup.taper
-        domain = misfit_setup.domain
+        # for setup in misfit_setups:
+        freqlimits = setup.freqlimits
+        norm = setup.norm
+        taper = setup.taper
+        domain = setup.domain
+    
+        if isinstance(setup, MisfitSetup):
+            setup = [setup]
+            single_setup = True            
+
+        m = []
+        n = []
 
         for test_trace in test_traces:
-            
-            test_trace, reference_trace = equalize_sampling_rates(test_trace, self)
+            for setup in setups:
+                test_trace, reference_trace = equalize_sampling_rates(test_trace, self)
 
-            test_trace.snap()
-            reference_trace.snap()
+                test_trace = test_trace.snap(inplace=False)
+                reference_trace = reference_trace.snap(inplace=False)
 
-            wanted_tmin = min(test_trace.tmin, reference_trace.tmin)
-            wanted_tmax = max(test_trace.tmax, reference_trace.tmax)
-            
+                wanted_tmin = min(test_trace.tmin, reference_trace.tmin)
+                wanted_tmax = max(test_trace.tmax, reference_trace.tmax)
+                
+                if test_trace.tmax < wanted_tmax or test_trace.tmin > wanted_tmin:
+                    test_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
 
-            if test_trace.tmax < wanted_tmax or test_trace.tmin > wanted_tmin:
-                test_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+                if reference_trace.tmax < wanted_tmax or reference_trace.tmin > test_trace.tmin:
+                    reference_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
 
-            if reference_trace.tmax < wanted_tmax or reference_trace.tmin > test_trace.tmin:
-                reference_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+                if abs(reference_trace.tmin-test_trace.tmin) > reference_trace.deltat*1E-4 or \
+                        abs(reference_trace.tmax - test_trace.tmax) > reference_trace.tmax or \
+                        reference_trace.ydata.shape is not test_trace.ydata.shape:
+                            raise MisAlignedTraces('Cannot calculate misfit of %s \n and %s \n due to misaligned traces.')
 
-            #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
-            reference_trace.taper(taper) 
-            test_trace.taper(taper)
+                #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
+                reference_trace.taper(taper) 
+                test_trace.taper(taper)
 
-            # padding mit zeros:
-            ndata = reference_trace.ydata.size
-            pad_size = nextpow2(ndata)
-            reference_pad = num.zeros(pad_size, dtype=num.float)
-            reference_pad[:ndata] = reference_trace.ydata
-            test_pad = num.zeros(pad_size, dtype=num.float)
-            test_pad[:ndata] = test_trace.ydata
+                # padding mit zeros:
+                ndata = reference_trace.ydata.size
+                pad_size = nextpow2(ndata)
+                reference_pad = num.zeros(pad_size, dtype=num.float)
+                reference_pad[:ndata] = reference_trace.ydata
+                test_pad = num.zeros(pad_size, dtype=num.float)
+                test_pad[:ndata] = test_trace.ydata
 
-            #3. fft
-            reference_fft = num.fft.rfft(reference_pad)
-            test_fft = num.fft.rfft(test_pad)
-            # taper
-            transfer_function = FrequencyResponse()
-            coefs = reference_trace._get_tapered_coefs(pad_size, freqlimits, transfer_function)
-            reference_fft *= coefs
-            test_fft *= coefs
+                #3. fft
+                reference_fft = num.fft.rfft(reference_pad)
+                test_fft = num.fft.rfft(test_pad)
+                # taper
+                transfer_function = FrequencyResponse()
+                coefs = reference_trace._get_tapered_coefs(pad_size, freqlimits, transfer_function)
+                reference_fft *= coefs
+                test_fft *= coefs
 
-            if domain == 'frequency_domain':
-                yield Lx_norm(test_fft, reference_fft, norm=norm)
+                if domain == 'frequency_domain':
+                    m_tmp, n_tmp = Lx_norm(test_fft, reference_fft, norm=norm)
+                    m.append(m_tmp)
+                    n.append(n_tmp)
+                    continue
 
-            test_ifft = num.fft.irfft(test_fft)
-            reference_ifft = num.fft.irfft(reference_fft)
+                test_ifft = num.fft.irfft(test_fft)
+                reference_ifft = num.fft.irfft(reference_fft)
 
-            if domain == 'time_domain':
-                yield Lx_norm(reference_ifft, test_ifft, norm=norm)
+                if domain == 'time_domain':
+                    m_tmp, n_tmp = Lx_norm(test_ifft, reference_ifft, norm=norm)
+                    m.append(m_tmp)
+                    n.append(n_tmp)
+
+            if single_setup:
+                yield m[0], n[0]
+            else:
+                yield m, n
 
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
@@ -1134,6 +1155,10 @@ def snuffle(traces, **kwargs):
         trf = pile.MemTracesFile(p, traces)
         p.add_file(trf)
     return snuffler.snuffle(p, **kwargs)
+
+class MisAlignedTraces(Exception):
+    '''This exception is raised by some :py:class:`Trace` operations when tmin, tmax or number of samples do not match.'''
+    pass
 
 class NoData(Exception):
     '''This exception is raised by some :py:class:`Trace` operations when no or not enough data is available.'''
