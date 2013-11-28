@@ -1880,6 +1880,10 @@ class InverseEvalresp(FrequencyResponse):
 class PoleZeroResponse(FrequencyResponse):
     '''Evaluates frequency response from pole-zero representation.
 
+    :param zeros: numpy.array object containig complex zeros
+    :param poles: numpy.array object containig complex poles
+    :param constant: gain as floating point number
+
     ::
 
                            (j*2*pi*f - zeros[0]) * (j*2*pi*f - zeros[1]) * ... 
@@ -1888,14 +1892,15 @@ class PoleZeroResponse(FrequencyResponse):
     
    
     The poles and zeros should be given as angular frequencies, not in Hz.
+
     '''
     
     zeros = Tuple.T()
     poles = Tuple.T()
-    contant = Float.T()
+    constant = Float.T()
 
     def __init__(self, zeros, poles, constant):
-        Object.__init__(self, zeros=zeros, poles=poles, contant=constant)
+        Object.__init__(self, zeros=zeros, poles=poles, constant=constant)
         self.zeros = zeros
         self.poles = poles
         self.constant = constant
