@@ -1,4 +1,4 @@
-from pyrocko import trace, util, model
+from pyrocko import trace, util, model, pile
 import unittest, math, time
 import numpy as num
 
@@ -420,7 +420,6 @@ class TraceTestCase(unittest.TestCase):
         self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
         self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
 
-
     def testMisfitOfSameTracesZero(self):
         y = num.random.random(10000)
         y -= max(y)*.5
@@ -441,24 +440,34 @@ class TraceTestCase(unittest.TestCase):
             self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
         del mfsetup
 
-
     def testMisfitOfSameTracesDtDiffNearlyZero(self):
-        y = num.random.random(10000)
-        y -= max(y)*.5
-        t1 = trace.Trace(tmin=0, ydata=y, deltat=0.05)
-        t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
-        ttraces = [t2]
-        taper = trace.GaussTaper(alpha=2.)
-        #taper = trace.CosTaper(xfade=2.)
+        p = pile.make_pile('2010.057.20.30.26.5356.IC.BJT.00.LHZ.R.SAC', show_progress=False)
+        tt = p.all()[0]
+        tt2 = tt.copy()
+        rt = tt.copy()
+        rt.downsample_to(tt.deltat*5)
+        self.assertNotEqual(tt.deltat, rt.deltat, 'Something went wrong when downsampling reference trace rt')
+
+        taper1 = trace.GaussTaper(alpha=2.)
+        taper2 = trace.CosFader(xfade=2.)
         fresponse = trace.FrequencyResponse()
-        mfsetup = trace.MisfitSetup(
+        mfsetup1 = trace.MisfitSetup(
                 norm=2,
-                taper=taper,
+                taper=taper1,
                 domain='time_domain',
                 tfade=1.,
                 freqlimits=(1,2,20,40),
                 frequency_response=fresponse)
-        for m, n in t1.misfit( candidates=ttraces, setups=mfsetup):
+        mfsetup2 = trace.MisfitSetup(
+                norm=1,
+                taper=taper2,
+                domain='time_domain',
+                tfade=1.,
+                freqlimits=(1,2,20,40),
+                frequency_response=fresponse)
+        import pdb 
+        pdb.set_trace()
+        for m, n in rt.misfit( candidates=[tt, tt2], setups=[mfsetup1, mfsetup2]):
             self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
         del mfsetup
 
@@ -469,7 +478,7 @@ class TraceTestCase(unittest.TestCase):
                                              target='vel')
         inverse_eval.validate()
         
-        pzk_response = trace.PoleZeroResponse(zeros=[0.,0], poles=[1.,2.], constant=10.)
+        pzk_response = trace.PoleZeroResponse(zeros=num.array([0.,0], dtype=num.complex), poles=num.array([1.,2.], dtype=num.complex), constant=10.)
         pzk_response.validate()
 
 

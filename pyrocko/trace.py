@@ -6,6 +6,7 @@ from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
 from pyrocko.util import reuse, hpfloat
 from guts import *
+from guts_array import *
 
 logger = logging.getLogger('pyrocko.trace')
 
@@ -741,14 +742,21 @@ class Trace(object):
         
     def snap(self, inplace=True):
         '''Shift trace samples to nearest even multiples of the sampling rate.'''
+
         if inplace:
             self.tmin = round(self.tmin/self.deltat)*self.deltat 
             self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
             self._update_ids()
         else:
+            tmin = round(self.tmin/self.deltat)*self.deltat
+
+            tmax = self.tmin + (self.ydata.size-1)*self.deltat
+            if abs(self.tmin - tmin) < 1e-2*self.deltat and \
+                    abs(self.tmax - tmax) < 1e-1*self.deltat:
+                        return self
             snapped_trace = self.copy()
-            snapped_trace.tmin = round(self.tmin/self.deltat)*self.deltat
-            snapped_trace.tmax = self.tmin + (self.ydata.size-1)*self.deltat
+            snapped_trace.tmin = tmin
+            snapped_trace.tmax = tmax
             snapped_trace._update_ids()
             return snapped_trace
 
@@ -936,16 +944,15 @@ class Trace(object):
 
         Downsamples higher sampled trace to sampling rate of lower sampled trace.
         """
-    
         if isinstance(setups, MisfitSetup):
             setups = [setups]
             single_setup = True            
+        else:
+            single_setup = False
 
         m = []
         n = []
-
         for candidate in candidates:
-            
 
             for setup in setups:
             
@@ -958,26 +965,27 @@ class Trace(object):
 
                 candidate, reference_trace = equalize_sampling_rates(candidate, self)
 
-                reference_trace.transfer(tfade=tfade,
-                                         freqlimits=freqlimits, 
-                                         transfer_function=frequency_response)
-
                 candidate = candidate.snap(inplace=False)
                 reference_trace = reference_trace.snap(inplace=False)
 
                 wanted_tmin = min(candidate.tmin, reference_trace.tmin)
                 wanted_tmax = max(candidate.tmax, reference_trace.tmax)
-                
+               
                 if candidate.tmax < wanted_tmax or candidate.tmin > wanted_tmin:
-                    candidate.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+                    candidate.extend(tmin=wanted_tmin, 
+                                     tmax=wanted_tmax, 
+                                     fillmethod='repeat')
 
                 if reference_trace.tmax < wanted_tmax or reference_trace.tmin > candidate.tmin:
-                    reference_trace.extend(tmin=wanted_tmin, tmax=wanted_tmax, fillmethod='repeat')
+                    reference_trace.extend(tmin=wanted_tmin,
+                                           tmax=wanted_tmax,
+                                           fillmethod='repeat')
 
                 if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat*1E-4 or \
                         abs(reference_trace.tmax - candidate.tmax) > reference_trace.tmax or \
-                        reference_trace.ydata.shape is not candidate.ydata.shape:
-                            raise MisAlignedTraces('Cannot calculate misfit of %s \n and %s \n due to misaligned traces.' % (reference_trace, candidate))
+                        reference_trace.ydata.shape != candidate.ydata.shape:
+                            raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.'
+                                                                                % (reference_trace.nslc_id, candidate.nslc_id))
 
                 #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
                 reference_trace.taper(taper) 
@@ -996,11 +1004,13 @@ class Trace(object):
                 reference_fft = num.fft.rfft(reference_pad)
                 test_fft = num.fft.rfft(test_pad)
 
-                # taper
-                
-                reference_fft *= coefs
-                test_fft *= coefs
+                # 
+                freqs = num.arange(test_fft.size)*1/(test_pad.size*candidate.deltat)
+                coeffs = frequency_response.evaluate(freqs)
+                reference_fft *= coeffs               
+                test_fft *= coeffs
 
+                # taper
                 if domain == 'frequency_domain':
                     m_tmp, n_tmp = Lx_norm(test_fft, reference_fft, norm=norm)
                     m.append(m_tmp)
@@ -1167,7 +1177,7 @@ def snuffle(traces, **kwargs):
         p.add_file(trf)
     return snuffler.snuffle(p, **kwargs)
 
-class MisAlignedTraces(Exception):
+class MisalignedTraces(Exception):
     '''This exception is raised by some :py:class:`Trace` operations when tmin, tmax or number of samples do not match.'''
     pass
 
@@ -1880,8 +1890,8 @@ class InverseEvalresp(FrequencyResponse):
 class PoleZeroResponse(FrequencyResponse):
     '''Evaluates frequency response from pole-zero representation.
 
-    :param zeros: numpy.array object containig complex zeros
-    :param poles: numpy.array object containig complex poles
+    :param zeros: numpy.array object containig complex positions of zeros
+    :param poles: numpy.array object containig complex positions poles
     :param constant: gain as floating point number
 
     ::
@@ -1895,15 +1905,12 @@ class PoleZeroResponse(FrequencyResponse):
 
     '''
     
-    zeros = Tuple.T()
-    poles = Tuple.T()
+    zeros = Array.T(shape=(None,), dtype=num.complex)
+    poles = Array.T(shape=(None,), dtype=num.complex)
     constant = Float.T()
 
     def __init__(self, zeros, poles, constant):
         Object.__init__(self, zeros=zeros, poles=poles, constant=constant)
-        self.zeros = zeros
-        self.poles = poles
-        self.constant = constant
         
     def evaluate(self, freqs):
         jomeg = 1.0j* 2.*num.pi*freqs
@@ -2432,7 +2439,7 @@ class MisfitSetup(Object):
     """
     Contains misfit details. 
 
-    Can be dumped to xml or yaml file.
+    Can be dumped to a yaml file.
     """
     xmltagname = 'misfitsetup'
     description = String.T(optional=True)
@@ -2457,13 +2464,13 @@ def equalize_sampling_rates(trace_1, trace_2):
     if trace_1.deltat < trace_2.deltat:
         t1_out = trace_1.copy()
         t1_out.downsample_to(deltat=trace_2.deltat)
-        logger.warning('trace_1 downsampled!')
+        logger.warning('Following trace downsampled (return copy of trace): %s'%t1_out)
         return t1_out, trace_2
     
     elif trace_1.deltat > trace_2.deltat:
         t2_out = trace_2.copy()
         trace_2.downsample_to(deltat=trace_1.deltat)
-        logger.warning('trace_2 downsampled!')
+        logger.warning('Following trace downsampled (return copy of trace): %s'%t2_out)
         return trace_1, t2_out
     
     else:
