@@ -29,9 +29,9 @@ ASCII Table  text                                  yes      [#f5]_
 .. [#f5] ASCII tables with two columns (time and amplitude) are output - meta information will be lost.
 '''
 
-import os
-import mseed, sac, kan, segy, yaff, file, seisan_waveform, util, logging
-import trace
+import os, logging
+from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1
+from pyrocko import util, trace
 from pyrocko.mseed_ext import MSeedError
 from io_common import FileLoadError
 
@@ -42,13 +42,13 @@ logger = logging.getLogger('pyrocko.io')
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
 
-    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'from_extension'``)
+    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'from_extension'``)
     :param getdata: if ``True`` (the default), read data, otherwise only read traces metadata
     :param substitutions:  dict with substitutions to be applied to the traces metadata
     
     :returns: list of loaded traces
     
-    When *format* is set to ``'detect'``, the file type is guessed from the first 512 bytes of the file. Only Mini-SEED, SAC, and YAFF format are detected.
+    When *format* is set to ``'detect'``, the file type is guessed from the first 512 bytes of the file. Only Mini-SEED, SAC, GSE1, and YAFF format are detected.
     When *format* is set to ``'from_extension'``, the filename extension is used to decide what format should be assumed. The filename extensions
     considered are (matching is case insensitiv): ``'.sac'``, ``'.kan'``, ``'.sgy'``, ``'.segy'``, ``'.yaff'``, everything else is assumed to be in Mini-SEED format.
     
@@ -66,7 +66,7 @@ def detect_format(filename):
         raise FileLoadError(e)
 
     format = None
-    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac')):
+    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1')):
         if mod.detect(data):
             return fmt
 
@@ -117,6 +117,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             'sac': sac,
             'mseed': mseed,
             'seisan': seisan_waveform,
+            'gse1': gse1,
     }
 
     add_args = {
