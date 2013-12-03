@@ -1,0 +1,293 @@
+#!/usr/bin/env python
+
+import sys, re, os, logging, signal, math
+from optparse import OptionParser
+
+from pyrocko import util, config, pile, model, io
+
+pjoin = os.path.join
+
+logger = logging.getLogger('main')
+
+program_name = 'jackseis'
+
+usage = program_name + ' <inputs> ... [options]'
+
+description = '''A simple tool to manipulate waveform archive data.'''
+
+tfmt = 'YYYY-mm-dd HH:MM:SS[.xxx]'
+tts = util.time_to_str
+stt = util.str_to_time
+
+def die(message):
+    sys.exit('%s: error: %s' % (program_name, message))
+
+def str_to_seconds(s):
+    if s.endswith('s'):
+        return float(s[:-1])
+    elif s.endswith('m'):
+        return float(s[:-1])*60.
+    elif s.endswith('h'):
+        return float(s[:-1])*3600.
+    elif s.endswith('d'):
+        return float(s[:-1])*3600.*24.
+    else:
+        return float(s)
+
+def nice_seconds_floor(s):
+    nice = [ 1., 10., 60., 600., 3600., 3.*3600., 12*3600., 24*3600., 48*3600. ]
+    p = s
+    for x in nice:
+        if s < x:
+            return p
+
+        p = x
+    
+    return s
+
+if __name__ == '__main__':
+    parser = OptionParser(usage=usage,
+            description=description)
+
+    parser.add_option('--format',
+            dest='format',
+            default='detect',
+            choices=('mseed', 'sac', 'kan', 'segy', 
+                'seisan', 'seisan_l', 'seisan_b', 'yaff', 'from_extension', 'detect'),
+            help='assume files are of given FORMAT [default: \'%default\']' )
+
+    parser.add_option('--pattern',
+            dest='regex',
+            metavar='REGEX',
+            help='only include files whose paths match REGEX')
+
+    parser.add_option('--stations',
+            dest='station_fns',
+            action='append',
+            default=[],
+            metavar='STATIONS',
+            help='read station information from file STATIONS')
+
+    parser.add_option('--event', '--events',
+            dest='event_fns',
+            action='append',
+            default=[],
+            metavar='EVENT',
+            help='read event information from file EVENT')
+
+    parser.add_option('--cache',
+            dest='cache_dir',
+            default=config.cache_dir,
+            metavar='DIR',
+            help='use directory DIR to cache trace metadata (default=\'%default\')')
+
+#    parser.add_option('--force-cache',
+#            dest='force_cache',
+#            action='store_true',
+#            default=False,
+#            help='use the cache even when trace attribute spoofing is active (may have silly consequences)')
+
+    parser.add_option('--quiet',
+            dest='quiet',
+            action='store_true',
+            default=False,
+            help='disable output of progress information')
+
+    parser.add_option('--debug',
+            dest='debug',
+            action='store_true',
+            default=False,
+            help='print debugging information to stderr')
+
+    parser.add_option('--tmin',
+            dest='tmin',
+            help='start time as "%s"' % tfmt)
+
+    parser.add_option('--tmax',
+            dest='tmax',
+            help='end time as "%s"' % tfmt)
+
+    parser.add_option('--tinc',
+            dest='tinc',
+            help='set processing window increment')
+
+    parser.add_option('--downsample',
+            dest='downsample',
+            metavar='RATE', 
+            help='downsample to RATE [Hz]')
+
+    parser.add_option('--output',
+            dest='output_path',
+            help='set output path')
+
+    parser.add_option('--snap',
+            dest='snap',
+            action='store_true',
+            default=False,
+            help='snap window bounds to even multiples of increment')
+
+    parser.add_option('--channel-by-channel',
+            dest='channel_by_channel',
+            action='store_true',
+            help='make an outer loop over channels to use less memory during processing')
+
+    parser.add_option('--station-by-station',
+            dest='station_by_station',
+            action='store_true',
+            help='make an outer loop over stations to use less memory during processing')
+
+    parser.add_option('--rename-channel', 
+            dest='rename_channel',
+            metavar='/PATTERN/REPLACEMENT/',
+            help='update channel code')
+
+    (options, args) = parser.parse_args(sys.argv[1:])
+
+    if len(args) == 0:
+        parser.print_help()
+        sys.exit(1)
+
+    if options.debug:
+        util.setup_logging(program_name, 'debug')
+    else:
+        util.setup_logging(program_name, 'info')
+
+    tinc = None
+    if options.tinc is not None:
+        try:
+            tinc = str_to_seconds(options.tinc)
+        except:
+            raise
+            die('invalid argument to --tinc')
+
+    tmin = None
+    if options.tmin is not None:
+        try:
+            tmin = stt(options.tmin)
+        except:
+            die('invalid argument to --tmin. '
+                'Expected format is ""')
+
+    tmax = None
+    if options.tmax is not None:
+        try:
+            tmax = stt(options.tmax)
+        except:
+            die('invalid argument to --tmax. '
+                'Expected format is "%s"' % tfmt)
+
+    target_deltat = None
+    if options.downsample is not None:
+        try:
+            target_deltat = 1.0 / float(options.downsample)
+        except:
+            die('invalid argument to --downsample')
+
+    replacements = {}
+    if options.rename_channel:
+        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_channel)
+        if not m:
+            die('invalid argument to --rename-channel. '
+                'Expected format is /PATTERN/REPLACEMENT/')
+            
+        replacements['channel'] = m.group(1), m.group(2)
+
+
+    stations = []
+    for stations_fn in options.station_fns:
+        stations.extend(model.load_stations(stations_fn))
+    
+    events = []
+    for event_fn in options.event_fns:
+        events.extend(model.Event.load_catalog(event_fn))
+    
+    p = pile.make_pile( 
+            paths=args, 
+            selector=None, 
+            regex=options.regex,
+            fileformat = options.format,
+            cachedirname=options.cache_dir,
+            show_progress=not options.quiet )
+
+    if p.tmin is None:
+        die('data selection is empty')
+
+    if tinc is None:
+        tinc = nice_seconds_floor(p.get_deltatmin() * 500000.)
+
+    if options.snap:
+        tmin = int(math.floor(p.tmin / tinc)) * tinc
+
+    output_path = options.output_path
+
+    if output_path is None:
+        die('--output not given')
+
+    if os.path.isdir(output_path):
+        output_path = pjoin(output_path, '%(station)s/trace_%(network)s-%(station)s-%(location)s-%(channel)s_%(tmin)s.mseed')
+    
+
+    tpad = 0.
+    if target_deltat is not None:
+        tpad = target_deltat * 10.
+
+    kwargs = dict(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad)
+    
+    if options.channel_by_channel:
+        it = p.chopper_grouped(gather=lambda tr: tr.nslc_id, **kwargs)
+
+    elif options.station_by_station:
+        it = p.chopper_grouped(gather=lambda tr: tr.nslc_id[:2], **kwargs)
+
+    else:
+        it = p.chopper(**kwargs)
+
+    abort = []
+    def got_sigint(signum, frame):
+        abort.append(True)
+
+    old = signal.signal(signal.SIGINT, got_sigint)
+
+    for traces in it:
+        if traces:
+            twmin = min( tr.wmin for tr in traces )
+            twmax = max( tr.wmax for tr in traces )
+            if not options.quiet:
+                logger.info('processing %s - %s, %i traces' % 
+                        (tts(twmin), tts(twmax), len(traces)))
+
+            if target_deltat is not None:
+                out_traces = []
+                for tr in traces:
+                    try:
+                        tr.downsample_to(target_deltat, snap=True, demean=False)
+                        tr.chop(tr.wmin, tr.wmax)
+                        out_traces.append(tr)
+
+                    except trace.TraceTooShort, trace.NoData:
+                        pass
+
+                traces = out_traces
+
+            if replacements:
+                for tr in traces:
+                    r = {}
+                    for k, (pat,repl) in replacements.iteritems():
+                        oldval = getattr(tr, k)
+                        newval = oldval.replace(pat, repl)
+                        r[k] = newval
+
+                    tr.set_codes(**r)
+
+            if output_path:
+                io.save(traces, output_path)
+
+        if abort:
+            break
+
+    signal.signal(signal.SIGINT, old)
+
+    if abort:
+        die('interrupted.')
+
+
