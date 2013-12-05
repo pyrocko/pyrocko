@@ -3,7 +3,7 @@
 import sys, re, os, logging, copy
 from optparse import OptionParser
 
-from pyrocko import util, trace, gf, cake
+from pyrocko import util, trace, gf, cake, io
 
 pjoin = os.path.join
 
@@ -21,6 +21,7 @@ subcommand_descriptions = {
         'decimate':      'build decimated variant of a GF store',
         'redeploy':      'copy traces from one GF store into another',
         'view':          'view selected traces',
+        'extract':       'extract selected traces',
         'import':        'convert Kiwi GFDB to GF store format',
         'export':        'convert GF store to Kiwi GFDB format',
         'ttt':           'create travel time tables',
@@ -36,6 +37,7 @@ subcommand_usages = {
         'decimate':      'decimate [store-dir] <factor> [options]',
         'redeploy':      'redeploy <source> <destination> [options]',
         'view':          'view [store-dir] ... [options]',
+        'extract':       'extract [store-dir] <selection>',
         'import':        'import <source> <destination> [options]',
         'export':        'export [store-dir] <destination> [options]',
         'ttt':           'ttt [store-dir] [options]',
@@ -57,6 +59,7 @@ Subcommands:
     decimate      %(decimate)s
     redeploy      %(redeploy)s
     view          %(view)s
+    extract       %(extract)s
     import        %(import)s
     export        %(export)s
     ttt           %(ttt)s
@@ -379,6 +382,58 @@ def command_view(args):
         die(e)
 
     trace.snuffle(traces)
+
+def command_extract(args):
+    def setup(parser):
+        parser.add_option('--format', dest='format', default='mseed',
+                choices=['mseed', 'sac', 'text', 'yaff'],
+                help='export to format "mseed", "sac", "text", or "yaff". '
+                     'Default is "mseed".')
+
+        fndfl = 'extracted/%(irecord)s_%(args)s.%(extension)s'
+        parser.add_option('--output', dest='output_fn', default=fndfl, metavar='TEMPLATE',
+                help='output path template [default: "%s"]' % fndfl)
+
+    parser, options, args = cl_parse('extract', args, setup=setup)
+    try:
+        sdef = args.pop()
+    except:
+        parser.error('cannot get <selection> argument')
+
+    try:
+        gdef = gf.meta.parse_grid_spec(sdef)
+    except gf.meta.GridSpecError, e:
+        die(e)
+
+    store_dir = get_store_dir(args)
+
+    extensions = {
+            'mseed': 'mseed',
+            'sac': 'sac',
+            'text': 'txt',
+            'yaff': 'yaff' }
+
+    try:
+        store = gf.Store(store_dir)
+        for args in store.config.iter_extraction(gdef):
+            gtr = store.get(args)
+            irecord = store.config.irecord(*args)
+            if gtr:
+                tr = trace.Trace( '', '', '', 
+                        util.zfmt(store.config.ncomponents) % args[-1],
+                        ydata = gtr.data,
+                        deltat = gtr.deltat,
+                        tmin = gtr.deltat * gtr.itmin)
+
+                additional = dict(
+                        args = '_'.join('%g' % x for x in args),
+                        irecord = store.str_irecord(args),
+                        extension = extensions[options.format])
+
+                io.save(tr, options.output_fn, format=options.format, additional=additional)
+                
+    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds), e:
+        die(e)
 
 def command_import(args):
     try:

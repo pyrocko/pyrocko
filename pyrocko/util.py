@@ -357,6 +357,9 @@ def mk_decitab(nmax=100):
         if i > nmax: break
         
     GlobalVars.decitab_nmax = nmax
+
+def zfmt(n):
+    return '%%0%ii' % (int(math.log10(n - 1 )) + 1)
     
 def day_start(timestamp):
     '''Get beginning of day for any point in time.

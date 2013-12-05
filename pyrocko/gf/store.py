@@ -267,6 +267,12 @@ class Store_:
         return self._sum_reference(irecords, delays, weights, itmin, nsamples, 
                     decimate)
 
+    def irecord_format(self):
+        return util.zfmt(self._nrecords)
+
+    def str_irecord(self, irecord):
+        return self.irecord_format() % irecord
+
     def close(self):
 
         if self.mode == 'w':
@@ -709,6 +715,11 @@ class Store(Store_):
     def __init__(self, store_dir, mode='r'):
         Store_.__init__(self, store_dir, mode=mode)
         config_fn = os.path.join(store_dir, 'config')
+        if not os.path.isfile(config_fn):
+            raise StoreError(
+                    'directory "%s" does not seem to contain a GF Store '
+                    '("config" file not found)' % store_dir)
+
         self.config = meta.load(filename=config_fn)
         self._decimated = {}
         self._extra = {}
@@ -746,6 +757,9 @@ class Store(Store_):
     def get_record(self, args):
         irecord = self.config.irecord(*args)
         return self._get_record(irecord)
+
+    def str_irecord(self, args):
+        return Store_.str_irecord(self, self.config.irecord(*args))
 
     def get(self, args, itmin=None, nsamples=None, decimate=1, interpolate='nearest_neighbor'):
         '''Retrieve GF trace from store.
