@@ -186,6 +186,7 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
         fns = []
         for tr in traces:
             fn = tr.fill_template(filename_template, **additional)
+            util.ensuredirs(fn)
             x,y = tr.get_xdata(), tr.get_ydata()
             num.savetxt(fn, num.transpose((x,y)))
             fns.append(fn)
