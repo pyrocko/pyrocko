@@ -741,7 +741,14 @@ class Trace(object):
         self._update_ids()
         
     def snap(self, inplace=True):
-        '''Shift trace samples to nearest even multiples of the sampling rate.'''
+        '''Shift trace samples to nearest even multiples of the sampling rate.
+
+        :param inplace: (boolean) snap traces inplace
+
+        If the inplace option is set to False and the difference of tmin and tmax of both,
+        the snapped and the original trace is smaller than 0.01 x deltat, this method
+        returns the unsnapped instance of the original trace.
+        '''
 
         if inplace:
             self.tmin = round(self.tmin/self.deltat)*self.deltat 
@@ -752,7 +759,7 @@ class Trace(object):
 
             tmax = self.tmin + (self.ydata.size-1)*self.deltat
             if abs(self.tmin - tmin) < 1e-2*self.deltat and \
-                    abs(self.tmax - tmax) < 1e-1*self.deltat:
+                    abs(self.tmax - tmax) < 1e-2*self.deltat:
                         return self
             snapped_trace = self.copy()
             snapped_trace.tmin = tmin
@@ -934,15 +941,59 @@ class Trace(object):
             output.ydata = output.ydata.copy()
         return output
 
-
     def misfit(self, candidates, setups):
         """
-        Calculate misfit values m and n.
+        Generator function, yielding misfit values m and normalization divisors n.
 
-        :param candidates: iterable object of traces
-        :param setup: (List of) objects of MisfitSetup
+        :param candidates: iterable object of :py:class:`trace`s
+        :param setup: (List of) :py:class:`MisfitSetup`s
 
-        Downsamples higher sampled trace to sampling rate of lower sampled trace.
+        *setups* can either be a single or list of :py:class:`MisfitSetup` objects. 
+        If setup is a single :py:class:`MisfitSetup` :py:func:`misfit` yields a single m and n. 
+        Otherwise, :py:func:`misfit yields a list of m and n for each misfit setup. 
+
+        In order to preserve the original traces, any modification will be performed on copies of these traces. 
+        If the sampling rate of the by *self* determined :py:class:`Trace` differs from an individual condidate, 
+        both sampling rates will be equalized (by downsampling the higher sampled trace). 
+
+        Example::
+
+            from pyrocko import trace
+            from math import sqrt
+            import numpy as num
+            
+
+            # Let's create three traces: One trace as the reference (rt) and two as test traces (tt1 and tt2):
+            ydata1 = data = num.random.random(100)
+            ydata2 = data = num.random.random(100)
+            rt = trace.Trace(ydata=data1)
+            tt1 = trace.Trace(ydata=data1)
+            tt2 = trace.Trace(ydata=data2)
+            
+            # Define a fader to apply before fft.
+            taper = trace.CosFader(xfade=5)
+
+            # Define a frequency response to apply before performing the inverse fft.
+            # This can be basically any funtion, as long as it contains a function called *evaluate*, which 
+            # evaluates the frequency response function at a given list of frequencies.
+            # Please refer to the :py:class:`FrequencyResponse` class or its subclasses for examples. 
+            fresponse = trace.FrequencyResponse()        
+
+            # Define a misfit setup. 
+            setup = trace.MisfitSetup(norm=2,
+                                      taper=taper,
+                                      domain='time_domain',
+                                      freqlimits=(1,2,20,40),
+                                      frequency_response=fresponse)
+
+            m_sum = 0 
+            n_sum = 0 
+            for m, n in rt.misfit(candidates=[tt1, tt2], setupts=setup):
+                m_sum += m**2
+                n_sum += n**2
+                
+            L2_misfit = num.sqrt(m_sum)/num.sqrt(n_sum)
+
         """
         if isinstance(setups, MisfitSetup):
             setups = [setups]
@@ -950,20 +1001,18 @@ class Trace(object):
         else:
             single_setup = False
 
-        m = []
-        n = []
-        for candidate in candidates:
-
+        for cand in candidates:
+            m = []
+            n = []
             for setup in setups:
-            
+                reference_trace = self.copy()
+                candidate = cand.copy()
                 norm = setup.norm
                 taper = setup.taper
                 domain = setup.domain
                 frequency_response = setup.frequency_response
-                freqlimits = setup.freqlimits
-                tfade = setup.tfade
 
-                candidate, reference_trace = equalize_sampling_rates(candidate, self)
+                candidate, reference_trace = equalize_sampling_rates(candidate, reference_trace)
 
                 candidate = candidate.snap(inplace=False)
                 reference_trace = reference_trace.snap(inplace=False)
@@ -981,17 +1030,15 @@ class Trace(object):
                                            tmax=wanted_tmax,
                                            fillmethod='repeat')
 
-                if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat*1E-4 or \
+                if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat * 1e-4 or \
                         abs(reference_trace.tmax - candidate.tmax) > reference_trace.tmax or \
                         reference_trace.ydata.shape != candidate.ydata.shape:
                             raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.'
                                                                                 % (reference_trace.nslc_id, candidate.nslc_id))
 
-                #2. taper z.B. Objects von CosFader, CosTaper, GaussTaper
                 reference_trace.taper(taper) 
                 candidate.taper(taper)
 
-                # padding mit zeros:
                 ndata = reference_trace.ydata.size
                 pad_size = nextpow2(ndata)
                 reference_pad = num.zeros(pad_size, dtype=num.float)
@@ -999,18 +1046,14 @@ class Trace(object):
                 test_pad = num.zeros(pad_size, dtype=num.float)
                 test_pad[:ndata] = candidate.ydata
 
-                
-                #3. fft
                 reference_fft = num.fft.rfft(reference_pad)
                 test_fft = num.fft.rfft(test_pad)
 
-                # 
                 freqs = num.arange(test_fft.size)*1/(test_pad.size*candidate.deltat)
                 coeffs = frequency_response.evaluate(freqs)
                 reference_fft *= coeffs               
                 test_fft *= coeffs
 
-                # taper
                 if domain == 'frequency_domain':
                     m_tmp, n_tmp = Lx_norm(test_fft, reference_fft, norm=norm)
                     m.append(m_tmp)
@@ -1029,7 +1072,6 @@ class Trace(object):
                 yield m[0], n[0]
             else:
                 yield m, n
-
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
@@ -1115,7 +1157,7 @@ class Trace(object):
     def fill_template(self, template, **additional):
         '''Fill string template with trace metadata.
         
-        Uses normal pyton '%(placeholder)s' string templates. The following
+        Uses normal python '%(placeholder)s' string templates. The following
         placeholders are considered: ``network``, ``station``, ``location``,
         ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
         sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``. The
@@ -1203,7 +1245,7 @@ def minmax(traces, key=None, mode='minmax'):
     :param key: a callable which takes as single argument a trace and returns a key for the grouping of the results.
                 If this is ``None``, the default, ``lambda tr: (tr.network, tr.station, tr.location, tr.channel)`` is used.
     :param mode: 'minmax' or floating point number. If this is 'minmax', minimum and maximum of the traces are used, 
-                 if it is a number, mean +- stdandard deviation times *mode* is used.
+                 if it is a number, mean +- standard deviation times *mode* is used.
     
     :returns: a dict with the combined data ranges.
 
@@ -1798,7 +1840,7 @@ class CosTaper(Taper):
         self._corners = (a,b,c,d)
 
     def __call__(self, y, x0, dx):
-        a,b,c,d = self._corners
+        a, b, c, d = self._corners
         apply_costaper(a, b, c, d, y, x0, dx)
 
 
@@ -1830,7 +1872,7 @@ class CosFader(Taper):
 
 
 class GaussTaper(Taper):
-
+    ''' Frequency domain Gaussian filter. '''
     alpha = Float.T()
 
     def __init__(self, alpha):
@@ -1839,7 +1881,7 @@ class GaussTaper(Taper):
 
     def __call__(self, y, x0, dx):
         f = x0 + num.arange( y.size )*dx
-        y *= num.exp(-(2.*num.pi)**2/(4.*self._alpha**2) * f**2)
+        y *= num.exp(-num.pi**2 / (self._alpha**2) * f**2)
 
 
 class FrequencyResponse(Object):
@@ -1866,23 +1908,23 @@ class InverseEvalresp(FrequencyResponse):
     instant = Float.T()
     
     def __init__(self, respfile, trace, target='dis'):
-        self.respfile = respfile
-        self.nslc_id = trace.nslc_id
-        self.instant = (trace.tmin + trace.tmax)/2.
-        self.target = target
-        Object.__init__(self, respfile=self.respfile, nslc_id=self.nslc_id, instant=self.instant, target=self.target)
+        Object.__init__(self,
+                        respfile=respfile,
+                        nslc_id=trace.nslc_id,
+                        instant=(trace.tmin + trace.tmax)/2.,
+                        target=target)
         
     def evaluate(self, freqs):
         network, station, location, channel = self.nslc_id
         x = evalresp.evalresp(sta_list=station,
-                          cha_list=channel,
-                          net_code=network,
-                          locid=location,
-                          instant=self.instant,
-                          freqs=freqs,
-                          units=self.target.upper(),
-                          file=self.respfile,
-                          rtype='CS')
+                              cha_list=channel,
+                              net_code=network,
+                              locid=location,
+                              instant=self.instant,
+                              freqs=freqs,
+                              units=self.target.upper(),
+                              file=self.respfile,
+                              rtype='CS')
         
         transfer = x[0][4]
         return 1./transfer
@@ -1890,8 +1932,8 @@ class InverseEvalresp(FrequencyResponse):
 class PoleZeroResponse(FrequencyResponse):
     '''Evaluates frequency response from pole-zero representation.
 
-    :param zeros: numpy.array object containig complex positions of zeros
-    :param poles: numpy.array object containig complex positions poles
+    :param zeros: :py:class:`numpy.array` containing complex positions of zeros
+    :param poles: :py:class:`numpy.array` containing complex positions of poles
     :param constant: gain as floating point number
 
     ::
@@ -1902,7 +1944,6 @@ class PoleZeroResponse(FrequencyResponse):
     
    
     The poles and zeros should be given as angular frequencies, not in Hz.
-
     '''
     
     zeros = Array.T(shape=(None,), dtype=num.complex)
@@ -1929,7 +1970,8 @@ class SampledResponse(FrequencyResponse):
     :param freqs,vals: frequencies and values of the sampled response function.
     :param left,right: values to return when input is out of range. If set to ``None`` (the default) the endpoints are returned.
     '''
-    
+
+
     def __init__(self, freqs, vals, left=None, right=None):
         self.freqs = freqs.copy()
         self.vals = vals.copy()
@@ -2436,11 +2478,10 @@ def co_downsample_to(target, deltat):
 
 
 class MisfitSetup(Object):
-    """
-    Contains misfit details. 
+    '''Contains misfit setup to be used in :py:func:`trace.misfit`
 
     Can be dumped to a yaml file.
-    """
+    '''
     xmltagname = 'misfitsetup'
     description = String.T(optional=True)
     norm = Int.T(optional=False)
@@ -2448,15 +2489,16 @@ class MisfitSetup(Object):
     freqlimits = List.T(Float.T())
     frequency_response = FrequencyResponse.T()
     domain = String.T(default='time_domain')
-    tfade = Float.T()
 
 
 def equalize_sampling_rates(trace_1, trace_2):
     '''
-    Equalize sampling rates of two traces. Means to reduce higher sampling rate to lower.
-    Returns downsampled copies of races.
+    Equalize sampling rates of two traces (reduce higher sampling rate to lower). 
     
-    If resampling, returns a copy of the resampled trace. 
+    :param trace_1: :py:class:`trace` 
+    :param trace_2: :py:class:`trace` 
+
+    Returns a copy of the resampled trace if resampling is needed.  
     '''
     if same_sampling_rate(trace_1, trace_2):
         return trace_1, trace_2
@@ -2473,16 +2515,17 @@ def equalize_sampling_rates(trace_1, trace_2):
         logger.warning('Following trace downsampled (return copy of trace): %s'%t2_out)
         return trace_1, t2_out
     
-    else:
-        return trace_1, trace_2
-
 
 def Lx_norm(u, v, norm=2):
-    """
-    return m,n according to norm.
-    (L1-norm tested,
-    L2-norm tested)
-    """
+    '''
+    Calculate misfit values m, n according to norm.
+
+    :param u: :py:class:`numpy.array`
+    :param v: :py:class:`numpy.array`
+    :param norm: (default = 2)
+
+    u and v must be of same size. 
+    '''
     return pow(sum(abs(pow(v - u, norm))), 1./norm), \
            pow(sum(abs(v)), 1./norm)
 

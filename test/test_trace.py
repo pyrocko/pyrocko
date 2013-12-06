@@ -1,5 +1,5 @@
 from pyrocko import trace, util, model, pile
-import unittest, math, time
+import unittest, math, time, os
 import numpy as num
 
 sometime = 1234567890.
@@ -397,7 +397,6 @@ class TraceTestCase(unittest.TestCase):
                 downsampler.close()
                 assert(round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
 
-
     def testEqualizeSamplingRates(self):
         y = num.random.random(1000)
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
@@ -414,8 +413,6 @@ class TraceTestCase(unittest.TestCase):
         """
         yref = num.array([0., 1.5 , 2.3, 0., -1.])
         ytest= num.array([-1., 0.3, -0.3, 1., 0.2])
-        tref = trace.Trace(ydata=yref)
-        ttest= trace.Trace(ydata=ytest)
         m, n = trace.Lx_norm(ytest, yref, norm=1)
         self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
         self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
@@ -426,50 +423,65 @@ class TraceTestCase(unittest.TestCase):
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         ttraces = [t2]
-        taper = trace.GaussTaper(alpha=2.)
+        #taper = trace.GaussTaper(alpha=2.)
         fresponse = trace.FrequencyResponse()
-        #taper = trace.CosTaper(xfade=2.)
+        taper = trace.CosFader(xfade=2.)
         mfsetup = trace.MisfitSetup(
-                norm=2,
-                taper=taper,
-                domain='time_domain',
-                tfade=1.,
-                freqlimits=(1,2,20,40),
-                frequency_response=fresponse)
+            norm=2,
+            taper=taper,
+            domain='time_domain',
+            freqlimits=(1, 2, 20, 40),
+            frequency_response=fresponse)
         for m, n in t1.misfit( candidates=ttraces, setups= mfsetup):
-            self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
+            self.assertEqual(m, 0., 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
         del mfsetup
 
-    def testMisfitOfSameTracesDtDiffNearlyZero(self):
-        p = pile.make_pile('2010.057.20.30.26.5356.IC.BJT.00.LHZ.R.SAC', show_progress=False)
+    def testMisfitOfSameTracesDtDifferentIsZero(self):
+        """
+        Verify that two equal traces produce a zero misfit even if their sampling rate differs.
+        Tests:
+            L2-Norm
+            L1-Norm
+            time- and frequency-domain 
+        """
+        test_file = os.path.join(os.path.dirname(__file__), '../examples/1989.072.evt.mseed')
+        p = pile.make_pile(test_file, show_progress=False)
+
         tt = p.all()[0]
         tt2 = tt.copy()
         rt = tt.copy()
         rt.downsample_to(tt.deltat*5)
         self.assertNotEqual(tt.deltat, rt.deltat, 'Something went wrong when downsampling reference trace rt')
-
-        taper1 = trace.GaussTaper(alpha=2.)
-        taper2 = trace.CosFader(xfade=2.)
+        taper1 = trace.CosFader(xfade=rt.deltat*300)
         fresponse = trace.FrequencyResponse()
-        mfsetup1 = trace.MisfitSetup(
-                norm=2,
-                taper=taper1,
-                domain='time_domain',
-                tfade=1.,
-                freqlimits=(1,2,20,40),
-                frequency_response=fresponse)
-        mfsetup2 = trace.MisfitSetup(
-                norm=1,
-                taper=taper2,
-                domain='time_domain',
-                tfade=1.,
-                freqlimits=(1,2,20,40),
-                frequency_response=fresponse)
-        import pdb 
-        pdb.set_trace()
-        for m, n in rt.misfit( candidates=[tt, tt2], setups=[mfsetup1, mfsetup2]):
-            self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
-        del mfsetup
+
+        mfsetup1 = trace.MisfitSetup(norm=2,
+                                     taper=taper1,
+                                     domain='time_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+
+        mfsetup2 = trace.MisfitSetup(norm=1,
+                                     taper=taper1,
+                                     domain='time_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+        mfsetup3 = trace.MisfitSetup(norm=2,
+                                     taper=taper1,
+                                     domain='frequency_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+        mfsetup4 = trace.MisfitSetup(norm=2,
+                                     taper=taper1,
+                                     domain='frequency_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+        for ms, nn in rt.misfit( candidates=[tt, tt2], setups=[mfsetup1, 
+                                                               mfsetup2,
+                                                               mfsetup3,
+                                                               mfsetup4]):
+            for m in ms:
+                self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s' % m)
 
     def testValidateFrequencyResponses(self):
         ttrace = trace.Trace(ydata=num.random.random(1000))
@@ -478,7 +490,9 @@ class TraceTestCase(unittest.TestCase):
                                              target='vel')
         inverse_eval.validate()
         
-        pzk_response = trace.PoleZeroResponse(zeros=num.array([0.,0], dtype=num.complex), poles=num.array([1.,2.], dtype=num.complex), constant=10.)
+        pzk_response = trace.PoleZeroResponse(zeros=num.array([0., 0], dtype=num.complex),
+                                              poles=num.array([1., 2.], dtype=num.complex),
+                                              constant=10.)
         pzk_response.validate()
 
 
