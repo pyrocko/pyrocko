@@ -956,44 +956,6 @@ class Trace(object):
         If the sampling rate of the by *self* determined :py:class:`Trace` differs from an individual condidate, 
         both sampling rates will be equalized (by downsampling the higher sampled trace). 
 
-        Example::
-
-            from pyrocko import trace
-            from math import sqrt
-            import numpy as num
-            
-
-            # Let's create three traces: One trace as the reference (rt) and two as test traces (tt1 and tt2):
-            ydata1 = data = num.random.random(100)
-            ydata2 = data = num.random.random(100)
-            rt = trace.Trace(ydata=data1)
-            tt1 = trace.Trace(ydata=data1)
-            tt2 = trace.Trace(ydata=data2)
-            
-            # Define a fader to apply before fft.
-            taper = trace.CosFader(xfade=5)
-
-            # Define a frequency response to apply before performing the inverse fft.
-            # This can be basically any funtion, as long as it contains a function called *evaluate*, which 
-            # evaluates the frequency response function at a given list of frequencies.
-            # Please refer to the :py:class:`FrequencyResponse` class or its subclasses for examples. 
-            fresponse = trace.FrequencyResponse()        
-
-            # Define a misfit setup. 
-            setup = trace.MisfitSetup(norm=2,
-                                      taper=taper,
-                                      domain='time_domain',
-                                      freqlimits=(1,2,20,40),
-                                      frequency_response=fresponse)
-
-            m_sum = 0 
-            n_sum = 0 
-            for m, n in rt.misfit(candidates=[tt1, tt2], setupts=setup):
-                m_sum += m**2
-                n_sum += n**2
-                
-            L2_misfit = num.sqrt(m_sum)/num.sqrt(n_sum)
-
         """
         if isinstance(setups, MisfitSetup):
             setups = [setups]
