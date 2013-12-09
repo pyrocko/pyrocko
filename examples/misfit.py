@@ -39,13 +39,3 @@ for m, n in rt.misfit(candidates=test_candidates, setups=setup):
 f = open('my_misfit_setup.txt', 'w')
 f.write(setup.dump())
 f.close()
-
-# If we wanted to reload our misfit setup, guts provides the iload_all() method for 
-# that purpose:
-from guts import iload_all
-for ms in iload_all(filename='my_misfit_setup.txt'): 
-    setup = ms
-
-# If we wanted to change only the domain, we could do the following:
-setup.domain = 'frequency_domain'
-
