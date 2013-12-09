@@ -745,8 +745,8 @@ class Trace(object):
 
         :param inplace: (boolean) snap traces inplace
 
-        If the inplace option is set to False and the difference of tmin and tmax of both,
-        the snapped and the original trace is smaller than 0.01 x deltat, this method
+        If *inplace* is ``False`` and the difference of tmin and tmax of both,
+        the snapped and the original trace is smaller than 0.01 x deltat, :py:func:`snap` 
         returns the unsnapped instance of the original trace.
         '''
 
@@ -945,17 +945,18 @@ class Trace(object):
         """
         Generator function, yielding misfit values m and normalization divisors n.
 
-        :param candidates: iterable object of :py:class:`trace` s
-        :param setup: (List of) :py:class:`MisfitSetup` s
+        :param candidates: iterable object of :py:class:`trace` objects
+        :param setup: (List of) :py:class:`MisfitSetup` objects
 
         *setups* can either be a single or list of :py:class:`MisfitSetup` objects. 
         If setup is a single :py:class:`MisfitSetup` :py:func:`misfit` yields a single m and n. 
         Otherwise, :py:func:`misfit` yields a list of *m* and *n* for each misfit setup. 
 
         In order to preserve the original traces, any modification will be performed on copies of these traces. 
-        If the sampling rate of the by *self* determined :py:class:`Trace` differs from an individual condidate, 
+        If the sampling rate of the by *self* determined :py:class:`Trace` differs from an individual candidate, 
         both sampling rates will be equalized (by downsampling the higher sampled trace). 
 
+        .. seealso:: One application can be found in the Programming Examples section.
         """
         if isinstance(setups, MisfitSetup):
             setups = [setups]
@@ -967,14 +968,17 @@ class Trace(object):
             m = []
             n = []
             for setup in setups:
-                reference_trace = self.copy()
-                candidate = cand.copy()
+
+                candidate, reference_trace = equalize_sampling_rates(cand, self)
+                if candidate == cand:
+                    candidate = cand.copy()
+                if reference_trace == self:
+                    reference_trace = self.copy()
+
                 norm = setup.norm
                 taper = setup.taper
                 domain = setup.domain
                 frequency_response = setup.frequency_response
-
-                candidate, reference_trace = equalize_sampling_rates(candidate, reference_trace)
 
                 candidate = candidate.snap(inplace=False)
                 reference_trace = reference_trace.snap(inplace=False)
@@ -996,7 +1000,7 @@ class Trace(object):
                         abs(reference_trace.tmax - candidate.tmax) > reference_trace.tmax or \
                         reference_trace.ydata.shape != candidate.ydata.shape:
                             raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.'
-                                                                                % (reference_trace.nslc_id, candidate.nslc_id))
+                                                                        % (reference_trace.nslc_id, candidate.nslc_id))
 
                 reference_trace.taper(taper) 
                 candidate.taper(taper)
