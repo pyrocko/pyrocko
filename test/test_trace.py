@@ -355,9 +355,9 @@ class TraceTestCase(unittest.TestCase):
                     c2.set_station('c2')
                     d = num.abs(c1.get_ydata() - c2.get_ydata())
 
-                    if not num.all(d < 1e-5) :
+                    if not num.all(d < 1e-5):
                         assert mode == 'same'
-                        
+
                         assert abs(abs(c1.tmin-c2.tmin) - 1.0) < 1e-5
                         assert abs(abs(c1.tmax-c2.tmax) - 1.0) < 1e-5
 
@@ -395,7 +395,7 @@ class TraceTestCase(unittest.TestCase):
                     c2s.append(c)
 
                 downsampler.close()
-                assert(round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
+                assert (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
 
     def testEqualizeSamplingRates(self):
         y = num.random.random(1000)
@@ -476,7 +476,8 @@ class TraceTestCase(unittest.TestCase):
                                      domain='frequency_domain',
                                      freqlimits=(1,2,20,40),
                                      frequency_response=fresponse)
-        for ms, nn in rt.misfit( candidates=[tt, tt2], setups=[mfsetup1, 
+
+        for ms, nn in rt.misfit( candidates=[tt, tt2], setups=[mfsetup1,
                                                                mfsetup2,
                                                                mfsetup3,
                                                                mfsetup4]):

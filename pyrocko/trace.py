@@ -963,8 +963,6 @@ class Trace(object):
             single_setup = True            
         else:
             single_setup = False
-            m_dict = {}
-            n_dict = {}
 
         for setup in setups:
             norm = setup.norm
@@ -978,6 +976,15 @@ class Trace(object):
             ref_copy_is_new = True 
             for cand in candidates:
 
+                candidate, reference_trace = equalize_sampling_rates(cand, ref_copy)
+
+                if candidate is cand:
+                    candidate = cand.copy()
+
+                if reference_trace is not ref_copy:
+                    # New because equalization of sampling rates returned copy.
+                    ref_copy_is_new = True 
+
                 wanted_tmin = min(cand.tmin, ref_copy.tmin)
                 wanted_tmax = max(cand.tmax, ref_copy.tmax)
                
@@ -986,29 +993,14 @@ class Trace(object):
                                      tmax=wanted_tmax, 
                                      fillmethod='repeat')
 
-                # Must be placed here. Assuming second candidate is longer that the former,
-                # the formerly tapered, etc. ref trace needs to be tapered in a different way this time. 
-                # Hence, new, fresh copy required...
-                if ref_copy.tmax < wanted_tmax or ref_copy.tmin > candidate.tmin:
-                    ref_copy = self.copy()
-                    ref_copy.extend(tmin=wanted_tmin,
-                                         tmax=wanted_tmax,
-                                         fillmethod='repeat')
-                    ref_copy_is_new = True
-
-                candidate, reference_trace = equalize_sampling_rates(cand, ref_copy)
-
-                if reference_trace is not ref_copy:
-                    # New because equalization of sampling rates returned copy.
-                    ref_copy_is_new = True 
-
-                if candidate is cand:
-                    candidate = cand.copy()
+                if ref_copy_is_new:
+                    if ref_copy.tmax < wanted_tmax or ref_copy.tmin > candidate.tmin:
+                        ref_copy.extend(tmin=wanted_tmin,
+                                             tmax=wanted_tmax,
+                                             fillmethod='repeat')
+                    reference_trace.snap(inplace=True)
 
                 candidate.snap(inplace=True)
-
-                if ref_copy_is_new:
-                    reference_trace.snap(inplace=True)
 
                 if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat * 1e-4 or \
                         abs(reference_trace.tmax - candidate.tmax) > reference_trace.tmax or \
@@ -1017,29 +1009,29 @@ class Trace(object):
                                                                         % (reference_trace.nslc_id, candidate.nslc_id))
 
                 candidate.taper(taper)
+                
+                ndata = reference_trace.ydata.size
+                pad_size = nextpow2(ndata)
+                test_pad = num.zeros(pad_size, dtype=num.float)
+                test_pad[:ndata] = candidate.ydata
+                test_fft = num.fft.rfft(test_pad)
 
                 if ref_copy_is_new:
                     freqs = num.arange(test_fft.size)*1/(test_pad.size*candidate.deltat)
                     coeffs = frequency_response.evaluate(freqs)
                     reference_trace.taper(taper) 
-                    ndata = reference_trace.ydata.size
-                    pad_size = nextpow2(ndata)
 
                     reference_pad = num.zeros(pad_size, dtype=num.float)
                     reference_pad[:ndata] = reference_trace.ydata
                     reference_fft = num.fft.rfft(reference_pad)
                     reference_fft *= coeffs               
 
-                test_pad = num.zeros(pad_size, dtype=num.float)
-                test_pad[:ndata] = candidate.ydata
-                test_fft = num.fft.rfft(test_pad)
                 test_fft *= coeffs
 
                 if domain == 'frequency_domain':
                     m_tmp, n_tmp = Lx_norm(test_fft, reference_fft, norm=norm)
                     m.append(m_tmp)
                     n.append(n_tmp)
-                    continue
 
                 test_ifft = num.fft.irfft(test_fft)
                 reference_ifft = num.fft.irfft(reference_fft)
@@ -1055,10 +1047,7 @@ class Trace(object):
                     yield m_tmp, n_tmp
 
             if not single_setup:
-                m_dict[setup.description]=m
-                n_dict[setup.description]=n
-
-        return m_dict, n_dict
+                yield m, n
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
