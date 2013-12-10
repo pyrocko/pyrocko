@@ -975,18 +975,16 @@ class Trace(object):
             ref_copy = self.copy()
             ref_copy_is_new = True 
             for cand in candidates:
-
                 candidate, reference_trace = equalize_sampling_rates(cand, ref_copy)
 
                 if candidate is cand:
                     candidate = cand.copy()
 
                 if reference_trace is not ref_copy:
-                    # New because equalization of sampling rates returned copy.
-                    ref_copy_is_new = True 
+                    ref_copy_is_new = True
 
-                wanted_tmin = min(cand.tmin, ref_copy.tmin)
-                wanted_tmax = max(cand.tmax, ref_copy.tmax)
+                wanted_tmin = min(candidate.tmin, reference_trace.tmin)
+                wanted_tmax = max(candidate.tmax, reference_trace.tmax)
                
                 if candidate.tmax < wanted_tmax or candidate.tmin > wanted_tmin:
                     candidate.extend(tmin=wanted_tmin, 
@@ -994,8 +992,8 @@ class Trace(object):
                                      fillmethod='repeat')
 
                 if ref_copy_is_new:
-                    if ref_copy.tmax < wanted_tmax or ref_copy.tmin > candidate.tmin:
-                        ref_copy.extend(tmin=wanted_tmin,
+                    if reference_trace.tmax < wanted_tmax or reference_trace.tmin > candidate.tmin:
+                        reference_trace.extend(tmin=wanted_tmin,
                                              tmax=wanted_tmax,
                                              fillmethod='repeat')
                     reference_trace.snap(inplace=True)
@@ -1003,10 +1001,11 @@ class Trace(object):
                 candidate.snap(inplace=True)
 
                 if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat * 1e-4 or \
-                        abs(reference_trace.tmax - candidate.tmax) > reference_trace.tmax or \
+                        abs(reference_trace.tmax - candidate.tmax) > reference_trace.deltat * 1e-4 or \
                         reference_trace.ydata.shape != candidate.ydata.shape:
                             raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.'
-                                                                        % (reference_trace.nslc_id, candidate.nslc_id))
+                                                                        % ('.'.join(reference_trace.nslc_id),
+                                                                            '.'.join(candidate.nslc_id)))
 
                 candidate.taper(taper)
                 
@@ -2482,15 +2481,14 @@ def equalize_sampling_rates(trace_1, trace_2):
     if trace_1.deltat < trace_2.deltat:
         t1_out = trace_1.copy()
         t1_out.downsample_to(deltat=trace_2.deltat)
-        logger.warning('Following trace downsampled (return copy of trace): %s'%t1_out)
+        logger.warning('Following trace downsampled (return copy of trace): %s' % t1_out)
         return t1_out, trace_2
     
     elif trace_1.deltat > trace_2.deltat:
         t2_out = trace_2.copy()
-        trace_2.downsample_to(deltat=trace_1.deltat)
-        logger.warning('Following trace downsampled (return copy of trace): %s'%t2_out)
+        t2_out.downsample_to(deltat=trace_1.deltat)
+        logger.warning('Following trace downsampled (return copy of trace): %s' % t2_out)
         return trace_1, t2_out
-    
 
 def Lx_norm(u, v, norm=2):
     '''

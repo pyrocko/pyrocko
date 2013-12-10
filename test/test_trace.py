@@ -450,7 +450,9 @@ class TraceTestCase(unittest.TestCase):
         tt = p.all()[0]
         tt2 = tt.copy()
         rt = tt.copy()
-        rt.downsample_to(tt.deltat*5)
+
+        tt2.downsample_to(rt.deltat*5)
+        tt.downsample_to(rt.deltat*5)
         self.assertNotEqual(tt.deltat, rt.deltat, 'Something went wrong when downsampling reference trace rt')
         taper1 = trace.CosFader(xfade=rt.deltat*300)
         fresponse = trace.FrequencyResponse()
