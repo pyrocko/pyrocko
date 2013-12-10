@@ -1,6 +1,7 @@
 from pyrocko import trace
 from math import sqrt
 import numpy as num
+from time import time
 
 # Let's create three traces: One trace as the reference (rt) and two as test traces (tt1 and tt2):
 ydata1 = data = num.random.random(1000)
@@ -30,12 +31,14 @@ setup = trace.MisfitSetup(norm=2,
 
 # Calculate the misfit for each test candidate:
 i = 0
+t1 = time()
 for m, n in rt.misfit(candidates=test_candidates, setups=setup):
     M = m/n
     print 'L2 misfit of %s and %s is %s' % (rt.station, test_candidates[i].station, M)
     i += 1 
+print 'ETime: ', time()-t1
 
 # Finally, we want to dump the misfit setup that has been used in a yaml file:
-f = open('my_misfit_setup.txt', 'w')
-f.write(setup.dump())
-f.close()
+#f = open('my_misfit_setup.txt', 'w')
+#f.write(setup.dump())
+#f.close()
