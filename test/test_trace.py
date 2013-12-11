@@ -479,12 +479,16 @@ class TraceTestCase(unittest.TestCase):
                                      freqlimits=(1,2,20,40),
                                      frequency_response=fresponse)
 
+        tstart = time.time()
         for ms, nn in rt.misfit( candidates=[tt, tt2], setups=[mfsetup1,
                                                                mfsetup2,
                                                                mfsetup3,
                                                                mfsetup4]):
             for m in ms:
                 self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s' % m)
+        tstop = time.time()
+
+        print tstop-tstart
 
     def testValidateFrequencyResponses(self):
         ttrace = trace.Trace(ydata=num.random.random(1000))

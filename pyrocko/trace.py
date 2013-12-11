@@ -981,6 +981,7 @@ class Trace(object):
                     candidate = cand.copy()
 
                 if reference_trace is not ref_copy:
+                    print 'happy new trace'
                     ref_copy_is_new = True
 
                 wanted_tmin = min(candidate.tmin, reference_trace.tmin)
@@ -2481,13 +2482,15 @@ def equalize_sampling_rates(trace_1, trace_2):
     if trace_1.deltat < trace_2.deltat:
         t1_out = trace_1.copy()
         t1_out.downsample_to(deltat=trace_2.deltat)
-        logger.warning('Following trace downsampled (return copy of trace): %s' % t1_out)
+        logger.warning('Trace downsampled (return copy of trace): %s' %
+                                                        '.'.join(t1_out.nslc_id))
         return t1_out, trace_2
     
     elif trace_1.deltat > trace_2.deltat:
         t2_out = trace_2.copy()
         t2_out.downsample_to(deltat=trace_1.deltat)
-        logger.warning('Following trace downsampled (return copy of trace): %s' % t2_out)
+        logger.warning('Trace downsampled (return copy of trace): %s' % 
+                                                        '.'.join(t2_out.nslc_id))
         return trace_1, t2_out
 
 def Lx_norm(u, v, norm=2):
