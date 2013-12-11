@@ -446,14 +446,10 @@ class TraceTestCase(unittest.TestCase):
         """
         test_file = os.path.join(os.path.dirname(__file__), '../examples/1989.072.evt.mseed')
         p = pile.make_pile(test_file, show_progress=False)
-
-        tt = p.all()[0]
-        tt2 = tt.copy()
-        rt = tt.copy()
-
-        tt2.downsample_to(rt.deltat*5)
+        rt = p.all()[0]
+        tt = rt.copy()
         tt.downsample_to(rt.deltat*5)
-        self.assertNotEqual(tt.deltat, rt.deltat, 'Something went wrong when downsampling reference trace rt')
+        tts = [tt]*100
         taper1 = trace.CosFader(xfade=rt.deltat*300)
         fresponse = trace.FrequencyResponse()
 
@@ -480,7 +476,7 @@ class TraceTestCase(unittest.TestCase):
                                      frequency_response=fresponse)
 
         tstart = time.time()
-        for ms, nn in rt.misfit( candidates=[tt, tt2], setups=[mfsetup1,
+        for ms, nn in rt.misfit( candidates=tts , setups=[mfsetup1,
                                                                mfsetup2,
                                                                mfsetup3,
                                                                mfsetup4]):

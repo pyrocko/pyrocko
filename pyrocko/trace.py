@@ -972,32 +972,31 @@ class Trace(object):
 
             m = []
             n = []
-            ref_copy = self.copy()
+            reference_trace = self.copy()
             ref_copy_is_new = True 
+            trace_hash = None
             for cand in candidates:
-                candidate, reference_trace = equalize_sampling_rates(cand, ref_copy)
+                wanted_tmin = min(cand.tmin, reference_trace.tmin)
+                wanted_tmax = max(cand.tmax, reference_trace.tmax)
+
+                candidate, reference_trace = equalize_sampling_rates(cand, reference_trace)
 
                 if candidate is cand:
                     candidate = cand.copy()
 
-                if reference_trace is not ref_copy:
-                    print 'happy new trace'
-                    ref_copy_is_new = True
-
-                wanted_tmin = min(candidate.tmin, reference_trace.tmin)
-                wanted_tmax = max(candidate.tmax, reference_trace.tmax)
                
                 if candidate.tmax < wanted_tmax or candidate.tmin > wanted_tmin:
                     candidate.extend(tmin=wanted_tmin, 
                                      tmax=wanted_tmax, 
                                      fillmethod='repeat')
 
-                if ref_copy_is_new:
-                    if reference_trace.tmax < wanted_tmax or reference_trace.tmin > candidate.tmin:
-                        reference_trace.extend(tmin=wanted_tmin,
-                                             tmax=wanted_tmax,
-                                             fillmethod='repeat')
-                    reference_trace.snap(inplace=True)
+                if reference_trace.tmax < wanted_tmax or reference_trace.tmin > wanted_tmin:
+                    reference_trace = self.copy()
+                    reference_trace.downsample_to(candidate.deltat)
+                    reference_trace.extend(tmin=wanted_tmin,
+                                         tmax=wanted_tmax,
+                                         fillmethod='repeat')
+                reference_trace.snap(inplace=True)
 
                 candidate.snap(inplace=True)
 
@@ -1016,7 +1015,7 @@ class Trace(object):
                 test_pad[:ndata] = candidate.ydata
                 test_fft = num.fft.rfft(test_pad)
 
-                if ref_copy_is_new:
+                if trace_hash != reference_trace.__hash__():
                     freqs = num.arange(test_fft.size)*1/(test_pad.size*candidate.deltat)
                     coeffs = frequency_response.evaluate(freqs)
                     reference_trace.taper(taper) 
@@ -1042,6 +1041,7 @@ class Trace(object):
                     n.append(n_tmp)
 
                 ref_copy_is_new = False
+                trace_hash = reference_trace.__hash__()
 
                 if single_setup:
                     yield m_tmp, n_tmp
