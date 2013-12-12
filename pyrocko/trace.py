@@ -4,7 +4,7 @@ import time, math, copy, logging
 import numpy as num
 from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
-from pyrocko.util import reuse, hpfloat
+from pyrocko.util import reuse, hpfloat, UnavailableDecimation
 from guts import *
 from guts_array import *
 
@@ -976,15 +976,27 @@ class Trace(object):
             ref_copy_is_new = True 
             trace_hash = None
             for cand in candidates:
-                wanted_tmin = min(cand.tmin, reference_trace.tmin)
-                wanted_tmax = max(cand.tmax, reference_trace.tmax)
+                wanted_tmin = min(cand.tmin, reference_trace.tmin)-1
+                wanted_tmax = max(cand.tmax, reference_trace.tmax)+1
 
-                candidate, reference_trace = equalize_sampling_rates(cand, reference_trace)
+                try:
+                    candidate, reference_trace = equalize_sampling_rates(cand, reference_trace)
+                except UnavailableDecimation:
+                        logger.warning('Cannot downsample reference trace. Make sure, that all ' \
+                                'candidates can be downsampled to sampling rate of this ' \
+                                'trace (deltat=%s) et vice versai. m=None, n=None' % self.deltat)
+                        m.append(None)
+                        n.append(None)
+                        continue
 
                 if candidate is cand:
                     candidate = cand.copy()
+                
+                if trace_hash != reference_trace.__hash__():
+                    reference_trace.snap(inplace=True)
 
-               
+                candidate.snap(inplace=True)
+
                 if candidate.tmax < wanted_tmax or candidate.tmin > wanted_tmin:
                     candidate.extend(tmin=wanted_tmin, 
                                      tmax=wanted_tmax, 
@@ -992,13 +1004,19 @@ class Trace(object):
 
                 if reference_trace.tmax < wanted_tmax or reference_trace.tmin > wanted_tmin:
                     reference_trace = self.copy()
-                    reference_trace.downsample_to(candidate.deltat)
+                    try:
+                        reference_trace.downsample_to(candidate.deltat)
+                    except UnavailableDecimation:
+                            logger.warning('Cannot downsample reference trace. Make sure, that all ' \
+                                    'candidates can be downsampled to sampling rate of this ' \
+                                    'trace (deltat=%s) et vice versai. m=None, n=None' % self.deltat)
+                            m.append(None)
+                            n.append(None)
+                            continue
+
                     reference_trace.extend(tmin=wanted_tmin,
                                          tmax=wanted_tmax,
                                          fillmethod='repeat')
-                reference_trace.snap(inplace=True)
-
-                candidate.snap(inplace=True)
 
                 if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat * 1e-4 or \
                         abs(reference_trace.tmax - candidate.tmax) > reference_trace.deltat * 1e-4 or \
