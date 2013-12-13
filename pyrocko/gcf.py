@@ -1,4 +1,5 @@
-import sys, struct
+import sys, struct, re
+from StringIO import StringIO
 from collections import namedtuple
 import numpy as num
 from pyrocko.io_common import FileLoadError
@@ -65,6 +66,8 @@ def read_header(f, endianness='>'):
     time = (iday*24*60*60) + guralp_zero + isecond
 
     ittl, israte, compression, nrecords = struct.unpack(e+'BBBB', data[12:])
+    if nrecords > 250:
+        raise FileLoadError('Header indicates too many records in block.')
 
     if israte == 0:
         if compression == 4 and stream_id[-2:] == '00':
@@ -82,13 +85,19 @@ def read_header(f, endianness='>'):
         elif compression == 4 and stream_id[-2:] == 'BP':
             block_type = 'byte_pipe_block'
 
+        elif stream_id[-2:] == 'IB':
+            block_type = 'information_block'
+
         else:
-            block_type = 'unknown_block'
+            raise FileLoadError('Unexpected block type found.')
             
         return Header(block_type, system_id, stream_id, instrument_type, 
                       time, gain, ittl, 0.0, compression, nrecords)
     else:
         block_type = 'data_block'
+
+        if not re.match(r'^([ZNEXC][0-9A-CG-S]|M[0-9A-F])$', stream_id[-2:]):
+            raise FileLoadError('Unexpected data stream ID')
 
         sample_rate_tab = {
                 157: (0.1, None),
@@ -113,6 +122,10 @@ def read_header(f, endianness='>'):
             compression = compression & 0b1111
             time += toff
 
+        if compression not in (1,2,4):
+            raise GCFLoadError(
+                    'Unsupported compression code: %i' % compression)
+
         return Header(block_type, system_id, stream_id, instrument_type, 
                       time, gain, ittl, sample_rate, compression, nrecords)
 
@@ -127,9 +140,9 @@ def read_data(f, h, endianness='>'):
     nsamples = h.compression * h.nrecords
     difs = num.fromstring(data[4:4+h.nrecords*4], dtype=dtype[h.compression], 
                           count=nsamples)
-    samples = difs.astype(num.int)
+    samples = difs.astype(num.int32)
     samples[0] += first
-    samples = num.cumsum(samples)
+    samples = num.cumsum(samples, dtype=num.int32)
     last = struct.unpack(e+'i', data[4+h.nrecords*4:4+h.nrecords*4+4])[0]
     if last != samples[-1]:
         raise GCFLoadError('Checksum error occured')
@@ -188,13 +201,29 @@ def iload(filename, load_data=True):
         for tr in traces.values():
             yield tr
 
+def detect(first512):
+    # does not work properly, produces too many false positives
+    # difficult to improve due to the very compact GCF header
+    try:
+        if len(first512) < 512:
+            return False
+
+        f = StringIO(first512)
+        h = read_header(f)
+        return True
+
+    except:
+        return False
+
 if __name__ == '__main__':
+    from pyrocko import util
+    util.setup_logging('warn')
+
     all_traces = []
     for fn in sys.argv[1:]:
-        all_traces.extend(iload(fn))
+        if detect(open(fn).read(512)):
+            print fn
+            all_traces.extend(iload(fn))
 
     trace.snuffle(all_traces)
-
-
-
 
