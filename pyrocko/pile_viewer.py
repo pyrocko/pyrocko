@@ -2504,9 +2504,9 @@ def MakePileViewerMainClass(base):
                                     
                                 else:
                                     
-                                    if self.menuitem_allowdownsampling.isChecked():
+                                    if self.menuitem_allowdownsampling.isChecked() and self.lowpass is not None:
                                         while trace.deltat < min_deltat_wo_decimate:
-                                            trace.downsample(2)
+                                            trace.downsample(2, demean=False)
 
                                     
                                     if not lphp and (self.lowpass is not None and self.highpass is not None and
