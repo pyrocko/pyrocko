@@ -3147,7 +3147,7 @@ class LayeredModel:
         return mod_extracted
 
     def replaced_crust(self, crust2_profile):
-        import crust2x2
+        from pyrocko import crust2x2
         if isinstance(crust2_profile, tuple):
             lat, lon = [ float(x) for x in crust2_profile ]
             profile = crust2x2.get_profile(lat, lon)
@@ -3259,7 +3259,7 @@ def read_nd_model_fh(f):
     f.close()
 
 def from_crust2x2_profile(profile, depthmantle=50000):
-    import crust2x2
+    from pyrocko import crust2x2
     z = 0.
     for i in range(8):
         dz, vp, vs, rho = profile.get_layer(i)

@@ -1,7 +1,6 @@
 import math
 import numpy as num
-import config
-
+from pyrocko import config
 
 d2r = math.pi/180.
 r2d = 1./d2r

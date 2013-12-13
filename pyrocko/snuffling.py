@@ -10,9 +10,9 @@ import os, sys, logging, traceback, tempfile
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-import pile
+from pyrocko import pile
 
-from gui_util import ValControl, LinValControl, FigureFrame
+from pyrocko.gui_util import ValControl, LinValControl, FigureFrame
 
 
 logger = logging.getLogger('pyrocko.snuffling')

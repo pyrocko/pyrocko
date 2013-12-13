@@ -1,4 +1,4 @@
-import trace, util
+from pyrocko import trace, util
 
 import time, sys, logging, weakref, math
 import numpy as num

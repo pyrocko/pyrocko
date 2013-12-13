@@ -1,11 +1,9 @@
 
-
-import trace, io, util, config
+from pyrocko import trace, io, util, config
 
 import numpy as num
 import os, logging, time, weakref, copy, re, sys, operator, math
 import cPickle as pickle
-
         
 def sl(s):
     return map(str, sorted(list(s)))
@@ -35,7 +33,7 @@ import avl
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
 
-from trace import degapper
+from pyrocko.trace import degapper
 
 def avl_remove_exact(avltree, element):
     ilo, ihi = avltree.span(element)

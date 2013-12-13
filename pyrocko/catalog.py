@@ -1,5 +1,5 @@
-import model, util
-from moment_tensor import MomentTensor, symmat6
+from pyrocko import model, util
+from pyrocko.moment_tensor import MomentTensor, symmat6
 import urllib2
 import urllib
 import time

@@ -1,26 +1,26 @@
-import mseed_ext
-from mseed_ext import HPTMODULUS, MSeedError
-import trace
-import os, re
-from util import reuse, ensuredirs
 from struct import unpack
-from io_common import FileLoadError
+import os, re
 
-class CodeTooLong(MSeedError):
+from pyrocko import trace
+from pyrocko.util import reuse, ensuredirs
+from pyrocko.io_common import FileLoadError, FileSaveError
+
+class CodeTooLong(FileSaveError):
     pass
 
 def iload(filename, load_data=True):
+    from pyrocko import mseed_ext
 
     try:
         traces = []
         for tr in mseed_ext.get_traces( filename, load_data ):
             network, station, location, channel = tr[1:5]
-            tmin = float(tr[5])/float(HPTMODULUS)
-            tmax = float(tr[6])/float(HPTMODULUS)
+            tmin = float(tr[5])/float(mseed_ext.HPTMODULUS)
+            tmax = float(tr[6])/float(mseed_ext.HPTMODULUS)
             try:
                 deltat = reuse(float(1.0)/float(tr[7]))
             except ZeroDivisionError, e:
-                raise MSeedError('Trace in file %s has a sampling rate of zero.' % filename)
+                raise FileLoadError('Trace in file %s has a sampling rate of zero.' % filename)
             ydata = tr[8]
             
             traces.append(trace.Trace(network, station, location, channel, tmin, tmax, deltat, ydata))
@@ -28,12 +28,13 @@ def iload(filename, load_data=True):
         for tr in traces:
             yield tr
     
-    except (OSError, MSeedError), e:
-        raise FileLoadError(e)
+    except (OSError, mseed_ext.MSeedError), e:
+        raise FileLoadError(str(e))
     
 def as_tuple(tr):
-    itmin = int(round(tr.tmin*HPTMODULUS))
-    itmax = int(round(tr.tmax*HPTMODULUS))
+    from pyrocko import mseed_ext
+    itmin = int(round(tr.tmin*mseed_ext.HPTMODULUS))
+    itmax = int(round(tr.tmax*mseed_ext.HPTMODULUS))
     srate = 1.0/tr.deltat
     return (tr.network, tr.station, tr.location, tr.channel, 
             itmin, itmax, srate, tr.get_ydata())
@@ -41,6 +42,7 @@ def as_tuple(tr):
 
 
 def save(traces, filename_template, additional={}):
+    from pyrocko import mseed_ext
     for tr in traces:
         for code, maxlen, val in zip(
                 ['network', 'station', 'location', 'channel'],
@@ -69,8 +71,8 @@ def save(traces, filename_template, additional={}):
         ensuredirs(fn)
         try:
             mseed_ext.store_traces(trtups, fn)
-        except MSeedError, e:
-            raise MSeedError( str(e) + ' (while storing traces to file \'%s\')' % fn)
+        except mseed_ext.MSeedError, e:
+            raise FileSaveError( str(e) + ' (while storing traces to file \'%s\')' % fn)
             
     return fn_tr.keys()
 

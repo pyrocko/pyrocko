@@ -1,10 +1,10 @@
 '''File IO module for SICK traces format.'''
 
 from pyrocko.file import File, numtype2type, NoDataAvailable, size_record_header, FileError
-import trace
-from util import ensuredirs
+from pyrocko import trace
+from pyrocko.util import ensuredirs
 from struct import unpack
-from io_common import FileLoadError
+from pyrocko.io_common import FileLoadError
 
 record_formats = {
 

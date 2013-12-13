@@ -1,4 +1,4 @@
-import pile, util, io
+from pyrocko import pile, util, io
 import math, logging
 
 logger = logging.getLogger('pyrocko.shadow_pile')

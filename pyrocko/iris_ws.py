@@ -1,5 +1,5 @@
 import urllib, urllib2, logging, re
-import util, model, pz
+from pyrocko import util, model, pz
 
 from xml.parsers.expat import ParserCreate
 

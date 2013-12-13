@@ -1,7 +1,6 @@
 
-import util, model
+from pyrocko import util, model, trace
 import sys, re, calendar, time, logging
-from pyrocko import gse_ext, trace
 import numpy as num
 
 unpack_fixed = util.unpack_fixed

@@ -1,6 +1,6 @@
 import sys, time, calendar
 
-import util
+from pyrocko import util
 
 
 class NotABlockette(Exception):

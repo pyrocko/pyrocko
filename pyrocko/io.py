@@ -32,8 +32,7 @@ ASCII Table  text                                  yes      [#f5]_
 import os, logging
 from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf
 from pyrocko import util, trace
-from pyrocko.mseed_ext import MSeedError
-from io_common import FileLoadError
+from pyrocko.io_common import FileLoadError
 
 import numpy as num
 

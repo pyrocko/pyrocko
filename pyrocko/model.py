@@ -1,8 +1,8 @@
-import catalog, orthodrome, config, util, moment_tensor
+from pyrocko import orthodrome, config, util, moment_tensor
 import math, copy
 import numpy as num
 
-from orthodrome import wrap
+from pyrocko.orthodrome import wrap
 
 d2r = num.pi/180.
 
@@ -526,6 +526,7 @@ def load_kps_event_list(filename):
     return elist
         
 def load_gfz_event_list(filename):
+    from pyrocko import catalog
     cat = catalog.Geofon()
     
     elist =[]
