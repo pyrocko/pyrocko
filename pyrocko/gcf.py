@@ -81,6 +81,7 @@ def read_header(f, endianness='>'):
 
         elif compression == 4 and stream_id[-2:] == 'BP':
             block_type = 'byte_pipe_block'
+
         else:
             block_type = 'unknown_block'
             
@@ -157,7 +158,7 @@ def iload(filename, load_data=True):
                 else:
                     f.seek(1024 - 16, 1)
                     samples = None
-                    tmax = h.time + h.nrecords * h.compression * deltat
+                    tmax = h.time + (h.nrecords * h.compression - 1) * deltat
 
                 nslc = ('', h.system_id, '', h.stream_id)
 
