@@ -454,8 +454,8 @@ class TraceTestCase(unittest.TestCase):
             tts.append(tt.copy())
         for i in range(10):
             map(lambda t: t.shift(2.234*i), tts[(i-1)*10:(i*10)-1])
-            map(lambda t: t.downsample_to(t.deltat+0.5*i), tts[(i-1)*10:(i*10)-1])
-
+            # Some traces cannot be downsampled:
+            #map(lambda t: t.downsample_to(t.deltat+0.5*i), tts[(i-1)*10:(i*10)-1])
 
         taper1 = trace.CosFader(xfade=rt.deltat*300)
         fresponse = trace.FrequencyResponse()
@@ -483,16 +483,13 @@ class TraceTestCase(unittest.TestCase):
                                      frequency_response=fresponse)
 
         tstart = time.time()
-        import pdb; pdb.set_trace()
         for ms, nn in rt.misfit( candidates=tts , setups=[mfsetup1,
                                                                mfsetup2,
                                                                mfsetup3,
                                                                mfsetup4]):
-            #for m in ms:
-            #    self.assertEqual(m, 0, 'misfit\'s m is not zero, but m = %s' % m)
-            print ms
-        tstop= time.time()
-
+            for m in ms:
+                self.assertNotEqual(m, None, 'misfit\'s m is not zero, but m = %s' % m)
+        tstop = time.time()
         print tstop-tstart
 
     def testValidateFrequencyResponses(self):
