@@ -52,9 +52,9 @@ if __name__ == '__main__':
     parser.add_option('--format',
             dest='format',
             default='detect',
-            choices=('mseed', 'sac', 'kan', 'segy', 
-                'seisan', 'seisan_l', 'seisan_b', 'gcf', 'yaff', 'from_extension', 'detect'),
-            help='assume files are of given FORMAT [default: \'%default\']' )
+            choices=['mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan_l', 
+                     'seisan_b', 'gcf', 'yaff', 'from_extension', 'detect'],
+            help='assume input files are of given FORMAT (default: \'%default\')' )
 
     parser.add_option('--pattern',
             dest='regex',
@@ -119,6 +119,12 @@ if __name__ == '__main__':
     parser.add_option('--output',
             dest='output_path',
             help='set output path')
+
+    parser.add_option('--output-format',
+            dest='output_format',
+            default='mseed', 
+            choices=['mseed', 'sac', 'text', 'yaff'],
+            help='set output file format (default: \'%default\')')
 
     parser.add_option('--snap',
             dest='snap',
@@ -274,13 +280,13 @@ if __name__ == '__main__':
                     r = {}
                     for k, (pat,repl) in replacements.iteritems():
                         oldval = getattr(tr, k)
-                        newval = oldval.replace(pat, repl)
+                        newval = re.sub(pat, repl, oldval)
                         r[k] = newval
 
                     tr.set_codes(**r)
 
             if output_path:
-                io.save(traces, output_path)
+                io.save(traces, output_path, format=options.output_format)
 
         if abort:
             break
