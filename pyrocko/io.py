@@ -30,7 +30,7 @@ ASCII Table  text                                  yes      [#f5]_
 '''
 
 import os, logging
-from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1
+from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf
 from pyrocko import util, trace
 from pyrocko.mseed_ext import MSeedError
 from io_common import FileLoadError
@@ -42,7 +42,7 @@ logger = logging.getLogger('pyrocko.io')
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
 
-    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'from_extension'``)
+    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'gcf'``, ``'from_extension'``)
     :param getdata: if ``True`` (the default), read data, otherwise only read traces metadata
     :param substitutions:  dict with substitutions to be applied to the traces metadata
     
@@ -118,6 +118,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             'mseed': mseed,
             'seisan': seisan_waveform,
             'gse1': gse1,
+            'gcf': gcf,
     }
 
     add_args = {

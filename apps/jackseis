@@ -53,7 +53,7 @@ if __name__ == '__main__':
             dest='format',
             default='detect',
             choices=('mseed', 'sac', 'kan', 'segy', 
-                'seisan', 'seisan_l', 'seisan_b', 'yaff', 'from_extension', 'detect'),
+                'seisan', 'seisan_l', 'seisan_b', 'gcf', 'yaff', 'from_extension', 'detect'),
             help='assume files are of given FORMAT [default: \'%default\']' )
 
     parser.add_option('--pattern',
