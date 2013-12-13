@@ -1061,7 +1061,7 @@ def snuffle(traces, **kwargs):
     from pyrocko import pile, snuffler
     p = pile.Pile()
     if traces:
-        trf = pile.MemTracesFile(p, traces)
+        trf = pile.MemTracesFile(None, traces)
         p.add_file(trf)
     return snuffler.snuffle(p, **kwargs)
 
