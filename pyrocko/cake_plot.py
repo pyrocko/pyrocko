@@ -107,6 +107,11 @@ tango_colors = {
 'aluminium6': ( 46,  52,  54)
 }
 
+def path2colorint(path):
+    '''Calculate an integer representation deduced from path's definition.'''
+    s = sum([ord(char) for char in path.phase.definition()])
+    return s
+
 def light(color, factor=0.2):
     return tuple( 1-(1-c)*factor for c in color )
 
@@ -120,7 +125,7 @@ colors = [ to01(tango_colors[x+i]) for i in '321' for x in 'scarletred chameleon
 shades = [ light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1,9) ]
 shades2 = [ light(to01(tango_colors['orange1']), i*0.1) for i in xrange(1,9) ]
 
-def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None):
+def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None, coloring='by_phase_definition'):
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     axes = getaxes(axes)
@@ -130,7 +135,11 @@ def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None):
         if distances is not None:
             if path.xmax() < xmin or path.xmin() > xmax:
                 continue
-        color = colors[ipath%len(colors)]
+        if coloring == 'by_phase_definition':
+            int_rep = path2colorint(path)
+            color = colors[(int_rep+int_rep%7)%len(colors)]        
+        else:
+            color = colors[ipath%len(colors)]
         p,x,t = path.draft_pxt(path.endgaps(zstart, zstop))
         if p.size == 0:
             continue
@@ -178,11 +187,15 @@ def troffset(dx,dy, axes=None):
     from matplotlib import transforms
     return axes.transData + transforms.ScaledTranslation(dx/72., dy/72., axes.gcf().dpi_scale_trans)
 
-def plot_xp(paths, zstart, zstop, axes=None):
+def plot_xp(paths, zstart, zstop, axes=None, coloring='by_phase_definition'):
     axes = getaxes(axes)
     all_x = []
     for ipath, path in enumerate(paths):
-        color = colors[ipath%len(colors)]
+        if coloring == 'by_phase_definition':
+            int_rep = path2colorint(path)
+            color = colors[(int_rep+int_rep%7)%len(colors)]        
+        else:
+            color = colors[ipath%len(colors)]
         p, x, t = path.draft_pxt(path.endgaps(zstart, zstop))
         axes.plot(x, p, linewidth=2, color=color)
         axes.plot(x[:1], p[:1], 'o', color=color)
@@ -210,15 +223,19 @@ def labels_model(axes=None):
     axes.set_ylabel('Depth [km]')
     yscaled(0.001, axes)
 
-def plot_rays(paths, rays, zstart, zstop, axes=None):
+def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definition'):
     axes = getaxes(axes)
     path_to_color = {}
     for ipath, path in enumerate(paths):
-        path_to_color[path] = colors[ipath%len(colors)]
+        if coloring == 'by_phase_definition':
+            int_rep = path2colorint(path)
+            path_to_color[path] = colors[(int_rep+int_rep%7)%len(colors)]        
+        else:
+            path_to_color[path] = colors[ipath%len(colors)]
 
     if rays is None:
         rays = paths
-
+    
     for iray, ray in enumerate(rays):
         if isinstance(ray, cake.RayPath):
             path = ray
@@ -235,7 +252,7 @@ def plot_rays(paths, rays, zstart, zstop, axes=None):
             fanz, fanx, _ = ray.zxt_path_subdivided()
             path = ray.path
         
-        
+
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
             l = axes.plot( xs, zs, color=color)
