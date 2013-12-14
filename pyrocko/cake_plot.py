@@ -236,6 +236,8 @@ def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definiti
     if rays is None:
         rays = paths
     
+    labels = set()
+
     for iray, ray in enumerate(rays):
         if isinstance(ray, cake.RayPath):
             path = ray
@@ -252,10 +254,11 @@ def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definiti
             fanz, fanx, _ = ray.zxt_path_subdivided()
             path = ray.path
         
-
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
-            l = axes.plot( xs, zs, color=color)
+            l = axes.plot( xs, zs, color=color, label=path.phase.definition())
+            labels.add(path.phase.definition())
+    axes.legend(labels)
 
 
 def sketch_model(mod, axes=None):
