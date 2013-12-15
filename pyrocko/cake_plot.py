@@ -275,10 +275,12 @@ def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definiti
 
         if coloring == 'by_phase_definition':
             color = path_to_color[path.phase.definition()]
+            phase_label = path.phase.definition()
+
         else:
             color = path_to_color[path]
+            phase_label = path
 
-        phase_label = path.phase.definition()
         for zs, xs in zip(fanz, fanx):
             if phase_label in labels:
                 phase_label = ""
@@ -288,7 +290,7 @@ def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definiti
                 labels.add(phase_label)
 
     if legend:
-        axes.legend(loc=4, prop={'size': 12})
+        axes.legend(loc=4, prop={'size': 11})
 
 
 def sketch_model(mod, axes=None):
@@ -387,6 +389,8 @@ def plot_surface_efficiency(mat):
     for angle in num.linspace(0., 90., 910.):
         pp = math.sin(angle*d2r)/mat.vp
         ps = math.sin(angle*d2r)/mat.vs
+
+        # Unresolved reference: psb_surface and psv_surface_ind
         escp = psv_surface(mat, pp, energy=True) 
         escs = psv_surface(mat, ps, energy=True)
         data.append((angle, escp[psv_surface_ind(P,P)], escp[psv_surface_ind(P,S)], 
@@ -500,7 +504,6 @@ def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fal
 
 def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, vred=None):
     from matplotlib import pyplot as plt
-    from matplotlib.transforms import Affine2D
     mpl_init()
     ax1 = plt.subplot(211)
     labelspace(plt.gca())
