@@ -223,20 +223,37 @@ def labels_model(axes=None):
     axes.set_ylabel('Depth [km]')
     yscaled(0.001, axes)
 
-def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definition'):
+def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definition', legend=True,
+                                                                            avoid_same_colors=True):
+
     axes = getaxes(axes)
     path_to_color = {}
+    available_colors = set()
+
     for ipath, path in enumerate(paths):
         if coloring == 'by_phase_definition':
             int_rep = path2colorint(path)
-            path_to_color[path] = colors[(int_rep+int_rep%7)%len(colors)]        
+            color_id = (int_rep+int_rep % 5) % len(colors)
+
+            if not path.phase.definition() in path_to_color.keys():
+                if avoid_same_colors:
+                    if len(available_colors) == 0:
+                        available_colors = set(range(0, len(colors)-1))
+                    if color_id in available_colors:
+                        available_colors.remove(color_id)
+                    else:
+                        color_id = available_colors.pop()
+
+                    assert color_id not in available_colors
+
+                path_to_color[path.phase.definition()] = colors[color_id]
         else:
-            path_to_color[path] = colors[ipath%len(colors)]
+            path_to_color[path] = colors[ipath % len(colors)]
 
     if rays is None:
         rays = paths
-    
-    labels = set()
+
+    labels = []
 
     for iray, ray in enumerate(rays):
         if isinstance(ray, cake.RayPath):
@@ -245,20 +262,28 @@ def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definiti
             if not path._is_headwave:
                 p = num.linspace(pmin, pmax, 6)
                 x = None
+
             else:
                 x = num.linspace(xmin, xmin*10, 6)
                 p = num.atleast_1d(pmin)
 
             fanz, fanx, _ = path.zxt_path_subdivided(p, path.endgaps(zstart, zstop), x_for_headwave=x)
+
         else:
             fanz, fanx, _ = ray.zxt_path_subdivided()
             path = ray.path
-        
-        color = path_to_color[path]
+
+        if coloring == 'by_phase_definition':
+            color = path_to_color[path.phase.definition()]
+        else:
+            color = path_to_color[path]
+
         for zs, xs in zip(fanz, fanx):
             l = axes.plot( xs, zs, color=color, label=path.phase.definition())
-            labels.add(path.phase.definition())
-    axes.legend(labels)
+            if legend:
+                labels.append(path.phase.definition())
+    if legend:
+        axes.legend(labels)
 
 
 def sketch_model(mod, axes=None):
