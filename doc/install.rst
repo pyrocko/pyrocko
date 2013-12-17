@@ -33,7 +33,7 @@ Python (the \*-dev packages) is also system specific.
 
 Here some details, what to install on a few popular distributions:
 
-* **Ubuntu** (12.04.1 LTS), **Debian** (7, wheezy)::
+* **Ubuntu** (12.04.1 LTS), **Debian** (7 wheezy), **Mint** (13 Maya)::
 
     sudo apt-get install git python-dev python-setuptools
     sudo apt-get install python-numpy python-numpy-dev python-scipy python-matplotlib
