@@ -191,6 +191,12 @@ def request_seismogram(req, baseurl='http://kinherd.org/gfs/seismosizer'):
     f.close()
     return resp
 
+def request_earthmodel(store_id, baseurl='http://kinherd.org/gfs/stores'):
+    f = urllib.urlopen('%s/%s' % (baseurl, store_id))
+    resp = load(stream=f)
+    f.close()
+    return resp
+
 def get_store_ids(baseurl='http://kinherd.org/gfs/stores'):
     f = urllib.urlopen('%s' % baseurl)
     resp = load(stream=f)
