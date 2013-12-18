@@ -1,4 +1,4 @@
-import math, calendar, time
+import math, calendar, time, copy
 import numpy as num
 
 import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace, pyrocko.plot
@@ -640,6 +640,10 @@ class Marker(object):
 
     def hoover_message(self):
         return ''
+
+    def copy(self):
+        ''' Get a copy of this marker. '''
+        return copy.deepcopy(self)
 
     def __str__(self):
         traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
