@@ -55,6 +55,9 @@ def random_rotation(x=None):
     house = num.identity(3) - 2.0 * v * v.T
     return -house*zrot
 
+def to6(m):
+    return num.array([m[0,0], m[1,1], m[2,2], m[0,1], m[0,2], m[1,2]])
+
 def symmat6(*vals):
     '''Create symmetric 3x3 matrix from its 6 non-redundant values.
      
@@ -71,6 +74,8 @@ def moment_to_magnitude( moment ):
 
 def magnitude_to_moment( magnitude ):
     return 10.0**(1.5*(magnitude+10.7))*1.0e-7
+
+magnitude_1Nm = moment_to_magnitude(1.0)
     
 def euler_to_matrix( alpha, beta, gamma ):
     '''Given the euler angles alpha,beta,gamma, create rotation matrix
@@ -310,9 +315,15 @@ class MomentTensor:
     def m(self):
         '''Get plain moment tensor as 3x3 matrix.'''
         return self._m.copy()
+
+    def m6(self):
+        return to6(self._m)
     
     def m_up_south_east(self):
         return self._to_up_south_east.T * self._m * self._to_up_south_east
+
+    def m6_up_south_east(self):
+        return to6(self.m_up_south_east())
     
     def m_plain_double_couple(self):
         '''Get plain double couple with same scalar moment as moment tensor.'''
