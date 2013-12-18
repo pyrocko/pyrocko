@@ -24,7 +24,7 @@ def cosdelta(a, b):
     return min(1.0, math.sin(a.lat*d2r) * math.sin(b.lat*d2r) + math.cos(a.lat*d2r) * math.cos(b.lat*d2r) * math.cos(d2r*(b.lon-a.lon)))
     
 def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
-    return num.mimimum(1.0, num.sin(a_lats*d2r) * num.sin(b_lats*d2r) + num.cos(a_lats*d2r) * num.cos(b_lats*d2r) * num.cos(d2r*(b_lons-a_lons)))
+    return num.minimum(1.0, num.sin(a_lats*d2r) * num.sin(b_lats*d2r) + num.cos(a_lats*d2r) * num.cos(b_lats*d2r) * num.cos(d2r*(b_lons-a_lons)))
 
 def azimuth(a, b):
     return r2d*math.atan2( math.cos(a.lat*d2r) * math.cos(b.lat*d2r) * math.sin(d2r*(b.lon-a.lon)),
