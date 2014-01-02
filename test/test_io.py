@@ -76,6 +76,12 @@ class IOTestCase( unittest.TestCase ):
 
         assert isinstance(e, mseed.CodeTooLong)
 
+    def testMSeedDetect(self):
+        testdir = os.path.dirname(__file__)
+        fn = os.path.join(testdir, 'detect.mseed')
+        io.load(fn, format='detect')
+
+
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')
     unittest.main()

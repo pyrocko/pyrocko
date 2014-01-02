@@ -93,11 +93,20 @@ def detect(first512):
 
     type_code = rec[6]
     if type_code in 'DRQM':
-        fmt = '>6s1s1s5s2s3s2s10sH2h4Bl2H'
-        vals = unpack(fmt, rec[:48])
-        fmt_btime = '>HHBBBBH'
-        tvals = unpack(fmt_btime, vals[7])
-        if tvals[1] < 1 or tvals[1] > 367 or tvals[2] > 23 or tvals[3] > 59 or tvals[4] > 60 or tvals[6] > 9999:
+        bads = []
+        for sex in '<>':
+            bad = False
+            fmt = sex + '6s1s1s5s2s3s2s10sH2h4Bl2H'
+            vals = unpack(fmt, rec[:48])
+            fmt_btime = sex + 'HHBBBBH'
+            tvals = unpack(fmt_btime, vals[7])
+            if tvals[1] < 1 or tvals[1] > 367 or tvals[2] > 23 or \
+                    tvals[3] > 59 or tvals[4] > 60 or tvals[6] > 9999:
+                bad = True
+
+            bads.append(bad)
+
+        if all(bads):
             return False
 
         #nblockettes = vals[-4]
