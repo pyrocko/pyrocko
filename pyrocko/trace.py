@@ -1966,12 +1966,14 @@ class SampledResponse(FrequencyResponse):
     :param left,right: values to return when input is out of range. If set to ``None`` (the default) the endpoints are returned.
     '''
 
+    freqs = Array.T()
+    vals = Array.T()
+    left = Bool.T(optional=True, default=None)
+    right = Bool.T(optional=True, default=None)
 
     def __init__(self, freqs, vals, left=None, right=None):
-        self.freqs = freqs.copy()
-        self.vals = vals.copy()
-        self.left = left
-        self.right = right
+    
+        Object.__init__(self, freqs=freqs.copy(), vals=vals.copy(), left=left, right=right)
         
     def evaluate(self, freqs):
         ereal = num.interp(freqs, self.freqs, num.real(self.vals), left=self.left, right=self.right)
@@ -1997,16 +1999,20 @@ class SampledResponse(FrequencyResponse):
 class IntegrationResponse(FrequencyResponse):
     '''The integration response, optionally multiplied by a constant gain.
 
+    :param n: exponent (integer) 
+    :param gain: gain factor (float) 
+
     ::
 
                     gain
         T(f) = --------------
                (j*2*pi * f)^n
     '''
+    _n = Int.T(optional=True, default=1)
+    _gain = Float.T(optional=True, default=1.0)
 
     def __init__(self, n=1, gain=1.0):
-        self._n = n
-        self._gain = gain
+        Object.__init__(self, _n=n, _gain=gain)
         
     def evaluate(self, freqs):
         
@@ -2021,14 +2027,19 @@ class IntegrationResponse(FrequencyResponse):
 class DifferentiationResponse(FrequencyResponse):
     '''The differentiation response, optionally multiplied by a constant gain.
 
+    :param n: exponent (integer)
+    :param gain: gain factor (float) 
+
     ::
 
         T(f) = gain * (j*2*pi * f)^n
     '''
 
+    _n = Int.T(optional=True, default=1)
+    _gain = Float.T(optional=True, default=1.0)
+
     def __init__(self, n=1, gain=1.0):
-        self._n = n
-        self._gain = gain
+        Object.__init__(self, _n=n, _gain=gain)
         
     def evaluate(self, freqs):
         return self._gain * (1.0j * 2. * num.pi * freqs)**self._n
@@ -2037,10 +2048,11 @@ class AnalogFilterResponse(FrequencyResponse):
     '''Frequency response of an analog filter.
     
     (see :py:func:`scipy.signal.freqs`).'''
+    _a = Array.T()
+    _b = Array.T()
 
-    def __init__(self, b,a):
-        self._b = b
-        self._a = a
+    def __init__(self, b, a):
+        Object.__init__(self, _b=b, _a=a)
     
     def evaluate(self, freqs):
         return signal.freqs(self._b, self._a, freqs/(2.*num.pi))[1]
