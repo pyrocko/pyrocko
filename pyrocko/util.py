@@ -3,7 +3,7 @@
 import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex, optparse
 from scipy import signal
 from os.path import join as pjoin
-import config
+from pyrocko import config
 import numpy as num
 
 logger = logging.getLogger('pyrocko.util')
@@ -11,7 +11,7 @@ logger = logging.getLogger('pyrocko.util')
 try:
     import progressbar as progressbar_mod
 except:
-    import dummy_progressbar as progressbar_mod
+    from pyrocko import dummy_progressbar as progressbar_mod
 
 def progressbar_module():
     return progressbar_mod
@@ -357,6 +357,9 @@ def mk_decitab(nmax=100):
         if i > nmax: break
         
     GlobalVars.decitab_nmax = nmax
+
+def zfmt(n):
+    return '%%0%ii' % (int(math.log10(n - 1 )) + 1)
     
 def day_start(timestamp):
     '''Get beginning of day for any point in time.

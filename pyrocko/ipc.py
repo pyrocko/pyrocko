@@ -3,7 +3,7 @@ import socket, sys, os, subprocess, time, signal, traceback
 import cPickle as pickle
 import SocketServer
 
-import pile
+from pyrocko import pile
 
 def send_object(sock, object):
     data = pickle.dumps(object)

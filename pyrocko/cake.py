@@ -494,7 +494,7 @@ class UnknownClassicPhase(Exception):
         self.phasename = phasename
 
     def __str__(self):
-        return 'Cake does not know this phase: %s' % self.phasename
+        return 'Unknown classic phase name: %s' % self.phasename
 
 class PhaseDefParseError(Exception):
     '''Exception raised when an error occures during parsing of a phase definition string.'''
@@ -2801,64 +2801,67 @@ class LayeredModel:
                     phase_paths = [ path ] 
                     
                 else:
+                    try:
+                        pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
+                        pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
+                        pmax = min(pmax_start, pmax_stop)
 
-                    pmax_start = max( [ radius(z)/layer_start.v(phase.first_leg().mode, z) for z in (layer_start.ztop, layer_start.zbot) ] )
-                    pmax_stop = max( [ radius(z)/layer_stop.v(phase.last_leg().mode, z) for z in (layer_stop.ztop, layer_stop.zbot) ] )
-                    pmax = min(pmax_start, pmax_stop)
+                        pedges = [ 0. ]
+                        for l in self.layers():
+                            for z in (l.ztop, l.zbot):
+                                for mode in (P,S):
+                                    for eps2 in [ eps ]:
+                                        v = l.v(mode,z)
+                                        if v != 0.0:
+                                            p = radius(z)/v
+                                            if p <= pmax:
+                                                pedges.append(p*(1.0-eps2))
+                                                pedges.append(p)
+                                                pedges.append(p*(1.0+eps2))
 
-                    pedges = [ 0. ]
-                    for l in self.layers():
-                        for z in (l.ztop, l.zbot):
-                            for mode in (P,S):
-                                for eps2 in [ eps ]:
-                                    v = l.v(mode,z)
-                                    if v != 0.0:
-                                        p = radius(z)/v
-                                        if p <= pmax:
-                                            pedges.append(p*(1.0-eps2))
-                                            pedges.append(p)
-                                            pedges.append(p*(1.0+eps2))
+                        pedges = num.unique( sorted(pedges) )
 
-                    pedges = num.unique( sorted(pedges) )
+                        phase_paths = {}
+                        cached = {}
+                        counter = [ 0 ]
+                        def p_to_path(p):
+                            if p in cached:
+                                return cached[p]
 
-                    phase_paths = {}
-                    cached = {}
-                    counter = [ 0 ]
-                    def p_to_path(p):
-                        if p in cached:
-                            return cached[p]
+                            try:
+                                counter[0] += 1
+                                path = self.path(p, phase, layer_start, layer_stop)
+                                if path not in phase_paths:
+                                    phase_paths[path] = []
+                                phase_paths[path].append(p)
 
-                        try:
-                            counter[0] += 1
-                            path = self.path(p, phase, layer_start, layer_stop)
-                            if path not in phase_paths:
-                                phase_paths[path] = []
-                            phase_paths[path].append(p)
-
-                        except PathFailed:
-                            path = None
+                            except PathFailed:
+                                path = None
+                            
+                            cached[p] = path
+                            return path
                         
-                        cached[p] = path
-                        return path
-                    
-                    def recurse(pmin, pmax, i=0):
-                        if i > self._pdepth:
-                            return
-                        path1 = p_to_path(pmin)
-                        path2 = p_to_path(pmax)
-                        if path1 is None and path2 is None and i > 0:
-                            return
-                        if path1 is None or path2 is None or hash(path1) != hash(path2):
-                            recurse(pmin, (pmin+pmax)/2., i+1)
-                            recurse((pmin+pmax)/2., pmax, i+1)
+                        def recurse(pmin, pmax, i=0):
+                            if i > self._pdepth:
+                                return
+                            path1 = p_to_path(pmin)
+                            path2 = p_to_path(pmax)
+                            if path1 is None and path2 is None and i > 0:
+                                return
+                            if path1 is None or path2 is None or hash(path1) != hash(path2):
+                                recurse(pmin, (pmin+pmax)/2., i+1)
+                                recurse((pmin+pmax)/2., pmax, i+1)
 
-                    for (pl, ph) in zip(pedges[:-1], pedges[1:]):
-                        recurse(pl,ph)
+                        for (pl, ph) in zip(pedges[:-1], pedges[1:]):
+                            recurse(pl,ph)
 
-                    for path, ps in phase_paths.iteritems():
-                        path.set_prange(min(ps), max(ps), pmax/(self._np-1))
-               
-                    phase_paths = phase_paths.keys()
+                        for path, ps in phase_paths.iteritems():
+                            path.set_prange(min(ps), max(ps), pmax/(self._np-1))
+                   
+                        phase_paths = phase_paths.keys()
+
+                    except ZeroDivisionError:
+                        phase_paths = []
 
                 self._pathcache[pathcachekey] = phase_paths
 
@@ -3144,7 +3147,7 @@ class LayeredModel:
         return mod_extracted
 
     def replaced_crust(self, crust2_profile):
-        import crust2x2
+        from pyrocko import crust2x2
         if isinstance(crust2_profile, tuple):
             lat, lon = [ float(x) for x in crust2_profile ]
             profile = crust2x2.get_profile(lat, lon)
@@ -3256,7 +3259,7 @@ def read_nd_model_fh(f):
     f.close()
 
 def from_crust2x2_profile(profile, depthmantle=50000):
-    import crust2x2
+    from pyrocko import crust2x2
     z = 0.
     for i in range(8):
         dz, vp, vs, rho = profile.get_layer(i)

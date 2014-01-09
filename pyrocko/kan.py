@@ -1,7 +1,7 @@
 import sys, os
 import numpy as num
-import util, trace
-from io_common import FileLoadError
+from pyrocko import util, trace
+from pyrocko.io_common import FileLoadError
 
 class KanError(Exception):
     pass

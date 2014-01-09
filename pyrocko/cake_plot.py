@@ -120,10 +120,10 @@ colors = [ to01(tango_colors[x+i]) for i in '321' for x in 'scarletred chameleon
 shades = [ light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1,9) ]
 shades2 = [ light(to01(tango_colors['orange1']), i*0.1) for i in xrange(1,9) ]
 
-def plot_xt(paths, zstart, zstop, plot=None, vred=None, distances=None):
+def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None):
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
-    plot = getplot(plot)
+    axes = getaxes(axes)
     all_x = []
     all_t = []
     for ipath, path in enumerate(paths):
@@ -137,16 +137,16 @@ def plot_xt(paths, zstart, zstop, plot=None, vred=None, distances=None):
         all_x.append(x)
         all_t.append(t)
         if vred is not None:
-            plot.plot(x,t-x/vred, linewidth=2, color=color)
-            plot.plot([x[0]], [t[0]-x[0]/vred], 'o', color=color)
-            plot.plot([x[-1]], [t[-1]-x[-1]/vred], 'o', color=color)
-            plot.text(x[len(x)/2], t[len(x)/2]-x[len(x)/2]/vred, path.used_phase().used_repr(), color=color,
+            axes.plot(x,t-x/vred, linewidth=2, color=color)
+            axes.plot([x[0]], [t[0]-x[0]/vred], 'o', color=color)
+            axes.plot([x[-1]], [t[-1]-x[-1]/vred], 'o', color=color)
+            axes.text(x[len(x)/2], t[len(x)/2]-x[len(x)/2]/vred, path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1), fontsize=10)
         else:
-            plot.plot(x,t, linewidth=2, color=color)
-            plot.plot([x[0]], [t[0]], 'o', color=color)
-            plot.plot([x[-1]], [t[-1]], 'o', color=color)
-            plot.text(x[len(x)/2], t[len(x)/2], path.used_phase().used_repr(), color=color,
+            axes.plot(x,t, linewidth=2, color=color)
+            axes.plot([x[0]], [t[0]], 'o', color=color)
+            axes.plot([x[-1]], [t[-1]], 'o', color=color)
+            axes.text(x[len(x)/2], t[len(x)/2], path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1), fontsize=10)
    
     all_x = num.concatenate(all_x)
@@ -157,61 +157,61 @@ def plot_xt(paths, zstart, zstop, plot=None, vred=None, distances=None):
     ttt = num.sort( all_t )
     return xxx.min(), xxx[99*len(xxx)/100], ttt.min(), ttt[99*len(ttt)/100]
 
-def labels_xt(plot=None, vred=None, as_degrees=False):
-    plot = getplot(plot)
+def labels_xt(axes=None, vred=None, as_degrees=False):
+    axes = getaxes(axes)
     if as_degrees:
-        plot.xlabel('Distance [deg]')
+        axes.set_xlabel('Distance [deg]')
     else:
-        plot.xlabel('Distance [km]')
-        xscaled(d2r*cake.earthradius/cake.km, plot.gca())
+        axes.set_xlabel('Distance [km]')
+        xscaled(d2r*cake.earthradius/cake.km, axes)
         
     if vred is None:
-        plot.ylabel('Time [s]')
+        axes.set_ylabel('Time [s]')
     else:
         if as_degrees:
-            plot.ylabel('Time - Distance / %g deg/s [ s ]' % (vred))
+            axes.set_ylabel('Time - Distance / %g deg/s [ s ]' % (vred))
         else:
-            plot.ylabel('Time - Distance / %g km/s [ s ]' % (d2r*vred*cake.earthradius/cake.km))
+            axes.set_ylabel('Time - Distance / %g km/s [ s ]' % (d2r*vred*cake.earthradius/cake.km))
 
-def troffset(dx,dy, plot=None):
-    plot = getplot(plot)
+def troffset(dx,dy, axes=None):
+    axes = getaxes(axes)
     from matplotlib import transforms
-    return plot.gca().transData + transforms.ScaledTranslation(dx/72., dy/72., plot.gcf().dpi_scale_trans)
+    return axes.transData + transforms.ScaledTranslation(dx/72., dy/72., axes.gcf().dpi_scale_trans)
 
-def plot_xp(paths, zstart, zstop, plot=None):
-    plot = getplot(plot)
+def plot_xp(paths, zstart, zstop, axes=None):
+    axes = getaxes(axes)
     all_x = []
     for ipath, path in enumerate(paths):
         color = colors[ipath%len(colors)]
         p, x, t = path.draft_pxt(path.endgaps(zstart, zstop))
-        plot.plot(x, p, linewidth=2, color=color)
-        plot.plot(x[:1], p[:1], 'o', color=color)
-        plot.plot(x[-1:], p[-1:], 'o', color=color)
-        plot.text(x[len(x)/2], p[len(x)/2], path.used_phase().used_repr(), color=color,
+        axes.plot(x, p, linewidth=2, color=color)
+        axes.plot(x[:1], p[:1], 'o', color=color)
+        axes.plot(x[-1:], p[-1:], 'o', color=color)
+        axes.text(x[len(x)/2], p[len(x)/2], path.used_phase().used_repr(), color=color,
                 va='center', ha='center', clip_on=True, bbox=dict(ec=color, fc=light(color), pad=8, lw=1))
         all_x.append(x)
     
     xxx = num.sort( num.concatenate(all_x) )
     return xxx.min(), xxx[99*len(xxx)/100] 
 
-def labels_xp(plot=None, as_degrees=False):
-    plot = getplot(plot)
+def labels_xp(axes=None, as_degrees=False):
+    axes = getaxes(axes)
     if as_degrees:
-        plot.xlabel('Distance [deg]')
+        axes.set_xlabel('Distance [deg]')
     else:
-        plot.xlabel('Distance [km]')
-        xscaled(d2r*cake.earthradius*0.001, plot.gca())
-    plot.ylabel('Ray Parameter [s/deg]')
+        axes.set_xlabel('Distance [km]')
+        xscaled(d2r*cake.earthradius*0.001, axes)
+    axes.set_ylabel('Ray Parameter [s/deg]')
 
-def labels_model(plot=None):
-    plot = getplot(plot)
-    plot.xlabel('S-wave and P-wave velocity [km/s]')
-    xscaled(0.001, plot.gca())
-    plot.ylabel('Depth [km]')
-    yscaled(0.001, plot.gca())
+def labels_model(axes=None):
+    axes = getaxes(axes)
+    axes.set_xlabel('S-wave and P-wave velocity [km/s]')
+    xscaled(0.001, axes)
+    axes.set_ylabel('Depth [km]')
+    yscaled(0.001, axes)
 
-def plot_rays(paths, rays, zstart, zstop, plot=None):
-    plot = getplot(plot)
+def plot_rays(paths, rays, zstart, zstop, axes=None):
+    axes = getaxes(axes)
     path_to_color = {}
     for ipath, path in enumerate(paths):
         path_to_color[path] = colors[ipath%len(colors)]
@@ -238,20 +238,19 @@ def plot_rays(paths, rays, zstart, zstop, plot=None):
         
         color = path_to_color[path]
         for zs, xs in zip(fanz, fanx):
-            l = plot.plot( xs, zs, color=color)
+            l = axes.plot( xs, zs, color=color)
 
 
-def sketch_model(mod, plot=None):
+def sketch_model(mod, axes=None):
     from matplotlib import transforms
-    plot = getplot(plot)
-    ax = plot.gca()
-    trans = transforms.BlendedGenericTransform(ax.transAxes, ax.transData)
+    axes = getaxes(axes)
+    trans = transforms.BlendedGenericTransform(axes.transAxes, axes.transData)
     
     for dis in mod.discontinuities():
         color = shades[-1]
-        plot.axhline( dis.z, color=dark(color), lw=1.5)
+        axes.axhline( dis.z, color=dark(color), lw=1.5)
         if dis.name is not None:
-            plot.text(0.90, dis.z, dis.name, transform=trans, va='center', ha='right', color=dark(color),
+            axes.text(0.90, dis.z, dis.name, transform=trans, va='center', ha='right', color=dark(color),
                     bbox=dict(ec=dark(color), fc=light(color, 0.3), pad=8, lw=1))
 
     for ilay, lay in enumerate(mod.layers()):
@@ -260,25 +259,25 @@ def sketch_model(mod, plot=None):
         else:
             tab = shades2
         color = tab[ilay%len(tab)]
-        plot.axhspan( lay.ztop, lay.zbot, fc=color, ec=dark(color), label='abc')
+        axes.axhspan( lay.ztop, lay.zbot, fc=color, ec=dark(color), label='abc')
         if lay.name is not None:
-            plot.text(0.95, (lay.ztop + lay.zbot)*0.5, lay.name, transform=trans, va='center', ha='right', color=dark(color),
+            axes.text(0.95, (lay.ztop + lay.zbot)*0.5, lay.name, transform=trans, va='center', ha='right', color=dark(color),
                     bbox=dict(ec=dark(color), fc=light(color, 0.3), pad=8, lw=1))
 
-def plot_source(zstart, plot=None):
-    plot = getplot(plot)
-    plot.plot([0], [zstart], 'o', color='black')
+def plot_source(zstart, axes=None):
+    axes = getaxes(axes)
+    axes.plot([0], [zstart], 'o', color='black')
 
-def plot_receivers(zstop, distances, plot=None):
-    plot = getplot(plot)
-    plot.plot(distances, cake.filled(zstop, len(distances)), '^', color='black')
+def plot_receivers(zstop, distances, axes=None):
+    axes = getaxes(axes)
+    axes.plot(distances, cake.filled(zstop, len(distances)), '^', color='black')
 
-def getplot(plot=None):
-    import pylab as lab
-    if plot is None:
-        return lab
+def getaxes(axes=None):
+    from matplotlib import pyplot as plt
+    if axes is None:
+        return plt.gca()
     else:
-        return plot
+        return axes
 
 def mk_sc_classes():
     from matplotlib.ticker import FormatStrFormatter, AutoLocator
@@ -322,18 +321,18 @@ def labelspace(axes):
             setattr(ya, attr, ya.get_label().get_fontsize())
             break
 
-def labels_rays(plot=None, as_degrees=False):
-    plot = getplot(plot)
+def labels_rays(axes=None, as_degrees=False):
+    axes = getaxes(axes)
     if as_degrees:
-        plot.xlabel('Distance [deg]')
+        axes.set_xlabel('Distance [deg]')
     else:
-        plot.xlabel('Distance [km]')
-        xscaled(d2r*cake.earthradius/cake.km, plot.gca())
-    plot.ylabel('Depth [km]')
-    yscaled(1./cake.km, plot.gca())
+        axes.set_xlabel('Distance [km]')
+        xscaled(d2r*cake.earthradius/cake.km, axes)
+    axes.set_ylabel('Depth [km]')
+    yscaled(1./cake.km, axes)
 
 def plot_surface_efficiency(mat):
-    import pylab as lab
+    from matplotlib import pyplot as plt
     data = []
     for angle in num.linspace(0., 90., 910.):
         pp = math.sin(angle*d2r)/mat.vp
@@ -345,14 +344,14 @@ def plot_surface_efficiency(mat):
 
     a,pp,ps,ss,sp = num.array(data).T
 
-    lab.plot(a,pp, label='PP')
-    lab.plot(a,ps, label='PS')
-    lab.plot(a,ss, label='SS')
-    lab.plot(a,sp, label='SP')
-    lab.xlabel('Incident Angle')
-    lab.ylabel('Energy Normalized Coefficient', position=(-2.,0.5))
-    lab.legend()
-    lab.show()
+    plt.plot(a,pp, label='PP')
+    plt.plot(a,ps, label='PS')
+    plt.plot(a,ss, label='SS')
+    plt.plot(a,sp, label='SP')
+    plt.xlabel('Incident Angle')
+    plt.ylabel('Energy Normalized Coefficient', position=(-2.,0.5))
+    plt.legend()
+    plt.show()
 
 def mpl_init():
     import matplotlib
@@ -364,80 +363,110 @@ def mpl_init():
     matplotlib.rc('ytick.major', size=5)
     matplotlib.rc('figure', facecolor='white')
 
-def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None):
-    import pylab as lab
-    mpl_init()
-    labelspace(lab.gca())
-    xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
-    if distances is not None:
-        xmin, xmax = distances.min(), distances.max()
-    lab.xlim(xmin, xmax)
-    lab.ylim(ymin, ymax)
-    labels_xt(as_degrees=as_degrees, vred=vred)
-    lab.show()
+def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None, axes=None):
 
-def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False):
-    import pylab as lab
-    mpl_init()
-    labelspace(lab.gca())
-    xmin, xmax = plot_xp(paths, zstart, zstop) 
+    if axes is None:
+        from matplotlib import pyplot as plt
+        mpl_init()
+        axes = plt.gca()
+    else:
+        plt = None
+
+    labelspace(axes)
+    xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances, axes=axes)
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
-    lab.xlim(xmin, xmax)
-    labels_xp(as_degrees=as_degrees)
-    lab.show()
+    axes.set_xlim(xmin, xmax)
+    axes.set_ylim(ymin, ymax)
+    labels_xt(as_degrees=as_degrees, vred=vred, axes=axes)
+    if plt:
+        plt.show()
+
+def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False, axes=None):
+
+    if axes is None:
+        from matplotlib import pyplot as plt
+        mpl_init()
+        axes = plt.gca()
+    else:
+        plt = None
+
+    labelspace(axes)
+    xmin, xmax = plot_xp(paths, zstart, zstop, axes=axes)
+    if distances is not None:
+        xmin, xmax = distances.min(), distances.max()
+    axes.set_xlim(xmin, xmax)
+    labels_xp(as_degrees=as_degrees, axes=axes)
+
+    if plt:
+        plt.show()
 
 def my_rays_plot_gcs(mod, paths, rays, zstart, zstop, distances=None):
-    import pylab as lab
+    from matplotlib import pyplot as plt
     mpl_init()
+
     globe_cross_section()
-    plot = lab.subplot(1,1,1, projection='globe_cross_section')
-    plot_rays(paths, rays, zstart, zstop, plot=plot)
-    plot_source(zstart, plot=plot)
+    axes = plt.subplot(1,1,1, projection='globe_cross_section')
+    plot_rays(paths, rays, zstart, zstop, axes=axes)
+    plot_source(zstart, axes=axes)
     if distances is not None:
-        plot_receivers(zstop, distances, plot=plot)
-    lab.ylim(0.,cake.earthradius)
-    lab.gca().get_yaxis().set_visible(False)
-    lab.show() 
+        plot_receivers(zstop, distances, axes=axes)
 
-def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False):
-    import pylab as lab
-    mpl_init()
-    labelspace(lab.gca())
-    plot_rays(paths, rays, zstart, zstop)
-    xmin, xmax = lab.xlim()
-    ymin, ymax = lab.ylim()
-    sketch_model(mod)
+    axes.set_ylim(0.,cake.earthradius)
+    axes.get_yaxis().set_visible(False)
 
-    plot_source(zstart)
+    if plt:
+        plt.show() 
+
+def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, axes=None):
+
+    if axes is None:
+        from matplotlib import pyplot as plt
+        mpl_init()
+        axes = plt.gca()
+    else:
+        plt = None
+
+    if paths is None:
+        paths = list(set([ x.path for x in rays ]))
+
+    labelspace(axes)
+    plot_rays(paths, rays, zstart, zstop, axes=axes)
+    xmin, xmax = axes.get_xlim()
+    ymin, ymax = axes.get_ylim()
+    sketch_model(mod, axes=axes)
+
+    plot_source(zstart, axes=axes)
     if distances is not None:
-        plot_receivers(zstop, distances)
-    labels_rays(as_degrees=as_degrees)
+        plot_receivers(zstop, distances, axes=axes)
+    labels_rays(as_degrees=as_degrees, axes=axes)
     mx = (xmax-xmin)*0.05
     my = (ymax-ymin)*0.05
-    lab.xlim(xmin-mx, xmax+mx)
-    lab.ylim(ymax+my, ymin-my)
-    lab.show()
+    axes.set_xlim(xmin-mx, xmax+mx)
+    axes.set_ylim(ymax+my, ymin-my)
+
+    if plt:
+        plt.show()
 
 def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, vred=None):
-    import pylab as lab 
+    from matplotlib import pyplot as plt
     from matplotlib.transforms import Affine2D
     mpl_init()
-    ax1 = lab.subplot(211)
-    labelspace(lab.gca())
+    ax1 = plt.subplot(211)
+    labelspace(plt.gca())
     xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
     if distances is None:
-        lab.xlim(xmin, xmax)
+        plt.xlim(xmin, xmax)
 
     labels_xt(vred=vred, as_degrees=as_degrees)
-    lab.setp(ax1.get_xticklabels(), visible=False)
-    lab.xlabel('')
+    plt.setp(ax1.get_xticklabels(), visible=False)
+    plt.xlabel('')
 
-    ax2 = lab.subplot(212, sharex=ax1)
-    labelspace(lab.gca())
+    ax2 = plt.subplot(212, sharex=ax1)
+    labelspace(plt.gca())
     plot_rays(paths, rays, zstart, zstop)
-    xmin, xmax = lab.xlim()
-    ymin, ymax = lab.ylim()
+    xmin, xmax = plt.xlim()
+    ymin, ymax = plt.ylim()
     sketch_model(mod)
     
     plot_source(zstart)
@@ -448,26 +477,32 @@ def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fa
     my = (ymax-ymin)*0.05
     ax2.set_xlim(xmin-mx, xmax+mx)
     ax2.set_ylim(ymax+my, ymin-my)
-    lab.show()
+    plt.show()
 
-def my_model_plot(mod):
+def my_model_plot(mod, axes=None):
 
-    import pylab as lab
-    mpl_init()
-    labelspace(lab.gca())
-    labels_model()
-    sketch_model(mod)
+    if axes is None:
+        from matplotlib import pyplot as plt
+        mpl_init()
+        axes = plt.gca()
+    else:
+        plt = None
+
+    labelspace(axes)
+    labels_model(axes=axes)
+    sketch_model(mod, axes=axes)
     z = mod.profile('z')
     vp = mod.profile('vp')
     vs = mod.profile('vs')
-    lab.plot(vp, z, color=colors[0], lw=2.)
-    lab.plot(vs, z, color=colors[2], lw=2.)
-    ymin, ymax = lab.ylim()
-    xmin, xmax = lab.xlim()
+    axes.plot(vp, z, color=colors[0], lw=2.)
+    axes.plot(vs, z, color=colors[2], lw=2.)
+    ymin, ymax = axes.get_ylim()
+    xmin, xmax = axes.get_xlim()
     xmin = 0.
     my = (ymax-ymin)*0.05
     mx = (xmax-xmin)*0.2
-    lab.ylim(ymax+my, ymin-my)
-    lab.xlim(xmin, xmax+mx)
-    lab.show()
+    axes.set_ylim(ymax+my, ymin-my)
+    axes.set_xlim(xmin, xmax+mx)
+    if plt:
+        plt.show()
 

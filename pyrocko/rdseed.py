@@ -1,6 +1,6 @@
 import logging
 
-import orthodrome, trace, pile, config, model, eventdata, io, util
+from pyrocko import orthodrome, trace, pile, config, model, eventdata, io, util
 import os, sys, shutil, subprocess, tempfile, calendar, time, re
 
 pjoin = os.path.join

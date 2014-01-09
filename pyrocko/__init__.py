@@ -1,1 +1,1 @@
-from info import *
+from pyrocko.info import *

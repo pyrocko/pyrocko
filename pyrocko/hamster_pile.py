@@ -1,6 +1,6 @@
-import pile, io, util
+from pyrocko import pile, io, util
 import os, logging
-import trace as tracemod
+from pyrocko import trace as tracemod
 
 logger = logging.getLogger('pyrocko.hamster_pile')
 

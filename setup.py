@@ -108,7 +108,9 @@ setup( name = packname,
 
     ],
                 
-    scripts = [ 'apps/snuffler', 'apps/hamster', 'apps/cake', 'apps/fomosto' ],
+    scripts = [ 'apps/snuffler', 'apps/hamster', 'apps/cake', 'apps/fomosto', 
+                'apps/jackseis' ],
+
     package_data = { packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd'] },
 )
 

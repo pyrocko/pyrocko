@@ -1,13 +1,13 @@
 '''SAC IO library for Python'''
 
-import trace
+from pyrocko import trace
 
 import struct, sys, logging, math, time
 from calendar import timegm
 from time import gmtime
 import numpy as num
-from util import reuse
-from io_common import FileLoadError
+from pyrocko.util import reuse
+from pyrocko.io_common import FileLoadError
 
 logger = logging.getLogger('pyrocko.pile')
 

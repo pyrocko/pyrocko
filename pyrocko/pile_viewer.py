@@ -1921,7 +1921,9 @@ def MakePileViewerMainClass(base):
             if tmax < tmin:
                 tmin, tmax = tmax, tmin
 
-            dt = self.see_data_params()[-1] * 0.95
+            deltatmin = self.content_deltat_range()[0]
+            dt = deltatmin * self.visible_length * 0.95
+
             if dt == 0.0:
                 dt = 1.0
 
@@ -2502,9 +2504,9 @@ def MakePileViewerMainClass(base):
                                     
                                 else:
                                     
-                                    if self.menuitem_allowdownsampling.isChecked():
+                                    if self.menuitem_allowdownsampling.isChecked() and self.lowpass is not None:
                                         while trace.deltat < min_deltat_wo_decimate:
-                                            trace.downsample(2)
+                                            trace.downsample(2, demean=False)
 
                                     
                                     if not lphp and (self.lowpass is not None and self.highpass is not None and

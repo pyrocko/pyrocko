@@ -4,9 +4,9 @@ import numpy as num
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-import mopad
+from pyrocko import mopad
 
-from pile_viewer import make_QPolygonF, ValControl, LinValControl, Projection
+from pyrocko.pile_viewer import make_QPolygonF, ValControl, LinValControl, Projection
 
 
 class BeachballView(QWidget):

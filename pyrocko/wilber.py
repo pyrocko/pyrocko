@@ -3,7 +3,7 @@ import calendar, time
 import logging
 import random
 
-import model, orthodrome
+from pyrocko import model, orthodrome
 
 logger = logging.getLogger('pyrocko.wilber')
 

@@ -1,5 +1,5 @@
 import subprocess, re, calendar, time, os, signal, sys, logging
-import trace
+from pyrocko import trace
 import numpy as num
 
 logger = logging.getLogger('pyrocko.slink')

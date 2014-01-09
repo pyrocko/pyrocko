@@ -1,4 +1,4 @@
-import trace, util, model, evalresp_ext
+from pyrocko import trace, util, model
 
 import logging, copy
 import numpy as num

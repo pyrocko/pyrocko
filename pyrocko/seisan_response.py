@@ -1,5 +1,5 @@
 import calendar, logging
-import util, trace
+from pyrocko import util, trace
 import numpy as num
 from scipy import signal
 

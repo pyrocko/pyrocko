@@ -3,7 +3,8 @@ import numpy as num
 import util, trace
 import struct
 import calendar
-from io_common import FileLoadError
+
+from pyrocko.io_common import FileLoadError
 
 class SEGYError(Exception):
     pass

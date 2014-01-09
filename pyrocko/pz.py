@@ -1,7 +1,7 @@
 import scipy.signal as sig
 import numpy as num
 import sys, math
-import trace
+from pyrocko import trace
 from cStringIO import StringIO
 
 d2r = math.pi/180.

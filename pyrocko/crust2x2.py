@@ -241,7 +241,7 @@ class Crust2:
             path_keys = os.path.join(self._directory, Crust2.fn_keys)
             f = open(path_keys, 'r')
         else:
-            from crust2x2_data import decode, type2_key, type2, elevation
+            from pyrocko.crust2x2_data import decode, type2_key, type2, elevation
             f = StringIO(decode(type2_key))
 
         # skip header

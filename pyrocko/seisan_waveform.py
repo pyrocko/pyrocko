@@ -5,7 +5,7 @@ import numpy as num
 from pyrocko.util import unpack_fixed
 
 from pyrocko import util, trace
-from io_common import FileLoadError
+from pyrocko.io_common import FileLoadError
 
 class SeisanFileError(Exception):
     pass

@@ -10,9 +10,9 @@ import os, sys, logging, traceback, tempfile
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-import pile
+from pyrocko import pile
 
-from gui_util import ValControl, LinValControl, FigureFrame
+from pyrocko.gui_util import ValControl, LinValControl, FigureFrame
 
 
 logger = logging.getLogger('pyrocko.snuffling')
@@ -274,10 +274,12 @@ class Snuffling:
         self._post_process_hook_enabled = False
         self.reset_gui()
 
-    def reset_gui(self):
+    def reset_gui(self, reloaded=False):
         if self._panel or self._menuitem:
+            sett = self.get_settings()
             self.delete_gui()
-            self.setup_gui()
+            self.setup_gui(reloaded=reloaded)
+            self.set_settings(sett)
    
     def show_message(self, kind, message):
         try:
@@ -375,7 +377,6 @@ class Snuffling:
     def get_parameters(self):
         '''Get the snuffling's adjustable parameter definitions.
         
-        
         Returns a list of objects of type Param.
         '''
         
@@ -416,6 +417,12 @@ class Snuffling:
             control.set_range(vmin, vmax)
 
     def set_parameter_choices(self, ident, choices):
+        '''Update the choices of a Choice parameter.
+
+        :param ident: identifier of the parameter
+        :param choices: list of strings
+        '''
+
         control = self._param_controls.get(ident, None)
         if control:
             control.set_choices(choices)
