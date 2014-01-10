@@ -1,9 +1,18 @@
 
-import math, re
+import math
+import re
+import fnmatch
 import numpy as num
-from guts import *
-from guts_array import literal
-from pyrocko import cake
+from guts import Object, SObject, String, StringChoice, StringPattern, \
+    Unicode, Float, Bool, Int, TBase, List, ValidationError
+from guts import dump, load  # noqa
+
+from guts_array import literal, Array
+from pyrocko import cake, orthodrome
+
+d2r = math.pi / 180.
+r2d = 1.0 / d2r
+
 
 class Earthmodel1D(Object):
     dummy_for = cake.LayeredModel
@@ -12,12 +21,13 @@ class Earthmodel1D(Object):
         def regularize_extra(self, val):
             if isinstance(val, basestring):
                 val = cake.LayeredModel.from_scanlines(
-                        cake.read_nd_model_str(val))
+                    cake.read_nd_model_str(val))
 
             return val
 
         def to_save(self, val):
             return literal(cake.write_nd_model_str(val))
+
 
 class StringID(StringPattern):
     pattern = r'^[A-Za-z][A-Za-z0-9._]{0,64}$'
@@ -25,28 +35,28 @@ class StringID(StringPattern):
 
 class ScopeType(StringChoice):
     choices = [
-            'global',
-            'regional',
-            'local',
-        ]
+        'global',
+        'regional',
+        'local',
+    ]
 
 
 class WaveformType(StringChoice):
     choices = [
-            'full waveform',
-            'bodywave', 
-            'P wave', 
-            'S wave', 
-            'surface wave',
-        ]
-    
+        'full waveform',
+        'bodywave',
+        'P wave',
+        'S wave',
+        'surface wave',
+    ]
+
 
 class NearfieldTermsType(StringChoice):
     choices = [
-            'complete',
-            'incomplete',
-            'missing',
-        ]
+        'complete',
+        'incomplete',
+        'missing',
+    ]
 
 
 class Reference(Object):
@@ -68,10 +78,10 @@ class Reference(Object):
     keywords = Unicode.T(optional=True)
     note = Unicode.T(optional=True)
     abstract = Unicode.T(optional=True)
-    
+
     @classmethod
     def from_bibtex(cls, filename=None, stream=None):
-        
+
         from pybtex.database.input import bibtex
 
         parser = bibtex.Parser()
@@ -84,7 +94,7 @@ class Reference(Object):
         references = []
 
         for id_, entry in bib_data.entries.iteritems():
-            d = {} 
+            d = {}
             avail = entry.fields.keys()
             for prop in cls.T.properties:
                 if prop.name == 'authors' or prop.name not in avail:
@@ -96,35 +106,40 @@ class Reference(Object):
                 d['authors'] = []
                 for person in entry.persons['author']:
                     d['authors'].append(unicode(person))
-            
+
             c = Reference(id=id_, type=entry.type, **d)
             references.append(c)
 
         return references
 
+
 _fpat = r'[+-](\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
 _spat = StringID.pattern[1:-1]
-pat = r'^((first|last)?\((' + _spat + r'(\|' + _spat + r')*)\)|(' +  \
-                 _spat + r'))?(' + _fpat + ')?$'
-timing_regex = re.compile( pat )
+
+timing_regex = re.compile(
+    r'^((first|last)?\((' + _spat + r'(\|' + _spat + r')*)\)|(' +
+    _spat + r'))?(' + _fpat + ')?$')
+
 
 class PhaseSelect(StringChoice):
-    choices = [ '', 'first', 'last' ]
+    choices = ['', 'first', 'last']
+
 
 class InvalidTimingSpecification(ValidationError):
     pass
 
+
 class Timing(SObject):
 
     def __init__(self, s=None, **kwargs):
-        
+
         if s is not None:
             m = timing_regex.match(s)
             if m:
                 if m.group(3):
                     phase_ids = m.group(3).split('|')
                 elif m.group(5):
-                    phase_ids = [ m.group(5) ]
+                    phase_ids = [m.group(5)]
                 else:
                     phase_ids = []
 
@@ -162,9 +177,9 @@ class Timing(SObject):
         return ''.join(l)
 
     def evaluate(self, get_phase, args):
-        phases = [ get_phase(phase_id) for phase_id in self.phase_ids ]
-        times = [ phase(args) for phase in phases ]
-        times = [ t+self.offset for t in times if t is not None ]
+        phases = [get_phase(phase_id) for phase_id in self.phase_ids]
+        times = [phase(args) for phase in phases]
+        times = [t+self.offset for t in times if t is not None]
         if not times:
             return None
         elif self.select == 'first':
@@ -177,6 +192,7 @@ class Timing(SObject):
     phase_ids = List.T(String.T())
     offset = Float.T(default=0.0)
     select = PhaseSelect.T(default='')
+
 
 def mkdefs(s):
     defs = []
@@ -191,17 +207,20 @@ def mkdefs(s):
 
     return defs
 
+
 class TPDef(Object):
     id = StringID.T()
     definition = String.T()
 
     @property
     def phases(self):
-        return [ x for x in mkdefs(self.definition) if isinstance(x, cake.PhaseDef) ]
+        return [x for x in mkdefs(self.definition)
+                if isinstance(x, cake.PhaseDef)]
 
     @property
     def horizontal_velocities(self):
-        return [ x for x in mkdefs(self.definition) if isinstance(x, float) ]
+        return [x for x in mkdefs(self.definition) if isinstance(x, float)]
+
 
 class OutOfBounds(Exception):
     def __init__(self, values=None):
@@ -210,9 +229,279 @@ class OutOfBounds(Exception):
 
     def __str__(self):
         if self.values:
-            return 'out of bounds: (%s)' % ','.join('%g' % x for x in self.values)
+            return 'out of bounds: (%s)' % ','.join('%g' % x
+                                                    for x in self.values)
         else:
             return 'out of bounds'
+
+
+class Location(Object):
+    '''
+    Geographical location
+
+    The location is given by a reference point at the earth's surface
+    (:py:attr:`lat`, :py:attr:`lon`) and a cartesian offset from this point
+    (:py:attr:`north_shift`, :py:attr:`east_shift`, :py:attr:`depth`). The
+    offset corrected lat/lon coordinates of the location can be accessed though
+    the :py:attr:`effective_latlon`, :py:attr:`effective_lat`, and
+    :py:attr:`effective_lon` properties.
+    '''
+
+    lat = Float.T(
+        default=0.0,
+        optional=True,
+        help='latitude of reference point [deg]')
+
+    lon = Float.T(
+        default=0.0,
+        optional=True,
+        help='longitude of reference point [deg]')
+
+    north_shift = Float.T(
+        default=0.,
+        optional=True,
+        help='northward cartesian offset from reference point [m]')
+
+    east_shift = Float.T(
+        default=0.,
+        optional=True,
+        help='eastward cartesian offset from reference point [m]')
+
+    depth = Float.T(
+        default=0.0,
+        help='depth [m]')
+
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self._latlon = None
+
+    def __setattr__(self, name, value):
+        if name in ('lat', 'lon', 'north_shift', 'east_shift'):
+            self.__dict__['_latlon'] = None
+
+        Object.__setattr__(self, name, value)
+
+    @property
+    def effective_latlon(self):
+        '''
+        Property holding the offset-corrected lat/lon pair of the location.
+        '''
+
+        if self._latlon is None:
+            if self.north_shift == 0.0 and self.east_shift == 0.0:
+                self._latlon = self.lat, self.lon
+            else:
+                self._latlon = orthodrome.ne_to_latlon(
+                    self.lat, self.lon, self.north_shift, self.east_shift)
+
+        return self._latlon
+
+    @property
+    def effective_lat(self):
+        '''
+        Property holding the offset-corrected latitude of the location.
+        '''
+
+        return self.effective_latlon[0]
+
+    @property
+    def effective_lon(self):
+        '''
+        Property holding the offset-corrected longitude of the location.
+        '''
+
+        return self.effective_latlon[1]
+
+    def same_origin(self, other):
+        '''
+        Check whether other location object has the same reference location.
+        '''
+
+        return self.lat == other.lat and self.lon == other.lon
+
+    def distance_to(self, other):
+        '''
+        Compute distance [m] to other location object.
+        '''
+
+        if self.same_origin(other):
+            return math.sqrt((self.north_shift - other.north_shift)**2 +
+                            (self.east_shift - other.east_shift)**2)
+
+        else:
+            slat, slon = self.effective_latlon
+            rlat, rlon = other.effective_latlon
+            return orthodrome.distance_accurate50m_numpy(slat, slon,
+                                                         rlat, rlon)
+
+    def azibazi_to(self, other):
+        '''
+        Compute azimuth and backazimuth to and from other location object.
+        '''
+
+        if self.same_origin(other):
+            azi = r2d * math.atan2(other.east_shift - self.east_shift,
+                                   other.north_shift - self.north_shift)
+            bazi = azi + 180.
+        else:
+            slat, slon = self.effective_latlon
+            rlat, rlon = other.effective_latlon
+            azi = orthodrome.azimuth_numpy(slat, slon, rlat, rlon)
+            bazi = orthodrome.azimuth_numpy(rlat, rlon, slat, slon)
+
+        return azi, bazi
+
+
+class Receiver(Location):
+    pass
+
+
+def g(x, d):
+    if x is None:
+        return d
+    else:
+        return x
+
+
+class DiscretizedSource(Object):
+    times = Array.T(shape=(None,), dtype=num.float)
+    lats = Array.T(shape=(None,), dtype=num.float, optional=True)
+    lons = Array.T(shape=(None,), dtype=num.float, optional=True)
+    lat = Float.T(optional=True)
+    lon = Float.T(optional=True)
+    north_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
+    east_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
+    depths = Array.T(shape=(None,), dtype=num.float)
+
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self._latlons = None
+
+    def __setattr__(self, name, value):
+        if name in ('lat', 'lon', 'north_shifts', 'east_shifts',
+                    'lats', 'lons'):
+            self.__dict__['_latlons'] = None
+
+        Object.__setattr__(self, name, value)
+
+    @property
+    def effective_latlons(self):
+        if self._latlons is None:
+            if self.lats is not None and self.lons is not None:
+                self._latlons = self.lats, self.lons
+            else:
+                lat = g(self.lat, 0.0)
+                lon = g(self.lon, 0.0)
+                self._latlons = orthodrome.ne_to_latlon(
+                    lat, lon, self.north_shifts, self.east_shifts)
+
+        return self._latlons
+
+    def same_origin(self, receiver):
+        return (g(self.lat, 0.0) == receiver.lat and
+                g(self.lon, 0.0) == receiver.lon and
+                self.lats is None and self.lons is None)
+
+    def azibazis_to(self, receiver):
+        if self.same_origin(receiver):
+            azis = r2d * num.arctan2(receiver.east_shift - self.east_shifts,
+                                     receiver.north_shift - self.north_shifts)
+            bazis = azis + 180.
+        else:
+            slats, slons = self.effective_latlons
+            rlat, rlon = receiver.effective_latlon
+            azis = orthodrome.azimuth_numpy(slats, slons, rlat, rlon)
+            bazis = orthodrome.azimuth_numpy(rlat, rlon, slats, slons)
+
+        return azis, bazis
+
+    def distances_to(self, receiver):
+        if self.same_origin(receiver):
+            return num.sqrt((self.north_shifts - receiver.north_shift)**2 +
+                            (self.east_shifts - receiver.east_shift)**2)
+
+        else:
+            slats, slons = self.effective_latlons
+            rlat, rlon = receiver.effective_latlon
+            return orthodrome.distance_accurate50m_numpy(slats, slons,
+                                                         rlat, rlon)
+
+
+class DiscretizedExplosionSource(DiscretizedSource):
+    m0s = Array.T(shape=(None,), dtype=num.float)
+
+    def make_weights(self, receiver, scheme):
+        azis, bazis = self.azibazis_to(receiver)
+
+        sb = num.sin(bazis*d2r-num.pi)
+        cb = num.cos(bazis*d2r-num.pi)
+
+        m0s = self.m0s
+        n = azis.size
+
+        if scheme == 'elastic2':
+            w_n = (cb*m0s,)
+            g_n = num.repeat((0,), n)
+            w_e = (sb*m0s,)
+            g_e = num.repeat((0,), n)
+            w_u = (-m0s,)
+            g_u = num.repeat((1,), n)
+
+        elif scheme == 'elastic10':
+            w_n = num.concatenate((cb*m0s, cb*m0s, cb*m0s))
+            g_n = num.repeat((0, 2, 8), n)
+            w_e = num.concatenate((sb*m0s, sb*m0s, sb*m0s))
+            g_e = num.repeat((0, 2, 8), n)
+            w_u = num.concatenate((-m0s, -m0s, -m0s))
+            g_u = num.repeat((5, 7, 9), n)
+
+        else:
+            assert False
+
+        return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
+
+
+class DiscretizedMTSource(DiscretizedSource):
+    m6s = Array.T(shape=(None, 6), dtype=num.float)
+
+    def make_weights(self, receiver, scheme):
+
+        if scheme != 'elastic10':
+            assert False
+
+        azis, bazis = self.azibazis_to(receiver)
+
+        sa = num.sin(azis*d2r)
+        ca = num.cos(azis*d2r)
+        s2a = num.sin(2.*azis*d2r)
+        c2a = num.cos(2.*azis*d2r)
+        sb = num.sin(bazis*d2r-num.pi)
+        cb = num.cos(bazis*d2r-num.pi)
+
+        m6s = self.m6s
+
+        f0 = m6s[:, 0]*ca**2 + m6s[:, 1]*sa**2 + m6s[:, 3]*s2a
+        f1 = m6s[:, 4]*ca + m6s[:, 5]*sa
+        f2 = m6s[:, 2]
+        f3 = 0.5*(m6s[:, 1]-m6s[:, 0])*s2a + m6s[:, 3]*c2a
+        f4 = m6s[:, 5]*ca - m6s[:, 4]*sa
+        f5 = m6s[:, 0]*sa**2 + m6s[:, 1]*ca**2 - m6s[:, 3]*s2a
+
+        n = azis.size
+
+        w_n = num.concatenate((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
+        g_n = num.repeat((0, 1, 2, 8, 3, 4), n)
+        w_e = num.concatenate((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
+        g_e = num.repeat((0, 1, 2, 8, 3, 4), n)
+        w_u = num.concatenate((-f0, -f1, -f2, -f5))
+        g_u = num.repeat((5, 6, 7, 9), n)
+
+        return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
+
+
+class ComponentSchemes(StringChoice):
+    choices = ('elastic10', 'elastic2')
+
 
 class Config(Object):
     '''Greens function store meta information.'''
@@ -239,6 +528,7 @@ class Config(Object):
     frequency_max = Float.T(optional=True)
     sample_rate = Float.T(optional=True)
     ncomponents = Int.T(default=1)
+    component_scheme = ComponentSchemes.T(default='elastic10')
     tabulated_phases = List.T(TPDef.T())
 
     def __init__(self, **kwargs):
@@ -253,7 +543,7 @@ class Config(Object):
     def __setattr__(self, name, value):
         Object.__setattr__(self, name, value)
         try:
-            t = self.T.get_property(name)
+            self.T.get_property(name)
             if self._do_auto_updates:
                 self.update()
 
@@ -279,14 +569,14 @@ class Config(Object):
     def iter_extraction(self, gdef):
         i = 0
         arrs = []
-        ntotal = 1 
+        ntotal = 1
         for mi, ma, inc in zip(self.mins, self.maxs, self.deltas):
             if gdef and len(gdef) > i:
                 sssn = gdef[i]
             else:
                 sssn = (None,)*4
 
-            arr =  num.linspace(*start_stop_num(*(sssn + (mi,ma,inc)))) 
+            arr = num.linspace(*start_stop_num(*(sssn + (mi, ma, inc))))
             ntotal *= len(arr)
 
             arrs.append(arr)
@@ -295,9 +585,23 @@ class Config(Object):
         arrs.append(self.coords[-1])
         return nditer_outer(arrs)
 
+    def make_sum_params(self, source, receiver):
+        out = []
+        delays = source.times
+        for comp, weights, icomponents in source.make_weights(
+                receiver,
+                self.component_scheme):
+
+            args = self.make_indexing_args(source, receiver, icomponents)
+            delays_expanded = num.repeat(delays, icomponents.size)
+            out.append((comp, args, delays_expanded, weights))
+
+        return out
+
+
 class ConfigTypeA(Config):
     '''Cylindrical symmetry, fixed receiver depth
-    
+
 Index variables are (source_depth, distance, component).'''
 
     receiver_depth = Float.T(default=0.0)
@@ -319,45 +623,48 @@ Index variables are (source_depth, distance, component).'''
 
     def _update(self):
         self.mins = num.array([self.source_depth_min, self.distance_min])
-        self.maxs =  num.array([self.source_depth_max, self.distance_max])
+        self.maxs = num.array([self.source_depth_max, self.distance_max])
         self.deltas = num.array([self.source_depth_delta, self.distance_delta])
-        self.ns = num.round((self.maxs - self.mins) / self.deltas).astype(num.int) + 1 
-        self.deltat =  1.0/self.sample_rate
+        self.ns = num.round((self.maxs - self.mins) /
+                            self.deltas).astype(num.int) + 1
+        self.deltat = 1.0/self.sample_rate
         self.nrecords = num.product(self.ns) * self.ncomponents
-        self.coords = tuple( num.linspace(mi,ma,n) for 
-                (mi,ma,n) in zip(self.mins, self.maxs, self.ns) ) + \
-                    ( num.arange(self.ncomponents), )
+        self.coords = tuple(num.linspace(mi, ma, n)
+                            for (mi, ma, n)
+                            in zip(self.mins, self.maxs, self.ns)) + \
+            (num.arange(self.ncomponents),)
+
         self.nsource_depths, self.ndistances = self.ns
 
     def _make_index_functions(self):
 
         amin, bmin = self.mins
         da, db = self.deltas
-        na,nb = self.ns
+        na, nb = self.ns
 
         ng = self.ncomponents
 
-        def index_function(a,b, ig):
+        def index_function(a, b, ig):
             ia = int(round((a - amin) / da))
             ib = int(round((b - bmin) / db))
             try:
-                return num.ravel_multi_index((ia,ib,ig), (na,nb,ng))
+                return num.ravel_multi_index((ia, ib, ig), (na, nb, ng))
             except ValueError:
                 raise OutOfBounds()
 
-        def indices_function(a,b, ig):
+        def indices_function(a, b, ig):
             ia = num.round((a - amin) / da).astype(int)
             ib = num.round((b - bmin) / db).astype(int)
             try:
-                return num.ravel_multi_index((ia,ib,ig), (na,nb,ng))
+                return num.ravel_multi_index((ia, ib, ig), (na, nb, ng))
             except ValueError:
-                for ia_, ib_, ig_ in zip(ia,ib,ig):
+                for ia_, ib_, ig_ in zip(ia, ib, ig):
                     try:
-                        num.ravel_multi_index((ia_,ib_,ig_), (na,nb,ng))
+                        num.ravel_multi_index((ia_, ib_, ig_), (na, nb, ng))
                     except ValueError:
                         raise OutOfBounds()
 
-        def vicinity_function(a,b, ig):
+        def vicinity_function(a, b, ig):
             ias = indi12((a - amin) / da, na)
             ibs = indi12((b - bmin) / db, nb)
 
@@ -368,13 +675,22 @@ Index variables are (source_depth, distance, component).'''
             for ia, va in ias:
                 iia = ia*nb*ng
                 for ib, vb in ibs:
-                    indis.append( ( iia + ib*ng + ig, va*vb ) )
-            
+                    indis.append((iia + ib*ng + ig, va*vb))
+
             return indis
 
         self._index_function = index_function
         self._indices_function = indices_function
         self._vicinity_function = vicinity_function
+
+    def make_indexing_args(self, source, receiver, icomponents):
+        nc = icomponents.size
+        dists = source.distances_to(receiver)
+        n = dists.size
+        return (num.repeat(source.depths, nc),
+                num.repeat(dists, nc),
+                num.tile(icomponents, n))
+
 
 class ConfigTypeB(Config):
     '''Cylindrical symmetry
@@ -401,43 +717,59 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
         return args[0]
 
     def _update(self):
-        self.mins = num.array([self.receiver_depth_min, self.source_depth_min, self.distance_min])
-        self.maxs =  num.array([self.receiver_depth_max, self.source_depth_max, self.distance_max])
-        self.deltas = num.array([self.receiver_depth_delta, self.source_depth_delta, self.distance_delta])
-        self.ns = num.round((self.maxs - self.mins) / self.deltas).astype(num.int) + 1 
-        self.deltat =  1.0/self.sample_rate
+        self.mins = num.array([
+            self.receiver_depth_min,
+            self.source_depth_min,
+            self.distance_min])
+
+        self.maxs = num.array([
+            self.receiver_depth_max,
+            self.source_depth_max,
+            self.distance_max])
+
+        self.deltas = num.array([
+            self.receiver_depth_delta,
+            self.source_depth_delta,
+            self.distance_delta])
+
+        self.ns = num.round((self.maxs - self.mins) /
+                            self.deltas).astype(num.int) + 1
+        self.deltat = 1.0/self.sample_rate
         self.nrecords = num.product(self.ns) * self.ncomponents
-        self.coords = tuple( num.linspace(mi,ma,n) for 
-                (mi,ma,n) in zip(self.mins, self.maxs, self.ns) ) + \
-                    ( num.arange(self.ncomponents), )
+        self.coords = tuple(num.linspace(mi, ma, n) for
+                            (mi, ma, n) in
+                            zip(self.mins, self.maxs, self.ns)) + \
+            (num.arange(self.ncomponents),)
         self.nreceiver_depths, self.nsource_depths, self.ndistances = self.ns
 
     def _make_index_functions(self):
 
         amin, bmin, cmin = self.mins
         da, db, dc = self.deltas
-        na,nb,nc = self.ns
+        na, nb, nc = self.ns
         ng = self.ncomponents
 
-        def index_function(a,b,c, ig):
+        def index_function(a, b, c, ig):
             ia = int(round((a - amin) / da))
             ib = int(round((b - bmin) / db))
             ic = int(round((c - cmin) / dc))
             try:
-                return num.ravel_multi_index((ia,ib,ic,ig), (na,nb,nc,ng))
+                return num.ravel_multi_index((ia, ib, ic, ig),
+                                             (na, nb, nc, ng))
             except ValueError:
                 raise OutOfBounds()
 
-        def indices_function(a,b,c, ig):
+        def indices_function(a, b, c, ig):
             ia = num.round((a - amin) / da).astype(int)
             ib = num.round((b - bmin) / db).astype(int)
             ic = num.round((c - cmin) / dc).astype(int)
             try:
-                return num.ravel_multi_index((ia,ib,ic,ig), (na,nb,nc,ng))
+                return num.ravel_multi_index((ia, ib, ic, ig),
+                                             (na, nb, nc, ng))
             except ValueError:
                 raise OutOfBounds()
 
-        def vicinity_function(a,b,c, ig):
+        def vicinity_function(a, b, c, ig):
             ias = indi12((a - amin) / da, na)
             ibs = indi12((b - bmin) / db, nb)
             ics = indi12((c - cmin) / dc, nc)
@@ -451,16 +783,96 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
                 for ib, vb in ibs:
                     iib = ib*nc*ng
                     for ic, vc in ics:
-                        indis.append( ( iia + iib + ic*ng + ig, va*vb*vc ) )
-            
+                        indis.append((iia + iib + ic*ng + ig, va*vb*vc))
+
             return indis
 
         self._index_function = index_function
         self._indices_function = indices_function
         self._vicinity_function = vicinity_function
 
+    def make_indexing_args(self, source, receiver, icomponents):
+        nc = icomponents.size
+        dists = source.distances_to(receiver)
+        n = dists.size
+        return (num.repeat(receiver.depth, n*nc),
+                num.repeat(source.depths, nc),
+                num.repeat(dists, nc), num.tile(icomponents, n))
+
+
+class Weighting(Object):
+    factor = Float.T(default=1.0)
+
+
+class Taper(Object):
+    begin = Timing.T()
+    end = Timing.T()
+    tfade = Float.T(default=0.0)
+    shape = StringChoice(
+        choices=['cos', 'linear'],
+        default='cos',
+        optional=True)
+
+
+class SimplePattern(SObject):
+
+    _pool = {}
+
+    def __init__(self, pattern):
+        self._pattern = pattern
+        SObject.__init__(self)
+
+    def __str__(self):
+        return self._pattern
+
+    @property
+    def regex(self):
+        pool = SimplePattern._pool
+        if self.pattern not in pool:
+            rpat = '|'.join(fnmatch.translate(x) for
+                            x in self.pattern.split('|'))
+            pool[self.pattern] = re.compile(rpat, re.I)
+
+        return pool[self.pattern]
+
+    def match(self, s):
+        return self.regex.match(s)
+
+
+class WaveformType(StringChoice):
+    choices = ['dis', 'vel', 'acc',
+               'amp_spec_dis', 'amp_spec_vel', 'amp_spec_acc',
+               'envelope_dis', 'envelope_vel', 'envelope_acc']
+
+
+class ChannelSelection(Object):
+    pattern = SimplePattern.T(optional=True)
+    min_sample_rate = Float.T(optional=True)
+    max_sample_rate = Float.T(optional=True)
+
+
+class StationSelection(Object):
+    includes = SimplePattern.T()
+    excludes = SimplePattern.T()
+    distance_min = Float.T(optional=True)
+    distance_max = Float.T(optional=True)
+    azimuth_min = Float.T(optional=True)
+    azimuth_max = Float.T(opitonal=True)
+
+
+class WaveformSelection(Object):
+    channel_selection = ChannelSelection(optional=True)
+    station_selection = StationSelection(optional=True)
+    taper = Taper.T()
+    #filter = FrequencyResponse.T()
+    waveform_type = WaveformType.T(default='dis')
+    weighting = Weighting.T(optional=True)
+    sample_rate = Float.T(optional=True)
+    gf_store_id = StringID(optional=True)
+
 
 vicinity_eps = 1e-5
+
 
 def indi12(x, n):
     r = round(x)
@@ -469,7 +881,7 @@ def indi12(x, n):
         if not (0 <= i < n):
             raise OutOfBounds()
 
-        return ( (int(r), 1.), )
+        return ((int(r), 1.),)
     else:
         f = math.floor(x)
         i = int(f)
@@ -477,13 +889,14 @@ def indi12(x, n):
             raise OutOfBounds()
 
         v = x-f
-        return ( (i, 1.-v), (i + 1, v) )
+        return ((i, 1.-v), (i + 1, v))
+
 
 def float_or_none(s):
     units = {
-            'k' : 1e3,
-            'M' : 1e6,
-            }
+        'k': 1e3,
+        'M': 1e6,
+    }
 
     factor = 1.0
     if s and s[-1] in units:
@@ -497,9 +910,11 @@ def float_or_none(s):
     else:
         return None
 
+
 class GridSpecError(Exception):
     def __init__(self, s):
         Exception.__init__(self, 'invalid grid specification: %s' % s)
+
 
 def parse_grid_spec(spec):
     try:
@@ -514,9 +929,9 @@ def parse_grid_spec(spec):
 
             elif len(t) > 2:
                 raise GridSpecError(spec)
-            
+
             s = t[0]
-            v = [ float_or_none(x) for x in s.split(':') ]
+            v = [float_or_none(x) for x in s.split(':')]
             if len(v) == 1:
                 start = stop = v[0]
             if len(v) >= 2:
@@ -537,14 +952,15 @@ def parse_grid_spec(spec):
 
     return result
 
+
 def start_stop_num(start, stop, step, num, mi, ma, inc, eps=1e-5):
     swap = step is not None and step < 0.
     if start is None:
-        start = [mi,ma][swap]
+        start = [mi, ma][swap]
     if stop is None:
-        stop = [ma,mi][swap]
+        stop = [ma, mi][swap]
     if step is None:
-        step = [inc,-inc][ma<mi]
+        step = [inc, -inc][ma < mi]
     if num is None:
         if (step < 0) != (stop-start < 0):
             raise GridSpecError()
@@ -559,17 +975,36 @@ def start_stop_num(start, stop, step, num, mi, ma, inc, eps=1e-5):
 
     if start == stop:
         num = 1
-            
+
     return start, stop, num
 
+
 def nditer_outer(x):
-    return num.nditer(x, 
-            op_axes=(num.identity(len(x), dtype=num.int)-1).tolist())
+    return num.nditer(
+        x, op_axes=(num.identity(len(x), dtype=num.int)-1).tolist())
 
-__all__ = '''StringID ScopeType WaveformType NearfieldTermsType 
-             Reference PhaseSelect Timing TPDef 
-             Config ConfigTypeA ConfigTypeB'''.split()
-
-
-
-
+__all__ = '''
+Earthmodel1D
+StringID
+ScopeType
+WaveformType
+NearfieldTermsType
+Reference
+PhaseSelect
+InvalidTimingSpecification
+Timing
+TPDef
+OutOfBounds
+Location
+Receiver
+DiscretizedSource
+DiscretizedExplosionSource
+DiscretizedMTSource
+ComponentSchemes
+Config
+ConfigTypeA
+ConfigTypeB
+GridSpecError
+dump
+load
+'''.split()

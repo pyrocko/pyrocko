@@ -68,7 +68,7 @@ def symmat6(*vals):
                        [vals[4], vals[5], vals[2]]], dtype=num.float)
 
 def moment_to_magnitude( moment ):
-    return num.log10(moment*1.0e7)/1.5 - 10.7
+    return math.log10(moment*1.0e7)/1.5 - 10.7
     # global CMT uses 10.7333333... instead of 10.7, based on [Kanamori 1977]
     # 10.7 comes from [Hanks and Kanamori 1979]
 

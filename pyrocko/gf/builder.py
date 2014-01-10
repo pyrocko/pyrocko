@@ -1,15 +1,17 @@
 import numpy as num
 
+
 def int_arr(*args):
     return num.array(args, dtype=num.int)
+
 
 class Builder:
     def __init__(self, gf_set, block_size=None):
         if block_size is None:
             if len(gf_set.ns) == 3:
-                block_size = (10,1,10)
+                block_size = (10, 1, 10)
             elif len(gf_set.ns) == 2:
-                block_size = (1,10)
+                block_size = (1, 10)
             else:
                 assert False
 
@@ -29,7 +31,7 @@ class Builder:
 
     def get_block(self, index):
         dims = self.block_dims
-        iblock = num.unravel_index( index, dims )
+        iblock = num.unravel_index(index, dims)
         ibegins = iblock * self._block_size
         iends = num.minimum(ibegins + self._block_size, self.gf_set.ns)
         return ibegins, iends
@@ -40,4 +42,4 @@ class Builder:
         ends = self.gf_set.mins + (iends-1) * self.gf_set.deltas
         return begins, ends, iends - ibegins
 
-__all__ = [ 'Builder' ]
+__all__ = ['Builder']

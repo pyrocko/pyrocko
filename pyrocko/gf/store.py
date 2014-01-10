@@ -1,8 +1,14 @@
 
-import os, struct, math, shutil, fcntl, copy, logging, re
 import errno
 import time
+import os
+import struct
+import math
+import shutil
+import fcntl
+import copy
 import logging
+import re
 
 import numpy as num
 from scipy import signal
@@ -16,20 +22,21 @@ gf_dtype = num.dtype(num.float32)
 gf_dtype_nbytes_per_sample = 4
 
 gf_store_header_dtype = [
-        ('nrecords', '<u8'),
-        ('deltat', '<f4'),
-    ]
+    ('nrecords', '<u8'),
+    ('deltat', '<f4'),
+]
 
 gf_store_header_fmt = '<Qf'
 gf_store_header_fmt_size = struct.calcsize(gf_store_header_fmt)
 
 gf_record_dtype = num.dtype([
-        ('data_offset', '<u8'),
-        ('itmin', '<i4'),
-        ('nsamples', '<u4'),
-        ('begin_value', '<f4'),
-        ('end_value', '<f4'),
-    ])
+    ('data_offset', '<u8'),
+    ('itmin', '<i4'),
+    ('nsamples', '<u4'),
+    ('begin_value', '<f4'),
+    ('end_value', '<f4'),
+])
+
 
 def check_string_id(s):
     if not re.match(meta.StringID.pattern, s):
@@ -39,7 +46,7 @@ def check_string_id(s):
 #
 # Data file offset of first sample in bytes (the seek value).
 # Special values:
-# 
+#
 #  0x00 - missing trace
 #  0x01 - zero trace (GF trace is physically zero)
 #  0x02 - short trace of 1 or 2 samples (no need for data allocation)
@@ -51,18 +58,20 @@ def check_string_id(s):
 # respect to a global reference time zero.
 #
 # - nsamples
-# 
-# Number of samples in the GF trace. 
-# 
+#
+# Number of samples in the GF trace.
+#
 # - begin_value, end_value
 #
-# Values of first and last sample. These values are included in data[] 
+# Values of first and last sample. These values are included in data[]
 # redunantly.
+
 
 class NotMultipleOfSamplingInterval(Exception):
     pass
 
 sampling_check_eps = 1e-5
+
 
 class GFTrace:
 
@@ -70,32 +79,28 @@ class GFTrace:
     def from_trace(cls, tr):
         return cls(data=tr.ydata.copy(), tmin=tr.tmin, deltat=tr.deltat)
 
-
-    def __init__(self, data=None, itmin=None, deltat=1.0, 
-            is_zero=False, begin_value=None, end_value=None, tmin=None):
+    def __init__(self, data=None, itmin=None, deltat=1.0,
+                 is_zero=False, begin_value=None, end_value=None, tmin=None):
 
         assert sum((x is None) for x in (tmin, itmin)) == 1, \
-                'GFTrace: either tmin or itmin must be given'
+            'GFTrace: either tmin or itmin must be given'
 
         if tmin is not None:
             itmin = int(round(tmin / deltat))
             if abs(itmin*deltat - tmin) > sampling_check_eps*deltat:
-                raise NotMultipleOfSamplingInterval( 
-                 'GFTrace: tmin (%g) is not a multiple of sampling interval (%g)'
-                         % (tmin, deltat) )
+                raise NotMultipleOfSamplingInterval(
+                    'GFTrace: tmin (%g) is not a multiple of sampling '
+                    'interval (%g)' % (tmin, deltat))
 
         if data is not None:
             data = num.asarray(data, dtype=gf_dtype)
         else:
             data = num.array([], dtype=gf_dtype)
 
-        if data is None or data.size == 0 or num.all(data) == 0.0:
-            self.is_zero = True
-
         self.data = data
         self.itmin = itmin
         self.deltat = deltat
-        self.is_zero = is_zero
+        self.is_zero = is_zero or data is None or data.size == 0
 
         if data is not None and data.size > 0:
             if begin_value is None:
@@ -108,41 +113,76 @@ class GFTrace:
 
     @property
     def t(self):
-        return num.linspace(self.itmin*self.deltat, 
-                (self.itmin+self.data.size-1)*self.deltat, self.data.size)
+        return num.linspace(
+            self.itmin*self.deltat,
+            (self.itmin+self.data.size-1)*self.deltat, self.data.size)
 
     def __str__(self, itmin=0):
-        
+
         if self.is_zero:
             return 'ZERO'
 
         s = []
         for i in range(itmin, self.itmin + self.data.size):
             if i >= self.itmin and i < self.itmin + self.data.size:
-                s.append( '%7.4g' % self.data[i-self.itmin] )
+                s.append('%7.4g' % self.data[i-self.itmin])
             else:
-                s.append( ' '*7 )
-        
+                s.append(' '*7)
+
         return '|'.join(s)
 
 
+def make_same_span(traces):
+    nonzero = [tr for tr in traces if not tr.is_zero]
+    if not nonzero:
+        return [Zero] * len(traces)
+
+    deltat = nonzero[0].deltat
+
+    itmin = min(tr.itmin for tr in nonzero)
+    itmax = max(tr.itmin+tr.data.size for tr in nonzero) - 1
+
+    out = []
+    for tr in traces:
+        n = itmax - itmin + 1
+        if tr.itmin != itmin or tr.data.size != n:
+            data = num.zeros(n, dtype=gf_dtype)
+            if not tr.is_zero:
+                lo = tr.itmin-itmin
+                hi = lo + tr.data.size
+                data[:lo] = tr.data[0]
+                data[lo:hi] = tr.data
+                data[hi:] = tr.data[-1]
+
+            tr = GFTrace(data, itmin, deltat)
+
+        out.append(tr)
+
+    return out
+
 Zero = GFTrace(is_zero=True, itmin=0)
+
 
 class StoreError(Exception):
     pass
 
+
 class CannotCreate(StoreError):
     pass
+
 
 class CannotOpen(StoreError):
     pass
 
+
 class DuplicateInsert(StoreError):
     pass
+
 
 class NotAllowedToInterpolate(StoreError):
     def __str__(self):
         return 'not allowed to interpolate'
+
 
 class NoSuchExtra(StoreError):
     def __init__(self, s):
@@ -151,6 +191,7 @@ class NoSuchExtra(StoreError):
 
     def __str__(self):
         return 'extra information for key "%s" not found.' % self.value
+
 
 class NoSuchPhase(StoreError):
     def __init__(self, s):
@@ -161,6 +202,7 @@ class NoSuchPhase(StoreError):
         return 'phase for key "%s" not found. ' \
                'Running "fomosto ttt" may be needed.' % self.value
 
+
 def remove_if_exists(fn, force=False):
     if os.path.exists(fn):
         if force:
@@ -168,7 +210,8 @@ def remove_if_exists(fn, force=False):
         else:
             raise CannotCreate('file %s already exists' % fn)
 
-class Store_:
+
+class BaseStore:
 
     @staticmethod
     def index_fn_(store_dir):
@@ -181,14 +224,13 @@ class Store_:
     @staticmethod
     def create(store_dir, deltat, nrecords, force=False):
 
-
         try:
             util.ensuredir(store_dir)
         except:
             raise CannotCreate('cannot create directory %s' % store_dir)
-        
-        index_fn = Store_.index_fn_(store_dir)
-        data_fn = Store_.data_fn_(store_dir)
+
+        index_fn = BaseStore.index_fn_(store_dir)
+        data_fn = BaseStore.data_fn_(store_dir)
 
         for fn in (index_fn, data_fn):
             remove_if_exists(fn, force)
@@ -210,7 +252,6 @@ class Store_:
         self._deltat = None
         self._f_index = None
         self._f_data = None
-
 
     def open(self):
         index_fn = self.index_fn()
@@ -253,7 +294,9 @@ class Store_:
             self.close()
 
     def lock(self):
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
+
         while True: 
             try:
                 fcntl.lockf(self._f_index, fcntl.LOCK_EX)
@@ -279,15 +322,19 @@ class Store_:
         return self._get_span(irecord, decimate=decimate)
 
     def get(self, irecord, itmin=None, nsamples=None, decimate=1):
-        return self._get(irecord, itmin=itmin, nsamples=nsamples, decimate=decimate)
+        return self._get(irecord, itmin=itmin, nsamples=nsamples,
+                         decimate=decimate)
 
-    def sum(self, irecords, delays, weights, itmin=None, nsamples=None, decimate=1):
-        return self._sum(irecords, delays, weights, itmin, nsamples, 
-                    decimate)
-    
-    def sum_reference(self, irecords, delays, weights, itmin=None, nsamples=None, decimate=1):
-        return self._sum_reference(irecords, delays, weights, itmin, nsamples, 
-                    decimate)
+    def sum(self, irecords, delays, weights, itmin=None, nsamples=None,
+            decimate=1):
+
+        return self._sum(irecords, delays, weights, itmin, nsamples, decimate)
+
+    def sum_reference(self, irecords, delays, weights, itmin=None,
+                      nsamples=None, decimate=1):
+
+        return self._sum_reference(
+            irecords, delays, weights, itmin, nsamples, decimate)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
@@ -298,7 +345,8 @@ class Store_:
     def close(self):
 
         if self.mode == 'w':
-            if not self._f_index: self.open()
+            if not self._f_index:
+                self.open()
             self._save_index()
 
         if self._f_data:
@@ -312,21 +360,25 @@ class Store_:
         self.mode = ''
 
     def _get_record(self, irecord):
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
         return self._records[irecord]
 
     def _get(self, irecord, itmin=None, nsamples=None, decimate=1):
         '''Retrieve complete GF trace from storage.'''
 
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
         assert self.mode == 'r'
-        assert 0 <= irecord < self._nrecords, 'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
+        assert 0 <= irecord < self._nrecords, \
+            'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
 
-        (ipos, itmin_data, nsamples_data, begin_value, end_value) = self._records[irecord]
+        ipos, itmin_data, nsamples_data, begin_value, end_value = \
+            self._records[irecord]
 
-        if None in (itmin, nsamples): 
+        if None in (itmin, nsamples):
             itmin = itmin_data
             itmax = itmin_data + nsamples_data - 1
             nsamples = nsamples_data
@@ -347,14 +399,14 @@ class Store_:
             data = self._get_data(ipos, begin_value, end_value, ilo, ihi)
 
             return GFTrace(data, itmin=itmin_data+ilo, deltat=self._deltat,
-                begin_value=begin_value, end_value=end_value)
+                           begin_value=begin_value, end_value=end_value)
 
         else:
             itmax_data = itmin_data + nsamples_data - 1
 
             # put begin and end to multiples of new sampling rate
-            itmin_ext = (max(itmin,itmin_data)/decimate) * decimate
-            itmax_ext = -((-min(itmax,itmax_data))/decimate) * decimate
+            itmin_ext = (max(itmin, itmin_data)/decimate) * decimate
+            itmax_ext = -((-min(itmax, itmax_data))/decimate) * decimate
             nsamples_ext = itmax_ext - itmin_ext + 1
 
             # add some padding for the aa filter
@@ -362,24 +414,25 @@ class Store_:
             itmin_ext_pad = itmin_ext - order/2
             itmax_ext_pad = itmax_ext + order/2
             nsamples_ext_pad = itmax_ext_pad - itmin_ext_pad + 1
-            
+
             itmin_overlap = max(itmin_data, itmin_ext_pad)
             itmax_overlap = min(itmax_data, itmax_ext_pad)
 
             ilo = itmin_overlap - itmin_ext_pad
             ihi = max(ilo, itmax_overlap - itmin_ext_pad + 1)
             ilo_data = itmin_overlap - itmin_data
-            ihi_data = max( ilo_data, itmax_overlap - itmin_data + 1)
+            ihi_data = max(ilo_data, itmax_overlap - itmin_data + 1)
 
             data_ext_pad = num.empty(nsamples_ext_pad, dtype=gf_dtype)
-            data_ext_pad[ilo:ihi] = self._get_data(ipos, begin_value, end_value, 
-                    ilo_data, ihi_data)
+            data_ext_pad[ilo:ihi] = self._get_data(
+                ipos, begin_value, end_value, ilo_data, ihi_data)
+
             data_ext_pad[:ilo] = begin_value
             data_ext_pad[ihi:] = end_value
 
             b = signal.firwin(order + 1, 1. / decimate, window='hamming')
             a = 1.
-            data_filt_pad = signal.lfilter(b,a, data_ext_pad)
+            data_filt_pad = signal.lfilter(b, a, data_ext_pad)
             data_deci = data_filt_pad[order:order+nsamples_ext:decimate]
             if data_deci.size >= 1:
                 if itmin_ext <= itmin_data:
@@ -388,16 +441,19 @@ class Store_:
                 if itmax_ext >= itmax_data:
                     data_deci[-1] = end_value
 
-            return GFTrace(data_deci, itmin_ext/decimate, self._deltat*decimate,
-                begin_value=begin_value, end_value=end_value)
+            return GFTrace(data_deci, itmin_ext/decimate,
+                           self._deltat*decimate,
+                           begin_value=begin_value, end_value=end_value)
 
     def _get_span(self, irecord, decimate=1):
         '''Get temporal extent of GF trace at given index.'''
 
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
-        assert 0 <= irecord < self._nrecords, 'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
-        
+        assert 0 <= irecord < self._nrecords, \
+            'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
+
         (_, itmin, nsamples, _, _) = self._records[irecord]
 
         itmax = itmin + nsamples - 1
@@ -410,38 +466,43 @@ class Store_:
     def _put(self, irecord, trace):
         '''Save GF trace to storage.'''
 
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
         assert self.mode == 'w'
         assert abs(trace.deltat - self._deltat) < 1e-7 * self._deltat
-        assert 0 <= irecord < self._nrecords, 'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
+        assert 0 <= irecord < self._nrecords, \
+            'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
 
         if self._records[irecord][0] != 0:
             raise DuplicateInsert('record %i already in store' % irecord)
 
         if trace.is_zero or num.all(trace.data == 0.0):
-            self._records[irecord] = (1,0,0,0.,0.)
+            self._records[irecord] = (1, 0, 0, 0., 0.)
             return
-        
+
         ndata = trace.data.size
 
         if ndata > 2:
             self._f_data.seek(0, 2)
             ipos = self._f_data.tell()
-            trace.data.tofile( self._f_data )
+            trace.data.tofile(self._f_data)
         else:
             ipos = 2
 
-        self._records[irecord] = (ipos, trace.itmin, ndata, trace.data[0], trace.data[-1])
+        self._records[irecord] = (ipos, trace.itmin, ndata,
+                                  trace.data[0], trace.data[-1])
 
-        
-    def _sum(self, irecords, delays, weights, itmin=None, nsamples=None, decimate=1):
+    def _sum(self, irecords, delays, weights, itmin=None, nsamples=None,
+             decimate=1):
+
         '''Sum delayed and weighted GF traces.'''
 
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
         assert self.mode == 'r'
-    
+
         deltat = self._deltat * decimate
 
         if len(irecords) == 0:
@@ -456,15 +517,14 @@ class Store_:
                 itmin, itmax = self._get_span(irecord, decimate=decimate)
                 itmin_delayed.append(itmin + delay/deltat)
                 itmax_delayed.append(itmax + delay/deltat)
-            
+
             itmin = int(math.floor(min(itmin_delayed)))
             nsamples = int(math.ceil(max(itmax_delayed))) - itmin + 1
-
 
         out = num.zeros(nsamples, dtype=gf_dtype)
         if nsamples == 0:
             return GFTrace(out, itmin, deltat)
-        
+
         for irecord, delay, weight in zip(irecords, delays, weights):
 
             if weight == 0.0:
@@ -473,10 +533,11 @@ class Store_:
             idelay_floor = int(math.floor(delay/deltat))
             idelay_ceil = int(math.ceil(delay/deltat))
 
-            gf_trace = self._get(irecord, 
-                    itmin - idelay_ceil, 
-                    nsamples + idelay_ceil - idelay_floor,
-                    decimate=decimate)
+            gf_trace = self._get(
+                irecord,
+                itmin - idelay_ceil,
+                nsamples + idelay_ceil - idelay_floor,
+                decimate=decimate)
 
             assert gf_trace.itmin >= itmin - idelay_ceil
             assert gf_trace.data.size <= nsamples + idelay_ceil - idelay_floor
@@ -493,19 +554,22 @@ class Store_:
                 out[ilo:ihi] += data * weight
             else:
                 if data.size:
-                    k = 1 
+                    k = 1
                     if ihi <= nsamples:
-                        out[ihi-1] += gf_trace.end_value * ((idelay_ceil-delay/deltat) * weight)
+                        out[ihi-1] += gf_trace.end_value * \
+                            ((idelay_ceil-delay/deltat) * weight)
                         k = 0
 
-                    out[ilo+1:ihi-k] += data[:data.size-k] * ((delay/deltat-idelay_floor) * weight)
+                    out[ilo+1:ihi-k] += data[:data.size-k] * \
+                        ((delay/deltat-idelay_floor) * weight)
                     k = 1
                     if ilo >= 0:
-                        out[ilo] += gf_trace.begin_value * ((delay/deltat-idelay_floor) * weight)
+                        out[ilo] += gf_trace.begin_value * \
+                            ((delay/deltat-idelay_floor) * weight)
                         k = 0
 
-                    out[ilo+k:ihi-1] += data[k:] * ((idelay_ceil-delay/deltat) * weight)
-
+                    out[ilo+k:ihi-1] += data[k:] * \
+                        ((idelay_ceil-delay/deltat) * weight)
 
             if ilo > 0 and gf_trace.begin_value != 0.0:
                 out[:ilo] += gf_trace.begin_value * weight
@@ -513,15 +577,16 @@ class Store_:
             if ihi < nsamples and gf_trace.end_value != 0.0:
                 out[ihi:] += gf_trace.end_value * weight
 
-        
         return GFTrace(out, itmin, deltat)
 
-    def _sum_reference(self, irecords, delays, weights, itmin=None, nsamples=None, decimate=1):
+    def _sum_reference(self, irecords, delays, weights, itmin=None,
+                       nsamples=None, decimate=1):
 
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
         deltat = self._deltat * decimate
-        
+
         datas = []
         itmins = []
         for i, delay, weight in zip(irecords, delays, weights):
@@ -543,16 +608,18 @@ class Store_:
 
         if not itmins:
             return Zero
-            
+
         itmin_all = min(itmins)
 
-        itmax_all = max( itmin_ + data.size for (itmin_, data) in zip(itmins, datas) )
+        itmax_all = max(itmin_ + data.size for (itmin_, data) in
+                        zip(itmins, datas))
+
         if itmin is not None:
             itmin_all = min(itmin_all, itmin)
         if nsamples is not None:
             itmax_all = max(itmax_all, itmin+nsamples)
 
-        nsamples_all = itmax_all - itmin_all 
+        nsamples_all = itmax_all - itmin_all
 
         arr = num.zeros((len(datas), nsamples_all), dtype=gf_dtype)
         for i, itmin_, data in zip(num.arange(len(datas)), itmins, datas):
@@ -576,9 +643,10 @@ class Store_:
 
     def _load_index(self):
         if self._use_memmap:
-            records = num.memmap(self._f_index, dtype=gf_record_dtype, 
-                    offset=gf_store_header_fmt_size,
-                    mode= ('r','r+')[self.mode == 'w'])
+            records = num.memmap(
+                self._f_index, dtype=gf_record_dtype,
+                offset=gf_store_header_fmt_size,
+                mode=('r', 'r+')[self.mode == 'w'])
 
         else:
             self._f_index.seek(gf_store_header_fmt_size)
@@ -590,8 +658,8 @@ class Store_:
 
     def _save_index(self):
         self._f_index.seek(0)
-        self._f_index.write(struct.pack(gf_store_header_fmt, self._nrecords, 
-            self._deltat))
+        self._f_index.write(struct.pack(gf_store_header_fmt, self._nrecords,
+                                        self._deltat))
 
         if self._use_memmap:
             del self._records
@@ -600,7 +668,7 @@ class Store_:
             self._records.tofile(self._f_index)
             self._f_index.flush()
 
-    def _get_data(self, ipos, begin_value, end_value, ilo, ihi): 
+    def _get_data(self, ipos, begin_value, end_value, ilo, ihi):
         if ihi - ilo > 0:
             if ipos == 2:
                 data_orig = num.empty(2, dtype=gf_dtype)
@@ -611,19 +679,20 @@ class Store_:
                 self._f_data.seek(int(ipos + ilo*gf_dtype_nbytes_per_sample))
                 return num.fromfile(self._f_data, gf_dtype, ihi-ilo)
         else:
-            x  = num.empty((0,), dtype=gf_dtype)
             return num.empty((0,), dtype=gf_dtype)
 
     def index_fn(self):
-        return Store_.index_fn_(self.store_dir)
-    
+        return BaseStore.index_fn_(self.store_dir)
+
     def data_fn(self):
-        return Store_.data_fn_(self.store_dir)
+        return BaseStore.data_fn_(self.store_dir)
 
     def count_special_records(self):
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
-        return num.histogram( self._records['data_offset'], bins=[0,1,2,3, num.uint64(-1) ] )[0]
+        return num.histogram(self._records['data_offset'],
+                             bins=[0, 1, 2, 3, num.uint64(-1)])[0]
 
     def stats(self):
         counter = self.count_special_records()
@@ -632,18 +701,19 @@ class Store_:
         sindex = os.stat(self.index_fn()).st_size
 
         stats = dict(
-                total = self._nrecords,
-                inserted = (counter[1] + counter[2] + counter[3]), 
-                empty = counter[0],
-                short = counter[2],
-                zero = counter[1],
-                size_data = sdata,
-                size_index = sindex,
-            )
+            total=self._nrecords,
+            inserted=(counter[1] + counter[2] + counter[3]),
+            empty=counter[0],
+            short=counter[2],
+            zero=counter[1],
+            size_data=sdata,
+            size_index=sindex,
+        )
 
         return stats
 
     stats_keys = 'total inserted empty short zero size_data size_index'.split()
+
 
 def remake_dir(dpath, force):
     if os.path.exists(dpath):
@@ -654,11 +724,12 @@ def remake_dir(dpath, force):
 
     os.mkdir(dpath)
 
-class Store(Store_):
+
+class Store(BaseStore):
 
     '''
     Green's function disk storage and summation machine.
-    
+
     The `Store` can be used to efficiently store, retrieve, and sum Green's
     function traces. A `Store` contains many 1D time traces sampled at even
     multiples of a global sampling rate, where each time trace has an
@@ -668,27 +739,29 @@ class Store(Store_):
     traces and to extract parts of the traces. The main purpose of this class
     is to provide a fast, easy to use, and flexible machanism to compute
     weighted delay-and-sum stacks with many Green's function traces involved.
-    
+
     Individual Green's functions are accessed through a single integer index at
     low level.  At higher level, various indexing schemes can be implemented by
     providing a mapping from physical coordinates to the low level index. E.g.
     for a problem with cylindrical symmetry, one might define a mapping from
-    (z1, z2, r) -> i. Index translation is done in the
-    :py:class:`pyrocko.gf.meta.Config` subclass object associated with the Store.
+    (`z1`, `z2`, `r`) -> `i`. Index translation is done in the
+    :py:class:`pyrocko.gf.meta.Config` subclass object associated with the
+    Store.
     '''
 
     @staticmethod
     def create(store_dir, config, force=False, extra=None):
         '''Create new GF store.
-        
+
         Creates a new GF store at path `store_dir`. The layout of the GF is
-        defined with the parameters given in `config`, which should be an object
-        of a subclass of :py:class:`pyrocko.gf.meta.Config`. This function will
-        refuse to overwrite an existing GF store, unless `force` is set  to
-        ``True``. If more information, e.g. parameters used for the modelling
-        code, earth models or other, should be saved along with the GF store,
-        these may be provided though a dict given to `extra`. The keys of this
-        dict must be names and the values must be *guts* type objects.  '''
+        defined with the parameters given in `config`, which should be an
+        object of a subclass of :py:class:`pyrocko.gf.meta.Config`. This
+        function will refuse to overwrite an existing GF store, unless `force`
+        is set  to ``True``. If more information, e.g. parameters used for the
+        modelling code, earth models or other, should be saved along with the
+        GF store, these may be provided though a dict given to `extra`. The
+        keys of this dict must be names and the values must be *guts* type
+        objects.  '''
 
         Store.create_editables(store_dir, config, force=force, extra=extra)
         Store.create_dependants(store_dir, force=force)
@@ -713,7 +786,7 @@ class Store(Store_):
             remake_dir(dpath, force)
 
         if extra:
-            for k,v in extra.iteritems():
+            for k, v in extra.iteritems():
                 check_string_id(k)
                 fn = os.path.join(store_dir, 'extra', k)
                 remove_if_exists(fn, force)
@@ -728,25 +801,26 @@ class Store(Store_):
         config_fn = os.path.join(store_dir, 'config')
         config = meta.load(filename=config_fn)
 
-        Store_.create(store_dir, config.deltat, config.nrecords, force=force)
+        BaseStore.create(store_dir, config.deltat, config.nrecords,
+                         force=force)
 
         for sub_dir in ['decimated']:
             dpath = os.path.join(store_dir, sub_dir)
             remake_dir(dpath, force)
 
     def __init__(self, store_dir, mode='r'):
-        Store_.__init__(self, store_dir, mode=mode)
+        BaseStore.__init__(self, store_dir, mode=mode)
         config_fn = os.path.join(store_dir, 'config')
         if not os.path.isfile(config_fn):
             raise StoreError(
-                    'directory "%s" does not seem to contain a GF Store '
-                    '("config" file not found)' % store_dir)
+                'directory "%s" does not seem to contain a GF Store '
+                '("config" file not found)' % store_dir)
 
         self.config = meta.load(filename=config_fn)
         self._decimated = {}
         self._extra = {}
         self._phases = {}
-        for decimate in range(2,9):
+        for decimate in range(2, 9):
             if os.path.isdir(self._decimated_store_dir(decimate)):
                 self._decimated[decimate] = None
 
@@ -770,7 +844,7 @@ class Store(Store_):
 
     def put(self, args, trace):
         '''Insert trace into GF store.
-        
+
         Store a single GF trace at (high-level) index `args`.'''
 
         irecord = self.config.irecord(*args)
@@ -781,9 +855,11 @@ class Store(Store_):
         return self._get_record(irecord)
 
     def str_irecord(self, args):
-        return Store_.str_irecord(self, self.config.irecord(*args))
+        return BaseStore.str_irecord(self, self.config.irecord(*args))
 
-    def get(self, args, itmin=None, nsamples=None, decimate=1, interpolate='nearest_neighbor'):
+    def get(self, args, itmin=None, nsamples=None, decimate=1,
+            interpolate='nearest_neighbor'):
+
         '''Retrieve GF trace from store.
 
         Retrieve a single GF trace from the store at (high-level) index `args`.
@@ -796,37 +872,44 @@ class Store(Store_):
         store, decimate = self._decimated_store(decimate)
         if interpolate == 'nearest_neighbor':
             irecord = store.config.irecord(*args)
-            return store._get(irecord, itmin=itmin, nsamples=nsamples, decimate=decimate)
+            return store._get(irecord, itmin=itmin, nsamples=nsamples,
+                              decimate=decimate)
 
         else:
             irecords, weights = zip(*store.config.vicinity(*args))
             if interpolate == 'off' and len(irecords) != 1:
                 raise NotAllowedToInterpolate()
 
-            return store._sum(irecords, num.zeros(len(irecords)), weights, itmin, nsamples, decimate)
+            return store._sum(irecords, num.zeros(len(irecords)), weights,
+                              itmin, nsamples, decimate)
 
-    def sum(self, args, delays, weights, itmin=None, nsamples=None, decimate=1):
+    def sum(self, args, delays, weights, itmin=None, nsamples=None,
+            decimate=1):
+
         '''Sum delayed and weighted GF traces.
 
         Calculate sum of delayed and weighted GF traces. `args` is a tuple of
         arrays forming the (high-level) indices of the GF traces to be
         selected.  Delays and weights for the summation are given in the arrays
         `delays` and `weights`. If `itmin` and `nsamples` are given,
-        computation is restricted to the output time range *(decimated) sampling
-        interval x [ itmin, (itmin + nsamples - 1) ]*.  If `decimate` is an
-        integer in the range [2,8], decimated traces are used in the summation.
-        '''
+        computation is restricted to the output time range *(decimated)
+        sampling interval x [ itmin, (itmin + nsamples - 1) ]*.  If `decimate`
+        is an integer in the range [2,8], decimated traces are used in the
+        summation.'''
 
         store, decimate = self._decimated_store(decimate)
         irecords = store.config.irecords(*args)
         return store._sum(irecords, delays, weights, itmin, nsamples, decimate)
-    
-    def sum_reference(self, args, delays, weights, itmin=None, nsamples=None, decimate=1):
-        '''Alternative version of :py:meth:`sum`.'''
+
+    def sum_reference(self, args, delays, weights, itmin=None, nsamples=None,
+                      decimate=1):
+
+        '''Alternative version of :py:meth:`sum`, for comparison.'''
 
         store, decimate = self._decimated_store(decimate)
         irecords = store.config.irecords(*args)
-        return store._sum_reference(irecords, delays, weights, itmin, nsamples, decimate)
+        return store._sum_reference(irecords, delays, weights, itmin, nsamples,
+                                    decimate)
 
     def make_decimated(self, decimate, config=None, force=False):
         '''Create decimated version of GF store.
@@ -844,7 +927,8 @@ class Store(Store_):
         computation are done for lower frequency signals.
         '''
 
-        if not self._f_index: self.open()
+        if not self._f_index:
+            self.open()
 
         if not (2 <= decimate <= 8):
             raise StoreError('decimate argument must be in the range [2,8]')
@@ -867,7 +951,6 @@ class Store(Store_):
             else:
                 raise CannotCreate('store already exists at %s' % store_dir)
 
-
         store_dir_incomplete = store_dir + '-incomplete'
         Store.create(store_dir_incomplete, config, force=force)
 
@@ -883,24 +966,25 @@ class Store(Store_):
         self._decimated[decimate] = None
 
     def stats(self):
-        stats = Store_.stats(self)
+        stats = BaseStore.stats(self)
         stats['decimated'] = sorted(self._decimated.keys())
         return stats
 
-    stats_keys = Store_.stats_keys + [ 'decimated' ]
+    stats_keys = BaseStore.stats_keys + ['decimated']
 
     def check(self):
 
         problems = 0
-        i =0
         for args in self.config.iter_nodes():
             tr = self.get(args)
             if tr and not tr.is_zero:
                 if not tr.begin_value == tr.data[0]:
-                    logger.warn('wrong begin value for trace at %s (data corruption?)' % str(args))
+                    logger.warn('wrong begin value for trace at %s '
+                                '(data corruption?)' % str(args))
                     problems += 1
                 if not tr.end_value == tr.data[-1]:
-                    logger.warn('wrong end value for trace at %s (data corruption?)' % str(args))
+                    logger.warn('wrong end value for trace at %s '
+                                '(data corruption?)' % str(args))
                     problems += 1
                 if not num.all(num.isfinite(tr.data)):
                     logger.warn('nans or infs in trace at %s' % str(args))
@@ -932,7 +1016,7 @@ class Store(Store_):
         return fn
 
     def get_phase(self, phase_id):
-        
+
         if phase_id not in self._phases:
             fn = self._phase_filename(phase_id)
             spt = spit.SPTree(filename=fn)
@@ -946,20 +1030,20 @@ class Store(Store_):
         return timing.evaluate(self.get_phase, args)
 
     def make_timing_params(self, begin, end, snap_vred=True):
-        
+
         '''Compute tight parameterized time ranges to include given timings.
 
         Calculates appropriate time ranges to cover given begin and end timings
-        over all GF points in the store. A dict with the following keys is 
+        over all GF points in the store. A dict with the following keys is
         returned:
 
-          tmin: time [s] minimum of begin timing over all GF points
-          tmax: time [s] maximum of end timing over all GF points
-          vred, tmin_vred: slope [m/s] and offset [s] of reduction velocity [m/s] 
-              appropriate to catch begin timing over all GF points
-          tlenmax_vred: maximum time length needed to cover all end timings,
-              when using linear slope given with (vred, tmin_vred) as start
-        
+        * ``'tmin'``: time [s], minimum of begin timing over all GF points
+        * ``'tmax'``: time [s], maximum of end timing over all GF points
+        * ``'vred'``, ``'tmin_vred'``: slope [m/s] and offset [s] of reduction
+          velocity [m/s] appropriate to catch begin timing over all GF points
+        * ``'tlenmax_vred'``: maximum time length needed to cover all end
+          timings, when using linear slope given with (`vred`, `tmin_vred`) as
+          start
         '''
 
         data = []
@@ -968,7 +1052,7 @@ class Store(Store_):
             tmax = self.t(end, args)
             x = self.config.get_distance(args)
             data.append((x, tmin, tmax))
-        
+
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
 
         i = num.nanargmin(tmins)
@@ -978,28 +1062,29 @@ class Store(Store_):
         dx = num.where(dx != 0.0, dx, num.nan)
         s = (tmins - tminmin) / dx
         sred = num.min(num.abs(s[num.isfinite(s)]))
-        
+
         if snap_vred:
             tdif = sred*self.config.distance_delta
             tdif2 = self.config.deltat * int(tdif / self.config.deltat)
             sred = tdif2/self.config.distance_delta
 
-        tmin_vred = tminmin - sred*x_tminmin 
+        tmin_vred = tminmin - sred*x_tminmin
         if snap_vred:
-            tmin_vred = self.config.deltat * int(tmin_vred / self.config.deltat)
+            tmin_vred = self.config.deltat * \
+                int(tmin_vred / self.config.deltat)
 
-        tlenmax_vred = num.nanmax( tmax - (tmin_vred + sred*x) )
+        tlenmax_vred = num.nanmax(tmax - (tmin_vred + sred*x))
         if sred != 0.0:
             vred = 1.0/sred
         else:
             vred = 0.0
 
         return dict(
-                tmin = tminmin,
-                tmax = num.nanmax(tmaxs),
-                tmin_vred = tmin_vred,
-                tlenmax_vred = tlenmax_vred,
-                vred = vred)
+            tmin=tminmin,
+            tmax=num.nanmax(tmaxs),
+            tmin_vred=tmin_vred,
+            tlenmax_vred=tlenmax_vred,
+            vred=vred)
 
     def make_ttt(self, force=False):
         from pyrocko import cake
@@ -1018,7 +1103,7 @@ class Store(Store_):
             phases = pdef.phases
             horvels = pdef.horizontal_velocities
 
-            fn = os.path.join( self.store_dir, 'phases', '%s.phase' % phase_id)
+            fn = os.path.join(self.store_dir, 'phases', '%s.phase' % phase_id)
 
             if os.path.exists(fn) and not force:
                 logger.info('file already exists: %s' % fn)
@@ -1036,32 +1121,55 @@ class Store(Store_):
                 t = []
                 if phases:
                     rays = mod.arrivals(
-                            phases = phases,
-                            distances = [ x*cake.m2d ],
-                            zstart = zs,
-                            zstop = zr)
+                        phases=phases,
+                        distances=[x*cake.m2d],
+                        zstart=zs,
+                        zstop=zr)
 
                     for ray in rays:
                         t.append(ray.t)
 
-                for v in pdef.horizontal_velocities:
+                for v in horvels:
                     t.append(x/(v*1000.))
-                
+
                 if t:
                     return min(t)
                 else:
                     return None
 
-            logger.info('making travel time table for phasegroup "%s"' % phase_id)
+            logger.info('making travel time table for phasegroup "%s"' %
+                        phase_id)
+
             ip = spit.SPTree(
-                f = evaluate,
-                ftol = config.deltat*0.5,
-                xbounds = num.transpose((config.mins, config.maxs)),
-                xtols = config.deltas)
+                f=evaluate,
+                ftol=config.deltat*0.5,
+                xbounds=num.transpose((config.mins, config.maxs)),
+                xtols=config.deltas)
 
             util.ensuredirs(fn)
             ip.dump(fn)
 
+    def seismogram(self, source, receiver):
+        out = []
+        for (channel, args, delays, weights) in \
+                self.config.make_sum_params(source, receiver):
 
-__all__ = 'Store GFTrace Zero StoreError CannotCreate CannotOpen'.split()
+            gtr = self.sum(args, delays, weights)
+            out.append(gtr)
 
+        return out
+
+__all__ = '''
+gf_dtype
+NotMultipleOfSamplingInterval
+GFTrace
+StoreError
+CannotCreate
+CannotOpen
+DuplicateInsert
+NotAllowedToInterpolate
+NoSuchExtra
+NoSuchPhase
+BaseStore
+Store
+'''.split()
