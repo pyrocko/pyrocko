@@ -6,6 +6,7 @@ import math, random
 
 r2d = 180./math.pi
 d2r = 1./r2d
+km = 1000.
 
 class Loc:
     pass
@@ -44,6 +45,30 @@ class OrthodromeTestCase(unittest.TestCase):
                 d = num.arccos(cd)*config.earthradius
                 d2 = math.sqrt(no**2+ea**2)
                 assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
+
+    def test_local_distances(self):
+        for reflat, reflon in [
+                (0.0, 0.0),
+                (10.0, 10.0),
+                (90.0, 0.0),
+                (-90.0, 0.0),
+                (0.0, 180.0),
+                (0.0, -180.0),
+                (90.0, 180.0) ]:
+
+            north, east = serialgrid(num.linspace(-10*km, 10*km, 21),
+                                     num.linspace(-10*km, 10*km, 21))
+
+            lat, lon = orthodrome.ne_to_latlon2(reflat, reflon, north, east)
+            north2, east2 = orthodrome.latlon_to_ne2(reflat, reflon, lat, lon)
+            dist1 = num.sqrt(north**2 + east**2)
+            dist2 = num.sqrt(north2**2 + east2**2)
+            dist3 = orthodrome.distance_accurate50m2(reflat, reflon, lat, lon)
+            assert num.all(num.abs(dist1-dist2) < 0.0001)
+            assert num.all(num.abs(dist1-dist3) < 0.0001)
+
+def serialgrid(x,y):
+    return num.repeat(x, y.size), num.tile(y, x.size)
 
 def plot_erroneous_ne_to_latlon():
     import sys
