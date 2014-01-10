@@ -1,18 +1,34 @@
-The :mod:`gf` Subpackage
-========================
+The :mod:`pyrocko.gf` Subpackage
+================================
 
-.. automodule:: pyrocko.gf.meta
+.. automodule:: pyrocko.gf
+    :members:
 
-
-The :mod:`gf.meta` Module
-=========================
-
-.. automodule:: pyrocko.gf.meta
-   :members:
-
-The :mod:`gf.store` Module
-==========================
+The :mod:`pyrocko.gf.store` Module
+==================================
 
 .. automodule:: pyrocko.gf.store
-   :members:
+    :members:
+    :show-inheritance:
+
+The :mod:`pyrocko.gf.meta` Module
+=================================
+
+.. automodule:: pyrocko.gf.meta
+    :members:
+    :show-inheritance:
+
+The :mod:`pyrocko.gf.builder` Module
+====================================
+
+.. automodule:: pyrocko.gf.builder
+    :members:
+    :show-inheritance:
+
+The :mod:`pyrocko.gf.seismosizer` Module
+========================================
+
+.. automodule:: pyrocko.gf.seismosizer
+    :members:
+    :show-inheritance:
 
