@@ -107,6 +107,11 @@ tango_colors = {
 'aluminium6': ( 46,  52,  54)
 }
 
+def path2colorint(path):
+    '''Calculate an integer representation deduced from path's definition.'''
+    s = sum([ord(char) for char in path.phase.definition()])
+    return s
+
 def light(color, factor=0.2):
     return tuple( 1-(1-c)*factor for c in color )
 
@@ -120,7 +125,7 @@ colors = [ to01(tango_colors[x+i]) for i in '321' for x in 'scarletred chameleon
 shades = [ light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1,9) ]
 shades2 = [ light(to01(tango_colors['orange1']), i*0.1) for i in xrange(1,9) ]
 
-def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None):
+def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None, coloring='by_phase_definition'):
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     axes = getaxes(axes)
@@ -130,7 +135,11 @@ def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None):
         if distances is not None:
             if path.xmax() < xmin or path.xmin() > xmax:
                 continue
-        color = colors[ipath%len(colors)]
+        if coloring == 'by_phase_definition':
+            int_rep = path2colorint(path)
+            color = colors[(int_rep+int_rep%7)%len(colors)]        
+        else:
+            color = colors[ipath%len(colors)]
         p,x,t = path.draft_pxt(path.endgaps(zstart, zstop))
         if p.size == 0:
             continue
@@ -178,11 +187,15 @@ def troffset(dx,dy, axes=None):
     from matplotlib import transforms
     return axes.transData + transforms.ScaledTranslation(dx/72., dy/72., axes.gcf().dpi_scale_trans)
 
-def plot_xp(paths, zstart, zstop, axes=None):
+def plot_xp(paths, zstart, zstop, axes=None, coloring='by_phase_definition'):
     axes = getaxes(axes)
     all_x = []
     for ipath, path in enumerate(paths):
-        color = colors[ipath%len(colors)]
+        if coloring == 'by_phase_definition':
+            int_rep = path2colorint(path)
+            color = colors[(int_rep+int_rep%7)%len(colors)]        
+        else:
+            color = colors[ipath%len(colors)]
         p, x, t = path.draft_pxt(path.endgaps(zstart, zstop))
         axes.plot(x, p, linewidth=2, color=color)
         axes.plot(x[:1], p[:1], 'o', color=color)
@@ -210,14 +223,37 @@ def labels_model(axes=None):
     axes.set_ylabel('Depth [km]')
     yscaled(0.001, axes)
 
-def plot_rays(paths, rays, zstart, zstop, axes=None):
+def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definition', legend=True,
+                                                                            avoid_same_colors=True):
+
     axes = getaxes(axes)
     path_to_color = {}
+    available_colors = set()
+
     for ipath, path in enumerate(paths):
-        path_to_color[path] = colors[ipath%len(colors)]
+        if coloring == 'by_phase_definition':
+            int_rep = path2colorint(path)
+            color_id = (int_rep+int_rep % 5) % len(colors)
+
+            if not path.phase.definition() in path_to_color.keys():
+                if avoid_same_colors:
+                    if len(available_colors) == 0:
+                        available_colors = set(range(0, len(colors)-1))
+                    if color_id in available_colors:
+                        available_colors.remove(color_id)
+                    else:
+                        color_id = available_colors.pop()
+
+                    assert color_id not in available_colors
+
+                path_to_color[path.phase.definition()] = colors[color_id]
+        else:
+            path_to_color[path] = colors[ipath % len(colors)]
 
     if rays is None:
         rays = paths
+
+    labels = set()
 
     for iray, ray in enumerate(rays):
         if isinstance(ray, cake.RayPath):
@@ -226,19 +262,35 @@ def plot_rays(paths, rays, zstart, zstop, axes=None):
             if not path._is_headwave:
                 p = num.linspace(pmin, pmax, 6)
                 x = None
+
             else:
                 x = num.linspace(xmin, xmin*10, 6)
                 p = num.atleast_1d(pmin)
 
             fanz, fanx, _ = path.zxt_path_subdivided(p, path.endgaps(zstart, zstop), x_for_headwave=x)
+
         else:
             fanz, fanx, _ = ray.zxt_path_subdivided()
             path = ray.path
-        
-        
-        color = path_to_color[path]
+
+        if coloring == 'by_phase_definition':
+            color = path_to_color[path.phase.definition()]
+            phase_label = path.phase.definition()
+
+        else:
+            color = path_to_color[path]
+            phase_label = path
+
         for zs, xs in zip(fanz, fanx):
-            l = axes.plot( xs, zs, color=color)
+            if phase_label in labels:
+                phase_label = ""
+
+            l = axes.plot( xs, zs, color=color, label=phase_label)
+            if legend:
+                labels.add(phase_label)
+
+    if legend:
+        axes.legend(loc=4, prop={'size': 11})
 
 
 def sketch_model(mod, axes=None):
@@ -337,6 +389,8 @@ def plot_surface_efficiency(mat):
     for angle in num.linspace(0., 90., 910.):
         pp = math.sin(angle*d2r)/mat.vp
         ps = math.sin(angle*d2r)/mat.vs
+
+        # Unresolved reference: psb_surface and psv_surface_ind
         escp = psv_surface(mat, pp, energy=True) 
         escs = psv_surface(mat, ps, energy=True)
         data.append((angle, escp[psv_surface_ind(P,P)], escp[psv_surface_ind(P,S)], 
@@ -450,7 +504,6 @@ def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fal
 
 def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, vred=None):
     from matplotlib import pyplot as plt
-    from matplotlib.transforms import Affine2D
     mpl_init()
     ax1 = plt.subplot(211)
     labelspace(plt.gca())
