@@ -71,7 +71,7 @@ def make_prerequisites():
 packname = 'pyrocko' 
 version = '0.3'
 
-subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf', 'pyrocko.fomosto' ]
+subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf', 'pyrocko.fomosto', 'pyrocko.fdsn' ]
 
 make_info_module(packname, version)
 make_prerequisites()
