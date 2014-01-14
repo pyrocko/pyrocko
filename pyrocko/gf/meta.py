@@ -805,10 +805,10 @@ class Weighting(Object):
 
 
 class Taper(Object):
-    begin = Timing.T()
-    end = Timing.T()
+    tmin = Timing.T()
+    tmax = Timing.T()
     tfade = Float.T(default=0.0)
-    shape = StringChoice(
+    shape = StringChoice.T(
         choices=['cos', 'linear'],
         default='cos',
         optional=True)
@@ -857,18 +857,18 @@ class StationSelection(Object):
     distance_min = Float.T(optional=True)
     distance_max = Float.T(optional=True)
     azimuth_min = Float.T(optional=True)
-    azimuth_max = Float.T(opitonal=True)
+    azimuth_max = Float.T(optional=True)
 
 
 class WaveformSelection(Object):
-    channel_selection = ChannelSelection(optional=True)
-    station_selection = StationSelection(optional=True)
+    channel_selection = ChannelSelection.T(optional=True)
+    station_selection = StationSelection.T(optional=True)
     taper = Taper.T()
     #filter = FrequencyResponse.T()
     waveform_type = WaveformType.T(default='dis')
     weighting = Weighting.T(optional=True)
     sample_rate = Float.T(optional=True)
-    gf_store_id = StringID(optional=True)
+    gf_store_id = StringID.T(optional=True)
 
 
 vicinity_eps = 1e-5
@@ -1005,6 +1005,13 @@ Config
 ConfigTypeA
 ConfigTypeB
 GridSpecError
+Weighting
+Taper
+SimplePattern
+WaveformType
+ChannelSelection
+StationSelection
+WaveformSelection
 dump
 load
 '''.split()
