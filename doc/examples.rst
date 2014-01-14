@@ -275,3 +275,63 @@ Convert a dataset from Mini-SEED to SAC format
             dirhz = '%ihz' % int(round(1./tr.deltat))
             io.save([tr], doutput, format='sac', additional={'dirhz': dirhz}, stations=stations)
 
+Misfit of one trace against two other traces
+------------------------------------------------
+
+Three traces will be created. One of these traces will be assumed to be the reference trace (rt) that we want to know the misfit of in comparison to two other traces (tt1 and tt2). The traces rt and tt1 will be provided with the same random y-data. Hence, their misfit will be zero, in the end.
+
+::
+
+    from pyrocko import trace
+    from math import sqrt
+    import numpy as num
+
+    # let's create three traces: One trace as the reference (rt) and two as test traces (tt1 and tt2):
+    ydata1 = data = num.random.random(1000)
+    ydata2 = data = num.random.random(1000)
+    rt = trace.Trace(station='REF', ydata=ydata1)
+    tt1 = trace.Trace(station='TT1', ydata=ydata1)
+    tt2 = trace.Trace(station='TT2', ydata=ydata2)
+
+    # the misfit method needs an iterable object containing traces:
+    test_candidates = [tt1, tt2]
+
+    # define a fader to apply before fft.
+    taper = trace.CosFader(xfade=5)
+
+    # define a frequency response to apply before performing the inverse fft.
+    # This can be basically any funtion, as long as it contains a function called *evaluate*, 
+    # which evaluates the frequency response function at a given list of frequencies.
+    # Please refer to the :py:class:`FrequencyResponse` class or its subclasses for examples. 
+    fresponse = trace.FrequencyResponse()        
+
+    # combine all information in one misfit setup:
+    setup = trace.MisfitSetup(norm=2,
+                              taper=taper,
+                              domain='time_domain',
+                              freqlimits=(1,2,20,40),
+                              frequency_response=fresponse)
+
+    # calculate the misfit for each test candidate:
+    i = 0
+    for m, n in rt.misfit(candidates=test_candidates, setups=setup):
+        M = m/n
+        print 'L2 misfit of %s and %s is %s' % (rt.station, test_candidates[i].station, M)
+        i += 1 
+
+    # finally, we want to dump the misfit setup that has been used in a yaml file:
+    f = open('my_misfit_setup.txt', 'w')
+    f.write(setup.dump())
+    f.close()
+
+If we wanted to reload our misfit setup, guts provides the iload_all() method for 
+that purpose:
+
+::
+
+    from guts import iload_all
+    for ms in iload_all(filename='my_misfit_setup.txt'): 
+        setup = ms
+
+    # now, we can change for example only the domain:
+    setup.domain = 'frequency_domain'

@@ -881,7 +881,7 @@ class Pile(TracesGroup):
         if load_data:
             files_changed = False
             for tr in traces:
-                if tr.file not in used_files:
+                if tr.file and tr.file not in used_files:
                     if tr.file.load_data():
                         files_changed = True
 

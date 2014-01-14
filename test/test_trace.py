@@ -1,5 +1,5 @@
-from pyrocko import trace, io, util, model
-import unittest, math, time
+from pyrocko import trace, util, model, pile
+import unittest, math, time, os
 import numpy as num
 
 sometime = 1234567890.
@@ -355,9 +355,9 @@ class TraceTestCase(unittest.TestCase):
                     c2.set_station('c2')
                     d = num.abs(c1.get_ydata() - c2.get_ydata())
 
-                    if not num.all(d < 1e-5) :
+                    if not num.all(d < 1e-5):
                         assert mode == 'same'
-                        
+
                         assert abs(abs(c1.tmin-c2.tmin) - 1.0) < 1e-5
                         assert abs(abs(c1.tmax-c2.tmax) - 1.0) < 1e-5
 
@@ -395,7 +395,115 @@ class TraceTestCase(unittest.TestCase):
                     c2s.append(c)
 
                 downsampler.close()
-                assert  (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
+                assert (round(c2s[0].tmin / dt2) * dt2 - c2s[0].tmin )/dt1 < 0.5001
+
+    def testEqualizeSamplingRates(self):
+        y = num.random.random(1000)
+        t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        t2 = trace.Trace(tmin=0, ydata=y, deltat=0.5)
+        t1_new, t2_new = trace.equalize_sampling_rates(t1, t2)
+        self.assertEqual(t1_new.deltat,
+                         t2_new.deltat,
+                         'Equalization of sampling rates failed: dt1=%s, dt2=%s' % (t1.deltat,
+                                                                                    t2.deltat))
+
+    def testLxnorm(self):
+        """
+        expected results calculated by hand.
+        """
+        yref = num.array([0., 1.5 , 2.3, 0., -1.])
+        ytest= num.array([-1., 0.3, -0.3, 1., 0.2])
+        m, n = trace.Lx_norm(ytest, yref, norm=1)
+        self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
+        self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
+
+    def testMisfitOfSameTracesZero(self):
+        y = num.random.random(10000)
+        y -= max(y)*.5
+        t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        ttraces = [t2]
+        #taper = trace.GaussTaper(alpha=2.)
+        fresponse = trace.FrequencyResponse()
+        taper = trace.CosFader(xfade=2.)
+        mfsetup = trace.MisfitSetup(
+            norm=2,
+            taper=taper,
+            domain='time_domain',
+            freqlimits=(1, 2, 20, 40),
+            frequency_response=fresponse)
+        for m, n in t1.misfit( candidates=ttraces, setups= mfsetup):
+            self.assertEqual(m, 0., 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
+        del mfsetup
+
+    def testMisfitOfSameTracesDtDifferentIsZero(self):
+        """
+        Verify that two equal traces produce a zero misfit even if their sampling rate differs.
+        Tests:
+            L2-Norm
+            L1-Norm
+            time- and frequency-domain 
+        """
+        test_file = os.path.join(os.path.dirname(__file__), '../examples/1989.072.evt.mseed')
+        p = pile.make_pile(test_file, show_progress=False)
+        rt = p.all()[0]
+        tt = rt.copy()
+        tt.downsample_to(rt.deltat*5)
+        tts = []
+        for i in range(100):
+            tts.append(tt.copy())
+        for i in range(10):
+            map(lambda t: t.shift(2.234*i), tts[(i-1)*10:(i*10)-1])
+            # Some traces cannot be downsampled:
+            #map(lambda t: t.downsample_to(t.deltat+0.5*i), tts[(i-1)*10:(i*10)-1])
+
+        taper1 = trace.CosFader(xfade=rt.deltat*300)
+        fresponse = trace.FrequencyResponse()
+
+        mfsetup1 = trace.MisfitSetup(norm=2,
+                                     taper=taper1,
+                                     domain='time_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+
+        mfsetup2 = trace.MisfitSetup(norm=1,
+                                     taper=taper1,
+                                     domain='time_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+        mfsetup3 = trace.MisfitSetup(norm=2,
+                                     taper=taper1,
+                                     domain='frequency_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+        mfsetup4 = trace.MisfitSetup(norm=2,
+                                     taper=taper1,
+                                     domain='frequency_domain',
+                                     freqlimits=(1,2,20,40),
+                                     frequency_response=fresponse)
+
+        tstart = time.time()
+        for ms, nn in rt.misfit( candidates=tts , setups=[mfsetup1,
+                                                               mfsetup2,
+                                                               mfsetup3,
+                                                               mfsetup4]):
+            for m in ms:
+                self.assertNotEqual(m, None, 'misfit\'s m is not zero, but m = %s' % m)
+        tstop = time.time()
+        print tstop-tstart
+
+    def testValidateFrequencyResponses(self):
+        ttrace = trace.Trace(ydata=num.random.random(1000))
+        inverse_eval = trace.InverseEvalresp(respfile='test.txt',
+                                             trace=ttrace,
+                                             target='vel')
+        inverse_eval.validate()
+        
+        pzk_response = trace.PoleZeroResponse(zeros=num.array([0., 0], dtype=num.complex),
+                                              poles=num.array([1., 2.], dtype=num.complex),
+                                              constant=10.)
+        pzk_response.validate()
+
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

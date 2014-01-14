@@ -1,10 +1,12 @@
 '''This module provides basic signal processing for seismic traces.'''
 
-import time, math, copy, logging, sys
+import time, math, copy, logging
 import numpy as num
 from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
-from pyrocko.util import reuse, hpfloat
+from pyrocko.util import reuse, hpfloat, UnavailableDecimation
+from guts import *
+from guts_array import *
 
 logger = logging.getLogger('pyrocko.trace')
 
@@ -66,7 +68,8 @@ class Trace(object):
         self.ydata = ydata
         self.mtime = mtime
         self._update_ids()
-        
+        self.file = None
+
     def __str__(self):
         fmt = min(9, max(0, -int(math.floor(math.log10(self.deltat)))))
         s = 'Trace (%s, %s, %s, %s)\n' % self.nslc_id
@@ -611,7 +614,7 @@ class Trace(object):
             data -= num.mean(data)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, data)
-    
+
     def abshilbert(self):
         self.drop_growbuffer()
         self.ydata = num.abs(hilbert(self.ydata))
@@ -738,12 +741,32 @@ class Trace(object):
         self.tmax += tshift
         self._update_ids()
         
-    def snap(self):
-        '''Shift trace samples to nearest even multiples of the sampling rate.'''
+    def snap(self, inplace=True):
+        '''Shift trace samples to nearest even multiples of the sampling rate.
 
-        self.tmin = round(self.tmin/self.deltat)*self.deltat 
-        self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
-        self._update_ids()
+        :param inplace: (boolean) snap traces inplace
+
+        If *inplace* is ``False`` and the difference of tmin and tmax of both,
+        the snapped and the original trace is smaller than 0.01 x deltat, :py:func:`snap` 
+        returns the unsnapped instance of the original trace.
+        '''
+
+        if inplace:
+            self.tmin = round(self.tmin/self.deltat)*self.deltat 
+            self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
+            self._update_ids()
+        else:
+            tmin = round(self.tmin/self.deltat)*self.deltat
+
+            tmax = self.tmin + (self.ydata.size-1)*self.deltat
+            if abs(self.tmin - tmin) < 1e-2*self.deltat and \
+                    abs(self.tmax - tmax) < 1e-2*self.deltat:
+                        return self
+            snapped_trace = self.copy()
+            snapped_trace.tmin = tmin
+            snapped_trace.tmax = tmax
+            snapped_trace._update_ids()
+            return snapped_trace
 
     def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''Run special STA/LTA filter where the short time window is centered on the long time window.
@@ -918,7 +941,133 @@ class Trace(object):
         else:
             output.ydata = output.ydata.copy()
         return output
-        
+
+    def misfit(self, candidates, setups):
+        """
+        Generator function, yielding misfit values m and normalization divisors n.
+
+        :param candidates: iterable object of :py:class:`trace` objects
+        :param setup: (List of) :py:class:`MisfitSetup` objects
+
+        *setups* can either be a single or list of :py:class:`MisfitSetup` objects. 
+        If setup is a single :py:class:`MisfitSetup` :py:func:`misfit` yields a single m and n. 
+        Otherwise, :py:func:`misfit` yields a list of *m* and *n* for each misfit setup. 
+
+        In order to preserve the original traces, any modification will be performed on copies of these traces. 
+        If the sampling rate of the by *self* determined :py:class:`Trace` differs from an individual candidate, 
+        both sampling rates will be equalized (by downsampling the higher sampled trace). 
+
+        .. seealso:: One application can be found in the Programming Examples section.
+        """
+        if isinstance(setups, MisfitSetup):
+            setups = [setups]
+            single_setup = True            
+        else:
+            single_setup = False
+
+        for setup in setups:
+            norm = setup.norm
+            taper = setup.taper
+            domain = setup.domain
+            frequency_response = setup.frequency_response
+
+            m = []
+            n = []
+            reference_trace = self.copy()
+            ref_copy_is_new = True 
+            trace_hash = None
+            for cand in candidates:
+                wanted_tmin = min(cand.tmin, reference_trace.tmin)-1
+                wanted_tmax = max(cand.tmax, reference_trace.tmax)+1
+
+                try:
+                    candidate, reference_trace = equalize_sampling_rates(cand, reference_trace)
+                except UnavailableDecimation:
+                        logger.warning('Cannot downsample reference trace. Make sure, that all ' \
+                                'candidates can be downsampled to sampling rate of this ' \
+                                'trace (deltat=%s) et vice versai. m=None, n=None' % self.deltat)
+                        m.append(None)
+                        n.append(None)
+                        continue
+
+                if candidate is cand:
+                    candidate = cand.copy()
+                
+                if trace_hash != reference_trace.__hash__():
+                    reference_trace.snap(inplace=True)
+
+                candidate.snap(inplace=True)
+
+                if candidate.tmax < wanted_tmax or candidate.tmin > wanted_tmin:
+                    candidate.extend(tmin=wanted_tmin, 
+                                     tmax=wanted_tmax, 
+                                     fillmethod='repeat')
+
+                if reference_trace.tmax < wanted_tmax or reference_trace.tmin > wanted_tmin:
+                    reference_trace = self.copy()
+                    try:
+                        reference_trace.downsample_to(candidate.deltat)
+                    except UnavailableDecimation:
+                            logger.warning('Cannot downsample reference trace. Make sure, that all ' \
+                                    'candidates can be downsampled to sampling rate of this ' \
+                                    'trace (deltat=%s) et vice versai. m=None, n=None' % self.deltat)
+                            m.append(None)
+                            n.append(None)
+                            continue
+
+                    reference_trace.extend(tmin=wanted_tmin,
+                                         tmax=wanted_tmax,
+                                         fillmethod='repeat')
+
+                if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat * 1e-4 or \
+                        abs(reference_trace.tmax - candidate.tmax) > reference_trace.deltat * 1e-4 or \
+                        reference_trace.ydata.shape != candidate.ydata.shape:
+                            raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.'
+                                                                        % ('.'.join(reference_trace.nslc_id),
+                                                                            '.'.join(candidate.nslc_id)))
+
+                candidate.taper(taper)
+                
+                ndata = reference_trace.ydata.size
+                pad_size = nextpow2(ndata)
+                test_pad = num.zeros(pad_size, dtype=num.float)
+                test_pad[:ndata] = candidate.ydata
+                test_fft = num.fft.rfft(test_pad)
+
+                if trace_hash != reference_trace.__hash__():
+                    freqs = num.arange(test_fft.size)*1/(test_pad.size*candidate.deltat)
+                    coeffs = frequency_response.evaluate(freqs)
+                    reference_trace.taper(taper) 
+
+                    reference_pad = num.zeros(pad_size, dtype=num.float)
+                    reference_pad[:ndata] = reference_trace.ydata
+                    reference_fft = num.fft.rfft(reference_pad)
+                    reference_fft *= coeffs               
+
+                test_fft *= coeffs
+
+                if domain == 'frequency_domain':
+                    m_tmp, n_tmp = Lx_norm(test_fft, reference_fft, norm=norm)
+                    m.append(m_tmp)
+                    n.append(n_tmp)
+
+                test_ifft = num.fft.irfft(test_fft)
+                reference_ifft = num.fft.irfft(reference_fft)
+
+                if domain == 'time_domain':
+                    m_tmp, n_tmp = Lx_norm(test_ifft, reference_ifft, norm=norm)
+                    m.append(m_tmp)
+                    n.append(n_tmp)
+
+                ref_copy_is_new = False
+                trace_hash = reference_trace.__hash__()
+
+                if single_setup:
+                    yield m_tmp, n_tmp
+
+            if not single_setup:
+                yield m, n
+
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
 
@@ -1003,7 +1152,7 @@ class Trace(object):
     def fill_template(self, template, **additional):
         '''Fill string template with trace metadata.
         
-        Uses normal pyton '%(placeholder)s' string templates. The following
+        Uses normal python '%(placeholder)s' string templates. The following
         placeholders are considered: ``network``, ``station``, ``location``,
         ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
         sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``. The
@@ -1065,6 +1214,10 @@ def snuffle(traces, **kwargs):
         p.add_file(trf)
     return snuffler.snuffle(p, **kwargs)
 
+class MisalignedTraces(Exception):
+    '''This exception is raised by some :py:class:`Trace` operations when tmin, tmax or number of samples do not match.'''
+    pass
+
 class NoData(Exception):
     '''This exception is raised by some :py:class:`Trace` operations when no or not enough data is available.'''
     pass
@@ -1087,7 +1240,7 @@ def minmax(traces, key=None, mode='minmax'):
     :param key: a callable which takes as single argument a trace and returns a key for the grouping of the results.
                 If this is ``None``, the default, ``lambda tr: (tr.network, tr.station, tr.location, tr.channel)`` is used.
     :param mode: 'minmax' or floating point number. If this is 'minmax', minimum and maximum of the traces are used, 
-                 if it is a number, mean +- stdandard deviation times *mode* is used.
+                 if it is a number, mean +- standard deviation times *mode* is used.
     
     :returns: a dict with the combined data ranges.
 
@@ -1530,7 +1683,7 @@ def _project3(traces, matrix, in_channels, out_channels):
                 projected.append(ac)
                 projected.append(bc)
                 projected.append(cc)
-     
+
     return projected
 
 
@@ -1663,26 +1816,42 @@ def merge_codes(a,b, sep='-'):
             o.append(sep.join((xa,xb)))
     return o
 
-class Taper(object):
+
+class Taper(Object):
 
     def __call__(self, y, x0, dx):
         pass
 
+
 class CosTaper(Taper):
-    def __init__(self, a,b,c,d):
+
+    a = Float.T()
+    b = Float.T()
+    c = Float.T()
+    d = Float.T()
+
+    def __init__(self, a=a, b=b, c=c, d=d):
+        Object.__init__(self, a=a, b=b, c=c, d=d)
         self._corners = (a,b,c,d)
 
     def __call__(self, y, x0, dx):
-        a,b,c,d = self._corners
+        a, b, c, d = self._corners
         apply_costaper(a, b, c, d, y, x0, dx)
 
+
 class CosFader(Taper):
+
+    xfade = Float.T(optional=True)
+    xfrac = Float.T(optional=True)
+
     def __init__(self, xfade=None, xfrac=None):
+        Object.__init__(self, xfade=xfade, xfrac=xfrac)
         assert (xfade is None) != (xfrac is None)
         self._xfade = xfade
         self._xfrac = xfrac
-    
+
     def __call__(self, y, x0, dx):
+
         xfade = self._xfade
 
         xlen = (y.size - 1)*dx
@@ -1696,54 +1865,71 @@ class CosFader(Taper):
 
         apply_costaper(a, b, c, d, y, x0, dx)
 
+
 class GaussTaper(Taper):
+    ''' Frequency domain Gaussian filter. '''
+    alpha = Float.T()
 
     def __init__(self, alpha):
+        Object.__init__(self, alpha=alpha)
         self._alpha = alpha
 
     def __call__(self, y, x0, dx):
         f = x0 + num.arange( y.size )*dx
-        y *= num.exp(-(2.*num.pi)**2/(4.*self._alpha**2) * f**2)
+        y *= num.exp(-num.pi**2 / (self._alpha**2) * f**2)
 
-class FrequencyResponse(object):
+
+class FrequencyResponse(Object):
     '''Evaluates frequency response at given frequencies.'''
     
+    freqs = List.T()
+
     def evaluate(self, freqs):
         coefs = num.ones(freqs.size, dtype=num.complex)
         return coefs
    
 class InverseEvalresp(FrequencyResponse):
-    '''Calls evalresp and generates values of the inverse instrument response for 
-       deconvolution of instrument response.
-       
-       :param respfile: response file in evalresp format
-       :param trace: trace for which the response is to be extracted from the file
-       :param target: ``'dis'`` for displacement or ``'vel'`` for velocity
-       '''
+    '''
+    Calls evalresp and generates values of the inverse instrument response for 
+    deconvolution of instrument response.
+   
+    :param respfile: response file in evalresp format
+    :param trace: trace for which the response is to be extracted from the file
+    :param target: ``'dis'`` for displacement or ``'vel'`` for velocity
+    '''
+    respfile = String.T()
+    nslc_id = Tuple.T(4, String.T())
+    target = String.T(default='dis')
+    instant = Float.T()
     
     def __init__(self, respfile, trace, target='dis'):
-        self.respfile = respfile
-        self.nslc_id = trace.nslc_id
-        self.instant = (trace.tmin + trace.tmax)/2.
-        self.target = target
+        Object.__init__(self,
+                        respfile=respfile,
+                        nslc_id=trace.nslc_id,
+                        instant=(trace.tmin + trace.tmax)/2.,
+                        target=target)
         
     def evaluate(self, freqs):
         network, station, location, channel = self.nslc_id
         x = evalresp.evalresp(sta_list=station,
-                          cha_list=channel,
-                          net_code=network,
-                          locid=location,
-                          instant=self.instant,
-                          freqs=freqs,
-                          units=self.target.upper(),
-                          file=self.respfile,
-                          rtype='CS')
+                              cha_list=channel,
+                              net_code=network,
+                              locid=location,
+                              instant=self.instant,
+                              freqs=freqs,
+                              units=self.target.upper(),
+                              file=self.respfile,
+                              rtype='CS')
         
         transfer = x[0][4]
         return 1./transfer
 
 class PoleZeroResponse(FrequencyResponse):
     '''Evaluates frequency response from pole-zero representation.
+
+    :param zeros: :py:class:`numpy.array` containing complex positions of zeros
+    :param poles: :py:class:`numpy.array` containing complex positions of poles
+    :param constant: gain as floating point number
 
     ::
 
@@ -1755,10 +1941,12 @@ class PoleZeroResponse(FrequencyResponse):
     The poles and zeros should be given as angular frequencies, not in Hz.
     '''
     
+    zeros = Array.T(shape=(None,), dtype=num.complex)
+    poles = Array.T(shape=(None,), dtype=num.complex)
+    constant = Float.T()
+
     def __init__(self, zeros, poles, constant):
-        self.zeros = zeros
-        self.poles = poles
-        self.constant = constant
+        Object.__init__(self, zeros=zeros, poles=poles, constant=constant)
         
     def evaluate(self, freqs):
         jomeg = 1.0j* 2.*num.pi*freqs
@@ -1777,12 +1965,15 @@ class SampledResponse(FrequencyResponse):
     :param freqs,vals: frequencies and values of the sampled response function.
     :param left,right: values to return when input is out of range. If set to ``None`` (the default) the endpoints are returned.
     '''
-    
+
+    freqs = Array.T()
+    vals = Array.T()
+    left = Bool.T(optional=True, default=None)
+    right = Bool.T(optional=True, default=None)
+
     def __init__(self, freqs, vals, left=None, right=None):
-        self.freqs = freqs.copy()
-        self.vals = vals.copy()
-        self.left = left
-        self.right = right
+    
+        Object.__init__(self, freqs=freqs.copy(), vals=vals.copy(), left=left, right=right)
         
     def evaluate(self, freqs):
         ereal = num.interp(freqs, self.freqs, num.real(self.vals), left=self.left, right=self.right)
@@ -1808,16 +1999,20 @@ class SampledResponse(FrequencyResponse):
 class IntegrationResponse(FrequencyResponse):
     '''The integration response, optionally multiplied by a constant gain.
 
+    :param n: exponent (integer) 
+    :param gain: gain factor (float) 
+
     ::
 
                     gain
         T(f) = --------------
                (j*2*pi * f)^n
     '''
+    _n = Int.T(optional=True, default=1)
+    _gain = Float.T(optional=True, default=1.0)
 
     def __init__(self, n=1, gain=1.0):
-        self._n = n
-        self._gain = gain
+        Object.__init__(self, _n=n, _gain=gain)
         
     def evaluate(self, freqs):
         
@@ -1832,14 +2027,19 @@ class IntegrationResponse(FrequencyResponse):
 class DifferentiationResponse(FrequencyResponse):
     '''The differentiation response, optionally multiplied by a constant gain.
 
+    :param n: exponent (integer)
+    :param gain: gain factor (float) 
+
     ::
 
         T(f) = gain * (j*2*pi * f)^n
     '''
 
+    _n = Int.T(optional=True, default=1)
+    _gain = Float.T(optional=True, default=1.0)
+
     def __init__(self, n=1, gain=1.0):
-        self._n = n
-        self._gain = gain
+        Object.__init__(self, _n=n, _gain=gain)
         
     def evaluate(self, freqs):
         return self._gain * (1.0j * 2. * num.pi * freqs)**self._n
@@ -1848,10 +2048,11 @@ class AnalogFilterResponse(FrequencyResponse):
     '''Frequency response of an analog filter.
     
     (see :py:func:`scipy.signal.freqs`).'''
+    _a = Array.T()
+    _b = Array.T()
 
-    def __init__(self, b,a):
-        self._b = b
-        self._a = a
+    def __init__(self, b, a):
+        Object.__init__(self, _b=b, _a=a)
     
     def evaluate(self, freqs):
         return signal.freqs(self._b, self._a, freqs/(2.*num.pi))[1]
@@ -2281,4 +2482,58 @@ def co_downsample_to(target, deltat):
     except GeneratorExit:
         for g in decimators.values():
             g.close()
+
+
+class MisfitSetup(Object):
+    '''Contains misfit setup to be used in :py:func:`trace.misfit`
+
+    Can be dumped to a yaml file.
+    '''
+    xmltagname = 'misfitsetup'
+    description = String.T(optional=True)
+    norm = Int.T(optional=False)
+    taper = Taper.T(optional=False)
+    freqlimits = List.T(Float.T())
+    frequency_response = FrequencyResponse.T()
+    domain = String.T(default='time_domain')
+
+
+def equalize_sampling_rates(trace_1, trace_2):
+    '''
+    Equalize sampling rates of two traces (reduce higher sampling rate to lower). 
+    
+    :param trace_1: :py:class:`trace` 
+    :param trace_2: :py:class:`trace` 
+
+    Returns a copy of the resampled trace if resampling is needed.  
+    '''
+    if same_sampling_rate(trace_1, trace_2):
+        return trace_1, trace_2
+
+    if trace_1.deltat < trace_2.deltat:
+        t1_out = trace_1.copy()
+        t1_out.downsample_to(deltat=trace_2.deltat)
+        logger.warning('Trace downsampled (return copy of trace): %s' %
+                                                        '.'.join(t1_out.nslc_id))
+        return t1_out, trace_2
+    
+    elif trace_1.deltat > trace_2.deltat:
+        t2_out = trace_2.copy()
+        t2_out.downsample_to(deltat=trace_1.deltat)
+        logger.warning('Trace downsampled (return copy of trace): %s' % 
+                                                        '.'.join(t2_out.nslc_id))
+        return trace_1, t2_out
+
+def Lx_norm(u, v, norm=2):
+    '''
+    Calculate misfit values m, n according to norm.
+
+    :param u: :py:class:`numpy.array`
+    :param v: :py:class:`numpy.array`
+    :param norm: (default = 2)
+
+    u and v must be of same size. 
+    '''
+    return pow(sum(abs(pow(v - u, norm))), 1./norm), \
+           pow(sum(abs(v)), 1./norm)
 
