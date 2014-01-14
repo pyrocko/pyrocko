@@ -6,7 +6,7 @@ import unittest
 from tempfile import mkdtemp
 import numpy as num
 
-from pyrocko import gf, util, trace
+from pyrocko import gf, util
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
@@ -256,6 +256,12 @@ class GFTestCase(unittest.TestCase):
 
             self.assertTrue(numeq(data, tr.ydata, 0.01))
 
+    def test_waveform_selection(self):
+
+        xxx = gf.WaveformSelection(
+            taper=gf.Taper(tmin='10.', tmax='10.'))
+
+        print xxx
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
