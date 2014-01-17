@@ -977,6 +977,9 @@ class Trace(object):
             ref_copy_is_new = True 
             trace_hash = None
             for cand in candidates:
+                if cand.tmax<self.tmin or cand.tmin>self.tmax:
+                    raise NoData('Trace %s, and candidate %s have no overlapping data.' % (self.nslc_id, cand.nslc_id))
+
                 wanted_tmin = min(cand.tmin, reference_trace.tmin)-1
                 wanted_tmax = max(cand.tmax, reference_trace.tmax)+1
 
