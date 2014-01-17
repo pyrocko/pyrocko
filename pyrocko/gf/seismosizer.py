@@ -537,7 +537,7 @@ class LocalEngine(Engine):
 
         return tr
 
-    def process(self, request=None, **kwargs):
+    def process(self, request=None, status_callback=None, **kwargs):
         '''Process a request.
 
         The request can be given a a :py:class:`Request` object, or such an
@@ -555,6 +555,9 @@ class LocalEngine(Engine):
         traces = []
         for i in xrange(len(request.sources)):
             traces.append([None] * len(request.targets))
+        
+        n_k = float(len(skeys))
+        n_i = 1
 
         for k in skeys:
             sources, targets = m[k]
@@ -563,6 +566,10 @@ class LocalEngine(Engine):
                 for target in targets:
                     tr = self._post_process(base_seismogram, source, target)
                     traces[source_index[source]][target_index[target]] = tr
+
+            if status_callback:
+                status_callback(n_k, n_i)
+                n_i += 1 
 
         return Response(request=request, traces_list=traces)
 
