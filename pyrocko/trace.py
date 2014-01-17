@@ -977,6 +977,9 @@ class Trace(object):
             ref_copy_is_new = True 
             trace_hash = None
             for cand in candidates:
+                if cand.tmax<self.tmin or cand.tmin>self.tmax:
+                    raise NoData('Trace %s, and candidate %s have no overlapping data.' % (self.nslc_id, cand.nslc_id))
+
                 wanted_tmin = min(cand.tmin, reference_trace.tmin)-1
                 wanted_tmax = max(cand.tmax, reference_trace.tmax)+1
 
@@ -1010,11 +1013,12 @@ class Trace(object):
                     except UnavailableDecimation:
                             logger.warning('Cannot downsample reference trace. Make sure, that all ' \
                                     'candidates can be downsampled to sampling rate of this ' \
-                                    'trace (deltat=%s) et vice versai. m=None, n=None' % self.deltat)
+                                    'trace (deltat=%s) et vice versa. m=None, n=None' % self.deltat)
                             m.append(None)
                             n.append(None)
                             continue
-
+                    
+                    reference_trace.snap()
                     reference_trace.extend(tmin=wanted_tmin,
                                          tmax=wanted_tmax,
                                          fillmethod='repeat')
