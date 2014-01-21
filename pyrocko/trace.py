@@ -1010,6 +1010,8 @@ class Trace(object):
                     reference_trace = self.copy()
                     try:
                         reference_trace.downsample_to(candidate.deltat)
+                        reference_trace.snap()
+
                     except UnavailableDecimation:
                             logger.warning('Cannot downsample reference trace. Make sure, that all ' \
                                     'candidates can be downsampled to sampling rate of this ' \
