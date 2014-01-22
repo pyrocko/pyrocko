@@ -70,6 +70,10 @@ def check_string_id(s):
 class NotMultipleOfSamplingInterval(Exception):
     pass
 
+
+class FalseArguments(Exception):
+    pass
+
 sampling_check_eps = 1e-5
 
 
@@ -1025,6 +1029,11 @@ class Store(BaseStore):
         return self._phases[phase_id]
 
     def t(self, timing, args):
+        '''Compute interpolated phase arrivals.'''
+        if isinstance(self.config, meta.ConfigTypeB) and len(args)!=3:
+            raise FalseArguments('t() of ConfigTypeB store needs arguments: (receiver depth, source depth, distance)')
+        if isinstance(self.config, eta.ConfigTypeA) and len(args)!=2:
+            raise FalseArguments('t() of ConfigTypeA store needs arguments: (source depth, distance)')
         if not isinstance(timing, meta.Timing):
             timing = meta.Timing(timing)
         return timing.evaluate(self.get_phase, args)
