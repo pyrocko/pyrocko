@@ -130,6 +130,17 @@ class InvalidTimingSpecification(ValidationError):
 
 
 class Timing(SObject):
+    '''
+    Ray Path Timer 
+
+    If the travel time tables (ttt) of a store have been built, either by running *:program:`fomosto` ttt* 
+    in a stores' directory or by calling the :py:meth:`store.make_ttt` method, these ttts can be used to interpolate arrivals of seismic rays by using a the stores' :py:meth:`store.t` method. The first argument of this method can either be a phase_id or a function call like 'last(P|Pdiff)'. 
+    If you use a :py:class:`store.StoreTypeA` store the function can be called with the phase_id as the first, and the location as the second argument. The location 
+    
+    **Examples:**
+
+        *``test_store.t('p', (1000, 10000))
+    '''
 
     def __init__(self, s=None, **kwargs):
 
