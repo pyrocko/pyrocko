@@ -1009,7 +1009,7 @@ class Store(BaseStore):
         '''Compute interpolated phase arrivals.'''
         if isinstance(self.config, meta.ConfigTypeB) and len(args)!=3:
             raise FalseArguments('t() of ConfigTypeB store needs arguments: (receiver depth, source depth, distance)')
-        if isinstance(self.config, eta.ConfigTypeA) and len(args)!=2:
+        if isinstance(self.config, meta.ConfigTypeA) and len(args)!=2:
             raise FalseArguments('t() of ConfigTypeA store needs arguments: (source depth, distance)')
         if not isinstance(timing, meta.Timing):
             timing = meta.Timing(timing)
