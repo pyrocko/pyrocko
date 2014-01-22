@@ -6,7 +6,7 @@ import unittest
 from tempfile import mkdtemp
 import numpy as num
 
-from pyrocko import gf, util
+from pyrocko import gf, util, cake
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
@@ -56,8 +56,11 @@ class GFTestCase(unittest.TestCase):
         return d
 
     def create_pulse_db(self):
+        
+        earthmodel = cake.load_model(cake.builtin_models()[0])
 
         conf = gf.ConfigTypeB(
+            earthmodel_1d = earthmodel,
             id='test',
             receiver_depth_min=0.,
             receiver_depth_max=10.,
@@ -202,7 +205,6 @@ class GFTestCase(unittest.TestCase):
         store.close()
 
     def test_pulse(self):
-
         store_dir = self.create_pulse_db()
 
         engine = gf.LocalEngine(store_dirs=[store_dir])
@@ -262,6 +264,29 @@ class GFTestCase(unittest.TestCase):
             taper=gf.Taper(tmin='10.', tmax='10.'))
 
         print xxx
+
+    def test_timing(self):
+        engine = gf.LocalEngine(store_superdirs='.')
+        store = engine.get_store('test')
+        
+        pS = gf.TPDef(id = 'pS', definition='pS')
+        P = gf.TPDef(id = 'P', definition='P')
+        p = gf.TPDef(id = 'p', definition='p')
+        s = gf.TPDef(id = 's', definition='s')
+        phases = [s,pS ]
+        store.config.tabulated_phases=phases
+
+        store.make_ttt(force=True)
+
+        args = (0, 50, 500)
+        for phase in phases:
+            self.assertNotEqual(store.t(phase.id, args=args), None, 'Travel time of %s is None'%phase)
+
+        specials = ['last(p|s)']
+        for s in specials:
+            self.assertNotEqual(store.t(s, args=args), None, 'Travel time of %s is None'%s)
+
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
