@@ -463,9 +463,14 @@ class Snuffler(QApplication):
     def __init__(self):
         QApplication.__init__(self, sys.argv)
         self.connect(self, SIGNAL("lastWindowClosed()"), self.myQuit)
-        signal.signal(signal.SIGINT, self.myCloseAllWindows)
         self.server = None
         self.loader = None
+
+    def install_sigint_handler(self):
+        self._old_signal_handler = signal.signal(signal.SIGINT, self.myCloseAllWindows)
+
+    def uninstall_sigint_handler(self):
+        signal.signal(signal.SIGINT, self._old_signal_handler)
 
     def start_server(self):
         self.connections = []
@@ -603,7 +608,9 @@ def snuffle(pile=None, **kwargs):
         
 
     if not win.is_closing():
+        app.install_sigint_handler()
         app.exec_()
+        app.uninstall_sigint_handler()
 
     for source in sources:
         source.stop()
