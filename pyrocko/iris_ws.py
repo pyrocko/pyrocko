@@ -5,7 +5,7 @@ from xml.parsers.expat import ParserCreate
 
 logger = logging.getLogger('pyrocko.iris_ws')
 
-base_url = 'http://www.iris.edu/ws'
+base_url = 'http://service.iris.edu/irisws'
 
 
 def tdate(s):
@@ -130,7 +130,7 @@ def ws_station( **kwargs ):
         kwargs['startbefore'] = sdate(tmin)
         kwargs['endafter'] = sdate(tmax)
 
-    return ws_request(base_url + '/station/query', **kwargs)
+    return ws_request(base_url + '/station/1/query', **kwargs)
 
 def ws_virtualnetwork( **kwargs ):
     
@@ -143,7 +143,7 @@ def ws_virtualnetwork( **kwargs ):
         kwargs['starttime'] = sdate(tmin)
         kwargs['endtime'] = sdate(tmax)
 
-    return ws_request(base_url + '/virtualnetwork/query', **kwargs)
+    return ws_request(base_url + '/virtualnetwork/1/query', **kwargs)
 
 def ws_bulkdataselect( selection, quality=None, minimumlength=None, longestonly=False ):
 
@@ -161,7 +161,7 @@ def ws_bulkdataselect( selection, quality=None, minimumlength=None, longestonly=
         
         l.append(' '.join((network, station, location, channel, sdatetime(tmin), sdatetime(tmax))))
     
-    return ws_request(base_url + '/bulkdataselect/query', post='\n'.join(l))
+    return ws_request(base_url + '/bulkdataselect/1/query', post='\n'.join(l))
 
 def ws_sacpz(network=None, station=None, location=None, channel=None, time=None, tmin=None, tmax=None):
     d = {}
@@ -183,7 +183,7 @@ def ws_sacpz(network=None, station=None, location=None, channel=None, time=None,
         d['time'] = sdatetime(time)
     times = (tmin, tmax)
     
-    return ws_request(base_url + '/sacpz/query', **d)
+    return ws_request(base_url + '/sacpz/1/query', **d)
 
 def ws_resp(network=None, station=None, location=None, channel=None, time=None, tmin=None, tmax=None):
     d = {}
@@ -204,7 +204,7 @@ def ws_resp(network=None, station=None, location=None, channel=None, time=None, 
     elif time is not None:
         d['time'] = sdatetime(time)
         
-    return ws_request(base_url + '/resp/query', **d)
+    return ws_request(base_url + '/resp/1/query', **d)
 
 class ChannelInfo:
     def __init__(self, network, station, location, channel, start, end, azimuth, dip, elevation, depth, latitude, longitude, sample, input, output, zpk):
