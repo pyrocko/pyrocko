@@ -43,6 +43,8 @@ def as_tuple(tr):
 
 def save(traces, filename_template, additional={}):
     from pyrocko import mseed_ext
+            
+    fn_tr = {}
     for tr in traces:
         for code, maxlen, val in zip(
                 ['network', 'station', 'location', 'channel'],
@@ -53,9 +55,7 @@ def save(traces, filename_template, additional={}):
                 raise CodeTooLong(
                         '%s code too long to be stored in MSeed file: %s' % 
                         (code, val))
-            
-    fn_tr = {}
-    for tr in traces:
+
         fn = tr.fill_template(filename_template, **additional)
         if fn not in fn_tr:
             fn_tr[fn] = []
