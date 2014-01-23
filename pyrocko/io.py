@@ -190,6 +190,7 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
             x,y = tr.get_xdata(), tr.get_ydata()
             num.savetxt(fn, num.transpose((x,y)))
             fns.append(fn)
+        return fns
             
     elif format == 'yaff':
         return yaff.save(traces, filename_template, additional)
