@@ -1,9 +1,35 @@
-from guts import *
+import time
+import logging
+
+from guts import StringChoice, StringPattern, UnicodePattern, String, Unicode,\
+    Int, Float, List, Object, Timestamp, ValidationError
+from guts import load_xml  # noqa
+
+logger = logging.getLogger('pyrocko.fdsn.station')
+
+
+def wrap(s, width=80, indent=4):
+    words = s.split()
+    lines = []
+    t = []
+    n = 0
+    for w in words:
+        if n + len(w) >= width:
+            lines.append(' '.join(t))
+            n = indent
+            t = [' '*(indent-1)]
+
+        t.append(w)
+        n += len(w) + 1
+
+    lines.append(' '.join(t))
+    return '\n'.join(lines)
+
 
 class Nominal(StringChoice):
     choices = [
         'NOMINAL',
-        'CALCULATED' ]
+        'CALCULATED']
 
 
 class Email(UnicodePattern):
@@ -14,7 +40,7 @@ class RestrictedStatus(StringChoice):
     choices = [
         'open',
         'closed',
-        'partial' ]
+        'partial']
 
 
 class Type(StringChoice):
@@ -29,33 +55,33 @@ class Type(StringChoice):
         'INPUT',
         'EXPERIMENTAL',
         'MAINTENANCE',
-        'BEAM' ]
+        'BEAM']
 
 
 class PzTransferFunction(StringChoice):
     choices = [
         'LAPLACE (RADIANS/SECOND)',
         'LAPLACE (HERTZ)',
-        'DIGITAL (Z-TRANSFORM)' ]
+        'DIGITAL (Z-TRANSFORM)']
 
 
 class Symmetry(StringChoice):
     choices = [
         'NONE',
         'EVEN',
-        'ODD' ]
+        'ODD']
 
 
 class CfTransferFunction(StringChoice):
     choices = [
         'ANALOG (RADIANS/SECOND)',
         'ANALOG (HERTZ)',
-        'DIGITAL' ]
+        'DIGITAL']
 
 
 class Approximation(StringChoice):
     choices = [
-        'MACLAURIN' ]
+        'MACLAURIN']
 
 
 class PhoneNumber(StringPattern):
@@ -85,6 +111,9 @@ class ExternalReference(Object):
 class Units(Object):
     '''A type to document units. Corresponds to SEED blockette 34.'''
 
+    def __init__(self, name=None, **kwargs):
+        Object.__init__(self, name=name, **kwargs)
+
     name = String.T(xmltagname='Name')
     description = Unicode.T(optional=True, xmltagname='Description')
 
@@ -109,6 +138,9 @@ class Gain(Object):
     FrequencyEnd) in which the SensitivityValue is valid within the
     number of decibels specified in FrequencyDBVariation.'''
 
+    def __init__(self, value=None, **kwargs):
+        Object.__init__(self, value=value, **kwargs)
+
     value = Float.T(optional=True, xmltagname='Value')
     frequency = Float.T(optional=True, xmltagname='Frequency')
 
@@ -119,6 +151,9 @@ class NumeratorCoefficient(Object):
 
 
 class FloatNoUnit(Object):
+    def __init__(self, value=None, **kwargs):
+        Object.__init__(self, value=value, **kwargs)
+
     plus_error = Float.T(optional=True, xmlstyle='attribute')
     minus_error = Float.T(optional=True, xmlstyle='attribute')
     value = Float.T(xmlstyle='content')
@@ -126,7 +161,6 @@ class FloatNoUnit(Object):
 
 class FloatWithUnit(FloatNoUnit):
     unit = String.T(optional=True, xmlstyle='attribute')
-    value = Float.T(xmlstyle='content')
 
 
 class Equipment(Object):
@@ -137,7 +171,8 @@ class Equipment(Object):
     vendor = Unicode.T(optional=True, xmltagname='Vendor')
     model = Unicode.T(optional=True, xmltagname='Model')
     serial_number = String.T(optional=True, xmltagname='SerialNumber')
-    installation_date = Timestamp.T(optional=True, xmltagname='InstallationDate')
+    installation_date = Timestamp.T(optional=True,
+                                    xmltagname='InstallationDate')
     removal_date = Timestamp.T(optional=True, xmltagname='RemovalDate')
     calibration_date_list = List.T(Timestamp.T(xmltagname='CalibrationDate'))
 
@@ -170,7 +205,8 @@ class Sensitivity(Gain):
     output_units = Units.T(optional=True, xmltagname='OutputUnits')
     frequency_start = Float.T(optional=True, xmltagname='FrequencyStart')
     frequency_end = Float.T(optional=True, xmltagname='FrequencyEnd')
-    frequency_db_variation = Float.T(optional=True, xmltagname='FrequencyDBVariation')
+    frequency_db_variation = Float.T(optional=True,
+                                     xmltagname='FrequencyDBVariation')
 
 
 class Coefficient(FloatNoUnit):
@@ -186,27 +222,32 @@ class PoleZero(Object):
 
 
 class ClockDrift(FloatWithUnit):
-    unit = String.T(default='SECONDS/SAMPLE', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='SECONDS/SAMPLE', optional=True,
+                    xmlstyle='attribute')  # fixed
 
 
 class Second(FloatWithUnit):
     '''A time value in seconds.'''
 
-    unit = String.T(default='SECONDS', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='SECONDS', optional=True, xmlstyle='attribute')
+                    # fixed
 
 
 class Voltage(FloatWithUnit):
-    unit = String.T(default='VOLTS', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='VOLTS', optional=True, xmlstyle='attribute')
+                    # fixed
 
 
 class Angle(FloatWithUnit):
-    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
+                    # fixed
 
 
 class Azimuth(FloatWithUnit):
     '''Instrument azimuth, degrees clockwise from North.'''
 
-    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
+                    # fixed
 
 
 class Dip(FloatWithUnit):
@@ -214,23 +255,27 @@ class Dip(FloatWithUnit):
     azimuth and dip describe the direction of the sensitive axis of
     the instrument.'''
 
-    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
+                    # fixed
 
 
 class Distance(FloatWithUnit):
     '''Extension of FloatWithUnit for distances, elevations, and depths.'''
 
-    unit = String.T(default='METERS', optional=True, xmlstyle='attribute') # NOT fixed!
+    unit = String.T(default='METERS', optional=True, xmlstyle='attribute')
+                    # NOT fixed!
 
 
 class Frequency(FloatWithUnit):
-    unit = String.T(default='HERTZ', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='HERTZ', optional=True, xmlstyle='attribute')
+                    # fixed
 
 
 class SampleRate(FloatWithUnit):
     '''Sample rate in samples per second.'''
 
-    unit = String.T(default='SAMPLES/S', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='SAMPLES/S', optional=True, xmlstyle='attribute')
+                    # fixed
 
 
 class Person(Object):
@@ -250,7 +295,8 @@ class FIR(BaseFilter):
     element.'''
 
     symmetry = Symmetry.T(xmltagname='Symmetry')
-    numerator_coefficient_list = List.T(NumeratorCoefficient.T(xmltagname='NumeratorCoefficient'))
+    numerator_coefficient_list = List.T(
+        NumeratorCoefficient.T(xmltagname='NumeratorCoefficient'))
 
 
 class Coefficients(BaseFilter):
@@ -259,7 +305,8 @@ class Coefficients(BaseFilter):
     PolesAndZeros should be used instead. Corresponds to SEED
     blockette 54.'''
 
-    cf_transfer_function_type = CfTransferFunction.T(xmltagname='CfTransferFunctionType')
+    cf_transfer_function_type = CfTransferFunction.T(
+        xmltagname='CfTransferFunctionType')
     numerator_list = List.T(FloatWithUnit.T(xmltagname='Numerator'))
     denominator_list = List.T(FloatWithUnit.T(xmltagname='Denominator'))
 
@@ -267,14 +314,16 @@ class Coefficients(BaseFilter):
 class Latitude(FloatWithUnit):
     '''Type for latitude coordinate.'''
 
-    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
+                    # fixed
     datum = String.T(default='WGS84', optional=True, xmlstyle='attribute')
 
 
 class Longitude(FloatWithUnit):
     '''Type for longitude coordinate.'''
 
-    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute') # fixed
+    unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
+                    # fixed
     datum = String.T(default='WGS84', optional=True, xmlstyle='attribute')
 
 
@@ -282,8 +331,10 @@ class PolesZeros(BaseFilter):
     '''Response: complex poles and zeros. Corresponds to SEED
     blockette 53.'''
 
-    pz_transfer_function_type = PzTransferFunction.T(xmltagname='PzTransferFunctionType')
-    normalization_factor = Float.T(default=1.0, xmltagname='NormalizationFactor')
+    pz_transfer_function_type = PzTransferFunction.T(
+        xmltagname='PzTransferFunctionType')
+    normalization_factor = Float.T(default=1.0,
+                                   xmltagname='NormalizationFactor')
     normalization_frequency = Frequency.T(xmltagname='NormalizationFrequency')
     zero_list = List.T(PoleZero.T(xmltagname='Zero'))
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
@@ -300,7 +351,8 @@ class Polynomial(BaseFilter):
     to be described). Corresponds to SEED blockette 62. Can be used to
     describe a stage of acquisition or a complete system.'''
 
-    approximation_type = Approximation.T(default='MACLAURIN', xmltagname='ApproximationType')
+    approximation_type = Approximation.T(default='MACLAURIN',
+                                         xmltagname='ApproximationType')
     frequency_lower_bound = Frequency.T(xmltagname='FrequencyLowerBound')
     frequency_upper_bound = Frequency.T(xmltagname='FrequencyUpperBound')
     approximation_lower_bound = Float.T(xmltagname='ApproximationLowerBound')
@@ -331,8 +383,10 @@ class Comment(Object):
 
     id = Counter.T(optional=True, xmlstyle='attribute')
     value = Unicode.T(xmltagname='Value')
-    begin_effective_time = Timestamp.T(optional=True, xmltagname='BeginEffectiveTime')
-    end_effective_time = Timestamp.T(optional=True, xmltagname='EndEffectiveTime')
+    begin_effective_time = Timestamp.T(optional=True,
+                                       xmltagname='BeginEffectiveTime')
+    end_effective_time = Timestamp.T(optional=True,
+                                     xmltagname='EndEffectiveTime')
     author_list = List.T(Person.T(xmltagname='Author'))
 
 
@@ -340,7 +394,8 @@ class ResponseList(BaseFilter):
     '''Response: list of frequency, amplitude and phase values.
     Corresponds to SEED blockette 55.'''
 
-    response_list_element_list = List.T(ResponseListElement.T(xmltagname='ResponseListElement'))
+    response_list_element_list = List.T(
+        ResponseListElement.T(xmltagname='ResponseListElement'))
 
 
 class Log(Object):
@@ -366,8 +421,10 @@ class ResponseStage(Object):
 
 class Response(Object):
     resource_id = String.T(optional=True, xmlstyle='attribute')
-    instrument_sensitivity = Sensitivity.T(optional=True, xmltagname='InstrumentSensitivity')
-    instrument_polynomial = Polynomial.T(optional=True, xmltagname='InstrumentPolynomial')
+    instrument_sensitivity = Sensitivity.T(optional=True,
+                                           xmltagname='InstrumentSensitivity')
+    instrument_polynomial = Polynomial.T(optional=True,
+                                         xmltagname='InstrumentPolynomial')
     stage_list = List.T(ResponseStage.T(xmltagname='Stage'))
 
 
@@ -388,15 +445,15 @@ class BaseNode(Object):
         if len(args) == 0:
             return True
         elif len(args) == 1:
-            return ((self.start_date is None or 
+            return ((self.start_date is None or
                      self.start_date <= args[0]) and
-                    (self.end_date is None or 
+                    (self.end_date is None or
                      args[0] <= self.end_date))
 
         elif len(args) == 2:
-            return ((self.start_date is None or 
+            return ((self.start_date is None or
                      args[1] >= self.start_date) and
-                    (self.end_date is None or 
+                    (self.end_date is None or
                      self.end_date >= args[0]))
 
 
@@ -405,7 +462,8 @@ class Channel(BaseNode):
     related the response blockettes.'''
 
     location_code = String.T(xmlstyle='attribute')
-    external_reference_list = List.T(ExternalReference.T(xmltagname='ExternalReference'))
+    external_reference_list = List.T(
+        ExternalReference.T(xmltagname='ExternalReference'))
     latitude = Latitude.T(xmltagname='Latitude')
     longitude = Longitude.T(xmltagname='Longitude')
     elevation = Distance.T(xmltagname='Elevation')
@@ -414,7 +472,8 @@ class Channel(BaseNode):
     dip = Dip.T(optional=True, xmltagname='Dip')
     type_list = List.T(Type.T(xmltagname='Type'))
     sample_rate = SampleRate.T(optional=True, xmltagname='SampleRate')
-    sample_rate_ratio = SampleRateRatio.T(optional=True, xmltagname='SampleRateRatio')
+    sample_rate_ratio = SampleRateRatio.T(optional=True,
+                                          xmltagname='SampleRateRatio')
     storage_format = String.T(optional=True, xmltagname='StorageFormat')
     clock_drift = ClockDrift.T(optional=True, xmltagname='ClockDrift')
     calibration_units = Units.T(optional=True, xmltagname='CalibrationUnits')
@@ -423,6 +482,14 @@ class Channel(BaseNode):
     data_logger = Equipment.T(optional=True, xmltagname='DataLogger')
     equipment = Equipment.T(optional=True, xmltagname='Equipment')
     response = Response.T(optional=True, xmltagname='Response')
+
+    @property
+    def position_values(self):
+        lat = self.latitude.value
+        lon = self.longitude.value
+        elevation = value_or_none(self.elevation)
+        depth = value_or_none(self.depth)
+        return lat, lon, elevation, depth
 
 
 class Station(BaseNode):
@@ -433,16 +500,19 @@ class Station(BaseNode):
     latitude = Latitude.T(xmltagname='Latitude')
     longitude = Longitude.T(xmltagname='Longitude')
     elevation = Distance.T(xmltagname='Elevation')
-    site = Site.T(xmltagname='Site')
+    site = Site.T(optional=True, xmltagname='Site')
     vault = Unicode.T(optional=True, xmltagname='Vault')
     geology = Unicode.T(optional=True, xmltagname='Geology')
     equipment_list = List.T(Equipment.T(xmltagname='Equipment'))
     operator_list = List.T(Operator.T(xmltagname='Operator'))
-    creation_date = Timestamp.T(xmltagname='CreationDate')
+    creation_date = Timestamp.T(optional=True, xmltagname='CreationDate')
     termination_date = Timestamp.T(optional=True, xmltagname='TerminationDate')
-    total_number_channels = Counter.T(optional=True, xmltagname='TotalNumberChannels')
-    selected_number_channels = Counter.T(optional=True, xmltagname='SelectedNumberChannels')
-    external_reference_list = List.T(ExternalReference.T(xmltagname='ExternalReference'))
+    total_number_channels = Counter.T(optional=True,
+                                      xmltagname='TotalNumberChannels')
+    selected_number_channels = Counter.T(optional=True,
+                                         xmltagname='SelectedNumberChannels')
+    external_reference_list = List.T(
+        ExternalReference.T(xmltagname='ExternalReference'))
     channel_list = List.T(Channel.T(xmltagname='Channel'))
 
 
@@ -452,9 +522,39 @@ class Network(BaseNode):
     other descriptive information can be included in the Description
     element. The Network can contain 0 or more Stations.'''
 
-    total_number_stations = Counter.T(optional=True, xmltagname='TotalNumberStations')
-    selected_number_stations = Counter.T(optional=True, xmltagname='SelectedNumberStations')
+    total_number_stations = Counter.T(optional=True,
+                                      xmltagname='TotalNumberStations')
+    selected_number_stations = Counter.T(optional=True,
+                                         xmltagname='SelectedNumberStations')
     station_list = List.T(Station.T(xmltagname='Station'))
+
+    @property
+    def station_code_list(self):
+        return sorted(set(s.code for s in self.station_list))
+
+    @property
+    def sl_code_list(self):
+        sls = set()
+        for station in self.station_list:
+            for channel in station.channel_list:
+                sls.add((station.code, channel.location_code))
+
+        return sorted(sls)
+
+    def summary(self, width=80, indent=4):
+        sls = self.sl_code_list or [(x,) for x in self.station_code_list]
+        lines = ['%s (%i):' % (self.code, len(sls))]
+        if sls:
+            ssls = ['.'.join(x for x in c if x) for c in sls]
+            w = max(len(x) for x in ssls)
+            n = (width - indent) / (w+1)
+            while ssls:
+                lines.append(
+                    ' ' * indent + ' '.join(x.ljust(w) for x in ssls[:n]))
+
+                ssls[:n] = []
+
+        return '\n'.join(lines)
 
 
 def value_or_none(x):
@@ -463,12 +563,13 @@ def value_or_none(x):
     else:
         return None
 
+
 class FDSNStationXML(Object):
     '''Top-level type for Station XML. Required field are Source
     (network ID of the institution sending the message) and one or
     more Network containers or one or more Station containers.'''
 
-    schema_version = Float.T(xmlstyle='attribute')
+    schema_version = Float.T(default=1.0, xmlstyle='attribute')
     source = String.T(xmltagname='Source')
     sender = String.T(optional=True, xmltagname='Sender')
     module = String.T(optional=True, xmltagname='Module')
@@ -478,7 +579,11 @@ class FDSNStationXML(Object):
 
     xmltagname = 'FDSNStationXML'
 
-    def get_pyrocko_stations(self, time=None, timespan=None):
+    def get_pyrocko_stations(self, time=None, timespan=None,
+                             inconsistencies='warn'):
+
+        assert inconsistencies in ('raise', 'warn')
+
         tt = ()
         if time is not None:
             tt = (time,)
@@ -496,42 +601,199 @@ class FDSNStationXML(Object):
                     continue
 
                 if station.channel_list:
-
                     loc_to_channels = {}
-                    loc_to_depth = {}
                     for channel in station.channel_list:
                         if not channel.spans(*tt):
                             continue
-
-                        c = model.Channel(channel.code, 
-                                azimuth=value_or_none(channel.azimuth),
-                                dip=value_or_none(channel.dip))
 
                         loc = channel.location_code
                         if loc not in loc_to_channels:
                             loc_to_channels[loc] = []
 
-                        loc_to_channels[loc].append(c)
-                        loc_to_depth[loc] = value_or_none(channel.depth)
+                        loc_to_channels[loc].append(channel)
 
                     for loc in sorted(loc_to_channels.keys()):
-                        pstation = model.Station(network.code, station.code, loc,
-                                lat=station.latitude.value,
-                                lon=station.longitude.value,
-                                elevation=value_or_none(station.elevation),
-                                depth=loc_to_depth[loc],
-                                name=station.description, 
-                                channels=loc_to_channels[loc])
+                        channels = loc_to_channels[loc]
+                        pos = lat, lon, elevation, depth = \
+                            channels[0].position_values
 
-                        pstations.append(pstation)
+                        nsl = network.code, station.code, loc
+                        if not all(pos == x.position_values for x in channels):
+                            info = '\n'.join(
+                                '    %s: %s' % (x.code, x.position_values) for
+                                x in channels)
+
+                            if inconsistencies == 'raise':
+                                raise InconsistentChannelLocations(
+                                    'encountered inconsistencies in channel '
+                                    'lat/lon/elevation/depth '
+                                    'for %s.%s.%s: \n%s' % (nsl + (info,)))
+
+                            elif inconsistencies == 'warn':
+                                logger.warn(
+                                    'cannot create station object for '
+                                    '%s.%s.%s due to inconsistencies in '
+                                    'channel lat/lon/elevation/depth\n%s'
+                                    % (nsl + (info,)))
+
+                                continue
+
+                        pchannels = []
+                        for channel in channels:
+                            pchannels.append(model.Channel(
+                                channel.code,
+                                azimuth=value_or_none(channel.azimuth),
+                                dip=value_or_none(channel.dip)))
+
+                        pstations.append(model.Station(
+                            *nsl,
+                            lat=lat,
+                            lon=lon,
+                            elevation=value_or_none(station.elevation),
+                            depth=depth,
+                            name=station.description,
+                            channels=pchannels))
 
                 else:
-                    pstation = model.Station(network.code, station.code, '',
+                    pstations.append(model.Station(
+                        network.code, station.code, '*',
                         lat=station.latitude.value,
                         lon=station.longitude.value,
                         elevation=value_or_none(station.elevation),
-                        name=station.description)
-                    pstations.append(pstation)
-                    
+                        name=station.description))
+
         return pstations
 
+    @property
+    def n_code_list(self):
+        return sorted(set(x.code for x in self.network_list))
+
+    @property
+    def ns_code_list(self):
+        nss = set()
+        for network in self.network_list:
+            for station in network.station_list:
+                nss.add((network.code, station.code))
+
+        return sorted(nss)
+
+    @property
+    def nsl_code_list(self):
+        nsls = set()
+        for network in self.network_list:
+            for station in network.station_list:
+                for channel in station.channel_list:
+                    nsls.add(
+                        (network.code, station.code, channel.location_code))
+
+        return sorted(nsls)
+
+    @property
+    def nslc_code_list(self):
+        nslcs = set()
+        for network in self.network_list:
+            for station in network.station_list:
+                for channel in station.channel_list:
+                    nslcs.add(
+                        (network.code, station.code, channel.location_code,
+                            channel.code))
+
+        return sorted(nslcs)
+
+    def summary(self):
+        l = [
+            'number of n codes: %i' % len(self.n_code_list),
+            'number of ns codes: %i' % len(self.ns_code_list),
+            'number of nsl codes: %i' % len(self.nsl_code_list),
+            'number of nslc codes: %i' % len(self.nslc_code_list)
+        ]
+
+        return '\n'.join(l)
+
+
+class InconsistentChannelLocations(Exception):
+    pass
+
+
+class InvalidRecord(Exception):
+    def __init__(self, line):
+        Exception.__init__(self)
+        self._line = line
+
+    def __str__(self):
+        return 'Invalid record: "%s"' % self._line
+
+
+def load_channel_table(stream):
+
+    networks = {}
+    stations = {}
+
+    for line in stream:
+        if line.startswith('#'):
+            continue
+
+        t = line.rstrip().split('|')
+
+        if len(t) != 17:
+            raise InvalidRecord(line)
+
+        (net, sta, loc, cha, lat, lon, ele, dep, azi, dip, sens, scale,
+            scale_freq, scale_units, sample_rate, start_date, end_date) = t
+
+        try:
+            if net not in networks:
+                network = Network(code=net)
+            else:
+                network = networks[net]
+
+            if (net, sta) not in stations:
+                station = Station(
+                    code=sta, latitude=lat, longitude=lon, elevation=ele)
+
+                station.regularize()
+            else:
+                station = stations[net, sta]
+
+            if scale:
+                resp = Response(
+                    instrument_sensitivity=Sensitivity(
+                        value=scale,
+                        frequency=scale_freq,
+                        input_units=scale_units))
+            else:
+                resp = None
+
+            channel = Channel(
+                code=cha,
+                location_code=loc.strip(),
+                latitude=lat,
+                longitude=lon,
+                elevation=ele,
+                depth=dep,
+                azimuth=azi,
+                dip=dip,
+                sensor=Equipment(description=sens),
+                response=resp,
+                sample_rate=sample_rate,
+                start_date=start_date,
+                end_date=end_date or None)
+
+            channel.regularize()
+
+        except ValidationError:
+            raise InvalidRecord(line)
+
+        if net not in networks:
+            networks[net] = network
+
+        if (net, sta) not in stations:
+            stations[net, sta] = station
+            network.station_list.append(station)
+
+        station.channel_list.append(channel)
+
+    return FDSNStationXML(
+        source='created from table input',
+        created=time.time(),
+        network_list=sorted(networks.values()))
