@@ -441,3 +441,9 @@ store.
 
       $ fomosto redeploy my_first_gfs derived
 
+Computation of interpolated travel times
+----------------------------------------
+.. autoclass:: pyrocko.gf.meta.Timing
+    :noindex:
+    :members:
+
