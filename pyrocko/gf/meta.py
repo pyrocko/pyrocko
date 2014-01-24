@@ -128,18 +128,27 @@ class PhaseSelect(StringChoice):
 class InvalidTimingSpecification(ValidationError):
     pass
 
-
 class Timing(SObject):
     '''
     Ray Path Timer 
 
-    If the travel time tables (ttt) of a store have been built, either by running *:program:`fomosto` ttt* 
-    in a stores' directory or by calling the :py:meth:`store.make_ttt` method, these ttts can be used to interpolate arrivals of seismic rays by using a the stores' :py:meth:`store.t` method. The first argument of this method can either be a phase_id or a function call like 'last(P|Pdiff)'. 
-    If you use a :py:class:`store.StoreTypeA` store the function can be called with the phase_id as the first, and the location as the second argument. The location 
+    If travel time tables (ttt) of a store have been built either by running :program:`fomosto ttt` 
+    in a stores' directory or by calling the :py:func:`pyrocko.gf.store.make_ttt` method, these ttts can be used to interpolate arrivals of seismic rays by using a stores' :py:func:`pyrocko.gf.store.t` method. 
+    
+    If you use a :py:class:`pyrocko.gf.meta.ConfigTypeA` store the function can be called with a ``phase_id`` as the first, and a tupel with the source depth and the distance as the second argument:  ``(source depth, distance)``
+
+    If the store is of :py:class:`pyrocko.gf.meta.ConfigTypeB`, again, the function takes a ``phase_id`` as the first, and the location as the second argument, respectively. In this case, the location argument requires a receiver depth, i.e.: ``(receiver depth, source depth, distance)``
+
+    In order to determine the first or last arrival of a bunch of phases, replace the ``phase_id`` with either ``first()`` or ``last()``, respectively, and hand over the ``phase_ids`` seperated by vertical bars, as can be seen in the following examples.
     
     **Examples:**
 
-        *``test_store.t('p', (1000, 10000))
+    If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeA`:
+        * ``test_store.t('p', (1000, 10000))``
+        * ``test_store.t('last(P|Pdiff)', (1000, 10000))`` - the later arrival of P and the diffracted P
+    If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeB`:
+        * ``test_store.t('S', (1000, 1000, 10000))``
+        * ``test_store.t('first(P|p|Pdiff|sP)', (1000, 1000, 10000))`` - the first arrival of 
     '''
 
     def __init__(self, s=None, **kwargs):
@@ -202,7 +211,7 @@ class Timing(SObject):
 
     phase_ids = List.T(String.T())
     offset = Float.T(default=0.0)
-    select = PhaseSelect.T(default='')
+    select = PhaseSelect.T(default='', help='Can be either \'%s\', \'%s\', or \'%s\'. '%tuple(PhaseSelect.choices))
 
 
 def mkdefs(s):
