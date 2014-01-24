@@ -270,21 +270,20 @@ class GFTestCase(unittest.TestCase):
         store = engine.get_store('test')
         
         pS = gf.TPDef(id = 'pS', definition='pS')
-        P = gf.TPDef(id = 'P', definition='P')
-        p = gf.TPDef(id = 'p', definition='p')
+        P = gf.TPDef(id = 'P', definition='P')  # no p phase in this range
+        p = gf.TPDef(id = 'p', definition='p')  # no P phase in this range
         s = gf.TPDef(id = 's', definition='s')
-        phases = [s, pS, P ]
+        S = gf.TPDef(id = 'S', definition='S')
+        phases = [s, pS, S ]
         store.config.tabulated_phases=phases
-        print 'make_ttt takes some time...'
         store.make_ttt(force=True)
 
         args = (0, 50, 500)
-        #for phase in phases:
-        #    self.assertNotEqual(store.t(phase.id, args=args), None, 'Travel time of %s is None'%phase)
+        for phase in phases:
+            self.assertNotEqual(store.t(phase.id, args=args), None, 'Travel time of %s is None'%phase)
 
         specials = ['last(S|s)', 'first(pS|P)']
         for s in specials:
-            print 'asdfasdfasdf', store.t(s, args)
             self.assertNotEqual(store.t(s, args=args), None, 'Travel time of %s is None'%s)
 
 
