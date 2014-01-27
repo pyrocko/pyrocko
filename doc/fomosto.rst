@@ -55,7 +55,9 @@ started without any arguments.
         decimate      build decimated variant of a GF store
         redeploy      copy traces from one GF store into another
         view          view selected traces
+        extract       extract selected traces
         import        convert Kiwi GFDB to GF store format
+        export        convert GF store to Kiwi GFDB format
         ttt           create travel time tables
         tttview       plot travel time table
 
@@ -214,11 +216,11 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
     # seconds, where 'begin' and  'end' are tabulated phases as defined in the
     # main main configuration 
 
-    time_region: [begin-50, end+100]
+    time_region: [begin-50, end+100]  # see note below
 
     # cut the Green's functions to the same time span
 
-    cut: [begin-50, end+100]
+    cut: [begin-50, end+100]  # see note below
 
     # following docs are excerpts from the QSEIS documentation 
 
@@ -291,6 +293,11 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
     wavelet_type: 2
 
 .. highlight:: console
+
+.. note::
+   
+    The syntax for the timings in the ``time_region`` and ``cut`` in the above
+    example configuration is described in :py:class:`pyrocko.gf.meta.Timing`.
 
 If configuration values have been changed, it may be neccessary to rebuild the
 tabulated phase arrivals or the Green's functions. By default, fomosto will
@@ -440,10 +447,3 @@ store.
    ::
 
       $ fomosto redeploy my_first_gfs derived
-
-Computation of interpolated travel times
-----------------------------------------
-.. autoclass:: pyrocko.gf.meta.Timing
-    :noindex:
-    :members:
-
