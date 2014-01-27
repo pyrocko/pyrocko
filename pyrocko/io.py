@@ -18,6 +18,8 @@ SEISAN       seisan, seisan.l, seisan.b  yes                [#f2]_
 KAN          kan                         yes                [#f3]_
 YAFF         yaff                        yes       yes      [#f4]_
 ASCII Table  text                                  yes      [#f5]_
+GSE1         gse1                        some
+GSE2         gse2                        some
 ============ =========================== ========= ======== ======
 
 .. rubric:: Notes
@@ -30,7 +32,7 @@ ASCII Table  text                                  yes      [#f5]_
 '''
 
 import os, logging
-from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf
+from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gse2, gcf
 from pyrocko import util, trace
 from pyrocko.io_common import FileLoadError
 
@@ -65,7 +67,7 @@ def detect_format(filename):
         raise FileLoadError(e)
 
     format = None
-    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1')):
+    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'), (gse2, 'gse2')):
         if mod.detect(data):
             return fmt
 
@@ -99,7 +101,8 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             '.sac': 'sac',
             '.kan': 'kan',
             '.segy': 'segy',
-            '.sgy': 'segy'}
+            '.sgy': 'segy',
+            '.gse': 'gse2'}
 
     if format == 'from_extension':
         format = 'mseed'
@@ -117,6 +120,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             'mseed': mseed,
             'seisan': seisan_waveform,
             'gse1': gse1,
+            'gse2': gse2,
             'gcf': gcf,
     }
 

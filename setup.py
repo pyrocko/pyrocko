@@ -98,9 +98,9 @@ setup( name = packname,
             libraries = ['evresp'],
             sources = [ pjoin(packname, 'evalresp_ext.c') ]),
             
-        Extension( 'gse_ext',
+        Extension( 'gse2_ext',
             include_dirs = [ numpy.get_include() ],
-            sources = [ pjoin(packname, 'gse_ext.c') ]),
+            sources = [ pjoin(packname, 'gse2_ext.c') ]),
 
         Extension( 'autopick_ext',
             include_dirs = [ numpy.get_include() ],

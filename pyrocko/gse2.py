@@ -5,7 +5,7 @@ import numpy as num
 
 unpack_fixed = util.unpack_fixed
 
-logger = logging.getLogger('pyrocko.gse')
+logger = logging.getLogger('pyrocko.gse2')
 
 km = 1000.
 
@@ -155,15 +155,29 @@ class Waveform:
         self.dat2 = dat2
       
         assert self.wid2.sub_format in 'INT CM6 CM8 AUT AU6 AU8'.split()
-        from pyrocko import gse_ext
-        self.data = gse_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )
+        if dat2.rawdata is not None:
+            if self.wid2.sub_format == 'CM6':
+                from pyrocko import gse2_ext
+                self.data = gse2_ext.decode_m6( ''.join(dat2.rawdata), wid2.samps )
+            else:
+                logger.error('cannot load GSE sub format "%s" (not implemented)' % self.wid2.sub_format) 
+                self.data = None
+
+        else:
+            self.data = None
+
+        if self.data is None:
+            self.tmax = self.wid2.tmin + 1.0/self.wid2.samprate * (wid2.samps - 1)
+        else:
+            self.tmax = None
+
 
     def __str__(self):
         return ' '.join([self.wid2.station, self.wid2.channel, self.wid2.auxid, self.wid2.sub_format, util.gmctime(self.wid2.tmin)])
 
     def trace(self):
         return trace.Trace(station=self.wid2.station, location=self.wid2.auxid, channel=self.wid2.channel,
-            tmin=self.wid2.tmin, deltat=1.0/self.wid2.samprate, ydata=self.data)
+            tmin=self.wid2.tmin, tmax=self.tmax, deltat=1.0/self.wid2.samprate, ydata=self.data)
 
 class ErrorLog:
     def __init__(self, message):
@@ -223,24 +237,24 @@ class DataSection:
         self.data_type = None
         self.data = []
         
-    def interprete(self):
+    def interprete(self, load_data=True):
         mapping = { 'error_log': self.interprete_error_log,
                     'waveform': self.interprete_waveform,
                     'station': self.interprete_station,
                     'channel': self.interprete_channel }
                     
         if self.data_type in mapping:
-            for content in mapping[self.data_type]():
+            for content in mapping[self.data_type](load_data=load_data):
                 yield content
         else:
             logger.warn('Skipping unimplemented GSE data type "%s"' % self.data_type)
             
-    def interprete_error_log(self):
+    def interprete_error_log(self, load_data=True):
         message = '\n'.join(self.data+[''])
         yield ErrorLog(message)
         
         
-    def interprete_station(self):
+    def interprete_station(self, load_data=True):
         if self.version not in ('GSE2.0', 'GSE2.1'):
             logger.error('Can not interprete GSE station information of version %s' % self.version)
             return
@@ -267,7 +281,7 @@ class DataSection:
             yield Station(net, sta, typ, lat, lon, coordsys, elev, ondate, offdate)
             
             
-    def interprete_channel(self):
+    def interprete_channel(self, load_data=True):
         if self.version not in ('GSE2.0', 'GSE2.1'):
             logger.error('Can not interprete GSE channel information of version %s' % self.version)
             return
@@ -296,7 +310,7 @@ class DataSection:
             offdate = slashdate(offdate)
             yield Channel(net, sta, cha, auxid, lat, lon, coordsys, elev, depth, hang, vang, samprate, instype, ondate, offdate)
             
-    def interprete_waveform(self):
+    def interprete_waveform(self, load_data=True):
         rawdata_l = []
         at = 0
         wid2, dat2, chk2, sta2 = None, None, None, None
@@ -320,7 +334,7 @@ class DataSection:
                     
                     
                     wid2.tmin = ( calendar.timegm( time.strptime( 
-                            line[5:15]+ ' ' + line[16:24], 
+                            line[5:15]+ ' ' + line[16:24].replace(' ', '0'), 
                             '%Y/%m/%d %H:%M:%S') )
                         + float(line[24:28]))
                         
@@ -354,7 +368,10 @@ class DataSection:
                 
                 if line.strip() == 'DAT2':
                     dat2 = Anon()
-                    dat2.rawdata = []
+                    if load_data:
+                        dat2.rawdata = []
+                    else:
+                        dat2.rawdata = None
                     at = 2
                     continue
                
@@ -368,14 +385,15 @@ class DataSection:
                     at = 0
                     continue
                 else:
-                    dat2.rawdata.append(line)
+                    if load_data:
+                        dat2.rawdata.append(line)
                     
         if wid2:
             yield Waveform(wid2, sta2, chk2, dat2)
             reset()
                     
     
-def readgse(fn):
+def readgse(fn, load_data=True):
     
     f = open(fn, 'r')
     
@@ -390,7 +408,7 @@ def readgse(fn):
         if at in (1,2):
             if isd(line, toks, 'STOP'):
                 if gse and d:
-                    for content in d.interprete():
+                    for content in d.interprete(load_data=load_data):
                         gse.add(content)
                         
                 yield gse
@@ -416,7 +434,6 @@ def readgse(fn):
                 d.version = 'GSE2.1'
 
                 at = 2
-
         
         if at == 1:
             if isd(line, toks, 'MSG_TYPE', 2):
@@ -437,7 +454,7 @@ def readgse(fn):
             
             if isd(line, toks, 'DATA_TYPE', (2,3)):
                 if d:
-                    for content in d.interprete():
+                    for content in d.interprete(load_data=load_data):
                         gse.add( content )
                 d = DataSection()
                 d.data_type = toks[1].lower()
@@ -458,8 +475,38 @@ def readgse(fn):
     
     if gse:
         if d:
-            for content in d.interprete():
+            for content in d.interprete(load_data=load_data):
                 gse.add( content )
                 
         yield gse
         
+
+def iload(filename, load_data=True):
+    for gse in readgse(filename, load_data=load_data):
+        for wv in gse.waveforms:
+            yield wv.trace()
+
+
+def detect(first512):
+    lines = first512.lstrip().splitlines()
+    if len(lines) >= 2:
+        if lines[0].startswith('WID2 '):
+            return True
+
+        if lines[0].startswith('BEGIN GSE2'):
+            return True
+
+    return False
+
+
+if __name__ == '__main__':
+    all_traces = []
+    for fn in sys.argv[1:]:
+        if detect(open(fn).read(512)):
+            all_traces.extend(iload(fn))
+
+    trace.snuffle(all_traces)
+
+
+
+

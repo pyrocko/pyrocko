@@ -129,15 +129,15 @@ static PyMethodDef GSEMethods[] = {
 };
 
 PyMODINIT_FUNC
-initgse_ext(void)
+initgse2_ext(void)
 {
     PyObject *m;
 
-    m = Py_InitModule("gse_ext", GSEMethods);
+    m = Py_InitModule("gse2_ext", GSEMethods);
     if (m == NULL) return;
     import_array();
 
-    GSEError = PyErr_NewException("gse_ext.error", NULL, NULL);
+    GSEError = PyErr_NewException("gse2_ext.error", NULL, NULL);
     Py_INCREF(GSEError);  /* required, because other code could remove `error` 
                                from the module, what would create a dangling
                                pointer. */
