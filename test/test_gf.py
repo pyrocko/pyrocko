@@ -1,4 +1,4 @@
-
+import sys
 import random
 import math
 import guts
@@ -10,6 +10,7 @@ from pyrocko import gf, util, cake
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
+km = 1000.
 
 
 def numeq(a, b, eps):
@@ -29,9 +30,28 @@ class PulseConfig(guts.Object):
 
 class GFTestCase(unittest.TestCase):
 
+    if sys.version_info < (2, 7):
+        from contextlib import contextmanager
+
+        @contextmanager
+        def assertRaises(self, exc):
+
+            gotit = False
+            try:
+                yield None
+            except exc:
+                gotit = True
+
+            assert gotit, 'expected to get a %s exception' % exc
+
+        def assertIsNone(self, value):
+            assert value is None, 'expected None but got %s' % value
+
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
         self.tempdirs = []
+        self.pulse_store_dir = None
+        self.regional_ttt_store_dir = None
 
     def __del__(self):
         import shutil
@@ -55,13 +75,54 @@ class GFTestCase(unittest.TestCase):
         self.tempdirs.append(d)
         return d
 
-    def create_pulse_db(self):
-        
-        earthmodel = cake.load_model(cake.builtin_models()[0])
+    def get_pulse_store_dir(self):
+        if self.pulse_store_dir is None:
+            self.pulse_store_dir = self._create_pulse_store()
+
+        return self.pulse_store_dir
+
+    def get_regional_ttt_store_dir(self):
+        if self.regional_ttt_store_dir is None:
+            self.regional_ttt_store_dir = self._create_regional_ttt_store()
+
+        return self.regional_ttt_store_dir
+
+    def _create_regional_ttt_store(self):
+
+        conf = gf.ConfigTypeA(
+            id='empty_regional',
+            source_depth_min=0.,
+            source_depth_max=20*km,
+            source_depth_delta=10*km,
+            distance_min=1000*km,
+            distance_max=2000*km,
+            distance_delta=10*km,
+            sample_rate=2.0,
+            ncomponents=10,
+            earthmodel_1d=cake.load_model(),
+            tabulated_phases=[
+                gf.TPDef(id=id, definition=defi) for (id, defi) in [
+                    ('depthp', 'p'),
+                    ('pS', 'pS'),
+                    ('P', 'P'),
+                    ('S', 'S')
+                ]
+            ])
+
+        store_dir = mkdtemp(prefix='gfstore')
+        self.tempdirs.append(store_dir)
+
+        gf.Store.create(store_dir, config=conf)
+        store = gf.Store(store_dir)
+        store.make_ttt()
+
+        store.close()
+        return store_dir
+
+    def _create_pulse_store(self):
 
         conf = gf.ConfigTypeB(
-            earthmodel_1d = earthmodel,
-            id='test',
+            id='pulse',
             receiver_depth_min=0.,
             receiver_depth_max=10.,
             receiver_depth_delta=10.,
@@ -83,9 +144,8 @@ class GFTestCase(unittest.TestCase):
         store_dir = mkdtemp(prefix='gfstore')
         self.tempdirs.append(store_dir)
 
-        store_dir = 'abc'
-        store = gf.Store.create(store_dir, config=conf, force=True,
-                                extra={'pulse': pulse})
+        gf.Store.create(store_dir, config=conf, force=True,
+                        extra={'pulse': pulse})
 
         deltat = conf.deltat
 
@@ -122,7 +182,7 @@ class GFTestCase(unittest.TestCase):
         store.close()
         return store_dir
 
-    def _test_get_spans(self):
+    def test_get_spans(self):
         nrecords = 8
         random.seed(0)
         num.random.seed(0)
@@ -137,7 +197,7 @@ class GFTestCase(unittest.TestCase):
 
         store.close()
 
-    def _test_partial_get(self):
+    def test_partial_get(self):
         nrecords = 8
         random.seed(0)
         num.random.seed(0)
@@ -169,7 +229,7 @@ class GFTestCase(unittest.TestCase):
 
         store.close()
 
-    def _test_sum(self):
+    def test_sum(self):
 
         nrecords = 8
         random.seed(0)
@@ -205,7 +265,7 @@ class GFTestCase(unittest.TestCase):
         store.close()
 
     def test_pulse(self):
-        store_dir = self.create_pulse_db()
+        store_dir = self.get_pulse_store_dir()
 
         engine = gf.LocalEngine(store_dirs=[store_dir])
 
@@ -258,34 +318,28 @@ class GFTestCase(unittest.TestCase):
 
             self.assertTrue(numeq(data, tr.ydata, 0.01))
 
-    def test_waveform_selection(self):
-
-        xxx = gf.WaveformSelection(
-            taper=gf.Taper(tmin='10.', tmax='10.'))
-
-        print xxx
-
     def test_timing(self):
-        engine = gf.LocalEngine(store_superdirs='.')
-        store = engine.get_store('test')
-        
-        pS = gf.TPDef(id = 'pS', definition='pS')
-        P = gf.TPDef(id = 'P', definition='P')  # no p phase in this range
-        p = gf.TPDef(id = 'p', definition='p')  # no P phase in this range
-        s = gf.TPDef(id = 's', definition='s')
-        S = gf.TPDef(id = 'S', definition='S')
-        phases = [s, pS, S ]
-        store.config.tabulated_phases=phases
-        store.make_ttt(force=True)
+        store_dir = self.get_regional_ttt_store_dir()
 
-        args = (0, 50, 500)
-        for phase in phases:
-            self.assertNotEqual(store.t(phase.id, args=args), None, 'Travel time of %s is None'%phase)
+        store = gf.Store(store_dir)
 
-        specials = ['last(S|s)', 'first(pS|P)']
-        for s in specials:
-            self.assertNotEqual(store.t(s, args=args), None, 'Travel time of %s is None'%s)
+        args = (10*km, 1500*km)
+        assert(store.t('P', args) is not None)
+        self.assertEqual(store.t('last(S|P)', args), store.t('S', args))
+        self.assertEqual(store.t('(S|P)', args), store.t('S', args))
+        self.assertEqual(store.t('(P|S)', args), store.t('P', args))
+        self.assertEqual(store.t('first(S|P)', args), store.t('P', args))
+        with self.assertRaises(gf.NoSuchPhase):
+            store.t('nonexistant', args)
 
+        with self.assertRaises(AssertionError):
+            store.t('P', (10*km,))
+
+        with self.assertRaises(gf.OutOfBounds):
+            print store.t('P', (10*km, 5000*km))
+
+        with self.assertRaises(gf.OutOfBounds):
+            print store.t('P', (30*km, 1500*km))
 
 
 if __name__ == '__main__':

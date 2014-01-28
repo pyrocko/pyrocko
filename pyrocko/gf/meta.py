@@ -8,7 +8,7 @@ from guts import Object, SObject, String, StringChoice, StringPattern, \
 from guts import dump, load  # noqa
 
 from guts_array import literal, Array
-from pyrocko import cake, orthodrome
+from pyrocko import cake, orthodrome, spit
 
 d2r = math.pi / 180.
 r2d = 1.0 / d2r
@@ -201,17 +201,20 @@ class Timing(SObject):
         return ''.join(l)
 
     def evaluate(self, get_phase, args):
-        phases = [get_phase(phase_id) for phase_id in self.phase_ids]
-        times = [phase(args) for phase in phases]
-        times = [t+self.offset for t in times if t is not None]
-        if not times:
-            return None
-        elif self.select == 'first':
-            return min(times)
-        elif self.select == 'last':
-            return max(times)
-        else:
-            return times[0]
+        try:
+            phases = [get_phase(phase_id) for phase_id in self.phase_ids]
+            times = [phase(args) for phase in phases]
+            times = [t+self.offset for t in times if t is not None]
+            if not times:
+                return None
+            elif self.select == 'first':
+                return min(times)
+            elif self.select == 'last':
+                return max(times)
+            else:
+                return times[0]
+        except spit.OutOfBounds:
+            raise OutOfBounds(args)
 
     phase_ids = List.T(StringID.T())
     offset = Float.T(default=0.0)
