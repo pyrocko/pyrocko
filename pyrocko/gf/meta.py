@@ -128,27 +128,31 @@ class PhaseSelect(StringChoice):
 class InvalidTimingSpecification(ValidationError):
     pass
 
+
 class Timing(SObject):
     '''
-    Ray Path Timer 
+    Definition of a time instant relative to one or more named phase arrivals
 
-    If travel time tables (ttt) of a store have been built either by running :program:`fomosto ttt` 
-    in a stores' directory or by calling the :py:func:`pyrocko.gf.store.make_ttt` method, these ttts can be used to interpolate arrivals of seismic rays by using a stores' :py:func:`pyrocko.gf.store.t` method. 
-    
-    If you use a :py:class:`pyrocko.gf.meta.ConfigTypeA` store the function can be called with a ``phase_id`` as the first, and a tupel with the source depth and the distance as the second argument:  ``(source depth, distance)``
+    Instances of this class can be used e.g. in cutting and tapering
+    operations. They can hold an absolute time or an offset to a named phase
+    arrival or group of such arrivals.
 
-    If the store is of :py:class:`pyrocko.gf.meta.ConfigTypeB`, again, the function takes a ``phase_id`` as the first, and the location as the second argument, respectively. In this case, the location argument requires a receiver depth, i.e.: ``(receiver depth, source depth, distance)``
+    Timings can be instantiated from a simple string defintion i.e. with
+    ``Timing(str)`` where ``str`` is something like
+    ``'SELECT(PHASE_IDS)[+-]OFFSET'`` where ``'SELECT'`` is ``'first'``,
+    ``'last'`` or empty, ``'PHASE_IDS'`` is a ``'|'``-separated list of phase
+    names, and ``'OFFSET'`` is the time offset in seconds.
 
-    In order to determine the first or last arrival of a bunch of phases, replace the ``phase_id`` with either ``first()`` or ``last()``, respectively, and hand over the ``phase_ids`` seperated by vertical bars, as can be seen in the following examples.
-    
     **Examples:**
 
-    If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeA`:
-        * ``test_store.t('p', (1000, 10000))``
-        * ``test_store.t('last(P|Pdiff)', (1000, 10000))`` - the later arrival of P and the diffracted P
-    If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeB`:
-        * ``test_store.t('S', (1000, 1000, 10000))``
-        * ``test_store.t('first(P|p|Pdiff|sP)', (1000, 1000, 10000))`` - the first arrival of 
+    * ``'100'`` : absolute time; 100 s.
+    * ``'P-100'`` : 100 s before arrival of P phase.
+    * ``'(A|B)'`` : time instant of phase arrival A, or B if A is undefined for
+      a given geometry.
+    * ``'first(A|B)'`` : as above, but the temporally first arrival of A and B
+      is chosen, if both phases are defined for a given geometry.
+    * ``'last(A|B)'`` : as above but the temporally last arrival is chosen.
+    * ``'first(A|B|C)-100'`` : 100 s before first out of arrivals A, B, and C.
     '''
 
     def __init__(self, s=None, **kwargs):
@@ -209,9 +213,12 @@ class Timing(SObject):
         else:
             return times[0]
 
-    phase_ids = List.T(String.T())
+    phase_ids = List.T(StringID.T())
     offset = Float.T(default=0.0)
-    select = PhaseSelect.T(default='', help='Can be either \'%s\', \'%s\', or \'%s\'. '%tuple(PhaseSelect.choices))
+    select = PhaseSelect.T(
+        default='',
+        help=('Can be either ``\'%s\'``, ``\'%s\'``, or ``\'%s\'``. ' %
+              tuple(PhaseSelect.choices)))
 
 
 def mkdefs(s):
@@ -229,8 +236,14 @@ def mkdefs(s):
 
 
 class TPDef(Object):
-    id = StringID.T()
-    definition = String.T()
+    '''Maps an arrival phase identifier to an arrival phase definition'''
+    id = StringID.T(
+        help='name used to identify the phase')
+    definition = String.T(
+        help='definition of the phase in either cake syntax as defined in '
+             ':py:class:`pyrocko.cake.PhaseDef`, or, if prepended with an '
+             '``!``, as a *classic phase name*, or, if it is a simple '
+             'number, as a constant horizontal velocity.')
 
     @property
     def phases(self):
