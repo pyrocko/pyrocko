@@ -9,6 +9,9 @@ not_ = num.logical_not
 all_ = num.all
 any_ = num.any
 
+class OutOfBounds(Exception):
+    pass
+
 class Cell:
     def __init__(self, tree, index, f=None):
         self.tree = tree
@@ -309,11 +312,14 @@ class SPTree:
 
     def interpolate(self, x):
         x = num.asarray(x, dtype=num.float)
+        assert x.ndim == 1 and x.size == self.ndim
+        if not all_(and_(self.xbounds[:,0] <= x, x <= self.xbounds[:,1])):
+            raise OutOfBounds()
+
         return self.root.interpolate(x)
 
     def __call__(self, x):
-        x = num.asarray(x, dtype=num.float)
-        return self.root.interpolate(x)
+        return self.interpolate(x)
 
     def interpolate_many(self, x):
         return self.root.interpolate_many(x)
