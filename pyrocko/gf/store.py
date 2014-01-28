@@ -71,9 +71,6 @@ class NotMultipleOfSamplingInterval(Exception):
     pass
 
 
-class FalseArguments(Exception):
-    pass
-
 sampling_check_eps = 1e-5
 
 
