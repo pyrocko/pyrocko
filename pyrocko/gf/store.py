@@ -745,12 +745,36 @@ class Store(BaseStore):
     weighted delay-and-sum stacks with many Green's function traces involved.
 
     Individual Green's functions are accessed through a single integer index at
-    low level.  At higher level, various indexing schemes can be implemented by
-    providing a mapping from physical coordinates to the low level index. E.g.
-    for a problem with cylindrical symmetry, one might define a mapping from
-    (`z1`, `z2`, `r`) -> `i`. Index translation is done in the
+    low level. On top of that, various indexing schemes can be implemented by
+    providing a mapping from physical coordinates to the low level index `i`.
+    E.g. for a problem with cylindrical symmetry, one might define a mapping
+    from the coordinates (`receiver_depth`, `source_depth`, `distance`) to the
+    low level index. Index translation is done in the
     :py:class:`pyrocko.gf.meta.Config` subclass object associated with the
-    Store.
+    Store. It is accessible through the store's :py:attr:`config` attribute,
+    and contains all meta information about the store, including physical
+    extent, geometry, sampling rate, and information about the type of the
+    stored Green's functions. Information about the underlying earth model
+    can also be found there.
+
+    A GF store can also contain tabulated phase arrivals. In basic cases, these
+    can be created with the :py:meth:`make_ttt` and evaluated with the
+    :py:func:`t` methods.
+
+    .. attribute:: config
+
+        The :py:class:`pyrocko.gf.meta.Config` derived object associated with
+        the store which contains all meta information about the store and
+        provides the high-level to low-level index mapping.
+
+    .. attribute:: store_dir
+
+        Path to the store's data directory.
+
+    .. attribute:: mode
+
+        The mode in which the store is opened: ``'r'``: read-only, ``'w'``:
+        writeable.
     '''
 
     @staticmethod
@@ -1029,13 +1053,26 @@ class Store(BaseStore):
         return self._phases[phase_id]
 
     def t(self, timing, args):
-        '''Compute interpolated phase arrivals.'''
-        if isinstance(self.config, meta.ConfigTypeB) and len(args)!=3:
-            raise FalseArguments('t() of ConfigTypeB store needs arguments: (receiver depth, source depth, distance)')
-        if isinstance(self.config, meta.ConfigTypeA) and len(args)!=2:
-            raise FalseArguments('t() of ConfigTypeA store needs arguments: (source depth, distance)')
+        '''Compute interpolated phase arrivals.
+
+        **Examples:**
+
+        If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeA`:
+
+        * ``test_store.t('p', (1000, 10000))``
+        * ``test_store.t('last(P|Pdiff)', (1000, 10000))`` - the later arrival
+          of P and the diffracted P
+
+        If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeB`:
+
+        * ``test_store.t('S', (1000, 1000, 10000))``
+        * ``test_store.t('first(P|p|Pdiff|sP)', (1000, 1000, 10000))`` -
+          the first arrival of the given phases is selected
+        '''
+
         if not isinstance(timing, meta.Timing):
             timing = meta.Timing(timing)
+
         return timing.evaluate(self.get_phase, args)
 
     def make_timing_params(self, begin, end, snap_vred=True):
@@ -1096,6 +1133,14 @@ class Store(BaseStore):
             vred=vred)
 
     def make_ttt(self, force=False):
+        '''Compute travel time tables.
+
+        Travel time tables are computed using the 1D earth model defined in
+        :py:attr:`pyrocko.gf.meta.Config.earthmodel_1d` for each defined phase
+        in :py:attr:`pyrocko.gf.meta.Config.tabulated_phases`. The accuracy of
+        the tablulated times is adjusted to the sampling rate of the store.
+        '''
+
         from pyrocko import cake
         config = self.config
 
