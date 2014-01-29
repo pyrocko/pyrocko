@@ -953,8 +953,8 @@ class Store(Store_):
         tminmin = tmins[i]
         x_tminmin = xs[i]
         dx = (xs - x_tminmin)
-        dx = num.where( dx != 0.0, dx, num.nan )
-        s = (tmin - tminmin) / dx
+        dx = num.where(dx != 0.0, dx, num.nan)
+        s = (tmins - tminmin) / dx
         sred = num.min(num.abs(s[num.isfinite(s)]))
         
         if snap_vred:
