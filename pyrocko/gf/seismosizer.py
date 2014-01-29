@@ -559,11 +559,12 @@ class LocalEngine(Engine):
         traces = []
         for i in xrange(len(request.sources)):
             traces.append([None] * len(request.targets))
-        
-        n_k = float(len(skeys))
-        n_i = 1
 
-        for k in skeys:
+        n = len(skeys)
+        for i, k in enumerate(skeys):
+            if status_callback:
+                status_callback(i, n)
+
             sources, targets = m[k]
             base_seismogram = self.base_seismogram(sources[0], targets[0])
             for source in sources:
@@ -571,9 +572,8 @@ class LocalEngine(Engine):
                     tr = self._post_process(base_seismogram, source, target)
                     traces[source_index[source]][target_index[target]] = tr
 
-            if status_callback:
-                status_callback(n_k, n_i)
-                n_i += 1 
+        if status_callback:
+            status_callback(n, n)
 
         return Response(request=request, traces_list=traces)
 
