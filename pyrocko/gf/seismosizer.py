@@ -24,6 +24,10 @@ class DuplicateStoreId(Exception):
     pass
 
 
+class NoDefaultStoreSet(Exception):
+    pass
+
+
 class NoSuchStore(BadRequest):
     def __init__(self, store_id):
         Exception.__init__(self)
