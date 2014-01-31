@@ -431,12 +431,12 @@ class TraceTestCase(unittest.TestCase):
             taper=taper,
             domain='time_domain',
             freqlimits=(1, 2, 20, 40),
-            frequency_response=fresponse)
+            filter=fresponse)
         for m, n in t1.misfit( candidates=ttraces, setups= mfsetup):
             self.assertEqual(m, 0., 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
         del mfsetup
 
-    def testMisfitOfSameTracesDtDifferentIsZero(self):
+    def testMisfitOfSameTracesDtDifferentShifted(self):
         """
         Verify that two equal traces produce a zero misfit even if their sampling rate differs.
         Tests:
@@ -454,8 +454,6 @@ class TraceTestCase(unittest.TestCase):
             tts.append(tt.copy())
         for i in range(10):
             map(lambda t: t.shift(2.234*i), tts[(i-1)*10:(i*10)-1])
-            # Some traces cannot be downsampled:
-            #map(lambda t: t.downsample_to(t.deltat+0.5*i), tts[(i-1)*10:(i*10)-1])
 
         taper1 = trace.CosFader(xfade=rt.deltat*300)
         fresponse = trace.FrequencyResponse()
@@ -464,23 +462,23 @@ class TraceTestCase(unittest.TestCase):
                                      taper=taper1,
                                      domain='time_domain',
                                      freqlimits=(1,2,20,40),
-                                     frequency_response=fresponse)
+                                     filter=fresponse)
 
         mfsetup2 = trace.MisfitSetup(norm=1,
                                      taper=taper1,
                                      domain='time_domain',
                                      freqlimits=(1,2,20,40),
-                                     frequency_response=fresponse)
+                                     filter=fresponse)
         mfsetup3 = trace.MisfitSetup(norm=2,
                                      taper=taper1,
                                      domain='frequency_domain',
                                      freqlimits=(1,2,20,40),
-                                     frequency_response=fresponse)
+                                     filter=fresponse)
         mfsetup4 = trace.MisfitSetup(norm=2,
                                      taper=taper1,
                                      domain='frequency_domain',
                                      freqlimits=(1,2,20,40),
-                                     frequency_response=fresponse)
+                                     filter=fresponse)
 
         tstart = time.time()
         for ms, nn in rt.misfit( candidates=tts , setups=[mfsetup1,
@@ -489,8 +487,6 @@ class TraceTestCase(unittest.TestCase):
                                                                mfsetup4]):
             for m in ms:
                 self.assertNotEqual(m, None, 'misfit\'s m is not zero, but m = %s' % m)
-        tstop = time.time()
-        print tstop-tstart
 
     def testMisfitBox(self):
 
