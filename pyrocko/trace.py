@@ -5,6 +5,7 @@ import numpy as num
 from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
 from pyrocko.util import reuse, hpfloat, UnavailableDecimation
+from pyrocko.pchain import *
 from guts import *
 from guts_array import *
 
@@ -278,6 +279,7 @@ class Trace(object):
         self.drop_growbuffer()
         self.ydata = new_ydata
         self.tmax = self.tmin+(len(self.ydata)-1)*self.deltat
+        self.chain = None
 
     def data_len(self):
         if self.ydata is not None:
@@ -959,6 +961,62 @@ class Trace(object):
 
         .. seealso:: One application can be found in the Programming Examples section.
         """
+        def do_downsample(tr, deltat):
+            if abs(tr.deltat - deltat) / tr.deltat > 1e-6:
+                tr = tr.copy()
+                tr.downsample_to(deltat, snap=True, demean=False)
+
+            return tr
+
+        def do_extend(tr, tmin, tmax):
+            if tmin < tr.tmin or tmax > tr.tmax:
+                tr = tr.copy()
+                tr.extend(tmin=tmin, tmax=tmax, fillmethod='repeat')
+
+            return tr
+
+        def do_pre_taper(tr, taper):
+            tr = tr.copy()
+            tr.taper(taper)
+            return tr
+            
+        def do_fft(tr, filter):
+            if filter is None:
+                return tr
+            else:
+                ndata = tr.ydata.size
+                nfft = nextpow2(ndata)
+                padded = num.zeros(nfft, dtype=num.float)
+                padded[:ndata] = tr.ydata
+                spectrum = num.fft.rfft(padded)
+                df = 1.0 / (tr.deltat * nfft)
+                frequencies = num.arange(spectrum.size)*df
+                return [tr, frequencies, spectrum]
+
+        def do_filter(inp, filter):
+            if filter is None:
+                return inp
+            else:
+                tr, frequencies, spectrum = inp
+                spectrum *= filter.evaluate(frequencies)
+                return [tr, frequencies, spectrum]
+
+        def do_ifft(inp):
+            if isinstance(inp, Trace):
+                return inp
+            else:
+                tr, _, spectrum = inp
+                ndata = tr.ydata.size
+                tr = tr.copy(data=False)
+                tr.set_ydata(num.fft.irfft(spectrum)[:ndata])
+                return tr
+        self.chain = Chain(do_downsample, 
+                                  do_extend,
+                                  do_pre_taper,
+                                  do_fft,
+                                  do_filter,
+                                  do_ifft)
+
         if isinstance(setups, MisfitSetup):
             setups = [setups]
             single_setup = True            
@@ -966,110 +1024,68 @@ class Trace(object):
             single_setup = False
 
         for setup in setups:
-            norm = setup.norm
-            taper = setup.taper
-            domain = setup.domain
-            frequency_response = setup.frequency_response
-
             m = []
             n = []
-            reference_trace = self.copy()
-            ref_copy_is_new = True 
-            trace_hash = None
-            for cand in candidates:
-                if cand.tmax<self.tmin or cand.tmin>self.tmax:
-                    raise NoData('Trace %s, and candidate %s have no overlapping data.' % (self.nslc_id, cand.nslc_id))
+            reference = self.copy()
 
-                wanted_tmin = min(cand.tmin, reference_trace.tmin)-1
-                wanted_tmax = max(cand.tmax, reference_trace.tmax)+1
+            for candidate in candidates:
+                if candidate.tmax<self.tmin or candidate.tmin>self.tmax:
+                    raise NoData('Trace %s, and candidate %s have no overlapping data.' % (self.nslc_id, candidate.nslc_id))
 
-                try:
-                    candidate, reference_trace = equalize_sampling_rates(cand, reference_trace)
-                except UnavailableDecimation:
-                        logger.warning('Cannot downsample reference trace. Make sure, that all ' \
-                                'candidates can be downsampled to sampling rate of this ' \
-                                'trace (deltat=%s) et vice versai. m=None, n=None' % self.deltat)
-                        m.append(None)
-                        n.append(None)
-                        continue
+                wanted_deltat = max(candidate.deltat, reference.deltat)
+                wanted_tmin = min(candidate.tmin, reference.tmin) 
+                wanted_tmax = max(candidate.tmax, reference.tmax) 
 
-                if candidate is cand:
-                    candidate = cand.copy()
-                
-                if trace_hash != reference_trace.__hash__():
-                    reference_trace.snap(inplace=True)
+                if setup.domain=='time_domain':
+                    processed_candidate = self.chain((candidate, wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                (setup.filter,),
+                                                (), nocache=False)
 
-                candidate.snap(inplace=True)
+                    processed_reference = self.chain((reference, wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                (setup.filter,),
+                                                (), nocache=False)
 
-                if candidate.tmax < wanted_tmax or candidate.tmin > wanted_tmin:
-                    candidate.extend(tmin=wanted_tmin, 
-                                     tmax=wanted_tmax, 
-                                     fillmethod='repeat')
+                    mtmp, ntmp = Lx_norm(processed_reference.ydata, 
+                                         processed_candidate.ydata, 
+                                         norm=setup.norm)
 
-                if reference_trace.tmax < wanted_tmax or reference_trace.tmin > wanted_tmin:
-                    reference_trace = self.copy()
-                    try:
-                        reference_trace.downsample_to(candidate.deltat)
-                        reference_trace.snap()
+                    m.append(mtmp)
+                    n.append(ntmp)
 
-                    except UnavailableDecimation:
-                            logger.warning('Cannot downsample reference trace. Make sure, that all ' \
-                                    'candidates can be downsampled to sampling rate of this ' \
-                                    'trace (deltat=%s) et vice versa. m=None, n=None' % self.deltat)
-                            m.append(None)
-                            n.append(None)
-                            continue
-                    
-                    reference_trace.snap()
-                    reference_trace.extend(tmin=wanted_tmin,
-                                         tmax=wanted_tmax,
-                                         fillmethod='repeat')
+                elif setup.domain=='frequency_domain':
+                    cand, cand_f, cand_spec = self.chain((candidate, wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                nocache=False)
 
-                if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat * 1e-4 or \
-                        abs(reference_trace.tmax - candidate.tmax) > reference_trace.deltat * 1e-4 or \
-                        reference_trace.ydata.shape != candidate.ydata.shape:
-                            raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.'
-                                                                        % ('.'.join(reference_trace.nslc_id),
-                                                                            '.'.join(candidate.nslc_id)))
+                    ref, ref_f, ref_spec = self.chain((reference, wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                nocache=False)
 
-                candidate.taper(taper)
-                
-                ndata = reference_trace.ydata.size
-                pad_size = nextpow2(ndata)
-                test_pad = num.zeros(pad_size, dtype=num.float)
-                test_pad[:ndata] = candidate.ydata
-                test_fft = num.fft.rfft(test_pad)
+                    mtmp, ntmp = Lx_norm(ref_spec,
+                                         cand_spec,
+                                         norm=setup.norm)
+                    m.append(mtmp)
+                    n.append(ntmp)
 
-                if trace_hash != reference_trace.__hash__():
-                    freqs = num.arange(test_fft.size)*1/(test_pad.size*candidate.deltat)
-                    coeffs = frequency_response.evaluate(freqs)
-                    reference_trace.taper(taper) 
-
-                    reference_pad = num.zeros(pad_size, dtype=num.float)
-                    reference_pad[:ndata] = reference_trace.ydata
-                    reference_fft = num.fft.rfft(reference_pad)
-                    reference_fft *= coeffs               
-
-                test_fft *= coeffs
-
-                if domain == 'frequency_domain':
-                    m_tmp, n_tmp = Lx_norm(test_fft, reference_fft, norm=norm)
-                    m.append(m_tmp)
-                    n.append(n_tmp)
-
-                test_ifft = num.fft.irfft(test_fft)
-                reference_ifft = num.fft.irfft(reference_fft)
-
-                if domain == 'time_domain':
-                    m_tmp, n_tmp = Lx_norm(test_ifft, reference_ifft, norm=norm)
-                    m.append(m_tmp)
-                    n.append(n_tmp)
-
-                ref_copy_is_new = False
-                trace_hash = reference_trace.__hash__()
+                #if abs(reference_trace.tmin-candidate.tmin) > reference_trace.deltat * 1e-4 or \
+                #        abs(reference_trace.tmax - candidate.tmax) > reference_trace.deltat * 1e-4 or \
+                #        reference_trace.ydata.shape != candidate.ydata.shape:
+                #            raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.'
+                #                                                        % ('.'.join(reference_trace.nslc_id),
+                #                                                            '.'.join(candidate.nslc_id)))
 
                 if single_setup:
-                    yield m_tmp, n_tmp
+                    yield mtmp, ntmp
 
             if not single_setup:
                 yield m, n
@@ -2500,7 +2516,7 @@ class MisfitSetup(Object):
     norm = Int.T(optional=False)
     taper = Taper.T(optional=False)
     freqlimits = List.T(Float.T())
-    frequency_response = FrequencyResponse.T()
+    filter = FrequencyResponse.T()
     domain = String.T(default='time_domain')
 
 
