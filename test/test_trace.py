@@ -492,6 +492,39 @@ class TraceTestCase(unittest.TestCase):
         tstop = time.time()
         print tstop-tstart
 
+    def testMisfitBox(self):
+
+        ydata = num.zeros(9)
+        ydata[3:6] = 1.0
+
+        deltat= 0.5
+
+        tr = trace.Trace(
+            ydata=ydata,
+            deltat=0.5, tmin=0.0)
+
+        tshiftmin = - (tr.tmax - tr.tmin) * 2
+        tshiftmax = (tr.tmax - tr.tmin) * 2
+
+        tshifts = num.linspace(tshiftmin, tshiftmax, 
+                               int(round((tshiftmax-tshiftmin)/deltat))+1)
+
+        candidates = []
+        for tshift in tshifts:
+            trc = tr.copy()
+            trc.shift(tshift)
+            candidates.append(trc)
+
+        mfsetup = trace.MisfitSetup(
+            norm=2,
+            taper=trace.CosTaper(tr.tmin, tr.tmin, tr.tmax, tr.tmax),
+            domain='time_domain')
+
+        for ms, nn, in rt.misfit(candidadets=tts, setups=[mfsetup]):
+            print ms, nn
+
+
+
     def testValidateFrequencyResponses(self):
         ttrace = trace.Trace(ydata=num.random.random(1000))
         inverse_eval = trace.InverseEvalresp(respfile='test.txt',
