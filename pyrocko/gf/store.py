@@ -1,5 +1,7 @@
 
 import os, struct, math, shutil, fcntl, copy, logging, re
+import errno
+import time
 import logging
 
 import numpy as num
@@ -247,9 +249,8 @@ class Store_:
                 break
 
             except IOError, e:
-                if e.errno == errno.ENOLOCK:
+                if e.errno == errno.ENOLCK:
                     time.sleep(0.01)
-                    pass
                 else:
                     raise
 

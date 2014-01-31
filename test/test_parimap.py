@@ -108,8 +108,6 @@ class ParimapTestCase(unittest.TestCase):
         os.close(fos)
         os.remove(fn)
 
-        #time.sleep(0.01)
-
 if __name__ == '__main__':
     util.setup_logging('test_parimap', 'warning')
     unittest.main()
