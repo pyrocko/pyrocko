@@ -452,6 +452,8 @@ class TraceTestCase(unittest.TestCase):
         tts = []
         for i in range(100):
             tts.append(tt.copy())
+            tts[i].chop(tmin=rt.tmin+10, tmax=rt.tmax-15)
+
         for i in range(10):
             map(lambda t: t.shift(2.234*i), tts[(i-1)*10:(i*10)-1])
 
