@@ -241,7 +241,17 @@ class Store_:
 
     def lock(self):
         if not self._f_index: self.open()
-        fcntl.lockf(self._f_index, fcntl.LOCK_EX)
+        while True: 
+            try:
+                fcntl.lockf(self._f_index, fcntl.LOCK_EX)
+                break
+
+            except IOError, e:
+                if e.errno == errno.ENOLOCK:
+                    time.sleep(0.01)
+                    pass
+                else:
+                    raise
 
     def unlock(self):
         self._f_data.flush()

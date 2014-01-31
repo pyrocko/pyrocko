@@ -1,7 +1,8 @@
 import Queue
 import itertools, multiprocessing
+import traceback
 
-def worker(q_in,q_out,function):
+def worker(q_in, q_out, function, eprintignore):
     while True:
         i, args = q_in.get()
         if i is None:
@@ -11,13 +12,20 @@ def worker(q_in,q_out,function):
         try:
             r = function(*args)
         except Exception, e:
+            if eprintignore is not None and not isinstance(e, eprintignore):
+                traceback.print_exc()
             pass 
 
         q_out.put((i,r,e))
 
 def parimap(function, *iterables, **kwargs):
-    assert all( k in ('nprocs',) for k in kwargs.keys() )
+    assert all( k in ('nprocs', 'eprintignore') for k in kwargs.keys() )
+
     nprocs = kwargs.get('nprocs', None)
+    eprintignore = kwargs.get('eprintignore', 'all')
+
+    if eprintignore == 'all':
+        eprintignore = None
 
     if nprocs == 1:
         for r in itertools.imap(function, *iterables):
@@ -31,7 +39,7 @@ def parimap(function, *iterables, **kwargs):
     q_in   = multiprocessing.Queue(1)
     q_out  = multiprocessing.Queue()
 
-    proc = [multiprocessing.Process(target=worker, args=(q_in,q_out,function)) for _ in range(nprocs)]
+    proc = [multiprocessing.Process(target=worker, args=(q_in, q_out, function, eprintignore)) for _ in range(nprocs)]
     for p in proc:
         p.daemon = True
         p.start()

@@ -1,6 +1,10 @@
 
 import random, time
+import tempfile
+import os
+import fcntl
 import unittest
+import errno
 from pyrocko import util
 from pyrocko.parimap import parimap
 
@@ -40,7 +44,7 @@ class ParimapTestCase(unittest.TestCase):
 
                 return x+y
 
-            I1 = parimap(work, xrange(nx), xrange(ny), nprocs=nprocs)
+            I1 = parimap(work, xrange(nx), xrange(ny), nprocs=nprocs, eprintignore=Crash)
             I2 = imapemulation(work, xrange(nx), xrange(ny))
 
             while True:
@@ -67,6 +71,44 @@ class ParimapTestCase(unittest.TestCase):
 
                 if end1 or end2:
                     break
+
+    def test_locks(self):
+
+        def work(x):
+            assert os.path.exists(fn)
+            f = open(fn, 'a+')
+            while True:
+                try:
+                    fcntl.lockf(f, fcntl.LOCK_EX)
+                    break
+                except IOError, e:
+                    if e.errno == errno.ENOLCK:
+                        time.sleep(0.01)
+                        pass
+                    else:
+                        raise
+
+            f.seek(0)
+            assert '' == f.read()
+            f.write('%s' % x)
+            f.flush()
+            #time.sleep(0.01)
+            f.seek(0)
+            f.truncate(0)
+            fcntl.lockf(f, fcntl.LOCK_UN)
+            f.close()
+        
+        fos, fn = tempfile.mkstemp()#(dir='/try/with/nfs/mounted/dir')
+        f = open(fn, 'w')
+        f.close()
+        
+        for x in parimap(work, xrange(100), nprocs=10, eprintignore=()):
+            pass
+
+        os.close(fos)
+        os.remove(fn)
+
+        #time.sleep(0.01)
 
 if __name__ == '__main__':
     util.setup_logging('test_parimap', 'warning')
