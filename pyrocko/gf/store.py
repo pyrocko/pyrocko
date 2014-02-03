@@ -230,7 +230,18 @@ class Store_:
             self.mode = ''
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
 
-        dataheader = self._f_index.read(gf_store_header_fmt_size)
+        while True:
+            try:
+                dataheader = self._f_index.read(gf_store_header_fmt_size)
+                break
+
+            except IOError, e:
+                # occasionally got this one on an NFS volume
+                if e.errno == errno.EBUSY:
+                    time.sleep(0.01)
+                else:
+                    raise
+
         nrecords, deltat = struct.unpack(gf_store_header_fmt, dataheader)
         self._nrecords = nrecords
         self._deltat = deltat
