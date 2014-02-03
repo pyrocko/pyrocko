@@ -1005,9 +1005,12 @@ class Store(Store_):
         from pyrocko import cake
         config = self.config
 
+        if not config.tabulated_phases:
+            return
+
         mod = config.earthmodel_1d
         if not mod:
-            die('no earth model found')
+            raise StoreError('no earth model found')
 
         for pdef in config.tabulated_phases:
 
