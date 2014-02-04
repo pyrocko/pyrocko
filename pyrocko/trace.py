@@ -1056,8 +1056,10 @@ class Trace(object):
                 raise NoData('Trace %s, and candidate %s have no overlapping data.' % (self.nslc_id, candidate.nslc_id))
 
             wanted_deltat = max(candidate.deltat, self.deltat)
-            wanted_tmin = min(candidate.tmin, self.tmin) - max(candidate.deltat, self.deltat)
-            wanted_tmax = max(candidate.tmax, self.tmax) + max(candidate.deltat, self.deltat)
+            wanted_tmin = min(candidate.tmin, self.tmin) - max(candidate.deltat, 
+                                                                    self.deltat)
+            wanted_tmax = max(candidate.tmax, self.tmax) + max(candidate.deltat,
+                                                                    self.deltat)
 
             if setup.domain=='time_domain':
 
@@ -2576,14 +2578,16 @@ def equalize_sampling_rates(trace_1, trace_2):
 
 def Lx_norm(u, v, norm=2):
     '''
-    Calculate misfit values m, n according to norm.
+    Calculate the misfit denominator *m* and the normalization devisor *n* according 
+    to norm.
+    The normalization divisor *n* is calculated from *v*.
 
     :param u: :py:class:`numpy.array`
     :param v: :py:class:`numpy.array`
     :param norm: (default = 2)
 
-    u and v must be of same size. 
+    *u* and *v* must be of same size. 
     '''
-    return pow(sum(abs(pow(v - u, norm))), 1./norm), \
-           pow(sum(abs(v)), 1./norm)
+    return num.power(num.sum(abs(num.power(v - u, norm))), 1./norm), \
+           num.power(num.sum(abs(num.power(v, norm)), 1./norm)
 
