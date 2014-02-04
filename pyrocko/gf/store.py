@@ -298,7 +298,7 @@ class BaseStore:
         if not self._f_index:
             self.open()
 
-        while True: 
+        while True:
             try:
                 fcntl.lockf(self._f_index, fcntl.LOCK_EX)
                 break
