@@ -66,7 +66,6 @@ def parimap(function, *iterables, **kwargs):
             else:
                 all_written = True
                 [q_in.put((None,None)) for p in procs if p] 
-                [p.join() for p in procs if p]
 
         try:
             while nrun > 0:
@@ -93,7 +92,6 @@ def parimap(function, *iterables, **kwargs):
                     if e: 
                         if not all_written:
                             [q_in.put((None,None)) for p in procs if p]
-                            [p.join() for p in procs if p]
                         raise e
                     else:
                         yield r
@@ -105,3 +103,4 @@ def parimap(function, *iterables, **kwargs):
         if all_written and nrun == 0:
             break
 
+    [p.join() for p in procs if p]
