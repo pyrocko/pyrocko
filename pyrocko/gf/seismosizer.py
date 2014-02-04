@@ -448,10 +448,11 @@ class LocalEngine(Engine):
             if store_id not in self._id_to_store_dir:
                 self._id_to_store_dir[store_id] = store_dir
             else:
-                raise DuplicateStoreId(
-                    'GF store ID %s is used in (at least) two '
-                    'different stores. Locations are: %s and %s' %
-                    (store_id, self._id_to_store_dir[store_id], store_dir))
+                if store_dir != self._id_to_store_dir[store_id]:
+                    raise DuplicateStoreId(
+                        'GF store ID %s is used in (at least) two '
+                        'different stores. Locations are: %s and %s' %
+                        (store_id, self._id_to_store_dir[store_id], store_dir))
 
     def get_store_dir(self, store_id):
         '''
@@ -477,7 +478,7 @@ class LocalEngine(Engine):
             if self.default_store_id is None:
                 store_ids = self.get_store_ids()
                 if len(store_ids) == 1:
-                    self._effective_default_store_id = self.get_store_ids()
+                    self._effective_default_store_id = self.get_store_ids()[0]
                 else:
                     raise NoDefaultStoreSet()
             else:
