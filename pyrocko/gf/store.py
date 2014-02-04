@@ -101,7 +101,7 @@ class GFTrace:
         self.data = data
         self.itmin = itmin
         self.deltat = deltat
-        self.is_zero = is_zero or data is None or data.size == 0
+        self.is_zero = is_zero
 
         if data is not None and data.size > 0:
             if begin_value is None:
