@@ -39,11 +39,10 @@ def parimap(function, *iterables, **kwargs):
     q_in   = multiprocessing.Queue(1)
     q_out  = multiprocessing.Queue()
 
-    procs = [None for _ in range(nprocs)]
+    procs = []
 
     results = []
     nrun = 0
-    nstarted = 0
     nwritten = 0
     iout = 0
     all_written = False
@@ -53,19 +52,18 @@ def parimap(function, *iterables, **kwargs):
         if nrun < nprocs and not all_written and not error_ahead:
             args = tuple( it.next() for it in iterables )
             if len(args) == len(iterables):
-                if nstarted < nrun + 1:
+                if len(procs) < nrun + 1:
                     p = multiprocessing.Process(target=worker, args=(q_in, q_out, function, eprintignore))
                     p.daemon = True
                     p.start()
-                    procs[nstarted] = p
-                    nstarted += 1
+                    procs.append(p)
 
                 q_in.put((nwritten,args))
                 nwritten += 1
                 nrun += 1
             else:
                 all_written = True
-                [q_in.put((None,None)) for p in procs if p] 
+                [q_in.put((None,None)) for p in procs] 
 
         try:
             while nrun > 0:
