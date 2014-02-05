@@ -391,7 +391,7 @@ class Trace(object):
         
         return obj
     
-    def downsample(self, ndecimate, snap=False, initials=None, demean=True):
+    def downsample(self, ndecimate, snap=False, initials=None, demean=False):
         '''Downsample trace by a given integer factor.
         
         :param ndecimate: decimation factor, avoid values larger than 8
@@ -426,7 +426,7 @@ class Trace(object):
         
         return finals
         
-    def downsample_to(self, deltat, snap=False, allow_upsample_max=1, initials=None, demean=True):
+    def downsample_to(self, deltat, snap=False, allow_upsample_max=1, initials=None, demean=False):
         '''Downsample to given sampling rate.
 
         Tries to downsample the trace to a target sampling interval of
