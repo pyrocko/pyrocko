@@ -466,7 +466,10 @@ class Trace(object):
                  xinitials = None
                  if initials is not None:
                      xinitials = initials[i]
-                 finals.append(self.downsample(ndecimate, snap=snap, initials=xinitials, demean=demean))
+                 finals.append(self.downsample(ndecimate, 
+                                               snap=snap, 
+                                               initials=xinitials, 
+                                               demean=demean))
 
         if initials is not None:
             return finals
@@ -945,7 +948,7 @@ class Trace(object):
             output.ydata = output.ydata.copy()
         return output
 
-    def misfit(self, candidate, setups):
+    def misfit(self, candidates, setups):
         """
         Generator function, yielding misfit values m and normalization divisors n.
 
@@ -967,7 +970,7 @@ class Trace(object):
                 tr = tr.copy()
                 tr.downsample_to(deltat, snap=True, demean=False)
             else:
-                if tr.tmin/tr.deltat<1e-6 or tr.tmax/tr.deltat<1e-6:
+                if tr.tmin/tr.deltat>1e-6 or tr.tmax/tr.deltat>1e-6:
                     tr = tr.copy()
                     tr.snap()
             return tr
@@ -976,12 +979,7 @@ class Trace(object):
             if tmin < tr.tmin or tmax > tr.tmax:
                 tr = tr.copy()
                 tr.extend(tmin=tmin, tmax=tmax, fillmethod='repeat')
-                tr.snap()
 
-            return tr
-
-        def do_snap(tr):
-            tr.snap()
             return tr
 
         def do_pre_taper(tr, taper):
@@ -1024,13 +1022,12 @@ class Trace(object):
             if abs(t1.tmin-t2.tmin) > t1.deltat * 1e-4 or \
                     abs(t1.tmax - t2.tmax) > t1.deltat * 1e-4 or \
                     t1.ydata.shape != t2.ydata.shape:
-                        raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.' % ('.'.join(t1.nslc_id), '.'.join(t2.nslc_id)))
+                        raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.' %\
+                                ('.'.join(t1.nslc_id), '.'.join(t2.nslc_id)))
 
         def init_chain(tr):
             tr._pchain = Chain(do_downsample, 
-                           do_snap,
                            do_extend,
-                           do_snap,
                            do_pre_taper,
                            do_fft,
                            do_filter,
@@ -1048,74 +1045,67 @@ class Trace(object):
         for setup in setups:
             m = []
             n = []
+            for candidate in candidates:
 
-            if not candidate._pchain:
-                init_chain(candidate)
-            
-            if candidate.tmax<self.tmin or candidate.tmin>self.tmax:
-                raise NoData('Trace %s, and candidate %s have no overlapping data.' % (self.nslc_id, candidate.nslc_id))
+                if not candidate._pchain:
+                    init_chain(candidate)
+                
+                if candidate.tmax<self.tmin or candidate.tmin>self.tmax:
+                    raise NoData('Trace %s, and candidate %s have no'\
+                        + ' overlapping data.' % (self.nslc_id, candidate.nslc_id))
 
-            wanted_deltat = max(candidate.deltat, self.deltat)
-            wanted_tmin = min(candidate.tmin, self.tmin) - max(candidate.deltat, 
-                                                                    self.deltat)
-            wanted_tmax = max(candidate.tmax, self.tmax) + max(candidate.deltat,
-                                                                    self.deltat)
+                wanted_deltat = max(candidate.deltat, self.deltat)
+                wanted_tmin = min(candidate.tmin, self.tmin) -\
+                                              max(candidate.deltat, self.deltat)
+                wanted_tmax = max(candidate.tmax, self.tmax) +\
+                                              max(candidate.deltat, self.deltat)
 
-            if setup.domain=='time_domain':
+                if setup.domain=='time_domain':
+                    processed_candidate = candidate._pchain((candidate, 
+                                                                wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                (setup.filter,),
+                                                (), nocache=False)
 
-                processed_candidate = candidate._pchain((candidate, 
-                                                            wanted_deltat),
-                                            (),
-                                            (wanted_tmin, wanted_tmax),
-                                            (),
-                                            (setup.taper,),
-                                            (setup.filter,),
-                                            (setup.filter,),
-                                            (), nocache=False)
+                    processed_reference = self._pchain((self, wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                (setup.filter,),
+                                                (), nocache=False)
 
-                processed_reference = self._pchain((self, wanted_deltat),
-                                            (),
-                                            (wanted_tmin, wanted_tmax),
-                                            (),
-                                            (setup.taper,),
-                                            (setup.filter,),
-                                            (setup.filter,),
-                                            (), nocache=False)
+                    check_alignment(processed_candidate, processed_reference)
 
-                check_alignment(processed_candidate, processed_reference)
+                    mtmp, ntmp = Lx_norm(processed_reference.ydata, 
+                                         processed_candidate.ydata, 
+                                         norm=setup.norm)
 
-                mtmp, ntmp = Lx_norm(processed_reference.ydata, 
-                                     processed_candidate.ydata, 
-                                     norm=setup.norm)
+                    m.append(mtmp)
+                    n.append(ntmp)
 
-                m.append(mtmp)
-                n.append(ntmp)
+                elif setup.domain=='frequency_domain':
+                    cand, cand_f, cand_spec = candidate._pchain((candidate, 
+                                                                wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                nocache=False)
 
-            elif setup.domain=='frequency_domain':
-                cand, cand_f, cand_spec = candidate._pchain((candidate, wanted_deltat),
-                                            (),
-                                            (wanted_tmin, wanted_tmax),
-                                            (),
-                                            (setup.taper,),
-                                            (setup.filter,),
-                                            nocache=False)
+                    ref, ref_f, ref_spec = self._pchain((self, wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                nocache=False)
 
-                ref, ref_f, ref_spec = self._pchain((self, wanted_deltat),
-                                            (),
-                                            (wanted_tmin, wanted_tmax),
-                                            (),
-                                            (setup.taper,),
-                                            (setup.filter,),
-                                            nocache=False)
+                    mtmp, ntmp = Lx_norm(ref_spec, cand_spec, norm=setup.norm)
 
-                mtmp, ntmp = Lx_norm(ref_spec,
-                                     cand_spec,
-                                     norm=setup.norm)
-                m.append(mtmp)
-                n.append(ntmp)
+                    m.append(mtmp)
+                    n.append(ntmp)
 
-            if single_setup:
-                yield mtmp, ntmp
+                if single_setup:
+                    yield mtmp, ntmp
 
             if not single_setup:
                 yield m, n
@@ -2546,7 +2536,7 @@ class MisfitSetup(Object):
     norm = Int.T(optional=False)
     taper = Taper.T(optional=False)
     freqlimits = List.T(Float.T())
-    filter = FrequencyResponse.T()
+    filter = FrequencyResponse.T(optional=True)
     domain = String.T(default='time_domain')
 
 
@@ -2589,5 +2579,4 @@ def Lx_norm(u, v, norm=2):
     *u* and *v* must be of same size. 
     '''
     return num.power(num.sum(abs(num.power(v - u, norm))), 1./norm), \
-           num.power(num.sum(abs(num.power(v, norm)), 1./norm)
-
+           num.power(num.sum(abs(num.power(v, norm))), 1./norm)
