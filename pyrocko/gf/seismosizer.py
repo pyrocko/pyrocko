@@ -423,8 +423,7 @@ class SeismosizerTrace(Object):
     codes = Tuple.T(
         4, String.T(),
         default=('', 'STA', '', 'Z'),
-        help='network, station, location and channel codes to be set on '
-             'the response trace.')
+        help='network, station, location and channel codes')
 
     data = Array.T(
         shape=(None,),
@@ -624,6 +623,11 @@ class LocalEngine(Engine):
             data=data,
             deltat=deltat,
             tmin=base_seismogram[0].itmin * deltat + source.time)
+
+        tr.taper(target.pre_taper)
+        tr.transfer(source.stf, target.filter)
+        tr.taper(target.post_taper)
+        tr.chop(target.tmin, target.tmax)
 
         return tr
 

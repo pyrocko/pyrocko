@@ -180,6 +180,9 @@ class CannotOpen(StoreError):
 class DuplicateInsert(StoreError):
     pass
 
+class ShortRead(StoreError):
+    def __str__(self):
+        return 'unexpected end of data (truncated traces file?)'
 
 class NotAllowedToInterpolate(StoreError):
     def __str__(self):
@@ -679,7 +682,10 @@ class BaseStore:
                 return data_orig[ilo:ihi]
             else:
                 self._f_data.seek(int(ipos + ilo*gf_dtype_nbytes_per_sample))
-                return num.fromfile(self._f_data, gf_dtype, ihi-ilo)
+                arr = num.fromfile(self._f_data, gf_dtype, ihi-ilo)
+                if arr.size != ihi-ilo:
+                    raise ShortRead()
+                return arr
         else:
             return num.empty((0,), dtype=gf_dtype)
 
@@ -696,11 +702,25 @@ class BaseStore:
         return num.histogram(self._records['data_offset'],
                              bins=[0, 1, 2, 3, num.uint64(-1)])[0]
 
+    @property
+    def size_index(self):
+        return os.stat(self.index_fn()).st_size
+
+    @property
+    def size_data(self):
+        return os.stat(self.data_fn()).st_size
+
+    @property
+    def size_index_and_data(self):
+        return self.size_index + self.size_data
+
+    @property
+    def size_index_and_data_human(self):
+        return util.human_bytesize(self.size_index_and_data)
+
     def stats(self):
         counter = self.count_special_records()
 
-        sdata = os.stat(self.data_fn()).st_size
-        sindex = os.stat(self.index_fn()).st_size
 
         stats = dict(
             total=self._nrecords,
@@ -708,8 +728,8 @@ class BaseStore:
             empty=counter[0],
             short=counter[2],
             zero=counter[1],
-            size_data=sdata,
-            size_index=sindex,
+            size_data=self.size_data,
+            size_index=self.size_index,
         )
 
         return stats

@@ -12,6 +12,7 @@ from pyrocko import cake, orthodrome, spit
 
 d2r = math.pi / 180.
 r2d = 1.0 / d2r
+km = 1000.
 
 
 class Earthmodel1D(Object):
@@ -693,6 +694,8 @@ class Config(Object):
 
         return out
 
+    def short_info(self):
+        raise NotImplemented('should be implemented in subclass')
 
 class ConfigTypeA(Config):
     '''Cylindrical symmetry, fixed receiver depth
@@ -785,6 +788,17 @@ Index variables are (source_depth, distance, component).'''
         return (num.tile(source.depths, nc/n),
                 num.tile(dists, nc/n),
                 icomponents)
+
+    @property
+    def short_info(self):
+        return 'Type A (%g:%g:%g x %g:%g:%g) km @ %g Hz' % (
+            self.source_depth_min/km,
+            self.source_depth_max/km,
+            self.source_depth_delta/km,
+            self.distance_min/km,
+            self.distance_max/km,
+            self.distance_delta/km,
+            self.sample_rate)
 
 
 class ConfigTypeB(Config):
@@ -896,6 +910,20 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
                 num.tile(source.depths, nc/n),
                 num.tile(dists, nc/n),
                 icomponents)
+
+    @property
+    def short_info(self):
+        return 'Type B (%g:%g:%g x %g:%g:%g x %g:%g:%g) km @ %g Hz' % (
+            self.receiver_depth_min/km,
+            self.receiver_depth_max/km,
+            self.receiver_depth_delta/km,
+            self.source_depth_min/km,
+            self.source_depth_max/km,
+            self.source_depth_delta/km,
+            self.distance_min/km,
+            self.distance_max/km,
+            self.distance_delta/km,
+            self.sample_rate)
 
 
 class Weighting(Object):

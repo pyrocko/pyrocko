@@ -1062,3 +1062,19 @@ def gform( number, significant_digits=3 ):
     s = (' '*(-s.find('.')+(significant_digits+1))+s).ljust(width)
     return s
 
+
+def human_bytesize(value):
+    
+    exts = 'Bytes kB MB GB TB PB EB ZB YB'.split()
+
+    if value == 1:
+        return '1 Byte'
+
+    for i, ext in enumerate(exts):
+        x = float(value) / 1000**i
+        if round(x) < 10. and not value < 1000:
+            return '%.1f %s' % (x, ext)
+        if round(x) < 1000.:
+            return '%.0f %s' % (x, ext)
+
+    return '%i Bytes' % value
