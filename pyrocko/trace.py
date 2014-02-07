@@ -1051,8 +1051,8 @@ class Trace(object):
                     init_chain(candidate)
                 
                 if candidate.tmax<self.tmin or candidate.tmin>self.tmax:
-                    raise NoData('Trace %s, and candidate %s have no'\
-                        + ' overlapping data.' % (self.nslc_id, candidate.nslc_id))
+                    raise NoData('Trace %s, and candidate %s have no overlapping data.' %\
+                                        (self.nslc_id, candidate.nslc_id))
 
                 wanted_deltat = max(candidate.deltat, self.deltat)
                 wanted_tmin = min(candidate.tmin, self.tmin) -\
@@ -2535,7 +2535,6 @@ class MisfitSetup(Object):
     description = String.T(optional=True)
     norm = Int.T(optional=False)
     taper = Taper.T(optional=False)
-    freqlimits = List.T(Float.T())
     filter = FrequencyResponse.T(optional=True)
     domain = String.T(default='time_domain')
 

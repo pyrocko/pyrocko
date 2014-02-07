@@ -416,7 +416,7 @@ class TraceTestCase(unittest.TestCase):
         ytest= num.array([-1., 0.3, -0.3, 1., 0.2])
         m, n = trace.Lx_norm(ytest, yref, norm=1)
         self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
-        self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
+        self.assertEqual(n, 4.8, 'L1-norm: n is not 4.8, but %s' % str(n))
 
     def testMisfitOfSameTracesZero(self):
         y = num.random.random(10000)
@@ -424,24 +424,23 @@ class TraceTestCase(unittest.TestCase):
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         ttraces = [t2]
-        #taper = trace.GaussTaper(alpha=2.)
         fresponse = trace.FrequencyResponse()
         taper = trace.CosFader(xfade=2.)
         mfsetup = trace.MisfitSetup(
             norm=2,
             taper=taper,
             domain='time_domain',
-            freqlimits=(1, 2, 20, 40),
             filter=fresponse)
-        for m, n in t1.misfit( candidates=ttraces, setups= [mfsetup]):
+        for m, n in t1.misfit( candidates=ttraces, setups= mfsetup):
             self.assertEqual(m, 0., 'misfit\'s m is not zero, but m = %s and n = %s'
                                                                     % (m,n))
 
     def testMisfitOfSameTracesDtDifferentShifted(self):
         """
-        Verify that two equal traces produce a zero misfit even if their sampling 
-        rate differs or if they are shifted.
         Tests:
+            Different length
+            Different delta t
+            Shifted
             L2-Norm
             L1-Norm
             time- and frequency-domain 
@@ -459,8 +458,8 @@ class TraceTestCase(unittest.TestCase):
         [t.downsample_to(deltats[i]) for i, t in enumerate(tts)]
         
         # shift traces:
-        t_shifts = [1.0, 49999, 0.5]
-        for ts in tshifts:
+        t_shifts = [1.0, 0.49999, 0.5]
+        for ts in t_shifts:
             tts_shifted = [t.copy() for t in tts]
             map(lambda x: x.shift(ts), tts_shifted)
             tts.extend(tts_shifted)
@@ -477,7 +476,6 @@ class TraceTestCase(unittest.TestCase):
         setups = [trace.MisfitSetup(norm=n,
                                     taper=taper,
                                     domain=domain,
-                                    freqlimits=(1,2,20,40),
                                     filter=fresponse) for domain in domains 
                                                         for n in norms]
 
