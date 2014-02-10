@@ -1078,8 +1078,8 @@ class Trace(object):
 
                     check_alignment(processed_candidate, processed_reference)
 
-                    mtmp, ntmp = Lx_norm(processed_reference.ydata, 
-                                         processed_candidate.ydata, 
+                    mtmp, ntmp = Lx_norm(processed_candidate.ydata, 
+                                         processed_reference.ydata, 
                                          norm=setup.norm)
 
                     m.append(mtmp)
@@ -1099,7 +1099,7 @@ class Trace(object):
                                                 (setup.filter,),
                                                 nocache=False)
 
-                    mtmp, ntmp = Lx_norm(ref_spec, cand_spec, norm=setup.norm)
+                    mtmp, ntmp = Lx_norm(cand_spec, ref_spec, norm=setup.norm)
 
                     m.append(mtmp)
                     n.append(ntmp)
