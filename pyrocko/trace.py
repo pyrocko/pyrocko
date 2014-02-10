@@ -1050,8 +1050,9 @@ class Trace(object):
                 if not candidate._pchain:
                     init_chain(candidate)
                 
-                if candidate.tmax<self.tmin or candidate.tmin>self.tmax:
-                    raise NoData('Trace %s, and candidate %s have no overlapping data.' %\
+                if (candidate.tmax<self.tmin or candidate.tmin>self.tmax) and \
+                    setup.domain=='time_domain':
+                    raise NoData('Trace %s, and candidate %s have no overlapping data.'%\
                                         (self.nslc_id, candidate.nslc_id))
 
                 wanted_deltat = max(candidate.deltat, self.deltat)
