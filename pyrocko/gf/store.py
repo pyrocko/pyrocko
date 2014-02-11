@@ -9,6 +9,7 @@ import fcntl
 import copy
 import logging
 import re
+import progressbar
 
 import numpy as num
 from scipy import signal
@@ -998,9 +999,12 @@ class Store(BaseStore):
     stats_keys = BaseStore.stats_keys + ['decimated']
 
     def check(self):
+        nodes = list(self.config.iter_nodes())
+        pbar = progressbar.ProgressBar(maxval=len(nodes)).start()
 
         problems = 0
-        for args in self.config.iter_nodes():
+        for i,args in enumerate(nodes):
+            pbar.update(i)
             tr = self.get(args)
             if tr and not tr.is_zero:
                 if not tr.begin_value == tr.data[0]:
@@ -1014,6 +1018,9 @@ class Store(BaseStore):
                 if not num.all(num.isfinite(tr.data)):
                     logger.warn('nans or infs in trace at %s' % str(args))
                     problems += 1
+        
+        pbar.update(i+1)
+        pbar.finish()
 
         return problems
 
