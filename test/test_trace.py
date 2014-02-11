@@ -1,6 +1,7 @@
 from pyrocko import trace, util, model, pile
 import unittest, math, time, os
 import numpy as num
+import copy
 
 sometime = 1234567890.
 d2r = num.pi/180.
@@ -20,7 +21,7 @@ class TraceTestCase(unittest.TestCase):
         n = int(tlen/dt)
         f = 0.5
         tfade = tlen/10.
-        
+      
         xdata = num.arange(n)*dt
         ydata = num.sin(xdata*2.*num.pi*f)
         a = trace.Trace(channel='A', deltat=dt, ydata=ydata)
@@ -415,7 +416,7 @@ class TraceTestCase(unittest.TestCase):
         ytest= num.array([-1., 0.3, -0.3, 1., 0.2])
         m, n = trace.Lx_norm(ytest, yref, norm=1)
         self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
-        self.assertEqual(n, 4.8, 'L1-norm: m is not 4.8, but %s' % str(n))
+        self.assertEqual(n, 4.8, 'L1-norm: n is not 4.8, but %s' % str(n))
 
     def testMisfitOfSameTracesZero(self):
         y = num.random.random(10000)
@@ -423,72 +424,64 @@ class TraceTestCase(unittest.TestCase):
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         ttraces = [t2]
-        #taper = trace.GaussTaper(alpha=2.)
         fresponse = trace.FrequencyResponse()
         taper = trace.CosFader(xfade=2.)
         mfsetup = trace.MisfitSetup(
             norm=2,
             taper=taper,
             domain='time_domain',
-            freqlimits=(1, 2, 20, 40),
             filter=fresponse)
         for m, n in t1.misfit( candidates=ttraces, setups= mfsetup):
-            self.assertEqual(m, 0., 'misfit\'s m is not zero, but m = %s and n = %s' % (m,n))
-        del mfsetup
+            self.assertEqual(m, 0., 'misfit\'s m is not zero, but m = %s and n = %s'
+                                                                    % (m,n))
 
     def testMisfitOfSameTracesDtDifferentShifted(self):
         """
-        Verify that two equal traces produce a zero misfit even if their sampling rate differs.
         Tests:
+            Different length
+            Different delta t
+            Shifted
             L2-Norm
             L1-Norm
             time- and frequency-domain 
         """
-        test_file = os.path.join(os.path.dirname(__file__), '../examples/1989.072.evt.mseed')
+        test_file = os.path.join(os.path.dirname(__file__), 
+                '../examples/1989.072.evt.mseed')
         p = pile.make_pile(test_file, show_progress=False)
         rt = p.all()[0]
         tt = rt.copy()
-        tt.downsample_to(rt.deltat*5)
-        tts = []
-        for i in range(100):
-            tts.append(tt.copy())
-            tts[i].chop(tmin=rt.tmin+10, tmax=rt.tmax-15)
 
-        for i in range(10):
-            map(lambda t: t.shift(2.234*i), tts[(i-1)*10:(i*10)-1])
+        # make downsampled, chopped copies:
+        deltats = [0.5, 1.0, 2.0]
+        tt.chop(tmin=rt.tmin+10, tmax=rt.tmax-15)
+        tts = [tt.copy() for i in range(len(deltats))]
+        [t.downsample_to(deltats[i]) for i, t in enumerate(tts)]
+        
+        # shift traces:
+        t_shifts = [1.0, 0.49999, 0.5]
+        for ts in t_shifts:
+            tts_shifted = [t.copy() for t in tts]
+            map(lambda x: x.shift(ts), tts_shifted)
+            tts.extend(tts_shifted)
 
-        taper1 = trace.CosFader(xfade=rt.deltat*300)
+        a = rt.tmin
+        d = rt.tmax
+        b = a+(d-a)/10
+        c = d-(d-a)/10
+
+        taper = trace.CosTaper(a,b,c,d)
         fresponse = trace.FrequencyResponse()
+        norms = [1,2]
+        domains = ['time_domain', 'frequency_domain']
+        setups = [trace.MisfitSetup(norm=n,
+                                    taper=taper,
+                                    domain=domain,
+                                    filter=fresponse) for domain in domains 
+                                                        for n in norms]
 
-        mfsetup1 = trace.MisfitSetup(norm=2,
-                                     taper=taper1,
-                                     domain='time_domain',
-                                     freqlimits=(1,2,20,40),
-                                     filter=fresponse)
-
-        mfsetup2 = trace.MisfitSetup(norm=1,
-                                     taper=taper1,
-                                     domain='time_domain',
-                                     freqlimits=(1,2,20,40),
-                                     filter=fresponse)
-        mfsetup3 = trace.MisfitSetup(norm=2,
-                                     taper=taper1,
-                                     domain='frequency_domain',
-                                     freqlimits=(1,2,20,40),
-                                     filter=fresponse)
-        mfsetup4 = trace.MisfitSetup(norm=2,
-                                     taper=taper1,
-                                     domain='frequency_domain',
-                                     freqlimits=(1,2,20,40),
-                                     filter=fresponse)
-
-        tstart = time.time()
-        for ms, nn in rt.misfit( candidates=tts , setups=[mfsetup1,
-                                                               mfsetup2,
-                                                               mfsetup3,
-                                                               mfsetup4]):
+        for ms, nn in rt.misfit( candidates=tts , setups=setups ):
             for m in ms:
-                self.assertNotEqual(m, None, 'misfit\'s m is not zero, but m = %s' % m)
+                self.assertNotEqual(m, None, 'misfit\'s m is None')
 
     def testMisfitBox(self):
 
@@ -518,7 +511,7 @@ class TraceTestCase(unittest.TestCase):
             taper=trace.CosTaper(tr.tmin, tr.tmin, tr.tmax, tr.tmax),
             domain='time_domain')
 
-        for ms, nn, in rt.misfit(candidadets=tts, setups=[mfsetup]):
+        for ms, nn, in rt.misfit(candidadtes=tts, setups=[mfsetup]):
             print ms, nn
 
 
