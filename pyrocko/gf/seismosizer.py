@@ -5,7 +5,8 @@ pjoin = os.path.join
 
 import numpy as num
 
-from guts import Object, Float, String, StringChoice, List, Tuple, Timestamp
+from guts import Object, Float, String, StringChoice, List, Tuple, Timestamp, \
+    Int
 
 from guts_array import Array
 
@@ -174,23 +175,107 @@ class MTSource(Source):
         default=0.,
         help='east-down component of moment tensor in [Nm]')
 
+    def __init__(self, **kwargs):
+        if 'm6' in kwargs:
+            for (k, v) in zip('mnn mee mdd mne mnd med'.split(),
+                              kwargs.pop('m6')):
+                kwargs[k] = float(v)
+
+        Source.__init__(self, **kwargs)
+
     @property
     def m6(self):
-        return num.array((self.mnn, self.mee, self.mdd,
-                          self.mne, self.mnd, self.med))
+        return num.array(self.m6_astuple)
+
+    @property
+    def m6_astuple(self):
+        return (self.mnn, self.mee, self.mdd, self.mne, self.mnd, self.med)
 
     @m6.setter
     def m6(self, value):
         self.mnn, self.mee, self.mdd, self.mne, self.mnd, self.med = value
 
     def base_key(self):
-        return Source.base_key(self) + self.m6()
+        return Source.base_key(self) + self.m6_astuple
 
     def get_factor(self):
         return 1.0
 
     def discretize_basesource(self, store):
-        return meta.DiscretizedMTSource(m6s=self.m6[num.newaxis, :])
+        return meta.DiscretizedMTSource(m6s=self.m6[num.newaxis, :],
+                                        **self._dparams_base())
+
+
+class RingfaultSource(SourceWithMagnitude):
+    '''A ring fault with vertical doublecouples.'''
+
+    diameter = Float.T(
+        default=1.0,
+        help='diameter of the ring in [m]')
+
+    sign = Float.T(
+        default=1.0,
+        help='inside of the ring moves up (+1) or down (-1)')
+
+    strike = Float.T(
+        default=0.0,
+        help='strike direction of the ring plane, clockwise from north,'
+             ' in [deg]')
+
+    dip = Float.T(
+        default=0.0,
+        help='dip angle of the ring plane from horizontal in [deg]')
+
+    npointsources = Int.T(
+        default=360,
+        help='number of point sources to use')
+
+    def base_key(self):
+        return Source.base_key(self) + (self.strike, self.dip, self.diameter)
+
+    def get_factor(self):
+        return self.sign * self.moment
+
+    def discretize_basesource(self, store=None):
+        n = self.npointsources
+        phi = num.linspace(0, 2.0*num.pi, n, endpoint=False)
+
+        points = num.zeros((n, 3))
+        points[:, 0] = num.cos(phi) * 0.5 * self.diameter
+        points[:, 1] = num.sin(phi) * 0.5 * self.diameter
+
+        rotmat = num.array(mt.euler_to_matrix(
+            self.dip*d2r, self.strike*d2r, 0.0))
+        points = num.dot(rotmat.T, points.T).T  # !!! ?
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+
+        m = num.array(mt.MomentTensor(strike=90., dip=90., rake=-90.,
+                                      scalar_moment=1.0/n).m())
+
+        rotmats = num.transpose(
+            [[num.cos(phi), num.sin(phi), num.zeros(n)],
+             [-num.sin(phi), num.cos(phi), num.zeros(n)],
+             [num.zeros(n), num.zeros(n), num.ones(n)]], (2, 0, 1))
+
+        ms = num.zeros((n, 3, 3))
+        for i in xrange(n):
+            mtemp = num.dot(rotmats[i].T, num.dot(m, rotmats[i]))
+            ms[i, :, :] = num.dot(rotmat.T, num.dot(mtemp, rotmat))
+
+        m6s = num.vstack((ms[:, 0, 0], ms[:, 1, 1], ms[:, 2, 2],
+                          ms[:, 0, 1], ms[:, 0, 2], ms[:, 1, 2])).T
+
+        return meta.DiscretizedMTSource(
+            times=num.zeros(n),
+            lat=self.lat,
+            lon=self.lon,
+            north_shifts=points[:, 0],
+            east_shifts=points[:, 1],
+            depths=points[:, 2],
+            m6s=m6s)
 
 
 class Target(meta.Receiver):
@@ -596,6 +681,7 @@ SourceWithMagnitude
 ExplosionSource
 DCSource
 MTSource
+RingfaultSource
 Target
 Reduction
 Request

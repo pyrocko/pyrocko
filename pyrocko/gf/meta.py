@@ -424,7 +424,13 @@ class DiscretizedSource(Object):
     def effective_latlons(self):
         if self._latlons is None:
             if self.lats is not None and self.lons is not None:
-                self._latlons = self.lats, self.lons
+                if (self.north_shifts is not None and
+                        self.east_shifts is not None):
+                    self._latlons = orthodrome.ne_to_latlon(
+                        self.lats, self.lons,
+                        self.north_shifts, self.east_shifts)
+                else:
+                    self._latlons = self.lats, self.lons
             else:
                 lat = g(self.lat, 0.0)
                 lon = g(self.lon, 0.0)
@@ -462,6 +468,27 @@ class DiscretizedSource(Object):
             return orthodrome.distance_accurate50m_numpy(slats, slons,
                                                          rlat, rlon)
 
+    def element_coords(self, i):
+        if self.lats is not None and self.lons is not None:
+            lat = float(self.lats[i])
+            lon = float(self.lons[i])
+        else:
+            lat = self.lat
+            lon = self.lon
+
+        if self.north_shifts is not None and self.east_shifts is not None:
+            north_shift = float(self.north_shifts[i])
+            east_shift = float(self.east_shifts[i])
+
+        else:
+            north_shift = east_shift = None
+
+        return lat, lon, north_shift, east_shift
+
+    @property
+    def nelements(self):
+        return self.times.size
+
 
 class DiscretizedExplosionSource(DiscretizedSource):
     m0s = Array.T(shape=(None,), dtype=num.float)
@@ -495,6 +522,22 @@ class DiscretizedExplosionSource(DiscretizedSource):
             assert False
 
         return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
+
+    def split(self):
+        from pyrocko.gf.seismosizer import ExplosionSource
+        sources = []
+        for i in xrange(self.nelements):
+            lat, lon, north_shift, east_shift = self.element_coords(i)
+            sources.append(ExplosionSource(
+                time=float(self.times[i]),
+                lat=lat,
+                lon=lon,
+                north_shift=north_shift,
+                east_shift=east_shift,
+                depth=float(self.depths[i]),
+                moment=float(self.m0s[i])))
+
+        return sources
 
 
 class DiscretizedMTSource(DiscretizedSource):
@@ -533,6 +576,22 @@ class DiscretizedMTSource(DiscretizedSource):
         g_u = num.repeat((5, 6, 7, 9), n)
 
         return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
+
+    def split(self):
+        from pyrocko.gf.seismosizer import MTSource
+        sources = []
+        for i in xrange(self.nelements):
+            lat, lon, north_shift, east_shift = self.element_coords(i)
+            sources.append(MTSource(
+                time=float(self.times[i]),
+                lat=lat,
+                lon=lon,
+                north_shift=north_shift,
+                east_shift=east_shift,
+                depth=float(self.depths[i]),
+                m6=self.m6s[i]))
+
+        return sources
 
 
 class ComponentSchemes(StringChoice):
@@ -629,7 +688,7 @@ class Config(Object):
                 self.component_scheme):
 
             args = self.make_indexing_args(source, receiver, icomponents)
-            delays_expanded = num.repeat(delays, icomponents.size)
+            delays_expanded = num.tile(delays, icomponents.size/delays.size)
             out.append((comp, args, delays_expanded, weights))
 
         return out
@@ -723,9 +782,9 @@ Index variables are (source_depth, distance, component).'''
         nc = icomponents.size
         dists = source.distances_to(receiver)
         n = dists.size
-        return (num.repeat(source.depths, nc),
-                num.repeat(dists, nc),
-                num.tile(icomponents, n))
+        return (num.tile(source.depths, nc/n),
+                num.tile(dists, nc/n),
+                icomponents)
 
 
 class ConfigTypeB(Config):
@@ -831,9 +890,12 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
         nc = icomponents.size
         dists = source.distances_to(receiver)
         n = dists.size
-        return (num.repeat(receiver.depth, n*nc),
-                num.repeat(source.depths, nc),
-                num.repeat(dists, nc), num.tile(icomponents, n))
+        receiver_depths = num.empty(nc)
+        receiver_depths.fill(receiver.depth)
+        return (receiver_depths,
+                num.tile(source.depths, nc/n),
+                num.tile(dists, nc/n),
+                icomponents)
 
 
 class Weighting(Object):
