@@ -625,9 +625,14 @@ class Trace(object):
         self.drop_growbuffer()
         self.ydata = num.abs(hilbert(self.ydata))
     
-    def envelope(self):
-        self.drop_growbuffer()
-        self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
+    def envelope(self, inplace=True):
+        if inplace:
+            self.drop_growbuffer()
+            self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
+        else:
+            tr = self.copy(data=False)
+            tr.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
+            return tr
 
     def taper(self, taperer):
         taperer(self.ydata, self.tmin, self.deltat)
@@ -1043,6 +1048,8 @@ class Trace(object):
             single_setup = False
 
         for setup in setups:
+            r_data = []
+            c_data = []
             m = []
             n = []
             for candidate in candidates:
@@ -1061,7 +1068,26 @@ class Trace(object):
                 wanted_tmax = max(candidate.tmax, self.tmax) +\
                                               max(candidate.deltat, self.deltat)
 
-                if setup.domain=='time_domain':
+                if setup.domain=='frequency_domain':
+                    cand, cand_f, cand_data = candidate._pchain((candidate, 
+                                                                wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                (setup.filter,),
+                                                nocache=False)
+
+                    ref, ref_f, ref_data = self._pchain((self, wanted_deltat),
+                                                (wanted_tmin, wanted_tmax),
+                                                (setup.taper,),
+                                                (setup.filter,),
+                                                (setup.filter,),
+                                                nocache=False)
+
+                    return_cand = [cand, cand_f, cand_data]
+                    return_ref = [ref, ref_f, ref_data]
+
+                else:
                     processed_candidate = candidate._pchain((candidate, 
                                                                 wanted_deltat),
                                                 (wanted_tmin, wanted_tmax),
@@ -1079,37 +1105,39 @@ class Trace(object):
 
                     check_alignment(processed_candidate, processed_reference)
 
-                    mtmp, ntmp = Lx_norm(processed_candidate.ydata, 
-                                         processed_reference.ydata, 
-                                         norm=setup.norm)
+                    if setup.domain=='time_domain':
+                        return_cand = processed_candidate.copy()
+                        return_ref = processed_reference.copy()
+                        cand_data = processed_candidate.get_ydata()
+                        ref_data = processed_reference.get_ydata()
 
-                    m.append(mtmp)
-                    n.append(ntmp)
+                    elif setup.domain=='envelope':
+                        return_cand = processed_candidate.envelope(inplace=False)
+                        return_ref = processed_reference.envelope(inplace=False)
+                        cand_data = return_cand.get_ydata()
+                        ref_data = return_ref.get_ydata()
 
-                elif setup.domain=='frequency_domain':
-                    cand, cand_f, cand_spec = candidate._pchain((candidate, 
-                                                                wanted_deltat),
-                                                (wanted_tmin, wanted_tmax),
-                                                (setup.taper,),
-                                                (setup.filter,),
-                                                nocache=False)
+                    elif setup.domain=='absolute':
+                        cand_data = num.abs(processed_candidate.get_ydata())
+                        ref_data =  num.abs(processed_reference.get_ydata())
+                        return_cand = processed_candidate.copy(data=False)
+                        return_ref = processed_reference.copy(data=False)
+                        return_cand.set_ydata(cand_data)
+                        return_ref.set_ydata(ref_data)
 
-                    ref, ref_f, ref_spec = self._pchain((self, wanted_deltat),
-                                                (wanted_tmin, wanted_tmax),
-                                                (setup.taper,),
-                                                (setup.filter,),
-                                                nocache=False)
-
-                    mtmp, ntmp = Lx_norm(cand_spec, ref_spec, norm=setup.norm)
-
-                    m.append(mtmp)
-                    n.append(ntmp)
+                mtmp, ntmp = Lx_norm(cand_data, ref_data, norm=setup.norm)
 
                 if single_setup:
-                    yield mtmp, ntmp
+                    yield return_cand, return_ref, mtmp, ntmp
+
+                else:
+                    c_data.append(return_cand)
+                    r_data.append(return_ref)
+                    m.append(mtmp)
+                    n.append(ntmp)
 
             if not single_setup:
-                yield m, n
+                yield c_data, r_data, m, n
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
@@ -2529,6 +2557,12 @@ def co_downsample_to(target, deltat):
 
 class MisfitSetup(Object):
     '''Contains misfit setup to be used in :py:func:`trace.misfit`
+
+    :param description: Description of the setup
+    :param norm: L-norm classifier
+    :param taper: Object of :py:class:`Taper`
+    :param filter: Object of :py:class:`FrequencyResponse`
+    :param domain: ['time_domain', 'frequency_domain', 'envelope', 'absolute']
 
     Can be dumped to a yaml file.
     '''
