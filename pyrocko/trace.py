@@ -2014,7 +2014,7 @@ class PoleZeroResponse(FrequencyResponse):
     
     zeros = Array.T(shape=(None,), dtype=num.complex)
     poles = Array.T(shape=(None,), dtype=num.complex)
-    constant = Float.T()
+    constant = Complex.T()
 
     def __init__(self, zeros, poles, constant):
         Object.__init__(self, zeros=zeros, poles=poles, constant=constant)
