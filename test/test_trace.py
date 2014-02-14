@@ -420,20 +420,29 @@ class TraceTestCase(unittest.TestCase):
 
     def testMisfitOfSameTracesZero(self):
         y = num.random.random(10000)
-        y -= max(y)*.5
+        y -= max(y)*0.5
         t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         t2 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
         ttraces = [t2]
         fresponse = trace.FrequencyResponse()
         taper = trace.CosFader(xfade=2.)
-        mfsetup = trace.MisfitSetup(
-            norm=2,
-            taper=taper,
-            domain='time_domain',
-            filter=fresponse)
-        for m, n in t1.misfit( candidates=ttraces, setups= mfsetup):
-            self.assertEqual(m, 0., 'misfit\'s m is not zero, but m = %s and n = %s'
-                                                                    % (m,n))
+        norms = [1,2]
+        domains = ['time_domain', 'frequency_domain', 'envelope', 'absolute']
+        setups = [trace.MisfitSetup(norm=n,
+                                    taper=taper,
+                                    domain=domain,
+                                    filter=fresponse) for domain in domains 
+                                                        for n in norms]
+
+        for tc, tr, ms, nn in t1.misfit( candidates=ttraces, setups=setups ):
+            for i, t in enumerate(tc):
+                if isinstance(t, trace.Trace) :
+                    self.assertEqual(t.tmin, tr[i].tmin)
+                    self.assertTrue(all(t.get_ydata()==tr[i].get_ydata()))
+                else:
+                    self.assertTrue(all(t[1]==tr[i][1]))
+            for m in ms:
+                self.assertEqual(m, 0, 'misfit\'s m of equal traces is != 0')
 
     def testMisfitOfSameTracesDtDifferentShifted(self):
         """
@@ -472,16 +481,18 @@ class TraceTestCase(unittest.TestCase):
         taper = trace.CosTaper(a,b,c,d)
         fresponse = trace.FrequencyResponse()
         norms = [1,2]
-        domains = ['time_domain', 'frequency_domain']
+        domains = ['time_domain', 'frequency_domain', 'envelope', 'absolute']
         setups = [trace.MisfitSetup(norm=n,
                                     taper=taper,
                                     domain=domain,
                                     filter=fresponse) for domain in domains 
                                                         for n in norms]
 
-        for ms, nn in rt.misfit( candidates=tts , setups=setups ):
+        for tc, tr, ms, nn in rt.misfit( candidates=tts , setups=setups ):
             for m in ms:
                 self.assertNotEqual(m, None, 'misfit\'s m is None')
+
+
 
     def testMisfitBox(self):
 
