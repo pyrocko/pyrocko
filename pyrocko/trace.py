@@ -1057,10 +1057,10 @@ class Trace(object):
                 if not candidate._pchain:
                     init_chain(candidate)
                 
-                if (candidate.tmax<self.tmin or candidate.tmin>self.tmax) and \
-                    setup.domain=='time_domain':
-                    raise NoData('Trace %s, and candidate %s have no overlapping data.'%\
-                                        (self.nslc_id, candidate.nslc_id))
+                if (candidate.tmax<self.tmin or candidate.tmin>self.tmax):
+                        logger.warn('Cannot calculate misfit: %s and %s have no overlapping data.'%('.'.join(self.nslc_id), '.'.join(candidate.nslc_id)))
+                        yield None, None, None, None
+                        break
 
                 wanted_deltat = max(candidate.deltat, self.deltat)
                 wanted_tmin = min(candidate.tmin, self.tmin) -\
