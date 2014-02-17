@@ -624,11 +624,6 @@ class LocalEngine(Engine):
             deltat=deltat,
             tmin=base_seismogram[0].itmin * deltat + source.time)
 
-        tr.taper(target.pre_taper)
-        tr.transfer(source.stf, target.filter)
-        tr.taper(target.post_taper)
-        tr.chop(target.tmin, target.tmax)
-
         return tr
 
     def process(self, request=None, status_callback=None, **kwargs):
