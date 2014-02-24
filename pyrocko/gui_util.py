@@ -954,16 +954,21 @@ class PhaseMarker(Marker):
     :param event:          a :py:class:`pyrocko.model.Event` object containing meta information 
                            of a seismological event
     :param event_hash:     (optional) hash code of event (see: :py:meth:`pyrocko.model.Event.get_hash`)
+    :param event_time:     (optional) time of the associated event
     :param phasename:      (optional) name of the phase associated with the marker
     :param polarity:       (optional) polarity of arriving phase
     :param automatic:      (optional) 
     :param incident_angle: (optional) incident angle of phase
     :param takeoff_angle:  (optional) take off angle of phase                   
     '''
-    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
+    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None,
+                 event_time=None, phasename=None, polarity=None,
+                 automatic=None, incidence_angle=None, takeoff_angle=None):
+
         Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
         self._event_hash = event_hash
+        self._event_time = event_time
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
@@ -996,6 +1001,12 @@ class PhaseMarker(Marker):
                 return None
             else:
                 return self._event.get_hash()
+
+    def get_event_time(self):
+        if self._event is not None:
+            return self._event.time
+        else:
+            return self._event_time
 
     def set_event_hash(self, event_hash):
         self._event_hash = event_hash
@@ -1061,10 +1072,18 @@ class PhaseMarker(Marker):
             i = 11
        
         event_hash = str_to_str_or_none( vals[i-3] )
+        event_sdate = str_to_str_or_none( vals[i-2] )
+        event_stime = str_to_str_or_none( vals[i-1] )
+        
+        if event_sdate is not None and event_stime is not None:
+            event_time = pyrocko.util.str_to_time(event_sdate + ' ' + event_stime)
+
         phasename, polarity = [ str_to_str_or_none( x ) for x in vals[i:i+2] ]
         automatic = str_to_bool( vals[i+2] )
-        marker = PhaseMarker( nslc_ids, tmin, tmax, kind, event=None, event_hash=event_hash,
-            phasename=phasename, polarity=polarity, automatic=automatic )
+        marker = PhaseMarker(nslc_ids, tmin, tmax, kind, event=None, 
+                             event_hash=event_hash, event_time=event_time,
+                             phasename=phasename, polarity=polarity,
+                             automatic=automatic)
         return marker
 
 def tohex(c):

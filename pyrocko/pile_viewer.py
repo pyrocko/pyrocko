@@ -1380,17 +1380,25 @@ def MakePileViewerMainClass(base):
 
         def associate_phases_to_events(self):
             
-            events = {}
+            hash_to_events = {}
+            time_to_events = {}
             for marker in self.markers:
                 if isinstance(marker, EventMarker):
-                    events[marker.get_event_hash()] = marker.get_event()
-            
+                    ev = marker.get_event()
+                    hash_to_events[marker.get_event_hash()] = ev
+                    time_to_events[ev.time] = ev
+
             for marker in self.markers:
                 if isinstance(marker, PhaseMarker):
                     h = marker.get_event_hash()
-                    if marker.get_event() is None and h is not None and marker and h in events:
-                        marker.set_event(events[h])
-                        marker.set_event_hash(None)
+                    t = marker.get_event_time()
+                    if marker.get_event() is None:
+                        if h is not None and h in hash_to_events:
+                            marker.set_event(hash_to_events[h])
+                            marker.set_event_hash(None)
+                        elif t is not None and t in time_to_events:
+                            marker.set_event(time_to_events[t])
+                            marker.set_event_hash(None)
         
         def add_marker(self, marker):
             self.markers.append(marker)
