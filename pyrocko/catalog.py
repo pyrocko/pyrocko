@@ -599,6 +599,7 @@ class Kinherd(EarthquakeCatalog):
             tref_eq = calendar.timegm(eq['reference_time'].timetuple())
             pset = eq['parametersets'][0]
             tref = calendar.timegm(pset['reference_time'].timetuple())
+            tpost = calendar.timegm(pset['posted_time'].timetuple())
             params = pset['parameters']
 
             mt = MomentTensor(
@@ -622,6 +623,8 @@ class Kinherd(EarthquakeCatalog):
             for par in 'latitude longitude depth magnitude'.split():
                 event.ext_confidence_intervals[trans.get(par, par)] = \
                         (params[par+'_ci_low'], params[par+'_ci_high'])
+
+            event.ext_posted_time = tpost
             
             name = eq['name']
             self.events[name] = event
