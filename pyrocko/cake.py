@@ -55,7 +55,7 @@ m2d = 1./d2m
 class InvalidArguments(Exception):
     pass
 
-class Material:
+class Material(object):
     '''Isotropic elastic material.
 
     :param vp: P-wave velocity [m/s]
@@ -1083,7 +1083,7 @@ class CannotPropagate(PathFailed):
     def __str__(self):
         return 'Cannot enter layer %i from %s' % (self._ilayer, {UP: 'below', DOWN: 'above'}[self._direction])
 
-class Layer:
+class Layer(object):
     '''Representation of a layer in a layered earth model.
     
     :param ztop: depth of top of layer
@@ -1456,7 +1456,7 @@ class GradientLayer(Layer):
 
         return '  (%i) gradient layer %s(%g km - %g km) [%s]\n    %s\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.mtop, self.mbot)
 
-class Discontinuity:
+class Discontinuity(object):
     '''Base class for discontinuities in layered earth model.
     
     Subclasses are: :py:class:`Interface` and :py:class:`Surface`.
@@ -1551,7 +1551,7 @@ class Surface(Discontinuity):
     def __str__(self):
         return 'surface'
 
-class Walker:
+class Walker(object):
     def __init__(self, elements):
         self._elements = elements
         self._i = 0
@@ -1794,7 +1794,7 @@ class Kink(RayElement):
 class PRangeNotSet(Exception):
     pass
 
-class RayPath:
+class RayPath(object):
     '''Representation of a fan of rays running through a common sequence of layers / interfaces.'''
 
     def __init__(self, phase):
@@ -2329,7 +2329,7 @@ class RayPath:
 class RefineFailed(Exception):
     pass
 
-class Ray:
+class Ray(object):
     '''Representation of a ray with a specific (path, ray parameter, distance, arrival time) choice.
    
     **Attributes:**
@@ -2472,7 +2472,7 @@ class DiscontinuityNotFound(Exception):
         return 'Cannot find discontinuity from given depth or name: %s' % self.depth_or_name
 
 
-class LayeredModel:
+class LayeredModel(object):
     '''Representation of a layer cake model.
     
     There are several ways to initialize an instance of this class.
