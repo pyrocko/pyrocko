@@ -710,6 +710,8 @@ Index variables are (source_depth, distance, component).'''
     distance_max = Float.T()
     distance_delta = Float.T()
 
+    short_type = 'A'
+
     def get_distance(self, args):
         return args[1]
 
@@ -790,21 +792,21 @@ Index variables are (source_depth, distance, component).'''
                 icomponents)
 
     @property
-    def short_info(self):
-        return 'Type A (%g:%g:%g x %g:%g:%g) km @ %g Hz' % (
+    def short_extent(self):
+        return '%g:%g:%g x %g:%g:%g' % (
             self.source_depth_min/km,
             self.source_depth_max/km,
             self.source_depth_delta/km,
             self.distance_min/km,
             self.distance_max/km,
-            self.distance_delta/km,
-            self.sample_rate)
+            self.distance_delta/km)
 
 
 class ConfigTypeB(Config):
     '''Cylindrical symmetry
 
 Index variables are (receiver_depth, source_depth, distance, component).'''
+
 
     receiver_depth_min = Float.T()
     receiver_depth_max = Float.T()
@@ -815,6 +817,8 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
     distance_min = Float.T()
     distance_max = Float.T()
     distance_delta = Float.T()
+
+    short_type = 'B'
 
     def get_distance(self, args):
         return args[2]
@@ -912,8 +916,8 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
                 icomponents)
 
     @property
-    def short_info(self):
-        return 'Type B (%g:%g:%g x %g:%g:%g x %g:%g:%g) km @ %g Hz' % (
+    def short_extent(self):
+        return '%g:%g:%g x %g:%g:%g x %g:%g:%g' % (
             self.receiver_depth_min/km,
             self.receiver_depth_max/km,
             self.receiver_depth_delta/km,
@@ -922,8 +926,7 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
             self.source_depth_delta/km,
             self.distance_min/km,
             self.distance_max/km,
-            self.distance_delta/km,
-            self.sample_rate)
+            self.distance_delta/km)
 
 
 class Weighting(Object):

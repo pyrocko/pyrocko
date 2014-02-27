@@ -144,7 +144,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
             self.body = cgi.parse_qs(self.path[qspos+1:], keep_blank_values=1)
             self.path = self.path[:qspos]
         else:
-            self.body = ''
+            self.body = {}
 
     def do_HEAD(self):
         """Begins serving a HEAD request"""
@@ -170,7 +170,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
             qs = self.rfile.read(length)
             self.body = cgi.parse_qs(qs, keep_blank_values=1)
         else:
-            self.body = ''                   # Unknown content-type
+            self.body = {}
         #self.handle_post_body()
         self.handle_data()
 
@@ -474,12 +474,20 @@ class SeismosizerHandler(RequestHandler):
 <h2>{{ title }}</h2>
 <hr>
 <table>
+    <tr>
+        <th style="text-align:left">Store ID</th>
+        <th style="text-align:center">Type</th>
+        <th style="text-align:center">Extent</th>
+        <th style="text-align:center">Sample-rate</th>
+        <th style="text-align:center">Size (index + traces)</th>
+    </tr>
 {% for store in stores %}
     <tr>
         <td><a href="{{ store.config.id }}/">{{ store.config.id|e }}/</a></td>
-        <td>{{ store.config.short_info }}</td>
-        <td>{{ store.config.sample_rate }} Hz</td>
-        <td>{{ store.size_index_and_data_human }}</td>
+        <td style="text-align:center">{{ store.config.short_type }}</td>
+        <td style="text-align:right">{{ store.config.short_extent }} km</td>
+        <td style="text-align:right">{{ store.config.sample_rate }} Hz</td>
+        <td style="text-align:right">{{ store.size_index_and_data_human }}</td>
     </tr>
 {% endfor %}
 </table>
@@ -490,7 +498,9 @@ class SeismosizerHandler(RequestHandler):
             'text': Template(
 '''{% for store in stores %}{#
 #}{{ store.config.id.ljust(25) }} {#
-#}{{ store.config.short_info.ljust(50) }} {#
+#}{{ store.config.short_type.center(5) }} {#
+#}{{ store.config.short_extent.rjust(30) }} km {#
+#}{{ "%10.2g"|format(store.config.sample_rate) }} Hz {#
 #}{{ store.size_index_and_data_human.rjust(8) }}
 {% endfor %}''')}
 

@@ -103,7 +103,8 @@ class Incomplete(DownloadError):
     pass
 
 
-def rget(url, path, force=False, method='get', stats=None, status_callback=None):
+def rget(url, path, force=False, method='download', stats=None,
+         status_callback=None, entries_wanted=None):
 
     if stats is None:
         stats = [0, None] # bytes received, bytes expected
@@ -117,8 +118,10 @@ def rget(url, path, force=False, method='get', stats=None, status_callback=None)
 
     l = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', data)
     l = sorted(set(x for x in l if x.rstrip('/') not in ('.', '..')))
+    if entries_wanted is not None:
+        l = [ x for x in l if x.rstrip('/') in entries_wanted ]
 
-    if method == 'get':
+    if method == 'download':
         if os.path.exists(path):
             if not force:
                 raise PathExists('path "%s" already exists' % path)
@@ -133,6 +136,7 @@ def rget(url, path, force=False, method='get', stats=None, status_callback=None)
                 url + x,
                 os.path.join(path, x), 
                 force=force,
+                method=method,
                 stats=stats,
                 status_callback=status_callback)
 
@@ -144,7 +148,7 @@ def rget(url, path, force=False, method='get', stats=None, status_callback=None)
             resp = urllib2.urlopen(req)
             sexpected = int(resp.headers['content-length'])
 
-            if method == 'get':
+            if method == 'download':
                 out = open(os.path.join(path, x), 'w')
                 sreceived = 0
                 while True:
@@ -186,11 +190,11 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
     tlast = [ time.time() ]
     def status_callback(i,n):
         tnow = time.time()
-        if (tnow - tlast[0]) > 1 or i == n:
-            print '%i / %i (%.1f)' % (i,n, i*100.0/n)
+        if (tnow - tlast[0]) > 5 or i == n:
+            print '%s / %s [%.1f%%]' % (util.human_bytesize(i), util.human_bytesize(n), i*100.0/n)
             tlast[0] = tnow
 
-
+    wanted = [ 'config', 'extra', 'index', 'phases', 'traces' ]
 
     try:
         if store_id is None:
@@ -198,9 +202,13 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
 
         else:
             store_url = ujoin(stores_url, store_id)
-            stotal = rget(store_url, store_id, force=force, method='calcsize')
-            rget(store_url, store_id, force=force, 
-                stats=[0, stotal], status_callback=status_callback)
+            stotal = rget(
+                store_url, store_id, force=force, method='calcsize',
+                entries_wanted=wanted)
+                          
+            rget(
+                store_url, store_id, force=force, stats=[0, stotal],
+                status_callback=status_callback, entries_wanted=wanted)
 
     except (urllib2.URLError, urllib2.HTTPError, httplib.HTTPException), e:
         raise DownloadError('download failed. Original error was: %s, %s' % (

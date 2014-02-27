@@ -682,6 +682,10 @@ def command_download(args):
     else:
         site, store_id = args[0], None
 
+    if site not in gf.ws.g_site_abbr:
+        if -1 == site.find('://'):
+            site = 'http://' + site
+
     try:
         ws.download_gf_store(site=site, store_id=store_id, force=options.force)
     except ws.DownloadError, e:
