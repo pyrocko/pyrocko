@@ -9,7 +9,6 @@ import fcntl
 import copy
 import logging
 import re
-import progressbar
 
 import numpy as num
 from scipy import signal
@@ -957,7 +956,9 @@ class Store(BaseStore):
         return store._sum_reference(irecords, delays, weights, itmin, nsamples,
                                     decimate)
 
-    def make_decimated(self, decimate, config=None, force=False):
+    def make_decimated(self, decimate, config=None, force=False,
+                       show_progress=False):
+
         '''Create decimated version of GF store.
 
         Create a downsampled version of the GF store. Downsampling is done for
@@ -1001,9 +1002,18 @@ class Store(BaseStore):
         Store.create(store_dir_incomplete, config, force=force)
 
         decimated = Store(store_dir_incomplete, 'w')
-        for args in decimated.config.iter_nodes():
+        if show_progress:
+            pbar = util.progressbar('decimating store', self.config.nrecords)
+
+        for i, args in enumerate(decimated.config.iter_nodes()):
             tr = self.get(args, decimate=decimate)
             decimated.put(args, tr)
+
+            if show_progress:
+                pbar.update(i+1)
+        
+        if show_progress:
+            pbar.finish()
 
         decimated.close()
 
@@ -1018,13 +1028,12 @@ class Store(BaseStore):
 
     stats_keys = BaseStore.stats_keys + ['decimated']
 
-    def check(self):
-        nodes = list(self.config.iter_nodes())
-        pbar = progressbar.ProgressBar(maxval=len(nodes)).start()
+    def check(self, show_progress=False):
+        if show_progress:
+            pbar = util.progressbar('checking store', self.config.nrecords)
 
         problems = 0
-        for i,args in enumerate(nodes):
-            pbar.update(i)
+        for i, args in enumerate(self.config.iter_nodes()):
             tr = self.get(args)
             if tr and not tr.is_zero:
                 if not tr.begin_value == tr.data[0]:
@@ -1038,9 +1047,12 @@ class Store(BaseStore):
                 if not num.all(num.isfinite(tr.data)):
                     logger.warn('nans or infs in trace at %s' % str(args))
                     problems += 1
+
+            if show_progress:
+                pbar.update(i+1)
         
-        pbar.update(i+1)
-        pbar.finish()
+        if show_progress:
+            pbar.finish()
 
         return problems
 

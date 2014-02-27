@@ -251,7 +251,7 @@ def command_check(args):
 
     try:
         store = gf.Store(store_dir)
-        problems = store.check()
+        problems = store.check(show_progress=True)
         if problems:
             die('problems detected with gf store: %s' % store_dir)
 
@@ -291,7 +291,8 @@ def command_decimate(args):
 
     try:
         store = gf.Store(store_dir)
-        store.make_decimated(decimate, config=config, force=options.force)
+        store.make_decimated(decimate, config=config, force=options.force,
+                             show_progress=True)
 
     except gf.StoreError, e:
         die(e)
@@ -325,7 +326,12 @@ def command_redeploy(args):
     except gf.StoreError, e:
         die(e)
 
-    for args in dest.config.iter_nodes():
+    show_progress = True
+
+    if show_progress:
+        pbar = util.progressbar('redeploying', dest.config.nrecords)
+
+    for i, args in enumerate(dest.config.iter_nodes()):
         try:
             tr = source.get(args, interpolate='off')
             dest.put(args, tr)
@@ -335,6 +341,12 @@ def command_redeploy(args):
 
         except gf.store.StoreError, e:
             logger.warn('cannot insert %s, (%s)' % (sindex(args), e))
+
+        if show_progress:
+            pbar.update(i+1)
+    
+    if show_progress:
+        pbar.finish()
 
 def command_view(args):
     def setup(parser):
@@ -449,6 +461,8 @@ def command_import(args):
 
     parser, options, args = cl_parse('import', args)
 
+    show_progress = True
+
     if not len(args) == 2:
         parser.print_help()
         sys.exit(1)
@@ -477,7 +491,11 @@ def command_import(args):
     try:
         gf.store.Store.create(dest_store_dir, config=config)
         dest = gf.Store(dest_store_dir, 'w')
-        for args in dest.config.iter_nodes(level=-1):
+        if show_progress:
+            pbar = util.progressbar(
+                'importing', dest.config.nrecords/dest.config.ncomponents)
+
+        for i, args in enumerate(dest.config.iter_nodes(level=-1)):
             source_depth, distance = [ float(x) for x in args ]
             traces = db.get_traces_pyrocko(distance, source_depth)
             for tr in traces:
@@ -485,6 +503,12 @@ def command_import(args):
                         int(round(tr.tmin / tr.deltat)), tr.deltat)
 
                 dest.put((source_depth, distance, tr.meta['ig']-1), gf_tr)
+
+            if show_progress:
+                pbar.update(i+1)
+        
+        if show_progress:
+            pbar.finish()
 
         dest.close()
 
@@ -505,6 +529,8 @@ def command_export(args):
                 help='split output gfdb into N chunks')
 
     parser, options, args = cl_parse('export', args, setup=setup)
+
+    show_progress = True
 
     if len(args) not in (1,2):
         parser.print_help()
@@ -538,7 +564,11 @@ def command_export(args):
 
     out_db = gfdb.Gfdb( target_path )
 
-    for z,x in config.iter_nodes(level=-1):
+    if show_progress:
+        pbar = util.progressbar(
+            'exporting', config.nrecords/config.ncomponents)
+
+    for i, (z, x) in enumerate(config.iter_nodes(level=-1)):
 
         data_out = []
         for ig in xrange(config.ncomponents):
@@ -551,6 +581,12 @@ def command_export(args):
                 data_out.append(None)
             
         out_db.put_traces_slow(x,z, data_out)
+
+        if show_progress:
+            pbar.update(i+1)
+    
+    if show_progress:
+        pbar.finish()
 
     source.close()
             
