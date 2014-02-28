@@ -291,7 +291,7 @@ def command_decimate(args):
         die(e)
 
 def sindex(args):
-    return str(tuple(x.tolist() for x in args))
+    return '(%s)' % ', '.join('%g' % x for x in args)
 
 def command_redeploy(args):
 
