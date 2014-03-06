@@ -1,8 +1,9 @@
 from pyrocko import pile, trace, util, io, iris_ws, model
+from pyrocko.fdsn import ws as fdsn_ws
 from pyrocko.gui_util import EventMarker
 import sys, os, math, time, urllib2, logging
 import numpy as num
-from pyrocko.snuffling import Param, Snuffling, Switch
+from pyrocko.snuffling import Param, Snuffling, Switch, Choice
 pjoin = os.path.join
 
 logger = logging.getLogger('pyrocko.snufflings.iris_data')
@@ -19,6 +20,7 @@ class IrisData(Snuffling):
         self.add_parameter(Param('Origin latitude [deg]', 'lat', 0, -90., 90.))
         self.add_parameter(Param('Origin longitude [deg]', 'lon', 0., -180., 180.))
         self.add_parameter(Switch('Use coordinates of selected event as origin', 'useevent', False))
+        self.add_parameter(Choice('Channels', 'channel_pattern', 'BH?', ['BH?', 'BHZ', 'HH?', '?H?', '*']))
         self.add_trigger('Save', self.save)
         self.set_live_update(False)
         self.current_stuff = None
@@ -45,11 +47,18 @@ class IrisData(Snuffling):
             lat, lon = ev.lat, ev.lon
         else:
             lat, lon = self.lat, self.lon
-        
-        data = iris_ws.ws_station(lat=lat, lon=lon, minradius=self.minradius, maxradius=self.maxradius, 
-                                                     timewindow=(tmin,tmax), level='chan' )
-        
-        stations = iris_ws.grok_station_xml(data, tmin, tmax)
+
+        try:
+            sx = fdsn_ws.station(site='iris', latitude=lat, longitude=lon, minradius=self.minradius, 
+                            maxradius=self.maxradius, startbefore=tmin, endafter=tmax,
+                            channel=self.channel_pattern, format='text', level='channel',
+                            matchtimeseries=True, includerestricted=False)
+
+        except fdsn_ws.EmptyResult:
+            self.fail('No stations matching given criteria.')
+
+
+        stations = sx.get_pyrocko_stations()
         networks = set( [ s.network for s in stations ] )
         
         t2s = util.time_to_str
@@ -57,20 +66,20 @@ class IrisData(Snuffling):
         fns = []
         for net in networks:
             nstations = [ s for s in stations if s.network == net ]
-            selection = sorted(iris_ws.data_selection( nstations, tmin, tmax ))
+            selection = fdsn_ws.make_data_selection( nstations, tmin, tmax )
             if selection:
                 for x in selection:
                     logger.info('Adding data selection: %s.%s.%s.%s %s - %s' % (tuple(x[:4]) + (t2s(x[4]), t2s(x[5]))))
 
                 try:
-                    d = iris_ws.ws_bulkdataselect(selection)
+                    d = fdsn_ws.dataselect(site='iris', selection=selection)
                     fn = pjoin(dir,'data-%s.mseed' % net) 
                     f = open(fn, 'w')
                     f.write(d.read())
                     f.close()
                     fns.append(fn)
 
-                except iris_ws.NotFound:
+                except fdsn_ws.EmptyResult:
                     pass
 
         all_traces = []
