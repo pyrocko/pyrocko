@@ -495,6 +495,8 @@ class DiscretizedExplosionSource(DiscretizedSource):
     m0s = Array.T(shape=(None,), dtype=num.float)
 
     def make_weights(self, receiver, scheme):
+        assert scheme in ('elastic2', 'elastic8', 'elastic10')
+
         azis, bazis = self.azibazis_to(receiver)
 
         sb = num.sin(bazis*d2r-num.pi)
@@ -510,6 +512,14 @@ class DiscretizedExplosionSource(DiscretizedSource):
             g_e = num.repeat((0,), n)
             w_u = (-m0s,)
             g_u = num.repeat((1,), n)
+
+        elif scheme == 'elastic8':
+            w_n = num.concatenate((cb*m0s, cb*m0s))
+            g_n = num.repeat((0, 2), n)
+            w_e = num.concatenate((sb*m0s, sb*m0s))
+            g_e = num.repeat((0, 2), n)
+            w_u = num.concatenate((-m0s, -m0s))
+            g_u = num.repeat((5, 7), n)
 
         elif scheme == 'elastic10':
             w_n = num.concatenate((cb*m0s, cb*m0s, cb*m0s))
@@ -545,9 +555,7 @@ class DiscretizedMTSource(DiscretizedSource):
     m6s = Array.T(shape=(None, 6), dtype=num.float)
 
     def make_weights(self, receiver, scheme):
-
-        if scheme != 'elastic10':
-            assert False
+        assert scheme in ('elastic8', 'elastic10')
 
         azis, bazis = self.azibazis_to(receiver)
 
@@ -569,12 +577,21 @@ class DiscretizedMTSource(DiscretizedSource):
 
         n = azis.size
 
-        w_n = num.concatenate((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
-        g_n = num.repeat((0, 1, 2, 8, 3, 4), n)
-        w_e = num.concatenate((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
-        g_e = num.repeat((0, 1, 2, 8, 3, 4), n)
-        w_u = num.concatenate((-f0, -f1, -f2, -f5))
-        g_u = num.repeat((5, 6, 7, 9), n)
+        if scheme == 'elastic8':
+            w_n = num.concatenate((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
+            g_n = num.repeat((0, 1, 2, 3, 4), n)
+            w_e = num.concatenate((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
+            g_e = num.repeat((0, 1, 2, 3, 4), n)
+            w_u = num.concatenate((-f0, -f1, -f2))
+            g_u = num.repeat((5, 6, 7), n)
+
+        elif scheme == 'elastic10':
+            w_n = num.concatenate((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
+            g_n = num.repeat((0, 1, 2, 8, 3, 4), n)
+            w_e = num.concatenate((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
+            g_e = num.repeat((0, 1, 2, 8, 3, 4), n)
+            w_u = num.concatenate((-f0, -f1, -f2, -f5))
+            g_u = num.repeat((5, 6, 7, 9), n)
 
         return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
 
@@ -596,7 +613,7 @@ class DiscretizedMTSource(DiscretizedSource):
 
 
 class ComponentSchemes(StringChoice):
-    choices = ('elastic10', 'elastic2')
+    choices = ('elastic10', 'elastic8', 'elastic2')
 
 
 class Config(Object):
@@ -624,6 +641,7 @@ class Config(Object):
     frequency_max = Float.T(optional=True)
     sample_rate = Float.T(optional=True)
     ncomponents = Int.T(default=1)
+    factor = Float.T(default=1.0, optional=True)
     component_scheme = ComponentSchemes.T(default='elastic10')
     tabulated_phases = List.T(TPDef.T())
 
@@ -687,6 +705,8 @@ class Config(Object):
         for comp, weights, icomponents in source.make_weights(
                 receiver,
                 self.component_scheme):
+
+            weights *= self.factor
 
             args = self.make_indexing_args(source, receiver, icomponents)
             delays_expanded = num.tile(delays, icomponents.size/delays.size)
