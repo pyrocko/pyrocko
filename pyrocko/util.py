@@ -43,9 +43,11 @@ def data_file(fn):
 
 if hasattr(num, 'float128'):
     hpfloat = num.float128
+elif hasattr(num, 'float96'):
+    hpfloat = num.float96
 else:
-    def hpfloat():
-        raise Exception('NumPy lacks support for float128 data type on this platform.')
+    def hpfloat(x):
+        raise Exception('NumPy lacks support for float128 or float96 data type on this platform.')
 
 class Stopwatch:
     '''Simple stopwatch to measure elapsed wall clock time.
