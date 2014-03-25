@@ -13,6 +13,7 @@ from pyrocko import cake, orthodrome, spit
 d2r = math.pi / 180.
 r2d = 1.0 / d2r
 km = 1000.
+vicinity_eps = 1e-5
 
 
 class Earthmodel1D(Object):
@@ -684,7 +685,7 @@ class Config(Object):
         i = 0
         arrs = []
         ntotal = 1
-        for mi, ma, inc in zip(self.mins, self.maxs, self.deltas):
+        for mi, ma, inc in zip(self.mins, self.effective_maxs, self.deltas):
             if gdef and len(gdef) > i:
                 sssn = gdef[i]
             else:
@@ -717,6 +718,7 @@ class Config(Object):
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')
 
+
 class ConfigTypeA(Config):
     '''Cylindrical symmetry, fixed receiver depth
 
@@ -745,13 +747,14 @@ Index variables are (source_depth, distance, component).'''
         self.mins = num.array([self.source_depth_min, self.distance_min])
         self.maxs = num.array([self.source_depth_max, self.distance_max])
         self.deltas = num.array([self.source_depth_delta, self.distance_delta])
-        self.ns = num.round((self.maxs - self.mins) /
-                            self.deltas).astype(num.int) + 1
+        self.ns = num.floor((self.maxs - self.mins) / self.deltas +
+                            vicinity_eps).astype(num.int) + 1
+        self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
         self.nrecords = num.product(self.ns) * self.ncomponents
-        self.coords = tuple(num.linspace(mi, ma, n)
-                            for (mi, ma, n)
-                            in zip(self.mins, self.maxs, self.ns)) + \
+        self.coords = tuple(num.linspace(mi, ma, n) for
+                            (mi, ma, n) in
+                            zip(self.mins, self.effective_maxs, self.ns)) + \
             (num.arange(self.ncomponents),)
 
         self.nsource_depths, self.ndistances = self.ns
@@ -827,7 +830,6 @@ class ConfigTypeB(Config):
 
 Index variables are (receiver_depth, source_depth, distance, component).'''
 
-
     receiver_depth_min = Float.T()
     receiver_depth_max = Float.T()
     receiver_depth_delta = Float.T()
@@ -865,13 +867,14 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
             self.source_depth_delta,
             self.distance_delta])
 
-        self.ns = num.round((self.maxs - self.mins) /
-                            self.deltas).astype(num.int) + 1
+        self.ns = num.floor((self.maxs - self.mins) / self.deltas +
+                            vicinity_eps).astype(num.int) + 1
+        self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
         self.deltat = 1.0/self.sample_rate
         self.nrecords = num.product(self.ns) * self.ncomponents
         self.coords = tuple(num.linspace(mi, ma, n) for
                             (mi, ma, n) in
-                            zip(self.mins, self.maxs, self.ns)) + \
+                            zip(self.mins, self.effective_maxs, self.ns)) + \
             (num.arange(self.ncomponents),)
         self.nreceiver_depths, self.nsource_depths, self.ndistances = self.ns
 
@@ -1018,9 +1021,6 @@ class WaveformSelection(Object):
     weighting = Weighting.T(optional=True)
     sample_rate = Float.T(optional=True)
     gf_store_id = StringID.T(optional=True)
-
-
-vicinity_eps = 1e-5
 
 
 def indi12(x, n):
