@@ -484,6 +484,10 @@ class Engine(Object):
 class LocalEngine(Engine):
     '''
     Offline synthetic seismogram calculator.
+
+    :param use_env: if ``True``, fill :py:attr:`store_superdirs` and
+    :py:attr:`store_dirs` with paths set in environment variables
+    GF_STORE_SUPERDIRS AND GF_STORE_DIRS
     '''
 
     store_superdirs = List.T(
@@ -500,7 +504,17 @@ class LocalEngine(Engine):
              'one')
 
     def __init__(self, **kwargs):
+        use_env = kwargs.pop('use_env', False)
         Engine.__init__(self, **kwargs)
+        if use_env:
+            env_store_superdirs = os.environ.get('GF_STORE_SUPERDIRS', '')
+            env_store_dirs = os.environ.get('GF_STORE_DIRS', '')
+            if env_store_superdirs:
+                self.store_superdirs.extend(env_store_superdirs.split(':'))
+
+            if env_store_dirs:
+                self.store_dirs.extend(env_store_dirs.split(':'))
+
         self._id_to_store_dir = {}
         self._open_stores = {}
         self._effective_default_store_id = None
