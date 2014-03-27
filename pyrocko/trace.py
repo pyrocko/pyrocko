@@ -6,8 +6,8 @@ from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
 from pyrocko.util import reuse, hpfloat, UnavailableDecimation
 from pyrocko.pchain import *
-from guts import *
-from guts_array import *
+from guts import Object, Float, Int, String, Complex, Tuple, List
+from guts_array import Array
 
 logger = logging.getLogger('pyrocko.trace')
 
@@ -1902,12 +1902,10 @@ class CosTaper(Taper):
     d = Float.T()
 
     def __init__(self, a=a, b=b, c=c, d=d):
-        Object.__init__(self, a=a, b=b, c=c, d=d)
-        self._corners = (a,b,c,d)
+        Taper.__init__(self, a=a, b=b, c=c, d=d)
 
     def __call__(self, y, x0, dx):
-        a, b, c, d = self._corners
-        apply_costaper(a, b, c, d, y, x0, dx)
+        apply_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
 
 
 class CosFader(Taper):
@@ -1916,7 +1914,7 @@ class CosFader(Taper):
     xfrac = Float.T(optional=True)
 
     def __init__(self, xfade=None, xfrac=None):
-        Object.__init__(self, xfade=xfade, xfrac=xfrac)
+        Taper.__init__(self, xfade=xfade, xfrac=xfrac)
         assert (xfade is None) != (xfrac is None)
         self._xfade = xfade
         self._xfrac = xfrac
@@ -1942,7 +1940,7 @@ class GaussTaper(Taper):
     alpha = Float.T()
 
     def __init__(self, alpha):
-        Object.__init__(self, alpha=alpha)
+        Taper.__init__(self, alpha=alpha)
         self._alpha = alpha
 
     def __call__(self, y, x0, dx):
@@ -1953,8 +1951,6 @@ class GaussTaper(Taper):
 class FrequencyResponse(Object):
     '''Evaluates frequency response at given frequencies.'''
     
-    freqs = List.T()
-
     def evaluate(self, freqs):
         coefs = num.ones(freqs.size, dtype=num.complex)
         return coefs
@@ -1974,7 +1970,7 @@ class InverseEvalresp(FrequencyResponse):
     instant = Float.T()
     
     def __init__(self, respfile, trace, target='dis'):
-        Object.__init__(self,
+        FrequencyResponse.__init__(self,
                         respfile=respfile,
                         nslc_id=trace.nslc_id,
                         instant=(trace.tmin + trace.tmax)/2.,
@@ -2012,12 +2008,12 @@ class PoleZeroResponse(FrequencyResponse):
     The poles and zeros should be given as angular frequencies, not in Hz.
     '''
     
-    zeros = Array.T(shape=(None,), dtype=num.complex)
-    poles = Array.T(shape=(None,), dtype=num.complex)
+    zeros = List.T(Complex.T())
+    poles = List.T(Complex.T())
     constant = Complex.T()
 
     def __init__(self, zeros, poles, constant):
-        Object.__init__(self, zeros=zeros, poles=poles, constant=constant)
+        FrequencyResponse.__init__(self, zeros=zeros, poles=poles, constant=constant)
         
     def evaluate(self, freqs):
         jomeg = 1.0j* 2.*num.pi*freqs
@@ -2029,26 +2025,28 @@ class PoleZeroResponse(FrequencyResponse):
             a /= jomeg-p
         
         return a
-        
+
 class SampledResponse(FrequencyResponse):
     '''Interpolates frequency response given at a set of sampled frequencies.
     
-    :param freqs,vals: frequencies and values of the sampled response function.
+    :param frequencies,values: frequencies and values of the sampled response function.
     :param left,right: values to return when input is out of range. If set to ``None`` (the default) the endpoints are returned.
     '''
 
-    freqs = Array.T()
-    vals = Array.T()
-    left = Bool.T(optional=True, default=None)
-    right = Bool.T(optional=True, default=None)
+    frequencies = Array.T(shape=(None,), dtype=num.float, serialize_as='list')
+    values = Array.T(shape=(None,), dtype=num.complex, serialize_as='list')
+    left = Complex.T(optional=True)
+    right = Complex.T(optional=True)
 
-    def __init__(self, freqs, vals, left=None, right=None):
-    
-        Object.__init__(self, freqs=freqs.copy(), vals=vals.copy(), left=left, right=right)
+    def __init__(self, frequencies, values, left=None, right=None):
+        FrequencyResponse.__init__(
+            self,
+            frequencies=asarray_1d(frequencies, num.float),
+            values=asarray_1d(values, num.complex))
         
     def evaluate(self, freqs):
-        ereal = num.interp(freqs, self.freqs, num.real(self.vals), left=self.left, right=self.right)
-        eimag = num.interp(freqs, self.freqs, num.imag(self.vals), left=self.left, right=self.right)
+        ereal = num.interp(freqs, self.frequencies, num.real(self.values), left=self.left, right=self.right)
+        eimag = num.interp(freqs, self.frequencies, num.imag(self.values), left=self.left, right=self.right)
         transfer = ereal + 1.0j*eimag
         return transfer
     
@@ -2059,14 +2057,8 @@ class SampledResponse(FrequencyResponse):
             if x is not None:
                 return 1./x
             
-        return SampledResponse(self.freqs, 1./self.vals, left=inv_or_none(self.left), right=inv_or_none(self.right))
-    
-    def frequencies(self):
-        return self.freqs
-    
-    def values(self):
-        return self.vals
-    
+        return SampledResponse(self.frequencies, 1./self.values, left=inv_or_none(self.left), right=inv_or_none(self.right))
+
 class IntegrationResponse(FrequencyResponse):
     '''The integration response, optionally multiplied by a constant gain.
 
@@ -2079,19 +2071,16 @@ class IntegrationResponse(FrequencyResponse):
         T(f) = --------------
                (j*2*pi * f)^n
     '''
-    _n = Int.T(optional=True, default=1)
-    _gain = Float.T(optional=True, default=1.0)
+    n = Int.T(optional=True, default=1)
+    gain = Float.T(optional=True, default=1.0)
 
     def __init__(self, n=1, gain=1.0):
-        Object.__init__(self, _n=n, _gain=gain)
+        FrequencyResponse.__init__(self, n=n, gain=gain)
         
     def evaluate(self, freqs):
-        
         nonzero = freqs != 0.0
-
         resp = num.empty(freqs.size, dtype=num.complex)
-
-        resp[nonzero] = self._gain / (1.0j * 2. * num.pi*freqs[nonzero])**self._n
+        resp[nonzero] = self.gain / (1.0j * 2. * num.pi*freqs[nonzero])**self.n
         resp[num.logical_not(nonzero)] = 0.0
         return resp
 
@@ -2106,37 +2095,49 @@ class DifferentiationResponse(FrequencyResponse):
         T(f) = gain * (j*2*pi * f)^n
     '''
 
-    _n = Int.T(optional=True, default=1)
-    _gain = Float.T(optional=True, default=1.0)
+    n = Int.T(optional=True, default=1)
+    gain = Float.T(optional=True, default=1.0)
 
     def __init__(self, n=1, gain=1.0):
-        Object.__init__(self, _n=n, _gain=gain)
+        FrequencyResponse.__init__(self, n=n, gain=gain)
         
     def evaluate(self, freqs):
-        return self._gain * (1.0j * 2. * num.pi * freqs)**self._n
+        return self.gain * (1.0j * 2. * num.pi * freqs)**self.n
 
 class AnalogFilterResponse(FrequencyResponse):
     '''Frequency response of an analog filter.
     
     (see :py:func:`scipy.signal.freqs`).'''
-    _a = Array.T()
-    _b = Array.T()
+
+    b = List.T(Float.T())
+    a = List.T(Float.T())
 
     def __init__(self, b, a):
-        Object.__init__(self, _b=b, _a=a)
+        FrequencyResponse.__init__(self, b=b, a=a)
     
     def evaluate(self, freqs):
-        return signal.freqs(self._b, self._a, freqs/(2.*num.pi))[1]
+        return signal.freqs(self.b, self.a, freqs/(2.*num.pi))[1]
 
 class MultiplyResponse(FrequencyResponse):
     '''Multiplication of two :py:class:`FrequencyResponse` objects.'''
 
+    a = FrequencyResponse.T()
+    b = FrequencyResponse.T()
+
     def __init__(self, a, b):
-        self._a = a
-        self._b = b
+        FrequencyResponse.__init__(self, a=a, b=b)
 
     def evaluate(self, freqs):
-        return self._a.evaluate(freqs) * self._b.evaluate(freqs)
+        return self.a.evaluate(freqs) * self.b.evaluate(freqs)
+
+def asarray_1d(x, dtype):
+    if isinstance(x, (list, tuple)) and x and isinstance(x[0], basestring):
+        return num.asarray(map(dtype, x), dtype=dtype)
+    else:
+        a = num.asarray(x, dtype=dtype)
+        if not a.ndim == 1:
+            raise ValueError('could not convert to 1D array')
+        return a
 
 cached_coefficients = {}
 def _get_cached_filter_coefs(order, corners, btype):

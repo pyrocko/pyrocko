@@ -492,8 +492,6 @@ class TraceTestCase(unittest.TestCase):
             for m in ms:
                 self.assertNotEqual(m, None, 'misfit\'s m is None')
 
-
-
     def testMisfitBox(self):
 
         ydata = num.zeros(9)
@@ -522,11 +520,6 @@ class TraceTestCase(unittest.TestCase):
             taper=trace.CosTaper(tr.tmin, tr.tmin, tr.tmax, tr.tmax),
             domain='time_domain')
 
-        for ms, nn, in rt.misfit(candidadtes=tts, setups=[mfsetup]):
-            print ms, nn
-
-
-
     def testValidateFrequencyResponses(self):
         ttrace = trace.Trace(ydata=num.random.random(1000))
         inverse_eval = trace.InverseEvalresp(respfile='test.txt',
@@ -534,10 +527,10 @@ class TraceTestCase(unittest.TestCase):
                                              target='vel')
         inverse_eval.validate()
         
-        pzk_response = trace.PoleZeroResponse(zeros=num.array([0., 0], dtype=num.complex),
-                                              poles=num.array([1., 2.], dtype=num.complex),
+        pzk_response = trace.PoleZeroResponse(zeros=[0+0j, 0+0j],
+                                              poles=[1+0j, 2+0j],
                                               constant=10.)
-        pzk_response.validate()
+        pzk_response.regularize()
 
 
 if __name__ == "__main__":
