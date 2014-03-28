@@ -614,7 +614,7 @@ class DiscretizedMTSource(DiscretizedSource):
 
 
 class ComponentSchemes(StringChoice):
-    choices = ('elastic10', 'elastic8', 'elastic2')
+    choices = ('elastic10', 'elastic8', 'elastic2', 'poroelastic10')
 
 
 class Config(Object):
