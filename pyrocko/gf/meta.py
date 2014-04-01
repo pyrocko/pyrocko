@@ -506,29 +506,32 @@ class DiscretizedExplosionSource(DiscretizedSource):
         m0s = self.m0s
         n = azis.size
 
+        cat = num.concatenate
+        rep = num.repeat
+
         if scheme == 'elastic2':
-            w_n = (cb*m0s,)
-            g_n = num.repeat((0,), n)
-            w_e = (sb*m0s,)
-            g_e = num.repeat((0,), n)
-            w_u = (-m0s,)
-            g_u = num.repeat((1,), n)
+            w_n = cb*m0s
+            g_n = filledi(0, n)
+            w_e = sb*m0s
+            g_e = filledi(0, n)
+            w_u = -m0s
+            g_u = filledi(1, n)
 
         elif scheme == 'elastic8':
-            w_n = num.concatenate((cb*m0s, cb*m0s))
-            g_n = num.repeat((0, 2), n)
-            w_e = num.concatenate((sb*m0s, sb*m0s))
-            g_e = num.repeat((0, 2), n)
-            w_u = num.concatenate((-m0s, -m0s))
-            g_u = num.repeat((5, 7), n)
+            w_n = cat((cb*m0s, cb*m0s))
+            g_n = rep((0, 2), n)
+            w_e = cat((sb*m0s, sb*m0s))
+            g_e = rep((0, 2), n)
+            w_u = cat((-m0s, -m0s))
+            g_u = rep((5, 7), n)
 
         elif scheme == 'elastic10':
-            w_n = num.concatenate((cb*m0s, cb*m0s, cb*m0s))
-            g_n = num.repeat((0, 2, 8), n)
-            w_e = num.concatenate((sb*m0s, sb*m0s, sb*m0s))
-            g_e = num.repeat((0, 2, 8), n)
-            w_u = num.concatenate((-m0s, -m0s, -m0s))
-            g_u = num.repeat((5, 7, 9), n)
+            w_n = cat((cb*m0s, cb*m0s, cb*m0s))
+            g_n = rep((0, 2, 8), n)
+            w_e = cat((sb*m0s, sb*m0s, sb*m0s))
+            g_e = rep((0, 2, 8), n)
+            w_u = cat((-m0s, -m0s, -m0s))
+            g_u = rep((5, 7, 9), n)
 
         else:
             assert False
@@ -578,21 +581,24 @@ class DiscretizedMTSource(DiscretizedSource):
 
         n = azis.size
 
+        cat = num.concatenate
+        rep = num.repeat
+
         if scheme == 'elastic8':
-            w_n = num.concatenate((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
-            g_n = num.repeat((0, 1, 2, 3, 4), n)
-            w_e = num.concatenate((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
-            g_e = num.repeat((0, 1, 2, 3, 4), n)
-            w_u = num.concatenate((-f0, -f1, -f2))
-            g_u = num.repeat((5, 6, 7), n)
+            w_n = cat((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
+            g_n = rep((0, 1, 2, 3, 4), n)
+            w_e = cat((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
+            g_e = rep((0, 1, 2, 3, 4), n)
+            w_u = cat((-f0, -f1, -f2))
+            g_u = rep((5, 6, 7), n)
 
         elif scheme == 'elastic10':
-            w_n = num.concatenate((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
-            g_n = num.repeat((0, 1, 2, 8, 3, 4), n)
-            w_e = num.concatenate((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
-            g_e = num.repeat((0, 1, 2, 8, 3, 4), n)
-            w_u = num.concatenate((-f0, -f1, -f2, -f5))
-            g_u = num.repeat((5, 6, 7, 9), n)
+            w_n = cat((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
+            g_n = rep((0, 1, 2, 8, 3, 4), n)
+            w_e = cat((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
+            g_e = rep((0, 1, 2, 8, 3, 4), n)
+            w_u = cat((-f0, -f1, -f2, -f5))
+            g_u = rep((5, 6, 7, 9), n)
 
         return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
 
@@ -611,6 +617,55 @@ class DiscretizedMTSource(DiscretizedSource):
                 m6=self.m6s[i]))
 
         return sources
+
+
+class DiscretizedPorePressureSource(DiscretizedSource):
+    pp = Array.T(shape=(None,), dtype=num.float)
+
+    def make_weights(self, receiver, scheme):
+        assert scheme in ('poroelastic10',)
+
+        azis, bazis = self.azibazis_to(receiver)
+
+        sb = num.sin(bazis*d2r-num.pi)
+        cb = num.cos(bazis*d2r-num.pi)
+
+        pp = self.pp
+        n = bazis.size
+
+        w_un = cb*pp
+        g_un = filledi(1, n)
+        w_ue = sb*pp
+        g_ue = filledi(1, n)
+        w_uu = -pp
+        g_uu = filledi(0, n)
+
+        w_tn = cb*pp
+        g_tn = filledi(6, n)
+        w_te = sb*pp
+        g_te = filledi(6, n)
+
+        w_pp = pp
+        g_pp = filledi(7, n)
+
+        w_dvn = cb*pp
+        g_dvn = filledi(9, n)
+        w_dve = sb*pp
+        g_dve = filledi(9, n)
+        w_dvu = -pp
+        g_dvu = filledi(8, n)
+
+        return (
+            ('UN', w_un, g_un),
+            ('UE', w_ue, g_ue),
+            ('UZ', w_uu, g_uu),
+            ('TN', w_tn, g_tn),
+            ('TE', w_te, g_te),
+            ('PP', w_pp, g_pp),
+            ('DVN', w_dvn, g_dvn),
+            ('DVE', w_dve, g_dve),
+            ('DVZ', w_dvu, g_dvu),
+        )
 
 
 class ComponentSchemes(StringChoice):
@@ -1131,6 +1186,13 @@ def start_stop_num(start, stop, step, num, mi, ma, inc, eps=1e-5):
 def nditer_outer(x):
     return num.nditer(
         x, op_axes=(num.identity(len(x), dtype=num.int)-1).tolist())
+
+
+def filledi(x, n):
+    a = num.empty(n, dtype=num.int)
+    a.fill(x)
+    return a
+
 
 __all__ = '''
 Earthmodel1D

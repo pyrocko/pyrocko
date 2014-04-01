@@ -278,6 +278,84 @@ class RingfaultSource(SourceWithMagnitude):
             m6s=m6s)
 
 
+class PorePressurePointSource(Source):
+    '''
+    Excess pore pressure point source
+
+    For poro-elastic initial value problem where an excess pore pressure is
+    brought into a small source volume.
+    '''
+
+    pp = Float.T(
+        default=1.0,
+        help='initial excess pore pressure in [Pa]')
+
+    def base_key(self):
+        return Source.base_key(self)
+
+    def get_factor(self):
+        return self.pp
+
+    def discretize_basesource(self, store):
+        return meta.DiscretizedPorePressureSource(pp=arr(1.0),
+                                                  **self._dparams_base())
+
+
+class PorePressureLineSource(Source):
+    '''
+    Excess pore pressure line source
+
+    The line source is centered at (north_shift, east_shift, depth).
+    '''
+
+    pp = Float.T(
+        default=1.0,
+        help='initial excess pore pressure in [Pa]')
+
+    length = Float.T(
+        default=0.0,
+        help='length of the line source [m]')
+
+    azimuth = Float.T(
+        default=0.0,
+        help='azimuth direction, clockwise from north [deg]')
+
+    dip = Float.T(
+        default=90.,
+        help='dip direction, downward from horizontal [deg]')
+
+    def base_key(self):
+        return Source.base_key(self) + (self.azimuth, self.dip, self.length)
+
+    def get_factor(self):
+        return self.pp
+
+    def discretize_basesource(self, store):
+
+        n = 2 * num.ceil(self.length / min(store.config.deltas)) + 1
+
+        a = num.linspace(-0.5*self.length, 0.5*self.length, n)
+
+        sa = math.sin(self.azimuth*d2r)
+        ca = math.cos(self.azimuth*d2r)
+        sd = math.sin(self.dip*d2r)
+        cd = math.cos(self.dip*d2r)
+
+        points = num.zeros((n, 3))
+        points[:, 0] = self.north_shift + a * ca * cd
+        points[:, 1] = self.east_shift + a * sa * cd
+        points[:, 2] = self.depth + a * sd
+
+        return meta.DiscretizedPorePressureSource(
+            times=num.zeros(n),
+            lat=self.lat,
+            lon=self.lon,
+            north_shifts=points[:, 0],
+            east_shifts=points[:, 1],
+            depths=points[:, 2],
+            pp=num.ones(n)/n)
+
+
 class Target(meta.Receiver):
     '''
     A single channel of a computation request including post-processing params.
@@ -609,9 +687,11 @@ class LocalEngine(Engine):
         return store.make_same_span(store_.seismogram(base_source, receiver))
 
     def _post_process(self, base_seismogram, source, target):
-        deltat = base_seismogram[0].deltat
-        if len(base_seismogram) == 3:
-            ndata, edata, zdata = [x.data for x in base_seismogram]
+        deltat = base_seismogram.values()[0].deltat
+        if all(comp in base_seismogram for comp in ['N', 'E', 'Z']):
+            ndata, edata, zdata = [base_seismogram[comp].data
+                                   for comp in ['N', 'E', 'Z']]
+
             azi = target.effective_azimuth()
             dip = target.effective_dip()
             if (azi, dip) == (0.0, 0.0):
@@ -626,7 +706,7 @@ class LocalEngine(Engine):
                     edata * (math.sin(azi*d2r) * math.cos(dip*d2r)) + \
                     zdata * math.sin(dip*d2r)
         else:
-            data = base_seismogram[0].data.copy()
+            data = base_seismogram[target.codes[-1]].data.copy()
 
         factor = source.get_factor() * target.get_factor()
         if factor != 1.0:
@@ -636,7 +716,7 @@ class LocalEngine(Engine):
             codes=target.codes,
             data=data,
             deltat=deltat,
-            tmin=base_seismogram[0].itmin * deltat + source.time)
+            tmin=base_seismogram.values()[0].itmin * deltat + source.time)
 
         return tr
 
@@ -695,6 +775,8 @@ ExplosionSource
 DCSource
 MTSource
 RingfaultSource
+PorePressurePointSource
+PorePressureLineSource
 Target
 Reduction
 Request

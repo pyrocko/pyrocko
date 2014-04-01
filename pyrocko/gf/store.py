@@ -133,18 +133,21 @@ class GFTrace:
         return '|'.join(s)
 
 
-def make_same_span(traces):
+def make_same_span(tracesdict):
+
+    traces = tracesdict.values()
+
     nonzero = [tr for tr in traces if not tr.is_zero]
     if not nonzero:
-        return [Zero] * len(traces)
+        return dict((k, Zero) for k in tracesdict.keys())
 
     deltat = nonzero[0].deltat
 
     itmin = min(tr.itmin for tr in nonzero)
     itmax = max(tr.itmin+tr.data.size for tr in nonzero) - 1
 
-    out = []
-    for tr in traces:
+    out = {}
+    for k, tr in tracesdict.iteritems():
         n = itmax - itmin + 1
         if tr.itmin != itmin or tr.data.size != n:
             data = num.zeros(n, dtype=gf_dtype)
@@ -157,7 +160,7 @@ def make_same_span(traces):
 
             tr = GFTrace(data, itmin, deltat)
 
-        out.append(tr)
+        out[k] = tr
 
     return out
 
@@ -179,9 +182,11 @@ class CannotOpen(StoreError):
 class DuplicateInsert(StoreError):
     pass
 
+
 class ShortRead(StoreError):
     def __str__(self):
         return 'unexpected end of data (truncated traces file?)'
+
 
 class NotAllowedToInterpolate(StoreError):
     def __str__(self):
@@ -720,7 +725,6 @@ class BaseStore:
     def stats(self):
         counter = self.count_special_records()
 
-
         stats = dict(
             total=self._nrecords,
             inserted=(counter[1] + counter[2] + counter[3]),
@@ -1011,7 +1015,7 @@ class Store(BaseStore):
 
             if show_progress:
                 pbar.update(i+1)
-        
+
         if show_progress:
             pbar.finish()
 
@@ -1050,7 +1054,7 @@ class Store(BaseStore):
 
             if show_progress:
                 pbar.update(i+1)
-        
+
         if show_progress:
             pbar.finish()
 
@@ -1240,12 +1244,12 @@ class Store(BaseStore):
             ip.dump(fn)
 
     def seismogram(self, source, receiver):
-        out = []
+        out = {}
         for (channel, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
             gtr = self.sum(args, delays, weights)
-            out.append(gtr)
+            out[channel] = gtr
 
         return out
 
