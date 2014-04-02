@@ -63,7 +63,7 @@ class OrthodromeTestCase(unittest.TestCase):
             north2, east2 = orthodrome.latlon_to_ne2(reflat, reflon, lat, lon)
             dist1 = num.sqrt(north**2 + east**2)
             dist2 = num.sqrt(north2**2 + east2**2)
-            dist3 = orthodrome.distance_accurate50m2(reflat, reflon, lat, lon)
+            dist3 = orthodrome.distance_accurate15nm(reflat, reflon, lat, lon)
             assert num.all(num.abs(dist1-dist2) < 0.0001)
             assert num.all(num.abs(dist1-dist3) < 0.0001)
 
