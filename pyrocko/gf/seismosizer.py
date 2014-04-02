@@ -71,6 +71,11 @@ class Source(meta.Location):
                     east_shifts=arr(self.east_shift),
                     depths=arr(self.depth))
 
+    @classmethod
+    def provided_components(cls, component_scheme):
+        cls = cls.discretized_source_class
+        return cls.provided_components(component_scheme)
+
 
 class SourceWithMagnitude(Source):
     '''
@@ -100,6 +105,8 @@ class ExplosionSource(SourceWithMagnitude):
     '''
     An isotropic explosion point source.
     '''
+
+    discretized_source_class = meta.DiscretizedExplosionSource
 
     def base_key(self):
         return Source.base_key(self)
@@ -131,6 +138,8 @@ class DCSource(SourceWithMagnitude):
              'measured counter-clockwise from right-horizontal '
              'in on-plane view')
 
+    discretized_source_class = meta.DiscretizedMTSource
+
     def base_key(self):
         return Source.base_key(self) + (self.strike, self.dip, self.rake)
 
@@ -150,6 +159,8 @@ class MTSource(Source):
     '''
     A moment tensor point source.
     '''
+
+    discretized_source_class = meta.DiscretizedMTSource
 
     mnn = Float.T(
         default=1.,
@@ -230,6 +241,8 @@ class RingfaultSource(SourceWithMagnitude):
         default=360,
         help='number of point sources to use')
 
+    discretized_source_class = meta.DiscretizedMTSource
+
     def base_key(self):
         return Source.base_key(self) + (self.strike, self.dip, self.diameter)
 
@@ -286,6 +299,8 @@ class PorePressurePointSource(Source):
     brought into a small source volume.
     '''
 
+    discretized_source_class = meta.DiscretizedPorePressureSource
+
     pp = Float.T(
         default=1.0,
         help='initial excess pore pressure in [Pa]')
@@ -307,6 +322,8 @@ class PorePressureLineSource(Source):
 
     The line source is centered at (north_shift, east_shift, depth).
     '''
+
+    discretized_source_class = meta.DiscretizedPorePressureSource
 
     pp = Float.T(
         default=1.0,
@@ -360,6 +377,11 @@ class Target(meta.Receiver):
     '''
     A single channel of a computation request including post-processing params.
     '''
+
+    quantity = meta.QuantityType.T(
+        optional=True,
+        help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
+             'If not given, it is guessed from the channel code.')
 
     codes = Tuple.T(
         4, String.T(), default=('', 'STA', '', 'Z'),
@@ -419,15 +441,47 @@ class Target(meta.Receiver):
                 self.elevation, self.depth, self.north_shift, self.east_shift,
                 self.lat, self.lon)
 
-    def component_code(self):
-        if self.codes[-1]:
-            return self.codes[-1][-1].upper()
+    def effective_quantity(self):
+        if self.quantity is not None:
+            return self.quantity
 
-        raise BadRequest('cannot get component code')
+        # guess from channel code
+        cha = self.codes[-1].upper()
+        if len(cha) == 3:
+            # use most common SEED conventions here, however units have to be
+            # guessed, because they are not uniquely defined by the conventions
+            if cha[-2] in 'HL':  # high gain, low gain seismometer
+                return 'velocity'
+            if cha[-2] == 'N':   # accelerometer
+                return 'acceleration'
+            if cha[-2] == 'D':   # hydrophone, barometer, ...
+                return 'pressure'
+            if cha[-2] == 'A':   # tiltmeter
+                return 'tilt'
+        elif len(cha) == 2:
+            if cha[-2] == 'U':
+                return 'displacement'
+            if cha[-2] == 'V':
+                return 'velocity'
+        elif len(cha) == 1:
+            if cha in 'NEZ':
+                return 'displacement'
+            if cha == 'P':
+                return 'pressure'
+
+        raise BadRequest('cannot guess measurement quantity type from channel '
+                         'code "%s"' % cha)
 
     def receiver(self, store):
         rec = meta.Receiver(**dict(meta.Receiver.T.inamevals(self)))
         return rec
+
+    def component_code(self):
+        cha = self.codes[-1].upper()
+        if cha:
+            return cha[-1]
+        else:
+            return ' '
 
     def effective_azimuth(self):
         if self.azimuth is not None:
@@ -445,6 +499,15 @@ class Target(meta.Receiver):
 
         raise BadRequest('cannot determine sensor component dip')
 
+    def get_sin_cos_factors(self):
+        azi = self.effective_azimuth()
+        dip = self.effective_dip()
+        sa = math.sin(azi*d2r)
+        ca = math.cos(azi*d2r)
+        sd = math.sin(dip*d2r)
+        cd = math.cos(dip*d2r)
+        return sa, ca, sd, cd
+
     def get_factor(self):
         return 1.0
 
@@ -456,6 +519,10 @@ class Reduction(StringChoice):
 class Request(Object):
     '''
     Synthetic seismogram computation request.
+
+        Request(**kwargs)
+        Request(sources, targets, **kwargs)
+        Request(sources, targets, reductions, **kwargs)
     '''
 
     sources = List.T(
@@ -470,6 +537,36 @@ class Request(Object):
         Reduction.T(),
         help='list of reductions to be applied '
              'target-wise to the synthetics')
+
+    @classmethod
+    def args2kwargs(cls, args):
+        if len(args) not in (0, 2, 3):
+            raise BadRequest('invalid arguments')
+
+        if len(args) == 2:
+            return dict(sources=args[0], targets=args[1])
+        elif len(args) == 3:
+            return dict(sources=args[0], targets=args[1], reductions=args[2])
+        else:
+            return {}
+
+    def __init__(self, *args, **kwargs):
+        kwargs.update(self.args2kwargs(args))
+        sources = kwargs.pop('sources', [])
+        targets = kwargs.pop('targets', [])
+        reductions = kwargs.pop('reductions', [])
+
+        if isinstance(sources, Source):
+            sources = [sources]
+
+        if isinstance(targets, Target):
+            targets = [targets]
+
+        if isinstance(reductions, Reduction):
+            reductions = [reductions]
+
+        Object.__init__(self, sources=sources, targets=targets,
+                        reductions=reductions, **kwargs)
 
     def subsources_map(self):
         m = defaultdict(list)
@@ -548,6 +645,9 @@ class Response(Object):
                 yield source, target, \
                     self.traces_list[isource][itarget].pyrocko_trace()
 
+    def snuffle(self):
+        trace.snuffle(self.pyrocko_traces())
+
 
 class Engine(Object):
     '''
@@ -557,6 +657,106 @@ class Engine(Object):
     def get_store_ids(self):
         '''Get list of available GF store IDs'''
         return []
+
+
+class Rule(object):
+    pass
+
+
+def nonzero(x, eps=1e-15):
+    return abs(x) > eps
+
+
+class VectorRule(Rule):
+    def __init__(self, quantity, differentiate=0, integrate=0):
+        self.components = [quantity + '.' + c for c in 'ned']
+        self.differentiate = differentiate
+        self.integrate = integrate
+
+    def required_components(self, target):
+        n, e, d = self.components
+        sa, ca, sd, cd = target.get_sin_cos_factors()
+
+        comps = []
+        if nonzero(ca*cd):
+            comps.append(n)
+
+        if nonzero(sa*cd):
+            comps.append(e)
+
+        if nonzero(sd):
+            comps.append(d)
+
+        return tuple(comps)
+
+    def apply_(self, target, base_seismogram):
+        n, e, d = self.components
+        sa, ca, sd, cd = target.get_sin_cos_factors()
+
+        if nonzero(ca*cd):
+            data = base_seismogram[n].data * (ca*cd)
+        else:
+            data = 0.0
+
+        if nonzero(sa*cd):
+            data = data + base_seismogram[e].data * (sa*cd)
+
+        if nonzero(sd):
+            data = data + base_seismogram[d].data * sd
+
+        return data
+
+class HorizontalVectorRule(Rule):
+    def __init__(self, quantity, differentiate=0, integrate=0):
+        self.components = [quantity + '.' + c for c in 'ne']
+        self.differentiate = differentiate
+        self.integrate = integrate
+
+    def required_components(self, target):
+        n, e = self.components
+        sa, ca, _, _ = target.get_sin_cos_factors()
+
+        comps = []
+        if nonzero(ca):
+            comps.append(n)
+
+        if nonzero(sa):
+            comps.append(e)
+
+        return tuple(comps)
+
+    def apply_(self, target, base_seismogram):
+        n, e = self.components
+        sa, ca, _, _ = target.get_sin_cos_factors()
+
+        if nonzero(ca):
+            data = base_seismogram[n].data * ca
+        else:
+            data = 0.0
+
+        if nonzero(sa):
+            data = data + base_seismogram[e].data * sa
+
+        return data
+
+
+class ScalarRule(object):
+    def __init__(self, quantity, differentiate=0):
+        self.c = quantity
+
+    def required_components(self, target):
+        return (self.c, )
+
+    def apply_(self, target, base_seismogram):
+        return base_seismogram[self.c].data.copy()
+
+
+channel_rules = {
+    'displacement': [VectorRule('displacement')],
+    'velocity': [VectorRule('displacement', differentiate=1)],
+    'pore_pressure': [ScalarRule('pore_pressure')],
+    'vertical_tilt': [HorizontalVectorRule('vertical_tilt')],
+    'darcy_velocity': [VectorRule('darcy_velocity')]}
 
 
 class LocalEngine(Engine):
@@ -680,33 +880,38 @@ class LocalEngine(Engine):
         store = self.get_store(store_id)
         return store.get_extra(key)
 
-    def base_seismogram(self, source, target):
+    def channel_rule(self, source, target):
+        store_ = self.get_store(target.store_id)
+        cprovided = source.provided_components(store_.config.component_scheme)
+        quantity = target.effective_quantity()
+        try:
+            for rule in channel_rules[quantity]:
+                cneeded = rule.required_components(target)
+                if all(c in cprovided for c in cneeded):
+                    return rule
+
+        except KeyError:
+            pass
+
+        raise BadRequest(
+            'no rule to calculate "%s" with GFs from store "%s" '
+            'for source model "%s"' % (
+                target.effective_quantity(),
+                target.store_id,
+                source.__class__.__name__))
+
+    def base_seismogram(self, source, target, components):
         store_ = self.get_store(target.store_id)
         receiver = target.receiver(store_)
         base_source = source.discretize_basesource(store_)
-        return store.make_same_span(store_.seismogram(base_source, receiver))
+        base_seismogram = store_.seismogram(base_source, receiver, components)
+        return store.make_same_span(base_seismogram)
 
     def _post_process(self, base_seismogram, source, target):
         deltat = base_seismogram.values()[0].deltat
-        if all(comp in base_seismogram for comp in ['N', 'E', 'Z']):
-            ndata, edata, zdata = [base_seismogram[comp].data
-                                   for comp in ['N', 'E', 'Z']]
 
-            azi = target.effective_azimuth()
-            dip = target.effective_dip()
-            if (azi, dip) == (0.0, 0.0):
-                data = ndata.copy()
-            elif (azi, dip) == (90.0, 0.0):
-                data = edata.copy()
-            elif (azi, dip) == (0.0, -90):
-                data = zdata.copy()
-            else:
-                data = \
-                    ndata * (math.cos(azi*d2r) * math.cos(dip*d2r)) + \
-                    edata * (math.sin(azi*d2r) * math.cos(dip*d2r)) + \
-                    zdata * math.sin(dip*d2r)
-        else:
-            data = base_seismogram[target.codes[-1]].data.copy()
+        rule = self.channel_rule(source, target)
+        data = rule.apply_(target, base_seismogram)
 
         factor = source.get_factor() * target.get_factor()
         if factor != 1.0:
@@ -720,12 +925,29 @@ class LocalEngine(Engine):
 
         return tr
 
-    def process(self, request=None, status_callback=None, **kwargs):
+    def process(self, *args, **kwargs):
         '''Process a request.
+
+            process(**kwargs)
+            process(request, **kwargs)
+            process(sources, targets, **kwargs)
+            process(sources, targets, reductions, **kwargs)
 
         The request can be given a a :py:class:`Request` object, or such an
         object is created using ``Request(**kwargs)`` for convenience.
         '''
+
+        if len(args) not in (0, 1, 2, 3):
+            raise BadRequest('invalid arguments')
+
+        if len(args) == 1:
+            kwargs['request'] = args[0]
+
+        elif len(args) >= 2:
+            kwargs.update(Request.args2kwargs(args))
+
+        request = kwargs.pop('request', None)
+        status_callback = kwargs.pop('status_callback', None)
 
         if request is None:
             request = Request(**kwargs)
@@ -745,7 +967,16 @@ class LocalEngine(Engine):
                 status_callback(i, n)
 
             sources, targets = m[k]
-            base_seismogram = self.base_seismogram(sources[0], targets[0])
+            components = set()
+            for target in targets:
+                rule = self.channel_rule(sources[0], target)
+                components.update(rule.required_components(target))
+
+            base_seismogram = self.base_seismogram(
+                sources[0],
+                targets[0],
+                components)
+
             for source in sources:
                 for target in targets:
                     tr = self._post_process(base_seismogram, source, target)
@@ -763,6 +994,11 @@ class RemoteEngine(Engine):
     '''
 
     url = String.T(default='http://kinherd.org/gf/seismosizer')
+
+
+def get_engine():
+    return LocalEngine(use_env=True)
+
 
 __all__ = '''
 BadRequest
@@ -785,4 +1021,5 @@ Response
 Engine
 LocalEngine
 RemoteEngine
+get_engine
 '''.split()

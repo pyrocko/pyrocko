@@ -1243,13 +1243,14 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def seismogram(self, source, receiver):
+    def seismogram(self, source, receiver, components):
         out = {}
-        for (channel, args, delays, weights) in \
+        for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
-            gtr = self.sum(args, delays, weights)
-            out[channel] = gtr
+            if component in components:
+                gtr = self.sum(args, delays, weights)
+                out[component] = gtr
 
         return out
 

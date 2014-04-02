@@ -61,6 +61,18 @@ class NearfieldTermsType(StringChoice):
     ]
 
 
+class QuantityType(StringChoice):
+    choices = [
+        'displacement',
+        'velocity',
+        'acceleration',
+        'pressure',
+        'tilt',
+        'pore_pressure',
+        'darcy_velocity',
+        'vertical_tilt']
+
+
 class Reference(Object):
     id = StringID.T()
     type = String.T()
@@ -411,6 +423,18 @@ class DiscretizedSource(Object):
     east_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
     depths = Array.T(shape=(None,), dtype=num.float)
 
+    @classmethod
+    def check_scheme(cls, scheme):
+        if scheme not in cls._provided_schemes:
+            raise BadRequest(
+                'source type "%s" does not support GF component scheme "%s"' % 
+                (cls.__name__, scheme))
+
+    @classmethod
+    def provided_components(cls, scheme):
+        cls.check_scheme(scheme)
+        return cls._provided_components
+
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
         self._latlons = None
@@ -495,8 +519,20 @@ class DiscretizedSource(Object):
 class DiscretizedExplosionSource(DiscretizedSource):
     m0s = Array.T(shape=(None,), dtype=num.float)
 
+    _provided_components = (
+        'displacement.n',
+        'displacement.e',
+        'displacement.d',
+    )
+
+    _provided_schemes = (
+        'elastic2',
+        'elastic8',
+        'elastic10',
+    )
+
     def make_weights(self, receiver, scheme):
-        assert scheme in ('elastic2', 'elastic8', 'elastic10')
+        self.check_scheme(scheme)
 
         azis, bazis = self.azibazis_to(receiver)
 
@@ -514,29 +550,33 @@ class DiscretizedExplosionSource(DiscretizedSource):
             g_n = filledi(0, n)
             w_e = sb*m0s
             g_e = filledi(0, n)
-            w_u = -m0s
-            g_u = filledi(1, n)
+            w_d = m0s
+            g_d = filledi(1, n)
 
         elif scheme == 'elastic8':
             w_n = cat((cb*m0s, cb*m0s))
             g_n = rep((0, 2), n)
             w_e = cat((sb*m0s, sb*m0s))
             g_e = rep((0, 2), n)
-            w_u = cat((-m0s, -m0s))
-            g_u = rep((5, 7), n)
+            w_d = cat((m0s, m0s))
+            g_d = rep((5, 7), n)
 
         elif scheme == 'elastic10':
             w_n = cat((cb*m0s, cb*m0s, cb*m0s))
             g_n = rep((0, 2, 8), n)
             w_e = cat((sb*m0s, sb*m0s, sb*m0s))
             g_e = rep((0, 2, 8), n)
-            w_u = cat((-m0s, -m0s, -m0s))
-            g_u = rep((5, 7, 9), n)
+            w_d = cat((m0s, m0s, m0s))
+            g_d = rep((5, 7, 9), n)
 
         else:
             assert False
 
-        return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
+        return (
+            ('displacement.n', w_n, g_n),
+            ('displacement.e', w_e, g_e),
+            ('displacement.d', w_d, g_d),
+        )
 
     def split(self):
         from pyrocko.gf.seismosizer import ExplosionSource
@@ -558,8 +598,19 @@ class DiscretizedExplosionSource(DiscretizedSource):
 class DiscretizedMTSource(DiscretizedSource):
     m6s = Array.T(shape=(None, 6), dtype=num.float)
 
+    _provided_components = (
+        'displacement.n',
+        'displacement.e',
+        'displacement.d',
+    )
+
+    _provided_schemes = (
+        'elastic8',
+        'elastic10',
+    )
+
     def make_weights(self, receiver, scheme):
-        assert scheme in ('elastic8', 'elastic10')
+        self.check_scheme(scheme)
 
         azis, bazis = self.azibazis_to(receiver)
 
@@ -589,18 +640,22 @@ class DiscretizedMTSource(DiscretizedSource):
             g_n = rep((0, 1, 2, 3, 4), n)
             w_e = cat((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
             g_e = rep((0, 1, 2, 3, 4), n)
-            w_u = cat((-f0, -f1, -f2))
-            g_u = rep((5, 6, 7), n)
+            w_d = cat((f0, f1, f2))
+            g_d = rep((5, 6, 7), n)
 
         elif scheme == 'elastic10':
             w_n = cat((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
             g_n = rep((0, 1, 2, 8, 3, 4), n)
             w_e = cat((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
             g_e = rep((0, 1, 2, 8, 3, 4), n)
-            w_u = cat((-f0, -f1, -f2, -f5))
-            g_u = rep((5, 6, 7, 9), n)
+            w_d = cat((f0, f1, f2, f5))
+            g_d = rep((5, 6, 7, 9), n)
 
-        return (('N', w_n, g_n), ('E', w_e, g_e), ('Z', w_u, g_u))
+        return (
+            ('displacement.n', w_n, g_n),
+            ('displacement.e', w_e, g_e),
+            ('displacement.d', w_d, g_d),
+        )
 
     def split(self):
         from pyrocko.gf.seismosizer import MTSource
@@ -622,8 +677,24 @@ class DiscretizedMTSource(DiscretizedSource):
 class DiscretizedPorePressureSource(DiscretizedSource):
     pp = Array.T(shape=(None,), dtype=num.float)
 
+    _provided_components = (
+        'displacement.n',
+        'displacement.e',
+        'displacement.d',
+        'vertical_tilt.n',
+        'vertical_tilt.e',
+        'pore_pressure',
+        'darcy_velocity.n',
+        'darcy_velocity.e',
+        'darcy_velocity.d',
+    )
+
+    _provided_schemes = (
+        'poroelastic10',
+    )
+
     def make_weights(self, receiver, scheme):
-        assert scheme in ('poroelastic10',)
+        self.check_scheme(scheme)
 
         azis, bazis = self.azibazis_to(receiver)
 
@@ -637,8 +708,8 @@ class DiscretizedPorePressureSource(DiscretizedSource):
         g_un = filledi(1, n)
         w_ue = sb*pp
         g_ue = filledi(1, n)
-        w_uu = -pp
-        g_uu = filledi(0, n)
+        w_ud = pp
+        g_ud = filledi(0, n)
 
         w_tn = cb*pp
         g_tn = filledi(6, n)
@@ -652,19 +723,19 @@ class DiscretizedPorePressureSource(DiscretizedSource):
         g_dvn = filledi(9, n)
         w_dve = sb*pp
         g_dve = filledi(9, n)
-        w_dvu = -pp
-        g_dvu = filledi(8, n)
+        w_dvd = pp
+        g_dvd = filledi(8, n)
 
         return (
-            ('UN', w_un, g_un),
-            ('UE', w_ue, g_ue),
-            ('UZ', w_uu, g_uu),
-            ('TN', w_tn, g_tn),
-            ('TE', w_te, g_te),
-            ('PP', w_pp, g_pp),
-            ('DVN', w_dvn, g_dvn),
-            ('DVE', w_dve, g_dve),
-            ('DVZ', w_dvu, g_dvu),
+            ('displacement.n', w_un, g_un),
+            ('displacement.e', w_ue, g_ue),
+            ('displacement.d', w_ud, g_ud),
+            ('vertical_tilt.n', w_tn, g_tn),
+            ('vertical_tilt.e', w_te, g_te),
+            ('pore_pressure', w_pp, g_pp),
+            ('darcy_velocity.n', w_dvn, g_dvn),
+            ('darcy_velocity.e', w_dve, g_dve),
+            ('darcy_velocity.d', w_dvd, g_dvd),
         )
 
 
