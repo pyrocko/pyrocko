@@ -14,7 +14,7 @@ if [ ! -d evalresp-3.3.0/lib ]; then
     rm -rf evalresp-3.3.0
     tar -xzf evalresp-3.3.0.tar.gz
     cd evalresp-3.3.0
-    ./configure --prefix=`pwd` CFLAGS=-fPIC
+    ./configure --prefix="`pwd`" --libdir="`pwd`/lib" CFLAGS=-fPIC
     make
     make install
     cd ..
