@@ -6,8 +6,8 @@ from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
 from pyrocko.util import reuse, hpfloat, UnavailableDecimation
 from pyrocko.pchain import *
-from guts import Object, Float, Int, String, Complex, Tuple, List
-from guts_array import Array
+from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List
+from pyrocko.guts_array import Array
 
 logger = logging.getLogger('pyrocko.trace')
 

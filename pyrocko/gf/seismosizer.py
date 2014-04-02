@@ -5,10 +5,10 @@ pjoin = os.path.join
 
 import numpy as num
 
-from guts import Object, Float, String, StringChoice, List, Tuple, Timestamp, \
+from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, Timestamp, \
     Int
 
-from guts_array import Array
+from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
 from pyrocko import trace

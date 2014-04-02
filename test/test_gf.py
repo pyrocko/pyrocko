@@ -1,7 +1,7 @@
 import sys
 import random
 import math
-import guts
+from pyrocko import guts
 import unittest
 from tempfile import mkdtemp
 import numpy as num

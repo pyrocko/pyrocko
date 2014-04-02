@@ -3,11 +3,11 @@ import math
 import re
 import fnmatch
 import numpy as num
-from guts import Object, SObject, String, StringChoice, StringPattern, \
+from pyrocko.guts import Object, SObject, String, StringChoice, StringPattern, \
     Unicode, Float, Bool, Int, TBase, List, ValidationError
-from guts import dump, load  # noqa
+from pyrocko.guts import dump, load  # noqa
 
-from guts_array import literal, Array
+from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit
 
 d2r = math.pi / 180.

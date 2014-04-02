@@ -1,9 +1,9 @@
 import time
 import logging
 
-from guts import StringChoice, StringPattern, UnicodePattern, String, Unicode,\
-    Int, Float, List, Object, Timestamp, ValidationError
-from guts import load_xml  # noqa
+from pyrocko.guts import StringChoice, StringPattern, UnicodePattern, String,\
+    Unicode, Int, Float, List, Object, Timestamp, ValidationError
+from pyrocko.guts import load_xml  # noqa
 
 logger = logging.getLogger('pyrocko.fdsn.station')
 

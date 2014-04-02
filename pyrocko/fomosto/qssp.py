@@ -5,8 +5,8 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
-from guts import *
-from guts_array import *
+from pyrocko.guts import *
+from pyrocko.guts_array import *
 from pyrocko import trace, util, cake
 from pyrocko import gf
 from pyrocko.parimap import parimap

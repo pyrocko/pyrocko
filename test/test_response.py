@@ -1,7 +1,6 @@
 import unittest, os
 import numpy as num
-from pyrocko import util, evalresp, pz, trace
-import guts
+from pyrocko import util, evalresp, pz, trace, guts
 
 def numeq(a,b, eps):
     return num.all(num.abs(num.array(a) - num.array(b)) < eps)
