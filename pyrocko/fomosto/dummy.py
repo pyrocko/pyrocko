@@ -79,8 +79,10 @@ km = 1000.
 
 def init(store_dir):
     
+    store_id = os.path.basename(os.path.realpath(store_dir))
+
     config = gf.meta.ConfigTypeA(
-            id = 'dummy',
+            id = store_id,
             ncomponents = 2,
             sample_rate = 1.0,
             receiver_depth = 0*km,

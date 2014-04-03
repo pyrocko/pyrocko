@@ -817,8 +817,10 @@ def init(store_dir):
     qseis.wavelet_duration_samples = 0.001
     qseis.sw_flat_earth_transform = 1
 
+    store_id = os.path.basename(os.path.realpath(store_dir))
+
     config = gf.meta.ConfigTypeA(
-            id = 'my_qseis_gf_store',
+            id = store_id,
             ncomponents = 10,
             sample_rate = 0.2,
             receiver_depth = 0*km,

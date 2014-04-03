@@ -633,9 +633,11 @@ def init(store_dir):
     qssp.cut = (
             gf.meta.Timing('begin-50'),
             gf.meta.Timing('end+100'))
+
+    store_id = os.path.basename(os.path.realpath(store_dir))
     
     config = gf.meta.ConfigTypeA(
-            id = 'my_qssp_gf_store',
+            id = store_id,
             ncomponents = 10,
             sample_rate = 0.2,
             receiver_depth = 0*km,

@@ -490,9 +490,11 @@ class PoelGFBuilder(gf.builder.Builder):
 def init(store_dir):
     poel = PoelConfig()
 
+    store_id = os.path.basename(os.path.realpath(store_dir))
+
     config = gf.meta.ConfigTypeB(
             modelling_code_id = 'poel',
-            id = 'my_poel_gf_store',
+            id = store_id,
             ncomponents = 10,
             component_scheme = 'poroelastic10',
             sample_rate = 0.1,
