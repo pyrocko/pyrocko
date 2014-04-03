@@ -654,7 +654,8 @@ def command_tttview(args):
 def command_tttextract(args):
     def setup(parser):
         parser.add_option('--output', dest='output_fn', metavar='TEMPLATE',
-                help='output path template [default: "%s"]' % fndfl)
+                help='output to text files instead of stdout '
+                     '(example TEMPLATE: "extracted/%(args)s.txt")')
 
     parser, options, args = cl_parse('tttextract', args, setup=setup)
     try:
