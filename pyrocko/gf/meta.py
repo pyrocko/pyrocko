@@ -736,7 +736,7 @@ class Config(Object):
     def iter_nodes(self, level=None):
         return nditer_outer(self.coords[:level])
 
-    def iter_extraction(self, gdef):
+    def iter_extraction(self, gdef, level=None):
         i = 0
         arrs = []
         ntotal = 1
@@ -753,7 +753,7 @@ class Config(Object):
             i += 1
 
         arrs.append(self.coords[-1])
-        return nditer_outer(arrs)
+        return nditer_outer(arrs[:level])
 
     def make_sum_params(self, source, receiver):
         out = []

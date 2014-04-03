@@ -26,6 +26,7 @@ subcommand_descriptions = {
         'export':        'convert GF store to Kiwi GFDB format',
         'ttt':           'create travel time tables',
         'tttview':       'plot travel time table',
+        'tttextract':    'extract selected travel times',
         'server':        'run seismosizer server',
         'download':      'download GF store from a server',
     }
@@ -44,6 +45,7 @@ subcommand_usages = {
         'export':        'export [store-dir] <destination> [options]',
         'ttt':           'ttt [store-dir] [options]',
         'tttview':       'tttview [store-dir] <phase-id>',
+        'tttextract':    'tttextract [store-dir] <phase> <selection>',
         'server':        'server [options] <store-super-dir> ...',
         'download':      'download [options] <site> <store-id>',
     }
@@ -68,6 +70,7 @@ Subcommands:
     export        %(export)s
     ttt           %(ttt)s
     tttview       %(tttview)s
+    tttextract    %(tttextract)s
     server        %(server)s
     download      %(download)s
 
@@ -647,6 +650,52 @@ def command_tttview(args):
 
     plt.tight_layout()
     plt.show()
+
+def command_tttextract(args):
+    def setup(parser):
+        pass
+
+    parser, options, args = cl_parse('tttextract', args, setup=setup)
+    try:
+        sdef = args.pop()
+    except:
+        parser.error('cannot get <selection> argument')
+
+    try:
+        sphase = args.pop()
+    except:
+        parser.error('cannot get <phase> argument')
+
+    try:
+        phase = gf.meta.Timing(sphase)
+    except gf.meta.InvalidTimingSpecification:
+        parser.error('invalid phase specification: "%s"' % sphase)
+
+    try:
+        gdef = gf.meta.parse_grid_spec(sdef)
+    except gf.meta.GridSpecError, e:
+        die(e)
+
+    store_dir = get_store_dir(args)
+
+    extensions = {
+            'mseed': 'mseed',
+            'sac': 'sac',
+            'text': 'txt',
+            'yaff': 'yaff' }
+
+    try:
+        store = gf.Store(store_dir)
+        for args in store.config.iter_extraction(gdef, level=-1):
+            t = store.t(phase, args)
+            s = ' '.join('%e' % x for x in args)
+            if t is not None:
+                print s, '%e' % t
+            else:
+                print s, 'nan'
+
+    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds), e:
+        die(e)
 
 def command_server(args):
     from pyrocko.gf import server
