@@ -2,7 +2,7 @@
 
 import sys
 import numpy as num
-from pyrocko import cake, util
+from pyrocko import cake, util, orthodrome
 from pyrocko import cake_plot as plot
 from optparse import OptionParser, OptionGroup
 
@@ -97,7 +97,7 @@ character, respectively.  ''')
 
         parser.add_option_group(group)
     
-    if any( x in want for x in ('zstart', 'zstop', 'distances') ):
+    if any( x in want for x in ('zstart', 'zstop', 'distances', 'sloc', 'rloc') ):
         group = OptionGroup(parser, 'Source-receiver geometry')
         if 'zstart' in want:
             group.add_option('--sdepth', dest='sdepth', type='float', default=0.0, metavar='FLOAT',
@@ -108,6 +108,10 @@ character, respectively.  ''')
         if 'distances' in want:
             group.add_option('--distances', dest='sdist', metavar='DISTANCES',
                     help='Surface distances as "start:stop:n" or "dist1,dist2,..." [km]')
+            group.add_option('--sloc', dest='sloc', metavar='LAT,LON',
+                     help='Source location (LAT,LON).')
+            group.add_option('--rloc', dest='rloc', metavar='LAT,LON',
+                     help='Receiver location (LAT,LON).')
         parser.add_option_group(group)
 
     if 'material' in want:
@@ -237,7 +241,21 @@ character, respectively.  ''')
         
             if not as_degrees:
                 distances *= r2d * cake.km / cake.earthradius
-        
+
+        if options.sloc and options.rloc:
+            try:
+                slat, slon = tuple([ float(x) for x in options.sloc.split(',') ])
+                rlat, rlon = tuple([ float(x) for x in options.rloc.split(',') ])
+            except:
+                parser.error('format for --sloc and --rloc options is "LATITUDE,LONGITUDE"')
+
+            distance_sr = orthodrome.distance_accurate50m_numpy(slat, slon, rlat, rlon)
+            distance_sr *= r2d / cake.earthradius
+            if distances is not None:
+                distances = num.concatenate((distances, [distance_sr]))
+            else:
+                distances = num.array([distance_sr], dtype=num.float)
+
         if distances is not None:
             d['distances'] = distances
         else:
