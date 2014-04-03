@@ -653,7 +653,8 @@ def command_tttview(args):
 
 def command_tttextract(args):
     def setup(parser):
-        pass
+        parser.add_option('--output', dest='output_fn', metavar='TEMPLATE',
+                help='output path template [default: "%s"]' % fndfl)
 
     parser, options, args = cl_parse('tttextract', args, setup=setup)
     try:
@@ -667,7 +668,7 @@ def command_tttextract(args):
         parser.error('cannot get <phase> argument')
 
     try:
-        phase = gf.meta.Timing(sphase)
+        phases = [gf.meta.Timing(x.strip()) for x in sphase.split(',')]
     except gf.meta.InvalidTimingSpecification:
         parser.error('invalid phase specification: "%s"' % sphase)
 
@@ -687,12 +688,26 @@ def command_tttextract(args):
     try:
         store = gf.Store(store_dir)
         for args in store.config.iter_extraction(gdef, level=-1):
-            t = store.t(phase, args)
-            s = ' '.join('%e' % x for x in args)
-            if t is not None:
-                print s, '%e' % t
+            s = ['%e' % x for x in args]
+            for phase in phases:
+                t = store.t(phase, args)
+                if t is not None:
+                    s.append('%e' % t)
+                else:
+                    s.append('nan')
+
+            if options.output_fn:
+                d = dict(
+                    args = '_'.join('%e' % x for x in args),
+                    extension = 'txt')
+
+                fn = options.output_fn % d
+                util.ensuredirs(fn)
+                with open(fn, 'w') as f:
+                    f.write(' '.join(s))
+                    f.write('\n')
             else:
-                print s, 'nan'
+                print ' '.join(s)
 
     except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds), e:
         die(e)
