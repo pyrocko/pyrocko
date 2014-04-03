@@ -2234,9 +2234,9 @@ class RayPath(object):
             xp = interp( x, rx, rp, 0)
             xt = interp( x, rx, rt, 0)
 
-            if rp.size and len(xp) == 0 and rx[0] == 0.0 and x == 0.0 and rp[0] == 0.0:
-                xp = [ (x, rp[0]) ]
-                xt = [ (x, rt[0]) ]
+            if rp.size and len(xp) == 0 and rx[0] == 0.0 and any(x == 0.0) and rp[0] == 0.0:
+                xp = [ (0.0, rp[0]) ]
+                xt = [ (0.0, rt[0]) ]
 
             return [ (x,p,t, (rp,rx,rt)) for ((x,p), (_,t)) in zip(xp, xt)  ] 
     
