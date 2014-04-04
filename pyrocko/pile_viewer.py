@@ -2349,7 +2349,7 @@ def MakePileViewerMainClass(base):
                         if self.menuitem_cliptraces.isChecked(): p.setClipRect(trackrect)
                         if self.menuitem_colortraces.isChecked():
                             color = pyrocko.plot.color(color_lookup[self.color_gather(trace)])
-                            pen = QPen(QColor(*color))
+                            pen = QPen(QColor(*color),1)
                             p.setPen(pen)
                         
                         p.drawPolyline( qpoints )
@@ -2800,17 +2800,24 @@ def MakePileViewerMainClass(base):
                 now = time.time()
             return now - self.interactive_range_change_time < self.interactive_range_change_delay_time
 
-        def follow(self, tlen, interval=50):
+        def follow(self, tlen, interval=50, lapse=None):
             self.show_all = False
             self.follow_time = tlen
             self.follow_timer = QTimer(self)
             self.connect( self.follow_timer, SIGNAL("timeout()"), self.follow_update ) 
             self.follow_timer.setInterval(interval)
             self.follow_timer.start()
+            self.follow_started = time.time()
+            self.follow_lapse = lapse
             
         def follow_update(self):
-            now = time.time()
-            if self.following_interrupted(now):
+            rnow = time.time()
+            if self.follow_lapse is None:
+                now = rnow
+            else:
+                now = self.follow_started + (rnow - self.follow_started) * self.follow_lapse
+
+            if self.following_interrupted(rnow):
                 return
             self.set_time_range(now-self.follow_time, now)
             self.update()
