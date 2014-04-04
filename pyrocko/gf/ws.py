@@ -215,3 +215,13 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
         raise DownloadError('download failed. Original error was: %s, %s' % (
             type(e).__name__, e))
 
+
+def seismosizer(url=g_url, site=g_default_site, majorversion=1,
+                request=None):
+
+    url = fillurl(url, site, 'seismosizer', majorversion)
+
+    from pyrocko.gf import meta
+
+    return meta.load(stream=_request(url, post=urllib.urlencode({'request': request.dump()})))
+

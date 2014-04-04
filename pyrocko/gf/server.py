@@ -406,17 +406,23 @@ class RequestHandler(asynchat.async_chat, SHRH):
 class SeismosizerHandler(RequestHandler):
 
     stores_path = '/gfws/static/stores/'
+    process_path = '/gfws/seismosizer/1/query'
 
     def send_head(self):
         S = self.stores_path
+        P = self.process_path
+        for x in (S,):
+            if re.match(r'^' + x[:-1] +'$', self.path):
+                return self.redirect(x)
+
         if re.match(r'^' + S + gf.StringID.pattern[1:-1], self.path):
             return RequestHandler.send_head(self)
 
-        elif re.match(r'^' + S[:-1] +'$', self.path):
-            return self.redirect(S)
-
         elif re.match(r'^' + S + '$', self.path):
             return self.list_stores()
+        
+        elif re.match(r'^' + P + '$', self.path):
+            return self.process()
 
         else:
             self.send_error(404, "File not found")
@@ -514,6 +520,27 @@ class SeismosizerHandler(RequestHandler):
         s = templates[format].render(stores=stores, title=title).encode('utf8')
         length = len(s)
         f = StringIO(s)
+        self.send_response(200)
+        self.send_header("Content-type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(length))
+        self.end_headers()
+        return f
+
+    def process(self):
+
+        request = gf.load(string=self.body['request'][0])
+        try:
+            resp = self.server.engine.process(request=request)
+        except (gf.BadRequest, gf.StoreError), e:
+            self.send_error(400, str(e))
+            return
+        
+        f = StringIO()
+        resp.dump(stream=f)
+        length = f.tell()
+
+        f.seek(0)
+
         self.send_response(200)
         self.send_header("Content-type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(length))

@@ -14,6 +14,8 @@ from pyrocko.guts_array import Array
 from pyrocko import moment_tensor as mt
 from pyrocko import trace, model
 from pyrocko.gf import meta, store
+from pyrocko import trace, model
+from pyrocko.gf import meta, store, ws
 
 d2r = math.pi/180.
 
@@ -1416,7 +1418,16 @@ class RemoteEngine(Engine):
     Client for remote synthetic seismogram calculator.
     '''
 
-    url = String.T(default='http://kinherd.org/gf/seismosizer')
+    site = String.T(default=ws.g_default_site, optional=True)
+    url = String.T(default=ws.g_url, optional=True)
+
+    def process(self, request=None, status_callback=None, **kwargs):
+
+        if request is None:
+            request = Request(**kwargs)
+
+        return ws.seismosizer(url=self.url, site=self.site, request=request)
+        
 
 
 def get_engine():
