@@ -215,7 +215,7 @@ character, respectively.  ''')
                 assert False
                 
             if 'model' in d:
-                d['model'] = d['model'].replaced_crust(*args)
+                d['model'] = d['model'].replaced_crust(args)
             else:
                 from pyrocko import crust2x2
                 profile = crust2x2.get_profile(*args)

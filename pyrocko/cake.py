@@ -3151,7 +3151,7 @@ class LayeredModel(object):
         if isinstance(crust2_profile, tuple):
             lat, lon = [ float(x) for x in crust2_profile ]
             profile = crust2x2.get_profile(lat, lon)
-        if isinstance(crust2_profile, basestring):
+        elif isinstance(crust2_profile, basestring):
             profile = crust2x2.get_profile(crust2_profile)
         elif isinstance(crust2_profile, crust2x2.Crust2Profile):
             profile = crust2_profile
