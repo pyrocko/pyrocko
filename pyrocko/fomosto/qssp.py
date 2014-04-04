@@ -1,5 +1,5 @@
 import numpy as num
-import logging, os, shutil, sys, glob, copy, math, signal, errno
+import logging, os, shutil, glob, copy, signal
 
 from tempfile import mkdtemp
 from subprocess import Popen, PIPE
@@ -454,6 +454,8 @@ qssp has been invoked as "%s"'''.lstrip() %
                 logger.warn('not removing temporary directory: %s' % self.tempdir)
 
 class QSSPGFBuilder(gf.builder.Builder):
+    nsteps = 2
+
     def __init__(self, store_dir, step, shared, block_size=None, tmp=None ):
         self.gfmapping = [
             (MomentTensor( m=symmat6(1,0,0,1,0,0) ), {'un': (0, -1), 'ue': (3, -1), 'uz': (5, -1) }),
@@ -462,10 +464,9 @@ class QSSPGFBuilder(gf.builder.Builder):
             (MomentTensor( m=symmat6(0,1,0,0,0,0) ), {'un': (8, -1),                'uz': (9, -1) }),
         ]
 
-        self.step = step
         self.store = gf.store.Store(store_dir, 'w')
 
-        if self.step == 0:
+        if step == 0:
             block_size = (1,1,self.store.config.ndistances)
         else:
             if block_size is None:
@@ -474,7 +475,7 @@ class QSSPGFBuilder(gf.builder.Builder):
         if len(self.store.config.ns) == 2:
             block_size = block_size[1:]
 
-        gf.builder.Builder.__init__(self, self.store.config, block_size=block_size)
+        gf.builder.Builder.__init__(self, self.store.config, step, block_size=block_size)
 
         baseconf = self.store.get_extra('qssp')
 
@@ -498,15 +499,15 @@ class QSSPGFBuilder(gf.builder.Builder):
 
         self.qssp_config = conf
         
-    def work_block(self, index):
+    def work_block(self, iblock):
         if len(self.store.config.ns) == 2:
             (sz, firstx), (sz, lastx), (ns, nx) = \
-                    self.get_block_extents(index)
+                    self.get_block_extents(iblock)
 
             rz = self.store.config.receiver_depth
         else:
             (rz, sz, firstx), (rz, sz, lastx), (nr, ns, nx) = \
-                    self.get_block_extents(index)
+                    self.get_block_extents(iblock)
 
         gf_filename = 'GF_%gkm_%gkm' % (sz/km, rz/km) 
 
@@ -515,19 +516,19 @@ class QSSPGFBuilder(gf.builder.Builder):
         gf_path = os.path.join(conf.gf_directory, '?_' + gf_filename)
 
         if self.step == 0 and len(glob.glob(gf_path)) == 7:
-            logger.info('Skipping step %i, block %i / %i (GF already exists)' %
-                (self.step, index+1, self.nblocks))
+            logger.info('Skipping step %i / %i, block %i / %i (GF already exists)' %
+                (self.step+1, self.nsteps, iblock+1, self.nblocks))
             return 
 
-        logger.info('Starting step %i, block %i / %i' % 
-                (self.step, index+1, self.nblocks))
+        logger.info('Starting step %i / %i, block %i / %i' % 
+                (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
         runner = QSSPRunner(tmp=self.tmp)
         
         conf.receiver_depth = rz/km
-        conf.sampling_interval = deltat = 1.0/self.gf_set.sample_rate
+        conf.sampling_interval = deltat = 1.0/self.gf_config.sample_rate
 
-        dx = self.gf_set.distance_delta
+        dx = self.gf_config.distance_delta
 
         if self.step == 0:
             distances = [ firstx ]
@@ -560,7 +561,7 @@ class QSSPGFBuilder(gf.builder.Builder):
                 os.rename(s,d)
 
         else:
-            for mt, gfmap in self.gfmapping[:[3,4][self.gf_set.ncomponents==10]]:
+            for mt, gfmap in self.gfmapping[:[3,4][self.gf_config.ncomponents==10]]:
                 m = mt.m_up_south_east()
 
                 conf.sources = [ QSSPSourceMT(lat=90-0.001*dx*cake.m2d, lon=0.0, 
@@ -618,8 +619,8 @@ class QSSPGFBuilder(gf.builder.Builder):
                 if interrupted:
                     raise KeyboardInterrupt()
 
-        logger.info('Done with step %i, block %i / %i' % 
-                (self.step, index+1, self.nblocks))
+        logger.info('Done with step %i / %i, block %i / %i' % 
+                (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
 
 km = 1000.
@@ -673,55 +674,6 @@ def init(store_dir):
     config.validate()
     return gf.store.Store.create_editables(store_dir, config=config, extra={'qssp': qssp})
 
-def __work_block(args):
-    try:
-        store_dir, step, iblock, shared = args
-        builder = QSSPGFBuilder(store_dir, step, shared)
-        builder.work_block(iblock)
-    except KeyboardInterrupt:
-        raise Interrupted()
-    except IOError, e:
-        if e.errno == errno.EINTR:
-            raise Interrupted()
-        else:
-            raise
-
-    return store_dir, step, iblock
-
-def build(store_dir, force=False, nworkers=None, continue_=False):
-
-    done = set()
-    status_fn = pjoin(store_dir, '.status')
-    if not continue_:
-        gf.store.Store.create_dependants(store_dir, force)
-        with open(status_fn, 'w') as status:
-            pass
-    else:
-        try:
-            with open(status_fn, 'r') as status:
-                for line in status:
-                    done.add(tuple(int(x) for x in line.split()))
-        except IOError:
-            raise gf.StoreError('nothing to continue')
-
-    shared = {}
-    for step in (0,1):
-        builder = QSSPGFBuilder(store_dir, step, shared)
-        iblocks = builder.all_block_indices()
-        iblocks = [ x for x in builder.all_block_indices() if (step, x) not in done ]
-        del builder
-
-        original = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        try:
-            for x in parimap(__work_block, [ (store_dir, step, iblock, shared) for iblock in iblocks ], 
-                    nprocs=nworkers, eprintignore=Interrupted):
-
-                store_dir, step, iblock = x
-                with open(status_fn, 'a') as status:
-                    status.write('%i %i\n' % (step, iblock))
-
-
-        finally:
-            signal.signal(signal.SIGINT, original)
-
-    os.remove(status_fn)
+def build(store_dir, force=False, nworkers=None, continue_=False, step=None, iblock=None):
+    return QSSPGFBuilder.build(store_dir, force=force, nworkers=nworkers,
+            continue_=continue_, step=step, iblock=iblock)

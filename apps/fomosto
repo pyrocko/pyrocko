@@ -218,15 +218,33 @@ def command_build(args):
         parser.add_option('--continue', dest='continue_', action='store_true',
                 help='continue suspended build')
 
+        parser.add_option('--step', dest='step', type='int', metavar='I',
+                help='process block number IBLOCK')
+
+        parser.add_option('--block', dest='iblock', type='int', metavar='I',
+                help='process block number IBLOCK')
+
     parser, options, args = cl_parse('build', args, setup=setup)
 
     store_dir = get_store_dir(args)
     try:
+        if options.step is not None:
+            step = options.step - 1
+        else:
+            step = None
+
+        if options.iblock is not None:
+            iblock = options.iblock - 1
+        else:
+            iblock = None
+
         store = gf.Store(store_dir)
         module = fomo_wrapper_module(store.config.modelling_code_id)
         module.build(store_dir, 
                 force=options.force, 
-                nworkers=options.nworkers, continue_=options.continue_)
+                nworkers=options.nworkers, continue_=options.continue_,
+                step=step,
+                iblock=iblock)
 
     except gf.StoreError, e:
         die(e)

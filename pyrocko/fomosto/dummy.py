@@ -26,9 +26,9 @@ class Interrupted(gf.store.StoreError):
 
 
 class DummyGFBuilder(gf.builder.Builder):
-    def __init__(self, store_dir):
+    def __init__(self, store_dir, step, shared):
         self.store = gf.store.Store(store_dir, 'w')
-        gf.builder.Builder.__init__(self, self.store.config, block_size=(1,51))
+        gf.builder.Builder.__init__(self, self.store.config, step, block_size=(1,51))
         
     def work_block(self, index):
         (sz, firstx), (sz, lastx), (ns, nx) = \
@@ -51,7 +51,7 @@ class DummyGFBuilder(gf.builder.Builder):
                     irec = self.store.config.irecord(*args)
                     tr = trace.Trace(
                         deltat = self.store.config.deltat,
-                        ydata=num.zeros(100)+float(irec))
+                        ydata=num.zeros(10000)+float(irec))
 
                     gf_tr = gf.store.GFTrace.from_trace(tr)
 
@@ -90,60 +90,13 @@ def init(store_dir):
             source_depth_max = 400*km,
             source_depth_delta = 4*km,
             distance_min = 4*km,
-            distance_max = 20000*km,
+            distance_max = 400*km,
             distance_delta = 4*km,
             modelling_code_id = 'dummy')
 
     config.validate()
     return gf.store.Store.create_editables(store_dir, config=config)
 
-def __work_block(args):
-    try:
-        store_dir, iblock = args
-        builder = DummyGFBuilder(store_dir)
-        builder.work_block(iblock)
-    except KeyboardInterrupt:
-        raise Interrupted()
-    except IOError, e:
-        if e.errno == errno.EINTR:
-            raise Interrupted()
-        else:
-            raise
-
-    return store_dir, iblock
-
-def build(store_dir, force=False, nworkers=None, continue_=False):
-
-    done = set()
-    status_fn = pjoin(store_dir, '.status')
-    if not continue_:
-        gf.store.Store.create_dependants(store_dir, force)
-        with open(status_fn, 'w') as status:
-            pass
-    else:
-        try:
-            with open(status_fn, 'r') as status:
-                for line in status:
-                    done.add(tuple(int(x) for x in line.split()))
-        except IOError:
-            raise gf.StoreError('nothing to continue')
-
-    builder = DummyGFBuilder(store_dir)
-    iblocks = builder.all_block_indices()
-    iblocks = [ x for x in builder.all_block_indices() if (x,) not in done ]
-    del builder
-
-    original = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    try:
-        for x in parimap(__work_block, [ (store_dir, iblock) for iblock in iblocks ], 
-                nprocs=nworkers, eprintignore=(Interrupted, gf.StoreError)):
-
-            store_dir, iblock = x
-            with open(status_fn, 'a') as status:
-                status.write('%i\n' % iblock)
-
-
-    finally:
-        signal.signal(signal.SIGINT, original)
-
-    os.remove(status_fn)
+def build(store_dir, force=False, nworkers=None, continue_=False, step=None, iblock=None):
+    return DummyGFBuilder.build(store_dir, force=force, nworkers=nworkers,
+            continue_=continue_, step=step, iblock=iblock)

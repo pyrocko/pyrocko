@@ -650,7 +650,7 @@ in the directory %s'''.lstrip() %
                 logger.warn('not removing temporary directory: %s' % self.tempdir)
 
 class QSeisGFBuilder(gf.builder.Builder):
-    def __init__(self, store_dir, shared, block_size=None, tmp=None ):
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None ):
         self.gfmapping = [
             (MomentTensor( m=symmat6(1,0,0,1,0,0) ), {'r': (0, +1), 't': (3, +1), 'z': (5, +1) }),
             (MomentTensor( m=symmat6(0,0,0,0,1,1) ), {'r': (1, +1), 't': (4, +1), 'z': (6, +1) }),
@@ -665,13 +665,13 @@ class QSeisGFBuilder(gf.builder.Builder):
         if len(self.store.config.ns) == 2:
             block_size = block_size[1:]
 
-        gf.builder.Builder.__init__(self, self.store.config, block_size=block_size)
+        gf.builder.Builder.__init__(self, self.store.config, step, block_size=block_size)
         baseconf = self.store.get_extra('qseis')
 
         conf = QSeisConfigFull(**baseconf.items())
         conf.earthmodel_1d = self.store.config.earthmodel_1d
         
-        deltat = 1.0/self.gf_set.sample_rate
+        deltat = 1.0/self.gf_config.sample_rate
 
         if 'time_window_min' not in shared:
             d = self.store.make_timing_params(conf.time_region[0], conf.time_region[1])
@@ -717,15 +717,15 @@ class QSeisGFBuilder(gf.builder.Builder):
         runner = QSeisRunner(tmp=self.tmp)
 
         
-        dx = self.gf_set.distance_delta
+        dx = self.gf_config.distance_delta
 
         distances = num.linspace(firstx, 
                 firstx + (nx-1)*dx, nx).tolist()
 
-        if distances[-1] < self.gf_set.distance_max:
+        if distances[-1] < self.gf_config.distance_max:
             # add global max distance, because qseis does some adjustments with
             # this value
-            distances.append(self.gf_set.distance_max)
+            distances.append(self.gf_config.distance_max)
 
         conf.gf_sw_source_types = (1,1,1,1,0,0)
 
@@ -733,7 +733,7 @@ class QSeisGFBuilder(gf.builder.Builder):
         conf.receiver_azimuths = [ 0.0 ] * len(distances)
         
         ii = 1
-        for mt, gfmap in self.gfmapping[:[3,4][self.gf_set.ncomponents==10]]:
+        for mt, gfmap in self.gfmapping[:[3,4][self.gf_config.ncomponents==10]]:
             m = mt.m()
 
             f = float
@@ -858,69 +858,6 @@ def init(store_dir):
     config.validate()
     return gf.store.Store.create_editables(store_dir, config=config, extra={'qseis': qseis})
 
-def __work_block(args):
-    try:
-        store_dir, iblock, shared = args
-        builder = QSeisGFBuilder(store_dir, shared)
-        builder.work_block(iblock)
-    except KeyboardInterrupt:
-        raise Interrupted()
-    except IOError, e:
-        if e.errno == errno.EINTR:
-            raise Interrupted()
-        else:
-            raise
-
-    return store_dir, iblock
-
-def build(store_dir, force=False, nworkers=None, continue_=False):
-
-    done = set()
-    status_fn = pjoin(store_dir, '.status')
-    if not continue_:
-        gf.store.Store.create_dependants(store_dir, force)
-        with open(status_fn, 'w') as status:
-            pass
-    else:
-        try:
-            with open(status_fn, 'r') as status:
-                for line in status:
-                    done.add(int(line))
-        except IOError:
-            raise gf.StoreError('nothing to continue')
-
-    shared = {}
-    builder = QSeisGFBuilder(store_dir, shared)
-    iblocks = [ x for x in builder.all_block_indices() if x not in done ]
-    del builder
-     
-    original = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    try:
-        for x in parimap(__work_block, [ (store_dir, iblock, shared) for iblock in iblocks ], 
-                nprocs=nworkers):
-
-            store_dir, iblock = x
-            with open(status_fn, 'a') as status:
-                status.write('%i\n' % iblock)
-
-    finally:
-        signal.signal(signal.SIGINT, original)
-
-    os.remove(status_fn)
-
-if __name__ == '__main__':
-
-    conf = QSeisConfigFull.example()
-
-    print conf.string_for_config()
-
-    runner = QSeisRunner()
-    runner.run(conf)
-
-    traces = runner.get_traces()
-
-    trace.snuffle(traces)
-
-
-    
-
+def build(store_dir, force=False, nworkers=None, continue_=False, step=None, iblock=None):
+    return QSeisGFBuilder.build(store_dir, force=force, nworkers=nworkers,
+            continue_=continue_, step=step, iblock=iblock)

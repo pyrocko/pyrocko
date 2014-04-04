@@ -424,14 +424,14 @@ poel has been invoked as "%s"''' % (poel_input, poel_output, poel_error, '\n'.jo
 
 
 class PoelGFBuilder(gf.builder.Builder):
-    def __init__(self, store_dir, block_size=None, tmp=None ):
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None ):
 
         if block_size is None:
             block_size = (51,1,51)
 
         self.store = gf.store.Store(store_dir, 'w')
 
-        gf.builder.Builder.__init__(self, self.store.config, block_size=block_size)
+        gf.builder.Builder.__init__(self, self.store.config, step, block_size=block_size)
         self.poel_config = self.store.get_extra('poel')
 
         self.tmp = tmp
@@ -459,7 +459,7 @@ class PoelGFBuilder(gf.builder.Builder):
         conf.no_distances = nx
         conf.depths = [firstrz, lastrz]
         conf.no_depths = nrz
-        conf.no_t_samples = int(round(conf.t_window * self.gf_set.sample_rate)) + 1      
+        conf.no_t_samples = int(round(conf.t_window * self.gf_config.sample_rate)) + 1
         
         runner.run(conf)
         
@@ -510,52 +510,6 @@ def init(store_dir):
 
     return gf.store.Store.create_editables(store_dir, config=config, extra={'poel': poel})
 
-def __work_block(args):
-    try:
-        store_dir, iblock = args
-        builder = PoelGFBuilder(store_dir)
-        builder.work_block(iblock)
-    except KeyboardInterrupt:
-        raise Interrupted()
-    except IOError, e:
-        if e.errno == errno.EINTR:
-            raise Interrupted()
-        else:
-            raise
-
-    return store_dir, iblock
-
-
-def build(store_dir, force=False, nworkers=None, continue_=False):
-
-    done = set()
-    status_fn = pjoin(store_dir, '.status')
-    if not continue_:
-        gf.store.Store.create_dependants(store_dir, force)
-        with open(status_fn, 'w') as status:
-            pass
-    else:
-        try:
-            with open(status_fn, 'r') as status:
-                for line in status:
-                    done.add(int(line))
-        except IOError:
-            raise gf.StoreError('nothing to continue')
-
-    builder = PoelGFBuilder(store_dir)
-    iblocks = [ x for x in builder.all_block_indices() if x not in done ]
-    del builder
-     
-    original = signal.signal(signal.SIGINT, signal.SIG_IGN)
-    try:
-        for x in parimap(__work_block, [ (store_dir, iblock) for iblock in iblocks ], 
-                nprocs=nworkers):
-
-            store_dir, iblock = x
-            with open(status_fn, 'a') as status:
-                status.write('%i\n' % iblock)
-
-    finally:
-        signal.signal(signal.SIGINT, original)
-
-    os.remove(status_fn)
+def build(store_dir, force=False, nworkers=None, continue_=False, step=None, iblock=None):
+    return PoelGFBuilder.build(store_dir, force=force, nworkers=nworkers,
+            continue_=continue_, step=step, iblock=iblock)
