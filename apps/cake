@@ -165,6 +165,15 @@ character, respectively.  ''')
 
         parser.add_option_group(group)
 
+    if any( x in want for x in ('output_format',) ):
+        group = OptionGroup(parser, 'Output')
+        if 'output_format' in want:
+            group.add_option('--output-format', dest='output_format', metavar='FORMAT', default='textual',
+                    choices=('textual', 'nd'),
+                    help='Set model output format (available: textual, nd, default: textual)')
+
+        parser.add_option_group(group)
+
     if usage == 'cake help-options':
         parser.print_help()
 
@@ -181,6 +190,9 @@ character, respectively.  ''')
     
     if 'accuracy' in want:
         d['accuracy'] = options.accuracy
+
+    if 'output_format' in want:
+        d['output_format'] = options.output_format
 
     if 'phases' in want:
         phases = []
@@ -477,11 +489,14 @@ To get further help and a list of available options for any subcommand run:
     subusage = usage_sub % command
 
     if command == 'print':
-        c = optparse((), ('model', 'phases', 'material'), usage=subusage, descr=descr)
+        c = optparse((), ('model', 'phases', 'material', 'output_format'), usage=subusage, descr=descr)
         
         if 'model' in c:
-            print c.model
-            print 
+            if c.output_format == 'textual':
+                print c.model
+                print 
+            elif c.output_format == 'nd':
+                cake.write_nd_model_fh(c.model, sys.stdout)
      
         if 'phases' in c:
             for phase in c.phases:
