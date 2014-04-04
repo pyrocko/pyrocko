@@ -1,12 +1,13 @@
 from collections import defaultdict
 import math
 import os
+import re
 pjoin = os.path.join
 
 import numpy as num
 
 from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
-    Timestamp, Int
+    Timestamp, Int, SObject
 
 from pyrocko.guts_array import Array
 
@@ -46,6 +47,327 @@ class Taper(Object):
     pass
 
 
+def ufloat(s):
+    units = {
+        'k': 1e3,
+        'M': 1e6,
+    }
+
+    factor = 1.0
+    if s and s[-1] in units:
+        factor = units[s[-1]]
+        s = s[:-1]
+        if not s:
+            raise ValueError('unit without a number: \'%s\'' % s)
+
+    return float(s) * factor
+
+
+def ufloat_or_none(s):
+    if s:
+        return ufloat(s)
+    else:
+        return None
+
+
+def int_or_none(s):
+    if s:
+        return int(s)
+    else:
+        return None
+
+
+class InvalidGridSpec(Exception):
+    pass
+
+
+class RS(SObject):
+    '''Convenient range specification
+
+    Equivalent ways to sepecify the range [ 0., 1000., ... 10000. ]:
+    
+      RS('0 .. 10k : 1k')
+      RS(start=0., stop=10*km, step=1*km)
+      RS(0, 10e3, 1e3)
+      RS('10k .. 100k @ 10')
+      RS(start=0., stop=10*km, n=11)
+      RS(0, 10e3, n=11)
+      RS(values=[ x*1e3 for x in range(11) ])
+
+    Depending on the use context, it can be possible to omit any part of the
+    specification. E.g. in the context of extracting a subset of an already
+    existing range, the existing range's specification values would be filled
+    in where missing. 
+    
+    The values are distributed with equal spacing, unless the *spacing* argument
+    is modified.  The values can be created offset or relative to an external
+    base value with the *relative* argument if the use context supports this.
+
+    The range specification can be expressed with a short string representation:
+
+        'start .. stop @ num | spacing, relative'
+        'start .. stop : step | spacing, relative'
+
+    most parts of the expression can be omitted if not needed. Whitespace is
+    allowed for readability but can also be omitted.
+    '''
+
+    start = Float.T(optional=True)
+    stop = Float.T(optional=True)
+    step = Float.T(optional=True)
+    n = Int.T(optional=True)
+    values = Array.T(optional=True, dtype=num.float, shape=(None,))
+    spacing = StringChoice.T(choices=['lin', 'log', 'symlog'], default='lin', optional=True)
+    relative = StringChoice.T(choices=['', 'add', 'mult'], default='', optional=True)
+
+    pattern = re.compile(r'^((?P<start>.*)\.\.(?P<stop>[^@|:]*))?(@(?P<n>[^|]+)|:(?P<step>[^|]+))?(\|(?P<stuff>.+))?$')
+
+    def __init__(self, *args, **kwargs):
+        
+        d = {}
+        if len(args) == 1:
+            d = self.parse(args[0])
+        elif len(args) in (2,3):
+            d['start'], d['stop'] = [float(x) for x in args[:2]]
+            if len(args) == 3:
+                d['step'] = float(args[2])
+
+        for k,v in kwargs:
+            if k in d:
+                raise guts.ArgumentError('%s specified more than once' % k) 
+
+            d[k] = v
+
+        SObject.__init__(self, **d)
+
+    def __str__(self):
+        def sfloat(x):
+            if x is not None:
+                return '%g' % x
+            else:
+                return ''
+
+        if self.values:
+            return ','.join('%g' % x for x in self.values)
+
+        if self.start is None and self.stop is None:
+            s0 = ''
+        else:
+            s0 = '%s .. %s' % (sfloat(self.start), sfloat(self.stop))
+
+        s1 = ''
+        if self.step is not None:
+            s1 = [' : %g',':%g'][s0 == ''] % self.step
+        elif self.n is not None:
+            s1 = [' @ %i', '@%i'][s0 == ''] % self.n
+
+        if self.spacing == 'lin' and self.relative == '':
+            s2 = ''
+        else:
+            x = []
+            if self.spacing != 'lin':
+                x.append(self.spacing)
+
+            if self.relative != '':
+                x.append(self.relative)
+
+            s2 = ' | %s' % ','.join(x)
+
+        return s0 + s1 + s2
+
+    @classmethod
+    def parse(cls, s):
+        s = re.sub('\s+', '', s)
+        m = cls.pattern.match(s)
+        if not m:
+            try:
+                vals = [ ufloat(x) for x in s.split(',') ]
+            except:
+                raise InvalidGridSpec('"%s" is not a valid range specification' % s)
+
+            return dict(values=num.array(vals, dtype=num.float))
+
+        d = m.groupdict()
+        try:
+            start = ufloat_or_none(d['start'])
+            stop = ufloat_or_none(d['stop'])
+            step = ufloat_or_none(d['step'])
+            n = int_or_none(d['n'])
+        except:
+            raise InvalidGridSpec('"%s" is not a valid range specification' % s)
+
+        spacing = 'lin'
+        relative = ''
+
+        if d['stuff'] is not None:
+            t = d['stuff'].split(',')
+            for x in t:
+                if x in cls.spacing.choices:
+                    spacing = x
+                elif x and x in cls.relative.choices:
+                    relative = x
+                else:
+                    raise InvalidGridSpec('"%s" is not a valid range specification' % s)
+
+        return dict(start=start, stop=stop, step=step, n=n, spacing=spacing, relative=relative)
+
+    def make(self, mi=None, ma=None, inc=None, base=None, eps=1e-5):
+        if self.values:
+            return self.values
+
+        start = self.start
+        stop = self.stop
+        step = self.step
+        n = self.n
+
+        swap = step is not None and step < 0.
+        if start is None:
+            start = [mi, ma][swap]
+        if stop is None:
+            stop = [ma, mi][swap]
+        if step is None and inc is not None:
+            step = [inc, -inc][ma < mi]
+
+        if start is None or stop is None:
+            raise InvalidGridSpec('Cannot use range specification "%s" without start and stop in this context' % self)
+
+        if step is None and n is None:
+            step = stop - start
+
+        if n is None:
+            if (step < 0) != (stop-start < 0):
+                raise InvalidGridSpec('Range specification "%s" has inconsistent ordering (step < 0 => stop > start)' % self)
+
+            n = int(round((stop-start)/step))+1
+            stop2 = start + (n-1)*step
+            if abs(stop-stop2) > eps:
+                n = int(math.floor((stop-start)/step))+1
+                stop = start + (n-1)*step
+            else:
+                stop = stop2
+
+        if start == stop:
+            n = 1
+
+        if self.spacing == 'lin':
+            vals = num.linspace(start, stop, n)
+
+        elif self.spacing in ('log', 'symlog'):
+            if start > 0. and stop > 0.:
+                vals = num.exp(num.linspace(num.log(start), num.log(stop), n))
+            elif start < 0. and stop < 0.:
+                vals = -num.exp(num.linspace(num.log(-start), num.log(-stop), n))
+            else:
+                raise InvalidGridSpec('log ranges should not include or cross zero (in range specification "%s")' % self)
+
+            if self.spacing == 'symlog':
+                nvals = - vals
+                vals = num.concatenate((nvals[::-1], vals))
+
+        if self.relative in ('add', 'mult') and base is None:
+            raise InvalidGridSpec('cannot use relative range specification in this context')
+
+        if self.relative == 'add':
+            vals += base
+
+        if self.relative == 'mult':
+            vals *= base
+
+        return vals
+
+
+class GSE(SObject):
+    param = meta.StringID.T()
+    rs = RS.T()
+
+    def __init__(self, s=None, **kwargs):
+        if s is not None:
+            t = s.split('=')
+            if len(t) != 2:
+                raise InvalidGridSpec('invalid grid specification element: %s' % s)
+
+            sp, sr = t[0].strip(), t[1].strip()
+
+            kwargs['param'] = sp
+            kwargs['rs'] = RS(sr)
+
+        SObject.__init__(self, **kwargs)
+
+    def __str__(self):
+        return self.param + ' = ' + str(self.rs)
+
+
+class GS(SObject):
+    elements = List.T(GSE.T())
+
+    def __init__(self, s=None, **kwargs):
+        if s is not None:
+            t = s.splitlines()
+            tt = []
+            for x in t:
+                x = x.strip()
+                if x:
+                    tt.extend(x.split(';'))
+
+            elements = []
+            for se in tt:
+                elements.append(GSE(se))
+
+            kwargs['elements'] = elements
+
+        SObject.__init__(self, **kwargs)
+
+    def __str__(self):
+        return '; '.join(str(x) for x in self.elements)
+
+class SGrid(object):
+    def __init__(self, base, order=None, **params):
+        propnames = [prop.name for prop in base.T.properties]
+
+        if order is None:
+            orderednames = propnames
+        else:
+            orderednames = order
+
+        ordered = []
+        for k in orderednames:
+            if k in params:
+                ordered.append((k, params.pop(k)))
+
+        if params:
+            for k in sorted(params.keys()):
+                ordered.append((k, params.pop(k)))
+
+        self.coords = [(k,v.make(base=getattr(base, k))) for 
+                        (k,v) in ordered if isinstance(v, RS)]
+
+        self.fixed = [(k,v) for (k,v) in ordered if not isinstance(v, RS)]
+        self.base = base
+
+    def isources(self):
+        d = self.base.dict()
+        d.update( dict((k,v) for (k,v) in self.fixed))
+
+        for params in permudef(self.coords):
+            d.update(dict((k,v) for (k,v) in params))
+            s = type(self.base)(**d)
+            s.regularize()
+            yield s
+
+def permudef(l, j=0):
+    if j < len(l):
+        k, v = l[j]
+        for y in v:
+            l[j] = k, y
+            for s in permudef(l, j+1):
+                yield s
+
+        l[j] = k, v
+        return
+    else:
+        yield l
+
+
 arr = num.atleast_1d
 
 
@@ -60,6 +382,9 @@ class Source(meta.Location):
     stf = Filter.T(
         optional=True,
         help='source time function as spectral response')
+
+    def grid(self, order=None, **params):
+        return SGrid(base=self, order=order, **params)
 
     def base_key(self):
         return (self.depth, self.lat, self.north_shift,
@@ -97,6 +422,9 @@ class Source(meta.Location):
             depth=ev.depth)
         d.update(kwargs)
         return cls(**d)
+
+    def dict(self):
+        return dict((k,v) for (k,v) in self.T.inamevals(self))
 
 
 class SourceWithMagnitude(Source):
@@ -1121,4 +1449,6 @@ LocalEngine
 RemoteEngine
 source_classes
 get_engine
+RS
+SGrid
 '''.split()
