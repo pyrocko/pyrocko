@@ -19,7 +19,7 @@ g_tagname_to_class = {}
 g_xmltagname_to_class = {}
 
 guts_types = ['Object', 'SObject', 'String', 'Unicode', 'Int', 'Float', 'Complex', 'Bool', 
-        'Timestamp', 'DateTimestamp', 'StringPattern', 'UnicodePattern', 'StringChoice', 'List', 'Tuple', 'Union', 'Choice', 'Any']
+        'Timestamp', 'DateTimestamp', 'StringPattern', 'UnicodePattern', 'StringChoice', 'List', 'Dict', 'Tuple', 'Union', 'Choice', 'Any']
 
 us_to_cc_regex = re.compile(r'([a-z])_([a-z])')
 def us_to_cc(s):
@@ -737,6 +737,56 @@ class Unicode(Object):
     dummy_for = unicode
 
 guts_plain_dummy_types = (String, Unicode, Int, Float, Complex, Bool)
+
+class Dict(Object):
+    dummy_for = dict
+
+    class __T(TBase):
+        multivalued = True
+
+        def __init__(self, key_t=Any.T(), content_t=Any.T(), *args, **kwargs):
+            TBase.__init__(self, *args, **kwargs)
+            assert isinstance(key_t, TBase)
+            assert isinstance(content_t, TBase)
+            self.key_t = key_t
+            self.content_t = content_t
+            self.content_t.parent = self
+
+        def default(self):
+            if self._default is not None:
+                return self._default
+            if self.optional:
+                return None
+            else:
+                return {}
+
+        def has_default(self):
+            return True
+
+        def validate(self, val, regularize, depth):
+            return TBase.validate(self, val, regularize, depth+1)
+
+        def validate_children(self, val, regularize, depth):
+            for key, ele in val.items():
+                newkey = self.key_t.validate(key, regularize, depth-1)
+                newele = self.content_t.validate(ele, regularize, depth-1)
+                if regularize:
+                    if newkey is not key or newele is not ele:
+                        del val[key]
+                        val[newkey] = newele
+            
+            return val
+
+        def to_save(self, val):
+            return dict((self.key_t.to_save(k), self.content_t.to_save(v))
+                        for (k,v) in val.iteritems())
+
+        def to_save_xml(self, val):
+            raise NotImplementedError()
+
+        def classname_for_help(self):
+            return '``dict`` of %s objects' % self.content_t.classname_for_help()
+
 
 class List(Object):
     dummy_for = list
