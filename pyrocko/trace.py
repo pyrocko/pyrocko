@@ -2008,8 +2008,8 @@ class PoleZeroResponse(FrequencyResponse):
     The poles and zeros should be given as angular frequencies, not in Hz.
     '''
     
-    zeros = List.T(Complex.T())
-    poles = List.T(Complex.T())
+    zeros = List.T(Complex.T(), optional=True, default=[()])
+    poles = List.T(Complex.T(), optional=True, default=[()])
     constant = Complex.T()
 
     def __init__(self, zeros, poles, constant):
