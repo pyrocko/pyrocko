@@ -2010,9 +2010,13 @@ class PoleZeroResponse(FrequencyResponse):
     
     zeros = List.T(Complex.T())
     poles = List.T(Complex.T())
-    constant = Complex.T()
+    constant = Complex.T(default=1.0+0j)
 
-    def __init__(self, zeros, poles, constant):
+    def __init__(self, zeros=None, poles=None, constant=1.0+0j):
+        if zeros is None:
+            zeros = []
+        if poles is None:
+            poles = []
         FrequencyResponse.__init__(self, zeros=zeros, poles=poles, constant=constant)
         
     def evaluate(self, freqs):
