@@ -323,6 +323,7 @@ class Location(Object):
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
+        self._kwargs = kwargs
         self._latlon = None
 
     def __setattr__(self, name, value):
