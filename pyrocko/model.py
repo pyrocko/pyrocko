@@ -67,7 +67,9 @@ class EmptyEvent(Exception):
     pass
 
 class Event:
-    def __init__(self, lat=0., lon=0., time=0., name='', depth=None, magnitude=None, region=None, load=None, loadf=None, catalog=None, moment_tensor=None, duration=None):
+    def __init__(self, lat=0., lon=0., time=0., name='', depth=None,
+            magnitude=None, region=None, load=None, loadf=None, catalog=None,
+            moment_tensor=None, duration=None):
         if load is not None:
             self.load(load)
         elif loadf is not None:

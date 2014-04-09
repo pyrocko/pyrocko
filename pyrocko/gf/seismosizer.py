@@ -11,7 +11,7 @@ from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, Times
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
-from pyrocko import trace
+from pyrocko import trace, model
 from pyrocko.gf import meta, store
 
 d2r = math.pi/180.
@@ -53,6 +53,7 @@ class Source(meta.Location):
     '''
     Base class for all source models
     '''
+    name = String.T(optional=True, default='')
 
     time = Timestamp.T(default=0.)
 
@@ -70,6 +71,17 @@ class Source(meta.Location):
                     north_shifts=arr(self.north_shift),
                     east_shifts=arr(self.east_shift),
                     depths=arr(self.depth))
+    
+    def pyrocko_event(self, **kwargs):
+        allowed_args = ['lat', 'lon', 'time', 'name', 'depth', 'magnitude', 
+            'region', 'load', 'loadf', 'catalog', 'moment_tensor', 'duration']
+
+        _kwargs = dict([(k, self._kwargs.get(k)) for k in self._kwargs.keys() 
+                                                        if k in allowed_args]) 
+
+        _kwargs.update(kwargs)
+
+        return model.Event(**_kwargs)
 
     @classmethod
     def provided_components(cls, component_scheme):
@@ -154,6 +166,13 @@ class DCSource(SourceWithMagnitude):
 
         return ds
 
+    def pyrocko_event(self):
+        _kwargs = {'moment_tensor': mt.MomentTensor(strike=self.strike, 
+                                                      dip=self.dip,
+                                                      rake=self.rake)}
+
+        return Source.pyrocko_event(self, **_kwargs)
+
 
 class MTSource(Source):
     '''
@@ -215,6 +234,15 @@ class MTSource(Source):
     def discretize_basesource(self, store):
         return meta.DiscretizedMTSource(m6s=self.m6[num.newaxis, :],
                                         **self._dparams_base())
+
+    def pyrocko_event(self):
+        _kwargs = {'moment_tensor':mt.MomentTensor(m=mt.symmat6(self.mnn, 
+                                                               self.mee, 
+                                                               self.mdd, 
+                                                               self.mne, 
+                                                               self.mnd, 
+                                                               self.med))}
+        return Source.pyrocko_event(self, **_kwargs)
 
 
 class RingfaultSource(SourceWithMagnitude):
