@@ -2525,7 +2525,7 @@ def MakePileViewerMainClass(base):
                                     else:
                                         if self.lowpass is not None:
                                             if self.lowpass < 0.5/trace.deltat:
-                                                trace.lowpass(4,self.lowpass)
+                                                trace.lowpass(4,self.lowpass, demean=False)
                                         
                                         if self.highpass is not None:
                                             if self.lowpass is None or self.highpass < self.lowpass:
