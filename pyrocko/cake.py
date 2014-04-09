@@ -3260,11 +3260,23 @@ def read_nd_model_fh(f):
 
 def from_crust2x2_profile(profile, depthmantle=50000):
     from pyrocko import crust2x2
+
+    default_qp_qs = {
+        'soft sed.': (50., 50.),
+        'hard sed.': (200., 200.),
+        'upper crust': (600., 400.),
+    }
+
     z = 0.
     for i in range(8):
         dz, vp, vs, rho = profile.get_layer(i)
         name = crust2x2.Crust2Profile.layer_names[i]
-        material = Material(vp, vs, rho)
+        if name in default_qp_qs:
+            qp, qs = default_qp_qs[name]
+        else:
+            qp, qs = None, None
+
+        material = Material(vp, vs, rho, qp, qs)
         iname = None
         if i == 7:
             iname = 'moho'
