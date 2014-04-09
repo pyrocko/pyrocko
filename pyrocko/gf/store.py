@@ -1149,15 +1149,19 @@ class Store(BaseStore):
         s = (tmins - tminmin) / dx
         sred = num.min(num.abs(s[num.isfinite(s)]))
 
+        deltax = self.config.distance_delta
+
         if snap_vred:
-            tdif = sred*self.config.distance_delta
-            tdif2 = self.config.deltat * int(tdif / self.config.deltat)
+            tdif = sred*deltax
+            tdif2 = self.config.deltat * math.floor(tdif / self.config.deltat)
             sred = tdif2/self.config.distance_delta
 
         tmin_vred = tminmin - sred*x_tminmin
         if snap_vred:
-            tmin_vred = self.config.deltat * \
-                int(tmin_vred / self.config.deltat)
+            xe = x_tminmin - int(x_tminmin / deltax) * deltax
+            tmin_vred = float(
+                self.config.deltat *
+                math.floor(tmin_vred / self.config.deltat) - xe * sred)
 
         tlenmax_vred = num.nanmax(tmax - (tmin_vred + sred*x))
         if sred != 0.0:
