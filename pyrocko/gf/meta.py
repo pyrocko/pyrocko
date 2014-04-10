@@ -3,8 +3,8 @@ import math
 import re
 import fnmatch
 import numpy as num
-from pyrocko.guts import Object, SObject, String, StringChoice, StringPattern, \
-    Unicode, Float, Bool, Int, TBase, List, ValidationError
+from pyrocko.guts import Object, SObject, String, StringChoice, \
+    StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError
 from pyrocko.guts import dump, load  # noqa
 
 from pyrocko.guts_array import literal, Array
