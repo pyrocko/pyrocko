@@ -413,6 +413,10 @@ def g(x, d):
         return x
 
 
+class UnavailableScheme(Exception):
+    pass
+
+
 class DiscretizedSource(Object):
     times = Array.T(shape=(None,), dtype=num.float)
     lats = Array.T(shape=(None,), dtype=num.float, optional=True)
@@ -426,8 +430,8 @@ class DiscretizedSource(Object):
     @classmethod
     def check_scheme(cls, scheme):
         if scheme not in cls._provided_schemes:
-            raise BadRequest(
-                'source type "%s" does not support GF component scheme "%s"' % 
+            raise UnavailableScheme(
+                'source type "%s" does not support GF component scheme "%s"' %
                 (cls.__name__, scheme))
 
     @classmethod
