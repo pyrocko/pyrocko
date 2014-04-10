@@ -341,8 +341,8 @@ class Location(Object):
             if self.north_shift == 0.0 and self.east_shift == 0.0:
                 self._latlon = self.lat, self.lon
             else:
-                self._latlon = orthodrome.ne_to_latlon(
-                    self.lat, self.lon, self.north_shift, self.east_shift)
+                self._latlon = map(float, orthodrome.ne_to_latlon(
+                    self.lat, self.lon, self.north_shift, self.east_shift))
 
         return self._latlon
 
