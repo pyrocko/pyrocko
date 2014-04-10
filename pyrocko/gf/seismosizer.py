@@ -5,8 +5,8 @@ pjoin = os.path.join
 
 import numpy as num
 
-from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, Timestamp, \
-    Int
+from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
+    Timestamp, Int
 
 from pyrocko.guts_array import Array
 
@@ -53,8 +53,8 @@ class Source(meta.Location):
     '''
     Base class for all source models
     '''
-    name = String.T(optional=True, default='')
 
+    name = String.T(optional=True, default='')
     time = Timestamp.T(default=0.)
 
     stf = Filter.T(
@@ -71,17 +71,16 @@ class Source(meta.Location):
                     north_shifts=arr(self.north_shift),
                     east_shifts=arr(self.east_shift),
                     depths=arr(self.depth))
-    
+
     def pyrocko_event(self, **kwargs):
-        allowed_args = ['lat', 'lon', 'time', 'name', 'depth', 'magnitude', 
-            'region', 'load', 'loadf', 'catalog', 'moment_tensor', 'duration']
-
-        _kwargs = dict([(k, self._kwargs.get(k)) for k in self._kwargs.keys() 
-                                                        if k in allowed_args]) 
-
-        _kwargs.update(kwargs)
-
-        return model.Event(**_kwargs)
+        lat, lon = self.effective_latlon
+        return model.Event(
+            lat=lat,
+            lon=lon,
+            time=self.time,
+            name=self.name,
+            depth=self.depth,
+            **kwargs)
 
     @classmethod
     def provided_components(cls, component_scheme):
@@ -112,6 +111,12 @@ class SourceWithMagnitude(Source):
     def moment(self, value):
         self.magnitude = mt.moment_to_magnitude(value)
 
+    def pyrocko_event(self, **kwargs):
+        return Source.pyrocko_event(
+            self,
+            magnitude=self.magnitude,
+            **kwargs)
+
 
 class ExplosionSource(SourceWithMagnitude):
     '''
@@ -129,6 +134,16 @@ class ExplosionSource(SourceWithMagnitude):
     def discretize_basesource(self, store):
         return meta.DiscretizedExplosionSource(m0s=arr(1.0),
                                                **self._dparams_base())
+
+    def pyrocko_moment_tensor(self):
+        m0 = self.moment
+        return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
+
+    def pyrocko_event(self, **kwargs):
+        return SourceWithMagnitude.pyrocko_event(
+            self,
+            moment_tensor=self.pyrocko_moment_tensor(),
+            **kwargs)
 
 
 class DCSource(SourceWithMagnitude):
@@ -166,12 +181,18 @@ class DCSource(SourceWithMagnitude):
 
         return ds
 
-    def pyrocko_event(self):
-        _kwargs = {'moment_tensor': mt.MomentTensor(strike=self.strike, 
-                                                      dip=self.dip,
-                                                      rake=self.rake)}
+    def pyrocko_moment_tensor(self):
+        return mt.MomentTensor(
+            strike=self.strike,
+            dip=self.dip,
+            rake=self.rake,
+            scalar_moment=self.moment)
 
-        return Source.pyrocko_event(self, **_kwargs)
+    def pyrocko_event(self, **kwargs):
+        return SourceWithMagnitude.pyrocko_event(
+            self,
+            moment_tensor=self.pyrocko_moment_tensor(),
+            **kwargs)
 
 
 class MTSource(Source):
@@ -235,14 +256,14 @@ class MTSource(Source):
         return meta.DiscretizedMTSource(m6s=self.m6[num.newaxis, :],
                                         **self._dparams_base())
 
-    def pyrocko_event(self):
-        _kwargs = {'moment_tensor':mt.MomentTensor(m=mt.symmat6(self.mnn, 
-                                                               self.mee, 
-                                                               self.mdd, 
-                                                               self.mne, 
-                                                               self.mnd, 
-                                                               self.med))}
-        return Source.pyrocko_event(self, **_kwargs)
+    def pyrocko_moment_tensor(self):
+        return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
+
+    def pyrocko_event(self, **kwargs):
+        return Source.pyrocko_event(
+            self,
+            moment_tensor=self.pyrocko_moment_tensor(),
+            **kwargs)
 
 
 class RingfaultSource(SourceWithMagnitude):
@@ -733,6 +754,7 @@ class VectorRule(Rule):
             data = data + base_seismogram[d].data * sd
 
         return data
+
 
 class HorizontalVectorRule(Rule):
     def __init__(self, quantity, differentiate=0, integrate=0):
