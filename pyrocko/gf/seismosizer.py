@@ -72,6 +72,11 @@ class Source(meta.Location):
                     east_shifts=arr(self.east_shift),
                     depths=arr(self.depth))
 
+    @classmethod
+    def provided_components(cls, component_scheme):
+        cls = cls.discretized_source_class
+        return cls.provided_components(component_scheme)
+
     def pyrocko_event(self, **kwargs):
         lat, lon = self.effective_latlon
         return model.Event(
@@ -83,9 +88,15 @@ class Source(meta.Location):
             **kwargs)
 
     @classmethod
-    def provided_components(cls, component_scheme):
-        cls = cls.discretized_source_class
-        return cls.provided_components(component_scheme)
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = dict(
+            name=ev.name,
+            time=ev.time,
+            lat=ev.lat,
+            lon=ev.lon,
+            depth=ev.depth)
+        d.update(kwargs)
+        return cls(**d)
 
 
 class SourceWithMagnitude(Source):
@@ -116,6 +127,15 @@ class SourceWithMagnitude(Source):
             self,
             magnitude=self.magnitude,
             **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        if ev.magnitude:
+            d.update(magnitude=ev.magnitude)
+
+        d.update(kwargs)
+        return super(SourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
 
 
 class ExplosionSource(SourceWithMagnitude):
@@ -194,6 +214,21 @@ class DCSource(SourceWithMagnitude):
             moment_tensor=self.pyrocko_moment_tensor(),
             **kwargs)
 
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        mt = ev.moment_tensor
+        if mt:
+            (strike, dip, rake), _ = mt.both_strike_dip_rake()
+            d.update(
+                strike=float(strike),
+                dip=float(dip),
+                rake=float(rake),
+                magnitude=float(mt.moment_magnitude()))
+
+        d.update(kwargs)
+        return super(DCSource, cls).from_pyrocko_event(ev, **d)
+
 
 class MTSource(Source):
     '''
@@ -264,6 +299,16 @@ class MTSource(Source):
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
             **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        mt = ev.moment_tensor
+        if mt:
+            d.update(m6=map(float, mt.m6()))
+
+        d.update(kwargs)
+        return super(MTSource, cls).from_pyrocko_event(ev, **d)
 
 
 class RingfaultSource(SourceWithMagnitude):
@@ -1049,20 +1094,23 @@ class RemoteEngine(Engine):
 def get_engine():
     return LocalEngine(use_env=True)
 
+source_classes = [
+    Source,
+    SourceWithMagnitude,
+    ExplosionSource,
+    DCSource,
+    MTSource,
+    RingfaultSource,
+    PorePressurePointSource,
+    PorePressureLineSource
+]
 
 __all__ = '''
 BadRequest
 NoSuchStore
 Filter
 Taper
-Source
-SourceWithMagnitude
-ExplosionSource
-DCSource
-MTSource
-RingfaultSource
-PorePressurePointSource
-PorePressureLineSource
+'''.split() + [S.__name__ for S in source_classes] + '''
 Target
 Reduction
 Request
@@ -1071,5 +1119,6 @@ Response
 Engine
 LocalEngine
 RemoteEngine
+source_classes
 get_engine
 '''.split()

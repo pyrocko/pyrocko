@@ -39,18 +39,14 @@ class GFSourcesTestCase(unittest.TestCase):
 
     def test_source_to_event(self):
 
-        for S in [
-                gf.Source,
-                gf.SourceWithMagnitude,
-                gf.ExplosionSource,
-                gf.DCSource,
-                gf.MTSource,
-                gf.RingfaultSource,
-                gf.PorePressurePointSource,
-                gf.PorePressureLineSource]:
-
-            s = S()
-            ev = s.pyrocko_event()
+        for S in gf.source_classes:
+            s1 = S(lat=10., lon=20., depth=1000.,
+                   north_shift=500., east_shift=500.)
+            ev = s1.pyrocko_event()
+            s2 = S.from_pyrocko_event(ev)
+            assert numeq(
+                [s1.effective_lat, s1.effective_lon, s1.depth],
+                [s2.effective_lat, s2.effective_lon, s2.depth], 0.001)
 
 
 if __name__ == '__main__':
