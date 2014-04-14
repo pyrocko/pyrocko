@@ -106,6 +106,9 @@ setup( name = packname,
             include_dirs = [ numpy.get_include() ],
             sources = [ pjoin(packname, 'autopick_ext.c') ]),
 
+        Extension( 'gf.store_ext',
+            include_dirs = [ numpy.get_include() ],
+            sources = [ pjoin(packname, 'gf', 'store_ext.c') ]),
     ],
                 
     scripts = [ 'apps/snuffler', 'apps/hamster', 'apps/cake', 'apps/fomosto', 

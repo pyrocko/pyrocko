@@ -1,3 +1,4 @@
+import time
 import sys
 import random
 import math
@@ -7,6 +8,7 @@ from tempfile import mkdtemp
 import numpy as num
 
 from pyrocko import gf, util, cake
+
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
@@ -52,6 +54,7 @@ class GFTestCase(unittest.TestCase):
         self.tempdirs = []
         self.pulse_store_dir = None
         self.regional_ttt_store_dir = None
+        self.benchmark_store_dir = None
 
     def __del__(self):
         import shutil
@@ -86,6 +89,41 @@ class GFTestCase(unittest.TestCase):
             self.regional_ttt_store_dir = self._create_regional_ttt_store()
 
         return self.regional_ttt_store_dir
+
+    def get_benchmark_store_dir(self):
+        if self.benchmark_store_dir is None:
+            self.benchmark_store_dir = self._create_benchmark_store()
+
+        return self.benchmark_store_dir
+
+    def _create_benchmark_store(self):
+        conf = gf.ConfigTypeA(
+            id='benchmark_store',
+            source_depth_min = 0.,
+            source_depth_max = 2.,
+            source_depth_delta = 1.,
+            distance_min = 1.0,
+            distance_max = 5001.0,
+            distance_delta =  5.0,
+            sample_rate=2.0,
+            ncomponents=5)
+
+        deltat = 1.0/conf.sample_rate
+
+        store_dir = mkdtemp(prefix='gfstore')
+        self.tempdirs.append(store_dir)
+
+        gf.Store.create(store_dir, config=conf)
+        store = gf.Store(store_dir, 'w')
+        for args in conf.iter_nodes():
+            nsamples = int(round(args[1]))
+            data = num.ones(nsamples)
+            itmin = int(round(args[1]))
+            tr = gf.GFTrace(data=data, itmin=itmin, deltat=deltat)
+            store.put(args, tr)
+
+        store.close()
+        return store_dir
 
     def _create_regional_ttt_store(self):
 
@@ -205,27 +243,37 @@ class GFTestCase(unittest.TestCase):
         store = gf.BaseStore(self.create(nrecords=nrecords))
         for deci in (1, 2, 3, 4):
             for i in range(0, nrecords):
-                tr = store.get(i, decimate=deci)
+                tra = store.get(i, decimate=deci, implementation='c')
+                trb = store.get(i, decimate=deci, implementation='python')
+                self.assertEqual(tra.itmin, trb.itmin)
+                self.assertEqual(tra.data.size, trb.data.size)
+                self.assertTrue(numeq(tra.data, trb.data, 0.001))
+                self.assertTrue(numeq(tra.begin_value, trb.begin_value, 0.001))
+                self.assertTrue(numeq(tra.end_value, trb.end_value, 0.001))
+
+                tr = tra
+
                 itmin_gf, nsamples_gf = tr.itmin, tr.data.size
                 for itmin in range(itmin_gf - nsamples_gf,
                                    itmin_gf + nsamples_gf+1):
 
                     for nsamples in range(0, nsamples_gf*3):
-                        tr2 = store.get(i, itmin, nsamples, decimate=deci)
-                        self.assertEqual(tr2.itmin, max(tr.itmin, itmin))
-                        self.assertEqual(tr2.itmin + tr2.data.size,
-                                         max(min(tr.itmin + tr.data.size,
-                                                 itmin + nsamples),
-                                             tr2.itmin + tr2.data.size))
+                        for implementation in ['c', 'python']:
+                            tr2 = store.get(i, itmin, nsamples, decimate=deci)
+                            self.assertEqual(tr2.itmin, max(tr.itmin, itmin))
+                            self.assertEqual(tr2.itmin + tr2.data.size,
+                                             max(min(tr.itmin + tr.data.size,
+                                                     itmin + nsamples),
+                                                 tr2.itmin + tr2.data.size))
 
-                        ilo = max(tr.itmin, tr2.itmin)
-                        ihi = min(tr.itmin+tr.data.size,
-                                  tr2.itmin+tr2.data.size)
+                            ilo = max(tr.itmin, tr2.itmin)
+                            ihi = min(tr.itmin+tr.data.size,
+                                      tr2.itmin+tr2.data.size)
 
-                        a = tr.data[ilo-tr.itmin:ihi-tr.itmin]
-                        b = tr2.data[ilo-tr2.itmin:ihi-tr2.itmin]
+                            a = tr.data[ilo-tr.itmin:ihi-tr.itmin]
+                            b = tr2.data[ilo-tr2.itmin:ihi-tr2.itmin]
 
-                        self.assertTrue(numeq(a, b, 0.001))
+                            self.assertTrue(numeq(a, b, 0.001))
 
         store.close()
 
@@ -249,18 +297,31 @@ class GFTestCase(unittest.TestCase):
                                         (random.randint(0, nrecords),
                                          random.randint(0, nrecords))]:
 
-                        a = store.sum(indices, shifts, weights,
-                                      itmin=itmin,
-                                      nsamples=nsamples,
-                                      decimate=deci)
+                        a = store.sum(
+                            indices, shifts, weights,
+                            itmin=itmin,
+                            nsamples=nsamples,
+                            decimate=deci)
 
-                        b = store.sum_reference(indices, shifts, weights,
-                                                itmin=itmin,
-                                                nsamples=nsamples,
-                                                decimate=deci)
+                        b = store.sum(
+                            indices, shifts, weights,
+                            itmin=itmin,
+                            nsamples=nsamples,
+                            decimate=deci,
+                            implementation='alternative')
 
-                        self.assertEqual(a.itmin, b.itmin)
-                        self.assertTrue(numeq(a.data, b.data, 0.01))
+                        c = store.sum(
+                            indices, shifts, weights,
+                            itmin=itmin,
+                            nsamples=nsamples,
+                            decimate=deci,
+                            implementation='reference')
+
+                        self.assertEqual(a.itmin, c.itmin)
+                        self.assertTrue(numeq(a.data, c.data, 0.01))
+
+                        self.assertEqual(b.itmin, c.itmin)
+                        self.assertTrue(numeq(b.data, c.data, 0.01))
 
         store.close()
 
@@ -340,6 +401,81 @@ class GFTestCase(unittest.TestCase):
 
         with self.assertRaises(gf.OutOfBounds):
             print store.t('P', (30*km, 1500*km))
+
+    def benchmark_get(self):
+        store_dir = self.get_benchmark_store_dir()
+
+        import pylab as lab
+        for implementation in ('c', 'python'):
+            store = gf.Store(store_dir, use_memmap=True)
+            for nrepeats in (1, 2):
+                data = []
+                for distance in store.config.coords[1]:
+                    n = store.config.ncomponents*store.config.ns[0]
+                    sdepths = num.repeat(store.config.coords[0], store.config.ncomponents)
+                    t = time.time()
+                    for repeat in xrange(nrepeats):
+                        for sdepth in sdepths:
+                            for icomp in xrange(1):
+                                trace = store.get((sdepth, distance, icomp), implementation=implementation)
+
+                    tnew = time.time()
+                    data.append((distance, tnew - t))
+
+                if nrepeats != 1:
+                    d, t1 = num.array(data, dtype=num.float).T
+                    nread = nrepeats * store.config.ns[0]
+                    smmap = implementation
+                    label = 'nrepeats %i, impl %s' % (nrepeats, smmap)
+                    print label, num.mean(nread/t1)
+
+                    lab.plot(d, nread/t1, label=label)
+
+        lab.legend()
+        lab.show()
+
+
+    def benchmark_sum(self):
+
+        store_dir = self.get_benchmark_store_dir()
+        
+        import pylab as lab
+        for implementation in ('c', 'python'):
+            store = gf.Store(store_dir, use_memmap=True)
+            for weight in (0.0, 1.0):
+                for nrepeats in (1, 2):
+                    data = []
+                    for distance in store.config.coords[1]:
+                        n = store.config.ncomponents*store.config.ns[0]
+                        sdepths = num.repeat(store.config.coords[0], store.config.ncomponents)
+                        distances = num.repeat([distance], n)
+                        comps = num.tile(store.config.coords[2], store.config.ns[0])
+                        args = (sdepths, distances, comps)
+                        weights = num.repeat([weight], n)
+                        delays = num.arange(n, dtype=num.float)*store.config.deltat*0.5
+
+                        t = time.time()
+
+                        for repeat in xrange(nrepeats):
+                            trace = store.sum(args, delays, weights, 
+                                              implementation=implementation)
+
+                        tnew = time.time()
+
+                        data.append(((distance-store.config.distance_min)+1,
+                                     tnew - t))
+
+                    if nrepeats != 1:
+                        d, t1 = num.array(data, dtype=num.float).T
+                        nread = nrepeats * store.config.ns[0] * store.config.ncomponents
+                        label = 'nrepeats %i, weight %g, impl %s' % (
+                            nrepeats, weight, implementation)
+                        print label, num.mean(nread/t1)
+
+                        lab.plot(d, nread/t1, label=label)
+
+        lab.legend()
+        lab.show()
 
 
 if __name__ == '__main__':

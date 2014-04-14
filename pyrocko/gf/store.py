@@ -15,26 +15,32 @@ from scipy import signal
 
 from pyrocko import util, spit
 from pyrocko.gf import meta
+from pyrocko.gf import store_ext
 
 logger = logging.getLogger('pyrocko.gf.store')
 
+# gf store endianness
+E = '<'
+
 gf_dtype = num.dtype(num.float32)
+gf_dtype_store = num.dtype(E + 'f4')
+
 gf_dtype_nbytes_per_sample = 4
 
 gf_store_header_dtype = [
-    ('nrecords', '<u8'),
-    ('deltat', '<f4'),
+    ('nrecords', E + 'u8'),
+    ('deltat', E + 'f4'),
 ]
 
-gf_store_header_fmt = '<Qf'
+gf_store_header_fmt = E + 'Qf'
 gf_store_header_fmt_size = struct.calcsize(gf_store_header_fmt)
 
 gf_record_dtype = num.dtype([
-    ('data_offset', '<u8'),
-    ('itmin', '<i4'),
-    ('nsamples', '<u4'),
-    ('begin_value', '<f4'),
-    ('end_value', '<f4'),
+    ('data_offset', E + 'u8'),
+    ('itmin', E + 'i4'),
+    ('nsamples', E + 'u4'),
+    ('begin_value', E + 'f4'),
+    ('end_value', E + 'f4'),
 ])
 
 
@@ -276,9 +282,19 @@ class BaseStore:
         try:
             self._f_index = open(index_fn, fmode)
             self._f_data = open(data_fn, fmode)
+
+            if self._use_memmap and self.mode == 'r':
+                self.data = num.memmap(
+                    self._f_data, dtype=gf_dtype_store,
+                    offset=0,
+                    mode='r')
         except:
             self.mode = ''
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
+
+        if self.mode == 'r':
+            self.cstore = store_ext.store_init(
+                self._f_index.fileno(), self._f_data.fileno())
 
         while True:
             try:
@@ -330,20 +346,15 @@ class BaseStore:
     def get_span(self, irecord, decimate=1):
         return self._get_span(irecord, decimate=decimate)
 
-    def get(self, irecord, itmin=None, nsamples=None, decimate=1):
-        return self._get(irecord, itmin=itmin, nsamples=nsamples,
-                         decimate=decimate)
+    def get(self, irecord, itmin=None, nsamples=None, decimate=1,
+            implementation='c'):
+        return self._get(irecord, itmin, nsamples, decimate, implementation)
 
-    def sum(self, irecords, delays, weights, itmin=None, nsamples=None,
-            decimate=1):
+    def sum(self, irecords, delays, weights, itmin=None,
+            nsamples=None, decimate=1, implementation='c'):
 
-        return self._sum(irecords, delays, weights, itmin, nsamples, decimate)
-
-    def sum_reference(self, irecords, delays, weights, itmin=None,
-                      nsamples=None, decimate=1):
-
-        return self._sum_reference(
-            irecords, delays, weights, itmin, nsamples, decimate)
+        return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
+                         implementation)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
@@ -374,15 +385,35 @@ class BaseStore:
 
         return self._records[irecord]
 
-    def _get(self, irecord, itmin=None, nsamples=None, decimate=1):
+    def _get(self, irecord, itmin, nsamples, decimate, implementation):
         '''Retrieve complete GF trace from storage.'''
 
         if not self._f_index:
             self.open()
 
-        assert self.mode == 'r'
-        assert 0 <= irecord < self._nrecords, \
-            'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
+        if not self.mode == 'r':
+            raise StoreError('store not open in read mode')
+
+        if implementation == 'c' and decimate == 1:
+
+            if nsamples is None:
+                nsamples = -1
+
+            if itmin is None:
+                itmin = 0
+
+            return GFTrace(*store_ext.store_get(
+                self.cstore, int(irecord), int(itmin), int(nsamples)))
+
+        else:
+            return self._get_impl_reference(irecord, itmin, nsamples, decimate)
+
+    def _get_impl_reference(self, irecord, itmin, nsamples, decimate):
+
+        if not (0 <= irecord < self._nrecords):
+            raise StoreError('invalid record number requested '
+                             '(irecord = %i, nrecords = %i)' %
+                             (irecord, self._nrecords))
 
         ipos, itmin_data, nsamples_data, begin_value, end_value = \
             self._records[irecord]
@@ -495,15 +526,15 @@ class BaseStore:
         if ndata > 2:
             self._f_data.seek(0, 2)
             ipos = self._f_data.tell()
-            trace.data.tofile(self._f_data)
+            trace.data.astype(gf_dtype_store).tofile(self._f_data)
         else:
             ipos = 2
 
         self._records[irecord] = (ipos, trace.itmin, ndata,
                                   trace.data[0], trace.data[-1])
 
-    def _sum(self, irecords, delays, weights, itmin=None, nsamples=None,
-             decimate=1):
+    def _sum_impl_alternative(self, irecords, delays, weights, itmin, nsamples,
+                              decimate):
 
         '''Sum delayed and weighted GF traces.'''
 
@@ -534,7 +565,10 @@ class BaseStore:
         if nsamples == 0:
             return GFTrace(out, itmin, deltat)
 
-        for irecord, delay, weight in zip(irecords, delays, weights):
+        for ii in xrange(len(irecords)):
+            irecord = irecords[ii]
+            delay = delays[ii]
+            weight = weights[ii]
 
             if weight == 0.0:
                 continue
@@ -546,7 +580,8 @@ class BaseStore:
                 irecord,
                 itmin - idelay_ceil,
                 nsamples + idelay_ceil - idelay_floor,
-                decimate=decimate)
+                decimate,
+                'reference')
 
             assert gf_trace.itmin >= itmin - idelay_ceil
             assert gf_trace.data.size <= nsamples + idelay_ceil - idelay_floor
@@ -588,8 +623,8 @@ class BaseStore:
 
         return GFTrace(out, itmin, deltat)
 
-    def _sum_reference(self, irecords, delays, weights, itmin=None,
-                       nsamples=None, decimate=1):
+    def _sum_impl_reference(self, irecords, delays, weights, itmin, nsamples,
+                            decimate):
 
         if not self._f_index:
             self.open()
@@ -599,7 +634,10 @@ class BaseStore:
         datas = []
         itmins = []
         for i, delay, weight in zip(irecords, delays, weights):
-            tr = self._get(i, decimate=decimate)
+            if weight == 0:
+                continue
+
+            tr = self._get(i, None, None, decimate, 'reference')
             if tr.is_zero:
                 continue
 
@@ -650,6 +688,32 @@ class BaseStore:
 
         return GFTrace(sum_arr, itmin, deltat)
 
+    def _sum(self, irecords, delays, weights, itmin, nsamples, decimate,
+             implementation):
+
+        if not self._f_index:
+            self.open()
+
+        if implementation == 'c' and decimate == 1:
+            if nsamples is None:
+                nsamples = -1
+
+            if itmin is None:
+                itmin = 0
+
+            return GFTrace(*store_ext.store_sum(
+                self.cstore, irecords.astype(num.uint64),
+                delays.astype(num.float32), weights.astype(num.float32),
+                int(itmin), int(nsamples)))
+
+        elif implementation == 'alternative':
+            return self._sum_impl_alternative(irecords, delays, weights,
+                                              itmin, nsamples, decimate)
+
+        else:
+            return self._sum_impl_reference(irecords, delays, weights,
+                                            itmin, nsamples, decimate)
+
     def _load_index(self):
         if self._use_memmap:
             records = num.memmap(
@@ -685,11 +749,19 @@ class BaseStore:
                 data_orig[1] = end_value
                 return data_orig[ilo:ihi]
             else:
-                self._f_data.seek(int(ipos + ilo*gf_dtype_nbytes_per_sample))
-                arr = num.fromfile(self._f_data, gf_dtype, ihi-ilo)
-                if arr.size != ihi-ilo:
-                    raise ShortRead()
-                return arr
+                if self._use_memmap:
+                    jlo = int(ipos/gf_dtype_nbytes_per_sample + ilo)
+                    jhi = jlo + (ihi-ilo)
+                    return self.data[jlo:jhi]
+                else:
+                    self._f_data.seek(
+                        int(ipos + ilo*gf_dtype_nbytes_per_sample))
+                    arr = num.fromfile(
+                        self._f_data, gf_dtype_store, ihi-ilo).astype(gf_dtype)
+
+                    if arr.size != ihi-ilo:
+                        raise ShortRead()
+                    return arr
         else:
             return num.empty((0,), dtype=gf_dtype)
 
@@ -857,8 +929,8 @@ class Store(BaseStore):
             dpath = os.path.join(store_dir, sub_dir)
             remake_dir(dpath, force)
 
-    def __init__(self, store_dir, mode='r'):
-        BaseStore.__init__(self, store_dir, mode=mode)
+    def __init__(self, store_dir, mode='r', use_memmap=True):
+        BaseStore.__init__(self, store_dir, mode=mode, use_memmap=use_memmap)
         config_fn = os.path.join(store_dir, 'config')
         if not os.path.isfile(config_fn):
             raise StoreError(
@@ -907,7 +979,7 @@ class Store(BaseStore):
         return BaseStore.str_irecord(self, self.config.irecord(*args))
 
     def get(self, args, itmin=None, nsamples=None, decimate=1,
-            interpolate='nearest_neighbor'):
+            interpolate='nearest_neighbor', implementation='c'):
 
         '''Retrieve GF trace from store.
 
@@ -921,8 +993,8 @@ class Store(BaseStore):
         store, decimate = self._decimated_store(decimate)
         if interpolate == 'nearest_neighbor':
             irecord = store.config.irecord(*args)
-            return store._get(irecord, itmin=itmin, nsamples=nsamples,
-                              decimate=decimate)
+            return store._get(irecord, itmin, nsamples, decimate,
+                              implementation)
 
         else:
             irecords, weights = zip(*store.config.vicinity(*args))
@@ -930,10 +1002,10 @@ class Store(BaseStore):
                 raise NotAllowedToInterpolate()
 
             return store._sum(irecords, num.zeros(len(irecords)), weights,
-                              itmin, nsamples, decimate)
+                              itmin, nsamples, decimate, implementation)
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None,
-            decimate=1):
+            decimate=1, implementation='c'):
 
         '''Sum delayed and weighted GF traces.
 
@@ -948,17 +1020,8 @@ class Store(BaseStore):
 
         store, decimate = self._decimated_store(decimate)
         irecords = store.config.irecords(*args)
-        return store._sum(irecords, delays, weights, itmin, nsamples, decimate)
-
-    def sum_reference(self, args, delays, weights, itmin=None, nsamples=None,
-                      decimate=1):
-
-        '''Alternative version of :py:meth:`sum`, for comparison.'''
-
-        store, decimate = self._decimated_store(decimate)
-        irecords = store.config.irecords(*args)
-        return store._sum_reference(irecords, delays, weights, itmin, nsamples,
-                                    decimate)
+        return store._sum(irecords, delays, weights,
+                          itmin, nsamples, decimate, implementation)
 
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
