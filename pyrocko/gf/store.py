@@ -1155,7 +1155,7 @@ class Store(BaseStore):
 
         return self._phases[phase_id]
 
-    def t(self, timing, args):
+    def t(self, timing, *args):
         '''Compute interpolated phase arrivals.
 
         **Examples:**
@@ -1172,6 +1172,11 @@ class Store(BaseStore):
         * ``test_store.t('first(P|p|Pdiff|sP)', (1000, 1000, 10000))`` -
           the first arrival of the given phases is selected
         '''
+
+        if len(args) == 1:
+            args = args[0]
+        else:
+            args = self.config.make_indexing_args1(*args)
 
         if not isinstance(timing, meta.Timing):
             timing = meta.Timing(timing)

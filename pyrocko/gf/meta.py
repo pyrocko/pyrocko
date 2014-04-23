@@ -944,6 +944,9 @@ Index variables are (source_depth, distance, component).'''
                 num.tile(dists, nc/n),
                 icomponents)
 
+    def make_indexing_args1(self, source, receiver):
+        return (source.depth, source.distance_to(receiver))
+
     @property
     def short_extent(self):
         return '%g:%g:%g x %g:%g:%g' % (
@@ -1067,6 +1070,11 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
                 num.tile(source.depths, nc/n),
                 num.tile(dists, nc/n),
                 icomponents)
+
+    def make_indexing_args1(self, source, receiver):
+        return (receiver.depth,
+                source.depth,
+                source.distance_to(receiver))
 
     @property
     def short_extent(self):
