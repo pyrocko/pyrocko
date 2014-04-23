@@ -2564,6 +2564,14 @@ def co_downsample_to(target, deltat):
             g.close()
 
 
+class DomainChoice(Object):
+    choices = [
+        'time_domain',
+        'frequency_domain',
+        'envelope',
+        'absolute']
+
+
 class MisfitSetup(Object):
     '''Contains misfit setup to be used in :py:func:`trace.misfit`
 
@@ -2580,7 +2588,7 @@ class MisfitSetup(Object):
     norm = Int.T(optional=False)
     taper = Taper.T(optional=False)
     filter = FrequencyResponse.T(optional=True)
-    domain = String.T(default='time_domain')
+    domain = DomainChoice.T(default='time_domain')
 
 
 def equalize_sampling_rates(trace_1, trace_2):
