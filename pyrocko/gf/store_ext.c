@@ -84,12 +84,28 @@ typedef enum {
     BAD_RECORD,
     ALLOC_FAILED,
     BAD_REQUEST,
+    BAD_DATA_OFFSET,
     SEEK_INDEX_FAILED,
     READ_INDEX_FAILED,
-    FSTAT_DATA_FAILED,
+    FSTAT_TRACES_FAILED,
     MMAP_INDEX_FAILED,
     MMAP_TRACES_FAILED,
 } store_error_t;
+
+const char* store_error_names[] = {
+    "SUCCESS", 
+    "INVALID_RECORD",
+    "EMPTY_RECORD",
+    "BAD_RECORD",
+    "ALLOC_FAILED",
+    "BAD_REQUEST",
+    "BAD_DATA_OFFSET",
+    "SEEK_INDEX_FAILED",
+    "READ_INDEX_FAILED",
+    "FSTAT_TRACES_FAILED",
+    "MMAP_INDEX_FAILED",
+    "MMAP_TRACES_FAILED",
+};
 
 #define REC_EMPTY 0
 #define REC_ZERO 1
@@ -152,6 +168,11 @@ static store_error_t store_get(
     }
 
     trace->is_zero = 0;
+
+    if (data_offset + trace->nsamples*sizeof(gf_dtype) > store->data_size) {
+        *trace = ZERO_TRACE;
+        return BAD_DATA_OFFSET;
+    }
 
     if (REC_SHORT == data_offset) {
         trace->data = &record->begin_value;
@@ -270,6 +291,7 @@ static store_error_t store_sum(
         idelay_floor = (int)floor(delay/deltat);
         idelay_ceil = (int)ceil(delay/deltat);
         if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
+            free(out);
             return BAD_REQUEST;
         }
 
@@ -379,7 +401,7 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
     }
 
     if (-1 == fstat(store->f_data, &st)) {
-        return FSTAT_DATA_FAILED;
+        return FSTAT_TRACES_FAILED;
     }
 
     store->data_size = st.st_size;
@@ -426,6 +448,7 @@ static void w_store_delete(PyObject *capsule) {
 static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
     int f_index, f_data;
     store_t *store;
+    store_error_t err;
 
     if (!PyArg_ParseTuple(args, "ii", &f_index, &f_data)) {
         PyErr_SetString(StoreExtError, "usage store_init(f_index, f_data)" );
@@ -438,8 +461,9 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    if (SUCCESS != store_init(f_index, f_data, store)) {
-        PyErr_SetString(StoreExtError, "store_init failed.");
+    err = store_init(f_index, f_data, store);
+    if (SUCCESS != err) {
+        PyErr_SetString(StoreExtError, store_error_names[err]);
         store_deinit(store);
         free(store);
         return NULL;
@@ -460,6 +484,7 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     int32_t itmin;
     int32_t nsamples;
     int i;
+    store_error_t err;
     
     if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord, &itmin, &nsamples)) {
         PyErr_SetString(StoreExtError, "usage store_get(cstore, irecord, itmin, nsamples)");
@@ -480,8 +505,9 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
 
     store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
 
-    if (SUCCESS != store_get(store, irecord, &trace)) {
-        PyErr_SetString(StoreExtError, "gf trace not available");
+    err = store_get(store, irecord, &trace);
+    if (SUCCESS != err) {
+        PyErr_SetString(StoreExtError, store_error_names[err]);
         return NULL;
     }
 
@@ -513,6 +539,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     npy_intp n, n1, n2;
     int32_t itmin;
     int32_t nsamples;
+    store_error_t err;
 
     if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr, 
                                      &weights_arr, &itmin, &nsamples)) {
@@ -551,7 +578,6 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-
     c_irecords_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)irecords_arr);
     c_delays_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)delays_arr);
     c_weights_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)weights_arr);
@@ -571,10 +597,9 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     delays = PyArray_DATA(c_delays_arr);
     weights = PyArray_DATA(c_weights_arr);
 
-    if (0 != store_sum(store, irecords, delays, weights, n, 
-                       itmin, nsamples, &result)) {
-        PyErr_SetString(StoreExtError, 
-            "store_sum: hit empty gf record");
+    err = store_sum(store, irecords, delays, weights, n, itmin, nsamples, &result);
+    if (SUCCESS != err) {
+        PyErr_SetString(StoreExtError, store_error_names[err]);
         return NULL;
     }
 
