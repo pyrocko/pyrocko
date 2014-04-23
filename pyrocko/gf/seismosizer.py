@@ -410,6 +410,16 @@ class Source(meta.Location):
         optional=True,
         help='source time function as spectral response')
 
+    def __init__(self, **kwargs):
+        meta.Location.__init__(self, **kwargs)
+        self._discretized = {}
+
+    def cached_discretize_basesource(self, store):
+        if store not in self._discretized:
+            self._discretized[store] = self.discretize_basesource(store)
+
+        return self._discretized[store]
+
     def grid(self, order=None, **params):
         return SGrid(base=self, order=order, **params)
 
@@ -1353,7 +1363,7 @@ class LocalEngine(Engine):
     def base_seismogram(self, source, target, components):
         store_ = self.get_store(target.store_id)
         receiver = target.receiver(store_)
-        base_source = source.discretize_basesource(store_)
+        base_source = source.cached_discretize_basesource(store_)
         base_seismogram = store_.seismogram(base_source, receiver, components)
         return store.make_same_span(base_seismogram)
 
