@@ -959,16 +959,19 @@ class Trace(object):
         """
         Generator function, yielding misfit values m and normalization divisors n.
 
-        :param candidate: iterable object of :py:class:`trace` objects
+        :param candidates: iterable object of :py:class:`trace` objects
         :param setup: (List of) :py:class:`MisfitSetup` objects
 
         *setups* can either be a single or list of :py:class:`MisfitSetup` objects. 
         If setup is a single :py:class:`MisfitSetup` :py:func:`misfit` yields a
-                single m and n. Otherwise, :py:func:`misfit` yields a list of 
-                *m* and *n* for each misfit setup. 
+                single processed candidate, reference trace, m and n in each 
+                iteration step. 
+                Otherwise, :py:func:`misfit` yields a lists of these return
+                values, each one of which associated with one misfit setup
+                within the input list of misfit setups. 
 
         In order to preserve the original traces, any modification will be 
-        performed on copies of these traces. If the sampling rate of the by 
+        performed on copies of the input traces. If the sampling rate of the by 
         *self* determined :py:class:`Trace` differs from an individual 
         candidate, both sampling rates will be equalized (by downsampling the 
         higher sampled trace). 
