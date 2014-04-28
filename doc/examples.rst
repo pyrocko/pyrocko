@@ -283,7 +283,6 @@ Three traces will be created. One of these traces will be assumed to be the refe
 ::
 
     from pyrocko import trace
-    from math import sqrt
     import numpy as num
 
     # let's create three traces: One trace as the reference (rt) and two as test traces (tt1 and tt2):
@@ -309,15 +308,15 @@ Three traces will be created. One of these traces will be assumed to be the refe
     setup = trace.MisfitSetup(norm=2,
                               taper=taper,
                               domain='time_domain',
-                              freqlimits=(1,2,20,40),
-                              frequency_response=fresponse)
+                              filter=fresponse)
 
     # calculate the misfit for each test candidate:
-    i = 0
-    for m, n in rt.misfit(candidates=test_candidates, setups=setup):
+    # The processed candidate and reference trace of each iteration are handed
+    # over as the first and second return value, respectively. This is for 
+    # quality control reasons to check the processing.
+    for can, ref, m, n in rt.misfit(candidates=test_candidates, setups=setup):
         M = m/n
-        print 'L2 misfit of %s and %s is %s' % (rt.station, test_candidates[i].station, M)
-        i += 1 
+        print 'L2 misfit of %s and %s is %s' % (ref.station, can.station, M)
 
     # finally, we want to dump the misfit setup that has been used in a yaml file:
     f = open('my_misfit_setup.txt', 'w')
