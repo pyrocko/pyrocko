@@ -948,7 +948,9 @@ class Trace(object):
             try:
                 output.chop(output.tmin+tfade, output.tmax-tfade, inplace=True)
             except NoData:
-                raise TraceTooShort('Trace %s.%s.%s.%s too short for fading length setting. trace length = %g, fading length = %g' % (self.nslc_id + (self.tmax-self.tmin, tfade)))
+                raise TraceTooShort('Trace %s.%s.%s.%s too short for fading \
+                        length setting. trace length = %g, fading length = %g'\
+                        % (self.nslc_id + (self.tmax-self.tmin, tfade)))
         else:
             output.ydata = output.ydata.copy()
         return output
@@ -961,12 +963,15 @@ class Trace(object):
         :param setup: (List of) :py:class:`MisfitSetup` objects
 
         *setups* can either be a single or list of :py:class:`MisfitSetup` objects. 
-        If setup is a single :py:class:`MisfitSetup` :py:func:`misfit` yields a single m and n. 
-        Otherwise, :py:func:`misfit` yields a list of *m* and *n* for each misfit setup. 
+        If setup is a single :py:class:`MisfitSetup` :py:func:`misfit` yields a
+                single m and n. Otherwise, :py:func:`misfit` yields a list of 
+                *m* and *n* for each misfit setup. 
 
-        In order to preserve the original traces, any modification will be performed on copies of these traces. 
-        If the sampling rate of the by *self* determined :py:class:`Trace` differs from an individual candidate, 
-        both sampling rates will be equalized (by downsampling the higher sampled trace). 
+        In order to preserve the original traces, any modification will be 
+        performed on copies of these traces. If the sampling rate of the by 
+        *self* determined :py:class:`Trace` differs from an individual 
+        candidate, both sampling rates will be equalized (by downsampling the 
+        higher sampled trace). 
 
         .. seealso:: One application can be found in the Programming Examples section.
         """
@@ -1027,7 +1032,9 @@ class Trace(object):
             if abs(t1.tmin-t2.tmin) > t1.deltat * 1e-4 or \
                     abs(t1.tmax - t2.tmax) > t1.deltat * 1e-4 or \
                     t1.ydata.shape != t2.ydata.shape:
-                        raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.' %\
+                        raise MisalignedTraces(\
+                                'Cannot calculate misfit of %s and %s due to \
+                                misaligned traces.' %\
                                 ('.'.join(t1.nslc_id), '.'.join(t2.nslc_id)))
 
         def init_chain(tr):
@@ -1058,7 +1065,9 @@ class Trace(object):
                     init_chain(candidate)
                 
                 if (candidate.tmax<self.tmin or candidate.tmin>self.tmax):
-                        logger.warn('Cannot calculate misfit: %s and %s have no overlapping data.'%('.'.join(self.nslc_id), '.'.join(candidate.nslc_id)))
+                        logger.warn('Cannot calculate misfit: %s and %s have \
+                                no overlapping data.'%('.'.join(self.nslc_id), \
+                                '.'.join(candidate.nslc_id)))
                         yield None, None, None, None
                         break
 
