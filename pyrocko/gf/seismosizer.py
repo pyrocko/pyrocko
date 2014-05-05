@@ -415,6 +415,14 @@ class Source(meta.Location):
         meta.Location.__init__(self, **kwargs)
         self._discretized = {}
 
+    def clone(self, **kwargs):
+        d = self.dict()
+        d.update(kwargs)
+        return self.__class__(**d)
+
+    def __getitem__(self, k):
+        return getattr(self, k)
+
     def cached_discretize_basesource(self, store):
         if store not in self._discretized:
             self._discretized[store] = self.discretize_basesource(store)
