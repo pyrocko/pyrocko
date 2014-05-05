@@ -805,7 +805,7 @@ class Tuple(Object):
     class __T(TBase):
         multivalued = True
 
-        def __init__(self, n=0, content_t=Any.T(), *args, **kwargs):
+        def __init__(self, n=None, content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
             assert isinstance(content_t, TBase)
             self.content_t = content_t
@@ -818,7 +818,11 @@ class Tuple(Object):
             elif self.optional:
                 return None
             else:
-                return tuple( self.content_t.default() for x in xrange(self.n) )
+                if self.n is not None:
+                    return tuple( self.content_t.default() for x in xrange(self.n) )
+                else:
+                    return tuple()
+
 
         def has_default(self):
             return True
@@ -827,7 +831,7 @@ class Tuple(Object):
             return TBase.validate(self, val, regularize, depth+1)
 
         def validate_extra(self, val):
-            if not len(val) == self.n:
+            if self.n is not None and len(val) != self.n:
                 raise ValidationError('%s should have length %i' % (self.xname(), self.n))
 
             return val
@@ -859,7 +863,10 @@ class Tuple(Object):
             return [ self.content_t.to_save_xml(v) for v in val ]
 
         def classname_for_help(self):
-            return '``tuple`` of %i %s objects' % (self.n, self.content_t.classname_for_help() )
+            if self.n is not None:
+                return '``tuple`` of %i %s objects' % (self.n, self.content_t.classname_for_help())
+            else:
+                return '``tuple`` of %s objects' % (self.content_t.classname_for_help())
 
 class Timestamp(Object):
     dummy_for = float
