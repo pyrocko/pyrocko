@@ -395,7 +395,8 @@ def permudef(l, j=0):
         yield l
 
 
-arr = num.atleast_1d
+def arr(x):
+    return num.atleast_1d(num.asarray(x))
 
 
 class Source(meta.Location):
@@ -674,6 +675,131 @@ class MTSource(Source):
 
         d.update(kwargs)
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
+
+
+class DoubleDCSource(SourceWithMagnitude):
+    '''Two double-couple point sources separated in space and time.'''
+
+    strike1 = Float.T(
+        default=0.0,
+        help='strike direction in [deg], measured clockwise from north')
+
+    dip1 = Float.T(
+        default=90.0,
+        help='dip angle in [deg], measured downward from horizontal')
+
+    rake1 = Float.T(
+        default=0.0,
+        help='rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view')
+
+    strike2 = Float.T(
+        default=0.0,
+        help='strike direction in [deg], measured clockwise from north')
+
+    dip2 = Float.T(
+        default=90.0,
+        help='dip angle in [deg], measured downward from horizontal')
+
+    rake2 = Float.T(
+        default=0.0,
+        help='rake angle in [deg], '
+             'measured counter-clockwise from right-horizontal '
+             'in on-plane view')
+
+    delta_time = Float.T(
+        default=0.0,
+        help='separation of double-couples in time (t2-t1) [s]')
+
+    delta_depth = Float.T(
+        default=0.0,
+        help='difference in depth (z2-z1) [m]')
+
+    azimuth = Float.T(
+        default=0.0,
+        help='azimuth to second double-couple [deg], '
+             'measured at first, clockwise from north')
+
+    distance = Float.T(
+        default=0.0,
+        help='distance between the two double-couples [m]')
+
+    mix = Float.T(
+        default=0.5,
+        help='how to distribute the moment to the two doublecouples '
+             'mix=0 -> m1=1 and m2=0; mix=1 -> m1=0, m2=1')
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    def base_key(self):
+        return Source.base_key(self) + (
+            self.strike1, self.dip1, self.rake1,
+            self.strike2, self.dip2, self.rake2,
+            self.delta_time, self.delta_depth,
+            self.azimuth, self.distance, self.mix)
+
+    def get_factor(self):
+        return self.moment
+
+    def discretize_basesource(self, store):
+        a1 = 1.0 - self.mix
+        a2 = self.mix
+        mot1 = mt.MomentTensor(strike=self.strike1, dip=self.dip1,
+                               rake=self.rake1, scalar_moment=a1)
+        mot2 = mt.MomentTensor(strike=self.strike2, dip=self.dip2,
+                               rake=self.rake2, scalar_moment=a2)
+
+        delta_north = math.cos(self.azimuth*d2r)
+        delta_east = math.sin(self.azimuth*d2r)
+
+        ds = meta.DiscretizedMTSource(
+            lat=self.lat,
+            lon=self.lon,
+            times=arr((-self.delta_time*a1, self.delta_time*a2)),
+            north_shifts=arr((self.north_shift - delta_north*a1,
+                             self.north_shift + delta_north*a2)),
+            east_shifts=arr((self.east_shift - delta_east*a1,
+                            self.east_shift + delta_east*a2)),
+            depths=arr((self.depth - self.delta_depth*a1,
+                       self.depth + self.delta_depth*a2)),
+            m6s=num.vstack((mot1.m6(), mot2.m6())))
+
+        return ds
+
+    def pyrocko_moment_tensor(self):
+        a1 = 1.0 - self.mix
+        a2 = self.mix
+        mot1 = mt.MomentTensor(strike=self.strike1, dip=self.dip1,
+                               rake=self.rake1, scalar_moment=a1*self.moment)
+        mot2 = mt.MomentTensor(strike=self.strike2, dip=self.dip2,
+                               rake=self.rake2, scalar_moment=a2*self.moment)
+        return mt.MomentTensor(m=mot1.m() + mot2.m())
+
+    def pyrocko_event(self, **kwargs):
+        return SourceWithMagnitude.pyrocko_event(
+            self,
+            moment_tensor=self.pyrocko_moment_tensor(),
+            **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        mt = ev.moment_tensor
+        if mt:
+            (strike, dip, rake), _ = mt.both_strike_dip_rake()
+            d.update(
+                strike1=float(strike),
+                dip1=float(dip),
+                rake1=float(rake),
+                strike2=float(strike),
+                dip2=float(dip),
+                rake2=float(rake),
+                mix=0.0,
+                magnitude=float(mt.moment_magnitude()))
+
+        d.update(kwargs)
+        return super(DoubleDCSource, cls).from_pyrocko_event(ev, **d)
 
 
 class RingfaultSource(SourceWithMagnitude):
@@ -1473,6 +1599,7 @@ source_classes = [
     ExplosionSource,
     DCSource,
     MTSource,
+    DoubleDCSource,
     RingfaultSource,
     PorePressurePointSource,
     PorePressureLineSource
