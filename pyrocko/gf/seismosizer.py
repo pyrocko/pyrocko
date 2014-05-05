@@ -1598,8 +1598,15 @@ class RemoteEngine(Engine):
         return ws.seismosizer(url=self.url, site=self.site, request=request)
 
 
+g_engine = None
+
+
 def get_engine():
-    return LocalEngine(use_env=True)
+    global g_engine
+    if g_engine is None:
+        g_engine = LocalEngine(use_env=True)
+
+    return g_engine
 
 source_classes = [
     Source,
