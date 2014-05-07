@@ -7,7 +7,7 @@ pjoin = os.path.join
 import numpy as num
 
 from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
-    Timestamp, Int, SObject, ArgumentError
+    Timestamp, Int, SObject, ArgumentError, Dict
 
 from pyrocko.guts_array import Array
 
@@ -77,22 +77,44 @@ def int_or_none(s):
         return None
 
 
-class InvalidGridSpec(Exception):
+def nonzero(x, eps=1e-15):
+    return abs(x) > eps
+
+
+def permudef(l, j=0):
+    if j < len(l):
+        k, v = l[j]
+        for y in v:
+            l[j] = k, y
+            for s in permudef(l, j+1):
+                yield s
+
+        l[j] = k, v
+        return
+    else:
+        yield l
+
+
+def arr(x):
+    return num.atleast_1d(num.asarray(x))
+
+
+class InvalidGridDef(Exception):
     pass
 
 
-class RS(SObject):
+class Range(SObject):
     '''Convenient range specification
 
     Equivalent ways to sepecify the range [ 0., 1000., ... 10000. ]:
 
-      RS('0 .. 10k : 1k')
-      RS(start=0., stop=10*km, step=1*km)
-      RS(0, 10e3, 1e3)
-      RS('10k .. 100k @ 10')
-      RS(start=0., stop=10*km, n=11)
-      RS(0, 10e3, n=11)
-      RS(values=[ x*1e3 for x in range(11) ])
+      Range('0 .. 10k : 1k')
+      Range(start=0., stop=10e3, step=1e3)
+      Range(0, 10e3, 1e3)
+      Range('10k .. 100k @ 10')
+      Range(start=0., stop=10*km, n=11)
+      Range(0, 10e3, n=11)
+      Range(values=[ x*1e3 for x in range(11) ])
 
     Depending on the use context, it can be possible to omit any part of the
     specification. E.g. in the context of extracting a subset of an already
@@ -143,7 +165,7 @@ class RS(SObject):
             if len(args) == 3:
                 d['step'] = float(args[2])
 
-        for k, v in kwargs:
+        for k, v in kwargs.iteritems():
             if k in d:
                 raise ArgumentError('%s specified more than once' % k)
 
@@ -194,7 +216,7 @@ class RS(SObject):
             try:
                 vals = [ufloat(x) for x in s.split(',')]
             except:
-                raise InvalidGridSpec(
+                raise InvalidGridDef(
                     '"%s" is not a valid range specification' % s)
 
             return dict(values=num.array(vals, dtype=num.float))
@@ -206,7 +228,7 @@ class RS(SObject):
             step = ufloat_or_none(d['step'])
             n = int_or_none(d['n'])
         except:
-            raise InvalidGridSpec(
+            raise InvalidGridDef(
                 '"%s" is not a valid range specification' % s)
 
         spacing = 'lin'
@@ -220,7 +242,7 @@ class RS(SObject):
                 elif x and x in cls.relative.choices:
                     relative = x
                 else:
-                    raise InvalidGridSpec(
+                    raise InvalidGridDef(
                         '"%s" is not a valid range specification' % s)
 
         return dict(start=start, stop=stop, step=step, n=n, spacing=spacing,
@@ -244,7 +266,7 @@ class RS(SObject):
             step = [inc, -inc][ma < mi]
 
         if start is None or stop is None:
-            raise InvalidGridSpec(
+            raise InvalidGridDef(
                 'Cannot use range specification "%s" without start '
                 'and stop in this context' % self)
 
@@ -253,7 +275,7 @@ class RS(SObject):
 
         if n is None:
             if (step < 0) != (stop-start < 0):
-                raise InvalidGridSpec(
+                raise InvalidGridDef(
                     'Range specification "%s" has inconsistent ordering '
                     '(step < 0 => stop > start)' % self)
 
@@ -279,7 +301,7 @@ class RS(SObject):
                 vals = -num.exp(num.linspace(num.log(-start),
                                              num.log(-stop), n))
             else:
-                raise InvalidGridSpec(
+                raise InvalidGridDef(
                     'log ranges should not include or cross zero '
                     '(in range specification "%s")' % self)
 
@@ -288,7 +310,7 @@ class RS(SObject):
                 vals = num.concatenate((nvals[::-1], vals))
 
         if self.relative in ('add', 'mult') and base is None:
-            raise InvalidGridSpec(
+            raise InvalidGridDef(
                 'cannot use relative range specification in this context')
 
         if self.relative == 'add':
@@ -300,34 +322,36 @@ class RS(SObject):
         return vals
 
 
-class GSE(SObject):
-    param = meta.StringID.T()
-    rs = RS.T()
+class GridDefElement(Object):
 
-    def __init__(self, s=None, **kwargs):
-        if s is not None:
-            t = s.split('=')
+    param = meta.StringID.T()
+    rs = Range.T()
+
+    def __init__(self, shorthand=None, **kwargs):
+        if shorthand is not None:
+            t = shorthand.split('=')
             if len(t) != 2:
-                raise InvalidGridSpec(
-                    'invalid grid specification element: %s' % s)
+                raise InvalidGridDef(
+                    'invalid grid specification element: %s' % shorthand)
 
             sp, sr = t[0].strip(), t[1].strip()
 
             kwargs['param'] = sp
-            kwargs['rs'] = RS(sr)
+            kwargs['rs'] = Range(sr)
 
-        SObject.__init__(self, **kwargs)
+        Object.__init__(self, **kwargs)
 
-    def __str__(self):
+    def shorthand(self):
         return self.param + ' = ' + str(self.rs)
 
 
-class GS(SObject):
-    elements = List.T(GSE.T())
+class GridDef(Object):
 
-    def __init__(self, s=None, **kwargs):
-        if s is not None:
-            t = s.splitlines()
+    elements = List.T(GridDefElement.T())
+
+    def __init__(self, shorthand=None, **kwargs):
+        if shorthand is not None:
+            t = shorthand.splitlines()
             tt = []
             for x in t:
                 x = x.strip()
@@ -336,67 +360,14 @@ class GS(SObject):
 
             elements = []
             for se in tt:
-                elements.append(GSE(se))
+                elements.append(GridDef(se))
 
             kwargs['elements'] = elements
 
-        SObject.__init__(self, **kwargs)
+        Object.__init__(self, **kwargs)
 
-    def __str__(self):
+    def shorthand(self):
         return '; '.join(str(x) for x in self.elements)
-
-
-class SGrid(object):
-    def __init__(self, base, order=None, **params):
-        propnames = [prop.name for prop in base.T.properties]
-
-        if order is None:
-            orderednames = propnames
-        else:
-            orderednames = order
-
-        ordered = []
-        for k in orderednames:
-            if k in params:
-                ordered.append((k, params.pop(k)))
-
-        if params:
-            for k in sorted(params.keys()):
-                ordered.append((k, params.pop(k)))
-
-        self.coords = [(k, v.make(base=getattr(base, k))) for
-                       (k, v) in ordered if isinstance(v, RS)]
-
-        self.fixed = [(k, v) for (k, v) in ordered if not isinstance(v, RS)]
-        self.base = base
-
-    def isources(self):
-        d = self.base.dict()
-        d.update(dict((k, v) for (k, v) in self.fixed))
-
-        for params in permudef(self.coords):
-            d.update(dict((k, v) for (k, v) in params))
-            s = type(self.base)(**d)
-            s.regularize()
-            yield s
-
-
-def permudef(l, j=0):
-    if j < len(l):
-        k, v = l[j]
-        for y in v:
-            l[j] = k, y
-            for s in permudef(l, j+1):
-                yield s
-
-        l[j] = k, v
-        return
-    else:
-        yield l
-
-
-def arr(x):
-    return num.atleast_1d(num.asarray(x))
 
 
 class Source(meta.Location):
@@ -416,12 +387,32 @@ class Source(meta.Location):
         self._discretized = {}
 
     def clone(self, **kwargs):
-        d = self.dict()
+        d = dict(self)
         d.update(kwargs)
         return self.__class__(**d)
 
+    def __iter__(self):
+        return iter(self.T.propnames)
+
     def __getitem__(self, k):
+        if k not in self.keys():
+            raise KeyError(k)
+
         return getattr(self, k)
+
+    def __setitem__(self, k, v):
+        if k not in self.keys():
+            raise KeyError(k)
+
+        return setattr(self, k, v)
+
+    @classmethod
+    def keys(cls):
+        return cls.T.propnames
+
+    def update(self, **kwargs):
+        for (k, v) in kwargs.iteritems():
+            self[k] = v
 
     def cached_discretize_basesource(self, store):
         if store not in self._discretized:
@@ -429,8 +420,8 @@ class Source(meta.Location):
 
         return self._discretized[store]
 
-    def grid(self, order=None, **params):
-        return SGrid(base=self, order=order, **params)
+    def grid(self, **variables):
+        return SourceGrid(base=self, variables=variables)
 
     def base_key(self):
         return (self.depth, self.lat, self.north_shift,
@@ -469,9 +460,6 @@ class Source(meta.Location):
         d.update(kwargs)
         return cls(**d)
 
-    def dict(self):
-        return dict((k, v) for (k, v) in self.T.inamevals(self))
-
 
 class SourceWithMagnitude(Source):
     '''
@@ -482,19 +470,30 @@ class SourceWithMagnitude(Source):
         default=6.0,
         help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
+    _keys = None
+
     def __init__(self, **kwargs):
         if 'moment' in kwargs:
-            kwargs['magnitude'] = mt.moment_to_magnitude(kwargs.pop('moment'))
+            mom = kwargs.pop('moment')
+            if 'magnitude' not in kwargs:
+                kwargs['magnitude'] = float(mt.moment_to_magnitude(mom))
 
         Source.__init__(self, **kwargs)
 
     @property
     def moment(self):
-        return mt.magnitude_to_moment(self.magnitude)
+        return float(mt.magnitude_to_moment(self.magnitude))
 
     @moment.setter
     def moment(self, value):
-        self.magnitude = mt.moment_to_magnitude(value)
+        self.magnitude = float(mt.moment_to_magnitude(value))
+
+    @classmethod
+    def keys(cls):
+        if cls._keys is None:
+            cls._keys = super(SourceWithMagnitude, cls).keys() + ['moment']
+
+        return cls._keys
 
     def pyrocko_event(self, **kwargs):
         return Source.pyrocko_event(
@@ -1256,10 +1255,6 @@ class Rule(object):
     pass
 
 
-def nonzero(x, eps=1e-15):
-    return abs(x) > eps
-
-
 class VectorRule(Rule):
     def __init__(self, quantity, differentiate=0, integrate=0):
         self.components = [quantity + '.' + c for c in 'ned']
@@ -1608,6 +1603,67 @@ def get_engine():
 
     return g_engine
 
+
+class SourceGroup(Object):
+
+    def __getattr__(self, k):
+        return num.fromiter((getattr(s, k) for s in self),
+                            dtype=num.float)
+
+    def __iter__(self):
+        raise NotImplemented('this method should be implemented in subclass')
+
+    def __len__(self):
+        raise NotImplemented('this method should be implemented in subclass')
+
+
+class SourceList(SourceGroup):
+    sources = List.T(Source.T())
+
+    def append(self, s):
+        self.sources.append(s)
+
+    def __iter__(self):
+        return iter(self.sources)
+
+    def __len__(self):
+        return len(self.sources)
+
+
+class SourceGrid(SourceGroup):
+
+    base = Source.T()
+    variables = Dict.T(String.T(), Range.T())
+    order = List.T(String.T())
+
+    def __len__(self):
+        n = 1
+        for (k, v) in self.make_coords(self.base):
+            n *= len(v)
+
+        return n
+
+    def __iter__(self):
+        for items in permudef(self.make_coords(self.base)):
+            s = self.base.clone(**dict((k, v) for (k, v) in items))
+            s.regularize()
+            yield s
+
+    def ordered_params(self):
+        ks = list(self.variables.keys())
+        for k in self.order + self.base.keys():
+            if k in ks:
+                yield k
+                ks.remove(k)
+        if ks:
+            raise Exception('Invalid parameter "%s" for source type "%s"' %
+                            (ks[0], self.base.__class__.__name__))
+
+    def make_coords(self, base):
+        return [(param, self.variables[param].make(self.base))
+                for param in self.ordered_params()]
+
+
 source_classes = [
     Source,
     SourceWithMagnitude,
@@ -1636,6 +1692,8 @@ LocalEngine
 RemoteEngine
 source_classes
 get_engine
-RS
-SGrid
+Range
+SourceGroup
+SourceList
+SourceGrid
 '''.split()

@@ -310,6 +310,8 @@ class TBase(object):
 
         cls.properties.sort(key=lambda x: x.position)
 
+        cls.propnames = [prop.name for prop in cls.properties]
+
         if prop.xmlstyle == 'content':
             cls.content_property = prop
 
@@ -376,7 +378,7 @@ class TBase(object):
         is_derived = isinstance(val, self.cls)
         is_exact = type(val) == self.cls
         not_ok = not self.strict and not is_derived or self.strict and not is_exact
-        
+
         if not_ok:
             if regularize:
                 try:
@@ -1181,9 +1183,12 @@ def multi_constructor(loader, tag_suffix, node):
     o.validate(regularize=True, depth=1)
     return o
 
+def dict_noflow_representer(dumper, data):
+    return dumper.represent_mapping('tag:yaml.org,2002:map', data, flow_style=False)
+
 yaml.add_multi_representer(Object, multi_representer, Dumper=SafeDumper)
 yaml.add_multi_constructor('!', multi_constructor, Loader=SafeLoader)
-
+yaml.add_representer(dict, dict_noflow_representer, Dumper=SafeDumper)
 
 class Constructor(object):
     def __init__(self, add_namespace_maps=False, strict=False):
