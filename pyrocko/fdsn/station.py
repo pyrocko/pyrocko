@@ -5,6 +5,8 @@ from pyrocko.guts import StringChoice, StringPattern, UnicodePattern, String,\
     Unicode, Int, Float, List, Object, Timestamp, ValidationError
 from pyrocko.guts import load_xml  # noqa
 
+guts_prefix = 'pf'
+
 logger = logging.getLogger('pyrocko.fdsn.station')
 
 

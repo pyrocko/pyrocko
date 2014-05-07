@@ -16,6 +16,8 @@ from pyrocko.guts_array import *
 from pyrocko import trace, util, gf
 from pyrocko.parimap import parimap
 
+guts_prefix = 'pf'
+
 logger = logging.getLogger('fomosto.poel')
 
 # how to call the programs

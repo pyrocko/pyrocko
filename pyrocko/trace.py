@@ -9,6 +9,8 @@ from pyrocko.pchain import *
 from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List
 from pyrocko.guts_array import Array
 
+guts_prefix = 'pf'
+
 logger = logging.getLogger('pyrocko.trace')
 
 

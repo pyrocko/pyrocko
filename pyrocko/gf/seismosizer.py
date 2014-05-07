@@ -15,6 +15,8 @@ from pyrocko import moment_tensor as mt
 from pyrocko import trace, model
 from pyrocko.gf import meta, store, ws
 
+guts_prefix = 'pf'
+
 d2r = math.pi/180.
 
 

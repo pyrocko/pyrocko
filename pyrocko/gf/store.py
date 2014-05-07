@@ -44,8 +44,12 @@ gf_record_dtype = num.dtype([
 ])
 
 
+def valid_string_id(s):
+    return re.match(meta.StringID.pattern, s)
+
+
 def check_string_id(s):
-    if not re.match(meta.StringID.pattern, s):
+    if not valid_string_id(s):
         raise ValueError('invalid name %s' % s)
 
 # - data_offset
@@ -962,6 +966,21 @@ class Store(BaseStore):
             x[key] = meta.load(filename=fn)
 
         return x[key]
+
+    def upgrade(self):
+        fns = [os.path.join(self.store_dir, 'config')]
+        for key in self.extra_keys():
+            fns.append(os.path.join(self.store_dir, 'extra', key))
+
+        i = 0
+        for fn in fns:
+            i += util.pf_upgrade(fn)
+
+        return i
+
+    def extra_keys(self):
+        return [x for x in os.listdir(os.path.join(self.store_dir, 'extra'))
+                if valid_string_id(x)]
 
     def put(self, args, trace):
         '''Insert trace into GF store.

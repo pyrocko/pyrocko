@@ -11,6 +11,8 @@ from pyrocko import trace, util, cake
 from pyrocko import gf
 from pyrocko.parimap import parimap
 
+guts_prefix = 'pf'
+
 Timing = gf.meta.Timing
 
 from pyrocko.moment_tensor import MomentTensor, symmat6

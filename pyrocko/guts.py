@@ -1175,8 +1175,16 @@ def multi_representer(dumper, data):
 
     return node
 
+# hack for compatibility with early GF Store versions
+re_compatibility = re.compile(
+    r'^pyrocko\.(trace|gf\.(meta|seismosizer)|fomosto\.(dummy|poel|qseis|qssp))\.'
+)
+
 def multi_constructor(loader, tag_suffix, node):
     tagname = str(tag_suffix)
+
+    tagname = re_compatibility.sub('pf.', tagname)
+
     cls = g_tagname_to_class[tagname]
     kwargs = dict(loader.construct_mapping(node, deep=True).iteritems())
     o = cls(**kwargs)

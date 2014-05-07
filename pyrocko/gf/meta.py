@@ -10,6 +10,8 @@ from pyrocko.guts import dump, load  # noqa
 from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit
 
+guts_prefix = 'pf'
+
 d2r = math.pi / 180.
 r2d = 1.0 / d2r
 km = 1000.

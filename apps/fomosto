@@ -30,6 +30,7 @@ subcommand_descriptions = {
         'server':        'run seismosizer server',
         'download':      'download GF store from a server',
         'modelview':     'plot earthmodels',
+        'upgrade':       'upgrade store format to latest version',
     }
 
 subcommand_usages = {
@@ -50,6 +51,7 @@ subcommand_usages = {
         'server':        'server [options] <store-super-dir> ...',
         'download':      'download [options] <site> <store-id>',
         'modelview':     'modelview <selection>',
+        'upgrade':       'upgrade [store-dir] ...',
     }
 
 subcommands = subcommand_descriptions.keys()
@@ -76,6 +78,7 @@ Subcommands:
     server        %(server)s
     download      %(download)s
     modelview     %(modelview)s
+    upgrade       %(upgrade)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -887,6 +890,22 @@ def command_modelview(args):
         
     plt.show()
 
+
+def command_upgrade(args):
+    parser, options, args = cl_parse('view', args)
+    store_dirs = get_store_dirs(args)
+    try:
+        for store_dir in store_dirs:
+            store = gf.Store(store_dir)
+            nup = store.upgrade()
+            if nup == 0:
+                print '%s: already up-to-date.' % store_dir
+            else:
+                print '%s: %i file%s upgraded.' % (
+                    store_dir, nup, ['s',''][nup==1])
+
+    except gf.StoreError, e:
+        die(e)
 
 if __name__ == '__main__':
 

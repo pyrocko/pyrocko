@@ -1080,3 +1080,32 @@ def human_bytesize(value):
             return '%.0f %s' % (x, ext)
 
     return '%i Bytes' % value
+
+re_compatibility = re.compile(
+    r'!pyrocko\.(trace|gf\.(meta|seismosizer)|fomosto\.(dummy|poel|qseis|qssp))\.'
+)
+
+def pf_is_old(fn):
+    oldstyle = False
+    with open(fn, 'r') as f:
+        for line in f:
+            if re_compatibility.search(line):
+                oldstyle = True
+
+    return oldstyle
+
+
+def pf_upgrade(fn):
+    need = pf_is_old(fn)
+    if need:
+        fn_temp = fn + '.temp'
+
+        with open(fn, 'r') as fin:
+            with open(fn_temp, 'w') as fout:
+                for line in fin:
+                    line = re_compatibility.sub('!pf.', line)
+                    fout.write(line)
+
+        os.rename(fn_temp, fn)
+
+    return need
