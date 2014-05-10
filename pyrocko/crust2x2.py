@@ -69,7 +69,7 @@ from StringIO import StringIO
 
 LICE, LWATER, LSOFTSED, LHARDSED, LUPPERCRUST, LMIDDLECRUST, LLOWERCRUST, LBELOWCRUST = range(8)
 
-class Crust2Profile:
+class Crust2Profile(object):
     '''Representation of a CRUST2.0 key profile.'''
     
     layer_names = ('ice', 'water', 'soft sed.', 'hard sed.', 'upper crust', 'middle crust', 'lower crust', 'mantle')
@@ -189,7 +189,7 @@ def _wrap(x, mi, ma):
 def _clip(x, mi, ma):
     return min(max(mi,x),ma)
 
-class Crust2:
+class Crust2(object):
     '''Access CRUST2.0 model.
         
         :param directory: Directory with the data files which contain the 
