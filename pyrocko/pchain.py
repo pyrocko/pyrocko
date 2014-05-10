@@ -23,6 +23,9 @@ class Stage(object):
         else:
             return self._f(*x[-1])
 
+    def clear(self):
+        self._cache.clear()
+
 
 class Chain(object):
     def __init__(self, *stages):
@@ -35,6 +38,10 @@ class Chain(object):
             stage._parent = parent
             parent = stage
             self.stages.append(stage)
+
+    def clear(self):
+        for stage in self.stages:
+            stage.clear()
     
     def __call__(self, *x, **kwargs):
         return self.stages[len(x)-1](*x, **kwargs)
