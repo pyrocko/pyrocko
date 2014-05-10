@@ -435,15 +435,15 @@ class TraceTestCase(unittest.TestCase):
                                     filter=fresponse) for domain in domains 
                                                         for n in norms]
 
-        for tc, tr, ms, nn in t1.misfit( candidates=ttraces, setups=setups ):
-            for i, t in enumerate(tc):
-                if isinstance(t, trace.Trace) :
-                    self.assertEqual(t.tmin, tr[i].tmin)
-                    self.assertTrue(all(t.get_ydata()==tr[i].get_ydata()))
-                else:
-                    self.assertTrue(all(t[1]==tr[i][1]))
-            for m in ms:
-                self.assertEqual(m, 0, 'misfit\'s m of equal traces is != 0')
+        for setup in setups:
+            m, n, tr, tc = t1.misfit(candidate=t2, setup=setup, debug=True)
+            if isinstance(tr, trace.Trace):
+                self.assertEqual(tr.tmin, tc.tmin)
+                self.assertTrue(all(tr.get_ydata()==tc.get_ydata()))
+            else:
+                self.assertTrue(all(tc==tr))
+
+            self.assertEqual(m, 0., 'misfit\'s m of equal traces is != 0')
 
     def testMisfitOfSameTracesDtDifferentShifted(self):
         """
@@ -489,8 +489,9 @@ class TraceTestCase(unittest.TestCase):
                                     filter=fresponse) for domain in domains 
                                                         for n in norms]
 
-        for tc, tr, ms, nn in rt.misfit( candidates=tts , setups=setups ):
-            for m in ms:
+        for cand in tts:
+            for setup in setups:
+                m, n = rt.misfit(candidate=cand , setup=setup)
                 self.assertNotEqual(m, None, 'misfit\'s m is None')
 
     def testMisfitBox(self):

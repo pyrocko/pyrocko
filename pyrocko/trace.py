@@ -636,8 +636,22 @@ class Trace(object):
             tr.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
             return tr
 
-    def taper(self, taperer):
-        taperer(self.ydata, self.tmin, self.deltat)
+    def taper(self, taperer, inplace=True, chop=False):
+        if not inplace:
+            tr = self.copy()
+        else:
+            tr = self
+
+        if chop:
+            i, n = taperer.span(tr.ydata, tr.tmin, tr.deltat)
+            tr.shift(i*tr.deltat)
+            tr.set_ydata(tr.ydata[i:i+n])
+
+        taperer(tr.ydata, tr.tmin, tr.deltat)
+
+        if not inplace:
+            return tr
+        
     
     def whiten(self, order=6):
         '''Whiten signal in time domain using autoregression and recursive filter.
@@ -955,191 +969,85 @@ class Trace(object):
             output.ydata = output.ydata.copy()
         return output
 
-    def misfit(self, candidates, setups):
-        """
-        Generator function, yielding misfit values m and normalization divisors n.
+    def drop_chain_cache(self):
+        if self._pchain:
+            self._pchain.clear()
+    
+    def init_chain(self):
+        self._pchain = Chain(
+            do_downsample, 
+            do_extend,
+            do_pre_taper,
+            do_fft,
+            do_filter,
+            do_ifft)
 
-        :param candidate: iterable object of :py:class:`trace` objects
-        :param setup: (List of) :py:class:`MisfitSetup` objects
+    def run_chain(self, tmin, tmax, deltat, setup, nocache):
+        if setup.domain=='frequency_domain':
+            _, _, data = self._pchain(
+                (self, deltat),
+                (tmin, tmax),
+                (setup.taper,),
+                (setup.filter,),
+                (setup.filter,),
+                nocache=nocache)
 
-        *setups* can either be a single or list of :py:class:`MisfitSetup` objects. 
-        If setup is a single :py:class:`MisfitSetup` :py:func:`misfit` yields a single m and n. 
-        Otherwise, :py:func:`misfit` yields a list of *m* and *n* for each misfit setup. 
+            return data, data
 
-        In order to preserve the original traces, any modification will be performed on copies of these traces. 
-        If the sampling rate of the by *self* determined :py:class:`Trace` differs from an individual candidate, 
-        both sampling rates will be equalized (by downsampling the higher sampled trace). 
-
-        .. seealso:: One application can be found in the Programming Examples section.
-        """
-        def do_downsample(tr, deltat):
-            if abs(tr.deltat - deltat) / tr.deltat > 1e-6:
-                tr = tr.copy()
-                tr.downsample_to(deltat, snap=True, demean=False)
-            else:
-                if tr.tmin/tr.deltat>1e-6 or tr.tmax/tr.deltat>1e-6:
-                    tr = tr.copy()
-                    tr.snap()
-            return tr
-
-        def do_extend(tr, tmin, tmax):
-            if tmin < tr.tmin or tmax > tr.tmax:
-                tr = tr.copy()
-                tr.extend(tmin=tmin, tmax=tmax, fillmethod='repeat')
-
-            return tr
-
-        def do_pre_taper(tr, taper):
-            tr = tr.copy()
-            tr.taper(taper)
-            return tr
-            
-        def do_fft(tr, filter):
-            if filter is None:
-                return tr
-            else:
-                ndata = tr.ydata.size
-                nfft = nextpow2(ndata)
-                padded = num.zeros(nfft, dtype=num.float)
-                padded[:ndata] = tr.ydata
-                spectrum = num.fft.rfft(padded)
-                df = 1.0 / (tr.deltat * nfft)
-                frequencies = num.arange(spectrum.size)*df
-                return [tr, frequencies, spectrum]
-
-        def do_filter(inp, filter):
-            if filter is None:
-                return inp
-            else:
-                tr, frequencies, spectrum = inp
-                spectrum *= filter.evaluate(frequencies)
-                return [tr, frequencies, spectrum]
-
-        def do_ifft(inp):
-            if isinstance(inp, Trace):
-                return inp
-            else:
-                tr, _, spectrum = inp
-                ndata = tr.ydata.size
-                tr = tr.copy(data=False)
-                tr.set_ydata(num.fft.irfft(spectrum)[:ndata])
-                return tr
-
-        def check_alignment(t1, t2):
-            if abs(t1.tmin-t2.tmin) > t1.deltat * 1e-4 or \
-                    abs(t1.tmax - t2.tmax) > t1.deltat * 1e-4 or \
-                    t1.ydata.shape != t2.ydata.shape:
-                        raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.' %\
-                                ('.'.join(t1.nslc_id), '.'.join(t2.nslc_id)))
-
-        def init_chain(tr):
-            tr._pchain = Chain(do_downsample, 
-                           do_extend,
-                           do_pre_taper,
-                           do_fft,
-                           do_filter,
-                           do_ifft)
-
-        if not self._pchain:
-            init_chain(self)
-
-        if isinstance(setups, MisfitSetup):
-            setups = [setups]
-            single_setup = True            
         else:
-            single_setup = False
+            processed = self._pchain(
+                (self, deltat),
+                (tmin, tmax),
+                (setup.taper,),
+                (setup.filter,),
+                (setup.filter,),
+                (),
+                nocache=nocache)
 
-        for setup in setups:
-            r_data = []
-            c_data = []
-            m = []
-            n = []
-            for candidate in candidates:
+            if setup.domain=='time_domain':
+                data = processed.get_ydata()
 
-                if not candidate._pchain:
-                    init_chain(candidate)
-                
-                if (candidate.tmax<self.tmin or candidate.tmin>self.tmax):
-                        logger.warn('Cannot calculate misfit: %s and %s have no overlapping data.'%('.'.join(self.nslc_id), '.'.join(candidate.nslc_id)))
-                        yield None, None, None, None
-                        break
+            elif setup.domain=='envelope':
+                processed = processed.envelope(inplace=False)
 
-                wanted_deltat = max(candidate.deltat, self.deltat)
-                wanted_tmin = min(candidate.tmin, self.tmin) -\
-                                              max(candidate.deltat, self.deltat)
-                wanted_tmax = max(candidate.tmax, self.tmax) +\
-                                              max(candidate.deltat, self.deltat)
+            elif setup.domain=='absolute':
+                processed.set_ydata(num.abs(processed.get_ydata()))
 
-                if setup.domain=='frequency_domain':
-                    cand, cand_f, cand_data = candidate._pchain((candidate, 
-                                                                wanted_deltat),
-                                                (wanted_tmin, wanted_tmax),
-                                                (setup.taper,),
-                                                (setup.filter,),
-                                                (setup.filter,),
-                                                nocache=False)
+            return processed.get_ydata(), processed
 
-                    ref, ref_f, ref_data = self._pchain((self, wanted_deltat),
-                                                (wanted_tmin, wanted_tmax),
-                                                (setup.taper,),
-                                                (setup.filter,),
-                                                (setup.filter,),
-                                                nocache=False)
+    def misfit(self, candidate, setup, nocache=False, debug=False):
+        """
+        Calculate misfit and normalization factor against candidate trace.
 
-                    return_cand = [cand, cand_f, cand_data]
-                    return_ref = [ref, ref_f, ref_data]
+        :param candidate: :py:class:`Trace` object
+        :param setup: :py:class:`MisfitSetup` object
+        :returns: tuple ``(m, n)``, where m is the misfit value and n is the
+            normalization divisor
 
-                else:
-                    processed_candidate = candidate._pchain((candidate, 
-                                                                wanted_deltat),
-                                                (wanted_tmin, wanted_tmax),
-                                                (setup.taper,),
-                                                (setup.filter,),
-                                                (setup.filter,),
-                                                (), nocache=False)
+        If the sampling rates of *self* and *candidate* differ, the trace with
+        the higher sampling rate will be downsampled.
+        """
 
-                    processed_reference = self._pchain((self, wanted_deltat),
-                                                (wanted_tmin, wanted_tmax),
-                                                (setup.taper,),
-                                                (setup.filter,),
-                                                (setup.filter,),
-                                                (), nocache=False)
+        a = self
+        b = candidate
 
-                    check_alignment(processed_candidate, processed_reference)
+        for tr in (a, b):
+            if not tr._pchain:
+                tr.init_chain()
 
-                    if setup.domain=='time_domain':
-                        return_cand = processed_candidate.copy()
-                        return_ref = processed_reference.copy()
-                        cand_data = processed_candidate.get_ydata()
-                        ref_data = processed_reference.get_ydata()
+        deltat = max(a.deltat, b.deltat)
+        tmin = min(a.tmin, b.tmin) - deltat
+        tmax = max(a.tmax, b.tmax) + deltat
 
-                    elif setup.domain=='envelope':
-                        return_cand = processed_candidate.envelope(inplace=False)
-                        return_ref = processed_reference.envelope(inplace=False)
-                        cand_data = return_cand.get_ydata()
-                        ref_data = return_ref.get_ydata()
+        adata, aproc = a.run_chain(tmin, tmax, deltat, setup, nocache)
+        bdata, bproc = b.run_chain(tmin, tmax, deltat, setup, nocache)
 
-                    elif setup.domain=='absolute':
-                        cand_data = num.abs(processed_candidate.get_ydata())
-                        ref_data =  num.abs(processed_reference.get_ydata())
-                        return_cand = processed_candidate.copy(data=False)
-                        return_ref = processed_reference.copy(data=False)
-                        return_cand.set_ydata(cand_data)
-                        return_ref.set_ydata(ref_data)
+        m, n = Lx_norm(adata, bdata, norm=setup.norm)
 
-                mtmp, ntmp = Lx_norm(cand_data, ref_data, norm=setup.norm)
-
-                if single_setup:
-                    yield return_cand, return_ref, mtmp, ntmp
-
-                else:
-                    c_data.append(return_cand)
-                    r_data.append(return_ref)
-                    m.append(mtmp)
-                    n.append(ntmp)
-
-            if not single_setup:
-                yield c_data, r_data, m, n
+        if debug:
+            return m, n, aproc, bproc
+        else:
+            return m, n
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
@@ -1909,6 +1817,8 @@ class CosTaper(Taper):
     def __call__(self, y, x0, dx):
         apply_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
 
+    def span(self, y, x0, dx):
+        return span_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
 
 class CosFader(Taper):
 
@@ -1935,6 +1845,9 @@ class CosFader(Taper):
         d = x0 + xlen
 
         apply_costaper(a, b, c, d, y, x0, dx)
+
+    def span(self, y, x0, dx):
+        return 0, y.size
 
 
 class GaussTaper(Taper):
@@ -2349,6 +2262,10 @@ def apply_costaper(a, b, c, d, y, x0, dx):
     y[hi(c):hi(d)] *= 0.5 + 0.5*num.cos((dx*num.arange(hi(c),hi(d))-(c-x0))/(d-c)*num.pi)
     y[hi(d):] = 0.
 
+def span_costaper(a, b, c, d, y, x0, dx):
+    hi = snapper_w_offset(y.size, x0, dx)
+    return hi(a), hi(d) - hi(a)
+
 def costaper(a,b,c,d, nfreqs, deltaf):
     hi = snapper(nfreqs, deltaf)
     tap = num.zeros(nfreqs)
@@ -2631,5 +2548,76 @@ def Lx_norm(u, v, norm=2):
 
     *u* and *v* must be of same size. 
     '''
-    return num.power(num.sum(abs(num.power(v - u, norm))), 1./norm), \
-           num.power(num.sum(abs(num.power(v, norm))), 1./norm)
+    if norm == 1:
+        return (
+            num.sum(num.abs(v-u)),
+            num.sum(num.abs(v)))
+
+    elif norm == 2:
+        return (
+            num.sqrt(num.sum((v-u)**2)),
+            num.sqrt(num.sum(v**2)))
+              
+    else:
+        return (
+            num.power(num.sum(num.abs(num.power(v - u, norm))), 1./norm), \
+            num.power(num.sum(num.abs(num.power(v, norm))), 1./norm))
+
+def do_downsample(tr, deltat):
+    if abs(tr.deltat - deltat) / tr.deltat > 1e-6:
+        tr = tr.copy()
+        tr.downsample_to(deltat, snap=True, demean=False)
+    else:
+        if tr.tmin/tr.deltat>1e-6 or tr.tmax/tr.deltat>1e-6:
+            tr = tr.copy()
+            tr.snap()
+    return tr
+
+def do_extend(tr, tmin, tmax):
+    if tmin < tr.tmin or tmax > tr.tmax:
+        tr = tr.copy()
+        tr.extend(tmin=tmin, tmax=tmax, fillmethod='repeat')
+
+    return tr
+
+def do_pre_taper(tr, taper):
+    return tr.taper(taper, inplace=False, chop=True)
+    
+def do_fft(tr, filter):
+    if filter is None:
+        return tr
+    else:
+        ndata = tr.ydata.size
+        nfft = nextpow2(ndata)
+        padded = num.zeros(nfft, dtype=num.float)
+        padded[:ndata] = tr.ydata
+        spectrum = num.fft.rfft(padded)
+        df = 1.0 / (tr.deltat * nfft)
+        frequencies = num.arange(spectrum.size)*df
+        return [tr, frequencies, spectrum]
+
+def do_filter(inp, filter):
+    if filter is None:
+        return inp
+    else:
+        tr, frequencies, spectrum = inp
+        spectrum *= filter.evaluate(frequencies)
+        return [tr, frequencies, spectrum]
+
+def do_ifft(inp):
+    if isinstance(inp, Trace):
+        return inp
+    else:
+        tr, _, spectrum = inp
+        ndata = tr.ydata.size
+        tr = tr.copy(data=False)
+        tr.set_ydata(num.fft.irfft(spectrum)[:ndata])
+        return tr
+
+def check_alignment(t1, t2):
+    if abs(t1.tmin-t2.tmin) > t1.deltat * 1e-4 or \
+            abs(t1.tmax - t2.tmax) > t1.deltat * 1e-4 or \
+            t1.ydata.shape != t2.ydata.shape:
+                raise MisalignedTraces('Cannot calculate misfit of %s and %s due to misaligned traces.' %\
+                        ('.'.join(t1.nslc_id), '.'.join(t2.nslc_id)))
+
