@@ -732,6 +732,9 @@ class Bool(Object):
 
             return bool(val)
 
+        def to_save_xml(self, value):
+            return repr(bool(value)).lower()
+
 class String(Object):
     dummy_for = str
 
@@ -1347,7 +1350,7 @@ def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
 
         attr_str = ''
         if attrs:
-            attr_str = ' ' + ' '.join( '%s=%s' % (k, quoteattr(v)) for (k,v) in attrs )
+            attr_str = ' ' + ' '.join( '%s=%s' % (k, quoteattr(str(v))) for (k,v) in attrs )
             
         if not elems:
             stream.write('%s<%s%s />\n' % (indent, xmltagname, attr_str))
