@@ -1016,7 +1016,7 @@ class Store(BaseStore):
                               implementation)
 
         else:
-            irecords, weights = zip(*store.config.vicinity(*args))
+            irecords, weights = store.config.vicinity(*args)
             if interpolate == 'off' and len(irecords) != 1:
                 raise NotAllowedToInterpolate()
 

@@ -927,12 +927,14 @@ Index variables are (source_depth, distance, component).'''
                 raise OutOfBounds()
 
             indis = []
+            weights = []
             for ia, va in ias:
                 iia = ia*nb*ng
                 for ib, vb in ibs:
-                    indis.append((iia + ib*ng + ig, va*vb))
+                    indis.append(iia + ib*ng + ig)
+                    weights.append(va*vb)
 
-            return indis
+            return num.array(indis), num.array(weights)
 
         self._index_function = index_function
         self._indices_function = indices_function
@@ -1048,15 +1050,18 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
             if not (0 <= ig < ng):
                 raise OutOfBounds()
 
+            n = len(ias)*len(ibs)*len(ics)
             indis = []
+            weights = []
             for ia, va in ias:
                 iia = ia*nb*nc*ng
                 for ib, vb in ibs:
                     iib = ib*nc*ng
                     for ic, vc in ics:
-                        indis.append((iia + iib + ic*ng + ig, va*vb*vc))
+                        indis.append(iia + iib + ic*ng + ig)
+                        weights.append(va*vb*vc)
 
-            return indis
+            return num.array(indis), num.array(weights)
 
         self._index_function = index_function
         self._indices_function = indices_function
