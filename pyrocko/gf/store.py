@@ -291,8 +291,11 @@ class BaseStore:
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
 
         if self.mode == 'r':
-            self.cstore = store_ext.store_init(
-                self._f_index.fileno(), self._f_data.fileno())
+            try:
+                self.cstore = store_ext.store_init(
+                    self._f_index.fileno(), self._f_data.fileno())
+            except store_ext.StoreExtError, e:
+                raise StoreError(str(e))
 
         while True:
             try:
@@ -400,8 +403,11 @@ class BaseStore:
             if itmin is None:
                 itmin = 0
 
-            return GFTrace(*store_ext.store_get(
-                self.cstore, int(irecord), int(itmin), int(nsamples)))
+            try:
+                return GFTrace(*store_ext.store_get(
+                    self.cstore, int(irecord), int(itmin), int(nsamples)))
+            except store_ext.StoreExtError, e:
+                raise StoreError(str(e))
 
         else:
             return self._get_impl_reference(irecord, itmin, nsamples, decimate)
@@ -699,10 +705,13 @@ class BaseStore:
             if itmin is None:
                 itmin = 0
 
-            return GFTrace(*store_ext.store_sum(
-                self.cstore, irecords.astype(num.uint64),
-                delays.astype(num.float32), weights.astype(num.float32),
-                int(itmin), int(nsamples)))
+            try:
+                return GFTrace(*store_ext.store_sum(
+                    self.cstore, irecords.astype(num.uint64),
+                    delays.astype(num.float32), weights.astype(num.float32),
+                    int(itmin), int(nsamples)))
+            except store_ext.StoreExtError, e:
+                raise StoreError(str(e))
 
         elif implementation == 'alternative':
             return self._sum_impl_alternative(irecords, delays, weights,
