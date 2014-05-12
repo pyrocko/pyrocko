@@ -286,12 +286,6 @@ class BaseStore:
         try:
             self._f_index = open(index_fn, fmode)
             self._f_data = open(data_fn, fmode)
-
-            if self._use_memmap and self.mode == 'r':
-                self.data = num.memmap(
-                    self._f_data, dtype=gf_dtype_store,
-                    offset=0,
-                    mode='r')
         except:
             self.mode = ''
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
@@ -753,19 +747,14 @@ class BaseStore:
                 data_orig[1] = end_value
                 return data_orig[ilo:ihi]
             else:
-                if self._use_memmap:
-                    jlo = int(ipos/gf_dtype_nbytes_per_sample + ilo)
-                    jhi = jlo + (ihi-ilo)
-                    return self.data[jlo:jhi]
-                else:
-                    self._f_data.seek(
-                        int(ipos + ilo*gf_dtype_nbytes_per_sample))
-                    arr = num.fromfile(
-                        self._f_data, gf_dtype_store, ihi-ilo).astype(gf_dtype)
+                self._f_data.seek(
+                    int(ipos + ilo*gf_dtype_nbytes_per_sample))
+                arr = num.fromfile(
+                    self._f_data, gf_dtype_store, ihi-ilo).astype(gf_dtype)
 
-                    if arr.size != ihi-ilo:
-                        raise ShortRead()
-                    return arr
+                if arr.size != ihi-ilo:
+                    raise ShortRead()
+                return arr
         else:
             return num.empty((0,), dtype=gf_dtype)
 
