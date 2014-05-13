@@ -686,6 +686,86 @@ class MTSource(Source):
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
 
 
+class BilateralSource(DCSource):
+    '''
+    Classical Haskell source model modified for bilateral rupture.
+    '''
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    right = Float.T(
+        default=0.,
+        help='right-lateral length of rectangular source area [m]')
+
+    left = Float.T(
+        default=0.,
+        help='left-lateral length of rectangular source area [m]')
+
+    width = Float.T(
+        default=0.,
+        help='width of rectangular source area [m]')
+
+    velocity = Float.T(
+        default=3500.,
+        help='speed of rupture front [m/s]')
+
+    def base_key(self):
+        return DCSource.base_key(self) + (
+            self.right,
+            self.left,
+            self.width,
+            self.velocity)
+
+    @property
+    def length(self):
+        return self.left + self.right
+
+    def discretize_basesource(self, store):
+
+        mindeltagf = num.min(store.config.deltas)
+        mindeltagf = min(mindeltagf, store.config.deltat*self.velocity)
+
+        l = self.length
+        w = self.width
+
+        nl = 2 * num.ceil(l / mindeltagf) + 1
+        nw = 2 * num.ceil(w / mindeltagf) + 1
+        n = nl*nw
+
+        nucl_l = -0.5*l + self.left
+
+        dl = l / nl
+        dw = w / nw
+        xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
+        xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
+        xlt = num.abs(xl - nucl_l) / self.velocity
+        xlt -= num.mean(xlt)
+
+        points = num.empty((n, 3), dtype=num.float)
+        points[:, 0] = num.tile(xl, nw)
+        points[:, 1] = num.repeat(xw, nl)
+        points[:, 2] = 0.0
+        times = num.tile(xlt, nw)
+
+        rotmat = num.asarray(
+            mt.euler_to_matrix(self.dip*d2r, self.strike*d2r, 0.0))
+        points = num.dot(rotmat.T, points.T).T
+
+        mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake,
+                              scalar_moment=1.0/n)
+
+        ds = meta.DiscretizedMTSource(
+            lat=self.lat,
+            lon=self.lon,
+            times=self.time + times,
+            north_shifts=self.north_shift + points[:, 0],
+            east_shifts=self.east_shift + points[:, 1],
+            depths=self.depth + points[:, 2],
+            m6s=num.repeat(mot.m6()[num.newaxis, :], n, axis=0))
+
+        return ds
+
+
 class DoubleDCSource(SourceWithMagnitude):
     '''Two double-couple point sources separated in space and time.'''
 
@@ -1672,6 +1752,7 @@ source_classes = [
     ExplosionSource,
     DCSource,
     MTSource,
+    BilateralSource,
     DoubleDCSource,
     RingfaultSource,
     PorePressurePointSource,
