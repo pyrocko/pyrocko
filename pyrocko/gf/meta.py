@@ -810,6 +810,9 @@ class Config(Object):
     def vicinity(self, *args):
         return self._vicinity_function(*args)
 
+    def vicinities(self, *args):
+        return self._vicinities_function(*args)
+
     def iter_nodes(self, level=None):
         return nditer_outer(self.coords[:level])
 
@@ -936,9 +939,43 @@ Index variables are (source_depth, distance, component).'''
 
             return num.array(indis), num.array(weights)
 
+        def vicinities_function(a, b, ig):
+
+            xa = (a-amin) / da
+            xb = (b-bmin) / db
+
+            xa_floor = num.floor(xa)
+            xa_ceil = num.ceil(xa)
+            xb_floor = num.floor(xb)
+            xb_ceil = num.ceil(xb)
+            va_floor = 1.0 - (xa - xa_floor)
+            va_ceil = (1.0 - (xa_ceil - xa)) * (xa_ceil - xa_floor)
+            vb_floor = 1.0 - (xb - xb_floor)
+            vb_ceil = (1.0 - (xb_ceil - xb)) * (xb_ceil - xb_floor)
+
+            ia_floor = xa_floor.astype(num.int)
+            ia_ceil = xa_ceil.astype(num.int)
+            ib_floor = xb_floor.astype(num.int)
+            ib_ceil = xb_ceil.astype(num.int)
+
+            irecords = num.empty(a.size*4, dtype=num.int)
+            irecords[0::4] = ia_floor*nb*ng + ib_floor*ng + ig
+            irecords[1::4] = ia_ceil*nb*ng + ib_floor*ng + ig
+            irecords[2::4] = ia_floor*nb*ng + ib_ceil*ng + ig
+            irecords[3::4] = ia_ceil*nb*ng + ib_ceil*ng + ig
+
+            weights = num.empty(a.size*4, dtype=num.float)
+            weights[0::4] = va_floor * vb_floor
+            weights[1::4] = va_ceil * vb_floor
+            weights[2::4] = va_floor * vb_ceil
+            weights[3::4] = va_ceil * vb_ceil
+
+            return irecords, weights
+
         self._index_function = index_function
         self._indices_function = indices_function
         self._vicinity_function = vicinity_function
+        self._vicinities_function = vicinities_function
 
     def make_indexing_args(self, source, receiver, icomponents):
         nc = icomponents.size
@@ -1050,7 +1087,6 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
             if not (0 <= ig < ng):
                 raise OutOfBounds()
 
-            n = len(ias)*len(ibs)*len(ics)
             indis = []
             weights = []
             for ia, va in ias:

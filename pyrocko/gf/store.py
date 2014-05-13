@@ -1022,7 +1022,7 @@ class Store(BaseStore):
                               itmin, nsamples, decimate, implementation)
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None,
-            decimate=1, implementation='c'):
+            decimate=1, interpolate='nearest_neighbor', implementation='c'):
 
         '''Sum delayed and weighted GF traces.
 
@@ -1036,7 +1036,15 @@ class Store(BaseStore):
         summation.'''
 
         store, decimate = self._decimated_store(decimate)
-        irecords = store.config.irecords(*args)
+
+        if interpolate == 'nearest_neighbor':
+            irecords = store.config.irecords(*args)
+        else:
+            irecords, ip_weights = store.config.vicinities(*args)
+            neach = irecords.size / args[0].size
+            weights = num.repeat(weights, neach) * ip_weights
+            delays = num.repeat(delays, neach)
+
         return store._sum(irecords, delays, weights,
                           itmin, nsamples, decimate, implementation)
 
@@ -1332,13 +1340,15 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def seismogram(self, source, receiver, components):
+    def seismogram(self, source, receiver, components,
+                   interpolate='nearest_neighbor'):
+
         out = {}
         for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
             if component in components:
-                gtr = self.sum(args, delays, weights)
+                gtr = self.sum(args, delays, weights, interpolate=interpolate)
                 out[component] = gtr
 
         return out

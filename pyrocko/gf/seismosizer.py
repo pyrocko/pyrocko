@@ -49,6 +49,10 @@ class Taper(Object):
     pass
 
 
+class InterpolationMethod(StringChoice):
+    choices = ['nearest_neighbor', 'multilinear']
+
+
 def ufloat(s):
     units = {
         'k': 1e3,
@@ -1077,6 +1081,10 @@ class Target(meta.Receiver):
              'If not given the GF store\'s default sample rate is used.'
              'GF store specific restrictions may apply.')
 
+    interpolation = InterpolationMethod.T(
+        default='nearest_neighbor',
+        help='interpolation method to use')
+
     tmin = Timestamp.T(
         optional=True,
         help='time of first sample to request in [s]. '
@@ -1111,7 +1119,8 @@ class Target(meta.Receiver):
         help='time domain taper applied to the trace after filtering.')
 
     def base_key(self):
-        return (self.store_id, self.sample_rate, self.tmin, self.tmax,
+        return (self.store_id, self.sample_rate, self.interpolation,
+                self.tmin, self.tmax,
                 self.elevation, self.depth, self.north_shift, self.east_shift,
                 self.lat, self.lon)
 
@@ -1575,7 +1584,8 @@ class LocalEngine(Engine):
         store_ = self.get_store(target.store_id)
         receiver = target.receiver(store_)
         base_source = source.cached_discretize_basesource(store_)
-        base_seismogram = store_.seismogram(base_source, receiver, components)
+        base_seismogram = store_.seismogram(base_source, receiver, components,
+                                            interpolate=target.interpolation)
         return store.make_same_span(base_seismogram)
 
     def _post_process(self, base_seismogram, source, target):
