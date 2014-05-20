@@ -558,6 +558,10 @@ def command_export(args):
         sys.exit(1)
 
     target_path = args.pop()
+    if os.path.isdir(target_path):
+        target_path = os.path.join(target_path, 'kiwi_gfdb')
+        logger.warn('exported gfdb will be named as "%s.*"' % target_path)
+
     source_store_dir = get_store_dir(args)
 
     source = gf.Store(source_store_dir, 'r')
