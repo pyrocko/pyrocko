@@ -165,9 +165,9 @@ class Timing(SObject):
     * ``'P-100'`` : 100 s before arrival of P phase.
     * ``'(A|B)'`` : time instant of phase arrival A, or B if A is undefined for
       a given geometry.
-    * ``'first(A|B)'`` : as above, but the temporally first arrival of A and B
+    * ``'first(A|B)'`` : as above, but the earlier arrival of A and B
       is chosen, if both phases are defined for a given geometry.
-    * ``'last(A|B)'`` : as above but the temporally last arrival is chosen.
+    * ``'last(A|B)'`` : as above but the later arrival is chosen.
     * ``'first(A|B|C)-100'`` : 100 s before first out of arrivals A, B, and C.
     '''
 
@@ -420,6 +420,26 @@ class UnavailableScheme(Exception):
 
 
 class DiscretizedSource(Object):
+    '''Base class for discretized sources.
+    
+    To compute synthetic seismograms, the parameterized source models (see of
+    :py:class:`pyrocko.seismosizer.Source` derived classes) are first
+    discretized into a number of point sources. These spacio-temporal point
+    source distributions are represented by subclasses of the
+    :py:class:`DiscretizedSource`. For elastodynamic problems there is the
+    :py:class:`DiscretizedMTSource` for moment tensor point source
+    distributions and the :py:class:`DiscretizedExplosionSource` for pure
+    explosion/implosion type source distributions. The geometry calculations
+    are implemented in the base class. How Green's function components have to
+    be weighted and sumed is defined in the derived classes.
+    
+    Like in the :py:class:`Location` class, the positions of the point sources
+    contained in the discretized source are defined by a common reference point
+    (:py:attr:`lat`, :py:attr:`lon`) and cartesian offsets to this
+    (:py:attr:`north_shifts`, :py:attr:`east_shifts`, :py:attr:`depths`).
+    Alternatively latitude and longitude of each contained point source can be
+    specified directly (:py:attr:`lats`, :py:attr:`lons`).
+    '''
     times = Array.T(shape=(None,), dtype=num.float)
     lats = Array.T(shape=(None,), dtype=num.float, optional=True)
     lons = Array.T(shape=(None,), dtype=num.float, optional=True)
@@ -431,6 +451,12 @@ class DiscretizedSource(Object):
 
     @classmethod
     def check_scheme(cls, scheme):
+        '''Check if given GF component scheme is supported by the class.
+        
+        Raises :py:class:`UnavailableScheme` if the given scheme is not
+        supported by this discretized source class.
+        '''
+
         if scheme not in cls._provided_schemes:
             raise UnavailableScheme(
                 'source type "%s" does not support GF component scheme "%s"' %
@@ -438,6 +464,8 @@ class DiscretizedSource(Object):
 
     @classmethod
     def provided_components(cls, scheme):
+        '''Get list of components which are provided for given scheme.'''
+
         cls.check_scheme(scheme)
         return cls._provided_components
 
@@ -454,6 +482,9 @@ class DiscretizedSource(Object):
 
     @property
     def effective_latlons(self):
+        '''
+        Property holding the offset-corrected lats and lons of all points.
+        '''
         if self._latlons is None:
             if self.lats is not None and self.lons is not None:
                 if (self.north_shifts is not None and
@@ -472,11 +503,17 @@ class DiscretizedSource(Object):
         return self._latlons
 
     def same_origin(self, receiver):
+        '''
+        Check if receiver has same reference point.
+        '''
         return (g(self.lat, 0.0) == receiver.lat and
                 g(self.lon, 0.0) == receiver.lon and
                 self.lats is None and self.lons is None)
 
     def azibazis_to(self, receiver):
+        '''
+        Compute azimuths and backaziumuths to/from receiver, for all contained points.
+        '''
         if self.same_origin(receiver):
             azis = r2d * num.arctan2(receiver.east_shift - self.east_shifts,
                                      receiver.north_shift - self.north_shifts)
@@ -490,6 +527,9 @@ class DiscretizedSource(Object):
         return azis, bazis
 
     def distances_to(self, receiver):
+        '''
+        Compute distances to receiver for all contained points.
+        '''
         if self.same_origin(receiver):
             return num.sqrt((self.north_shifts - receiver.north_shift)**2 +
                             (self.east_shifts - receiver.east_shift)**2)
