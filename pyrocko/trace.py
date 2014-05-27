@@ -6,7 +6,7 @@ from scipy import signal
 from pyrocko import util, evalresp, model, orthodrome
 from pyrocko.util import reuse, hpfloat, UnavailableDecimation
 from pyrocko.pchain import *
-from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List
+from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List, StringChoice
 from pyrocko.guts_array import Array
 
 guts_prefix = 'pf'
@@ -992,7 +992,7 @@ class Trace(object):
                 (setup.filter,),
                 nocache=nocache)
 
-            return data, data
+            return num.abs(data), num.abs(data)
 
         else:
             processed = self._pchain(
@@ -1042,7 +1042,7 @@ class Trace(object):
         adata, aproc = a.run_chain(tmin, tmax, deltat, setup, nocache)
         bdata, bproc = b.run_chain(tmin, tmax, deltat, setup, nocache)
 
-        m, n = Lx_norm(adata, bdata, norm=setup.norm)
+        m, n = Lx_norm(bdata, adata, norm=setup.norm)
 
         if debug:
             return m, n, aproc, bproc
@@ -2483,7 +2483,7 @@ def co_downsample_to(target, deltat):
             g.close()
 
 
-class DomainChoice(Object):
+class DomainChoice(StringChoice):
     choices = [
         'time_domain',
         'frequency_domain',
