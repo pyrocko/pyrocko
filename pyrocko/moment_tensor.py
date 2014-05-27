@@ -55,6 +55,27 @@ def random_rotation(x=None):
     house = num.identity(3) - 2.0 * v * v.T
     return -house*zrot
 
+def rand(mi, ma):
+    mi = float(mi)
+    ma = float(ma)
+    return random.random()*(ma-mi) + mi
+
+def randdip(mi, ma):
+    mi_ = 0.5*(math.cos(mi * math.pi/180.)+1.)
+    ma_ = 0.5*(math.cos(ma * math.pi/180.)+1.)
+    return math.acos(rand(mi_, ma_)*2.-1.)*180./math.pi
+
+def random_strike_dip_rake(
+        strikemin=0., strikemax=360.,
+        dipmin=0., dipmax=90.,
+        rakemin=-180., rakemax=180.):
+
+    strike = rand(strikemin, strikemax)
+    dip = randdip(dipmin, dipmax)
+    rake = rand(rakemin, rakemax)
+    
+    return strike, dip, rake
+
 def to6(m):
     return num.array([m[0,0], m[1,1], m[2,2], m[0,1], m[0,2], m[1,2]])
 
