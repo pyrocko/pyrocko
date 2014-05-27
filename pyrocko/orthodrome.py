@@ -180,6 +180,13 @@ def latlon_to_ne(refloc, loc):
     n, e = math.cos(azi*d2r)*dist, math.sin(azi*d2r)*dist
     return n,e
 
+def latlon_to_ne_numpy(lat0, lon0, lat, lon):
+    azi = azimuth_numpy(lat0, lon0, lat, lon)
+    dist = distance_accurate50m_numpy(lat0, lon0, lat, lon)
+    n = num.cos(azi*d2r)*dist
+    e = num.sin(azi*d2r)*dist
+    return n, e
+
 _wgs84 = None
 def get_wgs84():
     global _wgs84
