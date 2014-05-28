@@ -21,6 +21,10 @@
 typedef npy_float32 gf_dtype;
 typedef npy_float32 float32_t;
 
+#if (PY_VERSION_HEX >= 0x02070000) 
+  #define HAVE_CAPSULE
+#endif
+
 #define GF_STORE_IS_LITTLE_ENDIAN
 
 #ifdef GF_STORE_IS_LITTLE_ENDIAN
@@ -438,12 +442,19 @@ void store_deinit(store_t *store) {
     *store = ZERO_STORE;
 }
 
+#ifdef HAVE_CAPSULE
 static void w_store_delete(PyObject *capsule) {
     store_t *store;
     store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
     store_deinit(store);
     free(store);
 }
+#else
+static void w_store_delete(void *store) {
+    store_deinit((store_t*)store);
+    free(store);
+}
+#endif
 
 static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
     int f_index, f_data;
@@ -469,8 +480,13 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
+#ifdef HAVE_CAPSULE
     return Py_BuildValue("N", 
         PyCapsule_New((void*)store, NULL, w_store_delete));
+#else
+    return Py_BuildValue("N",
+        PyCObject_FromVoidPtr((void*)store, w_store_delete));
+#endif
 }
 
 static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
@@ -479,7 +495,7 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     store_t *store;
     gf_dtype *adata;
     trace_t trace;
-    PyObject *array = NULL;
+    PyArrayObject *array = NULL;
     npy_intp array_dims[1] = {0};
     int32_t itmin;
     int32_t nsamples;
@@ -490,7 +506,11 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
         PyErr_SetString(StoreExtError, "usage store_get(cstore, irecord, itmin, nsamples)");
         return NULL;
     }
+#ifdef HAVE_CAPSULE
     if (!PyCapsule_IsValid(capsule, NULL)) {
+#else
+    if (!PyCObject_Check(capsule)) {
+#endif
         PyErr_SetString(StoreExtError, "invalid cstore argument");
         return NULL;
     }
@@ -503,7 +523,11 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
+#ifdef HAVE_CAPSULE
     store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
+#else
+    store = (store_t*)PyCObject_AsVoidPtr(capsule);
+#endif
 
     err = store_get(store, irecord, &trace);
     if (SUCCESS != err) {
@@ -516,7 +540,7 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     }
 
     array_dims[0] = trace.nsamples;
-    array = PyArray_EMPTY(1, array_dims, NPY_FLOAT32, 0);
+    array = (PyArrayObject*)PyArray_EMPTY(1, array_dims, NPY_FLOAT32, 0);
     adata = (gf_dtype*)PyArray_DATA(array);
     for (i=0; i<trace.nsamples; i++) {
         adata[i] = fe32toh(trace.data[i]);
@@ -531,7 +555,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     store_t *store;
     gf_dtype *adata;
     trace_t result;
-    PyObject *array = NULL;
+    PyArrayObject *array = NULL;
     npy_intp array_dims[1] = {0};
     PyArrayObject *c_irecords_arr, *c_delays_arr, *c_weights_arr;
     uint64_t *irecords;
@@ -549,22 +573,28 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
-
+#ifdef HAVE_CAPSULE
+    if (!PyCapsule_IsValid(capsule, NULL)) {
+#else
+    if (!PyCObject_Check(capsule)) {
+#endif
+        PyErr_SetString(StoreExtError, "invalid cstore argument");
+        return NULL;
+    }
     if (!PyArray_Check(irecords_arr) ||
-            NPY_UINT64 != PyArray_TYPE(irecords_arr)) {
+            NPY_UINT64 != PyArray_TYPE((PyArrayObject*)irecords_arr)) {
         PyErr_SetString(StoreExtError, 
             "store_sum: 'irecords' must be a NumPy array of type uint64");
         return NULL;
     }
     if (!PyArray_Check(delays_arr) ||
-            NPY_FLOAT32 != PyArray_TYPE(delays_arr)) {
+            NPY_FLOAT32 != PyArray_TYPE((PyArrayObject*)delays_arr)) {
         PyErr_SetString(StoreExtError, 
             "store_sum: 'delays' must be a NumPy array of type float32");
         return NULL;
     }
     if (!PyArray_Check(weights_arr) ||
-            NPY_FLOAT32 != PyArray_TYPE(weights_arr)) {
+            NPY_FLOAT32 != PyArray_TYPE((PyArrayObject*)weights_arr)) {
         PyErr_SetString(StoreExtError, 
             "store_sum: 'weights' must be a NumPy array of type float32");
         return NULL;
@@ -577,6 +607,11 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
         PyErr_SetString(StoreExtError, "invalid nsamples argument");
         return NULL;
     }
+#ifdef HAVE_CAPSULE
+    store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
+#else
+    store = (store_t*)PyCObject_AsVoidPtr(capsule);
+#endif
 
     c_irecords_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)irecords_arr);
     c_delays_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)delays_arr);
@@ -592,7 +627,6 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
     irecords = PyArray_DATA(c_irecords_arr);
     delays = PyArray_DATA(c_delays_arr);
     weights = PyArray_DATA(c_weights_arr);
@@ -608,7 +642,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     Py_DECREF(c_weights_arr);
 
     array_dims[0] = result.nsamples;
-    array = PyArray_EMPTY(1, array_dims, NPY_FLOAT32, 0);
+    array = (PyArrayObject*)PyArray_EMPTY(1, array_dims, NPY_FLOAT32, 0);
     adata = (gf_dtype*)PyArray_DATA(array);
     memcpy(adata, result.data, result.nsamples*sizeof(gf_dtype));
     free(result.data);
