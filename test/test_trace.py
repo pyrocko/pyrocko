@@ -354,6 +354,7 @@ class TraceTestCase(unittest.TestCase):
                     c2 = trace.correlate(t1,t2, mode=mode, use_fft=True)
                     c1.set_station('c1')
                     c2.set_station('c2')
+                    assert c1.get_ydata().size == c2.get_ydata().size
                     d = num.abs(c1.get_ydata() - c2.get_ydata())
 
                     if not num.all(d < 1e-5):
