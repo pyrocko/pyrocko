@@ -24,7 +24,7 @@ class ParimapTestCase(unittest.TestCase):
 
     def test_parimap(self):
 
-        random.seed(0)
+        #random.seed(0)
 
         for i in range(50):
             nprocs = random.randint(1,10)
