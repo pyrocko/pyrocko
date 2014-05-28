@@ -99,12 +99,12 @@ class GFTestCase(unittest.TestCase):
     def _create_benchmark_store(self):
         conf = gf.ConfigTypeA(
             id='benchmark_store',
-            source_depth_min = 0.,
-            source_depth_max = 2.,
-            source_depth_delta = 1.,
-            distance_min = 1.0,
-            distance_max = 5001.0,
-            distance_delta =  5.0,
+            source_depth_min=0.,
+            source_depth_max=2.,
+            source_depth_delta=1.,
+            distance_min=1.0,
+            distance_max=5001.0,
+            distance_delta=5.0,
             sample_rate=2.0,
             ncomponents=5)
 
@@ -411,13 +411,15 @@ class GFTestCase(unittest.TestCase):
             for nrepeats in (1, 2):
                 data = []
                 for distance in store.config.coords[1]:
-                    n = store.config.ncomponents*store.config.ns[0]
-                    sdepths = num.repeat(store.config.coords[0], store.config.ncomponents)
+                    sdepths = num.repeat(store.config.coords[0],
+                                         store.config.ncomponents)
                     t = time.time()
                     for repeat in xrange(nrepeats):
                         for sdepth in sdepths:
                             for icomp in xrange(1):
-                                trace = store.get((sdepth, distance, icomp), implementation=implementation)
+                                store.get(
+                                    (sdepth, distance, icomp),
+                                    implementation=implementation)
 
                     tnew = time.time()
                     data.append((distance, tnew - t))
@@ -434,11 +436,10 @@ class GFTestCase(unittest.TestCase):
         lab.legend()
         lab.show()
 
-
     def benchmark_sum(self):
 
         store_dir = self.get_benchmark_store_dir()
-        
+
         import pylab as lab
         for implementation in ('c', 'python'):
             store = gf.Store(store_dir, use_memmap=True)
@@ -447,18 +448,21 @@ class GFTestCase(unittest.TestCase):
                     data = []
                     for distance in store.config.coords[1]:
                         n = store.config.ncomponents*store.config.ns[0]
-                        sdepths = num.repeat(store.config.coords[0], store.config.ncomponents)
+                        sdepths = num.repeat(store.config.coords[0],
+                                             store.config.ncomponents)
                         distances = num.repeat([distance], n)
-                        comps = num.tile(store.config.coords[2], store.config.ns[0])
+                        comps = num.tile(store.config.coords[2],
+                                         store.config.ns[0])
                         args = (sdepths, distances, comps)
                         weights = num.repeat([weight], n)
-                        delays = num.arange(n, dtype=num.float)*store.config.deltat*0.5
+                        delays = num.arange(n, dtype=num.float) \
+                            * store.config.deltat * 0.5
 
                         t = time.time()
 
                         for repeat in xrange(nrepeats):
-                            trace = store.sum(args, delays, weights, 
-                                              implementation=implementation)
+                            store.sum(args, delays, weights,
+                                      implementation=implementation)
 
                         tnew = time.time()
 
@@ -467,7 +471,8 @@ class GFTestCase(unittest.TestCase):
 
                     if nrepeats != 1:
                         d, t1 = num.array(data, dtype=num.float).T
-                        nread = nrepeats * store.config.ns[0] * store.config.ncomponents
+                        nread = nrepeats * store.config.ns[0] \
+                            * store.config.ncomponents
                         label = 'nrepeats %i, weight %g, impl %s' % (
                             nrepeats, weight, implementation)
                         print label, num.mean(nread/t1)

@@ -421,7 +421,7 @@ class UnavailableScheme(Exception):
 
 class DiscretizedSource(Object):
     '''Base class for discretized sources.
-    
+
     To compute synthetic seismograms, the parameterized source models (see of
     :py:class:`pyrocko.seismosizer.Source` derived classes) are first
     discretized into a number of point sources. These spacio-temporal point
@@ -432,7 +432,7 @@ class DiscretizedSource(Object):
     explosion/implosion type source distributions. The geometry calculations
     are implemented in the base class. How Green's function components have to
     be weighted and sumed is defined in the derived classes.
-    
+
     Like in the :py:class:`Location` class, the positions of the point sources
     contained in the discretized source are defined by a common reference point
     (:py:attr:`lat`, :py:attr:`lon`) and cartesian offsets to this
@@ -452,7 +452,7 @@ class DiscretizedSource(Object):
     @classmethod
     def check_scheme(cls, scheme):
         '''Check if given GF component scheme is supported by the class.
-        
+
         Raises :py:class:`UnavailableScheme` if the given scheme is not
         supported by this discretized source class.
         '''
@@ -520,7 +520,8 @@ class DiscretizedSource(Object):
 
     def azibazis_to(self, receiver):
         '''
-        Compute azimuths and backaziumuths to/from receiver, for all contained points.
+        Compute azimuths and backaziumuths to/from receiver, for all contained
+        points.
         '''
         if self.same_origin(receiver):
             azis = r2d * num.arctan2(receiver.east_shift - self.east_shifts,
