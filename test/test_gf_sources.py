@@ -2,6 +2,7 @@ import sys
 import math
 import unittest
 import numpy as num
+from tempfile import mkdtemp
 
 from pyrocko import gf, util, guts
 
@@ -16,6 +17,17 @@ def numeq(a, b, eps):
 
 
 class GFSourcesTestCase(unittest.TestCase):
+
+    def __init__(self, *args, **kwargs):
+        unittest.TestCase.__init__(self, *args, **kwargs)
+        self.tempdirs = []
+        self._dummy_store = None
+
+    def __del__(self):
+        import shutil
+
+        for d in self.tempdirs:
+            shutil.rmtree(d)
 
     if sys.version_info < (2, 7):
         from contextlib import contextmanager
@@ -33,9 +45,6 @@ class GFSourcesTestCase(unittest.TestCase):
 
         def assertIsNone(self, value):
             assert value is None, 'expected None but got %s' % value
-
-    def __init__(self, *args, **kwargs):
-        unittest.TestCase.__init__(self, *args, **kwargs)
 
     def test_source_to_event(self):
 
@@ -75,6 +84,48 @@ class GFSourcesTestCase(unittest.TestCase):
             i += 1
 
         assert i == n
+
+    def dummy_store(self):
+        if self._dummy_store is None:
+
+            conf = gf.ConfigTypeA(
+                id='empty_regional',
+                source_depth_min=0.,
+                source_depth_max=20*km,
+                source_depth_delta=10*km,
+                distance_min=1000*km,
+                distance_max=2000*km,
+                distance_delta=10*km,
+                sample_rate=2.0,
+                ncomponents=10)
+
+            store_dir = mkdtemp(prefix='gfstore')
+            self.tempdirs.append(store_dir)
+
+            gf.Store.create(store_dir, config=conf)
+            self._dummy_store = gf.Store(store_dir)
+
+        return self._dummy_store
+
+    def test_combine_dsources(self):
+
+        store = self.dummy_store()
+        for S in gf.source_classes:
+            if not hasattr(S, 'discretize_basesource'):
+                continue
+
+            for lats in [[10., 10., 10.], [10., 11., 12.]]:
+                sources = [
+                    S(lat=10., lon=20., depth=1000.,
+                      north_shift=500., east_shift=500.)
+                    for i in xrange(3)]
+
+                dsources = [s.discretize_basesource(store) for s in sources]
+
+                DS = dsources[0].__class__
+
+                dsource = DS.combine(dsources)
+                assert dsource.nelements == sum(s.nelements for s in dsources)
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_sources', 'warning')

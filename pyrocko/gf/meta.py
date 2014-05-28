@@ -8,7 +8,7 @@ from pyrocko.guts import Object, SObject, String, StringChoice, \
 from pyrocko.guts import dump, load  # noqa
 
 from pyrocko.guts_array import literal, Array
-from pyrocko import cake, orthodrome, spit
+from pyrocko import cake, orthodrome, spit, moment_tensor
 
 guts_prefix = 'pf'
 
@@ -502,6 +502,14 @@ class DiscretizedSource(Object):
 
         return self._latlons
 
+    @property
+    def effective_north_shifts(self):
+        return self.north_shifts or num.zeros(self.times.size)
+
+    @property
+    def effective_east_shifts(self):
+        return self.east_shifts or num.zeros(self.times.size)
+
     def same_origin(self, receiver):
         '''
         Check if receiver has same reference point.
@@ -560,6 +568,44 @@ class DiscretizedSource(Object):
     @property
     def nelements(self):
         return self.times.size
+
+    @classmethod
+    def combine(cls, sources, **kwargs):
+        first = sources[0]
+
+        if not all(type(s) == type(first) for s in sources):
+            raise Exception('DiscretizedSource.combine must be called with '
+                            'sources of same type.')
+
+        latlons = []
+        for s in sources:
+            latlons.append(s.effective_latlons)
+
+        lats, lons = num.hstack(latlons)
+
+        same_ref = num.all(lats == lats[0]) and num.all(lons == lons[0])
+
+        cat = num.concatenate
+        times = cat([s.times for s in sources])
+        depths = cat([s.depths for s in sources])
+
+        if same_ref:
+            lat = first.lat
+            lon = first.lon
+            north_shifts = cat([s.effective_north_shifts for s in sources])
+            east_shifts = cat([s.effective_east_shifts for s in sources])
+            lats = None
+            lons = None
+        else:
+            lat = None
+            lon = None
+            north_shifts = None
+            east_shifts = None
+
+        return cls(
+            times=times, lat=lat, lon=lon, lats=lats, lons=lons,
+            north_shifts=north_shifts, east_shifts=east_shifts,
+            depths=depths, **kwargs)
 
 
 class DiscretizedExplosionSource(DiscretizedSource):
@@ -640,6 +686,14 @@ class DiscretizedExplosionSource(DiscretizedSource):
 
         return sources
 
+    @classmethod
+    def combine(cls, sources, **kwargs):
+        if 'm0s' not in kwargs:
+            kwargs['m0s'] = num.concatenate([s.m0s for s in sources])
+
+        return super(DiscretizedExplosionSource, cls).combine(sources,
+                                                              **kwargs)
+
 
 class DiscretizedMTSource(DiscretizedSource):
     m6s = Array.T(shape=(None, 6), dtype=num.float)
@@ -719,6 +773,66 @@ class DiscretizedMTSource(DiscretizedSource):
 
         return sources
 
+    def moments(self):
+        n = self.nelements
+        moments = num.zeros(n)
+        for i in xrange(n):
+            m = moment_tensor.symmat6(*self.m6s[i])
+            m_evals = num.linalg.eigh(m)[0]
+
+            # incorrect for non-dc sources: !!!!
+            m0 = num.linalg.norm(m_evals)/math.sqrt(2.)
+            moments[i] = m0
+
+        return moments
+
+    def centroid(self):
+        from pyrocko.gf.seismosizer import MTSource
+
+        moments = self.moments()
+        w = moments / num.sum(moments)
+        if self.lats is not None and self.lons is not None:
+            lats, lons = self.effective_latlons
+            rlat, rlon = num.mean(lats), num.mean(lons)
+            n, e = orthodrome.latlon_to_ne_numpy(rlat, rlon, lats, lons)
+        else:
+            rlat, rlon = g(self.lat, 0.0), g(self.lon, 0.0)
+            n, e = self.north_shifts, self.east_shifts
+
+        cn = num.sum(n*w)
+        ce = num.sum(e*w)
+        clat, clon = orthodrome.ne_to_latlon(rlat, rlon, cn, ce)
+
+        if self.lats is not None and self.lons is not None:
+            lat = clat
+            lon = clon
+            north_shift = 0.
+            east_shift = 0.
+        else:
+            lat = g(self.lat, 0.0)
+            lon = g(self.lon, 0.0)
+            north_shift = cn
+            east_shift = ce
+
+        depth = num.sum(self.depths*w)
+        time = num.sum(self.times*w)
+
+        return MTSource(
+            time=float(time),
+            lat=float(lat),
+            lon=float(lon),
+            north_shift=float(north_shift),
+            east_shift=float(east_shift),
+            depth=float(depth),
+            m6=num.sum(self.m6s, axis=0))
+
+    @classmethod
+    def combine(cls, sources, **kwargs):
+        if 'm6s' not in kwargs:
+            kwargs['m6s'] = num.vstack([s.m6s for s in sources])
+
+        return super(DiscretizedMTSource, cls).combine(sources, **kwargs)
+
 
 class DiscretizedPorePressureSource(DiscretizedSource):
     pp = Array.T(shape=(None,), dtype=num.float)
@@ -783,6 +897,14 @@ class DiscretizedPorePressureSource(DiscretizedSource):
             ('darcy_velocity.e', w_dve, g_dve),
             ('darcy_velocity.d', w_dvd, g_dvd),
         )
+
+    @classmethod
+    def combine(cls, sources, **kwargs):
+        if 'pp' not in kwargs:
+            kwargs['pp'] = num.concatenate([s.pp for s in sources])
+
+        return super(DiscretizedPorePressureSource, cls).combine(sources,
+                                                                 **kwargs)
 
 
 class ComponentSchemes(StringChoice):
