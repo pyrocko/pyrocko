@@ -116,9 +116,9 @@ class GFSourcesTestCase(unittest.TestCase):
 
             for lats in [[10., 10., 10.], [10., 11., 12.]]:
                 sources = [
-                    S(lat=10., lon=20., depth=1000.,
+                    S(lat=lat, lon=20., depth=1000.,
                       north_shift=500., east_shift=500.)
-                    for i in xrange(3)]
+                    for lat in lats]
 
                 dsources = [s.discretize_basesource(store) for s in sources]
 

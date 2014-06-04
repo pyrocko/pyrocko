@@ -352,10 +352,10 @@ class BaseStore:
         return self._get(irecord, itmin, nsamples, decimate, implementation)
 
     def sum(self, irecords, delays, weights, itmin=None,
-            nsamples=None, decimate=1, implementation='c'):
+            nsamples=None, decimate=1, implementation='c', optimize=True):
 
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
-                         implementation)
+                         implementation, optimize)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
@@ -692,11 +692,53 @@ class BaseStore:
 
         return GFTrace(sum_arr, itmin, deltat)
 
+    def _optimize(self, irecords, delays, weights):
+        if irecords.size < 2:
+            return irecords, delays, weights
+
+        deltat = self._deltat
+
+        irecords2 = num.repeat(irecords, 2)
+        delays2 = num.empty(irecords2.size, dtype=num.float)
+        delays2[0::2] = num.floor(delays / deltat)
+        delays2[1::2] = num.ceil(delays / deltat)
+        weights2 = num.repeat(weights, 2)
+        weights2[0::2] *= 1.0 - (delays - delays2[0::2])
+        weights2[1::2] *= (1.0 - (delays2[1::2] - delays)) * \
+                          (delays2[1::2] - delays2[0::2])
+
+        delays2 *= deltat
+
+        iorder = num.lexsort((delays2, irecords2))
+
+        irecords2 = irecords2[iorder]
+        delays2 = delays2[iorder]
+        weights2 = weights2[iorder]
+
+        ui = num.empty(irecords2.size, dtype=num.bool)
+        ui[1:] = num.logical_or(num.diff(irecords2) != 0,
+                                num.diff(delays2) != 0.)
+
+        ui[0] = 0
+        ind2 = num.cumsum(ui)
+        ui[0] = 1
+        ind1 = num.where(ui)[0]
+
+        irecords3 = irecords2[ind1]
+        delays3 = delays2[ind1]
+        weights3 = num.bincount(ind2, weights2)
+
+        return irecords3, delays3, weights3
+
     def _sum(self, irecords, delays, weights, itmin, nsamples, decimate,
-             implementation):
+             implementation, optimize):
 
         if not self._f_index:
             self.open()
+
+        if optimize:
+            irecords, delays, weights = self._optimize(
+                irecords, delays, weights)
 
         if implementation == 'c' and decimate == 1:
             if nsamples is None:
@@ -1019,10 +1061,11 @@ class Store(BaseStore):
                 raise NotAllowedToInterpolate()
 
             return store._sum(irecords, num.zeros(len(irecords)), weights,
-                              itmin, nsamples, decimate, implementation)
+                              itmin, nsamples, decimate, implementation, False)
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None,
-            decimate=1, interpolate='nearest_neighbor', implementation='c'):
+            decimate=1, interpolate='nearest_neighbor', implementation='c',
+            optimize=True):
 
         '''Sum delayed and weighted GF traces.
 
@@ -1045,8 +1088,8 @@ class Store(BaseStore):
             weights = num.repeat(weights, neach) * ip_weights
             delays = num.repeat(delays, neach)
 
-        return store._sum(irecords, delays, weights,
-                          itmin, nsamples, decimate, implementation)
+        return store._sum(irecords, delays, weights, itmin, nsamples, decimate,
+                          implementation, optimize)
 
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
@@ -1341,14 +1384,15 @@ class Store(BaseStore):
             ip.dump(fn)
 
     def seismogram(self, source, receiver, components,
-                   interpolate='nearest_neighbor'):
+                   interpolate='nearest_neighbor', optimize=True):
 
         out = {}
         for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
             if component in components:
-                gtr = self.sum(args, delays, weights, interpolate=interpolate)
+                gtr = self.sum(args, delays, weights, interpolate=interpolate,
+                               optimize=optimize)
                 out[component] = gtr
 
         return out

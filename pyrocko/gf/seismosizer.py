@@ -53,6 +53,10 @@ class InterpolationMethod(StringChoice):
     choices = ['nearest_neighbor', 'multilinear']
 
 
+class OptimizationMethod(StringChoice):
+    choices = ['enable', 'disable']
+
+
 def ufloat(s):
     units = {
         'k': 1e3,
@@ -103,6 +107,50 @@ def permudef(l, j=0):
 
 def arr(x):
     return num.atleast_1d(num.asarray(x))
+
+
+def discretize_rect_source(deltas, deltat, strike, dip, length, width,
+                           velocity, nucleation_x=None, nucleation_y=None):
+
+    mindeltagf = num.min(deltas)
+    mindeltagf = min(mindeltagf, deltat * velocity)
+
+    l = length
+    w = width
+
+    nl = 2 * num.ceil(l / mindeltagf) + 1
+    nw = 2 * num.ceil(w / mindeltagf) + 1
+    n = nl*nw
+
+    dl = l / nl
+    dw = w / nw
+    xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
+    xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
+
+    points = num.empty((n, 3), dtype=num.float)
+    points[:, 0] = num.tile(xl, nw)
+    points[:, 1] = num.repeat(xw, nl)
+    points[:, 2] = 0.0
+
+    if nucleation_x is not None:
+        dist_x = num.abs(nucleation_x - points[:, 0])
+    else:
+        dist_x = num.zeros(n)
+
+    if nucleation_y is not None:
+        dist_y = num.abs(nucleation_y - points[:, 1])
+    else:
+        dist_y = num.zeros(n)
+
+    dist = num.sqrt(dist_x**2 + dist_y**2)
+    times = dist / velocity
+
+    rotmat = num.asarray(
+        mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
+
+    points = num.dot(rotmat.T, points.T).T
+
+    return points, times
 
 
 class InvalidGridDef(Exception):
@@ -545,6 +593,77 @@ class ExplosionSource(SourceWithMagnitude):
             **kwargs)
 
 
+class RectangularExplosionSource(ExplosionSource):
+    '''
+    Rectangular or line explosion source.
+    '''
+
+    discretized_source_class = meta.DiscretizedExplosionSource
+
+    strike = Float.T(
+        default=0.0,
+        help='strike direction in [deg], measured clockwise from north')
+
+    dip = Float.T(
+        default=90.0,
+        help='dip angle in [deg], measured downward from horizontal')
+
+    length = Float.T(
+        default=0.,
+        help='length of rectangular source area [m]')
+
+    width = Float.T(
+        default=0.,
+        help='width of rectangular source area [m]')
+
+    nucleation_x = Float.T(
+        optional=True,
+        help='horizontal position of rupture nucleation in normalized fault '
+             'plane coordinates (-1 = left edge, +1 = right edge)')
+
+    nucleation_y = Float.T(
+        optional=True,
+        help='down-dip position of rupture nucleation in normalized fault '
+             'plane coordinates (-1 = upper edge, +1 = lower edge)')
+
+    velocity = Float.T(
+        default=3500.,
+        help='speed of explosion front [m/s]')
+
+    def base_key(self):
+        return Source.base_key(self) + (self.strike, self.dip, self.length,
+                                        self.width, self.nucleation_x,
+                                        self.nucleation_y, self.velocity)
+
+    def discretize_basesource(self, store):
+
+        if self.nucleation_x is not None:
+            nucx = self.nucleation_x * 0.5 * self.length
+        else:
+            nucx = None
+
+        if self.nucleation_y is not None:
+            nucy = self.nucleation_y * 0.5 * self.width
+        else:
+            nucy = None
+
+        points, times = discretize_rect_source(
+            store.config.deltas, store.config.deltat,
+            self.strike, self.dip, self.length, self.width,
+            self.velocity, nucleation_x=nucx, nucleation_y=nucy)
+
+        n = times.size
+
+        return meta.DiscretizedExplosionSource(
+            lat=self.lat,
+            lon=self.lon,
+            times=self.time + times,
+            north_shifts=self.north_shift + points[:, 0],
+            east_shifts=self.east_shift + points[:, 1],
+            depths=self.depth + points[:, 2],
+            m0s=num.repeat(1.0/n, n))
+
+
 class DCSource(SourceWithMagnitude):
     '''
     A double-couple point source.
@@ -690,24 +809,30 @@ class MTSource(Source):
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
 
 
-class BilateralSource(DCSource):
+class RectangularSource(DCSource):
     '''
     Classical Haskell source model modified for bilateral rupture.
     '''
 
     discretized_source_class = meta.DiscretizedMTSource
 
-    right = Float.T(
+    length = Float.T(
         default=0.,
-        help='right-lateral length of rectangular source area [m]')
-
-    left = Float.T(
-        default=0.,
-        help='left-lateral length of rectangular source area [m]')
+        help='length of rectangular source area [m]')
 
     width = Float.T(
         default=0.,
         help='width of rectangular source area [m]')
+
+    nucleation_x = Float.T(
+        optional=True,
+        help='horizontal position of rupture nucleation in normalized fault '
+             'plane coordinates (-1 = left edge, +1 = right edge)')
+
+    nucleation_y = Float.T(
+        optional=True,
+        help='down-dip position of rupture nucleation in normalized fault '
+             'plane coordinates (-1 = upper edge, +1 = lower edge)')
 
     velocity = Float.T(
         default=3500.,
@@ -715,45 +840,30 @@ class BilateralSource(DCSource):
 
     def base_key(self):
         return DCSource.base_key(self) + (
-            self.right,
-            self.left,
+            self.length,
             self.width,
+            self.nucleation_x,
+            self.nucleation_y,
             self.velocity)
-
-    @property
-    def length(self):
-        return self.left + self.right
 
     def discretize_basesource(self, store):
 
-        mindeltagf = num.min(store.config.deltas)
-        mindeltagf = min(mindeltagf, store.config.deltat*self.velocity)
+        if self.nucleation_x is not None:
+            nucx = self.nucleation_x * 0.5 * self.length
+        else:
+            nucx = None
 
-        l = self.length
-        w = self.width
+        if self.nucleation_y is not None:
+            nucy = self.nucleation_y * 0.5 * self.width
+        else:
+            nucy = None
 
-        nl = 2 * num.ceil(l / mindeltagf) + 1
-        nw = 2 * num.ceil(w / mindeltagf) + 1
-        n = nl*nw
+        points, times = discretize_rect_source(
+            store.config.deltas, store.config.deltat,
+            self.strike, self.dip, self.length, self.width,
+            self.velocity, nucleation_x=nucx, nucleation_y=nucy)
 
-        nucl_l = -0.5*l + self.left
-
-        dl = l / nl
-        dw = w / nw
-        xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
-        xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
-        xlt = num.abs(xl - nucl_l) / self.velocity
-        xlt -= num.mean(xlt)
-
-        points = num.empty((n, 3), dtype=num.float)
-        points[:, 0] = num.tile(xl, nw)
-        points[:, 1] = num.repeat(xw, nl)
-        points[:, 2] = 0.0
-        times = num.tile(xlt, nw)
-
-        rotmat = num.asarray(
-            mt.euler_to_matrix(self.dip*d2r, self.strike*d2r, 0.0))
-        points = num.dot(rotmat.T, points.T).T
+        n = times.size
 
         mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake,
                               scalar_moment=1.0/n)
@@ -1085,6 +1195,11 @@ class Target(meta.Receiver):
         default='nearest_neighbor',
         help='interpolation method to use')
 
+    optimization = OptimizationMethod.T(
+        default='enable',
+        optional=True,
+        help='disable/enable optimizations in weight-delay-and-sum operation')
+
     tmin = Timestamp.T(
         optional=True,
         help='time of first sample to request in [s]. '
@@ -1120,6 +1235,7 @@ class Target(meta.Receiver):
 
     def base_key(self):
         return (self.store_id, self.sample_rate, self.interpolation,
+                self.optimization,
                 self.tmin, self.tmax,
                 self.elevation, self.depth, self.north_shift, self.east_shift,
                 self.lat, self.lon)
@@ -1585,7 +1701,8 @@ class LocalEngine(Engine):
         receiver = target.receiver(store_)
         base_source = source.cached_discretize_basesource(store_)
         base_seismogram = store_.seismogram(base_source, receiver, components,
-                                            interpolate=target.interpolation)
+                                            interpolate=target.interpolation,
+                                            optimize=target.optimization)
         return store.make_same_span(base_seismogram)
 
     def _post_process(self, base_seismogram, source, target):
@@ -1760,9 +1877,10 @@ source_classes = [
     Source,
     SourceWithMagnitude,
     ExplosionSource,
+    RectangularExplosionSource,
     DCSource,
     MTSource,
-    BilateralSource,
+    RectangularSource,
     DoubleDCSource,
     RingfaultSource,
     PorePressurePointSource,

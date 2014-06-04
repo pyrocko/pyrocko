@@ -482,6 +482,46 @@ class GFTestCase(unittest.TestCase):
         lab.legend()
         lab.show()
 
+    def test_optimization(self):
+        store_dir = self.get_pulse_store_dir()
+        engine = gf.LocalEngine(store_dirs=[store_dir])
+
+        sources = [
+            gf.RectangularExplosionSource(
+                time=0.0,
+                depth=depth,
+                moment=1.0,
+                length=50.,
+                width=0.,
+                nucleation_x=-1)
+
+            for depth in [100., 200., 300.]
+        ]
+
+        targetss = [
+            [
+                gf.Target(
+                    codes=('', 'STA', opt, component),
+                    north_shift=500.,
+                    east_shift=125.,
+                    depth=depth,
+                    interpolation='multilinear',
+                    optimization=opt)
+
+                for component in 'ZNE' for depth in [0., 5., 10]]
+            for opt in ('disable', 'enable')
+        ]
+
+        resps = [engine.process(sources, targets) for targets in targetss]
+
+        iters = [resp.iter_results() for resp in resps]
+        for i in xrange(len(sources) * len(targetss[0])):
+            s1, t1, tr1 = iters[0].next()
+            s2, t2, tr2 = iters[1].next()
+            self.assertEqual(tr1.data_len(), tr2.data_len())
+            self.assertEqual(tr1.tmin, tr2.tmin)
+            self.assertTrue(numeq(tr1.ydata, tr2.ydata, 0.0001))
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
