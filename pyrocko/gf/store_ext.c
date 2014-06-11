@@ -1,5 +1,5 @@
 #define NPY_NO_DEPRECATED_API 7
-    
+
 #define GF_STORE_HEADER_SIZE (8+4)
 
 /* security limit for length of traces, shifts and offsets (samples) */
@@ -21,7 +21,7 @@
 typedef npy_float32 gf_dtype;
 typedef npy_float32 float32_t;
 
-#if (PY_VERSION_HEX >= 0x02070000) 
+#if (PY_VERSION_HEX >= 0x02070000)
   #define HAVE_CAPSULE
 #endif
 
@@ -98,7 +98,7 @@ typedef enum {
 } store_error_t;
 
 const char* store_error_names[] = {
-    "SUCCESS", 
+    "SUCCESS",
     "INVALID_RECORD",
     "EMPTY_RECORD",
     "BAD_RECORD",
@@ -117,10 +117,10 @@ const char* store_error_names[] = {
 #define REC_ZERO 1
 #define REC_SHORT 2
 
-static trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL }; 
+static trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL };
 static store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL };
 
-static store_error_t store_get_span(const store_t *store, uint64_t irecord, 
+static store_error_t store_get_span(const store_t *store, uint64_t irecord,
                              int32_t *itmin, int32_t *nsamples, int *is_zero) {
     record_t *record;
 
@@ -160,7 +160,7 @@ static store_error_t store_get(
     trace->begin_value = fe32toh(record->begin_value);
     trace->end_value = fe32toh(record->end_value);
 
-    if (!inlimits(trace->itmin) || !inposlimits(trace->nsamples) || 
+    if (!inlimits(trace->itmin) || !inposlimits(trace->nsamples) ||
             data_offset >= UINT64_MAX - SLIMIT * sizeof(gf_dtype)) {
         return BAD_RECORD;
     }
@@ -256,7 +256,7 @@ static store_error_t store_sum(
             if (is_zero || 0.0 == weights[j]) {
                 continue;
             }
-            
+
             itmax = itmin + nsamples - 1;
 
             if (ihave) {
@@ -307,7 +307,7 @@ static store_error_t store_sum(
         if (0.0 == weight) {
             continue;
         }
-        
+
         err = store_get(store, irecords[j], &trace);
         if (SUCCESS != err) {
             free(out);
@@ -323,7 +323,7 @@ static store_error_t store_sum(
             ilo = itmin - idelay_floor - trace.itmin;
             /*for (i=0; i<nsamples; i++) {
                 ifloor = i + ilo;
-                ifloor = max(0, min(ifloor, trace.nsamples-1)); 
+                ifloor = max(0, min(ifloor, trace.nsamples-1));
                 out[i] += fe32toh(trace.data[ifloor]) * weight;
             } // version below is a bit faster */
             for (i=0; i<min(-ilo,nsamples); i++) {
@@ -345,7 +345,7 @@ static store_error_t store_sum(
                 iceil = i + ihi;
                 ifloor = max(0, min(ifloor, trace.nsamples-1));
                 iceil = max(0, min(iceil, trace.nsamples-1));
-                out[i] += fe32toh(trace.data[ifloor]) * w1; 
+                out[i] += fe32toh(trace.data[ifloor]) * w1;
                 out[i] += fe32toh(trace.data[iceil]) * w2;
             } // version below is a bit faster */
             for (i=0; i<min(-ilo,nsamples); i++) {
@@ -359,7 +359,7 @@ static store_error_t store_sum(
                 out[i] += fe32toh(trace.data[i+ilo])*w1
                           + fe32toh(trace.data[i+ilo-1])*w2;
             }
-            for (i=max(0,trace.nsamples-ilo); 
+            for (i=max(0,trace.nsamples-ilo);
                  i<min(nsamples, trace.nsamples-ilo+1); i++) {
                 out[i] += fe32toh(trace.data[trace.nsamples-1]) * w1
                           + fe32toh(trace.data[i+ilo-1])*w2;
@@ -445,7 +445,7 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
 
     store->data = (gf_dtype*)p;
     return SUCCESS;
-}    
+}
 
 void store_deinit(store_t *store) {
     size_t mmap_index_size;
@@ -503,7 +503,7 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
     }
 
 #ifdef HAVE_CAPSULE
-    return Py_BuildValue("N", 
+    return Py_BuildValue("N",
         PyCapsule_New((void*)store, NULL, w_store_delete));
 #else
     return Py_BuildValue("N",
@@ -523,7 +523,7 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     int32_t nsamples;
     int i;
     store_error_t err;
-    
+
     (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord, &itmin, &nsamples)) {
@@ -591,9 +591,9 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr, 
+    if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr,
                                      &weights_arr, &itmin, &nsamples)) {
-        PyErr_SetString(StoreExtError, 
+        PyErr_SetString(StoreExtError,
             "usage: store_sum(cstore, irecords, delays, weights, itmin, nsamples)");
 
         return NULL;
@@ -609,19 +609,19 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     }
     if (!PyArray_Check(irecords_arr) ||
             NPY_UINT64 != PyArray_TYPE((PyArrayObject*)irecords_arr)) {
-        PyErr_SetString(StoreExtError, 
+        PyErr_SetString(StoreExtError,
             "store_sum: 'irecords' must be a NumPy array of type uint64");
         return NULL;
     }
     if (!PyArray_Check(delays_arr) ||
             NPY_FLOAT32 != PyArray_TYPE((PyArrayObject*)delays_arr)) {
-        PyErr_SetString(StoreExtError, 
+        PyErr_SetString(StoreExtError,
             "store_sum: 'delays' must be a NumPy array of type float32");
         return NULL;
     }
     if (!PyArray_Check(weights_arr) ||
             NPY_FLOAT32 != PyArray_TYPE((PyArrayObject*)weights_arr)) {
-        PyErr_SetString(StoreExtError, 
+        PyErr_SetString(StoreExtError,
             "store_sum: 'weights' must be a NumPy array of type float32");
         return NULL;
     }
@@ -648,7 +648,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     n2 = PyArray_SIZE(c_weights_arr);
 
     if (n != n1 || n != n2) {
-        PyErr_SetString(StoreExtError, 
+        PyErr_SetString(StoreExtError,
             "store_sum: 'irecords', 'delays', and 'weights' must have same length");
         return NULL;
     }
@@ -673,18 +673,18 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     memcpy(adata, result.data, result.nsamples*sizeof(gf_dtype));
     free(result.data);
 
-    return Py_BuildValue("Nififf", array, result.itmin, store->deltat, 
+    return Py_BuildValue("Nififf", array, result.itmin, store->deltat,
                          result.is_zero, result.begin_value, result.end_value);
 }
 
 
 static PyMethodDef StoreExtMethods[] = {
-    {"store_init",  w_store_init, METH_VARARGS, 
+    {"store_init",  w_store_init, METH_VARARGS,
         "Initialize store struct." },
 
     {"store_get", w_store_get, METH_VARARGS,
         "Get a GF trace." },
-    
+
     {"store_sum", w_store_sum, METH_VARARGS,
         "Get weight-and-delay-sum of GF traces." },
 
@@ -701,7 +701,7 @@ initstore_ext(void)
     import_array();
 
     StoreExtError = PyErr_NewException("store_ext.error", NULL, NULL);
-    Py_INCREF(StoreExtError);  /* required, because other code could remove `error` 
+    Py_INCREF(StoreExtError);  /* required, because other code could remove `error`
                                from the module, what would create a dangling
                                pointer. */
     PyModule_AddObject(m, "StoreExtError", StoreExtError);
