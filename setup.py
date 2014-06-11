@@ -108,6 +108,7 @@ setup( name = packname,
 
         Extension( 'gf.store_ext',
             include_dirs = [ numpy.get_include() ],
+            extra_compile_args = [ '-D_FILE_OFFSET_BITS=64', '-Wextra' ],
             sources = [ pjoin(packname, 'gf', 'store_ext.c') ]),
     ],
                 

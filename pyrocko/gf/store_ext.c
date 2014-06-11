@@ -66,7 +66,7 @@ typedef struct {
     int f_index;
     int f_data;
     uint64_t nrecords;
-    size_t data_size;
+    uint64_t data_size;
     float32_t deltat;
     record_t *records;
     gf_dtype *data;
@@ -92,6 +92,7 @@ typedef enum {
     SEEK_INDEX_FAILED,
     READ_INDEX_FAILED,
     FSTAT_TRACES_FAILED,
+    BAD_STORE,
     MMAP_INDEX_FAILED,
     MMAP_TRACES_FAILED,
 } store_error_t;
@@ -107,6 +108,7 @@ const char* store_error_names[] = {
     "SEEK_INDEX_FAILED",
     "READ_INDEX_FAILED",
     "FSTAT_TRACES_FAILED",
+    "BAD_STORE",
     "MMAP_INDEX_FAILED",
     "MMAP_TRACES_FAILED",
 };
@@ -126,11 +128,14 @@ static store_error_t store_get_span(const store_t *store, uint64_t irecord,
         return INVALID_RECORD;
     }
 
-    irecord = min(irecord, store->nrecords-1);
     record = &store->records[irecord];
     *itmin = xe32toh(record->itmin);
     *nsamples = xe32toh(record->nsamples);
     *is_zero = REC_ZERO == xe64toh(record->data_offset);
+
+    if (!inlimits(*itmin) || !inposlimits(*nsamples)) {
+        return BAD_RECORD;
+    }
 
     return SUCCESS;
 }
@@ -141,14 +146,13 @@ static store_error_t store_get(
         trace_t *trace) {
 
     record_t *record;
-    int64_t data_offset;
+    uint64_t data_offset;
 
     if (irecord >= store->nrecords) {
         *trace = ZERO_TRACE;
         return INVALID_RECORD;
     }
 
-    irecord = min(irecord, store->nrecords-1);
     record = &store->records[irecord];
     data_offset = xe64toh(record->data_offset);
     trace->itmin = xe32toh(record->itmin);
@@ -156,8 +160,8 @@ static store_error_t store_get(
     trace->begin_value = fe32toh(record->begin_value);
     trace->end_value = fe32toh(record->end_value);
 
-    if (!inlimits(trace->itmin) || !inposlimits(trace->nsamples)) {
-        *trace = ZERO_TRACE;
+    if (!inlimits(trace->itmin) || !inposlimits(trace->nsamples) || 
+            data_offset >= UINT64_MAX - SLIMIT * sizeof(gf_dtype)) {
         return BAD_RECORD;
     }
 
@@ -241,6 +245,7 @@ static store_error_t store_sum(
     }
 
     if (-1 == nsamples) {
+        itmin_d = itmax_d = 0.;
         ihave = 0;
         for (j=0; j<n; j++) {
             err = store_get_span(store, irecords[j], &itmin, &nsamples, &is_zero);
@@ -408,15 +413,30 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
         return FSTAT_TRACES_FAILED;
     }
 
-    store->data_size = st.st_size;
+    if (st.st_size < 0) {
+        return FSTAT_TRACES_FAILED;
+    }
+
+    store->data_size = (uint64_t)st.st_size;
+    if (store->nrecords >= (UINT64_MAX - GF_STORE_HEADER_SIZE) / sizeof(record_t)) {
+        return BAD_STORE;
+    }
 
     mmap_index_size = sizeof(record_t) * store->nrecords + GF_STORE_HEADER_SIZE;
+    if (mmap_index_size >= SIZE_MAX) {
+        return MMAP_INDEX_FAILED;
+    }
+
     p = mmap(NULL, mmap_index_size, PROT_READ, MAP_SHARED, store->f_index, 0);
     if (MAP_FAILED == p) {
         return MMAP_INDEX_FAILED;
     }
 
     store->records = (record_t*)((char*)p+GF_STORE_HEADER_SIZE);
+
+    if (store->data_size >= SIZE_MAX) {
+        return MMAP_TRACES_FAILED;
+    }
 
     p = mmap(NULL, store->data_size, PROT_READ, MAP_SHARED, store->f_data, 0);
     if (MAP_FAILED == p) {
@@ -461,6 +481,8 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
     store_t *store;
     store_error_t err;
 
+    (void)dummy; /* silence warning */
+
     if (!PyArg_ParseTuple(args, "ii", &f_index, &f_data)) {
         PyErr_SetString(StoreExtError, "usage store_init(f_index, f_data)" );
         return NULL;
@@ -502,6 +524,8 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     int i;
     store_error_t err;
     
+    (void)dummy; /* silence warning */
+
     if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord, &itmin, &nsamples)) {
         PyErr_SetString(StoreExtError, "usage store_get(cstore, irecord, itmin, nsamples)");
         return NULL;
@@ -564,6 +588,8 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     int32_t itmin;
     int32_t nsamples;
     store_error_t err;
+
+    (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr, 
                                      &weights_arr, &itmin, &nsamples)) {
