@@ -125,17 +125,25 @@ def setup_acquisition_sources(args):
             port = msl.group(3)
             if not port:
                 port = '18000'
-            stream_patterns = msl.group(5).split(',')
-            sl = SlinkAcquisition(host=host, port=port)
-            try:
-                streams = sl.query_streams()
-            except pyrocko.slink.SlowSlinkError, e:
-                logger.fatal(str(e))
-                sys.exit(1)
 
-            streams = list(set(pyrocko.util.match_nslcs(stream_patterns, streams)))
-            for stream in streams:
-                sl.add_stream(*stream)
+            sl = SlinkAcquisition(host=host, port=port)
+            if msl.group(5):
+                stream_patterns = msl.group(5).split(',')
+                
+                if '_' not in msl.group(5):
+                    try:
+                        streams = sl.query_streams()
+                    except pyrocko.slink.SlowSlinkError, e:
+                        logger.fatal(str(e))
+                        sys.exit(1)
+
+                    streams = list(set(pyrocko.util.match_nslcs(stream_patterns, streams)))
+                    for stream in streams:
+                        sl.add_stream(*stream)
+                else:
+                    for stream in stream_patterns:
+                        sl.add_raw_stream_selector(stream)
+
             sources.append(sl)
         elif mca:
             port = mca.group(1)
