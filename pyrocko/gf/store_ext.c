@@ -70,6 +70,7 @@ typedef struct {
     float32_t deltat;
     record_t *records;
     gf_dtype *data;
+    gf_dtype **memdata;
 } store_t;
 
 typedef struct {
@@ -89,6 +90,7 @@ typedef enum {
     ALLOC_FAILED,
     BAD_REQUEST,
     BAD_DATA_OFFSET,
+    READ_DATA_FAILED,
     SEEK_INDEX_FAILED,
     READ_INDEX_FAILED,
     FSTAT_TRACES_FAILED,
@@ -105,6 +107,7 @@ const char* store_error_names[] = {
     "ALLOC_FAILED",
     "BAD_REQUEST",
     "BAD_DATA_OFFSET",
+    "READ_DATA_FAILED",
     "SEEK_INDEX_FAILED",
     "READ_INDEX_FAILED",
     "FSTAT_TRACES_FAILED",
@@ -118,7 +121,7 @@ const char* store_error_names[] = {
 #define REC_SHORT 2
 
 static trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL };
-static store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL };
+static store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL, NULL };
 
 static store_error_t store_get_span(const store_t *store, uint64_t irecord,
                              int32_t *itmin, int32_t *nsamples, int *is_zero) {
@@ -140,6 +143,31 @@ static store_error_t store_get_span(const store_t *store, uint64_t irecord,
     return SUCCESS;
 }
 
+static store_error_t store_read(
+        const store_t *store,
+        uint64_t data_offset,
+        size_t nbytes,
+        void *data) {
+
+    size_t nhave;
+    ssize_t nread;
+
+    if (-1 == lseek(store->f_data, data_offset, SEEK_SET)) {
+        return BAD_STORE;
+    }
+
+    nhave = 0;
+    while (nhave < nbytes) {
+        nread = read(store->f_data, data, nbytes-nhave);
+        if (-1 == nread) {
+            return READ_DATA_FAILED;
+        }
+        nhave += nread;
+    }
+
+    return SUCCESS;
+}
+
 static store_error_t store_get(
         const store_t *store,
         uint64_t irecord,
@@ -147,6 +175,8 @@ static store_error_t store_get(
 
     record_t *record;
     uint64_t data_offset;
+    store_error_t err;
+    size_t nbytes;
 
     if (irecord >= store->nrecords) {
         *trace = ZERO_TRACE;
@@ -185,7 +215,26 @@ static store_error_t store_get(
     if (REC_SHORT == data_offset) {
         trace->data = &record->begin_value;
     } else {
-        trace->data = &store->data[data_offset/sizeof(gf_dtype)];
+        if (NULL != store->data) {
+            trace->data = &store->data[data_offset/sizeof(gf_dtype)];
+        } else {
+            if (NULL == store->memdata[irecord]) {
+                nbytes = trace->nsamples * sizeof(gf_dtype);
+                store->memdata[irecord] = (gf_dtype*)malloc(nbytes);
+                if (NULL == store->memdata[irecord]) {
+                    *trace = ZERO_TRACE;
+                    return ALLOC_FAILED;
+                }
+                err = store_read(store, data_offset, nbytes, store->memdata[irecord]);
+                if (SUCCESS != err) {
+                    free(store->memdata[irecord]);
+                    store->memdata[irecord] = NULL;
+                    *trace = ZERO_TRACE;
+                    return err;
+                }
+            }
+            trace->data = store->memdata[irecord];
+        }
     }
 
     return SUCCESS;
@@ -387,6 +436,9 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
     void *p;
     struct stat st;
     size_t mmap_index_size;
+    int use_mmap;
+
+    use_mmap = 0;
 
     *store = ZERO_STORE;
 
@@ -434,21 +486,36 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
 
     store->records = (record_t*)((char*)p+GF_STORE_HEADER_SIZE);
 
-    if (store->data_size >= SIZE_MAX) {
-        return MMAP_TRACES_FAILED;
-    }
+    /* on 32-bit systems, use mmap only if traces file is considerably smaller
+     * than address space */
 
-    p = mmap(NULL, store->data_size, PROT_READ, MAP_SHARED, store->f_data, 0);
-    if (MAP_FAILED == p) {
-        return MMAP_TRACES_FAILED;
-    }
+    use_mmap = store->data_size < SIZE_MAX / 8; 
 
-    store->data = (gf_dtype*)p;
+    if (use_mmap) {
+        if (store->data_size >= SIZE_MAX) {
+            return MMAP_TRACES_FAILED;
+        }
+        p = mmap(NULL, store->data_size, PROT_READ, MAP_SHARED, store->f_data, 0);
+        if (MAP_FAILED == p) {
+            return MMAP_TRACES_FAILED;
+        }
+
+        store->data = (gf_dtype*)p;
+    } else {
+        if (store->nrecords > SIZE_MAX) {
+            return ALLOC_FAILED;
+        }
+        store->memdata = (gf_dtype**)calloc(store->nrecords, sizeof(gf_dtype*));
+        if (NULL == store->memdata) {
+            return ALLOC_FAILED;
+        }
+    }
     return SUCCESS;
 }
 
 void store_deinit(store_t *store) {
     size_t mmap_index_size;
+    uint64_t irecord;
 
     mmap_index_size = sizeof(record_t) * store->nrecords + GF_STORE_HEADER_SIZE;
     if (store->records != NULL) {
@@ -457,6 +524,16 @@ void store_deinit(store_t *store) {
 
     if (store->data != NULL) {
         munmap(store->data, store->data_size);
+    }
+
+    if (store->memdata != NULL) {
+        for (irecord=0; irecord<store->nrecords; irecord++) {
+            if (NULL != store->memdata[irecord]) {
+                free(store->memdata[irecord]);
+                store->memdata[irecord] = NULL;
+            }
+        }
+        free(store->memdata);
     }
 
     *store = ZERO_STORE;
