@@ -174,28 +174,34 @@ class Timing(SObject):
     def __init__(self, s=None, **kwargs):
 
         if s is not None:
-            m = timing_regex.match(s)
-            if m:
-                if m.group(3):
-                    phase_ids = m.group(3).split('|')
-                elif m.group(5):
-                    phase_ids = [m.group(5)]
+            try:
+                offset = float(s)
+                phase_ids = []
+                select = ''
+
+            except:
+                m = timing_regex.match(s)
+                if m:
+                    if m.group(3):
+                        phase_ids = m.group(3).split('|')
+                    elif m.group(5):
+                        phase_ids = [m.group(5)]
+                    else:
+                        phase_ids = []
+
+                    select = m.group(2) or ''
+
+                    offset = 0.0
+                    if m.group(6):
+                        offset = float(m.group(6))
+
                 else:
-                    phase_ids = []
+                    raise InvalidTimingSpecification(s)
 
-                select = m.group(2) or ''
-
-                offset = 0.0
-                if m.group(6):
-                    offset = float(m.group(6))
-
-                kwargs = dict(
-                    phase_ids=phase_ids,
-                    select=select,
-                    offset=offset)
-
-            else:
-                raise InvalidTimingSpecification(s)
+            kwargs = dict(
+                phase_ids=phase_ids,
+                select=select,
+                offset=offset)
 
         SObject.__init__(self, **kwargs)
 
@@ -218,17 +224,21 @@ class Timing(SObject):
 
     def evaluate(self, get_phase, args):
         try:
-            phases = [get_phase(phase_id) for phase_id in self.phase_ids]
-            times = [phase(args) for phase in phases]
-            times = [t+self.offset for t in times if t is not None]
-            if not times:
-                return None
-            elif self.select == 'first':
-                return min(times)
-            elif self.select == 'last':
-                return max(times)
+            if self.phase_ids:
+                phases = [get_phase(phase_id) for phase_id in self.phase_ids]
+                times = [phase(args) for phase in phases]
+                times = [t+self.offset for t in times if t is not None]
+                if not times:
+                    return None
+                elif self.select == 'first':
+                    return min(times)
+                elif self.select == 'last':
+                    return max(times)
+                else:
+                    return times[0]
             else:
-                return times[0]
+                return self.offset
+
         except spit.OutOfBounds:
             raise OutOfBounds(args)
 
