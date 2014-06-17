@@ -352,10 +352,11 @@ class BaseStore:
         return self._get(irecord, itmin, nsamples, decimate, implementation)
 
     def sum(self, irecords, delays, weights, itmin=None,
-            nsamples=None, decimate=1, implementation='c', optimize=True):
+            nsamples=None, decimate=1, implementation='c',
+            optimization='enable'):
 
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
-                         implementation, optimize)
+                         implementation, optimization)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
@@ -698,10 +699,11 @@ class BaseStore:
 
         deltat = self._deltat
 
+        delays = delays / deltat
         irecords2 = num.repeat(irecords, 2)
         delays2 = num.empty(irecords2.size, dtype=num.float)
-        delays2[0::2] = num.floor(delays / deltat)
-        delays2[1::2] = num.ceil(delays / deltat)
+        delays2[0::2] = num.floor(delays)
+        delays2[1::2] = num.ceil(delays)
         weights2 = num.repeat(weights, 2)
         weights2[0::2] *= 1.0 - (delays - delays2[0::2])
         weights2[1::2] *= (1.0 - (delays2[1::2] - delays)) * \
@@ -731,14 +733,16 @@ class BaseStore:
         return irecords3, delays3, weights3
 
     def _sum(self, irecords, delays, weights, itmin, nsamples, decimate,
-             implementation, optimize):
+             implementation, optimization):
 
         if not self._f_index:
             self.open()
 
-        if optimize:
+        if optimization == 'enable':
             irecords, delays, weights = self._optimize(
                 irecords, delays, weights)
+        else:
+            assert optimization == 'disable'
 
         if implementation == 'c' and decimate == 1:
             if nsamples is None:
@@ -1038,7 +1042,7 @@ class Store(BaseStore):
         return BaseStore.str_irecord(self, self.config.irecord(*args))
 
     def get(self, args, itmin=None, nsamples=None, decimate=1,
-            interpolate='nearest_neighbor', implementation='c'):
+            interpolation='nearest_neighbor', implementation='c'):
 
         '''Retrieve GF trace from store.
 
@@ -1050,22 +1054,23 @@ class Store(BaseStore):
         '''
 
         store, decimate = self._decimated_store(decimate)
-        if interpolate == 'nearest_neighbor':
+        if interpolation == 'nearest_neighbor':
             irecord = store.config.irecord(*args)
             return store._get(irecord, itmin, nsamples, decimate,
                               implementation)
 
         else:
+            assert interpolation == 'multilinear'
             irecords, weights = store.config.vicinity(*args)
-            if interpolate == 'off' and len(irecords) != 1:
+            if interpolation == 'off' and len(irecords) != 1:
                 raise NotAllowedToInterpolate()
 
             return store._sum(irecords, num.zeros(len(irecords)), weights,
                               itmin, nsamples, decimate, implementation, False)
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None,
-            decimate=1, interpolate='nearest_neighbor', implementation='c',
-            optimize=True):
+            decimate=1, interpolation='nearest_neighbor', implementation='c',
+            optimization='enable'):
 
         '''Sum delayed and weighted GF traces.
 
@@ -1080,16 +1085,17 @@ class Store(BaseStore):
 
         store, decimate = self._decimated_store(decimate)
 
-        if interpolate == 'nearest_neighbor':
+        if interpolation == 'nearest_neighbor':
             irecords = store.config.irecords(*args)
         else:
+            assert interpolation == 'multilinear'
             irecords, ip_weights = store.config.vicinities(*args)
             neach = irecords.size / args[0].size
             weights = num.repeat(weights, neach) * ip_weights
             delays = num.repeat(delays, neach)
 
         return store._sum(irecords, delays, weights, itmin, nsamples, decimate,
-                          implementation, optimize)
+                          implementation, optimization)
 
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
@@ -1384,15 +1390,16 @@ class Store(BaseStore):
             ip.dump(fn)
 
     def seismogram(self, source, receiver, components,
-                   interpolate='nearest_neighbor', optimize=True):
+                   interpolation='nearest_neighbor', optimization='enable'):
 
         out = {}
         for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
             if component in components:
-                gtr = self.sum(args, delays, weights, interpolate=interpolate,
-                               optimize=optimize)
+                gtr = self.sum(args, delays, weights,
+                               interpolation=interpolation,
+                               optimization=optimization)
                 out[component] = gtr
 
         return out

@@ -488,11 +488,12 @@ class GFTestCase(unittest.TestCase):
 
         sources = [
             gf.RectangularExplosionSource(
-                time=0.0,
+                time=0.0025,
                 depth=depth,
                 moment=1.0,
-                length=50.,
+                length=100.,
                 width=0.,
+                risetime=0.01,
                 nucleation_x=-1)
 
             for depth in [100., 200., 300.]

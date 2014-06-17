@@ -110,7 +110,8 @@ def arr(x):
 
 
 def discretize_rect_source(deltas, deltat, strike, dip, length, width,
-                           velocity, nucleation_x=None, nucleation_y=None):
+                           velocity, nucleation_x=None, nucleation_y=None,
+                           tau=0.0):
 
     mindeltagf = num.min(deltas)
     mindeltagf = min(mindeltagf, deltat * velocity)
@@ -120,12 +121,17 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
 
     nl = 2 * num.ceil(l / mindeltagf) + 1
     nw = 2 * num.ceil(w / mindeltagf) + 1
+    ntau = 2 * num.ceil(tau / deltat) + 1
+
     n = nl*nw
 
     dl = l / nl
     dw = w / nw
+    dtau = tau / ntau
+
     xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
     xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
+    xtau = num.linspace(-0.5*(tau-dtau), 0.5*(tau-dtau), ntau)
 
     points = num.empty((n, 3), dtype=num.float)
     points[:, 0] = num.tile(xl, nw)
@@ -152,7 +158,10 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
 
     points = num.dot(rotmat.T, points.T).T
 
-    return points, times
+    points2 = num.repeat(points, ntau, axis=0)
+    times2 = num.repeat(times, ntau) + num.tile(xtau, n)
+
+    return points2, times2
 
 
 class InvalidGridDef(Exception):
@@ -632,10 +641,16 @@ class RectangularExplosionSource(ExplosionSource):
         default=3500.,
         help='speed of explosion front [m/s]')
 
+    risetime = Float.T(
+        default=0.0,
+        help='duration of energy release of any single point in source area '
+             '[s]')
+
     def base_key(self):
         return Source.base_key(self) + (self.strike, self.dip, self.length,
                                         self.width, self.nucleation_x,
-                                        self.nucleation_y, self.velocity)
+                                        self.nucleation_y, self.velocity,
+                                        self.risetime)
 
     def discretize_basesource(self, store):
 
@@ -652,7 +667,8 @@ class RectangularExplosionSource(ExplosionSource):
         points, times = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
-            self.velocity, nucleation_x=nucx, nucleation_y=nucy)
+            self.velocity, nucleation_x=nucx, nucleation_y=nucy,
+            tau=self.risetime)
 
         n = times.size
 
@@ -840,13 +856,19 @@ class RectangularSource(DCSource):
         default=3500.,
         help='speed of rupture front [m/s]')
 
+    risetime = Float.T(
+        default=0.0,
+        help='duration of energy release of any single point in rupture area '
+             '[s]')
+
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
             self.width,
             self.nucleation_x,
             self.nucleation_y,
-            self.velocity)
+            self.velocity,
+            self.risetime)
 
     def discretize_basesource(self, store):
 
@@ -863,7 +885,8 @@ class RectangularSource(DCSource):
         points, times = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
-            self.velocity, nucleation_x=nucx, nucleation_y=nucy)
+            self.velocity, nucleation_x=nucx, nucleation_y=nucy,
+            tau=self.risetime)
 
         n = times.size
 
@@ -1703,8 +1726,8 @@ class LocalEngine(Engine):
         receiver = target.receiver(store_)
         base_source = source.cached_discretize_basesource(store_)
         base_seismogram = store_.seismogram(base_source, receiver, components,
-                                            interpolate=target.interpolation,
-                                            optimize=target.optimization)
+                                            interpolation=target.interpolation,
+                                            optimization=target.optimization)
         return store.make_same_span(base_seismogram)
 
     def _post_process(self, base_seismogram, source, target):
