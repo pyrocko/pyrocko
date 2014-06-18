@@ -210,7 +210,11 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             for k, v in zip(SacFile.header_keys, self.header_vals):
                 vn = self.val_or_none(k,v)
                 if isinstance(vn, str):
-                    self.__dict__[k] = vn.rstrip('\x00').rstrip()
+                    ipos = vn.find('\x00')
+                    if ipos != -1:
+                        vn = vn[:ipos]
+
+                    self.__dict__[k] = vn.rstrip()
                 else:
                     self.__dict__[k] = vn
             
