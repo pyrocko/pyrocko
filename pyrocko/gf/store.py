@@ -745,17 +745,28 @@ class BaseStore:
             assert optimization == 'disable'
 
         if implementation == 'c' and decimate == 1:
+            if delays.size != 0:
+                itoffset = int(num.floor(num.min(delays)/self._deltat))
+            else:
+                itoffset = 0
+
             if nsamples is None:
                 nsamples = -1
 
             if itmin is None:
                 itmin = 0
+            else:
+                itmin -= itoffset
 
             try:
-                return GFTrace(*store_ext.store_sum(
+                tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
-                    delays.astype(num.float32), weights.astype(num.float32),
+                    (delays - itoffset*self._deltat).astype(num.float32),
+                    weights.astype(num.float32),
                     int(itmin), int(nsamples)))
+                tr.itmin += itoffset
+                return tr
+
             except store_ext.StoreExtError, e:
                 raise StoreError(str(e))
 
