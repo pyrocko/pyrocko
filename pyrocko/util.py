@@ -5,6 +5,7 @@ from scipy import signal
 from os.path import join as pjoin
 from pyrocko import config
 import numpy as num
+import util_ext
 
 logger = logging.getLogger('pyrocko.util')
 
@@ -528,6 +529,9 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     with ``'.xFRAC'`` where x is 1, 2, or 3, it is ensured, that exactly that
     number of digits are present in the fractional seconds.
     '''
+    if util_ext is not None:
+        t, tfrac = util_ext.stt(s, format)
+        return t+tfrac
         
     fracsec = 0.
     fixed_endings = '.FRAC', '.1FRAC', '.2FRAC', '.3FRAC'
@@ -571,6 +575,10 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
     
     if isinstance(format, int):
         format = '%Y-%m-%d %H:%M:%S.'+str(format)+'FRAC'
+
+    if util_ext is not None:
+        t0 = math.floor(t)
+        return util_ext.tts(int(t0), t - t0, format)
     
     if not GlobalVars.re_frac:
         GlobalVars.re_frac = re.compile(r'\.[1-9]FRAC')

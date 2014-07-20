@@ -85,6 +85,8 @@ setup( name = packname,
     packages = [ packname ] + subpacknames,
     ext_package = packname,
     ext_modules = [ 
+        Extension( 'util_ext',
+            sources = [ pjoin(packname, 'util_ext.c') ]),
         
         Extension( 'mseed_ext',
             include_dirs = [ numpy.get_include(), 'libmseed' ],
