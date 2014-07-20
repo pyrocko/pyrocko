@@ -186,15 +186,15 @@ class InvalidGridDef(Exception):
 class Range(SObject):
     '''Convenient range specification
 
-    Equivalent ways to sepecify the range [ 0., 1000., ... 10000. ]:
+    Equivalent ways to sepecify the range [ 0., 1000., ... 10000. ]::
 
       Range('0 .. 10k : 1k')
       Range(start=0., stop=10e3, step=1e3)
       Range(0, 10e3, 1e3)
-      Range('10k .. 100k @ 10')
+      Range('0 .. 10k @ 11')
       Range(start=0., stop=10*km, n=11)
       Range(0, 10e3, n=11)
-      Range(values=[ x*1e3 for x in range(11) ])
+      Range(values=[x*1e3 for x in range(11)])
 
     Depending on the use context, it can be possible to omit any part of the
     specification. E.g. in the context of extracting a subset of an already
@@ -207,7 +207,7 @@ class Range(SObject):
     supports this.
 
     The range specification can be expressed with a short string
-    representation:
+    representation::
 
         'start .. stop @ num | spacing, relative'
         'start .. stop : step | spacing, relative'
@@ -467,6 +467,15 @@ class Source(meta.Location):
         self._discretized = {}
 
     def clone(self, **kwargs):
+        '''Make a copy of the source model.
+
+        A new object of the same source model class is created
+        and initialized with the parameters of the source model 
+        on which this method is called on. If `kwargs` are given,
+        these are used to override any of the initialization
+        parameters.
+        '''
+
         d = dict(self)
         d.update(kwargs)
         return self.__class__(**d)
@@ -488,9 +497,27 @@ class Source(meta.Location):
 
     @classmethod
     def keys(cls):
+        '''Get list of the source model's parameter names.'''
         return cls.T.propnames
 
     def update(self, **kwargs):
+        '''Change some of the source models parameters.
+
+        Example::
+        
+          >>> from pyrocko import gf
+          >>> s = gf.DCSource()
+          >>> s.update(strike=66., dip=33.)
+          >>> print s
+          --- !pf.DCSource
+          depth: 0.0
+          time: 1970-01-01 00:00:00
+          magnitude: 6.0
+          strike: 66.0
+          dip: 33.0
+          rake: 0.0
+
+        '''
         for (k, v) in kwargs.iteritems():
             self[k] = v
 
@@ -501,6 +528,19 @@ class Source(meta.Location):
         return self._discretized[store]
 
     def grid(self, **variables):
+        '''Create grid of source model variations.
+        
+        :returns: :py:class:`SourceGrid` instance.
+
+        Example::
+
+          >>> from pyrocko import gf
+          >>> base = DCSource()
+          >>> R = gf.Range
+          >>> for s in base.grid(R('
+
+        
+        '''
         return SourceGrid(base=self, variables=variables)
 
     def base_key(self):

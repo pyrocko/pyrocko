@@ -232,7 +232,7 @@ man_pages = [
 ]
 
 def process_signature(app, what, name, obj, options, signature, return_annotation):
-    import guts
+    from pyrocko import guts
     if what == 'attribute' and isinstance(obj, guts.TBase):
             return '', str(obj)
 
