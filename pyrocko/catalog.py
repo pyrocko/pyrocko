@@ -245,7 +245,7 @@ class Geofon(EarthquakeCatalog):
         wanted_map = { 
             'region': lambda v: v,
             'time': lambda v: calendar.timegm(time.strptime(v[:19], '%Y-%m-%d %H:%M:%S')),
-            'magnitude': lambda v: float(v),
+            'magnitude': lambda v: float(v.split()[0]),
             'epicenter': parse_location,
             'depth': parse_km,
         }
@@ -466,7 +466,8 @@ class USGS(EarthquakeCatalog):
         p = []
         a = p.append
         a('format=geojson')
-        a('catalog=%s' % self.catalog.lower())
+        if self.catalog is not None:
+            a('catalog=%s' % self.catalog.lower())
 
         a('starttime=%s' % util.time_to_str(time_range[0], format='%Y-%m-%dT%H:%M:%S'))
         a('endtime=%s' % util.time_to_str(time_range[1], format='%Y-%m-%dT%H:%M:%S'))
