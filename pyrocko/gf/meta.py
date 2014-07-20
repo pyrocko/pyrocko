@@ -413,6 +413,17 @@ class Location(Object):
 
         return azi, bazi
 
+    def set_origin(self, lat, lon):
+        lat = float(lat)
+        lon = float(lon)
+        elat, elon = self.effective_latlon
+        n, e = orthodrome.latlon_to_ne_numpy(lat, lon, elat, elon)
+        self.lat = lat
+        self.lon = lon
+        self.north_shift = float(n)
+        self.east_shift = float(e)
+        self._latlon = elat, elon  # unchanged
+
 
 class Receiver(Location):
     pass
