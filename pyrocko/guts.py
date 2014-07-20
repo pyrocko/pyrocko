@@ -310,7 +310,7 @@ class TBase(object):
 
         cls.properties.sort(key=lambda x: x.position)
 
-        cls.propnames = [prop.name for prop in cls.properties]
+        cls.propnames = [p.name for p in cls.properties]
 
         if prop.xmlstyle == 'content':
             cls.content_property = prop
