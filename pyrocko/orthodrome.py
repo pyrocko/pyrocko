@@ -76,11 +76,24 @@ def distance_accurate50m( a, b ):
 
     return d * (1.+ earth_oblateness * h1 * math.sin(f)**2 * math.cos(g)**2 - 
                     earth_oblateness * h2 * math.cos(f)**2 * math.sin(g)**2)
-                    
-def distance_accurate50m_numpy( a_lats, a_lons, b_lats, b_lons ):
 
+def distance_accurate50m_numpy( a_lats, a_lons, b_lats, b_lons ):
     # same as distance_accurate50m, but using numpy arrays
+
+    eq = num.logical_and(a_lats == b_lats, a_lons == b_lons)
+    ii_neq = num.where(num.logical_not(eq))[0]
     
+    def extr(x):
+        if isinstance(x, num.ndarray) and x.size > 1:
+            return x[ii_neq]
+        else:
+            return x
+
+    a_lats = extr(a_lats)
+    a_lons = extr(a_lons)
+    b_lats = extr(b_lats)
+    b_lons = extr(b_lons)
+
     f = (a_lats + b_lats)*d2r / 2.
     g = (a_lats - b_lats)*d2r / 2.
     l = (a_lons - b_lons)*d2r / 2.
@@ -89,13 +102,18 @@ def distance_accurate50m_numpy( a_lats, a_lons, b_lats, b_lons ):
     c = num.cos(g)**2 * num.cos(l)**2 + num.sin(f)**2 * num.sin(l)**2
 
     w = num.arctan( num.sqrt( s/c ) )
+
     r = num.sqrt(s*c)/w
+
     d = 2.*w*earthradius_equator
     h1 = (3.*r-1.)/(2.*c)
     h2 = (3.*r+1.)/(2.*s)
 
-    return d * (1.+ earth_oblateness * h1 * num.sin(f)**2 * num.cos(g)**2 - 
-                    earth_oblateness * h2 * num.cos(f)**2 * num.sin(g)**2)
+    dists = num.zeros(eq.size, dtype=num.float)
+    dists[ii_neq] = d * (1.+ earth_oblateness * h1 * num.sin(f)**2 *
+        num.cos(g)**2 - earth_oblateness * h2 * num.cos(f)**2 * num.sin(g)**2)
+
+    return dists
 
 def ne_to_latlon( lat0, lon0, north_m, east_m ):
     '''Transform local carthesian coordinates to latitude and longitude.
