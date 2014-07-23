@@ -20,6 +20,7 @@ YAFF         yaff                        yes       yes      [#f4]_
 ASCII Table  text                                  yes      [#f5]_
 GSE1         gse1                        some
 GSE2         gse2                        some
+DATACUBE     datacube                    yes
 ============ =========================== ========= ======== ======
 
 .. rubric:: Notes
@@ -32,7 +33,7 @@ GSE2         gse2                        some
 '''
 
 import os, logging
-from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gse2, gcf
+from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gse2, gcf, datacube
 from pyrocko import util, trace
 from pyrocko.io_common import FileLoadError
 
@@ -43,7 +44,7 @@ logger = logging.getLogger('pyrocko.io')
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
 
-    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'gcf'``, ``'from_extension'``)
+    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'gcf'``, ```'datacube'``, `'from_extension'``)
     :param getdata: if ``True`` (the default), read data, otherwise only read traces metadata
     :param substitutions:  dict with substitutions to be applied to the traces metadata
     
@@ -67,7 +68,7 @@ def detect_format(filename):
         raise FileLoadError(e)
 
     format = None
-    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'), (gse2, 'gse2')):
+    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'), (gse2, 'gse2'), (datacube, 'datacube')):
         if mod.detect(data):
             return fmt
 
@@ -122,6 +123,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             'gse1': gse1,
             'gse2': gse2,
             'gcf': gcf,
+            'datacube': datacube,
     }
 
     add_args = {
