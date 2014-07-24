@@ -152,7 +152,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     dist = num.sqrt(dist_x**2 + dist_y**2)
     times = dist / velocity
 
-    times -= num.mean(times)
+    #times -= num.mean(times)
 
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
@@ -1778,7 +1778,7 @@ class LocalEngine(Engine):
             codes=target.codes,
             data=data,
             deltat=deltat,
-            tmin=base_seismogram.values()[0].itmin * deltat + source.time)
+            tmin=base_seismogram.values()[0].itmin * deltat) # + source.time)
 
         return tr
 
