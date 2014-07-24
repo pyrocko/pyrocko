@@ -14,6 +14,7 @@ from pyrocko.guts_array import Array
 from pyrocko import moment_tensor as mt
 from pyrocko import trace, model
 from pyrocko.gf import meta, store, ws
+from pyrocko.orthodrome import ne_to_latlon
 
 guts_prefix = 'pf'
 
@@ -163,6 +164,20 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
 
     return points2, times2
 
+def outline_rect_source(strike, dip, length, width):
+    l = length
+    w = width
+    points = num.array(
+        [[-0.5*l, -0.5*w, 0.],
+         [0.5*l, -0.5*w, 0.],
+         [0.5*l, 0.5*w, 0.],
+         [-0.5*l, 0.5*w, 0.],
+         [-0.5*l, -0.5*w, 0.]])
+
+    rotmat = num.asarray(
+        mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
+
+    return num.dot(rotmat.T, points.T).T
 
 class InvalidGridDef(Exception):
     pass
@@ -903,6 +918,25 @@ class RectangularSource(DCSource):
             m6s=num.repeat(mot.m6()[num.newaxis, :], n, axis=0))
 
         return ds
+
+    def outline(self, cs='xyz'):
+        points = outline_rect_source(self.strike, self.dip, self.length,
+                                   self.width)
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:,:2]
+        elif cs in ('latlon' 'lonlat'):
+            latlon = ne_to_latlon(self.lat, self.lon, points[:, 0], points[:, 1])
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
 
 
 class DoubleDCSource(SourceWithMagnitude):
