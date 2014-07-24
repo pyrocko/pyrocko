@@ -1,4 +1,4 @@
-from pyrocko import model, io, util, trace, orthodrome
+from pyrocko import model, io, util, trace, orthodrome, guts, moment_tensor
 import unittest, math, tempfile, shutil
 import numpy as num
 from os.path import join as pjoin
@@ -18,12 +18,27 @@ def near(a,b,eps):
 
 class ModelTestCase(unittest.TestCase):
     
-    def testIOEvent(self):
+    def testIOEventOld(self):
         tempdir = tempfile.mkdtemp()
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(10.,20.,1234567890.,'bubu', region='taka tuka land')
-        e1.dump(fn)
+        e1.olddump(fn)
         e2 = model.Event(load=fn)
+        assert e1.region == e2.region
+        assert e1.name == e2.name
+        assert e1.lat == e2.lat
+        assert e1.lon == e2.lon
+        assert e1.time == e2.time
+        assert e1.region == e2.region
+        shutil.rmtree(tempdir)
+
+    def testIOEvent(self):
+        tempdir = tempfile.mkdtemp()
+        fn = pjoin(tempdir, 'event.txt')
+        e1 = model.Event(10.,20.,1234567890.,'bubu', region='taka tuka land', 
+                         moment_tensor=moment_tensor.MomentTensor(strike=45., dip=90))
+        guts.dump(e1, filename=fn)
+        e2 = guts.load(filename=fn)
         assert e1.region == e2.region
         assert e1.name == e2.name
         assert e1.lat == e2.lat

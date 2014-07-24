@@ -528,6 +528,9 @@ class Object(object):
     dummy_for = None
 
     def __init__(self, **kwargs):
+        if not kwargs.get('init_props', True):
+            return
+
         for prop in self.T.properties:
             k = prop.name
             if k in kwargs:

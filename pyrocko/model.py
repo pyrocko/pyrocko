@@ -3,6 +3,9 @@ import math, copy
 import numpy as num
 
 from pyrocko.orthodrome import wrap
+from pyrocko.guts import Object, Float, String, Timestamp
+
+guts_prefix = 'pf'
 
 d2r = num.pi/180.
 
@@ -55,8 +58,6 @@ def fill_orthogonal(enus):
         enus[1] = mkvec(0,1,0)
         enus[2] = mkvec(0,0,1)
 
-# simple flat datatypes until I have a better idea
-
 class FileParseError(Exception):
     pass
 
@@ -66,25 +67,35 @@ class EOF(Exception):
 class EmptyEvent(Exception):
     pass
 
-class Event:
+class Event(Object):
+    lat = Float.T(default=0.0)
+    lon = Float.T(default=0.0)
+    time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
+    name = String.T(default='', optional=True)
+    depth = Float.T(optional=True)
+    magnitude = Float.T(optional=True)
+    region = String.T(optional=True)
+    catalog = String.T(optional=True)
+    moment_tensor = moment_tensor.MomentTensor.T(optional=True)
+    duration = Float.T(optional=True)
+
     def __init__(self, lat=0., lon=0., time=0., name='', depth=None,
             magnitude=None, region=None, load=None, loadf=None, catalog=None,
             moment_tensor=None, duration=None):
+
+        vals = None
         if load is not None:
-            self.load(load)
+            vals = Event.oldload(load)
         elif loadf is not None:
-            self.loadf(loadf)
-        else:
-            self.lat = lat
-            self.lon = lon
-            self.time = time
-            self.name = name
-            self.depth = depth
-            self.magnitude = magnitude
-            self.region = region
-            self.catalog = catalog
-            self.moment_tensor = moment_tensor
-            self.duration = duration
+            vals = Event.oldloadf(loadf)
+
+        if vals:
+            lat, lon, time, name, depth, magnitude, region, catalog, \
+                moment_tensor, duration = vals
+            
+        Object.__init__(self, lat=lat, lon=lon, time=time, name=name, depth=depth,
+                        magnitude=magnitude, region=region, catalog=catalog,
+                        moment_tensor=moment_tensor, duration=duration)
             
     def time_as_string(self):
         return util.time_to_str(self.time)
@@ -92,15 +103,15 @@ class Event:
     def set_name(self, name):
         self.name = name
         
-    def __str__(self):
-        return '%s %s %s %g %g %s %s' % (self.name, util.time_to_str(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
+    #def __str__(self):
+    #    return '%s %s %s %g %g %s %s' % (self.name, util.time_to_str(self.time), self.magnitude, self.lat, self.lon, self.depth, self.region)
                 
-    def dump(self, filename):
+    def olddump(self, filename):
         file = open(filename, 'w')
-        self.dumpf(file)
+        self.olddumpf(file)
         file.close()
         
-    def dumpf(self, file):
+    def olddumpf(self, file):
         file.write('name = %s\n' % self.name)
         file.write('time = %s\n' % util.time_to_str(self.time))
         if self.lat is not None:
@@ -167,20 +178,19 @@ class Event:
                 if i != 0:
                     file.write('--------------------------------------------\n')
 
-                ev.dumpf(file)
+                ev.olddumpf(file)
                 i += 1
 
         finally: 
             file.close()
     
-    def load(self, filename):
-        file = open(filename, 'r')
-        try:
-            self.loadf(file)
-        finally:
-            file.close()
+    @staticmethod
+    def oldload(filename):
+        with open(filename, 'r') as file:
+            return Event.oldloadf(file)
     
-    def loadf(self, file):
+    @staticmethod
+    def oldloadf(file):
         d = {}
         try:
             for line in file:
@@ -225,16 +235,17 @@ class Event:
 
                 mt = moment_tensor.MomentTensor(strike=sdr[0], dip=sdr[1], rake=sdr[2], scalar_moment=moment)
                 
-        self.lat = d.get('latitude', 0.0)
-        self.lon = d.get('longitude', 0.0)
-        self.time = d.get('time', 0.0)
-        self.name = d.get('name', '')
-        self.depth = d.get('depth', None)
-        self.magnitude = d.get('magnitude', None)
-        self.duration = d.get('duration', None)
-        self.region = d.get('region', None)
-        self.catalog = d.get('catalog', None)
-        self.moment_tensor = mt
+        return (
+            d.get('latitude', 0.0),
+            d.get('longitude', 0.0),
+            d.get('time', 0.0),
+            d.get('name', ''),
+            d.get('depth', None),
+            d.get('magnitude', None),
+            d.get('region', None),
+            d.get('catalog', None),
+            mt,
+            d.get('duration', None))
 
     @staticmethod
     def load_catalog(filename):
@@ -265,6 +276,9 @@ def load_events(filename):
 def load_one_event(filename):
     l = Event.load_catalog(filename)
     return l.next()
+
+def dump_events(events, filename):
+    Event.dump_catalog(events, filename)
 
 class Station:
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):

@@ -4,6 +4,10 @@ import random
 import math
 import numpy as num
 
+from pyrocko.guts import Object, Float
+
+guts_prefix = 'pf'
+
 dynecm = 1e-7
 
 def rotation_from_axis_and_angle(angle, axis):
@@ -230,7 +234,22 @@ def sm(m):
     "| %5.2F %5.2F %5.2F |\n"  % (m[1,0], m[1,1], m[1,2]) +\
     "\\ %5.2F %5.2F %5.2F /\n" % (m[2,0] ,m[2,1], m[2,2])
 
-class MomentTensor:
+class MomentTensor(Object):
+
+    mnn__ = Float.T(default=0.0)
+    mee__ = Float.T(default=0.0)
+    mdd__ = Float.T(default=0.0)
+    mne__ = Float.T(default=0.0)
+    mnd__ = Float.T(default=-1.0)
+    med__ = Float.T(default=0.0)
+    strike1__ = Float.T(default=None, optional=True)  # read-only
+    dip1__ = Float.T(default=None, optional=True)  # read-only
+    rake1__ = Float.T(default=None, optional=True)  # read-only
+    strike2__ = Float.T(default=None, optional=True)  # read-only
+    dip2__ = Float.T(default=None, optional=True)  # read-only
+    rake2__ = Float.T(default=None, optional=True)  # read-only
+    moment__ = Float.T(default=None, optional=True)  # read-only
+    magnitude__ = Float.T(default=None, optional=True)  # read-only
 
     _flip_dc = num.matrix( [[0.,0.,-1.],[0.,-1.,0.],[-1.,0.,0.]], dtype=num.float )
     _to_up_south_east = num.matrix( [[0.,0.,-1.],[-1.,0.,0.],[0.,1.,0.]], dtype=num.float ).T
@@ -244,7 +263,10 @@ class MomentTensor:
         rotmat = random_rotation(x)
         return MomentTensor(m=scalar_moment * rotmat * MomentTensor._m_unrot * rotmat.T)
 
-    def __init__(self, m=None, m_up_south_east=None, strike=0., dip=0., rake=0., scalar_moment=1. ):
+    def __init__(self, m=None, m_up_south_east=None, strike=0., dip=0., rake=0., scalar_moment=1.,
+                 mnn=None, mee=None, mdd=None, mne=None, mnd=None, med=None,
+                 strike1=None, dip1=None, rake1=None, strike2=None, dip2=None, rake2=None, magnitude=None, moment=None):
+
         '''Create moment tensor object based on 3x3 moment tensor matrix or orientation of 
            fault plane and scalar moment.
            
@@ -254,6 +276,10 @@ class MomentTensor:
            strike, dip, rake -- Fault plane angles in [degrees]
            scalar_moment -- Scalar moment in [Nm]
         ''' 
+        Object.__init__(self, init_props=False)
+
+        if any(mxx is not None for mxx in (mnn, mee, mdd, mne, mnd, med)):
+            m = symmat6(mnn, mee, mdd, mne, mnd, med)
         
         strike = d2r*strike
         dip = d2r*dip
@@ -261,19 +287,29 @@ class MomentTensor:
         
         if m_up_south_east is not None:
             m = self._to_up_south_east * m_up_south_east * self._to_up_south_east.T
-        
-        if m is not None:
-            m_evals, m_evecs = eigh_check(m)
-            rotmat1 = (m_evecs * MomentTensor._u_evecs.T).T
-            if num.linalg.det(rotmat1) < 0.:
-                rotmat1 *= -1.
             
-        else:
+        if m is None:
+            if any(x is not None for x in (strike1, dip1, rake1, strike2, dip2, rake2)):
+                raise Exception('strike1, dip1, rake1, strike2, dip2, rake2 are read-only properties')
+
+            if moment is not None:
+                scalar_moment = moment
+
+            if magnitude is not None:
+                scalar_moment = magnitude_to_moment(magnitude)
+
             rotmat1 = euler_to_matrix( dip, strike, -rake )
             m = rotmat1.T * MomentTensor._m_unrot * rotmat1 * scalar_moment
-            m_evals, m_evecs = eigh_check(m)
-        
+
         self._m = m
+        self._update()
+
+    def _update(self):
+        m_evals, m_evecs = eigh_check(self._m)
+        rotmat1 = (m_evecs * MomentTensor._u_evecs.T).T
+        if num.linalg.det(rotmat1) < 0.:
+            rotmat1 *= -1.
+        
         self._m_eigenvals = m_evals
         self._m_eigenvecs = m_evecs
         def cmp_mat(a,b):
@@ -284,7 +320,88 @@ class MomentTensor:
             return c
 
         self._rotmats = sorted( [rotmat1, MomentTensor._flip_dc * rotmat1 ], cmp=cmp_mat )
+
+    @property
+    def mnn(self):
+        return float(self._m[0, 0])
+
+    @mnn.setter
+    def mnn(self, value):
+        self._m[0, 0] = value
+        self._update()
+
+    @property
+    def mee(self):
+        return float(self._m[1, 1])
+
+    @mee.setter
+    def mee(self, value):
+        self._m[1, 1] = value
+        self._update()
+
+    @property
+    def mdd(self):
+        return float(self._m[2, 2])
         
+    @mdd.setter
+    def mdd(self, value):
+        self._m[2, 2] = value
+        self._update()
+
+    @property
+    def mne(self):
+        return float(self._m[0, 1])
+
+    @mne.setter
+    def mne(self, value):
+        self._m[0, 1] = value
+        self._m[1, 0] = value
+        self._update()
+
+    @property
+    def mnd(self):
+        return float(self._m[0, 2])
+
+    @mnd.setter
+    def mnd(self, value):
+        self._m[0, 2] = value
+        self._m[2, 0] = value
+        self._update()
+
+    @property
+    def med(self):
+        return float(self._m[1, 2])
+        
+    @med.setter
+    def med(self, value):
+        self._m[1, 2] = value
+        self._m[2, 1] = value
+        self._update()
+
+    @property
+    def strike1(self):
+        return float(self.both_strike_dip_rake()[0][0])
+
+    @property
+    def dip1(self):
+        return float(self.both_strike_dip_rake()[0][1])
+
+    @property
+    def rake1(self):
+        return float(self.both_strike_dip_rake()[0][2])
+
+    @property
+    def strike2(self):
+        return float(self.both_strike_dip_rake()[1][0])
+
+    @property
+    def dip2(self):
+        return float(self.both_strike_dip_rake()[1][1])
+
+    @property
+    def rake2(self):
+        return float(self.both_strike_dip_rake()[1][2])
+
     def both_strike_dip_rake(self):
         '''Get both possible (strike,dip,rake) triplets.'''
         results = []
@@ -361,6 +478,14 @@ class MomentTensor:
     def scalar_moment(self):
         '''Get the scalar moment of the moment tensor.'''
         return num.linalg.norm(self._m_eigenvals)/math.sqrt(2.)
+
+    @property
+    def moment(self):
+        return float(self.scalar_moment())
+
+    @property
+    def magnitude(self):
+        return float(self.moment_magnitude())
     
     def __str__(self):
         mexp = pow(10,math.ceil(num.log10(num.max(num.abs(self._m)))))

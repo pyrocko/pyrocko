@@ -3,7 +3,7 @@ import random, math
 import numpy as num
 
 from pyrocko.moment_tensor import *
-from pyrocko import util
+from pyrocko import util, guts
 
 
 class MomentTensorTestCase( unittest.TestCase ):
@@ -60,7 +60,26 @@ class MomentTensorTestCase( unittest.TestCase ):
         sdr = mt.both_strike_dip_rake()
         self.assertSame( sdr[0], (174.,73.,83.), 1., 'chile fail 1')
         self.assertSame( sdr[1], (18.,18.,112.), 1., 'chile fail 2')
+
+    def testIO(self):
+        m1 = MomentTensor(dip=90.)
+        sdr1 = m1.both_strike_dip_rake()
+        m2 = guts.load(string=m1.dump())
+        sdr2 = m2.both_strike_dip_rake()
+        self.assertSame(sdr1, sdr2, 0.1, 'failed io via guts')
+
+    def testProps(self):
+        m = MomentTensor()
+        m.mnn = 1.
+        m.mee = -1.
+        m.mdd = 0.
+        m.mne = 0.
+        m.mnd = 0.
+        m.med = 0.
+        (s1, d1, _), (s2, d2, _) = m.both_strike_dip_rake()
+        assert abs(s1 - 45.) < 0.1 or abs(s2 - 45.) < 0.1
         
+
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')
     unittest.main()
