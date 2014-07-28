@@ -392,11 +392,10 @@ def command_view(args):
 
     store_dirs = get_store_dirs(args)
 
-    if options.showphases:
-        markers = []
 
     alpha = 'abcdefghijklmnopqrstxyz'.upper()
 
+    markers = []
     traces = []
 
     try:
