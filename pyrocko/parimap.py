@@ -19,7 +19,6 @@ def worker(q_in, q_out, function, eprintignore):
 
         q_out.put((i, r, e))
 
-
 def parimap(function, *iterables, **kwargs):
     assert all(k in ('nprocs', 'eprintignore') for k in kwargs.keys())
 
@@ -68,6 +67,7 @@ def parimap(function, *iterables, **kwargs):
             else:
                 all_written = True
                 [q_in.put((None, None)) for p in procs]
+                q_in.close()
 
         try:
             while nrun > 0:
@@ -94,6 +94,7 @@ def parimap(function, *iterables, **kwargs):
                     if e:
                         if not all_written:
                             [q_in.put((None, None)) for p in procs]
+                            q_in.close()
                         raise e
                     else:
                         yield r
@@ -106,3 +107,4 @@ def parimap(function, *iterables, **kwargs):
             break
 
     [p.join() for p in procs]
+

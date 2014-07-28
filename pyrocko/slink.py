@@ -44,8 +44,12 @@ class SlowSlink:
     
     def acquisition_start(self):
         assert not self.running
-        streams_sel = ','.join(self.stream_selectors)
-        cmd = [ 'slinktool', '-u', '-S', streams_sel, self.host+':'+str(self.port) ]        
+        if self.stream_selectors:
+            streams = ['-S', ','.join(self.stream_selectors)]
+        else:
+            streams = []
+
+        cmd = ['slinktool', '-u'] + streams + [self.host+':'+str(self.port)]
         
         logger.debug('Starting %s' % ' '.join(cmd))
         self.running = True

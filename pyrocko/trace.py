@@ -2195,7 +2195,11 @@ def numpy_correlate_fixed(a,b, mode='valid', use_fft=False):
     '''
 
     if use_fft:
-        return signal.fftconvolve(a, b[::-1], mode=mode)
+        if a.size < b.size:
+            c = signal.fftconvolve(b[::-1], a, mode=mode)
+        else:
+            c = signal.fftconvolve(a, b[::-1], mode=mode)
+        return c
 
     else:
         buggy = numpy_has_correlate_flip_bug()

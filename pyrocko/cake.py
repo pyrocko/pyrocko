@@ -1100,13 +1100,22 @@ class Layer(object):
         self.name = name
 
     def _update_potint_coefs(self):
-        self._use_potential_interpolation = False
+        potint_p = potint_s = False
         try:
             self._ppic = potint_coefs(self.mbot.vp, self.mtop.vp, radius(self.zbot), radius(self.ztop))
-            self._spic = potint_coefs(self.mbot.vs, self.mtop.vs, radius(self.zbot), radius(self.ztop))
-            self._use_potential_interpolation = True
+            potint_p = True
         except BadPotIntCoefs:
             pass
+
+        potint_s = False
+        try:
+            self._spic = potint_coefs(self.mbot.vs, self.mtop.vs, radius(self.zbot), radius(self.ztop))
+            potint_s = True
+        except BadPotIntCoefs:
+            pass
+
+        assert P == 1 and S == 2
+        self._use_potential_interpolation = (None, potint_p, potint_s)
 
     def potint_coefs(self, mode):
         '''Get coefficients for potential interpolation.
@@ -1269,7 +1278,7 @@ class HomogeneousLayer(Layer):
         return self.m
 
     def u(self, mode, z=None):
-        if self._use_potential_interpolation and z is not None:
+        if self._use_potential_interpolation[mode] and z is not None:
             return self.u_potint(mode,z)
 
         if mode == P:
@@ -1282,7 +1291,7 @@ class HomogeneousLayer(Layer):
         return u, u
 
     def v(self, mode, z=None):
-        if self._use_potential_interpolation and z is not None:
+        if self._use_potential_interpolation[mode] and z is not None:
             return self.v_potint(mode,z)
         
         if mode == P:
@@ -1300,7 +1309,7 @@ class HomogeneousLayer(Layer):
         return v, v
 
     def xt(self, p, mode, zpart=None):
-        if self._use_potential_interpolation:
+        if self._use_potential_interpolation[mode]:
             return self.xt_potint(p, mode, zpart)
         
         u = self.u(mode)
@@ -1319,7 +1328,7 @@ class HomogeneousLayer(Layer):
         return x, t
 
     def zturn(self, p, mode):
-        if self._use_potential_interpolation:
+        if self._use_potential_interpolation[mode]:
             return self.zturn_potint(p,mode)
         
         raise DoesNotTurn()
@@ -1337,10 +1346,8 @@ class HomogeneousLayer(Layer):
         else:
             name = ''
 
-        if self._use_potential_interpolation:
-            calcmode = 'P'
-        else:
-            calcmode = 'H'
+        calcmode = ''.join('HP'[self._use_potential_interpolation[mode]]
+                           for mode in (P, S))
 
         return '  (%i) homogeneous layer %s(%g km - %g km) [%s]\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.m)
 
@@ -1377,7 +1384,7 @@ class GradientLayer(Layer):
             return 1./self.mtop.vs, 1./self.mbot.vs
 
     def u(self, mode, z):
-        if self._use_potential_interpolation:
+        if self._use_potential_interpolation[mode]:
             return self.u_potint(mode,z)
 
         if mode == P:
@@ -1392,7 +1399,7 @@ class GradientLayer(Layer):
             return self.mtop.vs, self.mbot.vs
 
     def v(self, mode, z):
-        if self._use_potential_interpolation:
+        if self._use_potential_interpolation[mode]:
             return self.v_potint(mode,z)
         
         if mode == P:
@@ -1401,11 +1408,12 @@ class GradientLayer(Layer):
             return self.interpolate(z, self.mtop.vs, self.mbot.vs)
 
     def xt(self, p, mode, zpart=None):
-        if self._use_potential_interpolation:
+        if self._use_potential_interpolation[mode]:
             return self.xt_potint(p, mode, zpart)
 
         utop, ubot = self.u_top_bottom(mode)
         b = (1./ubot - 1./utop)/(self.zbot - self.ztop)
+
         pflat = self.pflat_bottom(p)
         if zpart is not None:
             utop = self.u(mode, zpart[0])
@@ -1429,7 +1437,7 @@ class GradientLayer(Layer):
         return x, t
    
     def zturn(self, p, mode):
-        if self._use_potential_interpolation:
+        if self._use_potential_interpolation[mode]:
             return self.zturn_potint(p,mode)
         pflat = self.pflat_bottom(p)
         vtop, vbot = self.v_top_bottom(mode)
@@ -1449,10 +1457,8 @@ class GradientLayer(Layer):
         else:
             name = ''
 
-        if self._use_potential_interpolation:
-            calcmode = 'P'
-        else:
-            calcmode = 'G'
+        calcmode = ''.join('HP'[self._use_potential_interpolation[mode]]
+                           for mode in (P, S))
 
         return '  (%i) gradient layer %s(%g km - %g km) [%s]\n    %s\n    %s' % (self.ilayer, name, self.ztop/km, self.zbot/km, calcmode, self.mtop, self.mbot)
 
