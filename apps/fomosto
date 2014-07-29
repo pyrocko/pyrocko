@@ -29,6 +29,7 @@ subcommand_descriptions = {
         'tttextract':    'extract selected travel times',
         'server':        'run seismosizer server',
         'download':      'download GF store from a server',
+        'modelview':     'plot earthmodels',
     }
 
 subcommand_usages = {
@@ -48,6 +49,7 @@ subcommand_usages = {
         'tttextract':    'tttextract [store-dir] <phase> <selection>',
         'server':        'server [options] <store-super-dir> ...',
         'download':      'download [options] <site> <store-id>',
+        'modelview':     'modelview <selection>',
     }
 
 subcommands = subcommand_descriptions.keys()
@@ -73,6 +75,7 @@ Subcommands:
     tttextract    %(tttextract)s
     server        %(server)s
     download      %(download)s
+    modelview     %(modelview)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -392,7 +395,6 @@ def command_view(args):
             die(e)
 
     store_dirs = get_store_dirs(args)
-
 
     alpha = 'abcdefghijklmnopqrstxyz'.upper()
 
@@ -805,6 +807,82 @@ def command_download(args):
         ws.download_gf_store(site=site, store_id=store_id, force=options.force)
     except ws.DownloadError, e:
         die(str(e))
+
+def command_modelview(args):
+    import matplotlib.pyplot as plt
+    import glob
+    import numpy as num
+    from pyrocko.cake_plot import labelspace, xscaled, yscaled
+    def setup(parser):
+        parser.add_option('--parameters', 
+                          dest='parameters', 
+                          default='vp,vs',
+                          metavar='vp,vs,....',
+                          help='select one or several of vp, vs, rho, qp, qs')
+
+    parser, options, args = cl_parse('modelview', args, setup=setup)
+
+    if args==[]:
+        store_dirs = glob.glob(os.getcwd()+'/*')
+        store_dirs = filter(lambda x: os.path.isfile(pjoin(x, 'config')),
+                            store_dirs)
+    else:
+        try:
+            store_dirs = args.pop().split(',')
+        except:
+            parser.error('cannot get <store-id> argument')
+     
+    parameters = options.parameters.split(',')
+
+    fig, axes = plt.subplots(1,
+                             len(parameters), 
+                             sharey=True, 
+                             figsize=(len(parameters)*3, 5))
+
+    if not isinstance(axes, num.ndarray):
+        axes = [axes]
+
+    axes = dict(zip(parameters, axes))
+
+    for store_id in store_dirs:
+        try:
+            store = gf.Store(store_id)
+            mod = store.config.earthmodel_1d
+            z = mod.profile('z')
+            
+            for p in parameters:
+                ax = axes[p]
+                profile = mod.profile(p)
+                ax.plot(profile, -z, label=store_id.split('/')[-1])
+                labelspace(ax)
+                xscaled(1./km, ax)
+                yscaled(1./km, ax)
+
+        except gf.StoreError, e:
+            die(e)
+
+    for p, ax in axes.items():
+        ax.grid()
+        ax.set_title(p)
+        ax.autoscale()
+        ax.set_xlabel(p, labelpad=0.1)
+
+    fig.add_subplot(1, len(parameters), 1).set_ylabel('depth [km]',
+                                                      labelpad=0.)
+    handles, labels = ax.get_legend_handles_labels()
+    lgd = ax.legend(handles,
+                    labels, 
+                    bbox_to_anchor=(0.5,0.12),
+                    bbox_transform=fig.transFigure,
+                    ncol=3,
+                    loc='upper center',
+                    fontsize=10, 
+                    fancybox=True)
+
+    plt.subplots_adjust(bottom=0.22,
+                        wspace=0.05)
+        
+    plt.show()
 
 
 if __name__ == '__main__':
