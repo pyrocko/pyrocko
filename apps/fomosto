@@ -378,7 +378,8 @@ def command_view(args):
 
         parser.add_option('--show-phases', 
                           dest='showphases',
-                          action='store_true',
+                          default=None,
+                          metavar='[phase_id1,phase_id2,...|all]',
                           help='add phase markers from ttt')
 
     parser, options, args = cl_parse('view', args, setup=setup)
@@ -401,7 +402,11 @@ def command_view(args):
     try:
         for istore, store_dir in enumerate(store_dirs):
             store = gf.Store(store_dir)
-            phasenames = [pn.id for pn in store.config.tabulated_phases]
+            if options.showphases=='all':
+                phasenames = [pn.id for pn in store.config.tabulated_phases]
+            elif options.showphases!=None:
+                phasenames = options.showphases.split(',')
+
             ii = 0
             for args in store.config.iter_extraction(gdef):
                 gtr = store.get(args)
