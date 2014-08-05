@@ -68,15 +68,117 @@ def make_prerequisites():
     except:
         sys.exit('error: failed to build the included prerequisites with "sh prerequisites.sh"')
 
+
+def double_install_check():
+    found = []
+    seen = set()
+    orig_sys_path = sys.path
+    for p in sys.path:
+
+        ap = os.path.abspath(p)
+        if ap == os.path.abspath('.'):
+            continue
+
+        if ap in seen:
+            continue
+
+        seen.add(ap)
+
+        sys.path = [p]
+
+        try:
+            import pyrocko
+            x = (pyrocko.installed_date, p, pyrocko.__file__, pyrocko.long_version)
+            found.append(x)
+            del sys.modules['pyrocko']
+            del sys.modules['pyrocko.info']
+        except:
+            pass
+
+    sys.path = orig_sys_path
+
+    e = sys.stderr
+
+    initpyc = '__init__.pyc'
+    i = 1
+
+    dates = sorted([x[0] for x in found])
+    
+    if len(found) > 1:
+        print >>e, 'sys.path configuration is: \n  %s' % '\n  '.join(sys.path)
+        print >>e
+
+        for (installed_date, p, fpath, long_version) in found:
+            oldnew = ''
+            if len(dates) >= 2:
+                if installed_date == dates[0]:
+                    oldnew = ' (oldest)'
+
+                if installed_date == dates[-1]:
+                    oldnew = ' (newest)'
+            
+            if fpath.endswith(initpyc):
+                fpath = fpath[:-len(initpyc)]
+
+            print >>e, 'Pyrocko installation #%i:' % i 
+            print >>e, '  date installed: %s%s' % (installed_date, oldnew)
+            print >>e, '  path: %s' % fpath
+            print >>e, '  version: %s' % long_version
+            print >>e
+            i += 1
+
+    if len(found) > 1:
+        print >>e, 'Installation #1 is used with default sys.path configuration.'
+        print >>e
+        print >>e, 'WARNING: Multiple installations of Pyrocko are present on this system.'
+        if found[0][0] != dates[-1]:
+            print >>e, 'WARNING: Not using newest installed version.'
+
+
 packname = 'pyrocko' 
 version = '0.3'
 
 subpacknames = [ 'pyrocko.snufflings', 'pyrocko.gf', 'pyrocko.fomosto', 'pyrocko.fdsn' ]
 
-make_info_module(packname, version)
-make_prerequisites()
+from distutils.cmd import Command
+class HeadlessCommand(Command):
+    user_options = []
 
-setup( name = packname,
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+class make_prerequisites_cls(HeadlessCommand):
+    def run(self):
+        make_prerequisites()
+
+class make_info_module_cls(HeadlessCommand):
+    def run(self):
+        make_info_module(packname, version)
+
+class double_install_check_cls(HeadlessCommand):
+    def run(self):
+        double_install_check()
+
+from distutils.command import install, build
+build.build.sub_commands[0:0] = [
+    ('make_info_module', None),
+    ('make_prerequisites', None),
+]
+
+install.install.sub_commands.extend([
+    ('double_install_check', None),
+])
+
+setup(
+    cmdclass = {
+        'make_info_module': make_info_module_cls,
+        'make_prerequisites': make_prerequisites_cls,
+        'double_install_check': double_install_check_cls},
+
+    name = packname,
     version = version,
     description = 'Seismological Processing Unit',
     author = 'Sebastian Heimann',
