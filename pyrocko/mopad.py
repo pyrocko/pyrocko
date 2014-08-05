@@ -65,7 +65,7 @@ mopad_version = 0.7
 import sys
 #import logging 
 from cStringIO import StringIO
-
+from pyrocko import moment_tensor as pyrocko_mt
 
 #additional library:
 import numpy as N
@@ -1555,6 +1555,13 @@ class MomentTensor:
         if style == 'f':
             print '\n Colour order key: '
         return self._plot_clr_order
+
+    def get_pyrocko_moment_tensor(self, **kwargs):
+        return pyrocko_mt.MomentTensor(self.get_M(**kwargs))
+    
+    @classmethod
+    def from_pyrocko_moment_tensor(cls, pmt):
+        return cls(pmt.m6())
 
 #---------------------------------------------------------------
 #---------------------------------------------------------------

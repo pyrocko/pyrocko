@@ -217,9 +217,10 @@ class MomentTensor:
     _u_evals, _u_evecs = eigh_check(_m_unrot)
 
     @classmethod
-    def random_dc(self, x=None):
+    def random_dc(self, x=None, scalar_moment=1.):
         rotmat = random_rotation(x)
-        return MomentTensor(m=rotmat * MomentTensor._m_unrot * rotmat.T)
+        return MomentTensor(m=rotmat * MomentTensor._m_unrot * rotmat.T,
+                scalar_moment=scalar_moment)
 
     def __init__(self, m=None, m_up_south_east=None, strike=0., dip=0., rake=0., scalar_moment=1. ):
         '''Create moment tensor object based on 3x3 moment tensor matrix or orientation of 
