@@ -280,8 +280,11 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
                     self._bar.finish()
                     self._bar = None
             
+            abort = False
             if update_progress:
-                update_progress(self._label, i, self._n)
+                abort = update_progress(self._label, i, self._n)
+
+            return abort
 
     if not filenames:
         logger.warn('No files to load from')
@@ -320,7 +323,11 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
         except (OSError, FilenameAttributeError), xerror:
             failures.append(abspath)
             logger.warn(xerror)
-        progress.update(i+1)
+
+        abort = progress.update(i+1)
+        if abort:
+            progress.update(len(filenames))
+            return
 
     progress.update(len(filenames))
 
@@ -356,7 +363,9 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
             else:
                 yield tfile
             
-            progress.update(iload+1)
+            abort = progress.update(iload+1)
+            if abort:
+                break
         
         progress.update(nload)
 
