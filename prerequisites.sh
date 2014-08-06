@@ -4,7 +4,7 @@ set -e
 
 if [ ! -f libmseed/libmseed.a ]; then
     rm -rf libmseed
-    tar -xzf libmseed-2.6.2.tar.gz
+    tar -xzf libmseed-2.12.tar.gz
     cd libmseed
     make gcc
     cd ..
