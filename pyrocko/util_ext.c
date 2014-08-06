@@ -81,7 +81,7 @@ int stt(const char *s, const char *format, time_t *t, double *tfrac) {
             return 1;  /* fractional seconds expected but not found */
         }
         if (sfrac != NULL) {
-            if (nexpect > 0 && strlen(sfrac) != nexpect + 1) {
+            if (nexpect > 0 && strlen(sfrac) != (size_t)(nexpect + 1)) {
                 return 2;  /* incorrect number of digits in fractional seconds part */
             }
             errno = 0;
@@ -155,6 +155,8 @@ static PyObject* w_stt(PyObject *dummy, PyObject *args) {
     time_t t;
     double tfrac;
 
+    (void)dummy; /* silence warning */
+
     if (!PyArg_ParseTuple(args, "ss", &s, &format)) {
         PyErr_SetString(UtilExtError, "usage stt(s, format)" );
         return NULL;
@@ -172,6 +174,8 @@ static PyObject* w_tts(PyObject *dummy, PyObject *args) {
     time_t t;
     double tfrac;
     PyObject *val;
+
+    (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "Lds", &t, &tfrac, &format)) {
         PyErr_SetString(UtilExtError, "usage tts(t, tfrac, format)" );

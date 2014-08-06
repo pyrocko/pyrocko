@@ -209,6 +209,7 @@ setup(
     ext_modules=[
         Extension(
             'util_ext',
+            extra_compile_args=['-Wextra'],
             sources=[pjoin(packname, 'util_ext.c')]),
 
         Extension(
