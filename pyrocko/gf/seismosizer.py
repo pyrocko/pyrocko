@@ -1418,6 +1418,8 @@ class Request(Object):
     '''
     Synthetic seismogram computation request.
 
+    ::
+
         Request(**kwargs)
         Request(sources, targets, **kwargs)
         Request(sources, targets, reductions, **kwargs)
@@ -1659,8 +1661,8 @@ class LocalEngine(Engine):
     Offline synthetic seismogram calculator.
 
     :param use_env: if ``True``, fill :py:attr:`store_superdirs` and
-    :py:attr:`store_dirs` with paths set in environment variables
-    GF_STORE_SUPERDIRS AND GF_STORE_DIRS
+        :py:attr:`store_dirs` with paths set in environment variables
+        GF_STORE_SUPERDIRS AND GF_STORE_DIRS
     '''
 
     store_superdirs = List.T(
@@ -1824,6 +1826,8 @@ class LocalEngine(Engine):
 
     def process(self, *args, **kwargs):
         '''Process a request.
+
+        ::
 
             process(**kwargs)
             process(request, **kwargs)

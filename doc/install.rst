@@ -21,7 +21,6 @@ The following software packages must be installed before Pyrocko can be installe
 
 * Try to use `easy_install <http://pythonhosted.org/setuptools/easy_install.html>`_ or `pip install <http://www.pip-installer.org/en/latest/installing.html>`_ for these:
    * `pyavl <http://pypi.python.org/pypi/pyavl/>`_ 
-   * `guts <http://pypi.python.org/pypi/guts/>`_
 
 * Manually install these:
    * `slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.slink` module)
@@ -40,14 +39,12 @@ Here some details, what to install on a few popular distributions:
     sudo apt-get install python-qt4 python-qt4-gl 
     sudo apt-get install python-yaml python-progressbar
     sudo easy_install pyavl
-    sudo easy_install guts
 
 * **Fedora** (*outdated, can someone check this?*)::
 
     sudo yum install python numpy scipy PyQt4
     sudo easy_install progressbar
     sudo easy_install pyavl
-    sudo easy_install guts
 
 
 Download and install Pyrocko
