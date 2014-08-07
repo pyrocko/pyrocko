@@ -42,7 +42,7 @@ def git_infos():
 
 
 def make_info_module(packname, version):
-    '''Put version and revision information into file pyrocko/info.py.'''
+    '''Put version and revision information into file src/info.py.'''
 
     sha1, local_modifications = None, None
     combi = '%s-%s' % (packname, version)
@@ -68,7 +68,7 @@ installed_date = %s
         sha1, local_modifications, version, combi, datestr)])
 
     try:
-        f = open(pjoin('pyrocko', 'info.py'), 'w')
+        f = open(pjoin('src', 'info.py'), 'w')
         f.write(s)
         f.close()
     except:
@@ -205,42 +205,43 @@ setup(
     author_email='sebastian.heimann@zmaw.de',
     url='http://emolch.github.com/pyrocko/',
     packages=[packname] + subpacknames,
+    package_dir={'pyrocko': 'src'},
     ext_package=packname,
     ext_modules=[
         Extension(
             'util_ext',
             extra_compile_args=['-Wextra'],
-            sources=[pjoin(packname, 'util_ext.c')]),
+            sources=[pjoin('src', 'util_ext.c')]),
 
         Extension(
             'mseed_ext',
             include_dirs=[numpy.get_include(), 'libmseed'],
             library_dirs=['libmseed'],
             libraries=['mseed'],
-            sources=[pjoin(packname, 'mseed_ext.c')]),
+            sources=[pjoin('src', 'mseed_ext.c')]),
 
         Extension(
             'evalresp_ext',
             include_dirs=[numpy.get_include(), 'evalresp-3.3.0/include'],
             library_dirs=['evalresp-3.3.0/lib'],
             libraries=['evresp'],
-            sources=[pjoin(packname, 'evalresp_ext.c')]),
+            sources=[pjoin('src', 'evalresp_ext.c')]),
 
         Extension(
             'gse2_ext',
             include_dirs=[numpy.get_include()],
-            sources=[pjoin(packname, 'gse2_ext.c')]),
+            sources=[pjoin('src', 'gse2_ext.c')]),
 
         Extension(
             'autopick_ext',
             include_dirs=[numpy.get_include()],
-            sources=[pjoin(packname, 'autopick_ext.c')]),
+            sources=[pjoin('src', 'autopick_ext.c')]),
 
         Extension(
             'gf.store_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'],
-            sources=[pjoin(packname, 'gf', 'store_ext.c')]),
+            sources=[pjoin('src', 'gf', 'store_ext.c')]),
     ],
 
     scripts=[

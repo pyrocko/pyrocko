@@ -5,7 +5,7 @@ libmseed
 *~
 *.swp
 doc/_build
-pyrocko/info.py
+src/info.py
 pages
-pyrocko/tags
+src/tags
 
