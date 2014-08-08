@@ -192,7 +192,11 @@ class CubeReader(object):
 
         self.nchannels = d2['CH_NUM']
         self.deltat = 1.0 / d2['S_RATE']
-        self.recording_unit = 'c%04i' % int(d2['DEV_NO'])
+        try:
+            self.recording_unit = 'c%04i' % int(d2['DEV_NO'])
+        except:
+            self.recording_unit = d2['DEV_NO']
+
         self.firmware_version = d2['GIPP_V']
         self.tdelay = d2['D_FILT'] * self.deltat
         self._time_start0 = util.str_to_time(d2['S_DATE'] + d2['S_TIME'],
@@ -321,7 +325,11 @@ class CubeReader(object):
         raise EOF()
 
     def read_blocktype(self):
-        return ord(self.read(1)) >> 4
+        s = self.read(1)
+        if len(s) == 0:
+            raise EOF()
+
+        return ord(s) >> 4
 
     def read_next(self):
         t = self.read_blocktype()
