@@ -192,10 +192,7 @@ class CubeReader(object):
 
         self.nchannels = d2['CH_NUM']
         self.deltat = 1.0 / d2['S_RATE']
-        try:
-            self.recording_unit = 'c%04i' % int(d2['DEV_NO'])
-        except:
-            self.recording_unit = d2['DEV_NO']
+        self.recording_unit = d2['DEV_NO']
 
         self.firmware_version = d2['GIPP_V']
         self.tdelay = d2['D_FILT'] * self.deltat
@@ -217,7 +214,7 @@ class CubeReader(object):
             ydata = None
             tmax = tmin - self.deltat
 
-        return trace.Trace('', self.recording_unit, 'x', 'p%i' % ic,
+        return trace.Trace('', self.recording_unit, '', 'p%i' % ic,
                            tmin=tmin, tmax=tmax, deltat=self.deltat,
                            ydata=ydata)
 
@@ -344,6 +341,8 @@ class CubeReader(object):
         elif t == 12:  # empty ?
             pass
         elif t == 13:  # info block ascii ?
+            pass
+        elif t == 0:   # huh?
             pass
         else:
             raise CubeReaderError('unknown block type %i' % t)
