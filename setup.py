@@ -233,6 +233,11 @@ setup(
             sources=[pjoin('src', 'gse2_ext.c')]),
 
         Extension(
+            'datacube_ext',
+            extra_compile_args=['-Wextra'],
+            sources=[pjoin('src', 'datacube_ext.c')]),
+
+        Extension(
             'autopick_ext',
             include_dirs=[numpy.get_include()],
             sources=[pjoin('src', 'autopick_ext.c')]),

@@ -272,7 +272,8 @@ class CubeReader(object):
             if self._load_data:
                 tr.append(values[ic::nc])
             else:
-                tr.tmax = tr.tmin + (nsamples + tr.data_len() - 1) * self.deltat
+                tr.tmax = tr.tmin \
+                    + (nsamples + tr.data_len() - 1) * self.deltat
                 self._traces[ic]._update_ids()
 
         self._ipos += nsamples
@@ -366,11 +367,89 @@ class CubeReader(object):
                 raise StopIteration()
 
 
-def iload(fn, load_data=True):
+def iload_python_version(fn, load_data=True):
     with open(fn, 'r') as f:
         r = CubeReader(f, load_data=load_data)
         for tr in r:
             yield tr
+
+
+def iload_c_version(fn, load_data=True):
+    from pyrocko import datacube_ext
+
+    blocksize = 60
+
+    with open(fn, 'r') as f:
+        header, data_arrays, gps_tags, nsamples = datacube_ext.load(
+            f.fileno(), int(bool(load_data)))
+
+    h = dict(header)
+    deltat = 1.0 / int(h['S_RATE'])
+    nchannels = int(h['CH_NUM'])
+
+    ipos, t, fix, nsvs = gps_tags
+
+    if ipos.size >= blocksize:
+        j = 0
+        control_points = []
+        while j < ipos.size - blocksize:
+            ipos_block = ipos[j:j+blocksize]
+            t_block = t[j:j+blocksize]
+            tcontrol = t_block[0] + num.median(
+                (t_block-t_block[0])-(ipos_block-ipos_block[0])*deltat)
+
+            control_points.append((ipos_block[0], tcontrol))
+            j += blocksize
+
+        ipos_last = ipos[-blocksize:]
+        t_last = t[-blocksize:]
+        tcontrol = t_last[-1] + num.median(
+            (t_last-t_last[-1])-(ipos_last-ipos_last[-1])*deltat)
+
+        control_points.append((ipos_last[-1], tcontrol))
+        i0, t0 = control_points[0]
+        i1, t1 = control_points[-1]
+        tmin = t0 - i0 * deltat
+        tmax = t1 + (nsamples - i1 - 1) * deltat
+        control_points[0:0] = [(0, tmin)]
+        control_points.append((nsamples-1, tmax))
+
+        if load_data:
+            icontrol, tcontrol = num.array(control_points).T
+            tsamples = num.interp(num.arange(nsamples), icontrol, tcontrol)
+
+    else:
+        tmin = util.str_to_time(h['S_DATE'] + h['S_TIME'],
+                                format='%y/%m/%d%H:%M:%S')
+        tmax = tmin + (nsamples-1) * deltat
+        if load_data:
+            tsamples = num.linspace(tmin, tmax, nsamples)
+
+    tmin_ip = round(tmin / deltat) * deltat
+    tmax_ip = round(tmax / deltat) * deltat
+    nsamples_ip = int(round((tmax_ip - tmin_ip)/deltat)) + 1
+    # to prevent problems with rounding errors:
+    tmax_ip = tmin_ip + (nsamples_ip-1) * deltat
+
+    if load_data:
+        tsamples_ip = num.arange(nsamples_ip) * deltat + tmin_ip
+
+    for i in range(nchannels):
+        if load_data:
+            arr = data_arrays[i]
+            assert arr.size == nsamples
+            ydata = num.interp(tsamples_ip, tsamples, arr)
+            tr_tmax = None
+        else:
+            ydata = None
+            tr_tmax = tmax_ip
+
+        tr = trace.Trace('', h['DEV_NO'], '', 'p%i' % i, deltat=deltat,
+                         ydata=ydata, tmin=tmin_ip, tmax=tr_tmax, meta=h)
+
+        yield tr
+
+iload = iload_c_version
 
 
 def detect(first512):
