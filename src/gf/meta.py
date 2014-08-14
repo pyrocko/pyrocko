@@ -593,6 +593,13 @@ class DiscretizedSource(Object):
 
     @classmethod
     def combine(cls, sources, **kwargs):
+        '''Combine several discretized source models.
+
+        Concatenenates all point sources in the given discretized ``sources``.
+        Care must be taken when using this function that the external amplitude
+        factors and reference times of the parameterized (undiscretized)
+        sources match or are accounted for.
+        '''
         first = sources[0]
 
         if not all(type(s) == type(first) for s in sources):
@@ -628,6 +635,37 @@ class DiscretizedSource(Object):
             times=times, lat=lat, lon=lon, lats=lats, lons=lons,
             north_shifts=north_shifts, east_shifts=east_shifts,
             depths=depths, **kwargs)
+
+    def centroid_position(self):
+        moments = self.moments()
+        w = moments / num.sum(moments)
+        if self.lats is not None and self.lons is not None:
+            lats, lons = self.effective_latlons
+            rlat, rlon = num.mean(lats), num.mean(lons)
+            n, e = orthodrome.latlon_to_ne_numpy(rlat, rlon, lats, lons)
+        else:
+            rlat, rlon = g(self.lat, 0.0), g(self.lon, 0.0)
+            n, e = self.north_shifts, self.east_shifts
+
+        cn = num.sum(n*w)
+        ce = num.sum(e*w)
+        clat, clon = orthodrome.ne_to_latlon(rlat, rlon, cn, ce)
+
+        if self.lats is not None and self.lons is not None:
+            lat = clat
+            lon = clon
+            north_shift = 0.
+            east_shift = 0.
+        else:
+            lat = g(self.lat, 0.0)
+            lon = g(self.lon, 0.0)
+            north_shift = cn
+            east_shift = ce
+
+        depth = num.sum(self.depths*w)
+        time = num.sum(self.times*w)
+        return tuple(float(x) for x in
+                     (time, lat, lon, north_shift, east_shift, depth))
 
 
 class DiscretizedExplosionSource(DiscretizedSource):
@@ -708,8 +746,32 @@ class DiscretizedExplosionSource(DiscretizedSource):
 
         return sources
 
+    def moments(self):
+        return self.m0s
+
+    def centroid(self):
+        from pyrocko.gf.seismosizer import ExplosionSource
+        time, lat, lon, north_shift, east_shift, depth = \
+            self.centroid_position()
+
+        return ExplosionSource(
+            time=time,
+            lat=lat,
+            lon=lon,
+            north_shift=north_shift,
+            east_shift=east_shift,
+            depth=depth,
+            moment=float(num.sum(self.m0s)))
+
     @classmethod
     def combine(cls, sources, **kwargs):
+        '''Combine several discretized source models.
+
+        Concatenenates all point sources in the given discretized ``sources``.
+        Care must be taken when using this function that the external amplitude
+        factors and reference times of the parameterized (undiscretized)
+        sources match or are accounted for.
+        '''
         if 'm0s' not in kwargs:
             kwargs['m0s'] = num.concatenate([s.m0s for s in sources])
 
@@ -810,46 +872,27 @@ class DiscretizedMTSource(DiscretizedSource):
 
     def centroid(self):
         from pyrocko.gf.seismosizer import MTSource
-
-        moments = self.moments()
-        w = moments / num.sum(moments)
-        if self.lats is not None and self.lons is not None:
-            lats, lons = self.effective_latlons
-            rlat, rlon = num.mean(lats), num.mean(lons)
-            n, e = orthodrome.latlon_to_ne_numpy(rlat, rlon, lats, lons)
-        else:
-            rlat, rlon = g(self.lat, 0.0), g(self.lon, 0.0)
-            n, e = self.north_shifts, self.east_shifts
-
-        cn = num.sum(n*w)
-        ce = num.sum(e*w)
-        clat, clon = orthodrome.ne_to_latlon(rlat, rlon, cn, ce)
-
-        if self.lats is not None and self.lons is not None:
-            lat = clat
-            lon = clon
-            north_shift = 0.
-            east_shift = 0.
-        else:
-            lat = g(self.lat, 0.0)
-            lon = g(self.lon, 0.0)
-            north_shift = cn
-            east_shift = ce
-
-        depth = num.sum(self.depths*w)
-        time = num.sum(self.times*w)
+        time, lat, lon, north_shift, east_shift, depth = \
+            self.centroid_position()
 
         return MTSource(
-            time=float(time),
-            lat=float(lat),
-            lon=float(lon),
-            north_shift=float(north_shift),
-            east_shift=float(east_shift),
-            depth=float(depth),
+            time=time,
+            lat=lat,
+            lon=lon,
+            north_shift=north_shift,
+            east_shift=east_shift,
+            depth=depth,
             m6=num.sum(self.m6s, axis=0))
 
     @classmethod
     def combine(cls, sources, **kwargs):
+        '''Combine several discretized source models.
+
+        Concatenenates all point sources in the given discretized ``sources``.
+        Care must be taken when using this function that the external amplitude
+        factors and reference times of the parameterized (undiscretized)
+        sources match or are accounted for.
+        '''
         if 'm6s' not in kwargs:
             kwargs['m6s'] = num.vstack([s.m6s for s in sources])
 
@@ -920,8 +963,32 @@ class DiscretizedPorePressureSource(DiscretizedSource):
             ('darcy_velocity.d', w_dvd, g_dvd),
         )
 
+    def moments(self):
+        return self.pp
+
+    def centroid(self):
+        from pyrocko.gf.seismosizer import PorePressurePointSource
+        time, lat, lon, north_shift, east_shift, depth = \
+            self.centroid_position()
+
+        return PorePressurePointSource(
+            time=time,
+            lat=lat,
+            lon=lon,
+            north_shift=north_shift,
+            east_shift=east_shift,
+            depth=depth,
+            pp=float(num.sum(self.pp)))
+
     @classmethod
     def combine(cls, sources, **kwargs):
+        '''Combine several discretized source models.
+
+        Concatenenates all point sources in the given discretized ``sources``.
+        Care must be taken when using this function that the external amplitude
+        factors and reference times of the parameterized (undiscretized)
+        sources match or are accounted for.
+        '''
         if 'pp' not in kwargs:
             kwargs['pp'] = num.concatenate([s.pp for s in sources])
 

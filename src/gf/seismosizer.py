@@ -547,6 +547,9 @@ class Source(meta.Location):
         return (self.depth, self.lat, self.north_shift,
                 self.lon, self.east_shift, type(self))
 
+    def get_timeshift(self):
+        return self.time
+
     def _dparams_base(self):
         return dict(times=arr(0.),
                     lat=self.lat, lon=self.lon,
@@ -730,7 +733,7 @@ class RectangularExplosionSource(ExplosionSource):
         return meta.DiscretizedExplosionSource(
             lat=self.lat,
             lon=self.lon,
-            times=self.time + times,
+            times=times,
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
@@ -951,7 +954,7 @@ class RectangularSource(DCSource):
         ds = meta.DiscretizedMTSource(
             lat=self.lat,
             lon=self.lon,
-            times=self.time + times,
+            times=times,
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
@@ -1820,7 +1823,8 @@ class LocalEngine(Engine):
             codes=target.codes,
             data=data,
             deltat=deltat,
-            tmin=base_seismogram.values()[0].itmin * deltat) # + source.time)
+            tmin=base_seismogram.values()[0].itmin * deltat
+                + source.get_timeshift())
 
         return tr
 

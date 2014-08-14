@@ -108,7 +108,6 @@ class GFSourcesTestCase(unittest.TestCase):
         return self._dummy_store
 
     def test_combine_dsources(self):
-
         store = self.dummy_store()
         for S in gf.source_classes:
             if not hasattr(S, 'discretize_basesource'):
@@ -126,6 +125,19 @@ class GFSourcesTestCase(unittest.TestCase):
 
                 dsource = DS.combine(dsources)
                 assert dsource.nelements == sum(s.nelements for s in dsources)
+
+    def test_source_times(self):
+        store = self.dummy_store()
+        for S in gf.source_classes:
+            if not hasattr(S, 'discretize_basesource'):
+                continue
+
+            for t in [0.0, util.str_to_time('2014-01-01 10:00:00')]:
+                source = S(time=t)
+                dsource = source.discretize_basesource(store)
+                cent = dsource.centroid()
+                assert numeq(cent.time + source.get_timeshift(), t, 0.0001)
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_sources', 'warning')
