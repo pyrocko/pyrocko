@@ -561,6 +561,8 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     return calendar.timegm(time.strptime(s, format)) + fracsec
 
 
+stt = str_to_time
+
 def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
     '''Get string representation for floating point system time.
     
@@ -596,6 +598,8 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
         format, nsub = GlobalVars.re_frac.subn(sfrac[1:], format, 1)
    
     return time.strftime(format, time.gmtime(ts))
+
+tts = time_to_str
     
 def plural_s(n):
     if n == 1:
