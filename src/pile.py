@@ -647,28 +647,43 @@ class TracesFile(TracesGroup):
         file_changed = False
         if not self.data_loaded or force:
             logger.debug('loading data from file: %s' % self.abspath)
-            
-            for itr, tr in enumerate(io.load(self.abspath, format=self.format, getdata=True, substitutions=self.substitutions)):
-                if itr < len(self.traces):
-                    xtr = self.traces[itr]
-                    if xtr.mtime != tr.mtime or xtr.tmin != tr.tmin or xtr.tmax != tr.tmax:
-                        logger.debug('file may have changed since last access (trace number %i has changed): %s' % (itr, self.abspath))
-                        self.remove(xtr)
-                        self.traces.remove(xtr)
-                        xtr.file = None
-                        self.traces.append(tr)
-                        self.add(tr)
-                        tr.file = self
-                        file_changed = True
-                    else:
-                        xtr.ydata = tr.ydata
+            kgen = lambda tr: (tr.mtime, tr.tmin, tr.tmax) + tr.nslc_id
 
-                else:
-                    self.traces.add(tr)
-                    self.add(tr)
-                    logger.debug('file may have changed since last access (new trace found): %s' % self.abspath)
+            traces = io.load(self.abspath, format=self.format, getdata=True,
+                             substitutions=self.substitutions)
+
+            k_current_d = dict((kgen(tr),tr) for tr in self.traces)
+            k_current = set(k_current_d)
+            k_loaded = set(kgen(tr) for tr in traces)
+            k_all = k_current | k_loaded
+            k_new = k_loaded - k_current
+            k_delete = k_current - k_loaded
+            k_unchanged = k_current & k_loaded
+
+            for tr in self.traces[:]:
+                if kgen(tr) in k_delete:
+                    self.remove(tr)
+                    self.traces.remove(tr)
+                    tr.file = None
                     file_changed = True
+
+            for tr in traces:
+                if kgen(tr) in k_new:
+                    tr.file = self
+                    self.traces.append(tr)
+                    self.add(tr)
+                    file_changed = True
+
+            for tr in traces:
+                if kgen(tr) in k_unchanged:
+                    ctr = k_current_d[kgen(tr)]
+                    ctr.ydata = tr.ydata
+
             self.data_loaded = True
+
+        if file_changed:
+            logger.debug('reloaded (file may have changed): %s' % self.abspath)
+
         return file_changed
     
     def use_data(self):
@@ -894,7 +909,8 @@ class Pile(TracesGroup):
                     if tr.file.load_data():
                         files_changed = True
 
-                    used_files.add(tr.file)
+                    if tr.file is not None:
+                        used_files.add(tr.file)
             
             if files_changed:
                 traces = self.relevant(tmin, tmax, group_selector, trace_selector)
