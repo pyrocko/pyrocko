@@ -2038,16 +2038,21 @@ class AnalogFilterResponse(FrequencyResponse):
         return signal.freqs(self.b, self.a, freqs/(2.*num.pi))[1]
 
 class MultiplyResponse(FrequencyResponse):
-    '''Multiplication of two :py:class:`FrequencyResponse` objects.'''
+    '''Multiplication of several :py:class:`FrequencyResponse` objects.'''
 
-    a = FrequencyResponse.T()
-    b = FrequencyResponse.T()
+    responses = List.T(FrequencyResponse.T())
 
-    def __init__(self, a, b):
-        FrequencyResponse.__init__(self, a=a, b=b)
+    def __init__(self, responses=None):
+        if responses is None:
+            responses = []
+        FrequencyResponse.__init__(self, responses=responses)
 
     def evaluate(self, freqs):
-        return self.a.evaluate(freqs) * self.b.evaluate(freqs)
+        a = num.ones(freqs.size, dtype=num.complex)
+        for resp in self.responses:
+            a *= resp.evaluate(freqs)
+
+        return a
 
 def asarray_1d(x, dtype):
     if isinstance(x, (list, tuple)) and x and isinstance(x[0], basestring):
