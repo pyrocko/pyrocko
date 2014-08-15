@@ -16,8 +16,22 @@ from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
 
+import scipy.signal as ssignal
+import scipy.stats as sstats
+
 
 logger = logging.getLogger('pyrocko.pile_viewer')
+
+
+def detrend(x, y):
+    slope, offset, _, _, _ = sstats.linregress(x, y)
+    y_detrended = y - slope * x - offset
+    return y_detrended, slope, offset
+
+
+def retrend(x, y_detrended, slope, offset):
+    return x * slope + y_detrended + offset
+
 
 class Global:
     appOnDemand = None
@@ -871,6 +885,8 @@ def MakePileViewerMainClass(base):
 
             self.setAcceptDrops(True)
             self._paths_to_load = []
+
+            self.tf_cache = {}
 
             self.automatic_updates = True
 
@@ -2502,14 +2518,33 @@ def MakePileViewerMainClass(base):
                             
                                 if fft_filtering:
                                     if self.lowpass is not None or self.highpass is not None:
-                                        high, low = 1./(trace.deltat*len(trace.ydata)),  1./(2.*trace.deltat)
                                         
-                                        if self.lowpass is not None:
-                                            low = self.lowpass
-                                        if self.highpass is not None:
-                                            high = self.highpass
-                                            
-                                        trace.bandpass_fft(high, low)
+                                        it = num.arange(trace.data_len(), dtype=num.float)
+                                        detr_data, m, b = detrend(it, trace.get_ydata()) 
+
+                                        trace.set_ydata(detr_data)
+
+                                        freqs, fdata = trace.spectrum(pad_to_pow2=True, tfade=None)
+
+                                        nfreqs = fdata.size
+
+                                        key = (trace.deltat, nfreqs)
+
+                                        if key not in self.tf_cache:
+                                            resps = []
+                                            if self.lowpass is not None:
+                                                resps.append(pyrocko.trace.ButterworthResponse(order=4, corner=self.lowpass, typ='low'))
+                                            if self.highpass is not None:
+                                                resps.append(pyrocko.trace.ButterworthResponse(order=4, corner=self.highpass, typ='high'))
+
+                                            resp = pyrocko.trace.MultiplyResponse(resps)
+                                            self.tf_cache[key] = resp.evaluate(freqs)
+
+                                        filtered_data = num.fft.irfft(fdata*self.tf_cache[key])[:trace.data_len()]
+                                        
+                                        retrended_data = retrend(it, filtered_data, m, b)
+                                        
+                                        trace.set_ydata(retrended_data)
                                     
                                 else:
                                     
@@ -2630,11 +2665,13 @@ def MakePileViewerMainClass(base):
         def lowpass_change(self, value, ignore=None):
             self.lowpass = value
             self.passband_check()
+            self.tf_cache = {}
             self.update()
             
         def highpass_change(self, value, ignore=None):
             self.highpass = value
             self.passband_check()
+            self.tf_cache = {}
             self.update()
     
         def passband_check(self):

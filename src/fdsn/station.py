@@ -1,14 +1,35 @@
 import time
 import logging
 
+import numpy as num
+
 from pyrocko.guts import StringChoice, StringPattern, UnicodePattern, String,\
     Unicode, Int, Float, List, Object, Timestamp, ValidationError
 from pyrocko.guts import load_xml  # noqa
+
+from pyrocko import trace
 
 guts_prefix = 'pf'
 
 logger = logging.getLogger('pyrocko.fdsn.station')
 
+conversion = {
+    ('M', 'M'): None,
+    ('M/S', 'M'): trace.IntegrationResponse(1),
+    ('M/S**2', 'M'): trace.IntegrationResponse(2),
+    ('M', 'M/S'): trace.DifferentiationResponse(1),
+    ('M/S', 'M/S'): None,
+    ('M/S**2', 'M/S'): trace.IntegrationResponse(1),
+    ('M', 'M/S**2'): trace.DifferentiationResponse(2),
+    ('M/S', 'M/S**2'): trace.DifferentiationResponse(1),
+    ('M/S**2', 'M/S**2'): None}
+
+
+class NoResponseInformation(Exception):
+    pass
+
+class MultipleResponseInformation(Exception):
+    pass
 
 def wrap(s, width=80, indent=4):
     words = s.split()
@@ -26,6 +47,16 @@ def wrap(s, width=80, indent=4):
 
     lines.append(' '.join(t))
     return '\n'.join(lines)
+
+
+def same(x, eps=0.0):
+    if any(type(x[0]) != type(r) for r in x):
+        return False
+
+    if isinstance(x[0], float):
+        return all(abs(r-x[0]) <= eps for r in x)
+    else:
+        return all(r == x[0] for r in x)
 
 
 class Nominal(StringChoice):
@@ -222,6 +253,9 @@ class PoleZero(Object):
     real = FloatNoUnit.T(xmltagname='Real')
     imaginary = FloatNoUnit.T(xmltagname='Imaginary')
 
+    def value(self):
+        return self.real.value + 1J * self.imaginary.value
+
 
 class ClockDrift(FloatWithUnit):
     unit = String.T(default='SECONDS/SAMPLE', optional=True,
@@ -341,6 +375,16 @@ class PolesZeros(BaseFilter):
     zero_list = List.T(PoleZero.T(xmltagname='Zero'))
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
 
+    def get_pyrocko_response(self):
+        resp = trace.PoleZeroResponse(
+            constant=self.normalization_factor,
+            zeros=[z.value() for z in self.zero_list],
+            poles=[p.value() for p in self.pole_list])
+
+        tc = abs(resp.evaluate(num.array([self.normalization_frequency.value]))[0])
+        resp.constant /= tc
+        return resp
+
 
 class ResponseListElement(Object):
     frequency = Frequency.T(xmltagname='Frequency')
@@ -420,6 +464,21 @@ class ResponseStage(Object):
     decimation = Decimation.T(optional=True, xmltagname='Decimation')
     stage_gain = Gain.T(optional=True, xmltagname='StageGain')
 
+    def get_pyrocko_response(self):
+        responses = []
+        if self.poles_zeros:
+            pz = self.poles_zeros.get_pyrocko_response()
+            responses.append(pz)
+
+        elif self.coefficients or self.response_list or self.fir or self.polynomial:
+            pass
+            #print 'unhandled response at stage %i' % self.number
+
+        if self.stage_gain:
+            responses.append(trace.PoleZeroResponse(constant=self.stage_gain.value))
+
+        return responses
+
 
 class Response(Object):
     resource_id = String.T(optional=True, xmlstyle='attribute')
@@ -428,6 +487,19 @@ class Response(Object):
     instrument_polynomial = Polynomial.T(optional=True,
                                          xmltagname='InstrumentPolynomial')
     stage_list = List.T(ResponseStage.T(xmltagname='Stage'))
+
+    def get_pyrocko_response(self, fake_input_units=None):
+        responses = []
+        for stage in self.stage_list:
+            responses.extend(stage.get_pyrocko_response())
+
+        if fake_input_units is not None:
+            input_units = self.instrument_sensitivity.input_units.name
+            conresp = conversion[fake_input_units, input_units]
+            if conresp is not None:
+                responses.append(conresp)
+
+        return trace.MultiplyResponse(responses)
 
 
 class BaseNode(Object):
@@ -665,6 +737,169 @@ class FDSNStationXML(Object):
                         name=station.description))
 
         return pstations
+
+    def iter_network_station_channels(self, net=None, sta=None, loc=None, cha=None,
+                     time=None, timespan=None):
+
+        if loc is not None:
+            loc = loc.strip()
+
+        tt = ()
+        if time is not None:
+            tt = (time,)
+        elif timespan is not None:
+            tt = timespan
+
+        results = []
+        for network in self.network_list:
+            if not network.spans(*tt) or (
+                    net is not None and network.code != net):
+                continue
+
+            for station in network.station_list:
+                if not station.spans(*tt) or (
+                        sta is not None and station.code != sta):
+                    continue
+
+                if station.channel_list:
+                    loc_to_channels = {}
+                    for channel in station.channel_list:
+                        if (not channel.spans(*tt) or
+                                (cha is not None and channel.code != cha) or
+                                (loc is not None and
+                                 channel.location_code.strip() != loc)):
+                            continue
+
+                        yield (network, station, channel)
+
+    def get_channel_groups(self, net=None, sta=None, loc=None, cha=None,
+                           time=None, timespan=None):
+
+        groups = {}
+        for network, station, channel in self.iter_network_station_channels(
+                net, sta, loc, cha, time=time, timespan=timespan):
+
+            net = network.code
+            sta = station.code
+            cha = channel.code
+            loc = channel.location_code
+            if len(cha) == 3:
+                bic = cha[:2]  # band and intrument code according to SEED
+            elif len(cha) == 1:
+                bic = ''
+            else:
+                bic = cha
+
+            if channel.response and channel.response.instrument_sensitivity:
+                unit = channel.response.instrument_sensitivity.input_units.name
+            else:
+                unit = None
+
+            bic = (bic, unit)
+
+            k = net, sta, loc
+            if k not in groups:
+                groups[k] = {}
+
+            if bic not in groups[k]:
+                groups[k][bic] = []
+
+            groups[k][bic].append(channel)
+
+        for nsl, bic_to_channels in groups.iteritems():
+            bad_bics = []
+            for bic, channels in bic_to_channels.iteritems():
+                sample_rates = []
+                for channel in channels:
+                    sample_rates.append(channel.sample_rate.value)
+
+                if not same(sample_rates):
+                    err = 'ignoring channels with inconsistent sampling ' + \
+                        'rates (%s.%s.%s.%s: %s)' % (
+                        nsl + (','.join(channel.code for channel in channels),
+                               ', '.join('%e' % x for x in sample_rates)))
+
+                    logger.warn(err)
+                    bad_bics.append(bic)
+
+            for bic in bad_bics:
+                del bic_to_channels[bic]
+
+        return groups
+
+    def choose_channels(
+            self,
+            target_sample_rate=None,
+            priority_band_code = ['H', 'B', 'M', 'L', 'V', 'E', 'S'],
+            priority_units = ['M/S', 'M/S**2'],
+            priority_instrument_code = ['H', 'L']):
+
+        nslcs = []
+        for nsl, bic_to_channels in self.get_channel_groups().iteritems():
+            useful_bics = []
+            for bic, channels in bic_to_channels.iteritems():
+                rate = channels[0].sample_rate.value
+
+                if target_sample_rate is not None and \
+                        rate < target_sample_rate*0.99999:
+                    continue
+
+                unit = bic[1]
+
+                prio_unit = len(priority_units)
+                try:
+                    prio_unit = priority_units.index(unit)
+                except ValueError:
+                    pass
+
+                prio_inst = len(priority_instrument_code)
+                prio_band = len(priority_band_code)
+                if len(channels[0].code) == 3:
+                    try:
+                        prio_inst = priority_instrument_code.index(
+                            channels[0].code[1])
+                    except ValueError:
+                        pass
+
+                    try:
+                        prio_band = priority_band_code.index(
+                            channels[0].code[0])
+                    except ValueError:
+                        pass
+
+                if target_sample_rate is None:
+                    rate = -rate
+
+                useful_bics.append((-len(channels), prio_band, rate, prio_unit,
+                                    prio_inst, bic))
+
+            useful_bics.sort()
+
+            for _, _, rate, _, _, bic in useful_bics:
+                for channel in sorted(bic_to_channels[bic]):
+                    nslcs.append(nsl + (channel.code,))
+
+                break
+
+        return sorted(nslcs)
+
+    def get_pyrocko_response(self, nslc, time=None, timespan=None,
+            fake_input_units=None):
+
+        net, sta, loc, cha = nslc
+        resps = []
+        for _, _, channel in self.iter_network_station_channels(
+                net, sta, loc, cha, time=time, timespan=timespan):
+            resp = channel.response
+            if resp:
+                resps.append(resp.get_pyrocko_response(fake_input_units=fake_input_units))
+
+        if not resps:
+            raise NoResponseInformation('%s.%s.%s.%s' % nslc)
+        elif len(resps) > 1:
+            raise MultipleResponseInformation('%s.%s.%s.%s' % nslc)
+
+        return resps[0]
 
     @property
     def n_code_list(self):

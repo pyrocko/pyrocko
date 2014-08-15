@@ -1,7 +1,8 @@
 import unittest
 import os
-from pyrocko import fdsn
-from pyrocko import util
+import tempfile
+import numpy as num
+from pyrocko import fdsn, util, trace, iris_ws
 
 
 def tts(t):
@@ -74,6 +75,104 @@ class FDSNStationTestCase(unittest.TestCase):
                 print station
 
             print len(fsx.get_pyrocko_stations())
+
+    def test_response(self):
+        tmin = stt('2014-01-01 00:00:00')
+        tmax = stt('2014-01-02 00:00:00')
+        sx = fdsn.ws.station(
+            site='iris',
+            network='IU',
+            channel='?HZ',
+            startbefore=tmin,
+            endafter=tmax,
+            level='channel', format='text', matchtimeseries=True)
+
+        for nslc in sx.nslc_code_list:
+            print nslc
+            
+            net, sta, loc, cha = nslc
+            sxr = fdsn.ws.station(
+                site='iris',
+                network=net,
+                station=sta,
+                location=loc,
+                channel=cha,
+                startbefore=tmin,
+                endafter=tmax,
+                level='response', matchtimeseries=True)
+
+            fi = iris_ws.ws_resp(
+                network=net,
+                station=sta,
+                location=loc,
+                channel=cha,
+                tmin=tmin,
+                tmax=tmax)
+            
+            _, fn = tempfile.mkstemp()
+            fo = open(fn, 'w')
+            while True:
+                d = fi.read(1024)
+                if not d:
+                    break
+
+                fo.write(d)
+
+            fo.close()
+            
+
+            resp_sx = sxr.get_pyrocko_response(nslc, timespan=(tmin, tmax))
+            resp_er = trace.Evalresp(fn, target='vel', nslc_id=nslc, time=tmin)
+            fmin = 0.001
+            fmax = 100.
+            channel = sx.get_channels(nslc, timespan=(tmin, tmax))[0]
+            if channel.sample_rate:
+                fmax = channel.sample_rate.value * 0.5
+
+            f = num.exp(num.linspace(num.log(fmin), num.log(fmax), 500))
+            try:
+                t_sx = resp_sx.evaluate(f)
+                t_er = resp_er.evaluate(f)
+                import pylab as lab
+
+                abs_dif = num.abs(num.abs(t_sx) - num.abs(t_er)) / num.max(num.abs(t_er))
+
+                mda = num.mean(abs_dif[f<0.5*fmax])
+
+                pha_dif = num.abs(num.angle(t_sx) - num.angle(t_er))
+
+                mdp = num.mean(pha_dif[f<0.5*fmax])
+
+                print mda, mdp
+
+                if mda > 0.03 or mdp > 0.04:
+                    
+
+
+                    lab.gcf().add_subplot(2,1,1)
+                    lab.plot(f, num.abs(t_sx), color='black')
+                    lab.plot(f, num.abs(t_er), color='red')
+                    lab.xscale('log')
+                    lab.yscale('log')
+
+
+                    lab.gcf().add_subplot(2,1,2)
+                    lab.plot(f, num.angle(t_sx), color='black')
+                    lab.plot(f, num.angle(t_er), color='red')
+                    lab.xscale('log')
+                    lab.show()
+
+                else:
+                    print 'ok'
+            except:
+                print 'failed: ', nslc
+
+                
+                pass
+
+
+
+
 
 import time
 gt = None

@@ -933,14 +933,15 @@ class Trace(object):
         
         self._update_ids()
      
-    def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True):
-        '''Return new trace with transfer function applied.
+    def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True, invert=False):
+        '''Return new trace with transfer function applied (convolution).
         
         :param tfade:             rise/fall time in seconds of taper applied in timedomain at both ends of trace.
         :param freqlimits:        4-tuple with corner frequencies in Hz.
         :param transfer_function: FrequencyResponse object; must provide a method 'evaluate(freqs)', which returns the
                                   transfer function coefficients at the frequencies 'freqs'.
         :param cut_off_fading:    whether to cut off rise/fall interval in output trace.
+        :param invert:            set to True to do a deconvolution
         '''
     
         if transfer_function is None:
@@ -951,8 +952,8 @@ class Trace(object):
 
         ndata = self.ydata.size
         ntrans = nextpow2(ndata*1.2)
-        coefs = self._get_tapered_coefs(ntrans, freqlimits, transfer_function)
-        
+        coefs = self._get_tapered_coefs(ntrans, freqlimits, transfer_function, invert=invert)
+
         data = self.ydata
         data_pad = num.zeros(ntrans, dtype=num.float)
         data_pad[:ndata]  = data - data.mean()
@@ -1117,24 +1118,27 @@ class Trace(object):
             centroid_freqs[ifilt] = num.sum(freqs*enorm)
 
         return centroid_freqs, signal_tf
-        
-    def _get_tapered_coefs(self, ntrans, freqlimits, transfer_function):
-    
+
+    def _get_tapered_coefs(self, ntrans, freqlimits, transfer_function, invert=False):
+
         deltaf = 1./(self.deltat*ntrans)
         nfreqs = ntrans/2 + 1
         transfer = num.ones(nfreqs, dtype=num.complex)
         hi = snapper(nfreqs, deltaf)
         a,b,c,d = freqlimits
         freqs = num.arange(hi(d)-hi(a), dtype=num.float)*deltaf + hi(a)*deltaf
-        transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
+        if invert:
+            transfer[hi(a):hi(d)] = 1.0 / transfer_function.evaluate(freqs)
+        else:
+            transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
 
         tapered_transfer = costaper(a,b,c,d, nfreqs, deltaf)*transfer
         tapered_transfer[0] = 0.0 # don't introduce static offsets
         return tapered_transfer
-        
+
     def fill_template(self, template, **additional):
         '''Fill string template with trace metadata.
-        
+
         Uses normal python '%(placeholder)s' string templates. The following
         placeholders are considered: ``network``, ``station``, ``location``,
         ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
@@ -1872,6 +1876,45 @@ class FrequencyResponse(Object):
         coefs = num.ones(freqs.size, dtype=num.complex)
         return coefs
    
+class Evalresp(FrequencyResponse):
+    '''
+    Calls evalresp and generates values of the instrument response transfer function.
+   
+    :param respfile: response file in evalresp format
+    :param trace: trace for which the response is to be extracted from the file
+    :param target: ``'dis'`` for displacement or ``'vel'`` for velocity
+    '''
+    respfile = String.T()
+    nslc_id = Tuple.T(4, String.T())
+    target = String.T(default='dis')
+    instant = Float.T()
+    
+    def __init__(self, respfile, trace=None, target='dis', nslc_id=None, time=None):
+        if trace is not None:
+            nslc_id = trace.nslc_id
+            time = (trace.tmin + trace.tmax) / 2.
+            
+        FrequencyResponse.__init__(self,
+                        respfile=respfile,
+                        nslc_id=nslc_id,
+                        instant=time,
+                        target=target)
+        
+    def evaluate(self, freqs):
+        network, station, location, channel = self.nslc_id
+        x = evalresp.evalresp(sta_list=station,
+                              cha_list=channel,
+                              net_code=network,
+                              locid=location,
+                              instant=self.instant,
+                              freqs=freqs,
+                              units=self.target.upper(),
+                              file=self.respfile,
+                              rtype='CS')
+        
+        transfer = x[0][4]
+        return transfer
+
 class InverseEvalresp(FrequencyResponse):
     '''
     Calls evalresp and generates values of the inverse instrument response for 
@@ -1946,6 +1989,17 @@ class PoleZeroResponse(FrequencyResponse):
             a /= jomeg-p
         
         return a
+
+class ButterworthResponse(FrequencyResponse):
+
+    corner = Float.T(default=1.0)
+    order = Int.T(default=4)
+    typ = StringChoice.T(choices=['low', 'high'], default='low')
+
+    def evaluate(self, freqs):
+        b, a = signal.butter(int(self.order), float(self.corner), self.typ, analog=True)
+        w, h = signal.freqs(b, a, freqs)
+        return h
 
 class SampledResponse(FrequencyResponse):
     '''Interpolates frequency response given at a set of sampled frequencies.

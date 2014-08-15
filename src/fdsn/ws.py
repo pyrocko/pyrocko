@@ -121,11 +121,25 @@ def make_data_selection(stations, tmin, tmax,
 
 
 def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
-            **kwargs):
+            selection=None, **kwargs):
 
     url = fillurl(url, site, 'station', majorversion)
 
     params = fix_params(kwargs)
+
+    if selection:
+        l = []
+        for k, v in params.iteritems():
+            l.append('%s=%s' % (k, v))
+
+        for (network, station, location, channel, tmin, tmax) in selection:
+            if location == '':
+                location = '--'
+
+            l.append(' '.join((network, station, location, channel,
+                               sdatetime(tmin), sdatetime(tmax))))
+
+        params = dict(post='\n'.join(l))
 
     if parsed:
         from pyrocko.fdsn import station
