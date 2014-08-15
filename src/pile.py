@@ -655,7 +655,6 @@ class TracesFile(TracesGroup):
             k_current_d = dict((kgen(tr),tr) for tr in self.traces)
             k_current = set(k_current_d)
             k_loaded = set(kgen(tr) for tr in traces)
-            k_all = k_current | k_loaded
             k_new = k_loaded - k_current
             k_delete = k_current - k_loaded
             k_unchanged = k_current & k_loaded
