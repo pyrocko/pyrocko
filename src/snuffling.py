@@ -12,7 +12,7 @@ from PyQt4.QtGui import *
 
 from pyrocko import pile
 
-from pyrocko.gui_util import ValControl, LinValControl, FigureFrame
+from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, WebKitFrame
 
 
 logger = logging.getLogger('pyrocko.snuffling')
@@ -325,10 +325,19 @@ class Snuffling:
     def figure_frame(self, name=None):
         return self.pylab(name=name, get='figure_frame')
 
+    def web_frame(self, url=None, name=None):
+        if name is None:
+            self._iplot += 1
+            name = 'Web browser %i (%s)' % (self._iplot, self.get_name())
+
+        f = WebKitFrame(url)
+        self._panel_parent.add_tab(name, f)
+        return f
+
     def tempdir(self):
         if self._tempdir is None:
             self._tempdir = tempfile.mkdtemp('', 'snuffling-tmp-')
-        
+
         return self._tempdir
 
     def set_live_update(self, live_update):

@@ -1177,3 +1177,18 @@ class FigureFrame(QFrame):
         self.canvas.draw()
 
 
+class WebKitFrame(QFrame):
+
+    def __init__(self, url=None, parent=None):
+        from PyQt4.QtWebKit import QWebView
+
+        QFrame.__init__(self, parent)
+        layout = QGridLayout()
+        layout.setContentsMargins(0,0,0,0)
+        layout.setSpacing(0)
+        self.setLayout(layout)
+        self.web_widget = QWebView()
+        layout.addWidget(self.web_widget, 0,0)
+        if url:
+            self.web_widget.load(QUrl(url))
+
