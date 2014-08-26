@@ -143,7 +143,9 @@ class SerialHamster:
             try:
                 val = float(tok)
             except:
-                logger.warn('Got something unexpected on serial line')
+                logger.warn('Got something unexpected on serial line. ' +
+                            'Current line: "%s". ' % line +
+                            'Could not convert string to float: "%s"' % tok)
                 continue
             
             self.values[0].append(val)
