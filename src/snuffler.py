@@ -95,7 +95,7 @@ class USBHB628Acquisition(pyrocko.serial_hamster.USBHB628Hamster, AcquisitionThr
 class SchoolSeismometerAcquisition(pyrocko.serial_hamster.SerialHamster, AcquisitionThread):
     def __init__(self, *args, **kwargs):
         pyrocko.serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
-        AcquisitionThread.__init__(self, post_process_sleep=0.1)
+        AcquisitionThread.__init__(self, post_process_sleep=0.01)
 
     def got_trace(self, tr):
         AcquisitionThread.got_trace(self,tr)
