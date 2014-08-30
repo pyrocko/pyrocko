@@ -66,7 +66,9 @@ class Trace(object):
             else:
                 raise Exception('fixme: trace must be created with tmax or ydata')
         else:
-            self.tmax = tmax
+            n = int(round((tmax - self.tmin) / self.deltat)) + 1
+            self.tmax = self.tmin + (n - 1) * self.deltat
+
         self.meta = meta
         self.ydata = ydata
         self.mtime = mtime
