@@ -3,6 +3,8 @@ from pyrocko import orthodrome, config, util
 import unittest
 import numpy as num
 import math, random
+import pyrocko.config
+config = pyrocko.config.config()
 
 r2d = 180./math.pi
 d2r = 1./r2d

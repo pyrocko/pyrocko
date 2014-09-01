@@ -1,11 +1,12 @@
 import math
 import numpy as num
-from pyrocko import config
+from pyrocko.config import config
 
 d2r = math.pi/180.
 r2d = 1./d2r
 earth_oblateness = 1./298.257223563
 earthradius_equator = 6378.14 * 1000.
+earthradius = config().earthradius
 d2m = earthradius_equator*math.pi/180.
 m2d = 1./d2m
 
@@ -126,7 +127,7 @@ def ne_to_latlon( lat0, lon0, north_m, east_m ):
     The projection used preserves the azimuths of the input points.
     '''
     
-    a = num.sqrt(north_m**2+east_m**2)/config.earthradius
+    a = num.sqrt(north_m**2+east_m**2)/config().earthradius
     gamma = num.arctan2(east_m,north_m)
     
     return azidist_to_latlon_rad( lat0, lon0, gamma, a)
@@ -164,7 +165,7 @@ def ne_to_latlon_alternative_method( lat0, lon0, north_m, east_m ):
     from the carthesian origin.'''
 
     b = math.pi/2.-lat0*d2r
-    a = num.sqrt(north_m**2+east_m**2)/config.earthradius
+    a = num.sqrt(north_m**2+east_m**2)/config().earthradius
 
     
     gamma = num.arctan2(east_m,north_m)

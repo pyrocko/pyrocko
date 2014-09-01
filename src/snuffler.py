@@ -690,7 +690,7 @@ def snuffler_from_commandline(args=sys.argv):
 
     parser.add_option('--cache',
             dest='cache_dir',
-            default=pyrocko.config.cache_dir,
+            default=pyrocko.config.config().cache_dir,
             metavar='DIR',
             help='use directory DIR to cache trace metadata (default=\'%default\')')
 

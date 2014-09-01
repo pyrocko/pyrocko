@@ -1,4 +1,4 @@
-from pyrocko import orthodrome, config, util, moment_tensor
+from pyrocko import orthodrome, util, moment_tensor
 import math, copy
 import numpy as num
 

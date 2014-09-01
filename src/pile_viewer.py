@@ -1133,8 +1133,9 @@ def MakePileViewerMainClass(base):
         def remove_panel_toggler(self, item):
             self.toggle_panel_menu.removeAction(item)
 
-        def load(self, paths, regex=None, format='from_extension', cache_dir=pyrocko.config.cache_dir, force_cache=False):
-
+        def load(self, paths, regex=None, format='from_extension', cache_dir=None, force_cache=False):
+            if cache_dir is None:
+                cache_dir = pyrocko.config.config().cache_dir
             if isinstance(paths, str):
                 paths = [ paths ]
              
