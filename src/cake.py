@@ -32,7 +32,7 @@ The main classes defined in this module are:
 
 
 import sys, os, copy, inspect, math, cmath, operator, StringIO, glob
-from pyrocko import util
+from pyrocko import util, config
 from scipy.optimize import bisect, brentq
 from scipy.interpolate import fitpack
 import numpy as num
@@ -43,7 +43,7 @@ S = 2
 DOWN = 4
 UP = -4
 
-earthradius = 6371.*1000.
+earthradius = config.config().earthradius
 
 r2d = 180./math.pi
 d2r = 1./r2d

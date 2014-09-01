@@ -15,6 +15,7 @@ from pyrocko import moment_tensor as mt
 from pyrocko import trace, model
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
+import pyrocko.config
 
 guts_prefix = 'pf'
 
@@ -1683,6 +1684,7 @@ class LocalEngine(Engine):
 
     def __init__(self, **kwargs):
         use_env = kwargs.pop('use_env', False)
+        use_config = kwargs.pop('use_config', False)
         Engine.__init__(self, **kwargs)
         if use_env:
             env_store_superdirs = os.environ.get('GF_STORE_SUPERDIRS', '')
@@ -1692,6 +1694,11 @@ class LocalEngine(Engine):
 
             if env_store_dirs:
                 self.store_dirs.extend(env_store_dirs.split(':'))
+
+        if use_config:
+            c = pyrocko.config.config()
+            self.store_superdirs.extend(c.gf_store_superdirs)
+            self.store_dirs.extend(c.gf_store_dirs)
 
         self._id_to_store_dir = {}
         self._open_stores = {}

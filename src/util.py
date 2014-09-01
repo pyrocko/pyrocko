@@ -3,7 +3,6 @@
 import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex, optparse
 from scipy import signal
 from os.path import join as pjoin
-from pyrocko import config
 import numpy as num
 import util_ext
 

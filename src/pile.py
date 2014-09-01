@@ -1,5 +1,6 @@
 
-from pyrocko import trace, io, util, config
+from pyrocko import trace, io, util
+from pyrocko import config
 
 import numpy as num
 import os, logging, time, weakref, copy, re, sys, operator, math
@@ -1161,7 +1162,7 @@ class Pile(TracesGroup):
 
 def make_pile( paths=None, selector=None, regex=None,
         fileformat = 'mseed',
-        cachedirname=config.cache_dir, show_progress=True ):
+        cachedirname=None, show_progress=True ):
     
     '''Create pile from given file and directory names.
     
@@ -1182,6 +1183,9 @@ def make_pile( paths=None, selector=None, regex=None,
         
     if paths is None:
         paths = sys.argv[1:]
+
+    if cachedirname is None:
+        cachedirname = config.config().cache_dir
     
     fns = util.select_files(paths, selector, regex, show_progress=show_progress)
 
