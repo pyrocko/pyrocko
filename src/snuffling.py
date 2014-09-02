@@ -538,7 +538,14 @@ class Snuffling:
                     stations[skey] = None
 
         return event, [ s for s in stations.values() if s is not None ]
-        
+
+    def get_stations(self):
+        '''Get all stations known to the viewer.'''
+
+        v = self.get_viewer()
+        stations = v.stations.values()
+        return stations
+
     def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
         '''Iterate over selected traces.
         
