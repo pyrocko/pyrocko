@@ -29,9 +29,7 @@ class PyrockoConfig(Object):
         default=os.path.join(pyrocko_dir_tmpl, 'cache'))
     earthradius = Float.T(default=6371.*1000.)
     gf_store_dirs = List.T(PathWithPlaceholders.T())
-    gf_store_superdirs = List.T(
-        PathWithPlaceholders.T(),
-        default=[os.path.join(pyrocko_dir_tmpl, 'gf_stores')])
+    gf_store_superdirs = List.T(PathWithPlaceholders.T())
 
 
 def expand(x):
