@@ -222,7 +222,10 @@ if __name__ == '__main__':
         tinc = nice_seconds_floor(p.get_deltatmin() * 500000.)
 
     if options.snap:
-        tmin = int(math.floor(p.tmin / tinc)) * tinc
+        if tmin is None:
+            tmin = p.tmin
+
+        tmin = int(math.floor(tmin / tinc)) * tinc
 
     output_path = options.output_path
 
