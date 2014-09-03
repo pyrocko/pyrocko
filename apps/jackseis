@@ -77,7 +77,7 @@ if __name__ == '__main__':
 
     parser.add_option('--cache',
             dest='cache_dir',
-            default=config.cache_dir,
+            default=config.config().cache_dir,
             metavar='DIR',
             help='use directory DIR to cache trace metadata (default=\'%default\')')
 
