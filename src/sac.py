@@ -11,6 +11,9 @@ from pyrocko.io_common import FileLoadError
 
 logger = logging.getLogger('pyrocko.pile')
 
+def fixdoublefloat(x):
+    f = 10**math.floor(math.log10(x)) / 1000000.
+    return round(x/f)*f
 
 class SacError(Exception):
     pass
@@ -228,6 +231,8 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             except SacError, e:
                 if isex == len(sexes)-1:
                     raise e
+
+        self.delta = fixdoublefloat(self.delta)
         
         if byte_sex == 'try':
             logger.info('This seems to be a %s endian SAC file: %s' % (sex, filename))
