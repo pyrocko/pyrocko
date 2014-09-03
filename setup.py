@@ -234,6 +234,7 @@ setup(
 
         Extension(
             'datacube_ext',
+            include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'datacube_ext.c')]),
 
