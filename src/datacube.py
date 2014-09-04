@@ -438,7 +438,7 @@ def iload_c_version(fn, load_data=True):
         if load_data:
             arr = data_arrays[i]
             assert arr.size == nsamples
-            ydata = num.interp(tsamples_ip, tsamples, arr)
+            ydata = num.round(num.interp(tsamples_ip, tsamples, arr)).astype(num.int32)
             tr_tmax = None
         else:
             ydata = None
