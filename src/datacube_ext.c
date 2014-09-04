@@ -727,13 +727,16 @@ static PyObject* transfer_arrays(reader_t *reader) {
     if (!isnull(reader->arrays)) {
         for (i=0; i<reader->nchannels; i++) {
             array_dims[0] = reader->arrays[i].fill;
-            array = PyArray_SimpleNewFromData(1, array_dims, NPY_INT32,
-                                              reader->arrays[i].elements);
+            array = PyArray_SimpleNew(1, array_dims, NPY_INT32);
             if (array == NULL) {
                 return NULL;
             }
 
-            reader->arrays[i].elements = NULL;  /* prevent free() */
+            memcpy(PyArray_DATA(array), reader->arrays[i].elements,
+                   reader->arrays[i].fill*sizeof(int32_t));
+
+            free(reader->arrays[i].elements);
+            reader->arrays[i].elements = NULL;
             PyList_Append(list, array);
             Py_DECREF(array);
         }
