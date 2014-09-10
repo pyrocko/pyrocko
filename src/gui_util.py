@@ -1077,6 +1077,8 @@ class PhaseMarker(Marker):
         
         if event_sdate is not None and event_stime is not None:
             event_time = pyrocko.util.str_to_time(event_sdate + ' ' + event_stime)
+        else:
+            event_time = None
 
         phasename, polarity = [ str_to_str_or_none( x ) for x in vals[i:i+2] ]
         automatic = str_to_bool( vals[i+2] )
