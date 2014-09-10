@@ -114,7 +114,8 @@ static PyObject* gse_decode_m6(PyObject *dummy, PyObject *args) {
         pos++;
     }
     array_dims[0] = isample;
-    array = PyArray_SimpleNewFromData(1, array_dims, NPY_INT32, out_data);
+    array = PyArray_SimpleNew(1, array_dims, NPY_INT32);
+    memcpy(PyArray_DATA(array), out_data, isample*sizeof(int32_t));
     return Py_BuildValue("N", array);
 }
 
