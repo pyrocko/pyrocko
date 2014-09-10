@@ -12,7 +12,7 @@ from PyQt4.QtGui import *
 
 from pyrocko import pile
 
-from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, WebKitFrame
+from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, WebKitFrame, EventMarker
 
 
 logger = logging.getLogger('pyrocko.snuffling')
@@ -563,7 +563,7 @@ class Snuffling:
        
         try:
             viewer = self.get_viewer()
-            markers = viewer.selected_markers()
+            markers = [m for m in viewer.selected_markers() if not isintance(m, EventMarker)]
             if marker_selector is not None:
                 markers = [  marker for marker in markers if marker_selector(marker) ] 
             pile = self.get_pile()
