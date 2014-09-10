@@ -140,7 +140,7 @@ character, respectively.  ''')
                 help='Shear attenuation Qmu')
         parser.add_option_group(group)
         
-    if any( x in want for x in ('vred', 'as_degrees', 'accuracy', 'slowness', 'interface') ):
+    if any( x in want for x in ('vred', 'as_degrees', 'accuracy', 'slowness', 'interface', 'aspect', 'shade_model') ):
         group = OptionGroup(parser, 'General')
         if 'vred' in want:
             group.add_option('--vred', dest='vred', type='float', metavar='FLOAT',
@@ -162,6 +162,14 @@ character, respectively.  ''')
         if 'interface' in want:
             group.add_option('--interface', dest='interface', metavar='(NAME or DEPTH)', 
                     help='Name or depth [km] of interface to select')
+
+        if 'aspect' in want:
+            group.add_option('--aspect', dest='aspect', type='float', metavar='FLOAT',
+                    help='Aspect ratio for plot')
+
+        if 'shade_model' in want:
+            group.add_option('--no-shade-model', dest='shade_model', action='store_false', default=True,
+                    help='Suppress shading of earth model layers')
 
         parser.add_option_group(group)
 
@@ -193,6 +201,12 @@ character, respectively.  ''')
 
     if 'output_format' in want:
         d['output_format'] = options.output_format
+
+    if 'aspect' in want:
+        d['aspect'] = options.aspect
+
+    if 'shade_model' in want:
+        d['shade_model'] = options.shade_model
 
     if 'phases' in want:
         phases = []
@@ -521,7 +535,7 @@ To get further help and a list of available options for any subcommand run:
         if command in ('plot-xt', 'plot'):
             c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'vred'), usage=subusage, descr=descr) 
         else:
-            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees'), usage=subusage, descr=descr) 
+            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'aspect', 'shade_model'), usage=subusage, descr=descr) 
 
         mod = c.model
         paths = mod.gather_paths(**c.getn('phases', 'zstart', 'zstop'))
@@ -539,7 +553,7 @@ To get further help and a list of available options for any subcommand run:
             if c.as_degrees:
                 plot.my_rays_plot_gcs(mod, paths, arrivals, c.zstart, c.zstop, c.distances)
             else:
-                plot.my_rays_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances)
+                plot.my_rays_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, aspect=c.aspect, shade_model=c.shade_model)
 
         elif command == 'plot':
             plot.my_combi_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)

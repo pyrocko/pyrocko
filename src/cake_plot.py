@@ -223,10 +223,17 @@ def labels_model(axes=None):
     axes.set_ylabel('Depth [km]')
     yscaled(0.001, axes)
 
-def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definition', legend=True,
-                                                                            avoid_same_colors=True):
+def plot_rays(paths, rays, zstart, zstop, 
+              axes=None,
+              coloring='by_phase_definition',
+              legend=True,
+              avoid_same_colors=True,
+              aspect=None):
 
     axes = getaxes(axes)
+    if aspect is not None:
+        axes.set_aspect(aspect/(d2r*cake.earthradius))
+
     path_to_color = {}
     available_colors = set()
 
@@ -293,7 +300,7 @@ def plot_rays(paths, rays, zstart, zstop, axes=None, coloring='by_phase_definiti
         axes.legend(loc=4, prop={'size': 11})
 
 
-def sketch_model(mod, axes=None):
+def sketch_model(mod, axes=None, shade=True):
     from matplotlib import transforms
     axes = getaxes(axes)
     trans = transforms.BlendedGenericTransform(axes.transAxes, axes.transData)
@@ -311,7 +318,8 @@ def sketch_model(mod, axes=None):
         else:
             tab = shades2
         color = tab[ilay%len(tab)]
-        axes.axhspan( lay.ztop, lay.zbot, fc=color, ec=dark(color), label='abc')
+        if shade:
+            axes.axhspan( lay.ztop, lay.zbot, fc=color, ec=dark(color), label='abc')
         if lay.name is not None:
             axes.text(0.95, (lay.ztop + lay.zbot)*0.5, lay.name, transform=trans, va='center', ha='right', color=dark(color),
                     bbox=dict(ec=dark(color), fc=light(color, 0.3), pad=8, lw=1))
@@ -472,7 +480,7 @@ def my_rays_plot_gcs(mod, paths, rays, zstart, zstop, distances=None):
     if plt:
         plt.show() 
 
-def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, axes=None):
+def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, axes=None, aspect=None, shade_model=True):
 
     if axes is None:
         from matplotlib import pyplot as plt
@@ -485,10 +493,10 @@ def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fal
         paths = list(set([ x.path for x in rays ]))
 
     labelspace(axes)
-    plot_rays(paths, rays, zstart, zstop, axes=axes)
+    plot_rays(paths, rays, zstart, zstop, axes=axes, aspect=aspect)
     xmin, xmax = axes.get_xlim()
     ymin, ymax = axes.get_ylim()
-    sketch_model(mod, axes=axes)
+    sketch_model(mod, axes=axes, shade=shade_model)
 
     plot_source(zstart, axes=axes)
     if distances is not None:
