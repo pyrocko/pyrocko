@@ -161,7 +161,8 @@ subpacknames = [
     'pyrocko.snufflings',
     'pyrocko.gf',
     'pyrocko.fomosto',
-    'pyrocko.fdsn'
+    'pyrocko.fdsn',
+    'pyrocko.topo',
 ]
 
 
@@ -259,5 +260,6 @@ setup(
         'apps/gmtpy-epstopdf'],
 
     package_data={
-        packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd']},
+        packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
+                   'data/colortables/*.cpt']},
 )
