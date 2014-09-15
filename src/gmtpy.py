@@ -3083,7 +3083,7 @@ class GMT:
                     break
 
         elif filename.endswith('.pdf'):
-            subprocess.call(['gmtpy-epstopdf', '--res=300', '--debug',
+            subprocess.call(['gmtpy-epstopdf', '--res=300',
                              '--outfile=' + filename, tempfn])
         else:
             shutil.move(tempfn, filename)

@@ -32,6 +32,8 @@ class PyrockoConfig(Object):
     gf_store_superdirs = List.T(PathWithPlaceholders.T())
     topo_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'topo'))
+    geonames_dir = PathWithPlaceholders.T(
+        default=os.path.join(pyrocko_dir_tmpl, 'geonames'))
 
 
 def expand(x):
