@@ -255,7 +255,8 @@ setup(
         'apps/hamster',
         'apps/cake',
         'apps/fomosto',
-        'apps/jackseis'],
+        'apps/jackseis',
+        'apps/gmtpy-epstopdf'],
 
     package_data={
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd']},
