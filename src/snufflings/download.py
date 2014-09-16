@@ -9,18 +9,19 @@ pjoin = os.path.join
 logger = logging.getLogger('pyrocko.snufflings.iris_data')
 logger.setLevel(logging.INFO)
 
-class IrisData(Snuffling):
+class Download(Snuffling):
 
     def setup(self):    
         '''Customization of the snuffling.'''
         
-        self.set_name('Iris Data')
+        self.set_name('Download Waveforms')
         self.add_parameter(Param('Min Radius [deg]', 'minradius', 0., 0., 20.))
         self.add_parameter(Param('Max Radius [deg]', 'maxradius', 5., 0., 20.))
         self.add_parameter(Param('Origin latitude [deg]', 'lat', 0, -90., 90.))
         self.add_parameter(Param('Origin longitude [deg]', 'lon', 0., -180., 180.))
         self.add_parameter(Switch('Use coordinates of selected event as origin', 'useevent', False))
-        self.add_parameter(Choice('Channels', 'channel_pattern', 'BH?', ['BH?', 'BHZ', 'HH?', '?H?', '*']))
+        self.add_parameter(Choice('Datecenter', 'datacenter', 'GEOFON', ['GEOFON', 'IRIS']))
+        self.add_parameter(Choice('Channels', 'channel_pattern', 'BH?', ['BH?', 'BHZ', 'HH?', '?H?', '*', '??Z']))
         self.add_trigger('Save', self.save)
         self.set_live_update(False)
         self.current_stuff = None
@@ -48,15 +49,19 @@ class IrisData(Snuffling):
         else:
             lat, lon = self.lat, self.lon
 
+        site = self.datacenter.lower()
         try:
-            sx = fdsn_ws.station(site='iris', latitude=lat, longitude=lon, minradius=self.minradius, 
+            kwargs = {}
+            if site == 'iris':
+                kwargs['matchtimeseries'] = True
+
+            sx = fdsn_ws.station(site=site, latitude=lat, longitude=lon, minradius=self.minradius, 
                             maxradius=self.maxradius, startbefore=tmin, endafter=tmax,
                             channel=self.channel_pattern, format='text', level='channel',
-                            matchtimeseries=True, includerestricted=False)
+                            includerestricted=False, **kwargs)
 
         except fdsn_ws.EmptyResult:
             self.fail('No stations matching given criteria.')
-
 
         stations = sx.get_pyrocko_stations()
         networks = set( [ s.network for s in stations ] )
@@ -72,7 +77,7 @@ class IrisData(Snuffling):
                     logger.info('Adding data selection: %s.%s.%s.%s %s - %s' % (tuple(x[:4]) + (t2s(x[4]), t2s(x[5]))))
 
                 try:
-                    d = fdsn_ws.dataselect(site='iris', selection=selection)
+                    d = fdsn_ws.dataselect(site=site, selection=selection)
                     fn = pjoin(dir,'data-%s.mseed' % net) 
                     f = open(fn, 'w')
                     f.write(d.read())
@@ -123,5 +128,5 @@ class IrisData(Snuffling):
         model.dump_stations(stations, stations_fn)
 
 def __snufflings__():    
-   return [ IrisData() ]
+   return [ Download() ]
 
