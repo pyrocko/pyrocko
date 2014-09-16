@@ -563,7 +563,7 @@ class Snuffling:
        
         try:
             viewer = self.get_viewer()
-            markers = [m for m in viewer.selected_markers() if not isintance(m, EventMarker)]
+            markers = [m for m in viewer.selected_markers() if not isinstance(m, EventMarker)]
             if marker_selector is not None:
                 markers = [  marker for marker in markers if marker_selector(marker) ] 
             pile = self.get_pile()
