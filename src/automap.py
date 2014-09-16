@@ -94,11 +94,11 @@ class Map(Object):
     color_wet = Tuple.T(3, Int.T(), default=(216, 242, 254))
     color_dry = Tuple.T(3, Int.T(), default=(172, 208, 165))
     topo_resolution_min = Float.T(
-        default=50.,
-        help='minimum number of topo points / radius')
+        default=40.,
+        help='minimum resolution of topography [dpi]')
     topo_resolution_max = Float.T(
-        default=500.,
-        help='maximum number of topo points / radius')
+        default=200.,
+        help='maximum resolution of topography [dpi]')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -224,14 +224,18 @@ class Map(Object):
         self._prep_topo_have = {}
         self._dems = {}
 
-        dmin = self.radius * m2d / self.topo_resolution_max
-        dmax = self.radius * m2d / self.topo_resolution_min
+        cm2inch = gmtpy.cm/gmtpy.inch
+
+        dmin = 2.0 * self.radius * m2d / (self.topo_resolution_max *
+                                          (self.height * cm2inch))
+        dmax = 2.0 * self.radius * m2d / (self.topo_resolution_min *
+                                          (self.height * cm2inch))
 
         for k in ['ocean', 'land']:
             self._dems[k] = topo.select_dem_names(k, dmin, dmax, self._wesn)
             if self._dems[k]:
                 logger.info('using topography dataset %s for %s'
-                        % (self._dems[k], k))
+                            % (self._dems[k], k))
 
     def _setup_gmt(self):
         w, h = self.width, self.height

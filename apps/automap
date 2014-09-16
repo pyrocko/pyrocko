@@ -1,0 +1,116 @@
+#!/usr/bin/env python
+
+import sys
+import logging
+from pyrocko import automap, util
+
+from optparse import OptionParser
+
+km = 1000.
+logger = logging.getLogger('main')
+
+program_name = 'automap'
+
+usage = program_name + ' <inputs> ... [options]'
+usage = 'usage: %s [options] <lat> <lon> <radius_km> <output.(pdf|png)>' % program_name
+description = '''Create a simple map with topography.'''
+
+if __name__ == '__main__':
+    parser = OptionParser(usage=usage,
+            description=description)
+
+    parser.add_option('--width',
+            dest='width',
+            type='float',
+            default=20.0,
+            metavar='FLOAT',
+            help='set width of output image [cm] (%default)')
+
+    parser.add_option('--height',
+            dest='height',
+            type='float',
+            default=15.0,
+            metavar='FLOAT',
+            help='set height of output image [cm] (%default)')
+
+    parser.add_option('--topo-resolution-min',
+            dest='topo_resolution_min',
+            type='float',
+            default=40.0,
+            metavar='FLOAT',
+            help='minimum resolution of topography [dpi] (%default)')
+
+    parser.add_option('--topo-resolution-max',
+            dest='topo_resolution_max',
+            type='float',
+            default=200.0,
+            metavar='FLOAT',
+            help='maximum resolution of topography [dpi] (%default)')
+
+    parser.add_option('--no-grid',
+            dest='show_grid',
+            default=True,
+            action='store_false',
+            help='don\'t show grid lines')
+
+    parser.add_option('--no-topo',
+            dest='show_topo',
+            default=True,
+            action='store_false',
+            help='don\'t show topography')
+
+    parser.add_option('--no-illuminate',
+            dest='illuminate',
+            default=True,
+            action='store_false',
+            help='deactivate artificial illumination of topography')
+
+    parser.add_option('--illuminate-factor-land',
+            dest='illuminate_factor_land',
+            default='0.5',
+            type='float',
+            metavar='FLOAT',
+            help='set factor for artificial illumination of land (%default)')
+
+    parser.add_option('--illuminate-factor-ocean',
+            dest='illuminate_factor_ocean',
+            default='0.25',
+            type='float',
+            metavar='FLOAT',
+            help='set factor for artificial illumination of ocean (%default)')
+
+    parser.add_option('--debug',
+            dest='debug',
+            action='store_true',
+            default=False,
+            help='print debugging information to stderr')
+
+    (options, args) = parser.parse_args(sys.argv[1:])
+
+    if len(args) != 4:
+        parser.print_help()
+        sys.exit(1)
+
+    if options.debug:
+        util.setup_logging(program_name, 'debug')
+    else:
+        util.setup_logging(program_name, 'info')
+
+    map = automap.Map(
+        width=options.width,
+        height=options.height,
+        lat=float(sys.argv[1]),
+        lon=float(sys.argv[2]),
+        radius=float(sys.argv[3])*km,
+        topo_resolution_max=options.topo_resolution_max,
+        topo_resolution_min=options.topo_resolution_min,
+        show_topo=options.show_topo,
+        show_grid=options.show_grid,
+        illuminate=options.illuminate,
+        illuminate_factor_land=options.illuminate_factor_land,
+        illuminate_factor_ocean=options.illuminate_factor_ocean)
+
+    print map
+    map.draw_cities()
+    map.save(sys.argv[4])
+

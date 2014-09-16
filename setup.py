@@ -257,7 +257,8 @@ setup(
         'apps/cake',
         'apps/fomosto',
         'apps/jackseis',
-        'apps/gmtpy-epstopdf'],
+        'apps/gmtpy-epstopdf',
+        'apps/automap'],
 
     package_data={
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',

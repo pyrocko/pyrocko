@@ -194,6 +194,7 @@ class DecimatedTiledGlobalDataset(TiledGlobalDataset):
         fn = '%02i.%02i.bin' % (ity, itx)
         fpath = op.join(self.data_dir, fn)
         if not op.exists(fpath):
+            logger.info('making decimated tile: %s (%s)' % (fn, self.name))
             self.make_tile(itx, ity, fpath)
 
         with open(fpath, 'r') as f:
