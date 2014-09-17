@@ -12,13 +12,21 @@ from PyQt4.QtGui import *
 
 from pyrocko import pile
 
-from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, WebKitFrame, EventMarker
+from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
+    WebKitFrame, EventMarker, PhaseMarker
 
 
 logger = logging.getLogger('pyrocko.snuffling')
 
 def _str_traceback():
     return '%s' % (traceback.format_exc(sys.exc_info()[2]))
+
+class MyFrame(QFrame):
+    def showEvent(self, ev):
+        self.emit(SIGNAL('widgetVisibilityChanged(bool)'), True)
+
+    def hideEvent(self, ev):
+        self.emit(SIGNAL('widgetVisibilityChanged(bool)'), False)
 
 class Param:
     '''Definition of an adjustable parameter for the snuffling. The snuffling
@@ -273,6 +281,37 @@ class Snuffling:
         self._live_update = False
         self._post_process_hook_enabled = False
         self.reset_gui()
+
+    def set_have_pile_changed_hook(self, bool):
+        self._pile_ = False
+
+    def enable_pile_changed_method(self):
+        '''Get informed when pile changed.
+
+        When activated, the :py:meth:`pile_changed` method is called on every
+        update in the viewer's pile.
+        '''
+        viewer = self.get_viewer()
+        viewer.connect(
+            viewer,
+            SIGNAL('pile_has_changed_signal()'),
+            self.pile_changed)
+
+    def disable_pile_changed_method(self):
+        '''Stop getting informad about changes in pile.'''
+
+        viewer = self.get_viewer()
+        viewer.disconnect(
+            viewer,
+            SIGNAL('pile_has_changed_signal()'),
+            self.pile_changed)
+
+    def pile_changed(self):
+        '''Called when pile has changed.
+
+        Must be activated with a call to :py:meth:`enable_pile_changed_method`.
+        '''
+        pass
 
     def reset_gui(self, reloaded=False):
         if self._panel or self._menuitem:
@@ -546,6 +585,45 @@ class Snuffling:
         stations = v.stations.values()
         return stations
 
+    def get_markers(self):
+        '''Get all markers from the viewer.'''
+
+        return self.get_viewer().get_markers()
+
+    def get_event_markers(self):
+        '''Get all event markers from the viewer.'''
+
+        return [m for m in self.get_viewer().get_markers() if isinstance(m, EventMarker)]
+
+    def get_selected_markers(self):
+        '''Get all selected markers from the viewer.'''
+
+        return self.get_viewer().get_selected_markers()
+
+    def get_active_event_and_phase_markers(self):
+        '''Get the marker of the active event and any associated phase markers'''
+
+        viewer = self.get_viewer()
+        markers = viewer.get_markers()
+        event_marker = viewer.get_active_event_marker()
+        if event_marker is None:
+            self.fail(
+                'No active event set. '
+                'Select an event and press "e" to make it the "active event"')
+
+        event = event_marker.get_event()
+
+        selection = []
+        for m in markers:
+            if isinstance(m, PhaseMarker):
+                if m.get_event() is event:
+                    selection.append(m)
+
+        return (
+            event_marker,
+            [m for m in markers if isinstance(m, PhaseMarker) and
+             m.get_event() == event])
+
     def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
         '''Iterate over selected traces.
         
@@ -626,6 +704,9 @@ class Snuffling:
             
         return tmin, tmax
 
+    def panel_visibility_changed(self, bool):
+        pass
+
     def make_pile(self):
         '''Create a pile.
         
@@ -648,7 +729,9 @@ class Snuffling:
         if params:
             sarea = MyScrollArea(parent.get_panel_parent_widget())
             sarea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
-            frame = QFrame(sarea)
+            frame = MyFrame(sarea)
+            self.get_viewer().connect(frame, SIGNAL('widgetVisibilityChanged(bool)'),
+                                      self.panel_visibility_changed)
             frame.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
             sarea.setWidget(frame)
             sarea.setWidgetResizable(True)
