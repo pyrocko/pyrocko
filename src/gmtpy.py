@@ -20,14 +20,6 @@ import copy
 from select import select
 
 
-def import_pycdf():
-    try:
-        import pycdf as cdf
-    except ImportError:
-        raise ImportError("Module pycdf is required to handle GMT grd files.")
-    return cdf
-
-
 def escape_shell_arg(s):
     '''This function should be used for debugging output only - it could be
     insecure.'''
@@ -1074,11 +1066,11 @@ def gmtdefaults_as_text(version='newest'):
 def savegrd(x, y, z, filename, title=None, naming='xy'):
     '''Write COARDS compliant netcdf (grd) file.'''
 
-    cdf = import_pycdf()
+    from scipy.io import netcdf
 
     assert y.size, x.size == z.shape
     ny, nx = z.shape
-    nc = cdf.CDF(filename, cdf.NC.WRITE | cdf.NC.CREATE | cdf.NC.TRUNC)
+    nc = netcdf.netcdf_file(filename, 'w')
     assert naming in ('xy', 'lonlat')
 
     if naming == 'xy':
@@ -1086,16 +1078,16 @@ def savegrd(x, y, z, filename, title=None, naming='xy'):
     else:
         kx, ky = 'lon', 'lat'
 
-    nc.definemode()
     nc.node_offset = 0
     if title is not None:
         nc.title = title
 
     nc.Conventions = 'COARDS/CF-1.0'
-    nc.def_dim(kx, nx)
-    nc.def_dim(ky, ny)
-    xvar = nc.def_var(kx, cdf.NC.FLOAT, dimids=[kx])
-    yvar = nc.def_var(ky, cdf.NC.FLOAT, dimids=[ky])
+    nc.createDimension(kx, nx)
+    nc.createDimension(ky, ny)
+
+    xvar = nc.createVariable(kx, 'f', (kx,))
+    yvar = nc.createVariable(ky, 'f', (ky,))
     if naming == 'xy':
         xvar.long_name = kx
         yvar.long_name = ky
@@ -1105,29 +1097,33 @@ def savegrd(x, y, z, filename, title=None, naming='xy'):
         yvar.long_name = 'latitude'
         yvar.units = 'degrees_north'
 
-    xactual_range = xvar.attr('actual_range')
-    xactual_range.put(cdf.NC.FLOAT, (x.min(), x.max()))
+    zvar = nc.createVariable('z', 'f', (ky, kx))
 
-    yactual_range = yvar.attr('actual_range')
-    yactual_range.put(cdf.NC.FLOAT, (y.min(), y.max()))
-
-    zvar = nc.def_var('z', cdf.NC.FLOAT, dimids=[ky, kx])
-
-    nc.datamode()
-    xvar.put(x.astype(num.float32))
-    yvar.put(y.astype(num.float32))
-    zvar.put(z.astype(num.float32))
+    xvar[:] = x.astype(num.float32)
+    yvar[:] = y.astype(num.float32)
+    zvar[:] = z.astype(num.float32)
 
     nc.close()
+
+
+def to_array(var):
+    arr = var[:].copy()
+    if hasattr(var, 'scale_factor'):
+        arr *= var.scale_factor
+
+    if hasattr(var, 'add_offset'):
+        arr += var.add_offset
+
+    return arr
 
 
 def loadgrd(filename):
     '''Read COARDS compliant netcdf (grd) file.'''
 
-    cdf = import_pycdf()
+    from scipy.io import netcdf
 
-    nc = cdf.CDF(filename, cdf.NC.NOWRITE)
-    vkeys = nc.variables().keys()
+    nc = netcdf.netcdf_file(filename, 'r')
+    vkeys = nc.variables.keys()
     kx = 'x'
     ky = 'y'
     if 'lon' in vkeys:
@@ -1135,10 +1131,10 @@ def loadgrd(filename):
     if 'lat' in vkeys:
         ky = 'lat'
 
-    x = nc.var(kx).get()
-    y = nc.var(ky).get()
+    x = to_array(nc.variables[kx])
+    y = to_array(nc.variables[ky])
+    z = to_array(nc.variables['z'])
 
-    z = nc.var('z').get()
     nc.close()
     return x, y, z
 
