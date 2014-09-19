@@ -1,7 +1,7 @@
 '''Snuffling infrastructure
 
-This module provides the base class :py:class:`Snuffling` for user-defined snufflings and 
-some utilities for their handling.
+This module provides the base class :py:class:`Snuffling` for
+user-defined snufflings and some utilities for their handling.
 '''
 
 
@@ -29,19 +29,21 @@ class MyFrame(QFrame):
         self.emit(SIGNAL('widgetVisibilityChanged(bool)'), False)
 
 class Param:
-    '''Definition of an adjustable parameter for the snuffling. The snuffling
-    may display controls for user input for such parameters.
+    '''
+    Definition of an adjustable floating point parameter for the
+    snuffling. The snuffling may display controls for user input for
+    such parameters.
     
-    :param name:            labels the parameter within snuffler
+    :param name:            labels the parameter on the snuffling's control panel
     :param ident:           identifier of the parameter
     :param default:         default value 
-    :param minimum:         minimum value for that parameter
-    :param maximum:         maximum value for that parameter
-    :param low_is_none:     if True: parameter is set to None at lowest value 
+    :param minimum:         minimum value for the parameter
+    :param maximum:         maximum value for the parameter
+    :param low_is_none:     if ``True``: parameter is set to None at lowest value 
                             of parameter range (optional) 
-    :param high_is_none:    if True: parameter is set to None at highest value 
+    :param high_is_none:    if ``True``: parameter is set to None at highest value 
                             of parameter range (optional)
-    :param low_is_zero:     if True: parameter is set to value 0 at highest value 
+    :param low_is_zero:     if ``True``: parameter is set to value 0 at lowest value 
                             of parameter range (optional)'''
     
     def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
@@ -56,10 +58,11 @@ class Param:
         self._control = None
 
 class Switch:
-    '''Definition of a switch for the snuffling. The snuffling may display a
-    checkbox for such a switch.
+    '''
+    Definition of a boolean switch for the snuffling. The snuffling
+    may display a checkbox for such a switch.
     
-    :param name:    labels the switch within snuffler
+    :param name:    labels the switch on the snuffling's control panel
     :param ident:   identifier of the parameter
     :param default: default value'''
 
@@ -69,10 +72,11 @@ class Switch:
         self.default = default
 
 class Choice:
-    '''Definition of a choice for the snuffling. The snuffling may display a
-    menu for such a choice.
+    '''
+    Definition of a string choice for the snuffling. The snuffling
+    may display a menu for such a choice.
     
-    :param name:    name labels the menu within snuffler
+    :param name:    labels the menu on the snuffling's control panel
     :param ident:   identifier of the parameter
     :param default: default value 
     :param choices: tuple of other options
@@ -303,7 +307,7 @@ class Snuffling:
             self.pile_changed)
 
     def disable_pile_changed_notifications(self):
-        '''Stop getting informad about changes in pile.'''
+        '''Stop getting informed about changes in viewer's pile.'''
 
         viewer = self.get_viewer()
         viewer.disconnect(
@@ -312,7 +316,7 @@ class Snuffling:
             self.pile_changed)
 
     def pile_changed(self):
-        '''Called when pile has changed.
+        '''Called when the connected viewer's pile has changed.
 
         Must be activated with a call to :py:meth:`enable_pile_changed_notifications`.
         '''
@@ -356,7 +360,7 @@ class Snuffling:
         self.show_message('warning', message)
 
     def fail(self, message):
-        '''Show an error message box and raise :py:class:`SnufflingCallFailed`
+        '''Show an error message box and raise :py:exc:`SnufflingCallFailed`
         exception.
 
         :param message: specifying the error'''
@@ -369,7 +373,7 @@ class Snuffling:
         :py:class:`matplotlib.axes.Axes` instance.
 
         :param name: labels the figure frame's tab
-        :param get: 'axes'|'figure'|frame' (optional)'''
+        :param get: 'axes'|'figure'|'frame' (optional)'''
         if name is None:
             self._iplot += 1
             name = 'Plot %i (%s)' % (self._iplot, self.get_name())
@@ -392,7 +396,7 @@ class Snuffling:
         return self.pylab(name=name, get='figure')
 
     def axes(self, name=None):
-        '''Returns a matplotlib.axes.Axes instance.
+        '''Returns a :py:class:`matplotlib.axes.Axes` instance.
 
         :param name: labels the tab of axes'''
         return self.pylab(name=name, get='axes')
@@ -419,7 +423,11 @@ class Snuffling:
         return f
 
     def tempdir(self):
-        '''Create a temporary directory and return the absolute path.'''
+        '''Create a temporary directory and return its absolute path.
+
+        The directory and all its contents are removed when the Snuffling
+        instance is deleted.'''
+
         if self._tempdir is None:
             self._tempdir = tempfile.mkdtemp('', 'snuffling-tmp-')
 
@@ -442,7 +450,7 @@ class Snuffling:
     def add_parameter(self, param):
         '''Add an adjustable parameter to the snuffling.
         
-        :param param: object of type :py:class:`Param`
+        :param param: object of type :py:class:`Param`, :py:class:`Switch`, or :py:class:`Choice`.
         
         For each parameter added, controls are added to the snuffling's panel,
         so that the parameter can be adjusted from the gui.
@@ -471,7 +479,7 @@ class Snuffling:
     def get_parameters(self):
         '''Get the snuffling's adjustable parameter definitions.
         
-        Returns a list of objects of type Param.
+        Returns a list of objects of type :py:class:`Param`.
         '''
         
         return self._parameters
@@ -678,11 +686,12 @@ class Snuffling:
     def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
         '''Iterate over selected traces.
         
-        This is a shortcut to get all trace data contained in the selected 
-        markers in the running snuffler. For each selected marker, 
-        :py:meth:`pyrocko.pile.Pile.chopper` is called with the arguments *tmin*, *tmax*, and 
-        *trace_selector* set to values according to the marker. Additional
-        arguments to the chopper are handed over from *\*args* and *\*\*kwargs*.
+        Shortcut to get all trace data contained in the selected markers in the
+        running snuffler. For each selected marker,
+        :py:meth:`pyrocko.pile.Pile.chopper` is called with the arguments
+        *tmin*, *tmax*, and *trace_selector* set to values according to the
+        marker. Additional arguments to the chopper are handed over from
+        *\*args* and *\*\*kwargs*.
         
         :param fallback: if ``True``, if no selection has been marked, use the content
                currently visible in the viewer.
@@ -755,6 +764,10 @@ class Snuffling:
         return tmin, tmax
 
     def panel_visibility_changed(self, bool):
+        '''Called when the snuffling's panel becomes visible or is hidden.
+        
+        Can be overloaded in subclass, e.g. to perform additional setup actions when the panel is activated the first time.
+        '''
         pass
 
     def make_pile(self):
@@ -1118,6 +1131,10 @@ class Snuffling:
         return ticket
 
     def add_trace(self, tr):
+        '''Add a trace to the viewer.
+        
+        See :py:meth:`add_traces`.
+        '''
         self.add_traces([tr])
 
     def add_markers(self, markers):
@@ -1131,6 +1148,11 @@ class Snuffling:
         self._markers.extend(markers)
 
     def add_marker(self, marker):
+        '''Add a marker to the display.
+
+        See :py:meth:`add_markers`.
+        '''
+
         self.add_markers([marker])
 
     def cleanup(self):
@@ -1174,6 +1196,13 @@ class Snuffling:
         return traces
     
     def pre_destroy(self):
+        '''Called when the snuffling instance is about to be deleted.
+        
+        Can be overloaded to do user-defined cleanup actions.  The
+        default implementation calls :py:meth:`cleanup` and deletes 
+        the snuffling`s tempory directory, if needed.
+        '''
+
         self.cleanup()
         if self._tempdir is not None:
             import shutil
@@ -1215,14 +1244,15 @@ class InvalidSnufflingFilename(Exception):
 class SnufflingModule:
     '''Utility class to load/reload snufflings from a file.
     
-    The snufflings are created by a user module which has a special function
-    :py:func:`__snufflings__` which return the snuffling instances to be exported. The
-    snuffling module is attached to a handler class, which makes use of the
-    snufflings (e.g. :py:class:`pyrocko.pile_viewer.PileOverwiew` from ``pile_viewer.py``). The handler class must
-    implement the methods ``add_snuffling()`` and ``remove_snuffling()`` which are used
-    as callbacks. The callbacks are utilized from the methods :py:meth:`load_if_needed`
-    and :py:meth:`remove_snufflings` which may be called from the handler class, when
-    needed.
+    The snufflings are created by user modules which have the special function
+    :py:func:`__snufflings__` which return the snuffling instances to be
+    exported. The snuffling module is attached to a handler class, which makes
+    use of the snufflings (e.g. :py:class:`pyrocko.pile_viewer.PileOverwiew`
+    from ``pile_viewer.py``). The handler class must implement the methods
+    ``add_snuffling()`` and ``remove_snuffling()`` which are used as callbacks.
+    The callbacks are utilized from the methods :py:meth:`load_if_needed` and
+    :py:meth:`remove_snufflings` which may be called from the handler class,
+    when needed.
     '''
     
     mtimes = {}
