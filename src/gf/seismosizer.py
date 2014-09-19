@@ -805,6 +805,60 @@ class DCSource(SourceWithMagnitude):
         return super(DCSource, cls).from_pyrocko_event(ev, **d)
 
 
+class CLVDSource(Source):
+    '''
+    A pure CLVD point source.
+    '''
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    amplitude = Float.T(
+        default=1.0,
+        help='value of the largest eigenvalue of moment tensor [Nm]')
+
+    azimuth = Float.T(
+        default=0.0,
+        help='azimuth direction of largest dipole, clockwise from north [deg]')
+
+    dip = Float.T(
+        default=90.,
+        help='dip direction of largest dipole, downward from horizontal [deg]')
+
+    def base_key(self):
+        return Source.base_key(self) + (self.azimuth, self.dip)
+
+    def get_factor(self):
+        return self.amplitude
+
+    @property
+    def m6(self):
+        m = mt.symmat6(-0.5, -0.5, 1., 0., 0., 0.)
+        rotmat1 = mt.euler_to_matrix(
+            d2r*(self.dip-90.),
+            d2r*(self.azimuth-90.),
+            0.)
+        m = rotmat1.T * m * rotmat1
+        return mt.to6(m)
+
+    @property
+    def m6_astuple(self):
+        return tuple(self.m6.tolist())
+
+    def discretize_basesource(self, store):
+        return meta.DiscretizedMTSource(m6s=self.m6[num.newaxis, :],
+                                        **self._dparams_base())
+
+    def pyrocko_moment_tensor(self):
+        return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
+
+    def pyrocko_event(self, **kwargs):
+        return Source.pyrocko_event(
+            self,
+            moment_tensor=self.pyrocko_moment_tensor(),
+            **kwargs)
+
+
+
 class MTSource(Source):
     '''
     A moment tensor point source.
@@ -1993,6 +2047,7 @@ source_classes = [
     ExplosionSource,
     RectangularExplosionSource,
     DCSource,
+    CLVDSource,
     MTSource,
     RectangularSource,
     DoubleDCSource,
