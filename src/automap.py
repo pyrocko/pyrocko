@@ -235,7 +235,7 @@ class Map(Object):
             self._dems[k] = topo.select_dem_names(k, dmin, dmax, self._wesn)
             if self._dems[k]:
                 logger.info('using topography dataset %s for %s'
-                            % (self._dems[k], k))
+                            % (','.join(self._dems[k]), k))
 
     def _setup_gmt(self):
         w, h = self.width, self.height

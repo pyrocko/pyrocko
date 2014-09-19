@@ -11,8 +11,7 @@ logger = logging.getLogger('main')
 
 program_name = 'automap'
 
-usage = program_name + ' <inputs> ... [options]'
-usage = 'usage: %s [options] <lat> <lon> <radius_km> <output.(pdf|png)>' % program_name
+usage = 'usage: %s [options] [--] <lat> <lon> <radius_km> <output.(pdf|png)>' % program_name
 description = '''Create a simple map with topography.'''
 
 if __name__ == '__main__':
@@ -91,6 +90,14 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(1)
 
+    try:
+        lat = float(args[0])
+        lon = float(args[1])
+        radius = float(args[2])*km
+    except:
+        parser.print_help()
+        sys.exit(1)
+
     if options.debug:
         util.setup_logging(program_name, 'debug')
     else:
@@ -99,9 +106,9 @@ if __name__ == '__main__':
     map = automap.Map(
         width=options.width,
         height=options.height,
-        lat=float(sys.argv[1]),
-        lon=float(sys.argv[2]),
-        radius=float(sys.argv[3])*km,
+        lat=lat,
+        lon=lon,
+        radius=radius,
         topo_resolution_max=options.topo_resolution_max,
         topo_resolution_min=options.topo_resolution_min,
         show_topo=options.show_topo,
@@ -110,7 +117,7 @@ if __name__ == '__main__':
         illuminate_factor_land=options.illuminate_factor_land,
         illuminate_factor_ocean=options.illuminate_factor_ocean)
 
-    print map
+    logger.debug('map configuration:\n%s' % str(map))
     map.draw_cities()
-    map.save(sys.argv[4])
+    map.save(args[3])
 
