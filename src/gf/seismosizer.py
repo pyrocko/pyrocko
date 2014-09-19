@@ -1721,6 +1721,8 @@ class LocalEngine(Engine):
     :param use_env: if ``True``, fill :py:attr:`store_superdirs` and
         :py:attr:`store_dirs` with paths set in environment variables
         GF_STORE_SUPERDIRS AND GF_STORE_DIRS
+    :param use_config: if ``True``, fill :py:attr:`store_superdirs` and
+        :py:attr:`store_dirs` with paths set in the user's config file.
     '''
 
     store_superdirs = List.T(
