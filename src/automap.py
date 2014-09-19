@@ -234,7 +234,7 @@ class Map(Object):
         for k in ['ocean', 'land']:
             self._dems[k] = topo.select_dem_names(k, dmin, dmax, self._wesn)
             if self._dems[k]:
-                logger.info('using topography dataset %s for %s'
+                logger.debug('using topography dataset %s for %s'
                             % (','.join(self._dems[k]), k))
 
     def _setup_gmt(self):
@@ -409,7 +409,7 @@ class Map(Object):
         gmt.psbasemap(
             B=(btmpl % scaler.get_params())+axes_layout,
             L=('x%gp/%gp/%g/%g/%gk' % (
-                widget.width()/2.,
+                6./7*widget.width(),
                 widget.height()/7.,
                 self.lon,
                 self.lat,
