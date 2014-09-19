@@ -285,7 +285,7 @@ class Snuffling:
     def set_have_pile_changed_hook(self, bool):
         self._pile_ = False
 
-    def enable_pile_changed_method(self):
+    def enable_pile_changed_notifications(self):
         '''Get informed when pile changed.
 
         When activated, the :py:meth:`pile_changed` method is called on every
@@ -297,7 +297,7 @@ class Snuffling:
             SIGNAL('pile_has_changed_signal()'),
             self.pile_changed)
 
-    def disable_pile_changed_method(self):
+    def disable_pile_changed_notifications(self):
         '''Stop getting informad about changes in pile.'''
 
         viewer = self.get_viewer()
@@ -309,7 +309,7 @@ class Snuffling:
     def pile_changed(self):
         '''Called when pile has changed.
 
-        Must be activated with a call to :py:meth:`enable_pile_changed_method`.
+        Must be activated with a call to :py:meth:`enable_pile_changed_notifications`.
         '''
         pass
 
