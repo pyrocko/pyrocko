@@ -37,9 +37,12 @@ class Param:
     :param default:         default value 
     :param minimum:         minimum value for that parameter
     :param maximum:         maximum value for that parameter
-    :param low_is_none:     (optional) 
-    :param high_is_none:    (optional)
-    :param low_is_zero:     (optional)'''
+    :param low_is_none:     if True: parameter is set to None at lowest value 
+                            of parameter range (optional) 
+    :param high_is_none:    if True: parameter is set to None at highest value 
+                            of parameter range (optional)
+    :param low_is_zero:     if True: parameter is set to value 0 at highest value 
+                            of parameter range (optional)'''
     
     def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
         self.name = name
@@ -142,6 +145,8 @@ class Snuffling:
         pass
 
     def module_dir(self):
+        '''Returns the path of the directory where snufflings are stored.
+        The default path is ``$HOME/.snufflings``.'''
         return self._path
     
     def init_gui(self, viewer, panel_parent, menu_parent, reloaded=False):
@@ -314,6 +319,7 @@ class Snuffling:
         pass
 
     def reset_gui(self, reloaded=False):
+        '''Delete and recreate the snuffling's panel.'''
         if self._panel or self._menuitem:
             sett = self.get_settings()
             self.delete_gui()
@@ -321,6 +327,12 @@ class Snuffling:
             self.set_settings(sett)
    
     def show_message(self, kind, message):
+        '''Display a message box.
+
+        :param kind: string defining kind of message
+        :param message: the message to be displayed
+        '''
+
         try:
             viewer = self.get_viewer()
             box = QMessageBox(self.get_viewer())
@@ -330,18 +342,34 @@ class Snuffling:
             pass
     
     def error(self, message):
+        '''Show an error message box.
+
+        :param message: specifying the error'''
         logger.error('%s: %s' % (self._name, message))
         self.show_message('error', message)
 
     def warn(self, message):
+        '''Display a warning message.
+ 
+        :param message: specifying the warning'''
         logger.warn('%s: %s' % (self._name, message))
         self.show_message('warning', message)
 
     def fail(self, message):
+        '''Show an error message box and raise :py:class:`SnufflingCallFailed`
+        exception.
+
+        :param message: specifying the error'''
         self.error(message)
         raise SnufflingCallFailed(message) 
   
     def pylab(self, name=None, get='axes'):
+        '''Create a :py:class:`FigureFrame` and return either the frame,
+        a :py:class:`matplotlib.figure.Figure` instance or a
+        :py:class:`matplotlib.axes.Axes` instance.
+
+        :param name: labels the figure frame's tab
+        :param get: 'axes'|'figure'|frame' (optional)'''
         if name is None:
             self._iplot += 1
             name = 'Plot %i (%s)' % (self._iplot, self.get_name())
@@ -356,15 +384,32 @@ class Snuffling:
             return fframe
 
     def figure(self, name=None):
+        '''Returns a :py:class:`matplotlib.figure.Figure` instance
+        which can be displayed within snuffler by calling :py:meth:`canvas.draw`.
+
+        :param name: labels the tab of the figure
+        '''
         return self.pylab(name=name, get='figure')
 
     def axes(self, name=None):
+        '''Returns a matplotlib.axes.Axes instance.
+
+        :param name: labels the tab of axes'''
         return self.pylab(name=name, get='axes')
 
     def figure_frame(self, name=None):
+        '''Create a :py:class:`pyrocko.gui_util.FigureFrame`.
+
+        :param name: labels the tab figure frame'''
         return self.pylab(name=name, get='figure_frame')
 
     def web_frame(self, url=None, name=None):
+        '''Creates a :py:class:`WebKitFrame` which can be used as a browser
+        within snuffler.
+
+        :param: url: url to open
+        :param: name: labels the tab
+        '''
         if name is None:
             self._iplot += 1
             name = 'Web browser %i (%s)' % (self._iplot, self.get_name())
@@ -374,6 +419,7 @@ class Snuffling:
         return f
 
     def tempdir(self):
+        '''Create a temporary directory and return the absolute path.'''
         if self._tempdir is None:
             self._tempdir = tempfile.mkdtemp('', 'snuffling-tmp-')
 
@@ -480,9 +526,14 @@ class Snuffling:
         setattr(self, ident, value)
 
     def get_parameter_value(self, ident):
+        '''Get the current value of a parameter.
+
+        :param ident: identifier of the parameter'''
         return getattr(self, ident)
 
     def get_settings(self):
+        '''Returns a dictionary with identifiers of all parameters as keys and 
+        their values as the dictionaries values.'''
         params = self.get_parameters()
         settings = {}
         for param in params:
@@ -636,7 +687,6 @@ class Snuffling:
         :param fallback: if ``True``, if no selection has been marked, use the content
                currently visible in the viewer.
         :param marker_selector: if not ``None`` a callback to filter markers.
-               
         '''
        
         try:
