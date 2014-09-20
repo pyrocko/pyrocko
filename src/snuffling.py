@@ -657,7 +657,11 @@ class Snuffling:
                 yield traces
                     
     def get_selected_time_range(self, fallback=False):
-        '''Get the time range spanning all selected markers.'''
+        '''Get the time range spanning all selected markers.
+
+        :param fallback: if ``True`` and no marker is selected return begin and end
+                         of visible time range
+        '''
         
         viewer = self.get_viewer()
         markers = viewer.selected_markers()
