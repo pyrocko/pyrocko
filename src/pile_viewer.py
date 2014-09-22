@@ -1982,7 +1982,7 @@ def MakePileViewerMainClass(base):
             for marker in self.markers:
                 if isinstance(marker, EventMarker):
                     event = marker.get_event()
-                    if event.name.lower() == name.lower():
+                    if event.name and event.name.lower() == name.lower():
                         tmin, tmax = self.make_good_looking_time_range(event.time, event.time)
                         self.interrupt_following()
                         self.set_time_range(tmin, tmax)
