@@ -79,6 +79,12 @@ etopo1_all = [
 dems = srtmgl3_all + etopo1_all
 
 
+def make_all_missing_decimated():
+    for dem in dems:
+        if isinstance(dem, dataset.DecimatedTiledGlobalDataset):
+            dem.make_all_missing()
+
+
 def cpt(name):
     if not re.match(r'[A-Za-z0-9_]+', name):
         raise Exception('invalid cpt name')
@@ -147,6 +153,5 @@ def select_dem_names(kind, dmin, dmax, region):
 
 if __name__ == '__main__':
     #comparison((-180., 180., -90, 90), dems=[etopo1_d8])
-    from pyrocko import util
     util.setup_logging('topo', 'info')
     comparison((30, 31, 30, 31), dems=[srtmgl3, srtmgl3_d2])

@@ -135,8 +135,8 @@ class TiledGlobalDataset(object):
         ymax2 = min(90., ymax)
         region2 = xmin, xmax, ymin2, ymax2
         t = self.get(region2)
-        if region2 != region:
-            t.yextend_with_repeat(ymin, ymax)
+        if t is not None and region2 != region:
+                t.yextend_with_repeat(ymin, ymax)
 
         return t
 
@@ -187,7 +187,7 @@ class DecimatedTiledGlobalDataset(TiledGlobalDataset):
             if t is not None:
                 t.data.tofile(f)
 
-    def get_tile(self, itx, ity):
+    def make_if_needed(self, itx, ity):
         assert 0 <= itx < self.ntilesx
         assert 0 <= ity < self.ntilesy
 
@@ -197,6 +197,14 @@ class DecimatedTiledGlobalDataset(TiledGlobalDataset):
             logger.info('making decimated tile: %s (%s)' % (fn, self.name))
             self.make_tile(itx, ity, fpath)
 
+    def get_tile(self, itx, ity):
+        assert 0 <= itx < self.ntilesx
+        assert 0 <= ity < self.ntilesy
+
+        self.make_if_needed(itx, ity)
+
+        fn = '%02i.%02i.bin' % (ity, itx)
+        fpath = op.join(self.data_dir, fn)
         with open(fpath, 'r') as f:
             data = num.fromfile(f, dtype=self.dtype)
 
@@ -210,3 +218,8 @@ class DecimatedTiledGlobalDataset(TiledGlobalDataset):
             self.xmin + itx*self.stx,
             self.ymin + ity*self.sty,
             self.dx, self.dx, data)
+
+    def make_all_missing(self):
+        for ity in xrange(self.ntilesy):
+            for itx in xrange(self.ntilesx):
+                self.make_if_needed(itx, ity)

@@ -92,6 +92,11 @@ if __name__ == '__main__':
             action='store_true',
             help='download full SRTMGL3 topography dataset')
 
+    parser.add_option('--make-decimated-topo',
+            dest='make_decimated',
+            action='store_true',
+            help='pre-make all decimated topography datasets')
+
     parser.add_option('--debug',
             dest='debug',
             action='store_true',
@@ -113,7 +118,13 @@ if __name__ == '__main__':
         import pyrocko.topo.srtmgl3
         pyrocko.topo.srtmgl3.download()
 
-    if options.download_etopo1 or options.download_srtmgl3 and len(args) == 0:
+    if options.make_decimated:
+        import pyrocko.topo
+        pyrocko.topo.make_all_missing_decimated()
+
+    if (options.download_etopo1 or options.download_srtmgl3 or
+            options.make_decimated) and len(args) == 0:
+
         sys.exit(0)
 
     if len(args) != 4:
