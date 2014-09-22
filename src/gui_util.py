@@ -505,12 +505,6 @@ class Marker(object):
 
     @staticmethod
     def save_markers(markers, fn, fdigits=3):
-        '''Save :py:class:`Marker` to file.
-
-        :param markers: list of :py:class:`Marker` Objects
-        :param fn: filename as string
-        '''
-
         f = open(fn,'w')
         f.write('# Snuffler Markers File Version 0.2\n')
         writer = TableWriter(f)
@@ -530,12 +524,6 @@ class Marker(object):
 
     @staticmethod
     def load_markers(fn):
-        '''Load markers from a file. 
-
-        :param fn:  filename as string
-        :returns:   list of :py:class:`Marker` Objects
-        '''
-
         markers = []
         f = open(fn, 'r')
         line  = f.readline()
@@ -871,7 +859,6 @@ class EventMarker(Marker):
         self._active = active
 
     def label(self):
-        """ :return: string representation of an event. """
         t = []
         mag = self._event.magnitude
         if mag is not None:
@@ -1088,6 +1075,30 @@ class PhaseMarker(Marker):
                              automatic=automatic)
         return marker
 
+
+def load_markers(filename):
+    '''
+    Load markers from file. 
+
+    :param filename:  filename as string
+    :returns: list of :py:class:`Marker` Objects
+    '''
+
+    return Marker.load_markers(filename)
+
+
+def save_markers(markers, filename, fdigits=3):
+    '''
+    Save markers to file.
+
+    :param markers: list of :py:class:`Marker` Objects
+    :param filename: filename as string
+    :param fdigits: number of decimal digits to use for sub-second time strings
+    '''
+
+    return Marker.save_markers(markers, filename, fdigits=fdigits)
+
+
 def tohex(c):
     return '%02x%02x%02x' % c
 
@@ -1194,3 +1205,6 @@ class WebKitFrame(QFrame):
         if url:
             self.web_widget.load(QUrl(url))
 
+del bin
+del hex
+del oct

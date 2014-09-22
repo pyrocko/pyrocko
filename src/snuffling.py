@@ -13,7 +13,7 @@ from PyQt4.QtGui import *
 from pyrocko import pile
 
 from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
-    WebKitFrame, EventMarker, PhaseMarker
+    WebKitFrame, Marker, EventMarker, PhaseMarker, load_markers, save_markers
 
 
 logger = logging.getLogger('pyrocko.snuffling')
@@ -1144,7 +1144,7 @@ class Snuffling:
     def add_markers(self, markers):
         '''Add some markers to the display.
         
-        Takes a list of objects of type :py:class:`pyrocko.pile_viewer.Marker` and adds
+        Takes a list of objects of type :py:class:`pyrocko.gui_util.Marker` and adds
         these to the viewer.
         '''
         
@@ -1393,3 +1393,6 @@ class ChoiceControl(QFrame):
                 self.cbox.setCurrentIndex(i)
         self.cbox.blockSignals(False)
 
+del bin
+del hex
+del oct
