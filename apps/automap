@@ -11,7 +11,11 @@ logger = logging.getLogger('main')
 
 program_name = 'automap'
 
-usage = 'usage: %s [options] [--] <lat> <lon> <radius_km> <output.(pdf|png)>' % program_name
+usage = '''
+usage: %s [options] [--] <lat> <lon> <radius_km> <output.(pdf|png)>
+       %s [--download-etopo1] [--download-srtmgl3]
+'''.strip() % (program_name, program_name)
+
 description = '''Create a simple map with topography.'''
 
 if __name__ == '__main__':
@@ -78,6 +82,16 @@ if __name__ == '__main__':
             metavar='FLOAT',
             help='set factor for artificial illumination of ocean (%default)')
 
+    parser.add_option('--download-etopo1',
+            dest='download_etopo1',
+            action='store_true',
+            help='download full ETOPO1 topography dataset')
+
+    parser.add_option('--download-srtmgl3',
+            dest='download_srtmgl3',
+            action='store_true',
+            help='download full SRTMGL3 topography dataset')
+
     parser.add_option('--debug',
             dest='debug',
             action='store_true',
@@ -85,6 +99,22 @@ if __name__ == '__main__':
             help='print debugging information to stderr')
 
     (options, args) = parser.parse_args(sys.argv[1:])
+
+    if options.debug:
+        util.setup_logging(program_name, 'debug')
+    else:
+        util.setup_logging(program_name, 'info')
+
+    if options.download_etopo1:
+        import pyrocko.topo.etopo1
+        pyrocko.topo.etopo1.download()
+
+    if options.download_srtmgl3:
+        import pyrocko.topo.srtmgl3
+        pyrocko.topo.srtmgl3.download()
+
+    if options.download_etopo1 or options.download_srtmgl3 and len(args) == 0:
+        sys.exit(0)
 
     if len(args) != 4:
         parser.print_help()
@@ -97,11 +127,6 @@ if __name__ == '__main__':
     except:
         parser.print_help()
         sys.exit(1)
-
-    if options.debug:
-        util.setup_logging(program_name, 'debug')
-    else:
-        util.setup_logging(program_name, 'info')
 
     map = automap.Map(
         width=options.width,
