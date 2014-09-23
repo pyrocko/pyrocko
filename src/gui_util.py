@@ -1164,18 +1164,22 @@ class FigureFrame(QFrame):
         except KeyError:
             pass
 
-        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
         from matplotlib.figure import Figure
-        
+        from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+
         layout = QGridLayout()
         layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(0)
-        
+
         self.setLayout(layout)
         self.figure = Figure(dpi=dpi)
         self.canvas = FigureCanvas(self.figure)
         self.canvas.setParent(self)
-        layout.addWidget(self.canvas, 0,0)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        layout.addWidget(self.toolbar, 0, 0)
+        layout.addWidget(self.canvas, 1, 0)
+        self.closed = False
 
     def gca(self):
         axes = self.figure.gca()
@@ -1188,6 +1192,9 @@ class FigureFrame(QFrame):
     def draw(self):
         '''Draw with AGG, then queue for Qt update.'''
         self.canvas.draw()
+
+    def closeEvent(self, ev):
+        self.closed = True
 
 
 class WebKitFrame(QFrame):

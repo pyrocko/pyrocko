@@ -331,6 +331,11 @@ class SnufflerTabs(QTabWidget):
 
         self.tabbar_visibility()
 
+    def removeTab(self, index):
+        w = self.widget(index)
+        w.close()
+        QTabWidget.removeTab(self, index)
+
     def tabRemoved(self, index):
         self.tabbar_visibility()
 
