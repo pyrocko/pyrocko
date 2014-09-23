@@ -47,6 +47,11 @@ class Param:
                             of parameter range (optional)'''
     
     def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
+        if low_is_none and default == minimum:
+            default = None
+        if high_is_none and default == maximum:
+            default = None
+
         self.name = name
         self.ident = ident
         self.default = default
