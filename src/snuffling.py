@@ -527,8 +527,8 @@ class Snuffling:
 
         control = self._param_controls.get(ident, None)
         if control:
-            control.set_choices(choices)
-            self._set_parameter_value(ident, choices[0])
+            selected_choice = control.set_choices(choices)
+            self._set_parameter_value(ident, selected_choice)
     
     def _set_parameter_value(self, ident, value):
         setattr(self, ident, value)
@@ -1376,12 +1376,24 @@ class ChoiceControl(QFrame):
         self.connect(self.cbox, SIGNAL('activated(int)'), self.choosen)
 
     def set_choices(self, choices):
+        icur = self.cbox.currentIndex()
+        if icur != -1:
+            selected_choice = choices[icur]
+        else:
+            selected_choice = None
+
         self.choices = choices
         self.cbox.clear()
         for ichoice, choice in enumerate(choices):
             self.cbox.addItem(QString(choice))
 
-        self.set_value(choices[0])
+        if selected_choice is not None and selected_choice in choices:
+            self.set_value(selected_choice)
+            return selected_choice
+        else:
+            self.set_value(choices[0])
+            return choices[0]
+
         
     def choosen(self, i):
         self.emit(SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.ident, self.choices[i])
