@@ -122,10 +122,16 @@ class Map(Object):
         self._draw_labels()
         self._draw_axes()
         gmt = self._gmt
-        tmppath = gmt.tempfilename() + '.pdf'
+        if outpath.endswith('.eps'):
+            tmppath = gmt.tempfilename() + '.eps'
+        elif outpath.endswith('.ps'):
+            tmppath = gmt.tempfilename() + '.ps'
+        else:
+            tmppath = gmt.tempfilename() + '.pdf'
+
         gmt.save(tmppath)
 
-        if outpath.endswith('.pdf'):
+        if any(outpath.endswith(x) for x in ('.eps', '.ps', '.pdf')):
             shutil.copy(tmppath, outpath)
         else:
             convert_graph(tmppath, outpath)
@@ -235,7 +241,7 @@ class Map(Object):
             self._dems[k] = topo.select_dem_names(k, dmin, dmax, self._wesn)
             if self._dems[k]:
                 logger.debug('using topography dataset %s for %s'
-                            % (','.join(self._dems[k]), k))
+                             % (','.join(self._dems[k]), k))
 
     def _setup_gmt(self):
         w, h = self.width, self.height
