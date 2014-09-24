@@ -269,8 +269,8 @@ class Map(Object):
         layout.set_fixed_margins(mw, mw, 0.5*cm, 0.5*cm)
         widget = layout.get_widget()
         #widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        #widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+        #widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         #scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
         scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
 
