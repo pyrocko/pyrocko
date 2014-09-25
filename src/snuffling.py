@@ -10,7 +10,7 @@ import os, sys, logging, traceback, tempfile
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from pyrocko import pile
+from pyrocko import pile, config
 
 from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
     WebKitFrame, Marker, EventMarker, PhaseMarker, load_markers, save_markers
@@ -218,7 +218,7 @@ class Snuffling:
         self.configure_cli_parser(parser)
         return parser
 
-    def configure_cli_parser(self):
+    def configure_cli_parser(self, parser):
         pass
 
     def cli_usage(self):
@@ -662,7 +662,13 @@ class Snuffling:
     def get_selected_markers(self):
         '''Get all selected markers from the viewer.'''
 
-        return self.get_viewer().get_selected_markers()
+        return self.get_viewer().selected_markers()
+
+    def get_selected_event_markers(self):
+        '''Get all selected event markers from the viewer.'''
+
+        return [m for m in self.get_viewer().selected_markers() if isinstance(m, EventMarker)]
+
 
     def get_active_event_and_phase_markers(self):
         '''Get the marker of the active event and any associated phase markers'''
@@ -786,7 +792,7 @@ class Snuffling:
         :py:func:`pyrocko.pile.make_pile` to create a pile from command line arguments.
         '''
         
-        cachedirname = '/tmp/snuffle_cache_%s' % os.environ['USER']
+        cachedirname = config.config().cache_dir
         sources = self._cli_params.get('sources', sys.argv[1:])
         return pile.make_pile(sources, cachedirname=cachedirname, regex=self._cli_params['regex'], fileformat=self._cli_params['format'])
         
