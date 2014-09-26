@@ -832,10 +832,12 @@ class FDSNStationXML(Object):
             target_sample_rate=None,
             priority_band_code = ['H', 'B', 'M', 'L', 'V', 'E', 'S'],
             priority_units = ['M/S', 'M/S**2'],
-            priority_instrument_code = ['H', 'L']):
+            priority_instrument_code = ['H', 'L'],
+            time=None,
+            timespan=None):
 
         nslcs = []
-        for nsl, bic_to_channels in self.get_channel_groups().iteritems():
+        for nsl, bic_to_channels in self.get_channel_groups(time=time, timespan=timespan).iteritems():
             useful_bics = []
             for bic, channels in bic_to_channels.iteritems():
                 rate = channels[0].sample_rate.value
