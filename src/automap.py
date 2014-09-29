@@ -594,8 +594,8 @@ class Map(Object):
 
     def draw_cities(self, nmax_soft=10):
         from pyrocko import geonames
-        cities = sorted(list(geonames.load2(
-            op.join(config.config().geonames_dir, 'cities1000.txt'),
+        cities = sorted(list(geonames.load(
+            'cities1000.zip', 'cities1000.txt',
             region=self.wesn, minpop=0)),
             key=lambda x: x.population)
 

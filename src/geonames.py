@@ -1,5 +1,12 @@
+import logging
 import sys
+import os
 from collections import namedtuple
+import os.path as op
+
+from pyrocko import util, config
+
+logger = logging.getLogger('pyrocko.geonames')
 
 GeoName = namedtuple('GeoName', '''
 geonameid
@@ -30,6 +37,32 @@ longitude
 population
 '''.split())
 
+base_url = 'http://download.geonames.org/export/dump/'
+
+
+def download_file(fn, dirpath):
+    import urllib2
+    url = base_url + '/' + fn
+    fpath = op.join(dirpath, fn)
+    logger.info('starting download of %s' % url)
+
+    util.ensuredirs(fpath)
+    f = urllib2.urlopen(url)
+    fpath_tmp = fpath + '.%i.temp' % os.getpid()
+    g = open(fpath_tmp, 'wb')
+    while True:
+        data = f.read(1024)
+        if not data:
+            break
+        g.write(data)
+
+    g.close()
+    f.close()
+
+    os.rename(fpath_tmp, fpath)
+
+    logger.info('finished download of %s' % url)
+
 
 def positive_region(region):
     west, east, south, north = [float(x) for x in region]
@@ -57,35 +90,40 @@ geoname_types = (
     unicode, unicode, unicode, unicode, int, str, str, str, str)
 
 
-def load(filepath):
-    with open(filepath, 'r') as f:
-        for line in f:
-            w = line.split('\t')
-            yield GeoName(*[t(x.decode('utf8')) for (t, x) in
-                            zip(geoname_types, w)])
-
-
-def load2(filepath, minpop=1000000, region=None):
+def load(zfn, fn, minpop=1000000, region=None):
+    geonames_dir = config.config().geonames_dir
+    filepath = op.join(geonames_dir, zfn or fn)
+    if not os.path.exists(filepath):
+        download_file(zfn or fn, geonames_dir)
 
     if region:
         w, e, s, n = positive_region(region)
+    
+    if zfn is not None:
+        import zipfile
+        z = zipfile.ZipFile(filepath, 'r')
+        f = z.open(fn, 'r')
+    else:
+        z = None
+        f = open(filepath, 'r')
 
-    with open(filepath, 'r') as f:
-        for line in f:
-            t = line.split('\t')
-            pop = int(t[14])
-            if minpop <= pop:
-                lat = float(t[4])
-                lon = float(t[5])
-                if not region or (
-                        (w <= lon <= e or w <= lon + 360. <= e)
-                        and (s <= lat <= n)):
 
-                    yield GeoName2(
-                        t[1].decode('utf8'),
-                        t[2].decode('utf8').encode('ascii', 'replace'),
-                        lat, lon, pop)
+    for line in f:
+        t = line.split('\t')
+        pop = int(t[14])
+        if minpop <= pop:
+            lat = float(t[4])
+            lon = float(t[5])
+            if not region or (
+                    (w <= lon <= e or w <= lon + 360. <= e)
+                    and (s <= lat <= n)):
 
-if __name__ == '__main__':
-    for c in load2(sys.argv[1]):
-        print c
+                yield GeoName2(
+                    t[1].decode('utf8'),
+                    t[2].decode('utf8').encode('ascii', 'replace'),
+                    lat, lon, pop)
+
+    f.close()
+    if z is not None:
+        z.close()
+
