@@ -505,6 +505,13 @@ class Marker(object):
 
     @staticmethod
     def save_markers(markers, fn, fdigits=3):
+        '''Static method to write :py:class:`Marker`s to file.
+
+        :param markers: list of :py:class:`Marker` Objects
+        :param fn: filename as string
+        :param fdigits: number of decimal digits to use for sub-second time
+        strings (default 3)
+        '''
         f = open(fn,'w')
         f.write('# Snuffler Markers File Version 0.2\n')
         writer = TableWriter(f)
@@ -524,6 +531,13 @@ class Marker(object):
 
     @staticmethod
     def load_markers(fn):
+        '''
+        Static method to load markers from file. 
+
+        :param filename:  filename as string
+        :returns: list of :py:class:`Marker`, :py:class:`EventMarker` or
+        :py:class:`PhaseMarker` Objects
+        '''
         markers = []
         f = open(fn, 'r')
         line  = f.readline()
@@ -575,18 +589,31 @@ class Marker(object):
         self.selected = False
         self.kind = kind
         
-    def set(self, nslc_ids, tmin,tmax):
+    def set(self, nslc_ids, tmin, tmax):
+        '''Set *nslc_ids*, start time and end time of :py:class:`Marker`
+
+        :param nslc_ids: list or set of (network, station, location, channel) tuples
+        :param tmin: start time
+        :param tmax: end time
+        '''
         self.nslc_ids = nslc_ids
         self.tmin = tmin
         self.tmax = tmax
      
     def set_kind(self, kind):
+        '''Set kind of :py:class:`Marker`
+
+        :param kind: (optional) integer to distinguish groups of markers 
+                        (color-coded)
+        '''
         self.kind = kind
      
     def get_tmin(self):
+        '''Get *start time* of :py:class:`Marker`'''
         return self.tmin
         
     def get_tmax(self):
+        '''Get *end time* of :py:class:`Marker`'''
         return self.tmax
 
     def get_nslc_ids(self):
@@ -611,16 +638,19 @@ class Marker(object):
         self.selected = state
 
     def match_nsl(self, nsl):
-        """See documentation of :py:func:`pyrocko.util.match_nslc`"""
+        '''See documentation of :py:func:`pyrocko.util.match_nslc`'''
         patterns = [ '.'.join(x[:3]) for x in self.nslc_ids ]
         return pyrocko.util.match_nslc(patterns, nsl)
     
     def match_nslc(self, nslc):
-        """See documentation of :py:func:`pyrocko.util.match_nslc`"""
+        '''See documentation of :py:func:`pyrocko.util.match_nslc`'''
         patterns = [ '.'.join(x) for x in self.nslc_ids ]
         return pyrocko.util.match_nslc(patterns, nslc)
 
     def one_nslc(self):
+        '''If one *nslc_id* defines this marker return this id. 
+        If more than one *nslc_id* is defined in the :py:class:`Marker`s
+        *nslc_ids* raise :py:exc:`MarkerOneNSLCRequired`.'''
         if len(self.nslc_ids) != 1:
             raise MarkerOneNSLCRequired()
 
@@ -887,6 +917,8 @@ class EventMarker(Marker):
         draw_label( p, u, v0-10., self.label(), label_bg, 'CB', outline=self._active)
 
     def get_event(self):
+        '''Return an instance of the :py:class:`pyrocko.model.Event` associated
+        to this :py:class:`EventMarker`'''
         return self._event
 
     def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
@@ -978,6 +1010,8 @@ class PhaseMarker(Marker):
         return ''.join(t)
 
     def get_event(self):
+        '''Return an instance of the :py:class:`pyrocko.model.Event` associated
+        to this :py:class:`EventMarker`'''
         return self._event
 
     def get_event_hash(self):

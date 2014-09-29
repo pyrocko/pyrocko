@@ -1,4 +1,4 @@
-from pyrocko.snufflings import minmax, rms, iris_data, stalta, geofon, ampspec, catalogs, download
+from pyrocko.snufflings import minmax, rms, stalta, geofon, ampspec, catalogs, download
 modules = [minmax, rms, download, stalta, geofon, ampspec, catalogs]
 
 def __snufflings__():
