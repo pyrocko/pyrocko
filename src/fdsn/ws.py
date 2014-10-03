@@ -10,7 +10,10 @@ g_url = '%(site)s/fdsnws/%(service)s/%(majorversion)i/%(method)s'
 
 g_site_abbr = {
     'geofon': 'http://geofon-open1.gfz-potsdam.de',
-    'iris': 'http://service.iris.edu'}
+    'iris': 'http://service.iris.edu',
+    'orfeus': 'http://www.orfeus-eu.org',
+}
+
 
 g_default_site = 'geofon'
 
@@ -64,6 +67,7 @@ def _request(url, post=False, **kwargs):
         if e.code == 413:
             raise RequestEntityTooLarge(url)
         else:
+            logger.error('error content returned by server:\n%s' % e.read())
             raise e
 
 

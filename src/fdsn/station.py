@@ -28,8 +28,10 @@ conversion = {
 class NoResponseInformation(Exception):
     pass
 
+
 class MultipleResponseInformation(Exception):
     pass
+
 
 def wrap(s, width=80, indent=4):
     words = s.split()
@@ -90,6 +92,13 @@ class Type(StringChoice):
         'MAINTENANCE',
         'BEAM']
 
+    class __T(StringChoice.T):
+        def validate_extra(self, val):
+            if val not in self.choices:
+                logger.warn(
+                    'channel type: "%s" is not a valid choice out of %s' %
+                        (val, repr(self.choices)))
+
 
 class PzTransferFunction(StringChoice):
     choices = [
@@ -106,10 +115,30 @@ class Symmetry(StringChoice):
 
 
 class CfTransferFunction(StringChoice):
+
+    class __T(StringChoice.T):
+        def validate(self, val, regularize=False, depth=-1):
+            if regularize:
+                try:
+                    val = str(val)
+                except ValueError:
+                    raise ValidationError(
+                        '%s: cannot convert to string %s' % (self.xname,
+                                                             repr(val)))
+
+                val = self.dummy_cls.replacements.get(val, val)
+
+            self.validate_extra(val)
+            return val
+
     choices = [
         'ANALOG (RADIANS/SECOND)',
         'ANALOG (HERTZ)',
         'DIGITAL']
+
+    replacements = {
+        'ANALOG (RAD/SEC)': 'ANALOG (RADIANS/SECOND)',
+    }
 
 
 class Approximation(StringChoice):
@@ -381,7 +410,9 @@ class PolesZeros(BaseFilter):
             zeros=[z.value() for z in self.zero_list],
             poles=[p.value() for p in self.pole_list])
 
-        tc = abs(resp.evaluate(num.array([self.normalization_frequency.value]))[0])
+        tc = abs(resp.evaluate(
+            num.array([self.normalization_frequency.value]))[0])
+
         resp.constant /= tc
         return resp
 
@@ -456,26 +487,41 @@ class ResponseStage(Object):
 
     number = Counter.T(xmlstyle='attribute')
     resource_id = String.T(optional=True, xmlstyle='attribute')
-    poles_zeros = PolesZeros.T(optional=True, xmltagname='PolesZeros')
-    coefficients = Coefficients.T(optional=True, xmltagname='Coefficients')
+    poles_zeros_list = List.T(
+        PolesZeros.T(optional=True, xmltagname='PolesZeros'))
+    #coefficients = Coefficients.T(optional=True, xmltagname='Coefficients')
+    coefficients_list = List.T(
+        Coefficients.T(optional=True, xmltagname='Coefficients'))
     response_list = ResponseList.T(optional=True, xmltagname='ResponseList')
     fir = FIR.T(optional=True, xmltagname='FIR')
     polynomial = Polynomial.T(optional=True, xmltagname='Polynomial')
     decimation = Decimation.T(optional=True, xmltagname='Decimation')
     stage_gain = Gain.T(optional=True, xmltagname='StageGain')
 
-    def get_pyrocko_response(self):
+    def get_pyrocko_response(self, nslc):
         responses = []
-        if self.poles_zeros:
-            pz = self.poles_zeros.get_pyrocko_response()
+        if len(self.poles_zeros_list) == 1:
+            pz = self.poles_zeros_list[0].get_pyrocko_response()
             responses.append(pz)
 
-        elif self.coefficients or self.response_list or self.fir or self.polynomial:
+        elif len(self.poles_zeros_list) > 1:
+            logger.warn(
+                'multiple poles and zeros records in single response stage '
+                '(%s.%s.%s.%s)' % nslc)
+            for poles_zeros in self.poles_zeros_list:
+                logger.warn('%s' % poles_zeros)
+
+        elif (self.coefficients_list or
+              self.response_list or
+              self.fir or
+              self.polynomial):
+
             pass
             #print 'unhandled response at stage %i' % self.number
 
         if self.stage_gain:
-            responses.append(trace.PoleZeroResponse(constant=self.stage_gain.value))
+            responses.append(
+                trace.PoleZeroResponse(constant=self.stage_gain.value))
 
         return responses
 
@@ -488,13 +534,17 @@ class Response(Object):
                                          xmltagname='InstrumentPolynomial')
     stage_list = List.T(ResponseStage.T(xmltagname='Stage'))
 
-    def get_pyrocko_response(self, fake_input_units=None):
+    def get_pyrocko_response(self, nslc, fake_input_units=None):
         responses = []
         for stage in self.stage_list:
-            responses.extend(stage.get_pyrocko_response())
+            responses.extend(stage.get_pyrocko_response(nslc))
 
         if fake_input_units is not None:
+            if self.instrument_sensitivity.input_units is None:
+                raise NoResponseInformation('no input units given')
+
             input_units = self.instrument_sensitivity.input_units.name
+
             conresp = conversion[fake_input_units, input_units]
             if conresp is not None:
                 responses.append(conresp)
@@ -738,8 +788,9 @@ class FDSNStationXML(Object):
 
         return pstations
 
-    def iter_network_station_channels(self, net=None, sta=None, loc=None, cha=None,
-                     time=None, timespan=None):
+    def iter_network_station_channels(
+            self, net=None, sta=None, loc=None, cha=None,
+            time=None, timespan=None):
 
         if loc is not None:
             loc = loc.strip()
@@ -750,7 +801,6 @@ class FDSNStationXML(Object):
         elif timespan is not None:
             tt = timespan
 
-        results = []
         for network in self.network_list:
             if not network.spans(*tt) or (
                     net is not None and network.code != net):
@@ -762,7 +812,6 @@ class FDSNStationXML(Object):
                     continue
 
                 if station.channel_list:
-                    loc_to_channels = {}
                     for channel in station.channel_list:
                         if (not channel.spans(*tt) or
                                 (cha is not None and channel.code != cha) or
@@ -814,10 +863,10 @@ class FDSNStationXML(Object):
                     sample_rates.append(channel.sample_rate.value)
 
                 if not same(sample_rates):
+                    scs = ','.join(channel.code for channel in channels)
+                    srs = ', '.join('%e' % x for x in sample_rates)
                     err = 'ignoring channels with inconsistent sampling ' + \
-                        'rates (%s.%s.%s.%s: %s)' % (
-                        nsl + (','.join(channel.code for channel in channels),
-                               ', '.join('%e' % x for x in sample_rates)))
+                          'rates (%s.%s.%s.%s: %s)' % (nsl + (scs, srs))
 
                     logger.warn(err)
                     bad_bics.append(bic)
@@ -830,14 +879,16 @@ class FDSNStationXML(Object):
     def choose_channels(
             self,
             target_sample_rate=None,
-            priority_band_code = ['H', 'B', 'M', 'L', 'V', 'E', 'S'],
-            priority_units = ['M/S', 'M/S**2'],
-            priority_instrument_code = ['H', 'L'],
+            priority_band_code=['H', 'B', 'M', 'L', 'V', 'E', 'S'],
+            priority_units=['M/S', 'M/S**2'],
+            priority_instrument_code=['H', 'L'],
             time=None,
             timespan=None):
 
         nslcs = []
-        for nsl, bic_to_channels in self.get_channel_groups(time=time, timespan=timespan).iteritems():
+        for nsl, bic_to_channels in self.get_channel_groups(
+                time=time, timespan=timespan).iteritems():
+
             useful_bics = []
             for bic, channels in bic_to_channels.iteritems():
                 rate = channels[0].sample_rate.value
@@ -885,8 +936,8 @@ class FDSNStationXML(Object):
 
         return sorted(nslcs)
 
-    def get_pyrocko_response(self, nslc, time=None, timespan=None,
-            fake_input_units=None):
+    def get_pyrocko_response(
+            self, nslc, time=None, timespan=None, fake_input_units=None):
 
         net, sta, loc, cha = nslc
         resps = []
@@ -894,7 +945,8 @@ class FDSNStationXML(Object):
                 net, sta, loc, cha, time=time, timespan=timespan):
             resp = channel.response
             if resp:
-                resps.append(resp.get_pyrocko_response(fake_input_units=fake_input_units))
+                resps.append(resp.get_pyrocko_response(
+                    nslc, fake_input_units=fake_input_units))
 
         if not resps:
             raise NoResponseInformation('%s.%s.%s.%s' % nslc)
