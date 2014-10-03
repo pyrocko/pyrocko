@@ -7,7 +7,7 @@ from pyrocko.guts import StringChoice, StringPattern, UnicodePattern, String,\
     Unicode, Int, Float, List, Object, Timestamp, ValidationError
 from pyrocko.guts import load_xml  # noqa
 
-from pyrocko import trace
+from pyrocko import trace, model
 
 guts_prefix = 'pf'
 
@@ -729,6 +729,46 @@ def value_or_none(x):
         return None
 
 
+def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
+
+    pos = lat, lon, elevation, depth = \
+        channels[0].position_values
+
+    if not all(pos == x.position_values for x in channels):
+        info = '\n'.join(
+            '    %s: %s' % (x.code, x.position_values) for
+            x in channels)
+    
+        mess = 'encountered inconsistencies in channel ' \
+               'lat/lon/elevation/depth ' \
+               'for %s.%s.%s: \n%s' % (nsl + (info,))
+
+        if inconsistencies == 'raise':
+            raise InconsistentChannelLocations(mess)
+
+        elif inconsistencies == 'warn':
+            logger.warn(mess)
+            logger.warn(' -> using mean values')
+
+    apos = num.array([x.position_values for x in channels], dtype=num.float)
+    mlat, mlon, mele, mdep = num.nansum(apos, axis=0) / num.sum(num.isfinite(apos), axis=0)
+
+    pchannels = []
+    for channel in channels:
+        pchannels.append(model.Channel(
+            channel.code,
+            azimuth=value_or_none(channel.azimuth),
+            dip=value_or_none(channel.dip)))
+
+    return model.Station(
+        *nsl,
+        lat=mlat,
+        lon=mlon,
+        elevation=mele,
+        depth=mdep,
+        channels=pchannels)
+
+
 class FDSNStationXML(Object):
     '''Top-level type for Station XML. Required field are Source
     (network ID of the institution sending the message) and one or
@@ -744,7 +784,7 @@ class FDSNStationXML(Object):
 
     xmltagname = 'FDSNStationXML'
 
-    def get_pyrocko_stations(self, time=None, timespan=None,
+    def get_pyrocko_stations(self, nslcs=None, time=None, timespan=None,
                              inconsistencies='warn'):
 
         assert inconsistencies in ('raise', 'warn')
@@ -755,7 +795,6 @@ class FDSNStationXML(Object):
         elif timespan is not None:
             tt = timespan
 
-        from pyrocko import model
         pstations = []
         for network in self.network_list:
             if not network.spans(*tt):
@@ -779,46 +818,20 @@ class FDSNStationXML(Object):
 
                     for loc in sorted(loc_to_channels.keys()):
                         channels = loc_to_channels[loc]
+                        if nslcs is not None:
+                            channels = [channel for channel in channels 
+                                        if (network.code, station.code, loc, channel.code) in nslcs]
+
+                        if not channels:
+                            continue
+
                         pos = lat, lon, elevation, depth = \
                             channels[0].position_values
 
                         nsl = network.code, station.code, loc
-                        if not all(pos == x.position_values for x in channels):
-                            info = '\n'.join(
-                                '    %s: %s' % (x.code, x.position_values) for
-                                x in channels)
-
-                            if inconsistencies == 'raise':
-                                raise InconsistentChannelLocations(
-                                    'encountered inconsistencies in channel '
-                                    'lat/lon/elevation/depth '
-                                    'for %s.%s.%s: \n%s' % (nsl + (info,)))
-
-                            elif inconsistencies == 'warn':
-                                logger.warn(
-                                    'cannot create station object for '
-                                    '%s.%s.%s due to inconsistencies in '
-                                    'channel lat/lon/elevation/depth\n%s'
-                                    % (nsl + (info,)))
-
-                                continue
-
-                        pchannels = []
-                        for channel in channels:
-                            pchannels.append(model.Channel(
-                                channel.code,
-                                azimuth=value_or_none(channel.azimuth),
-                                dip=value_or_none(channel.dip)))
-
-                        pstations.append(model.Station(
-                            *nsl,
-                            lat=lat,
-                            lon=lon,
-                            elevation=value_or_none(station.elevation),
-                            depth=depth,
-                            name=station.description or '',
-                            channels=pchannels))
-
+                        
+                        pstations.append(
+                            pyrocko_station_from_channels(nsl, channels, inconsistencies=inconsistencies))
                 else:
                     pstations.append(model.Station(
                         network.code, station.code, '*',
@@ -990,11 +1003,14 @@ class FDSNStationXML(Object):
 
             useful_bics.sort()
 
+            
             for _, _, rate, _, _, bic in useful_bics:
-                for channel in sorted(bic_to_channels[bic]):
-                    nslcs[nsl + (channel.code,)] = channel
+                channels = sorted(bic_to_channels[bic])
+                if channels:
+                    for channel in channels:
+                        nslcs.append(nsl + (channel.code,))
 
-                break
+                    break
 
         return nslcs
 
