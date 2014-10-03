@@ -816,7 +816,7 @@ class FDSNStationXML(Object):
                             lon=lon,
                             elevation=value_or_none(station.elevation),
                             depth=depth,
-                            name=station.description,
+                            name=station.description or '',
                             channels=pchannels))
 
                 else:
@@ -825,7 +825,7 @@ class FDSNStationXML(Object):
                         lat=station.latitude.value,
                         lon=station.longitude.value,
                         elevation=value_or_none(station.elevation),
-                        name=station.description))
+                        name=station.description or ''))
 
         return pstations
 
@@ -893,7 +893,7 @@ class FDSNStationXML(Object):
             net = network.code
             sta = station.code
             cha = channel.code
-            loc = channel.location_code
+            loc = channel.location_code.strip()
             if len(cha) == 3:
                 bic = cha[:2]  # band and intrument code according to SEED
             elif len(cha) == 1:
