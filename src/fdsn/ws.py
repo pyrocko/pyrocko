@@ -17,6 +17,8 @@ g_site_abbr = {
 
 g_default_site = 'geofon'
 
+g_timeout = 20.
+
 
 def sdatetime(t):
     return util.time_to_str(t, format='%Y-%m-%dT%H:%M:%S')
@@ -58,7 +60,7 @@ def _request(url, post=False, **kwargs):
     req.add_header('Accept', '*/*')
 
     try:
-        resp = urllib2.urlopen(req)
+        resp = urllib2.urlopen(req, timeout=g_timeout)
         if resp.getcode() == 204:
             raise EmptyResult(url)
         return resp
