@@ -545,7 +545,13 @@ class Response(Object):
 
             input_units = self.instrument_sensitivity.input_units.name
 
-            conresp = conversion[fake_input_units, input_units]
+            try:
+                conresp = conversion[fake_input_units, input_units]
+            except KeyError:
+                raise NoResponseInformation(
+                    'cannot convert between units: %s, %s'
+                    % (fake_input_units, input_units))
+
             if conresp is not None:
                 responses.append(conresp)
 
