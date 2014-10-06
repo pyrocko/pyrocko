@@ -360,7 +360,7 @@ def command_redeploy(args):
 
     for i, args in enumerate(dest.config.iter_nodes()):
         try:
-            tr = source.get(args, interpolate='off')
+            tr = source.get(args, interpolation='off')
             dest.put(args, tr)
 
         except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate), e:
@@ -631,7 +631,7 @@ def command_export(args):
         data_out = []
         for ig in xrange(config.ncomponents):
             try:
-                tr = source.get((z,x,ig), interpolate='off')
+                tr = source.get((z,x,ig), interpolation='off')
                 data_out.append((tr.t,tr.data))
 
             except gf.store.StoreError, e:

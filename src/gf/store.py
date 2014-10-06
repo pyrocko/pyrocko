@@ -1070,14 +1070,14 @@ class Store(BaseStore):
             return store._get(irecord, itmin, nsamples, decimate,
                               implementation)
 
-        else:
-            assert interpolation == 'multilinear'
+        elif interpolation in ('multilinear', 'off'):
             irecords, weights = store.config.vicinity(*args)
             if interpolation == 'off' and len(irecords) != 1:
                 raise NotAllowedToInterpolate()
 
             return store._sum(irecords, num.zeros(len(irecords)), weights,
-                              itmin, nsamples, decimate, implementation, False)
+                              itmin, nsamples, decimate, implementation,
+                              'disable')
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None,
             decimate=1, interpolation='nearest_neighbor', implementation='c',
