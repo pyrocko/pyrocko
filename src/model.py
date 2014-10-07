@@ -68,6 +68,21 @@ class EmptyEvent(Exception):
     pass
 
 class Event(Object):
+    '''Seismic event representation
+
+    :param lat: latitude of hypocenter (default 0.0)
+    :param lon: longitude of hypocenter (default 0.0) 
+    :param time: origin time as float in seconds after '1970-01-01 00:00:00
+    :param name: event identifier as string (optional)
+    :param depth: source depth (optional)
+    :param magnitude: magnitude of event (optional)
+    :param region: source region (optional)
+    :param catalog: name of catalog that lists this event (optional)
+    :param moment_tensor: moment tensor as :py:class:`moment_tensor.MomentTensor`
+                            instance (optional)
+    :param duration: source duration as float (optional)
+    '''
+
     lat = Float.T(default=0.0)
     lon = Float.T(default=0.0)
     time = Timestamp.T(default=util.str_to_time('1970-01-01 00:00:00'))
@@ -271,6 +286,10 @@ class Event(Object):
 
 
 def load_events(filename):
+    '''Road a file and return a list of :py:class:`Event`s 
+
+    :param filename: name of file as str
+    '''
     return list(Event.load_catalog(filename))
 
 def load_one_event(filename):
@@ -278,6 +297,11 @@ def load_one_event(filename):
     return l.next()
 
 def dump_events(events, filename):
+    '''Write :py:class:`Event`s to file
+
+    :param events: list of :py:class:`Event` objects
+    :param filename: name of file as str
+    '''
     Event.dump_catalog(events, filename)
 
 class Station:
@@ -452,6 +476,11 @@ class Station:
         return s
 
 def dump_stations(stations, filename):
+    '''Write :py:class:`Station`s to file.
+
+    :param stations: list of :py:class:`Station` objects
+    :param filename: filename as str 
+    '''
     f = open(filename, 'w')
     for sta in stations:
         f.write(str(sta)+'\n')
@@ -475,6 +504,11 @@ def float_or_none(s):
         return float(s)
     
 def load_stations(filename):
+    '''Load :py:class:`Station`s from file.
+
+    :param filename: filename as str
+    Returns a list with :py:class:`Station` instances
+    '''
     stations = []
     f = open(filename, 'r')
     station = None
