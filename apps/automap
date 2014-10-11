@@ -2,7 +2,7 @@
 
 import sys
 import logging
-from pyrocko import automap, util
+from pyrocko import automap, util, model
 
 from optparse import OptionParser
 
@@ -97,6 +97,11 @@ if __name__ == '__main__':
             action='store_true',
             help='pre-make all decimated topography datasets')
 
+    parser.add_option('--stations',
+            dest='stations_fn',
+            metavar='FILENAME',
+            help='load station coordinates from FILENAME')
+
     parser.add_option('--debug',
             dest='debug',
             action='store_true',
@@ -155,5 +160,20 @@ if __name__ == '__main__':
 
     logger.debug('map configuration:\n%s' % str(map))
     map.draw_cities()
+    
+    if options.stations_fn:
+        stations = model.load_stations(options.stations_fn)
+        lats = [s.lat for s in stations]
+        lons = [s.lon for s in stations]
+
+        map.gmt.psxy(
+            in_columns=(lons, lats),
+            S='t10p',
+            G='black',
+            *map.jxyr)
+        
+        for s in stations:
+            map.add_label(s.lat, s.lon, '%s.%s' % (s.network, s.station))
+
     map.save(args[3])
 
