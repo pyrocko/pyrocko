@@ -125,7 +125,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     nw = 2 * num.ceil(w / mindeltagf) + 1
     ntau = 2 * num.ceil(tau / deltat) + 1
 
-    n = nl*nw
+    n = int(nl*nw)
 
     dl = l / nl
     dw = w / nw

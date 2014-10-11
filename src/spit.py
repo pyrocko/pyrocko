@@ -199,7 +199,7 @@ class SPTree:
         '''
 
         if filename is None:
-            assert None not in (f, ftol, xbounds, xtols)
+            assert all(v is not None for v in (f, ftol, xbounds, xtols) )
 
             self.f = f
             self.ftol = float(ftol)
