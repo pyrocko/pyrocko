@@ -1,13 +1,18 @@
 from pyrocko import orthodrome, util, moment_tensor
-import math, copy
+import math, copy, logging
 import numpy as num
 
 from pyrocko.orthodrome import wrap
 from pyrocko.guts import Object, Float, String, Timestamp
 
+logger = logging.getLogger('pyrocko.model')
+
 guts_prefix = 'pf'
 
 d2r = num.pi/180.
+
+class ChannelsNotOrthogonal(Exception):
+    pass
 
 def guess_azimuth_from_name(channel_name):
     if channel_name.endswith('N'):
@@ -36,6 +41,13 @@ def guess_azimuth_dip_from_name(channel_name):
 def mkvec(x,y,z):
     return num.array( [x,y,z], dtype=num.float )
 
+def are_orthogonal(enus, eps=0.001):
+
+    return all(abs(x) < eps for x in [
+        num.dot(enus[0], enus[1]),
+        num.dot(enus[1], enus[2]),
+        num.dot(enus[2], enus[0])])
+
 def fill_orthogonal(enus):
     
     nmiss = sum( x is None for x in enus )
@@ -57,6 +69,7 @@ def fill_orthogonal(enus):
         enus[0] = mkvec(1,0,0)
         enus[1] = mkvec(0,1,0)
         enus[2] = mkvec(0,0,1)
+
 
 class FileParseError(Exception):
     pass
@@ -356,6 +369,10 @@ class Station:
                 vecs.append(vec)
                 
         fill_orthogonal(vecs)
+        if not are_orthogonal(vecs):
+            raise ChannelsNotOrthogonal(
+                'components are not orthogonal: station %s.%s.%s, channels %s, %s, %s'
+                % (self.nsl() + tuple(in_channel_names)))
         
         m = num.hstack([ vec[:,num.newaxis] for vec in vecs ])
         
@@ -398,7 +415,10 @@ class Station:
     def guess_projections_to_enu(self, out_channels=('E', 'N', 'U'), **kwargs):
         proj = []
         for cg in self.guess_channel_groups():
-            proj.append(self.projection_to_enu(cg, out_channels=out_channels, **kwargs))
+            try:
+                proj.append(self.projection_to_enu(cg, out_channels=out_channels, **kwargs))
+            except ChannelsNotOrthogonal, e:
+                logger.warn(str(e))
 
         return proj
 
