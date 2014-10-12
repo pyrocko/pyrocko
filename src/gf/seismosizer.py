@@ -1978,7 +1978,7 @@ g_engine = None
 def get_engine():
     global g_engine
     if g_engine is None:
-        g_engine = LocalEngine(use_env=True)
+        g_engine = LocalEngine(use_env=True, use_config=True)
 
     return g_engine
 
