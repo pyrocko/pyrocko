@@ -102,6 +102,11 @@ if __name__ == '__main__':
             metavar='FILENAME',
             help='load station coordinates from FILENAME')
 
+    parser.add_option('--events',
+            dest='events_fn',
+            metavar='FILENAME',
+            help='load event coordinates from FILENAME')
+
     parser.add_option('--debug',
             dest='debug',
             action='store_true',
@@ -168,12 +173,23 @@ if __name__ == '__main__':
 
         map.gmt.psxy(
             in_columns=(lons, lats),
-            S='t10p',
+            S='t8p',
             G='black',
             *map.jxyr)
         
         for s in stations:
             map.add_label(s.lat, s.lon, '%s.%s' % (s.network, s.station))
+
+    if options.events_fn:
+        events = model.load_events(options.events_fn)
+        lats = [e.lat for e in events]
+        lons = [e.lon for e in events]
+
+        map.gmt.psxy(
+            in_columns=(lons, lats),
+            S='c8p',
+            G='black',
+            *map.jxyr)
 
     map.save(args[3])
 
