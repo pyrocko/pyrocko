@@ -1209,6 +1209,18 @@ Index variables are (source_depth, distance, component).'''
             ib_fl = xb_fl.astype(num.int)
             ib_ce = xb_ce.astype(num.int)
 
+            if num.any(ia_fl < 0) or num.any(ia_fl >= na):
+                raise OutOfBounds()
+
+            if num.any(ia_ce < 0) or num.any(ia_ce >= na):
+                raise OutOfBounds()
+
+            if num.any(ib_fl < 0) or num.any(ib_fl >= nb):
+                raise OutOfBounds()
+
+            if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
+                raise OutOfBounds()
+
             irecords = num.empty(a.size*4, dtype=num.int)
             irecords[0::4] = ia_fl*nb*ng + ib_fl*ng + ig
             irecords[1::4] = ia_ce*nb*ng + ib_fl*ng + ig
@@ -1375,6 +1387,24 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
             ib_ce = xb_ce.astype(num.int)
             ic_fl = xc_fl.astype(num.int)
             ic_ce = xc_ce.astype(num.int)
+
+            if num.any(ia_fl < 0) or num.any(ia_fl >= na):
+                raise OutOfBounds()
+
+            if num.any(ia_ce < 0) or num.any(ia_ce >= na):
+                raise OutOfBounds()
+
+            if num.any(ib_fl < 0) or num.any(ib_fl >= nb):
+                raise OutOfBounds()
+
+            if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
+                raise OutOfBounds()
+
+            if num.any(ic_fl < 0) or num.any(ic_fl >= nc):
+                raise OutOfBounds()
+
+            if num.any(ic_ce < 0) or num.any(ic_ce >= nc):
+                raise OutOfBounds()
 
             irecords = num.empty(a.size*8, dtype=num.int)
             irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig
