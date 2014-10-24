@@ -346,6 +346,14 @@ setup(
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'],
             sources=[pjoin('src', 'gf', 'store_ext.c')]),
+
+        Extension(
+            'parstack_ext',
+            include_dirs=[numpy.get_include()],
+            libraries=['gomp'],
+            extra_compile_args=['-fopenmp', '-O3', '-Wextra'],
+            sources=[pjoin('src', 'parstack_ext.c')],
+        )
     ],
 
     scripts=[
