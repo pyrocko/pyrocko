@@ -393,8 +393,8 @@ class Location(Object):
         else:
             slat, slon = self.effective_latlon
             rlat, rlon = other.effective_latlon
-            return orthodrome.distance_accurate50m_numpy(slat, slon,
-                                                         rlat, rlon)
+            return float(orthodrome.distance_accurate50m_numpy(
+                slat, slon, rlat, rlon)[0])
 
     def azibazi_to(self, other):
         '''
