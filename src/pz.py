@@ -9,7 +9,7 @@ d2r = math.pi/180.
 class SacPoleZeroError(Exception):
     pass
 
-def read_sac_zpk(filename=None, file=None, string=None):
+def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
     '''Read SAC Pole-Zero file.
     
        Returns (zeros, poles, constant).
@@ -30,10 +30,13 @@ def read_sac_zpk(filename=None, file=None, string=None):
     nzeros = 0
     constant = 1.0
     atsect = None
+    comments = []
     for iline, line in enumerate(f):
         toks = line.split()
         if len(toks) == 0: continue
-        if toks[0][0] in '*#': continue
+        if toks[0][0] in '*#': 
+            comments.append(line)
+            continue
         if len(toks) != 2:
             f.close()
             raise SacPoleZeroError('Expected 2 tokens in line %i of file %s' % (iline+1, filename))
@@ -78,7 +81,10 @@ def read_sac_zpk(filename=None, file=None, string=None):
     if not num.isfinite(constant):
         raise SacPoleZeroError('Ivalid constant (%g) found in pole-zero file "%s"' % (constant, filename))
     
-    return zeros, poles, constant
+    if get_comments:
+        return zeros, poles, constant, comments
+    else:
+        return zeros, poles, constant
 
 def write_sac_zpk(zeros, poles, constant, filename):
     if hasattr(filename, 'write'):

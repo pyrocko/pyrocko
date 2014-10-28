@@ -377,7 +377,7 @@ class DataSection:
                
                 
             if at == 2:
-                if line.startswith('CHK2'):
+                if line.startswith('CHK2') and len(line)==13:
                     chk2 = Anon()
                     toks = line.split()
                     assert len(toks) == 2

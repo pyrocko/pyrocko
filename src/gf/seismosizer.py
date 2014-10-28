@@ -125,7 +125,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     nw = 2 * num.ceil(w / mindeltagf) + 1
     ntau = 2 * num.ceil(tau / deltat) + 1
 
-    n = nl*nw
+    n = int(nl*nw)
 
     dl = l / nl
     dw = w / nw
@@ -1978,7 +1978,7 @@ g_engine = None
 def get_engine():
     global g_engine
     if g_engine is None:
-        g_engine = LocalEngine(use_env=True)
+        g_engine = LocalEngine(use_env=True, use_config=True)
 
     return g_engine
 

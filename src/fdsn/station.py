@@ -736,7 +736,7 @@ class FDSNStationXML(Object):
                         if not channel.spans(*tt):
                             continue
 
-                        loc = channel.location_code
+                        loc = channel.location_code.strip()
                         if loc not in loc_to_channels:
                             loc_to_channels[loc] = []
 
