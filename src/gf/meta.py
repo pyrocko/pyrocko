@@ -387,12 +387,19 @@ class Location(Object):
         '''
 
         if self.same_origin(other):
-            return math.sqrt((self.north_shift - other.north_shift)**2 +
-                            (self.east_shift - other.east_shift)**2)
+            if isinstance(other, Location):
+                return math.sqrt((self.north_shift - other.north_shift)**2 +
+                                (self.east_shift - other.east_shift)**2)
+            else:
+                return 0.0
 
         else:
             slat, slon = self.effective_latlon
-            rlat, rlon = other.effective_latlon
+            try:
+                rlat, rlon = other.effective_latlon
+            except AttributeError:
+                rlat, rlon = other.lat, other.lon
+
             return float(orthodrome.distance_accurate50m_numpy(
                 slat, slon, rlat, rlon)[0])
 
@@ -402,12 +409,19 @@ class Location(Object):
         '''
 
         if self.same_origin(other):
-            azi = r2d * math.atan2(other.east_shift - self.east_shift,
-                                   other.north_shift - self.north_shift)
+            if isinstance(other, Location):
+                azi = r2d * math.atan2(other.east_shift - self.east_shift,
+                                       other.north_shift - self.north_shift)
+            else:
+                azi = 0.0
+
             bazi = azi + 180.
         else:
             slat, slon = self.effective_latlon
-            rlat, rlon = other.effective_latlon
+            try:
+                rlat, rlon = other.effective_latlon
+            except AttributeError:
+                rlat, rlon = other.lat, other.lon
             azi = orthodrome.azimuth_numpy(slat, slon, rlat, rlon)
             bazi = orthodrome.azimuth_numpy(rlat, rlon, slat, slon)
 
