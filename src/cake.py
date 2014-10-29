@@ -50,7 +50,10 @@ d2r = 1./r2d
 km = 1000.
 d2m = d2r*earthradius
 m2d = 1./d2m
-
+sprad2spm = 1.0/(r2d*d2m)
+sprad2spkm = 1.0/(r2d*d2m/km)
+spm2sprad = 1.0/sprad2spm
+spkm2sprad = 1.0/sprad2spkm
 
 class InvalidArguments(Exception):
     pass
