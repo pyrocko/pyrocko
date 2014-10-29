@@ -324,7 +324,7 @@ class DataSection:
         reset()
         for line in self.data:
             if at in (0,2):
-                if line.startswith('WID2'):
+                if line.startswith('WID2') and len(line)==104:
                     if wid2: 
                         yield Waveform(wid2, sta2, chk2, dat2)
                         reset()
