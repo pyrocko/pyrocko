@@ -46,7 +46,7 @@ subcommand_usages = {
         'import':        'import <source> <destination> [options]',
         'export':        'export [store-dir] <destination> [options]',
         'ttt':           'ttt [store-dir] [options]',
-        'tttview':       'tttview [store-dir] <phase-id>',
+        'tttview':       'tttview [store-dir] <phase-id> [options]',
         'tttextract':    'tttextract [store-dir] <phase> <selection>',
         'server':        'server [options] <store-super-dir> ...',
         'download':      'download [options] <site> <store-id>',
@@ -676,12 +676,15 @@ def command_ttt(args):
         die(e)
 
 def command_tttview(args):
+    import numpy as num
     import matplotlib.pyplot as plt
     from pyrocko.cake_plot import mpl_init, labelspace, xscaled, yscaled
     mpl_init()
+    def setup(parser):
+        parser.add_option('--source-depth', dest='depth', type=float,
+                help='Source depth in km')
 
-    parser, options, args = cl_parse('tttview', args)
-
+    parser, options, args = cl_parse('tttview', args, setup=setup)
     try:
         phase_ids = args.pop().split(',')
     except:
@@ -693,7 +696,7 @@ def command_tttview(args):
         try:
             store = gf.Store(store_dir)
             phase = store.get_phase(phase_id)
-            axes = plt.subplot(1, len(phase_ids), np)
+            axes = plt.subplot(2, len(phase_ids), np)
             labelspace(axes)
             xscaled(1./km, axes)
             yscaled(1./km, axes)
@@ -703,6 +706,28 @@ def command_tttview(args):
         except gf.StoreError, e:
             die(e)
 
+    axes = plt.subplot(2, 1, 2)
+    num_d = 100
+    distances = num.linspace(store.config.distance_min,
+                             store.config.distance_max,
+                             num_d)
+    if options.depth:
+        depth = options.depth
+        depth *= 1000
+    else:
+        depth = store.config.source_depth_min + (store.config.source_depth_max \
+                                             - store.config.source_depth_min)/2.
+
+    arrivals = num.empty(num_d)
+    for phase_id in phase_ids:
+        arrivals[:] = num.NAN
+        for i, d in enumerate(distances):
+            arrivals[i]= store.t(phase_id, (depth, d))
+        axes.plot(distances/1000, arrivals, label=phase_id) 
+    axes.set_title('source depth %s km' % (depth/1000))
+    axes.set_xlabel('distance [km]')
+    axes.set_ylabel('TT [s]')
+    axes.legend()
     plt.tight_layout()
     plt.show()
 
