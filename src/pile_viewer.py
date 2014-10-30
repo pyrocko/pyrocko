@@ -3023,6 +3023,10 @@ class LineEditWithAbort(QLineEdit):
     def keyPressEvent(self, key_event):
         if key_event.key() == Qt.Key_Escape:
             self.emit( SIGNAL('aborted()') )
+        elif key_event.key() == Qt.Key_Down:
+            self.emit( SIGNAL('history_down()'))
+        elif key_event.key() == Qt.Key_Up:
+            self.emit( SIGNAL('history_up()'))
         else:
             return QLineEdit.keyPressEvent(self, key_event)
 
@@ -3045,6 +3049,8 @@ class PileViewer(QFrame):
         #self.setFrameShape(QFrame.StyledPanel)
         #self.setFrameShadow(QFrame.Sunken)
 
+        self.history = ['']
+
         self.input_area = QFrame(self)
         ia_layout = QGridLayout()
         ia_layout.setContentsMargins(11,11,11,11)
@@ -3054,6 +3060,13 @@ class PileViewer(QFrame):
         self.connect(self.inputline, SIGNAL('returnPressed()'), self.inputline_returnpressed)
         self.connect(self.inputline, SIGNAL('editingFinished()'), self.inputline_finished)
         self.connect(self.inputline, SIGNAL('aborted()'), self.inputline_aborted)
+        self.connect(self.inputline, 
+                     SIGNAL('history_down()'), 
+                     lambda: self.inputline_history(-1))
+        self.connect(self.inputline, 
+                     SIGNAL('history_up()'), 
+                     lambda: self.inputline_history(1))
+
         self.connect(self.inputline, SIGNAL('textEdited(QString)'), self.inputline_changed)
         self.inputline.setFocusPolicy(Qt.ClickFocus)
         self.input_area.hide()
@@ -3086,6 +3099,7 @@ class PileViewer(QFrame):
         return self.progressbars
 
     def inputline_show(self):
+        self.hist_ind = 0
         self.input_area.show()
         self.inputline.setFocus(Qt.OtherFocusReason)
         self.inputline.selectAll()
@@ -3117,6 +3131,7 @@ class PileViewer(QFrame):
             self.inputline_set_error(error)
         
         if clearit:
+            self.history.append(line)
             self.inputline.blockSignals(True)
             qpat, qinp = self.viewer.get_quick_filter_patterns()
             if qpat is None:
@@ -3132,6 +3147,12 @@ class PileViewer(QFrame):
     def inputline_aborted(self):
         self.viewer.setFocus(Qt.OtherFocusReason) 
         self.input_area.hide()
+
+    def inputline_history(self, ud=1):
+        self.hist_ind += ud
+        if len(self.history)!=0:
+            self.inputline.setText(self.history[-self.hist_ind% \
+                                                len(self.history)])
 
     def inputline_finished(self):
         pass
