@@ -101,6 +101,8 @@ class Map(Object):
     topo_resolution_max = Float.T(
         default=200.,
         help='maximum resolution of topography [dpi]')
+    topo_cpt_wet = String.T(default='light_sea')
+    topo_cpt_dry = String.T(default='light_land')
     axes_layout = String.T(optional=True)
 
     def __init__(self, **kwargs):
@@ -364,7 +366,7 @@ class Map(Object):
         try:
             grdfile, ilumargs = self._prep_topo('ocean')
             gmt.pscoast(D=cres, S='c', A=minarea, *(JXY+R))
-            gmt.grdimage(grdfile, C=topo.cpt('light_sea'),
+            gmt.grdimage(grdfile, C=topo.cpt(self.topo_cpt_wet),
                          *(ilumargs+JXY+R))
             gmt.pscoast(Q=True, *(JXY+R))
             self._have_topo_ocean = True
@@ -374,7 +376,7 @@ class Map(Object):
         try:
             grdfile, ilumargs = self._prep_topo('land')
             gmt.pscoast(D=cres, G='c', A=minarea, *(JXY+R))
-            gmt.grdimage(grdfile, C=topo.cpt('light_land'),
+            gmt.grdimage(grdfile, C=topo.cpt(self.topo_cpt_dry),
                          *(ilumargs+JXY+R))
             gmt.pscoast(Q=True, *(JXY+R))
             self._have_topo_land = True
