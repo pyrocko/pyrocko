@@ -13,8 +13,22 @@ from test_parimap import ParimapTestCase
 from test_response import ResponseTestCase
 
 import unittest
+import argparse
+import sys
 
 if __name__ == '__main__':
     pyrocko.util.setup_logging('test_all', 'warning')
-    unittest.main()
+
+    parser = argparse.ArgumentParser() 
+    parser.add_argument('--filename',  default=False)
+    parser.add_argument('unittest_args', nargs='*')
+    args = parser.parse_args()
+    if args.filename:
+        f = open(args.filename, 'w')
+        runner = unittest.TextTestRunner(f)
+        sys.argv[1:] = args.unittest_args
+        unittest.main(testRunner=runner)
+        f.close()
+    else:
+        unittest.main()
     
