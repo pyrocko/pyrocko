@@ -3155,19 +3155,20 @@ class LayeredModel(object):
 
         return mod_extracted
 
-    def replaced_crust(self, crust2_profile):
+    def replaced_crust(self, crust2_profile=None, crustmod=None):
         from pyrocko import crust2x2
-        if isinstance(crust2_profile, tuple):
-            lat, lon = [ float(x) for x in crust2_profile ]
-            profile = crust2x2.get_profile(lat, lon)
-        elif isinstance(crust2_profile, basestring):
-            profile = crust2x2.get_profile(crust2_profile)
-        elif isinstance(crust2_profile, crust2x2.Crust2Profile):
-            profile = crust2_profile
-        else:
-            assert False, 'crust2_profile must be (lat,lon) a profile key or a crust2x2 Profile object)'
+        if crust2_profile is not None:
+            if isinstance(crust2_profile, tuple):
+                lat, lon = [ float(x) for x in crust2_profile ]
+                profile = crust2x2.get_profile(lat, lon)
+            elif isinstance(crust2_profile, basestring):
+                profile = crust2x2.get_profile(crust2_profile)
+            elif isinstance(crust2_profile, crust2x2.Crust2Profile):
+                profile = crust2_profile
+            else:
+                assert False, 'crust2_profile must be (lat,lon) a profile key or a crust2x2 Profile object)'
 
-        crustmod = LayeredModel.from_scanlines(from_crust2x2_profile(profile))
+            crustmod = LayeredModel.from_scanlines(from_crust2x2_profile(profile))
 
         newmod = LayeredModel()
         for element in crustmod.extract(depth_max='moho').elements():
