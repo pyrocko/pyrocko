@@ -46,6 +46,19 @@ Here some details, what to install on a few popular distributions:
     sudo easy_install progressbar
     sudo easy_install pyavl
 
+* **Mac OS X (10.8 - 10.10) with MacPorts (2.3.2)**::
+  
+    # can someone check this please?!
+    sudo port install git
+    sudo port install py27-numpy
+    sudo port install py27-scipy
+    sudo port install py27-scipy
+    sudo port install py27-matplotlib
+    sudo port install py27-yaml
+    sudo port install py27-pyqt4
+    sudo port install py27-setuptools
+    sudo easy_install pyavl
+    sudo easy_install progressbar
 
 Download and install Pyrocko
 ----------------------------
