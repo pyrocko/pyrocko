@@ -46,7 +46,7 @@ Here some details, what to install on a few popular distributions:
     sudo easy_install progressbar
     sudo easy_install pyavl
 
-* **Mac OS X (10.8 - 10.10) with MacPorts (2.3.2)**::
+* **Mac OS X** (10.8 - 10.10) with **MacPorts** (2.3.2)::
   
     # can someone check this please?!
     sudo port install git
