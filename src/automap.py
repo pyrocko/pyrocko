@@ -12,7 +12,8 @@ from cStringIO import StringIO
 import numpy as num
 
 
-from pyrocko.guts import Object, Float, Bool, Int, Tuple
+from pyrocko.guts import Object, Float, Bool, Int, Tuple, String, List
+from pyrocko.guts_array import Array
 from pyrocko import orthodrome as od
 from pyrocko import gmtpy, topo, config
 
@@ -84,6 +85,7 @@ class Map(Object):
     radius = Float.T()
     width = Float.T(default=20.)
     height = Float.T(default=14.)
+    margins = List.T(Float.T())
     illuminate = Bool.T(default=True)
     skip_feature_factor = Float.T(default=0.02)
     show_grid = Bool.T(default=False)
@@ -183,6 +185,9 @@ class Map(Object):
 
     def _setup_geometry(self):
         wpage, hpage = self.width, self.height
+        ml, mr, mt, mb = self._expand_margins()
+        wpage -= ml + mr
+        hpage -= mt + mb
 
         wreg = self.radius * 2.0
         hreg = self.radius * 2.0
@@ -243,6 +248,19 @@ class Map(Object):
                 logger.debug('using topography dataset %s for %s'
                              % (','.join(self._dems[k]), k))
 
+    def _expand_margins(self):
+        if len(self.margins) == 0 or len(self.margins) > 4:
+            ml = mr = mt = mb = 2.0
+        elif len(self.margins) == 1:
+            ml = mr = mt = mb = self.margins[0]
+        elif len(self.margins) == 2:
+            ml = mr = self.margins[0]
+            mt = mb = self.margins[1]
+        elif len(self.margins) == 4:
+            ml, mr, mt, mb = self.margins
+
+        return ml, mr, mt, mb
+
     def _setup_gmt(self):
         w, h = self.width, self.height
         scaler = self._scaler
@@ -265,8 +283,9 @@ class Map(Object):
         gmt = gmtpy.GMT(config=gmtconf)
 
         layout = gmt.default_layout()
-        mw = 2.0*cm
-        layout.set_fixed_margins(mw, mw, 0.5*cm, 0.5*cm)
+
+        layout.set_fixed_margins(*[x*cm for x in self._expand_margins()])
+
         widget = layout.get_widget()
         #widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
