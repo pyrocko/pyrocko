@@ -299,9 +299,10 @@ class Event(Object):
 
 
 def load_events(filename):
-    '''Road a file and return a list of :py:class:`Event`s 
+    '''Read events file.
 
     :param filename: name of file as str
+    :returns: list of :py:class:`Event` objects
     '''
     return list(Event.load_catalog(filename))
 
@@ -310,7 +311,7 @@ def load_one_event(filename):
     return l.next()
 
 def dump_events(events, filename):
-    '''Write :py:class:`Event`s to file
+    '''Write events file.
 
     :param events: list of :py:class:`Event` objects
     :param filename: name of file as str
@@ -496,7 +497,7 @@ class Station:
         return s
 
 def dump_stations(stations, filename):
-    '''Write :py:class:`Station`s to file.
+    '''Write stations file.
 
     :param stations: list of :py:class:`Station` objects
     :param filename: filename as str 
@@ -524,10 +525,10 @@ def float_or_none(s):
         return float(s)
     
 def load_stations(filename):
-    '''Load :py:class:`Station`s from file.
+    '''Read stations file.
 
-    :param filename: filename as str
-    Returns a list with :py:class:`Station` instances
+    :param filename: filename
+    :returns: list of :py:class:`Station` objects
     '''
     stations = []
     f = open(filename, 'r')

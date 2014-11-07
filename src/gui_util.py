@@ -505,12 +505,12 @@ class Marker(object):
 
     @staticmethod
     def save_markers(markers, fn, fdigits=3):
-        '''Static method to write :py:class:`Marker`s to file.
+        '''Static method to write marker objects to file.
 
-        :param markers: list of :py:class:`Marker` Objects
+        :param markers: list of :py:class:`Marker` objects
         :param fn: filename as string
         :param fdigits: number of decimal digits to use for sub-second time
-        strings (default 3)
+             strings (default 3)
         '''
         f = open(fn,'w')
         f.write('# Snuffler Markers File Version 0.2\n')
@@ -536,7 +536,7 @@ class Marker(object):
 
         :param filename:  filename as string
         :returns: list of :py:class:`Marker`, :py:class:`EventMarker` or
-        :py:class:`PhaseMarker` Objects
+            :py:class:`PhaseMarker` objects
         '''
         markers = []
         f = open(fn, 'r')
