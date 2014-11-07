@@ -2433,7 +2433,7 @@ class FrameLayout(Widget):
 
         self.left.set_size((slh, scv), (oh, ov+sbv))
         self.right.set_size((srh, scv), (oh+slh+sch, ov+sbv))
-        self.top.set_size((sh, stv), (oh, ov+stv+scv))
+        self.top.set_size((sh, stv), (oh, ov+sbv+scv))
         self.bottom.set_size((sh, sbv), (oh, ov))
         self.center.set_size((sch, scv), (oh+slh, ov+sbv))
         Widget.set_size(self, (sh, sv), (oh, ov))
