@@ -86,6 +86,9 @@ def make_all_missing_decimated():
 
 
 def cpt(name):
+    if os.path.exists(name):
+        return name
+
     if not re.match(r'[A-Za-z0-9_]+', name):
         raise Exception('invalid cpt name')
 
