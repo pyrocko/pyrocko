@@ -49,6 +49,7 @@ static PyObject* gse_checksum(PyObject *dummy, PyObject *args) {
         checksum += data[i] % MODULUS;
         checksum %= MODULUS;
     }
+    Py_DECREF(carray);
     
     return Py_BuildValue("i", abs(checksum));
 }
