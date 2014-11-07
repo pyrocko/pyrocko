@@ -101,6 +101,7 @@ class Map(Object):
     topo_resolution_max = Float.T(
         default=200.,
         help='maximum resolution of topography [dpi]')
+    axes_layout = String.T(optional=True)
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -412,10 +413,13 @@ class Map(Object):
         scaler = self._scaler
         widget = self._widget
 
-        if self.lat > 0.0:
-            axes_layout = 'WSen'
+        if self.axes_layout is None:
+            if self.lat > 0.0:
+                axes_layout = 'WSen'
+            else:
+                axes_layout = 'WseN'
         else:
-            axes_layout = 'WseN'
+            axes_layout = self.axes_layout
 
         scale_km = gmtpy.nice_value(self.radius/5.) / 1000.
 
