@@ -142,10 +142,26 @@ if __name__ == '__main__':
             action='store_true',
             help='make an outer loop over stations to use less memory during processing')
 
+    parser.add_option('--rename-network', 
+            dest='rename_network',
+            metavar='/PATTERN/REPLACEMENT/',
+            help='update network code')
+
+    parser.add_option('--rename-station', 
+            dest='rename_station',
+            metavar='/PATTERN/REPLACEMENT/',
+            help='update station code')
+
+    parser.add_option('--rename-location', 
+            dest='rename_location',
+            metavar='/PATTERN/REPLACEMENT/',
+            help='update location code')
+
     parser.add_option('--rename-channel', 
             dest='rename_channel',
             metavar='/PATTERN/REPLACEMENT/',
             help='update channel code')
+
 
     (options, args) = parser.parse_args(sys.argv[1:])
 
@@ -190,6 +206,30 @@ if __name__ == '__main__':
             die('invalid argument to --downsample')
 
     replacements = {}
+    if options.rename_network:
+        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_network)
+        if not m:
+            die('invalid argument to --rename-network. '
+                'Expected format is /PATTERN/REPLACEMENT/')
+
+        replacements['network'] = m.group(1), m.group(2)
+
+    if options.rename_station:
+        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_station)
+        if not m:
+            die('invalid argument to --rename-station. '
+                'Expected format is /PATTERN/REPLACEMENT/')
+
+        replacements['station'] = m.group(1), m.group(2)
+
+    if options.rename_location:
+        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_location)
+        if not m:
+            die('invalid argument to --rename-location. '
+                'Expected format is /PATTERN/REPLACEMENT/')
+
+        replacements['location'] = m.group(1), m.group(2)
+
     if options.rename_channel:
         m = re.match(r'/([^/]+)/([^/]*)/', options.rename_channel)
         if not m:
@@ -197,7 +237,6 @@ if __name__ == '__main__':
                 'Expected format is /PATTERN/REPLACEMENT/')
             
         replacements['channel'] = m.group(1), m.group(2)
-
 
     stations = []
     for stations_fn in options.station_fns:

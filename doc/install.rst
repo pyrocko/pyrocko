@@ -40,9 +40,9 @@ Here some details, what to install on a few popular distributions:
     sudo apt-get install python-yaml python-progressbar
     sudo easy_install pyavl
 
-* **Fedora** (*outdated, can someone check this?*)::
+* **Fedora**::
 
-    sudo yum install python numpy scipy PyQt4
+    sudo yum install git python python-yaml numpy scipy PyQt4
     sudo easy_install progressbar
     sudo easy_install pyavl
 

@@ -125,6 +125,10 @@ class QSSPConfig(Object):
 
     cut = Tuple.T(2, Timing.T(), optional=True)
 
+    fade = Tuple.T(4, Timing.T(), optional=True)
+    relevel_with_fade_in = Bool.T(default=False)
+    nonzero_fade_in = Bool.T(default=False)
+    nonzero_fade_out = Bool.T(default=False)
 
     def items(self):
         return dict( self.T.inamevals(self) )
@@ -601,7 +605,48 @@ class QSSPGFBuilder(gf.builder.Builder):
                                     continue
 
                                 tr.chop(tmin, tmax)
-                            
+
+                            tmin = tr.tmin
+                            tmax = tr.tmax
+
+                            if conf.fade:
+                                ta, tb, tc, td = [
+                                        self.store.t(v, args[:-1]) for v in conf.fade]
+                                if None in (ta, tb, tc, td):
+                                    continue
+
+                                if not (ta <= tb and tb <= tc and tc <= td):
+                                    raise QSSPError(
+                                        'invalid fade configuration')
+
+                                t = tr.get_xdata()
+                                fin = num.interp(t, [ta, tb], [0., 1.])
+                                fout = num.interp(t, [tc, td], [1., 0.])
+                                anti_fin = 1. - fin
+                                anti_fout = 1. - fout
+
+                                y = tr.ydata
+
+                                sum_anti_fin = num.sum(anti_fin)
+                                sum_anti_fout = num.sum(anti_fout)
+
+                                if conf.nonzero_fade_in and sum_anti_fin != 0.0:
+                                    yin = num.sum(anti_fin*y) / sum_anti_fin
+                                else:
+                                    yin = 0.0
+
+                                if conf.nonzero_fade_out and sum_anti_fout != 0.0:
+                                    yout = num.sum(anti_fout*y) / sum_anti_fout
+                                else:
+                                    yout = 0.0
+
+                                y2 = anti_fin*yin + fin*fout*y + anti_fout*yout
+
+                                if conf.relevel_with_fade_in:
+                                    y2 -= yin
+
+                                tr.set_ydata(y2)
+
                             gf_tr = gf.store.GFTrace.from_trace(tr)
                             gf_tr.data *= factor
 
