@@ -597,7 +597,7 @@ class DiscretizedSource(Object):
             east_shift = float(self.east_shifts[i])
 
         else:
-            north_shift = east_shift = None
+            north_shift = east_shift = 0.0
 
         return lat, lon, north_shift, east_shift
 
