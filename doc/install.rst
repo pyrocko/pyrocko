@@ -18,6 +18,7 @@ The following software packages must be installed before Pyrocko can be installe
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
    * `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
    * `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)
+   * `GMT <http://gmt.soest.hawaii.edu/>`_ (< 5.0, optional, only required for the :py:mod:`automap` module)
 
 * Try to use `easy_install <http://pythonhosted.org/setuptools/easy_install.html>`_ or `pip install <http://www.pip-installer.org/en/latest/installing.html>`_ for these:
    * `pyavl <http://pypi.python.org/pypi/pyavl/>`_ 
@@ -34,21 +35,29 @@ Here some details, what to install on a few popular distributions:
 
 * **Ubuntu** (12.04.1 LTS), **Debian** (7 wheezy), **Mint** (13 Maya)::
 
-    sudo apt-get install git python-dev python-setuptools
+    sudo apt-get install make git python-dev python-setuptools
     sudo apt-get install python-numpy python-numpy-dev python-scipy python-matplotlib
     sudo apt-get install python-qt4 python-qt4-gl 
     sudo apt-get install python-yaml python-progressbar
     sudo easy_install pyavl
 
-* **Fedora**::
+* **Fedora** (20)::
 
-    sudo yum install git python python-yaml numpy scipy PyQt4
+    sudo yum install make git python python-yaml numpy scipy PyQt4
     sudo easy_install progressbar
+    sudo easy_install pyavl
+
+* **OpenSuse** (13)::
+
+    sudo zypper install make git python-devel python-setuptools
+    sudo zypper install python-numpy python-numpy-devel python-scipy python-matplotlib
+    sudo zypper install python-qt4
+    sudo zypper install python-PyYAML python-progressbar
     sudo easy_install pyavl
 
 * **Mac OS X** (10.8 - 10.10) with **MacPorts** (2.3.2)::
   
-    # can someone check this please?!
+    # can someone check this, please?!
     sudo port install git
     sudo port install py27-numpy
     sudo port install py27-scipy
