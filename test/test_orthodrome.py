@@ -48,7 +48,8 @@ class OrthodromeTestCase(unittest.TestCase):
                 d2 = math.sqrt(no**2+ea**2)
                 assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
 
-    def test_local_distances(self):
+    def OFF_test_local_distances(self):
+
         for reflat, reflon in [
                 (0.0, 0.0),
                 (10.0, 10.0),
