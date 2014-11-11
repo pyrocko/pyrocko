@@ -41,6 +41,30 @@ def setup_logging(programname='pyrocko', levelname='warning'):
 def data_file(fn):
     return os.path.join(os.path.split(__file__)[0], 'data', fn)
 
+
+def download_file(url, fpath):
+    import urllib2
+
+    logger.info('starting download of %s' % url)
+
+    ensuredirs(fpath)
+    f = urllib2.urlopen(url)
+    fpath_tmp = fpath + '.%i.temp' % os.getpid()
+    g = open(fpath_tmp, 'wb')
+    while True:
+        data = f.read(1024)
+        if not data:
+            break
+        g.write(data)
+
+    g.close()
+    f.close()
+
+    os.rename(fpath_tmp, fpath)
+
+    logger.info('finished download of %s' % url)
+
+
 if hasattr(num, 'float128'):
     hpfloat = num.float128
 elif hasattr(num, 'float96'):

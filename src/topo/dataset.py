@@ -1,7 +1,5 @@
 import math
-import urllib2
 import logging
-import os
 import os.path as op
 
 import numpy as num
@@ -61,24 +59,7 @@ class TiledGlobalDataset(object):
         return self.covers(region) and dmin <= d <= dmax
 
     def download_file(self, url, fpath):
-        logger.info('starting download of %s' % url)
-
-        util.ensuredirs(fpath)
-        f = urllib2.urlopen(url)
-        fpath_tmp = fpath + '.%i.temp' % os.getpid()
-        g = open(fpath_tmp, 'wb')
-        while True:
-            data = f.read(1024)
-            if not data:
-                break
-            g.write(data)
-
-        g.close()
-        f.close()
-
-        os.rename(fpath_tmp, fpath)
-
-        logger.info('finished download of %s' % url)
+        util.download_file(url, fpath)
 
     def x(self):
         return self.xmin + num.arange(self.nx) * self.dx
