@@ -380,8 +380,12 @@ def iload_c_version(fn, load_data=True):
     blocksize = 60
 
     with open(fn, 'r') as f:
+        if load_data:
+            loadflag = 2
+        else:
+            loadflag = 0
         header, data_arrays, gps_tags, nsamples = datacube_ext.load(
-            f.fileno(), int(bool(load_data)))
+            f.fileno(), loadflag)
 
     h = dict(header)
     deltat = 1.0 / int(h['S_RATE'])

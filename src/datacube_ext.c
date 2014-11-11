@@ -359,7 +359,7 @@ datacube_error_t datacube_read_header_block(reader_t *reader) {
         return err;
     }
 
-    if (reader->load_data) {
+    if (reader->load_data == 2) {
         reader->arrays = calloc(reader->nchannels, sizeof(int32_array_t));
         if (isnull(reader->arrays)) {
             return ALLOC_FAILED;
@@ -391,7 +391,7 @@ datacube_error_t datacube_read_data_block(reader_t *reader) {
 
     reader->ipos++;
 
-    if (reader->load_data) {
+    if (reader->load_data == 2) {
         b = reader->buf;
         for (i=0; i<reader->nchannels; i++) {
             v = posint(b[i*4 + 0]) << 17;
@@ -615,7 +615,7 @@ datacube_error_t datacube_load(reader_t *reader) {
         return err;
     }
 
-    jumpallowed = !reader->load_data;
+    jumpallowed = reader->load_data == 0;
     backjumpallowed = 0;
 
     while (1) {
@@ -771,6 +771,13 @@ static PyObject* gps_tags_to_pytup(reader_t *reader) {
 }
 
 static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
+    /*
+    load_data == 0: only load enough gps tags at beginning and end of file to 
+                    determine time range
+    load_data == 1: load all gps tags but don't unpack data samples
+    load_data == 2: load everything
+    */
+
     int f;
     int load_data;
     datacube_error_t err;
@@ -781,7 +788,7 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
     (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "ii", &f, &load_data)) {
-        PyErr_SetString(DataCubeError, "usage load(f, load_data)" );
+        PyErr_SetString(DataCubeError, "usage load(f, load_data)");
         return NULL;
     }
 
