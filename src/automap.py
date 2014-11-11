@@ -79,6 +79,34 @@ class NoTopo(Exception):
     pass
 
 
+class FloatTile(Object):
+    xmin = Float.T()
+    ymin = Float.T()
+    dx = Float.T()
+    dy = Float.T()
+    data = Array.T(shape=(None, None), dtype=num.float, serialize_as='table')
+
+    def __init__(self, xmin, ymin, dx, dy, data):
+        Object.__init__(self, init_props=False)
+        self.xmin = float(xmin)
+        self.ymin = float(ymin)
+        self.dx = float(dx)
+        self.dy = float(dy)
+        self.data = data
+        self._set_maxes()
+
+    def _set_maxes(self):
+        self.ny, self.nx = self.data.shape
+        self.xmax = self.xmin + (self.nx-1) * self.dx
+        self.ymax = self.ymin + (self.ny-1) * self.dy
+
+    def x(self):
+        return self.xmin + num.arange(self.nx) * self.dx
+
+    def y(self):
+        return self.ymin + num.arange(self.ny) * self.dy
+
+
 class Map(Object):
     lat = Float.T()
     lon = Float.T()
@@ -101,6 +129,9 @@ class Map(Object):
     topo_resolution_max = Float.T(
         default=200.,
         help='maximum resolution of topography [dpi]')
+    replace_topo_color_only = FloatTile.T(
+        optional=True,
+        help='replace topo color while keeping topographic shading')
     topo_cpt_wet = String.T(default='light_sea')
     topo_cpt_dry = String.T(default='light_land')
     axes_layout = String.T(optional=True)
@@ -312,9 +343,7 @@ class Map(Object):
 
         self._draw_basefeatures()
 
-    def _prep_topo(self, k):
-        gmt = self._gmt
-
+    def _get_topo_tile(self, k):
         t = None
         demname = None
         for dem in self._dems[k]:
@@ -326,7 +355,14 @@ class Map(Object):
         if not t:
             raise NoTopo()
 
+        return t, demname
+
+    def _prep_topo(self, k):
+        gmt = self._gmt
+        t, demname = self._get_topo_tile(k)
+
         if demname not in self._prep_topo_have:
+
             grdfile = gmt.tempfilename()
             gmtpy.savegrd(
                 t.x(), t.y(), t.data, filename=grdfile, naming='lonlat')
@@ -348,6 +384,28 @@ class Map(Object):
                 ilumargs = ['-I%s' % ilumfn]
             else:
                 ilumargs = []
+
+            if self.replace_topo_color_only:
+                t2 = self.replace_topo_color_only
+                grdfile2 = gmt.tempfilename()
+
+                gmtpy.savegrd(
+                    t2.x(), t2.y(), t2.data, filename=grdfile2,
+                    naming='lonlat')
+
+                gmt.grdsample(
+                    grdfile2,
+                    G=grdfile,
+                    Q='l',
+                    I='%g/%g' % (t.dx, t.dy),
+                    R=grdfile,
+                    out_discard=True)
+
+                gmt.grdmath(
+                    grdfile, '0.0', 'AND', '=', grdfile2,
+                    out_discard=True)
+
+                grdfile = grdfile2
 
             self._prep_topo_have[demname] = grdfile, ilumargs
 
