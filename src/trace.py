@@ -2573,27 +2573,27 @@ class MisfitSetup(Object):
 
 def equalize_sampling_rates(trace_1, trace_2):
     '''
-    Equalize sampling rates of two traces (reduce higher sampling rate to lower). 
-    
-    :param trace_1: :py:class:`trace` 
-    :param trace_2: :py:class:`trace` 
+    Equalize sampling rates of two traces (reduce higher sampling rate to lower).
 
-    Returns a copy of the resampled trace if resampling is needed.  
+    :param trace_1: :py:class:`Trace` object
+    :param trace_2: :py:class:`Trace` object
+
+    Returns a copy of the resampled trace if resampling is needed.
     '''
     if same_sampling_rate(trace_1, trace_2):
         return trace_1, trace_2
 
     if trace_1.deltat < trace_2.deltat:
         t1_out = trace_1.copy()
-        t1_out.downsample_to(deltat=trace_2.deltat)
-        logger.warning('Trace downsampled (return copy of trace): %s' %
+        t1_out.downsample_to(deltat=trace_2.deltat, snap=True)
+        logger.debug('Trace downsampled (return copy of trace): %s' %
                                                         '.'.join(t1_out.nslc_id))
         return t1_out, trace_2
-    
+
     elif trace_1.deltat > trace_2.deltat:
         t2_out = trace_2.copy()
-        t2_out.downsample_to(deltat=trace_1.deltat)
-        logger.warning('Trace downsampled (return copy of trace): %s' % 
+        t2_out.downsample_to(deltat=trace_1.deltat, snap=True)
+        logger.debug('Trace downsampled (return copy of trace): %s' %
                                                         '.'.join(t2_out.nslc_id))
         return trace_1, t2_out
 
