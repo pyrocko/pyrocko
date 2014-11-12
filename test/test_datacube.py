@@ -1,6 +1,8 @@
-from pyrocko import util, io
+import time
 import unittest
+
 import common
+from pyrocko import util, io, datacube_ext
 
 
 class DataCubeTestCase(unittest.TestCase):
@@ -22,6 +24,22 @@ class DataCubeTestCase(unittest.TestCase):
             assert tr_h.tmax == tr_d.tmax
             assert tr_d.ydata.min() == mi
             assert tr_d.ydata.max() == ma
+
+    def benchmark_load(self):
+
+
+        fpath = common.test_data_file('test2.cube')
+        for irep in range(2):
+            for loadflag in (0,1,2):
+                f = open(fpath, 'r')
+                t0 = time.time()
+                header, data_arrays, gps_tags, nsamples, bookmarks = datacube_ext.load(
+                    f.fileno(), loadflag, 0, -1)
+
+                f.close()
+                t1 = time.time()
+                print '%i %10.3f' % (loadflag, t1 - t0)
+
 
 
 if __name__ == "__main__":
