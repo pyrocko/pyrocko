@@ -209,6 +209,8 @@ if __name__ == '__main__':
 
     if options.debug:
         util.setup_logging(program_name, 'debug')
+    elif options.quiet:
+        util.setup_logging(program_name, 'warning')
     else:
         util.setup_logging(program_name, 'info')
 
@@ -217,7 +219,6 @@ if __name__ == '__main__':
         try:
             tinc = str_to_seconds(options.tinc)
         except:
-            raise
             die('invalid argument to --tinc')
 
     tmin = None
@@ -328,9 +329,8 @@ if __name__ == '__main__':
         if traces:
             twmin = min(tr.wmin for tr in traces)
             twmax = max(tr.wmax for tr in traces)
-            if not options.quiet:
-                logger.info('processing %s - %s, %i traces' %
-                            (tts(twmin), tts(twmax), len(traces)))
+            logger.info('processing %s - %s, %i traces' %
+                        (tts(twmin), tts(twmax), len(traces)))
 
             if target_deltat is not None:
                 out_traces = []
