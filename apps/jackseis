@@ -137,6 +137,11 @@ if __name__ == '__main__':
         help='set output path')
 
     parser.add_option(
+        '--output-dir',
+        dest='output_dir',
+        help='set output directory')
+
+    parser.add_option(
         '--output-format',
         dest='output_format',
         default='mseed',
@@ -282,16 +287,20 @@ if __name__ == '__main__':
         tmin = int(math.floor(tmin / tinc)) * tinc
 
     output_path = options.output_path
+    output_dir = options.output_dir
 
-    if output_path is None:
+    if output_path and not output_dir and os.path.isdir(output_path):
+        output_dir = output_path  # compat. with old behaviour
+
+    if output_dir and not output_path:
+        output_path = 'trace_%(network)s-%(station)s-' \
+                      '%(location)s-%(channel)s_%(tmin)s.mseed'
+
+    if output_dir and output_path:
+        output_path = pjoin(output_dir, output_path)
+
+    if not output_path:
         die('--output not given')
-
-    if os.path.isdir(output_path):
-        output_path = pjoin(
-            output_path,
-            '%(station)s',
-            'trace_%(network)s-%(station)s-%(location)s-%(channel)s_%(tmin)s'
-            '.mseed')
 
     tpad = 0.
     if target_deltat is not None:
