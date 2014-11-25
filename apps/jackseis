@@ -166,27 +166,35 @@ if __name__ == '__main__':
 
     parser.add_option(
         '--rename-network',
+        action='append',
+        default=[],
         dest='rename_network',
         metavar='/PATTERN/REPLACEMENT/',
-        help='update network code')
+        help='update network code, can be given more than once')
 
     parser.add_option(
         '--rename-station',
+        action='append',
+        default=[],
         dest='rename_station',
         metavar='/PATTERN/REPLACEMENT/',
-        help='update station code')
+        help='update station code, can be given more than once')
 
     parser.add_option(
         '--rename-location',
+        action='append',
+        default=[],
         dest='rename_location',
         metavar='/PATTERN/REPLACEMENT/',
-        help='update location code')
+        help='update location code, can be given more than once')
 
     parser.add_option(
         '--rename-channel',
+        action='append',
+        default=[],
         dest='rename_channel',
         metavar='/PATTERN/REPLACEMENT/',
-        help='update channel code')
+        help='update channel code, can be given more than once')
 
     (options, args) = parser.parse_args(sys.argv[1:])
 
@@ -230,38 +238,20 @@ if __name__ == '__main__':
         except:
             die('invalid argument to --downsample')
 
-    replacements = {}
-    if options.rename_network:
-        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_network)
-        if not m:
-            die('invalid argument to --rename-network. '
-                'Expected format is /PATTERN/REPLACEMENT/')
+    replacements = []
+    for k, rename_k, in [
+            ('network', options.rename_network),
+            ('station', options.rename_station),
+            ('location', options.rename_location),
+            ('channel', options.rename_channel)]:
 
-        replacements['network'] = m.group(1), m.group(2)
+        for patrep in rename_k:
+            m = re.match(r'/([^/]+)/([^/]*)/', patrep)
+            if not m:
+                die('invalid argument to --rename-%s. '
+                    'Expected format is /PATTERN/REPLACEMENT/' % k)
 
-    if options.rename_station:
-        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_station)
-        if not m:
-            die('invalid argument to --rename-station. '
-                'Expected format is /PATTERN/REPLACEMENT/')
-
-        replacements['station'] = m.group(1), m.group(2)
-
-    if options.rename_location:
-        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_location)
-        if not m:
-            die('invalid argument to --rename-location. '
-                'Expected format is /PATTERN/REPLACEMENT/')
-
-        replacements['location'] = m.group(1), m.group(2)
-
-    if options.rename_channel:
-        m = re.match(r'/([^/]+)/([^/]*)/', options.rename_channel)
-        if not m:
-            die('invalid argument to --rename-channel. '
-                'Expected format is /PATTERN/REPLACEMENT/')
-
-        replacements['channel'] = m.group(1), m.group(2)
+            replacements.append((k, m.group(1), m.group(2)))
 
     stations = []
     for stations_fn in options.station_fns:
@@ -351,7 +341,7 @@ if __name__ == '__main__':
             if replacements:
                 for tr in traces:
                     r = {}
-                    for k, (pat, repl) in replacements.iteritems():
+                    for k, pat, repl in replacements:
                         oldval = getattr(tr, k)
                         newval = re.sub(pat, repl, oldval)
                         r[k] = newval
