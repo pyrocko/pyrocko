@@ -534,6 +534,44 @@ class TraceTestCase(unittest.TestCase):
                                               constant=10.)
         pzk_response.regularize()
 
+    def testStretch(self):
+
+        n = 100
+        ydata = num.ones(n)
+        ydata[n/2-10:n/2+10] = 2.0
+
+        deltat=0.01
+        tr1 = trace.Trace(
+            location='tr1',
+            ydata=ydata,
+            deltat=deltat,
+            tmin=0.0)
+
+        tr2 = tr1.copy()
+        tr2.stretch(tr1.tmin-deltat, tr1.tmax+deltat)
+        tr2.set_codes(location='tr2')
+
+        tr3 = tr2.copy()
+        tr3.stretch(tr1.tmin, tr1.tmax)
+        tr3.set_codes(location='tr3')
+        #trace.snuffle([tr1, tr2, tr3])
+
+        assert numeq(tr1.ydata, tr3.ydata, 0.01)
+
+
+    def benchmark_sinc(self):
+        n = 10000000
+        i_control = num.array([0.,n-1], dtype=num.int64)
+        t_control = num.array([0.,n-1], dtype=num.float)
+        s_in = num.zeros(n, dtype=num.float)
+        s_out = num.zeros(n, dtype=num.float)
+        tmin = 0.
+        deltat = 1.0
+        from pyrocko import signal_ext
+        t1 = time.time()
+        signal_ext.antidrift(i_control, t_control, s_in, tmin, deltat, s_out)
+        t2 = time.time()
+        print t2 - t1
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

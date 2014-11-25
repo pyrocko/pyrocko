@@ -215,6 +215,12 @@ setup(
             sources=[pjoin('src', 'util_ext.c')]),
 
         Extension(
+            'signal_ext',
+            include_dirs=[numpy.get_include()],
+            extra_compile_args=['-Wextra'],
+            sources=[pjoin('src', 'signal_ext.c')]),
+
+        Extension(
             'mseed_ext',
             include_dirs=[numpy.get_include(), 'libmseed'],
             library_dirs=['libmseed'],

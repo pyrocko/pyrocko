@@ -5,14 +5,34 @@
 
 static PyObject *DataCubeError;
 
-#define BUFMAX 10000000
-#define READ_BUFFER_SIZE 4096
-#define BOOKMARK_INTERVAL (1024*1024)
+static const size_t BUFMAX = 10000000;
+static const size_t READ_BUFFER_SIZE = 4096;
+static const size_t BOOKMARK_INTERVAL = 1024*1024;
+static const size_t N_GPS_TAGS_WANTED = 200;
 
 /* convert char to positive int [0 - 255] regardless of char signedness
  * and without relying on undefined behaviour */
 #define posint(x) ((((int)(x) % 256) + 256) % 256)
 #define isnull(x) ((x) == NULL)
+
+int good_array(PyObject* o, int typenum) {
+    if (!PyArray_Check(o)) {
+        PyErr_SetString(DataCubeError, "not a NumPy array" );
+        return 0;
+    }
+
+    if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
+        PyErr_SetString(DataCubeError, "array of unexpected type");
+        return 0;
+    }
+
+    if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
+        PyErr_SetString(DataCubeError, "array is not contiguous or not behaved");
+        return 0;
+    }
+
+    return 1;
+}
 
 typedef enum {
     SUCCESS = 0,
@@ -83,8 +103,8 @@ typedef struct {
 static backjump_t ZERO_BACKJUMP = {0, (size_t)(-1), 0, 0};
 
 typedef struct {
-    off_t fpos;
     size_t ipos;
+    off_t fpos;
 } bookmark_t;
 
 typedef struct {
@@ -181,7 +201,7 @@ datacube_error_t gps_tag_array_append(gps_tag_array_t *arr, size_t ipos,
 }
 
 datacube_error_t bookmark_array_append(bookmark_array_t *arr,
-                                       off_t fpos, size_t ipos) {
+                                       size_t ipos, off_t fpos) {
     bookmark_t *p, *el;
     size_t n;
     if (arr->fill == arr->size) {
@@ -195,8 +215,8 @@ datacube_error_t bookmark_array_append(bookmark_array_t *arr,
     }
 
     el = &arr->elements[arr->fill];
-    el->fpos = fpos;
     el->ipos = ipos;
+    el->fpos = fpos;
 
     arr->fill++;
 
@@ -496,6 +516,7 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     b[7] = ' ';
     b[8] = ' ';
     strptime(b, "%H%M%S   %d%m%Y", &tm);
+
     t = timegm(&tm);
     b += 17;
     b[6] = '\0';
@@ -512,7 +533,7 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     tshift = (posint(b[1])*128 + posint(b[2])) * 2.44140625;
 
     tgps = t + tshift / 1000000.0 - reader->tdelay +
-        (gps_utc_offset_flag ? 0 : gps_utc_time_offset);
+        ((gps_utc_offset_flag == 0) ? 0 : gps_utc_time_offset);
 
     if (current_fix_source != 0 || number_usable_svs >= 1) {
         err = gps_tag_array_append(&reader->gps_tags, reader->ipos_gps, tgps,
@@ -646,16 +667,37 @@ datacube_error_t datacube_jump(reader_t *reader, off_t offset, int whence,
     return SUCCESS;
 }
 
+datacube_error_t datacube_skip_to_offset(reader_t *reader, size_t ipos) {
+    bookmark_t *bookmark;
+    size_t i;
+
+    bookmark = NULL;
+    for (i=0; i+1 < reader->bookmarks.fill; i++) {
+        if (ipos >= reader->bookmarks.elements[i].ipos) {
+            bookmark = &reader->bookmarks.elements[i];
+        }
+    }
+
+    if (bookmark != NULL) {
+        lseek(reader->f, bookmark->fpos, SEEK_SET);
+        reader->ipos = bookmark->ipos;
+        reader->wpos = 1;
+        reader->rpos = 1;
+        reader->buf_fill = 0;
+        reader->ipos_gps = 0;
+        reader->gps_tags.fill = 0;
+    }
+
+    return SUCCESS;
+}
+
 datacube_error_t datacube_load(reader_t *reader) {
     int blocktype;
     datacube_error_t err;
     int jumpallowed, backjumpallowed;
     off_t roffset;
     int gps_ti, f_time, gps_on;
-    size_t n_gps_tags_wanted;
     backjump_t backjump;
-
-    n_gps_tags_wanted = 60;
 
     err = datacube_read_blocktype(reader, &blocktype);
     if (err != SUCCESS) {
@@ -669,13 +711,20 @@ datacube_error_t datacube_load(reader_t *reader) {
         return err;
     }
 
+    if (reader->load_data != 0 && reader->offset_want > 0) {
+        err = datacube_skip_to_offset(reader, reader->offset_want);
+        if (err != SUCCESS) {
+            return err;
+        }
+    }
+
     jumpallowed = reader->load_data == 0;
     backjumpallowed = 0;
 
     while (1) {
         err = datacube_read_blocktype(reader, &blocktype);
         if (err == READ_FAILED) {
-            if (backjumpallowed && reader->gps_tags.fill < n_gps_tags_wanted*2) {
+            if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {
                 do_backjump(reader, &backjump);
             } else {
                 break;
@@ -686,7 +735,8 @@ datacube_error_t datacube_load(reader_t *reader) {
 
         if ((reader->ipos % BOOKMARK_INTERVAL == 0) &&
                 (blocktype == 8 || blocktype == 9) &&
-                (reader->load_data == 1 || reader->load_data == 2)) {
+                (reader->load_data == 1 || reader->load_data == 2) &&
+                (reader->offset_want == 0 && reader->nsamples_want == -1)) {
             bookmark_array_append(&reader->bookmarks,
                                   reader->ipos,
                                   datacube_tell(reader) - 1);
@@ -700,7 +750,7 @@ datacube_error_t datacube_load(reader_t *reader) {
             err = datacube_read_gps_block(reader);
         } else if (blocktype == 14) {
             /*datacube_read_end_block(reader);*/
-            if (backjumpallowed && reader->gps_tags.fill < n_gps_tags_wanted*2) {
+            if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {
                 do_backjump(reader, &backjump);
             } else {
                 break;
@@ -713,7 +763,7 @@ datacube_error_t datacube_load(reader_t *reader) {
         }
 
         if (err == READ_FAILED) {
-            if (backjumpallowed && reader->gps_tags.fill < n_gps_tags_wanted*2) {
+            if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {
                 do_backjump(reader, &backjump);
             } else {
                 /* incomplete file? */
@@ -723,7 +773,7 @@ datacube_error_t datacube_load(reader_t *reader) {
             return err;
         }
 
-        if (jumpallowed && reader->gps_tags.fill == n_gps_tags_wanted) {
+        if (jumpallowed && reader->gps_tags.fill == N_GPS_TAGS_WANTED) {
             err = get_int_header(reader, "GPS_ON", &gps_on);
             if (err != SUCCESS) jumpallowed = 0;
             if (gps_on == 0) { /* cycled GPS */
@@ -732,7 +782,7 @@ datacube_error_t datacube_load(reader_t *reader) {
                 err = get_int_header(reader, "F_TIME", &f_time);
                 if (err != SUCCESS) jumpallowed = 0;
                 roffset = (int)((f_time + gps_ti) * 60.0 / reader->deltat) *
-                         (reader->nchannels * 4 + 1) + (gps_ti * n_gps_tags_wanted * 80);
+                         (reader->nchannels * 4 + 1) + (gps_ti * N_GPS_TAGS_WANTED * 80);
             } else if (gps_on == 1) { /* continuous GPS */
                 roffset = datacube_tell(reader) * 2;
             } else {
@@ -747,6 +797,11 @@ datacube_error_t datacube_load(reader_t *reader) {
                 }
                 jumpallowed = 0;
             }
+        }
+
+        if (reader->nsamples_want != -1 &&
+                (ssize_t)reader->ipos >= reader->offset_want + reader->nsamples_want) {
+            break;
         }
     }
     return SUCCESS;
@@ -848,10 +903,30 @@ static PyObject* bookmarks_to_pyarray(reader_t *reader) {
         return NULL;
     }
     for (i=0; i<n; i++) {
-        ((int64_t*)PyArray_DATA(out))[i*2] = reader->bookmarks.elements[i].fpos;
-        ((int64_t*)PyArray_DATA(out))[i*2+1] = reader->bookmarks.elements[i].ipos;
+        ((int64_t*)PyArray_DATA(out))[i*2] = reader->bookmarks.elements[i].ipos;
+        ((int64_t*)PyArray_DATA(out))[i*2+1] = reader->bookmarks.elements[i].fpos;
     }
     return out;
+}
+
+int pyarray_to_bookmarks(reader_t *reader, PyObject *barr) {
+    int64_t *carr;
+    size_t i, n;
+
+    if (!good_array(barr, NPY_INT64)) {
+        return 1;
+    }
+    if (PyArray_NDIM(barr) != 2 ||
+        PyArray_DIMS(barr)[1] != 2) {
+    }
+    n = PyArray_DIMS(barr)[0];
+
+    carr = (int64_t*)PyArray_DATA(barr);
+
+    for (i=0; i<n; i++) {
+        bookmark_array_append(&reader->bookmarks, carr[i*2], carr[i*2+1]);
+    }
+    return 0;
 }
 
 static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
@@ -872,8 +947,8 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "iinn", &f, &load_data,
-                          &offset_want, &nsamples_want)) {
+    if (!PyArg_ParseTuple(args, "iinnO", &f, &load_data,
+                          &offset_want, &nsamples_want, &barr)) {
         PyErr_SetString(DataCubeError,
             "usage load(f, load_data, offset_want, nsamples_want)");
         return NULL;
@@ -887,6 +962,13 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
     reader.load_data = load_data;
     reader.offset_want = offset_want;
     reader.nsamples_want = nsamples_want;
+
+    if (barr != Py_None) {
+        err = pyarray_to_bookmarks(&reader, barr);
+        if (err != SUCCESS) {
+            PyErr_SetString(DataCubeError, "bookmarks corrupted");
+        }
+    }
 
     err = datacube_load(&reader);
     if (err != SUCCESS) {

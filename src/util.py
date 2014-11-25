@@ -1144,3 +1144,47 @@ def pf_upgrade(fn):
         os.rename(fn_temp, fn)
 
     return need
+
+
+def read_leap_seconds(tzfile='/usr/share/zoneinfo/right/UTC'):
+    '''Extract leap second information from tzdata.
+    
+    Based on example at http://stackoverflow.com/questions/19332902/\
+            extract-historic-leap-seconds-from-tzdata
+
+    See also 'man 5 tzfile'.
+    '''
+    from struct import unpack, calcsize
+    from datetime import datetime
+    out = []
+    with open(tzfile, 'rb') as f:
+        # read header
+        fmt = '>4s c 15x 6l'
+        (magic, format, ttisgmtcnt, ttisstdcnt, leapcnt, timecnt,
+            typecnt, charcnt) =  unpack(fmt, f.read(calcsize(fmt)))
+        assert magic == 'TZif'.encode('US-ASCII'), 'Not a timezone file'
+
+        # skip over some uninteresting data
+        fmt = '>%(timecnt)dl %(timecnt)dB %(ttinfo)s %(charcnt)ds' % dict(
+            timecnt=timecnt, ttinfo='lBB'*typecnt, charcnt=charcnt)
+        f.read(calcsize(fmt))
+
+        #read leap-seconds
+        fmt = '>2l'
+        for i in xrange(leapcnt):
+            tleap, nleap = unpack(fmt, f.read(calcsize(fmt)))
+            out.append((tleap-nleap+1, nleap))
+
+    return out
+
+def gps_utc_offset(t):
+    ls = read_leap_seconds()
+    i = 0
+    if t < ls[0][0]:
+        return ls[0][1] - 9
+    while i < len(ls) - 1:
+        if ls[i][0] <= t and t < ls[i+1][0]:
+            return ls[i][1] - 9
+        i += 1
+    
+    return ls[-1][1] - 9

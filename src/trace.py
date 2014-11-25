@@ -552,6 +552,40 @@ class Trace(object):
             self.deltat = deltat
             self.set_ydata(ydata_new)
 
+    def stretch(self, tmin_new, tmax_new):
+        '''Stretch signal while preserving sample rate using sinc interpolation.
+        
+        :param tmin_new: new time of first sample
+        :param tmax_new: new time of last sample
+
+        This method can be used to correct for a small linear time drift or to 
+        introduce sub-sample time shifts. The amount of stretching is limited
+        to 10% by the implementation and is expected to be much smaller than 
+        that by the approximations used.
+        '''
+        from pyrocko import signal_ext
+
+        i_control = num.array([0, self.ydata.size-1], dtype=num.int64)
+        t_control = num.array([tmin_new, tmax_new], dtype=num.float)
+
+        r = (tmax_new - tmin_new) / self.deltat + 1.0
+        n_new = int(round(r))
+        if abs(n_new - r) > 0.001:
+            n_new = int(math.floor(r))
+
+        assert n_new >= 2
+
+        tmax_new = tmin_new + (n_new-1) * self.deltat
+
+        ydata_new = num.empty(n_new, dtype=num.float)
+        signal_ext.antidrift(i_control, t_control,
+                             self.ydata.astype(num.float),
+                             tmin_new, self.deltat, ydata_new)
+
+        self.tmin = tmin_new
+        self.set_ydata(ydata_new)
+        self._update_ids()
+
     def nyquist_check(self, frequency, intro='Corner frequency', warn=True, raise_exception=False):
         '''Check if a given frequency is above the Nyquist frequency of the trace.
 
