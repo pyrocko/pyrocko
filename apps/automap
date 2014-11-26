@@ -19,99 +19,115 @@ usage: %s [options] [--] <lat> <lon> <radius_km> <output.(pdf|png)>
 description = '''Create a simple map with topography.'''
 
 if __name__ == '__main__':
-    parser = OptionParser(usage=usage,
-            description=description)
+    parser = OptionParser(
+        usage=usage,
+        description=description)
 
-    parser.add_option('--width',
-            dest='width',
-            type='float',
-            default=20.0,
-            metavar='FLOAT',
-            help='set width of output image [cm] (%default)')
+    parser.add_option(
+        '--width',
+        dest='width',
+        type='float',
+        default=20.0,
+        metavar='FLOAT',
+        help='set width of output image [cm] (%default)')
 
-    parser.add_option('--height',
-            dest='height',
-            type='float',
-            default=15.0,
-            metavar='FLOAT',
-            help='set height of output image [cm] (%default)')
+    parser.add_option(
+        '--height',
+        dest='height',
+        type='float',
+        default=15.0,
+        metavar='FLOAT',
+        help='set height of output image [cm] (%default)')
 
-    parser.add_option('--topo-resolution-min',
-            dest='topo_resolution_min',
-            type='float',
-            default=40.0,
-            metavar='FLOAT',
-            help='minimum resolution of topography [dpi] (%default)')
+    parser.add_option(
+        '--topo-resolution-min',
+        dest='topo_resolution_min',
+        type='float',
+        default=40.0,
+        metavar='FLOAT',
+        help='minimum resolution of topography [dpi] (%default)')
 
-    parser.add_option('--topo-resolution-max',
-            dest='topo_resolution_max',
-            type='float',
-            default=200.0,
-            metavar='FLOAT',
-            help='maximum resolution of topography [dpi] (%default)')
+    parser.add_option(
+        '--topo-resolution-max',
+        dest='topo_resolution_max',
+        type='float',
+        default=200.0,
+        metavar='FLOAT',
+        help='maximum resolution of topography [dpi] (%default)')
 
-    parser.add_option('--no-grid',
-            dest='show_grid',
-            default=True,
-            action='store_false',
-            help='don\'t show grid lines')
+    parser.add_option(
+        '--no-grid',
+        dest='show_grid',
+        default=True,
+        action='store_false',
+        help='don\'t show grid lines')
 
-    parser.add_option('--no-topo',
-            dest='show_topo',
-            default=True,
-            action='store_false',
-            help='don\'t show topography')
+    parser.add_option(
+        '--no-topo',
+        dest='show_topo',
+        default=True,
+        action='store_false',
+        help='don\'t show topography')
 
-    parser.add_option('--no-illuminate',
-            dest='illuminate',
-            default=True,
-            action='store_false',
-            help='deactivate artificial illumination of topography')
+    parser.add_option(
+        '--no-illuminate',
+        dest='illuminate',
+        default=True,
+        action='store_false',
+        help='deactivate artificial illumination of topography')
 
-    parser.add_option('--illuminate-factor-land',
-            dest='illuminate_factor_land',
-            default='0.5',
-            type='float',
-            metavar='FLOAT',
-            help='set factor for artificial illumination of land (%default)')
+    parser.add_option(
+        '--illuminate-factor-land',
+        dest='illuminate_factor_land',
+        default='0.5',
+        type='float',
+        metavar='FLOAT',
+        help='set factor for artificial illumination of land (%default)')
 
-    parser.add_option('--illuminate-factor-ocean',
-            dest='illuminate_factor_ocean',
-            default='0.25',
-            type='float',
-            metavar='FLOAT',
-            help='set factor for artificial illumination of ocean (%default)')
+    parser.add_option(
+        '--illuminate-factor-ocean',
+        dest='illuminate_factor_ocean',
+        default='0.25',
+        type='float',
+        metavar='FLOAT',
+        help='set factor for artificial illumination of ocean (%default)')
 
-    parser.add_option('--download-etopo1',
-            dest='download_etopo1',
-            action='store_true',
-            help='download full ETOPO1 topography dataset')
+    parser.add_option(
+        '--download-etopo1',
+        dest='download_etopo1',
+        action='store_true',
+        help='download full ETOPO1 topography dataset')
 
-    parser.add_option('--download-srtmgl3',
-            dest='download_srtmgl3',
-            action='store_true',
-            help='download full SRTMGL3 topography dataset')
+    parser.add_option(
+        '--download-srtmgl3',
+        dest='download_srtmgl3',
+        action='store_true',
+        help='download full SRTMGL3 topography dataset')
 
-    parser.add_option('--make-decimated-topo',
-            dest='make_decimated',
-            action='store_true',
-            help='pre-make all decimated topography datasets')
+    parser.add_option(
+        '--make-decimated-topo',
+        dest='make_decimated',
+        action='store_true',
+        help='pre-make all decimated topography datasets')
 
-    parser.add_option('--stations',
-            dest='stations_fn',
-            metavar='FILENAME',
-            help='load station coordinates from FILENAME')
+    parser.add_option(
+        '--stations',
+        dest='stations_fn',
+        metavar='FILENAME',
+        help='load station coordinates from FILENAME')
 
-    parser.add_option('--events',
-            dest='events_fn',
-            metavar='FILENAME',
-            help='load event coordinates from FILENAME')
+    parser.add_option(
+        '--events',
+        dest='events_fn',
+        metavar='FILENAME',
+        help='load event coordinates from FILENAME')
 
-    parser.add_option('--debug',
-            dest='debug',
-            action='store_true',
-            default=False,
-            help='print debugging information to stderr')
+    parser.add_option(
+        '--debug',
+        dest='debug',
+        action='store_true',
+        default=False,
+        help='print debugging information to stderr')
 
     (options, args) = parser.parse_args(sys.argv[1:])
 
@@ -165,7 +181,7 @@ if __name__ == '__main__':
 
     logger.debug('map configuration:\n%s' % str(map))
     map.draw_cities()
-    
+
     if options.stations_fn:
         stations = model.load_stations(options.stations_fn)
         lats = [s.lat for s in stations]
@@ -176,7 +192,7 @@ if __name__ == '__main__':
             S='t8p',
             G='black',
             *map.jxyr)
-        
+
         for s in stations:
             map.add_label(s.lat, s.lon, '%s.%s' % (s.network, s.station))
 
@@ -192,4 +208,3 @@ if __name__ == '__main__':
             *map.jxyr)
 
     map.save(args[3])
-
