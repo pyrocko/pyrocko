@@ -1590,6 +1590,7 @@ class Response(Object):
     traces_list = List.T(List.T(SeismosizerTrace.T()))
 
     def pyrocko_traces(self):
+        '''Return a list of requested :py:class:`trace.Trace` instances.'''
         traces = []
         for trs in self.traces_list:
             for tr in trs:
@@ -1598,12 +1599,17 @@ class Response(Object):
         return traces
 
     def iter_results(self):
+        '''Generator function to iterate over results of request.
+
+        Yields associated :py:class:`Source`, :py:class:`Target`, 
+        :py:class:`trace.Trace` instances in each iteration.'''
         for isource, source in enumerate(self.request.sources):
             for itarget, target in enumerate(self.request.targets):
                 yield source, target, \
                     self.traces_list[isource][itarget].pyrocko_trace()
 
     def snuffle(self):
+        '''Open *snuffler* with requested traces.'''
         trace.snuffle(self.pyrocko_traces())
 
 
