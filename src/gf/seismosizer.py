@@ -1825,7 +1825,13 @@ class LocalEngine(Engine):
 
         return self._effective_default_store_id
 
-    def get_store(self, store_id):
+    def get_store(self, store_id=None):
+        '''Get a store from the engine. If no *store_id* is provided the store
+        associated with the *default_store_id* is returned.
+        Raises :py:exec`NoDefaultStoreSet` if *default_store_id* is undefined.
+
+        :param store_id: identifier of the store (optional)'''
+
         if store_id is None:
             store_id = self.effective_default_store_id()
 
