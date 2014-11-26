@@ -13,8 +13,8 @@ geonameid
 name
 asciiname
 alt_names
-latitude
-longitude
+lat
+lon
 feature_class
 feature_code
 country_code
@@ -32,8 +32,8 @@ modification_date'''.split())
 GeoName2 = namedtuple('GeoName2', '''
 name
 asciiname
-latitude
-longitude
+lat
+lon
 population
 '''.split())
 
@@ -98,7 +98,7 @@ def load(zfn, fn, minpop=1000000, region=None):
 
     if region:
         w, e, s, n = positive_region(region)
-    
+
     if zfn is not None:
         import zipfile
         z = zipfile.ZipFile(filepath, 'r')

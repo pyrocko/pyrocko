@@ -3,7 +3,6 @@
 import math
 import random
 import shutil
-import os.path as op
 import logging
 
 from subprocess import check_call, Popen, PIPE
@@ -11,11 +10,11 @@ from cStringIO import StringIO
 
 import numpy as num
 
-
 from pyrocko.guts import Object, Float, Bool, Int, Tuple, String, List
+from pyrocko.guts import Unicode, Dict
 from pyrocko.guts_array import Array
 from pyrocko import orthodrome as od
-from pyrocko import gmtpy, topo, config
+from pyrocko import gmtpy, topo
 
 logger = logging.getLogger('pyrocko.automap')
 
@@ -107,6 +106,29 @@ class FloatTile(Object):
         return self.ymin + num.arange(self.ny) * self.dy
 
 
+class City(Object):
+    def __init__(self, name, lat, lon, population=None, asciiname=None):
+        name = unicode(name)
+        lat = float(lat)
+        lon = float(lon)
+        if asciiname is None:
+            asciiname = name.encode('ascii', errors='replace')
+
+        if population is None:
+            population = 0
+        else:
+            population = int(population)
+
+        Object.__init__(self, name=name, lat=lat, lon=lon,
+                        population=population, asciiname=asciiname)
+
+    name = Unicode.T()
+    lat = Float.T()
+    lon = Float.T()
+    population = Int.T()
+    asciiname = String.T()
+
+
 class Map(Object):
     lat = Float.T()
     lon = Float.T()
@@ -135,6 +157,8 @@ class Map(Object):
     topo_cpt_wet = String.T(default='light_sea')
     topo_cpt_dry = String.T(default='light_land')
     axes_layout = String.T(optional=True)
+    custom_cities = List.T(City.T())
+    gmt_config = Dict.T(String.T(), String.T())
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -314,6 +338,9 @@ class Map(Object):
                 h*gmtpy.cm),
             GRID_PEN_PRIMARY='thinnest/0/50/0')
 
+        gmtconf.update(
+            (k.upper(), v) for (k, v) in self.gmt_config.iteritems())
+
         gmt = gmtpy.GMT(config=gmtconf)
 
         layout = gmt.default_layout()
@@ -464,7 +491,7 @@ class Map(Object):
 
         gmt.pscoast(
             D=cres,
-            W='thinnest,%s' % gmtpy.color(darken(color_dry)),
+            W='thinnest,%s' % gmtpy.color(darken(gmtpy.color_tup(color_dry))),
             A=minarea,
             *(rivers+self._jxyr), **fill)
 
@@ -662,56 +689,76 @@ class Map(Object):
                         break
 
             anchor_strs = ['BL', 'TR', 'TL', 'BR']
+            fontsize = self.gmt.to_points(
+                self.gmt.gmt_config['LABEL_FONT_SIZE'])
+
             for i in xrange(n):
                 ianchor = anchor_take[i]
                 if ianchor is not None:
                     anchor = anchor_strs[ianchor]
                     yoff = [-sy[i], sy[i]][anchor[0] == 'B']
                     xoff = [-sx[i], sx[i]][anchor[1] == 'L']
-                    row = (lons[i], lats[i], 9, 0, 1, anchor, texts[i])
+                    row = (lons[i], lats[i], fontsize, 0, 1, anchor, texts[i])
                     self.gmt.pstext(
                         in_rows=[row], D='%gp/%gp' % (xoff, yoff), *self.jxyr)
 
     def add_label(self, lat, lon, text, offset_x=5., offset_y=5.):
         self._labels.append((lon, lat, text, offset_x, offset_y, None))
 
-    def draw_cities(self, nmax_soft=10):
+    def cities_in_region(self):
         from pyrocko import geonames
-        cities = sorted(list(geonames.load(
+        cities = list(geonames.load(
             'cities1000.zip', 'cities1000.txt',
-            region=self.wesn, minpop=0)),
-            key=lambda x: x.population)
+            region=self.wesn, minpop=0))
 
-        minpop = 10**3
-        for minpop_new in [1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7]:
-            cities_new = [c for c in cities if c.population > minpop_new and
-                          c.name != 'City of London']
+        cities.extend(self.custom_cities)
+        cities.sort(key=lambda x: x.population)
 
-            if len(cities_new) == 0 or (
-                    len(cities_new) < 3 and len(cities) < nmax_soft*2):
-                break
+        return cities
 
-            cities = cities_new
-            minpop = minpop_new
-            if len(cities) <= nmax_soft:
-                break
+    def draw_cities(self,
+                    exact=None,
+                    include=[],
+                    exclude=['City of London'],  # duplicate entry in geonames
+                    nmax_soft=10,
+                    psxy_style=dict(S='s5p', G='black')):
 
-        lats = [c.latitude for c in cities]
-        lons = [c.longitude for c in cities]
+        cities = self.cities_in_region()
 
-        self.gmt.psxy(
-            in_columns=(lons, lats),
-            S='s5p',
-            G='black',
-            *self.jxyr)
+        if exact is not None:
+            cities = [c for c in cities if c.name in exact]
+            minpop = None
+        else:
+            cities = [c for c in cities if c.name not in exclude]
+            minpop = 10**3
+            for minpop_new in [1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7]:
+                cities_new = [
+                    c for c in cities if c.population > minpop_new]
 
-        for c in cities:
-            try:
-                text = c.name.encode('iso-8859-1')
-            except UnicodeEncodeError:
-                text = c.asciiname
+                if len(cities_new) == 0 or (
+                        len(cities_new) < 3 and len(cities) < nmax_soft*2):
+                    break
 
-            self.add_label(c.latitude, c.longitude, text)
+                cities = cities_new
+                minpop = minpop_new
+                if len(cities) <= nmax_soft:
+                    break
+
+        if cities:
+            lats = [c.lat for c in cities]
+            lons = [c.lon for c in cities]
+
+            self.gmt.psxy(
+                in_columns=(lons, lats),
+                *self.jxyr, **psxy_style)
+
+            for c in cities:
+                try:
+                    text = c.name.encode('iso-8859-1')
+                except UnicodeEncodeError:
+                    text = c.asciiname
+
+                self.add_label(c.lat, c.lon, text)
 
         self._cities_minpop = minpop
 
