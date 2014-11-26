@@ -896,8 +896,8 @@ def command_modelview(args):
         ax.autoscale()
         ax.set_xlabel(p, labelpad=0.1)
 
-    fig.add_subplot(1, len(parameters), 1).set_ylabel('depth [km]',
-                                                      labelpad=0.)
+    axes[parameters[0]].set_ylabel('depth [km]', labelpad=0.)
+
     handles, labels = ax.get_legend_handles_labels()
     
     if len(store_dirs)>1:
