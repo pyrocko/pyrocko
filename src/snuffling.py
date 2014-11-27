@@ -130,6 +130,7 @@ class Snuffling:
         self._live_update = True
         self._previous_output_filename = None
         self._previous_input_filename = None
+        self._previous_input_directory = None
 
         self._tempdir = None
         self._iplot = 0
@@ -929,8 +930,7 @@ class Snuffling:
             return None
     
     def make_helpmenuitem(self, parent):
-        '''Create the help menu item for the snuffling.
-        '''
+        '''Create the help menu item for the snuffling.'''
         
         item = QAction(self.get_name(), None)
 
@@ -950,12 +950,13 @@ class Snuffling:
         self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
         return item
     
-    def output_filename(self, caption='Save File', dir='', filter='', selected_filter=None):
-        
+    def output_filename(self, caption='Save File', dir='', filter='',\
+                        selected_filter=None):
         '''Query user for an output filename.
         
-        This is currently just a wrapper to :py:func:`QFileDialog.getSaveFileName`.
-        A :py:exc:`UserCancelled` exception is raised if the user cancels the dialog.
+        This is currently a wrapper to :py:func:`QFileDialog.getSaveFileName`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        dialog.
         '''
         
         if not dir and self._previous_output_filename:
@@ -974,12 +975,34 @@ class Snuffling:
         self._previous_output_filename = fn
         return str(fn)
 
-    def input_filename(self, caption='Open File', dir='', filter='', selected_filter=None):
-        
+    def input_directory(self, caption='Open Directory', dir=''):
+        '''Query user for an input directory.
+
+        This is a wrapper to :py:func:`QFileDialog.getExistingDirectory`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        dialog.
+        '''
+
+        if not dir and self._previous_input_directory:
+            dir = self._previous_input_directory
+
+        dirn = QFileDialog.getExistingDirectory(None, 
+                                                caption, 
+                                                dir,
+                                                QFileDialog.ShowDirsOnly)
+        if not dirn:
+            raise UserCancelled()
+
+        self._previous_input_directory = dirn 
+        return str(fn)
+
+    def input_filename(self, caption='Open File', dir='', filter='', \
+                       selected_filter=None):
         '''Query user for an input filename.
-        
-        This is currently just a wrapper to :py:func:`QFileDialog.getOpenFileName`.
-        A :py:exc:`UserCancelled` exception is raised if the user cancels the dialog.
+
+        This is currently a wrapper to :py:func:`QFileDialog.getOpenFileName`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        dialog.
         '''
         
         if not dir and self._previous_input_filename:
@@ -997,13 +1020,13 @@ class Snuffling:
         
         self._previous_input_filename = fn
         return str(fn)
-    
-    def input_dialog(self, caption='', request=''):
-        
+
+    def input_dialog(self, caption='', request='', directory=False):
         '''Query user for a text input.
-        
-        This is currently just a wrapper to :py:func:`QInputDialog.getText`.
-        A :py:exc:`UserCancelled` exception is raised if the user cancels the dialog.
+
+        This is currently a wrapper to :py:func:`QInputDialog.getText`.
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        dialog.
         '''
             
         inp, ok = QInputDialog.getText(self.get_viewer(), 'Input', caption)
@@ -1017,7 +1040,8 @@ class Snuffling:
         '''Called when the user has played with an adjustable parameter.
         
         The default implementation sets the parameter, calls the snuffling's 
-        :py:meth:`call` method and finally triggers an update on the viewer widget.
+        :py:meth:`call` method and finally triggers an update on the viewer 
+        widget.
         '''
         
         param = self.get_parameters()[iparam]
