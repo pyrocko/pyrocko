@@ -358,7 +358,10 @@ if __name__ == '__main__':
                     tr.set_codes(**r)
 
             if output_path:
-                io.save(traces, output_path, format=options.output_format)
+                try:
+                    io.save(traces, output_path, format=options.output_format)
+                except io.FileSaveError, e:
+                    die(str(e))
 
         if abort:
             break
