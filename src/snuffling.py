@@ -994,7 +994,7 @@ class Snuffling:
             raise UserCancelled()
 
         self._previous_input_directory = dirn 
-        return str(fn)
+        return str(dirn)
 
     def input_filename(self, caption='Open File', dir='', filter='', \
                        selected_filter=None):
