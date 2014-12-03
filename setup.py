@@ -203,8 +203,16 @@ class Prereqs(Command):
         import platform 
 
         distribution = platform.linux_distribution()[0].lower()
-        p = Popen(['sh', 'prerequisites/prerequisites_%s.sh'%distribution],
-                        stdin=PIPE, stdout=PIPE, stderr=STDOUT, shell=False)
+        distribution = 'debian' if distribution=='ubuntu' else distribution
+        fn = 'prerequisites/prerequisites_%s.sh'%distribution
+
+        confirm = raw_input('Execute: %s \n\
+proceed? [y/n]'%open(fn, 'r').read())
+        if not confirm.lower()=='y':
+            sys.exit(0)
+
+        p = Popen(['sh', fn], stdin=PIPE, stdout=PIPE, stderr=STDOUT, 
+                  shell=False)
 
         while p.poll() is None:
             print p.stdout.readline().rstrip()
@@ -226,7 +234,7 @@ setup(
         'build_py': custom_build_py,
         'build_ext': custom_build_ext,
         'double_install_check': double_install_check_cls,
-        'install-prereqs': Prereqs 
+        'prereqs': Prereqs 
     },
 
     name=packname,
