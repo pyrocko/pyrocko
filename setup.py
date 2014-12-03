@@ -190,12 +190,14 @@ install.sub_commands.append(['double_install_check', None])
 
 class Prereqs(Command):
     description = '''Install prerequisites'''
-    user_options = []
+    user_options = [('force-yes', None, 
+                        'Do not ask for confirmation to install'),]
+
     def initialize_options(self):
-        pass
+        self.force_yes = False
 
     def finalize_options(self):
-        pass 
+        pass
 
     def run(self):
 
@@ -206,10 +208,11 @@ class Prereqs(Command):
         distribution = 'debian' if distribution=='ubuntu' else distribution
         fn = 'prerequisites/prerequisites_%s.sh'%distribution
 
-        confirm = raw_input('Execute: %s \n\
+        if not self.force_yes:
+            confirm = raw_input('Execute: %s \n\
 proceed? [y/n]'%open(fn, 'r').read())
-        if not confirm.lower()=='y':
-            sys.exit(0)
+            if not confirm.lower()=='y':
+                sys.exit(0)
 
         p = Popen(['sh', fn], stdin=PIPE, stdout=PIPE, stderr=STDOUT, 
                   shell=False)
