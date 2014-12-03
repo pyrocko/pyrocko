@@ -43,7 +43,7 @@ Here some details, what to install on a few popular distributions:
 
 * **Fedora** (20)::
 
-    sudo yum install make git python python-yaml numpy scipy PyQt4
+    sudo yum install make git python python-yaml python-matplotlib numpy scipy PyQt4
     sudo easy_install progressbar
     sudo easy_install pyavl
 
