@@ -164,7 +164,7 @@ static PyObject* w_stt(PyObject *dummy, PyObject *args) {
     if (0 != stt(s, format, &t, &tfrac)) {
         return NULL;
     }
-    return Py_BuildValue("Ld", t, tfrac);
+    return Py_BuildValue("Ld", (long long int)t, tfrac);
 }
 
 static PyObject* w_tts(PyObject *dummy, PyObject *args) {
