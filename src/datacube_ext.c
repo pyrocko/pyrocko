@@ -967,6 +967,7 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
         err = pyarray_to_bookmarks(&reader, barr);
         if (err != SUCCESS) {
             PyErr_SetString(DataCubeError, "bookmarks corrupted");
+            return NULL;
         }
     }
 
@@ -989,7 +990,8 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    return Py_BuildValue("NNNKN", hlist, alist, gtup, nsamples_total, barr);
+    return Py_BuildValue("NNNKN", hlist, alist, gtup,
+                         (unsigned long long)nsamples_total, barr);
 }
 
 static PyMethodDef DataCubeMethods[] = {
