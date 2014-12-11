@@ -2,8 +2,16 @@ import sys
 
 if sys.version_info < (2, 6) or (3, 0) <= sys.version_info:
     sys.exit('This version of Pyrocko requires Python version >=2.6 and <3.0')
+try:
+    import numpy
+except ImportError:
+    class numpy():
+	def __init__(self):
+	    pass
 
-import numpy
+	@classmethod	
+	def get_include(self):
+	    return ''
 
 import os
 import time
@@ -78,10 +86,10 @@ installed_date = %s
 def make_prerequisites():
     from subprocess import check_call
     try:
-        check_call(['sh', 'prerequisites.sh'])
+        check_call(['sh', 'prerequisites/prerequisites.sh'])
     except:
         sys.exit('error: failed to build the included prerequisites with '
-                 '"sh prerequisites.sh"')
+                 '"sh prerequisites/prerequisites.sh"')
 
 
 def double_install_check():
@@ -180,6 +188,38 @@ class double_install_check_cls(Command):
 
 install.sub_commands.append(['double_install_check', None])
 
+class Prereqs(Command):
+    description = '''Install prerequisites'''
+    user_options = [('force-yes', None, 
+                        'Do not ask for confirmation to install'),]
+
+    def initialize_options(self):
+        self.force_yes = False
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+
+        from subprocess import Popen, PIPE, STDOUT
+        import platform 
+
+        distribution = platform.linux_distribution()[0].lower().rstrip()
+        distribution = 'debian' if distribution=='ubuntu' else distribution
+        fn = 'prerequisites/prerequisites_%s.sh'%distribution
+
+        if not self.force_yes:
+            confirm = raw_input('Execute: %s \n\
+proceed? [y/n]'%open(fn, 'r').read())
+            if not confirm.lower()=='y':
+                sys.exit(0)
+
+        p = Popen(['sh', fn], stdin=PIPE, stdout=PIPE, stderr=STDOUT, 
+                  shell=False)
+
+        while p.poll() is None:
+            print p.stdout.readline().rstrip()
+        print p.stdout.read()
 
 class custom_build_py(build_py):
     def run(self):
@@ -197,6 +237,7 @@ setup(
         'build_py': custom_build_py,
         'build_ext': custom_build_ext,
         'double_install_check': double_install_check_cls,
+        'prereqs': Prereqs 
     },
 
     name=packname,
