@@ -204,7 +204,7 @@ class Prereqs(Command):
         from subprocess import Popen, PIPE, STDOUT
         import platform 
 
-        distribution = platform.linux_distribution()[0].lower()
+        distribution = platform.linux_distribution()[0].lower().rstrip()
         distribution = 'debian' if distribution=='ubuntu' else distribution
         fn = 'prerequisites/prerequisites_%s.sh'%distribution
 

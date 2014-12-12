@@ -72,6 +72,12 @@ def slashdate(s):
     else:
         return calendar.timegm(time.strptime(s, '%Y/%m/%d'))
 
+def slashdatetime(s):
+    if s.strip() == '':
+        return None
+    else:
+        return calendar.timegm(time.strptime(s, '%Y/%m/%d %H:%M'))
+
 def sslashdate(i):
     if i is None:
         return '          '
@@ -300,14 +306,21 @@ class DataSection:
             if self.version == 'GSE2.1':
                 net, sta, cha, auxid, lat, lon, coordsys, elev, depth, hang, vang, samprate, instype, ondate, offdate = \
                     unpack_fixed('a9,x1,a5,x1,a3,x1,a4,x1,f9,x1,f10,x1,a12,x1,f5,x1,f5,x1,f6,x1,f5,x1,f11,x1,a6,x1,a10,x1,a10', line)
+                ondate = slashdate(ondate)
+                offdate = slashdate(offdate)
+
             elif self.version == 'GSE2.0':
-                
                 sta, cha, auxid, lat, lon, elev, depth, hang, vang, samprate, instype, ondate, offdate  = \
                     unpack_fixed('a5,x1,a3,x1,a4,x1,f9,x1,f10,x1,f7,x1,f6,x1,f6,x1,f5,x1,f11,x1,a7,x1,a10,x1,a10', line)
                 net, coordsys = '', ''
+
+                if offdate.find(':') != -1: # hack for some non-standard gse2.0 files from norsar
+                    ondate = slashdatetime(line[84:100])
+                    offdate = slashdatetime(line[101:117])
+                else:
+                    ondate = slashdate(ondate)
+                    offdate = slashdate(offdate)
                 
-            ondate = slashdate(ondate)
-            offdate = slashdate(offdate)
             yield Channel(net, sta, cha, auxid, lat, lon, coordsys, elev, depth, hang, vang, samprate, instype, ondate, offdate)
             
     def interprete_waveform(self, load_data=True):
@@ -323,8 +336,10 @@ class DataSection:
             
         reset()
         for line in self.data:
+            line = line.rstrip('\r\n')
+
             if at in (0,2):
-                if line.startswith('WID2') and len(line)==104:
+                if line.startswith('WID2 '):
                     if wid2: 
                         yield Waveform(wid2, sta2, chk2, dat2)
                         reset()
