@@ -161,6 +161,7 @@ class QSeisConfigFull(QSeisConfig):
     receiver_azimuths = List.T(Float.T())
 
     earthmodel_1d = gf.meta.Earthmodel1D.T(optional=True)
+    earthmodel_receiver_1d = gf.meta.Earthmodel1D.T(optional=True)
 
     @staticmethod
     def example():
@@ -170,6 +171,7 @@ class QSeisConfigFull(QSeisConfig):
         conf.time_start = -10.0
         conf.time_reduction_velocity = 15.0
         conf.earthmodel_1d = cake.load_model().extract(depth_max='cmb')
+        conf.earthmodel_receiver_1d = None
         conf.sw_flat_earth_transform = 1
         return conf
     
@@ -200,6 +202,15 @@ class QSeisConfigFull(QSeisConfig):
         model_str, nlines = cake_model_to_config(self.earthmodel_1d)
         d['n_model_lines'] = nlines
         d['model_lines'] = model_str
+
+        if self.earthmodel_receiver_1d:
+            model_str, nlines = cake_model_to_config(self.earthmodel_receiver_1d)
+        else:
+            model_str = "# no receiver side model"
+            nlines = 0
+
+        d['n_model_receiver_lines'] = nlines
+        d['model_receiver_lines'] = model_str
 
         d['str_slowness_window'] = str_float_vals(self.slowness_window)
         d['n_depth_ranges'], d['str_depth_ranges'] = aggregate(self.propagation_filters)
@@ -454,22 +465,14 @@ class QSeisConfigFull(QSeisConfig):
 #          structure, too.
 #
 #------------------------------------------------------------------------------
- 0                               |int: no_model_lines;
+ %(n_model_receiver_lines)i                               |int: no_model_lines;
 #------------------------------------------------------------------------------
 #
 #	MULTILAYERED MODEL PARAMETERS (shallow receiver-site structure)
 #	===============================================================
 # no  depth[km]    vp[km/s]    vs[km/s]   ro[g/cm^3]   qp      qs
 #------------------------------------------------------------------------------
-#  1     0.000      2.900       1.676      2.600       92.00     41.00
-#  2     2.000      2.900       1.676      2.600       92.00     41.00
-#  3     2.000      5.400       3.121      2.600       92.00     41.00
-#  4     7.000      5.400       3.121      2.600       92.00     41.00
-#  5     7.000      6.160       3.561      2.600      576.00    256.00
-#  6    17.000      6.160       3.561      2.600      576.00    256.00
-#  7    17.000      6.630       3.832      2.900      576.00    256.00
-#  8    35.000      6.630       3.832      2.900      576.00    256.00
-#  9    35.000      8.0400      4.4700     3.3198    1340.00    600.00
+%(model_receiver_lines)s
 #---------------------------------end of all inputs----------------------------
 
 
@@ -674,6 +677,7 @@ class QSeisGFBuilder(gf.builder.Builder):
 
         conf = QSeisConfigFull(**baseconf.items())
         conf.earthmodel_1d = self.store.config.earthmodel_1d
+        conf.earthmodel_receiver_1d = self.store.config.earthmodel_receiver_1d
         
         deltat = 1.0/self.gf_config.sample_rate
 

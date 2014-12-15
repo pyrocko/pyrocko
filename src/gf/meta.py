@@ -1032,6 +1032,7 @@ class Config(Object):
     size = Int.T(optional=True)
 
     earthmodel_1d = Earthmodel1D.T(optional=True)
+    earthmodel_receiver_1d = Earthmodel1D.T(optional=True)
 
     can_interpolate_source = Bool.T(optional=True)
     can_interpolate_receiver = Bool.T(optional=True)
