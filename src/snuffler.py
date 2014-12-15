@@ -586,6 +586,8 @@ def snuffle(pile=None, **kwargs):
     
     global app
     if app is None:
+        import locale
+        locale.setlocale(locale.LC_ALL, 'C')
         app = Snuffler()
     
     kwargs_load = {}
