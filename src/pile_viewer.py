@@ -425,6 +425,13 @@ class TimeAx(TimeScaler):
             
             p.drawLine(QPointF(umin, vmin), QPointF(umax, vmax))
             l0, l0_brief, l0_center, l1, l2 = tick_to_labels(tick, inc)
+
+            if tick == 0.0 and tmax - tmin < 3600*24:
+                # hide year at epoch (we assume that synthetic data is shown)
+                if l2:
+                    l2 = None
+                elif l1:
+                    l1 = None
             
             if l0_center:
                 ushift = (umin_approx_next-umin)/2.
@@ -459,6 +466,13 @@ class TimeAx(TimeScaler):
             first_tick_with_label = tmin
             
         l1, l2 = l1_l2_tick(first_tick_with_label, inc)
+
+        if -3600.*25 < first_tick_with_label <= 3600.*25 and tmax - tmin < 3600*24:
+            # hide year at epoch (we assume that synthetic data is shown)
+            if l2:
+                l2 = None
+            elif l1:
+                l1 = None
         
         if l1_hits == 0 and l1:
             label1 = QString(l1)
