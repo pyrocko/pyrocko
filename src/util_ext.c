@@ -93,6 +93,7 @@ int stt(const char *s, const char *format, time_t *t, double *tfrac) {
         }
     }
 
+    memset(&tm, 0, sizeof(struct tm));
     end = strptime(s2, format2, &tm);
 
     if (end == NULL || *end != '\0') {
