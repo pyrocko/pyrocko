@@ -62,7 +62,7 @@ def read_header(f, endianness='>'):
 
     i_day_second = struct.unpack(e+'I', data[8:12])[0]
     iday = i_day_second >> 17
-    isecond = i_day_second & 0x7fff
+    isecond = i_day_second & 0x1ffff
     time = (iday*24*60*60) + guralp_zero + isecond
 
     ittl, israte, compression, nrecords = struct.unpack(e+'BBBB', data[12:])
