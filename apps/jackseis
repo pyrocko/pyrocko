@@ -56,7 +56,8 @@ def nice_seconds_floor(s):
 if __name__ == '__main__':
     parser = OptionParser(
         usage=usage,
-        description=description)
+        description=description,
+        formatter=util.BetterHelpFormatter())
 
     parser.add_option(
         '--format',
@@ -64,7 +65,9 @@ if __name__ == '__main__':
         default='detect',
         choices=['mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan_l',
                  'seisan_b', 'gcf', 'yaff', 'from_extension', 'detect'],
-        help='assume input files are of given FORMAT (default: \'%default\')')
+        help='assume input files are of given FORMAT. Choices: '
+             'detect [default], mseed, sac, kan, segy, seisan, seisan_l, '
+             'seisan_b, gcf, yaff, from_extension')
 
     parser.add_option(
         '--pattern',
@@ -123,7 +126,10 @@ if __name__ == '__main__':
     parser.add_option(
         '--tinc',
         dest='tinc',
-        help='set processing window increment')
+        help='set time length of output files [s] or "auto" to automatically '
+             'choose an appropriate time increment or "huge" to allow to use '
+             'a lot of system memory to merge input traces into huge output '
+             'files.')
 
     parser.add_option(
         '--downsample',
@@ -134,40 +140,51 @@ if __name__ == '__main__':
     parser.add_option(
         '--output',
         dest='output_path',
-        help='set output path')
+        metavar='TEMPLATE',
+        help='set output path to TEMPLATE. Available placeholders '
+             'are %n: network, %s: station, %l: location, %c: channel, '
+             '%b: begin time, %e: end time. Example: '
+             '--output=\'data/%s/trace-%s-%c.mseed\'')
 
     parser.add_option(
         '--output-dir',
+        metavar='TEMPLATE',
         dest='output_dir',
-        help='set output directory')
+        help='set output directory to TEMPLATE (see --output for details) '
+             'and automatically choose filenames. '
+             'Produces files like TEMPLATE/NET-STA-LOC-CHA_BEGINTIME.FORMAT')
 
     parser.add_option(
         '--output-format',
         dest='output_format',
         default='mseed',
         choices=['mseed', 'sac', 'text', 'yaff'],
-        help='set output file format (default: \'%default\')')
+        help='set output file format (mseed [default], sac, text, yaff)')
 
     parser.add_option(
-        '--snap',
-        dest='snap',
+        '--force',
+        dest='force',
         action='store_true',
         default=False,
-        help='snap window bounds to even multiples of increment')
+        help='force overwriting of existing files')
 
     parser.add_option(
-        '--channel-by-channel',
-        dest='channel_by_channel',
-        action='store_true',
-        help='make an outer loop over channels to use less '
-             'memory during processing')
+        '--no-snap',
+        dest='snap',
+        action='store_false',
+        default=True,
+        help='do not start output files at even multiples of file length')
 
     parser.add_option(
-        '--station-by-station',
-        dest='station_by_station',
-        action='store_true',
-        help='make an outer loop over stations to use less '
-             'memory during processing')
+        '--traversal',
+        dest='traversal',
+        choices=('station-by-station', 'channel-by-channel', 'chronological'),
+        default='station-by-station',
+        help='set traversal order for traces processing. '
+             'Choices are \'station-by-station\' [default], '
+             '\'channel-by-channel\', and \'chronological\'. Chronological '
+             'traversal uses more processing memory but makes it possible to '
+             'join multiple stations into single output files')
 
     parser.add_option(
         '--rename-network',
@@ -216,10 +233,13 @@ if __name__ == '__main__':
 
     tinc = None
     if options.tinc is not None:
-        try:
-            tinc = str_to_seconds(options.tinc)
-        except:
-            die('invalid argument to --tinc')
+        if tinc in ('huge', 'auto'):
+            tinc = options.tinc
+        else:
+            try:
+                tinc = str_to_seconds(options.tinc)
+            except:
+                die('invalid argument to --tinc')
 
     tmin = None
     if options.tmin is not None:
@@ -278,14 +298,15 @@ if __name__ == '__main__':
     if p.tmin is None:
         die('data selection is empty')
 
-    if tinc is None:
-        tinc = nice_seconds_floor(p.get_deltatmin() * 500000.)
+    if tinc == 'auto':
+        tinc = nice_seconds_floor(p.get_deltatmin() * 1000000.)
 
     if options.snap:
         if tmin is None:
             tmin = p.tmin
 
-        tmin = int(math.floor(tmin / tinc)) * tinc
+        if tinc is not None:
+            tmin = int(math.floor(tmin / tinc)) * tinc
 
     output_path = options.output_path
     output_dir = options.output_dir
@@ -295,7 +316,8 @@ if __name__ == '__main__':
 
     if output_dir and not output_path:
         output_path = 'trace_%(network)s-%(station)s-' \
-                      '%(location)s-%(channel)s_%(tmin)s.mseed'
+                      '%(location)s-%(channel)s_%(tmin)s.' + \
+                      options.output_format
 
     if output_dir and output_path:
         output_path = pjoin(output_dir, output_path)
@@ -307,12 +329,18 @@ if __name__ == '__main__':
     if target_deltat is not None:
         tpad = target_deltat * 10.
 
+    if tinc is None:
+        if ((tmax or p.tmax) - (tmin or p.tmin)) \
+                / p.get_deltatmin() > 100000000.:
+            die('use --tinc=huge to really produce such large output files '
+                'or use --tinc=INC to split into smaller files.')
+
     kwargs = dict(tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad)
 
-    if options.channel_by_channel:
+    if options.traversal == 'channel-by-channel':
         it = p.chopper_grouped(gather=lambda tr: tr.nslc_id, **kwargs)
 
-    elif options.station_by_station:
+    elif options.traversal == 'station-by-station':
         it = p.chopper_grouped(gather=lambda tr: tr.nslc_id[:2], **kwargs)
 
     else:
@@ -359,7 +387,8 @@ if __name__ == '__main__':
 
             if output_path:
                 try:
-                    io.save(traces, output_path, format=options.output_format)
+                    io.save(traces, output_path, format=options.output_format,
+                            overwrite=options.force)
                 except io.FileSaveError, e:
                     die(str(e))
 
