@@ -1181,6 +1181,13 @@ class Trace(object):
         include microseconds.
         '''
 
+        template = template.replace('%n', '%(network)s')\
+            .replace('%s', '%(station)s')\
+            .replace('%l', '%(location)s')\
+            .replace('%c', '%(channel)s')\
+            .replace('%b', '%(tmin)s')\
+            .replace('%e', '%(tmax)s')
+
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
         params['tmin'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S')
         params['tmax'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S')
