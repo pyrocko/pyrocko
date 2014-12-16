@@ -140,7 +140,8 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
         yield subs(tr)
 
     
-def save(traces, filename_template, format='mseed', additional={}, stations=None):
+def save(traces, filename_template, format='mseed', additional={}, 
+         stations=None, overwrite=True):
     '''Save traces to file(s).
     
     :param traces: a trace or an iterable of traces to store
@@ -153,6 +154,7 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
             include microseconds.
     :param format: ``mseed``, ``sac``, ``text``, or ``yaff``.
     :param additional: dict with custom template placeholder fillins.
+    :param overwrite': if ``False``, raise an exception if file exists
     :returns: list of generated filenames
 
     .. note:: 
@@ -166,11 +168,18 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
         format = os.path.splitext(filename_template)[1][1:]
 
     if format == 'mseed':
-        return mseed.save(traces, filename_template, additional)
-    
+        return mseed.save(traces, filename_template, additional,
+                          overwrite=overwrite)
+
     elif format == 'sac':
         fns = []
         for tr in traces:
+            fn = tr.fill_template(filename_template, **additional)
+            if not overwrite and os.path.exists(fn):
+                raise FileSaveError('file exists: %s' % fn)
+
+            util.ensuredirs(fn)
+
             f = sac.SacFile(from_trace=tr)
             if stations:
                 s = stations[tr.network, tr.station, tr.location]
@@ -181,8 +190,6 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
                 f.cmpinc = s.get_channel(tr.channel).dip + 90.
                 f.cmpaz = s.get_channel(tr.channel).azimuth
 
-            fn = tr.fill_template(filename_template, **additional)
-            util.ensuredirs(fn)
             f.write(fn)
             fns.append(fn)
             
@@ -192,6 +199,9 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
         fns = []
         for tr in traces:
             fn = tr.fill_template(filename_template, **additional)
+            if not overwrite and os.path.exists(fn):
+                raise FileSaveError('file exists: %s' % fn)
+
             util.ensuredirs(fn)
             x,y = tr.get_xdata(), tr.get_ydata()
             num.savetxt(fn, num.transpose((x,y)))
@@ -199,7 +209,8 @@ def save(traces, filename_template, format='mseed', additional={}, stations=None
         return fns
             
     elif format == 'yaff':
-        return yaff.save(traces, filename_template, additional)
+        return yaff.save(traces, filename_template, additional, 
+                         overwrite=overwrite)
     else:
         raise UnsupportedFormat(format)
 

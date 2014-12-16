@@ -41,7 +41,7 @@ def as_tuple(tr):
 
 
 
-def save(traces, filename_template, additional={}):
+def save(traces, filename_template, additional={}, overwrite=True):
     from pyrocko import mseed_ext
             
     fn_tr = {}
@@ -57,6 +57,9 @@ def save(traces, filename_template, additional={}):
                         (code, val))
 
         fn = tr.fill_template(filename_template, **additional)
+        if not overwrite and os.path.exists(fn):
+            raise FileSaveError('file exists: %s' % fn)
+
         if fn not in fn_tr:
             fn_tr[fn] = []
         

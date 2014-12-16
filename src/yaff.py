@@ -1,5 +1,7 @@
 '''File IO module for SICK traces format.'''
 
+import os
+
 from pyrocko.file import File, numtype2type, NoDataAvailable, size_record_header, FileError
 from pyrocko import trace
 from pyrocko.util import ensuredirs
@@ -78,7 +80,8 @@ def iload(filename, load_data=True):
         tf.close()
         f.close()
     
-def save(traces, filename_template, additional={}, max_open_files=10):
+def save(traces, filename_template, additional={}, max_open_files=10, 
+         overwrite=True):
     fns = set()
     open_files = {}
     
@@ -88,6 +91,8 @@ def save(traces, filename_template, additional={}, max_open_files=10):
             
     for tr in traces:
         fn = tr.fill_template(filename_template, **additional)
+        if not overwrite and os.path.exists(fn):
+            raise FileSaveError('file exists: %s' % fn)
         
         if fn not in open_files:
             if len(open_files) >= max_open_files:
