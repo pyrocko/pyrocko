@@ -122,7 +122,13 @@ class SEGYFile:
             else:
                 tmax = tmin + deltat_us_this/1000000.*(nsamples_this-1)
                 data = None
-            tr = trace.Trace('','%i' % (ensemble_num),'','%i' %(trace_numbersegy), tmin=tmin, tmax=tmax, deltat=deltat_us_this/1000000., ydata=data)
+            tr = trace.Trace(
+                '', '%i' % (ensemble_num), '', '%i' %(trace_numbersegy),
+                tmin=tmin,
+                tmax=tmax,
+                deltat=deltat_us_this/1000000.,
+                ydata=data.astype(num.int32))
+
             nlsc=('','%i' %(ensemble_num),'','%i' %(trace_numbersegy))
             traces.append(tr)
             ipos += nbtrh+nsamples_this*sample_size
