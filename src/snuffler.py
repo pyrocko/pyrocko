@@ -658,8 +658,8 @@ def snuffler_from_commandline(args=sys.argv):
     parser.add_option('--format',
             dest='format',
             default='detect',
-            choices=('mseed', 'sac', 'kan', 'segy', 
-                'seisan', 'seisan_l', 'seisan_b', 'gse1', 'gcf', 'yaff', 'datacube',
+            choices=('mseed', 'sac', 'kan', 'segy',
+                'seisan', 'seisan.l', 'seisan.b', 'gse1', 'gcf', 'yaff', 'datacube',
                 'from_extension', 'detect'),
             help='assume files are of given FORMAT [default: \'%default\']' )
 

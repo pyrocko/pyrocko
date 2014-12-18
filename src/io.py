@@ -44,7 +44,7 @@ logger = logging.getLogger('pyrocko.io')
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
 
-    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan_l'``, ``'seisan_b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'gcf'``, ```'datacube'``, `'from_extension'``)
+    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan.l'``, ``'seisan.b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'gcf'``, ```'datacube'``, `'from_extension'``)
     :param getdata: if ``True`` (the default), read data, otherwise only read traces metadata
     :param substitutions:  dict with substitutions to be applied to the traces metadata
     
@@ -82,7 +82,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
     load_data = getdata
 
     toks = format.split('.', 1)
-    if toks == 2:
+    if len(toks) == 2:
         format, subformat = toks
     else:
         subformat = None

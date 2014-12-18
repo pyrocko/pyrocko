@@ -78,7 +78,11 @@ def read_channel_data(f, endianness, sample_bytes, nsamples, gain, load_data=Tru
 
     else:
         f.read(npad)
-        data = num.fromfile(f, dtype=num.dtype(endianness+'i'+str(sample_bytes)), count=nsamples)
+        data = num.fromfile(
+            f,
+            dtype=num.dtype('%si%i' % (endianness, sample_bytes)),
+            count=nsamples).astype('i%i' % sample_bytes)
+
         f.read(npad)
         data *= gain
         return data
@@ -87,6 +91,7 @@ def read_channel_data(f, endianness, sample_bytes, nsamples, gain, load_data=Tru
 def iload(filename, load_data=True, subformat='l4'):
    
     try:
+        npad = 4
         if subformat is not None:
             try:
                 endianness = {'l': '<', 'b': '>'}[subformat[0]]
@@ -96,7 +101,6 @@ def iload(filename, load_data=True, subformat='l4'):
                 raise SeisanFileError('Bad subformat specification: "%s"' % subformat)
         else:
             endianness = '<'
-            npad = 4
         
         f = open(filename, 'r')
         try:

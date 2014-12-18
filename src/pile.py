@@ -313,14 +313,20 @@ def loader(filenames, fileformat, cache, filename_attributes, show_progress=True
                 for k in m.groupdict():
                     if k  in ('network', 'station', 'location', 'channel'):
                         substitutions[k] = m.groupdict()[k]
-                
-            
+
             mtime = os.stat(filename)[8]
             tfile = None
             if cache:
                 tfile = cache.get(abspath)
-            to_load.append(((not tfile or tfile.mtime != mtime or substitutions), mtime, abspath, substitutions, tfile))
-    
+
+            mustload = (
+                not tfile or
+                (tfile.format != fileformat and fileformat != 'detect') or
+                tfile.mtime != mtime or
+                substitutions)
+
+            to_load.append((mustload, mtime, abspath, substitutions, tfile))
+
         except (OSError, FilenameAttributeError), xerror:
             failures.append(abspath)
             logger.warn(xerror)

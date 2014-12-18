@@ -206,8 +206,9 @@ class Snuffling:
         parser.add_option('--format',
                 dest='format',
                 default='from_extension',
-                choices=('mseed', 'sac', 'kan', 'segy', 
-                    'seisan', 'seisan_l', 'seisan_b', 'from_extension', 'try'),
+                choices=('mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan.l',
+                    'seisan.b', 'gse1', 'gcf', 'yaff', 'datacube',
+                    'from_extension', 'detect'),
                 help='assume files are of given FORMAT [default: \'%default\']' )
 
         parser.add_option('--pattern',

@@ -63,11 +63,11 @@ if __name__ == '__main__':
         '--format',
         dest='format',
         default='detect',
-        choices=['mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan_l',
-                 'seisan_b', 'gcf', 'yaff', 'from_extension', 'detect'],
+        choices=['mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan.l',
+                 'seisan.b', 'gcf', 'yaff', 'from_extension', 'detect'],
         help='assume input files are of given FORMAT. Choices: '
-             'detect [default], mseed, sac, kan, segy, seisan, seisan_l, '
-             'seisan_b, gcf, yaff, from_extension')
+             'detect [default], mseed, sac, kan, segy, seisan, seisan.l, '
+             'seisan.b, gcf, yaff, from_extension')
 
     parser.add_option(
         '--pattern',
