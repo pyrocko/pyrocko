@@ -203,13 +203,20 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
         mst->station[10] = '\0';
         mst->location[10] ='\0';
         mst->channel[10] = '\0';
-        
+
         if (!PyArray_Check(array)) {
             PyErr_SetString(MSeedError, "Data must be given as NumPy array." );
-            mst_free( &mst );  
+            mst_free( &mst );
             Py_DECREF(in_trace);
             return NULL;
         }
+        if (PyArray_ISBYTESWAPPED(array)) {
+            PyErr_SetString(MSeedError, "Data must be given in machine byte-order" );
+            mst_free( &mst );
+            Py_DECREF(in_trace);
+            return NULL;
+        }
+
         numpytype = PyArray_TYPE(array);
         switch (numpytype) {
                 case NPY_INT32:
