@@ -804,7 +804,7 @@ class Trace(object):
         self.tmax += tshift
         self._update_ids()
         
-    def snap(self, inplace=True):
+    def snap(self, inplace=True, interpolate=False):
         '''Shift trace samples to nearest even multiples of the sampling rate.
 
         :param inplace: (boolean) snap traces inplace
@@ -814,22 +814,37 @@ class Trace(object):
         returns the unsnapped instance of the original trace.
         '''
 
-        if inplace:
-            self.tmin = round(self.tmin/self.deltat)*self.deltat 
-            self.tmax = self.tmin + (self.ydata.size-1)*self.deltat
-            self._update_ids()
-        else:
-            tmin = round(self.tmin/self.deltat)*self.deltat
+        tmin = round(self.tmin/self.deltat)*self.deltat
+        tmax = tmin + (self.ydata.size-1)*self.deltat
 
-            tmax = self.tmin + (self.ydata.size-1)*self.deltat
+        if inplace:
+            xself = self
+        else:
             if abs(self.tmin - tmin) < 1e-2*self.deltat and \
                     abs(self.tmax - tmax) < 1e-2*self.deltat:
-                        return self
-            snapped_trace = self.copy()
-            snapped_trace.tmin = tmin
-            snapped_trace.tmax = tmax
-            snapped_trace._update_ids()
-            return snapped_trace
+                return self
+
+            xself = self.copy()
+
+        if interpolate:
+            from pyrocko import signal_ext
+            dt = xself.tmin - tmin
+            n = xself.data_len()
+            ydata_new = num.empty(n, dtype=num.float)
+            i_control = num.array([0, n-1])
+            t_control = num.array([xself.tmin, xself.tmax])
+            signal_ext.antidrift(i_control, t_control,
+                                 xself.ydata.astype(num.float),
+                                 tmin, xself.deltat, ydata_new)
+
+            xself.ydata = ydata_new
+
+
+        xself.tmin = tmin
+        xself.tmax = tmax
+        xself._update_ids()
+
+        return xself
 
     def sta_lta_centered(self, tshort, tlong, quad=True, scalingmethod=1):
         '''Run special STA/LTA filter where the short time window is centered on the long time window.
