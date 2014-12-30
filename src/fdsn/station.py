@@ -891,7 +891,7 @@ class FDSNStationXML(Object):
             time=None,
             timespan=None):
 
-        nslcs = []
+        nslcs = {}
         for nsl, bic_to_channels in self.get_channel_groups(
                 time=time, timespan=timespan).iteritems():
 
@@ -936,11 +936,11 @@ class FDSNStationXML(Object):
 
             for _, _, rate, _, _, bic in useful_bics:
                 for channel in sorted(bic_to_channels[bic]):
-                    nslcs.append(nsl + (channel.code,))
+                    nslcs[nsl + (channel.code,)] = channel
 
                 break
 
-        return sorted(nslcs)
+        return nslcs
 
     def get_pyrocko_response(
             self, nslc, time=None, timespan=None, fake_input_units=None):
