@@ -370,7 +370,7 @@ if __name__ == '__main__':
                         tr.chop(tr.wmin, tr.wmax)
                         out_traces.append(tr)
 
-                    except trace.TraceTooShort, trace.NoData:
+                    except (trace.TraceTooShort, trace.NoData):
                         pass
 
                 traces = out_traces
