@@ -27,9 +27,9 @@ def read_file_header(f, npad=4):
             tmin = calendar.timegm((year,mon,day,hr,min,secs))
             header_infos.append( (net_name, nchannels, util.time_to_str(tmin)) )
 
-            if nchannels > 24:
-                nlines += (nchannels - 25)/3 + 1
-            
+            if nchannels > 30:
+                nlines += (nchannels - 31)/3 + 1
+
         if iline >= 2:
             for j in range(3):
                 s = d[j*26:(j+1)*26]
@@ -137,4 +137,9 @@ def iload(filename, load_data=True, subformat='l4'):
     finally:
         f.close()
 
+
+if __name__ == '__main__':
+    fn = sys.argv[1]
+    for tr in iload(fn):
+        print tr
 
