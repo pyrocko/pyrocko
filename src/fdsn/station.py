@@ -525,6 +525,20 @@ class ResponseStage(Object):
 
         return responses
 
+    @property
+    def input_units(self):
+        for e in (self.poles_zeros_list + self.coefficients_list +
+                  [self.response_list, self.fir, self.polynomial]):
+            if e is not None:
+                return e.input_units
+
+    @property
+    def output_units(self):
+        for e in (self.poles_zeros_list + self.coefficients_list +
+                  [self.response_list, self.fir, self.polynomial]):
+            if e is not None:
+                return e.output_units
+
 
 class Response(Object):
     resource_id = String.T(optional=True, xmlstyle='attribute')
