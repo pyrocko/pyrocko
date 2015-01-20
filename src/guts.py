@@ -349,7 +349,12 @@ class TBase(object):
         if self.dummy_cls in guts_plain_dummy_types:
             return '``%s``' % self.cls.__name__
         else:
-            return ':py:class:`%s`' % self.tagname
+            mod = self.cls.__module__
+            cls = self.cls.__name__
+            if mod == '__builtin__':
+                return ':py:class:`%s`' % cls
+            else:
+                return ':py:class:`%s.%s`' % (mod, cls)
 
     @classmethod
     def props_help_string(cls):
