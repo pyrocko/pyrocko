@@ -425,7 +425,7 @@ class Location(Object):
             azi = orthodrome.azimuth_numpy(slat, slon, rlat, rlon)
             bazi = orthodrome.azimuth_numpy(rlat, rlon, slat, slon)
 
-        return azi, bazi
+        return float(azi), float(bazi)
 
     def set_origin(self, lat, lon):
         lat = float(lat)
