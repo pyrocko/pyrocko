@@ -1873,7 +1873,7 @@ class CosTaper(Taper):
     c = Float.T()
     d = Float.T()
 
-    def __init__(self, a=a, b=b, c=c, d=d):
+    def __init__(self, a, b, c, d):
         Taper.__init__(self, a=a, b=b, c=c, d=d)
 
     def __call__(self, y, x0, dx):
