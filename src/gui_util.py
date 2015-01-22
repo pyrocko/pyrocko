@@ -980,7 +980,7 @@ class PhaseMarker(Marker):
     :param incident_angle: (optional) incident angle of phase
     :param takeoff_angle:  (optional) take off angle of phase                   
     '''
-    def __init__(self, nslc_ids, tmin, tmax, kind, event=None, event_hash=None,
+    def __init__(self, nslc_ids, tmin, tmax, kind=0, event=None, event_hash=None,
                  event_time=None, phasename=None, polarity=None,
                  automatic=None, incidence_angle=None, takeoff_angle=None):
 
