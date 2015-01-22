@@ -195,9 +195,9 @@ class Snuffling:
                 self._menu_parent.add_snuffling_help_menuitem(self._helpmenuitem)
 
     def set_force_panel(self, bool=True):
-        '''Force to create a panel
+        '''Force to create a panel.
 
-        :param bool: if ``True`` will create a panel with Help, Clear and Run button
+        :param bool: if ``True`` will create a panel with Help, Clear and Run button.
         '''
         self._force_panel = bool
 
@@ -498,6 +498,13 @@ class Snuffling:
         return self._parameters
    
     def get_parameter(self, ident):
+        '''Get one of the snuffling's adjustable parameter definitions.
+        
+        :param ident: identifier of the parameter
+
+        Returns an object of type :py:class:`Param` or ``None``.
+        '''
+
         for param in self._parameters:
             if param.ident == ident:
                 return param
