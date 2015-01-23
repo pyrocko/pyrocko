@@ -1,22 +1,20 @@
-import os, sys, time, calendar, datetime, signal, re, math, scipy.stats, tempfile, logging, traceback, shlex, operator, copy
+import os, time, calendar, datetime, signal, re, math, logging, operator, copy
 
-from optparse import OptionParser
 import numpy as num 
-from itertools import izip
+import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace
+import pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
 
-import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace, pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
+from pyrocko.util import hpfloat
 
-from pyrocko.util import TableWriter, TableReader, hpfloat
-
-from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker, PhaseMarker, make_QPolygonF, draw_label, Label, \
-    gmtime_x, myctime, mystrftime, Progressbars
+from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker,\
+    PhaseMarker, make_QPolygonF, draw_label, Label, gmtime_x, mystrftime, \
+    Progressbars
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
 
-import scipy.signal as ssignal
 import scipy.stats as sstats
 
 
@@ -37,14 +35,15 @@ class Global:
     appOnDemand = None
 
 class NSLC:
-    def __init__(self, n,s,l=None,c=None):
+    def __init__(self, n, s, l=None, c=None):
         self.network = n
         self.station = s
         self.location = l
         self.channel = c
 
+
 class m_float(float):
-    
+
     def __str__(self):
         if abs(self) >= 10000.:
             return '%g km' % round(self/1000.,0)
