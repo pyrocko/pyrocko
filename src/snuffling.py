@@ -143,6 +143,7 @@ class Snuffling:
         self._no_viewer_pile = None 
         self._cli_params = {}
         self._filename = None
+        self._force_panel = False
 
 
     def setup(self):
@@ -193,6 +194,13 @@ class Snuffling:
 
             if self._helpmenuitem:
                 self._menu_parent.add_snuffling_help_menuitem(self._helpmenuitem)
+
+    def set_force_panel(self, bool=True):
+        '''Force to create a panel.
+
+        :param bool: if ``True`` will create a panel with Help, Clear and Run button.
+        '''
+        self._force_panel = bool
 
     def make_cli_parser1(self):
         import optparse
@@ -492,6 +500,13 @@ class Snuffling:
         return self._parameters
    
     def get_parameter(self, ident):
+        '''Get one of the snuffling's adjustable parameter definitions.
+        
+        :param ident: identifier of the parameter
+
+        Returns an object of type :py:class:`Param` or ``None``.
+        '''
+
         for param in self._parameters:
             if param.ident == ident:
                 return param
@@ -806,7 +821,7 @@ class Snuffling:
     
         params = self.get_parameters()
         self._param_controls = {}
-        if params:
+        if params or self._force_panel:
             sarea = MyScrollArea(parent.get_panel_parent_widget())
             sarea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
             frame = MyFrame(sarea)
@@ -821,7 +836,7 @@ class Snuffling:
             frame.setLayout( layout )
             
             parlayout = QGridLayout()
-            
+
             irow = 0
             ipar = 0
             have_switches = False

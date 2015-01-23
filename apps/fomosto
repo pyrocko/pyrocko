@@ -122,8 +122,8 @@ def cl_parse(command, args, setup=None):
     process_common_options(options)
     return parser, options, args
 
-def die(message):
-    sys.exit('%s: error: %s' % (program_name, message))
+def die(message, err=''):
+    sys.exit('%s: error: %s \n %s' % (program_name, message, err))
 
 def fomo_wrapper_module(name):
     try:
@@ -574,8 +574,8 @@ def command_export(args):
 
     try:
         from tunguska import gfdb
-    except ImportError:
-        die('the kiwi tools must be installed to use this feature')
+    except ImportError as err:
+        die('the kiwi tools must be installed to use this feature', err)
 
     def setup(parser):
         parser.add_option('--nchunks', dest='nchunks', type='int', 
