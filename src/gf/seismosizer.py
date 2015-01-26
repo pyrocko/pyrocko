@@ -1445,7 +1445,8 @@ class Target(meta.Receiver):
         elif self.component_code() in 'NEZ':
             return {'N': 0., 'E': 90., 'Z': 0.}[self.component_code()]
 
-        raise BadRequest('cannot determine sensor component azimuth')
+        raise BadRequest('cannot determine sensor component azimuth for '
+                         '%s.%s.%s.%s' % self.codes)
 
     def effective_dip(self):
         if self.dip is not None:
