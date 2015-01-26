@@ -10,6 +10,8 @@ from os.path import join as pjoin
 import os, sys
 import shutil
 
+import common
+
 abc = 'abcdefghijklmnopqrstuvwxyz' 
     
 def rn(n):
@@ -59,9 +61,8 @@ class IOTestCase( unittest.TestCase ):
     
     
     def testReadSac(self):
-        
-        fn = os.path.join(sys.path[0], '2010.057.20.30.26.5356.IC.BJT.00.LHZ.R.SAC')
-        tr = io.load(fn, format='sac')[0]
+        fpath = common.test_data_file('test1.sac')
+        tr = io.load(fpath, format='sac')[0]
         assert tr.meta['cmpaz'] == 0.0
         assert tr.meta['cmpinc'] == 0.0
 
@@ -77,9 +78,8 @@ class IOTestCase( unittest.TestCase ):
         assert isinstance(e, mseed.CodeTooLong)
 
     def testMSeedDetect(self):
-        testdir = os.path.dirname(__file__)
-        fn = os.path.join(testdir, 'detect.mseed')
-        io.load(fn, format='detect')
+        fpath = common.test_data_file('test2.mseed')
+        io.load(fpath, format='detect')
 
 
 if __name__ == "__main__":
