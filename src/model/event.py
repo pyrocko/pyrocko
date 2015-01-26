@@ -309,20 +309,17 @@ class Event(Location):
     @staticmethod
     def load_catalog(filename):
 
-        file = open(filename, 'r')
+        with open(filename, 'r') as file:
+            try:
+                while True:
+                    try:
+                        ev = Event(loadf=file)
+                        yield ev
+                    except EmptyEvent:
+                        pass
 
-        try:
-            while True:
-                try:
-                    ev = Event(loadf=file)
-                    yield ev
-                except EmptyEvent:
-                    pass
-
-        except EOF:
-            pass
-
-        file.close()
+            except EOF:
+                pass
 
     def get_hash(self):
         e = self
@@ -368,6 +365,16 @@ class Event(Location):
             s.append(str(self.moment_tensor))
 
         return '\n'.join(s)
+
+    @property
+    def summary(self):
+        return '%s: %s, %s, %s, %s' % (
+            self.__class__.__name__,
+            self.name,
+            util.time_to_str(self.time),
+            '%-3s %3.1f' % (self.magnitude_type or '    ', self.magnitude)
+            if self.magnitude else 'M   ---',
+            self.region)
 
 
 def detect_format(filename):

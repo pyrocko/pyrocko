@@ -22,6 +22,7 @@ Reference
    plot
    pz
    scenario
+   squirrel <squirrel/index>
    streaming
    trace
    util

@@ -6,6 +6,8 @@
 '''
 
 from __future__ import absolute_import
+
+from .content import *  # noqa
 from .location import *  # noqa
 from .station import *  # noqa
 from .event import *  # noqa

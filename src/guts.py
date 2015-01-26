@@ -1279,6 +1279,28 @@ class Tuple(Object):
                         strip_module=strip_module))
 
 
+unit_factors = dict(
+    s=1.0,
+    m=60.0,
+    h=3600.0,
+    d=24*3600.0,
+    y=365*24*3600.0)
+
+
+class Duration(Object):
+    dummy_for = float
+
+    class __T(TBase):
+
+        def regularize_extra(self, val):
+            if isinstance(val, (str, newstr)):
+                unit = val[-1]
+                if unit in unit_factors:
+                    return float(val[:-1]) * unit_factors[unit]
+                else:
+                    return float(val)
+
+
 re_tz = re.compile(r'(Z|([+-][0-2][0-9])(:?([0-5][0-9]))?)$')
 
 

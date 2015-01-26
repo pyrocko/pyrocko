@@ -5,6 +5,7 @@
 '''
 This module provides basic signal processing for seismic traces.
 '''
+
 from __future__ import division, absolute_import
 
 import time
@@ -16,11 +17,12 @@ import hashlib
 import numpy as num
 from scipy import signal
 
-from . import util, evalresp, orthodrome, pchain, model
-from .util import reuse, UnavailableDecimation
-from .guts import Object, Float, Int, String, Complex, Tuple, List, \
+from pyrocko import util, evalresp, orthodrome, pchain, model
+from pyrocko.util import reuse, UnavailableDecimation
+from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice, Timestamp
-from .guts_array import Array
+from pyrocko.guts_array import Array
+from pyrocko.model import Content
 
 try:
     newstr = unicode
@@ -35,7 +37,7 @@ guts_prefix = 'pf'
 logger = logging.getLogger('pyrocko.trace')
 
 
-class Trace(Object):
+class Trace(Content):
 
     '''
     Create new trace object.
@@ -67,10 +69,12 @@ class Trace(Object):
     silently truncated when the trace is stored
     '''
 
-    network = String.T(default='')
-    station = String.T(default='STA')
-    location = String.T(default='')
-    channel = String.T(default='')
+    agency = String.T(default='', help='Agency code (2-5)')
+    network = String.T(default='', help='Deployment/network code (1-8)')
+    station = String.T(default='STA', help='Station code (1-5)')
+    location = String.T(default='', help='Location code (0-2)')
+    channel = String.T(default='', help='Channel code (3)')
+    extra = String.T(default='', help='Extra/custom code')
 
     tmin = Timestamp.T(default=Timestamp.D('1970-01-01 00:00:00'))
     tmax = Timestamp.T()
@@ -84,9 +88,9 @@ class Trace(Object):
 
     def __init__(self, network='', station='STA', location='', channel='',
                  tmin=0., tmax=None, deltat=1., ydata=None, mtime=None,
-                 meta=None):
+                 meta=None, agency='', extra=''):
 
-        Object.__init__(self, init_props=False)
+        Content.__init__(self, init_props=False)
 
         time_float = util.get_time_float()
 
@@ -108,8 +112,10 @@ class Trace(Object):
         if mtime is None:
             mtime = time_float(time.time())
 
-        self.network, self.station, self.location, self.channel = [
-            reuse(x) for x in (network, station, location, channel)]
+        self.agency, self.network, self.station, self.location, self.channel, \
+            self.extra = [
+                reuse(x) for x in (
+                    agency, network, station, location, channel, extra)]
 
         self.tmin = tmin
         self.deltat = deltat
@@ -143,6 +149,18 @@ class Trace(Object):
             for k in sorted(self.meta.keys()):
                 s += '  %s: %s\n' % (k, self.meta[k])
         return s
+
+    @property
+    def codes(self):
+        return (
+            self.agency, self.network, self.station, self.location,
+            self.channel, self.extra)
+
+    @property
+    def summary(self):
+        return '%s %-16s %s %g' % (
+            self.__class__.__name__, self.str_codes, self.str_time_span,
+            self.deltat)
 
     def __getstate__(self):
         return (self.network, self.station, self.location, self.channel,
@@ -1830,7 +1848,8 @@ class Trace(Object):
         placeholders are considered: ``network``, ``station``, ``location``,
         ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
         sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``,
-        ``tmin_year``, ``tmax_year``, ``julianday``. The variants ending with
+        ``tmin_year``, ``tmax_year``, ``tmin_month``, ``tmax_month``,
+        ``tmin_day``, ``tmax_day``, ``julianday``. The variants ending with
         ``'_ms'`` include milliseconds, those with ``'_us'`` include
         microseconds, those with ``'_year'`` contain only the year.
         '''
@@ -1857,10 +1876,10 @@ class Trace(Object):
             self.tmin, format='%Y-%m-%d_%H-%M-%S.6FRAC')
         params['tmax_us'] = util.time_to_str(
             self.tmax, format='%Y-%m-%d_%H-%M-%S.6FRAC')
-        params['tmin_year'] = util.time_to_str(
-            self.tmin, format='%Y')
-        params['tmax_year'] = util.time_to_str(
-            self.tmax, format='%Y')
+        params['tmin_year'], params['tmin_month'], params['tmin_day'] \
+            = util.time_to_str(self.tmin, format='%Y-%m-%d').split('-')
+        params['tmax_year'], params['tmax_month'], params['tmax_day'] \
+            = util.time_to_str(self.tmax, format='%Y-%m-%d').split('-')
         params['julianday'] = util.julian_day_of_year(self.tmin)
         params.update(additional)
         return template % params

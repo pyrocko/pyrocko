@@ -10,10 +10,9 @@ from functools import wraps
 from random import choice as rc
 from os.path import join as pjoin
 import shutil
-from functools import wraps
 
 from pyrocko import io, guts
-from pyrocko.io import FileLoadError, FileSaveError
+from pyrocko.io import FileLoadError
 from pyrocko.io import mseed, trace, util, suds, quakeml
 
 from .. import common

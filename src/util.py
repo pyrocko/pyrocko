@@ -84,6 +84,7 @@ from scipy import signal
 import pyrocko
 from pyrocko import dummy_progressbar
 
+
 try:
     from urllib.parse import urlencode, quote, unquote  # noqa
     from urllib.request import (
@@ -202,7 +203,7 @@ def setup_logging(programname='pyrocko', levelname='warning'):
 
     logging.basicConfig(
         level=levels[levelname],
-        format=programname+':%(name)-20s - %(levelname)-8s - %(message)s')
+        format=programname+':%(name)-25s - %(levelname)-8s - %(message)s')
 
 
 def subprocess_setup_logging_args():
@@ -663,6 +664,21 @@ def wrap(text, line_length=80):
             outlines.append('')
 
     return outlines
+
+
+def ewrap(lines, width=80, indent=''):
+    lines = list(lines)
+    if not lines:
+        return ''
+    fwidth = max(len(s) for s in lines)
+    nx = max(1, (80-len(indent)) // (fwidth+1))
+    i = 0
+    rows = []
+    while i < len(lines):
+        rows.append(indent + ' '.join(x.ljust(fwidth) for x in lines[i:i+nx]))
+        i += nx
+
+    return '\n'.join(rows)
 
 
 class BetterHelpFormatter(optparse.IndentedHelpFormatter):
@@ -1389,6 +1405,14 @@ def iter_years(tmin, tmax):
         t = tend
 
 
+def today():
+    return day_start(time.time())
+
+
+def tomorrow():
+    return day_start(time.time() + 24*60*60)
+
+
 def decitab(n):
     '''
     Get integer decimation sequence for given downampling factor.
@@ -1724,6 +1748,75 @@ class Anon(object):
             self.__dict__[k] = dict[k]
 
 
+def iter_select_files(
+        paths,
+        selector=None,
+        regex=None,
+        show_progress=True,
+        pass_through=None):
+
+    '''
+    Recursively select files (generator variant).
+
+    See :py:func:`select_files`.
+    '''
+
+    if show_progress:
+        progress_beg('selecting files...')
+        if logger.isEnabledFor(logging.DEBUG):
+            sys.stderr.write('\n')
+
+    ngood = 0
+    if regex:
+        rselector = re.compile(regex)
+
+    if regex:
+        def check(path):
+            logger.debug("looking at filename: '%s'" % path)
+            m = rselector.search(path)
+            if not m:
+                logger.debug("   regex '%s' does not match." % regex)
+                return False
+
+            infos = Anon(**m.groupdict())
+            logger.debug("   regex '%s' matches." % regex)
+            for k, v in m.groupdict().items():
+                logger.debug(
+                    "      attribute '%s' has value '%s'" % (k, v))
+            if selector is None or selector(infos):
+                return True
+            else:
+                logger.debug('   not selected.')
+                return False
+
+    else:
+        def check(path):
+            return True
+
+    if isinstance(paths, str):
+        paths = [paths]
+
+    for path in paths:
+        if pass_through and pass_through(path):
+            if check(path):
+                yield path
+
+        elif os.path.isdir(path):
+            for (dirpath, dirnames, filenames) in os.walk(path):
+                for filename in filenames:
+                    path = op.join(dirpath, filename)
+                    if check(path):
+                        yield os.path.abspath(path)
+                        ngood += 1
+        else:
+            if check(path):
+                yield os.path.abspath(path)
+                ngood += 1
+
+    if show_progress:
+        progress_end('%i file%s selected.' % (ngood, plural_s(ngood)))
+
+
 def select_files(paths, selector=None, regex=None, show_progress=True):
     '''
     Recursively select files.
@@ -1756,49 +1849,7 @@ def select_files(paths, selector=None, regex=None, show_progress=True):
             regex=r'(?P<year>\\d\\d\\d\\d)\\.(?P<doy>\\d\\d\\d)$',
             selector=(lambda x: int(x.year) == 2009))
     '''
-
-    if show_progress:
-        progress_beg('selecting files...')
-        if logger.isEnabledFor(logging.DEBUG):
-            sys.stderr.write('\n')
-
-    good = []
-    if regex:
-        rselector = re.compile(regex)
-
-    def addfile(path):
-        if regex:
-            logger.debug("looking at filename: '%s'" % path)
-            m = rselector.search(path)
-            if m:
-                infos = Anon(**m.groupdict())
-                logger.debug("   regex '%s' matches." % regex)
-                for k, v in m.groupdict().items():
-                    logger.debug(
-                        "      attribute '%s' has value '%s'" % (k, v))
-                if selector is None or selector(infos):
-                    good.append(os.path.abspath(path))
-
-            else:
-                logger.debug("   regex '%s' does not match." % regex)
-        else:
-            good.append(os.path.abspath(path))
-
-    if isinstance(paths, str):
-        paths = [paths]
-
-    for path in paths:
-        if os.path.isdir(path):
-            for (dirpath, dirnames, filenames) in os.walk(path):
-                for filename in filenames:
-                    addfile(op.join(dirpath, filename))
-        else:
-            addfile(path)
-
-    if show_progress:
-        progress_end('%i file%s selected.' % (len(good), plural_s(len(good))))
-
-    return good
+    return list(iter_select_files(paths, selector, regex, show_progress))
 
 
 def base36encode(number, alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
@@ -2565,6 +2616,22 @@ def consistency_merge(list_of_tuples,
             logger.warning(str(e))
 
         return tuple([merge(x) for x in list(zip(*list_of_tuples))[1:]])
+
+
+def short_to_list(nmax, it):
+    import itertools
+
+    if isinstance(it, list):
+        return it
+
+    li = []
+    for i in range(nmax+1):
+        try:
+            li.append(next(it))
+        except StopIteration:
+            return li
+
+    return itertools.chain(li, it)
 
 
 def parse_md(f):

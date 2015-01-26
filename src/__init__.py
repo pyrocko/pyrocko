@@ -12,3 +12,8 @@ grumpy = 0  # noqa
 
 class ExternalProgramMissing(Exception):
     pass
+
+
+def make_squirrel(*args, **kwargs):
+    from pyrocko.squirrel import Squirrel
+    return Squirrel(*args, **kwargs)

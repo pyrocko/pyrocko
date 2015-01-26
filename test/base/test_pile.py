@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import
-from pyrocko import trace, pile, io, config, util
+from pyrocko import trace, pile as genuine_pile, io, config, util
+from pyrocko.squirrel import pile as fake_pile
 
 import unittest
 import numpy as num
@@ -40,6 +41,8 @@ def makeManyFiles(nfiles, nsamples, networks, stations, channels, tmin):
 class PileTestCase(unittest.TestCase):
 
     def testPileTraversal(self):
+        pile = fake_pile
+
         import shutil
         config.show_progress = False
         nfiles = 200
@@ -60,8 +63,10 @@ class PileTestCase(unittest.TestCase):
         filenames = util.select_files([datadir], show_progress=False)
         cachedir = pjoin(datadir, '_cache_')
         p = pile.Pile()
-        p.load_files(filenames=filenames, cache=pile.get_cache(cachedir),
-                     show_progress=False)
+        p.load_files(
+            filenames=filenames,
+            cache=pile.get_cache(cachedir),
+            show_progress=False)
 
         assert set(p.networks) == set(networks)
         assert set(p.stations) == set(stations)
@@ -105,10 +110,14 @@ class PileTestCase(unittest.TestCase):
 
         p.reload_modified()
 
-        pile.get_cache(cachedir).clean()
+        cache = pile.get_cache(cachedir)
+        if cache:
+            cache.clean()
+
         shutil.rmtree(datadir)
 
     def testMemTracesFile(self):
+        pile = genuine_pile
         tr = trace.Trace(ydata=num.arange(100, dtype=float))
 
         f = pile.MemTracesFile(None, [tr])
