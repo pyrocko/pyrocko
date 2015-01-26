@@ -12,6 +12,7 @@ from test_gf_sources import GFSourcesTestCase
 from test_parimap import ParimapTestCase
 from test_response import ResponseTestCase
 from test_datacube import DataCubeTestCase
+from test_fdsn import FDSNStationTestCase
 
 import unittest
 import argparse
