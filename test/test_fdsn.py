@@ -52,7 +52,7 @@ class FDSNStationTestCase(unittest.TestCase):
     def file_path(self, fn):
         return os.path.join(os.path.dirname(__file__), 'stationxml', fn)
 
-    def test_retrieve_big(self):
+    def OFF_test_retrieve_big(self):
         for site in ['iris']:
             fpath = self.file_path('%s_1014-01-01_all.xml' % site)
 
@@ -71,12 +71,8 @@ class FDSNStationTestCase(unittest.TestCase):
                         f.write(data)
 
             fsx = fdsn.station.load_xml(filename=fpath)
-            for station in fsx.get_pyrocko_stations():
-                print station
 
-            print len(fsx.get_pyrocko_stations())
-
-    def test_response(self):
+    def OFF_test_response(self):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
         sx = fdsn.ws.station(
@@ -89,7 +85,7 @@ class FDSNStationTestCase(unittest.TestCase):
 
         for nslc in sx.nslc_code_list:
             print nslc
-            
+
             net, sta, loc, cha = nslc
             sxr = fdsn.ws.station(
                 site='iris',
@@ -108,7 +104,7 @@ class FDSNStationTestCase(unittest.TestCase):
                 channel=cha,
                 tmin=tmin,
                 tmax=tmax)
-            
+
             _, fn = tempfile.mkstemp()
             fo = open(fn, 'w')
             while True:
@@ -119,15 +115,16 @@ class FDSNStationTestCase(unittest.TestCase):
                 fo.write(d)
 
             fo.close()
-            
 
             resp_sx = sxr.get_pyrocko_response(nslc, timespan=(tmin, tmax))
             resp_er = trace.Evalresp(fn, target='vel', nslc_id=nslc, time=tmin)
             fmin = 0.001
             fmax = 100.
-            channel = sx.get_channels(nslc, timespan=(tmin, tmax))[0]
-            if channel.sample_rate:
-                fmax = channel.sample_rate.value * 0.5
+
+            for _, _, channel in sxr.iter_network_station_channels(
+                    net, sta, loc, cha, timespan=(tmin, tmax)):
+                if channel.response:
+                    fmax = channel.sample_rate.value * 0.5
 
             f = num.exp(num.linspace(num.log(fmin), num.log(fmax), 500))
             try:
@@ -146,9 +143,6 @@ class FDSNStationTestCase(unittest.TestCase):
                 print mda, mdp
 
                 if mda > 0.03 or mdp > 0.04:
-                    
-
-
                     lab.gcf().add_subplot(2,1,1)
                     lab.plot(f, num.abs(t_sx), color='black')
                     lab.plot(f, num.abs(t_er), color='red')
@@ -166,12 +160,6 @@ class FDSNStationTestCase(unittest.TestCase):
                     print 'ok'
             except:
                 print 'failed: ', nslc
-
-                
-                pass
-
-
-
 
 
 import time
