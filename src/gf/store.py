@@ -881,6 +881,9 @@ def remake_dir(dpath, force):
     os.mkdir(dpath)
 
 
+class MakeTimingParamsFailed(StoreError):
+    pass
+
 class Store(BaseStore):
 
     '''
@@ -1295,6 +1298,9 @@ class Store(BaseStore):
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
 
         i = num.nanargmin(tmins)
+        if not num.isfinite(i):
+            raise MakeTimingParamsFailed('determination of time window failed')
+
         tminmin = tmins[i]
         x_tminmin = xs[i]
         dx = (xs - x_tminmin)
