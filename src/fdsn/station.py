@@ -659,6 +659,13 @@ class Station(BaseNode):
         ExternalReference.T(xmltagname='ExternalReference'))
     channel_list = List.T(Channel.T(xmltagname='Channel'))
 
+    @property
+    def position_values(self):
+        lat = self.latitude.value
+        lon = self.longitude.value
+        elevation = value_or_none(self.elevation)
+        return lat, lon, elevation
+
 
 class Network(BaseNode):
     '''This type represents the Network layer, all station metadata is
@@ -807,6 +814,27 @@ class FDSNStationXML(Object):
                         name=station.description))
 
         return pstations
+
+    def iter_network_stations(
+            self, net=None, sta=None, time=None, timespan=None):
+
+        tt = ()
+        if time is not None:
+            tt = (time,)
+        elif timespan is not None:
+            tt = timespan
+
+        for network in self.network_list:
+            if not network.spans(*tt) or (
+                    net is not None and network.code != net):
+                continue
+
+            for station in network.station_list:
+                if not station.spans(*tt) or (
+                        sta is not None and station.code != sta):
+                    continue
+
+                yield (network, station)
 
     def iter_network_station_channels(
             self, net=None, sta=None, loc=None, cha=None,
