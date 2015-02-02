@@ -533,23 +533,27 @@ def load_stations(filename):
     stations = []
     f = open(filename, 'r')
     station = None
-    for line in f:
+    for (iline, line) in enumerate(f):
         toks = line.split(None, 5)
         if len(toks) == 5 or len(toks) == 6:
-            
             net, sta, loc = toks[0].split('.')
             lat, lon, elevation, depth = [ float(x) for x in toks[1:5] ]
             if len(toks) == 5:
                 name = ''
             else:
                 name =toks[5]
+
             station = Station(net, sta, loc, lat, lon, elevation=elevation, depth=depth, name=name)
             stations.append(station)
         elif len(toks) == 4 and station is not None:
             name, azi, dip, gain = toks[0], float_or_none(toks[1]), float_or_none(toks[2]), float(toks[3])
             channel = Channel(name, azimuth=azi, dip=dip, gain=gain)
             station.add_channel(channel)
-            
+
+        else:
+            logger.warn('skipping invalid station/channel definition '
+                        '(line: %i, file: %s' % (iline + 1, filename))
+
     f.close()
     return stations
 
