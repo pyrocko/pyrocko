@@ -311,7 +311,7 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         assert self.iftype == SacFile.header_name2num['itime']
         assert self.leven == True
         
-        tmin = self.get_ref_time()
+        tmin = self.get_ref_time() + self.b
         tmax = tmin + self.delta*(self.npts-1)
         
         data =None
