@@ -405,6 +405,11 @@ class PolesZeros(BaseFilter):
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
 
     def get_pyrocko_response(self):
+        if self.pz_transfer_function_type != 'LAPLACE (RADIANS/SECOND)':
+            raise NoResponseInformation(
+                'cannot convert PoleZero response of type %s' %
+                self.pz_transfer_function_type)
+
         resp = trace.PoleZeroResponse(
             constant=self.normalization_factor,
             zeros=[z.value() for z in self.zero_list],
