@@ -2,9 +2,10 @@
 
 import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex, optparse
 from scipy import signal
-from os.path import join as pjoin
+import os.path as op
 import numpy as num
 import util_ext
+from collections import Counter
 
 logger = logging.getLogger('pyrocko.util')
 
@@ -760,7 +761,7 @@ def select_files( paths, selector=None,  regex=None, show_progress=True ):
         if os.path.isdir(path):
             for (dirpath, dirnames, filenames) in os.walk(path):
                 for filename in filenames:
-                    addfile(pjoin(dirpath,filename))
+                    addfile(op.join(dirpath,filename))
         else:
             addfile(path)
    
@@ -1186,5 +1187,122 @@ def gps_utc_offset(t):
         if ls[i][0] <= t and t < ls[i+1][0]:
             return ls[i][1] - 9
         i += 1
-    
+
     return ls[-1][1] - 9
+
+def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
+    import itertools
+    from io_common import FileLoadError
+
+    def iload_filename(filename):
+        try:
+            with open(filename, 'r') as f:
+                for cr in iload_fh(f):
+                    yield cr
+
+        except FileLoadError, e:
+            e.set_context('filename', filename)
+            raise
+
+    def iload_dirname(dirname):
+        for entry in os.listdir(dirname):
+            fpath = op.join(dirname, entry)
+            if op.isfile(fpath):
+                for cr in iload_filename(fpath):
+                    yield cr
+
+    def iload_glob(pattern):
+
+        fns = glob.glob(pattern)
+        for fn in fns:
+            for cr in iload_filename(fn):
+                yield cr
+
+    def iload(source):
+        if isinstance(source, basestring):
+            if op.isdir(source):
+                return iload_dirname(source)
+            elif op.isfile(source):
+                return iload_filename(source)
+            else:
+                return iload_glob(source)
+
+        elif hasattr(source, 'read'):
+            return iload_fh(source)
+        else:
+            return itertools.chain.from_iterable(
+                iload(subsource) for subsource in source)
+
+    iload_filename.__doc__ = '''
+        Read %s information from named file.
+    ''' % doc_fmt
+
+    iload_dirname.__doc__ = '''
+        Read %s information from directory of %s files.
+    ''' % (doc_fmt, doc_fmt)
+
+    iload_glob.__doc__ = '''
+        Read %s information from files matching a glob pattern.
+    ''' % doc_fmt
+
+    iload.__doc__ =  '''
+        Load %s information from given source(s)
+
+        The *source* can be specified as the name of a %s file, the name of a
+        directory containing %s files, a glob pattern of %s files, an open
+        filehandle or an iterator yielding any of the forementioned sources.
+
+        This function behaves as a generator yielding %s objects.
+    ''' % (doc_fmt, doc_fmt, doc_fmt, doc_fmt, doc_yielded_objects)
+
+    for f in iload_filename, iload_dirname, iload_glob, iload:
+        f.__module__ = iload_fh.__module__
+
+    return iload_filename, iload_dirname, iload_glob, iload
+
+
+class Inconsistency(Exception):
+    pass
+
+
+def consistency_check(list_of_tuples, message='values differ:'):
+    '''Check for inconsistencies.
+
+    Given a list of tuples, check that all tuple elements except for first one
+    match. E.g. [('STA.N', 55.3, 103.2), ('STA.E', 55.3, 103.2)] would be
+    valid because the coordinates at the two channels are the same.'''
+
+    if len(list_of_tuples) >= 2:
+        if any(t[1:] != list_of_tuples[0][1:] for t in list_of_tuples[1:]):
+            raise Inconsistency('%s\n' % message + '\n'.join(
+                '  %s: %s' % (t[0], ','.join('%g' % x for x in t[1:]))
+                for t in list_of_tuples))
+
+
+def mostfrequent(x):
+    c = Counter(x)
+    return sorted(c.keys(), key=lambda k: c[k])[-1]
+
+
+def consistency_merge(list_of_tuples,
+                      message='values differ:',
+                      error='raise',
+                      merge=mostfrequent):
+
+    assert error in ('raise', 'warn', 'ignore')
+
+    if len(list_of_tuples) == 0:
+        raise Exception('cannot merge empty sequence')
+
+    try:
+        consistency_check(list_of_tuples, message)
+        return list_of_tuples[0][1:]
+    except Inconsistencies, e:
+        if error == 'raise':
+            raise
+
+        elif error == 'warn':
+            logger.warn(str(e))
+
+        return [merge(x) for x in zip(*list_of_tuples)[1:]]
+

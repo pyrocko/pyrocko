@@ -6,13 +6,13 @@ import glob
 import os.path as op
 import logging
 
-from pyrocko import util, guts
+from pyrocko import util, guts, io_common
 from pyrocko.fdsn import station as fs
 
 logger = logging.getLogger('pyrocko.fdsn.resp')
 
 
-class RespError(Exception):
+class RespError(io_common.FileLoadError):
     pass
 
 
@@ -358,57 +358,8 @@ def iload_fh(f):
             raise RespError('incomplete response information')
 
 
-def iload_filename(filename):
-    '''Read RESP information from named file.'''
-
-    with open(filename, 'r') as f:
-        for cr in iload_fh(f):
-            yield cr
-
-
-def iload_dirname(dirname):
-    '''Read RESP information from directory of RESP files.'''
-
-    for entry in os.listdir(dirname):
-        fpath = op.join(dirname, entry)
-        if op.isfile(fpath):
-            for cr in iload_filename(fpath):
-                yield cr
-
-
-def iload_glob(pattern):
-    '''Read RESP information from files matching a glob pattern.'''
-
-    fns = glob.glob(pattern)
-    for fn in fns:
-        for cr in iload_filename(fn):
-            yield cr
-
-
-def iload(source):
-    '''Load RESP information from given source(s)
-
-    The *source* can be specified as the name of a RESP file, the name of a
-    directory containing RESP files, a glob pattern of RESP files, an open
-    filehandle or an iterator yielding any of the forementioned sources.
-
-    This function behaves as a generator yielding :py:class:`ChannelResponse`
-    objects.
-    '''
-
-    if isinstance(source, basestring):
-        if op.isdir(source):
-            return iload_dirname(source)
-        elif op.isfile(source):
-            return iload_filename(source)
-        else:
-            return iload_glob(source)
-
-    elif hasattr(source, 'read'):
-        return iload_fh(source)
-    else:
-        return itertools.chain.from_iterable(
-            iload(subsource) for subsource in source)
+iload_filename, iload_dirname, iload_glob, iload = util.make_iload_family(
+    iload_fh, 'RESP', ':py:class:`ChannelResponse`')
 
 
 def make_stationxml(pyrocko_stations, channel_responses):
@@ -417,8 +368,8 @@ def make_stationxml(pyrocko_stations, channel_responses):
     :param pyrocko_stations: list of :py:class:`pyrocko.model.Station` objects
     :param channel_responses: iterable yielding :py:class:`ChannelResponse`
         objects
-    :returns: :py:class:`pyrocko.fdsn.station.FDSNStationXML` object merged
-        information
+    :returns: :py:class:`pyrocko.fdsn.station.FDSNStationXML` object with 
+        merged information
 
     If no station information is available for any response information, it
     is skipped and a warning is emitted.
