@@ -97,7 +97,7 @@ class Type(StringChoice):
             if val not in self.choices:
                 logger.warn(
                     'channel type: "%s" is not a valid choice out of %s' %
-                        (val, repr(self.choices)))
+                    (val, repr(self.choices)))
 
 
 class PzTransferFunction(StringChoice):
@@ -295,24 +295,24 @@ class Second(FloatWithUnit):
     '''A time value in seconds.'''
 
     unit = String.T(default='SECONDS', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
 
 
 class Voltage(FloatWithUnit):
     unit = String.T(default='VOLTS', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
 
 
 class Angle(FloatWithUnit):
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
 
 
 class Azimuth(FloatWithUnit):
     '''Instrument azimuth, degrees clockwise from North.'''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
 
 
 class Dip(FloatWithUnit):
@@ -321,26 +321,26 @@ class Dip(FloatWithUnit):
     the instrument.'''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
 
 
 class Distance(FloatWithUnit):
     '''Extension of FloatWithUnit for distances, elevations, and depths.'''
 
     unit = String.T(default='METERS', optional=True, xmlstyle='attribute')
-                    # NOT fixed!
+    # NOT fixed unit!
 
 
 class Frequency(FloatWithUnit):
     unit = String.T(default='HERTZ', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
 
 
 class SampleRate(FloatWithUnit):
     '''Sample rate in samples per second.'''
 
     unit = String.T(default='SAMPLES/S', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
 
 
 class Person(Object):
@@ -380,7 +380,7 @@ class Latitude(FloatWithUnit):
     '''Type for latitude coordinate.'''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
     datum = String.T(default='WGS84', optional=True, xmlstyle='attribute')
 
 
@@ -388,7 +388,7 @@ class Longitude(FloatWithUnit):
     '''Type for longitude coordinate.'''
 
     unit = String.T(default='DEGREES', optional=True, xmlstyle='attribute')
-                    # fixed
+    # fixed unit
     datum = String.T(default='WGS84', optional=True, xmlstyle='attribute')
 
 
@@ -415,10 +415,20 @@ class PolesZeros(BaseFilter):
             zeros=[z.value() for z in self.zero_list],
             poles=[p.value() for p in self.pole_list])
 
-        tc = abs(resp.evaluate(
-            num.array([self.normalization_frequency.value]))[0])
+        computed_normalization_factor = self.normalization_factor / abs(
+            resp.evaluate(num.array([self.normalization_frequency.value]))[0])
 
-        resp.constant /= tc
+        perc = abs(computed_normalization_factor /
+                   self.normalization_factor - 1.0) * 100
+
+        if perc > 2.0:
+            logger.warn(
+                'computed and reported normalization factors differ by '
+                '%.1f%%: computed: %g, reported: %g' % (
+                    perc,
+                    computed_normalization_factor,
+                    self.normalization_factor))
+
         return resp
 
 
@@ -494,7 +504,6 @@ class ResponseStage(Object):
     resource_id = String.T(optional=True, xmlstyle='attribute')
     poles_zeros_list = List.T(
         PolesZeros.T(optional=True, xmltagname='PolesZeros'))
-    #coefficients = Coefficients.T(optional=True, xmltagname='Coefficients')
     coefficients_list = List.T(
         Coefficients.T(optional=True, xmltagname='Coefficients'))
     response_list = ResponseList.T(optional=True, xmltagname='ResponseList')
@@ -522,7 +531,7 @@ class ResponseStage(Object):
               self.polynomial):
 
             pass
-            #print 'unhandled response at stage %i' % self.number
+            # print 'unhandled response at stage %i' % self.number
 
         if self.stage_gain:
             responses.append(

@@ -1,9 +1,5 @@
-import itertools
 import time
 import re
-import os
-import glob
-import os.path as op
 import logging
 
 from pyrocko import util, guts, io_common
@@ -139,7 +135,7 @@ def pblock_061(content):
     stage_number = int(get1(content, '03'))
 
     fir = fs.FIR(
-        name=get1(content, '04'),
+        name=get1(content, '04', optional=True),
         input_units=fs.Units(name=punit(get1(content, '06'))),
         output_units=fs.Units(name=punit(get1(content, '07'))),
         symmetry=psymmetry(get1(content, '05')),
@@ -230,15 +226,17 @@ def parse3(f):
         yield state
 
 
-def get1(content, field, default=None):
+def get1(content, field, default=None, optional=False):
     for field_, _, value in content:
         if field_ == field:
             return value
     else:
-        if default is None:
-            raise RespError('key not found: %s' % field)
-        else:
+        if optional:
+            return None
+        elif default is not None:
             return default
+        else:
+            raise RespError('key not found: %s' % field)
 
 
 def getn(content, field):
@@ -368,7 +366,7 @@ def make_stationxml(pyrocko_stations, channel_responses):
     :param pyrocko_stations: list of :py:class:`pyrocko.model.Station` objects
     :param channel_responses: iterable yielding :py:class:`ChannelResponse`
         objects
-    :returns: :py:class:`pyrocko.fdsn.station.FDSNStationXML` object with 
+    :returns: :py:class:`pyrocko.fdsn.station.FDSNStationXML` object with
         merged information
 
     If no station information is available for any response information, it

@@ -1191,7 +1191,7 @@ def gps_utc_offset(t):
     return ls[-1][1] - 9
 
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
-    import itertools
+    import itertools, glob
     from io_common import FileLoadError
 
     def iload_filename(filename):
