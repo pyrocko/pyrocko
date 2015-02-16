@@ -13,6 +13,7 @@ from test_parimap import ParimapTestCase
 from test_response import ResponseTestCase
 from test_datacube import DataCubeTestCase
 from test_fdsn import FDSNStationTestCase
+from test_ims import IMSTestCase
 
 import unittest
 import argparse
