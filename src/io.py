@@ -33,7 +33,8 @@ DATACUBE     datacube                    yes
 '''
 
 import os, logging
-from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gse2, gcf, datacube
+from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf, datacube
+from pyrocko import gse2_old as gse2
 from pyrocko import util, trace
 from pyrocko.io_common import FileLoadError, FileSaveError
 
