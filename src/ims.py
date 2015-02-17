@@ -15,10 +15,13 @@ g_dialects = ('NOR_NDC', 'USA_DMC')
 
 
 class SerializeError(Exception):
+    '''Raised when serialization of an IMS/GSE2 object fails.'''
     pass
 
 
 class DeserializeError(Exception):
+    '''Raised when deserialization of an IMS/GSE2 object fails.'''
+
     def __init__(self, *args, **kwargs):
         Exception.__init__(self, *args)
         self._line_number = None
@@ -336,6 +339,12 @@ def end_section(line, extra=None):
 
 
 class Section(Object):
+    '''Base class for top level sections in IMS/GSE2 files.
+
+    Sections as understood by this implementation typically correspond to a
+    DATA_TYPE section in IMS/GSE2 but for some types a finer granularity has
+    been chosen.'''
+
     handlers = {}  # filled after section have been defined below
 
     @classmethod
@@ -382,6 +391,11 @@ def get_versioned(x, version_dialect):
 
 
 class Block(Object):
+    '''Base class for IMS/GSE2 data blocks / lines.
+
+    Blocks as understood by this implementation usually correspond to
+    individual logical lines in the IMS/GSE2 file.
+    '''
 
     def values(self):
         return list(self.T.ivals(self))
@@ -467,6 +481,8 @@ class Block(Object):
 
 
 class FreeFormatLine(Block):
+    '''Base class for IMS/GSE2 free format lines.'''
+
     @classmethod
     def deserialize_values(cls, line, version_dialect):
         format = cls.format(version_dialect)
@@ -519,6 +535,8 @@ class FreeFormatLine(Block):
 
 
 class DataType(Block):
+    '''Representation of a DATA_TYPE line.'''
+
     type = String.T()
     subtype = String.T(optional=True)
     format = String.T()
@@ -562,6 +580,8 @@ class DataType(Block):
 
 
 class FTPFile(FreeFormatLine):
+    '''Representation of an FTP_FILE line.'''
+
     _format = ['FTP_FILE', 1, 2, 3, 4]
 
     net_address = String.T()
@@ -575,6 +595,8 @@ class WaveformSubformat(StringChoice):
 
 
 class WID2(Block):
+    '''Representation of a WID2 line.'''
+
     _format = [
         E(1, 4, x_fixed('WID2'), dummy=True),
         E(6, 28, x_date_time),
@@ -606,6 +628,8 @@ class WID2(Block):
 
 
 class OUT2(Block):
+    '''Representation of an OUT2 line.'''
+
     _format = [
         E(1, 4, x_fixed('OUT2'), dummy=True),
         E(6, 28, x_date_time),
@@ -623,6 +647,8 @@ class OUT2(Block):
 
 
 class DLY2(Block):
+    '''Representation of a DLY2 line.'''
+
     _format = [
         E(1, 4, x_fixed('DLY2'), dummy=True),
         E(6, 28, x_date_time),
@@ -640,6 +666,8 @@ class DLY2(Block):
 
 
 class DAT2(Block):
+    '''Representation of a DAT2 line.'''
+
     _format = [
         E(1, 4, x_fixed('DAT2'), dummy=True)
     ]
@@ -663,6 +691,8 @@ class DAT2(Block):
 
 
 class STA2(Block):
+    '''Representation of a STA2 line.'''
+
     _format = [
         E(1, 4, x_fixed('STA2'), dummy=True),
         E(6, 14, 'a9'),
@@ -682,6 +712,8 @@ class STA2(Block):
 
 
 class CHK2(Block):
+    '''Representation of a CHK2 line.'''
+
     _format = [
         E(1, 4, x_fixed('CHK2'), dummy=True),
         E(6, 13, 'i8')
@@ -691,6 +723,8 @@ class CHK2(Block):
 
 
 class EID2(Block):
+    '''Representation of an EID2 line.'''
+
     _format = [
         E(1, 4, x_fixed('EID2'), dummy=True),
         E(6, 13, 'a8'),
@@ -702,6 +736,8 @@ class EID2(Block):
 
 
 class BEA2(Block):
+    '''Representation of a BEA2 line.'''
+
     _format = [
         E(1, 4, x_fixed('BEA2'), dummy=True),
         E(6, 17, 'a12'),
@@ -714,6 +750,8 @@ class BEA2(Block):
 
 
 class Network(Block):
+    '''Representation of an entry in a NETWORK section.'''
+
     _format = [
         E(1, 9, 'a9'),
         E(11, None, 'a64+')]
@@ -723,6 +761,8 @@ class Network(Block):
 
 
 class Station(Block):
+    '''Representation of an entry in a STATION section.'''
+
     _format = {
         None: [
             E(1, 9, 'a9'),
@@ -763,6 +803,8 @@ class Station(Block):
 
 
 class Channel(Block):
+    '''Representation of an entry in a CHANNEL section.'''
+
     _format = {
         None: [
             E(1, 9, 'a9'),
@@ -827,6 +869,8 @@ class Channel(Block):
 
 
 class BeamGroup(Block):
+    '''Representation of an entry in a BEAM group table.'''
+
     _format = [
         E(1, 8, 'a8'),
         E(10, 14, 'a5'),
@@ -852,6 +896,8 @@ class FilterType(StringChoice):
 
 
 class BeamParameters(Block):
+    '''Representation of an entry in a BEAM parameters table.'''
+
     _format = [
         E(1, 12, 'a12'),
         E(14, 21, 'a8'),
@@ -885,6 +931,8 @@ class BeamParameters(Block):
 
 
 class OutageReportPeriod(Block):
+    '''Representation of a the report period of an OUTAGE section.'''
+
     _format = [
         E(1, 18, x_fixed('Report period from'), dummy=True),
         E(20, 42, x_date_time),
@@ -896,6 +944,7 @@ class OutageReportPeriod(Block):
 
 
 class Outage(Block):
+    '''Representation of an entry in the OUTAGE section table.'''
     _format = [
         E(1, 9, 'a9'),
         E(11, 15, 'a5'),
@@ -917,7 +966,7 @@ class Outage(Block):
 
 
 class CAL2(Block):
-    '''Calibration Identification Line'''
+    '''Representation of a CAL2 line.'''
 
     _format = {
         None: [
@@ -988,6 +1037,13 @@ class Units(StringChoice):
 
 
 class Stage(Block):
+    '''Base class for IMS/GSE2 response stages.
+
+    Available response stages are :py:class:`PAZ2`, :py:class:`FAP2`,
+    :py:class:`GEN2`, :py:class:`DIG2`, and :py:class:`FIR2`.
+
+    '''
+
     snum = Int.T(help='stage sequence number')
 
     @classmethod
@@ -1025,6 +1081,8 @@ class Stage(Block):
 
 
 class PAZ2Data(Block):
+    '''Representation of the complex numbers in PAZ2 sections.'''
+
     _format = [
         E(2, 16, 'e15.8'),
         E(18, 32, 'e15.8')]
@@ -1034,7 +1092,7 @@ class PAZ2Data(Block):
 
 
 class PAZ2(Stage):
-    '''Poles and Zeros Section'''
+    '''Representation of a PAZ2 line.'''
 
     _format = {
         None: [
@@ -1092,6 +1150,8 @@ class PAZ2(Stage):
 
 
 class FAP2Data(Block):
+    '''Representation of the data tuples in FAP2 section.'''
+
     _format = [
         E(2, 11, 'f10.5'),
         E(13, 27, 'e15.8'),
@@ -1103,7 +1163,7 @@ class FAP2Data(Block):
 
 
 class FAP2(Stage):
-    '''Frequency, Amplitude, and Phase Section'''
+    '''Representation of a FAP2 line.'''
 
     _format = [
         E(1, 4, x_fixed('FAP2'), dummy=True),
@@ -1138,6 +1198,8 @@ class FAP2(Stage):
 
 
 class GEN2Data(Block):
+    '''Representation of a data tuple in GEN2 section.'''
+
     _format = [
         E(2, 12, 'f11.5'),
         E(14, 19, 'f6.3')]
@@ -1147,7 +1209,7 @@ class GEN2Data(Block):
 
 
 class GEN2(Stage):
-    '''Generic Response Section'''
+    '''Representation of a GEN2 line.'''
 
     _format = [
         E(1, 4, x_fixed('GEN2'), dummy=True),
@@ -1185,7 +1247,7 @@ class GEN2(Stage):
 
 
 class DIG2(Stage):
-    '''Digitizer Response Section'''
+    '''Representation of a DIG2 line.'''
 
     _format = [
         E(1, 4, x_fixed('DIG2'), dummy=True),
@@ -1194,9 +1256,9 @@ class DIG2(Stage):
         E(25, 35, 'f11.5'),
         E(37, None, 'a25+')]
 
-    sensitivity = Float.T('sensitivity [counts/input unit]')
-    samprate = Float.T('digitizer sample rate [Hz]')
-    descrip = String.T('description')
+    sensitivity = Float.T(help='sensitivity [counts/input unit]')
+    samprate = Float.T(help='digitizer sample rate [Hz]')
+    descrip = String.T(help='description')
 
     comments = List.T(String.T(optional=True))
 
@@ -1206,6 +1268,8 @@ class SymmetryFlag(StringChoice):
 
 
 class FIR2Data(Block):
+    '''Representation of a line of coefficients in a FIR2 section.'''
+
     _format = [
         E(2, 16, 'e15.8'),
         E(18, 32, 'e15.8'),
@@ -1226,7 +1290,7 @@ class FIR2Data(Block):
 
 
 class FIR2(Stage):
-    '''Finite Impulse Response Section'''
+    '''Representation of a FIR2 line.'''
 
     _format = [
         E(1, 4, x_fixed('FIR2'), dummy=True),
@@ -1263,6 +1327,8 @@ class FIR2(Stage):
 
 
 class Begin(FreeFormatLine):
+    '''Representation of a BEGIN line.'''
+
     _format = ['BEGIN', 1]
     version = String.T()
 
@@ -1288,6 +1354,8 @@ class MsgType(FreeFormatLine):
 
 
 class MsgID(FreeFormatLine):
+    '''Representation of a MSG_ID line.'''
+
     _format = ['MSG_ID', 1, 2]
     msg_id_string = String.T()
     msg_id_source = String.T(optional=True)
@@ -1308,6 +1376,8 @@ class MsgID(FreeFormatLine):
 
 
 class RefID(FreeFormatLine):
+    '''Representation of a REF_ID line.'''
+
     _format = {
         None: ['REF_ID', 1, 2, 'PART', 3, 'OF', 4],
         'GSE2.0': ['REF_ID', 1]}
@@ -1330,6 +1400,8 @@ class RefID(FreeFormatLine):
 
 
 class LogSection(Section):
+    '''Representation of a DATA_TYPE LOG section.'''
+
     keyword = 'LOG'
     lines = List.T(String.T())
 
@@ -1358,10 +1430,14 @@ class LogSection(Section):
 
 
 class ErrorLogSection(LogSection):
+    '''Representation of a DATA_TYPE ERROR_LOG section.'''
+
     keyword = 'ERROR_LOG'
 
 
 class FTPLogSection(Section):
+    '''Representation of a DATA_TYPE FTP_LOG section.'''
+
     keyword = 'FTP_LOG'
     ftp_file = FTPFile.T()
 
@@ -1377,6 +1453,7 @@ class FTPLogSection(Section):
 
 
 class WID2Section(Section):
+    '''Representation of a WID2/STA2/EID2/BEA2/DAT2/CHK2 group.'''
 
     wid2 = WID2.T()
     sta2 = STA2.T(optional=True)
@@ -1464,6 +1541,7 @@ class WID2Section(Section):
 
 
 class OUT2Section(Section):
+    '''Representation of a OUT2/STA2 group.'''
 
     out2 = OUT2.T()
     sta2 = STA2.T()
@@ -1489,6 +1567,7 @@ class OUT2Section(Section):
 
 
 class DLY2Section(Section):
+    '''Representation of a DLY2/STA2 group.'''
 
     dly2 = DLY2.T()
     sta2 = STA2.T()
@@ -1505,6 +1584,12 @@ class DLY2Section(Section):
 
 
 class WaveformSection(Section):
+    '''Representation of a DATA_TYPE WAVEFORM line.
+
+    Any subsequent WID2/OUT2/DLY2 groups are handled as indepenent sections, so
+    this type just serves as a dummy to read/write the DATA_TYPE WAVEFORM
+    header.'''
+
     keyword = 'WAVEFORM'
 
     datatype = DataType.T()
@@ -1519,6 +1604,7 @@ class WaveformSection(Section):
 
 
 class TableSection(Section):
+    '''Base class for table style sections.'''
 
     @classmethod
     def read(cls, reader):
@@ -1537,6 +1623,8 @@ class TableSection(Section):
 
 
 class NetworkSection(TableSection):
+    '''Representation of a DATA_TYPE NETWORK section.'''
+
     keyword = 'NETWORK'
     table_setup = dict(
         header='Net       Description',
@@ -1547,6 +1635,8 @@ class NetworkSection(TableSection):
 
 
 class StationSection(TableSection):
+    '''Representation of a DATA_TYPE STATION section.'''
+
     keyword = 'STATION'
     table_setup = dict(
         header={
@@ -1563,6 +1653,8 @@ class StationSection(TableSection):
 
 
 class ChannelSection(TableSection):
+    '''Representation of a DATA_TYPE CHANNEL section.'''
+
     keyword = 'CHANNEL'
     table_setup = dict(
         header={
@@ -1581,6 +1673,8 @@ class ChannelSection(TableSection):
 
 
 class BeamSection(Section):
+    '''Representation of a DATA_TYPE BEAM section.'''
+
     keyword = 'BEAM'
     beam_group_header = 'Bgroup   Sta  Chan Aux  Wgt     Delay'
     beam_parameters_header = 'BeamID       Bgroup Btype R  Azim  Slow '\
@@ -1609,6 +1703,8 @@ class BeamSection(Section):
 
 
 class CAL2Section(Section):
+    '''Representation of a CAL2 + stages group in a response section.'''
+
     cal2 = CAL2.T()
     stages = List.T(Stage.T())
 
@@ -1644,6 +1740,12 @@ class CAL2Section(Section):
 
 
 class ResponseSection(Section):
+    '''Representation of a DATA_TYPE RESPONSE line.
+
+    Any subsequent CAL2+stages groups are handled as indepenent sections, so
+    this type just serves as a dummy to read/write the DATA_TYPE RESPONSE
+    header.'''
+
     keyword = 'RESPONSE'
 
     datatype = DataType.T()
@@ -1658,6 +1760,8 @@ class ResponseSection(Section):
 
 
 class OutageSection(Section):
+    '''Representation of a DATA_TYPE OUTAGE section.'''
+
     keyword = 'OUTAGE'
     outages_header = 'NET       Sta  Chan Aux      Start Date Time'\
                      '          End Date Time        Duration Comment'
@@ -1688,8 +1792,12 @@ for sec in (
 
     Section.handlers[sec.keyword] = sec
 
+del sec
+
 
 class MessageHeader(Section):
+    '''Representation of a BEGIN/MSG_TYPE/MSG_ID/REF_ID group.'''
+
     version = String.T()
     type = String.T()
     msg_id = MsgID.T(optional=True)
@@ -1745,6 +1853,8 @@ def string_ff_date_time(t):
 
 
 class TimeStamp(FreeFormatLine):
+    '''Representation of a TIME_STAMP line.'''
+
     _format = ['TIME_STAMP', 1]
 
     value = Timestamp.T()
@@ -1759,12 +1869,16 @@ class TimeStamp(FreeFormatLine):
 
 
 class Stop(FreeFormatLine):
+    '''Representation of a STOP line.'''
+
     _format = ['STOP']
 
     dummy = String.T(optional=True)
 
 
 class XW01(FreeFormatLine):
+    '''Representation of a XW01 line (which is not a relict from GSE1).'''
+
     _format = ['XW01']
 
     dummy = String.T(optional=True)
@@ -1902,6 +2016,8 @@ def iload_fh(f):
 
 
 def iload_string(s):
+    '''Read IMS/GSE2 sections from string.'''
+
     from cStringIO import StringIO
     f = StringIO(s)
     return iload_fh(f)
@@ -1912,7 +2028,7 @@ iload_filename, iload_dirname, iload_glob, iload = util.make_iload_family(
 
 
 def dump_fh(sections, f):
-    '''Dump IMS/GSE2 records to open file handle.'''
+    '''Dump IMS/GSE2 sections to open file handle.'''
     try:
         w = Writer(f)
         for section in sections:
@@ -1923,6 +2039,8 @@ def dump_fh(sections, f):
 
 
 def dump_string(sections):
+    '''Write IMS/GSE2 sections to string.'''
+
     from cStringIO import StringIO
     f = StringIO()
     dump_fh(sections, f)
@@ -1932,7 +2050,7 @@ def dump_string(sections):
 if __name__ == '__main__':
     from optparse import OptionParser
 
-    usage = 'python -m pyrocko.ims'
+    usage = 'python -m pyrocko.ims <filenames>'
 
     description = '''
     Read and print IMS/GSE2 records.

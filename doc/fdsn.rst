@@ -18,6 +18,12 @@ The :mod:`pyrocko.fdsn.resp` Module
 .. automodule:: pyrocko.fdsn.resp
     :members:
 
+The :mod:`pyrocko.fdsn.enhanced_sacpz` Module
+=============================================
+
+.. automodule:: pyrocko.fdsn.enhanced_sacpz
+    :members:
+
 The :mod:`pyrocko.fdsn.ws` Module
 =================================
 

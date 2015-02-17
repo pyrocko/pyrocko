@@ -25,4 +25,5 @@ Library Reference
    slink
    gf
    fdsn
+   ims
 
