@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+import os
+import shutil
+import tempfile
 import math
 import random
-import shutil
 import logging
 
 from subprocess import check_call, Popen, PIPE
@@ -177,7 +179,24 @@ class Map(Object):
         self._prep_topo_have = None
         self._labels = []
 
-    def save(self, outpath):
+    def save(self, outpath, resolution=75., oversample=2., size=None,
+             width=None, height=None):
+
+        '''Save the image.
+
+        Save the image to *outpath*. The format is determined by the filename
+        extension. Formats are handled as follows: ``'.eps'`` and ``'.ps'``
+        produce EPS and PS, respectively, directly with GMT. If the file name
+        ends with ``'.pdf'``, GMT output is fed through ``gmtpy-epstopdf`` to
+        create a PDF file. For any other filename extension, output is first
+        converted to PDF with ``gmtpy-epstopdf``, then with ``pdftocairo`` to
+        PNG with a resolution oversampled by the factor *oversample* and
+        finally the PNG is downsampled and converted to the target format with
+        ``convert``. The resolution of rasterized target image can be
+        controlled either by *resolution* in DPI or by specifying *width* or
+        *height* or *size*, where the latter fits the image into a square with
+        given side length.'''
+
         gmt = self.gmt
         self._draw_labels()
         self._draw_axes()
@@ -194,7 +213,9 @@ class Map(Object):
         if any(outpath.endswith(x) for x in ('.eps', '.ps', '.pdf')):
             shutil.copy(tmppath, outpath)
         else:
-            convert_graph(tmppath, outpath)
+            convert_graph(tmppath, outpath,
+                          resolution=resolution, oversample=oversample,
+                          size=size, width=width, height=height)
 
     @property
     def scaler(self):
@@ -763,11 +784,54 @@ class Map(Object):
         self._cities_minpop = minpop
 
 
-def convert_graph(in_filename, out_filename):
-    tmp_filename = in_filename + '.oversized'
-    check_call(['pdftocairo', '-r', '150', '-png', in_filename, tmp_filename])
-    check_call(['convert', tmp_filename+'-1.png',
-                '-resize', '50%', out_filename])
+def convert_graph(in_filename, out_filename, resolution=75., oversample=2.,
+                  width=None, height=None, size=None):
+
+    _, tmp_filename_base = tempfile.mkstemp()
+
+    try:
+        if out_filename.endswith('.svg'):
+            fmt_arg = '-svg'
+            tmp_filename = tmp_filename_base
+            oversample = 1.0
+        else:
+            fmt_arg = '-png'
+            tmp_filename = tmp_filename_base + '-1.png'
+
+        if size is not None:
+            scale_args = ['-scale-to', '%i' % int(round(size*oversample))]
+        elif width is not None:
+            scale_args = ['-scale-to-x', '%i' % int(round(width*oversample))]
+        elif height is not None:
+            scale_args = ['-scale-to-y', '%i' % int(round(height*oversample))]
+        else:
+            scale_args = ['-r', '%i' % int(round(resolution * oversample))]
+
+        check_call(['pdftocairo'] + scale_args +
+                   [fmt_arg, in_filename, tmp_filename_base])
+
+        if oversample > 1.:
+            check_call([
+                'convert',
+                tmp_filename,
+                '-resize', '%i%%' % int(round(100.0/oversample)),
+                out_filename])
+
+        else:
+            if out_filename.endswith('.png') or out_filename.endswith('.svg'):
+                shutil.move(tmp_filename, out_filename)
+            else:
+                check_call(['convert', tmp_filename, out_filename])
+
+    except:
+        raise
+
+    finally:
+        if os.path.exists(tmp_filename_base):
+            os.remove(tmp_filename_base)
+
+        if os.path.exists(tmp_filename):
+            os.remove(tmp_filename)
 
 
 def rand(mi, ma):
