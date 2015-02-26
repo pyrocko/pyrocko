@@ -2187,7 +2187,8 @@ class Widget(Guru):
 
         self.do_layout()
         (w, h), (xo, yo) = self.get_size()
-        return dict(xoffset=xo, yoffset=yo, width=w, height=h)
+        return dict(xoffset=xo, yoffset=yo, width=w, height=h,
+                    width_m=w/_units['m'])
 
     def width(self):
 

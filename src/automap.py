@@ -369,10 +369,11 @@ class Map(Object):
         layout.set_fixed_margins(*[x*cm for x in self._expand_margins()])
 
         widget = layout.get_widget()
-        #widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        #widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        #scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
+        # widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+        #widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width_m)gm'
+        # widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+        # scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
         scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
 
         aspect = gmtpy.aspect_for_projection(*(widget.J() + scaler.R()))
