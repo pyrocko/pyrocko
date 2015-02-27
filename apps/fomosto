@@ -881,14 +881,15 @@ def command_modelview(args):
             
             for p in parameters:
                 ax = axes[p]
-                if p=='vpvsratio':
-                    profile = mod.profile('vp')/mod.profile('vs')
+                if '/' in p:
+                    p1, p2 = p.split('/')
+                    profile = mod.profile(p1)/mod.profile(p2)
                 else:
                     profile = mod.profile(p)
 
                 ax.plot(profile, -z, label=store_id.split('/')[-1])
                 labelspace(ax)
-                if not p in ['qs', 'qp','vpvsratio']:
+                if p in ['vs', 'vp']:
                     xscaled(1./km, ax)
                 yscaled(1./km, ax)
 
