@@ -846,7 +846,7 @@ def command_modelview(args):
                           dest='parameters', 
                           default='vp,vs',
                           metavar='vp,vs,....',
-                          help='select one or several of vp, vs, rho, qp, qs')
+                          help='select one or several of vp, vs, vpvsratio, rho, qp, qs')
 
     parser, options, args = cl_parse('modelview', args, setup=setup)
 
@@ -881,10 +881,15 @@ def command_modelview(args):
             
             for p in parameters:
                 ax = axes[p]
-                profile = mod.profile(p)
+                if p=='vpvsratio':
+                    profile = mod.profile('vp')/mod.profile('vs')
+                else:
+                    profile = mod.profile(p)
+
                 ax.plot(profile, -z, label=store_id.split('/')[-1])
                 labelspace(ax)
-                xscaled(1./km, ax)
+                if not p in ['qs', 'qp','vpvsratio']:
+                    xscaled(1./km, ax)
                 yscaled(1./km, ax)
 
         except gf.StoreError, e:
