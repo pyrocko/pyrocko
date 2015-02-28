@@ -1095,7 +1095,7 @@ class Stage(Block):
 
     '''
 
-    snum = Int.T(help='stage sequence number')
+    stage_number = Int.T(help='stage sequence number')
 
     @classmethod
     def read(cls, reader):
@@ -1209,8 +1209,8 @@ class FAP2Data(Block):
         E(13, 27, 'e15.8'),
         E(29, 32, 'i4')]
 
-    freq = Float.T()
-    amp = Float.T()
+    frequency = Float.T()
+    amplitude = Float.T()
     phase = Float.T()
 
 
@@ -1242,14 +1242,18 @@ class FAP2(Stage):
 
     def append_dataline(self, line, version_dialect):
         d = FAP2Data.deserialize(line, version_dialect)
-        self.frequencies.append(d.freq)
-        self.amplitudes.append(d.amp)
+        self.frequencies.append(d.frequency)
+        self.amplitudes.append(d.amplitude)
         self.phases.append(d.phase)
 
     def write_datalines(self, writer):
-        for freq, amp, phase in zip(
+        for frequency, amplitude, phase in zip(
                 self.frequencies, self.amplitudes, self.phases):
-            FAP2Data(freq=freq, amp=amp, phase=phase).write(writer)
+
+            FAP2Data(
+                frequency=frequency,
+                amplitude=amplitude,
+                phase=phase).write(writer)
 
 
 class GEN2Data(Block):
