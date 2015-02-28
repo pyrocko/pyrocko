@@ -10,6 +10,9 @@ from pyrocko.guts import (
     ValidationError)
 
 
+km = 1000.
+nm_per_s = 1.0e-9
+
 g_versions = ('GSE2.0', 'GSE2.1', 'IMS1.0')
 g_dialects = ('NOR_NDC', 'USA_DMC')
 
@@ -186,6 +189,27 @@ def x_fixed(expect):
 
     func.width = len(expect)
     func.help_type = 'Keyword: %s' % expect
+    return func
+
+
+def x_scaled(fmt, factor):
+    def func():
+        to_string = float_to_string(fmt)
+
+        def parse(s):
+            x = float_or_none(s)
+            if x is None:
+                return None
+            else:
+                return x * factor
+
+        def string(v):
+            return to_string(v/factor)
+
+        return parse, string
+
+    func.width = int(fmt[1:].split('.')[0])
+    func.help_type = 'float'
     return func
 
 
@@ -606,7 +630,7 @@ class WID2(Block):
         E(45, 47, 'a3'),
         E(49, 56, 'i8'),
         E(58, 68, 'f11.6'),
-        E(70, 79, 'e10.2'),
+        E(70, 79, x_scaled('e10.2', nm_per_s)),
         E(81, 87, 'f7.3'),
         E(89, 94, 'a6?'),
         E(96, 100, 'f5.1'),
@@ -624,7 +648,7 @@ class WID2(Block):
     sample_rate = Float.T(default=1.0)
     calibration_factor = Float.T(
         optional=True,
-        help='system sensitivity (nm/count) at reference period '
+        help='system sensitivity (m/count) at reference period '
              '(calibration_period)')
     calibration_period = Float.T(
         optional=True,
@@ -715,16 +739,16 @@ class STA2(Block):
         E(16, 24, 'f9.5'),
         E(26, 35, 'f10.5'),
         E(37, 48, 'a12'),
-        E(50, 54, 'f5.3'),
-        E(56, 60, 'f5.3')
+        E(50, 54, x_scaled('f5.3', km)),
+        E(56, 60, x_scaled('f5.3', km))
     ]
 
     network = String.T(help='network code (9 characters)')
     lat = Float.T()
     lon = Float.T()
     coordinate_system = String.T(default='WGS-84')
-    elevation = Float.T(help='elevation [km]')
-    depth = Float.T(help='emplacement depth [km]')
+    elevation = Float.T(help='elevation [m]')
+    depth = Float.T(help='emplacement depth [m]')
 
 
 class CHK2(Block):
@@ -787,7 +811,7 @@ class Station(Block):
             E(22, 30, 'f9.5'),
             E(32, 41, 'f10.5'),
             E(43, 54, 'a12'),
-            E(56, 60, 'f5.3'),
+            E(56, 60, x_scaled('f5.3', km)),
             E(62, 71, x_date),
             E(73, 82, optional(x_date))
         ],
@@ -798,7 +822,7 @@ class Station(Block):
             E(12, 20, 'f9.5'),
             E(22, 31, 'f10.5'),
             E(32, 31, x_substitute('WGS-84')),
-            E(33, 39, 'f7.3'),
+            E(33, 39, x_scaled('f7.3', km)),
             E(41, 50, x_date),
             E(52, 61, optional(x_date))]}
 
@@ -816,7 +840,7 @@ class Station(Block):
     lat = Float.T()
     lon = Float.T()
     coordinate_system = String.T(default='WGS-84')
-    elevation = Float.T(help='elevation [km]')
+    elevation = Float.T(help='elevation [m]')
     tmin = Timestamp.T()
     tmax = Timestamp.T(optional=True)
 
@@ -833,8 +857,8 @@ class Channel(Block):
             E(26, 34, 'f9.5'),
             E(36, 45, 'f10.5'),
             E(47, 58, 'a12'),
-            E(60, 64, 'f5.3'),
-            E(66, 70, 'f5.3'),
+            E(60, 64, x_scaled('f5.3', km)),
+            E(66, 70, x_scaled('f5.3', km)),
             E(72, 77, 'f6.1'),
             E(79, 83, 'f5.1'),
             E(85, 95, 'f11.6'),
@@ -849,8 +873,8 @@ class Channel(Block):
             E(16, 24, 'f9.5'),
             E(26, 35, 'f10.5'),
             E(32, 31, x_substitute('WGS-84')),
-            E(37, 43, 'f7.3'),
-            E(45, 50, 'f6.3'),
+            E(37, 43, x_scaled('f7.3', km)),
+            E(45, 50, x_scaled('f6.3', km)),
             E(52, 57, 'f6.1'),
             E(59, 63, 'f5.1'),
             E(65, 75, 'f11.6'),
@@ -879,8 +903,8 @@ class Channel(Block):
     lat = Float.T(optional=True)
     lon = Float.T(optional=True)
     coordinate_system = String.T(default='WGS-84')
-    elevation = Float.T(optional=True, help='elevation [km]')
-    depth = Float.T(optional=True, help='emplacement depth [km]')
+    elevation = Float.T(optional=True, help='elevation [m]')
+    depth = Float.T(optional=True, help='emplacement depth [m]')
     horizontal_angle = Float.T(
         optional=True,
         help='horizontal orientation of sensor, clockwise from north [deg]')
@@ -1022,7 +1046,7 @@ class CAL2(Block):
             E(12, 14, 'a3'),
             E(16, 19, 'a4'),
             E(21, 26, 'a6'),
-            E(28, 42, 'e15.8'),  # standard: e15.2
+            E(28, 42, x_scaled('e15.8', nm_per_s)),  # standard: e15.2
             E(44, 50, 'f7.3'),
             E(52, 62, 'f11.5'),
             E(64, 79, x_date_time_no_seconds),
@@ -1033,7 +1057,7 @@ class CAL2(Block):
             E(12, 14, 'a3'),
             E(16, 19, 'a4'),
             E(21, 26, 'a6'),
-            E(28, 37, 'e10.4'),
+            E(28, 37, x_scaled('e10.4', nm_per_s)),
             E(39, 45, 'f7.3'),
             E(47, 56, 'f10.5'),
             E(58, 73, x_date_time_no_seconds),
@@ -1047,7 +1071,7 @@ class CAL2(Block):
     instrument_type = String.T(
         default='', optional=True, help='instrument type (6 characters)')
     calibration_factor = Float.T(
-        help='system sensitivity (nm/count) at reference period '
+        help='system sensitivity (m/count) at reference period '
              '(calibration_period)')
     calibration_period = Float.T(help='calibration reference period [s]')
     sample_rate = Float.T(help='system output sample rate [Hz]')
@@ -1274,7 +1298,7 @@ class GEN2(Stage):
         E(1, 4, x_fixed('GEN2'), dummy=True),
         E(6, 7, 'i2'),
         E(9, 9, 'a1'),
-        E(11, 25, 'e15.8'),
+        E(11, 25, x_scaled('e15.8', nm_per_s)),
         E(27, 33, 'f7.3'),
         E(35, 38, 'i4'),
         E(40, 47, 'f8.3'),
@@ -1284,7 +1308,7 @@ class GEN2(Stage):
     output_units = Units.T(
         help='output units code (V=volts, A=amps, C=counts)')
     calibration_factor = Float.T(
-        help='system sensitivity (nm/count) at reference period '
+        help='system sensitivity (m/count) at reference period '
              '(calibration_period)')
     calibration_period = Float.T(help='calibration reference period [s]')
     decimation = Int.T(optional=True, help='decimation')
