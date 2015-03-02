@@ -121,25 +121,22 @@ def dark(color, factor=0.5):
 def to01(c):
     return c[0]/255., c[1]/255., c[2]/255.
 
-colors = [ to01(tango_colors[x+i]) for i in '321' for x in 'scarletred chameleon skyblue chocolate orange plum butter'.split() ]
+colors = [ to01(tango_colors[x+i]) for i in '321' for x in 'scarletred chameleon skyblue chocolate orange plum'.split() ]
 shades = [ light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1,9) ]
 shades2 = [ light(to01(tango_colors['orange1']), i*0.1) for i in xrange(1,9) ]
 
-def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None, coloring='by_phase_definition'):
+def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None, coloring='by_phase_definition', avoid_same_colors=True):
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     axes = getaxes(axes)
     all_x = []
     all_t = []
+    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors)
     for ipath, path in enumerate(paths):
         if distances is not None:
             if path.xmax() < xmin or path.xmin() > xmax:
                 continue
-        if coloring == 'by_phase_definition':
-            int_rep = path2colorint(path)
-            color = colors[(int_rep+int_rep%7)%len(colors)]        
-        else:
-            color = colors[ipath%len(colors)]
+        color = path_to_color[path]
         p,x,t = path.draft_pxt(path.endgaps(zstart, zstop))
         if p.size == 0:
             continue
@@ -187,15 +184,13 @@ def troffset(dx,dy, axes=None):
     from matplotlib import transforms
     return axes.transData + transforms.ScaledTranslation(dx/72., dy/72., axes.gcf().dpi_scale_trans)
 
-def plot_xp(paths, zstart, zstop, axes=None, coloring='by_phase_definition'):
+def plot_xp(paths, zstart, zstop, axes=None, coloring='by_phase_definition', avoid_same_colors=True):
+    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors)
+
     axes = getaxes(axes)
     all_x = []
     for ipath, path in enumerate(paths):
-        if coloring == 'by_phase_definition':
-            int_rep = path2colorint(path)
-            color = colors[(int_rep+int_rep%7)%len(colors)]        
-        else:
-            color = colors[ipath%len(colors)]
+        color = path_to_color[path]
         p, x, t = path.draft_pxt(path.endgaps(zstart, zstop))
         axes.plot(x, p, linewidth=2, color=color)
         axes.plot(x[:1], p[:1], 'o', color=color)
@@ -223,6 +218,41 @@ def labels_model(axes=None):
     axes.set_ylabel('Depth [km]')
     yscaled(0.001, axes)
 
+
+def make_path_to_color(paths, coloring='by_phase_definition', avoid_same_colors=True):
+
+    assert coloring in ['by_phase_definition', 'by_path']
+
+    path_to_color = {}
+    definition_to_color = {}
+    available_colors = set()
+
+    for ipath, path in enumerate(paths):
+        if coloring == 'by_phase_definition':
+            definition = path.phase.definition()
+            int_rep = path2colorint(path)
+            color_id = int_rep % len(colors)
+
+            if definition not in definition_to_color:
+                if avoid_same_colors:
+                    if len(available_colors) == 0:
+                        available_colors = set(range(0, len(colors)-1))
+                    if color_id in available_colors:
+                        available_colors.remove(color_id)
+                    else:
+                        color_id = available_colors.pop()
+
+                    assert color_id not in available_colors
+                
+                definition_to_color[definition] = colors[color_id]
+
+            path_to_color[path] = definition_to_color[definition]
+        else:
+            path_to_color[path] = colors[ipath % len(colors)]
+
+    return path_to_color
+
+
 def plot_rays(paths, rays, zstart, zstop, 
               axes=None,
               coloring='by_phase_definition',
@@ -234,28 +264,7 @@ def plot_rays(paths, rays, zstart, zstop,
     if aspect is not None:
         axes.set_aspect(aspect/(d2r*cake.earthradius))
 
-    path_to_color = {}
-    available_colors = set()
-
-    for ipath, path in enumerate(paths):
-        if coloring == 'by_phase_definition':
-            int_rep = path2colorint(path)
-            color_id = (int_rep+int_rep % 5) % len(colors)
-
-            if not path.phase.definition() in path_to_color.keys():
-                if avoid_same_colors:
-                    if len(available_colors) == 0:
-                        available_colors = set(range(0, len(colors)-1))
-                    if color_id in available_colors:
-                        available_colors.remove(color_id)
-                    else:
-                        color_id = available_colors.pop()
-
-                    assert color_id not in available_colors
-
-                path_to_color[path.phase.definition()] = colors[color_id]
-        else:
-            path_to_color[path] = colors[ipath % len(colors)]
+    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors)
 
     if rays is None:
         rays = paths
@@ -280,12 +289,12 @@ def plot_rays(paths, rays, zstart, zstop,
             fanz, fanx, _ = ray.zxt_path_subdivided()
             path = ray.path
 
+        color = path_to_color[path]
+
         if coloring == 'by_phase_definition':
-            color = path_to_color[path.phase.definition()]
             phase_label = path.phase.definition()
 
         else:
-            color = path_to_color[path]
             phase_label = path
 
         for zs, xs in zip(fanz, fanx):
