@@ -841,9 +841,16 @@ def command_modelview(args):
     import matplotlib.pyplot as plt
     import glob
     import numpy as num
-    from pyrocko.cake_plot import labelspace, xscaled, yscaled
+    from pyrocko.cake_plot import mpl_init, labelspace, xscaled, yscaled
+    mpl_init()
     
-    neat_labels = {'vp':'$v_p$', 'vs':'$v_s$', 'qp':'$Q_p$', 'qs':'$Q_s$'}
+    neat_labels = {
+        'vp': '$v_p$',
+        'vs': '$v_s$',
+        'qp': '$Q_p$',
+        'qs': '$Q_s$',
+        'rho': '$\\rho$'}
+
     def setup(parser):
         parser.add_option('--parameters', 
                           dest='parameters', 
@@ -851,18 +858,11 @@ def command_modelview(args):
                           metavar='vp,vs,....',
                           help='select one or several of vp, vs, rho, qp, qs, vp/vs, qp/qs')
 
+    units = {'vp': '[km/s]', 'vs': '[km/s]', 'rho': '[g/cm^3]'}
+
     parser, options, args = cl_parse('modelview', args, setup=setup)
 
-    if args==[]:
-        store_dirs = glob.glob(os.getcwd()+'/*')
-        store_dirs += '.'
-        store_dirs = filter(lambda x: os.path.isfile(pjoin(x, 'config')),
-                            store_dirs)
-    else:
-        try:
-            store_dirs = args.pop().split(',')
-        except:
-            parser.error('cannot get <store-id> argument')
+    store_dirs = get_store_dirs(args)
      
     parameters = options.parameters.split(',')
 
@@ -884,6 +884,7 @@ def command_modelview(args):
             
             for p in parameters:
                 ax = axes[p]
+                labelspace(ax)
                 if '/' in p:
                     p1, p2 = p.split('/')
                     profile = mod.profile(p1)/mod.profile(p2)
@@ -891,9 +892,9 @@ def command_modelview(args):
                     profile = mod.profile(p)
 
                 ax.plot(profile, -z, label=store_id.split('/')[-1])
-                labelspace(ax)
-                if p in ['vs', 'vp']:
-                    xscaled(1./km, ax)
+                if p in ['vs', 'vp', 'rho']:
+                    xscaled(1./1000., ax)
+
                 yscaled(1./km, ax)
 
         except gf.StoreError, e:
@@ -901,26 +902,33 @@ def command_modelview(args):
 
     for p, ax in axes.items():
         ax.grid()
-        try:
+        if p in neat_labels:
             lab = neat_labels[p]
-        except KeyError:
+        elif all(x in neat_labels for x in p.split('/')):
+            lab = '/'.join(neat_labels[x] for x in p.split('/'))
+        else:
             lab = p
-        ax.set_title(lab, y=1.02)
-        ax.autoscale()
-        ax.set_xlabel(lab, labelpad=0.1)
 
-    axes[parameters[0]].set_ylabel('depth [km]', labelpad=0.)
+        ax.set_title(lab, y=1.02)
+
+        if p in units:
+            lab += ' ' + units[p]
+
+        ax.autoscale()
+        ax.set_xlabel(lab)
+
+    axes[parameters[0]].set_ylabel('Depth [km]')
 
     handles, labels = ax.get_legend_handles_labels()
     
-    if len(store_dirs)>1:
+    if len(store_dirs) > 1:
         lgd = ax.legend(handles,
                         labels, 
                         bbox_to_anchor=(0.5,0.12),
                         bbox_transform=fig.transFigure,
                         ncol=3,
                         loc='upper center',
-                        fontsize=10, 
+                        #fontsize=10, 
                         fancybox=True)
 
     plt.subplots_adjust(bottom=0.22,
