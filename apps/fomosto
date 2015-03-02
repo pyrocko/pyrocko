@@ -837,16 +837,19 @@ def command_download(args):
         die(str(e))
 
 def command_modelview(args):
+
     import matplotlib.pyplot as plt
     import glob
     import numpy as num
     from pyrocko.cake_plot import labelspace, xscaled, yscaled
+    
+    neat_labels = {'vp':'$v_p$', 'vs':'$v_s$', 'qp':'$Q_p$', 'qs':'$Q_s$'}
     def setup(parser):
         parser.add_option('--parameters', 
                           dest='parameters', 
                           default='vp,vs',
                           metavar='vp,vs,....',
-                          help='select one or several of vp, vs, vpvsratio, rho, qp, qs')
+                          help='select one or several of vp, vs, rho, qp, qs, vp/vs, qp/qs')
 
     parser, options, args = cl_parse('modelview', args, setup=setup)
 
@@ -898,9 +901,13 @@ def command_modelview(args):
 
     for p, ax in axes.items():
         ax.grid()
-        ax.set_title(p)
+        try:
+            lab = neat_labels[p]
+        except KeyError:
+            lab = p
+        ax.set_title(lab, y=1.02)
         ax.autoscale()
-        ax.set_xlabel(p, labelpad=0.1)
+        ax.set_xlabel(lab, labelpad=0.1)
 
     axes[parameters[0]].set_ylabel('depth [km]', labelpad=0.)
 
