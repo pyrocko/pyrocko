@@ -10,6 +10,9 @@ from pyrocko.guts import (
     ValidationError)
 
 
+km = 1000.
+nm_per_s = 1.0e-9
+
 g_versions = ('GSE2.0', 'GSE2.1', 'IMS1.0')
 g_dialects = ('NOR_NDC', 'USA_DMC')
 
@@ -186,6 +189,27 @@ def x_fixed(expect):
 
     func.width = len(expect)
     func.help_type = 'Keyword: %s' % expect
+    return func
+
+
+def x_scaled(fmt, factor):
+    def func():
+        to_string = float_to_string(fmt)
+
+        def parse(s):
+            x = float_or_none(s)
+            if x is None:
+                return None
+            else:
+                return x * factor
+
+        def string(v):
+            return to_string(v/factor)
+
+        return parse, string
+
+    func.width = int(fmt[1:].split('.')[0])
+    func.help_type = 'float'
     return func
 
 
@@ -606,7 +630,7 @@ class WID2(Block):
         E(45, 47, 'a3'),
         E(49, 56, 'i8'),
         E(58, 68, 'f11.6'),
-        E(70, 79, 'e10.2'),
+        E(70, 79, x_scaled('e10.2', nm_per_s)),
         E(81, 87, 'f7.3'),
         E(89, 94, 'a6?'),
         E(96, 100, 'f5.1'),
@@ -614,17 +638,29 @@ class WID2(Block):
     ]
 
     time = Timestamp.T()
-    station = String.T()
-    channel = String.T()
-    aux_id = String.T(default='')
+    station = String.T(help='station code (5 characters)')
+    channel = String.T(help='channel code (3 characters)')
+    location = String.T(
+        default='', optional=True,
+        help='location code (aux_id, 4 characters)')
     sub_format = WaveformSubformat.T(default='CM6')
-    samps = Int.T(default=0)
-    samprate = Float.T(default=1.0)
-    calib = Float.T(optional=True)
-    calper = Float.T(optional=True)
-    instype = String.T(optional=True)
-    hang = Float.T(optional=True)
-    vang = Float.T(optional=True)
+    nsamples = Int.T(default=0)
+    sample_rate = Float.T(default=1.0)
+    calibration_factor = Float.T(
+        optional=True,
+        help='system sensitivity (m/count) at reference period '
+             '(calibration_period)')
+    calibration_period = Float.T(
+        optional=True,
+        help='calibration reference period [s]')
+    instrument_type = String.T(
+        default='', optional=True, help='instrument type (6 characters)')
+    horizontal_angle = Float.T(
+        optional=True,
+        help='horizontal orientation of sensor, clockwise from north [deg]')
+    vertical_angle = Float.T(
+        optional=True,
+        help='vertical orientation of sensor from vertical [deg]')
 
 
 class OUT2(Block):
@@ -640,9 +676,11 @@ class OUT2(Block):
     ]
 
     time = Timestamp.T()
-    station = String.T()
-    channel = String.T()
-    aux_id = String.T()
+    station = String.T(help='station code (5 characters)')
+    channel = String.T(help='channel code (3 characters)')
+    location = String.T(
+        default='', optional=True,
+        help='location code (aux_id, 4 characters)')
     duration = Float.T()
 
 
@@ -659,10 +697,12 @@ class DLY2(Block):
     ]
 
     time = Timestamp.T()
-    station = String.T()
-    channel = String.T()
-    aux_id = String.T()
-    queuetim = Float.T()
+    station = String.T(help='station code (5 characters)')
+    channel = String.T(help='channel code (3 characters)')
+    location = String.T(
+        default='', optional=True,
+        help='location code (aux_id, 4 characters)')
+    queue_duration = Float.T(help='duration of queue [s]')
 
 
 class DAT2(Block):
@@ -699,16 +739,16 @@ class STA2(Block):
         E(16, 24, 'f9.5'),
         E(26, 35, 'f10.5'),
         E(37, 48, 'a12'),
-        E(50, 54, 'f5.3'),
-        E(56, 60, 'f5.3')
+        E(50, 54, x_scaled('f5.3', km)),
+        E(56, 60, x_scaled('f5.3', km))
     ]
 
-    network = String.T()
+    network = String.T(help='network code (9 characters)')
     lat = Float.T()
     lon = Float.T()
-    coordsys = String.T(default='WGS-84')
-    elev = Float.T()
-    edepth = Float.T()
+    coordinate_system = String.T(default='WGS-84')
+    elevation = Float.T(help='elevation [m]')
+    depth = Float.T(help='emplacement depth [m]')
 
 
 class CHK2(Block):
@@ -731,8 +771,8 @@ class EID2(Block):
         E(15, 23, 'a9'),
     ]
 
-    event_id = String.T()
-    bull_type = String.T()
+    event_id = String.T(help='event ID (8 characters)')
+    bulletin_type = String.T(help='bulletin type (9 characters)')
 
 
 class BEA2(Block):
@@ -744,7 +784,7 @@ class BEA2(Block):
         E(19, 23, 'f5.1'),
         E(25, 29, 'f5.1')]
 
-    beam_id = String.T()
+    beam_id = String.T(help='beam ID (12 characters)')
     azimuth = Float.T()
     slowness = Float.T()
 
@@ -756,8 +796,8 @@ class Network(Block):
         E(1, 9, 'a9'),
         E(11, None, 'a64+')]
 
-    network = String.T()
-    description = String.T()
+    network = String.T(help='network code (9 characters)')
+    description = String.T(help='description')
 
 
 class Station(Block):
@@ -771,7 +811,7 @@ class Station(Block):
             E(22, 30, 'f9.5'),
             E(32, 41, 'f10.5'),
             E(43, 54, 'a12'),
-            E(56, 60, 'f5.3'),
+            E(56, 60, x_scaled('f5.3', km)),
             E(62, 71, x_date),
             E(73, 82, optional(x_date))
         ],
@@ -782,7 +822,7 @@ class Station(Block):
             E(12, 20, 'f9.5'),
             E(22, 31, 'f10.5'),
             E(32, 31, x_substitute('WGS-84')),
-            E(33, 39, 'f7.3'),
+            E(33, 39, x_scaled('f7.3', km)),
             E(41, 50, x_date),
             E(52, 61, optional(x_date))]}
 
@@ -791,15 +831,18 @@ class Station(Block):
         E(62, 71, x_date_iris),
         E(73, 82, optional(x_date_iris))]
 
-    network = String.T()
-    sta = String.T()
-    statype = String.T()
+    network = String.T(help='network code (9 characters)')
+    station = String.T(help='station code (5 characters)')
+    type = String.T(
+        help='station type (4 characters) '
+             '(1C: single component, 3C: three-component, '
+             'hfa: high frequency array, lpa: long period array)')
     lat = Float.T()
     lon = Float.T()
-    coordsys = String.T(default='WGS-84')
-    elev = Float.T()
-    ondate = Timestamp.T()
-    offdate = Timestamp.T(optional=True)
+    coordinate_system = String.T(default='WGS-84')
+    elevation = Float.T(help='elevation [m]')
+    tmin = Timestamp.T()
+    tmax = Timestamp.T(optional=True)
 
 
 class Channel(Block):
@@ -814,8 +857,8 @@ class Channel(Block):
             E(26, 34, 'f9.5'),
             E(36, 45, 'f10.5'),
             E(47, 58, 'a12'),
-            E(60, 64, 'f5.3'),
-            E(66, 70, 'f5.3'),
+            E(60, 64, x_scaled('f5.3', km)),
+            E(66, 70, x_scaled('f5.3', km)),
             E(72, 77, 'f6.1'),
             E(79, 83, 'f5.1'),
             E(85, 95, 'f11.6'),
@@ -830,8 +873,8 @@ class Channel(Block):
             E(16, 24, 'f9.5'),
             E(26, 35, 'f10.5'),
             E(32, 31, x_substitute('WGS-84')),
-            E(37, 43, 'f7.3'),
-            E(45, 50, 'f6.3'),
+            E(37, 43, x_scaled('f7.3', km)),
+            E(45, 50, x_scaled('f6.3', km)),
             E(52, 57, 'f6.1'),
             E(59, 63, 'f5.1'),
             E(65, 75, 'f11.6'),
@@ -851,21 +894,28 @@ class Channel(Block):
         E(105, 114, x_date_iris),
         E(116, 125, optional(x_date_iris))]
 
-    network = String.T()
-    sta = String.T()
-    chan = String.T()
-    aux_id = String.T()
+    network = String.T(help='network code (9 characters)')
+    station = String.T(help='station code (5 characters)')
+    channel = String.T(help='channel code (3 characters)')
+    location = String.T(
+        default='', optional=True,
+        help='location code (aux_id, 4 characters)')
     lat = Float.T(optional=True)
     lon = Float.T(optional=True)
-    coordsys = String.T(default='WGS-84')
-    elev = Float.T(optional=True)
-    edepth = Float.T(optional=True)
-    hang = Float.T(optional=True)
-    vang = Float.T(optional=True)
-    samprate = Float.T()
-    inst = String.T()
-    ondate = Timestamp.T()
-    offdate = Timestamp.T(optional=True)
+    coordinate_system = String.T(default='WGS-84')
+    elevation = Float.T(optional=True, help='elevation [m]')
+    depth = Float.T(optional=True, help='emplacement depth [m]')
+    horizontal_angle = Float.T(
+        optional=True,
+        help='horizontal orientation of sensor, clockwise from north [deg]')
+    vertical_angle = Float.T(
+        optional=True,
+        help='vertical orientation of sensor from vertical [deg]')
+    sample_rate = Float.T()
+    instrument_type = String.T(
+        default='', optional=True, help='instrument type (6 characters)')
+    tmin = Timestamp.T()
+    tmax = Timestamp.T(optional=True)
 
 
 class BeamGroup(Block):
@@ -879,12 +929,19 @@ class BeamGroup(Block):
         E(25, 27, 'i3'),
         E(29, 37, 'f9.5')]
 
-    bgroup = String.T()
-    sta = String.T()
-    chan = String.T()
-    aux_id = String.T()
-    wgt = Int.T(optional=True)
-    delay = Float.T(optional=True)
+    beam_group = String.T(help='beam group (8 characters)')
+    station = String.T(help='station code (5 characters)')
+    channel = String.T(help='channel code (3 characters)')
+    location = String.T(
+        default='', optional=True,
+        help='location code (aux_id, 4 characters)')
+    weight = Int.T(
+        optional=True,
+        help='weight used for this component when the beam was formed')
+    delay = Float.T(
+        optional=True,
+        help='beam delay for this component [s] '
+             '(used for meabs formed by non-plane waves)')
 
 
 class BeamType(StringChoice):
@@ -915,19 +972,31 @@ class BeamParameters(Block):
         E(83, 92, optional(x_date))]
 
     beam_id = String.T()
-    bgroup = String.T()
+    beam_group = String.T()
     type = BeamType.T()
-    rot = Bool.T()
-    azimuth = Float.T()
-    slowness = Float.T()
-    phase = String.T()
-    flo = Float.T()
-    fhi = Float.T()
-    ford = Int.T()
-    zero_phase = Bool.T()
-    ftype = FilterType.T()
-    ondate = Timestamp.T()
-    offdate = Timestamp.T(optional=True)
+    is_rotated = Bool.T(help='rotation flag')
+    azimuth = Float.T(
+        help='azimuth used to steer the beam [deg] (clockwise from North)')
+    slowness = Float.T(
+        help='slowness used to steer the beam [s/deg]')
+    phase = String.T(
+        help='phase used to set the beam slowness for origin-based beams '
+             '(8 characters)')
+    filter_fmin = Float.T(
+        help='low frequency cut-off for the beam filter [Hz]')
+    filter_fmax = Float.T(
+        help='high frequency cut-off for the beam filter [Hz]')
+    filter_order = Int.T(
+        help='order of the beam filter')
+    filter_is_zero_phase = Bool.T(
+        help='flag to indicate zero-phase filtering')
+    filter_type = FilterType.T(
+        help='type of filtering')
+    tmin = Timestamp.T(
+        help='start date of beam use')
+    tmax = Timestamp.T(
+        optional=True,
+        help='end date of beam use')
 
 
 class OutageReportPeriod(Block):
@@ -939,8 +1008,8 @@ class OutageReportPeriod(Block):
         E(44, 45, x_fixed('to'), dummy=True),
         E(47, 69, x_date_time)]
 
-    start_time = Timestamp.T()
-    end_time = Timestamp.T()
+    tmin = Timestamp.T()
+    tmax = Timestamp.T()
 
 
 class Outage(Block):
@@ -955,12 +1024,14 @@ class Outage(Block):
         E(74, 83, 'f10.3'),
         E(85, None, 'a48+')]
 
-    network = String.T()
-    sta = String.T()
-    chan = String.T()
-    aux_id = String.T()
-    start_time = Timestamp.T()
-    end_time = Timestamp.T()
+    network = String.T(help='network code (9 characters)')
+    station = String.T(help='station code (5 characters)')
+    channel = String.T(help='channel code (3 characters)')
+    location = String.T(
+        default='', optional=True,
+        help='location code (aux_id, 4 characters)')
+    tmin = Timestamp.T()
+    tmax = Timestamp.T()
     duration = Float.T()
     comment = String.T()
 
@@ -975,7 +1046,7 @@ class CAL2(Block):
             E(12, 14, 'a3'),
             E(16, 19, 'a4'),
             E(21, 26, 'a6'),
-            E(28, 42, 'e15.8'),  # standard: e15.2
+            E(28, 42, x_scaled('e15.8', nm_per_s)),  # standard: e15.2
             E(44, 50, 'f7.3'),
             E(52, 62, 'f11.5'),
             E(64, 79, x_date_time_no_seconds),
@@ -986,22 +1057,26 @@ class CAL2(Block):
             E(12, 14, 'a3'),
             E(16, 19, 'a4'),
             E(21, 26, 'a6'),
-            E(28, 37, 'e10.4'),
+            E(28, 37, x_scaled('e10.4', nm_per_s)),
             E(39, 45, 'f7.3'),
             E(47, 56, 'f10.5'),
             E(58, 73, x_date_time_no_seconds),
             E(75, 90, optional(x_date_time_no_seconds))]}
 
-    sta = String.T(help='station code')
-    chan = String.T(help='channel code')
-    aux_id = String.T(help='location code (aux. identification code)')
-    insttype = String.T(help='instrument type')
-    calib = Float.T(
-        help='system sensitivity (nm/count) at reference period (calper)')
-    calper = Float.T(help='calibration reference period [s]')
-    samprate = Float.T(help='system output sample rate [Hz]')
-    ontime = Timestamp.T(help='effective start date and time')
-    offtime = Timestamp.T(optional=True, help='effective end date and time')
+    station = String.T(help='station code (5 characters)')
+    channel = String.T(help='channel code (3 characters)')
+    location = String.T(
+        default='', optional=True,
+        help='location code (aux_id, 4 characters)')
+    instrument_type = String.T(
+        default='', optional=True, help='instrument type (6 characters)')
+    calibration_factor = Float.T(
+        help='system sensitivity (m/count) at reference period '
+             '(calibration_period)')
+    calibration_period = Float.T(help='calibration reference period [s]')
+    sample_rate = Float.T(help='system output sample rate [Hz]')
+    tmin = Timestamp.T(help='effective start date and time')
+    tmax = Timestamp.T(optional=True, help='effective end date and time')
     comments = List.T(String.T(optional=True))
 
     @classmethod
@@ -1044,7 +1119,7 @@ class Stage(Block):
 
     '''
 
-    snum = Int.T(help='stage sequence number')
+    stage_number = Int.T(help='stage sequence number')
 
     @classmethod
     def read(cls, reader):
@@ -1116,13 +1191,14 @@ class PAZ2(Stage):
             E(44, 46, 'i3'),
             E(48, None, 'a25+')]}
 
-    ounits = Units.T(help='output units code (V=volts, A=amps, C=counts)')
-    sfactor = Float.T(help='scale factor')
-    deci = Int.T(optional=True, help='decimation')
-    corr = Float.T(optional=True, help='group correction applied [s]')
-    npole = Int.T(help='number of poles')
-    nzero = Int.T(help='number of zeros')
-    descrip = String.T(help='description')
+    output_units = Units.T(
+        help='output units code (V=volts, A=amps, C=counts)')
+    scale_factor = Float.T(help='scale factor [ouput units/input units]')
+    decimation = Int.T(optional=True, help='decimation')
+    correction = Float.T(optional=True, help='group correction applied [s]')
+    npoles = Int.T(help='number of poles')
+    nzeros = Int.T(help='number of zeros')
+    description = String.T(default='', optional=True, help='description')
 
     poles = List.T(Complex.T())
     zeros = List.T(Complex.T())
@@ -1134,9 +1210,9 @@ class PAZ2(Stage):
         v = complex(d.real, d.imag)
         i = len(self.poles) + len(self.zeros)
 
-        if i < self.npole:
+        if i < self.npoles:
             self.poles.append(v)
-        elif i < self.npole + self.nzero:
+        elif i < self.npoles + self.nzeros:
             self.zeros.append(v)
         else:
             raise DeserializeError(
@@ -1157,8 +1233,8 @@ class FAP2Data(Block):
         E(13, 27, 'e15.8'),
         E(29, 32, 'i4')]
 
-    freq = Float.T()
-    amp = Float.T()
+    frequency = Float.T()
+    amplitude = Float.T()
     phase = Float.T()
 
 
@@ -1174,27 +1250,34 @@ class FAP2(Stage):
         E(25, 27, 'i3'),
         E(29, 53, 'a25')]
 
-    ounits = Units.T(help='output units code (V=volts, A=amps, C=counts)')
-    deci = Int.T(optional=True, help='decimation')
-    corr = Float.T(help='group correction applied [s]')
+    output_units = Units.T(
+        help='output units code (V=volts, A=amps, C=counts)')
+    decimation = Int.T(optional=True, help='decimation')
+    correction = Float.T(help='group correction applied [s]')
     ntrip = Int.T(help='number of frequency, amplitude, phase triplets')
-    descrip = String.T(help='description')
+    description = String.T(default='', optional=True, help='description')
 
-    freqs = List.T(Float.T(), help='frequency [Hz]')
-    amps = List.T(Float.T(), help='amplitude [input untits/output units]')
+    frequencies = List.T(Float.T(), help='frequency [Hz]')
+    amplitudes = List.T(
+        Float.T(), help='amplitude [input untits/output units]')
     phases = List.T(Float.T(), help='phase delay [degrees]')
 
     comments = List.T(String.T(optional=True))
 
     def append_dataline(self, line, version_dialect):
         d = FAP2Data.deserialize(line, version_dialect)
-        self.freqs.append(d.freq)
-        self.amps.append(d.amp)
+        self.frequencies.append(d.frequency)
+        self.amplitudes.append(d.amplitude)
         self.phases.append(d.phase)
 
     def write_datalines(self, writer):
-        for freq, amp, phase in zip(self.freqs, self.amps, self.phases):
-            FAP2Data(freq=freq, amp=amp, phase=phase).write(writer)
+        for frequency, amplitude, phase in zip(
+                self.frequencies, self.amplitudes, self.phases):
+
+            FAP2Data(
+                frequency=frequency,
+                amplitude=amplitude,
+                phase=phase).write(writer)
 
 
 class GEN2Data(Block):
@@ -1204,8 +1287,8 @@ class GEN2Data(Block):
         E(2, 12, 'f11.5'),
         E(14, 19, 'f6.3')]
 
-    cfreq = Float.T()
-    slope = Float.T()
+    corner = Float.T(help='corner frequency [Hz]')
+    slope = Float.T(help='slope above corner [dB/decate]')
 
 
 class GEN2(Stage):
@@ -1215,35 +1298,37 @@ class GEN2(Stage):
         E(1, 4, x_fixed('GEN2'), dummy=True),
         E(6, 7, 'i2'),
         E(9, 9, 'a1'),
-        E(11, 25, 'e15.8'),
+        E(11, 25, x_scaled('e15.8', nm_per_s)),
         E(27, 33, 'f7.3'),
         E(35, 38, 'i4'),
         E(40, 47, 'f8.3'),
         E(49, 51, 'i3'),
         E(53, 77, 'a25')]
 
-    ounits = Units.T(help='output units code (V=volts, A=amps, C=counts)')
-    calib = Float.T(
-        help='system sensitivity (nm/count) at reference period (calper)')
-    calper = Float.T(help='calibration reference period [s]')
-    deci = Int.T(optional=True, help='decimation')
-    corr = Float.T(help='group correction applied [s]')
-    ncorner = Int.T('number of corners')
-    descrip = String.T(help='description')
+    output_units = Units.T(
+        help='output units code (V=volts, A=amps, C=counts)')
+    calibration_factor = Float.T(
+        help='system sensitivity (m/count) at reference period '
+             '(calibration_period)')
+    calibration_period = Float.T(help='calibration reference period [s]')
+    decimation = Int.T(optional=True, help='decimation')
+    correction = Float.T(help='group correction applied [s]')
+    ncorners = Int.T(help='number of corners')
+    description = String.T(default='', optional=True, help='description')
 
-    cfreqs = List.T(Float.T(), help='corner frequencies [Hz]')
+    corners = List.T(Float.T(), help='corner frequencies [Hz]')
     slopes = List.T(Float.T(), help='slopes above corners [dB/decade]')
 
     comments = List.T(String.T(optional=True))
 
     def append_dataline(self, line, version_dialect):
         d = GEN2Data.deserialize(line, version_dialect)
-        self.cfreqs.append(d.cfreq)
+        self.corners.append(d.corner)
         self.slopes.append(d.slope)
 
     def write_datalines(self, writer):
-        for cfreq, slope in zip(self.cfreqs, self.slopes):
-            GEN2Data(cfreq=cfreq, slope=slope).write(writer)
+        for corner, slope in zip(self.corners, self.slopes):
+            GEN2Data(corner=corner, slope=slope).write(writer)
 
 
 class DIG2(Stage):
@@ -1256,9 +1341,9 @@ class DIG2(Stage):
         E(25, 35, 'f11.5'),
         E(37, None, 'a25+')]
 
-    sensitivity = Float.T(help='sensitivity [counts/input unit]')
-    samprate = Float.T(help='digitizer sample rate [Hz]')
-    descrip = String.T(help='description')
+    sensitivity = Float.T(help='sensitivity [counts/input units]')
+    sample_rate = Float.T(help='digitizer sample rate [Hz]')
+    description = String.T(default='', optional=True, help='description')
 
     comments = List.T(String.T(optional=True))
 
@@ -1303,13 +1388,13 @@ class FIR2(Stage):
         E(41, None, 'a25+')]
 
     gain = Float.T(help='filter gain (relative factor, not in dB)')
-    deci = Int.T(optional=True, help='decimation')
-    corr = Float.T(help='group correction applied [s]')
-    symflag = SymmetryFlag.T(
+    decimation = Int.T(optional=True, help='decimation')
+    correction = Float.T(help='group correction applied [s]')
+    symmetry = SymmetryFlag.T(
         help='symmetry flag (A=asymmetric, B=symmetric (odd), '
              'C=symmetric (even))')
-    nfactor = Int.T(help='number of factors')
-    descrip = String.T('description')
+    nfactors = Int.T(help='number of factors')
+    description = String.T(default='', optional=True, help='description')
 
     comments = List.T(String.T(optional=True))
 
@@ -1516,7 +1601,7 @@ class WID2Section(Section):
         from pyrocko import gse2_ext, trace
 
         raw_data = self.dat2.raw_data
-        nsamples = self.wid2.samps
+        nsamples = self.wid2.nsamples
         deltat = 1.0 / self.wid2.samprate
         tmin = self.wid2.time
         if self.sta2:
@@ -1524,7 +1609,7 @@ class WID2Section(Section):
         else:
             net = ''
         sta = self.wid2.station
-        loc = self.wid2.aux_id
+        loc = self.wid2.location
         cha = self.wid2.channel
 
         if raw_data:
@@ -1845,7 +1930,8 @@ def parse_ff_date_time(s):
         sdate, stime = toks[0], ''
 
     stime += '00:00:00.000'[len(stime):]
-    util.str_to_time(sdate + ' ' + stime, format='%Y/%m/%d %H:%M:%S.3FRAC')
+    return util.str_to_time(
+        sdate + ' ' + stime, format='%Y/%m/%d %H:%M:%S.3FRAC')
 
 
 def string_ff_date_time(t):
