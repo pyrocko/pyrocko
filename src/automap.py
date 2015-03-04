@@ -132,9 +132,9 @@ class City(Object):
 
 
 class Map(Object):
-    lat = Float.T()
-    lon = Float.T()
-    radius = Float.T()
+    lat = Float.T(optional=True)
+    lon = Float.T(optional=True)
+    radius = Float.T(optional=True)
     width = Float.T(default=20.)
     height = Float.T(default=14.)
     margins = List.T(Float.T())
@@ -612,7 +612,8 @@ class Map(Object):
                     finish=True,
                     R=(0, 1, 0, 1),
                     J='x10p',
-                    N=True)
+                    N=True,
+                    **styles[i])
 
                 fn = g.tempfilename()
                 g.save(fn)
@@ -722,10 +723,11 @@ class Map(Object):
                     xoff = [-sx[i], sx[i]][anchor[1] == 'L']
                     row = (lons[i], lats[i], fontsize, 0, 1, anchor, texts[i])
                     self.gmt.pstext(
-                        in_rows=[row], D='%gp/%gp' % (xoff, yoff), *self.jxyr)
+                        in_rows=[row], D='%gp/%gp' % (xoff, yoff), *self.jxyr,
+                        **styles[i])
 
-    def add_label(self, lat, lon, text, offset_x=5., offset_y=5.):
-        self._labels.append((lon, lat, text, offset_x, offset_y, None))
+    def add_label(self, lat, lon, text, offset_x=5., offset_y=5., style={}):
+        self._labels.append((lon, lat, text, offset_x, offset_y, style))
 
     def cities_in_region(self):
         from pyrocko import geonames
