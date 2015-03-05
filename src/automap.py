@@ -199,7 +199,7 @@ class Map(Object):
 
         gmt = self.gmt
         self._draw_labels()
-        self._draw_axes()
+        self.draw_axes()
         gmt = self._gmt
         if outpath.endswith('.eps'):
             tmppath = gmt.tempfilename() + '.eps'
@@ -383,6 +383,7 @@ class Map(Object):
         self._layout = layout
         self._widget = widget
         self._jxyr = self._widget.JXY() + self._scaler.R()
+        self._have_drawn_axes = False
 
     def _draw_background(self):
         self._have_topo_land = False
@@ -553,6 +554,11 @@ class Map(Object):
                 self.lat,
                 scale_km)),
             *self._jxyr)
+
+    def draw_axes(self):
+        if not self._have_drawn_axes:
+            self._draw_axes()
+            self._have_drawn_axes = True
 
     def _have_coastlines(self):
         gmt = self._gmt
