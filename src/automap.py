@@ -142,6 +142,7 @@ class Map(Object):
     skip_feature_factor = Float.T(default=0.02)
     show_grid = Bool.T(default=False)
     show_topo = Bool.T(default=True)
+    show_topo_scale = Bool.T(default=False)
     show_center_mark = Bool.T(default=False)
     illuminate_factor_land = Float.T(default=0.5)
     illuminate_factor_ocean = Float.T(default=0.25)
@@ -198,8 +199,11 @@ class Map(Object):
         given side length.'''
 
         gmt = self.gmt
-        self._draw_labels()
+        self.draw_labels()
         self.draw_axes()
+        if self.show_topo and self.show_topo_scale:
+            self._draw_topo_scale()
+
         gmt = self._gmt
         if outpath.endswith('.eps'):
             tmppath = gmt.tempfilename() + '.eps'
@@ -357,7 +361,8 @@ class Map(Object):
             PAPER_MEDIA='Custom_%ix%i' % (
                 w*gmtpy.cm,
                 h*gmtpy.cm),
-            GRID_PEN_PRIMARY='thinnest/0/50/0')
+            GRID_PEN_PRIMARY='thinnest/0/50/0',
+            OBLIQUE_ANNOTATION='6')
 
         gmtconf.update(
             (k.upper(), v) for (k, v) in self.gmt_config.iteritems())
@@ -370,7 +375,7 @@ class Map(Object):
 
         widget = layout.get_widget()
         # widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        #widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+        # widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width_m)gm'
         # widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         # scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
@@ -384,6 +389,7 @@ class Map(Object):
         self._widget = widget
         self._jxyr = self._widget.JXY() + self._scaler.R()
         self._have_drawn_axes = False
+        self._have_drawn_labels = False
 
     def _draw_background(self):
         self._have_topo_land = False
@@ -490,6 +496,24 @@ class Map(Object):
             self._have_topo_land = True
         except NoTopo:
             self._have_topo_land = False
+
+    def _draw_topo_scale(self, label='Elevation [km]'):
+        dry = read_cpt(topo.cpt(self.topo_cpt_dry))
+        wet = read_cpt(topo.cpt(self.topo_cpt_wet))
+        combi = cpt_merge_wet_dry(wet, dry)
+        for level in combi.levels:
+            level.vmin /= km
+            level.vmax /= km
+
+        topo_cpt = self.gmt.tempfilename()
+        write_cpt(combi, topo_cpt)
+
+        (w, h), (xo, yo) = self.widget.get_size()
+        self.gmt.psscale(
+            D='%gp/%gp/%gp/%gph' % (xo + 0.5*w, yo - 2.0*gmtpy.cm, w,
+                                    0.5*gmtpy.cm),
+            C=topo_cpt,
+            B='1:%s:' % label)
 
     def _draw_basefeatures(self):
         gmt = self._gmt
@@ -732,6 +756,11 @@ class Map(Object):
                         in_rows=[row], D='%gp/%gp' % (xoff, yoff), *self.jxyr,
                         **styles[i])
 
+    def draw_labels(self):
+        if not self._have_drawn_labels:
+            self._draw_labels()
+            self._have_drawn_labels = True
+
     def add_label(self, lat, lon, text, offset_x=5., offset_y=5., style={}):
         self._labels.append((lon, lat, text, offset_x, offset_y, style))
 
@@ -857,6 +886,114 @@ def split_region(region):
     else:
         return [region]
 
+
+class CPTLevel(Object):
+    vmin = Float.T()
+    vmax = Float.T()
+    color_min = Tuple.T(3, Float.T())
+    color_max = Tuple.T(3, Float.T())
+
+
+class CPT(Object):
+    color_below = Tuple.T(3, Float.T(), optional=True)
+    color_above = Tuple.T(3, Float.T(), optional=True)
+    color_nan = Tuple.T(3, Float.T(), optional=True)
+    levels = List.T(CPTLevel.T())
+
+
+class CPTParseError(Exception):
+    pass
+
+
+def read_cpt(filename):
+    with open(filename) as f:
+        color_below = None
+        color_above = None
+        color_nan = None
+        levels = []
+        try:
+            for line in f:
+                line = line.strip()
+                toks = line.split()
+
+                if line.startswith('#'):
+                    continue
+
+                elif line.startswith('B'):
+                    color_below = tuple(map(float, toks[1:4]))
+
+                elif line.startswith('F'):
+                    color_above = tuple(map(float, toks[1:4]))
+
+                elif line.startswith('N'):
+                    color_nan = tuple(map(float, toks[1:4]))
+
+                else:
+                    values = map(float, line.split())
+                    vmin = values[0]
+                    color_min = tuple(values[1:4])
+                    vmax = values[4]
+                    color_max = tuple(values[5:8])
+                    levels.append(CPTLevel(
+                        vmin=vmin,
+                        vmax=vmax,
+                        color_min=color_min,
+                        color_max=color_max))
+
+        except:
+            raise CPTParseError()
+
+    return CPT(
+        color_below=color_below,
+        color_above=color_above,
+        color_nan=color_nan,
+        levels=levels)
+
+
+def color_to_int(color):
+    return tuple(max(0, min(255, int(round(x)))) for x in color)
+
+def write_cpt(cpt, filename):
+    with open(filename, 'w') as f:
+        for level in cpt.levels:
+            f.write(
+                '%e %i %i %i %e %i %i %i\n' %
+                ((level.vmin, ) + color_to_int(level.color_min) +
+                 (level.vmax, ) + color_to_int(level.color_max)))
+
+        if cpt.color_below:
+            f.write('B %i %i %i\n' % color_to_int(cpt.color_below))
+
+        if cpt.color_above:
+            f.write('F %i %i %i\n' % color_to_int(cpt.color_below))
+
+        if cpt.color_nan:
+            f.write('N %i %i %i\n' % color_to_int(cpt.color_below))
+
+
+def cpt_merge_wet_dry(wet, dry):
+    levels = []
+    for level in wet.levels:
+        if level.vmin < 0.:
+            if level.vmax > 0.:
+                level.vmax = 0.
+
+            levels.append(level)
+
+    for level in dry.levels:
+        if level.vmax > 0.:
+            if level.vmin < 0.:
+                level.vmin = 0.
+
+            levels.append(level)
+
+    combi = CPT(
+        color_below=wet.color_below,
+        color_above=dry.color_above,
+        color_nan=dry.color_nan,
+        levels=levels)
+
+    return combi
 
 if __name__ == '__main__':
     from pyrocko import util
