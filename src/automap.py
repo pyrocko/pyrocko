@@ -144,6 +144,7 @@ class Map(Object):
     show_topo = Bool.T(default=True)
     show_topo_scale = Bool.T(default=False)
     show_center_mark = Bool.T(default=False)
+    show_rivers = Bool.T(default=True)
     illuminate_factor_land = Float.T(default=0.5)
     illuminate_factor_ocean = Float.T(default=0.25)
     color_wet = Tuple.T(3, Int.T(), default=(216, 242, 254))
@@ -524,7 +525,7 @@ class Map(Object):
         color_wet = self.color_wet
         color_dry = self.color_dry
 
-        if rivers:
+        if self.show_rivers and rivers:
             rivers = ['-Ir/0.25p,%s' % gmtpy.color(self.color_wet)]
         else:
             rivers = []
