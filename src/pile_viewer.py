@@ -3,6 +3,7 @@ import os, time, calendar, datetime, signal, re, math, logging, operator, copy
 import numpy as num 
 import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace
 import pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
+import pyrocko.marker_editor
 
 from pyrocko.util import hpfloat
 
@@ -585,7 +586,6 @@ def MakePileViewerMainClass(base):
             self.highpass = None
             self.gain = 1.0
             self.rotate = 0.0
-            self.markers = []
             self.picking_down = None
             self.picking = None
             self.floating_marker = None
@@ -1429,13 +1429,20 @@ def MakePileViewerMainClass(base):
                         elif t is not None and t in time_to_events:
                             marker.set_event(time_to_events[t])
                             marker.set_event_hash(None)
-        
+
         def add_marker(self, marker):
             self.markers.append(marker)
-        
+            self.emit(
+                SIGNAL('markers_changed(int,int)'),
+                len(self.markers)-1, len(self.markers))
+
         def add_markers(self, markers):
+            len_before = len(self.markers)
             self.markers.extend(markers)
-        
+            self.emit(
+                SIGNAL('markers_changed(int,int)'), 
+                len_before, len(self.markers))
+
         def remove_marker(self, marker):
             try:
                 self.markers.remove(marker)
@@ -1746,7 +1753,13 @@ def MakePileViewerMainClass(base):
 
             elif keytext == 'g':
                 self.go_to_selection()
-               
+
+            elif keytext == 'm':
+                self.toggle_marker_editor()
+
+            elif keytext == 'c':
+                self.toggle_main_controls()
+
             elif key_event.key() in (Qt.Key_Left, Qt.Key_Right):
                 dir = 1
                 amount = 1
@@ -1758,6 +1771,12 @@ def MakePileViewerMainClass(base):
 
             self.update()
             self.update_status()
+
+        def toggle_marker_editor(self):
+            self.panel_parent.toggle_marker_editor()
+
+        def toggle_main_controls(self):
+            self.panel_parent.toggle_main_controls()
 
         def nudge_selected_markers(self, npixels):
             a,b = self.time_projection.ur
@@ -2772,7 +2791,7 @@ def MakePileViewerMainClass(base):
                 if not abort:
                     tmi = self.floating_marker.tmin
                     tma = self.floating_marker.tmax
-                    self.markers.append(self.floating_marker)
+                    self.add_marker(self.floating_marker)
                     self.floating_marker.set_selected(True)
                     print self.floating_marker
                 
@@ -3260,6 +3279,11 @@ class PileViewer(QFrame):
 
         self.adjust_controls()
         return frame
+
+    def marker_editor(self):
+        editor = pyrocko.marker_editor.MarkerEditor()
+        editor.set_viewer(self.viewer)
+        return editor
 
     def adjust_controls(self):
         dtmin, dtmax = self.viewer.content_deltat_range()
