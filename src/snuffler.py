@@ -11,6 +11,7 @@ import pyrocko.util
 import pyrocko.pile_viewer
 import pyrocko.model
 import pyrocko.config
+import pyrocko.io
 
 import pyrocko.slink, pyrocko.serial_hamster, pyrocko.edl
 
@@ -655,13 +656,14 @@ def snuffler_from_commandline(args=sys.argv):
     usage = '''usage: %prog [options] waveforms ...'''
     parser = OptionParser(usage=usage)
 
-    parser.add_option('--format',
+
+    parser.add_option(
+            '--format',
             dest='format',
             default='detect',
-            choices=('mseed', 'sac', 'kan', 'segy',
-                'seisan', 'seisan.l', 'seisan.b', 'gse1', 'gcf', 'yaff', 'datacube',
-                'from_extension', 'detect'),
-            help='assume files are of given FORMAT [default: \'%default\']' )
+            choices=pyrocko.io.allowed_formats('load'),
+            help='assume input files are of given FORMAT. Choices: %s' %
+                pyrocko.io.allowed_formats('load', 'cli_help', 'detect'))
 
     parser.add_option('--pattern',
             dest='regex',

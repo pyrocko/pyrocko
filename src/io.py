@@ -42,23 +42,51 @@ import numpy as num
 
 logger = logging.getLogger('pyrocko.io')
 
+
+def allowed_formats(operation, use=None, default=None):
+    if operation == 'load':
+        l = ['detect', 'from_extension', 'mseed', 'sac', 'segy', 'seisan',
+             'seisan.l', 'seisan.b', 'kan', 'yaff', 'gse1', 'gse2', 'gcf',
+             'datacube']
+
+    elif operation == 'save':
+        l = ['mseed', 'sac', 'text', 'yaff']
+
+    if use == 'doc':
+        return ', '.join("``'%s'``" % fmt for fmt in l)
+
+    elif use == 'cli_help':
+        return ', '.join(fmt + ['', ' [default]'][fmt==default] for fmt in l)
+
+    else:
+        return l
+
+
 def load(filename, format='mseed', getdata=True, substitutions=None ):
     '''Load traces from file.
 
-    :param format: format of the file (``'mseed'``, ``'sac'``, ``'segy'``, ``'seisan.l'``, ``'seisan.b'``, ``'kan'``, ``'yaff'``, ``'gse1'``, ``'gcf'``, ```'datacube'``, `'from_extension'``)
-    :param getdata: if ``True`` (the default), read data, otherwise only read traces metadata
-    :param substitutions:  dict with substitutions to be applied to the traces metadata
-    
+    :param format: format of the file (%s)
+    :param getdata: if ``True`` (the default), read data, otherwise only read
+        traces metadata
+    :param substitutions:  dict with substitutions to be applied to the traces
+        metadata
+
     :returns: list of loaded traces
-    
-    When *format* is set to ``'detect'``, the file type is guessed from the first 512 bytes of the file. Only Mini-SEED, SAC, GSE1, and YAFF format are detected.
-    When *format* is set to ``'from_extension'``, the filename extension is used to decide what format should be assumed. The filename extensions
-    considered are (matching is case insensitiv): ``'.sac'``, ``'.kan'``, ``'.sgy'``, ``'.segy'``, ``'.yaff'``, everything else is assumed to be in Mini-SEED format.
-    
+
+    When *format* is set to ``'detect'``, the file type is guessed from the
+    first 512 bytes of the file. Only Mini-SEED, SAC, GSE1, and YAFF format are
+    detected. When *format* is set to ``'from_extension'``, the filename
+    extension is used to decide what format should be assumed. The filename
+    extensions considered are (matching is case insensitiv): ``'.sac'``,
+    ``'.kan'``, ``'.sgy'``, ``'.segy'``, ``'.yaff'``, everything else is
+    assumed to be in Mini-SEED format.
+
     This function calls :py:func:`iload` and aggregates the loaded traces in a list.
     '''
-    
+
     return list(iload(filename, format=format, getdata=getdata, substitutions=substitutions))
+
+load.__doc__ %= allowed_formats('load', 'doc')
 
 def detect_format(filename):
     try:
@@ -141,27 +169,29 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
         yield subs(tr)
 
     
-def save(traces, filename_template, format='mseed', additional={}, 
+def save(traces, filename_template, format='mseed', additional={},
          stations=None, overwrite=True):
     '''Save traces to file(s).
-    
+
     :param traces: a trace or an iterable of traces to store
     :param filename_template: filename template with placeholders for trace
-            metadata. Uses normal python '%(placeholder)s' string templates. The following
-            placeholders are considered: ``network``, ``station``, ``location``,
-            ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
-            sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``. The
-            versions with '_ms' include milliseconds, the versions with '_us'
-            include microseconds.
-    :param format: ``mseed``, ``sac``, ``text``, or ``yaff``.
+            metadata. Uses normal python '%%(placeholder)s' string templates.
+            The following placeholders are considered: ``network``,
+            ``station``, ``location``, ``channel``, ``tmin``
+            (time of first sample), ``tmax`` (time of last sample),
+            ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``. The versions
+            with '_ms' include milliseconds, the versions with '_us' include
+            microseconds.
+    :param format: %s
     :param additional: dict with custom template placeholder fillins.
     :param overwrite': if ``False``, raise an exception if file exists
     :returns: list of generated filenames
 
-    .. note:: 
+    .. note::
         Network, station, location, and channel codes may be silently truncated
         to file format specific maximum lengthes. 
     '''
+
     if isinstance(traces, trace.Trace):
         traces = [ traces ]
 
@@ -214,6 +244,8 @@ def save(traces, filename_template, format='mseed', additional={},
                          overwrite=overwrite)
     else:
         raise UnsupportedFormat(format)
+
+save.__doc__ %= allowed_formats('save', 'doc')
 
 class UnknownFormat(Exception):
     def __init__(self, filename):

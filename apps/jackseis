@@ -63,11 +63,9 @@ if __name__ == '__main__':
         '--format',
         dest='format',
         default='detect',
-        choices=['mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan.l',
-                 'seisan.b', 'gcf', 'yaff', 'from_extension', 'detect'],
-        help='assume input files are of given FORMAT. Choices: '
-             'detect [default], mseed, sac, kan, segy, seisan, seisan.l, '
-             'seisan.b, gcf, yaff, from_extension')
+        choices=io.allowed_formats('load'),
+        help='assume input files are of given FORMAT. Choices: %s' %
+             io.allowed_formats('load', 'cli_help', 'detect'))
 
     parser.add_option(
         '--pattern',
@@ -158,8 +156,9 @@ if __name__ == '__main__':
         '--output-format',
         dest='output_format',
         default='mseed',
-        choices=['mseed', 'sac', 'text', 'yaff'],
-        help='set output file format (mseed [default], sac, text, yaff)')
+        choices=io.allowed_formats('save'),
+        help='set output file format. Choices: %s' %
+             io.allowed_formats('save', 'cli_help', 'mseed'))
 
     parser.add_option(
         '--force',
