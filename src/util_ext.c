@@ -13,6 +13,22 @@
 
 static PyObject *UtilExtError;
 
+typedef enum {
+    SUCCESS = 0,
+    ALLOC_FAILED,
+    TIME_FORMAT_ERROR,
+    MKTIME_FAILED,
+    GMTIME_FAILED,
+} util_error_t;
+
+const char* util_error_names[] = {
+    "SUCCESS",
+    "ALLOC_FAILED",
+    "TIME_FORMAT_ERROR",
+    "MKTIME_FAILED",
+    "GMTIME_FAILED",
+};
+
 time_t my_timegm(struct tm *tm) {
     time_t ret;
     char *tz;
@@ -78,16 +94,16 @@ int stt(const char *s, const char *format, time_t *t, double *tfrac) {
         *rindex(format2, '.') = '\0'; /* cannot fail here */
         sfrac = rindex(s2, '.');
         if (nexpect != 0 && sfrac == NULL) {
-            return 1;  /* fractional seconds expected but not found */
+            return TIME_FORMAT_ERROR;  /* fractional seconds expected but not found */
         }
         if (sfrac != NULL) {
             if (nexpect > 0 && strlen(sfrac) != (size_t)(nexpect + 1)) {
-                return 2;  /* incorrect number of digits in fractional seconds part */
+                return TIME_FORMAT_ERROR;  /* incorrect number of digits in fractional seconds part */
             }
             errno = 0;
             *tfrac = strtod(sfrac, NULL);
             if (errno != 0) {
-                return 4;  /* could not convert fractional part to a number */
+                return TIME_FORMAT_ERROR;  /* could not convert fractional part to a number */
             }
             *sfrac = '\0';
         }
@@ -97,12 +113,12 @@ int stt(const char *s, const char *format, time_t *t, double *tfrac) {
     end = strptime(s2, format2, &tm);
 
     if (end == NULL || *end != '\0') {
-        return 5;  /* could not parse date/time */
+        return TIME_FORMAT_ERROR;  /* could not parse date/time */
     }
 
     *t = timegm(&tm);
     if (*t == -1) {
-        return 2;  /* mktime failed */
+        return MKTIME_FAILED;  /* mktime failed */
     }
 
     return 0;
@@ -131,22 +147,22 @@ int tts(time_t t, double tfrac, const char *format, char **sout) {
     }
 
     if (NULL == gmtime_r(&t, &tm)) {
-        return 1;
+        return GMTIME_FAILED;  /* invalid timestamp */
     }
 
     n = strftime(buf, 200, format2, &tm);
     if (n == 0) {
-        return 2;
+        return TIME_FORMAT_ERROR;  /* formatting date/time failed */
     }
 
     *sout = (char*)malloc(n + strlen(sfrac) - 1 + 1);
     if (*sout == NULL) {
-        return 3;
+        return ALLOC_FAILED;  /* malloc failed */
     }
     **sout = '\0';
     strncat(*sout, buf, n);
     strcat(*sout, sfrac+1);
-    return 0;
+    return SUCCESS;
 }
 
 static PyObject* w_stt(PyObject *dummy, PyObject *args) {
@@ -155,6 +171,7 @@ static PyObject* w_stt(PyObject *dummy, PyObject *args) {
     char *format;
     time_t t;
     double tfrac;
+    int err;
 
     (void)dummy; /* silence warning */
 
@@ -162,7 +179,9 @@ static PyObject* w_stt(PyObject *dummy, PyObject *args) {
         PyErr_SetString(UtilExtError, "usage stt(s, format)" );
         return NULL;
     }
-    if (0 != stt(s, format, &t, &tfrac)) {
+    err =  stt(s, format, &t, &tfrac);
+    if (err != 0) {
+        PyErr_SetString(UtilExtError, util_error_names[err]);
         return NULL;
     }
     return Py_BuildValue("Ld", (long long int)t, tfrac);
@@ -174,6 +193,7 @@ static PyObject* w_tts(PyObject *dummy, PyObject *args) {
     char *format;
     time_t t;
     double tfrac;
+    int err;
     PyObject *val;
 
     (void)dummy; /* silence warning */
@@ -183,7 +203,9 @@ static PyObject* w_tts(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    if (0 != tts(t, tfrac, format, &s)) {
+    err = tts(t, tfrac, format, &s);
+    if (0 != err) {
+        PyErr_SetString(UtilExtError, util_error_names[err]);
         return NULL;
     }
 

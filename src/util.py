@@ -523,12 +523,15 @@ def gmctime_fn(t, format="%Y-%m-%d_%H-%M-%S"):
        
     return time.strftime(format, time.gmtime(t))
 
-class FractionalSecondsMissing(Exception):
+class TimeStrError(Exception):
+    pass
+
+class FractionalSecondsMissing(TimeStrError):
     '''Exception raised by :py:func:`str_to_time` when the given string lacks
     fractional seconds.'''
     pass
 
-class FractionalSecondsWrongNumberOfDigits(Exception):
+class FractionalSecondsWrongNumberOfDigits(TimeStrError):
     '''Exception raised by :py:func:`str_to_time` when the given string has an incorrect number of digits in the fractional seconds part.'''
     pass
 
@@ -554,9 +557,13 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     number of digits are present in the fractional seconds.
     '''
     if util_ext is not None:
-        t, tfrac = util_ext.stt(s, format)
+        try:
+            t, tfrac = util_ext.stt(s, format)
+        except util_ext.UtilExtError, e:
+            raise TimeStrError('%s, string=%s, format=%s' % (str(e), s, format))
+
         return t+tfrac
-        
+
     fracsec = 0.
     fixed_endings = '.FRAC', '.1FRAC', '.2FRAC', '.3FRAC'
     
@@ -604,7 +611,10 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
 
     if util_ext is not None:
         t0 = math.floor(t)
-        return util_ext.tts(int(t0), t - t0, format)
+        try:
+            return util_ext.tts(int(t0), t - t0, format)
+        except util_ext.UtilExtError, e:
+            raise TimeStrError('%s, timestamp=%f, format=%s' % (str(e), t, format))
     
     if not GlobalVars.re_frac:
         GlobalVars.re_frac = re.compile(r'\.[1-9]FRAC')

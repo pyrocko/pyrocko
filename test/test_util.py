@@ -1,23 +1,25 @@
-from pyrocko import mseed, trace, util, io
-import unittest, math, calendar, time
+from pyrocko import util
+import unittest
 from random import random
 
-class UtilTestCase( unittest.TestCase ):
-    
+
+class UtilTestCase(unittest.TestCase):
+
     def testTime(self):
-        
+
         for fmt, accu in zip(
-            [ '%Y-%m-%d %H:%M:%S.3FRAC', '%Y-%m-%d %H:%M:%S.2FRAC', '%Y-%m-%d %H:%M:%S.1FRAC', '%Y-%m-%d %H:%M:%S' ],
-            [ 0.001, 0.01, 0.1, 1.] ):
-        
+                ['%Y-%m-%d %H:%M:%S.3FRAC', '%Y-%m-%d %H:%M:%S.2FRAC',
+                 '%Y-%m-%d %H:%M:%S.1FRAC', '%Y-%m-%d %H:%M:%S'],
+                [0.001, 0.01, 0.1, 1.]):
+
             ta = util.str_to_time('1960-01-01 10:10:10')
             tb = util.str_to_time('2020-01-01 10:10:10')
-            
+
             for i in xrange(10000):
                 t1 = ta + random() * (tb-ta)
                 s = util.time_to_str(t1, format=fmt)
                 t2 = util.str_to_time(s, format=fmt)
-                assert abs( t1 - t2 ) < accu
+                assert abs(t1 - t2) < accu
 
     def testIterTimes(self):
 
@@ -30,12 +32,21 @@ class UtilTestCase( unittest.TestCase ):
                 ii += 1
                 s1 = util.time_to_str(mmin)
                 s2 = util.time_to_str(mmax)
-      
+
         assert ii == 12*3
         assert s1 == '2001-12-01 00:00:00.000'
         assert s2 == '2002-01-01 00:00:00.000'
 
+    def testTimeError(self):
+        ok = False
+        try:
+            util.str_to_time('abc')
+        except util.TimeStrError:
+            ok = True
+
+        assert ok
+
+
 if __name__ == "__main__":
     util.setup_logging('test_util', 'warning')
     unittest.main()
-    
