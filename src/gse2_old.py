@@ -513,6 +513,11 @@ def readgse(fn, load_data=True):
 
                 at = 2
 
+            if line.lstrip().startswith('DATA_TYPE WAVEFORM'):
+                gse = GSE()
+                gse.version = line.split()[2]
+                at = 1
+
         if at == 1:
             if isd(line, toks, 'MSG_TYPE', 2):
                 gse.msg_type = toks[1]
@@ -572,6 +577,9 @@ def detect(first512):
             return True
 
         if lines[0].startswith('BEGIN GSE2'):
+            return True
+
+        if lines[0].startswith('DATA_TYPE WAVEFORM GSE2'):
             return True
 
     return False
