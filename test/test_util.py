@@ -1,5 +1,6 @@
 from pyrocko import util
 import unittest
+import time
 from random import random
 
 
@@ -45,6 +46,21 @@ class UtilTestCase(unittest.TestCase):
             ok = True
 
         assert ok
+
+    def benchmark_stt_tts(self):
+        for x in xrange(2):
+            if x == 1:
+                util.util_ext = None
+            t = util.str_to_time('1999-03-20 20:10:10')
+            tt1 = time.time()
+            for i in xrange(10000):
+                s = util.tts(t)
+                t2 = util.stt(s)
+
+            tt2 = time.time()
+            print tt2 - tt1
+
+
 
 
 if __name__ == "__main__":

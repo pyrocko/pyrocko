@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <math.h>
+#include <locale.h>
 
 #include "Python.h"
 
@@ -60,8 +61,7 @@ int endswith(const char *s, const char *suffix) {
     return 0;
 }
 
-int stt(const char *s, const char *format, time_t *t, double *tfrac) {
-
+util_error_t stt(const char *s, const char *format, time_t *t, double *tfrac) {
 
     struct tm tm;
     size_t nf = strlen(format);
@@ -70,6 +70,7 @@ int stt(const char *s, const char *format, time_t *t, double *tfrac) {
     char s2[ns+1];
     char *sfrac, *end;
     int nexpect;
+
 
     *t = 0;
     *tfrac = 0.0;
@@ -124,7 +125,23 @@ int stt(const char *s, const char *format, time_t *t, double *tfrac) {
     return 0;
 }
 
-int tts(time_t t, double tfrac, const char *format, char **sout) {
+
+util_error_t stt_c_locale(const char *s, const char *format, time_t *t, double *tfrac) {
+    char *saved_locale;
+    util_error_t err;
+    saved_locale = strdup(setlocale(LC_ALL, NULL));
+    if (saved_locale == NULL) {
+        return ALLOC_FAILED;
+    }
+    setlocale(LC_ALL, "C");
+    err = stt(s, format, t, tfrac);
+    setlocale(LC_ALL, saved_locale);
+    free(saved_locale);
+    return err;
+}
+
+
+util_error_t tts(time_t t, double tfrac, const char *format, char **sout) {
     size_t nf = strlen(format);
     char format2[nf+1];
     char sfrac[20] = "";
@@ -165,13 +182,28 @@ int tts(time_t t, double tfrac, const char *format, char **sout) {
     return SUCCESS;
 }
 
+util_error_t tts_c_locale(time_t t, double tfrac, const char *format, char **sout) {
+    char *saved_locale;
+    util_error_t err;
+
+    saved_locale = strdup(setlocale(LC_ALL, NULL));
+    if (saved_locale == NULL) {
+        return ALLOC_FAILED;
+    }
+    setlocale(LC_ALL, "C");
+    err = tts(t, tfrac, format, sout);
+    setlocale(LC_ALL, saved_locale);
+    free(saved_locale);
+    return err;
+}
+
 static PyObject* w_stt(PyObject *dummy, PyObject *args) {
 
     char *s;
     char *format;
     time_t t;
     double tfrac;
-    int err;
+    util_error_t err;
 
     (void)dummy; /* silence warning */
 
@@ -179,7 +211,7 @@ static PyObject* w_stt(PyObject *dummy, PyObject *args) {
         PyErr_SetString(UtilExtError, "usage stt(s, format)" );
         return NULL;
     }
-    err =  stt(s, format, &t, &tfrac);
+    err =  stt_c_locale(s, format, &t, &tfrac);
     if (err != 0) {
         PyErr_SetString(UtilExtError, util_error_names[err]);
         return NULL;
@@ -193,7 +225,7 @@ static PyObject* w_tts(PyObject *dummy, PyObject *args) {
     char *format;
     time_t t;
     double tfrac;
-    int err;
+    util_error_t err;
     PyObject *val;
 
     (void)dummy; /* silence warning */
@@ -203,7 +235,7 @@ static PyObject* w_tts(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    err = tts(t, tfrac, format, &s);
+    err = tts_c_locale(t, tfrac, format, &s);
     if (0 != err) {
         PyErr_SetString(UtilExtError, util_error_names[err]);
         return NULL;
