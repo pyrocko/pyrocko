@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <math.h>
+#include <locale.h>
 
 #include "Python.h"
 
@@ -62,7 +63,6 @@ int endswith(const char *s, const char *suffix) {
 
 int stt(const char *s, const char *format, time_t *t, double *tfrac) {
 
-
     struct tm tm;
     size_t nf = strlen(format);
     size_t ns = strlen(s);
@@ -71,6 +71,7 @@ int stt(const char *s, const char *format, time_t *t, double *tfrac) {
     char *sfrac, *end;
     int nexpect;
 
+    setlocale (LC_ALL, "en_US.UTF-8");
     *t = 0;
     *tfrac = 0.0;
 
@@ -133,6 +134,7 @@ int tts(time_t t, double tfrac, const char *format, char **sout) {
     struct tm tm;
     size_t n;
 
+    setlocale (LC_ALL, "en_US.UTF-8");
     strcpy(ffmt, "%.0f");
     strcpy(format2, format);
     if (nf >= 6 && (format2[nf-6] == '.') && endswith(format2, "FRAC") &&
