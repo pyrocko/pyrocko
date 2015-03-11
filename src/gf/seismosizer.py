@@ -1028,7 +1028,7 @@ class RectangularSource(DCSource):
             return points
         elif cs == 'xy':
             return points[:,:2]
-        elif cs in ('latlon' 'lonlat'):
+        elif cs in ('latlon', 'lonlat'):
             latlon = ne_to_latlon(self.lat, self.lon, points[:, 0], points[:, 1])
             latlon = num.array(latlon).T
             if cs == 'latlon':
@@ -1234,6 +1234,51 @@ class RingfaultSource(SourceWithMagnitude):
             east_shifts=points[:, 1],
             depths=points[:, 2],
             m6s=m6s)
+
+
+class SFSource(Source):
+    '''
+    A single force point source.
+    '''
+
+    discretized_source_class = meta.DiscretizedSFSource
+
+    fn = Float.T(
+        default=0.,
+        help='northward component of single force [N]')
+
+    fe = Float.T(
+        default=0.,
+        help='eastward component of single force [N]')
+
+    fd = Float.T(
+        default=0.,
+        help='downward component of single force [N]')
+
+    def __init__(self, **kwargs):
+        Source.__init__(self, **kwargs)
+
+    def base_key(self):
+        return Source.base_key(self) + (self.fn, self.fe, self.fd)
+
+    def get_factor(self):
+        return 1.0
+
+    def discretize_basesource(self, store):
+        forces = num.array([[self.fn, self.fe, self.fd]], dtype=num.float)
+        return meta.DiscretizedSFSource(forces=forces,
+                                        **self._dparams_base())
+
+    def pyrocko_event(self, **kwargs):
+        return Source.pyrocko_event(
+            self,
+            **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        d.update(kwargs)
+        return super(SFSource, cls).from_pyrocko_event(ev, **d)
 
 
 class PorePressurePointSource(Source):
@@ -2081,6 +2126,7 @@ source_classes = [
     RectangularSource,
     DoubleDCSource,
     RingfaultSource,
+    SFSource,
     PorePressurePointSource,
     PorePressureLineSource
 ]
