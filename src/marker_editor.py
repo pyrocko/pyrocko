@@ -7,7 +7,10 @@ from pyrocko import util
 
 
 class MarkerTable(QTableView):
-    pass
+    def __init__(self, *args, **kwargs):
+        QTableView.__init__(self, *args, **kwargs)
+
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
 
 
 class MarkerModel(QAbstractTableModel):
