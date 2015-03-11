@@ -389,7 +389,7 @@ class Location(Object):
         if self.same_origin(other):
             if isinstance(other, Location):
                 return math.sqrt((self.north_shift - other.north_shift)**2 +
-                                (self.east_shift - other.east_shift)**2)
+                                 (self.east_shift - other.east_shift)**2)
             else:
                 return 0.0
 
@@ -793,6 +793,82 @@ class DiscretizedExplosionSource(DiscretizedSource):
                                                               **kwargs)
 
 
+class DiscretizedSFSource(DiscretizedSource):
+    forces = Array.T(shape=(None, 3), dtype=num.float)
+
+    _provided_components = (
+        'displacement.n',
+        'displacement.e',
+        'displacement.d',
+    )
+
+    _provided_schemes = (
+        'elastic5',
+        'elastic13',
+        'elastic15',
+    )
+
+    def make_weights(self, receiver, scheme):
+        self.check_scheme(scheme)
+
+        azis, bazis = self.azibazis_to(receiver)
+
+        sa = num.sin(azis*d2r)
+        ca = num.cos(azis*d2r)
+        sb = num.sin(bazis*d2r-num.pi)
+        cb = num.cos(bazis*d2r-num.pi)
+
+        forces = self.forces
+        fn = forces[:, 0]
+        fe = forces[:, 1]
+        fd = forces[:, 2]
+
+        f0 = fd
+        f1 = ca * fn + sa * fe
+        f2 = ca * fe - sa * fn
+
+        n = azis.size
+
+        if scheme == 'elestic5':
+            ioff = 0
+
+        elif scheme == 'elastic13':
+            ioff = 8
+
+        elif scheme == 'elastic15':
+            ioff = 10
+
+        cat = num.concatenate
+        rep = num.repeat
+
+        w_n = cat((cb*f0, cb*f1, -sb*f2))
+        g_n = ioff + rep((0, 1, 2), n)
+        w_e = cat((sb*f0, sb*f1, cb*f2))
+        g_e = ioff + rep((0, 1, 2), n)
+        w_d = cat((f0, f1))
+        g_d = ioff + rep((3, 4), n)
+
+        return (
+            ('displacement.n', w_n, g_n),
+            ('displacement.e', w_e, g_e),
+            ('displacement.d', w_d, g_d),
+        )
+
+    @classmethod
+    def combine(cls, sources, **kwargs):
+        '''Combine several discretized source models.
+
+        Concatenenates all point sources in the given discretized ``sources``.
+        Care must be taken when using this function that the external amplitude
+        factors and reference times of the parameterized (undiscretized)
+        sources match or are accounted for.
+        '''
+        if 'forces' not in kwargs:
+            kwargs['forces'] = num.vstack([s.forces for s in sources])
+
+        return super(DiscretizedMTSource, cls).combine(sources, **kwargs)
+
+
 class DiscretizedMTSource(DiscretizedSource):
     m6s = Array.T(shape=(None, 6), dtype=num.float)
 
@@ -1011,7 +1087,14 @@ class DiscretizedPorePressureSource(DiscretizedSource):
 
 
 class ComponentSchemes(StringChoice):
-    choices = ('elastic10', 'elastic8', 'elastic2', 'poroelastic10')
+    choices = (
+        'elastic10',  # nf + ff
+        'elastic8',   # ff
+        'elastic2',   # explosions
+        'elastic5',   # sf
+        'elastic13',  # ff + sf
+        'elastic15',  # nf + ff + sf
+        'poroelastic10')
 
 
 class Config(Object):
@@ -1542,7 +1625,7 @@ class WaveformSelection(Object):
     channel_selection = ChannelSelection.T(optional=True)
     station_selection = StationSelection.T(optional=True)
     taper = Taper.T()
-    #filter = FrequencyResponse.T()
+    # filter = FrequencyResponse.T()
     waveform_type = WaveformType.T(default='dis')
     weighting = Weighting.T(optional=True)
     sample_rate = Float.T(optional=True)

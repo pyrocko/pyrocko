@@ -32,7 +32,6 @@ program_bins = {
 qseis_components = 'r t z v'.split()
 qseis_greenf_names = ('ex', 'ss', 'ds', 'cl', 'fz', 'fh')
 
-
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
 
@@ -193,6 +192,10 @@ class QSeisConfigFull(QSeisConfig):
     def get_output_filenames(self, rundir):
         return [pjoin(rundir, self.seismogram_filename+'.t'+c)
                 for c in qseis_components]
+
+    def get_output_filenames_gf(self, rundir):
+        return [pjoin(rundir, fn+'.t'+c)
+                for fn in self.gf_filenames for c in qseis_components]
 
     def string_for_config(self):
 
@@ -638,13 +641,29 @@ in the directory %s'''.lstrip() % (
 
         os.chdir(old_wd)
 
-    def get_traces(self):
+    def get_traces(self, which='seis'):
 
-        fns = self.config.get_output_filenames(self.tempdir)
+        if which == 'seis':
+            fns = self.config.get_output_filenames(self.tempdir)
+            components = qseis_components
+
+        elif which == 'gf':
+            fns = self.config.get_output_filenames_gf(self.tempdir)
+            components = [
+                fn+'.t'+c
+                for fn in self.config.gf_filenames for c in qseis_components]
+        else:
+            raise Exception(
+                'get_traces: which argument should be "seis" or "gf"')
+
+
         traces = []
         distances = self.config.receiver_distances
         azimuths = self.config.receiver_azimuths
-        for comp, fn in zip(qseis_components, fns):
+        for comp, fn in zip(components, fns):
+            if not os.path.exists(fn):
+                continue
+
             data = num.loadtxt(fn, skiprows=1, dtype=num.float)
             nsamples, ntraces = data.shape
             ntraces -= 1
@@ -766,7 +785,10 @@ class QSeisGFBuilder(gf.builder.Builder):
             # this value
             distances.append(self.gf_config.distance_max)
 
-        conf.gf_sw_source_types = (1, 1, 1, 1, 0, 0)
+        if conf.component_scheme in ('elastic5', 'elastic13', 'elastic15'):
+            conf.gf_sw_source_types = (1, 1, 1, 1, 1, 1)
+        else:
+            conf.gf_sw_source_types = (1, 1, 1, 1, 0, 0)
 
         conf.receiver_distances = [d/km for d in distances]
         conf.receiver_azimuths = [0.0] * len(distances)
@@ -900,6 +922,7 @@ def init(store_dir):
     store_id = os.path.basename(os.path.realpath(store_dir))
 
     config = gf.meta.ConfigTypeA(
+
         id=store_id,
         ncomponents=10,
         sample_rate=0.2,
