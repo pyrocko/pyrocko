@@ -17,6 +17,7 @@ class MarkerModel(QAbstractTableModel):
     def __init__(self, *args, **kwargs):
         QAbstractTableModel.__init__(self, *args, **kwargs)
         self.viewer = None
+        self.headerdata = ['Type', 'Time']
 
     def set_viewer(self, viewer):
         self.viewer = viewer
@@ -33,6 +34,12 @@ class MarkerModel(QAbstractTableModel):
     def markers_changed(self, istart, istop):
         self.beginInsertRows(QModelIndex(), istart, istop-1)
         self.endInsertRows()
+
+    def headerData(self, col, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return QVariant(self.headerdata[col])
+        else:
+            return QVariant()
 
     def data(self, index, role):
         if not self.viewer:
