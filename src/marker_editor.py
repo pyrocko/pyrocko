@@ -11,6 +11,17 @@ class MarkerTable(QTableView):
         QTableView.__init__(self, *args, **kwargs)
 
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSortingEnabled(True)
+        self.sortByColumn(2)
+
+        self.viewer = None
+
+    def keyPressEvent(self, key_event):
+        keytext = str(key_event.text())
+        self.viewer.keyPressEvent(key_event)
+
+    def set_viewer(self, viewer):
+        self.viewer = viewer
 
 
 class MarkerModel(QAbstractTableModel):
@@ -74,11 +85,14 @@ class MarkerModel(QAbstractTableModel):
         if role == Qt.EditRole:
             imarker = index.row()
             marker = self.viewer.markers[imarker]
-            if index.column() == 3:
-                marker.get_event().magnitude = value
+            if index.column() == 2 and isinstance(marker, EventMarker):
+                marker.get_event().magnitude = value.toFloat()[0]
+                self.emit(SIGNAL('dataChanged()'))
+            return True
+        return False
 
     def flags(self, index):
-        if index.column() == 2:
+        if index.column() == 2 and isinstance(self.viewer.markers[index.row()], EventMarker):
             return Qt.ItemFlags(35)
         return Qt.ItemFlags(33)
 
@@ -109,12 +123,16 @@ class MarkerEditor(QFrame):
         self.marker_model.set_viewer(viewer)
         self.viewer = viewer
         self.connect(self.viewer, SIGNAL('changed_marker_selection'), self.update_selection_model)
+        self.marker_table.set_viewer(self.viewer)
 
     def set_selected_markers(self, selected, deselected):
         ''' set markers selected in viewer at selection in table.'''
         selected_markers = [self.viewer.markers[i.row()] for i in self.selection_model.selectedRows()]
-        self.viewer.deselect_all()
         self.viewer.set_selected_markers(selected_markers)
+
+    def get_marker_model(self):
+        '''Return MarkerModel instance'''
+        return self.marker_model
 
     def update_selection_model(self, indices):
         ''' :param indices: list of indices of selected markers.'''
