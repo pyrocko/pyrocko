@@ -2779,6 +2779,7 @@ def MakePileViewerMainClass(base):
 
             :param markers: list of markers
             '''
+            self.deselect_all()
             for m in markers:
                 m.set_selected(True)
 
@@ -3303,6 +3304,7 @@ class PileViewer(QFrame):
     def marker_editor(self):
         editor = pyrocko.marker_editor.MarkerEditor()
         editor.set_viewer(self.viewer)
+        self.connect(editor.get_marker_model(), SIGNAL('dataChanged()'), self.update_contents)
         return editor
 
     def adjust_controls(self):
