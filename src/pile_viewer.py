@@ -1498,6 +1498,7 @@ def MakePileViewerMainClass(base):
                 self.stop_picking(mouse_ev.x(), mouse_ev.y())
             self.track_start = None
             self.track_trange = None
+            self.emit_selected_markers()
             self.update_status()
             
         def mouseDoubleClickEvent(self, mouse_ev):
@@ -1769,8 +1770,16 @@ def MakePileViewerMainClass(base):
                     amount = 10
                 self.nudge_selected_markers(dir*amount)
 
+            self.emit_selected_markers()
             self.update()
             self.update_status()
+
+        def emit_selected_markers(self):
+            _index = [] 
+            for sm in self.selected_markers():
+                if sm in self.get_markers():
+                    _index.append(self.get_markers().index(sm))
+            self.emit(SIGNAL('changed_marker_selection'), _index)
 
         def toggle_marker_editor(self):
             self.panel_parent.toggle_marker_editor()
@@ -2764,7 +2773,17 @@ def MakePileViewerMainClass(base):
         def rot_change(self, value, ignore):
             self.rotate = value
             self.update()
-        
+
+        def set_selected_markers(self, markers):
+            '''Set a list of markers selected
+
+            :param markers: list of markers
+            '''
+            for m in markers:
+                m.set_selected(True)
+
+            self.update()
+
         def deselect_all(self):
             for marker in self.markers:
                 marker.set_selected(False)
@@ -2794,12 +2813,13 @@ def MakePileViewerMainClass(base):
                     self.add_marker(self.floating_marker)
                     self.floating_marker.set_selected(True)
                     print self.floating_marker
-                
+                    self.emit_selected_markers()
+
                 self.floating_marker = None
-        
-        
+
+
         def start_picking(self, ignore):
-            
+
             if not self.picking:
                 self.deselect_all()
                 self.picking = QRubberBand(QRubberBand.Rectangle)
