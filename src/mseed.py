@@ -1,9 +1,12 @@
 from struct import unpack
 import os, re
+import logging
 
 from pyrocko import trace
 from pyrocko.util import reuse, ensuredirs
 from pyrocko.io_common import FileLoadError, FileSaveError
+
+logger = logging.getLogger('pyrocko.mseed')
 
 class CodeTooLong(FileSaveError):
     pass
@@ -11,6 +14,7 @@ class CodeTooLong(FileSaveError):
 def iload(filename, load_data=True):
     from pyrocko import mseed_ext
 
+    have_zero_rate_traces = False
     try:
         traces = []
         for tr in mseed_ext.get_traces( filename, load_data ):
@@ -20,7 +24,9 @@ def iload(filename, load_data=True):
             try:
                 deltat = reuse(float(1.0)/float(tr[7]))
             except ZeroDivisionError, e:
-                raise FileLoadError('Trace in file %s has a sampling rate of zero.' % filename)
+                have_zero_rate_traces = True
+                continue
+
             ydata = tr[8]
             
             traces.append(trace.Trace(network, station, location, channel, tmin, tmax, deltat, ydata))
@@ -30,6 +36,9 @@ def iload(filename, load_data=True):
     
     except (OSError, mseed_ext.MSeedError), e:
         raise FileLoadError(str(e))
+
+    if have_zero_rate_traces:
+        logger.warn('Ignoring traces with sampling rate of zero in file %s (maybe LOG traces)' % filename)
     
 def as_tuple(tr):
     from pyrocko import mseed_ext
