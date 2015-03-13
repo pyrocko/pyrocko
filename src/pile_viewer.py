@@ -1684,7 +1684,7 @@ def MakePileViewerMainClass(base):
                 for marker in self.markers:
                     if marker.kind in self.visible_marker_kinds:
                         marker.set_selected(True)
-
+                print 'done keytext'
             elif keytext == 'd':
                 self.deselect_all()
                     
@@ -1775,10 +1775,12 @@ def MakePileViewerMainClass(base):
             self.update_status()
 
         def emit_selected_markers(self):
-            _index = [] 
-            for sm in self.selected_markers():
-                if sm in self.get_markers():
-                    _index.append(self.get_markers().index(sm))
+            _index = []
+            selected_markers = self.selected_markers()
+            markers = self.get_markers()
+            for sm in selected_markers:
+                if sm in markers:
+                    _index.append(markers.index(sm))
             self.emit(SIGNAL('changed_marker_selection'), _index)
 
         def toggle_marker_editor(self):
@@ -1794,7 +1796,7 @@ def MakePileViewerMainClass(base):
                 if not isinstance(marker,EventMarker):
                     marker.tmin += npixels * (d-c)/b
                     marker.tmax += npixels * (d-c)/b
-  
+
         def about(self):
             fn = pyrocko.util.data_file('snuffler.png')
             txt = open( pyrocko.util.data_file('snuffler_about.html') ).read()
