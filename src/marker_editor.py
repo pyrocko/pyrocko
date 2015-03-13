@@ -189,10 +189,14 @@ class MarkerEditor(QTableWidget):
     def update_selection_model(self, indices):
         ''' :param indices: list of indices of selected markers.'''
         self.selection_model.clearSelection()
+        num_columns = len(_header_data)
+        flag = QItemSelectionModel.SelectionFlags(2)
+        selections = QItemSelection()
         for i in indices:
             left = self.marker_model.index(i, 0)
-            right = self.marker_model.index(i, len(_column_mapping)-1)
+            right = self.marker_model.index(i, num_columns-1)
             row_selection = QItemSelection(left, right)
             row_selection.select(left, right)
-            self.selection_model.select(row_selection, QItemSelectionModel.SelectionFlags(2))
+            selections.merge(row_selection, flag)
+        self.selection_model.select(selections, flag)
 
