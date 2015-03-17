@@ -108,8 +108,8 @@ tango_colors = {
 }
 
 def path2colorint(path):
-    '''Calculate an integer representation deduced from path's definition.'''
-    s = sum([ord(char) for char in path.phase.definition()])
+    '''Calculate an integer representation deduced from path's given name.'''
+    s = sum([ord(char) for char in path.phase.given_name()])
     return s
 
 def light(color, factor=0.2):
@@ -119,19 +119,49 @@ def dark(color, factor=0.5):
     return tuple( c*factor for c in color )
 
 def to01(c):
-    return c[0]/255., c[1]/255., c[2]/255.
+    return tuple(x/255. for x in c)
 
 colors = [ to01(tango_colors[x+i]) for i in '321' for x in 'scarletred chameleon skyblue chocolate orange plum'.split() ]
 shades = [ light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1,9) ]
 shades2 = [ light(to01(tango_colors['orange1']), i*0.1) for i in xrange(1,9) ]
 
-def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None, coloring='by_phase_definition', avoid_same_colors=True):
+
+class InvalidColorDef(Exception):
+    pass
+
+
+def str_to_mpl_color(x):
+    import matplotlib.colors
+
+    if x in tango_colors:
+        return to01(tango_colors[x])
+    
+    s = x.split('/')
+    if len(s) in (1, 3, 4):
+        try:
+            vals = map(float, s)
+            if all(0. <= v <= 1. for v in vals):
+                return vals
+            
+            elif all(0. <= v <= 255. for v in vals):
+                return to01(vals)
+
+        except ValueError:
+            try:
+                return matplotlib.colors.colorConverter.to_rgba(x)
+            except Exception:
+                pass
+
+    raise InvalidColorDef('invalid color definition: %s' % x)
+
+
+def plot_xt(paths, zstart, zstop, axes=None, vred=None, distances=None, coloring='by_phase_definition', avoid_same_colors=True, phase_colors={}):
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     axes = getaxes(axes)
     all_x = []
     all_t = []
-    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors)
+    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors, phase_colors=phase_colors)
     for ipath, path in enumerate(paths):
         if distances is not None:
             if path.xmax() < xmin or path.xmin() > xmax:
@@ -184,8 +214,8 @@ def troffset(dx,dy, axes=None):
     from matplotlib import transforms
     return axes.transData + transforms.ScaledTranslation(dx/72., dy/72., axes.gcf().dpi_scale_trans)
 
-def plot_xp(paths, zstart, zstop, axes=None, coloring='by_phase_definition', avoid_same_colors=True):
-    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors)
+def plot_xp(paths, zstart, zstop, axes=None, coloring='by_phase_definition', avoid_same_colors=True, phase_colors={}):
+    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors, phase_colors=phase_colors)
 
     axes = getaxes(axes)
     all_x = []
@@ -219,21 +249,21 @@ def labels_model(axes=None):
     yscaled(0.001, axes)
 
 
-def make_path_to_color(paths, coloring='by_phase_definition', avoid_same_colors=True):
+def make_path_to_color(paths, coloring='by_phase_definition', avoid_same_colors=True, phase_colors={}):
 
     assert coloring in ['by_phase_definition', 'by_path']
 
     path_to_color = {}
-    definition_to_color = {}
+    definition_to_color = phase_colors.copy()
     available_colors = set()
 
     for ipath, path in enumerate(paths):
         if coloring == 'by_phase_definition':
-            definition = path.phase.definition()
+            given_name = path.phase.given_name()
             int_rep = path2colorint(path)
             color_id = int_rep % len(colors)
 
-            if definition not in definition_to_color:
+            if given_name not in definition_to_color:
                 if avoid_same_colors:
                     if len(available_colors) == 0:
                         available_colors = set(range(0, len(colors)-1))
@@ -244,9 +274,9 @@ def make_path_to_color(paths, coloring='by_phase_definition', avoid_same_colors=
 
                     assert color_id not in available_colors
                 
-                definition_to_color[definition] = colors[color_id]
+                definition_to_color[given_name] = colors[color_id]
 
-            path_to_color[path] = definition_to_color[definition]
+            path_to_color[path] = definition_to_color[given_name]
         else:
             path_to_color[path] = colors[ipath % len(colors)]
 
@@ -258,13 +288,14 @@ def plot_rays(paths, rays, zstart, zstop,
               coloring='by_phase_definition',
               legend=True,
               avoid_same_colors=True,
-              aspect=None):
+              aspect=None,
+              phase_colors={}):
 
     axes = getaxes(axes)
     if aspect is not None:
         axes.set_aspect(aspect/(d2r*cake.earthradius))
 
-    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors)
+    path_to_color = make_path_to_color(paths, coloring, avoid_same_colors, phase_colors=phase_colors)
 
     if rays is None:
         rays = paths
@@ -292,7 +323,7 @@ def plot_rays(paths, rays, zstart, zstop,
         color = path_to_color[path]
 
         if coloring == 'by_phase_definition':
-            phase_label = path.phase.definition()
+            phase_label = path.phase.given_name()
 
         else:
             phase_label = path
@@ -434,7 +465,7 @@ def mpl_init():
     matplotlib.rc('ytick.major', size=5)
     matplotlib.rc('figure', facecolor='white')
 
-def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None, axes=None):
+def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None, axes=None, phase_colors={}):
 
     if axes is None:
         from matplotlib import pyplot as plt
@@ -444,7 +475,7 @@ def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None
         plt = None
 
     labelspace(axes)
-    xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances, axes=axes)
+    xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances, axes=axes, phase_colors=phase_colors)
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     axes.set_xlim(xmin, xmax)
@@ -453,7 +484,7 @@ def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None
     if plt:
         plt.show()
 
-def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False, axes=None):
+def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False, axes=None, phase_colors={}):
 
     if axes is None:
         from matplotlib import pyplot as plt
@@ -463,7 +494,7 @@ def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False, axes=None
         plt = None
 
     labelspace(axes)
-    xmin, xmax = plot_xp(paths, zstart, zstop, axes=axes)
+    xmin, xmax = plot_xp(paths, zstart, zstop, axes=axes, phase_colors=phase_colors)
     if distances is not None:
         xmin, xmax = distances.min(), distances.max()
     axes.set_xlim(xmin, xmax)
@@ -472,13 +503,13 @@ def my_xp_plot(paths, zstart, zstop, distances=None, as_degrees=False, axes=None
     if plt:
         plt.show()
 
-def my_rays_plot_gcs(mod, paths, rays, zstart, zstop, distances=None):
+def my_rays_plot_gcs(mod, paths, rays, zstart, zstop, distances=None, phase_colors={}):
     from matplotlib import pyplot as plt
     mpl_init()
 
     globe_cross_section()
     axes = plt.subplot(1,1,1, projection='globe_cross_section')
-    plot_rays(paths, rays, zstart, zstop, axes=axes)
+    plot_rays(paths, rays, zstart, zstop, axes=axes, phase_colors=phase_colors)
     plot_source(zstart, axes=axes)
     if distances is not None:
         plot_receivers(zstop, distances, axes=axes)
@@ -489,7 +520,7 @@ def my_rays_plot_gcs(mod, paths, rays, zstart, zstop, distances=None):
     if plt:
         plt.show() 
 
-def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, axes=None, aspect=None, shade_model=True):
+def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, axes=None, aspect=None, shade_model=True, phase_colors={}):
 
     if axes is None:
         from matplotlib import pyplot as plt
@@ -502,7 +533,7 @@ def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fal
         paths = list(set([ x.path for x in rays ]))
 
     labelspace(axes)
-    plot_rays(paths, rays, zstart, zstop, axes=axes, aspect=aspect)
+    plot_rays(paths, rays, zstart, zstop, axes=axes, aspect=aspect, phase_colors=phase_colors)
     xmin, xmax = axes.get_xlim()
     ymin, ymax = axes.get_ylim()
     sketch_model(mod, axes=axes, shade=shade_model)
@@ -519,12 +550,12 @@ def my_rays_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fal
     if plt:
         plt.show()
 
-def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, vred=None):
+def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=False, vred=None, phase_colors={}):
     from matplotlib import pyplot as plt
     mpl_init()
     ax1 = plt.subplot(211)
     labelspace(plt.gca())
-    xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances)
+    xmin, xmax, ymin, ymax = plot_xt(paths, zstart, zstop, vred=vred, distances=distances, phase_colors=phase_colors)
     if distances is None:
         plt.xlim(xmin, xmax)
 
@@ -534,7 +565,7 @@ def my_combi_plot(mod, paths, rays, zstart, zstop, distances=None, as_degrees=Fa
 
     ax2 = plt.subplot(212, sharex=ax1)
     labelspace(plt.gca())
-    plot_rays(paths, rays, zstart, zstop)
+    plot_rays(paths, rays, zstart, zstop, phase_colors=phase_colors)
     xmin, xmax = plt.xlim()
     ymin, ymax = plt.ylim()
     sketch_model(mod)

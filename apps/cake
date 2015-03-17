@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import re
 import numpy as num
 from pyrocko import cake, util, orthodrome
 from pyrocko import cake_plot as plot
@@ -18,6 +19,19 @@ class Anon(dict):
 
     def gett(self, *keys):
         return tuple([ self[k] for k in keys])
+
+
+def process_color(s, phase_colors):
+    m = re.match(r'^([^{]+){([^}]*)}$', s)
+    if not m:
+        return s
+
+    sphase = m.group(1)
+    color = m.group(2)
+    phase_colors[sphase] = plot.str_to_mpl_color(color)
+
+    return sphase
+    
 
 def optparse(required=(), optional=(), args=sys.argv, usage='%prog [options]', descr=None):
     
@@ -73,12 +87,21 @@ The phase definition may end with a backslash "\\", to indicate that the ray
 should arrive at the receiver from above instead of from below. It is possible
 to restrict the maximum and minimum depth of a "leg" by appending
 "<(INTERFACE)" or "<DEPTH" or ">(INTERFACE)" or ">DEPTH" after the leg
-character, respectively.  ''')
+character, respectively.
+
+When plotting rays or travel-time curves, the color can be set by appending
+"{COLOR}" to the phase definition, where COLOR is the name of a color or an RGB
+or RGBA color tuple in the format "R/G/B" or "R/G/B/A", respectively. The
+values can be normalized to the range [0, 1] or to [0, 255]. The latter is only
+assumed when any of the values given exceeds 1.0.
+''')
 
         group.add_option('--classic', dest='classic_phases', action='append',
                 default=[], metavar='PHASE1,PHASE2,...',
                 help='Comma separated list of seismic phases in classic nomenclature. '
-                     'Run "cake list-phase-map" for a list of available phase names.')
+                     'Run "cake list-phase-map" for a list of available phase names. '
+                     'When plotting, color can be specified in the same way as in '
+                     '--phases.')
 
         parser.add_option_group(group)
 
@@ -210,19 +233,23 @@ character, respectively.  ''')
 
     if 'phases' in want:
         phases = []
+        phase_colors = {}
         try:
             for ss in options.phases:
                 for s in ss.split(','):
+                    s = process_color(s, phase_colors)
                     phases.append(cake.PhaseDef(s))
 
             for pp in options.classic_phases:
                 for p in pp.split(','):
-                        phases.extend( cake.PhaseDef.classic(p) )
+                    p = process_color(p, phase_colors)
+                    phases.extend( cake.PhaseDef.classic(p) )
 
         except (cake.PhaseDefParseError, cake.UnknownClassicPhase), e:
             parser.error(e)
         
         if phases:
+            d['phase_colors'] = phase_colors
             d['phases'] = phases 
   
     if 'model' in want:
@@ -533,9 +560,9 @@ To get further help and a list of available options for any subcommand run:
 
     elif command in ('plot-xt', 'plot-xp', 'plot-rays', 'plot'):
         if command in ('plot-xt', 'plot'):
-            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'vred'), usage=subusage, descr=descr) 
+            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'vred', 'phase_colors'), usage=subusage, descr=descr) 
         else:
-            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'aspect', 'shade_model'), usage=subusage, descr=descr) 
+            c = optparse(('model', 'phases'), ('zstart', 'zstop', 'distances', 'as_degrees', 'aspect', 'shade_model', 'phase_colors'), usage=subusage, descr=descr) 
 
         mod = c.model
         paths = mod.gather_paths(**c.getn('phases', 'zstart', 'zstop'))
@@ -546,17 +573,17 @@ To get further help and a list of available options for any subcommand run:
             arrivals = None
         
         if command == 'plot-xp':
-            plot.my_xp_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees)
+            plot.my_xp_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees, phase_colors=c.phase_colors)
         elif command == 'plot-xt':
-            plot.my_xt_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
+            plot.my_xt_plot(paths, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred, phase_colors=c.phase_colors)
         elif command == 'plot-rays':
             if c.as_degrees:
-                plot.my_rays_plot_gcs(mod, paths, arrivals, c.zstart, c.zstop, c.distances)
+                plot.my_rays_plot_gcs(mod, paths, arrivals, c.zstart, c.zstop, c.distances, phase_colors=c.phase_colors)
             else:
-                plot.my_rays_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, aspect=c.aspect, shade_model=c.shade_model)
+                plot.my_rays_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, aspect=c.aspect, shade_model=c.shade_model, phase_colors=c.phase_colors)
 
         elif command == 'plot':
-            plot.my_combi_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred)
+            plot.my_combi_plot(mod, paths, arrivals, c.zstart, c.zstop, c.distances, c.as_degrees, vred=c.vred, phase_colors=c.phase_colors)
 
 
     elif command in ('plot-model',):

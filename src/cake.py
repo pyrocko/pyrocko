@@ -643,9 +643,9 @@ class PhaseDef(object):
         if not phasename in defs:
             raise UnknownClassicPhase(phasename)
 
-        return [ PhaseDef(d) for d in defs[phasename] ]
+        return [ PhaseDef(d, classicname=phasename) for d in defs[phasename] ]
 
-    def __init__(self, definition=None):
+    def __init__(self, definition=None, classicname=None):
         
         state = 0
         sdepth = ''
@@ -813,6 +813,7 @@ class PhaseDef(object):
                 events[-1].set_depthmax(depthmax)
 
         self._definition = definition
+        self._classicname = classicname
         self._events = events
         self._direction_stop = direction_stop
    
@@ -842,6 +843,13 @@ class PhaseDef(object):
     def definition(self):
         '''Get original definition of the phase.'''
         return self._definition
+
+    def given_name(self):
+        '''Get entered classic name if any, or original definition of the phase.'''
+        if self._classicname:
+            return self._classicname
+        else:
+            return self._definition
 
     def direction_start(self):
         return self.first_leg().departure
