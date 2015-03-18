@@ -829,7 +829,7 @@ class DiscretizedSFSource(DiscretizedSource):
 
         n = azis.size
 
-        if scheme == 'elestic5':
+        if scheme == 'elastic5':
             ioff = 0
 
         elif scheme == 'elastic13':
