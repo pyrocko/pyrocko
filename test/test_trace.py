@@ -573,6 +573,19 @@ class TraceTestCase(unittest.TestCase):
         t2 = time.time()
         print t2 - t1
 
+    def test_transfer(self):
+        n = 100
+        ydata = num.random.random(n)
+        deltat=0.01
+        tr1 = trace.Trace(
+            location='tr1',
+            ydata=ydata,
+            deltat=deltat,
+            tmin=0.0)
+        tr2 = tr1.transfer()
+        tr2.ydata += tr1.ydata.mean()
+        assert numeq(tr1.ydata, tr2.ydata, 0.01)
+
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
     unittest.main()

@@ -982,7 +982,7 @@ class Trace(object):
         
         self._update_ids()
      
-    def transfer(self, tfade, freqlimits, transfer_function=None, cut_off_fading=True, invert=False):
+    def transfer(self, tfade=0., freqlimits=None, transfer_function=None, cut_off_fading=True, invert=False):
         '''Return new trace with transfer function applied (convolution).
         
         :param tfade:             rise/fall time in seconds of taper applied in timedomain at both ends of trace.
@@ -1006,19 +1006,22 @@ class Trace(object):
         data = self.ydata
         data_pad = num.zeros(ntrans, dtype=num.float)
         data_pad[:ndata]  = data - data.mean()
-        data_pad[:ndata] *= costaper(0.,tfade, self.deltat*(ndata-1)-tfade, self.deltat*ndata, ndata, self.deltat)
+        if tfade != 0.0:
+            data_pad[:ndata] *= costaper(0.,tfade, self.deltat*(ndata-1)-tfade, self.deltat*ndata, ndata, self.deltat)
+
         fdata = num.fft.rfft(data_pad)
         fdata *= coefs
         ddata = num.fft.irfft(fdata)
         output = self.copy()
         output.ydata = ddata[:ndata]
-        if cut_off_fading:
+        if cut_off_fading and tfade != 0.0:
             try:
                 output.chop(output.tmin+tfade, output.tmax-tfade, inplace=True)
             except NoData:
                 raise TraceTooShort('Trace %s.%s.%s.%s too short for fading length setting. trace length = %g, fading length = %g' % (self.nslc_id + (self.tmax-self.tmin, tfade)))
         else:
             output.ydata = output.ydata.copy()
+
         return output
 
     def drop_chain_cache(self):
@@ -1174,14 +1177,19 @@ class Trace(object):
         nfreqs = ntrans/2 + 1
         transfer = num.ones(nfreqs, dtype=num.complex)
         hi = snapper(nfreqs, deltaf)
-        a,b,c,d = freqlimits
-        freqs = num.arange(hi(d)-hi(a), dtype=num.float)*deltaf + hi(a)*deltaf
-        if invert:
-            transfer[hi(a):hi(d)] = 1.0 / transfer_function.evaluate(freqs)
-        else:
-            transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
+        if freqlimits is not None:
+            a,b,c,d = freqlimits
+            freqs = num.arange(hi(d)-hi(a), dtype=num.float)*deltaf + hi(a)*deltaf
+            if invert:
+                transfer[hi(a):hi(d)] = 1.0 / transfer_function.evaluate(freqs)
+            else:
+                transfer[hi(a):hi(d)] = transfer_function.evaluate(freqs)
 
-        tapered_transfer = costaper(a,b,c,d, nfreqs, deltaf)*transfer
+            tapered_transfer = costaper(a,b,c,d, nfreqs, deltaf)*transfer
+        else:
+            freqs = num.arange(nfreqs) * deltaf
+            tapered_transfer = transfer_function.evaluate(freqs)
+
         tapered_transfer[0] = 0.0 # don't introduce static offsets
         return tapered_transfer
 
