@@ -31,6 +31,25 @@ class GFQSeisTestCase(unittest.TestCase):
 
     def test_pyrocko_gf_vs_qseis(self):
 
+        mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
+ 0. 5.8 3.46 2.6 1264. 600.
+ 20. 5.8 3.46 2.6 1264. 600.
+ 20. 6.5 3.85 2.9 1283. 600.
+ 35. 6.5 3.85 2.9 1283. 600.
+mantle
+ 35. 8.04 4.48 3.58 1449. 600.
+ 77.5 8.045 4.49 3.5 1445. 600.
+ 77.5 8.045 4.49 3.5 180.6 75.
+ 120. 8.05 4.5 3.427 180. 75.
+ 120. 8.05 4.5 3.427 182.6 76.06
+ 165. 8.175 4.509 3.371 188.7 76.55
+ 210. 8.301 4.518 3.324 201. 79.4
+ 210. 8.3 4.52 3.321 336.9 133.3
+ 410. 9.03 4.871 3.504 376.5 146.1
+ 410. 9.36 5.08 3.929 414.1 162.7
+ 660. 10.2 5.611 3.918 428.5 172.9
+ 660. 10.79 5.965 4.229 1349. 549.6'''.lstrip()))
+
         store_dir = mkdtemp(prefix='gfstore')
         self.tempdirs.append(store_dir)
 
@@ -59,7 +78,7 @@ class GFQSeisTestCase(unittest.TestCase):
             distance_max=560*km,
             distance_delta=1*km,
             modelling_code_id='qseis',
-            earthmodel_1d=cake.load_model('mod.nd'),
+            earthmodel_1d=mod,
             tabulated_phases=[
                 gf.meta.TPDef(
                     id='begin',
@@ -138,7 +157,7 @@ class GFQSeisTestCase(unittest.TestCase):
             mne=source.mne,
             mnd=source.mnd,
             med=source.med)
-        conf.earthmodel_1d = cake.load_model('mod.nd')
+        conf.earthmodel_1d = mod
 
         runner.run(conf)
 
