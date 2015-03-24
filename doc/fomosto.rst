@@ -454,6 +454,8 @@ Python Script Examples
 Retrieve synthetic seismograms from a local store 
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+.. highlight:: python
+
 It is assumed that a :py:class:`pyrocko.gf.store.Store` with store ID 
 *crust2_dd* has been downloaded in advance. A list of currently available 
 stores can be found at http://kinherd.org/gfs.html as well as how to download 
