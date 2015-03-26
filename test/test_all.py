@@ -15,6 +15,7 @@ from test_response import ResponseTestCase
 from test_datacube import DataCubeTestCase
 from test_fdsn import FDSNStationTestCase
 from test_ims import IMSTestCase
+from test_guts import GutsTestCase
 
 import unittest
 import argparse
