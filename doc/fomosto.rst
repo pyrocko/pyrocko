@@ -471,7 +471,7 @@ such stores.
     # engine since we are going to query a local store.
     engine = LocalEngine(store_superdirs=['/data/stores'])
 
-    # The store we are going extract data from:
+    # The store we are going to extract data from:
     store_id = 'crust2_dd'
 
     # Define a list of pyrocko.gf.Target objects, representing the recording 
@@ -496,7 +496,7 @@ such stores.
         rake=60.,
         magnitude=4.)
 
-    # Processing that data will return a pyrocko.gf.Reponse object.
+    # Processing that data will return a pyrocko.gf.Response object.
     response = engine.process(source_dc, targets)
 
     # This will return a list of the requested traces:
