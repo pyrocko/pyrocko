@@ -81,6 +81,15 @@ class IOTestCase( unittest.TestCase ):
         fpath = common.test_data_file('test2.mseed')
         io.load(fpath, format='detect')
 
+    def testReadSEGY(self):
+        fpath = common.test_data_file('test2.segy')
+        i = 0
+        for tr in io.load(fpath, format='segy'):
+            assert tr.meta['orfield_num'] == 1111
+            i += 1
+
+        assert i == 24
+
 
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')
