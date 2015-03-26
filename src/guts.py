@@ -880,7 +880,7 @@ class Timestamp(Object):
             return datetime.datetime.utcfromtimestamp(val)
 
         def to_save_xml(self, val):
-            return datetime.datetime.utcfromtimestamp(val).isoformat()
+            return datetime.datetime.utcfromtimestamp(val).isoformat() + 'Z'
 
 
 class DateTimestamp(Object):
