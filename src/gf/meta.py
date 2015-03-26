@@ -652,7 +652,12 @@ class DiscretizedSource(Object):
 
     def centroid_position(self):
         moments = self.moments()
-        w = moments / num.sum(moments)
+        norm = num.sum(moments)
+        if norm != 0.0:
+            w = moments / num.sum(moments)
+        else:
+            w = num.ones(moments.size)
+
         if self.lats is not None and self.lons is not None:
             lats, lons = self.effective_latlons
             rlat, rlon = num.mean(lats), num.mean(lons)
@@ -866,7 +871,27 @@ class DiscretizedSFSource(DiscretizedSource):
         if 'forces' not in kwargs:
             kwargs['forces'] = num.vstack([s.forces for s in sources])
 
-        return super(DiscretizedMTSource, cls).combine(sources, **kwargs)
+        return super(DiscretizedSFSource, cls).combine(sources, **kwargs)
+
+    def moments(self):
+        return num.sum(self.forces**2, axis=1)
+
+    def centroid(self):
+        from pyrocko.gf.seismosizer import SFSource
+        time, lat, lon, north_shift, east_shift, depth = \
+            self.centroid_position()
+
+        fn, fe, fd = map(float, num.sum(self.forces, axis=0))
+        return SFSource(
+            time=time,
+            lat=lat,
+            lon=lon,
+            north_shift=north_shift,
+            east_shift=east_shift,
+            depth=depth,
+            fn=fn,
+            fe=fe,
+            fd=fd)
 
 
 class DiscretizedMTSource(DiscretizedSource):
