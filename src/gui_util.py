@@ -907,14 +907,15 @@ class EventMarker(Marker):
             s = '(Event)'
         return s
 
-    def draw(self, p, time_projection, y_projection):
+    def draw(self, p, time_projection, y_projection, with_label=True):
       
         Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
         
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
         label_bg = QBrush( QColor(255,255,255) )
-        draw_label( p, u, v0-10., self.label(), label_bg, 'CB', outline=self._active)
+        if with_label:
+            draw_label( p, u, v0-10., self.label(), label_bg, 'CB', outline=self._active)
 
     def get_event(self):
         '''Return an instance of the :py:class:`pyrocko.model.Event` associated

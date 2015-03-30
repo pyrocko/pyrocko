@@ -2132,7 +2132,14 @@ def MakePileViewerMainClass(base):
 
             for (itrack, istyle), traces in traces_by_style.iteritems():
                 drawbox(itrack, istyle, traces)
-        
+
+        def filter_overlapping(self, markers):
+            times = num.array([m.tmin for m in markers])
+            m_projections = map(self.time_projection, times)
+            m_projections = num.around(m_projections)
+            self.unique_m_projections, indx = num.unique(m_projections, return_index=True)
+            return indx, [markers[i] for i in indx]
+
         def drawit(self, p, printmode=False, w=None, h=None):
             """This performs the actual drawing."""
             
@@ -2196,11 +2203,17 @@ def MakePileViewerMainClass(base):
                 if self.floating_marker:
                     self.floating_marker.draw(p, self.time_projection, vcenter_projection)
                 
-                for marker in self.markers:
+                indx, markers = self.filter_overlapping(self.markers)
+                for i_marker in xrange(len(markers)):
+                    marker = markers[i_marker]
                     if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
                         if marker.kind in self.visible_marker_kinds:
-                            marker.draw(p, self.time_projection, vcenter_projection)
-                    
+                            try:
+                                do_draw_label = (self.unique_m_projections[i_marker+1]-self.unique_m_projections[i_marker])>30
+                            except IndexError:
+                                do_draw_label = False
+                            marker.draw(p, self.time_projection, vcenter_projection, with_label=do_draw_label)
+
                 primary_pen = QPen(QColor(*primary_color))
                 secondary_pen = QPen(QColor(*secondary_color))
                 p.setPen(primary_pen)
