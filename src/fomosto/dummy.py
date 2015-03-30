@@ -79,7 +79,9 @@ class DummyGFBuilder(gf.builder.Builder):
 
 km = 1000.
 
-def init(store_dir):
+def init(store_dir, variant):
+    if variant is not None:
+        raise gf.store.StoreError('unsupported variant: %s' % variant)
     
     store_id = os.path.basename(os.path.realpath(store_dir))
 

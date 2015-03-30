@@ -490,6 +490,9 @@ class PoelGFBuilder(gf.builder.Builder):
 
 
 def init(store_dir):
+    if variant is not None:
+        raise gf.store.StoreError('unsupported variant: %s' % variant)
+
     poel = PoelConfig()
 
     store_id = os.path.basename(os.path.realpath(store_dir))

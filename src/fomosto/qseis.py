@@ -26,7 +26,8 @@ logger = logging.getLogger('fomosto.qseis')
 
 # how to call the programs
 program_bins = {
-    'qseis': 'qseis',
+    'qseis.6': 'qseis',
+    'qseis.6a': 'qseis6a',
 }
 
 qseis_components = 'r t z v'.split()
@@ -107,20 +108,26 @@ class QSeisPropagationFilter(Object):
 
 
 class QSeisPoleZeroFilter(Object):
-    constant = Float.T(default=1.0)
+    constant = Complex.T(default=(1+0j))
     poles = List.T(Complex.T())
     zeros = List.T(Complex.T())
 
-    def string_for_config(self):
-
-        return '%15e\n%i%s\n%i%s' % (
-            self.constant,
-            len(self.zeros), scl(self.zeros),
-            len(self.poles), scl(self.poles))
+    def string_for_config(self, version=None):
+        if version == '6a':
+            return '(%e,%e)\n%i%s\n%i%s' % (
+                self.constant.real, self.constant.imag,
+                len(self.zeros), scl(self.zeros),
+                len(self.poles), scl(self.poles))
+        else:
+            return '%e\n%i%s\n%i%s' % (
+                abs(self.constant),
+                len(self.zeros), scl(self.zeros),
+                len(self.poles), scl(self.poles))
 
 
 class QSeisConfig(Object):
 
+    qseis_version = String.T(default='6')
     time_region = Tuple.T(2, Timing.T(), default=(
         Timing('-10'), Timing('+890')))
 
@@ -246,9 +253,12 @@ class QSeisConfigFull(QSeisConfig):
             d['str_w_samples'] = ''
 
         if self.receiver_filter:
-            d['str_receiver_filter'] = self.receiver_filter.string_for_config()
+            d['str_receiver_filter'] = self.receiver_filter.string_for_config(self.qseis_version)
         else:
-            d['str_receiver_filter'] = '1.0\n0\n#\n0'
+            if self.qseis_version == '6a':
+                d['str_receiver_filter'] = '(1.0,0.0)\n0\n#\n0'
+            else:
+                d['str_receiver_filter'] = '1.0\n0\n#\n0'
 
         d['str_gf_sw_source_types'] = str_int_vals(self.gf_sw_source_types)
         d['str_gf_filenames'] = str_str_vals(self.gf_filenames)
@@ -567,7 +577,6 @@ class QSeisRunner:
     def __init__(self, tmp=None, keep_tmp=False):
         self.tempdir = mkdtemp(prefix='qseisrun-', dir=tmp)
         self.keep_tmp = keep_tmp
-        self.program = program_bins['qseis']
         self.config = None
 
     def run(self, config):
@@ -583,7 +592,7 @@ class QSeisRunner:
 
         f.write(input_str)
         f.close()
-        program = self.program
+        program = program_bins['qseis.%s' % config.qseis_version]
 
         old_wd = os.getcwd()
 
@@ -942,8 +951,16 @@ class QSeisGFBuilder(gf.builder.Builder):
                     (index+1, self.nblocks))
 
 
-def init(store_dir):
-    qseis = QSeisConfig()
+def init(store_dir, variant):
+    if variant is None:
+        variant = '6'
+
+    if variant not in ('6', '6a'):
+        raise gf.store.StoreError('unsupported variant: %s' % variant)
+
+    modelling_code_id = 'qseis.%s' % variant
+
+    qseis = QSeisConfig(qseis_version=variant)
     qseis.time_region = (
         gf.meta.Timing('begin-50'),
         gf.meta.Timing('end+100'))
@@ -970,7 +987,7 @@ def init(store_dir):
         distance_max=1000*km,
         distance_delta=10*km,
         earthmodel_1d=cake.load_model().extract(depth_max='cmb'),
-        modelling_code_id='qseis',
+        modelling_code_id=modelling_code_id,
         tabulated_phases=[
             gf.meta.TPDef(
                 id='begin',
