@@ -2138,7 +2138,12 @@ def MakePileViewerMainClass(base):
             m_projections = map(self.time_projection, times)
             m_projections = num.around(m_projections)
             self.unique_m_projections, indx = num.unique(m_projections, return_index=True)
-            return indx, [markers[i] for i in indx]
+            return [markers[i] for i in indx]
+
+        def overlapping_with_clip(self, a, clip):
+            clipped = num.around(a/clip)*clip
+            p, indx = num.unique(clipped, return_index=True)
+            return indx
 
         def drawit(self, p, printmode=False, w=None, h=None):
             """This performs the actual drawing."""
@@ -2203,17 +2208,24 @@ def MakePileViewerMainClass(base):
                 if self.floating_marker:
                     self.floating_marker.draw(p, self.time_projection, vcenter_projection)
                 
-                indx, markers = self.filter_overlapping(self.markers)
-                for i_marker in xrange(len(markers)):
-                    marker = markers[i_marker]
-                    if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
-                        if marker.kind in self.visible_marker_kinds:
-                            try:
-                                do_draw_label = (self.unique_m_projections[i_marker+1]-self.unique_m_projections[i_marker])>30
-                            except IndexError:
-                                do_draw_label = False
-                            marker.draw(p, self.time_projection, vcenter_projection, with_label=do_draw_label)
+                markers = filter(lambda x: x.get_tmin()<self.tmax and self.tmin < x.get_tmax(), self.markers)
+                markers = filter(lambda x: x.kind in self.visible_marker_kinds, markers)
+                markers = self.filter_overlapping(markers)
+                label_indx = self.overlapping_with_clip(self.unique_m_projections, 20)
+                for i_m, m in enumerate(markers):
+                    if i_m in label_indx:
+                        with_label=True
+                    else:
+                        with_label=False
+                    m.draw(p, self.time_projection, vcenter_projection, with_label) 
 
+                selected_markers = self.selected_markers()
+                if len(selected_markers)<10:
+                    map(lambda x: x.draw(p, self.time_projection, vcenter_projection), selected_markers)
+
+                active_event_marker = self.get_active_event_marker()
+                if active_event_marker!=None:
+                    active_event_marker.draw(p, self.time_projection, vcenter_projection, with_label=True)
                 primary_pen = QPen(QColor(*primary_color))
                 secondary_pen = QPen(QColor(*secondary_color))
                 p.setPen(primary_pen)
