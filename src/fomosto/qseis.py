@@ -26,8 +26,8 @@ logger = logging.getLogger('fomosto.qseis')
 
 # how to call the programs
 program_bins = {
-    'qseis.6': 'qseis',
-    'qseis.6a': 'qseis6a',
+    'qseis.2006': 'fomosto_qseis2006',
+    'qseis.2006a': 'fomosto_qseis2006a',
 }
 
 qseis_components = 'r t z v'.split()
@@ -113,12 +113,12 @@ class QSeisPoleZeroFilter(Object):
     zeros = List.T(Complex.T())
 
     def string_for_config(self, version=None):
-        if version == '6a':
+        if version == '2006a':
             return '(%e,%e)\n%i%s\n%i%s' % (
                 self.constant.real, self.constant.imag,
                 len(self.zeros), scl(self.zeros),
                 len(self.poles), scl(self.poles))
-        else:
+        elif version == '2006':
             return '%e\n%i%s\n%i%s' % (
                 abs(self.constant),
                 len(self.zeros), scl(self.zeros),
@@ -127,7 +127,7 @@ class QSeisPoleZeroFilter(Object):
 
 class QSeisConfig(Object):
 
-    qseis_version = String.T(default='6')
+    qseis_version = String.T(default='2006')
     time_region = Tuple.T(2, Timing.T(), default=(
         Timing('-10'), Timing('+890')))
 
@@ -255,7 +255,7 @@ class QSeisConfigFull(QSeisConfig):
         if self.receiver_filter:
             d['str_receiver_filter'] = self.receiver_filter.string_for_config(self.qseis_version)
         else:
-            if self.qseis_version == '6a':
+            if self.qseis_version == '2006a':
                 d['str_receiver_filter'] = '(1.0,0.0)\n0\n#\n0'
             else:
                 d['str_receiver_filter'] = '1.0\n0\n#\n0'
@@ -953,9 +953,9 @@ class QSeisGFBuilder(gf.builder.Builder):
 
 def init(store_dir, variant):
     if variant is None:
-        variant = '6'
+        variant = '2006'
 
-    if variant not in ('6', '6a'):
+    if variant not in ('2006', '2006a'):
         raise gf.store.StoreError('unsupported variant: %s' % variant)
 
     modelling_code_id = 'qseis.%s' % variant
