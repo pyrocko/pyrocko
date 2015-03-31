@@ -2134,6 +2134,7 @@ def MakePileViewerMainClass(base):
                 drawbox(itrack, istyle, traces)
 
         def filter_overlapping(self, markers):
+            """Return a list of non-overlapping markers."""
             times = num.array([m.tmin for m in markers])
             m_projections = map(self.time_projection, times)
             m_projections = num.around(m_projections)
@@ -2141,8 +2142,13 @@ def MakePileViewerMainClass(base):
             return [markers[i] for i in indx]
 
         def overlapping_with_clip(self, a, clip):
-            clipped = num.around(a/clip)*clip
-            p, indx = num.unique(clipped, return_index=True)
+            """Return a numpy array with indices of elements of *a* which are separated by more than
+            *clip* pixels."""
+            b = num.zeros(len(a)+2)
+            b[1:-1] = a
+            offr = a-b[:-2]
+            offl = num.abs(a-b[2:])
+            indx = num.where(num.logical_and(offr>clip,offl>clip))[0]
             return indx
 
         def drawit(self, p, printmode=False, w=None, h=None):
@@ -2207,17 +2213,17 @@ def MakePileViewerMainClass(base):
                 
                 if self.floating_marker:
                     self.floating_marker.draw(p, self.time_projection, vcenter_projection)
-                
-                markers = filter(lambda x: x.get_tmin()<self.tmax and self.tmin < x.get_tmax(), self.markers)
+
+                markers = filter(lambda x: x.get_tmin()<self.tmax and self.tmin<x.get_tmax(), self.markers)
                 markers = filter(lambda x: x.kind in self.visible_marker_kinds, markers)
                 markers = self.filter_overlapping(markers)
-                label_indx = self.overlapping_with_clip(self.unique_m_projections, 20)
+                label_indx = self.overlapping_with_clip(self.unique_m_projections, 50)
                 for i_m, m in enumerate(markers):
                     if i_m in label_indx:
-                        with_label=True
+                        with_label = True
                     else:
-                        with_label=False
-                    m.draw(p, self.time_projection, vcenter_projection, with_label) 
+                        with_label = False
+                    m.draw(p, self.time_projection, vcenter_projection, with_label)
 
                 selected_markers = self.selected_markers()
                 if len(selected_markers)<10:
