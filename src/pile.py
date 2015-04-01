@@ -1141,9 +1141,16 @@ class Pile(TracesGroup):
         return self.deltatmax
 
     def __str__(self):
+        if self.tmin!=None and self.tmax!=None:
+            tmin = util.time_to_str(self.tmin)
+            tmax = util.time_to_str(self.tmax)
+        else:
+            tmin = self.tmin
+            tmax = self.tmax
+
         s = 'Pile\n'
         s += 'number of subpiles: %i\n' % len(self.subpiles)
-        s += 'timerange: %s - %s\n' % (util.time_to_str(self.tmin), util.time_to_str(self.tmax))
+        s += 'timerange: %s - %s\n' % (tmin, tmax)
         s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
         s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
         s += 'locations: %s\n' % ', '.join(sl(self.locations.keys()))
