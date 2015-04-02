@@ -1,11 +1,14 @@
 import math, calendar, time, copy
 import numpy as num
+import logging
 
 import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace, pyrocko.plot
 from pyrocko.util import TableWriter, TableReader
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+
+logger = logging.getLogger('pyrocko.gui_util.py')
 
 def gmtime_x(timestamp):
     etimestamp = float(num.floor(timestamp))
