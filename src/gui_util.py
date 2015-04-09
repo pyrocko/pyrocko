@@ -769,7 +769,6 @@ class Marker(object):
                 p.setBrush(QColor(*color))
                 drawtriangles(self.tmin)
 
-
     def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain, outline_label=False):
         if self.nslc_ids and not self.match_nslc(trace.nslc_id): return
         
@@ -907,10 +906,12 @@ class EventMarker(Marker):
             s = '(Event)'
         return s
 
-    def draw(self, p, time_projection, y_projection):
-      
+    def draw(self, p, time_projection, y_projection, with_label=False):
         Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
-        
+        if with_label:
+            self.draw_label(p, time_projection, y_projection)
+
+    def draw_label(self, p, time_projection, y_projection):
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
         label_bg = QBrush( QColor(255,255,255) )
