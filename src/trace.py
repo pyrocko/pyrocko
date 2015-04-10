@@ -1957,13 +1957,15 @@ class Evalresp(FrequencyResponse):
         if trace is not None:
             nslc_id = trace.nslc_id
             time = (trace.tmin + trace.tmax) / 2.
-            
+        else:
+            nslc_id = ('', '', '', '')
+
         FrequencyResponse.__init__(self,
                         respfile=respfile,
                         nslc_id=nslc_id,
                         instant=time,
                         target=target)
-        
+
     def evaluate(self, freqs):
         network, station, location, channel = self.nslc_id
         x = evalresp.evalresp(sta_list=station,
@@ -1975,7 +1977,7 @@ class Evalresp(FrequencyResponse):
                               units=self.target.upper(),
                               file=self.respfile,
                               rtype='CS')
-        
+
         transfer = x[0][4]
         return transfer
 
