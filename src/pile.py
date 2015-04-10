@@ -1141,16 +1141,23 @@ class Pile(TracesGroup):
         return self.deltatmax
 
     def __str__(self):
-        s = 'Pile\n'
-        s += 'number of subpiles: %i\n' % len(self.subpiles)
-        s += 'timerange: %s - %s\n' % (util.time_to_str(self.tmin), util.time_to_str(self.tmax))
-        s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
-        s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
-        s += 'locations: %s\n' % ', '.join(sl(self.locations.keys()))
-        s += 'channels: %s\n' % ', '.join(sl(self.channels.keys()))
-        s += 'deltats: %s\n' % ', '.join(sl(self.deltats.keys()))
+        if self.tmin is not None and self.tmax is not None:
+            tmin = util.time_to_str(self.tmin)
+            tmax = util.time_to_str(self.tmax)
+            s = 'Pile\n'
+            s += 'number of subpiles: %i\n' % len(self.subpiles)
+            s += 'timerange: %s - %s\n' % (tmin, tmax)
+            s += 'networks: %s\n' % ', '.join(sl(self.networks.keys()))
+            s += 'stations: %s\n' % ', '.join(sl(self.stations.keys()))
+            s += 'locations: %s\n' % ', '.join(sl(self.locations.keys()))
+            s += 'channels: %s\n' % ', '.join(sl(self.channels.keys()))
+            s += 'deltats: %s\n' % ', '.join(sl(self.deltats.keys()))
+
+        else:
+            s = 'empty Pile'
+
         return s
-    
+
     def snuffle(self, **kwargs):
         '''Visualize it.
 
