@@ -6,7 +6,7 @@ from pyrocko.file import File, numtype2type, NoDataAvailable, size_record_header
 from pyrocko import trace
 from pyrocko.util import ensuredirs
 from struct import unpack
-from pyrocko.io_common import FileLoadError
+from pyrocko.io_common import FileLoadError, FileSaveError
 
 record_formats = {
 
@@ -91,14 +91,15 @@ def save(traces, filename_template, additional={}, max_open_files=10,
             
     for tr in traces:
         fn = tr.fill_template(filename_template, **additional)
-        if not overwrite and os.path.exists(fn):
-            raise FileSaveError('file exists: %s' % fn)
         
         if fn not in open_files:
             if len(open_files) >= max_open_files:
                 close_files()
                 
             if fn not in fns: 
+                if not overwrite and os.path.exists(fn):
+                    raise FileSaveError('file exists: %s' % fn)
+
                 ensuredirs(fn)
             
             open_files[fn] = open(fn, 'wa'[fn in fns])            

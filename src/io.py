@@ -34,7 +34,7 @@ DATACUBE     datacube                    yes
 
 import os, logging
 from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf, datacube
-from pyrocko import gse2_old as gse2
+from pyrocko import gse2_io_wrap
 from pyrocko import util, trace
 from pyrocko.io_common import FileLoadError, FileSaveError
 
@@ -50,7 +50,7 @@ def allowed_formats(operation, use=None, default=None):
              'datacube']
 
     elif operation == 'save':
-        l = ['mseed', 'sac', 'text', 'yaff']
+        l = ['mseed', 'sac', 'text', 'yaff', 'gse2']
 
     if use == 'doc':
         return ', '.join("``'%s'``" % fmt for fmt in l)
@@ -97,7 +97,7 @@ def detect_format(filename):
         raise FileLoadError(e)
 
     format = None
-    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'), (gse2, 'gse2'), (datacube, 'datacube')):
+    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'), (gse2_io_wrap, 'gse2'), (datacube, 'datacube')):
         if mod.detect(data):
             return fmt
 
@@ -150,7 +150,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             'mseed': mseed,
             'seisan': seisan_waveform,
             'gse1': gse1,
-            'gse2': gse2,
+            'gse2': gse2_io_wrap,
             'gcf': gcf,
             'datacube': datacube,
     }
@@ -201,6 +201,10 @@ def save(traces, filename_template, format='mseed', additional={},
     if format == 'mseed':
         return mseed.save(traces, filename_template, additional,
                           overwrite=overwrite)
+
+    elif format == 'gse2':
+        return gse2_io_wrap.save(traces, filename_template, additional,
+                                 overwrite=overwrite)
 
     elif format == 'sac':
         fns = []

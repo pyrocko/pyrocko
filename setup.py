@@ -6,12 +6,12 @@ try:
     import numpy
 except ImportError:
     class numpy():
-	def __init__(self):
-	    pass
+        def __init__(self):
+            pass
 
-	@classmethod	
-	def get_include(self):
-	    return ''
+        @classmethod
+        def get_include(self):
+            return ''
 
 import os
 import time
@@ -190,7 +190,7 @@ install.sub_commands.append(['double_install_check', None])
 
 class Prereqs(Command):
     description = '''Install prerequisites'''
-    user_options = [('force-yes', None, 
+    user_options = [('force-yes', None,
                         'Do not ask for confirmation to install'),]
 
     def initialize_options(self):
@@ -202,7 +202,7 @@ class Prereqs(Command):
     def run(self):
 
         from subprocess import Popen, PIPE, STDOUT
-        import platform 
+        import platform
 
         distribution = platform.linux_distribution()[0].lower().rstrip()
         distribution = 'debian' if distribution=='ubuntu' else distribution
@@ -214,7 +214,7 @@ proceed? [y/n]'%open(fn, 'r').read())
             if not confirm.lower()=='y':
                 sys.exit(0)
 
-        p = Popen(['sh', fn], stdin=PIPE, stdout=PIPE, stderr=STDOUT, 
+        p = Popen(['sh', fn], stdin=PIPE, stdout=PIPE, stderr=STDOUT,
                   shell=False)
 
         while p.poll() is None:
@@ -237,7 +237,7 @@ setup(
         'build_py': custom_build_py,
         'build_ext': custom_build_ext,
         'double_install_check': double_install_check_cls,
-        'prereqs': Prereqs 
+        'prereqs': Prereqs
     },
 
     name=packname,
@@ -278,6 +278,7 @@ setup(
         Extension(
             'gse2_ext',
             include_dirs=[numpy.get_include()],
+            extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'gse2_ext.c')]),
 
         Extension(
