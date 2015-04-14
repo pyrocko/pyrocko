@@ -3,7 +3,7 @@
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
-static PyObject *GSEError;
+static PyObject *IMSError;
 
 static char translate[128] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -21,21 +21,21 @@ static int MODULUS = 100000000;
 PyArrayObject *get_good_array(PyObject *array) {
 
     if (!PyArray_Check(array)) {
-        PyErr_SetString(GSEError, "Data must be given as NumPy array." );
+        PyErr_SetString(IMSError, "Data must be given as NumPy array." );
         return NULL;
     }
     if (PyArray_ISBYTESWAPPED(array)) {
-        PyErr_SetString(GSEError, "Data must be given in machine byte-order.");
+        PyErr_SetString(IMSError, "Data must be given in machine byte-order.");
         return NULL;
     }
     if (PyArray_TYPE(array) != NPY_INT32) {
-        PyErr_SetString(GSEError, "Data must be 32-bit integers.");
+        PyErr_SetString(IMSError, "Data must be 32-bit integers.");
         return NULL;
     }
     return PyArray_GETCONTIGUOUS((PyArrayObject*)array);
 }
 
-static PyObject* gse_checksum(PyObject *dummy, PyObject *args) {
+static PyObject* ims_checksum(PyObject *dummy, PyObject *args) {
 
     int checksum, length, i;
     PyObject *array = NULL;
@@ -45,7 +45,7 @@ static PyObject* gse_checksum(PyObject *dummy, PyObject *args) {
     (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "O", &array )) {
-        PyErr_SetString(GSEError, "usage checksum(array)" );
+        PyErr_SetString(IMSError, "usage checksum(array)" );
         return NULL;
     }
 
@@ -67,7 +67,7 @@ static PyObject* gse_checksum(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("i", abs(checksum));
 }
 
-static PyObject* gse_decode_m6(PyObject *dummy, PyObject *args) {
+static PyObject* ims_decode_cm6(PyObject *dummy, PyObject *args) {
     char *in_data;
     int *out_data = NULL;
     int *out_data_new = NULL;
@@ -82,7 +82,7 @@ static PyObject* gse_decode_m6(PyObject *dummy, PyObject *args) {
     (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "si", &in_data, &bufsize)) {
-        PyErr_SetString(GSEError, "invalid arguments in decode_m6(data, sizehint)" );
+        PyErr_SetString(IMSError, "invalid arguments in decode_cm6(data, sizehint)" );
         return NULL;
     }
 
@@ -90,7 +90,7 @@ static PyObject* gse_decode_m6(PyObject *dummy, PyObject *args) {
 
     out_data = (int*)malloc(bufsize*sizeof(int));
     if (out_data == NULL) {
-        PyErr_SetString(GSEError, "cannot allocate memory" );
+        PyErr_SetString(IMSError, "cannot allocate memory" );
         return NULL;
     }
 
@@ -112,7 +112,7 @@ static PyObject* gse_decode_m6(PyObject *dummy, PyObject *args) {
                     out_data_new = (int*)realloc(out_data, sizeof(int) * bufsize);
                     if (out_data_new == NULL) {
                         free(out_data);
-                        PyErr_SetString(GSEError, "cannot allocate memory" );
+                        PyErr_SetString(IMSError, "cannot allocate memory" );
                         return NULL;
                     }
                     out_data = out_data_new;
@@ -136,7 +136,7 @@ static PyObject* gse_decode_m6(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("N", array);
 }
 
-static PyObject* gse_encode_m6(PyObject *dummy, PyObject *args) {
+static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
     PyObject *array = NULL;
     PyObject *string = NULL;
     PyArrayObject *contiguous_array = NULL;
@@ -158,7 +158,7 @@ static PyObject* gse_encode_m6(PyObject *dummy, PyObject *args) {
     }
 
     if (!PyArg_ParseTuple(args, "O", &array)) {
-        PyErr_SetString(GSEError, "invalid arguments in encode_m6(data)");
+        PyErr_SetString(IMSError, "invalid arguments in encode_cm6(data)");
         return NULL;
     }
 
@@ -171,14 +171,14 @@ static PyObject* gse_encode_m6(PyObject *dummy, PyObject *args) {
     in_data = PyArray_DATA(contiguous_array);
 
     if (nsamples >= SIZE_MAX / 7) {
-        PyErr_SetString(GSEError, "too many samples.");
+        PyErr_SetString(IMSError, "too many samples.");
         Py_DECREF(contiguous_array);
         return NULL;
     }
     bufsize = nsamples * 7;
     out_data = (char*)malloc(bufsize);
     if (out_data == NULL) {
-        PyErr_SetString(GSEError, "cannot allocate memory");
+        PyErr_SetString(IMSError, "cannot allocate memory");
         Py_DECREF(contiguous_array);
         return NULL;
     }
@@ -204,7 +204,7 @@ static PyObject* gse_encode_m6(PyObject *dummy, PyObject *args) {
 
             if (iout >= bufsize) {
                 free(out_data);
-                PyErr_SetString(GSEError,
+                PyErr_SetString(IMSError,
                     "some assumption of the programmer was wrong...");
                 Py_DECREF(contiguous_array);
                 return NULL;
@@ -224,7 +224,7 @@ static PyObject* gse_encode_m6(PyObject *dummy, PyObject *args) {
     free(out_data);
 
     if (string == NULL) {
-        PyErr_SetString(GSEError, "cannot create output string");
+        PyErr_SetString(IMSError, "cannot create output string");
         Py_DECREF(contiguous_array);
         return NULL;
     }
@@ -233,31 +233,31 @@ static PyObject* gse_encode_m6(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("N", string);
 }
 
-static PyMethodDef GSEMethods[] = {
-    {"decode_m6",  gse_decode_m6, METH_VARARGS,
-        "Decode CM6 encoded GSE data." },
+static PyMethodDef IMSMethods[] = {
+    {"decode_cm6",  ims_decode_cm6, METH_VARARGS,
+        "Decode CM6 encoded IMS/GSE data." },
 
-    {"encode_m6",  gse_encode_m6, METH_VARARGS,
+    {"encode_cm6",  ims_encode_cm6, METH_VARARGS,
         "Encode integers to CM6." },
 
-    {"checksum", gse_checksum, METH_VARARGS,
-        "Calculate GSE checksum."},
+    {"checksum", ims_checksum, METH_VARARGS,
+        "Calculate IMS/GSE checksum."},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
 PyMODINIT_FUNC
-initgse2_ext(void)
+initims_ext(void)
 {
     PyObject *m;
 
-    m = Py_InitModule("gse2_ext", GSEMethods);
+    m = Py_InitModule("ims_ext", IMSMethods);
     if (m == NULL) return;
     import_array();
 
-    GSEError = PyErr_NewException("gse2_ext.error", NULL, NULL);
-    Py_INCREF(GSEError);  /* required, because other code could remove `error`
+    IMSError = PyErr_NewException("ims_ext.error", NULL, NULL);
+    Py_INCREF(IMSError);  /* required, because other code could remove `error`
                                from the module, what would create a dangling
                                pointer. */
-    PyModule_AddObject(m, "GSEError", GSEError);
+    PyModule_AddObject(m, "IMSError", IMSError);
 }

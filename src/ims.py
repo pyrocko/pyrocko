@@ -1613,7 +1613,7 @@ class WID2Section(Section):
         self.chk2.write(writer)
 
     def pyrocko_trace(self, checksum_error='raise'):
-        from pyrocko import gse2_ext, trace
+        from pyrocko import ims_ext, trace
         assert checksum_error in ('raise', 'warn', 'ignore')
 
         raw_data = self.dat2.raw_data
@@ -1629,9 +1629,9 @@ class WID2Section(Section):
         cha = self.wid2.channel
 
         if raw_data:
-            ydata = gse2_ext.decode_m6(''.join(raw_data), nsamples)
+            ydata = ims_ext.decode_cm6(''.join(raw_data), nsamples)
             if checksum_error != 'ignore':
-                if gse2_ext.checksum(ydata) != self.chk2.checksum:
+                if ims_ext.checksum(ydata) != self.chk2.checksum:
                     mess = 'computed checksum value differs from stored value'
                     if checksum_error == 'raise':
                         raise DeserializeError(mess)
@@ -1652,9 +1652,9 @@ class WID2Section(Section):
     def from_pyrocko_trace(cls, tr,
             lat=None, lon=None, elevation=None, depth=None):
 
-        from pyrocko import gse2_ext
+        from pyrocko import ims_ext
         ydata = tr.get_ydata()
-        raw_data = gse2_ext.encode_m6(ydata)
+        raw_data = ims_ext.encode_cm6(ydata)
         return cls(
             wid2=WID2(
                 nsamples=tr.data_len(),
@@ -1673,7 +1673,7 @@ class WID2Section(Section):
                 raw_data=[raw_data[i*80:(i+1)*80]
                           for i in xrange((len(raw_data)-1)/80 + 1)]),
             chk2=CHK2(
-                checksum=gse2_ext.checksum(ydata)))
+                checksum=ims_ext.checksum(ydata)))
 
 
 class OUT2Section(Section):

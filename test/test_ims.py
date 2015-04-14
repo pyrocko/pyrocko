@@ -14,7 +14,7 @@ def filled_int32(n, v):
 class IMSTestCase(unittest.TestCase):
 
     def test_cm6(self):
-        from pyrocko import gse2_ext
+        from pyrocko import ims_ext
 
         for values in [
                 num.random.randint(-2**31, 2**31-1, 10000).astype(num.int32),
@@ -24,8 +24,8 @@ class IMSTestCase(unittest.TestCase):
                 filled_int32(10, 2**31-1),
                 num.zeros(0, dtype=num.int32)]:
 
-            s = gse2_ext.encode_m6(values)
-            values2 = gse2_ext.decode_m6(s,0)
+            s = ims_ext.encode_cm6(values)
+            values2 = ims_ext.decode_cm6(s,0)
             assert values.size == values2.size
             assert num.all(values == values2)
 

@@ -276,10 +276,10 @@ setup(
             sources=[pjoin('src', 'evalresp_ext.c')]),
 
         Extension(
-            'gse2_ext',
+            'ims_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'gse2_ext.c')]),
+            sources=[pjoin('src', 'ims_ext.c')]),
 
         Extension(
             'datacube_ext',
