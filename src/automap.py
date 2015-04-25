@@ -621,6 +621,9 @@ class Map(Object):
 
     def _draw_labels(self):
         if self._labels:
+            fontsize = self.gmt.to_points(
+                self.gmt.gmt_config['LABEL_FONT_SIZE'])
+
             n = len(self._labels)
 
             lons, lats, texts, sx, sy, styles = zip(*self._labels)
@@ -647,7 +650,7 @@ class Map(Object):
             for i in xrange(n):
                 g = gmtpy.GMT()
                 g.pstext(
-                    in_rows=[[0, 0, 9, 0, 1, 'BL', texts[i]]],
+                    in_rows=[[0, 0, fontsize, 0, 1, 'BL', texts[i]]],
                     finish=True,
                     R=(0, 1, 0, 1),
                     J='x10p',
@@ -751,8 +754,6 @@ class Map(Object):
                         break
 
             anchor_strs = ['BL', 'TR', 'TL', 'BR']
-            fontsize = self.gmt.to_points(
-                self.gmt.gmt_config['LABEL_FONT_SIZE'])
 
             for i in xrange(n):
                 ianchor = anchor_take[i]
