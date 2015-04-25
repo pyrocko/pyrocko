@@ -2132,7 +2132,48 @@ def MakePileViewerMainClass(base):
 
             for (itrack, istyle), traces in traces_by_style.iteritems():
                 drawbox(itrack, istyle, traces)
-        
+
+        def tobedrawn(self, markers, uminmax):
+            """Returns two lists of indices:
+            first indicates which markers should be labeled.
+            second indicates which markers should be drawn."""
+            times = [m.tmin for m in markers]
+            m_projections = num.array(map(self.time_projection, times))
+            m_projections = num.floor(m_projections)
+            u, indx = num.unique(m_projections, return_index=True)
+            a = num.zeros(len(m_projections)+2)
+            umin, umax = uminmax
+            a[0] = umin
+            a[-1] = umax
+            a[1:-1] = m_projections
+            b = num.zeros(len(a)+1)
+            b[1:] = a
+            offsets = a[1:]-b[1:-1]
+            offsets = num.floor_divide(offsets, 30.)
+            with num.errstate(invalid='ignore'):
+                offsets = num.divide(offsets, offsets)
+            congregated = num.zeros(len(a))
+            congregated[0:-1] = offsets
+            congregated[1:] += offsets
+            congregated = num.divide(congregated, congregated)
+            with num.errstate(invalid='ignore'):
+                i_labels = num.where(congregated[1:-1]==1)[0]
+
+            return i_labels, indx
+
+        def draw_visible_markers(self, markers, p, vcenter_projection):
+            """Draw non-overlapping *markers*."""
+            markers = filter(lambda x: x.get_tmin()<self.tmax and self.tmin<x.get_tmax(), self.markers)
+            markers = filter(lambda x: x.kind in self.visible_marker_kinds, markers)
+            i_labels, i_markers = self.tobedrawn(markers, self.time_projection.get_out_range())
+            for i_m in i_markers:
+                markers[i_m].draw(p, self.time_projection, vcenter_projection)
+
+            for i_l in i_labels:
+                m = markers[i_l]
+                if isinstance(m, EventMarker):
+                    m.draw_label(p, self.time_projection, vcenter_projection)
+
         def drawit(self, p, printmode=False, w=None, h=None):
             """This performs the actual drawing."""
             
@@ -2195,12 +2236,12 @@ def MakePileViewerMainClass(base):
                 
                 if self.floating_marker:
                     self.floating_marker.draw(p, self.time_projection, vcenter_projection)
-                
-                for marker in self.markers:
-                    if marker.get_tmin() < self.tmax and self.tmin < marker.get_tmax():
-                        if marker.kind in self.visible_marker_kinds:
-                            marker.draw(p, self.time_projection, vcenter_projection)
-                    
+ 
+                self.draw_visible_markers(self.markers, p, vcenter_projection)
+                active_event_marker = self.get_active_event_marker()
+                if active_event_marker!=None:
+                    active_event_marker.draw(p, self.time_projection, vcenter_projection, with_label=True)
+                self.draw_visible_markers(self.selected_markers(), p, vcenter_projection)
                 primary_pen = QPen(QColor(*primary_color))
                 secondary_pen = QPen(QColor(*secondary_color))
                 p.setPen(primary_pen)

@@ -31,7 +31,7 @@ class IOTestCase( unittest.TestCase ):
             
         tempdir = tempfile.mkdtemp()
 
-        for format in ('mseed', 'sac', 'yaff'):
+        for format in ('mseed', 'sac', 'yaff', 'gse2'):
             fns = io.save(traces1, pjoin(tempdir, '%(network)s_%(station)s_%(location)s_%(channel)s'), format=format)
 
             for fn in fns:

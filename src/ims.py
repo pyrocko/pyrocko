@@ -2,6 +2,7 @@
 
 import sys
 import re
+import logging
 
 from pyrocko import util
 from pyrocko.io_common import FileLoadError, FileSaveError
@@ -9,6 +10,8 @@ from pyrocko.guts import (
     Object, String, StringChoice, Timestamp, Int, Float, List, Bool, Complex,
     ValidationError)
 
+
+logger = logging.getLogger('pyrocko.ims')
 
 km = 1000.
 nm_per_s = 1.0e-9
@@ -31,6 +34,7 @@ class DeserializeError(Exception):
         self._line = None
         self._position = kwargs.get('position', None)
         self._format = kwargs.get('format', None)
+        self._version_dialect = None
 
     def set_context(self, line_number, line, version_dialect):
         self._line_number = line_number
@@ -204,7 +208,10 @@ def x_scaled(fmt, factor):
                 return x * factor
 
         def string(v):
-            return to_string(v/factor)
+            if v is None:
+                return to_string(None)
+            else:
+                return to_string(v/factor)
 
         return parse, string
 
@@ -729,6 +736,11 @@ class DAT2(Block):
 
         return dat2
 
+    def write(self, writer):
+        Block.write(self, writer)
+        for line in self.raw_data:
+            writer.writeline(line)
+
 
 class STA2(Block):
     '''Representation of a STA2 line.'''
@@ -743,12 +755,15 @@ class STA2(Block):
         E(56, 60, x_scaled('f5.3', km))
     ]
 
+    # the standard requires lat, lon, elevation and depth, we define them as
+    # optional, however
+
     network = String.T(help='network code (9 characters)')
-    lat = Float.T()
-    lon = Float.T()
+    lat = Float.T(optional=True)
+    lon = Float.T(optional=True)
     coordinate_system = String.T(default='WGS-84')
-    elevation = Float.T(help='elevation [m]')
-    depth = Float.T(help='emplacement depth [m]')
+    elevation = Float.T(optional=True, help='elevation [m]')
+    depth = Float.T(optional=True, help='emplacement depth [m]')
 
 
 class CHK2(Block):
@@ -1597,12 +1612,13 @@ class WID2Section(Section):
         self.dat2.write(writer)
         self.chk2.write(writer)
 
-    def pyrocko_trace(self):
-        from pyrocko import gse2_ext, trace
+    def pyrocko_trace(self, checksum_error='raise'):
+        from pyrocko import ims_ext, trace
+        assert checksum_error in ('raise', 'warn', 'ignore')
 
         raw_data = self.dat2.raw_data
         nsamples = self.wid2.nsamples
-        deltat = 1.0 / self.wid2.samprate
+        deltat = 1.0 / self.wid2.sample_rate
         tmin = self.wid2.time
         if self.sta2:
             net = self.sta2.network
@@ -1613,7 +1629,15 @@ class WID2Section(Section):
         cha = self.wid2.channel
 
         if raw_data:
-            ydata = gse2_ext.decode_m6(''.join(raw_data), nsamples)
+            ydata = ims_ext.decode_cm6(''.join(raw_data), nsamples)
+            if checksum_error != 'ignore':
+                if ims_ext.checksum(ydata) != self.chk2.checksum:
+                    mess = 'computed checksum value differs from stored value'
+                    if checksum_error == 'raise':
+                        raise DeserializeError(mess)
+                    elif checksum_error == 'warn':
+                        logger.warn(mess)
+
             tmax = None
         else:
             tmax = tmin + (nsamples - 1) * deltat
@@ -1623,6 +1647,33 @@ class WID2Section(Section):
             net, sta, loc, cha, tmin=tmin, tmax=tmax,
             deltat=deltat,
             ydata=ydata)
+
+    @classmethod
+    def from_pyrocko_trace(cls, tr,
+            lat=None, lon=None, elevation=None, depth=None):
+
+        from pyrocko import ims_ext
+        ydata = tr.get_ydata()
+        raw_data = ims_ext.encode_cm6(ydata)
+        return cls(
+            wid2=WID2(
+                nsamples=tr.data_len(),
+                sample_rate=1.0 / tr.deltat,
+                time=tr.tmin,
+                station=tr.station,
+                location=tr.location,
+                channel=tr.channel),
+            sta2=STA2(
+                network=tr.network,
+                lat=lat,
+                lon=lon,
+                elevation=elevation,
+                depth=depth),
+            dat2=DAT2(
+                raw_data=[raw_data[i*80:(i+1)*80]
+                          for i in xrange((len(raw_data)-1)/80 + 1)]),
+            chk2=CHK2(
+                checksum=ims_ext.checksum(ydata)))
 
 
 class OUT2Section(Section):
@@ -1912,14 +1963,16 @@ class MessageHeader(Section):
         return MessageHeader(
             type=blocks['MSG_TYPE'].type,
             version=blocks['BEGIN'].version,
-            msg_id=blocks['MSG_ID'],
-            ref_id=blocks['REF_ID'])
+            msg_id=blocks.get('MSG_ID', None),
+            ref_id=blocks.get('REF_ID', None))
 
     def write(self, writer):
         Begin(version=self.version).write(writer)
         MsgType(type=self.type).write(writer)
-        self.msg_id.write(writer)
-        self.ref_id.write(writer)
+        if self.msg_id is not None:
+            self.msg_id.write(writer)
+        if self.ref_id is not None:
+            self.ref_id.write(writer)
 
 
 def parse_ff_date_time(s):
@@ -2138,6 +2191,8 @@ if __name__ == '__main__':
 
     usage = 'python -m pyrocko.ims <filenames>'
 
+    util.setup_logging('pyrocko.ims.__main__', 'warning')
+
     description = '''
     Read and print IMS/GSE2 records.
     '''
@@ -2159,11 +2214,19 @@ if __name__ == '__main__':
         choices=g_dialects,
         help='inial guess for dialect')
 
+    parser.add_option(
+        '--load-data',
+        dest='load_data',
+        action='store_true',
+        help='unpack data samples')
+
     (options, args) = parser.parse_args(sys.argv[1:])
 
     for fn in args:
         with open(fn, 'r') as f:
-            r = Reader(f, load_data=False,
+            r = Reader(f, load_data=options.load_data,
                        version=options.version, dialect=options.dialect)
             for sec in r:
                 print sec
+                if isinstance(sec, WID2Section) and options.load_data:
+                    tr = sec.pyrocko_trace(checksum_error='warn')

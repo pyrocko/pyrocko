@@ -244,6 +244,13 @@ class Map(Object):
         return self._widget
 
     @property
+    def layout(self):
+        if self._layout is None:
+            self.setup()
+
+        return self._layout
+
+    @property
     def jxyr(self):
         if self._jxyr is None:
             self.setup()
@@ -363,6 +370,7 @@ class Map(Object):
                 w*gmtpy.cm,
                 h*gmtpy.cm),
             GRID_PEN_PRIMARY='thinnest/0/50/0',
+            DOTS_PR_INCH='1200',
             OBLIQUE_ANNOTATION='6')
 
         gmtconf.update(
@@ -613,6 +621,9 @@ class Map(Object):
 
     def _draw_labels(self):
         if self._labels:
+            fontsize = self.gmt.to_points(
+                self.gmt.gmt_config['LABEL_FONT_SIZE'])
+
             n = len(self._labels)
 
             lons, lats, texts, sx, sy, styles = zip(*self._labels)
@@ -639,7 +650,7 @@ class Map(Object):
             for i in xrange(n):
                 g = gmtpy.GMT()
                 g.pstext(
-                    in_rows=[[0, 0, 9, 0, 1, 'BL', texts[i]]],
+                    in_rows=[[0, 0, fontsize, 0, 1, 'BL', texts[i]]],
                     finish=True,
                     R=(0, 1, 0, 1),
                     J='x10p',
@@ -743,8 +754,6 @@ class Map(Object):
                         break
 
             anchor_strs = ['BL', 'TR', 'TL', 'BR']
-            fontsize = self.gmt.to_points(
-                self.gmt.gmt_config['LABEL_FONT_SIZE'])
 
             for i in xrange(n):
                 ianchor = anchor_take[i]
@@ -966,10 +975,10 @@ def write_cpt(cpt, filename):
             f.write('B %i %i %i\n' % color_to_int(cpt.color_below))
 
         if cpt.color_above:
-            f.write('F %i %i %i\n' % color_to_int(cpt.color_below))
+            f.write('F %i %i %i\n' % color_to_int(cpt.color_above))
 
         if cpt.color_nan:
-            f.write('N %i %i %i\n' % color_to_int(cpt.color_below))
+            f.write('N %i %i %i\n' % color_to_int(cpt.color_nan))
 
 
 def cpt_merge_wet_dry(wet, dry):

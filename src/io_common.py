@@ -14,7 +14,7 @@ class FileError(Exception):
 
         lines = []
         for k in sorted(self.context.keys()):
-            lines.append('  %s: %s\n' % (k, self.context[k]))
+            lines.append('%s: %s\n' % (k, self.context[k]))
 
         return '%s\n%s' % (s, '\n'.join(lines))
 
