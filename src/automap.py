@@ -370,6 +370,7 @@ class Map(Object):
                 w*gmtpy.cm,
                 h*gmtpy.cm),
             GRID_PEN_PRIMARY='thinnest/0/50/0',
+            DOTS_PR_INCH='1200',
             OBLIQUE_ANNOTATION='6')
 
         gmtconf.update(
