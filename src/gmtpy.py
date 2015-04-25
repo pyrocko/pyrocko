@@ -2411,18 +2411,19 @@ class FrameLayout(Widget):
                                    (gl[0], gr[0], gc[0]), ah)
         stv, sbv, scv = distribute((st[1], sb[1], sc[1]),
                                    (gt[1], gb[1], gc[1]), av)
-        #if self.center.aspect is not None:
-        #    ahm = sh - (sl[0]+sr[0] + scv/self.center.aspect)
-        #    avm = sv - (st[1]+sb[1] + sch*self.center.aspect)
-        #    if 0.0 < ahm < ah:
-        #        slh, srh, sch = distribute(
-        #            (sl[0], sr[0], scv/self.center.aspect),
-        #            (gl[0], gr[0], 0.0), ahm)
-        #
-        #    elif 0.0 < avm < av:
-        #        stv, sbv, scv = distribute((st[1], sb[1],
-        #                                    sch*self.center.aspect),
-        #                                   (gt[1], gb[1], 0.0), avm)
+
+        if self.center.aspect is not None:
+            ahm = sh - (sl[0]+sr[0] + scv/self.center.aspect)
+            avm = sv - (st[1]+sb[1] + sch*self.center.aspect)
+            if 0.0 < ahm < ah:
+                slh, srh, sch = distribute(
+                    (sl[0], sr[0], scv/self.center.aspect),
+                    (gl[0], gr[0], 0.0), ahm)
+
+            elif 0.0 < avm < av:
+                stv, sbv, scv = distribute((st[1], sb[1],
+                                            sch*self.center.aspect),
+                                           (gt[1], gb[1], 0.0), avm)
 
         ah = sh - (slh+srh+sch)
         av = sv - (stv+sbv+scv)
