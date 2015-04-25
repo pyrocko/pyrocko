@@ -975,10 +975,10 @@ def write_cpt(cpt, filename):
             f.write('B %i %i %i\n' % color_to_int(cpt.color_below))
 
         if cpt.color_above:
-            f.write('F %i %i %i\n' % color_to_int(cpt.color_below))
+            f.write('F %i %i %i\n' % color_to_int(cpt.color_above))
 
         if cpt.color_nan:
-            f.write('N %i %i %i\n' % color_to_int(cpt.color_below))
+            f.write('N %i %i %i\n' % color_to_int(cpt.color_nan))
 
 
 def cpt_merge_wet_dry(wet, dry):
