@@ -244,6 +244,13 @@ class Map(Object):
         return self._widget
 
     @property
+    def layout(self):
+        if self._layout is None:
+            self.setup()
+
+        return self._layout
+
+    @property
     def jxyr(self):
         if self._jxyr is None:
             self.setup()
