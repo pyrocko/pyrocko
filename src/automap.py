@@ -163,6 +163,7 @@ class Map(Object):
     axes_layout = String.T(optional=True)
     custom_cities = List.T(City.T())
     gmt_config = Dict.T(String.T(), String.T())
+    comment = String.T(optional=True)
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -385,6 +386,7 @@ class Map(Object):
         widget = layout.get_widget()
         # widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         # widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+        widget['P'] = widget['J']
         widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width_m)gm'
         # widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         # scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
@@ -587,6 +589,18 @@ class Map(Object):
                 self.lat,
                 scale_km)),
             *self._jxyr)
+
+        if self.comment:
+            fontsize = self.gmt.to_points(
+                self.gmt.gmt_config['LABEL_FONT_SIZE'])
+
+            _, east, south, _ = self._wesn
+            gmt.pstext(
+                in_rows=[[1, 0, fontsize*0.8, 0, 0, 'BR', self.comment]],
+                N=True,
+                R=(0, 1, 0, 1),
+                D='%gp/%gp' % (-fontsize*0.2, fontsize*0.2),
+                *widget.PXY())
 
     def draw_axes(self):
         if not self._have_drawn_axes:
@@ -909,6 +923,14 @@ class CPT(Object):
     color_above = Tuple.T(3, Float.T(), optional=True)
     color_nan = Tuple.T(3, Float.T(), optional=True)
     levels = List.T(CPTLevel.T())
+
+    def scale(self, vmin, vmax):
+        vmin_old, vmax_old = self.levels[0].vmin, self.levels[-1].vmax
+        for level in self.levels:
+            level.vmin = (level.vmin - vmin_old) / (vmax_old - vmin_old) * \
+                (vmax - vmin) + vmin
+            level.vmax = (level.vmax - vmin_old) / (vmax_old - vmin_old) * \
+                (vmax - vmin) + vmin
 
 
 class CPTParseError(Exception):
