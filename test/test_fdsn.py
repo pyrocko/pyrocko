@@ -84,8 +84,6 @@ class FDSNStationTestCase(unittest.TestCase):
             level='channel', format='text', matchtimeseries=True)
 
         for nslc in sx.nslc_code_list:
-            print nslc
-
             net, sta, loc, cha = nslc
             sxr = fdsn.ws.station(
                 site='iris',
