@@ -80,6 +80,10 @@ class NoTopo(Exception):
     pass
 
 
+class OutOfBounds(Exception):
+    pass
+
+
 class FloatTile(Object):
     xmin = Float.T()
     ymin = Float.T()
@@ -107,6 +111,13 @@ class FloatTile(Object):
     def y(self):
         return self.ymin + num.arange(self.ny) * self.dy
 
+    def get(self, x, y):
+        ix = int(round((x - self.xmin) / self.dx))
+        iy = int(round((y - self.ymin) / self.dy))
+        if 0 <= ix < self.nx and 0 <= iy < self.ny:
+            return self.data[iy, ix]
+        else:
+            raise OutOfBounds()
 
 class City(Object):
     def __init__(self, name, lat, lon, population=None, asciiname=None):

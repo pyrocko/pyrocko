@@ -5,6 +5,10 @@ import scipy.signal
 from pyrocko.orthodrome import positive_region
 
 
+class OutOfBounds(Exception):
+    pass
+
+
 class Tile(object):
 
     def __init__(self, xmin, ymin, dx, dy, data):
@@ -56,6 +60,14 @@ class Tile(object):
         self.ymin = ymin
         self.data = data
         self._set_maxes()
+
+    def get(self, x, y):
+        ix = int(round((x - self.xmin) / self.dx))
+        iy = int(round((y - self.ymin) / self.dy))
+        if 0 <= ix < self.nx and 0 <= iy < self.ny:
+            return self.data[iy, ix]
+        else:
+            raise OutOfBounds()
 
 
 def multiple_of(x, dx, eps=1e-5):
