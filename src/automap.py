@@ -596,10 +596,10 @@ class Map(Object):
 
             _, east, south, _ = self._wesn
             gmt.pstext(
-                in_rows=[[1, 0, fontsize*0.8, 0, 0, 'BR', self.comment]],
+                in_rows=[[1, 0, fontsize, 0, 0, 'BR', self.comment]],
                 N=True,
                 R=(0, 1, 0, 1),
-                D='%gp/%gp' % (-fontsize*0.2, fontsize*0.2),
+                D='%gp/%gp' % (-fontsize*0.2, fontsize*0.3),
                 *widget.PXY())
 
     def draw_axes(self):
