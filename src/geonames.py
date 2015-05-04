@@ -1,10 +1,12 @@
 import logging
-import sys
 import os
 from collections import namedtuple
 import os.path as op
 
+import numpy as num
+
 from pyrocko import util, config
+from pyrocko import orthodrome as od
 
 logger = logging.getLogger('pyrocko.geonames')
 
@@ -107,7 +109,6 @@ def load(zfn, fn, minpop=1000000, region=None):
         z = None
         f = open(filepath, 'r')
 
-
     for line in f:
         t = line.split('\t')
         pop = int(t[14])
@@ -127,3 +128,34 @@ def load(zfn, fn, minpop=1000000, region=None):
     if z is not None:
         z.close()
 
+
+g_cities = {}
+
+
+def load_all_keep(zfn, fn, minpop=1000000, region=None):
+    if (zfn, fn) not in g_cities:
+        g_cities[zfn, fn] = list(load(zfn, fn, minpop=0))
+
+    if region:
+        w, e, s, n = positive_region(region)
+        return [c for c in g_cities[zfn, fn]
+                if minpop <= c.population and (
+                    (w <= c.lon <= e or w <= c.lon + 360. <= e)
+                    and (s <= c.lat <= n))]
+
+    else:
+        return [c for c in g_cities[zfn, fn] if minpop <= c.population]
+
+
+def get_cities(lat, lon, radius, minpop=0):
+    region = od.radius_to_region(lat, lon, radius)
+    cities = load_all_keep('cities1000.zip', 'cities1000.txt',
+                           region=region, minpop=minpop)
+
+    clats = num.array([c.lat for c in cities])
+    clons = num.array([c.lon for c in cities])
+
+    dists = od.distance_accurate50m_numpy(lat, lon, clats, clons)
+    order = num.argsort(dists)
+    cities_sorted = [cities[i] for i in order if dists[i] < radius]
+    return cities_sorted
