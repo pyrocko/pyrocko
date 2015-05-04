@@ -2,6 +2,8 @@ import math
 import numpy as num
 import scipy.signal
 
+from pyrocko.orthodrome import positive_region
+
 
 class Tile(object):
 
@@ -116,21 +118,3 @@ def combine(tiles, region=None):
         return None
 
     return Tile(xmin, ymin, dx, dy, data)
-
-
-def positive_region(region):
-    west, east, south, north = [float(x) for x in region]
-
-    assert -180. - 360. <= west < 180.
-    assert -180. < east <= 180. + 360.
-    assert -90. <= south < 90.
-    assert -90. < north <= 90.
-
-    if east < west:
-        east += 360.
-
-    if west < -180.:
-        west += 360.
-        east += 360.
-
-    return (west, east, south, north)

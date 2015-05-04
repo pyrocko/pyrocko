@@ -258,3 +258,44 @@ def distance_accurate15nm(lat1, lon1, lat2, lon2):
     wgs84 = get_wgs84()
     return wgs84.Inverse(lat1, lon1, lat2, lon2)['s12']
 
+
+def positive_region(region):
+    west, east, south, north = [float(x) for x in region]
+
+    assert -180. - 360. <= west < 180.
+    assert -180. < east <= 180. + 360.
+    assert -90. <= south < 90.
+    assert -90. < north <= 90.
+
+    if east < west:
+        east += 360.
+
+    if west < -180.:
+        west += 360.
+        east += 360.
+
+    return (west, east, south, north)
+
+
+def radius_to_region(lat, lon, radius):
+    radius_deg = radius * m2d
+    if radius_deg < 45.:
+        lat_min = max(-90., lat - radius_deg)
+        lat_max = min(90., lat + radius_deg)
+        absmaxlat = max(abs(lat_min), abs(lat_max))
+        if absmaxlat > 89:
+            lon_min = -180.
+            lon_max = 180.
+        else:
+            lon_min = max(
+                -180. - 360.,
+                lon - radius_deg / math.cos(absmaxlat*d2r))
+            lon_max = min(
+                180. + 360.,
+                lon + radius_deg / math.cos(absmaxlat*d2r))
+
+        lon_min, lon_max, lat_min, lat_max = positive_region(
+            (lon_min, lon_max, lat_min, lat_max))
+
+    else:
+        return None
