@@ -490,9 +490,9 @@ class MomentTensor(Object):
     def __str__(self):
         mexp = pow(10,math.ceil(num.log10(num.max(num.abs(self._m)))))
         m = self._m/mexp
-        s =  'Scalar Moment: M0 = %g (Mw = %3.1f)\n' 
-        s += 'Moment Tensor: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,\n'
-        s += '               Mne = %6.3f,  Mnd = %6.3f, Med = %6.3f    [ x %g ]\n'
+        s =  'Scalar Moment [Nm]: M0 = %g (Mw = %3.1f)\n' 
+        s += 'Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,\n'
+        s += '                    Mne = %6.3f,  Mnd = %6.3f, Med = %6.3f    [ x %g ]\n'
         s = s % (self.scalar_moment(), self.moment_magnitude(), m[0,0],m[1,1],m[2,2],m[0,1],m[0,2],m[1,2], mexp)
         
         s += self.str_fault_planes()
@@ -501,7 +501,7 @@ class MomentTensor(Object):
     def str_fault_planes(self):
         s = ''
         for i,sdr in enumerate(self.both_strike_dip_rake()):
-            s += 'Fault plane %i: strike = %3.0f, dip = %3.0f, slip-rake = %4.0f\n' % \
+            s += 'Fault plane %i [deg]: strike = %3.0f, dip = %3.0f, slip-rake = %4.0f\n' % \
                  (i+1, sdr[0], sdr[1], sdr[2])
             
         return s

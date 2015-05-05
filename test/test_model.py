@@ -21,7 +21,9 @@ class ModelTestCase(unittest.TestCase):
     def testIOEventOld(self):
         tempdir = tempfile.mkdtemp()
         fn = pjoin(tempdir, 'event.txt')
-        e1 = model.Event(10.,20.,1234567890.,'bubu', region='taka tuka land')
+        e1 = model.Event(
+            10.,20.,1234567890.,'bubu', region='taka tuka land',
+            magnitude=5.1, magnitude_type='Mw')
         e1.olddump(fn)
         e2 = model.Event(load=fn)
         assert e1.region == e2.region
@@ -30,13 +32,17 @@ class ModelTestCase(unittest.TestCase):
         assert e1.lon == e2.lon
         assert e1.time == e2.time
         assert e1.region == e2.region
+        assert e1.magnitude == e2.magnitude
+        assert e1.magnitude_type == e2.magnitude_type
         shutil.rmtree(tempdir)
 
     def testIOEvent(self):
         tempdir = tempfile.mkdtemp()
         fn = pjoin(tempdir, 'event.txt')
-        e1 = model.Event(10.,20.,1234567890.,'bubu', region='taka tuka land', 
-                         moment_tensor=moment_tensor.MomentTensor(strike=45., dip=90))
+        e1 = model.Event(
+            10.,20.,1234567890.,'bubu', region='taka tuka land', 
+            moment_tensor=moment_tensor.MomentTensor(strike=45., dip=90),
+            magnitude=5.1, magnitude_type='Mw')
         guts.dump(e1, filename=fn)
         e2 = guts.load(filename=fn)
         assert e1.region == e2.region
@@ -45,6 +51,8 @@ class ModelTestCase(unittest.TestCase):
         assert e1.lon == e2.lon
         assert e1.time == e2.time
         assert e1.region == e2.region
+        assert e1.magnitude == e2.magnitude
+        assert e1.magnitude_type == e2.magnitude_type
         shutil.rmtree(tempdir)
     
     def testMissingComponents(self):

@@ -102,14 +102,15 @@ class Event(Object):
     name = String.T(default='', optional=True)
     depth = Float.T(optional=True)
     magnitude = Float.T(optional=True)
+    magnitude_type = String.T(optional=True)
     region = String.T(optional=True)
     catalog = String.T(optional=True)
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
 
     def __init__(self, lat=0., lon=0., time=0., name='', depth=None,
-            magnitude=None, region=None, load=None, loadf=None, catalog=None,
-            moment_tensor=None, duration=None):
+            magnitude=None, magnitude_type=None, region=None, load=None,
+            loadf=None, catalog=None, moment_tensor=None, duration=None):
 
         vals = None
         if load is not None:
@@ -118,11 +119,12 @@ class Event(Object):
             vals = Event.oldloadf(loadf)
 
         if vals:
-            lat, lon, time, name, depth, magnitude, region, catalog, \
-                moment_tensor, duration = vals
+            lat, lon, time, name, depth, magnitude, magnitude_type, region, \
+                catalog, moment_tensor, duration = vals
             
         Object.__init__(self, lat=lat, lon=lon, time=time, name=name, depth=depth,
-                        magnitude=magnitude, region=region, catalog=catalog,
+                        magnitude=magnitude, magnitude_type=magnitude_type,
+                        region=region, catalog=catalog,
                         moment_tensor=moment_tensor, duration=duration)
             
     def time_as_string(self):
@@ -149,6 +151,8 @@ class Event(Object):
         if self.magnitude is not None:
             file.write('magnitude = %g\n' % self.magnitude)
             file.write('moment = %g\n' % moment_tensor.magnitude_to_moment(self.magnitude))
+        if self.magnitude_type is not None:
+            file.write('magnitude_type = %s\n' % self.magnitude_type)
         if self.depth is not None:
             file.write('depth = %g\n' % self.depth)
         if self.region is not None:
@@ -228,7 +232,7 @@ class Event(Object):
                 toks = line.split(' = ',1)
                 if len(toks) == 2:
                     k,v = toks[0].strip(), toks[1].strip()
-                    if k in ('name', 'region', 'catalog'):
+                    if k in ('name', 'region', 'catalog', 'magnitude_type'):
                         d[k] = v
                     if k in ('latitude longitude magnitude depth duration mnn mee mdd mne mnd med strike1 dip1 rake1 strike2 dip2 rake2 duration'.split()):
                         d[k] = float(v)
@@ -270,6 +274,7 @@ class Event(Object):
             d.get('name', ''),
             d.get('depth', None),
             d.get('magnitude', None),
+            d.get('magnitude_type', None),
             d.get('region', None),
             d.get('catalog', None),
             mt,
@@ -296,6 +301,33 @@ class Event(Object):
     def get_hash(self):
         e = self
         return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
+
+    def human_str(self):
+        s = [
+            'Latitude [deg]: %g' % self.lat,
+            'Longitude [deg]: %g' % self.lon,
+            'Time [UTC]: %s' % util.time_to_str(self.time)]
+
+        if self.name:
+            s.append('Name: %s' % self.name)
+
+        if self.depth is not None:
+            s.append('Depth [km]: %g' % (self.depth/1000.))
+
+        if self.magnitude is not None:
+            s.append('Magnitude [%s]: %3.1f' % (
+                self.magnitude_type or 'M?', self.magnitude))
+
+        if self.region:
+            s.append('Region: %s' % self.region)
+
+        if self.catalog:
+            s.append('Catalog: %s' % self.catalog)
+
+        if self.moment_tensor:
+            s.append(str(self.moment_tensor))
+
+        return '\n'.join(s)
 
 
 def load_events(filename):
