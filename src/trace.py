@@ -1875,6 +1875,13 @@ class Taper(Object):
 
 
 class CosTaper(Taper):
+    ''' Cosine Taper.
+
+    :param a: start of fading in
+    :param b: end of fading in
+    :param c: start of fading out
+    :param d: end of fading out
+    '''
 
     a = Float.T()
     b = Float.T()
@@ -1891,6 +1898,13 @@ class CosTaper(Taper):
         return span_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
 
 class CosFader(Taper):
+    ''' Cosine Fader.
+
+    :param xfade: fade in and fade out time in seconds (optional)
+    :param xfrac: fade in and fade out as fraction between 0. and 1. (optional)
+
+    Only one of both arguments can be set. The other is supposed to be ``None``.
+    '''
 
     xfade = Float.T(optional=True)
     xfrac = Float.T(optional=True)
