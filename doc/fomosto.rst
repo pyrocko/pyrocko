@@ -462,21 +462,21 @@ stores can be found at http://kinherd.org/gfs.html as well as how to download
 such stores. 
 
 ::
-
     from pyrocko.gf import LocalEngine, Target, DCSource
     from pyrocko import trace
-
-    # We need a pyrocko.gf.Engine object which provides us with the traces 
-    # extracted from the store. In this case we are going to use a local 
+    from pyrocko.gui_util import PhaseMarker
+    
+    # We need a pyrocko.gf.Engine object which provides us with the traces
+    # extracted from the store. In this case we are going to use a local
     # engine since we are going to query a local store.
-    engine = LocalEngine(store_superdirs=['/data/stores'])
-
-    # The store we are going to extract data from:
+    engine = LocalEngine(store_superdirs=['/media/usb/stores'])
+    
+    # The store we are going extract data from:
     store_id = 'crust2_dd'
-
-    # Define a list of pyrocko.gf.Target objects, representing the recording 
-    # devices. In this case one station with a three component sensor will 
-    # serve fine for demonstation. 
+    
+    # Define a list of pyrocko.gf.Target objects, representing the recording
+    # devices. In this case one station with a three component sensor will
+    # serve fine for demonstation.
     channel_codes = 'ENZ'
     targets = [
         Target(
@@ -485,7 +485,7 @@ such stores.
             store_id=store_id,
             codes=('', 'STA', '', channel_code))
         for channel_code in channel_codes]
-
+    
     # Let's use a double couple source representation.
     source_dc = DCSource(
         lat=11.,
@@ -495,6 +495,27 @@ such stores.
         dip=40.,
         rake=60.,
         magnitude=4.)
+    
+    # Processing that data will return a pyrocko.gf.Reponse object.
+    response = engine.process(source_dc, targets)
+    
+    # This will return a list of the requested traces:
+    synthetic_traces = response.pyrocko_traces()
+    
+    # In addition to that it is also possible to extract interpolated travel times 
+    # of phases which have been defined in the store's config file.
+    store = engine.get_store(store_id)
+    
+    markers = []
+    for t in targets:
+        dist = t.distance_to(source_dc)
+        depth = source_dc.depth
+        arrival_time = store.t('p', (depth, dist))
+        m = PhaseMarker(tmin=arrival_time, 
+                        tmax=arrival_time,
+                        phasename='p',
+                        nslc_ids=(t.codes,))
+        markers.append(m)
 
     # Processing that data will return a pyrocko.gf.Response object.
     response = engine.process(source_dc, targets)
@@ -503,5 +524,5 @@ such stores.
     synthetic_traces = response.pyrocko_traces()
 
     # Finally, let's scrutinize these traces.
-    trace.snuffle(synthetic_traces)
+    trace.snuffle(synthetic_traces, markers=markers)
 
