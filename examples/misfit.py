@@ -2,40 +2,40 @@ from pyrocko import trace
 from math import sqrt
 import numpy as num
 
-# Let's create three traces: One trace as the reference (rt) and two as test traces (tt1 and tt2):
-ydata1 = data = num.random.random(1000)
-ydata2 = data = num.random.random(1000)
+# Let's create three traces: One trace as the reference (rt) and two as test 
+# traces (tt1 and tt2):
+ydata1 = num.random.random(1000)
+ydata2 = num.random.random(1000)
 rt = trace.Trace(station='REF', ydata=ydata1)
-tt1 = trace.Trace(station='TT1', ydata=ydata1)
-tt2 = trace.Trace(station='TT2', ydata=ydata2)
-
-# the misfit method needs an iterable object containing traces:
-test_candidates = [tt1, tt2]
+candidate1 = trace.Trace(station='TT1', ydata=ydata1)
+candidate2 = trace.Trace(station='TT2', ydata=ydata2)
 
 # Define a fader to apply before fft.
 taper = trace.CosFader(xfade=5)
 
 # Define a frequency response to apply before performing the inverse fft.
-# This can be basically any funtion, as long as it contains a function called *evaluate*, 
-# which evaluates the frequency response function at a given list of frequencies.
-# Please refer to the :py:class:`FrequencyResponse` class or its subclasses for examples. 
-fresponse = trace.FrequencyResponse()        
+# This can be basically any funtion, as long as it contains a function called
+# *evaluate*, which evaluates the frequency response function at a given list
+# of frequencies.
+# Please refer to the :py:class:`FrequencyResponse` class or its subclasses for
+# examples.
+# However, we are going to use a butterworth low-pass filter in this example.
+bw_filter = trace.ButterworthResponse(corner=2,
+                                      order=4,
+                                      typ='low')
 
 # Combine all information in one misfit setup:
-setup = trace.MisfitSetup(norm=2,
+setup = trace.MisfitSetup(description='An Example Setup',
+                          norm=2,
                           taper=taper,
-                          domain='time_domain',
-                          freqlimits=(1,2,20,40),
-                          frequency_response=fresponse)
+                          filter=bw_filter,
+                          domain='time_domain')
 
-# Calculate the misfit for each test candidate:
-i = 0
-for m, n in rt.misfit(candidates=test_candidates, setups=setup):
-    M = m/n
-    print 'L2 misfit of %s and %s is %s' % (rt.station, test_candidates[i].station, M)
-    i += 1 
+# Calculate misfits of each candidate against the reference trace:
+for candidate in [candidate1, candidate2]:
+    misfit = rt.misfit(candidate=candidate, setup=setup)
+    print 'misfit: %s, normalization: %s' % misfit
 
-# Finally, we want to dump the misfit setup that has been used in a yaml file:
-#f = open('my_misfit_setup.txt', 'w')
-#f.write(setup.dump())
-#f.close()
+# Finally, dump the misfit setup that has been used as a yaml file for later
+# re-use:
+setup.dump(filename='my_misfit_setup.txt')

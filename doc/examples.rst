@@ -285,53 +285,56 @@ Three traces will be created. One of these traces will be assumed to be the refe
     from pyrocko import trace
     from math import sqrt
     import numpy as num
-
-    # let's create three traces: One trace as the reference (rt) and two as test traces (tt1 and tt2):
-    ydata1 = data = num.random.random(1000)
-    ydata2 = data = num.random.random(1000)
+    
+    # Let's create three traces: One trace as the reference (rt) and two as test 
+    # traces (tt1 and tt2):
+    ydata1 = num.random.random(1000)
+    ydata2 = num.random.random(1000)
     rt = trace.Trace(station='REF', ydata=ydata1)
-    tt1 = trace.Trace(station='TT1', ydata=ydata1)
-    tt2 = trace.Trace(station='TT2', ydata=ydata2)
-
-    # the misfit method needs an iterable object containing traces:
-    test_candidates = [tt1, tt2]
-
-    # define a fader to apply before fft.
+    candidate1 = trace.Trace(station='TT1', ydata=ydata1)
+    candidate2 = trace.Trace(station='TT2', ydata=ydata2)
+    
+    # Define a fader to apply before fft.
     taper = trace.CosFader(xfade=5)
-
-    # define a frequency response to apply before performing the inverse fft.
-    # This can be basically any funtion, as long as it contains a function called *evaluate*, 
-    # which evaluates the frequency response function at a given list of frequencies.
-    # Please refer to the :py:class:`FrequencyResponse` class or its subclasses for examples. 
-    fresponse = trace.FrequencyResponse()        
-
-    # combine all information in one misfit setup:
-    setup = trace.MisfitSetup(norm=2,
+    
+    # Define a frequency response to apply before performing the inverse fft.
+    # This can be basically any funtion, as long as it contains a function called
+    # *evaluate*, which evaluates the frequency response function at a given list
+    # of frequencies.
+    # Please refer to the :py:class:`FrequencyResponse` class or its subclasses for
+    # examples.
+    # However, we are going to use a butterworth low-pass filter in this example.
+    bw_filter = trace.ButterworthResponse(corner=2,
+                                          order=4,
+                                          typ='low')
+    
+    # Combine all information in one misfit setup:
+    setup = trace.MisfitSetup(description='An Example Setup',
+                              norm=2,
                               taper=taper,
-                              domain='time_domain',
-                              freqlimits=(1,2,20,40),
-                              frequency_response=fresponse)
-
-    # calculate the misfit for each test candidate:
-    i = 0
-    for m, n in rt.misfit(candidates=test_candidates, setups=setup):
-        M = m/n
-        print 'L2 misfit of %s and %s is %s' % (rt.station, test_candidates[i].station, M)
-        i += 1 
-
-    # finally, we want to dump the misfit setup that has been used in a yaml file:
-    f = open('my_misfit_setup.txt', 'w')
-    f.write(setup.dump())
-    f.close()
-
+                              filter=bw_filter,
+                              domain='time_domain')
+    
+    # Calculate misfits of each candidate against the reference trace:
+    for candidate in [candidate1, candidate2]:
+        misfit = rt.misfit(candidate=candidate, setup=setup)
+        print 'misfit: %s, normalization: %s' % misfit
+    
+    # Finally, dump the misfit setup that has been used as a yaml file for later
+    # re-use:
+    setup.dump(filename='my_misfit_setup.txt')
+    
 If we wanted to reload our misfit setup, guts provides the iload_all() method for 
 that purpose:
 
 ::
 
-    from guts import iload_all
-    for ms in iload_all(filename='my_misfit_setup.txt'): 
-        setup = ms
-
+    from pyrocko.guts import load
+    from pyrocko.trace import MisfitSetup 
+    
+    setup = load(filename='my_misfit_setup.txt')
+    
     # now, we can change for example only the domain:
     setup.domain = 'frequency_domain'
+    
+    print setup
