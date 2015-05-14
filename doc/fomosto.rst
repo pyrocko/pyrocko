@@ -462,6 +462,7 @@ stores can be found at http://kinherd.org/gfs.html as well as how to download
 such stores. 
 
 ::
+
     from pyrocko.gf import LocalEngine, Target, DCSource
     from pyrocko import trace
     from pyrocko.gui_util import PhaseMarker
@@ -516,13 +517,12 @@ such stores.
                         phasename='p',
                         nslc_ids=(t.codes,))
         markers.append(m)
-
+    
     # Processing that data will return a pyrocko.gf.Response object.
     response = engine.process(source_dc, targets)
-
+    
     # This will return a list of the requested traces:
     synthetic_traces = response.pyrocko_traces()
-
+    
     # Finally, let's scrutinize these traces.
     trace.snuffle(synthetic_traces, markers=markers)
-
