@@ -251,23 +251,30 @@ class Map(Object):
     @property
     def widget(self):
         if self._widget is None:
-            self.setup()
+            self._setup()
 
         return self._widget
 
     @property
     def layout(self):
         if self._layout is None:
-            self.setup()
+            self._setup()
 
         return self._layout
 
     @property
     def jxyr(self):
         if self._jxyr is None:
-            self.setup()
+            self._setup()
 
         return self._jxyr
+
+    @property
+    def pxyr(self):
+        if self._pxyr is None:
+            self._setup()
+
+        return self._pxyr
 
     @property
     def gmt(self):
@@ -410,6 +417,8 @@ class Map(Object):
         self._layout = layout
         self._widget = widget
         self._jxyr = self._widget.JXY() + self._scaler.R()
+        self._pxyr = self._widget.PXY() + [
+            '-R%g/%g/%g/%g' % (0, widget.width(), 0, widget.height())]
         self._have_drawn_axes = False
         self._have_drawn_labels = False
 
@@ -643,6 +652,25 @@ class Map(Object):
                     return True
 
         return False
+
+    def project(self, lats, lons):
+        onepoint = False
+        if isinstance(lats, float) and isinstance(lons, float):
+            lats = [lats]
+            lons = [lons]
+            onepoint = True
+
+        j, _, _, r = self.jxyr
+        (xo, yo) = self.widget.get_size()[1]
+        f = StringIO()
+        self.gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f, D='p')
+        f.seek(0)
+        data = num.loadtxt(f, ndmin=2)
+        xs, ys = data.T
+        if onepoint:
+            xs = xs[0]
+            ys = ys[0]
+        return xs, ys
 
     def _draw_labels(self):
         if self._labels:
