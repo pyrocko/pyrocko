@@ -1003,12 +1003,11 @@ class FDSNStationXML(Object):
 
             useful_bics.sort()
 
-            
             for _, _, rate, _, _, bic in useful_bics:
                 channels = sorted(bic_to_channels[bic])
                 if channels:
                     for channel in channels:
-                        nslcs.append(nsl + (channel.code,))
+                        nslcs[nsl + (channel.code,)] = channel
 
                     break
 
