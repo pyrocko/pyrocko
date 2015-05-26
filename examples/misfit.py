@@ -22,7 +22,7 @@ taper = trace.CosFader(xfade=5)
 # However, we are going to use a butterworth low-pass filter in this example.
 bw_filter = trace.ButterworthResponse(corner=2,
                                       order=4,
-                                      typ='low')
+                                      type='low')
 
 # Combine all information in one misfit setup:
 setup = trace.MisfitSetup(description='An Example Setup',

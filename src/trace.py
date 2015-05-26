@@ -2094,7 +2094,7 @@ class ButterworthResponse(FrequencyResponse):
     '''Butterworth frequency response.
 
     :param corner: corner frequency of the response
-    :param order: order of the reponse
+    :param order: order of the response
     :param type: either ``high`` or ``low``
     '''
 
