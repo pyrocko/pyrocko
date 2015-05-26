@@ -149,11 +149,9 @@ class TraceTestCase(unittest.TestCase):
         tmax = t.tmax
         t.extend(tmin-10.2, tmax+10.7)
         assert int(round(tmin-t.tmin)) == 10
-        print t.tmax - tmax
         assert int(round(t.tmax-tmax)) == 11
         assert num.all(t.ydata[:10] == num.zeros(10, dtype=num.float))
         assert num.all(t.ydata[-11:] == num.zeros(11, dtype=num.float))
-        print t.ydata
         assert num.all(t.ydata[10:-11] == num.ones(10, dtype=num.float))
         
         t = trace.Trace(tmin=tmin, ydata=num.arange(10,dtype=num.float)+1.)
