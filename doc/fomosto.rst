@@ -74,12 +74,24 @@ Creating a new Green's function store
 -------------------------------------
 
 Fomosto does not do the actual computation of the Green's functions. A separate
-Green's function modelling code is required to do this. However, Fomosto
-provides a unified interface to configure and run these codes in order to
-make it simple to build a database of pre-calculated Green's functions.
+Green's function modelling code is required to do this.
 
-In this example, we will use QSEIS as the modelling code. [[where to get the
-code?]]
+However, Fomosto provides a unified interface to configure and run these codes
+in order to make it simple to build a database of pre-calculated Green's
+functions.
+
+Four modelling codes, including python interfaces required for fomosto are
+available at:
+
+ - http://kinherd.org/fomosto-qssp-2010beta.tar.gz
+ - http://kinherd.org/fomosto-qssp-2010.tar.gz
+ - http://kinherd.org/fomosto-qseis-2006.tar.gz
+ - http://kinherd.org/fomosto-qseis-2006a.tar.gz
+
+For detailled information regarding each computation code refer to the
+Downloads/Software website of section 2.1 (GFZ): http://www.gfz-potsdam.de/en/section/physics-of-earthquakes-and-volcanoes/services/downloads-software/.
+
+In this example, we will use QSEIS as the modelling code.
 
 To initialize an empty Green's function store to be built with QSEIS run::
 
