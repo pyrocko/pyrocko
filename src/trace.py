@@ -976,32 +976,41 @@ class Trace(object):
         else:
             return tpeaks, apeaks
 
-    def extend(self, tmin, tmax, fillmethod='zeros'):
+    def extend(self, tmin=None, tmax=None, fillmethod='zeros'):
         '''Extend trace to given span.
-        
-        :param tmin,tmax:  new span
-        :param fillmethod: 'zeros' or 'repeat' 
-        '''
-        
-        assert tmin <= self.tmin and tmax >= self.tmax
-        
-        nl = int(math.floor((self.tmin-tmin)/self.deltat))
-        nh = int(math.floor((tmax-self.tmax)/self.deltat))
-        self.tmin -= nl*self.deltat
-        self.tmax += nh*self.deltat
-        n = nl+self.ydata.size+nh
 
+        :param tmin,tmax:  new span
+        :param fillmethod: 'zeros' or 'repeat'
+        '''
+
+        nold = self.ydata.size
+
+        if tmin is not None:
+            nl = min(0, int(round((tmin-self.tmin)/self.deltat)))
+        else:
+            nl = 0
+
+        if tmax is not None:
+            nh = max(nold - 1, int(round((tmax-self.tmin)/self.deltat)))
+        else:
+            nh = nold - 1
+
+        n = nh - nl + 1
         data = num.zeros(n, dtype=self.ydata.dtype)
-        data[nl:n-nh] = self.ydata
+        data[-nl:-nl + nold] = self.ydata
         if fillmethod == 'repeat' and self.ydata.size >= 1:
-            data[:nl] = data[nl]
-            data[n-nh:] = data[n-nh-1]
-            
+            data[:-nl] = self.ydata[0]
+            data[-nl + nold:] = self.ydata[-1]
+
         self.drop_growbuffer()
         self.ydata = data
-        
+
+        self.tmin += nl * self.deltat
+        self.tmax = self.tmin + (self.ydata.size - 1) * self.deltat
+
         self._update_ids()
-     
+
+
     def transfer(self, tfade=0., freqlimits=None, transfer_function=None, cut_off_fading=True, invert=False):
         '''Return new trace with transfer function applied (convolution).
         
