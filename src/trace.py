@@ -978,15 +978,14 @@ class Trace(object):
 
     def extend(self, tmin, tmax, fillmethod='zeros'):
         '''Extend trace to given span.
-        
+
         :param tmin,tmax:  new span
         :param fillmethod: 'zeros' or 'repeat' 
         '''
-        
+
         assert tmin <= self.tmin and tmax >= self.tmax
-        
-        nl = int(math.floor((self.tmin-tmin)/self.deltat))
-        nh = int(math.floor((tmax-self.tmax)/self.deltat))
+        nl = int(math.floor((self.tmin-tmin+0.00000001)/self.deltat))
+        nh = int(math.floor((tmax-self.tmax+0.00000001)/self.deltat))
         self.tmin -= nl*self.deltat
         self.tmax += nh*self.deltat
         n = nl+self.ydata.size+nh
@@ -996,7 +995,7 @@ class Trace(object):
         if fillmethod == 'repeat' and self.ydata.size >= 1:
             data[:nl] = data[nl]
             data[n-nh:] = data[n-nh-1]
-            
+
         self.drop_growbuffer()
         self.ydata = data
         
@@ -2094,7 +2093,7 @@ class ButterworthResponse(FrequencyResponse):
     '''Butterworth frequency response.
 
     :param corner: corner frequency of the response
-    :param order: order of the reponse
+    :param order: order of the response
     :param type: either ``high`` or ``low``
     '''
 
@@ -2724,7 +2723,7 @@ def Lx_norm(u, v, norm=2):
         return (
             num.sqrt(num.sum((v-u)**2)),
             num.sqrt(num.sum(v**2)))
-              
+
     else:
         return (
             num.power(num.sum(num.abs(num.power(v - u, norm))), 1./norm), \
