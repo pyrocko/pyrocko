@@ -479,6 +479,10 @@ class Trace(object):
             return finals
 
     def resample(self, deltat):
+        '''Resample to given sampling rate *deltat*.
+
+        Resampling is performed in the frequency domain.
+        '''
 
         ndata = self.ydata.size
         ntrans = nextpow2(ndata)
@@ -488,7 +492,7 @@ class Trace(object):
         ndata2 = int(round(ndata*self.deltat/deltat2))
         if abs(fntrans2 - ntrans2) > 1e-7:
             logger.warn('resample: requested deltat %g could not be matched exactly: %g' % (deltat, deltat2))
-        
+
         data = self.ydata
         data_pad = num.zeros(ntrans, dtype=num.float)
         data_pad[:ndata]  = data
@@ -664,6 +668,17 @@ class Trace(object):
         self.ydata = num.abs(hilbert(self.ydata))
     
     def envelope(self, inplace=True):
+        '''Calculate the envelope of the trace.
+
+        :param inplace: calculate envelope in place
+
+        The calculation follows:
+
+        .. math::
+            Ynew = sqrt(Y**2+H(Y)**2)
+
+        where H is the Hilbert-Transform of the signal Y.
+        '''
         if inplace:
             self.drop_growbuffer()
             self.ydata = num.sqrt(self.ydata**2 + hilbert(self.ydata)**2)
@@ -673,6 +688,12 @@ class Trace(object):
             return tr
 
     def taper(self, taperer, inplace=True, chop=False):
+        '''Apply a :py:class:`Taper` to the trace.
+
+        :param taperer: instance of :py:class:`Taper` subclass
+        :param inplace: apply taper inplace
+        :param chop: if ``True``: exclude tapered parts from the resulting trace
+        '''
         if not inplace:
             tr = self.copy()
         else:
@@ -687,14 +708,13 @@ class Trace(object):
 
         if not inplace:
             return tr
-        
-    
+
     def whiten(self, order=6):
         '''Whiten signal in time domain using autoregression and recursive filter.
-        
+
         :param order: order of the autoregression process
         '''
-        
+
         b,a = self.whitening_coefficients(order)
         self.drop_growbuffer()
         self.ydata = signal.lfilter(b,a, self.ydata)
@@ -1858,7 +1878,6 @@ def same_sampling_rate(a,b, eps=1.0e-6):
 def merge_codes(a,b, sep='-'):
     '''Merge network-station-location-channel codes of a pair of traces.'''
     
-    
     o = []
     for xa,xb in zip(a.nslc_id, b.nslc_id):
         if xa == xb:
@@ -1869,6 +1888,9 @@ def merge_codes(a,b, sep='-'):
 
 
 class Taper(Object):
+    '''Base class for tapers.
+
+    Does nothing by default.'''
 
     def __call__(self, y, x0, dx):
         pass
@@ -2069,13 +2091,19 @@ class PoleZeroResponse(FrequencyResponse):
         return a
 
 class ButterworthResponse(FrequencyResponse):
+    '''Butterworth frequency response.
+
+    :param corner: corner frequency of the response
+    :param order: order of the reponse
+    :param type: either ``high`` or ``low``
+    '''
 
     corner = Float.T(default=1.0)
     order = Int.T(default=4)
-    typ = StringChoice.T(choices=['low', 'high'], default='low')
+    type = StringChoice.T(choices=['low', 'high'], default='low')
 
     def evaluate(self, freqs):
-        b, a = signal.butter(int(self.order), float(self.corner), self.typ, analog=True)
+        b, a = signal.butter(int(self.order), float(self.corner), self.type, analog=True)
         w, h = signal.freqs(b, a, freqs)
         return h
 
