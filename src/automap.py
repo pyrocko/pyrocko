@@ -28,7 +28,6 @@ d2m = d2r*earthradius
 m2d = 1./d2m
 cm = gmtpy.cm
 
-
 def point_in_region(p, r):
     p = [num.mod(x, 360.) for x in p]
     r = [num.mod(x, 360.) for x in r]
@@ -395,10 +394,28 @@ class Map(Object):
             DOTS_PR_INCH='1200',
             OBLIQUE_ANNOTATION='6')
 
+        gmtconf5 = dict(
+            MAP_TICK_PEN_PRIMARY='1.25p',
+            MAP_TICK_PEN_SECONDARY='1.25p',
+            MAP_TICK_LENGTH_PRIMARY='0.2c',
+            MAP_TICK_LENGTH_SECONDARY='0.6c',
+            FONT_ANNOT_PRIMARY='12p,Helvetica,black',
+            FONT_LABEL='12p,Helvetica,black',
+            PS_CHAR_ENCODING='ISOLatin1+',
+            MAP_FRAME_TYPE='fancy',
+            FORMAT_GEO_MAP='D',
+            PS_MEDIA='Custom_%ix%i' % (
+                w*gmtpy.cm,
+                h*gmtpy.cm),
+            PS_PAGE_ORIENTATION='portrait',
+            MAP_GRID_PEN_PRIMARY='thinnest,0/50/0',
+            #DOTS_PR_INCH='1200',
+            MAP_ANNOT_OBLIQUE='6') 
+
         gmtconf.update(
             (k.upper(), v) for (k, v) in self.gmt_config.iteritems())
 
-        gmt = gmtpy.GMT(config=gmtconf)
+        gmt = gmtpy.GMT(config=gmtconf5)
 
         layout = gmt.default_layout()
 
@@ -408,7 +425,7 @@ class Map(Object):
         # widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         # widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         widget['P'] = widget['J']
-        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width_m)gm'
+        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         # widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         # scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
         scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
@@ -614,8 +631,7 @@ class Map(Object):
             *self._jxyr)
 
         if self.comment:
-            fontsize = self.gmt.to_points(
-                self.gmt.gmt_config['LABEL_FONT_SIZE'])
+            fontsize = self.gmt.label_font_size()
 
             _, east, south, _ = self._wesn
             gmt.pstext(
@@ -677,8 +693,7 @@ class Map(Object):
 
     def _draw_labels(self):
         if self._labels:
-            fontsize = self.gmt.to_points(
-                self.gmt.gmt_config['LABEL_FONT_SIZE'])
+            fontsize = self.gmt.label_font_size()
 
             n = len(self._labels)
 
@@ -698,7 +713,11 @@ class Map(Object):
             dys = num.zeros(n)
 
             g = gmtpy.GMT()
-            g.psbasemap('-G0', finish=True, *(j, r))
+            if g.is_gmt5():
+                g.psbasemap('-B+g0', finish=True, *(j, r))
+            else:
+                g.psbasemap('-G0', finish=True, *(j, r))
+
             l, b, r, t = g.bbox()
             h = (t-b)
             w = (r-l)

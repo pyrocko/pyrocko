@@ -810,15 +810,159 @@ VECTOR_SHAPE            = 0
 VERBOSE                 = FALSE
 '''
 
+_gmt_defaults_by_version['5.1.2'] = r'''
+#
+# GMT 5.1.2 Defaults file
+# vim:sw=8:ts=8:sts=8
+# $Revision: 13836 $
+# $LastChangedDate: 2014-12-20 03:45:42 -1000 (Sat, 20 Dec 2014) $
+#
+# COLOR Parameters
+#
+COLOR_BACKGROUND = black
+COLOR_FOREGROUND = white
+COLOR_NAN = 127.5
+COLOR_MODEL = none
+COLOR_HSV_MIN_S = 1
+COLOR_HSV_MAX_S = 0.1
+COLOR_HSV_MIN_V = 0.3
+COLOR_HSV_MAX_V = 1
+#
+# DIR Parameters
+#
+DIR_DATA = 
+DIR_DCW = 
+DIR_GSHHG = /usr/local/share/coast
+#
+# FONT Parameters
+#
+FONT_ANNOT_PRIMARY = 12p,Helvetica,black
+FONT_ANNOT_SECONDARY = 14p,Helvetica,black
+FONT_LABEL = 16p,Helvetica,black
+FONT_LOGO = 8p,Helvetica,black
+FONT_TITLE = 24p,Helvetica,black
+#
+# FORMAT Parameters
+#
+FORMAT_CLOCK_IN = hh:mm:ss
+FORMAT_CLOCK_OUT = hh:mm:ss
+FORMAT_CLOCK_MAP = hh:mm:ss
+FORMAT_DATE_IN = yyyy-mm-dd
+FORMAT_DATE_OUT = yyyy-mm-dd
+FORMAT_DATE_MAP = yyyy-mm-dd
+FORMAT_GEO_OUT = D
+FORMAT_GEO_MAP = ddd:mm:ss
+FORMAT_FLOAT_OUT = %.12g
+FORMAT_FLOAT_MAP = %.12g
+FORMAT_TIME_PRIMARY_MAP = full
+FORMAT_TIME_SECONDARY_MAP = full
+FORMAT_TIME_STAMP = %Y %b %d %H:%M:%S
+#
+# GMT Miscellaneous Parameters
+#
+GMT_COMPATIBILITY = 4
+GMT_CUSTOM_LIBS = 
+GMT_EXTRAPOLATE_VAL = NaN
+GMT_FFT = auto
+GMT_HISTORY = true
+GMT_INTERPOLANT = akima
+GMT_TRIANGULATE = Shewchuk
+GMT_VERBOSE = compat
+#
+# I/O Parameters
+#
+IO_COL_SEPARATOR = tab
+IO_GRIDFILE_FORMAT = nf
+IO_GRIDFILE_SHORTHAND = false
+IO_HEADER = false
+IO_N_HEADER_RECS = 0
+IO_NAN_RECORDS = pass
+IO_NC4_CHUNK_SIZE = auto
+IO_NC4_DEFLATION_LEVEL = 3
+IO_LONLAT_TOGGLE = false
+IO_SEGMENT_MARKER = >
+#
+# MAP Parameters
+#
+MAP_ANNOT_MIN_ANGLE = 20
+MAP_ANNOT_MIN_SPACING = 0p
+MAP_ANNOT_OBLIQUE = 1
+MAP_ANNOT_OFFSET_PRIMARY = 5p
+MAP_ANNOT_OFFSET_SECONDARY = 5p
+MAP_ANNOT_ORTHO = we
+MAP_DEFAULT_PEN = default,black
+MAP_DEGREE_SYMBOL = ring
+MAP_FRAME_AXES = WESNZ
+MAP_FRAME_PEN = thicker,black
+MAP_FRAME_TYPE = fancy
+MAP_FRAME_WIDTH = 5p
+MAP_GRID_CROSS_SIZE_PRIMARY = 0p
+MAP_GRID_CROSS_SIZE_SECONDARY = 0p
+MAP_GRID_PEN_PRIMARY = default,black
+MAP_GRID_PEN_SECONDARY = thinner,black
+MAP_LABEL_OFFSET = 8p
+MAP_LINE_STEP = 0.75p
+MAP_LOGO = false
+MAP_LOGO_POS = BL/-54p/-54p
+MAP_ORIGIN_X = 1i
+MAP_ORIGIN_Y = 1i
+MAP_POLAR_CAP = 85/90
+MAP_SCALE_HEIGHT = 5p
+MAP_TICK_LENGTH_PRIMARY = 5p/2.5p
+MAP_TICK_LENGTH_SECONDARY = 15p/3.75p
+MAP_TICK_PEN_PRIMARY = thinner,black
+MAP_TICK_PEN_SECONDARY = thinner,black
+MAP_TITLE_OFFSET = 14p
+MAP_VECTOR_SHAPE = 0
+#
+# Projection Parameters
+#
+PROJ_AUX_LATITUDE = authalic
+PROJ_ELLIPSOID = WGS-84
+PROJ_LENGTH_UNIT = cm
+PROJ_MEAN_RADIUS = authalic
+PROJ_SCALE_FACTOR = default
+#
+# PostScript Parameters
+#
+PS_CHAR_ENCODING = ISOLatin1+
+PS_COLOR_MODEL = rgb
+PS_COMMENTS = false
+PS_IMAGE_COMPRESS = deflate,5
+PS_LINE_CAP = butt
+PS_LINE_JOIN = miter
+PS_MITER_LIMIT = 35
+PS_MEDIA = a4
+PS_PAGE_COLOR = white
+PS_PAGE_ORIENTATION = landscape
+PS_SCALE_X = 1
+PS_SCALE_Y = 1
+PS_TRANSPARENCY = Normal
+#
+# Calendar/Time Parameters
+#
+TIME_EPOCH = 1970-01-01T00:00:00
+TIME_IS_INTERVAL = off
+TIME_INTERVAL_FRACTION = 0.5
+TIME_LANGUAGE = us
+TIME_UNIT = s
+TIME_WEEK_START = Monday
+TIME_Y2K_OFFSET_YEAR = 1950
+'''
 
 def get_gmt_version(gmtdefaultsbinary, gmthomedir):
     args = [gmtdefaultsbinary]
 
     environ = os.environ.copy()
     environ['GMTHOME'] = gmthomedir
-    p = subprocess.Popen(args, stderr=subprocess.PIPE, env=environ)
+    p = subprocess.Popen(
+        args,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=environ)
+
     (stdout, stderr) = p.communicate()
-    m = re.search(r'(\d+(\.\d+)*)', stderr)
+    m = re.search(r'(\d+(\.\d+)*)', stderr) or re.search(r'# GMT (\d+(\.\d+)*)', stdout)
     if not m:
         raise Exception("Can't extract version number from output of %s" %
                         gmtdefaultsbinary)
@@ -985,13 +1129,21 @@ def all_paper_sizes():
     setup_paper_sizes()
     return _paper_sizes
 
+def measure_unit(gmt_config):
+    return gmt_config.get('MEASURE_UNIT', gmt_config['PROJ_LENGTH_UNIT'])
+
+def paper_media(gmt_config):
+    return gmt_config.get('PAPER_MEDIA', gmt_config['PS_MEDIA'])
+
+def page_orientation(gmt_config):
+    return gmt_config.get('PAGE_ORIENTATION', gmt_config['PS_PAGE_ORIENTATION'])
 
 def make_bbox(width, height, gmt_config, margins=(0.8, 0.8, 0.8, 0.8)):
 
     leftmargin, topmargin, rightmargin, bottommargin = margins
-    portrait = gmt_config['PAGE_ORIENTATION'].lower() == 'portrait'
+    portrait = page_orientation(gmt_config).lower() == 'portrait'
 
-    paper_size = get_paper_size(gmt_config['PAPER_MEDIA'])
+    paper_size = get_paper_size(paper_media(gmt_config))
     if not portrait:
         paper_size = paper_size[1], paper_size[0]
 
@@ -2618,7 +2770,10 @@ class GridLayout(Widget):
 
 def aspect_for_projection(*args, **kwargs):
     gmt = GMT()
-    gmt.psbasemap('-G0', finish=True, *args, **kwargs)
+    if gmt.is_gmt5():
+        gmt.psbasemap('-B+gblack', finish=True, *args, **kwargs)
+    else:
+        gmt.psbasemap('-G0', finish=True, *args, **kwargs)
     l, b, r, t = gmt.bbox()
     return (t-b)/(r-l)
 
@@ -2689,6 +2844,13 @@ class LineStreamChopper:
         pass
 
 
+font_tab = {
+    0: 'Helvetica',
+    1: 'Helvetica-Bold',
+}
+
+font_tab_rev = dict((v,k) for (k,v) in font_tab.iteritems())
+
 class GMT:
     '''A thin wrapper to GMT command execution.
 
@@ -2736,7 +2898,7 @@ class GMT:
             self.gmt_config.update(config)
 
         self.tempdir = tempfile.mkdtemp("", "gmtpy-")
-        self.gmt_config_filename = pjoin(self.tempdir, 'gmtdefaults')
+        self.gmt_config_filename = pjoin(self.tempdir, 'gmt.conf')
         self.gen_gmt_config_file(self.gmt_config_filename, self.gmt_config)
 
         if kontinue is not None:
@@ -2757,6 +2919,9 @@ class GMT:
         self.command_log = []
         self.keep_temp_dir = False
 
+    def is_gmt5(self):
+        return self.installation['version'][0] == '5'
+
     def get_config(self, key):
         return self.gmt_config[key]
 
@@ -2768,11 +2933,25 @@ class GMT:
         if unit in _units:
             return float(string[:-1])/_units[unit]
         else:
-            default_unit = gmt.gmt_config['MEASURE_UNIT'].lower()[0]
+            default_unit = measure_unit(self.gmt_config).lower()[0]
             return float(string)/_units[default_unit]
+
+    def label_font_size(self):
+        if self.is_gmt5():
+            return self.to_points(self.gmt_config['FONT_LABEL'].split(',')[0])
+        else:
+            return self.to_points(self.gmt_config['LABEL_FONT_SIZE'])
+
+    def label_font(self):
+        if self.is_gmt5():
+            return font_tab_rev(self.gmt_config['FONT_LABEL'].split(',')[1])
+        else:
+            return self.gmt_config['LABEL_FONT']
 
     def gen_gmt_config_file(self, config_filename, config):
         f = open(config_filename, 'w')
+        f.write('#\n# GMT %s Defaults file\n' % self.installation['version'])
+
         for k, v in config.iteritems():
             f.write('%s = %s\n' % (k, v))
         f.close()
@@ -2875,7 +3054,8 @@ class GMT:
             raise Exception('No such file: %s' % args[0])
         args.extend(options)
         args.extend(addargs)
-        if not suppressdefaults:
+        if not suppressdefaults and not self.is_gmt5():
+            # does not seem to work with GMT 5 (and should not be necessary
             args.append('+'+gmt_config_filename)
 
         bs = 2048
@@ -3114,11 +3294,13 @@ class GMT:
     def page_size_points(self):
         '''Try to get paper size of output postscript file in points.'''
 
-        pm = self.gmt_config['PAPER_MEDIA'].lower()
+
+        pm = paper_media(self.gmt_config).lower()
         if pm.endswith('+') or pm.endswith('-'):
             pm = pm[:-1]
 
-        orient = self.gmt_config['PAGE_ORIENTATION'].lower()
+        orient = page_orientation(self.gmt_config).lower()
+
         if pm in all_paper_sizes():
 
             if orient == 'portrait':
@@ -3173,7 +3355,7 @@ class GMT:
             if w is None or h is None:
                 raise Exception("Can't determine page size for layout")
 
-            pm = self.gmt_config['PAPER_MEDIA'].lower()
+            pm = paper_media(self.gmt_config).lower()
 
             if with_palette:
                 palette_layout = GridLayout(3, 1)
@@ -3659,8 +3841,8 @@ def nice_palette(gmt, widget, scaleguru, cptfile, zlabeloffset=0.8*inch,
         gmt.psbasemap(R=pal_ax_r, B='4::/%(zinc)g::E' % par_ax, *widget.JXY())
 
     if par_ax['zlabel']:
-        label_font = gmt.gmt_config['LABEL_FONT']
-        label_font_size = gmt.to_points(gmt.gmt_config['LABEL_FONT_SIZE'])
+        label_font = gmt.label_font()
+        label_font_size = gmt.label_font_size()
         label_offset = zlabeloffset
         gmt.pstext(
             R=(0, 1, 0, 2), D="%gp/0p" % label_offset,
