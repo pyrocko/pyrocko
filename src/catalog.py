@@ -615,6 +615,7 @@ class Kinherd(EarthquakeCatalog):
                 lon=params['longitude'],
                 depth=params['depth'],
                 magnitude=params['magnitude'],
+                duration=params['rise_time'],
                 name = eq['name'],
                 catalog='KPS',
                 moment_tensor = mt)
