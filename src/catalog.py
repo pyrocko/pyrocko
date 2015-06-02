@@ -451,7 +451,7 @@ class GlobalCMT(EarthquakeCatalog):
 
 class USGS(EarthquakeCatalog):
 
-    def __init__(self, catalog='pde'):
+    def __init__(self, catalog=None):
        self.catalog = catalog 
        self.events = {}
 
