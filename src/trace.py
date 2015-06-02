@@ -675,7 +675,8 @@ class Trace(object):
         The calculation follows:
 
         .. math::
-            Ynew = sqrt(Y**2+H(Y)**2)
+
+            Y' = \\sqrt{Y^2+H(Y)^2}
 
         where H is the Hilbert-Transform of the signal Y.
         '''
