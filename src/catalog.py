@@ -485,7 +485,7 @@ class USGS(EarthquakeCatalog):
         if magmax != 10.:
             a('maxmagnitude=%g' % magmax)
         
-        url = 'http://comcat.cr.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
+        url = 'http://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
         page = urllib2.urlopen(url).read()
