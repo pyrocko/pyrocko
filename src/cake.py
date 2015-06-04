@@ -3142,10 +3142,17 @@ class LayeredModel(object):
         return mod_simple
 
     def extract(self, depth_min=None, depth_max=None):
+        '''Extract layers from model.
+
+        :param depth_min: minimal layer depth to be extracted [m]
+        :param depth_max: maximum layer depth to be extracted [m]
+
+        :returns: object of type :py:class:`LayeredModel` composed of the
+        extracted layers.'''
 
         if isinstance(depth_min, basestring):
             depth_min = self.discontinuity(depth_min).z
-        
+
         if isinstance(depth_max, basestring):
             depth_max = self.discontinuity(depth_max).z
 
@@ -3341,9 +3348,13 @@ def write_nd_model(mod, fn):
     f.close()
 
 def builtin_models():
+    '''Get a list of names of built-in models.'''
     return  sorted([ os.path.splitext(os.path.basename(x))[0] for x in glob.glob(builtin_model_filename('*')) ])
 
 def builtin_model_filename(modelname):
+    '''Get the full path of the file containing a built-in model.
+
+    :param modelname: name of built-in model'''
     return util.data_file(os.path.join('earthmodels', modelname+'.nd'))
 
 def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
