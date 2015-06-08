@@ -122,10 +122,11 @@ class Event(Object):
             lat, lon, time, name, depth, magnitude, magnitude_type, region, \
                 catalog, moment_tensor, duration = vals
             
-        Object.__init__(self, lat=lat, lon=lon, time=time, name=name, depth=depth,
-                        magnitude=magnitude, magnitude_type=magnitude_type,
-                        region=region, catalog=catalog,
-                        moment_tensor=moment_tensor, duration=duration)
+        Object.__init__(self, lat=float(lat), lon=float(lon), time=float(time),
+                        name=str(name), depth=float(depth),
+                        magnitude=float(magnitude), magnitude_type=str(magnitude_type),
+                        region=str(region), catalog=str(catalog),
+                        moment_tensor=moment_tensor, duration=float(duration))
             
     def time_as_string(self):
         return util.time_to_str(self.time)
@@ -300,7 +301,6 @@ class Event(Object):
 
     def get_hash(self):
         """Get a hash representation of the :py:class`Event` object."""
-        self.validate()
         e = self
         return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
 
