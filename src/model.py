@@ -299,6 +299,8 @@ class Event(Object):
         file.close()
 
     def get_hash(self):
+        """Get a hash representation of the :py:class`Event` object."""
+        self.validate()
         e = self
         return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
 
