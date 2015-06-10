@@ -411,29 +411,6 @@ class MomentTensor(Object):
         
         return results
 
-    def angle(self, other):
-        a = self._m_eigenvecs
-        b = other._m_eigenvecs
-
-        r = []
-        for avec in a:
-            c = []
-            for bvec in b:
-                c.append( float(num.dot(avec, bvec.T)))
-
-            r.append(c)
-
-        r = num.matrix(r)
-    
-        angles = []
-        for r1 in self._rotmats:
-            for r2 in other._rotmats:
-                r = num.dot(r1.T, r2)
-                angles.append( math.acos((float(r.trace()) - 1.0) / 2.0)*r2d )
-
-        a = min(angles)
-        return min( a, 180. - a )
-
     def p_axis(self):
         '''Get direction of p axis.'''
         return (self._m_eigenvecs.T)[0]
