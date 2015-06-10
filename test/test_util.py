@@ -61,6 +61,14 @@ class UtilTestCase(unittest.TestCase):
             print tt2 - tt1
 
 
+    def test_consistency_merge(self):
+        data = [
+            ('a', 1, 2, 3.),
+            ('a', 2, 2, 3.),
+            ('a', 1, 2, 3.)]
+
+        merged = util.consistency_merge(data, error='ignore')
+        assert merged == (1, 2, 3.0)
 
 
 if __name__ == "__main__":

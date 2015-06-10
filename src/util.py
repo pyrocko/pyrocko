@@ -5,7 +5,6 @@ from scipy import signal
 import os.path as op
 import numpy as num
 import util_ext
-from collections import Counter
 
 logger = logging.getLogger('pyrocko.util')
 
@@ -1289,8 +1288,16 @@ def consistency_check(list_of_tuples, message='values differ:'):
                 for t in list_of_tuples))
 
 
+class defaultzerodict(dict):
+    def __missing__(self, k):
+        return 0
+
+
 def mostfrequent(x):
-    c = Counter(x)
+    c = defaultzerodict()
+    for e in x:
+        c[e] += 1
+
     return sorted(c.keys(), key=lambda k: c[k])[-1]
 
 
@@ -1307,12 +1314,12 @@ def consistency_merge(list_of_tuples,
     try:
         consistency_check(list_of_tuples, message)
         return list_of_tuples[0][1:]
-    except Inconsistencies, e:
+    except Inconsistency, e:
         if error == 'raise':
             raise
 
         elif error == 'warn':
             logger.warn(str(e))
 
-        return [merge(x) for x in zip(*list_of_tuples)[1:]]
+        return tuple([merge(x) for x in zip(*list_of_tuples)[1:]])
 
