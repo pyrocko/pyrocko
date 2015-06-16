@@ -379,8 +379,9 @@ if __name__ == '__main__':
                     r = {}
                     for k, pat, repl in replacements:
                         oldval = getattr(tr, k)
-                        newval = re.sub(pat, repl, oldval)
-                        r[k] = newval
+                        newval, n = re.subn(pat, repl, oldval)
+                        if n:
+                            r[k] = newval
 
                     tr.set_codes(**r)
 
