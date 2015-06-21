@@ -419,6 +419,15 @@ class TraceTestCase(unittest.TestCase):
         self.assertEqual(m, 7., 'L1-norm: m is not 7., but %s' % str(m))
         self.assertEqual(n, 4.8, 'L1-norm: n is not 4.8, but %s' % str(n))
 
+    def testLikelihood(self):
+        tref = num.array([ 0., 0., 1., 1., 0., 0.])
+        ttest = num.array([ 0., 0., 0., 1., 0., 0.])
+        rt = trace.Trace(station='REF', ydata=tref, deltat=0.1)
+        candt = trace.Trace(station='TT1', ydata=ttest, deltat=0.1)
+        InvCov = num.identity(len(tref))
+        setup = None
+        rt.likelihood(candt,InvCov,setup)
+
     def testMisfitOfSameTracesZero(self):
         y = num.random.random(10000)
         y -= max(y)*0.5

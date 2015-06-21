@@ -1140,9 +1140,15 @@ class Trace(object):
         :param self (Observation) :py:class:`Trace` object
         :param candidate (Model) :py:class:`Trace` object from GF store
         :param InvCov: Inverse Covariance matrix of the data (same length as self)
+        :param setup: :py:class:`MisfitSetup` object - can be set to "None" if no special preprocessing
         '''
         rt = self
-        rt_data, can_data, rt_proc, can_proc = data_setup(rt, candidate, setup, nocache=nocache)
+
+        if setup is None:
+            rt_data = rt.ydata
+            can_data = candidate.ydata
+        else:
+            rt_data, can_data, rt_proc, can_proc = data_setup(rt, candidate, setup, nocache=nocache)
         
         if len(rt_data) != len(InvCov):
             print 'traces have', len(rt_data),' ', len(can_data),' and the Covariance matrix has ', len(InvCov)
@@ -2790,6 +2796,33 @@ def Lx_norm(u, v, norm=2):
         return (
             num.power(num.sum(num.abs(num.power(v - u, norm))), 1./norm), \
             num.power(num.sum(num.abs(num.power(v, norm))), 1./norm))
+
+def sub_covariance(n, dt, tzero):
+    '''Calculate SubCovariance Matrix of trace object following Duputel et al. 2012 GJI
+    "Uncertainty estimations for seismic source inversions" p. 5
+    :param: n - length of trace/ samples of quadratic Covariance matrix
+    :param: dt - time step of samples 
+    :param: tzero - shortest period of waves in trace
+    Cd(i,j) = (Variance of trace)*exp(-abs(ti-tj)/(shortest period T0 of waves))
+    i,j are samples of the seismic trace
+
+    Here, without the variance part, as it can be just multiplied to the array, which 
+    is trace independent if the frequency content is the same. So it doesnt need to be 
+    recalculated.
+    '''
+
+    return num.exp(-num.abs(num.arange(n)[:,num.newaxis]-num.arange(n)[num.newaxis,:])*dt / tzero)
+
+def CovInvcov(Variance,Csub):
+    '''Calculate Covariance matrix and Inverse of the Covariance matrix 
+    following Duputel et al. 2012 GJI "Uncertainty estimations for seismic source inversions" p. 5
+    :param: Variance: Variance of the data
+    :param: Csub:     Subcovariance Matrix of a trace with a certain length 
+                      (Output of SubCovariance function)
+    '''
+    Cd = Variance * Csub
+    InvCd = num.linalg.inv(Cd)
+    return Cd, InvCd
 
 def do_downsample(tr, deltat):
     if abs(tr.deltat - deltat) / tr.deltat > 1e-6:
