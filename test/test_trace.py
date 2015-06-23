@@ -75,8 +75,11 @@ class TraceTestCase(unittest.TestCase):
             assert x.tmin == 100
             assert x.get_ydata().size == 10
         
-        for meth, res in (('use_second', [1.,1.]), ('use_first', [0.,0.]), ('crossfade_cos', [0.25,0.75])):
-            a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=100)
+        for meth, res in (('use_second', [1.,1.]), ('use_first', [0.,0.]), ('crossfade_cos', [0.25,0.75]), ('add', [0., 0.])):
+            if meth == 'add':
+                a = trace.Trace(deltat=dt, ydata=num.ones(10)*-1, tmin=100)
+            else:
+                a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=100)
             b = trace.Trace(deltat=dt, ydata=num.ones(10), tmin=108)
             traces = [a,b]
             traces.sort( lambda a,b: cmp(a.full_id, b.full_id) )
@@ -84,9 +87,6 @@ class TraceTestCase(unittest.TestCase):
             for x in xs:
                 assert x.ydata.size == 18
                 assert numeq(x.ydata[8:10], res, 1e-6)
-                
-
-
 
 
     def testRotation(self):
