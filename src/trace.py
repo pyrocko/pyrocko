@@ -1399,7 +1399,8 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second',
     :param fillmethod:  what to put into the gaps: 'interpolate' or 'zeros'.
     :param deoverlap:   how to handle overlaps: 'use_second' to use data from 
                         second trace (default), 'use_first' to use data from first
-                        trace, 'crossfade_cos' to crossfade with cosine taper 
+                        trace, 'crossfade_cos' to crossfade with cosine taper,
+                        'add' to add amplitude values.
     :param maxlap:      maximum number of samples of overlap which are removed
       
     :returns:           list of traces
@@ -1455,6 +1456,9 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second',
                             if deoverlap == 'use_second':
                                 a.ydata = num.concatenate((a.ydata[:-n], b.ydata))
                             elif deoverlap in ('use_first', 'crossfade_cos'):
+                                a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
+                            elif deoverlap == 'add':
+                                a.ydata[-n:] += b.ydata[:n]
                                 a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
                             else:
                                 assert False, 'unknown deoverlap method'
