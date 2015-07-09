@@ -20,9 +20,10 @@ import platform
 
 if platform.mac_ver()!=('', ('', '', ''), ''):
     qfiledialog_options = QFileDialog.DontUseNativeDialog
+    macosx = True
 else:
     qfiledialog_options = None
-
+    macosx = False
 logger = logging.getLogger('pyrocko.pile_viewer')
 
 
@@ -1746,9 +1747,10 @@ def MakePileViewerMainClass(base):
                 if self.window().windowState() & Qt.WindowFullScreen or self.window().windowState() & Qt.WindowMaximized:
                     self.window().showNormal()
                 else:
-                    #self.window().showFullScreen()
-                    self.window().showMaximized()
-                    print self.window().windowState()
+                    if macosx:
+                        self.window().showMaximized()
+                    else:
+                        self.window().showFullScreen()
 
             elif keytext == 'g':
                 self.go_to_selection()
