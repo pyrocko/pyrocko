@@ -483,6 +483,54 @@ class MomentTensor(Object):
             
         return s
 
+    def standard_decomposition(self):
+        epsilon = 1e-6
+
+        m = self.m()
+
+        trace_m = num.trace(m)
+        m_iso = num.diag([trace_m / 3., trace_m / 3., trace_m / 3.])
+        moment_iso = abs(trace_m / 3.)
+
+        m_devi = m - m_iso
+
+        evals, evecs = eigh_check(m_devi)
+
+        moment_devi = num.max(num.abs(evals))
+        moment = moment_iso + moment_devi
+
+        iorder = num.argsort(num.abs(evals))
+        evals_sorted = evals[iorder]
+        evecs_sorted = (evecs.T[iorder]).T
+
+        if moment_devi < epsilon * moment_iso:
+            signed_moment_dc = 0.
+        else:
+            assert 0 <=  -evals_sorted[0] / evals_sorted[2] <= 0.5
+            signed_moment_dc = evals_sorted[2] * (1.0 + 2.0 * (
+                evals_sorted[0] / evals_sorted[2]))
+
+        moment_dc = abs(signed_moment_dc)
+        m_dc_es = signed_moment_dc * num.diag([0., -1.0, 1.0])
+        m_dc = num.dot(evecs_sorted, num.dot(m_dc_es, evecs_sorted.T))
+
+        m_clvd = m_devi - m_dc
+
+        moment_clvd = moment_devi - moment_dc
+
+        ratio_dc = moment_dc / moment
+        ratio_clvd = moment_clvd / moment
+        ratio_iso = moment_iso / moment
+        ratio_devi = moment_devi / moment
+
+        return [
+            (moment_iso, ratio_iso, m_iso),
+            (moment_dc, ratio_dc, m_dc),
+            (moment_clvd, ratio_clvd, m_clvd),
+            (moment_devi, ratio_devi, m_devi),
+            (moment, 1.0, m)]
+
+
 def other_plane( strike, dip, rake ):
     mt = MomentTensor( strike=strike, dip=dip, rake=rake )
     both_sdr = mt.both_strike_dip_rake()
