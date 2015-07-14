@@ -66,6 +66,7 @@ import sys
 #import logging 
 from cStringIO import StringIO
 from pyrocko import moment_tensor as pyrocko_mt
+from pyrocko import event
 
 #additional library:
 import numpy as N
@@ -5654,6 +5655,8 @@ if __name__ == "__main__":
         - 9 (full moment tensor)
 
         (With all angles to be given in degrees)
+
+        or a filename containing a pyrocko event.
         ---------------------------------------------------------------------------------
 
         HELP for a particular method is shown with: 
@@ -5680,6 +5683,12 @@ if __name__ == "__main__":
         
     try:
         M_raw = [float(xx) for xx in sys.argv[2].split(',')]
+        if len(M_raw)==1:
+            try:
+                event = model.Event(load=M_raw)
+                M_raw = event.moment_tensor.m6()
+        else:
+            M_raw = [float(xx) for xx in M_raw]
     except:
         #sys.exit('\n  ERROR - Provide valid source mechanism !!!\n')
     #if sys.argv[2].startswith('-'):
@@ -5692,7 +5701,7 @@ if __name__ == "__main__":
         sys.argv = dummy_list
         M_raw = [float(xx) for xx in sys.argv[2].split(',')]
 
-    if not len(M_raw) in [3,4,6,7,9]:
+    if not len(M_raw) in [1,3,4,6,7,9]:
         print '\nERROR!! Provide proper source mechanism\n\n'
         sys.exit()
     if len(M_raw) in [4,6,7,9] and  len(N.array(M_raw).nonzero()[0]) == 0:
