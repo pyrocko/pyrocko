@@ -1,6 +1,5 @@
 from pyrocko.snuffling import Snuffling, Param, Choice, Switch
 import numpy as num
-from obspy.signal import konnoohmachismoothing
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
