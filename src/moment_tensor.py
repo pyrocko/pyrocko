@@ -109,9 +109,9 @@ def euler_to_matrix( alpha, beta, gamma ):
     the line of nodes is the intersection between the x-y and the xs-ys
     planes.
     
-    :param alpha: is the angle between the z-axis and the zs-axis.
-    :param beta:  is the angle between the x-axis and the line of nodes.
-    :param gamma: is the angle between the line of nodes and the xs-axis.
+    :param alpha: is the angle between the z-axis and the zs-axis [rad]
+    :param beta:  is the angle between the x-axis and the line of nodes [rad]
+    :param gamma: is the angle between the line of nodes and the xs-axis [rad]
 
     Usage for moment tensors::
 
