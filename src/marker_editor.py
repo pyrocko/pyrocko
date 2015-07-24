@@ -54,7 +54,8 @@ class MarkerModel(QAbstractTableModel):
 
     def set_viewer(self, viewer):
         self.viewer = viewer
-        self.connect(self.viewer, SIGNAL('markers_changed(int,int)'), self.markers_changed)
+        self.connect(self.viewer, SIGNAL('markers_added(int,int)'), self.markers_added)
+        self.connect(self.viewer, SIGNAL('markers_removed(QList<int>)'), self.markers_removed)
 
     def rowCount(self, parent):
         if not self.viewer:
@@ -64,9 +65,13 @@ class MarkerModel(QAbstractTableModel):
     def columnCount(self, parent):
         return len(_column_mapping)
 
-    def markers_changed(self, istart, istop):
+    def markers_added(self, istart, istop):
         self.beginInsertRows(QModelIndex(), istart, istop-1)
         self.endInsertRows()
+
+    def markers_removed(self, i):
+        map(lambda x: self.beginRemoveRows(QModelIndex(), x, x), i)
+        self.endRemoveRows()
 
     def headerData(self, col, orientation, role):
         if orientation == Qt.Horizontal:
