@@ -1438,18 +1438,20 @@ def MakePileViewerMainClass(base):
         def add_marker(self, marker):
             self.markers.append(marker)
             self.emit(
-                SIGNAL('markers_changed(int,int)'),
+                SIGNAL('markers_added(int,int)'),
                 len(self.markers)-1, len(self.markers))
 
         def add_markers(self, markers):
             len_before = len(self.markers)
             self.markers.extend(markers)
             self.emit(
-                SIGNAL('markers_changed(int,int)'), 
+                SIGNAL('markers_added(int,int)'), 
                 len_before, len(self.markers))
 
         def remove_marker(self, marker):
             try:
+                indx = [self.markers.index(marker)]
+                self.remove_marker_from_menu(indx)
                 self.markers.remove(marker)
                 if marker is self.active_event_marker:
                     self.active_event_marker.set_active(False)
@@ -1459,8 +1461,21 @@ def MakePileViewerMainClass(base):
                 pass
 
         def remove_markers(self, markers):
+            indxs = [self.markers.index(m) for m in markers]
+            self.remove_marker_from_menu(indxs)
             for marker in markers:
-                self.remove_marker(marker)
+                try:
+                    self.remove_marker(marker)
+                    self.markers.remove(marker)
+                    if marker is self.active_event_marker:
+                        self.active_event_marker.set_active(False)
+                        self.active_event_marker = None
+
+                except ValueError:
+                    pass
+
+        def remove_marker_from_menu(self, indx):
+            self.emit(SIGNAL('markers_removed(QList<int>)'), indx)
 
         def set_markers(self, markers):
             self.markers = markers
