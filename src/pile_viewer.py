@@ -16,8 +16,14 @@ from PyQt4.QtOpenGL import *
 from PyQt4.QtSvg import *
 
 import scipy.stats as sstats
+import platform 
 
-
+if platform.mac_ver()!=('', ('', '', ''), ''):
+    qfiledialog_options = QFileDialog.DontUseNativeDialog
+    macosx = True
+else:
+    qfiledialog_options = None
+    macosx = False
 logger = logging.getLogger('pyrocko.pile_viewer')
 
 
@@ -1207,7 +1213,6 @@ def MakePileViewerMainClass(base):
             self.pile.load_files( sorted(fns), filename_attributes=regex, 
                     cache=cache, fileformat=format, 
                     show_progress=False, update_progress=update_progress)
-
             self.automatic_updates = True
             self.update()
 
@@ -1227,8 +1232,7 @@ def MakePileViewerMainClass(base):
             caption = 'Select one or more files to open'
 
             fns = QFileDialog.getOpenFileNames(
-                self,
-                caption)
+                self, caption, options=qfiledialog_options)
 
             self.load(list(str(fn) for fn in fns))
         
@@ -1237,8 +1241,7 @@ def MakePileViewerMainClass(base):
             caption = 'Select directory to scan for waveform files'
 
             fn = QFileDialog.getExistingDirectory(
-                self,
-                caption)
+                self, caption, options=qfiledialog_options)
 
             self.load([str(fn)])
 
@@ -1246,8 +1249,7 @@ def MakePileViewerMainClass(base):
             caption = 'Select one or more files to open'
 
             fns = QFileDialog.getOpenFileNames(
-                self,
-                caption)
+                self, caption, options=qfiledialog_options)
 
             stations = map( lambda x: pyrocko.model.load_stations(str(x)), fns)           
             for stat in stations:
@@ -1385,14 +1387,16 @@ def MakePileViewerMainClass(base):
     
         def write_markers(self):
             caption = "Choose a file name to write markers"
-            fn = QFileDialog.getSaveFileName(self, caption)
+            fn = QFileDialog.getSaveFileName(
+                self, caption, options=qfiledialog_options)
             if fn:
                 Marker.save_markers(self.markers, fn,
                         fdigits=self.time_fractional_digits())
 
         def write_selected_markers(self):
             caption = "Choose a file name to write selected markers"
-            fn = QFileDialog.getSaveFileName(self, caption)
+            fn = QFileDialog.getSaveFileName(
+                self, caption, options=qfiledialog_options)
             if fn:
                 Marker.save_markers(self.selected_markers(), fn,
                         fdigits=self.time_fractional_digits())
@@ -1402,7 +1406,8 @@ def MakePileViewerMainClass(base):
             Open QFileDialog to open, read and add markers to the pile viewer.
             '''
             caption = "Selet one or more files to open"
-            fn = QFileDialog.getOpenFileName(self, caption)
+            fn = QFileDialog.getOpenFileName(
+                self, caption, options=qfiledialog_options)
             if fn:
                 self.add_markers(Marker.load_markers(fn))
 
@@ -1739,10 +1744,13 @@ def MakePileViewerMainClass(base):
                 self.emit(SIGNAL('want_input()'))
 
             elif keytext == 'f':
-                if self.window().windowState() & Qt.WindowFullScreen:
+                if self.window().windowState() & Qt.WindowFullScreen or self.window().windowState() & Qt.WindowMaximized:
                     self.window().showNormal()
                 else:
-                    self.window().showFullScreen()
+                    if macosx:
+                        self.window().showMaximized()
+                    else:
+                        self.window().showFullScreen()
 
             elif keytext == 'g':
                 self.go_to_selection()
@@ -2038,7 +2046,8 @@ def MakePileViewerMainClass(base):
             fn = QFileDialog.getSaveFileName(self, 
                 'Save as SVG',
                 os.path.join(os.environ['HOME'],  'untitled.svg'),
-                'SVG (*.svg)'
+                'SVG (*.svg)',
+                options=qfiledialog_options
             )
             
             generator = QSvgGenerator()
