@@ -31,6 +31,8 @@ subcommand_descriptions = {
         'download':      'download GF store from a server',
         'modelview':     'plot earthmodels',
         'upgrade':       'upgrade store format to latest version',
+        'addref':        'import citation references to GF store config',
+        'qc':            'quality check',
     }
 
 subcommand_usages = {
@@ -52,6 +54,8 @@ subcommand_usages = {
         'download':      'download [options] <site> <store-id>',
         'modelview':     'modelview <selection>',
         'upgrade':       'upgrade [store-dir] ...',
+        'addref':        'addref [store-dir] ... <filename> ...',
+        'qc':            'qc [store-dir]'
     }
 
 subcommands = subcommand_descriptions.keys()
@@ -79,6 +83,8 @@ Subcommands:
     download      %(download)s
     modelview     %(modelview)s
     upgrade       %(upgrade)s
+    addref        %(addref)s
+    qc            %(qc)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -959,6 +965,70 @@ def command_upgrade(args):
 
     except gf.StoreError, e:
         die(e)
+
+
+def command_addref(args):
+    parser, options, args = cl_parse('addref', args)
+
+    store_dirs = []
+    filenames = []
+    for arg in args:
+        if os.path.isdir(arg):
+            store_dirs.append(arg)
+        elif os.path.isfile(arg):
+            filenames.append(arg)
+        else:
+            die('invalid argument: %s' % arg)
+
+    if not store_dirs:
+        store_dirs.append('.')
+
+    references = []
+    try:
+        for filename in args:
+            references.extend(gf.meta.Reference.from_bibtex(filename=filename))
+    except ImportError:
+        die('pybtex module must be installed to use this function')
+
+    if not references:
+        die('no references found')
+
+    for store_dir in store_dirs:
+        try:
+            store = gf.Store(store_dir)
+            ids = [ref.id for ref in store.config.references]
+            for ref in references:
+                if ref.id in ids:
+                    die('duplicate reference id: %s' % ref.id)
+
+                ids.append(ref.id)
+                store.config.references.append(ref)
+
+            store.save_config(make_backup=True)
+
+        except gf.StoreError, e:
+            die(e)
+
+
+def command_qc(args):
+    parser, options, args = cl_parse('qc', args)
+
+    store_dir = get_store_dir(args)
+
+    try:
+        store = gf.Store(store_dir)
+        s = store.stats()
+        if s['empty'] != 0:
+            print 'has empty records'
+
+        for aname in ['author', 'author_email', 'description', 'references']:
+
+            if not getattr(store.config, aname):
+                print '%s empty' % aname
+
+    except gf.StoreError, e:
+        die(e)
+
 
 if __name__ == '__main__':
 
