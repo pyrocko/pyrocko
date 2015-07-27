@@ -2166,13 +2166,16 @@ def MakePileViewerMainClass(base):
             markers = filter(lambda x: x.get_tmin()<self.tmax and self.tmin<x.get_tmax(), self.markers)
             markers = filter(lambda x: x.kind in self.visible_marker_kinds, markers)
             i_labels, i_markers = self.tobedrawn(markers, self.time_projection.get_out_range())
-            for i_m in i_markers:
-                markers[i_m].draw(p, self.time_projection, vcenter_projection)
-
-            for i_l in i_labels:
-                m = markers[i_l]
-                if isinstance(m, EventMarker):
-                    m.draw_label(p, self.time_projection, vcenter_projection)
+            if len(i_markers)!=0:
+                for i_m in i_markers:
+                    if i_m in i_labels:
+                        with_label = True
+                    else:
+                        with_label = False
+                    markers[i_m].draw(p,
+                                      self.time_projection,
+                                      vcenter_projection,
+                                      with_label=with_label)
 
         def drawit(self, p, printmode=False, w=None, h=None):
             """This performs the actual drawing."""
