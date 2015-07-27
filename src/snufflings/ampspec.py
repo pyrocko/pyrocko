@@ -1,4 +1,5 @@
 from pyrocko.snuffling import Snuffling, Param, Choice, Switch
+from pyrocko.gui_util import Progressbar
 import numpy as num
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -16,38 +17,63 @@ def window(freqs, fc, b):
     w/=num.sum(w)
     return w
 
-class Save(Snuffling):
+class AmpSpec(Snuffling):
     '''
-    Plot Amplitude Spectrum
+    <html>
+    <head>
+    <style type="text/css">
+        body { margin-left:10px };
+    </style>
+    <body>
+    <h1 align='center'>Plot Amplitude Spectrum</h1>
+    <p>
+    When smoothing is activated, a smoothing algorithm is applied as proposed
+    by Konno and Ohmachi, (1998). </p>
+    <p style='font-family:courier'>Konno, K. and Omachi, T. (1998). Ground-motion characteristics
+    estimated from spectral ratio between horizontal and vertical components of microtremor,
+    Bull. Seism. Soc. Am., 88, 228-241</p>
+    </body>
+    </html>
     '''
     def setup(self):
         '''Customization of the snuffling.'''
-        
-        self.set_name('Plot Amplitude Spectrum local')
-        self.add_parameter(Choice('Plot', 'want_plot', 'smoothed', ['smoothed', 'unsmoothed',
-                                                        'both']))
+
+        self.set_name('Plot Amplitude Spectrum')
+        self.add_parameter(Switch('Smoothing', 'want_smoothing', False))
         self.add_parameter(Param('Smoothing band width', 'b', 40., 1., 100.))
         self.set_live_update(False)
         self._wins = {}
 
     def call(self):
         '''Main work routine of the snuffling.'''
-        
-        all = [] 
+
+        all = []
         for traces in self.chopper_selected_traces(fallback=True):
             for trace in traces:
                 all.append(trace)
 
-        p = self.pylab()
         extrema = []
         colors = iter(cm.Accent(num.linspace(0., 1., len(all))))
-        if self.want_plot=='both':
+        if self.want_smoothing:
             alpha = 0.2
+            additional = 'and smoothing'
         else:
             alpha = 1.
+            additional = ''
+
         minf = 0.
         maxf = 0.
-        for tr in all:
+        pblabel='Calculating amplitude spectra %s' % additional
+        pb = self.get_viewer().parent().get_progressbars()
+        pb.set_status(pblabel, 0)
+        num_traces = len(all)
+        maxval = float(num_traces)
+        plot_data = []
+        plot_data_supplement = []
+        for i_tr, tr in enumerate(all):
+            val = i_tr/maxval*100.
+            pb.set_status(pblabel, val)
+
             tr.ydata = tr.ydata.astype(num.float)
             tr.ydata -= tr.ydata.mean()
             f, a = tr.spectrum()
@@ -61,12 +87,20 @@ class Save(Snuffling):
             extrema.append(mi)
             extrema.append(ma)
             c = next(colors)
-            if self.want_plot in ['unsmoothed', 'both']:
-                p.plot(f,num.abs(a), c=c, alpha=alpha, label='.'.join(tr.nslc_id))
-            if self.want_plot in ['smoothed', 'both']:
+            plot_data.append((f, num.abs(a)))
+            plot_data_supplement.append((c, alpha, '.'.join(tr.nslc_id)))
+            if self.want_smoothing:
                 smoothed = self.konnoohmachi(num.abs(a), f, self.b)
-                p.plot(f, num.abs(smoothed), '-', c=c, label='.'.join(tr.nslc_id))
-        
+                plot_data.append((f, num.abs(smoothed)))
+                plot_data_supplement.append((c, 1., '.'.join(tr.nslc_id)))
+            self.get_viewer().update()
+        pb.set_status(pblabel, 100.)
+
+        fig = self.figure(name='Amplitude Spectra')
+        p = fig.add_subplot(111)
+        args = ('c', 'alpha', 'label')
+        for d, s in zip(plot_data, plot_data_supplement) :
+            p.plot(*d, **dict(zip(args,s)))
         mi, ma = min(extrema), max(extrema)
         p.set_xscale('log')
         p.set_yscale('log')
@@ -76,8 +110,19 @@ class Save(Snuffling):
         p.set_ylabel('Counts')
         handles, labels = p.get_legend_handles_labels()
         leg_dict = dict(zip(labels, handles))
-        p.legend(leg_dict.values(), leg_dict.keys())
-    
+        if num_traces>1:
+            p.legend(leg_dict.values(), leg_dict.keys(),
+                     loc=2,
+                     borderaxespad=0.,
+                     bbox_to_anchor=((1.05, 1.)))
+            fig.subplots_adjust(right=0.8, 
+                                left=0.1)
+        else:
+            p.set_title(leg_dict.keys()[0], fontsize=16)
+            fig.subplots_adjust(right=0.9, 
+                                left=0.1)
+        fig.canvas.draw()
+
     def konnoohmachi(self, amps, freqs, b=20):
         smooth = num.zeros(len(freqs), dtype=freqs.dtype)
         amps = num.array(amps)
@@ -94,6 +139,6 @@ class Save(Snuffling):
 
 def __snufflings__():
     '''Returns a list of snufflings to be exported by this module.'''
-    
-    return [ Save() ]
+
+    return [ AmpSpec() ]
 
