@@ -20,7 +20,7 @@ import pyrocko.config
 guts_prefix = 'pf'
 
 d2r = math.pi/180.
-
+shearm = 33e9 # [Pa]
 
 class BadRequest(Exception):
     pass
@@ -163,7 +163,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     points2 = num.repeat(points, ntau, axis=0)
     times2 = num.repeat(times, ntau) + num.tile(xtau, n)
 
-    return points2, times2
+    return points2, times2, dw, dl
 
 def outline_rect_source(strike, dip, length, width):
     l = length
@@ -723,7 +723,7 @@ class RectangularExplosionSource(ExplosionSource):
         else:
             nucy = None
 
-        points, times = discretize_rect_source(
+        points, times, dwidth, dlength = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
             self.velocity, nucleation_x=nucx, nucleation_y=nucy,
@@ -738,6 +738,8 @@ class RectangularExplosionSource(ExplosionSource):
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
+            dwidth=dwidth,
+            dlength=dlength,
             m0s=num.repeat(1.0/n, n))
 
 
@@ -974,6 +976,19 @@ class RectangularSource(DCSource):
         help='duration of energy release of any single point in rupture area '
              '[s]')
 
+    slip =Float.T(
+        optional=True,
+        help='Slip on the rectangular source area [m]' )
+
+    def __init__(self, **kwargs):
+        if 'slip' in kwargs:
+            slp = kwargs.get('slip')
+            wdth = kwargs.get('width')
+            lnth = kwargs.get('length')
+            self.update(moment = float(slp*wdth*lnth*shearm))
+
+        Source.__init__(self, **kwargs)
+
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
@@ -981,7 +996,8 @@ class RectangularSource(DCSource):
             self.nucleation_x,
             self.nucleation_y,
             self.velocity,
-            self.risetime)
+            self.risetime,
+            self.slip)
 
     def discretize_basesource(self, store):
 
@@ -995,7 +1011,7 @@ class RectangularSource(DCSource):
         else:
             nucy = None
 
-        points, times = discretize_rect_source(
+        points, times, dwidth, dlength = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
             self.velocity, nucleation_x=nucx, nucleation_y=nucy,
@@ -1013,6 +1029,8 @@ class RectangularSource(DCSource):
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
+            dwidth=dwidth,
+            dlength=dlength,
             m6s=num.repeat(mot.m6()[num.newaxis, :], n, axis=0))
 
         return ds
