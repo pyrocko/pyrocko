@@ -92,7 +92,7 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
     
         array_dims[0] = nfreqs;
         rvec_array = PyArray_SimpleNew(1, array_dims, NPY_COMPLEX128);
-        memcpy( PyArray_DATA(rvec_array), r->rvec, nfreqs*16 );
+        memcpy( PyArray_DATA((PyArrayObject*)rvec_array), r->rvec, nfreqs*16 );
         
         elem = Py_BuildValue("(s,s,s,s,N)",  
             r->station, r->network, r->locid, r->channel, rvec_array);
