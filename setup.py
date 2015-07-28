@@ -231,10 +231,59 @@ class custom_build_ext(build_ext):
     def run(self):
         make_prerequisites()
         build_ext.run(self)
+class custom_build_app(build_ext):
+    def run(self):
+        self.make_app()
+    
+    def make_app(self):
+        import glob
+        import os
+        import shutil
+        from setuptools import setup
+
+        APP = ['apps/snuffler']
+        DATA_FILES = []
+            #('data', ['src/data'])
+            #]
+        OPTIONS = {'argv_emulation': True,
+                   'iconfile':'src/data/snuffler.icns',
+                   'packages':'pyrocko',
+                   'excludes': [
+                    'PyQt4.QtDesigner',
+                             'PyQt4.QtScript',
+                             'PyQt4.QtScriptTools',
+                             'PyQt4.QtTest',
+                             'PyQt4.QtCLucene',
+                             'PyQt4.QtDeclarative',
+                             'PyQt4.QtHelp',
+                             'PyQt4.QtSql',
+                             'PyQt4.QtTest',
+                             'PyQt4.QtXml',
+                             'PyQt4.QtXmlPatterns',
+                             'PyQt4.QtMultimedia',
+                             'PyQt4.phonon',
+                             'matplotlib.tests',
+                             'matplotlib.testing'],
+                   'plist':'src/data/Info.plist'}
+
+        setup(
+            app=APP,
+            data_files=DATA_FILES,
+            options={'py2app': OPTIONS},
+            setup_requires=['py2app'],
+        )
+
+        # Manually delete files which refuse to be ignored using 'excludes':
+        want_delete = glob.glob("dist/snuffler.app/Contents/Frameworks/libvtk*")
+        map(os.remove, want_delete)
+
+        want_delete_dir = glob.glob("dist/Snuffler.app/Contents/Resources/lib/python2.7/matplotlib/test*")
+        map(shutil.rmtree, want_delete_dir)
 
 setup(
     cmdclass={
         'build_py': custom_build_py,
+        'py2app': custom_build_app,
         'build_ext': custom_build_ext,
         'double_install_check': double_install_check_cls,
         'prereqs': Prereqs
@@ -312,3 +361,4 @@ setup(
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
                    'data/colortables/*.cpt']},
 )
+
