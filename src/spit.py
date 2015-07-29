@@ -337,11 +337,12 @@ class SPTree:
         fis = cell.interpolate_many(xtestpoints)
         fes = num.array([ self._f_cached(x) for x in xtestpoints], dtype=num.float)
 
-        works = or_(
-                and_(
-                    and_(num.isfinite(fes), num.isfinite(fis)),
-                    num.abs(fes-fis) < self.ftol ),
-                and_(not_(num.isfinite(fes)), not_(num.isfinite(fis))))
+        iffes = num.isfinite(fes)
+        iffis = num.isfinite(fis)
+        works = iffes == iffis
+        iif = num.logical_and(iffes, iffis)
+
+        works[iif] *= num.abs(fes[iif] - fis[iif]) < self.ftol
 
         nundef = num.sum(not_(num.isfinite(fes))) + \
                  num.sum(not_(num.isfinite(cell.f)))

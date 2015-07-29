@@ -4,7 +4,13 @@ import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex,
 from scipy import signal
 import os.path as op
 import numpy as num
-import util_ext
+import platform
+
+if platform.system() != 'Darwin':
+    import util_ext
+else:
+    util_ext = None
+
 
 logger = logging.getLogger('pyrocko.util')
 
@@ -588,7 +594,11 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
         if dotpos != -1:
             s = s[:dotpos]
       
-    return calendar.timegm(time.strptime(s, format)) + fracsec
+
+    try:
+        return calendar.timegm(time.strptime(s, format)) + fracsec
+    except ValueError, e:
+        raise TimeStrError('%s, string=%s, format=%s' % (str(e), s, format))
 
 
 stt = str_to_time
