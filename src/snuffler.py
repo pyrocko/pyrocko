@@ -359,6 +359,11 @@ class SnufflerWindow(QMainWindow):
 
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
             pile, ntracks_shown_max=ntracks, use_opengl=opengl, panel_parent=self)
+        
+        self.marker_editor = self.pile_viewer.marker_editor()
+        self.add_panel(
+            'Markers', self.marker_editor, visible=False,
+            where=Qt.RightDockWidgetArea)
        
         if stations:
             self.get_view().add_stations(stations)
@@ -382,11 +387,6 @@ class SnufflerWindow(QMainWindow):
 
         self.main_controls = self.pile_viewer.controls()
         self.add_panel('Main Controls', self.main_controls, visible=controls)
-        self.marker_editor = self.pile_viewer.marker_editor()
-        self.add_panel(
-            'Markers', self.marker_editor, visible=False,
-            where=Qt.RightDockWidgetArea)
-
         self.show()
 
         self.get_view().setFocus(Qt.OtherFocusReason)
