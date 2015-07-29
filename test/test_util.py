@@ -60,7 +60,6 @@ class UtilTestCase(unittest.TestCase):
             tt2 = time.time()
             print tt2 - tt1
 
-
     def test_consistency_merge(self):
         data = [
             ('a', 1, 2, 3.),
@@ -69,6 +68,15 @@ class UtilTestCase(unittest.TestCase):
 
         merged = util.consistency_merge(data, error='ignore')
         assert merged == (1, 2, 3.0)
+
+    def test_leap_seconds(self):
+        from_sys = {}
+        for t, n in util.read_leap_seconds():
+            from_sys[t] = n
+
+        for t, n in util.read_leap_seconds2():
+            if t in from_sys:
+                assert from_sys[t] == n
 
 
 if __name__ == "__main__":

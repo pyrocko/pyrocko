@@ -1187,8 +1187,68 @@ def read_leap_seconds(tzfile='/usr/share/zoneinfo/right/UTC'):
 
     return out
 
+
+class LeapSecondsError(Exception):
+    pass
+
+
+class LeapSecondsOutdated(LeapSecondsError):
+    pass
+
+
+def parse_leap_seconds_list(fn):
+    data = []
+    texpires = None
+    t0 = int(round(str_to_time('1900-01-01 00:00:00')))
+    tnow = int(round(time.time()))
+
+    if not op.exists(fn):
+        raise LeapSecondsOutdated('no leap seconds file found')
+
+    try:
+        with open(fn, 'r') as f:
+            for line in f:
+                if line.startswith('#@'):
+                    texpires = int(line.split()[1])  + t0
+                elif line.startswith('#'):
+                    pass
+                else:
+                    toks = line.split()
+                    t = int(toks[0]) + t0
+                    nleap = int(toks[1]) - 10
+                    data.append((t, nleap))
+
+    except IOError:
+        raise LeapSecondsError('cannot read leap seconds file %s' % fn)
+
+    if texpires is None or tnow > texpires:
+        raise LeapSecondsOutdated('leap seconds list is outdated')
+
+    return data
+
+
+def read_leap_seconds2():
+    from pyrocko import config
+    conf = config.config()
+    fn = conf.leapseconds_path
+    url = conf.leapseconds_url
+    try:
+        return parse_leap_seconds_list(fn)
+
+    except LeapSecondsOutdated:
+        try:
+            logger.info('updating leap seconds list...')
+            download_file(url, fn)
+
+        except Exception:
+            raise LeapSecondsError(
+                'cannot download leap seconds list from %s to %s' (url, fn))
+
+        return parse_leap_seconds_list(fn)
+
+
 def gps_utc_offset(t):
-    ls = read_leap_seconds()
+    ls = read_leap_seconds2()
     i = 0
     if t < ls[0][0]:
         return ls[0][1] - 9
@@ -1198,6 +1258,7 @@ def gps_utc_offset(t):
         i += 1
 
     return ls[-1][1] - 9
+
 
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     import itertools, glob

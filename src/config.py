@@ -34,6 +34,10 @@ class PyrockoConfig(Object):
         default=os.path.join(pyrocko_dir_tmpl, 'topo'))
     geonames_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'geonames'))
+    leapseconds_path = PathWithPlaceholders.T(
+        default=os.path.join(pyrocko_dir_tmpl, 'leap-seconds.list'))
+    leapseconds_url = String.T(
+        default='http://www.ietf.org/timezones/data/leap-seconds.list')
 
 
 def expand(x):
