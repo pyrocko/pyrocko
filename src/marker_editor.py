@@ -1,8 +1,9 @@
 import operator
+from itertools import groupby
 from PyQt4.QtCore import *  # noqa
 from PyQt4.QtGui import *  # noqa
 
-from pyrocko.gui_util import EventMarker, PhaseMarker
+from pyrocko.gui_util import EventMarker, PhaseMarker, Marker
 from pyrocko import util
 
 _header_data = ['Type', 'Time', 'Magnitude']
@@ -21,7 +22,38 @@ class MarkerItemDelegate(QStyledItemDelegate):
         if index.row()%2==0:
             option.backgroundBrush = QBrush(QColor(50,10,10,30))
 
-class MarkerTable(QTableView):
+class MarkerSortFilterProxyModel(QSortFilterProxyModel):
+    def __init__(self):
+        QSortFilterProxyModel.__init__(self)
+
+    #def mapFromSource(self, i):
+    #    return i
+
+    #def sort(self, col, order):
+    #    self.emit(SIGNAL("layoutAboutToBeChanged()"))
+    #    if _attr_mapping[col]=='magnitude':
+    #        markers = self.viewer.markers
+    #        event_markers = []
+    #        other = []
+    #        for im, m in enumerate(markers):
+    #            if isinstance(m, EventMarker):
+    #                event_markers.append(m)
+    #            else:
+    #                other.append(m)
+    #        #event_markers = [markers.pop(markers.index(m)) for m in markers if isinstance(m, EventMarker)]
+    #        event_markers = sorted(event_markers,
+    #                               key=operator.attrgetter('_event.magnitude'), 
+    #                               reverse=order==Qt.DescendingOrder)
+
+    #        event_markers.extend(other)
+    #        self.viewer.markers = event_markers
+    #    else:
+    #        self.viewer.markers = sorted(self.viewer.markers, key=operator.attrgetter(_attr_mapping[col]))
+    #        if order == Qt.DescendingOrder:
+    #            self.viewer.markers.reverse()
+    #    self.emit(SIGNAL("layoutChanged()"))
+
+class MarkerTableView(QTableView):
     def __init__(self, *args, **kwargs):
         QTableView.__init__(self, *args, **kwargs)
 
@@ -46,7 +78,7 @@ class MarkerTable(QTableView):
         self.viewer = viewer
 
 
-class MarkerModel(QAbstractTableModel):
+class MarkerTableModel(QAbstractTableModel):
     def __init__(self, *args, **kwargs):
         QAbstractTableModel.__init__(self, *args, **kwargs)
         self.viewer = None
@@ -66,11 +98,20 @@ class MarkerModel(QAbstractTableModel):
         return len(_column_mapping)
 
     def markers_added(self, istart, istop):
-        self.beginInsertRows(QModelIndex(), istart, istop-1)
+        """Insert rows representing a :py:class:`Marker` in the :py:class:`MarkerTableModel`."""
+        self.beginInsertRows(QModelIndex(), istart+1, istop)
         self.endInsertRows()
 
-    def markers_removed(self, i):
-        map(lambda x: self.beginRemoveRows(QModelIndex(), x, x), i)
+    def make_chunks(self, items):
+        """Split a list of integers into sublists of consecutive elements."""
+        return [map(operator.itemgetter(1), g) for k, g in groupby(enumerate(items), lambda (i,x):i-x)]
+
+    def markers_removed(self, iremove):
+        """Remove rows representing a :py:class:`Marker` from the :py:class:`MarkerTableModel`."""
+        if len(iremove) == 0:
+            return
+        for chunk in self.make_chunks(iremove):
+            self.beginRemoveRows(QModelIndex(), min(chunk), max(chunk))
         self.endRemoveRows()
 
     def headerData(self, col, orientation, role):
@@ -81,30 +122,6 @@ class MarkerModel(QAbstractTableModel):
                 return QSize(10,20)
         else:
             return QVariant()
-
-    def sort(self, col, order):
-        self.emit(SIGNAL("layoutAboutToBeChanged()"))
-        if _attr_mapping[col]=='magnitude':
-            markers = self.viewer.markers
-            event_markers = []
-            other = []
-            for im, m in enumerate(markers):
-                if isinstance(m, EventMarker):
-                    event_markers.append(m)
-                else:
-                    other.append(m)
-            #event_markers = [markers.pop(markers.index(m)) for m in markers if isinstance(m, EventMarker)]
-            event_markers = sorted(event_markers,
-                                   key=operator.attrgetter('_event.magnitude'), 
-                                   reverse=order==Qt.DescendingOrder)
-
-            event_markers.extend(other)
-            self.viewer.markers = event_markers
-        else:
-            self.viewer.markers = sorted(self.viewer.markers, key=operator.attrgetter(_attr_mapping[col]))
-            if order == Qt.DescendingOrder:
-                self.viewer.markers.reverse()
-        self.emit(SIGNAL("layoutChanged()"))
 
     def data(self, index, role):
         if not self.viewer:
@@ -149,24 +166,27 @@ class MarkerModel(QAbstractTableModel):
             return Qt.ItemFlags(35)
         return Qt.ItemFlags(33)
 
-
 class MarkerEditor(QTableWidget):
     def __init__(self, *args, **kwargs):
         QTableWidget.__init__(self, *args, **kwargs)
 
         layout = QGridLayout()
         self.setLayout(layout)
-        self.marker_table = MarkerTable()
+        self.marker_table = MarkerTableView()
         self.marker_table.setItemDelegate(MarkerItemDelegate(self.marker_table))
 
-        self.marker_model = MarkerModel()
+        self.marker_model = MarkerTableModel()
+        proxyModel = MarkerSortFilterProxyModel()
+        proxyModel.setDynamicSortFilter(True)
+        proxyModel.setSourceModel(self.marker_model)
+
         delegate = MarkerItemDelegate()
 
         header = self.marker_table.horizontalHeader()
         header.setModel(self.marker_model)
-        self.marker_table.setModel(self.marker_model)
+        self.marker_table.setModel(proxyModel)
 
-        self.selection_model = QItemSelectionModel(self.marker_model)
+        self.selection_model = QItemSelectionModel(proxyModel)
         self.marker_table.setSelectionModel(self.selection_model)
         self.connect(
             self.selection_model,
@@ -188,7 +208,7 @@ class MarkerEditor(QTableWidget):
         self.viewer.set_selected_markers(selected_markers)
 
     def get_marker_model(self):
-        '''Return MarkerModel instance'''
+        '''Return :py:class:`MarkerTableModel` instance'''
         return self.marker_model
 
     def update_selection_model(self, indices):
