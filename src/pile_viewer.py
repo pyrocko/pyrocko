@@ -1461,18 +1461,21 @@ def MakePileViewerMainClass(base):
                 pass
 
         def remove_markers(self, markers):
-            indxs = [self.markers.index(m) for m in markers]
-            self.remove_marker_from_menu(indxs)
-            for marker in markers:
-                try:
-                    self.remove_marker(marker)
+            try:
+                indxs = [self.markers.index(m) for m in markers]
+                self.remove_marker_from_menu(indxs)
+            except IndexError:
+                pass
+
+            try:
+                for marker in markers:
                     self.markers.remove(marker)
                     if marker is self.active_event_marker:
                         self.active_event_marker.set_active(False)
                         self.active_event_marker = None
 
-                except ValueError:
-                    pass
+            except ValueError:
+                pass
 
         def remove_marker_from_menu(self, indx):
             self.emit(SIGNAL('markers_removed(QList<int>)'), indx)
@@ -1704,7 +1707,7 @@ def MakePileViewerMainClass(base):
                 for marker in self.markers:
                     if marker.kind in self.visible_marker_kinds:
                         marker.set_selected(True)
-                print 'done keytext'
+
             elif keytext == 'd':
                 self.deselect_all()
                     
@@ -1798,13 +1801,13 @@ def MakePileViewerMainClass(base):
             self.update_status()
 
         def emit_selected_markers(self):
-            _index = []
+            _indexes = []
             selected_markers = self.selected_markers()
             markers = self.get_markers()
             for sm in selected_markers:
                 if sm in markers:
-                    _index.append(markers.index(sm))
-            self.emit(SIGNAL('changed_marker_selection'), _index)
+                    _indexes.append(markers.index(sm))
+            self.emit(SIGNAL('changed_marker_selection'), _indexes)
 
         def toggle_marker_editor(self):
             self.panel_parent.toggle_marker_editor()
@@ -2842,7 +2845,6 @@ def MakePileViewerMainClass(base):
                     tma = self.floating_marker.tmax
                     self.add_marker(self.floating_marker)
                     self.floating_marker.set_selected(True)
-                    print self.floating_marker
                     self.emit_selected_markers()
 
                 self.floating_marker = None
