@@ -289,13 +289,18 @@ class OutOfBounds(Exception):
     def __init__(self, values=None):
         Exception.__init__(self)
         self.values = values
+        self.context = None
 
     def __str__(self):
+        scontext = ''
+        if self.context:
+            scontext = '\n%s' % str(self.context)
+
         if self.values:
-            return 'out of bounds: (%s)' % ','.join('%g' % x
-                                                    for x in self.values)
+            return 'out of bounds: (%s)%s' % (
+                ','.join('%g' % x for x in self.values), scontext)
         else:
-            return 'out of bounds'
+            return 'out of bounds%s' % scontext
 
 
 class Location(Object):

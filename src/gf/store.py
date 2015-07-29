@@ -759,11 +759,14 @@ class BaseStore:
                 itmin -= itoffset
 
             try:
+                t0 = time.time()
                 tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
                     (delays - itoffset*self._deltat).astype(num.float32),
                     weights.astype(num.float32),
                     int(itmin), int(nsamples)))
+
+                t1 = time.time()
                 tr.itmin += itoffset
                 return tr
 
@@ -1422,17 +1425,26 @@ class Store(BaseStore):
     def seismogram(self, source, receiver, components,
                    interpolation='nearest_neighbor', optimization='enable'):
 
+        t0 = time.time()
         out = {}
+
+        dts = 0.
         for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
             if component in components:
+                ts0 = time.time()
                 gtr = self.sum(args, delays, weights,
                                interpolation=interpolation,
                                optimization=optimization)
+                ts1 = time.time()
+                dts += ts1 - ts0
+
                 out[component] = gtr
 
+        t1 = time.time()
         return out
+
 
 __all__ = '''
 gf_dtype
