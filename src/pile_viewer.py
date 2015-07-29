@@ -1439,14 +1439,14 @@ def MakePileViewerMainClass(base):
             self.markers.append(marker)
             self.emit(
                 SIGNAL('markers_added(int,int)'),
-                len(self.markers)-1, len(self.markers))
+                len(self.markers)-1, len(self.markers)-1)
 
         def add_markers(self, markers):
             len_before = len(self.markers)
             self.markers.extend(markers)
             self.emit(
                 SIGNAL('markers_added(int,int)'), 
-                len_before, len(self.markers))
+                len_before, len(self.markers)-1)
 
         def remove_marker(self, marker):
             try:
@@ -1510,6 +1510,7 @@ def MakePileViewerMainClass(base):
             
             if mouse_ev.button() == Qt.RightButton:
                 self.menu.exec_(QCursor.pos())
+            self.emit_selected_markers()
             self.update_status()
     
         def mouseReleaseEvent( self, mouse_ev ):
@@ -3334,7 +3335,7 @@ class PileViewer(QFrame):
 
     def marker_editor(self):
         editor = pyrocko.marker_editor.MarkerEditor()
-        editor.set_viewer(self.viewer)
+        editor.set_viewer(self.get_view())
         self.connect(editor.get_marker_model(), SIGNAL('dataChanged()'), self.update_contents)
         return editor
 
