@@ -1,4 +1,5 @@
 import os, time, calendar, datetime, signal, re, math, logging, operator, copy
+from itertools import groupby
 
 import numpy as num 
 import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace
@@ -58,6 +59,10 @@ def m_float_or_none(x):
         return None
     else:
         return m_float(x)
+
+def make_chunks(items):
+    """Split a list of integers into sublists of consecutive elements."""
+    return [map(operator.itemgetter(1), g) for k, g in groupby(enumerate(items), lambda (i,x):i-x)]
 
 class deg_float(float):
     
@@ -1409,7 +1414,7 @@ def MakePileViewerMainClass(base):
                 self.associate_phases_to_events()
 
         def associate_phases_to_events(self):
-            
+
             hash_to_events = {}
             time_to_events = {}
             for marker in self.markers:
@@ -1444,36 +1449,43 @@ def MakePileViewerMainClass(base):
                 len_before, len(self.markers)-1)
 
         def remove_marker(self, marker):
+            '''Remove a *marker* from the :py:class:`PileViewer`.
+
+            :param marker: :py:class:`Marker` (or subclass) instance'''
             try:
                 indx = [self.markers.index(marker)]
-                self.remove_marker_from_menu(indx)
+                self.remove_marker_from_menu(indx, indx)
                 self.markers.remove(marker)
                 if marker is self.active_event_marker:
                     self.active_event_marker.set_active(False)
                     self.active_event_marker = None
 
-            except ValueError:
+            except ValueError as e:
                 pass
 
         def remove_markers(self, markers):
-            try:
-                indxs = [self.markers.index(m) for m in markers]
-                self.remove_marker_from_menu(indxs)
-            except IndexError:
-                pass
+            '''Remove a list of *markers* from the :py:class:`PileViewer`.
 
-            try:
-                for marker in markers:
-                    self.markers.remove(marker)
-                    if marker is self.active_event_marker:
-                        self.active_event_marker.set_active(False)
-                        self.active_event_marker = None
+            :param markers: list of :py:class:`Marker` (or subclass)
+                            instances'''
+            indxs = [self.markers.index(m) for m in markers]
+            chunks = make_chunks(indxs)
+            for chunk in chunks[::-1]:
+                try:
+                    self.remove_marker_from_menu(min(chunk), max(chunk))
+                    about_to_remove = [self.markers[i_m] for i_m in chunk]
 
-            except ValueError:
-                pass
+                    for marker in about_to_remove:
+                        self.markers.remove(marker)
+                        if marker is self.active_event_marker:
+                            self.active_event_marker.set_active(False)
+                            self.active_event_marker = None
 
-        def remove_marker_from_menu(self, indx):
-            self.emit(SIGNAL('markers_removed(QList<int>)'), indx)
+                except ValueError:
+                    pass
+
+        def remove_marker_from_menu(self, istart, istop):
+            self.emit(SIGNAL('markers_removed(int, int)'), istart, istop)
 
         def set_markers(self, markers):
             self.markers = markers
