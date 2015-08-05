@@ -125,7 +125,7 @@ class MarkerTableModel(QAbstractTableModel):
         self.connect(self.pile_viewer,
                      SIGNAL('changed_marker_selection'),
                      self.update_distances)
-        
+    
     def rowCount(self, parent):
         if not self.pile_viewer:
             return 0
