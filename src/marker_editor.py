@@ -30,6 +30,7 @@ class MarkerTableView(QTableView):
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setSelectionMode(QAbstractItemView.ContiguousSelection)
         self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.setEditTriggers(QAbstractItemView.DoubleClicked)
         self.setSortingEnabled(True)
         self.sortByColumn(1, Qt.AscendingOrder)
         self.setAlternatingRowColors(True)
@@ -44,11 +45,14 @@ class MarkerTableView(QTableView):
         self.header_menu = QMenu(self)
 
         show_initially = ['Type', 'Time', 'Magnitude']
-        self.column_actions = {}
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Distance [km]']
-        self.menu_items = dict(zip(self.menu_labels, [0,1,2,3,4,5,5,6]))
+        self.menu_items = dict(zip(self.menu_labels, [0,1,2,3,4,5,7]))
+        self.editable_columns_events = [2, 3, 4, 5, 6]
+        self.editable_columns_phases = [2, 3, 4, 5, 6]
+        self.editable_columns = self.editable_columns_events + self.editable_columns_phases
 
+        self.column_actions = {}
         for hd in self.menu_labels:
             a = QAction(QString(hd), self.header_menu)
             self.connect(a, SIGNAL('triggered(bool)'), self.toggle_columns)
@@ -69,12 +73,15 @@ class MarkerTableView(QTableView):
         '''Set a :py:class:`pyrocko.pile_viewer.PileViewer` and connect to signals.'''
         self.pile_viewer = viewer
 
+    def keyPressEvent(self, key_event):
+        self.pile_viewer.keyPressEvent(key_event)
+
     def clicked(self, model_index):
         '''Ignore mouse clicks.'''
         pass
 
     def double_clicked(self, model_index):
-        if model_index.column() == _column_mapping['M']:
+        if model_index.column() in self.editable_columns:
             return
         else:
             self.pile_viewer.go_to_selection()
@@ -85,10 +92,14 @@ class MarkerTableView(QTableView):
 
     def toggle_columns(self):
         for header, ca in self.column_actions.items():
-            if ca.isChecked():
-                self.setColumnHidden(self.menu_items[header], False)
+            hide = ca.isChecked() != True
+            if header == 'Latitude/Longitude':
+                self.setColumnHidden(self.menu_items[header], hide)
+                self.setColumnHidden(self.menu_items[header]+1, hide)
             else:
-                self.setColumnHidden(self.menu_items[header], True)
+                self.setColumnHidden(self.menu_items[header], hide)
+                if header == 'Dist [km]':
+                    self.model().update_distances()
 
 class MarkerTableModel(QAbstractTableModel):
     def __init__(self, *args, **kwargs):
@@ -114,7 +125,7 @@ class MarkerTableModel(QAbstractTableModel):
         self.connect(self.pile_viewer,
                      SIGNAL('changed_marker_selection'),
                      self.update_distances)
-
+        
     def rowCount(self, parent):
         if not self.pile_viewer:
             return 0
@@ -219,9 +230,9 @@ class MarkerTableModel(QAbstractTableModel):
     def update_distances(self, indices):
         '''Calculate and update distances between events of :py:class:`EventMarker` 
         instances and update the :py:class:`MarkerTableModel` accordingly.'''
-        if len(indices) != 1:
+        if len(indices) != 1 or self.marker_table_view.horizontalHeader().isSectionHidden(_column_mapping['Dist [km]']):
             return
-
+        
         if self.last_active_event == self.pile_viewer.get_active_event():
             return
         else:
@@ -283,10 +294,15 @@ class MarkerTableModel(QAbstractTableModel):
         return False
 
     def flags(self, index):
-        if index.column() == _column_mapping['M'] and isinstance(self.pile_viewer.markers[index.row()], EventMarker):
-            return Qt.ItemFlags(35)
-        if index.column() == _column_mapping['Label']:
-            return Qt.ItemFlags(35)
+        '''Set flags for cells which the user can edit.'''
+        if index.column() not in self.marker_table_view.editable_columns:
+            return Qt.ItemFlags(33)
+        else:
+            if isinstance(self.pile_viewer.markers[index.row()], EventMarker):
+                if index.column() in self.marker_table_view.editable_columns:
+                    return Qt.ItemFlags(35)
+            if index.column() == _column_mapping['Label']:
+                return Qt.ItemFlags(35)
         return Qt.ItemFlags(33)
 
 class MarkerEditor(QTableWidget):
