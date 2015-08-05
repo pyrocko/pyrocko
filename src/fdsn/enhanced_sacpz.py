@@ -85,7 +85,7 @@ def dummy_aware_str_to_time(s):
     try:
         util.str_to_time(s, format='%Y-%m-%dT%H:%M:%S')
     except util.TimeStrError:
-        year = int(val[:4])
+        year = int(s[:4])
         if year > this_year + 100:
             return None  # StationXML contained a dummy end date
 
