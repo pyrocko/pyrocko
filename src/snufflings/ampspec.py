@@ -1,21 +1,20 @@
-from pyrocko.snuffling import Snuffling, Param, Choice, Switch
-from pyrocko.gui_util import Progressbar
+from pyrocko.snuffling import Snuffling, Param, Switch
 import numpy as num
-import matplotlib.pyplot as plt
 from matplotlib import cm
 
 
 def window(freqs, fc, b):
-    if fc==0.:
+    if fc == 0.:
         w = num.zeros(len(freqs))
-        w[freqs==0] = 1.
+        w[freqs == 0] = 1.
         return w
     T = num.log10(freqs/fc)*b
     w = (num.sin(T)/T)**4
-    w[freqs==fc] = 1.
-    w[freqs==0.] = 0.
-    w/=num.sum(w)
+    w[freqs == fc] = 1.
+    w[freqs == 0.] = 0.
+    w /= num.sum(w)
     return w
+
 
 class AmpSpec(Snuffling):
     '''
@@ -29,9 +28,11 @@ class AmpSpec(Snuffling):
     <p>
     When smoothing is activated, a smoothing algorithm is applied as proposed
     by Konno and Ohmachi, (1998). </p>
-    <p style='font-family:courier'>Konno, K. and Omachi, T. (1998). Ground-motion characteristics
-    estimated from spectral ratio between horizontal and vertical components of microtremor,
-    Bull. Seism. Soc. Am., 88, 228-241</p>
+    <p style='font-family:courier'>
+        Konno, K. and Omachi, T. (1998). Ground-motion characteristics
+        estimated from spectral ratio between horizontal and vertical
+        components of microtremor, Bull. Seism. Soc. Am., 88, 228-241
+    </p>
     </body>
     </html>
     '''
@@ -63,7 +64,7 @@ class AmpSpec(Snuffling):
 
         minf = 0.
         maxf = 0.
-        pblabel='Calculating amplitude spectra %s' % additional
+        pblabel = 'Calculating amplitude spectra %s' % additional
         pb = self.get_viewer().parent().get_progressbars()
         pb.set_status(pblabel, 0)
         num_traces = len(all)
@@ -77,8 +78,8 @@ class AmpSpec(Snuffling):
             tr.ydata = tr.ydata.astype(num.float)
             tr.ydata -= tr.ydata.mean()
             f, a = tr.spectrum()
-            minf = min([f.min(), minf]) 
-            maxf = max([f.max(), maxf]) 
+            minf = min([f.min(), minf])
+            maxf = max([f.max(), maxf])
             absa = num.abs(a)
             labsa = num.log(absa)
             stdabsa = num.std(labsa)
@@ -94,13 +95,14 @@ class AmpSpec(Snuffling):
                 plot_data.append((f, num.abs(smoothed)))
                 plot_data_supplement.append((c, 1., '.'.join(tr.nslc_id)))
             self.get_viewer().update()
+
         pb.set_status(pblabel, 100.)
 
         fig = self.figure(name='Amplitude Spectra')
         p = fig.add_subplot(111)
         args = ('c', 'alpha', 'label')
-        for d, s in zip(plot_data, plot_data_supplement) :
-            p.plot(*d, **dict(zip(args,s)))
+        for d, s in zip(plot_data, plot_data_supplement):
+            p.plot(*d, **dict(zip(args, s)))
         mi, ma = min(extrema), max(extrema)
         p.set_xscale('log')
         p.set_yscale('log')
@@ -110,16 +112,16 @@ class AmpSpec(Snuffling):
         p.set_ylabel('Counts')
         handles, labels = p.get_legend_handles_labels()
         leg_dict = dict(zip(labels, handles))
-        if num_traces>1:
+        if num_traces > 1:
             p.legend(leg_dict.values(), leg_dict.keys(),
                      loc=2,
                      borderaxespad=0.,
                      bbox_to_anchor=((1.05, 1.)))
-            fig.subplots_adjust(right=0.8, 
+            fig.subplots_adjust(right=0.8,
                                 left=0.1)
         else:
             p.set_title(leg_dict.keys()[0], fontsize=16)
-            fig.subplots_adjust(right=0.9, 
+            fig.subplots_adjust(right=0.9,
                                 left=0.1)
         fig.canvas.draw()
 
@@ -137,8 +139,8 @@ class AmpSpec(Snuffling):
 
         return smooth
 
+
 def __snufflings__():
     '''Returns a list of snufflings to be exported by this module.'''
 
-    return [ AmpSpec() ]
-
+    return [AmpSpec()]

@@ -54,6 +54,7 @@ mantle
         self.tempdirs.append(store_dir)
 
         qsconf = qseis.QSeisConfig()
+        qsconf.qseis_version = '2006a'
 
         qsconf.time_region = (
             gf.meta.Timing('0'),
@@ -77,7 +78,7 @@ mantle
             distance_min=550*km,
             distance_max=560*km,
             distance_delta=1*km,
-            modelling_code_id='qseis',
+            modelling_code_id='qseis.2006a',
             earthmodel_1d=mod,
             tabulated_phases=[
                 gf.meta.TPDef(
@@ -87,6 +88,8 @@ mantle
                     id='end',
                     definition='2.5'),
             ])
+
+
 
         config.validate()
         gf.store.Store.create_editables(
@@ -145,6 +148,7 @@ mantle
 
         runner = qseis.QSeisRunner()
         conf = qseis.QSeisConfigFull.example()
+        conf.qseis_version = '2006a'
         conf.receiver_distances = [dist/km]
         conf.receiver_azimuths = [azi]
         conf.source_depth = source.depth/km

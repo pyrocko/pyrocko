@@ -369,8 +369,7 @@ class SnufflerWindow(QMainWindow):
             self.get_view().add_stations(stations)
        
         if events:
-            for ev in events:
-                self.get_view().add_event(ev)
+            self.get_view().add_events(events)
             
             if len(events) == 1:
                 self.get_view().set_active_event(events[0])

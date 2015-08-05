@@ -24,7 +24,7 @@ if platform.mac_ver()!=('', ('', '', ''), ''):
     qfiledialog_options = QFileDialog.DontUseNativeDialog
     macosx = True
 else:
-    qfiledialog_options = None
+    qfiledialog_options = QFileDialog.DontUseSheet
     macosx = False
 logger = logging.getLogger('pyrocko.pile_viewer')
 
@@ -648,6 +648,10 @@ def MakePileViewerMainClass(base):
             self.menu.addAction(mi)
             self.connect( mi, SIGNAL("triggered(bool)"), self.read_markers )
             
+            mi = QAction('Read events...', self.menu)
+            self.menu.addAction(mi)
+            self.connect( mi, SIGNAL("triggered(bool)"), self.read_events)
+            
             self.menu.addSeparator()
             
     
@@ -1031,6 +1035,10 @@ def MakePileViewerMainClass(base):
             marker = EventMarker(event)
             self.add_marker( marker )
        
+        def add_events(self, events):
+            markers = [EventMarker(e) for e in events]
+            self.add_markers(markers)
+
         def set_event_marker_as_origin(self, ignore):
             selected = self.selected_markers()
             if not selected:
@@ -1405,6 +1413,19 @@ def MakePileViewerMainClass(base):
             if fn:
                 Marker.save_markers(self.selected_markers(), fn,
                         fdigits=self.time_fractional_digits())
+
+        def read_events(self):
+            '''
+            Open QFileDialog to open, read and add :py:class:`pyrocko.model.Event`
+            instances and their marker representation to the pile viewer.
+            '''
+            caption = "Selet one or more files to open"
+            fn = QFileDialog.getOpenFileName(
+                self, caption, options=qfiledialog_options)
+            if fn:
+                self.add_events(pyrocko.model.Event.load_catalog(fn))
+
+                self.associate_phases_to_events()
 
         def read_markers(self):
             '''

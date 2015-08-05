@@ -78,6 +78,20 @@ def make_stationxml_response(presponse, input_unit, output_unit):
     return resp
 
 
+this_year = time.gmtime()[0]
+
+
+def dummy_aware_str_to_time(s):
+    try:
+        util.str_to_time(s, format='%Y-%m-%dT%H:%M:%S')
+    except util.TimeStrError:
+        year = int(s[:4])
+        if year > this_year + 100:
+            return None  # StationXML contained a dummy end date
+
+        raise
+
+
 def iload_fh(f):
     zeros, poles, constant, comments = pz.read_sac_zpk(file=f,
                                                        get_comments=True)
@@ -99,7 +113,7 @@ def iload_fh(f):
         yield EnhancedSacPzResponse(
             codes=(d['network'], d['station'], d['location'], d['channel']),
             tmin=util.str_to_time(d['start'], format='%Y-%m-%dT%H:%M:%S'),
-            tmax=util.str_to_time(d['end'], format='%Y-%m-%dT%H:%M:%S'),
+            tmax=dummy_aware_str_to_time(d['end']),
             lat=float(d['latitude']),
             lon=float(d['longitude']),
             elevation=float(d['elevation']),

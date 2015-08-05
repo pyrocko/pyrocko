@@ -71,8 +71,10 @@ class UtilTestCase(unittest.TestCase):
 
     def test_leap_seconds(self):
         from_sys = {}
-        for t, n in util.read_leap_seconds():
-            from_sys[t] = n
+        import platform
+        if platform.system() != 'Darwin':
+            for t, n in util.read_leap_seconds(): # not available on Mac OS X
+                from_sys[t] = n
 
         for t, n in util.read_leap_seconds2():
             if t in from_sys:
