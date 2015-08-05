@@ -81,14 +81,20 @@ class DummyAwareOptionalTimestamp(Object):
 
             elif isinstance(val, str) or isinstance(val, unicode):
                 val = val.strip()
-                year = int(val[:4])
-                if year > this_year + 100:
-                    return None  # StationXML contained a dummy end date
 
                 val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
                 if val[10] == 'T':
                     val = val.replace('T', ' ', 1)
-                val = util.str_to_time(val)
+
+                try:
+                    val = util.str_to_time(val)
+
+                except util.TimeStrError:
+                    year = int(val[:4])
+                    if year > this_year + 100:
+                        return None  # StationXML contained a dummy end date
+
+                    raise
 
             elif isinstance(val, int):
                 val = float(val)
