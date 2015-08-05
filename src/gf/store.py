@@ -694,7 +694,7 @@ class BaseStore:
         return GFTrace(sum_arr, itmin, deltat)
 
     def _optimize(self, irecords, delays, weights):
-        if irecords.size < 2:
+        if num.unique(irecords).size == irecords.size:
             return irecords, delays, weights
 
         deltat = self._deltat
@@ -1425,7 +1425,6 @@ class Store(BaseStore):
     def seismogram(self, source, receiver, components,
                    interpolation='nearest_neighbor', optimization='enable'):
 
-        t0 = time.time()
         out = {}
 
         dts = 0.
@@ -1433,16 +1432,12 @@ class Store(BaseStore):
                 self.config.make_sum_params(source, receiver):
 
             if component in components:
-                ts0 = time.time()
                 gtr = self.sum(args, delays, weights,
                                interpolation=interpolation,
                                optimization=optimization)
-                ts1 = time.time()
-                dts += ts1 - ts0
 
                 out[component] = gtr
 
-        t1 = time.time()
         return out
 
 
