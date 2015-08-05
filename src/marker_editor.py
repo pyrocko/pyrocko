@@ -268,28 +268,55 @@ class MarkerTableModel(QAbstractTableModel):
         # expensive!
         self.reset()
 
+    def done(self):
+        self.emit(SIGNAL('dataChanged()'))
+        return True
+
     def setData(self, index, value, role):
         '''Manipulate :py:class:`EventMarker` instances.'''
+
         if role == Qt.EditRole:
             imarker = index.row()
             marker = self.pile_viewer.markers[imarker]
-            if index.column() == _column_mapping['M'] and isinstance(marker, EventMarker):
-                valuef, valid= value.toFloat()
-                if valid:
-                    marker.get_event().magnitude = valuef
-                    self.emit(SIGNAL('dataChanged()'))
-                    return True
+            if index.column() in [_column_mapping[c] for c in ['M', 'Lat',
+                                                                  'Lon', 'Depth [km]']]:
+                if not isinstance(marker, EventMarker):
+                    return False
+                else:
+                    if index.column() == _column_mapping['M']:
+                        valuef, valid = value.toFloat()
+                        if valid:
+                            e = marker.get_event()
+                            if e.moment_tensor is None:
+                                e.magnitude = valuef
+                            else:
+                                e.moment_tensor.magnitude = valuef
+                            return self.done()
+                        
+                if index.column() in [_column_mapping['Lon'],
+                                      _column_mapping['Lat'], 
+                                      _column_mapping['Depth [km]']]:
+                    if isinstance(marker, EventMarker):
+                        valuef, valid = value.toFloat()
+                        if valid:
+                            if index.column() == _column_mapping['Lat']:
+                                marker.get_event().lat = valuef
+                            elif index.column() == _column_mapping['Lon']:
+                                marker.get_event().lon = valuef
+                            elif index.column() == _column_mapping['Depth [km]']:
+                                marker.get_event().depth = valuef*1000.
+                            return self.done()
+
             if index.column() == _column_mapping['Label']:
                 values = str(value.toString())
                 if values != '':
                     if isinstance(marker, EventMarker):
                         marker.get_event().set_name(values)
-                        self.emit(SIGNAL('dataChanged()'))
-                        return True
+                        return self.done()
+
                     if isinstance(marker, PhaseMarker):
                         marker.set_phasename(values)
-                        self.emit(SIGNAL('dataChanged()'))
-                        return True
+                        return self.done()
 
         return False
 
