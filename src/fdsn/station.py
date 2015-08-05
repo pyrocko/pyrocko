@@ -1,13 +1,16 @@
 import time
 import logging
+import datetime
+import calendar
+import re
 
 import numpy as num
 
 from pyrocko.guts import StringChoice, StringPattern, UnicodePattern, String,\
-    Unicode, Int, Float, List, Object, Timestamp, ValidationError
+    Unicode, Int, Float, List, Object, Timestamp, ValidationError, TBase
 from pyrocko.guts import load_xml  # noqa
 
-from pyrocko import trace, model
+from pyrocko import trace, model, util
 
 guts_prefix = 'pf'
 
@@ -59,6 +62,47 @@ def same(x, eps=0.0):
         return all(abs(r-x[0]) <= eps for r in x)
     else:
         return all(r == x[0] for r in x)
+
+this_year = time.gmtime()[0]
+
+class DummyAwareOptionalTimestamp(Object):
+    dummy_for = float
+
+    class __T(TBase):
+
+        def regularize_extra(self, val):
+            if isinstance(val, datetime.datetime):
+                tt = val.utctimetuple()
+                val = calendar.timegm(tt) + val.microsecond * 1e-6
+
+            elif isinstance(val, datetime.date):
+                tt = val.timetuple()
+                val = float(calendar.timegm(tt))
+
+            elif isinstance(val, str) or isinstance(val, unicode):
+                val = val.strip()
+                year = int(val[:4])
+                if year > this_year + 100:
+                    return None  # StationXML contained a dummy end date
+
+                val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
+                if val[10] == 'T':
+                    val = val.replace('T', ' ', 1)
+                val = util.str_to_time(val)
+
+            elif isinstance(val, int):
+                val = float(val)
+
+            else:
+                raise ValidationError('%s: cannot convert "%s" to float' % (self.xname(), val))
+
+            return val
+
+        def to_save(self, val):
+            return datetime.datetime.utcfromtimestamp(val)
+
+        def to_save_xml(self, val):
+            return datetime.datetime.utcfromtimestamp(val).isoformat() + 'Z'
 
 
 class Nominal(StringChoice):
@@ -235,7 +279,8 @@ class Equipment(Object):
     serial_number = String.T(optional=True, xmltagname='SerialNumber')
     installation_date = Timestamp.T(optional=True,
                                     xmltagname='InstallationDate')
-    removal_date = Timestamp.T(optional=True, xmltagname='RemovalDate')
+    removal_date = DummyAwareOptionalTimestamp.T(optional=True,
+                                                 xmltagname='RemovalDate')
     calibration_date_list = List.T(Timestamp.T(xmltagname='CalibrationDate'))
 
 
@@ -592,7 +637,8 @@ class BaseNode(Object):
 
     code = String.T(xmlstyle='attribute')
     start_date = Timestamp.T(optional=True, xmlstyle='attribute')
-    end_date = Timestamp.T(optional=True, xmlstyle='attribute')
+    end_date = DummyAwareOptionalTimestamp.T(optional=True,
+                                             xmlstyle='attribute')
     restricted_status = RestrictedStatus.T(optional=True, xmlstyle='attribute')
     alternate_code = String.T(optional=True, xmlstyle='attribute')
     historical_code = String.T(optional=True, xmlstyle='attribute')
@@ -664,11 +710,12 @@ class Station(BaseNode):
     equipment_list = List.T(Equipment.T(xmltagname='Equipment'))
     operator_list = List.T(Operator.T(xmltagname='Operator'))
     creation_date = Timestamp.T(optional=True, xmltagname='CreationDate')
-    termination_date = Timestamp.T(optional=True, xmltagname='TerminationDate')
-    total_number_channels = Counter.T(optional=True,
-                                      xmltagname='TotalNumberChannels')
-    selected_number_channels = Counter.T(optional=True,
-                                         xmltagname='SelectedNumberChannels')
+    termination_date = DummyAwareOptionalTimestamp.T(
+        optional=True, xmltagname='TerminationDate')
+    total_number_channels = Counter.T(
+        optional=True, xmltagname='TotalNumberChannels')
+    selected_number_channels = Counter.T(
+        optional=True, xmltagname='SelectedNumberChannels')
     external_reference_list = List.T(
         ExternalReference.T(xmltagname='ExternalReference'))
     channel_list = List.T(Channel.T(xmltagname='Channel'))
