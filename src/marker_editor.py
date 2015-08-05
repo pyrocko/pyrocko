@@ -43,9 +43,13 @@ class MarkerTableView(QTableView):
 
         self.header_menu = QMenu(self)
 
-        show_initially = ['T', 'Time', 'M']
+        show_initially = ['Type', 'Time', 'Magnitude']
         self.column_actions = {}
-        for hd in _header_data:
+        self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
+                            'Latitude/Longitude', 'Distance [km]']
+        self.menu_items = dict(zip(self.menu_labels, [0,1,2,3,4,5,5,6]))
+
+        for hd in self.menu_labels:
             a = QAction(QString(hd), self.header_menu)
             self.connect(a, SIGNAL('triggered(bool)'), self.toggle_columns)
             a.setCheckable(True)
@@ -60,10 +64,6 @@ class MarkerTableView(QTableView):
         header.setContextMenuPolicy(Qt.CustomContextMenu)
         self.connect(header, SIGNAL('customContextMenuRequested(QPoint)'),
                      self.show_context_menu)
-
-    def keyPressEvent(self, key_event):
-        keytext = str(key_event.text())
-        self.pile_viewer.keyPressEvent(key_event)
 
     def set_viewer(self, viewer):
         '''Set a :py:class:`pyrocko.pile_viewer.PileViewer` and connect to signals.'''
@@ -86,9 +86,9 @@ class MarkerTableView(QTableView):
     def toggle_columns(self):
         for header, ca in self.column_actions.items():
             if ca.isChecked():
-                self.setColumnHidden(_column_mapping[header], False)
+                self.setColumnHidden(self.menu_items[header], False)
             else:
-                self.setColumnHidden(_column_mapping[header], True)
+                self.setColumnHidden(self.menu_items[header], True)
 
 class MarkerTableModel(QAbstractTableModel):
     def __init__(self, *args, **kwargs):
@@ -185,7 +185,11 @@ class MarkerTableModel(QAbstractTableModel):
 
             if index.column() == _column_mapping['Depth [km]']:
                 if isinstance(marker, EventMarker):
-                    s = "{0:4.1f}".format(marker.get_event().depth/1000.)
+                    d = marker.get_event().depth
+                    if d is not None:
+                        s = "{0:4.1f}".format(marker.get_event().depth/1000.)
+                    else:
+                        s = ''
                 else:
                     s = ''
 
@@ -246,20 +250,42 @@ class MarkerTableModel(QAbstractTableModel):
         dists = orthodrome.distance_accurate50m_numpy(lats, lons, olats, olons)
         dists /= 1000.
         self.distances = dict(zip(emarkers, dists))
+        dist_c_start = self.index(0, _column_mapping['Dist [km]'])
+        dist_c_stop = self.index(self.rowCount(QModelIndex()), _column_mapping['Dist [km]'])
+        self.emit(SIGNAL('dataChanged()'))
+
+        # expensive!
         self.reset()
 
     def setData(self, index, value, role):
+        '''Manipulate :py:class:`EventMarker` instances.'''
         if role == Qt.EditRole:
             imarker = index.row()
             marker = self.pile_viewer.markers[imarker]
-            if index.column() == 2 and isinstance(marker, EventMarker):
-                marker.get_event().magnitude = value.toFloat()[0]
-                self.emit(SIGNAL('dataChanged()'))
-            return True
+            if index.column() == _column_mapping['M'] and isinstance(marker, EventMarker):
+                valuef, valid= value.toFloat()
+                if valid:
+                    marker.get_event().magnitude = valuef
+                    self.emit(SIGNAL('dataChanged()'))
+                    return True
+            if index.column() == _column_mapping['Label']:
+                values = str(value.toString())
+                if values != '':
+                    if isinstance(marker, EventMarker):
+                        marker.get_event().set_name(values)
+                        self.emit(SIGNAL('dataChanged()'))
+                        return True
+                    if isinstance(marker, PhaseMarker):
+                        marker.set_phasename(values)
+                        self.emit(SIGNAL('dataChanged()'))
+                        return True
+
         return False
 
     def flags(self, index):
         if index.column() == _column_mapping['M'] and isinstance(self.pile_viewer.markers[index.row()], EventMarker):
+            return Qt.ItemFlags(35)
+        if index.column() == _column_mapping['Label']:
             return Qt.ItemFlags(35)
         return Qt.ItemFlags(33)
 
@@ -301,16 +327,17 @@ class MarkerEditor(QTableWidget):
             self.set_selected_markers)
 
         layout.addWidget(self.marker_table, 0, 0)
-        self.pile_viewer = None
         self.setFrameStyle(QFrame.NoFrame)
         self.setContentsMargins(0., 0. ,0. ,0.)
 
+        self.pile_viewer = None
+
     def set_viewer(self, viewer):
         '''Set a :py:class:`pyrocko.pile_viewer.PileViewer` and connect to signals.'''
-        self.marker_model.set_viewer(viewer)
         self.pile_viewer = viewer
+        self.marker_model.set_viewer(viewer)
+        self.marker_table.set_viewer(viewer)
         self.connect(self.pile_viewer, SIGNAL('changed_marker_selection'), self.update_selection_model)
-        self.marker_table.set_viewer(self.pile_viewer)
         self.marker_table.toggle_columns()
 
     def set_selected_markers(self, selected, deselected):
