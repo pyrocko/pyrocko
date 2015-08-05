@@ -852,7 +852,7 @@ class Trace(object):
             dt = xself.tmin - tmin
             n = xself.data_len()
             ydata_new = num.empty(n, dtype=num.float)
-            i_control = num.array([0, n-1])
+            i_control = num.array([0, n-1], dtype=num.int64)
             t_control = num.array([xself.tmin, xself.tmax])
             signal_ext.antidrift(i_control, t_control,
                                  xself.ydata.astype(num.float),
