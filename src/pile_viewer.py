@@ -1515,6 +1515,7 @@ def MakePileViewerMainClass(base):
                     if not (mouse_ev.modifiers() & Qt.ShiftModifier):
                         self.deselect_all()
                     marker.set_selected(True)
+                    self.emit_selected_markers()
                     self.update()
                 else:
                     self.track_start = mouse_ev.x(), mouse_ev.y()
@@ -1522,7 +1523,6 @@ def MakePileViewerMainClass(base):
             
             if mouse_ev.button() == Qt.RightButton:
                 self.menu.exec_(QCursor.pos())
-            self.emit_selected_markers()
             self.update_status()
     
         def mouseReleaseEvent( self, mouse_ev ):
@@ -1532,9 +1532,9 @@ def MakePileViewerMainClass(base):
             
             if self.picking:
                 self.stop_picking(mouse_ev.x(), mouse_ev.y())
+                self.emit_selected_markers()
             self.track_start = None
             self.track_trange = None
-            self.emit_selected_markers()
             self.update_status()
             
         def mouseDoubleClickEvent(self, mouse_ev):
@@ -1809,7 +1809,8 @@ def MakePileViewerMainClass(base):
                     amount = 10
                 self.nudge_selected_markers(dir*amount)
 
-            self.emit_selected_markers()
+            if keytext in 'degaA':
+                self.emit_selected_markers()
             self.update()
             self.update_status()
 
