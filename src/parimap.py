@@ -1,6 +1,7 @@
 import Queue
 import multiprocessing
 import traceback
+import errno
 
 
 def worker(q_in, q_out, function, eprintignore, pshared):
@@ -86,7 +87,13 @@ def parimap(function, *iterables, **kwargs):
                 if nrun < nprocs and not all_written and not error_ahead:
                     results.append(q_out.get_nowait())
                 else:
-                    results.append(q_out.get())
+                    while True:
+                        try:
+                            results.append(q_out.get())
+                            break
+                        except IOError, e:
+                            if e.errno != errno.EINTR:
+                                raise
 
                 nrun -= 1
 
