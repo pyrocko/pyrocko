@@ -447,11 +447,11 @@ class MomentTensor(Object):
         rotmat1 = self._rotmats[0]
         m = rotmat1.T * MomentTensor._m_unrot * rotmat1 * self.scalar_moment()
         return m
-    
+
     def moment_magnitude(self):
         '''Get moment magnitude of moment tensor.'''
         return moment_to_magnitude(self.scalar_moment())
-        
+
     def scalar_moment(self):
         '''Get the scalar moment of the moment tensor.'''
         return num.linalg.norm(self._m_eigenvals)/math.sqrt(2.)
@@ -460,10 +460,20 @@ class MomentTensor(Object):
     def moment(self):
         return float(self.scalar_moment())
 
+    @moment.setter
+    def moment(self, value):
+        self._m *= value/self.moment
+        self._update()
+
     @property
     def magnitude(self):
         return float(self.moment_magnitude())
     
+    @magnitude.setter
+    def magnitude(self, value):
+        self._m *= magnitude_to_moment(value)/self.moment
+        self._update()
+
     def __str__(self):
         mexp = pow(10,math.ceil(num.log10(num.max(num.abs(self._m)))))
         m = self._m/mexp
