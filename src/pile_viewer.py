@@ -1494,7 +1494,11 @@ def MakePileViewerMainClass(base):
 
             :param markers: list of :py:class:`Marker` (or subclass)
                             instances'''
-            indxs = [self.markers.index(m) for m in markers]
+            try:
+                indxs = [self.markers.index(m) for m in markers]
+            except ValueError:
+                return
+
             chunks = make_chunks(indxs)
             for chunk in chunks[::-1]:
                 try:
