@@ -359,6 +359,11 @@ class SnufflerWindow(QMainWindow):
 
         self.pile_viewer = pyrocko.pile_viewer.PileViewer(
             pile, ntracks_shown_max=ntracks, use_opengl=opengl, panel_parent=self)
+        
+        self.marker_editor = self.pile_viewer.marker_editor()
+        self.add_panel(
+            'Markers', self.marker_editor, visible=False,
+            where=Qt.RightDockWidgetArea)
        
         if stations:
             self.get_view().add_stations(stations)
@@ -379,7 +384,8 @@ class SnufflerWindow(QMainWindow):
 
         self.pile_viewer.setup_snufflings()
 
-        self.add_panel('Main Controls', self.pile_viewer.controls(), visible=controls)
+        self.main_controls = self.pile_viewer.controls()
+        self.add_panel('Main Controls', self.main_controls, visible=controls)
         self.show()
 
         self.get_view().setFocus(Qt.OtherFocusReason)
@@ -412,16 +418,20 @@ class SnufflerWindow(QMainWindow):
     def add_tab(self, name, widget):
         self.tabs.append_tab(widget, name)
 
-    def add_panel(self, name, panel, visible=False, volatile=False):
-        dws = self.dockwidgets()
+    def add_panel(self, name, panel, visible=False, volatile=False,
+                  where=Qt.BottomDockWidgetArea):
+
+        dws = [dw for dw in self.dockwidgets()
+               if self.dockWidgetArea(dw) == where]
+
         dockwidget = QDockWidget(name, self)
         dockwidget.setWidget(panel)
         panel.setParent(dockwidget)
-        self.addDockWidget(Qt.BottomDockWidgetArea, dockwidget)
+        self.addDockWidget(where, dockwidget)
 
         if dws:
             self.tabifyDockWidget(dws[-1], dockwidget)
-        
+
         self.toggle_panel(dockwidget, visible)
 
         mitem = QAction(name, None)
@@ -442,6 +452,9 @@ class SnufflerWindow(QMainWindow):
         self.dockwidget_to_toggler[dockwidget] = mitem
 
     def toggle_panel(self, dockwidget, visible):
+        if visible is None:
+            visible = not dockwidget.isVisible()
+
         dockwidget.setVisible(visible)
         if visible:
             w = dockwidget.widget()
@@ -454,6 +467,12 @@ class SnufflerWindow(QMainWindow):
 
             dockwidget.setFocus()
             dockwidget.raise_()
+
+    def toggle_marker_editor(self):
+        self.toggle_panel(self.marker_editor.parent(), None)
+
+    def toggle_main_controls(self):
+        self.toggle_panel(self.main_controls.parent(), None)
 
     def remove_panel(self, panel):
         dockwidget = panel.parent()

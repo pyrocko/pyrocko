@@ -1,8 +1,10 @@
 import os, time, calendar, datetime, signal, re, math, logging, operator, copy
+from itertools import groupby
 
 import numpy as num 
 import pyrocko.model, pyrocko.pile, pyrocko.shadow_pile, pyrocko.trace
 import pyrocko.util, pyrocko.plot, pyrocko.snuffling, pyrocko.snufflings
+import pyrocko.marker_editor
 
 from pyrocko.util import hpfloat
 
@@ -63,6 +65,10 @@ def m_float_or_none(x):
         return None
     else:
         return m_float(x)
+
+def make_chunks(items):
+    """Split a list of integers into sublists of consecutive elements."""
+    return [map(operator.itemgetter(1), g) for k, g in groupby(enumerate(items), lambda (i,x):i-x)]
 
 class deg_float(float):
     
@@ -591,7 +597,6 @@ def MakePileViewerMainClass(base):
             self.highpass = None
             self.gain = 1.0
             self.rotate = 0.0
-            self.markers = []
             self.picking_down = None
             self.picking = None
             self.floating_marker = None
@@ -1435,7 +1440,7 @@ def MakePileViewerMainClass(base):
                 self.associate_phases_to_events()
 
         def associate_phases_to_events(self):
-            
+
             hash_to_events = {}
             time_to_events = {}
             for marker in self.markers:
@@ -1455,26 +1460,58 @@ def MakePileViewerMainClass(base):
                         elif t is not None and t in time_to_events:
                             marker.set_event(time_to_events[t])
                             marker.set_event_hash(None)
-        
+
         def add_marker(self, marker):
             self.markers.append(marker)
-        
+            self.emit(
+                SIGNAL('markers_added(int,int)'),
+                len(self.markers)-1, len(self.markers)-1)
+
         def add_markers(self, markers):
+            len_before = len(self.markers)
             self.markers.extend(markers)
-        
+            self.emit(
+                SIGNAL('markers_added(int,int)'), 
+                len_before, len(self.markers)-1)
+
         def remove_marker(self, marker):
+            '''Remove a *marker* from the :py:class:`PileViewer`.
+
+            :param marker: :py:class:`Marker` (or subclass) instance'''
             try:
+                indx = [self.markers.index(marker)]
+                self.remove_marker_from_menu(indx, indx)
                 self.markers.remove(marker)
                 if marker is self.active_event_marker:
                     self.active_event_marker.set_active(False)
                     self.active_event_marker = None
 
-            except ValueError:
+            except ValueError as e:
                 pass
 
         def remove_markers(self, markers):
-            for marker in markers:
-                self.remove_marker(marker)
+            '''Remove a list of *markers* from the :py:class:`PileViewer`.
+
+            :param markers: list of :py:class:`Marker` (or subclass)
+                            instances'''
+            indxs = [self.markers.index(m) for m in markers]
+            chunks = make_chunks(indxs)
+            for chunk in chunks[::-1]:
+                try:
+                    self.remove_marker_from_menu(min(chunk), max(chunk))
+                    about_to_remove = [self.markers[i_m] for i_m in chunk]
+
+                    for marker in about_to_remove:
+                        self.markers.remove(marker)
+                        if marker is self.active_event_marker:
+                            self.active_event_marker.set_active(False)
+                            self.active_event_marker = None
+
+                except ValueError:
+                    pass
+
+        def remove_marker_from_menu(self, istart, istop):
+            self.emit(SIGNAL('markers_removed(int, int)'), istart, istop)
 
         def set_markers(self, markers):
             self.markers = markers
@@ -1499,6 +1536,7 @@ def MakePileViewerMainClass(base):
                     if not (mouse_ev.modifiers() & Qt.ShiftModifier):
                         self.deselect_all()
                     marker.set_selected(True)
+                    self.emit_selected_markers()
                     self.update()
                 else:
                     self.track_start = mouse_ev.x(), mouse_ev.y()
@@ -1515,6 +1553,7 @@ def MakePileViewerMainClass(base):
             
             if self.picking:
                 self.stop_picking(mouse_ev.x(), mouse_ev.y())
+                self.emit_selected_markers()
             self.track_start = None
             self.track_trange = None
             self.update_status()
@@ -1775,7 +1814,13 @@ def MakePileViewerMainClass(base):
 
             elif keytext == 'g':
                 self.go_to_selection()
-               
+
+            elif keytext == 'm':
+                self.toggle_marker_editor()
+
+            elif keytext == 'c':
+                self.toggle_main_controls()
+
             elif key_event.key() in (Qt.Key_Left, Qt.Key_Right):
                 dir = 1
                 amount = 1
@@ -1785,8 +1830,25 @@ def MakePileViewerMainClass(base):
                     amount = 10
                 self.nudge_selected_markers(dir*amount)
 
+            if keytext in 'degaA':
+                self.emit_selected_markers()
             self.update()
             self.update_status()
+
+        def emit_selected_markers(self):
+            _indexes = []
+            selected_markers = self.selected_markers()
+            markers = self.get_markers()
+            for sm in selected_markers:
+                if sm in markers:
+                    _indexes.append(markers.index(sm))
+            self.emit(SIGNAL('changed_marker_selection'), _indexes)
+
+        def toggle_marker_editor(self):
+            self.panel_parent.toggle_marker_editor()
+
+        def toggle_main_controls(self):
+            self.panel_parent.toggle_main_controls()
 
         def nudge_selected_markers(self, npixels):
             a,b = self.time_projection.ur
@@ -1795,7 +1857,7 @@ def MakePileViewerMainClass(base):
                 if not isinstance(marker,EventMarker):
                     marker.tmin += npixels * (d-c)/b
                     marker.tmax += npixels * (d-c)/b
-  
+
         def about(self):
             fn = pyrocko.util.data_file('snuffler.png')
             txt = open( pyrocko.util.data_file('snuffler_about.html') ).read()
@@ -2778,7 +2840,18 @@ def MakePileViewerMainClass(base):
         def rot_change(self, value, ignore):
             self.rotate = value
             self.update()
-        
+
+        def set_selected_markers(self, markers):
+            '''Set a list of markers selected
+
+            :param markers: list of markers
+            '''
+            self.deselect_all()
+            for m in markers:
+                m.set_selected(True)
+
+            self.update()
+
         def deselect_all(self):
             for marker in self.markers:
                 marker.set_selected(False)
@@ -2805,15 +2878,15 @@ def MakePileViewerMainClass(base):
                 if not abort:
                     tmi = self.floating_marker.tmin
                     tma = self.floating_marker.tmax
-                    self.markers.append(self.floating_marker)
+                    self.add_marker(self.floating_marker)
                     self.floating_marker.set_selected(True)
-                    print self.floating_marker
-                
+                    self.emit_selected_markers()
+
                 self.floating_marker = None
-        
-        
+
+
         def start_picking(self, ignore):
-            
+
             if not self.picking:
                 self.deselect_all()
                 self.picking = QRubberBand(QRubberBand.Rectangle)
@@ -3119,22 +3192,22 @@ class LineEditWithAbort(QLineEdit):
 
 class PileViewer(QFrame):
     '''PileViewerMain + Controls + Inputline'''
-    
+
     def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, panel_parent=None, *args):
         apply(QFrame.__init__, (self,) + args)
-        
+
         if use_opengl:
             self.viewer = GLPileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         else:
             self.viewer = PileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
-        
+
         layout = QGridLayout()
         self.setLayout( layout )
         layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(0)
-        
-        #self.setFrameShape(QFrame.StyledPanel)
-        #self.setFrameShadow(QFrame.Sunken)
+
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setFrameShadow(QFrame.Sunken)
 
         self.history = ['']
 
@@ -3157,9 +3230,9 @@ class PileViewer(QFrame):
         self.connect(self.inputline, SIGNAL('textEdited(QString)'), self.inputline_changed)
         self.inputline.setFocusPolicy(Qt.ClickFocus)
         self.input_area.hide()
-        
+
         self.inputline_error_str = None
-        
+
         self.inputline_error = QLabel()
         self.inputline_error.hide()
 
@@ -3293,6 +3366,12 @@ class PileViewer(QFrame):
 
         self.adjust_controls()
         return frame
+
+    def marker_editor(self):
+        editor = pyrocko.marker_editor.MarkerEditor()
+        editor.set_viewer(self.get_view())
+        self.connect(editor.get_marker_model(), SIGNAL('dataChanged()'), self.update_contents)
+        return editor
 
     def adjust_controls(self):
         dtmin, dtmax = self.viewer.content_deltat_range()

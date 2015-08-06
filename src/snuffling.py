@@ -823,11 +823,13 @@ class Snuffling:
         self._param_controls = {}
         if params or self._force_panel:
             sarea = MyScrollArea(parent.get_panel_parent_widget())
+            sarea.setFrameStyle(QFrame.NoFrame)
             sarea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
             frame = MyFrame(sarea)
             self.get_viewer().connect(frame, SIGNAL('widgetVisibilityChanged(bool)'),
                                       self.panel_visibility_changed)
             frame.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
+            frame.setFrameStyle(QFrame.NoFrame)
             sarea.setWidget(frame)
             sarea.setWidgetResizable(True)
             layout = QGridLayout()
