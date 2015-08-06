@@ -3192,22 +3192,22 @@ class LineEditWithAbort(QLineEdit):
 
 class PileViewer(QFrame):
     '''PileViewerMain + Controls + Inputline'''
-    
+
     def __init__(self, pile, ntracks_shown_max=20, use_opengl=False, panel_parent=None, *args):
         apply(QFrame.__init__, (self,) + args)
-        
+
         if use_opengl:
             self.viewer = GLPileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
         else:
             self.viewer = PileViewerMain(pile, ntracks_shown_max=ntracks_shown_max, panel_parent=panel_parent)
-        
+
         layout = QGridLayout()
         self.setLayout( layout )
         layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(0)
-        
-        #self.setFrameShape(QFrame.StyledPanel)
-        #self.setFrameShadow(QFrame.Sunken)
+
+        self.setFrameShape(QFrame.StyledPanel)
+        self.setFrameShadow(QFrame.Sunken)
 
         self.history = ['']
 
@@ -3230,9 +3230,9 @@ class PileViewer(QFrame):
         self.connect(self.inputline, SIGNAL('textEdited(QString)'), self.inputline_changed)
         self.inputline.setFocusPolicy(Qt.ClickFocus)
         self.input_area.hide()
-        
+
         self.inputline_error_str = None
-        
+
         self.inputline_error = QLabel()
         self.inputline_error.hide()
 
