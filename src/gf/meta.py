@@ -15,7 +15,6 @@ guts_prefix = 'pf'
 d2r = math.pi / 180.
 r2d = 1.0 / d2r
 km = 1000.
-shearm = 33000000000 #[Pa]
 vicinity_eps = 1e-5
 
 
@@ -484,8 +483,9 @@ class DiscretizedSource(Object):
     north_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
     east_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
     depths = Array.T(shape=(None,), dtype=num.float)
-    dwidth = Array.T(shape=(None,), dtype=num.float, optional=True)
-    dlength = Array.T(shape=(None,), dtype=num.float, optional=True)
+    dwidth = Float.T(optional=True)
+    dlength = Float.T(optional=True)
+    shearm = Float.T(optional=True)
 
     @classmethod
     def check_scheme(cls, scheme):
@@ -995,7 +995,7 @@ class DiscretizedMTSource(DiscretizedSource):
         dls = self.dlength
         slips = num.zeros(n)
         for i in range(n):
-            slips[i] = moments[i]/(dws*dls*shearm)
+            slips[i] = moments[i]/(dws*dls*self.shearm)
 
         return slips
 

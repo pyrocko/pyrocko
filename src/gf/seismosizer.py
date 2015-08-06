@@ -16,11 +16,11 @@ from pyrocko import trace, model
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
 import pyrocko.config
+from pyrocko import cake
 
 guts_prefix = 'pf'
 
 d2r = math.pi/180.
-shearm = 33e9 # [Pa]
 
 class BadRequest(Exception):
     pass
@@ -978,13 +978,26 @@ class RectangularSource(DCSource):
 
     slip =Float.T(
         optional=True,
-        help='Slip on the rectangular source area [m]' )
+        help='Slip on the rectangular source area [m]')
+
+    shearm = Float.T(
+        optional=True,
+        help='Shear modulus of the host rock [GPa]')
 
     def __init__(self, **kwargs):
         if 'slip' in kwargs:
+            if 'magnitude' in kwargs:
+                raise ArgumentError('either slip or magnitude as input')
+
+            lat = kwargs.get('lat')
+            lon = kwargs.get('lon')
             slp = kwargs.get('slip')
             wdth = kwargs.get('width')
             lnth = kwargs.get('length')
+            dpth = kwargs.get('depth')
+            vs = cake.load_model('default',crust2_profile=(lat, lon)).layer(z=dpth).m.vs
+            shearm = cake.Material(vs=vs).shear_modulus()
+            kwargs['shearm'] = float(shearm)
             self.update(moment = float(slp*wdth*lnth*shearm))
 
         Source.__init__(self, **kwargs)
@@ -997,6 +1010,7 @@ class RectangularSource(DCSource):
             self.nucleation_y,
             self.velocity,
             self.risetime,
+            self.shearm,
             self.slip)
 
     def discretize_basesource(self, store):
@@ -1031,6 +1045,7 @@ class RectangularSource(DCSource):
             depths=self.depth + points[:, 2],
             dwidth=dwidth,
             dlength=dlength,
+            shearm=self.shearm,
             m6s=num.repeat(mot.m6()[num.newaxis, :], n, axis=0))
 
         return ds
