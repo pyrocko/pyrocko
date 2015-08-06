@@ -2,6 +2,7 @@ from collections import defaultdict
 import math
 import os
 import re
+import logging
 pjoin = os.path.join
 
 import numpy as num
@@ -20,6 +21,8 @@ import pyrocko.config
 guts_prefix = 'pf'
 
 d2r = math.pi/180.
+
+logger = logging.getLogger('pyrocko.gf.seismosizer')
 
 
 class BadRequest(Exception):
@@ -1834,6 +1837,10 @@ class LocalEngine(Engine):
 
     def iter_store_dirs(self):
         for d in self.store_superdirs:
+            if not os.path.exists(d):
+                logger.warn('store_superdir not available: %s' % d)
+                continue
+
             for entry in os.listdir(d):
                 store_dir = pjoin(d, entry)
                 if self._looks_like_store_dir(store_dir):
