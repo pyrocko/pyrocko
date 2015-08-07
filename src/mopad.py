@@ -66,6 +66,7 @@ import sys
 #import logging 
 from cStringIO import StringIO
 from pyrocko import moment_tensor as pyrocko_mt
+from pyrocko import event
 
 #additional library:
 import numpy as N
@@ -2018,7 +2019,7 @@ class BeachBall:
     #-------------------------------------------------------------------
     #-------------------------------------------------------------------
 
-    def ploBB(self,kwargs):
+    def ploBB(self,**kwargs):
         """
         Plots the projection of the beachball onto a unit sphere.
 
@@ -2034,12 +2035,12 @@ class BeachBall:
 
         
         """
-
+        ax = kwargs.pop('ax', None)
         self._update_attributes(kwargs)
 
         self._setup_BB()
 
-        self._plot_US()
+        self._plot_US(ax=ax)
  
     #-------------------------------------------------------------------
     #-------------------------------------------------------------------
@@ -3939,7 +3940,7 @@ class BeachBall:
 
    #---------------------------------------------------------------
 
-    def _plot_US(self):
+    def _plot_US(self, ax=None):
         """
         Generates the final plot of the beachball projection on the unit sphere.
 
@@ -3959,36 +3960,42 @@ class BeachBall:
         import pylab as P
         from matplotlib import interactive
         
-        plotfig = self._setup_plot_US(P)
-       
-       
-        if self._plot_save_plot:
-            try:
-                plotfig.savefig(self._plot_outfile+'.'+self._plot_outfile_format, dpi=self._plot_dpi, transparent=True, format=self._plot_outfile_format)
-            
-            except:
-                print 'saving of plot not possible'
+        if not ax:
+            plotfig = self._setup_plot_US(P)
+           
+            if self._plot_save_plot:
+                try:
+                    plotfig.savefig(self._plot_outfile+'.'+self._plot_outfile_format, dpi=self._plot_dpi, transparent=True, format=self._plot_outfile_format)
+                
+                except:
+                    print 'saving of plot not possible'
 
-        P.show()
+            P.show()
+            
+            P.close('all')
+            del P
+            del matplotlib       
         
-        P.close('all')
-        del P
-        del matplotlib       
+        else:
+            plotfig = self._setup_plot_US(ax=ax)
 
 #-------------------------------------------------------------------
-    def _setup_plot_US(self,P):
+    def _setup_plot_US(self,P=None, ax=None):
         """
         Setting up the figure with the final plot of the unit sphere.
 
         Either called by _plot_US or by _just_save_bb
         """
         
-        P.close(667)
-        plotfig = P.figure(667,figsize=(self._plot_size,self._plot_size) )
-        plotfig.subplots_adjust(left=0, bottom=0, right=1, top=1)
+        if P and not ax:
+            P.close(667)
+            plotfig = P.figure(667,figsize=(self._plot_size,self._plot_size) )
+            plotfig.subplots_adjust(left=0, bottom=0, right=1, top=1)
          
-        ax = plotfig.add_subplot(111, aspect='equal')
-    
+            ax = plotfig.add_subplot(111, aspect='equal')
+        else:
+            ax=ax
+            plotfig = None
         ax.axison = False
 
         neg_nodalline = self._nodalline_negative_final_US
@@ -4143,7 +4150,6 @@ class BeachBall:
         #scaling behaviour
         ax.autoscale_view(tight=True, scalex=True, scaley=True)
 
-
         return plotfig 
 
 
@@ -4245,7 +4251,7 @@ if __name__ == "__main__":
             bb2plot.full_sphere_plot(kwargs_dict)
             return
 
-        bb2plot.ploBB(kwargs_dict)
+        bb2plot.ploBB(**kwargs_dict)
 
         return        
         
@@ -5649,6 +5655,8 @@ if __name__ == "__main__":
         - 9 (full moment tensor)
 
         (With all angles to be given in degrees)
+
+        or a filename containing a pyrocko event.
         ---------------------------------------------------------------------------------
 
         HELP for a particular method is shown with: 
@@ -5675,6 +5683,12 @@ if __name__ == "__main__":
         
     try:
         M_raw = [float(xx) for xx in sys.argv[2].split(',')]
+        if len(M_raw)==1:
+            try:
+                event = model.Event(load=M_raw)
+                M_raw = event.moment_tensor.m6()
+        else:
+            M_raw = [float(xx) for xx in M_raw]
     except:
         #sys.exit('\n  ERROR - Provide valid source mechanism !!!\n')
     #if sys.argv[2].startswith('-'):
@@ -5687,7 +5701,7 @@ if __name__ == "__main__":
         sys.argv = dummy_list
         M_raw = [float(xx) for xx in sys.argv[2].split(',')]
 
-    if not len(M_raw) in [3,4,6,7,9]:
+    if not len(M_raw) in [1,3,4,6,7,9]:
         print '\nERROR!! Provide proper source mechanism\n\n'
         sys.exit()
     if len(M_raw) in [4,6,7,9] and  len(N.array(M_raw).nonzero()[0]) == 0:
