@@ -980,27 +980,25 @@ class RectangularSource(DCSource):
         optional=True,
         help='Slip on the rectangular source area [m]')
 
-    shearm = Float.T(
-        optional=True,
-        help='Shear modulus of the host rock [GPa]')
-
     def __init__(self, **kwargs):
-        if 'slip' in kwargs:
-            if 'magnitude' in kwargs:
+        if 'slip' in kwargs and 'magnitude' not in kwargs:
+            pass
+
+        else:
                 raise ArgumentError('either slip or magnitude as input')
 
-            lat = kwargs.get('lat')
-            lon = kwargs.get('lon')
-            slp = kwargs.get('slip')
-            wdth = kwargs.get('width')
-            lnth = kwargs.get('length')
-            dpth = kwargs.get('depth')
-            vs = cake.load_model('default',crust2_profile=(lat, lon)).layer(z=dpth).m.vs
-            shearm = cake.Material(vs=vs).shear_modulus()
-            kwargs['shearm'] = float(shearm)
-            self.update(moment = float(slp*wdth*lnth*shearm))
-
         Source.__init__(self, **kwargs)
+
+        if self.slip is not None:
+            self.slip_to_moment()
+
+    @property
+    def shearm(self):
+        lay = cake.load_model('default',crust2_profile=(self.lat, self.lon)).layer(z=self.depth)
+        return cake.Material(vs=lay.m.vs, rho=lay.m.rho).shear_modulus()
+
+    def slip_to_moment(self):
+        return self.update(moment = float(self.slip*self.width*self.length*self.shearm))
 
     def base_key(self):
         return DCSource.base_key(self) + (
