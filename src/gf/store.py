@@ -1007,8 +1007,11 @@ class Store(BaseStore):
             if os.path.isdir(self._decimated_store_dir(decimate)):
                 self._decimated[decimate] = None
 
-    def save_config(self):
+    def save_config(self, make_backup=False):
         config_fn = os.path.join(self.store_dir, 'config')
+        if make_backup:
+            os.rename(config_fn, config_fn + '~')
+
         meta.dump(self.config, filename=config_fn)
 
     def get_extra(self, key):

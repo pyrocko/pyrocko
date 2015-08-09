@@ -848,7 +848,7 @@ static PyObject* transfer_arrays(reader_t *reader) {
                 return NULL;
             }
 
-            memcpy(PyArray_DATA(array), reader->arrays[i].elements,
+            memcpy(PyArray_DATA((PyArrayObject*)array), reader->arrays[i].elements,
                    reader->arrays[i].fill*sizeof(int32_t));
 
             free(reader->arrays[i].elements);
@@ -879,10 +879,10 @@ static PyObject* gps_tags_to_pytup(reader_t *reader) {
     }
 
     for (i=0; i<n; i++) {
-        ((int64_t*)PyArray_DATA(aipos))[i] = reader->gps_tags.elements[i].ipos;
-        ((double*)PyArray_DATA(at))[i] = reader->gps_tags.elements[i].t;
-        ((int8_t*)PyArray_DATA(afix))[i] = reader->gps_tags.elements[i].fix;
-        ((int8_t*)PyArray_DATA(ansvs))[i] = reader->gps_tags.elements[i].nsvs;
+        ((int64_t*)PyArray_DATA((PyArrayObject*)aipos))[i] = reader->gps_tags.elements[i].ipos;
+        ((double*)PyArray_DATA((PyArrayObject*)at))[i] = reader->gps_tags.elements[i].t;
+        ((int8_t*)PyArray_DATA((PyArrayObject*)afix))[i] = reader->gps_tags.elements[i].fix;
+        ((int8_t*)PyArray_DATA((PyArrayObject*)ansvs))[i] = reader->gps_tags.elements[i].nsvs;
     }
     out = Py_BuildValue("(NNNN)", aipos, at, afix, ansvs);
     return out;
@@ -903,8 +903,8 @@ static PyObject* bookmarks_to_pyarray(reader_t *reader) {
         return NULL;
     }
     for (i=0; i<n; i++) {
-        ((int64_t*)PyArray_DATA(out))[i*2] = reader->bookmarks.elements[i].ipos;
-        ((int64_t*)PyArray_DATA(out))[i*2+1] = reader->bookmarks.elements[i].fpos;
+        ((int64_t*)PyArray_DATA((PyArrayObject*)out))[i*2] = reader->bookmarks.elements[i].ipos;
+        ((int64_t*)PyArray_DATA((PyArrayObject*)out))[i*2+1] = reader->bookmarks.elements[i].fpos;
     }
     return out;
 }
@@ -916,12 +916,12 @@ int pyarray_to_bookmarks(reader_t *reader, PyObject *barr) {
     if (!good_array(barr, NPY_INT64)) {
         return 1;
     }
-    if (PyArray_NDIM(barr) != 2 ||
-        PyArray_DIMS(barr)[1] != 2) {
+    if (PyArray_NDIM((PyArrayObject*)barr) != 2 ||
+        PyArray_DIMS((PyArrayObject*)barr)[1] != 2) {
     }
-    n = PyArray_DIMS(barr)[0];
+    n = PyArray_DIMS((PyArrayObject*)barr)[0];
 
-    carr = (int64_t*)PyArray_DATA(barr);
+    carr = (int64_t*)PyArray_DATA((PyArrayObject*)barr);
 
     for (i=0; i<n; i++) {
         bookmark_array_append(&reader->bookmarks, carr[i*2], carr[i*2+1]);

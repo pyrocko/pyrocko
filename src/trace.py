@@ -687,7 +687,8 @@ class Trace(object):
         The calculation follows:
 
         .. math::
-            Ynew = sqrt(Y**2+H(Y)**2)
+
+            Y' = \\sqrt{Y^2+H(Y)^2}
 
         where H is the Hilbert-Transform of the signal Y.
         '''
@@ -863,7 +864,7 @@ class Trace(object):
             dt = xself.tmin - tmin
             n = xself.data_len()
             ydata_new = num.empty(n, dtype=num.float)
-            i_control = num.array([0, n-1])
+            i_control = num.array([0, n-1], dtype=num.int64)
             t_control = num.array([xself.tmin, xself.tmax])
             signal_ext.antidrift(i_control, t_control,
                                  xself.ydata.astype(num.float),
@@ -1428,7 +1429,8 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second',
     :param fillmethod:  what to put into the gaps: 'interpolate' or 'zeros'.
     :param deoverlap:   how to handle overlaps: 'use_second' to use data from 
                         second trace (default), 'use_first' to use data from first
-                        trace, 'crossfade_cos' to crossfade with cosine taper 
+                        trace, 'crossfade_cos' to crossfade with cosine taper,
+                        'add' to add amplitude values.
     :param maxlap:      maximum number of samples of overlap which are removed
       
     :returns:           list of traces
@@ -1484,6 +1486,9 @@ def degapper(traces, maxgap=5, fillmethod='interpolate', deoverlap='use_second',
                             if deoverlap == 'use_second':
                                 a.ydata = num.concatenate((a.ydata[:-n], b.ydata))
                             elif deoverlap in ('use_first', 'crossfade_cos'):
+                                a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
+                            elif deoverlap == 'add':
+                                a.ydata[-n:] += b.ydata[:n]
                                 a.ydata = num.concatenate((a.ydata, b.ydata[n:]))
                             else:
                                 assert False, 'unknown deoverlap method'

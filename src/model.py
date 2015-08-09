@@ -479,15 +479,17 @@ class Station:
 
         return proj
 
-    def guess_projections_to_rtu(self, out_channels=('R', 'T', 'U'), **kwargs):
+    def guess_projections_to_rtu(self, out_channels=('R', 'T', 'U'), backazimuth=None, **kwargs):
+        if backazimuth is None:
+            backazimuth = self.backazimuth
         out_channels_ = [
-            Channel(out_channels[0], wrap(self.backazimuth+180., -180.,180.),  0., 1.),
-            Channel(out_channels[1], wrap(self.backazimuth+270., -180.,180.),  0., 1.),
+            Channel(out_channels[0], wrap(backazimuth+180., -180.,180.),  0., 1.),
+            Channel(out_channels[1], wrap(backazimuth+270., -180.,180.),  0., 1.),
             Channel(out_channels[2], 0.,  -90., 1.) ]
         
         proj = []
         for (m, in_channels, _) in self.guess_projections_to_enu( **kwargs ):
-            phi = (self.backazimuth + 180.)*d2r
+            phi = (backazimuth + 180.)*d2r
             r = num.array([[math.sin(phi),  math.cos(phi), 0.0],
                            [math.cos(phi), -math.sin(phi), 0.0],
                            [          0.0,            0.0, 1.0]])

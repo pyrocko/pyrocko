@@ -198,22 +198,22 @@ static PyObject* w_antidrift(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    n_control = PyArray_SIZE(arr_indices_control);
-    indices_control = (int64_t*)PyArray_DATA(arr_indices_control);
+    n_control = PyArray_SIZE((PyArrayObject*)arr_indices_control);
+    indices_control = (int64_t*)PyArray_DATA((PyArrayObject*)arr_indices_control);
 
-    if (n_control != PyArray_SIZE(arr_t_control)) {
+    if (n_control != PyArray_SIZE((PyArrayObject*)arr_t_control)) {
         PyErr_SetString(Error,
             "sizes of indices_control and t_control differ");
         return NULL;
     }
 
-    t_control = (double*)PyArray_DATA(arr_t_control);
+    t_control = (double*)PyArray_DATA((PyArrayObject*)arr_t_control);
 
-    n_in = PyArray_SIZE(arr_samples_in);
-    samples_in = (double*)PyArray_DATA(arr_samples_in);
+    n_in = PyArray_SIZE((PyArrayObject*)arr_samples_in);
+    samples_in = (double*)PyArray_DATA((PyArrayObject*)arr_samples_in);
 
-    n_out = PyArray_SIZE(arr_samples_out);
-    samples_out = (double*)PyArray_DATA(arr_samples_out);
+    n_out = PyArray_SIZE((PyArrayObject*)arr_samples_out);
+    samples_out = (double*)PyArray_DATA((PyArrayObject*)arr_samples_out);
 
     err = antidrift(n_control, indices_control, t_control, n_in, samples_in,
             n_out, tmin_out, deltat_out, samples_out);

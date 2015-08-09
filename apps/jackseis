@@ -315,7 +315,7 @@ if __name__ == '__main__':
 
     if output_dir and not output_path:
         output_path = 'trace_%(network)s-%(station)s-' \
-                      '%(location)s-%(channel)s_%(tmin)s.' + \
+                      '%(location)s-%(channel)s_%(wmin)s.' + \
                       options.output_format
 
     if output_dir and output_path:
@@ -379,15 +379,17 @@ if __name__ == '__main__':
                     r = {}
                     for k, pat, repl in replacements:
                         oldval = getattr(tr, k)
-                        newval = re.sub(pat, repl, oldval)
-                        r[k] = newval
+                        newval, n = re.subn(pat, repl, oldval)
+                        if n:
+                            r[k] = newval
 
                     tr.set_codes(**r)
 
             if output_path:
                 try:
                     io.save(traces, output_path, format=options.output_format,
-                            overwrite=options.force)
+                            overwrite=options.force,
+                            additional=dict(wmin=tts(twmin, format='%Y-%m-%d_%H-%M-%S'), wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')))
                 except io.FileSaveError, e:
                     die(str(e))
 

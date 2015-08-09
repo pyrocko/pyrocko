@@ -451,7 +451,7 @@ class GlobalCMT(EarthquakeCatalog):
 
 class USGS(EarthquakeCatalog):
 
-    def __init__(self, catalog='pde'):
+    def __init__(self, catalog=None):
        self.catalog = catalog 
        self.events = {}
 
@@ -485,7 +485,7 @@ class USGS(EarthquakeCatalog):
         if magmax != 10.:
             a('maxmagnitude=%g' % magmax)
         
-        url = 'http://comcat.cr.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
+        url = 'http://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
         page = urllib2.urlopen(url).read()
@@ -518,7 +518,7 @@ class USGS(EarthquakeCatalog):
 
 
             if props['place'] != None:
-                region = props['place'].encode('ascii', errors='replace')
+                region = props['place'].encode('ascii', 'replace')
             else:
                 region = None
 
@@ -615,6 +615,7 @@ class Kinherd(EarthquakeCatalog):
                 lon=params['longitude'],
                 depth=params['depth'],
                 magnitude=params['magnitude'],
+                duration=params['rise_time'],
                 name = eq['name'],
                 catalog='KPS',
                 moment_tensor = mt)

@@ -109,9 +109,9 @@ def euler_to_matrix( alpha, beta, gamma ):
     the line of nodes is the intersection between the x-y and the xs-ys
     planes.
     
-    :param alpha: is the angle between the z-axis and the zs-axis.
-    :param beta:  is the angle between the x-axis and the line of nodes.
-    :param gamma: is the angle between the line of nodes and the xs-axis.
+    :param alpha: is the angle between the z-axis and the zs-axis [rad]
+    :param beta:  is the angle between the x-axis and the line of nodes [rad]
+    :param gamma: is the angle between the line of nodes and the xs-axis [rad]
 
     Usage for moment tensors::
 
@@ -411,29 +411,6 @@ class MomentTensor(Object):
         
         return results
 
-    def angle(self, other):
-        a = self._m_eigenvecs
-        b = other._m_eigenvecs
-
-        r = []
-        for avec in a:
-            c = []
-            for bvec in b:
-                c.append( float(num.dot(avec, bvec.T)))
-
-            r.append(c)
-
-        r = num.matrix(r)
-    
-        angles = []
-        for r1 in self._rotmats:
-            for r2 in other._rotmats:
-                r = num.dot(r1.T, r2)
-                angles.append( math.acos((float(r.trace()) - 1.0) / 2.0)*r2d )
-
-        a = min(angles)
-        return min( a, 180. - a )
-
     def p_axis(self):
         '''Get direction of p axis.'''
         return (self._m_eigenvecs.T)[0]
@@ -470,11 +447,11 @@ class MomentTensor(Object):
         rotmat1 = self._rotmats[0]
         m = rotmat1.T * MomentTensor._m_unrot * rotmat1 * self.scalar_moment()
         return m
-    
+
     def moment_magnitude(self):
         '''Get moment magnitude of moment tensor.'''
         return moment_to_magnitude(self.scalar_moment())
-        
+
     def scalar_moment(self):
         '''Get the scalar moment of the moment tensor.'''
         return num.linalg.norm(self._m_eigenvals)/math.sqrt(2.)
@@ -483,10 +460,20 @@ class MomentTensor(Object):
     def moment(self):
         return float(self.scalar_moment())
 
+    @moment.setter
+    def moment(self, value):
+        self._m *= value/self.moment
+        self._update()
+
     @property
     def magnitude(self):
         return float(self.moment_magnitude())
     
+    @magnitude.setter
+    def magnitude(self, value):
+        self._m *= magnitude_to_moment(value)/self.moment
+        self._update()
+
     def __str__(self):
         mexp = pow(10,math.ceil(num.log10(num.max(num.abs(self._m)))))
         m = self._m/mexp
@@ -505,6 +492,54 @@ class MomentTensor(Object):
                  (i+1, sdr[0], sdr[1], sdr[2])
             
         return s
+
+    def standard_decomposition(self):
+        epsilon = 1e-6
+
+        m = self.m()
+
+        trace_m = num.trace(m)
+        m_iso = num.diag([trace_m / 3., trace_m / 3., trace_m / 3.])
+        moment_iso = abs(trace_m / 3.)
+
+        m_devi = m - m_iso
+
+        evals, evecs = eigh_check(m_devi)
+
+        moment_devi = num.max(num.abs(evals))
+        moment = moment_iso + moment_devi
+
+        iorder = num.argsort(num.abs(evals))
+        evals_sorted = evals[iorder]
+        evecs_sorted = (evecs.T[iorder]).T
+
+        if moment_devi < epsilon * moment_iso:
+            signed_moment_dc = 0.
+        else:
+            assert 0 <=  -evals_sorted[0] / evals_sorted[2] <= 0.5
+            signed_moment_dc = evals_sorted[2] * (1.0 + 2.0 * (
+                evals_sorted[0] / evals_sorted[2]))
+
+        moment_dc = abs(signed_moment_dc)
+        m_dc_es = signed_moment_dc * num.diag([0., -1.0, 1.0])
+        m_dc = num.dot(evecs_sorted, num.dot(m_dc_es, evecs_sorted.T))
+
+        m_clvd = m_devi - m_dc
+
+        moment_clvd = moment_devi - moment_dc
+
+        ratio_dc = moment_dc / moment
+        ratio_clvd = moment_clvd / moment
+        ratio_iso = moment_iso / moment
+        ratio_devi = moment_devi / moment
+
+        return [
+            (moment_iso, ratio_iso, m_iso),
+            (moment_dc, ratio_dc, m_dc),
+            (moment_clvd, ratio_clvd, m_clvd),
+            (moment_devi, ratio_devi, m_devi),
+            (moment, 1.0, m)]
+
 
 def other_plane( strike, dip, rake ):
     mt = MomentTensor( strike=strike, dip=dip, rake=rake )

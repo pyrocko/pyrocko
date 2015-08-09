@@ -724,7 +724,7 @@ class Marker(object):
             return cl(1)
         return cl(2)
             
-    def draw(self, p, time_projection, y_projection, draw_line=True, draw_triangle=False):
+    def draw(self, p, time_projection, y_projection, draw_line=True, draw_triangle=False, **kwargs):
         
         if self.selected or self.alerted or not self.nslc_ids:
             

@@ -1149,8 +1149,8 @@ class Config(Object):
     scope_type = ScopeType.T(optional=True)
     waveform_type = WaveformType.T(optional=True)
     nearfield_terms = NearfieldTermsType.T(optional=True)
-    description = String.T(default='', optional=True)
-    reference_ids = List.T(StringID.T())
+    description = String.T(optional=True)
+    references = List.T(Reference.T())
     size = Int.T(optional=True)
 
     earthmodel_1d = Earthmodel1D.T(optional=True)

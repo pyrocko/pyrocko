@@ -24,11 +24,11 @@ PyArrayObject *get_good_array(PyObject *array) {
         PyErr_SetString(IMSError, "Data must be given as NumPy array." );
         return NULL;
     }
-    if (PyArray_ISBYTESWAPPED(array)) {
+    if (PyArray_ISBYTESWAPPED((PyArrayObject*)array)) {
         PyErr_SetString(IMSError, "Data must be given in machine byte-order.");
         return NULL;
     }
-    if (PyArray_TYPE(array) != NPY_INT32) {
+    if (PyArray_TYPE((PyArrayObject*)array) != NPY_INT32) {
         PyErr_SetString(IMSError, "Data must be 32-bit integers.");
         return NULL;
     }
@@ -131,7 +131,7 @@ static PyObject* ims_decode_cm6(PyObject *dummy, PyObject *args) {
     }
     array_dims[0] = isample;
     array = PyArray_SimpleNew(1, array_dims, NPY_INT32);
-    memcpy(PyArray_DATA(array), out_data, isample*sizeof(int32_t));
+    memcpy(PyArray_DATA((PyArrayObject*)array), out_data, isample*sizeof(int32_t));
     free(out_data);
     return Py_BuildValue("N", array);
 }

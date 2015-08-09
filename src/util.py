@@ -4,8 +4,13 @@ import time, logging, os, sys, re, calendar, math, fnmatch, errno, fcntl, shlex,
 from scipy import signal
 import os.path as op
 import numpy as num
-import util_ext
-from collections import Counter
+import platform
+
+if platform.system() != 'Darwin':
+    import util_ext
+else:
+    util_ext = None
+
 
 logger = logging.getLogger('pyrocko.util')
 
@@ -589,7 +594,11 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
         if dotpos != -1:
             s = s[:dotpos]
       
-    return calendar.timegm(time.strptime(s, format)) + fracsec
+
+    try:
+        return calendar.timegm(time.strptime(s, format)) + fracsec
+    except ValueError, e:
+        raise TimeStrError('%s, string=%s, format=%s' % (str(e), s, format))
 
 
 stt = str_to_time
@@ -1188,8 +1197,72 @@ def read_leap_seconds(tzfile='/usr/share/zoneinfo/right/UTC'):
 
     return out
 
+
+class LeapSecondsError(Exception):
+    pass
+
+
+class LeapSecondsOutdated(LeapSecondsError):
+    pass
+
+
+def parse_leap_seconds_list(fn):
+    data = []
+    texpires = None
+    try:
+        t0 = int(round(str_to_time('1900-01-01 00:00:00')))
+    except TimeStrError:
+        t0 = int(round(str_to_time('1970-01-01 00:00:00'))) - 2208988800
+
+    tnow = int(round(time.time()))
+
+    if not op.exists(fn):
+        raise LeapSecondsOutdated('no leap seconds file found')
+
+    try:
+        with open(fn, 'r') as f:
+            for line in f:
+                if line.startswith('#@'):
+                    texpires = int(line.split()[1])  + t0
+                elif line.startswith('#'):
+                    pass
+                else:
+                    toks = line.split()
+                    t = int(toks[0]) + t0
+                    nleap = int(toks[1]) - 10
+                    data.append((t, nleap))
+
+    except IOError:
+        raise LeapSecondsError('cannot read leap seconds file %s' % fn)
+
+    if texpires is None or tnow > texpires:
+        raise LeapSecondsOutdated('leap seconds list is outdated')
+
+    return data
+
+
+def read_leap_seconds2():
+    from pyrocko import config
+    conf = config.config()
+    fn = conf.leapseconds_path
+    url = conf.leapseconds_url
+    try:
+        return parse_leap_seconds_list(fn)
+
+    except LeapSecondsOutdated:
+        try:
+            logger.info('updating leap seconds list...')
+            download_file(url, fn)
+
+        except Exception:
+            raise LeapSecondsError(
+                'cannot download leap seconds list from %s to %s' (url, fn))
+
+        return parse_leap_seconds_list(fn)
+
+
 def gps_utc_offset(t):
-    ls = read_leap_seconds()
+    ls = read_leap_seconds2()
     i = 0
     if t < ls[0][0]:
         return ls[0][1] - 9
@@ -1199,6 +1272,7 @@ def gps_utc_offset(t):
         i += 1
 
     return ls[-1][1] - 9
+
 
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     import itertools, glob
@@ -1289,8 +1363,16 @@ def consistency_check(list_of_tuples, message='values differ:'):
                 for t in list_of_tuples))
 
 
+class defaultzerodict(dict):
+    def __missing__(self, k):
+        return 0
+
+
 def mostfrequent(x):
-    c = Counter(x)
+    c = defaultzerodict()
+    for e in x:
+        c[e] += 1
+
     return sorted(c.keys(), key=lambda k: c[k])[-1]
 
 
@@ -1307,12 +1389,12 @@ def consistency_merge(list_of_tuples,
     try:
         consistency_check(list_of_tuples, message)
         return list_of_tuples[0][1:]
-    except Inconsistencies, e:
+    except Inconsistency, e:
         if error == 'raise':
             raise
 
         elif error == 'warn':
             logger.warn(str(e))
 
-        return [merge(x) for x in zip(*list_of_tuples)[1:]]
+        return tuple([merge(x) for x in zip(*list_of_tuples)[1:]])
 

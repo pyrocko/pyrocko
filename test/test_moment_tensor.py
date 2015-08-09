@@ -79,7 +79,21 @@ class MomentTensorTestCase( unittest.TestCase ):
         (s1, d1, _), (s2, d2, _) = m.both_strike_dip_rake()
         assert abs(s1 - 45.) < 0.1 or abs(s2 - 45.) < 0.1
         
+    def testMomentGetterSetter(self):
+        m1 = MomentTensor()
+        want_mom = 2E7
+        m1.moment = want_mom
+        sm2 = m1.scalar_moment()
+        assert(sm2 == m1.moment)
+        assert(abs(sm2 - want_mom)<1E-8)
 
+        mag = moment_to_magnitude(want_mom)
+        assert(m1.magnitude==mag)
+
+        want_mag = 3.5
+        m1.magnitude = want_mag
+        mom = magnitude_to_moment(want_mag)
+        assert( m1.moment == mom)
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')
     unittest.main()

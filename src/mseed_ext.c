@@ -103,7 +103,7 @@ mseed_get_traces (PyObject *dummy, PyObject *args)
                     return NULL;
             }
             array = PyArray_SimpleNew(1, array_dims, numpytype);
-            memcpy( PyArray_DATA(array), mst->datasamples, mst->numsamples*ms_samplesize(mst->sampletype) );
+            memcpy( PyArray_DATA((PyArrayObject*)array), mst->datasamples, mst->numsamples*ms_samplesize(mst->sampletype) );
         } else {
             Py_INCREF(Py_None);
             array = Py_None;
@@ -210,14 +210,14 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
             Py_DECREF(in_trace);
             return NULL;
         }
-        if (PyArray_ISBYTESWAPPED(array)) {
+        if (PyArray_ISBYTESWAPPED((PyArrayObject*)array)) {
             PyErr_SetString(MSeedError, "Data must be given in machine byte-order" );
             mst_free( &mst );
             Py_DECREF(in_trace);
             return NULL;
         }
 
-        numpytype = PyArray_TYPE(array);
+        numpytype = PyArray_TYPE((PyArrayObject*)array);
         switch (numpytype) {
                 case NPY_INT32:
                     assert( ms_samplesize('i') == 4 );

@@ -18,20 +18,19 @@ from test_ims import IMSTestCase
 from test_guts import GutsTestCase
 
 import unittest
-import argparse
+import optparse
 import sys
 
 if __name__ == '__main__':
     pyrocko.util.setup_logging('test_all', 'warning')
 
-    parser = argparse.ArgumentParser() 
-    parser.add_argument('--filename',  default=False)
-    parser.add_argument('unittest_args', nargs='*')
-    args = parser.parse_args()
-    if args.filename:
-        f = open(args.filename, 'w')
+    parser = optparse.OptionParser() 
+    parser.add_option('--filename', dest='filename')
+    options, args = parser.parse_args()
+    if options.filename:
+        f = open(options.filename, 'w')
         runner = unittest.TextTestRunner(f)
-        sys.argv[1:] = args.unittest_args
+        sys.argv[1:] = args
         unittest.main(testRunner=runner)
         f.close()
     else:

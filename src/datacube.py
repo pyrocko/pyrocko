@@ -88,7 +88,6 @@ def plot_timeline(fns):
 
     h = 3600.
 
-    util.read_leap_seconds()
     joined = [[], [], [], []]
     ioff = 0
     for fn in fns:
