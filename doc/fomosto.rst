@@ -93,10 +93,14 @@ Downloads/Software website of section 2.1 (GFZ): http://www.gfz-potsdam.de/en/se
 
 In this example, we will use QSEIS as the modelling code.
 
-To initialize an empty Green's function store to be built with QSEIS run::
+To initialize an empty Green's function store to be built with QSEIS 2006a run::
 
-    $ fomosto init qseis my_first_gfs
-    
+    $ fomosto init qseis.2006a my_first_gfs
+
+to use a different backend, e.g. QSSP 2010, run::
+
+    $ fomosto init qssp.2010 my_first_gfs
+
 A directory named ``my_first_gfs``, containing some example configuration files
 is created::
 
