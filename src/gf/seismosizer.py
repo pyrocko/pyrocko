@@ -981,11 +981,8 @@ class RectangularSource(DCSource):
         help='Slip on the rectangular source area [m]')
 
     def __init__(self, **kwargs):
-        if 'slip' in kwargs and 'magnitude' not in kwargs:
-            pass
-
-        else:
-                raise ArgumentError('either slip or magnitude as input')
+        if 'slip' in kwargs and 'magnitude' in kwargs:
+            raise ArgumentError('either slip or magnitude as input')
 
         Source.__init__(self, **kwargs)
 
