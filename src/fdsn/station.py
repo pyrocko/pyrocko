@@ -528,7 +528,7 @@ class Comment(Object):
     value = Unicode.T(xmltagname='Value')
     begin_effective_time = Timestamp.T(optional=True,
                                        xmltagname='BeginEffectiveTime')
-    end_effective_time = Timestamp.T(optional=True,
+    end_effective_time = DummyAwareOptionalTimestamp.T(optional=True,
                                      xmltagname='EndEffectiveTime')
     author_list = List.T(Person.T(xmltagname='Author'))
 
