@@ -460,7 +460,10 @@ class QSSPRunner:
         if proc.returncode != 0:
             errmess.append('qssp had a non-zero exit state: %i' % proc.returncode)
         if error_str:
-            errmess.append('qssp emitted something via stderr')
+
+            logger.warn('qssp emitted something via stderr: \n\n%s' % error_str)
+
+            #errmess.append('qssp emitted something via stderr')
         if output_str.lower().find('error') != -1:
             errmess.append("the string 'error' appeared in qssp output")
 

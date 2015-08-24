@@ -630,7 +630,9 @@ class QSeisRunner:
                 'qseis had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            errmess.append('qseis emitted something via stderr')
+            logger.warn('qseis emitted something via stderr:\n\n%s' % error_str)
+
+            # errmess.append('qseis emitted something via stderr')
 
         if output_str.lower().find('error') != -1:
             errmess.append("the string 'error' appeared in qseis output")
