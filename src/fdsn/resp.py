@@ -306,8 +306,11 @@ def iload_fh(f):
             ploc(get1(cc, '03', '')),
             get1(cc, '04'))
 
-        tmin = pdate(get1(cc, '22'))
-        tmax = pdate(get1(cc, '23'))
+        try:
+            tmin = pdate(get1(cc, '22'))
+            tmax = pdate(get1(cc, '23'))
+        except util.TimeStrError, e:
+            raise RespError('invalid date in RESP information. (%s)' % str(e))
 
         stage_elements = {}
 
@@ -425,7 +428,7 @@ if __name__ == '__main__':
     util.setup_logging(__name__)
 
     if len(sys.argv) < 2:
-        sys.exit('usage: python -m pyrocko.station.resp <stations> <resp> ...')
+        sys.exit('usage: python -m pyrocko.fdsn.resp <stations> <resp> ...')
 
     stations = model.load_stations(sys.argv[1])
 
