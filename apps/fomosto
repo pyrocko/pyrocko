@@ -951,7 +951,7 @@ def command_modelview(args):
 
 
 def command_upgrade(args):
-    parser, options, args = cl_parse('view', args)
+    parser, options, args = cl_parse('upgrade', args)
     store_dirs = get_store_dirs(args)
     try:
         for store_dir in store_dirs:
