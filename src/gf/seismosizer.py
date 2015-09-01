@@ -25,14 +25,9 @@ guts_prefix = 'pf'
 
 d2r = math.pi/180.
 
-<<<<<<< HEAD
-=======
-
 def xtime():
     return time.time()
 
-
->>>>>>> f365d16fc3e6a0bccc74683dd44a255305e53b10
 class BadRequest(Exception):
     pass
 
@@ -1034,7 +1029,7 @@ class RectangularSource(DCSource):
     @property
     def shearm(self):
         lay = cake.load_model('default',crust2_profile=(self.lat, self.lon)).layer(z=self.depth)
-        return cake.Material(vs=lay.m.vs, rho=lay.m.rho).shear_modulus()
+        return cake.Material(vs=lay.v(2,z=self.depth), rho=lay.material(z=self.depth).rho).shear_modulus()
 
     def slip_to_moment(self):
         return self.update(moment = float(self.slip*self.width*self.length*self.shearm))
