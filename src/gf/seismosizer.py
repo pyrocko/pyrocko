@@ -1,7 +1,10 @@
 from collections import defaultdict
+import time
 import math
 import os
 import re
+import resource
+
 pjoin = os.path.join
 
 import numpy as num
@@ -12,15 +15,18 @@ from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
-from pyrocko import trace, model
+from pyrocko import trace, model, parimap
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
 import pyrocko.config
+from pyrocko import cake
 
 guts_prefix = 'pf'
 
 d2r = math.pi/180.
 
+def xtime():
+    return time.time()
 
 class BadRequest(Exception):
     pass
@@ -153,8 +159,6 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     dist = num.sqrt(dist_x**2 + dist_y**2)
     times = dist / velocity
 
-    #times -= num.mean(times)
-
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
 
@@ -163,7 +167,8 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     points2 = num.repeat(points, ntau, axis=0)
     times2 = num.repeat(times, ntau) + num.tile(xtau, n)
 
-    return points2, times2
+    return points2, times2, dw, dl
+
 
 def outline_rect_source(strike, dip, length, width):
     l = length
@@ -179,6 +184,7 @@ def outline_rect_source(strike, dip, length, width):
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
 
     return num.dot(rotmat.T, points.T).T
+
 
 class InvalidGridDef(Exception):
     pass
@@ -451,6 +457,46 @@ class GridDef(Object):
         return '; '.join(str(x) for x in self.elements)
 
 
+class SeismosizerTrace(Object):
+
+    codes = Tuple.T(
+        4, String.T(),
+        default=('', 'STA', '', 'Z'),
+        help='network, station, location and channel codes')
+
+    data = Array.T(
+        shape=(None,),
+        dtype=num.float32,
+        serialize_as='base64',
+        serialize_dtype=num.dtype('<f4'),
+        help='numpy array with data samples')
+
+    deltat = Float.T(
+        default=1.0,
+        help='sampling interval [s]')
+
+    tmin = Timestamp.T(
+        default=0.0,
+        help='time of first sample as a system timestamp [s]')
+
+    def pyrocko_trace(self):
+        c = self.codes
+        return trace.Trace(c[0], c[1], c[2], c[3],
+                           ydata=self.data,
+                           deltat=self.deltat,
+                           tmin=self.tmin)
+
+    @classmethod
+    def from_pyrocko_trace(cls, tr, **kwargs):
+        d = dict(
+            codes=tr.nslc_id,
+            tmin=tr.tmin,
+            deltat=tr.deltat,
+            data=num.asarray(tr.get_ydata(), dtype=num.float32))
+        d.update(kwargs)
+        return cls(**d)
+
+
 class Source(meta.Location):
     '''
     Base class for all source models
@@ -465,13 +511,12 @@ class Source(meta.Location):
 
     def __init__(self, **kwargs):
         meta.Location.__init__(self, **kwargs)
-        self._discretized = {}
 
     def clone(self, **kwargs):
         '''Make a copy of the source model.
 
         A new object of the same source model class is created
-        and initialized with the parameters of the source model 
+        and initialized with the parameters of the source model
         on which this method is called on. If `kwargs` are given,
         these are used to override any of the initialization
         parameters.
@@ -505,7 +550,7 @@ class Source(meta.Location):
         '''Change some of the source models parameters.
 
         Example::
-        
+
           >>> from pyrocko import gf
           >>> s = gf.DCSource()
           >>> s.update(strike=66., dip=33.)
@@ -522,15 +567,9 @@ class Source(meta.Location):
         for (k, v) in kwargs.iteritems():
             self[k] = v
 
-    def cached_discretize_basesource(self, store):
-        if store not in self._discretized:
-            self._discretized[store] = self.discretize_basesource(store)
-
-        return self._discretized[store]
-
     def grid(self, **variables):
         '''Create grid of source model variations.
-        
+
         :returns: :py:class:`SourceGrid` instance.
 
         Example::
@@ -540,7 +579,6 @@ class Source(meta.Location):
           >>> R = gf.Range
           >>> for s in base.grid(R('
 
-        
         '''
         return SourceGrid(base=self, variables=variables)
 
@@ -723,7 +761,7 @@ class RectangularExplosionSource(ExplosionSource):
         else:
             nucy = None
 
-        points, times = discretize_rect_source(
+        points, times, dwidth, dlength = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
             self.velocity, nucleation_x=nucx, nucleation_y=nucy,
@@ -738,6 +776,8 @@ class RectangularExplosionSource(ExplosionSource):
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
+            dwidth=dwidth,
+            dlength=dlength,
             m0s=num.repeat(1.0/n, n))
 
 
@@ -858,7 +898,6 @@ class CLVDSource(Source):
             **kwargs)
 
 
-
 class MTSource(Source):
     '''
     A moment tensor point source.
@@ -974,6 +1013,27 @@ class RectangularSource(DCSource):
         help='duration of energy release of any single point in rupture area '
              '[s]')
 
+    slip =Float.T(
+        optional=True,
+        help='Slip on the rectangular source area [m]')
+
+    def __init__(self, **kwargs):
+        if 'slip' in kwargs and 'magnitude' in kwargs:
+            raise ArgumentError('either slip or magnitude as input')
+
+        Source.__init__(self, **kwargs)
+
+        if self.slip is not None:
+            self.slip_to_moment()
+
+    @property
+    def shearm(self):
+        lay = cake.load_model('default',crust2_profile=(self.lat, self.lon)).layer(z=self.depth)
+        return cake.Material(vs=lay.v(2,z=self.depth), rho=lay.material(z=self.depth).rho).shear_modulus()
+
+    def slip_to_moment(self):
+        return self.update(moment = float(self.slip*self.width*self.length*self.shearm))
+
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
@@ -981,7 +1041,9 @@ class RectangularSource(DCSource):
             self.nucleation_x,
             self.nucleation_y,
             self.velocity,
-            self.risetime)
+            self.risetime,
+            self.shearm,
+            self.slip)
 
     def discretize_basesource(self, store):
 
@@ -995,7 +1057,7 @@ class RectangularSource(DCSource):
         else:
             nucy = None
 
-        points, times = discretize_rect_source(
+        points, times, dwidth, dlength = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
             self.velocity, nucleation_x=nucx, nucleation_y=nucy,
@@ -1013,13 +1075,16 @@ class RectangularSource(DCSource):
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
+            dwidth=dwidth,
+            dlength=dlength,
+            shearm=self.shearm,
             m6s=num.repeat(mot.m6()[num.newaxis, :], n, axis=0))
 
         return ds
 
     def outline(self, cs='xyz'):
         points = outline_rect_source(self.strike, self.dip, self.length,
-                                   self.width)
+                                     self.width)
 
         points[:, 0] += self.north_shift
         points[:, 1] += self.east_shift
@@ -1027,9 +1092,11 @@ class RectangularSource(DCSource):
         if cs == 'xyz':
             return points
         elif cs == 'xy':
-            return points[:,:2]
+            return points[:, :2]
         elif cs in ('latlon', 'lonlat'):
-            latlon = ne_to_latlon(self.lat, self.lon, points[:, 0], points[:, 1])
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
             latlon = num.array(latlon).T
             if cs == 'latlon':
                 return latlon
@@ -1513,9 +1580,12 @@ class Target(meta.Receiver):
     def get_factor(self):
         return 1.0
 
+    def post_process(self, tr):
+        return Result(trace=tr)
 
-class Reduction(StringChoice):
-    choices = ['sum', 'minimum', 'maximum', 'mean', 'variance']
+
+class Result(Object):
+    trace = SeismosizerTrace.T(optional=True)
 
 
 class Request(Object):
@@ -1526,7 +1596,6 @@ class Request(Object):
 
         Request(**kwargs)
         Request(sources, targets, **kwargs)
-        Request(sources, targets, reductions, **kwargs)
     '''
 
     sources = List.T(
@@ -1537,11 +1606,6 @@ class Request(Object):
         Target.T(),
         help='list of targets for which to produce synthetics.')
 
-    reductions = List.T(
-        Reduction.T(),
-        help='list of reductions to be applied '
-             'target-wise to the synthetics')
-
     @classmethod
     def args2kwargs(cls, args):
         if len(args) not in (0, 2, 3):
@@ -1549,8 +1613,6 @@ class Request(Object):
 
         if len(args) == 2:
             return dict(sources=args[0], targets=args[1])
-        elif len(args) == 3:
-            return dict(sources=args[0], targets=args[1], reductions=args[2])
         else:
             return {}
 
@@ -1558,7 +1620,6 @@ class Request(Object):
         kwargs.update(self.args2kwargs(args))
         sources = kwargs.pop('sources', [])
         targets = kwargs.pop('targets', [])
-        reductions = kwargs.pop('reductions', [])
 
         if isinstance(sources, Source):
             sources = [sources]
@@ -1566,11 +1627,7 @@ class Request(Object):
         if isinstance(targets, Target):
             targets = [targets]
 
-        if isinstance(reductions, Reduction):
-            reductions = [reductions]
-
-        Object.__init__(self, sources=sources, targets=targets,
-                        reductions=reductions, **kwargs)
+        Object.__init__(self, sources=sources, targets=targets, **kwargs)
 
     def subsources_map(self):
         m = defaultdict(list)
@@ -1597,43 +1654,18 @@ class Request(Object):
         return m
 
 
-class SeismosizerTrace(Object):
-
-    codes = Tuple.T(
-        4, String.T(),
-        default=('', 'STA', '', 'Z'),
-        help='network, station, location and channel codes')
-
-    data = Array.T(
-        shape=(None,),
-        dtype=num.float32,
-        serialize_as='base64',
-        serialize_dtype=num.dtype('<f4'),
-        help='numpy array with data samples')
-
-    deltat = Float.T(
-        default=1.0,
-        help='sampling interval [s]')
-
-    tmin = Timestamp.T(
-        default=0.0,
-        help='time of first sample as a system timestamp [s]')
-
-    def pyrocko_trace(self):
-        c = self.codes
-        return trace.Trace(c[0], c[1], c[2], c[3],
-                           ydata=self.data,
-                           deltat=self.deltat,
-                           tmin=self.tmin)
-    @classmethod
-    def from_pyrocko_trace(cls, tr, **kwargs):
-        d = dict(
-            codes=tr.nslc_id,
-            tmin=tr.tmin,
-            deltat=tr.deltat,
-            data=num.asarray(tr.get_ydata(), dtype=num.float32))
-        d.update(kwargs)
-        return cls(**d)
+class ProcessingStats(Object):
+    t_perc_get_store_and_receiver = Float.T()
+    t_perc_discretize_source = Float.T()
+    t_perc_make_base_seismogram = Float.T()
+    t_perc_make_same_span = Float.T()
+    t_perc_post_process = Float.T()
+    t_wallclock = Float.T()
+    t_cpu = Float.T()
+    n_read_blocks = Int.T()
+    n_results = Int.T()
+    n_subrequests = Int.T()
+    n_stores = Int.T()
 
 
 class Response(Object):
@@ -1642,26 +1674,27 @@ class Response(Object):
     '''
 
     request = Request.T()
-    traces_list = List.T(List.T(SeismosizerTrace.T()))
+    results_list = List.T(List.T(Result.T()))
+    stats = ProcessingStats.T()
 
     def pyrocko_traces(self):
         '''Return a list of requested :py:class:`trace.Trace` instances.'''
         traces = []
-        for trs in self.traces_list:
-            for tr in trs:
-                traces.append(tr.pyrocko_trace())
+        for results in self.results_list:
+            for result in results:
+                traces.append(result.trace.pyrocko_trace())
 
         return traces
 
     def iter_results(self):
         '''Generator function to iterate over results of request.
 
-        Yields associated :py:class:`Source`, :py:class:`Target`, 
+        Yields associated :py:class:`Source`, :py:class:`Target`,
         :py:class:`trace.Trace` instances in each iteration.'''
         for isource, source in enumerate(self.request.sources):
             for itarget, target in enumerate(self.request.targets):
                 yield source, target, \
-                    self.traces_list[isource][itarget].pyrocko_trace()
+                    self.results_list[isource][itarget].trace.pyrocko_trace()
 
     def snuffle(self):
         '''Open *snuffler* with requested traces.'''
@@ -1773,6 +1806,52 @@ channel_rules = {
     'pore_pressure': [ScalarRule('pore_pressure')],
     'vertical_tilt': [HorizontalVectorRule('vertical_tilt')],
     'darcy_velocity': [VectorRule('darcy_velocity')]}
+
+
+class OutOfBoundsContext(Object):
+    source = Source.T()
+    target = Target.T()
+    distance = Float.T()
+    components = List.T(String.T())
+
+
+def process_subrequest(work, pshared=None):
+    engine = pshared['engine']
+    _, _, isources, itargets = work
+
+    sources = [pshared['sources'][isource] for isource in isources]
+    targets = [pshared['targets'][itarget] for itarget in itargets]
+
+    components = set()
+    for target in targets:
+        rule = engine.channel_rule(sources[0], target)
+        components.update(rule.required_components(target))
+
+    try:
+        base_seismogram, tcounters = engine.base_seismogram(
+            sources[0],
+            targets[0],
+            components,
+            pshared['dsource_cache'])
+
+    except meta.OutOfBounds, e:
+        e.context = OutOfBoundsContext(
+            source=sources[0],
+            target=targets[0],
+            distance=sources[0].distance_to(targets[0]),
+            components=components)
+
+        raise
+
+    results = []
+    for isource, source in zip(isources, sources):
+        for itarget, target in zip(itargets, targets):
+            result = engine._post_process(base_seismogram, source, target)
+            results.append((isource, itarget, result))
+
+    tcounters.append(xtime())
+
+    return results, tcounters
 
 
 class LocalEngine(Engine):
@@ -1935,14 +2014,38 @@ class LocalEngine(Engine):
                 target.store_id,
                 source.__class__.__name__))
 
-    def base_seismogram(self, source, target, components):
+    def _cached_discretize_basesource(self, source, store, cache):
+        if (source, store) not in cache:
+            cache[source, store] = source.discretize_basesource(store)
+
+        return cache[source, store]
+
+    def base_seismogram(self, source, target, components, dsource_cache):
+
+        tcounters = [xtime()]
+
         store_ = self.get_store(target.store_id)
         receiver = target.receiver(store_)
-        base_source = source.cached_discretize_basesource(store_)
-        base_seismogram = store_.seismogram(base_source, receiver, components,
-                                            interpolation=target.interpolation,
-                                            optimization=target.optimization)
-        return store.make_same_span(base_seismogram)
+
+        tcounters.append(xtime())
+
+        base_source = self._cached_discretize_basesource(
+            source, store_, dsource_cache)
+
+        tcounters.append(xtime())
+
+        base_seismogram = store_.seismogram(
+            base_source, receiver, components,
+            interpolation=target.interpolation,
+            optimization=target.optimization)
+
+        tcounters.append(xtime())
+
+        base_seismogram = store.make_same_span(base_seismogram)
+
+        tcounters.append(xtime())
+
+        return base_seismogram, tcounters
 
     def _post_process(self, base_seismogram, source, target):
         deltat = base_seismogram.values()[0].deltat
@@ -1954,14 +2057,15 @@ class LocalEngine(Engine):
         if factor != 1.0:
             data *= factor
 
+        itmin = base_seismogram.values()[0].itmin
+
         tr = SeismosizerTrace(
             codes=target.codes,
             data=data,
             deltat=deltat,
-            tmin=base_seismogram.values()[0].itmin * deltat
-                + source.get_timeshift())
+            tmin=itmin * deltat + source.get_timeshift())
 
-        return tr
+        return target.post_process(tr)
 
     def process(self, *args, **kwargs):
         '''Process a request.
@@ -1971,61 +2075,110 @@ class LocalEngine(Engine):
             process(**kwargs)
             process(request, **kwargs)
             process(sources, targets, **kwargs)
-            process(sources, targets, reductions, **kwargs)
 
         The request can be given a a :py:class:`Request` object, or such an
         object is created using ``Request(**kwargs)`` for convenience.
         '''
 
-        if len(args) not in (0, 1, 2, 3):
+        if len(args) not in (0, 1, 2):
             raise BadRequest('invalid arguments')
 
         if len(args) == 1:
             kwargs['request'] = args[0]
 
-        elif len(args) >= 2:
+        elif len(args) == 2:
             kwargs.update(Request.args2kwargs(args))
 
         request = kwargs.pop('request', None)
         status_callback = kwargs.pop('status_callback', None)
+        nprocs = kwargs.pop('nprocs', 1)
 
         if request is None:
             request = Request(**kwargs)
 
+        rs0 = resource.getrusage(resource.RUSAGE_SELF)
+        rc0 = resource.getrusage(resource.RUSAGE_CHILDREN)
+        tt0 = time.time()
+
         source_index = dict((x, i) for (i, x) in enumerate(request.sources))
         target_index = dict((x, i) for (i, x) in enumerate(request.targets))
 
+        # make sure stores are open before fork()
+        store_ids = set(target.store_id for target in request.targets)
+        for store_id in store_ids:
+            self.get_store(store_id)
+
         m = request.subrequest_map()
         skeys = sorted(m.keys())
-        traces = []
+        results_list = []
         for i in xrange(len(request.sources)):
-            traces.append([None] * len(request.targets))
+            results_list.append([None] * len(request.targets))
 
-        n = len(skeys)
-        for i, k in enumerate(skeys):
+        nsub = len(skeys)
+        work = [(i, nsub,
+                [source_index[source] for source in m[k][0]],
+                [target_index[target] for target in m[k][1]])
+                for (i, k) in enumerate(skeys)]
+
+        isub = 0
+        tcounters_list = []
+        for ii_results, tcounters in parimap.parimap(
+                process_subrequest, work,
+                pshared=dict(
+                    engine=self,
+                    sources=request.sources,
+                    targets=request.targets,
+                    dsource_cache={}),
+
+                nprocs=nprocs):
+
+            tcounters_list.append(num.diff(tcounters))
+
+            for isource, itarget, result in ii_results:
+                results_list[isource][itarget] = result
+
             if status_callback:
-                status_callback(i, n)
+                status_callback(isub, nsub)
 
-            sources, targets = m[k]
-            components = set()
-            for target in targets:
-                rule = self.channel_rule(sources[0], target)
-                components.update(rule.required_components(target))
-
-            base_seismogram = self.base_seismogram(
-                sources[0],
-                targets[0],
-                components)
-
-            for source in sources:
-                for target in targets:
-                    tr = self._post_process(base_seismogram, source, target)
-                    traces[source_index[source]][target_index[target]] = tr
+            isub += 1
 
         if status_callback:
-            status_callback(n, n)
+            status_callback(nsub, nsub)
 
-        return Response(request=request, traces_list=traces)
+        tt1 = time.time()
+        rs1 = resource.getrusage(resource.RUSAGE_SELF)
+        rc1 = resource.getrusage(resource.RUSAGE_CHILDREN)
+
+        tcumu = num.sum(num.vstack(tcounters_list), axis=0)
+        tcumusum = num.sum(tcumu)
+
+        perc = map(float, tcumu/tcumusum * 100.)
+        t_wallclock = tt1 - tt0
+
+        t_cpu = (
+            (rs1.ru_utime + rs1.ru_stime + rc1.ru_utime + rc1.ru_stime) -
+            (rs0.ru_utime + rs0.ru_stime + rc0.ru_utime + rc0.ru_stime))
+        n_read_blocks = (
+            (rs1.ru_inblock + rc1.ru_inblock) -
+            (rs0.ru_inblock + rc0.ru_inblock))
+
+        stats = ProcessingStats(
+            t_perc_get_store_and_receiver=perc[0],
+            t_perc_discretize_source=perc[1],
+            t_perc_make_base_seismogram=perc[2],
+            t_perc_make_same_span=perc[3],
+            t_perc_post_process=perc[4],
+            t_wallclock=t_wallclock,
+            t_cpu=t_cpu,
+            n_read_blocks=n_read_blocks,
+            n_results=len(request.targets) * len(request.sources),
+            n_subrequests=nsub,
+            n_stores=len(store_ids))
+
+        return Response(
+            request=request,
+            results_list=results_list,
+            stats=stats)
 
 
 class RemoteEngine(Engine):
@@ -2138,9 +2291,10 @@ Filter
 Taper
 '''.split() + [S.__name__ for S in source_classes] + '''
 Target
-Reduction
+Result
 Request
 SeismosizerTrace
+ProcessingStats
 Response
 Engine
 LocalEngine

@@ -338,3 +338,90 @@ that purpose:
     setup.domain = 'frequency_domain'
     
     print setup
+
+
+Invert for time-shift of one trace compared to another by calculating the Likelihood
+----------------------------------------------------------------------------------------
+
+::
+
+from pyrocko import trace
+from math import sqrt
+import numpy as num
+
+# Let's create two traces: One trace as the reference (rt) and one as test
+# trace (candidate station TT1):
+ydata1 = num.random.random(1000)
+ydata2 = num.zeros(1000)
+
+ysin = num.sin(num.arange(0,100)/(100./2/num.pi))*2
+leny = len(ysin)
+ydata1[100:100+leny] += ysin
+ydata2[180:180+leny] += ysin
+
+rt = trace.Trace(station='REF', ydata=ydata1, deltat=0.1)
+candidate = trace.Trace(station='TT1', ydata=ydata2, deltat=0.1)
+trace.snuffle([candidate, rt])
+
+# Define a fader to apply before fft.
+taper = trace.CosFader(xfade=5)
+
+# Define a frequency response to apply before performing the inverse fft.
+# This can be basically any funtion, as long as it contains a function called
+# *evaluate*, which evaluates the frequency response function at a given list
+# of frequencies.
+# Please refer to the :py:class:`FrequencyResponse` class or its subclasses for
+# examples.
+# However, we are going to use a butterworth low-pass filter in this example.
+bw_filter = trace.ButterworthResponse(corner=2,
+                                      order=4,
+                                      type='low')
+
+# Combine all information in one misfit setup:
+setup = trace.MisfitSetup(description='An Example Setup',
+                          norm=2,
+                          taper=taper,
+                          filter=bw_filter,
+                          domain='time_domain')
+
+# define lowest period of signal in the reference trace
+Tzero = 1./bw_filter.corner
+
+# Likelihoods will be a dictionary here where the keys are going to be the time shifts 
+# and values are going to be the likelihood results
+# I want to move the seismogram 100 samples on both sides
+t_shifts = num.arange(-100, 100)*candidate.deltat
+#print 'Using tshifts: %s', t_shifts
+
+# define window for Variance estimation on reference trace rt
+event_t = 4.0
+Variance = rt.chop(rt.tmin,event_t,inplace=False).ydata.var()
+
+likelihoods = {}
+for t_shift in t_shifts:
+    # apply filter and taper once, then 
+    shifted_candidate = candidate.copy(data=True)
+    shifted_candidate.shift(t_shift)
+    # calculate samples of reslting trace after shift
+    n = num.abs(t_shift/ shifted_candidate.deltat) + shifted_candidate.data_len()+2 # add 2 for filter effect
+    # calculate sub-covariance matrix
+    Csub = trace.sub_covariance(n,rt.deltat,Tzero)
+    # calculate full covariance matrix and its inverse
+    Cov, InvCov = trace.CovInvcov(Variance,Csub)
+    likelihoods[t_shift] = rt.likelihood(shifted_candidate, InvCov, setup, nocache=False, debug=False)
+
+# Finally, let's have a look at the time_shift vs. likelihoods:
+
+import matplotlib.pyplot as plt
+
+x = likelihoods.keys()
+y = likelihoods.values()
+
+plt.plot(x,y,'o')
+plt.xlabel('time shift [s]')
+plt.ylabel('likelihoods [s]')
+plt.show()
+
+# maximum likelihood
+best_y = x[num.where(y==num.max(y))[0]]
+print 'maximum likelihood found at ', best_y

@@ -288,13 +288,18 @@ class OutOfBounds(Exception):
     def __init__(self, values=None):
         Exception.__init__(self)
         self.values = values
+        self.context = None
 
     def __str__(self):
+        scontext = ''
+        if self.context:
+            scontext = '\n%s' % str(self.context)
+
         if self.values:
-            return 'out of bounds: (%s)' % ','.join('%g' % x
-                                                    for x in self.values)
+            return 'out of bounds: (%s)%s' % (
+                ','.join('%g' % x for x in self.values), scontext)
         else:
-            return 'out of bounds'
+            return 'out of bounds%s' % scontext
 
 
 class Location(Object):
@@ -483,6 +488,9 @@ class DiscretizedSource(Object):
     north_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
     east_shifts = Array.T(shape=(None,), dtype=num.float, optional=True)
     depths = Array.T(shape=(None,), dtype=num.float)
+    dwidth = Float.T(optional=True)
+    dlength = Float.T(optional=True)
+    shearm = Float.T(optional=True)
 
     @classmethod
     def check_scheme(cls, scheme):
@@ -984,6 +992,17 @@ class DiscretizedMTSource(DiscretizedSource):
             moments[i] = m0
 
         return moments
+
+    def slips(self):
+        n = self.nelements
+        moments = self.moments()
+        dws = self.dwidth
+        dls = self.dlength
+        slips = num.zeros(n)
+        for i in range(n):
+            slips[i] = moments[i]/(dws*dls*self.shearm)
+
+        return slips
 
     def centroid(self):
         from pyrocko.gf.seismosizer import MTSource

@@ -694,7 +694,7 @@ class BaseStore:
         return GFTrace(sum_arr, itmin, deltat)
 
     def _optimize(self, irecords, delays, weights):
-        if irecords.size < 2:
+        if num.unique(irecords).size == irecords.size:
             return irecords, delays, weights
 
         deltat = self._deltat
@@ -759,11 +759,14 @@ class BaseStore:
                 itmin -= itoffset
 
             try:
+                t0 = time.time()
                 tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
                     (delays - itoffset*self._deltat).astype(num.float32),
                     weights.astype(num.float32),
                     int(itmin), int(nsamples)))
+
+                t1 = time.time()
                 tr.itmin += itoffset
                 return tr
 
@@ -1413,6 +1416,8 @@ class Store(BaseStore):
                    interpolation='nearest_neighbor', optimization='enable'):
 
         out = {}
+
+        dts = 0.
         for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
@@ -1420,9 +1425,11 @@ class Store(BaseStore):
                 gtr = self.sum(args, delays, weights,
                                interpolation=interpolation,
                                optimization=optimization)
+
                 out[component] = gtr
 
         return out
+
 
 __all__ = '''
 gf_dtype
