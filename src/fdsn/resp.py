@@ -253,6 +253,10 @@ def pdate(s):
     elif s.lower().startswith('no'):
         return None
     else:
+        t = s.split(',')[1]
+        if len(t) > 2 and t[1] == '000':
+            s = ','.join([t[0], '001'] + t[2:])
+
         return util.str_to_time(s, format='%Y,%j,%H:%M:%S.OPTFRAC')
 
 
