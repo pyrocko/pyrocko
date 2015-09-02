@@ -243,4 +243,10 @@ To enhance a *normal marker* to an *event marker*, select the marker and press
     original normal marker was created. This way, you can easily sort the
     traces according to their distance to this station. 
 
-
+A table listing all markers opens when pressing the key :kbd:`m`. By default, columns
+indicating the *type* (*T*), the *time* and - if available - the *magnitude*
+(*M*) of an *event marker*'s associated event are displayed. Further columns can
+be added by right-clicking the table's headers and activating the desired
+column. Left-click on a column's header sorts the table by the values given in
+that column. The *Label*, *Depth*, *Lat*, *Lon* and the *magnitude* (*M*) can be
+set from within the table by a double-click on the underlying field.
