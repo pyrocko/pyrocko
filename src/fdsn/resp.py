@@ -72,6 +72,11 @@ def pcftype(s):
         raise RespError('unknown cf transfer function type')
 
 
+def pblock_060(content):
+    stage_number = int(get1(content, '04'))
+    return stage_number, None
+
+
 def pblock_053(content):
     stage_number = int(get1(content, '04'))
 
@@ -95,12 +100,45 @@ def pblock_053(content):
     return stage_number, pzs
 
 
+def pblock_043(content):
+    stage_number = -1
+
+    pzs = fs.PolesZeros(
+        pz_transfer_function_type=ptftype(get1(content, '05')),
+        input_units=fs.Units(name=punit(get1(content, '06'))),
+        output_units=fs.Units(name=punit(get1(content, '07'))),
+        normalization_factor=float(get1(content, '08')),
+        normalization_frequency=fs.Frequency(
+            value=float(get1(content, '09'))),
+
+        zero_list=map(ppolezero, getn(content, '11-14')),
+        pole_list=map(ppolezero, getn(content, '16-19')))
+
+    for i, x in enumerate(pzs.zero_list):
+        x.number = i
+
+    for i, x in enumerate(pzs.pole_list):
+        x.number = i
+
+    return stage_number, pzs
+
+
 def pblock_058(content):
     stage_number = int(get1(content, '03'))
 
     gain = fs.Gain(
         value=float(get1(content, '04')),
         frequency=float(get1(content, '05').split()[0]))
+
+    return stage_number, gain
+
+
+def pblock_048(content):
+    stage_number = -1
+
+    gain = fs.Gain(
+        value=float(get1(content, '05')),
+        frequency=float(get1(content, '06').split()[0]))
 
     return stage_number, gain
 
@@ -118,6 +156,19 @@ def pblock_054(content):
     return stage_number, cfs
 
 
+def pblock_044(content):
+    stage_number = -1
+
+    cfs = fs.Coefficients(
+        cf_transfer_function_type=pcftype(get1(content, '05')),
+        input_units=fs.Units(name=punit(get1(content, '06'))),
+        output_units=fs.Units(name=punit(get1(content, '07'))),
+        numerator_list=map(pcfu, getn(content, '09-10')),
+        denominator_list=map(pcfu, getn(content, '12-13')))
+
+    return stage_number, cfs
+
+
 def pblock_057(content):
     stage_number = int(get1(content, '03'))
 
@@ -131,8 +182,34 @@ def pblock_057(content):
     return stage_number, deci
 
 
+def pblock_047(content):
+    stage_number = -1
+
+    deci = fs.Decimation(
+        input_sample_rate=fs.Frequency(value=float(get1(content, '05'))),
+        factor=int(get1(content, '06')),
+        offset=int(get1(content, '07')),
+        delay=fs.FloatWithUnit(value=float(get1(content, '08'))),
+        correction=fs.FloatWithUnit(value=float(get1(content, '09'))))
+
+    return stage_number, deci
+
+
 def pblock_061(content):
     stage_number = int(get1(content, '03'))
+
+    fir = fs.FIR(
+        name=get1(content, '04', optional=True),
+        input_units=fs.Units(name=punit(get1(content, '06'))),
+        output_units=fs.Units(name=punit(get1(content, '07'))),
+        symmetry=psymmetry(get1(content, '05')),
+        numerator_coefficient_list=map(pnc, getn(content, '09')))
+
+    return stage_number, fir
+
+
+def pblock_041(content):
+    stage_number = -1
 
     fir = fs.FIR(
         name=get1(content, '04', optional=True),
@@ -151,25 +228,49 @@ bdefs = {
     '052': {
         'name': 'Channel Identifier Blockette',
     },
+    '060': {
+        'name': 'Response Reference Information',
+        'parse': pblock_060,
+    },
     '053': {
         'name': 'Response (Poles & Zeros) Blockette',
         'parse': pblock_053,
+    },
+    '043': {
+        'name': 'Response (Poles & Zeros) Dictionary Blockette',
+        'parse': pblock_043,
     },
     '054': {
         'name': 'Response (Coefficients) Blockette',
         'parse': pblock_054,
     },
+    '044': {
+        'name': 'Response (Coefficients) Dictionary Blockette',
+        'parse': pblock_044,
+    },
     '057': {
         'name': 'Decimation Blockette',
         'parse': pblock_057,
+    },
+    '047': {
+        'name': 'Decimation Dictionary Blockette',
+        'parse': pblock_047,
     },
     '058': {
         'name': 'Channel Sensitivity/Gain Blockette',
         'parse': pblock_058,
     },
+    '048': {
+        'name': 'Channel Sensitivity/Gain Dictionary Blockette',
+        'parse': pblock_048,
+    },
     '061': {
         'name': 'FIR Response Blockette',
         'parse': pblock_061,
+    },
+    '041': {
+        'name': 'FIR Dictionary Blockette',
+        'parse': pblock_041,
     },
 }
 
@@ -321,8 +422,18 @@ def iload_fh(f):
 
         stage_elements = {}
 
+        istage = -1
         for block, content in rcs:
-            istage, x = bdefs[block]['parse'](content)
+            if block not in bdefs:
+                raise RespError('unknown block type found: %s' % block)
+
+            istage_temp, x = bdefs[block]['parse'](content)
+            if istage_temp != -1:
+                istage = istage_temp
+
+            if x is None:
+                continue
+
             x.validate()
             if istage not in stage_elements:
                 stage_elements[istage] = []
