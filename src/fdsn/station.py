@@ -565,24 +565,25 @@ class ResponseStage(Object):
 
     def get_pyrocko_response(self, nslc):
         responses = []
-        if len(self.poles_zeros_list) == 1:
-            pz = self.poles_zeros_list[0].get_pyrocko_response()
+        for pzs in self.poles_zeros_list:
+            if pzs.pz_transfer_function_type != 'LAPLACE (RADIANS/SECOND)':
+                logger.debug('unhandled response at stage %i' % self.number)
+                continue
+
+            pz = pzs.get_pyrocko_response()
             responses.append(pz)
 
-        elif len(self.poles_zeros_list) > 1:
+        if len(self.poles_zeros_list) > 1:
             logger.warn(
                 'multiple poles and zeros records in single response stage '
                 '(%s.%s.%s.%s)' % nslc)
-            for poles_zeros in self.poles_zeros_list:
-                logger.warn('%s' % poles_zeros)
 
-        elif (self.coefficients_list or
+        if (self.coefficients_list or
               self.response_list or
               self.fir or
               self.polynomial):
 
-            pass
-            # print 'unhandled response at stage %i' % self.number
+            logger.debug('unhandled response at stage %i' % self.number)
 
         if self.stage_gain:
             responses.append(
