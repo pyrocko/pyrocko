@@ -248,6 +248,9 @@ def getn(content, field):
 
 
 def pdate(s):
+    if len(s) < 17:
+        s += '0000,001,00:00:00'[len(s):]
+
     if s.startswith('2599') or s.startswith('2999'):
         return None
     elif s.lower().startswith('no'):
