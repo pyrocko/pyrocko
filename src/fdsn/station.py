@@ -807,12 +807,21 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
     apos = num.array([x.position_values for x in channels], dtype=num.float)
     mlat, mlon, mele, mdep = num.nansum(apos, axis=0) / num.sum(num.isfinite(apos), axis=0)
 
-    pchannels = []
+    groups = {}
     for channel in channels:
-        pchannels.append(model.Channel(
-            channel.code,
-            azimuth=value_or_none(channel.azimuth),
-            dip=value_or_none(channel.dip)))
+        if channel.code not in groups:
+            groups[channel.code] = []
+
+        groups[channel.code].append(channel)
+
+    pchannels = []
+    for code in sorted(groups.keys()):
+        data = [
+            (channel.code, value_or_none(channel.azimuth), value_or_none(channel.dip))
+            for channel in groups[code]]
+
+        azimuth, dip = util.consistency_merge(data, message='channel orientation values differ:', error=inconsistencies)
+        pchannels.append(model.Channel(code, azimuth=azimuth, dip=dip))
 
     return model.Station(
         *nsl,

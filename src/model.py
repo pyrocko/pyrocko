@@ -3,7 +3,7 @@ import math, copy, logging
 import numpy as num
 
 from pyrocko.orthodrome import wrap
-from pyrocko.guts import Object, Float, String, Timestamp
+from pyrocko.guts import Object, Float, String, Timestamp, List
 
 logger = logging.getLogger('pyrocko.model')
 
@@ -350,19 +350,60 @@ def dump_events(events, filename):
     '''
     Event.dump_catalog(events, filename)
 
-class Station:
-    def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):
-        self.network = network
-        self.station = station
-        self.location = location
-        self.lat = lat
-        self.lon = lon
-        self.elevation = elevation
-        self.depth = depth
-        self.name = name
-        self.channels = {}
-        if channels is not None:
-            self.set_channels(channels)
+
+class Channel(Object):
+    name = String.T()
+    azimuth = Float.T(optional=True)
+    dip = Float.T(optional=True)
+    gain = Float.T(default=1.0)
+
+    def __init__(self, name, azimuth=None, dip=None, gain=1.0):
+        if azimuth is None:
+            azimuth = guess_azimuth_from_name(name)
+        if dip is None:
+            dip = guess_dip_from_name(name)
+        
+        Object.__init__(self, name=name, azimuth=azimuth, dip=dip, gain=gain)
+
+    @property
+    def ned(self):
+        if None in (self.azimuth, self.dip):
+            return None
+
+        n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
+        e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
+        d = math.sin(self.dip*d2r)
+        return mkvec(n, e, d)
+    
+    @property
+    def enu(self):
+        if None in (self.azimuth, self.dip):
+            return None
+
+        n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
+        e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
+        d = math.sin(self.dip*d2r)
+        return mkvec(e, n, -d)
+        
+    def __str__(self):
+        return '%s %f %f %g' % (self.name, self.azimuth, self.dip, self.gain)
+
+
+class Station(Object):
+    network = String.T()
+    station = String.T()
+    location = String.T()
+    lat = Float.T(default=0.0)
+    lon = Float.T(default=0.0)
+    elevation = Float.T(default=0.0)
+    depth = Float.T(default=0.0)
+    name = String.T(default='')
+    channels = List.T(Channel.T())
+
+    def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=0.0, name='', channels=None):
+        Object.__init__(self,
+            network=network, station=station, location=location, lat=lat, lon=lon, 
+            elevation=elevation or 0.0, depth=depth or 0.0, name=name or '', channels=channels or [])
         
         self.dist_deg = None
         self.dist_m = None
@@ -384,19 +425,30 @@ class Station:
             self.add_channel(Channel(name))
 
     def set_channels(self, channels):
-        self.channels = {}
+        self.channels = []
         for ch in channels:
-            self.channels[ch.name] = ch
+            self.add_channel(ch)
         
     def get_channels(self):
-        return [ self.channels[k] for k in sorted(self.channels) ]
+        return list(self.channels)
+
+    def get_channel_names(self):
+        return set(ch.name for ch in self.channels)
+
+    def remove_channel_by_name(self, name):
+        todel = [ch for ch in self.channels if ch.name == name]
+        for ch in todel:
+            self.channels.remove(ch)
         
     def add_channel(self, channel):
-        self.channels[channel.name] = channel
+        self.remove_channel_by_name(channel.name)
+        self.channels.append(channel)
+        self.channels.sort(key=lambda ch: ch.name)
             
     def get_channel(self, name):
-        if name in self.channels:
-            return self.channels[name]
+        for ch in self.channels:
+            if ch.name == name:
+                return ch
         
         return None
     
@@ -517,17 +569,10 @@ class Station:
     def nsl(self):
         return self.network, self.station, self.location
 
-    def __str__(self):
-        sta = self
-        elevation = 0.0
-        if sta.elevation is not None:
-            elevation = sta.elevation
-            
-        depth = 0.0
-        if sta.depth is not None:
-            depth = sta.depth
-        nsl = '%s.%s.%s' % (sta.network, sta.station, sta.location)
-        s = '%-15s  %14.5f %14.5f %14.1f %14.1f %s' % (nsl, sta.lat, sta.lon, elevation, depth, sta.name)
+    def oldstr(self):
+        nsl = '%s.%s.%s' % (self.network, self.station, self.location)
+        s = '%-15s  %14.5f %14.5f %14.1f %14.1f %s' % (
+            nsl, self.lat, self.lon, self.elevation, self.depth, self.name)
         return s
 
 def dump_stations(stations, filename):
@@ -538,7 +583,7 @@ def dump_stations(stations, filename):
     '''
     f = open(filename, 'w')
     for sta in stations:
-        f.write(str(sta)+'\n')
+        f.write(sta.oldstr()+'\n')
         for cha in sta.get_channels():
             azimuth = 'NaN'
             if cha.azimuth is not None:
@@ -575,7 +620,7 @@ def load_stations(filename):
             if len(toks) == 5:
                 name = ''
             else:
-                name =toks[5]
+                name =toks[5].rstrip()
 
             station = Station(net, sta, loc, lat, lon, elevation=elevation, depth=depth, name=name)
             stations.append(station)
@@ -590,30 +635,6 @@ def load_stations(filename):
 
     f.close()
     return stations
-
-class Channel:
-    def __init__(self, name, azimuth=None, dip=None, gain=1.0):
-        self.name = name
-        if azimuth is None:
-            azimuth = guess_azimuth_from_name(name)
-        if dip is None:
-            dip = guess_dip_from_name(name)
-        
-        self.azimuth = azimuth
-        self.dip = dip
-        self.gain = gain
-        self.ned = None
-        self.enu = None
-        if azimuth is not None and dip is not None:
-            n = math.cos(self.azimuth*d2r)*math.cos(self.dip*d2r)
-            e = math.sin(self.azimuth*d2r)*math.cos(self.dip*d2r)
-            d = math.sin(self.dip*d2r)
-        
-            self.ned = mkvec(n,e,d)
-            self.enu = mkvec(e,n,-d)
-        
-    def __str__(self):
-        return '%s %f %f %g' % (self.name, self.azimuth, self.dip, self.gain)
 
 def load_kps_event_list(filename):
     elist =[]
