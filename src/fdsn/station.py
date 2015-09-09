@@ -977,7 +977,10 @@ class FDSNStationXML(Object):
             else:
                 bic = cha
 
-            if channel.response and channel.response.instrument_sensitivity:
+            if channel.response and \
+                    channel.response.instrument_sensitivity and \
+                    channel.response.instrument_sensitivity.input_units:
+
                 unit = channel.response.instrument_sensitivity.input_units.name
             else:
                 unit = None
@@ -1034,6 +1037,13 @@ class FDSNStationXML(Object):
                 if target_sample_rate is not None and \
                         rate < target_sample_rate*0.99999:
                     continue
+
+                if len(bic[0]) == 2:
+                    if bic[0][0] not in priority_band_code:
+                        continue
+
+                    if bic[0][1] not in priority_instrument_code:
+                        continue
 
                 unit = bic[1]
 
