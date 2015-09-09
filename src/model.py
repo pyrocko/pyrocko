@@ -362,8 +362,13 @@ class Channel(Object):
             azimuth = guess_azimuth_from_name(name)
         if dip is None:
             dip = guess_dip_from_name(name)
-        
-        Object.__init__(self, name=name, azimuth=azimuth, dip=dip, gain=gain)
+
+        Object.__init__(
+            self,
+            name=name,
+            azimuth=float_or_none(azimuth),
+            dip=float_or_none(dip),
+            gain=float(gain))
 
     @property
     def ned(self):
@@ -400,11 +405,17 @@ class Station(Object):
     name = String.T(default='')
     channels = List.T(Channel.T())
 
-    def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=0.0, name='', channels=None):
+    def __init__(self, network='', station='', location='', lat=0.0, lon=0.0,
+                 elevation=0.0, depth=0.0, name='', channels=None):
+
         Object.__init__(self,
-            network=network, station=station, location=location, lat=lat, lon=lon, 
-            elevation=elevation or 0.0, depth=depth or 0.0, name=name or '', channels=channels or [])
-        
+            network=network, station=station, location=location,
+            lat=float(lat), lon=float(lon),
+            elevation=elevation and float(elevation) or 0.0,
+            depth=depth and float(depth) or 0.0,
+            name=name or '',
+            channels=channels or [])
+
         self.dist_deg = None
         self.dist_m = None
         self.azimuth = None
@@ -598,7 +609,9 @@ def dump_stations(stations, filename):
     f.close()
     
 def float_or_none(s):
-    if s.lower() == 'nan':
+    if s is None:
+        return None
+    elif isinstance(s, basestring) and s.lower() == 'nan':
         return None
     else:
         return float(s)
