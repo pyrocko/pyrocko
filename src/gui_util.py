@@ -628,6 +628,9 @@ class Marker(object):
         '''
         return self.nslc_ids
 
+    def get_event(self):
+        return None
+
     def is_alerted(self):
         return self.alerted
         
@@ -890,7 +893,7 @@ class EventMarker(Marker):
     def set_active(self, active):
         self._active = active
 
-    def label(self):
+    def get_label(self):
         t = []
         mag = self._event.magnitude
         if mag is not None:
@@ -918,7 +921,7 @@ class EventMarker(Marker):
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
         label_bg = QBrush( QColor(255,255,255) )
-        draw_label( p, u, v0-10., self.label(), label_bg, 'CB', outline=self._active)
+        draw_label( p, u, v0-10., self.get_label(), label_bg, 'CB', outline=self._active)
 
     def get_event(self):
         '''Return an instance of the :py:class:`pyrocko.model.Event` associated
