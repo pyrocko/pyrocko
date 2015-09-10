@@ -3002,7 +3002,7 @@ def MakePileViewerMainClass(base):
                 now = time.time()
             return now - self.interactive_range_change_time < self.interactive_range_change_delay_time
 
-        def follow(self, tlen, interval=50, lapse=None):
+        def follow(self, tlen, interval=50, lapse=None, tmax_start=0.0):
             self.show_all = False
             self.follow_time = tlen
             self.follow_timer = QTimer(self)
@@ -3011,7 +3011,15 @@ def MakePileViewerMainClass(base):
             self.follow_timer.start()
             self.follow_started = time.time()
             self.follow_lapse = lapse
-            
+            self.follow_tshift = self.follow_started - tmax_start
+            self.interactive_range_change_time = 0.0
+
+        def unfollow(self):
+            if self.follow_timer is not None:
+                self.follow_timer.stop()
+                self.follow_timer = None
+                self.interactive_range_change_time = 0.0
+
         def follow_update(self):
             rnow = time.time()
             if self.follow_lapse is None:
@@ -3021,7 +3029,7 @@ def MakePileViewerMainClass(base):
 
             if self.following_interrupted(rnow):
                 return
-            self.set_time_range(now-self.follow_time, now)
+            self.set_time_range(now-self.follow_time-self.follow_tshift, now-self.follow_tshift)
             self.update()
      
         def myclose(self, return_tag=''):
