@@ -4,7 +4,8 @@ import re
 import fnmatch
 import numpy as num
 from pyrocko.guts import Object, SObject, String, StringChoice, \
-    StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError
+    StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError, \
+    Timestamp
 from pyrocko.guts import dump, load  # noqa
 
 from pyrocko.guts_array import literal, Array
@@ -1122,6 +1123,23 @@ class ComponentSchemes(StringChoice):
         'poroelastic10')
 
 
+class Region(Object):
+    name = String.T(optional=True)
+
+
+class RectangularRegion(Region):
+    lat_min = Float.T()
+    lat_max = Float.T()
+    lon_min = Float.T()
+    lon_max = Float.T()
+
+
+class CircularRegion(Region):
+    lat = Float.T()
+    lon = Float.T()
+    radius = Float.T()
+
+
 class Config(Object):
     '''Greens function store meta information.'''
 
@@ -1132,6 +1150,8 @@ class Config(Object):
     modelling_code_id = StringID.T(optional=True)
     author = Unicode.T(optional=True)
     author_email = String.T(optional=True)
+    created_time = Timestamp.T(optional=True)
+    regions = List.T(Region.T())
     scope_type = ScopeType.T(optional=True)
     waveform_type = WaveformType.T(optional=True)
     nearfield_terms = NearfieldTermsType.T(optional=True)
@@ -1780,6 +1800,9 @@ ScopeType
 WaveformType
 NearfieldTermsType
 Reference
+Region
+CircularRegion
+RectangularRegion
 PhaseSelect
 InvalidTimingSpecification
 Timing
