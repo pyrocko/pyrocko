@@ -554,8 +554,7 @@ def sort_actions(menu):
     actions = menu.actions()
     for action in actions:
         menu.removeAction(action)
-
-    actions.sort((lambda a,b: cmp(a.text(), b.text())))
+    actions.sort(key=lambda x: str(x.text()))
 
     help_action = filter(lambda a : a.text()=="Snuffler Controls", actions)
     if help_action:
