@@ -598,6 +598,7 @@ def snuffle(pile=None, **kwargs):
     :param store_path: filename template, where to store trace data from input streams
     :param store_interval: float, time interval (in seconds) between stream buffer dumps 
     :param want_markers: bool, whether markers should be returned
+    :param launch_hook: callback function called before snuffler window is shown
     '''
     
     if pile is None:
@@ -619,9 +620,12 @@ def snuffle(pile=None, **kwargs):
     store_path = kwargs.pop('store_path', None)
     store_interval = kwargs.pop('store_interval', 600)
     want_markers = kwargs.pop('want_markers', False)
+    launch_hook = kwargs.pop('launch_hook', None)
 
     win = SnufflerWindow(pile, **kwargs)
-   
+    if launch_hook:
+        launch_hook(win)
+
     sources = []
     pollinjector = None
     tempdir = None
@@ -640,7 +644,6 @@ def snuffle(pile=None, **kwargs):
                 pollinjector.add_source(source)
 
         win.get_view().load(**kwargs_load)
-        
 
     if not win.is_closing():
         app.install_sigint_handler()
