@@ -122,10 +122,11 @@ class Event(Object):
             lat, lon, time, name, depth, magnitude, magnitude_type, region, \
                 catalog, moment_tensor, duration = vals
             
-        Object.__init__(self, lat=lat, lon=lon, time=time, name=name, depth=depth,
-                        magnitude=magnitude, magnitude_type=magnitude_type,
-                        region=region, catalog=catalog,
-                        moment_tensor=moment_tensor, duration=duration)
+        Object.__init__(self, lat=float(lat), lon=float(lon), time=float(time),
+                        name=str(name), depth=float(depth),
+                        magnitude=float(magnitude), magnitude_type=str(magnitude_type),
+                        region=str(region), catalog=str(catalog),
+                        moment_tensor=moment_tensor, duration=float(duration))
             
     def time_as_string(self):
         return util.time_to_str(self.time)
@@ -299,6 +300,7 @@ class Event(Object):
         file.close()
 
     def get_hash(self):
+        """Get a hash representation of the :py:class`Event` object."""
         e = self
         return util.base36encode(abs(hash((util.time_to_str(e.time), str(e.lat), str(e.lon), str(e.depth), str(e.magnitude), e.catalog, e.name, e.region)))).lower()
 
@@ -351,6 +353,18 @@ def dump_events(events, filename):
     Event.dump_catalog(events, filename)
 
 class Station:
+    '''A seismological recording device representation
+
+    :param network: network code
+    :param station: station code
+    :param location: location code 
+    :param latitude: geographical latitude 
+    :param longitude: geographical longitude 
+    :param elevation: station elevation [m] 
+    :param depth: station depth [m] 
+    :param name: station identifier 
+    :param channels: list of :py:class:`Channel` objects 
+    '''
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0, elevation=0.0, depth=None, name='', channels=None):
         self.network = network
         self.station = station
