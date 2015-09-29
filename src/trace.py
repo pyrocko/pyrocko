@@ -1816,7 +1816,7 @@ def correlate(a, b, mode='valid', normalization=None, use_fft=False):
 
     if normalization == 'normal':
         normfac = num.sqrt(num.sum(ya**2))*num.sqrt(num.sum(yb**2))
-        yc /= normfac
+        yc = yc/normfac
 
     elif normalization == 'gliding':
         if mode != 'valid':
