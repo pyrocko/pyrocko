@@ -37,6 +37,10 @@ class NoDefaultStoreSet(Exception):
     pass
 
 
+class ConversionError(Exception):
+    pass
+
+
 class NoSuchStore(BadRequest):
     def __init__(self, store_id):
         Exception.__init__(self)
@@ -403,7 +407,7 @@ class Range(SObject):
         if self.relative == 'mult':
             vals *= base
 
-        return vals
+        return map(float, vals)
 
 
 class GridDefElement(Object):
@@ -578,6 +582,11 @@ class Source(meta.Location):
 
     @classmethod
     def from_pyrocko_event(cls, ev, **kwargs):
+        if ev.depth is None:
+            raise ConversionError(
+                'cannot convert event object to source object: '
+                'no depth information available')
+
         d = dict(
             name=ev.name,
             time=ev.time,
