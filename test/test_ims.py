@@ -36,7 +36,8 @@ class IMSTestCase(unittest.TestCase):
             'test.iris.response.ims',
             'test.iris.station.ims',
             'test.iris.waveform-nodata.ims',
-            'test.norsar.gse2']
+            'test.norsar.gse2',
+            'test.cndc.waveform.gse2']
 
         fpaths = []
         for fn in fns:

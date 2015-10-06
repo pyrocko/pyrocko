@@ -624,13 +624,14 @@ class FTPFile(FreeFormatLine):
     _format = ['FTP_FILE', 1, 2, 3, 4]
 
     net_address = String.T()
-    login_mode = StringChoice.T(choices=('USER', 'GUEST'))
+    login_mode = StringChoice.T(choices=('USER', 'GUEST'), ignore_case=True)
     directory = String.T()
     file = String.T()
 
 
 class WaveformSubformat(StringChoice):
     choices = ['INT', 'CM6', 'CM8', 'AU6', 'AU8']
+    ignore_case = True
 
 
 class WID2(Block):
@@ -969,10 +970,12 @@ class BeamGroup(Block):
 
 class BeamType(StringChoice):
     choices = ['inc', 'coh']
+    ignore_case = True
 
 
 class FilterType(StringChoice):
     choices = ['BP', 'LP', 'HP', 'BR']
+    ignore_case = True
 
 
 class BeamParameters(Block):
@@ -1132,6 +1135,7 @@ class CAL2(Block):
 
 class Units(StringChoice):
     choices = ['V', 'A', 'C']
+    ignore_case = True
 
 
 class Stage(Block):
@@ -1373,6 +1377,7 @@ class DIG2(Stage):
 
 class SymmetryFlag(StringChoice):
     choices = ['A', 'B', 'C']
+    ignore_case = True
 
 
 class FIR2Data(Block):
@@ -1438,7 +1443,7 @@ class Begin(FreeFormatLine):
     '''Representation of a BEGIN line.'''
 
     _format = ['BEGIN', 1]
-    version = String.T()
+    version = String.T(optional=True)
 
     @classmethod
     def read(cls, reader):
@@ -1454,6 +1459,7 @@ class Begin(FreeFormatLine):
 
 class MessageType(StringChoice):
     choices = ['REQUEST', 'DATA', 'SUBSCRIPTION']
+    ignore_case = True
 
 
 class MsgType(FreeFormatLine):
@@ -2024,11 +2030,13 @@ class Stop(FreeFormatLine):
 
 
 class XW01(FreeFormatLine):
-    '''Representation of a XW01 line (which is not a relict from GSE1).'''
+    '''Representation of a XW01 line (which is a relict from GSE1).'''
 
     _format = ['XW01']
 
     dummy = String.T(optional=True)
+
+
 
 
 class Reader(object):
@@ -2049,6 +2057,8 @@ class Reader(object):
             'BEGIN': MessageHeader,
             'STOP': Stop,
             'XW01': XW01,  # for compatibility with BGR dialect
+            'HANG:': None, # for compatibility with CNDC
+            'VANG:': None,
         }
         self._comment_lines = []
         self._time_stamps = []
@@ -2106,8 +2116,13 @@ class Reader(object):
                 if line is None:
                     raise StopIteration()
 
+                ignore = False
                 for k in self._handlers:
                     if line.upper().startswith(k):
+                        if self._handlers[k] is None:
+                            ignore = True
+                            break
+
                         self.pushback()
                         sec = self._handlers[k].read(self)
                         if isinstance(sec, Stop):
@@ -2116,7 +2131,7 @@ class Reader(object):
                             self._in_garbage = False
                         return sec
 
-                if not self._in_garbage:
+                if not self._in_garbage and not ignore:
                     raise DeserializeError('unexpected line')
 
         except DeserializeError, e:

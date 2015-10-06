@@ -121,6 +121,7 @@ class TBase(object):
 
     strict = False
     multivalued = False
+    force_regularize = False
 
     @classmethod
     def init_propertystuff(cls):
@@ -295,7 +296,7 @@ class TBase(object):
         is_exact = type(val) == self.cls
         not_ok = not self.strict and not is_derived or self.strict and not is_exact
 
-        if not_ok:
+        if not_ok or self.force_regularize:
             if regularize:
                 try:
                     val = self.regularize_extra(val)
@@ -969,9 +970,10 @@ class StringChoice(String):
 
     dummy_for = str
     choices = []
+    ignore_case = False
 
     class __T(TBase):
-        def __init__(self, choices=None, *args, **kwargs):
+        def __init__(self, choices=None, ignore_case=None, *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
 
             if choices is not None:
@@ -979,7 +981,18 @@ class StringChoice(String):
             else:
                 self.choices = self.dummy_cls.choices
 
+            if ignore_case is not None:
+                self.ignore_case = ignore_case
+            else:
+                self.ignore_case = self.dummy_cls.ignore_case
+
+            if self.ignore_case:
+                self.choices = [x.upper() for x in self.choices]
+
         def validate_extra(self, val):
+            if self.ignore_case:
+                val = val.upper()
+
             if val not in self.choices:
                 raise ValidationError(
                         '%s: "%s" is not a valid choice out of %s' % 
@@ -990,7 +1003,7 @@ class StringChoice(String):
             dcls = cls.dummy_cls
             doc = dcls.__doc_template__ or StringChoice.__doc_template__
             return doc % { 'choices': repr(dcls.choices) }
-                
+
 
 # this will not always work...
 class Union(Object):
