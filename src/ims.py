@@ -1664,7 +1664,7 @@ class WID2Section(Section):
 
     @classmethod
     def from_pyrocko_trace(cls, tr,
-            lat=None, lon=None, elevation=None, depth=None):
+                           lat=None, lon=None, elevation=None, depth=None):
 
         from pyrocko import ims_ext
         ydata = tr.get_ydata()
@@ -2037,8 +2037,6 @@ class XW01(FreeFormatLine):
     dummy = String.T(optional=True)
 
 
-
-
 class Reader(object):
     def __init__(self, f, load_data=True, version=None, dialect=None):
         self._f = f
@@ -2056,8 +2054,8 @@ class Reader(object):
             'CAL2 ': CAL2Section,
             'BEGIN': MessageHeader,
             'STOP': Stop,
-            'XW01': XW01,  # for compatibility with BGR dialect
-            'HANG:': None, # for compatibility with CNDC
+            'XW01': XW01,   # for compatibility with BGR dialect
+            'HANG:': None,  # for compatibility with CNDC
             'VANG:': None,
         }
         self._comment_lines = []
