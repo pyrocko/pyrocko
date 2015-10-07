@@ -306,6 +306,9 @@ class MomentTensor(Object):
 
     def _update(self):
         m_evals, m_evecs = eigh_check(self._m)
+        if num.linalg.det(m_evecs) < 0.:
+            m_evecs *= -1.
+
         rotmat1 = (m_evecs * MomentTensor._u_evecs.T).T
         if num.linalg.det(rotmat1) < 0.:
             rotmat1 *= -1.
@@ -424,6 +427,17 @@ class MomentTensor(Object):
     
     def eigenvals(self):
         return self._m_eigenvals
+
+    def eigensystem(self):
+        '''Get eigenvalues and eigenvectors of moment tensor.
+
+        returns ep, en, et, vp, vn, vt'''
+
+        vp = self.p_axis().A.flatten()
+        vn = self.null_axis().A.flatten() 
+        vt = self.t_axis().A.flatten()
+        ep, en, et = self._m_eigenvals
+        return ep, en, et, vp, vn, vt
     
     def both_slip_vectors(self):
         '''Get both possible slip directions.'''
@@ -492,6 +506,20 @@ class MomentTensor(Object):
                  (i+1, sdr[0], sdr[1], sdr[2])
             
         return s
+
+    def deviatoric(self):
+        '''Get deviatoric part of moment tensor.
+        
+        Returns a new moment tensor object with zero trace.
+        '''
+
+        m = self.m()
+
+        trace_m = num.trace(m)
+        m_iso = num.diag([trace_m / 3., trace_m / 3., trace_m / 3.])
+        m_devi = m - m_iso
+        mt = MomentTensor(m=m_devi)
+        return mt
 
     def standard_decomposition(self):
         epsilon = 1e-6
