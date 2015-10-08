@@ -48,13 +48,21 @@ def data_file(fn):
     return os.path.join(os.path.split(__file__)[0], 'data', fn)
 
 
+class DownloadError(Exception):
+    pass
+
+
 def download_file(url, fpath):
     import urllib2
 
     logger.info('starting download of %s' % url)
 
     ensuredirs(fpath)
-    f = urllib2.urlopen(url)
+    try:
+        f = urllib2.urlopen(url)
+    except urllib2.HTTPError, e:
+        raise DownloadError('cannot download file from url %s: %s' % (url, e))
+
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
     g = open(fpath_tmp, 'wb')
     while True:
