@@ -16,6 +16,7 @@ from test_datacube import DataCubeTestCase
 from test_fdsn import FDSNStationTestCase
 from test_ims import IMSTestCase
 from test_guts import GutsTestCase
+from test_parstack import ParstackTestCase
 
 import unittest
 import optparse
