@@ -220,6 +220,19 @@ def x_scaled(fmt, factor):
     return func
 
 
+def x_int_angle():
+    def string(v):
+        if v is None:
+            return '   '
+        else:
+            return '%3i' % (int(round(v)) % 360)
+
+    return float_or_none, string
+
+x_int_angle.width = 3
+x_int_angle.help_type = 'int [0, 360]'
+
+
 def x_substitute(value):
     def func():
         def parse(s):
@@ -236,9 +249,23 @@ def x_substitute(value):
     return func
 
 
+def fillup_zeros(s, fmt):
+    s = s.rstrip()
+    if not s:
+        return s
+
+    if fmt == '%Y/%m/%d %H:%M:%S.3FRAC':
+        return s + '0000/01/01 00:00:00.000'[len(s):]
+    elif fmt == '%Y/%m/%d %H:%M:%S.2FRAC':
+        return s + '0000/01/01 00:00:00.00'[len(s):]
+
+    return s
+
+
 def x_date_time(fmt='%Y/%m/%d %H:%M:%S.3FRAC'):
     def parse(s):
         try:
+            s = fillup_zeros(s, fmt)
             return util.str_to_time(s, format=fmt)
 
         except:
@@ -280,6 +307,13 @@ def x_date_time_no_seconds():
 
 x_date_time_no_seconds.width = 16
 x_date_time_no_seconds.help_type = 'YYYY/MM/DD HH:MM'
+
+
+def x_date_time_2frac():
+    return x_date_time(fmt='%Y/%m/%d %H:%M:%S.2FRAC')
+
+x_date_time_2frac.width = 22
+x_date_time_2frac.help_type = 'YYYY/MM/DD HH:MM:SS.FF'
 
 
 def x_yesno():
@@ -1107,23 +1141,19 @@ class CAL2(Block):
 
     @classmethod
     def read(cls, reader):
+        lstart = reader.current_line_number()
         line = reader.readline()
         obj = cls.deserialize(line, reader.version_dialect)
-
         while True:
             line = reader.readline()
-            if line is None:
+            # make sure all comments are read
+            if line is None or not line.startswith(' '):
                 reader.pushback()
                 break
 
-            m = re.match(r' ?\((.*)\)\s*$', line)
-            if m:
-                obj.comments.append(m.group(1))
+            obj.append_dataline(line, reader.version_dialect)
 
-            else:
-                reader.pushback()
-                break
-
+        obj.comments.extend(reader.get_comments_after(lstart))
         return obj
 
     def write(self, writer):
@@ -1150,24 +1180,19 @@ class Stage(Block):
 
     @classmethod
     def read(cls, reader):
+        lstart = reader.current_line_number()
         line = reader.readline()
         obj = cls.deserialize(line, reader.version_dialect)
 
         while True:
             line = reader.readline()
-            if line is None:
+            if line is None or not line.startswith(' '):
                 reader.pushback()
                 break
 
-            m = re.match(r' ?\((.*)\)\s*$', line)
-            if m:
-                obj.comments.append(m.group(1))
-            elif line.startswith(' '):
-                obj.append_dataline(line, reader.version_dialect)
+            obj.append_dataline(line, reader.version_dialect)
 
-            else:
-                reader.pushback()
-                break
+        obj.comments.extend(reader.get_comments_after(lstart))
 
         return obj
 
@@ -1756,17 +1781,24 @@ class WaveformSection(Section):
 class TableSection(Section):
     '''Base class for table style sections.'''
 
+    has_data_type_header = True
+
     @classmethod
     def read(cls, reader):
-        DataType.read(reader)
+        if cls.has_data_type_header:
+            DataType.read(reader)
+
         ts = cls.table_setup
 
         header = get_versioned(ts['header'], reader.version_dialect)
-        blocks = list(cls.read_table(reader, header, ts['cls']))
+        blocks = list(cls.read_table(
+            reader, header, ts['cls'], end=ts.get('end', end_section)))
         return cls(**{ts['attribute']: blocks})
 
     def write(self, writer):
-        self.write_datatype(writer)
+        if self.has_data_type_header:
+            self.write_datatype(writer)
+
         ts = self.table_setup
         header = get_versioned(ts['header'], writer.version_dialect)
         self.write_table(writer, header, getattr(self, ts['attribute']))
@@ -1935,10 +1967,245 @@ class OutageSection(Section):
         self.report_period.write(writer)
         self.write_table(writer, self.outages_header, self.outages)
 
+
+class BulletinTitle(Block):
+
+    _format = [
+        E(1, 136, 'a136')]
+
+    title = String.T()
+
+
+g_event_types = dict(
+    uk='unknown',
+    ke='known earthquake',
+    se='suspected earthquake',
+    kr='known rockburst',
+    sr='suspected rockburst',
+    ki='known induced event',
+    si='suspected induced event',
+    km='known mine explosion',
+    sm='suspected mine explosion',
+    kx='known experimental explosion',
+    sx='suspected experimental explosion',
+    kn='known nuclear explosion',
+    sn='suspected nuclear explosion',
+    ls='landslide',
+    de='??',
+    fe='??',)
+
+
+class Origin(Block):
+    _format = [
+        E(1, 22, x_date_time_2frac),
+        E(23, 23, 'a1?'),
+        E(25, 29, 'f5.2'),
+        E(31, 35, 'f5.2'),
+        E(37, 44, 'f8.4'),
+        E(46, 54, 'f9.4'),
+        E(55, 55, 'a1?'),
+        E(57, 60, x_scaled('f4.1', km)),
+        E(62, 66, x_scaled('f5.1', km)),
+        E(68, 70, x_int_angle),
+        E(72, 76, x_scaled('f5.1', km)),
+        E(77, 77, 'a1?'),
+        E(79, 82, x_scaled('f4.1', km)),
+        E(84, 87, 'i4'),
+        E(89, 92, 'i4'),
+        E(94, 96, x_int_angle),
+        E(98, 103, 'f6.2'),
+        E(105, 110, 'f6.2'),
+        E(112, 112, 'a1?'),
+        E(114, 114, 'a1?'),
+        E(116, 117, 'a2?'),
+        E(119, 127, 'a9'),
+        E(129, 136, 'a8')]
+
+    time = Timestamp.T(
+        help='epicenter date and time')
+
+    time_fixed = StringChoice.T(
+        choices=['f'],
+        optional=True,
+        help='fixed flag, ``"f"`` if fixed origin time solution, '
+             '``None`` if not')
+
+    time_error = Float.T(
+        optional=True,
+        help='origin time error [seconds], ``None`` if fixed origin time')
+
+    residual = Float.T(
+        optional=True,
+        help='root mean square of time residuals [seconds]')
+
+    lat = Float.T(
+        help='latitude')
+
+    lon = Float.T(
+        help='longitude')
+
+    lat_lon_fixed = StringChoice.T(
+        choices=['f'], optional=True,
+        help='fixed flag, ``"f"`` if fixed epicenter solution, '
+             '``None`` if not')
+
+    ellipse_semi_major_axis = Float.T(
+        optional=True,
+        help='semi-major axis of 90% c. i. ellipse or its estimate [m], '
+             '``None`` if fixed')
+
+    ellipse_semi_minor_axis = Float.T(
+        optional=True,
+        help='semi-minor axis of 90% c. i. ellipse or its estimate [m], '
+             '``None`` if fixed')
+
+    ellipse_strike = Float.T(
+        optional=True,
+        help='strike of 90% c. i. ellipse [0-360], ``None`` if fixed')
+
+    depth = Float.T(
+        help='depth [m]')
+
+    depth_fixed = StringChoice.T(
+        choices=['f', 'd'], optional=True,
+        help='fixed flag, ``"f"`` fixed depth station, "d" depth phases, '
+             '``None`` if not fixed depth')
+
+    depth_error = Float.T(
+        optional=True,
+        help='depth error [m], 90% c. i., ``None`` if fixed depth')
+
+    nphases = Int.T(
+        optional=True,
+        help='number of defining phases')
+
+    nstations = Int.T(
+        optional=True,
+        help='number of defining stations')
+
+    azimuthal_gap = Float.T(
+        optional=True,
+        help='gap in azimuth coverage [deg]')
+
+    distance_min = Float.T(
+        optional=True,
+        help='distance to closest station [deg]')
+
+    distance_max = Float.T(
+        optional=True,
+        help='distance to furthest station [deg]')
+
+    analysis_type = StringChoice.T(
+        optional=True,
+        choices=['a', 'm', 'g'],
+        help='analysis type, ``"a"`` automatic, ``"m"`` manual, ``"g"`` guess')
+
+    location_method = StringChoice.T(
+        optional=True,
+        choices=['i', 'p', 'g', 'o'],
+        help='location method, ``"i"`` inversion, ``"p"`` pattern, '
+             '``"g"`` ground truth, ``"o"`` other')
+
+    event_type = StringChoice.T(
+        optional=True,
+        choices=sorted(g_event_types.keys()),
+        help='event type, ' + ', '.join(
+            '``"%s"`` %s' % (k, g_event_types[k])
+            for k in sorted(g_event_types.keys())))
+
+    author = String.T('author of the origin')
+    origin_id = String.T('origin identification')
+
+
+class OriginSection(TableSection):
+    has_data_type_header = False
+
+    table_setup = dict(
+        header={
+            None: (
+                '   Date       Time        Err   RMS Latitude Longitude  '
+                'Smaj  Smin  Az Depth   Err Ndef Nsta Gap  mdist  Mdist '
+                'Qual   Author      OrigID')},
+        attribute='origins',
+        end=lambda line: end_section(line, 'EVENT'),
+        cls=Origin)
+
+    origins = List.T(Origin.T())
+
+
+class EventTitle(Block):
+    _format = [
+        E(1, 5, x_fixed('Event'), dummy=True),
+        E(7, 14, 'a8'),
+        E(16, 80, 'a65')]
+
+    event_id = String.T()
+    region = String.T()
+
+
+class EventSection(Section):
+    '''Groups Event, Arrival, ...'''
+
+    event_title = EventTitle.T()
+    origin_section = OriginSection.T()
+
+    @classmethod
+    def read(cls, reader):
+        event_title = EventTitle.read(reader)
+        origin_section = OriginSection.read(reader)
+        return cls(
+            event_title=event_title,
+            origin_section=origin_section)
+
+    def write(self, writer):
+        self.event_title.write(writer)
+        self.origin_section.write(writer)
+
+
+class EventsSection(Section):
+    '''Representation of a DATA_TYPE EVENT section.'''
+
+    keyword = 'EVENT'
+
+    bulletin_title = BulletinTitle.T()
+    event_sections = List.T(EventSection.T())
+
+    @classmethod
+    def read(cls, reader):
+        DataType.read(reader)
+        bulletin_title = BulletinTitle.read(reader)
+        event_sections = []
+        while True:
+            line = reader.readline()
+            reader.pushback()
+            if end_section(line):
+                break
+
+            if line.upper().startswith('EVENT'):
+                event_sections.append(EventSection.read(reader))
+
+        return cls(
+            bulletin_title=bulletin_title,
+            event_sections=event_sections,
+        )
+
+    def write(self, writer):
+        self.write_datatype(writer)
+        self.bulletin_title.write(writer)
+        for event_section in self.event_sections:
+            event_section.write(writer)
+
+
+class BulletinSection(EventsSection):
+    '''Representation of a DATA_TYPE BULLETIN section.'''
+
+    keyword = 'BULLETIN'
+
+
 for sec in (
         LogSection, ErrorLogSection, FTPLogSection, WaveformSection,
         NetworkSection, StationSection, ChannelSection, BeamSection,
-        ResponseSection, OutageSection):
+        ResponseSection, OutageSection, EventsSection, BulletinSection):
 
     Section.handlers[sec.keyword] = sec
 
@@ -2037,6 +2304,9 @@ class XW01(FreeFormatLine):
     dummy = String.T(optional=True)
 
 
+re_comment = re.compile(r'^(%(.+)\s*| \((#?)(.+)\)\s*)$')
+re_comment_usa_dmc = re.compile(r'^(%(.+)\s*| ?\((#?)(.+)\)\s*)$')
+
 class Reader(object):
     def __init__(self, f, load_data=True, version=None, dialect=None):
         self._f = f
@@ -2066,6 +2336,9 @@ class Reader(object):
     def tell(self):
         return self._current_fpos
 
+    def current_line_number(self):
+        return self._current_lpos - int(self._pushed_back)
+
     def readline(self):
         if self._pushed_back:
             self._pushed_back = False
@@ -2088,17 +2361,47 @@ class Reader(object):
                 lines.append(l.rstrip('\n\r'))
 
             self._current_line = ''.join(lines)
+
+            if self.version_dialect[1] == 'USA_DMC':
+                m_comment = re_comment_usa_dmc.match(self._current_line)
+            else:
+                m_comment = re_comment.match(self._current_line)
+
             if not self._current_line.strip():
                 pass
-            elif self._current_line.startswith('%'):
+
+            elif m_comment:
+                comment_type = None
+                if m_comment.group(3) == '#':
+                    comment_type = 'ISF'
+                elif m_comment.group(4) is not None:
+                    comment_type = 'IMS'
+
+                comment = m_comment.group(2) or m_comment.group(4)
+
                 self._comment_lines.append(
-                    (self._current_lpos, self._current_line))
+                    (self._current_lpos, comment_type, comment))
+
+
             elif self._current_line[:10].upper() == 'TIME_STAMP':
                 self._time_stamps.append(
                     TimeStamp.deserialize(
                         self._current_line, self.version_dialect))
+
             else:
                 return self._current_line
+
+    def get_comments_after(self, lpos):
+        comments = []
+        i = len(self._comment_lines) - 1
+        while i >= 0:
+            if self._comment_lines[i][0] <= lpos:
+                break
+
+            comments.append(self._comment_lines[i][-1])
+            i -= 1
+
+        return comments
 
     def pushback(self):
         assert not self._pushed_back
@@ -2142,9 +2445,9 @@ class Reader(object):
 
 class Writer(object):
 
-    def __init__(self, f):
+    def __init__(self, f, version='GSE2.1', dialect=None):
         self._f = f
-        self.version_dialect = ['GSE2.1', None]
+        self.version_dialect = [version, dialect]
 
     def write(self, section):
         section.write(self)
@@ -2241,13 +2544,38 @@ if __name__ == '__main__':
         action='store_true',
         help='unpack data samples')
 
+    parser.add_option(
+        '--out-version',
+        dest='out_version',
+        choices=g_versions,
+        help='output format version')
+
+    parser.add_option(
+        '--out-dialect',
+        dest='out_dialect',
+        choices=g_dialects,
+        help='output format dialect')
+
     (options, args) = parser.parse_args(sys.argv[1:])
 
     for fn in args:
         with open(fn, 'r') as f:
+
             r = Reader(f, load_data=options.load_data,
                        version=options.version, dialect=options.dialect)
+
+            w = None
+            if options.out_version is not None:
+                w = Writer(
+                    sys.stdout, version=options.out_version,
+                    dialect=options.out_dialect)
+
             for sec in r:
-                print sec
+                if not w:
+                    print sec
+
+                else:
+                    w.write(sec)
+
                 if isinstance(sec, WID2Section) and options.load_data:
                     tr = sec.pyrocko_trace(checksum_error='warn')
