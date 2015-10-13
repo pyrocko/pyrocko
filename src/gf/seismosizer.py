@@ -401,13 +401,18 @@ class Range(SObject):
             raise InvalidGridDef(
                 'cannot use relative range specification in this context')
 
+        vals = self.make_relative(vals)
+
+        return map(float, vals)
+
+    def make_relative(self, base, vals):
         if self.relative == 'add':
             vals += base
 
         if self.relative == 'mult':
             vals *= base
 
-        return map(float, vals)
+        return vals
 
 
 class GridDefElement(Object):
