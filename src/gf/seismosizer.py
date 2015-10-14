@@ -32,7 +32,11 @@ def xtime():
     return time.time()
 
 
-class BadRequest(Exception):
+class SeismosizerError(Exception):
+    pass
+
+
+class BadRequest(SeismosizerError):
     pass
 
 
@@ -1570,7 +1574,7 @@ class Target(meta.Receiver):
     def get_factor(self):
         return 1.0
 
-    def post_process(self, tr):
+    def post_process(self, source, tr):
         return Result(trace=tr)
 
 
@@ -1676,15 +1680,18 @@ class Response(Object):
 
         return traces
 
-    def iter_results(self):
+    def iter_results(self, get='pyrocko_traces'):
         '''Generator function to iterate over results of request.
 
         Yields associated :py:class:`Source`, :py:class:`Target`,
         :py:class:`trace.Trace` instances in each iteration.'''
         for isource, source in enumerate(self.request.sources):
             for itarget, target in enumerate(self.request.targets):
-                yield source, target, \
-                    self.results_list[isource][itarget].trace.pyrocko_trace()
+                result = self.results_list[isource][itarget]
+                if get == 'pyrocko_traces':
+                    yield source, target, result.trace.pyrocko_trace()
+                elif get == 'results':
+                    yield source, target, result
 
     def snuffle(self):
         '''Open *snuffler* with requested traces.'''
@@ -1836,7 +1843,11 @@ def process_subrequest(work, pshared=None):
     results = []
     for isource, source in zip(isources, sources):
         for itarget, target in zip(itargets, targets):
-            result = engine._post_process(base_seismogram, source, target)
+            try:
+                result = engine._post_process(base_seismogram, source, target)
+            except SeismosizerError, e:
+                result = e
+
             results.append((isource, itarget, result))
 
     tcounters.append(xtime())
@@ -2059,7 +2070,7 @@ class LocalEngine(Engine):
             deltat=deltat,
             tmin=itmin * deltat + source.get_timeshift())
 
-        return target.post_process(tr)
+        return target.post_process(source, tr)
 
     def process(self, *args, **kwargs):
         '''Process a request.
@@ -2279,6 +2290,7 @@ source_classes = [
 ]
 
 __all__ = '''
+SeismosizerError
 BadRequest
 NoSuchStore
 Filter
