@@ -820,6 +820,7 @@ class Map(Object):
                         **styles[i])
 
     def draw_labels(self):
+        self.gmt
         if not self._have_drawn_labels:
             self._draw_labels()
             self._have_drawn_labels = True
