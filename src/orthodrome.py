@@ -83,7 +83,10 @@ def distance_accurate50m_numpy( a_lats, a_lons, b_lats, b_lons ):
 
     eq = num.logical_and(a_lats == b_lats, a_lons == b_lons)
     ii_neq = num.where(num.logical_not(eq))[0]
-    
+
+    if num.all(eq):
+        return num.zeros_like(eq, dtype=num.float)
+
     def extr(x):
         if isinstance(x, num.ndarray) and x.size > 1:
             return x[ii_neq]
