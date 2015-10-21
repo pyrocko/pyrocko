@@ -640,10 +640,15 @@ class TracesFile(TracesGroup):
         if mtime is None:
             self.mtime = os.stat(self.abspath)[8]
         
+        kgen = lambda tr: (tr.mtime, tr.tmin, tr.tmax) + tr.nslc_id
         self.remove(self.traces)
+        ks = set()
         for tr in io.load(self.abspath, format=self.format, getdata=False, substitutions=self.substitutions):
-            self.traces.append(tr)
-            tr.file = self
+            k = kgen(tr)
+            if k not in ks:
+                ks.add(k)
+                self.traces.append(tr)
+                tr.file = self
 
         self.add(self.traces)
 
@@ -656,12 +661,20 @@ class TracesFile(TracesGroup):
             logger.debug('loading data from file: %s' % self.abspath)
             kgen = lambda tr: (tr.mtime, tr.tmin, tr.tmax) + tr.nslc_id
 
-            traces = io.load(self.abspath, format=self.format, getdata=True,
+            traces_ = io.load(self.abspath, format=self.format, getdata=True,
                              substitutions=self.substitutions)
+
+            # prevent adding duplicate snippets from corrupt mseed files
+            k_loaded = set()
+            traces = []
+            for tr in traces_:
+                k = kgen(tr)
+                if k not in k_loaded:
+                    k_loaded.add(k)
+                    traces.append(tr)
 
             k_current_d = dict((kgen(tr),tr) for tr in self.traces)
             k_current = set(k_current_d)
-            k_loaded = set(kgen(tr) for tr in traces)
             k_new = k_loaded - k_current
             k_delete = k_current - k_loaded
             k_unchanged = k_current & k_loaded
@@ -922,6 +935,10 @@ class Pile(TracesGroup):
                 traces = self.relevant(tmin, tmax, group_selector, trace_selector)
 
         for tr in traces:
+            if not load_data and tr.ydata is not None:
+                tr = tr.copy(data=False)
+                tr.ydata = None
+
             try:
                 chopped.append(tr.chop(tmin,tmax,inplace=False,snap=snap, include_last=include_last))
             except trace.NoData:
