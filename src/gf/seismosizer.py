@@ -1574,7 +1574,7 @@ class Target(meta.Receiver):
     def get_factor(self):
         return 1.0
 
-    def post_process(self, source, tr):
+    def post_process(self, engine, source, tr):
         return Result(trace=tr)
 
 
@@ -2070,7 +2070,7 @@ class LocalEngine(Engine):
             deltat=deltat,
             tmin=itmin * deltat + source.get_timeshift())
 
-        return target.post_process(source, tr)
+        return target.post_process(self, source, tr)
 
     def process(self, *args, **kwargs):
         '''Process a request.
