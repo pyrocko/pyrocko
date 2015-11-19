@@ -401,7 +401,7 @@ class Range(SObject):
             raise InvalidGridDef(
                 'cannot use relative range specification in this context')
 
-        vals = self.make_relative(vals)
+        vals = self.make_relative(base, vals)
 
         return map(float, vals)
 
