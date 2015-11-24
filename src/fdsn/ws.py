@@ -12,6 +12,7 @@ g_site_abbr = {
     'geofon': 'http://geofon-open1.gfz-potsdam.de',
     'iris': 'http://service.iris.edu',
     'orfeus': 'http://www.orfeus-eu.org',
+    'bgr': 'http://eida.bgr.de',
 }
 
 
