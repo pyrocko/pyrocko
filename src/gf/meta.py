@@ -912,49 +912,58 @@ class DiscretizedMTSource(DiscretizedSource):
     _provided_schemes = (
         'elastic8',
         'elastic10',
+        'elastic18',
     )
 
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
 
-        azis, bazis = self.azibazis_to(receiver)
-
-        sa = num.sin(azis*d2r)
-        ca = num.cos(azis*d2r)
-        s2a = num.sin(2.*azis*d2r)
-        c2a = num.cos(2.*azis*d2r)
-        sb = num.sin(bazis*d2r-num.pi)
-        cb = num.cos(bazis*d2r-num.pi)
-
         m6s = self.m6s
+        n = m6s.shape[0]
 
-        f0 = m6s[:, 0]*ca**2 + m6s[:, 1]*sa**2 + m6s[:, 3]*s2a
-        f1 = m6s[:, 4]*ca + m6s[:, 5]*sa
-        f2 = m6s[:, 2]
-        f3 = 0.5*(m6s[:, 1]-m6s[:, 0])*s2a + m6s[:, 3]*c2a
-        f4 = m6s[:, 5]*ca - m6s[:, 4]*sa
-        f5 = m6s[:, 0]*sa**2 + m6s[:, 1]*ca**2 - m6s[:, 3]*s2a
+        if scheme == 'elastic18':
+            w_n = m6s.flatten()
+            g_n = num.tile(num.arange(0, 6), n)
+            w_e = m6s.flatten()
+            g_e = num.tile(num.arange(6, 12), n)
+            w_d = m6s.flatten()
+            g_d = num.tile(num.arange(12, 18), n)
 
-        n = azis.size
+        else:
+            azis, bazis = self.azibazis_to(receiver)
 
-        cat = num.concatenate
-        rep = num.repeat
+            sa = num.sin(azis*d2r)
+            ca = num.cos(azis*d2r)
+            s2a = num.sin(2.*azis*d2r)
+            c2a = num.cos(2.*azis*d2r)
+            sb = num.sin(bazis*d2r-num.pi)
+            cb = num.cos(bazis*d2r-num.pi)
 
-        if scheme == 'elastic8':
-            w_n = cat((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
-            g_n = rep((0, 1, 2, 3, 4), n)
-            w_e = cat((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
-            g_e = rep((0, 1, 2, 3, 4), n)
-            w_d = cat((f0, f1, f2))
-            g_d = rep((5, 6, 7), n)
+            f0 = m6s[:, 0]*ca**2 + m6s[:, 1]*sa**2 + m6s[:, 3]*s2a
+            f1 = m6s[:, 4]*ca + m6s[:, 5]*sa
+            f2 = m6s[:, 2]
+            f3 = 0.5*(m6s[:, 1]-m6s[:, 0])*s2a + m6s[:, 3]*c2a
+            f4 = m6s[:, 5]*ca - m6s[:, 4]*sa
+            f5 = m6s[:, 0]*sa**2 + m6s[:, 1]*ca**2 - m6s[:, 3]*s2a
 
-        elif scheme == 'elastic10':
-            w_n = cat((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
-            g_n = rep((0, 1, 2, 8, 3, 4), n)
-            w_e = cat((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
-            g_e = rep((0, 1, 2, 8, 3, 4), n)
-            w_d = cat((f0, f1, f2, f5))
-            g_d = rep((5, 6, 7, 9), n)
+            cat = num.concatenate
+            rep = num.repeat
+
+            if scheme == 'elastic8':
+                w_n = cat((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
+                g_n = rep((0, 1, 2, 3, 4), n)
+                w_e = cat((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
+                g_e = rep((0, 1, 2, 3, 4), n)
+                w_d = cat((f0, f1, f2))
+                g_d = rep((5, 6, 7), n)
+
+            elif scheme == 'elastic10':
+                w_n = cat((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
+                g_n = rep((0, 1, 2, 8, 3, 4), n)
+                w_e = cat((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
+                g_e = rep((0, 1, 2, 8, 3, 4), n)
+                w_d = cat((f0, f1, f2, f5))
+                g_d = rep((5, 6, 7, 9), n)
 
         return (
             ('displacement.n', w_n, g_n),
@@ -1212,8 +1221,8 @@ class Config(Object):
     def vicinities(self, *args):
         return self._vicinities_function(*args)
 
-    def iter_nodes(self, level=None):
-        return nditer_outer(self.coords[:level])
+    def iter_nodes(self, level=None, minlevel=None):
+        return nditer_outer(self.coords[minlevel:level])
 
     def iter_extraction(self, gdef, level=None):
         i = 0
@@ -1611,6 +1620,253 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
             self.distance_delta/km)
 
 
+class ConfigTypeC(Config):
+    '''Cartesian 3D source volume, fixed receiver positions
+
+    Index variables are (
+        ireceiver,
+        source_depth,
+        source_east_shift,
+        source_north_shift,
+        component).'''
+
+    receivers = List.T(Receiver.T())
+
+    source_origin = Location.T()
+    source_depth_min = Float.T()
+    source_depth_max = Float.T()
+    source_depth_delta = Float.T()
+    source_east_shift_min = Float.T()
+    source_east_shift_max = Float.T()
+    source_east_shift_delta = Float.T()
+    source_north_shift_min = Float.T()
+    source_north_shift_max = Float.T()
+    source_north_shift_delta = Float.T()
+
+    short_type = 'C'
+
+    def get_distance(self, args):
+        ireceiver, _, source_east_shift, source_north_shift, _ = args
+        sorig = self.source_origin
+        sloc = Location(
+            lat=sorig.lat,
+            lon=sorig.lon,
+            north_shift=sorig.north_shift + source_north_shift,
+            east_shift=sorig.east_shift + source_east_shift)
+
+        self.receivers[args[0]].distance_to(sloc)
+
+    def get_source_depth(self, args):
+        return args[1]
+
+    def get_receiver_depth(self, args):
+        return self.receivers[args[0]].depth
+
+    def _update(self):
+        self.mins = num.array([
+            self.source_depth_min,
+            self.source_east_shift_min,
+            self.source_north_shift_min])
+
+        self.maxs = num.array([
+            self.source_depth_max,
+            self.source_east_shift_max,
+            self.source_north_shift_max])
+
+        self.deltas = num.array([
+            self.source_depth_delta,
+            self.source_east_shift_delta,
+            self.source_north_shift_delta])
+
+        self.ns = num.floor((self.maxs - self.mins) / self.deltas +
+                            vicinity_eps).astype(num.int) + 1
+        self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
+        self.deltat = 1.0/self.sample_rate
+        self.nreceivers = len(self.receivers)
+        self.nrecords = \
+            self.nreceivers * num.product(self.ns) * self.ncomponents
+
+        self.coords = (num.arange(self.nreceivers),) + \
+            tuple(num.linspace(mi, ma, n) for (mi, ma, n) in
+                  zip(self.mins, self.effective_maxs, self.ns)) + \
+            (num.arange(self.ncomponents),)
+        self.nreceiver_depths, self.nsource_depths, self.ndistances = self.ns
+
+    def _make_index_functions(self):
+
+        amin, bmin, cmin = self.mins
+        da, db, dc = self.deltas
+        na, nb, nc = self.ns
+        ng = self.ncomponents
+        nr = self.nreceivers
+
+        def index_function(ir, a, b, c, ig):
+            ia = int(round((a - amin) / da))
+            ib = int(round((b - bmin) / db))
+            ic = int(round((c - cmin) / dc))
+            try:
+                return num.ravel_multi_index((ir, ia, ib, ic, ig),
+                                             (nr, na, nb, nc, ng))
+            except ValueError:
+                raise OutOfBounds()
+
+        def indices_function(ir, a, b, c, ig):
+            ia = num.round((a - amin) / da).astype(int)
+            ib = num.round((b - bmin) / db).astype(int)
+            ic = num.round((c - cmin) / dc).astype(int)
+            try:
+                return num.ravel_multi_index((ir, ia, ib, ic, ig),
+                                             (nr, na, nb, nc, ng))
+            except ValueError:
+                raise OutOfBounds()
+
+        def vicinity_function(ir, a, b, c, ig):
+            ias = indi12((a - amin) / da, na)
+            ibs = indi12((b - bmin) / db, nb)
+            ics = indi12((c - cmin) / dc, nc)
+
+            if not (0 <= ir < nr):
+                raise OutOfBounds()
+
+            if not (0 <= ig < ng):
+                raise OutOfBounds()
+
+            indis = []
+            weights = []
+            iir = ir*na*nb*nc*ng
+            for ia, va in ias:
+                iia = ia*nb*nc*ng
+                for ib, vb in ibs:
+                    iib = ib*nc*ng
+                    for ic, vc in ics:
+                        indis.append(iir + iia + iib + ic*ng + ig)
+                        weights.append(va*vb*vc)
+
+            return num.array(indis), num.array(weights)
+
+        def vicinities_function(ir, a, b, c, ig):
+
+            xa = (a-amin) / da
+            xb = (b-bmin) / db
+            xc = (c-cmin) / dc
+
+            xa_fl = num.floor(xa)
+            xa_ce = num.ceil(xa)
+            xb_fl = num.floor(xb)
+            xb_ce = num.ceil(xb)
+            xc_fl = num.floor(xc)
+            xc_ce = num.ceil(xc)
+            va_fl = 1.0 - (xa - xa_fl)
+            va_ce = (1.0 - (xa_ce - xa)) * (xa_ce - xa_fl)
+            vb_fl = 1.0 - (xb - xb_fl)
+            vb_ce = (1.0 - (xb_ce - xb)) * (xb_ce - xb_fl)
+            vc_fl = 1.0 - (xc - xc_fl)
+            vc_ce = (1.0 - (xc_ce - xc)) * (xc_ce - xc_fl)
+
+            ia_fl = xa_fl.astype(num.int)
+            ia_ce = xa_ce.astype(num.int)
+            ib_fl = xb_fl.astype(num.int)
+            ib_ce = xb_ce.astype(num.int)
+            ic_fl = xc_fl.astype(num.int)
+            ic_ce = xc_ce.astype(num.int)
+
+            if num.any(ia_fl < 0) or num.any(ia_fl >= na):
+                raise OutOfBounds()
+
+            if num.any(ia_ce < 0) or num.any(ia_ce >= na):
+                raise OutOfBounds()
+
+            if num.any(ib_fl < 0) or num.any(ib_fl >= nb):
+                raise OutOfBounds()
+
+            if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
+                raise OutOfBounds()
+
+            if num.any(ic_fl < 0) or num.any(ic_fl >= nc):
+                raise OutOfBounds()
+
+            if num.any(ic_ce < 0) or num.any(ic_ce >= nc):
+                raise OutOfBounds()
+
+            irig = ir*na*nb*nc*ng + ig
+
+            irecords = num.empty(a.size*8, dtype=num.int)
+            irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
+            irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
+            irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
+            irecords[3::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
+            irecords[4::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
+            irecords[5::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
+            irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
+            irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
+
+            weights = num.empty(a.size*8, dtype=num.float)
+            weights[0::8] = va_fl * vb_fl * vc_fl
+            weights[1::8] = va_ce * vb_fl * vc_fl
+            weights[2::8] = va_fl * vb_ce * vc_fl
+            weights[3::8] = va_ce * vb_ce * vc_fl
+            weights[4::8] = va_fl * vb_fl * vc_ce
+            weights[5::8] = va_ce * vb_fl * vc_ce
+            weights[6::8] = va_fl * vb_ce * vc_ce
+            weights[7::8] = va_ce * vb_ce * vc_ce
+
+            return irecords, weights
+
+        self._index_function = index_function
+        self._indices_function = indices_function
+        self._vicinity_function = vicinity_function
+        self._vicinities_function = vicinities_function
+
+    def lookup_ireceiver(self, receiver):
+        pass
+
+    def make_indexing_args(self, source, receiver, icomponents):
+        nc = icomponents.size
+
+        dists = source.distances_to(self.source_origin)
+        azis, _ = source.azibazis_to(self.source_origin)
+
+        source_north_shifts = - num.cos(azis) * dists
+        source_east_shifts = - num.sin(azis) * dists
+        source_depths = source.depths - self.source_origin.depth
+
+        n = dists.size
+        ireceivers = num.empty(nc)
+        ireceivers.fill(self.lookup_ireceiver(receiver))
+
+        return (ireceivers,
+                num.tile(source_depths, nc/n),
+                num.tile(source_east_shifts, nc/n),
+                num.tile(source_north_shifts, nc/n),
+                icomponents)
+
+    def make_indexing_args1(self, source, receiver):
+        dist = source.distance_to(self.source_origin)
+        azi, _ = source.azibazi_to(self.source_origin)
+
+        source_north_shift = - num.cos(azi) * dist
+        source_east_shift = - num.sin(azi) * dist
+        source_depth = source.depth - self.source_origin.depth
+
+        return (self.lookup_ireceiver(receiver),
+                source_depth,
+                source_east_shift,
+                source_north_shift)
+
+    @property
+    def short_extent(self):
+        return '%g:%g:%g x %g:%g:%g x %g:%g:%g' % (
+            self.source_depth_min/km,
+            self.source_depth_max/km,
+            self.source_depth_delta/km,
+            self.source_east_shift_min/km,
+            self.source_east_shift_max/km,
+            self.source_east_shift_delta/km,
+            self.source_north_shift_min/km,
+            self.source_north_shift_max/km,
+            self.source_north_shift_delta/km)
+
+
 class Weighting(Object):
     factor = Float.T(default=1.0)
 
@@ -1822,6 +2078,7 @@ ComponentSchemes
 Config
 ConfigTypeA
 ConfigTypeB
+ConfigTypeC
 GridSpecError
 Weighting
 Taper
@@ -1830,6 +2087,7 @@ WaveformType
 ChannelSelection
 StationSelection
 WaveformSelection
+nditer_outer
 dump
 load
 '''.split()
