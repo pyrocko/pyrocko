@@ -711,66 +711,109 @@ class Snuffling:
             [m for m in markers if isinstance(m, PhaseMarker) and
              m.get_event() == event])
 
-    def chopper_selected_traces(self, fallback=False, marker_selector=None, *args, **kwargs ):
+    def get_viewer_trace_selector(self, mode='inview'):
+        '''Get currently active trace selector from viewer.
+
+        :param mode: set to ``'inview'`` (default) to only include selections 
+                currently shown in the viewer, ``'visible' to include all
+                traces not currenly hidden by hide or quick-select commands, or
+                ``'all'`` to disable any restrictions.
+        '''
+
+        viewer = self.get_viewer()
+
+        rtrue = lambda tr: True
+
+        if mode == 'inview':
+            return viewer.trace_selector or rtrue
+        elif mode == 'visible':
+            return viewer.trace_filter or rtrue
+        elif mode == 'all':
+            return rtrue
+        else:
+            raise Exception('invalid mode argument')
+
+    def chopper_selected_traces(self, fallback=False, marker_selector=None,
+                                mode='inview', *args, **kwargs ):
+
         '''Iterate over selected traces.
-        
+
         Shortcut to get all trace data contained in the selected markers in the
         running snuffler. For each selected marker,
         :py:meth:`pyrocko.pile.Pile.chopper` is called with the arguments
         *tmin*, *tmax*, and *trace_selector* set to values according to the
         marker. Additional arguments to the chopper are handed over from
         *\*args* and *\*\*kwargs*.
-        
-        :param fallback: if ``True``, if no selection has been marked, use the content
-               currently visible in the viewer.
+
+        :param fallback: if ``True``, if no selection has been marked, use the
+                content currently visible in the viewer.
         :param marker_selector: if not ``None`` a callback to filter markers.
+        :param mode: set to ``'inview'`` (default) to only include selections
+                currently shown in the viewer (excluding traces accessible
+                through vertical scrolling), ``'visible'`` to include all
+                traces not currenly hidden by hide or quick-select commands
+                (including traces accessible through vertical scrolling), or
+                ``'all'`` to disable any restrictions.
         '''
-       
+
         try:
             viewer = self.get_viewer()
-            markers = [m for m in viewer.selected_markers() if not isinstance(m, EventMarker)]
+            markers = [
+                m for m in viewer.selected_markers()
+                if not isinstance(m, EventMarker)]
+
             if marker_selector is not None:
-                markers = [  marker for marker in markers if marker_selector(marker) ] 
+                markers = [
+                    marker for marker in markers if marker_selector(marker)]
+
             pile = self.get_pile()
 
+            rtrue = lambda tr: True
+
+            trace_selector_arg = kwargs.pop('trace_selector', rtrue)
+            trace_selector_viewer = self.get_viewer_trace_selector(mode)
+
             if markers:
-                
                 for marker in markers:
                     if not marker.nslc_ids:
-                        trace_selector = None
+                        trace_selector_marker = rtrue
                     else:
-                        trace_selector = lambda tr: marker.match_nslc(tr.nslc_id)
+                        trace_selector_marker = \
+                            lambda tr: marker.match_nslc(tr.nslc_id)
+
+                    trace_selector = lambda tr: trace_selector_arg(tr) and \
+                        trace_selector_viewer(tr) and trace_selector_marker(tr)
 
                     for traces in pile.chopper(
-                            tmin = marker.tmin,
-                            tmax = marker.tmax,
-                            trace_selector = trace_selector,
+                            tmin=marker.tmin,
+                            tmax=marker.tmax,
+                            trace_selector=trace_selector,
                             *args,
                             **kwargs):
-                        
+
                         yield traces
-                        
+
             elif fallback:
-                if 'trace_selector' not in kwargs:
-                    kwargs['trace_selector'] = viewer.trace_selector
-                
+                trace_selector = lambda tr: trace_selector_arg(tr) and \
+                    trace_selector_viewer(tr)
+
                 tmin, tmax = viewer.get_time_range()
                 for traces in pile.chopper(
-                        tmin = tmin,
-                        tmax = tmax,
+                        tmin=tmin,
+                        tmax=tmax,
+                        trace_selector=trace_selector,
                         *args,
                         **kwargs):
-                    
+
                     yield traces
             else:
                 raise NoTracesSelected()
-        
-        except NoViewerSet:
 
+        except NoViewerSet:
             pile = self.get_pile()
             for traces in  pile.chopper(*args, **kwargs):
                 yield traces
-                    
+
     def get_selected_time_range(self, fallback=False):
         '''Get the time range spanning all selected markers.
 
