@@ -329,29 +329,44 @@ def draw_eigenvectors_mpl(eig, axes):
         axes.text(sign*v[1], sign*v[0], '  '+lab)
 
 
-def plot_beachball_mpl(mt, axes):
-    #mt = mt.deviatoric()
+def trans(x, y, position, size):
+    x0, y0 = position
+    return x0+size*x, y0+size*y
+
+
+def plot_beachball_mpl(mt, axes, beachball_type='deviatoric',
+        position=(0., 0.), size=1.0, zorder=None, color_t='red', color_p='white', lw=2):
+
+    res = mt.standard_decomposition()
+    m = dict(
+        dc=res[1][2],
+        deviatoric=res[3][2],
+        full=res[4][2])[beachball_type]
+
+    mt = mtm.MomentTensor(m=m)
+
     eig = mt.eigensystem()
 
     for (group, patches, patches_lower, patches_upper,
             lines, lines_lower, lines_upper) in eig2gx(eig):
 
         if group == 'P':
-            color = 'white'
+            color = color_p
         else:
-            color = 'red'
+            color = color_t
 
         # plot "upper" features for lower hemisphere, because coordinate system
         # is NED
         for poly in patches_upper:
             px, py, pz = poly.T
-            axes.fill(py, px, lw=0, fc=color)
+            axes.fill(*trans(py, px, position, size), lw=0, fc=color, zorder=zorder)
 
         for poly in lines_upper:
             px, py, pz = poly.T
-            axes.plot(py, px, lw=2, color='black')
+            axes.plot(*trans(py, px, position, size), lw=lw, color='black', zorder=zorder)
 
     # draw_eigenvectors_mpl(eig, axes)
+
 
 
 def plot_beachball_mpl_construction(mt, axes, show='patches'):
