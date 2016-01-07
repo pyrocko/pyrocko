@@ -122,6 +122,7 @@ class TBase(object):
     strict = False
     multivalued = False
     force_regularize = False
+    propnames = []
 
     @classmethod
     def init_propertystuff(cls):
