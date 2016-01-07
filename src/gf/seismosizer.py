@@ -513,92 +513,7 @@ class SeismosizerTrace(Object):
         return cls(**d)
 
 
-class stf(Object):
-    '''
-    Base class for Source time functions of the source class.
-    '''
-
-
-class Boxcar(stf):
-
-    @property
-    def shape(self):
-        return str('Boxcar')
-
-    def discretize_t(self, deltat, risetime):
-        nt = 2 * num.ceil(risetime / deltat) + 1
-        dtau = risetime / nt
-        time_vec = num.linspace(-0.5*(risetime-dtau), 0.5*(risetime-dtau), nt)
-        amplitudes = num.ones_like(time_vec)
-        return time_vec, amplitudes
-
-
-class Triangular(stf):
-    peak_ratio = Float.T(
-        default=0.5,
-        optional=True,
-        help='Fraction of time compared to risetime, '
-             'when the maximum slip is reached')
-
-    @property
-    def shape(self):
-        return str('Triangular')
-
-    def discretize_t(self, deltat, risetime):
-        nt = 2 * num.ceil(risetime / deltat) + 1
-        npeak = num.floor(nt * self.peak_ratio)
-        dtau = risetime / nt
-        time_vec = num.linspace(-0.5*(risetime-dtau), 0.5*(risetime-dtau), nt)
-        amplitudes = num.concatenate((num.linspace(0, (1 - 1/npeak), npeak),
-                                      num.linspace(1, 0, nt - npeak)))
-
-        return time_vec, amplitudes
-
-
-class Sinusoidal(stf):
-
-    @property
-    def shape(self):
-        return str('Sinusoidal')
-
-    def discretize_t(self, deltat, risetime):
-        nt = 2 * num.ceil(risetime / deltat) + 1
-        dtau = risetime / nt
-        time_vec = num.linspace(-0.5*(risetime-dtau), 0.5*(risetime-dtau), nt)
-        amplitudes = num.sin(time_vec/risetime * num.pi + num.pi/2)
-
-        return time_vec, amplitudes
-
-
-class Source(meta.Location):
-    '''
-    Base class for all source models
-    '''
-
-    name = String.T(optional=True, default='')
-    time = Timestamp.T(default=0.)
-
-    stf = SObject.T(
-        default=Boxcar(),
-        help='Source Time Function of the Source can be also: '
-             'Triangular, Sinusoidal')
-
-    def __init__(self, **kwargs):
-        meta.Location.__init__(self, **kwargs)
-
-    def clone(self, **kwargs):
-        '''Make a copy of the source model.
-
-        A new object of the same source model class is created
-        and initialized with the parameters of the source model
-        on which this method is called on. If `kwargs` are given,
-        these are used to override any of the initialization
-        parameters.
-        '''
-
-        d = dict(self)
-        d.update(kwargs)
-        return self.__class__(**d)
+class Cloneable(object):
 
     def __iter__(self):
         return iter(self.T.propnames)
@@ -615,10 +530,111 @@ class Source(meta.Location):
 
         return setattr(self, k, v)
 
+    def clone(self, **kwargs):
+        '''Make a copy of the object
+
+        A new object of same class is created and initialized with the
+        parameters of the object on which this method is called on. If `kwargs`
+        are given, these are used to override any of the initialization
+        parameters.
+        '''
+
+        d = dict(self)
+        for k in d:
+            v = d[k]
+            if isinstance(v, Cloneable):
+                d[k] = v.clone()
+
+        d.update(kwargs)
+        return self.__class__(**d)
+
     @classmethod
     def keys(cls):
         '''Get list of the source model's parameter names.'''
         return cls.T.propnames
+
+
+class STF(Object, Cloneable):
+    '''
+    Base class for source time functions
+    '''
+
+    def discretize_t(self, deltat):
+        return num.zeros(1), num.ones(1)
+
+    def base_key(self):
+        return ()
+
+
+class Boxcar(STF):
+    duration = Float.T(
+        default=0.0,
+        help='duration of the boxcar')
+
+    def discretize_t(self, deltat, tref):
+        nt = 2 * num.ceil(self.duration / deltat) + 1
+        dtau = self.duration / nt
+        time_vec = num.linspace(-0.5*(self.duration-dtau),
+                                0.5*(self.duration-dtau), nt)
+        amplitudes = num.ones_like(time_vec)
+        return time_vec, amplitudes
+
+    def base_key(self):
+        return (self.duration, type(self))
+
+
+class Triangular(STF):
+    duration = Float.T(
+        default=0.0,
+        help='baseline of the triangle')
+
+    peak_ratio = Float.T(
+        default=0.5,
+        help='fraction of time compared to duration, '
+             'when the maximum amplitude is reached')
+
+    def discretize_t(self, deltat):
+        nt = 2 * num.ceil(self.duration / deltat) + 1
+        npeak = num.floor(nt * self.peak_ratio)
+        dtau = self.duration / nt
+        time_vec = num.linspace(-0.5*(self.duration-dtau),
+                                0.5*(self.duration-dtau), nt)
+        amplitudes = num.concatenate((num.linspace(0, (1 - 1/npeak), npeak),
+                                      num.linspace(1, 0, nt - npeak)))
+
+        amplitudes /= num.sum(amplitudes)
+        return time_vec, amplitudes
+
+    def base_key(self):
+        return (self.duration, self.peak_ratio, type(self))
+
+
+class HalfSinusoid(STF):
+
+    duration = Float.T(
+        default=0.0,
+        help='duration of the half-sinusoid')
+
+    def discretize_t(self, deltat):
+        nt = 2 * num.ceil(self.duration / deltat) + 1
+        dtau = self.duration / nt
+        time_vec = num.linspace(-0.5*(self.duration-dtau),
+                                0.5*(self.duration-dtau), nt)
+        amplitudes = num.sin(time_vec/self.duration * num.pi + num.pi/2)
+        amplitudes /= num.sum(amplitudes)
+        return time_vec, amplitudes
+
+
+class Source(meta.Location, Cloneable):
+    '''
+    Base class for all source models
+    '''
+
+    name = String.T(optional=True, default='')
+    time = Timestamp.T(default=0.)
+
+    def __init__(self, **kwargs):
+        meta.Location.__init__(self, **kwargs)
 
     def update(self, **kwargs):
         '''Change some of the source models parameters.
@@ -658,7 +674,7 @@ class Source(meta.Location):
 
     def base_key(self):
         return (self.depth, self.lat, self.north_shift,
-                self.lon, self.east_shift, type(self), self.stf.shape,)
+                self.lon, self.east_shift, type(self))
 
     def get_timeshift(self):
         return self.time
@@ -760,8 +776,19 @@ class ExplosionSource(SourceWithMagnitude):
 
     discretized_source_class = meta.DiscretizedExplosionSource
 
+    stf = STF.T(
+        optional=True,
+        help='Source Time Function of the Source can be also: '
+             'Triangular, Sinusoidal')
+
+    def get_stf(self):
+        if self.stf is None:
+            return STF()
+        else:
+            return self.stf
+
     def base_key(self):
-        return Source.base_key(self)
+        return Source.base_key(self) + self.get_stf().base_key()
 
     def get_factor(self):
         return mt.magnitude_to_moment(self.magnitude)
@@ -2346,13 +2373,20 @@ source_classes = [
     PorePressureLineSource
 ]
 
+stf_classes = [
+    STF,
+    Boxcar,
+    Triangular,
+    HalfSinusoid
+]
+
 __all__ = '''
 SeismosizerError
 BadRequest
 NoSuchStore
 Filter
 Taper
-'''.split() + [S.__name__ for S in source_classes] + '''
+'''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
 Target
 Result
 Request
