@@ -130,7 +130,8 @@ def arr(x):
 
 
 def discretize_rect_source(deltas, deltat, strike, dip, length, width,
-                           velocity, stf, nucleation_x=None, nucleation_y=None, tau=0.0):
+                           velocity, stf, nucleation_x=None, nucleation_y=None,
+                           tau=0.0):
 
     mindeltagf = num.min(deltas)
     mindeltagf = min(mindeltagf, deltat * velocity)
@@ -140,7 +141,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
 
     nl = 2 * num.ceil(l / mindeltagf) + 1
     nw = 2 * num.ceil(w / mindeltagf) + 1
-        
+
     n = int(nl*nw)
 
     dl = l / nl
@@ -514,15 +515,16 @@ class SeismosizerTrace(Object):
 
 class stf(Object):
     '''
-    Base class for Source time functions of the source class. 
+    Base class for Source time functions of the source class.
     '''
 
+
 class Boxcar(stf):
-    
+
     @property
     def shape(self):
         return str('Boxcar')
-    
+
     def discretize_t(self, deltat, risetime):
         nt = 2 * num.ceil(risetime / deltat) + 1
         dtau = risetime / nt
@@ -530,23 +532,28 @@ class Boxcar(stf):
         amplitudes = num.ones_like(time_vec)
         return time_vec, amplitudes
 
+
 class Triangular(stf):
     peak_ratio = Float.T(
-    default = 0.5,
-    optional = True,
-    help = 'Fraction of time compared to risetime, when the maximum slip is reached')
-    
+        default=0.5,
+        optional=True,
+        help='Fraction of time compared to risetime, '
+             'when the maximum slip is reached')
+
     @property
     def shape(self):
         return str('Triangular')
-    
+
     def discretize_t(self, deltat, risetime):
         nt = 2 * num.ceil(risetime / deltat) + 1
         npeak = num.floor(nt * self.peak_ratio)
         dtau = risetime / nt
         time_vec = num.linspace(-0.5*(risetime-dtau), 0.5*(risetime-dtau), nt)
-        amplitudes = num.concatenate((num.linspace(0, (1 - 1/npeak), npeak), num.linspace(1, 0, nt - npeak)))
+        amplitudes = num.concatenate((num.linspace(0, (1 - 1/npeak), npeak),
+                                      num.linspace(1, 0, nt - npeak)))
+
         return time_vec, amplitudes
+
 
 class Sinusoidal(stf):
 
@@ -559,7 +566,7 @@ class Sinusoidal(stf):
         dtau = risetime / nt
         time_vec = num.linspace(-0.5*(risetime-dtau), 0.5*(risetime-dtau), nt)
         amplitudes = num.sin(time_vec/risetime * num.pi + num.pi/2)
-        
+
         return time_vec, amplitudes
 
 
@@ -573,7 +580,8 @@ class Source(meta.Location):
 
     stf = SObject.T(
         default=Boxcar(),
-        help='Source Time Function of the Source can be also: Triangular, Sinusoidal')
+        help='Source Time Function of the Source can be also: '
+             'Triangular, Sinusoidal')
 
     def __init__(self, **kwargs):
         meta.Location.__init__(self, **kwargs)
@@ -835,7 +843,8 @@ class RectangularExplosionSource(ExplosionSource):
         points, times, amplitudes, dwidth, dlength = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
-            self.velocity, stf=self.stf, nucleation_x=nucx, nucleation_y=nucy, tau=self.risetime)
+            self.velocity, stf=self.stf, nucleation_x=nucx, nucleation_y=nucy,
+            tau=self.risetime)
 
         n = times.size
 
