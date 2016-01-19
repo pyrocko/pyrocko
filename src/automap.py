@@ -832,7 +832,7 @@ class Map(Object):
         from pyrocko import geonames
         cities = list(geonames.load(
             'cities1000.zip', 'cities1000.txt',
-            region=self.wesn, minpop=0))
+            region=self.wesn, minpop=0, exclude=('PPLX',)))
 
         cities.extend(self.custom_cities)
         cities.sort(key=lambda x: x.population)
