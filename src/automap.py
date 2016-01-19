@@ -119,6 +119,7 @@ class FloatTile(Object):
         else:
             raise OutOfBounds()
 
+
 class City(Object):
     def __init__(self, name, lat, lon, population=None, asciiname=None):
         name = unicode(name)
@@ -830,13 +831,9 @@ class Map(Object):
 
     def cities_in_region(self):
         from pyrocko import geonames
-        cities = list(geonames.load(
-            'cities1000.zip', 'cities1000.txt',
-            region=self.wesn, minpop=0, exclude=('PPLX',)))
-
+        cities = geonames.get_cities_region(region=self.wesn, minpop=0)
         cities.extend(self.custom_cities)
         cities.sort(key=lambda x: x.population)
-
         return cities
 
     def draw_cities(self,
@@ -1024,6 +1021,7 @@ def read_cpt(filename):
 
 def color_to_int(color):
     return tuple(max(0, min(255, int(round(x)))) for x in color)
+
 
 def write_cpt(cpt, filename):
     with open(filename, 'w') as f:

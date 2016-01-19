@@ -151,11 +151,15 @@ def load_all_keep(zfn, fn, minpop=1000000, region=None, exclude=()):
             minpop <= c.population and c.feature_code not in exclude)]
 
 
-def get_cities(lat, lon, radius, minpop=0):
-    region = od.radius_to_region(lat, lon, radius)
-    cities = load_all_keep('cities1000.zip', 'cities1000.txt',
+def get_cities_region(region, minpop=0):
+    return load_all_keep('cities1000.zip', 'cities1000.txt',
                            region=region, minpop=minpop,
                            exclude=('PPLX',))
+
+
+def get_cities(lat, lon, radius, minpop=0):
+    region = od.radius_to_region(lat, lon, radius)
+    cities = get_cities_region(region, minpop=minpop)
 
     clats = num.array([c.lat for c in cities])
     clons = num.array([c.lon for c in cities])
