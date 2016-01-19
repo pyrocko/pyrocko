@@ -16,7 +16,7 @@ from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
-from pyrocko import trace, model, parimap
+from pyrocko import trace, model, parimap, util
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
 import pyrocko.config
@@ -130,8 +130,11 @@ def arr(x):
 
 
 def discretize_rect_source(deltas, deltat, strike, dip, length, width,
-                           velocity, stf, nucleation_x=None, nucleation_y=None,
-                           tau=0.0):
+                           velocity, stf=None, nucleation_x=None, nucleation_y=None,
+                           tref=0.0):
+
+    if stf is None:
+        stf = STF()
 
     mindeltagf = num.min(deltas)
     mindeltagf = min(mindeltagf, deltat * velocity)
@@ -149,7 +152,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
 
     xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
     xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
-    xtau, amplitudes = stf.discretize_t(deltat, tau)
+    xtau, amplitudes = stf.discretize_t(deltat, tref)
 
     points = num.empty((n, 3), dtype=num.float)
     points[:, 0] = num.tile(xl, nw)
@@ -178,7 +181,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     times2 = num.repeat(times, len(xtau)) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
 
-    return points2, times2, amplitudes2, dw, dl
+    return points2, times2, amplitudes2
 
 
 def outline_rect_source(strike, dip, length, width):
@@ -531,9 +534,10 @@ class Cloneable(object):
         return setattr(self, k, v)
 
     def clone(self, **kwargs):
-        '''Make a copy of the object
+        '''
+        Make a copy of the object
 
-        A new object of same class is created and initialized with the
+        A new object of the same class is created and initialized with the
         parameters of the object on which this method is called on. If `kwargs`
         are given, these are used to override any of the initialization
         parameters.
@@ -555,35 +559,67 @@ class Cloneable(object):
 
 
 class STF(Object, Cloneable):
+
     '''
-    Base class for source time functions
+    Base class for source time functions.
     '''
 
-    def discretize_t(self, deltat):
-        return num.zeros(1), num.ones(1)
+    def centroid_time(self, tref):
+        return tref
+
+    def discretize_t(self, deltat, tref):
+        t = round(tref / deltat) * deltat
+        return num.array([t], dtype=num.float), num.ones(1)
 
     def base_key(self):
-        return ()
+        return (type(self),)
 
 
-class Boxcar(STF):
+class BoxcarSTF(STF):
+
+    '''
+    Boxcar type source time function.
+    '''
+
     duration = Float.T(
         default=0.0,
         help='duration of the boxcar')
 
+    anchor = Float.T(
+        default=0.0,
+        help='anchor point (-1.0: left, 0.0: center, +1.0: right)')
+
+    def centroid_time(self, tref):
+        return tref - 0.5 * self.duration * self.anchor
+
     def discretize_t(self, deltat, tref):
-        nt = 2 * num.ceil(self.duration / deltat) + 1
-        dtau = self.duration / nt
-        time_vec = num.linspace(-0.5*(self.duration-dtau),
-                                0.5*(self.duration-dtau), nt)
-        amplitudes = num.ones_like(time_vec)
-        return time_vec, amplitudes
+        tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
+        tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
+        tmin = round(tmin_stf / deltat) * deltat
+        tmax = round(tmax_stf / deltat) * deltat
+        nt = (tmax - tmin) / deltat + 1
+        times = num.linspace(tmin, tmax, nt)
+        amplitudes = num.ones_like(times)
+        if times.size > 1:
+            t_edges = num.linspace(tmin-0.5*deltat, tmax+0.5*deltat, nt + 1)
+            t = tmin_stf + self.duration * num.array(
+                [0.0, 0.0, 1.0, 1.0], dtype=num.float)
+            f = num.array([0., 1., 1., 0.], dtype=num.float)
+            amplitudes = util.plf_integrate_piecewise(t_edges, t, f)
+            amplitudes /= num.sum(amplitudes)
+
+        return times, amplitudes
 
     def base_key(self):
-        return (self.duration, type(self))
+        return (self.duration, self.anchor, type(self))
 
 
-class Triangular(STF):
+class TriangularSTF(STF):
+
+    '''
+    Triangular type source time function.
+    '''
+
     duration = Float.T(
         default=0.0,
         help='baseline of the triangle')
@@ -593,36 +629,96 @@ class Triangular(STF):
         help='fraction of time compared to duration, '
              'when the maximum amplitude is reached')
 
-    def discretize_t(self, deltat):
-        nt = 2 * num.ceil(self.duration / deltat) + 1
-        npeak = num.floor(nt * self.peak_ratio)
-        dtau = self.duration / nt
-        time_vec = num.linspace(-0.5*(self.duration-dtau),
-                                0.5*(self.duration-dtau), nt)
-        amplitudes = num.concatenate((num.linspace(0, (1 - 1/npeak), npeak),
-                                      num.linspace(1, 0, nt - npeak)))
+    anchor = Float.T(
+        default=0.0,
+        help='anchor point (-1.0: left, 0.0: centroid, +1.0: right)')
 
-        amplitudes /= num.sum(amplitudes)
-        return time_vec, amplitudes
+    @property
+    def centroid_ratio(self):
+        ra = self.peak_ratio
+        rb = 1.0 - ra
+        return self.peak_ratio + (rb**2 / 3. - ra**2 / 3.) / (ra + rb)
+
+    def centroid_time(self, tref):
+        ca = self.centroid_ratio
+        cb = 1.0 - ca
+        if self.anchor <= 0.:
+            return tref - ca * self.duration * self.anchor
+        else:
+            return tref - cb * self.duration * self.anchor
+
+    def tminmax_stf(self, tref):
+        ca = self.centroid_ratio
+        cb = 1.0 - ca
+        if self.anchor <= 0.:
+            tmin_stf = tref - ca * self.duration * (self.anchor + 1.)
+            tmax_stf = tmin_stf + self.duration
+        else:
+            tmax_stf = tref + cb * self.duration * (1. - self.anchor)
+            tmin_stf = tmax_stf - self.duration
+
+        return tmin_stf, tmax_stf
+
+    def discretize_t(self, deltat, tref):
+        tmin_stf, tmax_stf = self.tminmax_stf(tref)
+
+        tmin = round(tmin_stf / deltat) * deltat
+        tmax = round(tmax_stf / deltat) * deltat
+        nt = (tmax - tmin) / deltat + 1
+        if nt > 1:
+            t_edges = num.linspace(tmin-0.5*deltat, tmax+0.5*deltat, nt + 1)
+            t = tmin_stf + self.duration * num.array(
+                [0.0, self.peak_ratio, 1.0], dtype=num.float)
+            f = num.array([0., 1., 0.], dtype=num.float)
+            amplitudes = util.plf_integrate_piecewise(t_edges, t, f)
+            amplitudes /= num.sum(amplitudes)
+        else:
+            amplitudes = num.ones(1)
+
+        times = num.linspace(tmin, tmax, nt)
+        return times, amplitudes
 
     def base_key(self):
-        return (self.duration, self.peak_ratio, type(self))
+        return (self.duration, self.peak_ratio, self.anchor, type(self))
 
 
-class HalfSinusoid(STF):
+class HalfSinusoidSTF(STF):
+
+    '''
+    Half sinusoid type source time function.
+    '''
 
     duration = Float.T(
         default=0.0,
-        help='duration of the half-sinusoid')
+        help='duration of the half-sinusoid (baseline)')
 
-    def discretize_t(self, deltat):
-        nt = 2 * num.ceil(self.duration / deltat) + 1
-        dtau = self.duration / nt
-        time_vec = num.linspace(-0.5*(self.duration-dtau),
-                                0.5*(self.duration-dtau), nt)
-        amplitudes = num.sin(time_vec/self.duration * num.pi + num.pi/2)
-        amplitudes /= num.sum(amplitudes)
-        return time_vec, amplitudes
+    anchor = Float.T(
+        default=0.0,
+        help='anchor point (-1.0: left, 0.0: center, +1.0: right)')
+
+    def centroid_time(self, tref):
+        return tref - 0.5 * self.duration * self.anchor
+
+    def discretize_t(self, deltat, tref):
+        tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
+        tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
+        tmin = round(tmin_stf / deltat) * deltat
+        tmax = round(tmax_stf / deltat) * deltat
+        nt = (tmax - tmin) / deltat + 1
+        if nt > 1:
+            t_edges = num.maximum(tmin_stf, num.minimum(tmax_stf, num.linspace(
+                tmin - 0.5*deltat, tmax + 0.5*deltat, nt + 1)))
+            fint = -num.cos((t_edges - tmin_stf) * (math.pi / self.duration))
+            amplitudes = fint[1:] - fint[:-1]
+            amplitudes /= num.sum(amplitudes)
+        else:
+            amplitudes = num.ones(1)
+
+        times = num.linspace(tmin, tmax, nt)
+        return times, amplitudes
+
+    def base_key(self):
+        return (self.duration, self.anchor, type(self))
 
 
 class Source(meta.Location, Cloneable):
@@ -681,7 +777,6 @@ class Source(meta.Location, Cloneable):
 
     def _dparams_base(self):
         return dict(times=arr(0.),
-                    amplitudes=(1.),
                     lat=self.lat, lon=self.lon,
                     north_shifts=arr(self.north_shift),
                     east_shifts=arr(self.east_shift),
@@ -845,15 +940,10 @@ class RectangularExplosionSource(ExplosionSource):
         default=3500.,
         help='speed of explosion front [m/s]')
 
-    risetime = Float.T(
-        optional=True,
-        help='Duration of the Energy-release [s]')
-
     def base_key(self):
         return Source.base_key(self) + (self.strike, self.dip, self.length,
                                         self.width, self.nucleation_x,
-                                        self.nucleation_y, self.velocity,
-                                        self.risetime)
+                                        self.nucleation_y, self.velocity)
 
     def discretize_basesource(self, store):
 
@@ -867,11 +957,10 @@ class RectangularExplosionSource(ExplosionSource):
         else:
             nucy = None
 
-        points, times, amplitudes, dwidth, dlength = discretize_rect_source(
+        points, times, amplitudes = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
-            self.velocity, stf=self.stf, nucleation_x=nucx, nucleation_y=nucy,
-            tau=self.risetime)
+            self.velocity, nucleation_x=nucx, nucleation_y=nucy)
 
         n = times.size
 
@@ -882,7 +971,7 @@ class RectangularExplosionSource(ExplosionSource):
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
-            m0s=num.repeat(1.0/n, n))
+            m0s=amplitudes)
 
 
 class DCSource(SourceWithMagnitude):
@@ -928,6 +1017,7 @@ class DCSource(SourceWithMagnitude):
             scalar_moment=self.moment)
 
     def pyrocko_event(self, **kwargs):
+        mt = self.pyrocko_moment_tensor()
         return SourceWithMagnitude.pyrocko_event(
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
@@ -996,9 +1086,11 @@ class CLVDSource(Source):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
 
     def pyrocko_event(self, **kwargs):
+        mt = self.pyrocko_moment_tensor()
         return Source.pyrocko_event(
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
+            magnitude=mt.moment_magnitude(),
             **kwargs)
 
 
@@ -1033,6 +1125,10 @@ class MTSource(Source):
         default=0.,
         help='east-down component of moment tensor in [Nm]')
 
+    stf = STF.T(
+        optional=True,
+        help='Source time function.')
+
     def __init__(self, **kwargs):
         if 'm6' in kwargs:
             for (k, v) in zip('mnn mee mdd mne mnd med'.split(),
@@ -1054,22 +1150,41 @@ class MTSource(Source):
         self.mnn, self.mee, self.mdd, self.mne, self.mnd, self.med = value
 
     def base_key(self):
-        return Source.base_key(self) + self.m6_astuple
+        return Source.base_key(self) + self.m6_astuple + self.get_stf().base_key()
+
+    def get_stf(self):
+        if self.stf is None:
+            return STF()
+        else:
+            return self.stf
 
     def get_factor(self):
         return 1.0
 
     def discretize_basesource(self, store):
-        return meta.DiscretizedMTSource(m6s=self.m6[num.newaxis, :],
-                                        **self._dparams_base())
+        times, amplitudes = self.get_stf().discretize_t(
+            store.config.deltat, 0.0)
+        nt = times.size
+        m6s = self.m6[num.newaxis, :] * amplitudes[:, num.newaxis]
+        north_shifts = num.repeat(self.north_shift, nt)
+        east_shifts = num.repeat(self.east_shift, nt)
+        depths = num.repeat(self.depth, nt)
+        return meta.DiscretizedMTSource(times=times,
+                                        lat=self.lat, lon=self.lon,
+                                        north_shifts=north_shifts,
+                                        east_shifts=east_shifts,
+                                        depths=depths,
+                                        m6s=m6s)
 
     def pyrocko_moment_tensor(self):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
 
     def pyrocko_event(self, **kwargs):
+        mt = self.pyrocko_moment_tensor()
         return Source.pyrocko_event(
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
+            magnitude=mt.moment_magnitude(),
             **kwargs)
 
     @classmethod
@@ -1112,19 +1227,13 @@ class RectangularSource(DCSource):
         default=3500.,
         help='speed of rupture front [m/s]')
 
-    risetime = Float.T(
-        default=0.0,
-        help='duration of energy release of any single point in rupture area '
-             '[s]')
-
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
             self.width,
             self.nucleation_x,
             self.nucleation_y,
-            self.velocity,
-            self.risetime)
+            self.velocity)
 
     def discretize_basesource(self, store):
 
@@ -1138,16 +1247,18 @@ class RectangularSource(DCSource):
         else:
             nucy = None
 
-        points, times = discretize_rect_source(
+        points, times, amplitudes = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
-            self.velocity, nucleation_x=nucx, nucleation_y=nucy,
-            tau=self.risetime)
+            self.velocity, nucleation_x=nucx, nucleation_y=nucy)
 
         n = times.size
 
         mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake,
                               scalar_moment=1.0/n)
+
+        m6s = num.repeat(mot.m6()[num.newaxis, :], n, axis=0)
+        m6s[:, :] = amplitudes[:, num.newaxis]
 
         ds = meta.DiscretizedMTSource(
             lat=self.lat,
@@ -1156,7 +1267,7 @@ class RectangularSource(DCSource):
             north_shifts=self.north_shift + points[:, 0],
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
-            m6s=num.repeat(mot.m6()[num.newaxis, :], n, axis=0))
+            m6s=m6s)
 
         return ds
 
@@ -2370,14 +2481,14 @@ source_classes = [
     RingfaultSource,
     SFSource,
     PorePressurePointSource,
-    PorePressureLineSource
+    PorePressureLineSource,
 ]
 
 stf_classes = [
     STF,
-    Boxcar,
-    Triangular,
-    HalfSinusoid
+    BoxcarSTF,
+    TriangularSTF,
+    HalfSinusoidSTF,
 ]
 
 __all__ = '''

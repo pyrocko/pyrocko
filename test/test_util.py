@@ -80,6 +80,20 @@ class UtilTestCase(unittest.TestCase):
             if t in from_sys:
                 assert from_sys[t] == n
 
+    def test_plf_integration(self):
+        import numpy as num
+
+        x = num.array([1., 1., 3., 3.])
+        y = num.array([0., 1., 1., 0.])
+        x_edges = num.array([0.5, 1.5, 2.5, 3.5])
+        yy = util.plf_integrate_piecewise(x_edges, x, y)
+        assert num.all(num.abs(yy - num.array([0.5, 1.0, 0.5])) < 1e-6)
+
+        x = num.array([0., 1., 2., 3.])
+        y = num.array([0., 1., 1., 0.])
+        x_edges = num.array([0., 1., 2., 3.])
+        yy = util.plf_integrate_piecewise(x_edges, x, y)
+        assert num.all(num.abs(yy - num.array([0.5, 1.0, 0.5])) < 1e-6)
 
 if __name__ == "__main__":
     util.setup_logging('test_util', 'warning')
