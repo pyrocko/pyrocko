@@ -3006,7 +3006,9 @@ def MakePileViewerMainClass(base):
                 now = time.time()
             return now - self.interactive_range_change_time < self.interactive_range_change_delay_time
 
-        def follow(self, tlen, interval=50, lapse=None, tmax_start=0.0):
+        def follow(self, tlen, interval=50, lapse=None, tmax_start=None):
+            if tmax_start is None:
+                tmax_start = time.time()
             self.show_all = False
             self.follow_time = tlen
             self.follow_timer = QTimer(self)
