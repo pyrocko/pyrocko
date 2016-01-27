@@ -355,7 +355,7 @@ class GlobalCMT(EarthquakeCatalog):
                     time=t,
                     name=data.eventname,
                     depth=data.depth_km*1000.,
-                    magnitude=mt.moment_magnitude(),
+                    magnitude=float(mt.moment_magnitude()),
                     duration=data.half_duration * 2.,
                     region=data.region.rstrip(),
                     catalog=data.catalog)
@@ -366,7 +366,7 @@ class GlobalCMT(EarthquakeCatalog):
             except AttributeError:
                 pass
 
-        catalog = 'Global-CMT'
+        catalog = 'gCMT'
 
         data = None
         more = None
@@ -379,7 +379,7 @@ class GlobalCMT(EarthquakeCatalog):
                 
                 m = re.search(r'From Quick CMT catalog', line)
                 if m:
-                    catalog = 'Global-CMT-Quick'
+                    catalog = 'gCMT-Q'
 
                 m = re.search(r'Event name:\s+(\S+)', line)
                 if m:
@@ -583,15 +583,16 @@ def ws_request(url, post=False, **kwargs):
 
 class Kinherd(EarthquakeCatalog):
 
-    def __init__(self):
-       self.events = {}
+    def __init__(self, catalog='KPS'):
+        self.catalog = catalog
+        self.events = {}
 
     def retrieve(self, **kwargs):
         import yaml
 
         kwargs['format'] = 'yaml'
 
-        url = 'http://kinherd.org/quakes/KPS'
+        url = 'http://kinherd.org/quakes/%s' % self.catalog
 
         f = ws_request(url, **kwargs)
 
@@ -617,7 +618,7 @@ class Kinherd(EarthquakeCatalog):
                 magnitude=params['magnitude'],
                 duration=params['rise_time'],
                 name = eq['name'],
-                catalog='KPS',
+                catalog=self.catalog,
                 moment_tensor = mt)
 
             event.ext_confidence_intervals = {}
