@@ -2495,6 +2495,8 @@ __all__ = '''
 SeismosizerError
 BadRequest
 NoSuchStore
+InterpolationMethod
+OptimizationMethod
 Filter
 Taper
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
