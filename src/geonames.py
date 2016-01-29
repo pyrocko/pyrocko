@@ -37,6 +37,7 @@ asciiname
 lat
 lon
 population
+feature_code
 '''.split())
 
 base_url = 'http://download.geonames.org/export/dump/'
@@ -115,6 +116,7 @@ def load(zfn, fn, minpop=1000000, region=None):
         if minpop <= pop:
             lat = float(t[4])
             lon = float(t[5])
+            feature_code = t[7]
             if not region or (
                     (w <= lon <= e or w <= lon + 360. <= e)
                     and (s <= lat <= n)):
@@ -122,7 +124,7 @@ def load(zfn, fn, minpop=1000000, region=None):
                 yield GeoName2(
                     t[1].decode('utf8'),
                     t[2].decode('utf8').encode('ascii', 'replace'),
-                    lat, lon, pop)
+                    lat, lon, pop, feature_code)
 
     f.close()
     if z is not None:
@@ -132,25 +134,32 @@ def load(zfn, fn, minpop=1000000, region=None):
 g_cities = {}
 
 
-def load_all_keep(zfn, fn, minpop=1000000, region=None):
+def load_all_keep(zfn, fn, minpop=1000000, region=None, exclude=()):
     if (zfn, fn) not in g_cities:
         g_cities[zfn, fn] = list(load(zfn, fn, minpop=0))
 
     if region:
         w, e, s, n = positive_region(region)
         return [c for c in g_cities[zfn, fn]
-                if minpop <= c.population and (
-                    (w <= c.lon <= e or w <= c.lon + 360. <= e)
-                    and (s <= c.lat <= n))]
+                if (minpop <= c.population and
+                    ((w <= c.lon <= e or w <= c.lon + 360. <= e)
+                        and (s <= c.lat <= n)) and
+                    c.feature_code not in exclude)]
 
     else:
-        return [c for c in g_cities[zfn, fn] if minpop <= c.population]
+        return [c for c in g_cities[zfn, fn] if (
+            minpop <= c.population and c.feature_code not in exclude)]
+
+
+def get_cities_region(region, minpop=0):
+    return load_all_keep('cities1000.zip', 'cities1000.txt',
+                           region=region, minpop=minpop,
+                           exclude=('PPLX',))
 
 
 def get_cities(lat, lon, radius, minpop=0):
     region = od.radius_to_region(lat, lon, radius)
-    cities = load_all_keep('cities1000.zip', 'cities1000.txt',
-                           region=region, minpop=minpop)
+    cities = get_cities_region(region, minpop=minpop)
 
     clats = num.array([c.lat for c in cities])
     clons = num.array([c.lon for c in cities])

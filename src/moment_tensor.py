@@ -544,9 +544,9 @@ class MomentTensor(Object):
         if moment_devi < epsilon * moment_iso:
             signed_moment_dc = 0.
         else:
-            assert 0 <=  -evals_sorted[0] / evals_sorted[2] <= 0.5
+            assert -epsilon <=  -evals_sorted[0] / evals_sorted[2] <= 0.5
             signed_moment_dc = evals_sorted[2] * (1.0 + 2.0 * (
-                evals_sorted[0] / evals_sorted[2]))
+                min(0.0, evals_sorted[0] / evals_sorted[2])))
 
         moment_dc = abs(signed_moment_dc)
         m_dc_es = signed_moment_dc * num.diag([0., -1.0, 1.0])
