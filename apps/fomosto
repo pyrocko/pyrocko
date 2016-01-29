@@ -565,11 +565,17 @@ def command_import(args):
         for i, args in enumerate(dest.config.iter_nodes(level=-1)):
             source_depth, distance = [ float(x) for x in args ]
             traces = db.get_traces_pyrocko(distance, source_depth)
-            for tr in traces:
-                gf_tr = gf.store.GFTrace(tr.get_ydata(),
-                        int(round(tr.tmin / tr.deltat)), tr.deltat)
+            ig_to_trace = dict((tr.meta['ig']-1, tr) for tr in traces)
+            for ig in xrange(db.ng):
+                if ig in ig_to_trace:
+                    tr = ig_to_trace[ig]
+                    gf_tr = gf.store.GFTrace(tr.get_ydata(),
+                            int(round(tr.tmin / tr.deltat)), tr.deltat)
 
-                dest.put((source_depth, distance, tr.meta['ig']-1), gf_tr)
+                else:
+                    gf_tr = gf.store.Zero
+
+                dest.put((source_depth, distance, ig), gf_tr)
 
             if show_progress:
                 pbar.update(i+1)
