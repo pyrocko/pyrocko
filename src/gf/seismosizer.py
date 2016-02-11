@@ -1184,7 +1184,7 @@ class MTSource(Source):
         return Source.pyrocko_event(
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
-            magnitude=mt.moment_magnitude(),
+            magnitude=float(mt.moment_magnitude()),
             **kwargs)
 
     @classmethod
