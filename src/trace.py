@@ -405,10 +405,13 @@ class Trace(object):
         :param demean: whether to demean the signal before filtering.
         '''
 
+
         newdeltat = self.deltat*ndecimate
         if snap:
-            ilag = (math.ceil(self.tmin / newdeltat) * newdeltat - self.tmin)/self.deltat
-            
+            ilag = int(round((math.ceil(self.tmin / newdeltat) * newdeltat - self.tmin)/self.deltat))
+        else:
+            ilag = 0
+
         if snap and ilag > 0 and ilag < self.ydata.size:
             data = self.ydata.astype(num.float64)
             self.tmin += ilag*self.deltat
@@ -418,7 +421,7 @@ class Trace(object):
         if demean:
             data -= num.mean(data)
         
-        result = util.decimate(data, ndecimate, ftype='fir', zi=initials)
+        result = util.decimate(data, ndecimate, ftype='fir', zi=initials, ioff=ilag)
         if initials is None:
             self.ydata, finals = result, None
         else:

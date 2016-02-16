@@ -321,7 +321,7 @@ def decimate_coeffs(q, n=None, ftype='iir'):
         return b, a, n
 
 
-def decimate(x, q, n=None, ftype='iir', zi=None):
+def decimate(x, q, n=None, ftype='iir', zi=None, ioff=0):
     """Downsample the signal x by an integer factor q, using an order n filter
     
     By default, an order 8 Chebyshev type I filter is used or a 30 point FIR 
@@ -347,9 +347,9 @@ def decimate(x, q, n=None, ftype='iir', zi=None):
     y, zf = signal.lfilter(b, a, x, zi=zi_)
 
     if zi is not None:
-        return y[n/2::q].copy(), zf
+        return y[n/2+ioff::q].copy(), zf
     else:
-        return y[n/2::q].copy()
+        return y[n/2+ioff::q].copy()
     
 class UnavailableDecimation(Exception):
     '''Exception raised by :py:func:`decitab` for unavailable decimation factors.'''
