@@ -515,7 +515,7 @@ class BaseStore:
             self.open()
 
         assert self.mode == 'w'
-        assert abs(trace.deltat - self._deltat) < 1e-7 * self._deltat
+        assert trace.is_zero or abs(trace.deltat - self._deltat) < 1e-7 * self._deltat
         assert 0 <= irecord < self._nrecords, \
             'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
 
