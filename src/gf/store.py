@@ -1214,6 +1214,12 @@ class Store(BaseStore):
 
         return problems
 
+    def check_earthmodels(self, config):
+        if config.earthmodel_receiver_1d.profile('z')[-1] not in\
+                config.earthmodel_1d.profile('z'):
+            logger.warn('deepest layer of earthmodel_receiver_1d not '
+                        'found in earthmodel_1d')
+
     def _decimated_store_dir(self, decimate):
         return os.path.join(self.store_dir, 'decimated', str(decimate))
 
@@ -1354,6 +1360,10 @@ class Store(BaseStore):
             return
 
         mod = config.earthmodel_1d
+
+        if config.earthmodel_receiver_1d:
+            self.check_earthmodels(config)
+
         if not mod:
             raise StoreError('no earth model found')
 
