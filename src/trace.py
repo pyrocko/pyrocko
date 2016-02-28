@@ -291,6 +291,18 @@ class Trace(object):
         else:
             return int(round((self.tmax-self.tmin)/self.deltat)) + 1
 
+    def var(self):
+        '''Calculate variance of ydata of the trace object.'''
+        return num.var(self.ydata)
+
+    def mean(self):
+        '''Calculate mean of ydata of the trace object.'''
+        return num.mean(self.ydata)
+    
+    def std(self):
+        '''Calculate std of ydata of the trace object.'''
+        return num.std(self.ydata)
+
     def drop_data(self):
         '''Forget data, make dataless trace.'''
         self.drop_growbuffer()
@@ -1107,6 +1119,7 @@ class Trace(object):
         """
         Calculate misfit and normalization factor against candidate trace.
 
+        :param self (Observation) :py:class:`Trace` object
         :param candidate: :py:class:`Trace` object
         :param setup: :py:class:`MisfitSetup` object
         :returns: tuple ``(m, n)``, where m is the misfit value and n is the
@@ -1115,27 +1128,43 @@ class Trace(object):
         If the sampling rates of *self* and *candidate* differ, the trace with
         the higher sampling rate will be downsampled.
         """
+        rt = self
+        rt_data, can_data, rt_proc, can_proc = data_setup(rt, candidate, setup, nocache=nocache)
 
-        a = self
-        b = candidate
-
-        for tr in (a, b):
-            if not tr._pchain:
-                tr.init_chain()
-
-        deltat = max(a.deltat, b.deltat)
-        tmin = min(a.tmin, b.tmin) - deltat
-        tmax = max(a.tmax, b.tmax) + deltat
-
-        adata, aproc = a.run_chain(tmin, tmax, deltat, setup, nocache)
-        bdata, bproc = b.run_chain(tmin, tmax, deltat, setup, nocache)
-
-        m, n = Lx_norm(bdata, adata, norm=setup.norm)
+        m, n = Lx_norm(can_data, rt_data, norm=setup.norm)
 
         if debug:
-            return m, n, aproc, bproc
+            return m, n, rt_proc, can_proc
         else:
             return m, n
+
+    def likelihood(self, candidate, InvCov, setup, nocache=False, debug=False):
+        '''Calculate data likelihood that data (rt_data) is explained by a given model (can_data)
+
+        :param self (Observation) :py:class:`Trace` object
+        :param candidate (Model) :py:class:`Trace` object from GF store
+        :param InvCov: Inverse Covariance matrix of the data (same length as self)
+        :param setup: :py:class:`MisfitSetup` object - can be set to "None" if no special preprocessing
+        '''
+        rt = self
+
+        if setup is None:
+            rt_data = rt.ydata
+            can_data = candidate.ydata
+        else:
+            rt_data, can_data, rt_proc, can_proc = data_setup(rt, candidate, setup, nocache=nocache)
+        
+        if len(rt_data) != len(InvCov):
+            print 'traces have', len(rt_data),' ', len(can_data),' and the Covariance matrix has ', len(InvCov)
+
+        res = rt_data - can_data
+        part1 = num.dot([res.transpose()], InvCov)  #llk = -0.5*AT*Cd*A
+        data_llh = -0.5 * num.dot(part1,res)
+
+        if debug:
+            return data_llh, rt_proc, can_proc
+        else:
+            return data_llh
 
     def spectrum(self, pad_to_pow2=False, tfade=None):
         '''Get FFT spectrum of trace.
@@ -2720,6 +2749,35 @@ def equalize_sampling_rates(trace_1, trace_2):
                                                         '.'.join(t2_out.nslc_id))
         return trace_1, t2_out
 
+def data_setup(rt, candidate, setup, nocache=False):
+    """
+    Filter and taper data with input of taper and filter objects defined in misfit setup.
+
+    :param rt-reference trace: :py:class:`Trace` object
+    :param candidate: :py:class:`Trace` object
+    :param setup: :py:class:`MisfitSetup` object
+    :returns: filtered and tapered data and synthetic trace
+
+    If the sampling rates of *self* and *candidate* differ, the trace with
+    the higher sampling rate will be downsampled.
+    """
+
+    a = rt
+    b = candidate
+
+    for tr in (a, b):
+        if not tr._pchain:
+            tr.init_chain()
+
+    deltat = max(a.deltat, b.deltat)
+    tmin = min(a.tmin, b.tmin) - deltat
+    tmax = max(a.tmax, b.tmax) + deltat
+
+    rt_data, rt_proc = a.run_chain(tmin, tmax, deltat, setup, nocache)
+    can_data, can_proc = b.run_chain(tmin, tmax, deltat, setup, nocache)
+    
+    return rt_data, can_data, rt_proc, can_proc
+
 def Lx_norm(u, v, norm=2):
     '''
     Calculate the misfit denominator *m* and the normalization devisor *n* according 
@@ -2746,6 +2804,33 @@ def Lx_norm(u, v, norm=2):
         return (
             num.power(num.sum(num.abs(num.power(v - u, norm))), 1./norm), \
             num.power(num.sum(num.abs(num.power(v, norm))), 1./norm))
+
+def sub_covariance(n, dt, tzero):
+    '''Calculate SubCovariance Matrix of trace object following Duputel et al. 2012 GJI
+    "Uncertainty estimations for seismic source inversions" p. 5
+    :param: n - length of trace/ samples of quadratic Covariance matrix
+    :param: dt - time step of samples 
+    :param: tzero - shortest period of waves in trace
+    Cd(i,j) = (Variance of trace)*exp(-abs(ti-tj)/(shortest period T0 of waves))
+    i,j are samples of the seismic trace
+
+    Here, without the variance part, as it can be just multiplied to the array, which 
+    is trace independent if the frequency content is the same. So it doesnt need to be 
+    recalculated.
+    '''
+
+    return num.exp(-num.abs(num.arange(n)[:,num.newaxis]-num.arange(n)[num.newaxis,:])*dt / tzero)
+
+def CovInvcov(Variance,Csub):
+    '''Calculate Covariance matrix and Inverse of the Covariance matrix 
+    following Duputel et al. 2012 GJI "Uncertainty estimations for seismic source inversions" p. 5
+    :param: Variance: Variance of the data
+    :param: Csub:     Subcovariance Matrix of a trace with a certain length 
+                      (Output of SubCovariance function)
+    '''
+    Cd = Variance * Csub
+    InvCd = num.linalg.inv(Cd)
+    return Cd, InvCd
 
 def do_downsample(tr, deltat):
     if abs(tr.deltat - deltat) / tr.deltat > 1e-6:
