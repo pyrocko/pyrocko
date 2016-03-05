@@ -65,10 +65,6 @@ class Filter(Object):
     pass
 
 
-class Taper(Object):
-    pass
-
-
 class InterpolationMethod(StringChoice):
     choices = ['nearest_neighbor', 'multilinear']
 
@@ -1837,17 +1833,9 @@ class Target(meta.Receiver):
              'measured downward from horizontal. '
              'If not given, it is guessed from the channel code.')
 
-    pre_taper = Taper.T(
-        optional=True,
-        help='time domain taper applied to the trace before filtering.')
-
     filter = Filter.T(
         optional=True,
         help='frequency response filter.')
-
-    post_taper = Taper.T(
-        optional=True,
-        help='time domain taper applied to the trace after filtering.')
 
     def base_key(self):
         return (self.store_id, self.sample_rate, self.interpolation,
@@ -2664,7 +2652,6 @@ NoSuchStore
 InterpolationMethod
 OptimizationMethod
 Filter
-Taper
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
 Target
 Result
