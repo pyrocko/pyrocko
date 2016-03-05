@@ -1367,7 +1367,7 @@ class RectangularSource(DCSource):
                               scalar_moment=1.0/n)
 
         m6s = num.repeat(mot.m6()[num.newaxis, :], n, axis=0)
-        m6s[:, :] = amplitudes[:, num.newaxis]
+        m6s[:, :] *= amplitudes[:, num.newaxis]
 
         ds = meta.DiscretizedMTSource(
             lat=self.lat,
