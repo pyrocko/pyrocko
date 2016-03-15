@@ -3,6 +3,23 @@ from math import pi as PI
 import numpy as num
 
 import matplotlib.pyplot as plt
+from matplotlib.collections import PathCollection
+from matplotlib.path import Path
+from matplotlib.transforms import Transform
+
+
+class FixedPointOffsetTransform(Transform):
+    def __init__(self, trans, dpi_scale_trans, fixed_point):
+        Transform.__init__(self)
+        self.input_dims = self.output_dims = 2
+        self.has_inverse = False
+        self.trans = trans
+        self.dpi_scale_trans = dpi_scale_trans
+        self.fixed_point = num.asarray(fixed_point, dtype=num.float)
+
+    def transform_non_affine(self, values):
+        fp = self.trans.transform(self.fixed_point)
+        return fp + self.dpi_scale_trans.transform(values)
 
 
 def vnorm(points):
@@ -224,9 +241,9 @@ def numpy_xyz2rtp(xyz):
 
 def circle_points(aphi, sign=1.0):
     vecs = num.empty((aphi.size, 3), dtype=num.float)
-    vecs[:,0] = num.cos(sign*aphi)
-    vecs[:,1] = num.sin(sign*aphi)
-    vecs[:,2] = 0.0
+    vecs[:, 0] = num.cos(sign*aphi)
+    vecs[:, 1] = num.sin(sign*aphi)
+    vecs[:, 2] = 0.0
     return vecs
 
 
@@ -334,19 +351,42 @@ def trans(x, y, position, size):
     return x0+size*x, y0+size*y
 
 
-def plot_beachball_mpl(mt, axes, beachball_type='deviatoric',
-        position=(0., 0.), size=1.0, zorder=None, color_t='red', color_p='white', lw=2):
+def project_lambert(points):
+    points = points.copy()
+    factor = 1.0 / num.sqrt(1.0 + points[:, 2])
+    points[:, :2] *= factor[:, num.newaxis]
+    return points
+
+
+def deco_part(mt, mt_type='full'):
+    if mt_type == 'full':
+        return mt
 
     res = mt.standard_decomposition()
     m = dict(
         dc=res[1][2],
-        deviatoric=res[3][2],
-        full=res[4][2])[beachball_type]
+        deviatoric=res[3][2])[mt_type]
 
-    mt = mtm.MomentTensor(m=m)
+    return mtm.MomentTensor(m=m)
+
+
+def plot_beachball_mpl(
+        mt, axes,
+        beachball_type='deviatoric',
+        position=(0., 0.),
+        size=12.0,
+        zorder=None,
+        facecolor_t='red',
+        facecolor_p='white',
+        edgecolor='black',
+        linewidth=2,
+        alpha=1.0):
+
+    mt = deco_part(mt, beachball_type)
 
     eig = mt.eigensystem()
 
+    size_ = size * 0.5 / 72.
     for (group, patches, patches_lower, patches_upper,
             lines, lines_lower, lines_upper) in eig2gx(eig):
 
@@ -357,16 +397,30 @@ def plot_beachball_mpl(mt, axes, beachball_type='deviatoric',
 
         # plot "upper" features for lower hemisphere, because coordinate system
         # is NED
+
+        data = []
         for poly in patches_upper:
-            px, py, pz = poly.T
-            axes.fill(*trans(py, px, position, size), lw=0, fc=color, zorder=zorder)
+            verts = project_lambert(poly)[:, :2] * size_
+            data.append((Path(verts), color, 'none', 0))
 
         for poly in lines_upper:
-            px, py, pz = poly.T
-            axes.plot(*trans(py, px, position, size), lw=lw, color='black', zorder=zorder)
+            verts = project_lambert(poly)[:, :2] * size_
+            data.append((Path(verts), 'none', edgecolor, linewidth))
 
-    # draw_eigenvectors_mpl(eig, axes)
+        paths, facecolors, edgecolors, linewidths = zip(*data)
+        path_collection = PathCollection(
+            paths, 
+            facecolors=facecolors, 
+            edgecolors=edgecolors,
+            linewidths=linewidths,
+            transform=FixedPointOffsetTransform(
+                axes.transData,
+                axes.figure.dpi_scale_trans,
+                position),
+            alpha=alpha,
+            zorder=zorder)
 
+        axes.add_artist(path_collection)
 
 
 def plot_beachball_mpl_construction(mt, axes, show='patches'):
