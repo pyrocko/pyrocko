@@ -14,6 +14,7 @@ Library Reference
    crust2x2
    cake
    moment_tensor
+   beachball
    evalresp
    pz
    orthodrome

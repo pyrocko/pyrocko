@@ -1,4 +1,5 @@
 import unittest
+import math
 import numpy as num
 from cStringIO import StringIO as StringIO
 
@@ -29,9 +30,17 @@ def fuzz_angle(mi, ma):
 
 class BeachballTestCase(unittest.TestCase):
 
-    def compare_beachball(self, mt):
+    def compare_beachball(self, mt, show=False, **kwargs):
         from matplotlib import pyplot as plt
         from matplotlib import image
+
+        plotargs = dict(
+            size=1.0,
+            size_units='data',
+            linewidth=2.0,
+            projection='lambert')
+
+        plotargs.update(kwargs)
 
         imgs = []
         for iplot, plot in enumerate([
@@ -45,7 +54,7 @@ class BeachballTestCase(unittest.TestCase):
             axes.set_xlim(-1.05, 1.05)
             axes.set_ylim(-1.05, 1.05)
 
-            plot(mt, axes)
+            plot(mt, axes, **plotargs)
 
             f = StringIO()
             fig.savefig(f, format='png')
@@ -59,7 +68,7 @@ class BeachballTestCase(unittest.TestCase):
         d = num.abs(a-b)
         d[:, :, 3] = 1.
         dsum = num.sum(d[:, :, :3])
-        if dsum > 1600:
+        if dsum > 1600 or show:
             print dsum
             print mt
             fig = plt.figure()
@@ -72,13 +81,37 @@ class BeachballTestCase(unittest.TestCase):
             plt.show()
             plt.close(fig)
 
+        assert dsum <= 1600
+        return dsum
+
     def test_random_mts(self):
-        nx = 2
+        nx = 10
         for x in range(nx):
             m6 = num.random.random(6)*2.-1.
             m = mtm.symmat6(*m6)
             mt = mtm.MomentTensor(m=m)
             self.compare_beachball(mt)
+
+        for x in range(nx):
+            mt = mtm.MomentTensor.random_mt()
+            self.compare_beachball(mt)
+
+    def test_projections(self):
+        n = 1000
+        points = num.zeros((n, 3))
+        phi = num.random.random(n) * math.pi * 2.0
+        theta = num.random.random(n) * math.pi / 2.0
+
+        points[:, 0] = num.cos(phi) * num.sin(theta)
+        points[:, 1] = num.sin(phi) * num.sin(theta)
+        points[:, 2] = num.cos(theta)
+
+        for projection in ['lambert', 'stereographic', 'orthographic']:
+            projection = 'stereographic'
+            points2 = beachball.project(points, projection=projection)
+            points_new = beachball.inverse_project(
+                points2, projection=projection)
+            assert num.all(num.abs(points - points_new) < 1e-5)
 
     def test_specific_mts(self):
         for m6 in [
@@ -95,7 +128,7 @@ class BeachballTestCase(unittest.TestCase):
             self.compare_beachball(mt)
 
     def test_random_dcs(self):
-        nx = 2
+        nx = 20
 
         for x in range(nx):
             strike = fuzz_angle(0., 360.)
@@ -122,6 +155,79 @@ class BeachballTestCase(unittest.TestCase):
 
             self.compare_beachball(mt)
 
+    def off_test_plotstyle(self):
+
+        # contour and contourf do not support transform
+        mt = mtm.MomentTensor.random_mt()
+        self.compare_beachball(
+            mt, show=True, size=20., size_units='points', position=(0.5, 0.5))
+
+    def show_comparison(self, nx=10):
+        import matplotlib.pyplot as plt
+        from mpl_toolkits.mplot3d import Axes3D  # noqa
+
+        if nx > 1:
+            plt.ion()
+            plt.show()
+
+        fig = plt.figure()
+        axes1 = fig.add_subplot(2, 3, 1, aspect=1.)
+        axes2 = fig.add_subplot(2, 3, 2, aspect=1.)
+        axes3 = fig.add_subplot(2, 3, 3, aspect=1.)
+        axes4 = fig.add_subplot(2, 3, 4, projection='3d', aspect=1.)
+        axes5 = fig.add_subplot(2, 3, 5, projection='3d', aspect=1.)
+
+        try:
+            import mopad
+        except ImportError:
+            mopad = None
+
+        for x in range(nx):
+            mt = mtm.MomentTensor.random_mt()
+            mt = mt.deviatoric()
+
+            for axes in (axes1, axes2, axes3):
+                axes.cla()
+                axes.axison = False
+                axes.set_xlim(-1.05, 1.05)
+                axes.set_ylim(-1.05, 1.05)
+
+            for axes in (axes4, axes5):
+                axes.cla()
+
+            axes1.set_title('Copacabana')
+            axes2.set_title('Contour')
+            axes3.set_title('MoPaD')
+            axes4.set_title('Patches')
+            axes5.set_title('Lines')
+
+            beachball.plot_beachball_mpl(mt, axes1, size_units='data')
+            beachball.plot_beachball_mpl_pixmap(mt, axes2, size_units='data')
+
+            beachball.plot_beachball_mpl_construction(
+                mt, axes4, show='patches')
+            beachball.plot_beachball_mpl_construction(
+                mt, axes5, show='lines')
+
+            if mopad:
+                try:
+                    mop_mt = mopad.MomentTensor(M=mt.m6())
+                    mop_beach = mopad.BeachBall(mop_mt)
+                    kwargs = dict(
+                        plot_projection='lambert',
+                        plot_nodalline_width=2,
+                        plot_faultplane_width=2,
+                        plot_outerline_width=2)
+
+                    mop_beach.ploBB(kwargs, ax=axes3)
+
+                except:
+                    print 'mopad failed (maybe patched mopad version is needed'
+
+            fig.canvas.draw()
+
+        if nx == 1:
+            plt.show()
 
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')
