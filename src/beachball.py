@@ -9,6 +9,10 @@ from matplotlib.transforms import Transform
 NA = num.newaxis
 
 
+class BeachballError(Exception):
+    pass
+
+
 class FixedPointOffsetTransform(Transform):
     def __init__(self, trans, dpi_scale_trans, fixed_point):
         Transform.__init__(self)
@@ -52,11 +56,11 @@ def circulation(points, axis):
     flip = num.sum(av*bv, axis=1) < 0.0
     phi[flip] = num.sign(phi[flip])*(PI - num.abs(phi[flip]))
     if num.any(phi == PI) or num.any(phi == -PI):
-        raise Exception('ambiguous circulation')
+        raise BeachballError('ambiguous circulation')
 
     result = num.sum(phi) / (2.0*PI)
     if int(round(result*100.)) not in [100, -100]:
-        raise Exception('circulation error')
+        raise BeachballError('circulation error')
 
     return result
 
@@ -356,7 +360,8 @@ def project(points, projection='lambert'):
     elif projection == 'orthographic':
         factor = None
     else:
-        raise Exception('invalid argement for projection: %s' % projection)
+        raise BeachballError(
+            'invalid argument for projection: %s' % projection)
 
     if factor is not None:
         points_out *= factor[:, num.newaxis]
@@ -381,7 +386,8 @@ def inverse_project(points, projection='lambert'):
         points_out[:, 1] = points[:, 1]
         points_out[:, 0] = points[:, 0]
     else:
-        raise Exception('invalid argement for projection: %s' % projection)
+        raise BeachballError(
+            'invalid argument for projection: %s' % projection)
 
     return points_out
 
@@ -420,7 +426,7 @@ def choose_transform(axes, size_units, position, size):
             size = 1.0
 
     else:
-        raise Exception(
+        raise BeachballError(
             'invalid argument for size_units: %s' % size_units)
 
     position = num.asarray(position, dtype=num.float)
@@ -471,6 +477,8 @@ def plot_beachball_mpl(
     mt = deco_part(mt, beachball_type)
 
     eig = mt.eigensystem()
+    if eig[0] == 0. and eig[1] == 0. and eig[2] == 0:
+        raise BeachballError('eigenvalues are zero')
 
     data = []
     for (group, patches, patches_lower, patches_upper,
@@ -486,7 +494,10 @@ def plot_beachball_mpl(
 
         for poly in patches_upper:
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
-            data.append((Path(verts), color, 'none', 0))
+            if alpha == 1.0:
+                data.append((Path(verts), color, color, 1.0))
+            else:
+                data.append((Path(verts), color, 'none', 0.0))
 
         for poly in lines_upper:
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
@@ -549,7 +560,7 @@ def plot_beachball_mpl_pixmap(
         size_units='points'):
 
     if size_units == 'points':
-        raise Exception(
+        raise BeachballError(
             'size_units="points" not supported in plot_beachball_mpl_pixmap')
 
     transform, position, size = choose_transform(
