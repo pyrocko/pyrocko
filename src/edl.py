@@ -1,43 +1,57 @@
-import re, string, sys, struct, collections, time, logging, calendar
+import struct
+import collections
+import time
+import logging
+import calendar
 import numpy as num
 from pyrocko import trace, util
-from scipy import stats
 
 logger = logging.getLogger('pyrocko.edl')
 
-def hexdump( chars, sep=' ', width=16 ):
+
+def hexdump(chars, sep=' ', width=16):
     while chars:
         line = chars[:width]
         chars = chars[width:]
-        line = line.ljust( width, '\000' )
-        print "%s%s%s" % ( sep.join( "%02x" % ord(c) for c in line ),
-            sep, quotechars( line ))
+        line = line.ljust(width, '\000')
+        print "%s%s%s" % (
+            sep.join("%02x" % ord(c) for c in line),
+            sep, quotechars(line))
 
-def quotechars( chars ):
-    return ''.join( ['.', c][c.isalnum()] for c in chars )
+
+def quotechars(chars):
+    return ''.join(['.', c][c.isalnum()] for c in chars)
 
 MINBLOCKSIZE = 192
+
 
 class NotAquiring(Exception):
     pass
 
+
 class ReadError(Exception):
     pass
-    
+
+
 class ReadTimeout(ReadError):
     pass
+
 
 class ReadUnexpected(ReadError):
     pass
 
+
 class GPSError(Exception):
     pass
+
 
 class NoGPS(GPSError):
     pass
 
+
 class NoGPSTime(GPSError):
     pass
+
 
 class GPSTimeNotUTC(GPSError):
     pass
@@ -155,7 +169,7 @@ gps_fmt['PV'] = '''
 '''
 
 # gps status message
-gps_fmt['ST'] = ''' 
+gps_fmt['ST'] = '''
     type 2 str
     tracking_status_code 2 hex_int
     nibble1 1 hex_int
@@ -182,23 +196,28 @@ gps_fmt['TM'] = '''
     reserved 5 str
 '''
 
+
 def latlon_float(s):
     return int(s) / 100000.
+
 
 def seconds_float(s):
     return int(s) / 1000.
 
+
 def hex_int(s):
     return int(s, 16)
 
+
 convert_functions = {
-        'int': int,
-        'float': float,
-        'lat_float': latlon_float,
-        'lon_float': latlon_float,
-        'seconds_float': seconds_float,
-        'str': str,
-        'hex_int': hex_int }
+    'int': int,
+    'float': float,
+    'lat_float': latlon_float,
+    'lon_float': latlon_float,
+    'seconds_float': seconds_float,
+    'str': str,
+    'hex_int': hex_int}
+
 
 class GPSFormat_:
     def __init__(self, name, fmt):
@@ -217,25 +236,29 @@ class GPSFormat_:
         self.Message = collections.namedtuple('GPSMessage'+k, names)
 
     def unpack(self, s):
-        return self.Message( *(converter(s[begin:end]) for (begin, end, converter) in self.items) )
+        return self.Message(
+            *(converter(s[begin:end])
+              for (begin, end, converter) in self.items))
 
 
 GPSFormat = {}
 for k in gps_fmt.keys():
     GPSFormat[k] = GPSFormat_(k, gps_fmt[k])
 
+
 def portnames():
     try:
         # needs serial >= v2.6
         from serial.tools.list_ports import comports
-        names = sorted( x[0] for x in comports() )
+        names = sorted(x[0] for x in comports())
 
     except:
         # may only work on some linuxes
         from glob import glob
-        names = sorted( glob('/dev/ttyS*') + glob('/dev/ttyUSB*') )
+        names = sorted(glob('/dev/ttyS*') + glob('/dev/ttyUSB*'))
 
     return names
+
 
 def unpack_block(data):
     block_type = data[:4]
@@ -246,23 +269,26 @@ def unpack_block(data):
     fmt, fmt_len, Block = Blocks[block_type]
 
     if len(data) < fmt_len:
-        raise EDLError('block size too short')
+        raise ReadError('block size too short')
 
     return Block(*struct.unpack(fmt, data[:fmt_len])), data[fmt_len:]
+
 
 def unpack_values(ncomps, bytes_per_sample, data):
     if bytes_per_sample == 4:
         return num.fromstring(data, dtype=num.dtype('<i4'))
 
-    elif bytes_per_sample == 3:
-        b1 = num.fromstring(data, dtype=num.dtype('<i1'))
-        b4 = num.zeros(len(data)/4, dtype=num.dtype('<i4'))
-        b4.view(dtype='<i2')[::2] = b1.view(dtype='<i2')
-        b4.view(dtype='<i1')[2::4] = b1[i::3]
-        return b4.astype(num.int32)
+    # 3-byte mode is broken:
+    # elif bytes_per_sample == 3:
+    #     b1 = num.fromstring(data, dtype=num.dtype('<i1'))
+    #     b4 = num.zeros(len(data)/4, dtype=num.dtype('<i4'))
+    #     b4.view(dtype='<i2')[::2] = b1.view(dtype='<i2')
+    #     b4.view(dtype='<i1')[2::4] = b1[i::3]
+    #     return b4.astype(num.int32)
 
     else:
-        raise
+        raise ReadError('unimplemented bytes_per_sample setting')
+
 
 class TimeEstimator:
     def __init__(self, nlookback):
@@ -271,7 +297,7 @@ class TimeEstimator:
         self._t0 = None
         self._n = 0
         self._deltat = None
-        
+
     def insert(self, deltat, nadd, t):
 
         if self._deltat is None or self._deltat != deltat:
@@ -302,13 +328,15 @@ class TimeEstimator:
         mterror = num.median(terrors)
         print mterror / deltat, '+-', num.std(terrors) / deltat
 
-        if num.abs(mterror) > 0.75*deltat and len(self._queue) == self._nlookback:
+        if num.abs(mterror) > 0.75*deltat and \
+                len(self._queue) == self._nlookback:
+
             t0 = self._t0 + mterror
             self._queue[:] = []
             self._t0 = int(round(t0/self._deltat))*self._deltat
-        
+
         return self._t0 + (self._n-nadd)*self._deltat
-            
+
     def reset(self):
         self._queue[:] = []
         self._n = 0
@@ -316,6 +344,7 @@ class TimeEstimator:
 
     def __len__(self):
         return len(self._queue)
+
 
 class GPSRecord:
     def __init__(self, al, pv, st, tm):
@@ -333,7 +362,8 @@ class GPSRecord:
             raise GPSTimeNotUTC()
 
         tm = self._tm
-        return calendar.timegm((tm.year, tm.month, tm.day, tm.hours, tm.minutes, tm.seconds))
+        return calendar.timegm((
+            tm.year, tm.month, tm.day, tm.hours, tm.minutes, tm.seconds))
 
     @property
     def latitude(self):
@@ -352,13 +382,16 @@ class GPSRecord:
             stime = util.time_to_str(self.time)
         except GPSError:
             stime = '?'
-        return '''%s %s %s %s''' % (stime, self.latitude, self.longitude, self.altitude)
+        return '''%s %s %s %s''' % (
+            stime, self.latitude, self.longitude, self.altitude)
+
 
 def stime_none_aware(t):
     if t is None:
         return '?'
     else:
         return util.time_to_str(t)
+
 
 class Record:
     def __init__(self, mod, mde, dat, sum, values):
@@ -371,7 +404,9 @@ class Record:
         self._approx_gps_time = None
         self._gps = None
 
-    def set_approx_times(self, approx_system_time, approx_gps_time, measured_system_time):
+    def set_approx_times(
+            self, approx_system_time, approx_gps_time, measured_system_time):
+
         self._approx_system_time = approx_system_time
         self._approx_gps_time = approx_gps_time
         self._measured_system_time = measured_system_time
@@ -387,8 +422,12 @@ class Record:
     def traces(self):
         traces = []
         for i in range(self._mod.ncomps):
-            tr = trace.Trace('', 'ed', '', 'p%i' % i, 
-                    deltat=num.float(self._mod.ncomps)/self._mod.sample_rate, tmin=self.time, ydata=self._values[i::3])
+            tr = trace.Trace(
+                '', 'ed', '', 'p%i' % i,
+                deltat=num.float(self._mod.ncomps)/self._mod.sample_rate,
+                tmin=self.time,
+                ydata=self._values[i::3])
+
             traces.append(tr)
 
         traces.extend(self.traces_delays())
@@ -397,14 +436,17 @@ class Record:
 
     def traces_delays(self):
         traces = []
-        for name, val in (('gp', self.gps_time_or_none), ('sm', self._measured_system_time),
+        for name, val in (
+                ('gp', self.gps_time_or_none),
+                ('sm', self._measured_system_time),
                 ('sp', self._approx_system_time)):
 
             if val is not None:
-                tr = trace.Trace('', 'ed', name, 'del',
-                        deltat = 1.0,
-                        tmin = self.time,
-                        ydata = num.array([val - self.time]))
+                tr = trace.Trace(
+                    '', 'ed', name, 'del',
+                    deltat=1.0,
+                    tmin=self.time,
+                    ydata=num.array([val - self.time]))
 
                 traces.append(tr)
 
@@ -427,7 +469,7 @@ class Record:
         for mess in self._gps_messages():
             kwargs[mess.type.lower()] = mess
 
-        if sorted(kwargs.keys()) == [ 'al', 'pv', 'st', 'tm' ]:
+        if sorted(kwargs.keys()) == ['al', 'pv', 'st', 'tm']:
             self._gps = GPSRecord(**kwargs)
             return self._gps
         else:
@@ -441,13 +483,19 @@ class Record:
             return None
 
     def __str__(self):
-        return '\n'.join([ '%s' % str(x) for x in (self._mod, self._mde) ]) + '\n'
+        return '\n'.join([
+            '%s' % str(x) for x in (self._mod, self._mde)]) + '\n'
 
     def str_times(self):
         return '''--- Record ---
 Time GPS:    %s (estimated)   %s (measured)
 Time system: %s (estimated)   %s (measured)
-''' % tuple([ stime_none_aware(t) for t in (self._approx_gps_time, self.gps_time_or_none, self._approx_system_time, self._measured_system_time) ])
+''' % tuple([stime_none_aware(t) for t in (
+            self._approx_gps_time,
+            self.gps_time_or_none,
+            self._approx_system_time,
+            self._measured_system_time)])
+
 
 class Reader:
 
@@ -462,7 +510,7 @@ class Reader:
         self._serial = None
         self._buffer = ''
         self._irecord = 0
-        
+
         self._time_estimator_system = TimeEstimator(lookback)
         self._time_estimator_gps = TimeEstimator(lookback)
 
@@ -477,10 +525,13 @@ class Reader:
         self.stop()
 
         import serial
-        self._serial = serial.Serial(port=self._port, baudrate=self._baudrate, timeout=self._timeout)
+        self._serial = serial.Serial(
+            port=self._port,
+            baudrate=self._baudrate,
+            timeout=self._timeout)
 
         self._sync_on_mod()
-    
+
     def _sync_on_mod(self):
         self._fill_buffer(MINBLOCKSIZE)
 
@@ -491,7 +542,7 @@ class Reader:
             else:
                 self._buffer = self._buffer[-4:]
 
-            self._fill_buffer(MINBLOCKSIZE) 
+            self._fill_buffer(MINBLOCKSIZE)
 
     def _fill_buffer(self, minlen):
         if len(self._buffer) >= minlen:
@@ -533,15 +584,19 @@ class Reader:
         values = unpack_values(mod.ncomps, mod.bytes_per_sample, values_data)
         deltat = 1./mod.sample_rate * mod.ncomps
         r = Record(mod, mde, dat, sum, values)
-        approx_system_time = self._time_estimator_system.insert(deltat, values.size/mod.ncomps, measured_system_time)
+        approx_system_time = self._time_estimator_system.insert(
+            deltat, values.size/mod.ncomps, measured_system_time)
+
         try:
             gpstime = r.gps.time
         except GPSError:
             gpstime = None
 
-        approx_gps_time = self._time_estimator_gps.insert(deltat, values.size/mod.ncomps, gpstime)
+        approx_gps_time = self._time_estimator_gps.insert(
+            deltat, values.size/mod.ncomps, gpstime)
 
-        r.set_approx_times(approx_system_time, approx_gps_time, measured_system_time)
+        r.set_approx_times(
+            approx_system_time, approx_gps_time, measured_system_time)
 
         return r
 
@@ -554,11 +609,6 @@ class Reader:
         self._buffer = ''
         self._time_estimator_system.reset()
         self._time_estimator_gps.reset()
-
-
-class EDLHamster:
-    def __init__(self, *args, **kwargs):
-        self.reader = Reader(*args, **kwargs)
 
 
 class EDLHamster:
@@ -581,4 +631,3 @@ class EDLHamster:
 
     def got_trace(self, tr):
         logger.info('Got trace from EDL: %s' % tr)
-
