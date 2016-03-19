@@ -5,9 +5,11 @@ from pyrocko import trace, util, plot
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
+
 def color(c):
     c = plot.color(c)
     return tuple(x/255. for x in c)
+
 
 def make_control_point(ipos_block, t_block, tref, deltat):
 
@@ -154,7 +156,8 @@ def iload(fn, load_data=True, interpolation='sinc'):
     from pyrocko import signal_ext
 
     if interpolation not in ('sinc', 'off'):
-        raise NotImplemented('no such interpolation method: %s' % interpolation)
+        raise NotImplemented(
+            'no such interpolation method: %s' % interpolation)
 
     with open(fn, 'r') as f:
         if load_data:
@@ -207,7 +210,6 @@ def iload(fn, load_data=True, interpolation='sinc'):
             ydata = None
             tr_tmin = tmin_ip
             tr_tmax = tmax_ip
-
 
         toff = util.gps_utc_offset(tmin_ip)
         tr_tmin -= toff
