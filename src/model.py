@@ -201,19 +201,23 @@ class Event(Object):
         return groups
 
     @staticmethod
-    def dump_catalog(events, filename):
-        file = open(filename, 'w')
+    def dump_catalog(events, filename=None, stream=None):
+        if filename is not None:
+            file = open(filename, 'w')
+        else:
+            file = stream
         try:
             i = 0
             for ev in events:
-                if i != 0:
-                    file.write('--------------------------------------------\n')
 
                 ev.olddumpf(file)
+
+                file.write('--------------------------------------------\n')
                 i += 1
 
         finally: 
-            file.close()
+            if filename is not None:
+                file.close()
     
     @staticmethod
     def oldload(filename):
@@ -341,13 +345,13 @@ def load_one_event(filename):
     l = Event.load_catalog(filename)
     return l.next()
 
-def dump_events(events, filename):
+def dump_events(events, filename=None, stream=None):
     '''Write events file.
 
     :param events: list of :py:class:`Event` objects
     :param filename: name of file as str
     '''
-    Event.dump_catalog(events, filename)
+    Event.dump_catalog(events, filename=filename, stream=stream)
 
 
 class Channel(Object):
