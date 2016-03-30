@@ -144,16 +144,16 @@ class Event(Object):
         file.write('name = %s\n' % self.name)
         file.write('time = %s\n' % util.time_to_str(self.time))
         if self.lat is not None:
-            file.write('latitude = %g\n' % self.lat)
+            file.write('latitude = %.12g\n' % self.lat)
         if self.lon is not None:
-            file.write('longitude = %g\n' % self.lon)
+            file.write('longitude = %.12g\n' % self.lon)
         if self.magnitude is not None:
             file.write('magnitude = %g\n' % self.magnitude)
             file.write('moment = %g\n' % moment_tensor.magnitude_to_moment(self.magnitude))
         if self.magnitude_type is not None:
             file.write('magnitude_type = %s\n' % self.magnitude_type)
         if self.depth is not None:
-            file.write('depth = %g\n' % self.depth)
+            file.write('depth = %.10g\n' % self.depth)
         if self.region is not None:
             file.write('region = %s\n' % self.region)
         if self.catalog is not None:
