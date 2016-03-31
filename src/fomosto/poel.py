@@ -489,7 +489,7 @@ class PoelGFBuilder(gf.builder.Builder):
         logger.info('Done with block %i / %i' % (index+1, self.nblocks))
 
 
-def init(store_dir):
+def init(store_dir, variant):
     if variant is not None:
         raise gf.store.StoreError('unsupported variant: %s' % variant)
 
