@@ -425,6 +425,8 @@ def choose_transform(axes, size_units, position, size):
         if size is None:
             size = 1.0
 
+        size = size * 0.5
+
     else:
         raise BeachballError(
             'invalid argument for size_units: %s' % size_units)
@@ -439,7 +441,7 @@ def plot_beachball_mpl(
         beachball_type='deviatoric',
         position=(0., 0.),
         size=None,
-        zorder=None,
+        zorder=0,
         color_t='red',
         color_p='white',
         edgecolor='black',
@@ -550,7 +552,7 @@ def plot_beachball_mpl_pixmap(
         beachball_type='deviatoric',
         position=(0., 0.),
         size=None,
-        zorder=None,
+        zorder=0,
         color_t='red',
         color_p='white',
         edgecolor='black',
