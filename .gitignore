@@ -7,5 +7,6 @@ libmseed
 doc/_build
 src/info.py
 pages
-src/tags
-
+tags
+test/data
+scratch
