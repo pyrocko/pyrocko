@@ -301,7 +301,7 @@ def random_dc(x=None, scalar_moment=1.0, magnitude=None):
         scalar_moment = magnitude_to_moment(magnitude)
 
     rotmat = random_rotation(x)
-    return MomentTensor(m=scalar_moment * (rotmat * MomentTensor._m_unrot * rotmat.T))
+    return scalar_moment * (rotmat * MomentTensor._m_unrot * rotmat.T)
 
 
 def sm(m):
