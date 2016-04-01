@@ -1,15 +1,10 @@
 import unittest
-import os
 import tempfile
 import numpy as num
 from pyrocko import fdsn, util, trace, iris_ws
 
+import common
 
-def tts(t):
-    if t is not None:
-        return util.time_to_str(t)
-    else:
-        return '...'
 
 stt = util.str_to_time
 
@@ -19,7 +14,7 @@ class FDSNStationTestCase(unittest.TestCase):
     def test_read_samples(self):
         ok = False
         for fn in ['geeil.iris.xml', 'geeil.geofon.xml']:
-            fpath = self.file_path(fn)
+            fpath = common.test_data_file(fn)
             x = fdsn.station.load_xml(filename=fpath)
             for network in x.network_list:
                 assert network.code == 'GE'
@@ -42,35 +37,17 @@ class FDSNStationTestCase(unittest.TestCase):
     def test_retrieve(self):
         for site in ['geofon', 'iris']:
             fsx = fdsn.ws.station(site=site,
-                                  network='GE', 
+                                  network='GE',
                                   station='EIL',
                                   level='channel')
 
             assert len(fsx.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
 
-    def file_path(self, fn):
-        return os.path.join(os.path.dirname(__file__), 'stationxml', fn)
-
-    def OFF_test_retrieve_big(self):
+    def test_read_big(self):
         for site in ['iris']:
-            fpath = self.file_path('%s_1014-01-01_all.xml' % site)
-
-            if not os.path.exists(fpath):
-                with open(fpath, 'w') as f:
-                    source = fdsn.ws.station(
-                        site=site,
-                        startbefore=stt('2014-01-01 00:00:00'),
-                        endafter=stt('2014-01-02 00:00:00'),
-                        level='station', parsed=False, matchtimeseries=True)
-
-                    while True:
-                        data = source.read(1024)
-                        if not data:
-                            break
-                        f.write(data)
-
-            fsx = fdsn.station.load_xml(filename=fpath)
+            fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
+            fdsn.station.load_xml(filename=fpath)
 
     def OFF_test_response(self):
         tmin = stt('2014-01-01 00:00:00')
@@ -130,25 +107,25 @@ class FDSNStationTestCase(unittest.TestCase):
                 t_er = resp_er.evaluate(f)
                 import pylab as lab
 
-                abs_dif = num.abs(num.abs(t_sx) - num.abs(t_er)) / num.max(num.abs(t_er))
+                abs_dif = num.abs(num.abs(t_sx) - num.abs(t_er)) / num.max(
+                    num.abs(t_er))
 
-                mda = num.mean(abs_dif[f<0.5*fmax])
+                mda = num.mean(abs_dif[f < 0.5*fmax])
 
                 pha_dif = num.abs(num.angle(t_sx) - num.angle(t_er))
 
-                mdp = num.mean(pha_dif[f<0.5*fmax])
+                mdp = num.mean(pha_dif[f < 0.5*fmax])
 
                 print mda, mdp
 
                 if mda > 0.03 or mdp > 0.04:
-                    lab.gcf().add_subplot(2,1,1)
+                    lab.gcf().add_subplot(2, 1, 1)
                     lab.plot(f, num.abs(t_sx), color='black')
                     lab.plot(f, num.abs(t_er), color='red')
                     lab.xscale('log')
                     lab.yscale('log')
 
-
-                    lab.gcf().add_subplot(2,1,2)
+                    lab.gcf().add_subplot(2, 1, 2)
                     lab.plot(f, num.angle(t_sx), color='black')
                     lab.plot(f, num.angle(t_er), color='red')
                     lab.xscale('log')
@@ -160,20 +137,6 @@ class FDSNStationTestCase(unittest.TestCase):
                 print 'failed: ', nslc
 
 
-import time
-gt = None
-def lap():
-    global gt
-    t = time.time()
-    if gt is not None:
-        diff = t - gt
-    else:
-        diff = 0
-
-    gt = t
-    return diff
-
-
 if __name__ == '__main__':
-    util.setup_logging('test_fdsn_station', 'warning')
+    util.setup_logging('test_fdsn', 'warning')
     unittest.main()
