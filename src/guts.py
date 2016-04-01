@@ -1305,18 +1305,53 @@ def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
     else:
         stream.write('%s<%s>%s</%s>\n' % (indent, xmltagname, escape(unicode(obj), {'\0': '&#00;'}).encode('utf8'), xmltagname))
 
-def walk(x, typ=None, path=[]):
+
+def walk(x, typ=None, path=()):
     if typ is None or isinstance(x, typ):
         yield path, x
+
     if isinstance(x, Object):
         for (prop, val) in x.T.ipropvals(x):
             if prop.multivalued:
-                for iele, ele in enumerate(val):
-                    for y in walk(ele, typ, path=path+[ '%s[%i]' % (prop.name, iele)]):
-                        yield y
+                if val is not None:
+                    for iele, ele in enumerate(val):
+                        for y in walk(ele, typ,
+                                      path=path + ((prop.name, iele),)):
+                            yield y
             else:
-                for y in walk(val, typ, path=path+[prop.name]):
+                for y in walk(val, typ, path=path+(prop.name,)):
                     yield y
+
+
+def zip_walk(x, typ=None, path=(), stack=()):
+    if typ is None or isinstance(x, typ):
+        yield path, stack + (x,)
+
+    if isinstance(x, Object):
+        for (prop, val) in x.T.ipropvals(x):
+            if prop.multivalued:
+                if val is not None:
+                    for iele, ele in enumerate(val):
+                        for y in zip_walk(ele, typ,
+                                      path=path + ((prop.name, iele),),
+                                      stack=stack + (x,)):
+                            yield y
+            else:
+                for y in zip_walk(val, typ,
+                                  path=path+(prop.name,),
+                                  stack=stack + (x,)):
+                    yield y
+
+
+def path_element(x):
+    if isinstance(x, tuple):
+        return '%s[%i]' % x
+    else:
+        return x
+
+
+def path_to_str(path):
+    return '.'.join(path_element(x) for x in path)
 
 
 @expand_stream_args('w')
@@ -1367,14 +1402,14 @@ def iload_all_xml(*args, **kwargs):
     return _iload_all_xml(*args, **kwargs)
 
 
-__all__ = guts_types + [ 'guts_types', 'TBase', 'ValidationError', 
-        'ArgumentError', 'Defer', 
-        'dump', 'load',
-        'dump_all', 'load_all', 'iload_all',
-        'dump_xml', 'load_xml', 
-        'dump_all_xml', 'load_all_xml', 'iload_all_xml',
-        'load_string',
-        'load_xml_string',
-        'make_typed_list_class', 'walk'
-        ] 
-
+__all__ = guts_types + [
+    'guts_types', 'TBase', 'ValidationError',
+    'ArgumentError', 'Defer',
+    'dump', 'load',
+    'dump_all', 'load_all', 'iload_all',
+    'dump_xml', 'load_xml',
+    'dump_all_xml', 'load_all_xml', 'iload_all_xml',
+    'load_string',
+    'load_xml_string',
+    'make_typed_list_class', 'walk', 'zip_walk', 'path_to_str'
+]

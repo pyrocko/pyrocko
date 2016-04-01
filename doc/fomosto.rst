@@ -542,3 +542,98 @@ such stores.
     
     # Finally, let's scrutinize these traces.
     trace.snuffle(synthetic_traces, markers=markers)
+
+
+
+Travel-time only GF stores
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It is possible to use a GF store only for traveltime computations. Here is
+an example how to create and use such a GF store.
+
+::
+
+    import os.path as op
+    import numpy as num
+    from pyrocko import gf, cake
+
+    km = 1000.
+
+    # create GF store with only traveltime tables and no waveforms
+    store_id = 'tt_test1'
+
+    config = gf.ConfigTypeA(
+        id=store_id,
+        tabulated_phases=[
+            gf.TPDef(id='P', definition='!P')],
+        earthmodel_1d=cake.load_model('prem-no-ocean.m'),
+        sample_rate=1.0,
+        source_depth_min=1.*km,
+        source_depth_max=100.*km,
+        source_depth_delta=1*km,
+        distance_min=1*km,
+        distance_max=1000*km,
+        distance_delta=1*km,
+        ncomponents=0)
+
+    store_dir = store_id
+    if not op.exists(store_dir):
+        gf.Store.create(store_dir, config, force=True)
+
+        store = gf.Store(store_id)
+        store.make_ttt()
+
+    store = gf.Store(store_id)
+
+    # create array with all source depths and distances
+
+    data = []
+    for args in store.config.iter_nodes(level=-1):
+        data.append(args)
+
+    coords = num.array(data)
+
+    # extract arrival times of tabulated P phase for all depth-distance pairs at
+    # once. This is much faster than querying the times one by one with store.t().
+
+    spt = store.get_phase('P')
+    ts = spt.interpolate_many(coords)
+    print ts
+
+    # compare with direct traveltime calculation with cake
+
+    phases = cake.PhaseDef.classic('P')
+    print phases
+
+    tdiffs = []
+    mod = store.config.earthmodel_1d
+    for inode in xrange(coords.shape[0]):
+        (source_depth, distance) = coords[inode, :]
+        t_tabulated = ts[inode]
+
+        t_cake = None
+        rays = mod.arrivals(
+            phases=phases,
+            distances=[distance*cake.m2d],
+            zstart=source_depth)
+
+        if rays:
+            t_cake = rays[0].t
+
+        if t_cake is not None and num.isfinite(t_tabulated):
+            tdiff = t_cake - t_tabulated
+        else:
+            tdiff = None
+
+        print source_depth, distance, t_cake, t_tabulated, tdiff
+
+        if tdiff is not None:
+            tdiffs.append(tdiff)
+
+    # plot histogram with traveltime approximation errors. Errors should usually be
+    # smaller than the sampling interval defined in the GF store.
+
+    from matplotlib import pyplot as plt
+    plt.hist(tdiffs)
+    plt.show()
+

@@ -651,7 +651,7 @@ def command_export(args):
         for ig in xrange(config.ncomponents):
             try:
                 tr = source.get((z,x,ig), interpolation='off')
-                data_out.append((tr.t,tr.data))
+                data_out.append((tr.t,tr.data * config.factor))
 
             except gf.store.StoreError, e:
                 logger.warn('cannot get %s, (%s)' % (sindex((z,x,ig)), e))

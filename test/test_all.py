@@ -18,6 +18,7 @@ from test_fdsn import FDSNStationTestCase
 from test_ims import IMSTestCase
 from test_guts import GutsTestCase
 from test_parstack import ParstackTestCase
+from geonames import GeonamesTestCase
 
 import unittest
 import optparse

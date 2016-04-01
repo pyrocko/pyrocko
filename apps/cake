@@ -55,7 +55,7 @@ want to define phases in Cake's syntax.
 
 ''')
         group.add_option('--phase', '--phases', dest='phases', action="append",
-                default=[], metavar='PHASE1,PHASE2,...',
+                default=['P'], metavar='PHASE1,PHASE2,...',
                 help='''Comma separated list of seismic phases in Cake\'s syntax.
 
 The definition of a seismic propagation path in Cake's phase syntax is a string

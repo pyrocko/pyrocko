@@ -300,5 +300,7 @@ def radius_to_region(lat, lon, radius):
         lon_min, lon_max, lat_min, lat_max = positive_region(
             (lon_min, lon_max, lat_min, lat_max))
 
+        return lon_min, lon_max, lat_min, lat_max
+
     else:
         return None
