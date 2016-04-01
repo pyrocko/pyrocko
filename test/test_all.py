@@ -10,6 +10,7 @@ from test_util import UtilTestCase
 from test_gf import GFTestCase
 from test_gf_sources import GFSourcesTestCase
 from test_gf_qseis import GFQSeisTestCase
+from test_gf_stf import GFSTFTestCase
 from test_parimap import ParimapTestCase
 from test_response import ResponseTestCase
 from test_datacube import DataCubeTestCase
