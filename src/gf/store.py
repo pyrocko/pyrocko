@@ -1076,7 +1076,7 @@ class Store(BaseStore):
         store, decimate = self._decimated_store(decimate)
         if interpolation == 'nearest_neighbor':
             irecord = store.config.irecord(*args)
-            return store._get(irecord, itmin, nsamples, decimate,
+            tr = store._get(irecord, itmin, nsamples, decimate,
                               implementation)
 
         elif interpolation in ('multilinear', 'off'):
@@ -1084,9 +1084,15 @@ class Store(BaseStore):
             if interpolation == 'off' and len(irecords) != 1:
                 raise NotAllowedToInterpolate()
 
-            return store._sum(irecords, num.zeros(len(irecords)), weights,
+            tr = store._sum(irecords, num.zeros(len(irecords)), weights,
                               itmin, nsamples, decimate, implementation,
                               'disable')
+
+        # to prevent problems with rounding errors (BaseStore saves deltat
+        # as a 4-byte floating point value, value from YAML config is more
+        # accurate)
+        tr.deltat = self.config.deltat * decimate
+        return tr
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None,
             decimate=1, interpolation='nearest_neighbor', implementation='c',
@@ -1114,8 +1120,15 @@ class Store(BaseStore):
             weights = num.repeat(weights, neach) * ip_weights
             delays = num.repeat(delays, neach)
 
-        return store._sum(irecords, delays, weights, itmin, nsamples, decimate,
+        tr = store._sum(irecords, delays, weights, itmin, nsamples, decimate,
                           implementation, optimization)
+
+        # to prevent problems with rounding errors (BaseStore saves deltat
+        # as a 4-byte floating point value, value from YAML config is more
+        # accurate)
+        tr.deltat = self.config.deltat * decimate
+        return tr
+
 
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
