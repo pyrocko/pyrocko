@@ -38,7 +38,7 @@ def to_kiwi_source(source):
         length_a=(1. - source.nucleation_x)/2. * source.length,
         length_b=(source.nucleation_x - -1.)/2. * source.length,
         width=source.width,
-        rise_time=source.risetime)
+        rise_time=source.stf.duration)
 
 class GFScenariosTestCase(unittest.TestCase):
 
@@ -155,7 +155,7 @@ class GFScenariosTestCase(unittest.TestCase):
             nucleation_x=-1.,
             length=10*km,
             width=0*km,
-            risetime=1.)
+            stf=gf.BoxcarSTF(duration=1.0))
 
         base_event = base_source.pyrocko_event()
 
@@ -242,7 +242,7 @@ class GFScenariosTestCase(unittest.TestCase):
                             dip=dip,
                             rake=rake,
                             magnitude=rand(4.0, 5.0),
-                            risetime=1.0)
+                            stf=gf.BoxcarSTF(duration=1.0))
 
                     elif sourcetype == 'rect':
                         source = gf.RectangularSource(
@@ -257,7 +257,7 @@ class GFScenariosTestCase(unittest.TestCase):
                             dip=dip,
                             rake=rake,
                             magnitude=rand(4.0, 5.0),
-                            risetime=1.0)
+                            stf=gf.BoxcarSTF(duration=1.0))
                     else:
                         assert False
 

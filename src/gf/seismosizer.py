@@ -563,8 +563,23 @@ class STF(Object, Cloneable):
     Base class for source time functions.
     '''
 
+    def __init__(self, effective_duration=None, **kwargs):
+        if effective_duration is not None:
+            kwargs['duration'] = effective_duration / \
+                self.factor_duration_to_effective()
+
+        Object.__init__(self, **kwargs)
+
+    @classmethod
+    def factor_duration_to_effective(cls):
+        return 1.0
+
     def centroid_time(self, tref):
         return tref
+
+    @property
+    def effective_duration(self):
+        return 0.0
 
     def discretize_t(self, deltat, tref):
         tl = math.floor(tref / deltat) * deltat
@@ -591,7 +606,7 @@ def sshift(times, amplitudes, tshift, deltat):
         return times, amplitudes
 
     amplitudes2 = num.zeros(amplitudes.size+1, dtype=num.float)
-    
+
     amplitudes2[:-1] += (t1 - tshift) / deltat * amplitudes
     amplitudes2[1:] += (tshift - t0) / deltat * amplitudes
 
@@ -614,8 +629,16 @@ class BoxcarSTF(STF):
         default=0.0,
         help='anchor point (-1.0: left, 0.0: center, +1.0: right)')
 
+    @classmethod
+    def factor_duration_to_effective(cls):
+        return 1.0
+
     def centroid_time(self, tref):
         return tref - 0.5 * self.duration * self.anchor
+
+    @property
+    def effective_duration(self):
+        return self.duration
 
     def discretize_t(self, deltat, tref):
         tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
@@ -660,6 +683,21 @@ class TriangularSTF(STF):
         default=0.0,
         help='anchor point (-1.0: left, 0.0: centroid, +1.0: right)')
 
+    @classmethod
+    def factor_duration_to_effective(cls, peak_ratio=None):
+        if peak_ratio is None:
+            peak_ratio = cls.peak_ratio.default()
+
+        return math.sqrt((peak_ratio**2 - peak_ratio + 1.0) * 2.0 / 3.0)
+
+    def __init__(self, effective_duration=None, **kwargs):
+        if effective_duration is not None:
+            kwargs['duration'] = effective_duration / \
+                self.factor_duration_to_effective(
+                    kwargs.get('peak_ratio', None))
+
+        STF.__init__(self, **kwargs)
+
     @property
     def centroid_ratio(self):
         ra = self.peak_ratio
@@ -673,6 +711,12 @@ class TriangularSTF(STF):
             return tref - ca * self.duration * self.anchor
         else:
             return tref - cb * self.duration * self.anchor
+
+    @property
+    def effective_duration(self):
+        ra = self.peak_ratio
+        return self.duration * self.factor_duration_to_effective(
+            self.peak_ratio)
 
     def tminmax_stf(self, tref):
         ca = self.centroid_ratio
@@ -723,8 +767,16 @@ class HalfSinusoidSTF(STF):
         default=0.0,
         help='anchor point (-1.0: left, 0.0: center, +1.0: right)')
 
+    @classmethod
+    def factor_duration_to_effective(cls):
+        return math.sqrt((3.0*math.pi**2 - 24.0) / math.pi**2)
+
     def centroid_time(self, tref):
         return tref - 0.5 * self.duration * self.anchor
+
+    @property
+    def effective_duration(self):
+        return self.duration * self.factor_duration_to_effective()
 
     def discretize_t(self, deltat, tref):
         tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
@@ -922,12 +974,17 @@ class Source(meta.Location, Cloneable):
 
     def pyrocko_event(self, **kwargs):
         lat, lon = self.effective_latlon
+        duration = None
+        if self.stf:
+            duration = self.stf.effective_duration
+
         return model.Event(
             lat=lat,
             lon=lon,
             time=self.time,
             name=self.name,
             depth=self.depth,
+            duration=duration,
             **kwargs)
 
     @classmethod
@@ -937,12 +994,17 @@ class Source(meta.Location, Cloneable):
                 'cannot convert event object to source object: '
                 'no depth information available')
 
+        stf = None
+        if ev.duration is not None:
+            stf = HalfSinusoidSTF(effective_duration=ev.duration)
+
         d = dict(
             name=ev.name,
             time=ev.time,
             lat=ev.lat,
             lon=ev.lon,
-            depth=ev.depth)
+            depth=ev.depth,
+            stf=stf)
         d.update(kwargs)
         return cls(**d)
 
