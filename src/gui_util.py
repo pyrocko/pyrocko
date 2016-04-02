@@ -1,34 +1,44 @@
-import math, calendar, time, copy
+import math
+import calendar
+import time
+import copy
 import numpy as num
 import logging
 
-import pyrocko.util, pyrocko.plot, pyrocko.model, pyrocko.trace, pyrocko.plot
+from pyrocko import util, plot, model, trace
 from pyrocko.util import TableWriter, TableReader
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4 import QtCore as qc
+from PyQt4 import QtGui as qg
 
 logger = logging.getLogger('pyrocko.gui_util.py')
+
 
 def gmtime_x(timestamp):
     etimestamp = float(num.floor(timestamp))
     tt = time.gmtime(etimestamp)
     ms = (timestamp-etimestamp)*1000
-    return tt,ms
-        
+    return tt, ms
+
+
 def mystrftime(fmt=None, tt=None, milliseconds=0):
-   
-    if fmt is None: fmt = '%Y-%m-%d %H:%M:%S .%r'
-    if tt is None: tt = time.time()
-    
+
+    if fmt is None:
+        fmt = '%Y-%m-%d %H:%M:%S .%r'
+
+    if tt is None:
+        tt = time.time()
+
     fmt = fmt.replace('%r', '%03i' % int(round(milliseconds)))
     fmt = fmt.replace('%u', '%06i' % int(round(milliseconds*1000)))
     fmt = fmt.replace('%n', '%09i' % int(round(milliseconds*1000000)))
     return time.strftime(fmt, tt)
-        
+
+
 def myctime(timestamp):
     tt, ms = gmtime_x(timestamp)
     return mystrftime(None, tt, ms)
+
 
 def str_to_float_or_none(s):
     if s == 'None':
@@ -36,38 +46,51 @@ def str_to_float_or_none(s):
     else:
         return float(s)
 
+
 def str_to_str_or_none(s):
     if s == 'None':
         return None
     else:
         return s
 
+
 def str_to_bool(s):
     return s.lower() in ('true', 't', '1')
 
 
-def make_QPolygonF( xdata, ydata ):
+def make_QPolygonF(xdata, ydata):
     assert len(xdata) == len(ydata)
-    qpoints = QPolygonF( len(ydata) )
+    qpoints = qg.QPolygonF(len(ydata))
     vptr = qpoints.data()
     vptr.setsize(len(ydata)*8*2)
-    aa = num.ndarray( shape=(len(ydata),2), dtype=num.float64, buffer=buffer(vptr))
+    aa = num.ndarray(
+        shape=(len(ydata), 2),
+        dtype=num.float64,
+        buffer=buffer(vptr))
     aa.setflags(write=True)
-    aa[:,0] = xdata
-    aa[:,1] = ydata
+    aa[:, 0] = xdata
+    aa[:, 1] = ydata
     return qpoints
 
+
 class Label:
-    def __init__(self, p, x, y, label_str, label_bg=None, anchor='BL', outline=False, font=None, color=None):
-        text = QTextDocument()
+    def __init__(
+            self, p, x, y, label_str,
+            label_bg=None,
+            anchor='BL',
+            outline=False,
+            font=None,
+            color=None):
+
+        text = qg.QTextDocument()
         if font:
             text.setDefaultFont(font)
         text.setDefaultStyleSheet('span { color: %s; }' % color.name())
         text.setHtml('<span>%s</span>' % label_str)
         s = text.size()
-        rect = QRectF(0., 0., s.width(), s.height())
-        tx,ty =x,y
-        
+        rect = qc.QRectF(0., 0., s.width(), s.height())
+        tx, ty = x, y
+
         if 'B' in anchor:
             ty -= rect.height()
         if 'R' in anchor:
@@ -76,8 +99,8 @@ class Label:
             ty -= rect.height()/2.
         if 'C' in anchor:
             tx -= rect.width()/2.
-            
-        rect.translate( tx, ty )
+
+        rect.translate(tx, ty)
         self.rect = rect
         self.text = text
         self.outline = outline
@@ -95,27 +118,27 @@ class Label:
             oldpen = p.pen()
             oldbrush = p.brush()
             p.setBrush(self.label_bg)
-            rect.adjust(-2.,0.,2.,0.)
-            p.drawRect( rect )
+            rect.adjust(-2., 0., 2., 0.)
+            p.drawRect(rect)
             p.setPen(oldpen)
             p.setBrush(oldbrush)
-            
+
         else:
             if self.label_bg:
                 p.fillRect(rect, self.label_bg)
-        
-        p.translate(tx,ty)
+
+        p.translate(tx, ty)
         self.text.drawContents(p)
-        p.translate(-tx,-ty)
+        p.translate(-tx, -ty)
 
 
-def draw_label( p, x,y, label_str, label_bg, anchor='BL', outline=False):
+def draw_label(p, x, y, label_str, label_bg, anchor='BL', outline=False):
     fm = p.fontMetrics()
-    
-    label = QString( label_str )
-    rect = fm.boundingRect( label )
-    
-    tx,ty =x,y
+
+    label = qc.QString(label_str)
+    rect = fm.boundingRect(label)
+
+    tx, ty = x, y
     if 'T' in anchor:
         ty += rect.height()
     if 'R' in anchor:
@@ -124,57 +147,67 @@ def draw_label( p, x,y, label_str, label_bg, anchor='BL', outline=False):
         ty += rect.height()/2.
     if 'C' in anchor:
         tx -= rect.width()/2.
-        
-    rect.translate( tx, ty )
+
+    rect.translate(tx, ty)
     if outline:
         oldpen = p.pen()
         oldbrush = p.brush()
         p.setBrush(label_bg)
-        rect.adjust(-2.,0.,2.,0.)
-        p.drawRect( rect )
+        rect.adjust(-2., 0., 2., 0.)
+        p.drawRect(rect)
         p.setPen(oldpen)
         p.setBrush(oldbrush)
-        
+
     else:
         p.fillRect(rect, label_bg)
-    p.drawText( tx, ty, label )
+    p.drawText(tx, ty, label)
+
 
 def get_err_palette():
-    err_palette = QPalette()
-    err_palette.setColor( QPalette.Base, QColor(255,200,200) )
+    err_palette = qg.QPalette()
+    err_palette.setColor(qg.QPalette.Base, qg.QColor(255, 200, 200))
     return err_palette
 
-class MySlider(QSlider):
-    
+
+class MySlider(qg.QSlider):
+
     def wheelEvent(self, ev):
         ev.ignore()
 
     def keyPressEvent(self, ev):
         ev.ignore()
 
-class MyValueEdit(QLineEdit):
 
-    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args, **kwargs):
-        QLineEdit.__init__(self, *args, **kwargs)
+class MyValueEdit(qg.QLineEdit):
+
+    def __init__(
+            self,
+            low_is_none=False,
+            high_is_none=False,
+            low_is_zero=False,
+            *args, **kwargs):
+
+        qg.QLineEdit.__init__(self, *args, **kwargs)
         self.value = 0.
         self.mi = 0.
         self.ma = 1.
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
         self.low_is_zero = low_is_zero
-        self.connect( self, SIGNAL("editingFinished()"), self.myEditingFinished )
+        self.connect(
+            self, qc.SIGNAL("editingFinished()"), self.myEditingFinished)
         self.lock = False
-        
-    def setRange( self, mi, ma ):
+
+    def setRange(self, mi, ma):
         self.mi = mi
         self.ma = ma
-        
-    def setValue( self, value ):
+
+    def setValue(self, value):
         if not self.lock:
             self.value = value
-            self.setPalette( QApplication.palette() )
+            self.setPalette(qg.QApplication.palette())
             self.adjust_text()
-        
+
     def myEditingFinished(self):
         try:
             t = str(self.text()).strip()
@@ -193,13 +226,13 @@ class MyValueEdit(QLineEdit):
             if value != self.value:
                 self.value = value
                 self.lock = True
-                self.emit(SIGNAL("edited(float)"), value )
-                self.setPalette( QApplication.palette() )
+                self.emit(qc.SIGNAL("edited(float)"), value)
+                self.setPalette(qg.QApplication.palette())
         except:
-            self.setPalette( get_err_palette() )
-        
+            self.setPalette(get_err_palette())
+
         self.lock = False
-        
+
     def adjust_text(self):
         t = ('%8.5g' % self.value).strip()
 
@@ -219,54 +252,66 @@ class MyValueEdit(QLineEdit):
                 t = 'off'
 
         self.setText(t)
-        
-class ValControl(QObject):
 
-    def __init__(self, low_is_none=False, high_is_none=False, low_is_zero=False, *args):
-        apply(QObject.__init__, (self,) + args)
-        
-        self.lname = QLabel( "name" )
-        self.lname.setSizePolicy(QSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum))
-        self.lvalue = MyValueEdit( low_is_none=low_is_none, high_is_none=high_is_none, low_is_zero=low_is_zero )
+
+class ValControl(qc.QObject):
+
+    def __init__(
+            self,
+            low_is_none=False,
+            high_is_none=False,
+            low_is_zero=False,
+            *args):
+
+        qc.QObject.__init__(self, *args)
+
+        self.lname = qg.QLabel("name")
+        self.lname.setSizePolicy(
+            qg.QSizePolicy(qg.QSizePolicy.Minimum, qg.QSizePolicy.Minimum))
+        self.lvalue = MyValueEdit(
+            low_is_none=low_is_none,
+            high_is_none=high_is_none,
+            low_is_zero=low_is_zero)
         self.lvalue.setFixedWidth(100)
-        self.slider = MySlider(Qt.Horizontal)
-        self.slider.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
-        self.slider.setMaximum( 10000 )
-        self.slider.setSingleStep( 100 )
-        self.slider.setPageStep( 1000 )
-        self.slider.setTickPosition( QSlider.NoTicks )
-        self.slider.setFocusPolicy(Qt.ClickFocus)
-        
+        self.slider = MySlider(qc.Qt.Horizontal)
+        self.slider.setSizePolicy(
+            qg.QSizePolicy(qg.QSizePolicy.Expanding, qg.QSizePolicy.Minimum))
+        self.slider.setMaximum(10000)
+        self.slider.setSingleStep(100)
+        self.slider.setPageStep(1000)
+        self.slider.setTickPosition(qg.QSlider.NoTicks)
+        self.slider.setFocusPolicy(qc.Qt.ClickFocus)
+
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
         self.low_is_zero = low_is_zero
 
-        self.connect( self.slider, SIGNAL("valueChanged(int)"),
-                      self.slided )
-        self.connect( self.lvalue, SIGNAL("edited(float)"),
-                      self.edited )
+        self.connect(self.slider, qc.SIGNAL("valueChanged(int)"),
+                     self.slided)
+        self.connect(self.lvalue, qc.SIGNAL("edited(float)"),
+                     self.edited)
 
         self.mute = False
 
     def widgets(self):
         return self.lname, self.lvalue, self.slider
-    
+
     def s2v(self, svalue):
         a = math.log(self.ma/self.mi) / 10000.
         return self.mi*math.exp(a*svalue)
-                
+
     def v2s(self, value):
         a = math.log(self.ma/self.mi) / 10000.
         return int(round(math.log(value/self.mi) / a))
-    
+
     def setup(self, name, mi, ma, cur, ind):
-        self.lname.setText( name )
+        self.lname.setText(name)
         self.mi = mi
         self.ma = ma
         self.ind = ind
-        self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
+        self.lvalue.setRange(self.s2v(0), self.s2v(10000))
         self.set_value(cur)
-       
+
     def set_range(self, mi, ma):
         if self.mi == mi and self.ma == ma:
             return
@@ -279,7 +324,7 @@ class ValControl(QObject):
 
         self.mi = mi
         self.ma = ma
-        self.lvalue.setRange( self.s2v(0), self.s2v(10000) )
+        self.lvalue.setRange(self.s2v(0), self.s2v(10000))
 
         if vput is not None:
             self.set_value(vput)
@@ -289,14 +334,13 @@ class ValControl(QObject):
             if self.cur > ma:
                 self.set_value(ma)
 
-
     def set_value(self, cur):
         if cur is None:
             if self.low_is_none:
                 cur = self.mi
             elif self.high_is_none:
                 cur = self.ma
-    
+
         if cur == 0.0:
             if self.low_is_zero:
                 cur = self.mi
@@ -305,44 +349,45 @@ class ValControl(QObject):
         self.cur = cur
         self.cursl = self.v2s(cur)
         self.slider.blockSignals(True)
-        self.slider.setValue( self.cursl )
+        self.slider.setValue(self.cursl)
         self.slider.blockSignals(False)
         self.lvalue.blockSignals(True)
         if self.cursl in (0, 10000):
-            self.lvalue.setValue( self.s2v(self.cursl) )
+            self.lvalue.setValue(self.s2v(self.cursl))
         else:
-            self.lvalue.setValue( self.cur )
+            self.lvalue.setValue(self.cur)
         self.lvalue.blockSignals(False)
         self.mute = False
-        
+
     def get_value(self):
         return self.cur
-        
-    def slided(self,val):
+
+    def slided(self, val):
         if self.cursl != val:
             self.cursl = val
             self.cur = self.s2v(self.cursl)
 
             self.lvalue.blockSignals(True)
-            self.lvalue.setValue( self.cur )
+            self.lvalue.setValue(self.cur)
             self.lvalue.blockSignals(False)
             self.fire_valchange()
-            
-    def edited(self,val):
+
+    def edited(self, val):
         if self.cur != val:
             self.cur = val
             cursl = self.v2s(val)
             if (cursl != self.cursl):
                 self.slider.blockSignals(True)
-                self.slider.setValue( cursl )
+                self.slider.setValue(cursl)
                 self.slider.blockSignals(False)
                 self.cursl = cursl
-            
+
             self.fire_valchange()
-        
+
     def fire_valchange(self):
-        if self.mute: return
-        
+        if self.mute:
+            return
+
         cur = self.cur
 
         if self.cursl == 0:
@@ -355,48 +400,53 @@ class ValControl(QObject):
         if self.cursl == 10000 and self.high_is_none:
             cur = None
 
-        self.emit(SIGNAL("valchange(PyQt_PyObject,int)"), cur, int(self.ind) )
-        
+        self.emit(qc.SIGNAL(
+            "valchange(PyQt_PyObject,int)"), cur, int(self.ind))
+
+
 class LinValControl(ValControl):
-    
+
     def s2v(self, svalue):
         return svalue/10000. * (self.ma-self.mi) + self.mi
-                
+
     def v2s(self, value):
         if self.ma == self.mi:
             return 0
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
+
 class Progressbar:
     def __init__(self, parent, name, can_abort=True):
         self.parent = parent
         self.name = name
-        self.label = QLabel(name, parent)
-        self.pbar = QProgressBar(parent)
+        self.label = qg.QLabel(name, parent)
+        self.pbar = qg.QProgressBar(parent)
         self.aborted = False
         self.time_last_update = 0.
         if can_abort:
-            self.abort_button = QPushButton('Abort', parent)
-            self.parent.connect(self.abort_button, SIGNAL('clicked()'), self.abort)
+            self.abort_button = qg.QPushButton('Abort', parent)
+            self.parent.connect(
+                self.abort_button, qc.SIGNAL('clicked()'), self.abort)
         else:
             self.abort_button = False
 
     def widgets(self):
-        widgets = [ self.label, self.bar() ]
+        widgets = [self.label, self.bar()]
         if self.abort_button:
             widgets.append(self.abort_button)
         return widgets
-    
+
     def bar(self):
         return self.pbar
 
     def abort(self):
         self.aborted = True
 
-class Progressbars(QFrame):
+
+class Progressbars(qg.QFrame):
     def __init__(self, parent):
-        QFrame.__init__(self, parent)
-        self.layout = QGridLayout()
+        qg.QFrame.__init__(self, parent)
+        self.layout = qg.QGridLayout()
         self.setLayout(self.layout)
         self.bars = {}
         self.start_times = {}
@@ -442,68 +492,75 @@ class Progressbars(QFrame):
         for ibar, bar in enumerate(self.bars.values()):
             for iw, w in enumerate(bar.widgets()):
                 self.layout.addWidget(w, ibar, iw)
-        
+
         if not self.bars:
             self.hide()
         else:
             self.show()
 
+
 class MarkerParseError(Exception):
     pass
+
 
 class MarkerOneNSLCRequired(Exception):
     pass
 
+
 class Marker(object):
     '''
-    General purpose marker GUI element and base class for :py:class:`EventMarker` and :py:class:`PhaseMarker`.
+    General purpose marker GUI element and base class for
+    :py:class:`EventMarker` and :py:class:`PhaseMarker`.
 
-    :param nslc_ids:    list of (network, station, location, channel) tuples (may contain wildcards)
-    :param tmin:        start time 
-    :param tmax:        end time
-    :param kind:        (optional) integer to distinguish groups of markers (color-coded)
+    :param nslc_ids: list of (network, station, location, channel) tuples
+        (may contain wildcards)
+    :param tmin: start time
+    :param tmax: end time
+    :param kind: (optional) integer to distinguish groups of markers
+        (color-coded)
     '''
 
     @staticmethod
     def from_string(line):
-        
+
         def fail():
             raise MarkerParseError(
                 'Unable to create marker from string: "%s"' % line)
-                
-        def parsedate(ymd,hms,sfs):
-            return calendar.timegm(time.strptime(ymd+' '+hms, '%Y-%m-%d %H:%M:%S')) + float(sfs)
-        
+
+        def parsedate(ymd, hms, sfs):
+            return calendar.timegm(
+                time.strptime(ymd+' '+hms, '%Y-%m-%d %H:%M:%S')) + float(sfs)
+
         try:
             toks = line.split()
-            if len(toks) in (4,5):
+            if len(toks) in (4, 5):
                 tmin = parsedate(*toks[:3])
                 tmax = tmin
-                
-            elif len(toks) in (8,9):
+
+            elif len(toks) in (8, 9):
                 tmin = parsedate(*toks[:3])
                 tmax = parsedate(*toks[3:6])
-            
+
             else:
                 fail()
-            
-            if len(toks) in (5,9):
+
+            if len(toks) in (5, 9):
                 kind = int(toks[-2])
             else:
                 kind = int(toks[-1])
-                
+
             nslc_ids = []
-            if len(toks) in (5,9):
+            if len(toks) in (5, 9):
                 for snslc in toks[-1].split(','):
                     nslc = snslc.split('.')
                     if len(nslc) != 4:
                         fail()
-                        
+
                     nslc_ids.append(tuple(nslc))
-                
+
         except MarkerParseError:
             fail()
-    
+
         return Marker(nslc_ids, tmin, tmax, kind=kind)
 
     @staticmethod
@@ -515,7 +572,7 @@ class Marker(object):
         :param fdigits: number of decimal digits to use for sub-second time
              strings (default 3)
         '''
-        f = open(fn,'w')
+        f = open(fn, 'w')
         f.write('# Snuffler Markers File Version 0.2\n')
         writer = TableWriter(f)
         for marker in markers:
@@ -535,7 +592,7 @@ class Marker(object):
     @staticmethod
     def load_markers(fn):
         '''
-        Static method to load markers from file. 
+        Static method to load markers from file.
 
         :param filename:  filename as string
         :returns: list of :py:class:`Marker`, :py:class:`EventMarker` or
@@ -543,7 +600,7 @@ class Marker(object):
         '''
         markers = []
         f = open(fn, 'r')
-        line  = f.readline()
+        line = f.readline()
         if not line.startswith('# Snuffler Markers File Version'):
             f.seek(0)
             for iline, line in enumerate(f):
@@ -553,12 +610,14 @@ class Marker(object):
                 try:
                     m = Marker.from_string(sline)
                     markers.append(m)
-                    
+
                 except MarkerParseError:
-                    logger.warn('Invalid marker definition in line %i of file "%s"' % (iline+1, fn))
-                    
+                    logger.warn(
+                        'Invalid marker definition in line %i of file "%s"' %
+                        (iline+1, fn))
+
             f.close()
-        
+
         elif line.startswith('# Snuffler Markers File Version 0.2'):
             reader = TableReader(f)
             while not reader.eof:
@@ -571,50 +630,56 @@ class Marker(object):
                     marker = PhaseMarker.from_attributes(row)
                 else:
                     marker = Marker.from_attributes(row)
-                 
+
                 markers.append(marker)
         else:
             logger.warn('Unsupported Markers File Version')
-        
+
         return markers
 
     def __init__(self, nslc_ids, tmin, tmax, kind=0):
         self.set(nslc_ids, tmin, tmax)
-        c = pyrocko.plot.color
-        self.color_a = [ c(x) for x in ('aluminium4', 'aluminium5', 'aluminium6') ]
-        self.color_b = [ c(x) for x in ('scarletred1', 'scarletred2', 'scarletred3',
-                                        'chameleon1', 'chameleon2', 'chameleon3',
-                                        'skyblue1', 'skyblue2', 'skyblue3',
-                                        'orange1', 'orange2', 'orange3',
-                                        'plum1', 'plum2', 'plum3',
-                                        'chocolate1', 'chocolate2', 'chocolate3') ]
+        c = plot.color
+
+        self.color_a = [c(x) for x in (
+            'aluminium4', 'aluminium5', 'aluminium6')]
+
+        self.color_b = [c(x) for x in (
+            'scarletred1', 'scarletred2', 'scarletred3',
+            'chameleon1', 'chameleon2', 'chameleon3',
+            'skyblue1', 'skyblue2', 'skyblue3',
+            'orange1', 'orange2', 'orange3',
+            'plum1', 'plum2', 'plum3',
+            'chocolate1', 'chocolate2', 'chocolate3')]
+
         self.alerted = False
         self.selected = False
         self.kind = kind
-        
+
     def set(self, nslc_ids, tmin, tmax):
         '''Set *nslc_ids*, start time and end time of :py:class:`Marker`
 
-        :param nslc_ids: list or set of (network, station, location, channel) tuples
+        :param nslc_ids: list or set of (network, station, location, channel)
+            tuples
         :param tmin: start time
         :param tmax: end time
         '''
         self.nslc_ids = nslc_ids
         self.tmin = tmin
         self.tmax = tmax
-     
+
     def set_kind(self, kind):
         '''Set kind of :py:class:`Marker`
 
-        :param kind: (optional) integer to distinguish groups of markers 
+        :param kind: (optional) integer to distinguish groups of markers
                         (color-coded)
         '''
         self.kind = kind
-     
+
     def get_tmin(self):
         '''Get *start time* of :py:class:`Marker`'''
         return self.tmin
-        
+
     def get_tmax(self):
         '''Get *end time* of :py:class:`Marker`'''
         return self.tmax
@@ -624,34 +689,35 @@ class Marker(object):
 
         :returns: list or set of (network, station, location, channel) tuples
 
-        The network, station, location, or channel strings may contain wildcard expressions.
+        The network, station, location, or channel strings may contain wildcard
+        expressions.
         '''
         return self.nslc_ids
 
     def is_alerted(self):
         return self.alerted
-        
+
     def is_selected(self):
         return self.selected
 
     def set_alerted(self, state):
         self.alerted = state
-        
+
     def set_selected(self, state):
         self.selected = state
 
     def match_nsl(self, nsl):
         '''See documentation of :py:func:`pyrocko.util.match_nslc`'''
-        patterns = [ '.'.join(x[:3]) for x in self.nslc_ids ]
-        return pyrocko.util.match_nslc(patterns, nsl)
-    
+        patterns = ['.'.join(x[:3]) for x in self.nslc_ids]
+        return util.match_nslc(patterns, nsl)
+
     def match_nslc(self, nslc):
         '''See documentation of :py:func:`pyrocko.util.match_nslc`'''
-        patterns = [ '.'.join(x) for x in self.nslc_ids ]
-        return pyrocko.util.match_nslc(patterns, nslc)
+        patterns = ['.'.join(x) for x in self.nslc_ids]
+        return util.match_nslc(patterns, nslc)
 
     def one_nslc(self):
-        '''If one *nslc_id* defines this marker return this id. 
+        '''If one *nslc_id* defines this marker return this id.
         If more than one *nslc_id* is defined in the :py:class:`Marker`s
         *nslc_ids* raise :py:exc:`MarkerOneNSLCRequired`.'''
         if len(self.nslc_ids) != 1:
@@ -667,19 +733,25 @@ class Marker(object):
         return copy.deepcopy(self)
 
     def __str__(self):
-        traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
+        traces = ','.join(['.'.join(nslc_id) for nslc_id in self.nslc_ids])
         st = myctime
         if self.tmin == self.tmax:
             return '%s %i %s' % (st(self.tmin), self.kind, traces)
         else:
-            return '%s %s %g %i %s' % (st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind, traces)
+            return '%s %s %g %i %s' % (
+                st(self.tmin), st(self.tmax), self.tmax-self.tmin, self.kind,
+                traces)
 
     def get_attributes(self, fdigits=3):
-        traces = ','.join( [ '.'.join(nslc_id) for nslc_id in self.nslc_ids ] )
-        st = lambda t: pyrocko.util.time_to_str(t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
+        traces = ','.join(['.'.join(nslc_id) for nslc_id in self.nslc_ids])
+
+        def st(t):
+            return util.time_to_str(
+                t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
+
         vals = []
         vals.extend(st(self.tmin).split())
-        if self.tmin != self.tmax:    
+        if self.tmin != self.tmax:
             vals.extend(st(self.tmax).split())
             vals.append(self.tmax-self.tmin)
 
@@ -688,19 +760,19 @@ class Marker(object):
         return vals
 
     def get_attribute_widths(self, fdigits=3):
-        ws = [ 10, 9+fdigits ]
+        ws = [10, 9+fdigits]
         if self.tmin != self.tmax:
-            ws.extend( [ 10, 9+fdigits, 12 ] )
-        ws.extend( [ 2, 15 ] )
+            ws.extend([10, 9+fdigits, 12])
+        ws.extend([2, 15])
         return ws
 
     @staticmethod
     def parse_attributes(vals):
-        tmin = pyrocko.util.str_to_time( vals[0] + ' ' + vals[1] )
+        tmin = util.str_to_time(vals[0] + ' ' + vals[1])
         i = 2
         tmax = tmin
         if len(vals) == 7:
-            tmax = pyrocko.util.str_to_time( vals[2] + ' ' + vals[3] )
+            tmax = util.str_to_time(vals[2] + ' ' + vals[3])
             i = 5
 
         kind = int(vals[i])
@@ -708,7 +780,8 @@ class Marker(object):
         if traces == 'None':
             nslc_ids = []
         else:
-            nslc_ids = tuple([ tuple(nslc_id.split('.')) for nslc_id in traces.split(',') ])
+            nslc_ids = tuple(
+                [tuple(nslc_id.split('.')) for nslc_id in traces.split(',')])
 
         return nslc_ids, tmin, tmax, kind
 
@@ -717,102 +790,124 @@ class Marker(object):
         return Marker(*Marker.parse_attributes(vals))
 
     def select_color(self, colorlist):
-        cl = lambda x: colorlist[(self.kind*3+x)%len(colorlist)]
+
+        def cl(x):
+            return colorlist[(self.kind*3+x) % len(colorlist)]
+
         if self.selected:
             return cl(1)
+
         if self.alerted:
             return cl(1)
+
         return cl(2)
-            
-    def draw(self, p, time_projection, y_projection, draw_line=True, draw_triangle=False, **kwargs):
-        
+
+    def draw(
+            self, p, time_projection, y_projection,
+            draw_line=True,
+            draw_triangle=False,
+            **kwargs):
+
         if self.selected or self.alerted or not self.nslc_ids:
-            
-            color = self.select_color(self.color_b)            
-            pen = QPen(QColor(*color))
+
+            color = self.select_color(self.color_b)
+            pen = qg.QPen(qg.QColor(*color))
             pen.setWidth(2)
-            linepen = QPen(pen)
+            linepen = qg.QPen(pen)
             if self.selected or self.alerted:
-                linepen.setStyle(Qt.CustomDashLine)
-                pat = [5.,3.]
+                linepen.setStyle(qc.Qt.CustomDashLine)
+                pat = [5., 3.]
                 linepen.setDashPattern(pat)
                 if self.alerted and not self.selected:
-                    linepen.setColor(QColor(150,150,150))
-            
+                    linepen.setColor(qg.QColor(150, 150, 150))
+
             s = 9.
-            utriangle = make_QPolygonF( [ -0.577*s, 0., 0.577*s ], [ 0., 1.*s, 0.] ) 
-            ltriangle = make_QPolygonF( [ -0.577*s, 0., 0.577*s ], [ 0., -1.*s, 0.] ) 
+            utriangle = make_QPolygonF(
+                [-0.577*s, 0., 0.577*s], [0., 1.*s, 0.])
+            ltriangle = make_QPolygonF(
+                [-0.577*s, 0., 0.577*s], [0., -1.*s, 0.])
 
             def drawline(t):
                 u = time_projection(t)
                 v0, v1 = y_projection.get_out_range()
-                line = QLineF(u,v0,u,v1)
+                line = qc.QLineF(u, v0, u, v1)
                 p.drawLine(line)
-        
+
             def drawtriangles(t):
                 u = time_projection(t)
                 v0, v1 = y_projection.get_out_range()
-                t = QPolygonF(utriangle)
-                t.translate(u,v0)
-                p.drawConvexPolygon(t) 
-                t = QPolygonF(ltriangle)
-                t.translate(u,v1)
-                p.drawConvexPolygon(t) 
-           
+                t = qg.QPolygonF(utriangle)
+                t.translate(u, v0)
+                p.drawConvexPolygon(t)
+                t = qg.QPolygonF(ltriangle)
+                t.translate(u, v1)
+                p.drawConvexPolygon(t)
+
             if draw_line or self.selected or self.alerted:
                 p.setPen(linepen)
                 drawline(self.tmin)
                 drawline(self.tmax)
 
             if draw_triangle:
-                pen.setStyle(Qt.SolidLine)
-                pen.setJoinStyle(Qt.MiterJoin)
+                pen.setStyle(qc.Qt.SolidLine)
+                pen.setJoinStyle(qc.Qt.MiterJoin)
                 pen.setWidth(2)
                 p.setPen(pen)
-                p.setBrush(QColor(*color))
+                p.setBrush(qg.QColor(*color))
                 drawtriangles(self.tmin)
 
-    def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain, outline_label=False):
-        if self.nslc_ids and not self.match_nslc(trace.nslc_id): return
-        
+    def draw_trace(
+            self, viewer, p, tr, time_projection, track_projection, gain,
+            outline_label=False):
+
+        if self.nslc_ids and not self.match_nslc(tr.nslc_id):
+            return
+
         color = self.select_color(self.color_b)
-        pen = QPen(QColor(*color))
+        pen = qg.QPen(qg.QColor(*color))
         pen.setWidth(2)
         p.setPen(pen)
-        p.setBrush(Qt.NoBrush)
-        def drawpoint(t,y):
+        p.setBrush(qc.Qt.NoBrush)
+
+        def drawpoint(t, y):
             u = time_projection(t)
             v = track_projection(y)
-            rect = QRectF(u-2,v-2,4,4)
+            rect = qc.QRectF(u-2, v-2, 4, 4)
             p.drawRect(rect)
-            
+
         def drawline(t):
             u = time_projection(t)
             v0, v1 = track_projection.get_out_range()
-            line = QLineF(u,v0,u,v1)
+            line = qc.QLineF(u, v0, u, v1)
             p.drawLine(line)
 
         try:
-            snippet = trace.chop(self.tmin, self.tmax, inplace=False, include_last=True, snap=(math.ceil,math.floor))
-            
-            vdata = track_projection( gain*snippet.get_ydata() )
-            udata_min = float(time_projection(snippet.tmin))
-            udata_max = float(time_projection(snippet.tmin+snippet.deltat*(vdata.size-1)))
+            snippet = tr.chop(
+                self.tmin, self.tmax,
+                inplace=False,
+                include_last=True,
+                snap=(math.ceil, math.floor))
+
+            vdata = track_projection(gain*snippet.get_ydata())
+            udata_min = float(
+                time_projection(snippet.tmin))
+            udata_max = float(
+                time_projection(snippet.tmin+snippet.deltat*(vdata.size-1)))
             udata = num.linspace(udata_min, udata_max, vdata.size)
-            qpoints = make_QPolygonF( udata, vdata )
+            qpoints = make_QPolygonF(udata, vdata)
             pen.setWidth(1)
             p.setPen(pen)
-            p.drawPolyline( qpoints )
+            p.drawPolyline(qpoints)
             pen.setWidth(2)
             p.setPen(pen)
-            drawpoint(*trace(self.tmin, clip=True, snap=math.ceil))
-            drawpoint(*trace(self.tmax, clip=True, snap=math.floor))
-            
-        except pyrocko.trace.NoData:
+            drawpoint(*tr(self.tmin, clip=True, snap=math.ceil))
+            drawpoint(*tr(self.tmax, clip=True, snap=math.floor))
+
+        except trace.NoData:
             pass
-            
+
         color = self.select_color(self.color_b)
-        pen = QPen(QColor(*color))
+        pen = qg.QPen(qg.QColor(*color))
         pen.setWidth(2)
         p.setPen(pen)
 
@@ -821,26 +916,36 @@ class Marker(object):
 
         label = self.get_label()
         if label:
-            label_bg = QBrush( QColor(255,255,255) )
-            
+            label_bg = qg.QBrush(qg.QColor(255, 255, 255))
+
             u = time_projection(self.tmin)
             v0, v1 = track_projection.get_out_range()
             if outline_label:
                 du = -7
             else:
                 du = -5
-            draw_label( p, u+du, v0, label, label_bg, 'TR', outline=outline_label)
+            draw_label(
+                p, u+du, v0, label, label_bg, 'TR',
+                outline=outline_label)
 
         if self.tmin == self.tmax:
-            try: drawpoint(self.tmin, trace.interpolate(self.tmin))
-            except IndexError: pass
-        #try: drawpoint(self.tmax, trace.interpolate(self.tmax))
-        #except IndexError: pass            
-    
+            try:
+                drawpoint(self.tmin, tr.interpolate(self.tmin))
+
+            except IndexError:
+                pass
+
     def get_label(self):
         return None
 
-    def convert_to_phase_marker(self, event=None, phasename=None, polarity=None, automatic=None, incidence_angle=None, takeoff_angle=None):
+    def convert_to_phase_marker(
+            self,
+            event=None,
+            phasename=None,
+            polarity=None,
+            automatic=None,
+            incidence_angle=None,
+            takeoff_angle=None):
 
         if isinstance(self, PhaseMarker):
             return
@@ -861,19 +966,21 @@ class Marker(object):
             self.convert_to_marker()
 
         self.__class__ = EventMarker
-        self._event = pyrocko.model.Event( lat, lon, self.tmin, name='Event')
+        self._event = model.Event(lat, lon, self.tmin, name='Event')
         self._active = False
         self.tmax = self.tmin
         self.nslc_ids = []
 
+
 class EventMarker(Marker):
     """
-    An EventMarker is a GUI element representing a seismological event within snuffler.
+    An EventMarker is a GUI element representing a seismological event
 
-    :param event:       A :py:class:`pyrocko.model.Event` object containing meta information 
-                        of a seismological event
-    :param kind:        (optional) integer to distinguish groups of markers
-    :param event_hash:  (optional) hash code of event (see: :py:meth:`pyrocko.model.Event.get_hash`)
+    :param event: A :py:class:`pyrocko.model.Event` object containing meta
+        information of a seismological event
+    :param kind: (optional) integer to distinguish groups of markers
+    :param event_hash:  (optional) hash code of event (see:
+        :py:meth:`pyrocko.model.Event.get_hash`)
     """
     def __init__(self, event, kind=0, event_hash=None):
         Marker.__init__(self, [], event.time, event.time, kind)
@@ -895,11 +1002,11 @@ class EventMarker(Marker):
         mag = self._event.magnitude
         if mag is not None:
             t.append('M%3.1f' % mag)
-        
+
         reg = self._event.region
         if reg is not None:
             t.append(reg)
-       
+
         nam = self._event.name
         if nam is not None:
             t.append(nam)
@@ -910,24 +1017,31 @@ class EventMarker(Marker):
         return s
 
     def draw(self, p, time_projection, y_projection, with_label=False):
-        Marker.draw(self, p, time_projection, y_projection, draw_line=False, draw_triangle=True)
+        Marker.draw(
+            self, p, time_projection, y_projection,
+            draw_line=False,
+            draw_triangle=True)
+
         if with_label:
             self.draw_label(p, time_projection, y_projection)
 
     def draw_label(self, p, time_projection, y_projection):
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()
-        label_bg = QBrush( QColor(255,255,255) )
-        draw_label( p, u, v0-10., self.label(), label_bg, 'CB', outline=self._active)
+        label_bg = qg.QBrush(qg.QColor(255, 255, 255))
+        draw_label(
+            p, u, v0-10., self.label(), label_bg, 'CB',
+            outline=self._active)
 
     def get_event(self):
         '''Return an instance of the :py:class:`pyrocko.model.Event` associated
         to this :py:class:`EventMarker`'''
         return self._event
 
-    def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
+    def draw_trace(self, viewer, p, tr, time_projection, track_projection,
+                   gain):
         pass
-   
+
     def hoover_message(self):
         ev = self.get_event()
         evs = []
@@ -939,54 +1053,74 @@ class EventMarker(Marker):
                     sv = '%s' % ev.__dict__[k]
                 evs.append('%s = %s' % (k, sv))
 
-        return ', '.join(evs) 
+        return ', '.join(evs)
 
     def get_attributes(self, fdigits=3):
-        attributes = [ 'event:' ]
+        attributes = ['event:']
         attributes.extend(Marker.get_attributes(self, fdigits=fdigits))
         del attributes[-1]
         e = self._event
-        attributes.extend([e.get_hash(), e.lat, e.lon, e.depth, e.magnitude, e.catalog, e.name, e.region ])
+        attributes.extend([
+            e.get_hash(), e.lat, e.lon, e.depth, e.magnitude, e.catalog,
+            e.name, e.region])
+
         return attributes
 
     def get_attribute_widths(self, fdigits=3):
-        ws = [ 6 ]
-        ws.extend( Marker.get_attribute_widths(self, fdigits=fdigits) )
+        ws = [6]
+        ws.extend(Marker.get_attribute_widths(self, fdigits=fdigits))
         del ws[-1]
-        ws.extend([ 14, 12, 12, 12, 4, 5, 0, 0 ])
+        ws.extend([14, 12, 12, 12, 4, 5, 0, 0])
         return ws
 
     @staticmethod
     def from_attributes(vals):
 
-        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:] + [ 'None' ])
-        lat, lon, depth, magnitude = [ str_to_float_or_none( x ) for x in vals[5:9] ]
-        catalog, name, region = [ str_to_str_or_none(x) for x in vals[9:] ]
-        e = pyrocko.model.Event(lat, lon, tmin, name, depth, magnitude, region, catalog=catalog)
-        marker = EventMarker(e, kind, event_hash=str_to_str_or_none(vals[4]))
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(
+            vals[1:] + ['None'])
+        lat, lon, depth, magnitude = [
+            str_to_float_or_none(x) for x in vals[5:9]]
+        catalog, name, region = [
+            str_to_str_or_none(x) for x in vals[9:]]
+        e = model.Event(
+            lat, lon, tmin, name, depth, magnitude, region, catalog=catalog)
+        marker = EventMarker(
+            e, kind, event_hash=str_to_str_or_none(vals[4]))
         return marker
+
 
 class PhaseMarker(Marker):
     '''
-    A PhaseMarker as a GUI-element represents the arrival of a seismological phase within snuffler. 
+    A PhaseMarker is a GUI-element representing a seismological phase arrival
 
-    :param nslc_ids:       list of (network, station, location, channel) tuples (may contain wildcards)
-    :param tmin:           start time 
-    :param tmax:           end time
-    :param kind:           (optional) integer to distinguish groups of markers (color-coded)
-    :param event:          a :py:class:`pyrocko.model.Event` object containing meta information 
-                           of a seismological event
-    :param event_hash:     (optional) hash code of event (see: :py:meth:`pyrocko.model.Event.get_hash`)
-    :param event_time:     (optional) time of the associated event
-    :param phasename:      (optional) name of the phase associated with the marker
-    :param polarity:       (optional) polarity of arriving phase
-    :param automatic:      (optional) 
+    :param nslc_ids: list of (network, station, location, channel) tuples (may
+        contain wildcards)
+    :param tmin: start time
+    :param tmax: end time
+    :param kind: (optional) integer to distinguish groups of markers
+        (color-coded)
+    :param event: a :py:class:`pyrocko.model.Event` object containing meta
+        information of a seismological event
+    :param event_hash: (optional) hash code of event (see:
+        :py:meth:`pyrocko.model.Event.get_hash`)
+    :param event_time: (optional) time of the associated event
+    :param phasename: (optional) name of the phase associated with the marker
+    :param polarity: (optional) polarity of arriving phase
+    :param automatic: (optional)
     :param incident_angle: (optional) incident angle of phase
-    :param takeoff_angle:  (optional) take off angle of phase                   
+    :param takeoff_angle: (optional) take off angle of phase
     '''
-    def __init__(self, nslc_ids, tmin, tmax, kind=0, event=None, event_hash=None,
-                 event_time=None, phasename=None, polarity=None,
-                 automatic=None, incidence_angle=None, takeoff_angle=None):
+    def __init__(
+            self, nslc_ids, tmin, tmax,
+            kind=0,
+            event=None,
+            event_hash=None,
+            event_time=None,
+            phasename=None,
+            polarity=None,
+            automatic=None,
+            incidence_angle=None,
+            takeoff_angle=None):
 
         Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
@@ -998,9 +1132,15 @@ class PhaseMarker(Marker):
         self._incidence_angle = incidence_angle
         self._takeoff_angle = takeoff_angle
 
-    def draw_trace(self, viewer, p, trace, time_projection, track_projection, gain):
-        Marker.draw_trace(self, viewer, p, trace, time_projection, track_projection, gain, outline_label=(self._event is not None and self._event == viewer.get_active_event()))
-         
+    def draw_trace(self, viewer, p, tr, time_projection, track_projection,
+                   gain):
+
+        Marker.draw_trace(
+            self, viewer, p, tr, time_projection, track_projection, gain,
+            outline_label=(
+                self._event is not None and
+                self._event == viewer.get_active_event()))
+
     def get_label(self):
         t = []
         if self._phasename is not None:
@@ -1060,28 +1200,31 @@ class PhaseMarker(Marker):
         for k in 'incidence_angle takeoff_angle polarity'.split():
             v = getattr(self, '_' + k)
             if v is not None:
-                toks.append('%s = %s' % (k,v))
+                toks.append('%s = %s' % (k, v))
 
         return ', '.join(toks)
 
-
     def get_attributes(self, fdigits=3):
-        attributes = [ 'phase:' ]
+        attributes = ['phase:']
         attributes.extend(Marker.get_attributes(self, fdigits=fdigits))
         h = None
         et = None, None
         if self._event:
-            st = lambda t: pyrocko.util.time_to_str(t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
+            def st(t):
+                return util.time_to_str(
+                    t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
+
             h = self._event.get_hash()
             et = st(self._event.time).split()
 
-        attributes.extend([h, et[0], et[1], self._phasename, self._polarity, self._automatic])
+        attributes.extend([
+            h, et[0], et[1], self._phasename, self._polarity, self._automatic])
         return attributes
 
     def get_attribute_widths(self, fdigits=3):
-        ws = [ 6 ]
-        ws.extend( Marker.get_attribute_widths(self, fdigits=fdigits) )
-        ws.extend([ 14, 12, 12, 8, 4, 5 ])
+        ws = [6]
+        ws.extend(Marker.get_attribute_widths(self, fdigits=fdigits))
+        ws.extend([14, 12, 12, 8, 4, 5])
         return ws
 
     @staticmethod
@@ -1090,24 +1233,25 @@ class PhaseMarker(Marker):
             nbasicvals = 7
         else:
             nbasicvals = 4
-        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(vals[1:1+nbasicvals])
-       
+        nslc_ids, tmin, tmax, kind = Marker.parse_attributes(
+            vals[1:1+nbasicvals])
+
         i = 8
         if len(vals) == 14:
             i = 11
-       
-        event_hash = str_to_str_or_none( vals[i-3] )
-        event_sdate = str_to_str_or_none( vals[i-2] )
-        event_stime = str_to_str_or_none( vals[i-1] )
-        
+
+        event_hash = str_to_str_or_none(vals[i-3])
+        event_sdate = str_to_str_or_none(vals[i-2])
+        event_stime = str_to_str_or_none(vals[i-1])
+
         if event_sdate is not None and event_stime is not None:
-            event_time = pyrocko.util.str_to_time(event_sdate + ' ' + event_stime)
+            event_time = util.str_to_time(event_sdate + ' ' + event_stime)
         else:
             event_time = None
 
-        phasename, polarity = [ str_to_str_or_none( x ) for x in vals[i:i+2] ]
-        automatic = str_to_bool( vals[i+2] )
-        marker = PhaseMarker(nslc_ids, tmin, tmax, kind, event=None, 
+        phasename, polarity = [str_to_str_or_none(x) for x in vals[i:i+2]]
+        automatic = str_to_bool(vals[i+2])
+        marker = PhaseMarker(nslc_ids, tmin, tmax, kind, event=None,
                              event_hash=event_hash, event_time=event_time,
                              phasename=phasename, polarity=polarity,
                              automatic=automatic)
@@ -1116,7 +1260,7 @@ class PhaseMarker(Marker):
 
 def load_markers(filename):
     '''
-    Load markers from file. 
+    Load markers from file.
 
     :param filename:  filename as string
     :returns: list of :py:class:`Marker` Objects
@@ -1140,34 +1284,36 @@ def save_markers(markers, filename, fdigits=3):
 def tohex(c):
     return '%02x%02x%02x' % c
 
+
 def to01(c):
     return c[0]/255., c[1]/255., c[2]/255.
 
+
 def beautify_axes(axes):
-    axes.set_color_cycle(map(to01, pyrocko.plot.graph_colors))
+    axes.set_color_cycle(map(to01, plot.graph_colors))
 
     xa = axes.get_xaxis()
     ya = axes.get_yaxis()
     for attr in ('labelpad', 'LABELPAD'):
-        if hasattr(xa,attr):
+        if hasattr(xa, attr):
             setattr(xa, attr, xa.get_label().get_fontsize())
             setattr(ya, attr, ya.get_label().get_fontsize())
             break
 
 
-class FigureFrame(QFrame):
+class FigureFrame(qg.QFrame):
 
     def __init__(self, parent=None):
-        QFrame.__init__(self, parent)
-        
-        bgrgb = self.palette().color(QPalette.Window).getRgb()[:3]
-        fgcolor = pyrocko.plot.tango_colors['aluminium5'] 
+        qg.QFrame.__init__(self, parent)
+
+        # bgrgb = self.palette().color(qg.QPalette.Window).getRgb()[:3]
+        fgcolor = plot.tango_colors['aluminium5']
         dpi = 0.5*(self.logicalDpiX() + self.logicalDpiY())
-    
-        font = QFont()
+
+        font = qg.QFont()
         font.setBold(True)
         fontsize = font.pointSize()
-        
+
         import matplotlib
         matplotlib.rcdefaults()
         matplotlib.rc('xtick', direction='out', labelsize=fontsize)
@@ -1176,19 +1322,28 @@ class FigureFrame(QFrame):
         matplotlib.rc('xtick.minor', size=4)
         matplotlib.rc('ytick.major', size=8)
         matplotlib.rc('ytick.minor', size=4)
-        #matplotlib.rc('figure', facecolor=tohex(bgrgb), edgecolor=tohex(fgcolor))
+        # matplotlib.rc(
+        #     'figure', facecolor=tohex(bgrgb), edgecolor=tohex(fgcolor))
         matplotlib.rc('figure', facecolor='white', edgecolor=tohex(fgcolor))
-        matplotlib.rc('font', family='sans-serif', weight='bold', size=fontsize, **{ 'sans-serif': [font.family()] })
+        matplotlib.rc(
+            'font', family='sans-serif', weight='bold', size=fontsize,
+            **{'sans-serif': [font.family()]})
         matplotlib.rc('text', color=tohex(fgcolor))
         matplotlib.rc('xtick', color=tohex(fgcolor))
         matplotlib.rc('ytick', color=tohex(fgcolor))
         matplotlib.rc('figure.subplot', bottom=0.15)
 
         matplotlib.rc('axes', linewidth=0.5, unicode_minus=False)
-        matplotlib.rc('axes', facecolor='white', edgecolor=tohex(fgcolor), labelcolor=tohex(fgcolor))
+        matplotlib.rc(
+            'axes',
+            facecolor='white',
+            edgecolor=tohex(fgcolor),
+            labelcolor=tohex(fgcolor))
 
         try:
-            matplotlib.rc('axes', color_cycle=[ to01(x) for x in pyrocko.plot.graph_colors ])
+            matplotlib.rc('axes', color_cycle=[
+                to01(x) for x in plot.graph_colors])
+
         except KeyError:
             pass
 
@@ -1203,15 +1358,18 @@ class FigureFrame(QFrame):
             pass
 
         from matplotlib.figure import Figure
-	try:
-             from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+        try:
+            from matplotlib.backends.backend_qt4agg import \
+                NavigationToolbar2QTAgg as NavigationToolbar
         except:
-             from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+            from matplotlib.backends.backend_qt4agg import \
+                NavigationToolbar2QT as NavigationToolbar
 
-        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        from matplotlib.backends.backend_qt4agg \
+            import FigureCanvasQTAgg as FigureCanvas
 
-        layout = QGridLayout()
-        layout.setContentsMargins(0,0,0,0)
+        layout = qg.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
         self.setLayout(layout)
@@ -1239,21 +1397,17 @@ class FigureFrame(QFrame):
         self.closed = True
 
 
-class WebKitFrame(QFrame):
+class WebKitFrame(qg.QFrame):
 
     def __init__(self, url=None, parent=None):
         from PyQt4.QtWebKit import QWebView
 
-        QFrame.__init__(self, parent)
-        layout = QGridLayout()
-        layout.setContentsMargins(0,0,0,0)
+        qg.QFrame.__init__(self, parent)
+        layout = qg.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.setLayout(layout)
         self.web_widget = QWebView()
-        layout.addWidget(self.web_widget, 0,0)
+        layout.addWidget(self.web_widget, 0, 0)
         if url:
-            self.web_widget.load(QUrl(url))
-
-del bin
-del hex
-del oct
+            self.web_widget.load(qc.QUrl(url))
