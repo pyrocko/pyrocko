@@ -642,6 +642,41 @@ class Response(Object):
 
         return trace.MultiplyResponse(responses)
 
+    @classmethod
+    def from_pyrocko_pz_response(cls, presponse, input_unit, output_unit, 
+                                 normalization_frequency=1.0):
+
+        norm_factor = 1.0/float(abs(
+            presponse.evaluate(num.array([normalization_frequency]))[0]
+            /presponse.constant))
+
+        pzs = PolesZeros(
+            pz_transfer_function_type='LAPLACE (RADIANS/SECOND)',
+            normalization_factor=norm_factor,
+            normalization_frequency=Frequency(normalization_frequency),
+            zero_list=[PoleZero(real=FloatNoUnit(z.real),
+                                   imaginary=FloatNoUnit(z.imag))
+                       for z in presponse.zeros],
+            pole_list=[PoleZero(real=FloatNoUnit(z.real),
+                                   imaginary=FloatNoUnit(z.imag))
+                       for z in presponse.poles])
+
+        pzs.validate()
+
+        stage = ResponseStage(
+            number=1,
+            poles_zeros_list=[pzs],
+            stage_gain=Gain(presponse.constant/norm_factor))
+
+        resp = Response(
+            instrument_sensitivity=Sensitivity(
+                value=stage.stage_gain.value,
+                input_units=Units(input_unit),
+                output_units=Units(output_unit)),
+
+            stage_list=[stage])
+
+        return resp
 
 class BaseNode(Object):
     '''A base node type for derivation from: Network, Station and
