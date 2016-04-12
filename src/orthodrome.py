@@ -149,7 +149,7 @@ def azidist_to_latlon_rad( lat0, lon0, azimuth_rad, distance_rad):
     alphasign = num.where(gamma < 0, -1., 1.)
     gamma = num.abs(gamma)
     
-    c = num.arccos( clip(num.cos(a)*math.cos(b)+num.sin(a)*math.sin(b)*num.cos(gamma),-1.,1.) )
+    c = num.arccos( clip(num.cos(a)*num.cos(b)+num.sin(a)*num.sin(b)*num.cos(gamma),-1.,1.) )
     alpha = num.arcsin( clip(num.sin(a)*num.sin(gamma)/num.sin(c),-1.,1.) )
     
     alpha = num.where(num.cos(a)-num.cos(b)*num.cos(c) < 0, 
