@@ -1548,13 +1548,36 @@ def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
 
     return r,t
 
+def rotate_to_lqt(traces, backazimuth, incidence, in_channels,
+                  out_channels=('L', 'Q', 'T')):
+    '''Rotate traces from ZNE to LQT system.
+
+    :param traces: list of traces in arbitrary order
+    :param backazimuth: backazimuth in degrees clockwise from north
+    :param incidence: incidence angle in degrees from vertical
+    :param in_channels: input channel names
+    :param out_channels: output channel names (default: ('L', 'Q', 'T'))
+    :returns: list of transformed traces
+    '''
+    i = incidence/180.*num.pi
+    b = backazimuth/180.*num.pi
+
+    ci = num.cos(i)
+    cb = num.cos(b)
+    si = num.sin(i)
+    sb = num.sin(b)
+
+    rotmat = num.array(
+        [[ci, -cb*si, -sb*si], [si, cb*ci, sb*ci], [0., sb, -cb]])
+    return project(traces, rotmat, in_channels, out_channels)
+
 def _decompose(a):
     '''Decompose matrix into independent submatrices.'''
     
     def depends(iout,a):
         row = a[iout,:]
         return set(num.arange(row.size).compress(row != 0.0))
-    
+
     def provides(iin,a):
         col = a[:,iin]
         return set(num.arange(col.size).compress(col != 0.0))
