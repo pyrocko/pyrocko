@@ -422,6 +422,14 @@ def mk_decitab(nmax=100):
 def zfmt(n):
     return '%%0%ii' % (int(math.log10(n - 1 )) + 1)
     
+def julian_day_of_year(timestamp):
+    '''Get the day number after the 1st of January of year in *timestamp*.
+
+    :returns: day number as int
+    '''
+
+    return time.gmtime(int(timestamp)).tm_yday
+
 def day_start(timestamp):
     '''Get beginning of day for any point in time.
     

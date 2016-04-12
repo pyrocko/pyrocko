@@ -1242,7 +1242,8 @@ class Trace(object):
             .replace('%l', '%(location)s')\
             .replace('%c', '%(channel)s')\
             .replace('%b', '%(tmin)s')\
-            .replace('%e', '%(tmax)s')
+            .replace('%e', '%(tmax)s')\
+            .replace('%j', '%(julianday)s')
 
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
         params['tmin'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S')
@@ -1251,6 +1252,7 @@ class Trace(object):
         params['tmax_ms'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S.3FRAC')
         params['tmin_us'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S.6FRAC')
         params['tmax_us'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S.6FRAC')
+        params['julianday'] = util.julian_day_of_year(self.tmin)
         params.update(additional)
         return template % params
 

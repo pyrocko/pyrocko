@@ -235,7 +235,7 @@ iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         self.delta = fixdoublefloat(self.delta)
         
         if byte_sex == 'try':
-            logger.info('This seems to be a %s endian SAC file: %s' % (sex, filename))
+            logger.debug('This seems to be a %s endian SAC file: %s' % (sex, filename))
                 
         # possibly get data
         if load_data:
