@@ -2,7 +2,7 @@ import unittest
 from pyrocko import geonames, util
 
 
-class TestGeonames(unittest.TestCase):
+class GeonamesTestCase(unittest.TestCase):
 
     def test_geonames(self):
 
