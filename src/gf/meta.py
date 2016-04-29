@@ -1192,6 +1192,7 @@ class Config(Object):
         self._index_function = None
         self._indices_function = None
         self._vicinity_function = None
+        self.validate(regularize=True, depth=1)
         self._do_auto_updates = True
         self.update()
 
@@ -1287,9 +1288,13 @@ Index variables are (source_depth, distance, component).'''
         return self.receiver_depth
 
     def _update(self):
-        self.mins = num.array([self.source_depth_min, self.distance_min])
-        self.maxs = num.array([self.source_depth_max, self.distance_max])
-        self.deltas = num.array([self.source_depth_delta, self.distance_delta])
+        self.mins = num.array(
+            [self.source_depth_min, self.distance_min], dtype=num.float)
+        self.maxs = num.array(
+            [self.source_depth_max, self.distance_max], dtype=num.float)
+        self.deltas = num.array(
+            [self.source_depth_delta, self.distance_delta],
+            dtype=num.float)
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
                             vicinity_eps).astype(num.int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
@@ -1449,17 +1454,20 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
         self.mins = num.array([
             self.receiver_depth_min,
             self.source_depth_min,
-            self.distance_min])
+            self.distance_min],
+            dtype=num.float)
 
         self.maxs = num.array([
             self.receiver_depth_max,
             self.source_depth_max,
-            self.distance_max])
+            self.distance_max],
+            dtype=num.float)
 
         self.deltas = num.array([
             self.receiver_depth_delta,
             self.source_depth_delta,
-            self.distance_delta])
+            self.distance_delta],
+            dtype=num.float)
 
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
                             vicinity_eps).astype(num.int) + 1
@@ -1666,17 +1674,20 @@ class ConfigTypeC(Config):
         self.mins = num.array([
             self.source_depth_min,
             self.source_east_shift_min,
-            self.source_north_shift_min])
+            self.source_north_shift_min],
+            dtype=num.float)
 
         self.maxs = num.array([
             self.source_depth_max,
             self.source_east_shift_max,
-            self.source_north_shift_max])
+            self.source_north_shift_max],
+            dtype=num.float)
 
         self.deltas = num.array([
             self.source_depth_delta,
             self.source_east_shift_delta,
-            self.source_north_shift_delta])
+            self.source_north_shift_delta],
+            dtype=num.float)
 
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
                             vicinity_eps).astype(num.int) + 1
