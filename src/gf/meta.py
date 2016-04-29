@@ -286,15 +286,19 @@ class TPDef(Object):
 
 
 class OutOfBounds(Exception):
-    def __init__(self, values=None):
+    def __init__(self, values=None, reason=None):
         Exception.__init__(self)
         self.values = values
+        self.reason = reason
         self.context = None
 
     def __str__(self):
         scontext = ''
         if self.context:
             scontext = '\n%s' % str(self.context)
+
+        if self.reason:
+            scontext += '\n%s' % self.reason
 
         if self.values:
             return 'out of bounds: (%s)%s' % (
@@ -1134,6 +1138,7 @@ class ComponentSchemes(StringChoice):
         'elastic5',   # sf
         'elastic13',  # ff + sf
         'elastic15',  # nf + ff + sf
+        'elastic18',  # 3d
         'poroelastic10')
 
 
@@ -1703,6 +1708,8 @@ class ConfigTypeC(Config):
             (num.arange(self.ncomponents),)
         self.nreceiver_depths, self.nsource_depths, self.ndistances = self.ns
 
+        self._distances_cache = {}
+
     def _make_index_functions(self):
 
         amin, bmin, cmin = self.mins
@@ -1725,6 +1732,7 @@ class ConfigTypeC(Config):
             ia = num.round((a - amin) / da).astype(int)
             ib = num.round((b - bmin) / db).astype(int)
             ic = num.round((c - cmin) / dc).astype(int)
+
             try:
                 return num.ravel_multi_index((ir, ia, ib, ic, ig),
                                              (nr, na, nb, nc, ng))
@@ -1829,7 +1837,23 @@ class ConfigTypeC(Config):
         self._vicinities_function = vicinities_function
 
     def lookup_ireceiver(self, receiver):
-        pass
+        k = (receiver.lat, receiver.lon,
+             receiver.north_shift, receiver.east_shift)
+        dh = min(self.source_north_shift_delta, self.source_east_shift_delta)
+        dv = self.source_depth_delta
+
+        for irec, rec in enumerate(self.receivers):
+            if (k, irec) not in self._distances_cache:
+                self._distances_cache[k, irec] = math.sqrt(
+                    (receiver.distance_to(rec)/dh)**2 +
+                    ((rec.depth - receiver.depth)/dv)**2)
+
+            if self._distances_cache[k, irec] < 0.1:
+                return irec
+
+        raise OutOfBounds(
+            reason='No GFs available for receiver at (%g, %g).' %
+            receiver.effective_latlon)
 
     def make_indexing_args(self, source, receiver, icomponents):
         nc = icomponents.size
@@ -1837,12 +1861,12 @@ class ConfigTypeC(Config):
         dists = source.distances_to(self.source_origin)
         azis, _ = source.azibazis_to(self.source_origin)
 
-        source_north_shifts = - num.cos(azis) * dists
-        source_east_shifts = - num.sin(azis) * dists
+        source_north_shifts = - num.cos(d2r*azis) * dists
+        source_east_shifts = - num.sin(d2r*azis) * dists
         source_depths = source.depths - self.source_origin.depth
 
         n = dists.size
-        ireceivers = num.empty(nc)
+        ireceivers = num.empty(nc, dtype=num.int)
         ireceivers.fill(self.lookup_ireceiver(receiver))
 
         return (ireceivers,
@@ -1855,8 +1879,8 @@ class ConfigTypeC(Config):
         dist = source.distance_to(self.source_origin)
         azi, _ = source.azibazi_to(self.source_origin)
 
-        source_north_shift = - num.cos(azi) * dist
-        source_east_shift = - num.sin(azi) * dist
+        source_north_shift = - num.cos(d2r*azi) * dist
+        source_east_shift = - num.sin(d2r*azi) * dist
         source_depth = source.depth - self.source_origin.depth
 
         return (self.lookup_ireceiver(receiver),
