@@ -166,6 +166,8 @@ class Geofon(EarthquakeCatalog):
         logger.debug('In Geofon._parse_events_page(...)')
         page = re.sub('&nbsp([^;])', '&nbsp;\\1', page)  # fix broken &nbsp; tags
         page = re.sub('border=0', 'border="0"', page)
+        page = re.sub(r'</html>.*', '</html>', page, flags=re.DOTALL)
+
         doc = self.parse_xml(page)
         
         events = []
@@ -252,7 +254,7 @@ class Geofon(EarthquakeCatalog):
         
         # fix broken tag
         page = re.sub('align=center', 'align="center"', page)
-
+        page = re.sub(r'</html>.*', '</html>', page, flags=re.DOTALL)
 
         doc = self.parse_xml(page)
 
