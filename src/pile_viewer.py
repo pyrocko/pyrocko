@@ -896,6 +896,7 @@ def MakePileViewerMainClass(base):
             
             self.timer_draw = Timer()
             self.timer_cutout = Timer()
+            self.time_spent_painting = 0.0
             
             self.interactive_range_change_time = 0.0
             self.interactive_range_change_delay_time = 10.0
@@ -1214,7 +1215,7 @@ def MakePileViewerMainClass(base):
                 abort |= self.window().is_closing()
 
                 tnow = time.time()
-                if t[0]+1. < tnow:
+                if t[0] + 1. + self.time_spent_painting * 10. < tnow:
                     self.update()
                     t[0] = tnow
 
@@ -2160,6 +2161,7 @@ def MakePileViewerMainClass(base):
             
             logger.debug('Time spent drawing: %.3f %.3f %.3f %.3f %.3f' % (self.timer_draw - self.timer_cutout))
             logger.debug('Time spent processing: %.3f %.3f %.3f %.3f %.3f' % self.timer_cutout.get())
+            self.time_spent_painting = self.timer_draw.get()[-1]
             
         def determine_box_styles(self):
             
