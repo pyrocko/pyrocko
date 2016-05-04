@@ -5,7 +5,7 @@ import fnmatch
 import numpy as num
 from pyrocko.guts import Object, SObject, String, StringChoice, \
     StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError, \
-    Timestamp
+    Timestamp, Tuple
 from pyrocko.guts import dump, load  # noqa
 
 from pyrocko.guts_array import literal, Array
@@ -450,7 +450,10 @@ class Location(Object):
 
 
 class Receiver(Location):
-    pass
+    codes = Tuple.T(
+        3, String.T(),
+        optional=True,
+        help='network, station, and location codes')
 
 
 def g(x, d):
