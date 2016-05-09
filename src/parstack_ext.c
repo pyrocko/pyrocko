@@ -110,6 +110,7 @@ int parstack(
         double *result,
         int nparallel) {
 
+	(void) nparallel;
     int imin, istart, ishift;
     size_t iarray, nsamp, i;
     double weight;
