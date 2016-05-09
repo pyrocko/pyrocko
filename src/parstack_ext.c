@@ -57,7 +57,6 @@ double dmax(double a, double b) {
 #define SUCCESS 0
 #define NODATA 1
 #define INVALID 2
-#define OMPERROR 3
 
 int parstack_config(
         size_t narrays,
@@ -111,9 +110,6 @@ int parstack(
         double *result,
         int nparallel) {
 
-	#if noomp
-	    return OMPERROR;
-	#endif
     int imin, istart, ishift;
     size_t iarray, nsamp, i;
     double weight;
@@ -127,7 +123,7 @@ int parstack(
 
     if (nshifts > INT_MAX) {
         return INVALID;
-    } 
+    }
 
     imin = offsetout;
     nsamp = lengthout;
@@ -135,10 +131,14 @@ int parstack(
     chunk = CHUNKSIZE;
 
     if (method == 0) {
+	#if !noomp
         #pragma omp parallel private(ishift, iarray, i, istart, weight) num_threads(nparallel)
+	#endif
         {
 
+	#if !noomp
         #pragma omp for schedule(dynamic,chunk) nowait
+	#endif
         for (ishift=0; ishift<(int)nshifts; ishift++) {
             for (iarray=0; iarray<narrays; iarray++) {
                 istart = offsets[iarray] + shifts[ishift*narrays + iarray];
@@ -152,10 +152,14 @@ int parstack(
 
     } else if (method == 1) {
 
+	#if !noomp
         #pragma omp parallel private(ishift, iarray, i, istart, weight, temp, m)
+	#endif
         {
         temp = (double*)calloc(nsamp, sizeof(double));
+	#if !noomp
         #pragma omp for schedule(dynamic,chunk) nowait
+	#endif
         for (ishift=0; ishift<(int)nshifts; ishift++) {
             for (i=0; i<nsamp; i++) {
                 temp[i] = 0.0;
