@@ -15,6 +15,7 @@ from pyrocko.guts_array import Array
 from pyrocko import moment_tensor as mt
 from pyrocko import trace, model
 from pyrocko.gf import meta, store, ws
+from pyrocko.gf.meta import OutOfBounds
 from pyrocko.orthodrome import ne_to_latlon
 import pyrocko.config
 
@@ -1666,7 +1667,8 @@ class Response(Object):
         traces = []
         for trs in self.traces_list:
             for tr in trs:
-                traces.append(tr.pyrocko_trace())
+                if tr:
+                    traces.append(tr.pyrocko_trace())
 
         return traces
 
@@ -2033,15 +2035,31 @@ class LocalEngine(Engine):
                 rule = self.channel_rule(sources[0], target)
                 components.update(rule.required_components(target))
 
-            base_seismogram = self.base_seismogram(
-                sources[0],
-                targets[0],
-                components)
+            try:
+                base_seismogram = self.base_seismogram(
+                    sources[0],
+                    targets[0],
+                    components)
+            except meta.OutOfBounds as e:
+                if kwargs.get('skip_out_of_bounds', False):
+                    logger.warning(e)
+                    continue
+                else:
+                    raise e
 
             for source in sources:
                 for target in targets:
-                    tr = self._post_process(base_seismogram, source, target)
-                    traces[source_index[source]][target_index[target]] = tr
+                    try:
+                        tr = self._post_process(base_seismogram, source, target)
+                        traces[source_index[source]][target_index[target]] = tr
+                    except:
+                        traces[source_index[source]][target_index[target]] = None
+                        if kwargs.get('skip_out_of_bounds', False):
+                            logger.warning(e)
+                            continue
+                        else:
+                            raise e
+
 
         if status_callback:
             status_callback(n, n)
