@@ -231,6 +231,7 @@ class custom_build_ext(build_ext):
     def run(self):
         make_prerequisites()
         build_ext.run(self)
+
 class custom_build_app(build_ext):
     def run(self):
         self.make_app()
@@ -279,6 +280,30 @@ class custom_build_app(build_ext):
 
         want_delete_dir = glob.glob("dist/Snuffler.app/Contents/Resources/lib/python2.7/matplotlib/test*")
         map(shutil.rmtree, want_delete_dir)
+
+
+def xcode_version_str():
+    from subprocess import Popen, PIPE
+    return Popen(['xcodebuild', '-version'], stdout=PIPE, shell=False)\
+        .communicate()[0].split()[1]
+
+def support_omp():
+    import platform
+    from distutils.version import StrictVersion
+    if platform.mac_ver() == ('', ('', '', ''), ''):
+        return True
+    else:
+        v = StrictVersion(xcode_version_str())
+        return v<StrictVersion('4.2.0')
+
+
+
+if support_omp():
+    extension_args_parstack = ['-fopenmp', '-O3', '-Wextra']
+    extension_libs_parstack = ['gomp']
+else:
+    extension_args_parstack = ['-Dnoomp', '-O3', '-Wextra']
+    extension_libs_parstack = []
 
 setup(
     cmdclass={
@@ -350,8 +375,8 @@ setup(
         Extension(
             'parstack_ext',
             include_dirs=[numpy.get_include()],
-            libraries=['gomp'],
-            extra_compile_args=['-fopenmp', '-O3', '-Wextra'],
+            libraries=extension_libs_parstack,
+            extra_compile_args=extension_args_parstack,
             sources=[pjoin('src', 'parstack_ext.c')],
         )
     ],
