@@ -6,7 +6,9 @@
 #include "numpy/arrayobject.h"
 
 #include <stdlib.h>
-#include <omp.h>
+#if !noomp
+# include <omp.h>
+#endif
 #include <stdio.h>
 
 #define CHUNKSIZE 10
@@ -55,6 +57,7 @@ double dmax(double a, double b) {
 #define SUCCESS 0
 #define NODATA 1
 #define INVALID 2
+#define OMPERROR 3
 
 int parstack_config(
         size_t narrays,
@@ -108,7 +111,9 @@ int parstack(
         double *result,
         int nparallel) {
 
-
+	#if noomp
+	    return OMPERROR;
+	#endif
     int imin, istart, ishift;
     size_t iarray, nsamp, i;
     double weight;
