@@ -376,7 +376,6 @@ setup(
             'parstack_ext',
             include_dirs=[numpy.get_include()],
             libraries=extension_libs_parstack,
-            #libraries=['gomp'],
             extra_compile_args=extension_args_parstack,
             sources=[pjoin('src', 'parstack_ext.c')],
         )
