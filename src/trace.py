@@ -1130,7 +1130,13 @@ class Trace(object):
         adata, aproc = a.run_chain(tmin, tmax, deltat, setup, nocache)
         bdata, bproc = b.run_chain(tmin, tmax, deltat, setup, nocache)
 
-        m, n = Lx_norm(bdata, adata, norm=setup.norm)
+        if setup.domain != 'cc_max_norm':
+            m, n = Lx_norm(bdata, adata, norm=setup.norm)
+        else:
+            ctr = correlate(aproc, bproc, mode='full', normalization='normal')
+            ccmax = ctr.max()[1]
+            m = 0.5 - 0.5 * ccmax
+            n = 0.5
 
         if debug:
             return m, n, aproc, bproc
@@ -2674,7 +2680,8 @@ class DomainChoice(StringChoice):
         'time_domain',
         'frequency_domain',
         'envelope',
-        'absolute']
+        'absolute',
+        'cc_max_norm']
 
 
 class MisfitSetup(Object):
@@ -2684,7 +2691,7 @@ class MisfitSetup(Object):
     :param norm: L-norm classifier
     :param taper: Object of :py:class:`Taper`
     :param filter: Object of :py:class:`FrequencyResponse`
-    :param domain: ['time_domain', 'frequency_domain', 'envelope', 'absolute']
+    :param domain: ['time_domain', 'frequency_domain', 'envelope', 'absolute', 'cc_max_norm']
 
     Can be dumped to a yaml file.
     '''
