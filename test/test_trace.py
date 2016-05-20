@@ -586,6 +586,22 @@ class TraceTestCase(unittest.TestCase):
         tr2.ydata += tr1.ydata.mean()
         assert numeq(tr1.ydata, tr2.ydata, 0.01)
 
+    def test_muliply_taper(self):
+
+        taper = trace.CosTaper(0., 1., 2., 3.)
+        taper2 = trace.MultiplyTaper([taper, taper])
+
+        y = num.ones(31)
+        taper(y, 0., 0.1)
+        taper(y, 0., 0.1)
+
+        z = num.ones(31)
+        taper2(z, 0., 0.1)
+
+        assert numeq(y, z, 1e-6)
+        assert taper.time_span() == taper2.time_span()
+
+
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')
     unittest.main()

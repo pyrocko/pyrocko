@@ -1944,6 +1944,10 @@ class CosTaper(Taper):
     def span(self, y, x0, dx):
         return span_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
 
+    def time_span(self):
+        return self.a, self.d
+
+
 class CosFader(Taper):
     ''' Cosine Fader.
 
@@ -1979,6 +1983,55 @@ class CosFader(Taper):
 
     def span(self, y, x0, dx):
         return 0, y.size
+
+    def time_span(self):
+        raise None, None
+
+
+def none_min(l):
+    if None in l:
+        return None
+    else:
+        return min(x for x in l if x is not None)
+
+
+def none_max(l):
+    if None in l:
+        return None
+    else:
+        return max(x for x in l if x is not None)
+
+
+class MultiplyTaper(Taper):
+    '''Multiplication of several tapers.'''
+
+    tapers = List.T(Taper.T())
+
+    def __init__(self, tapers=None):
+        if tapers is None:
+            tapers = []
+
+        Taper.__init__(self, tapers=tapers)
+
+    def __call__(self, y, x0, dx):
+        for taper in self.tapers:
+            taper(y, x0, dx)
+
+    def span(self, y, x0, dx):
+        spans = []
+        for taper in self.tapers:
+            spans.append(taper.span(y, x0, dx))
+
+        mins, maxs = zip(*spans)
+        return min(mins), max(maxs)
+
+    def time_span(self):
+        spans = []
+        for taper in self.tapers:
+            spans.append(taper.time_span())
+
+        mins, maxs = zip(*spans)
+        return none_min(mins), none_max(maxs)
 
 
 class GaussTaper(Taper):
