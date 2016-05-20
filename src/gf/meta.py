@@ -10,6 +10,7 @@ from pyrocko.guts import dump, load  # noqa
 
 from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit, moment_tensor
+from pyrocko.config import config
 
 guts_prefix = 'pf'
 
@@ -17,6 +18,14 @@ d2r = math.pi / 180.
 r2d = 1.0 / d2r
 km = 1000.
 vicinity_eps = 1e-5
+
+
+def latlondepth_to_carthesian(lat, lon, depth):
+    radius = config().earthradius - depth
+    x = radius * math.cos(d2r*lat) * math.cos(d2r*lon)
+    y = radius * math.cos(d2r*lat) * math.sin(d2r*lon)
+    z = radius * math.sin(d2r*lat)
+    return x, y, z
 
 
 class Earthmodel1D(Object):
@@ -363,7 +372,7 @@ class Location(Object):
             if self.north_shift == 0.0 and self.east_shift == 0.0:
                 self._latlon = self.lat, self.lon
             else:
-                self._latlon = map(float, orthodrome.ne_to_latlon(
+                self._latlon = tuple(float(x) for x in orthodrome.ne_to_latlon(
                     self.lat, self.lon, self.north_shift, self.east_shift))
 
         return self._latlon
@@ -393,7 +402,7 @@ class Location(Object):
 
     def distance_to(self, other):
         '''
-        Compute distance [m] to other location object.
+        Compute surface distance [m] to other location object.
         '''
 
         if self.same_origin(other):
@@ -412,6 +421,29 @@ class Location(Object):
 
             return float(orthodrome.distance_accurate50m_numpy(
                 slat, slon, rlat, rlon)[0])
+
+    def distance_3d_to(self, other):
+        '''
+        Compute 3D distance [m] to other location object.
+        '''
+        if self.same_origin(other):
+            if isinstance(other, Location):
+                return math.sqrt((self.north_shift - other.north_shift)**2 +
+                                 (self.east_shift - other.east_shift)**2 +
+                                 (self.depth - other.depth)**2)
+            else:
+                return 0.0
+        else:
+            slat, slon = self.effective_latlon
+            try:
+                rlat, rlon = other.effective_latlon
+            except AttributeError:
+                rlat, rlon = other.lat, other.lon
+
+            sx, sy, sz = latlondepth_to_carthesian(slat, slon, self.depth)
+            rx, ry, rz = latlondepth_to_carthesian(rlat, rlon, other.depth)
+
+            return math.sqrt((sx-rx)**2 + (sy-ry)**2 + (sz-rz)**2)
 
     def azibazi_to(self, other):
         '''
