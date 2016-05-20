@@ -2463,7 +2463,7 @@ class LocalEngine(Engine):
 
         factor = source.get_factor() * target.get_factor()
         if factor != 1.0:
-            data *= factor
+            data = data * factor
 
         itmin = base_seismogram.values()[0].itmin
 
@@ -2472,12 +2472,17 @@ class LocalEngine(Engine):
         times, amplitudes = stf.discretize_t(
             deltat, source.get_timeshift())
 
-        data = num.convolve(amplitudes, data)
+        # repeat end point to prevent boundary effects
+        padded_data = num.empty(data.size + amplitudes.size, dtype=num.float)
+        padded_data[:data.size] = data
+        padded_data[data.size:] = data[-1]
+        data = num.convolve(amplitudes, padded_data)
+
         tmin = itmin * deltat + times[0]
 
         tr = SeismosizerTrace(
             codes=target.codes,
-            data=data,
+            data=data[:-amplitudes.size],
             deltat=deltat,
             tmin=tmin)
 
