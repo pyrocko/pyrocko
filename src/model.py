@@ -427,9 +427,15 @@ class Station(Object):
     def copy(self):
         return copy.deepcopy(self)
 
-    def set_event_relative_data( self, event ):
-        self.dist_m = orthodrome.distance_accurate50m( event, self )
-        self.dist_deg = self.dist_m / orthodrome.earthradius_equator *orthodrome.r2d
+    def set_event_relative_data(self, event, distance_3d=False):
+        surface_dist = orthodrome.distance_accurate50m( event, self )
+        if distance_3d:
+            dd = event.depth - self.depth
+            self.dist_m = math.sqrt(dd**2 + surface_dist**2)
+        else:
+            self.dist_m = surface_dist
+
+        self.dist_deg = surface_dist / orthodrome.earthradius_equator * orthodrome.r2d
         self.azimuth = orthodrome.azimuth(event, self)
         self.backazimuth = orthodrome.azimuth(self, event)
        

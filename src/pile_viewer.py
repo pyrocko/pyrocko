@@ -697,11 +697,17 @@ def MakePileViewerMainClass(base):
                     lambda tr: self.station_attrib(tr, lambda sta: (deg_float_or_none(sta.backazimuth),), lambda tr: (None,) )),
             ]
             self.menuitems_ssorting = add_radiobuttongroup(self.menu, menudef, self, self.s_sortingmode_change)
-            
+
             self._ssort = lambda tr: ()
-            
+
+            self.menuitem_distances_3d = QAction('3D distances', self.menu)
+            self.menuitem_distances_3d.setCheckable(True)
+            self.menuitem_distances_3d.setChecked(False)
+            self.connect(self.menuitem_distances_3d, SIGNAL("toggled(bool)"), self.distances_3d_changed)
+            self.menu.addAction(self.menuitem_distances_3d)
+
             self.menu.addSeparator()
-            
+
             menudef = [
                 ('Subsort by Network, Station, Location, Channel', 
                     ( lambda tr: self.ssort(tr) + tr.nslc_id,     # gathering
@@ -1079,8 +1085,13 @@ def MakePileViewerMainClass(base):
         
         def set_origin(self, location):
             for station in self.stations.values():
-                station.set_event_relative_data(location)
+                station.set_event_relative_data(
+                    location, distance_3d=self.menuitem_distances_3d.isChecked())
+
             self.sortingmode_change()
+    
+        def distances_3d_changed(self, ignore):
+            self.set_event_marker_as_origin(ignore)
         
         def toggletest(self, checked):
             if checked:
