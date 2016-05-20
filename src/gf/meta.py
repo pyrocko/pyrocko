@@ -487,6 +487,19 @@ class Receiver(Location):
         optional=True,
         help='network, station, and location codes')
 
+    def pyrocko_station(self):
+        from pyrocko import model
+
+        lat, lon = self.effective_latlon
+
+        return model.Station(
+            network=self.codes[0],
+            station=self.codes[1],
+            location=self.codes[2],
+            lat=lat,
+            lon=lon,
+            depth=self.depth)
+
 
 def g(x, d):
     if x is None:
