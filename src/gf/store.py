@@ -1293,8 +1293,8 @@ class Store(BaseStore):
         * ``'vred'``, ``'tmin_vred'``: slope [m/s] and offset [s] of reduction
           velocity [m/s] appropriate to catch begin timing over all GF points
         * ``'tlenmax_vred'``: maximum time length needed to cover all end
-          timings, when using linear slope given with (`vred`, `tmin_vred`) as
-          start
+          timings, when using linear slope given with `vred` and `tmin_vred`
+          as start
         '''
 
         data = []
@@ -1305,6 +1305,8 @@ class Store(BaseStore):
             data.append((x, tmin, tmax))
 
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
+
+        tlens = tmaxs - tmins
 
         i = num.nanargmin(tmins)
         if not num.isfinite(i):
@@ -1340,6 +1342,7 @@ class Store(BaseStore):
         return dict(
             tmin=tminmin,
             tmax=num.nanmax(tmaxs),
+            tlenmax=num.nanmax(tlens),
             tmin_vred=tmin_vred,
             tlenmax_vred=tlenmax_vred,
             vred=vred)

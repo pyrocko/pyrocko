@@ -127,8 +127,6 @@ class QSeisSConfig(Object):
 
     qseiss_version = String.T(default='2014')
 
-    time_region = Tuple.T(2, Timing.T(), default=default_time_region)
-
     calc_slowness_window = Int.T(default=1)
     slowness_window = Tuple.T(4, optional=True)
     wavenumber_sampling = Float.T(default=2.5)
@@ -150,10 +148,9 @@ class QSeisSConfig(Object):
 
 class QSeisSConfigFull(QSeisSConfig):
 
-    time_reduction = Float.T(default=0.0)
     time_window = Float.T(default=900.0)
 
-    source = QSeis2dSource(depth=default_source_depth)
+    source_depth = Float.T(default=10.0)
 
     receiver_basement_depth = Float.T(default=35.0)  # [km]
     receiver_min_distance = Float.T(default=1000.0)  # [km]
@@ -169,7 +166,7 @@ class QSeisSConfigFull(QSeisSConfig):
     @staticmethod
     def example_S():
         conf = QSeisSConfigFull()
-        conf.source = QSeis2dSource(depth=15.)
+        conf.source_depth = 15.
         conf.receiver_basement_depth = 35.
         conf.receiver_max_distance = 2000.
         conf.earthmodel_1d = cake.load_model().extract(depth_max='cmb')
@@ -183,7 +180,7 @@ class QSeisSConfigFull(QSeisSConfig):
 
         assert self.earthmodel_1d is not None
         assert self.slowness_window is not None or self.calc_slowness_window,\
-                "'slowness window' undefined and 'calc_slowness_window'=0"
+            "'slowness window' undefined and 'calc_slowness_window'=0"
 
         d = self.__dict__.copy()
 
@@ -192,11 +189,11 @@ class QSeisSConfigFull(QSeisSConfig):
         d['model_lines'] = model_str
 
         d['str_source_depth'] = '%4f' % self.source.depth
-        d['str_fk_filename'] = "'%s_%.3fkm.fk'" % (self.fk_basefilename,
-                                                 self.source.depth)
-        d['str_info_filename'] = "'%s_%s_%.3fkm.txt'" % (self.fk_basefilename,
-                                                    self.info_basefilename,
-                                                    self.source.depth)
+        d['str_fk_filename'] = "'%s_%.3fkm.fk'" % (
+            self.fk_basefilename, self.source.depth)
+
+        d['str_info_filename'] = "'%s_%s_%.3fkm.txt'" % (
+            self.fk_basefilename, self.info_basefilename, self.source.depth)
 
         if not self.slowness_window:
             d['str_slowness_window'] = str_float_vals(default_slowness_window)
@@ -342,17 +339,7 @@ class QSeisRReceiver(Object):
 
 class QSeisRConfig(Object):
 
-    qseisr_version = String.T('2014')
-    source = QSeis2dSource(depth=default_source_depth)  # [lat, lon(deg)]
-
-    receiver = QSeisRReceiver()  # [lat, lon(deg)]
-
     qseisr_version = String.T(default='2014')
-    time_region = Tuple.T(2, Timing.T(), default=default_time_region)
-
-    cut = Tuple.T(2, Timing.T(), optional=True)
-    fade = Tuple.T(4, Timing.T(), optional=True)
-    relevel_with_fade_in = Bool.T(default=False)
 
     receiver_filter = QSeisRBandpassFilter.T(optional=True)
 
@@ -366,9 +353,14 @@ class QSeisRConfig(Object):
 
 class QSeisRConfigFull(QSeisRConfig):
 
+    source = QSeis2dSource(depth=default_source_depth)  # [lat, lon(deg)]
+    receiver = QSeisRReceiver()  # [lat, lon(deg)]
+
     source_mech = QSeisRSourceMech.T(
         optional=True,
         default=QSeisRSourceMechMT.D())
+
+    time_reduction = Float.T(default=0.0)
 
     qseiss_outdir = String.T(default=default_qseiss_outdir)
     fk_basefilename = String.T(default=default_fk_basefilename)
@@ -385,7 +377,7 @@ class QSeisRConfigFull(QSeisRConfig):
         conf.receiver_location = QSeisRReceiver(lat=13.4, lon=240.5, depth=0.0)
         conf.time_reduction = 10.0
         conf.earthmodel_receiver_1d = cake.load_model().extract(
-                                                            depth_max='moho')
+            depth_max='moho')
         return conf
 
     @property
@@ -405,7 +397,7 @@ class QSeisRConfigFull(QSeisRConfig):
 
         d = self.__dict__.copy()
 
-#        Actually not existing anymore in code 
+#        Actually not existing anymore in code
 #        d['sw_surface'] = 0  # 0-free-surface, 1-no fre surface
 
         d['str_source_location'] = self.source.string_for_config()
@@ -413,8 +405,9 @@ class QSeisRConfigFull(QSeisRConfig):
         d['str_receiver'] = self.receiver.string_for_config()
 
         qseiss_outdir = os.path.relpath(self.qseiss_outdir)
-        self.fk_filename = '%s_%.3fkm.fk' % (self.fk_basefilename,
-                                                 self.source.depth)
+        self.fk_filename = '%s_%.3fkm.fk' % (
+            self.fk_basefilename, self.source.depth)
+
         d['str_fk_filename'] = "'%s'" % pjoin(qseiss_outdir, self.fk_filename)
         d['str_output_filename'] = "'%s'" % self.output_filename
 
@@ -508,32 +501,21 @@ class QSeisRConfigFull(QSeisRConfig):
         return template % d
 
 
-class QSeis2dConfigFull(QSeisRConfigFull, QSeisSConfigFull):
+class QSeis2dConfig(Object):
     '''
-    Combined Config Object for QSeisS and QSeisR.
-    While creating the GF store and traces by using fomosto, some input
-    parameters from either QSeisS and QSeisR Configs are needed.
-    Therefore, the users is recommended to use the joint QSeis2dConfig,
-    which can be used by either runners QSeisS and QSeisR.
+    Combined config object for QSeisS and QSeisR.
+
+    This config object should contain all settings which cannot be derived from
+    the backend-independant Pyrocko GF Store config. Used 
     '''
+
+    qseis_s_config = QSeisSConfig.T(default=QSeisSConfig.D())
+    qseis_r_config = QSeisRConfig.T(default=QSeisRConfig.D())
+
+    time_region = Tuple.T(2, Timing.T(), default=default_time_region)
     cut = Tuple.T(2, Timing.T(), optional=True)
     fade = Tuple.T(4, Timing.T(), optional=True)
     relevel_with_fade_in = Bool.T(default=False)
-
-    @staticmethod
-    def example():
-        conf = QSeis2dConfigFull()
-        conf.source = QSeis2dSource(lat=-80.5, lon=90.1,
-                                    depth=default_source_depth)
-        conf.receiver = QSeisRReceiver(lat=13.4, lon=240.5, depth=0.0)
-        conf.time_reduction = 10.0
-        conf.earthmodel_receiver_1d = cake.load_model().extract(
-                                                            depth_max='moho')
-        conf.receiver_basement_depth = 35.
-        conf.receiver_max_distance = 2000.
-        conf.earthmodel_1d = cake.load_model().extract(depth_max='cmb')
-        conf.sw_flat_earth_transform = 1
-        return conf
 
 
 class QSeis2dError(gf.store.StoreError):
@@ -735,10 +717,11 @@ in the directory %s'''.lstrip() % (
 
         for itrace, comp in enumerate(self.config.components):
             # qseis2d gives velocity-integrate to displacement
-            displ = cumtrapz(data[:, itrace + 1], dx=deltat, initial=0.0)
-            tr = trace.Trace('', '0000', '', comp,
-                    tmin=tmin, deltat=deltat, ydata=displ,
-                    meta=dict(distance=rec.distance))
+            displ = cumtrapz(data[:, itrace + 1], dx=deltat)
+            tr = trace.Trace(
+                '', '0000', '', comp,
+                tmin=tmin, deltat=deltat, ydata=displ,
+                meta=dict(distance=rec.distance))
 
             traces.append(tr)
 
@@ -775,61 +758,67 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
         baseconf = self.store.get_extra('qseis2d')
 
-        conf = QSeis2dConfigFull(**baseconf.items())
-        conf.earthmodel_1d = self.store.config.earthmodel_1d
-        conf.earthmodel_receiver_1d = self.store.config.earthmodel_receiver_1d
+        conf_s = QSeisSConfigFull(**baseconf.qseis_s_config.items())
+        conf_r = QSeisRConfigFull(**baseconf.qseis_r_config.items())
+
+        conf_s.earthmodel_1d = self.store.config.earthmodel_1d
+        conf_r.earthmodel_receiver_1d = \
+            self.store.config.earthmodel_receiver_1d
 
         deltat = 1.0 / self.gf_config.sample_rate
 
         if 'time_window_min' not in shared:
             d = self.store.make_timing_params(
-                conf.time_region[0], conf.time_region[1])
+                baseconf.time_region[0], baseconf.time_region[1])
 
-            shared['time_window_min'] = d['tlenmax_vred']
-            shared['time_reduction'] = d['tmin_vred']
+            shared['time_window_min'] = d['tlenmax']
 
         time_window_min = shared['time_window_min']
 
-        conf.nsamples = nextpow2(int(round(time_window_min / deltat)) + 1)
-        conf.time_window = (conf.nsamples - 1) * deltat
-
-        conf.time_reduction = shared['time_reduction']
+        conf_s.nsamples = nextpow2(int(round(time_window_min / deltat)) + 1)
+        conf_s.time_window = (conf_s.nsamples - 1) * deltat
 
         if step == 0:
-            if conf.calc_slowness_window and 'slowness_window' not in shared:
-                phases = [self.store.config.tabulated_phases[i].phases \
-                    for i in range(len(self.store.config.tabulated_phases))]
+            if 'slowness_window' not in shared:
+                if conf_s.calc_slowness_window:
+                    phases = [
+                        self.store.config.tabulated_phases[i].phases
+                        for i in range(len(
+                            self.store.config.tabulated_phases))]
 
-                all_phases = []
-                _ = map(all_phases.extend, phases)
+                    all_phases = []
+                    map(all_phases.extend, phases)
 
-                mean_source_depth = num.mean(
-                                    (self.store.config.source_depth_min,
-                                     self.store.config.source_depth_max))
+                    mean_source_depth = num.mean((
+                        self.store.config.source_depth_min,
+                        self.store.config.source_depth_max))
 
-                arrivals = conf.earthmodel_1d.arrivals(
-                                phases=all_phases,
-                                distances=num.linspace(
-                                            conf.receiver_min_distance,
-                                            conf.receiver_max_distance,
-                                            100) * cake.m2d,
-                                zstart=mean_source_depth)
+                    arrivals = conf_s.earthmodel_1d.arrivals(
+                        phases=all_phases,
+                        distances=num.linspace(
+                            conf_s.receiver_min_distance,
+                            conf_s.receiver_max_distance,
+                            100) * cake.m2d,
+                        zstart=mean_source_depth)
 
-                ps = num.array([arrivals[i].p for i in range(len(arrivals))])
-                slownesses = ps / (cake.r2d * cake.d2m / km)
+                    ps = num.array(
+                        [arrivals[i].p for i in range(len(arrivals))])
 
-                shared['slowness_window'] = (0.,
-                                             0.,
-                                             1.1 * float(slownesses.max()),
-                                             1.3 * float(slownesses.max()))
+                    slownesses = ps / (cake.r2d * cake.d2m / km)
 
-            elif not conf.calc_slowness_window and \
-                    'slowness_window' not in shared:
-                shared['slowness_window'] = conf.slowness_window
+                    shared['slowness_window'] = (0.,
+                                                 0.,
+                                                 1.1 * float(slownesses.max()),
+                                                 1.3 * float(slownesses.max()))
 
-            conf.slowness_window = shared['slowness_window']
+                else:
+                    shared['slowness_window'] = conf_s.slowness_window
 
-        self.qseis2d_config = conf
+            conf_s.slowness_window = shared['slowness_window']
+
+        self.qseis_s_config = conf_s
+        self.qseis_r_config = conf_r
+        self.qseis_baseconf = baseconf
 
         self.tmp_qseisR = tmp
         if self.tmp_qseisR is not None:
@@ -846,35 +835,37 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                 self.get_block_extents(iblock)
 
         source_depth = float(sz / km)
-        conf = copy.deepcopy(self.qseis2d_config)
+        conf_s = copy.deepcopy(self.qseis_s_config)
+        conf_r = copy.deepcopy(self.qseis_r_config)
 
-        fk_filename = '%s_%.3fkm.fk' % (conf.fk_basefilename, source_depth)
+        fk_filename = '%s_%.3fkm.fk' % (conf_s.fk_basefilename, source_depth)
 
-        gf_path = pjoin(conf.qseiss_outdir, fk_filename)
+        gf_path = pjoin(conf_s.qseiss_outdir, fk_filename)
 
         if self.step == 0 and os.path.isfile(gf_path):
-            logger.info('Skipping step %i / %i, block %i / %i' \
+            logger.info('Skipping step %i / %i, block %i / %i'
                         '(GF already exists)' %
                         (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
             return
 
-        logger.info('Starting step %i / %i, block %i / %i' %
-                (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
+        logger.info(
+            'Starting step %i / %i, block %i / %i' %
+            (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         dx = self.gf_config.distance_delta
-        conf.wavelet_duration = 0.001 * self.gf_config.sample_rate
+        conf_r.wavelet_duration = 0.001 * self.gf_config.sample_rate
 
         if self.step == 0:
-            conf.source = QSeis2dSource(depth=source_depth)
-            runner = QSeisSRunner(outdir=conf.qseiss_outdir)
-            runner.run(conf)
+            conf_s.source_depth = source_depth
+            runner = QSeisSRunner(outdir=conf_s.qseiss_outdir)
+            runner.run(conf_s)
 
         else:
-            conf.receiver = QSeisRReceiver(lat=90 - firstx * cake.m2d,
+            conf_r.receiver = QSeisRReceiver(lat=90 - firstx * cake.m2d,
                                            lon=180.,
                                            tstart=0.0,
                                            distance=firstx)
-            conf.source = QSeis2dSource(lat=90 - 0.001 * dx * cake.m2d,
+            conf_r.source = QSeis2dSource(lat=90 - 0.001 * dx * cake.m2d,
                                         lon=0.0,
                                         depth=source_depth)
 
@@ -895,14 +886,14 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                 if mt:
                     m = mt.m()
                     f = float
-                    conf.source_mech = QSeisRSourceMechMT(
+                    conf_r.source_mech = QSeisRSourceMechMT(
                         mnn=f(m[0, 0]), mee=f(m[1, 1]), mdd=f(m[2, 2]),
                         mne=f(m[0, 1]), mnd=f(m[0, 2]), med=f(m[1, 2]))
                 else:
-                    conf.source_mech = None
+                    conf_r.source_mech = None
 
-                if conf.source_mech is not None:
-                    runner.run(conf)
+                if conf_r.source_mech is not None:
+                    runner.run(conf_r)
 
                 rawtraces = runner.get_traces()
 
@@ -930,9 +921,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                         else:
                             args = (rz, sz, x, ig)
 
-                        if conf.cut:
-                            tmin = self.store.t(conf.cut[0], args[:-1])
-                            tmax = self.store.t(conf.cut[1], args[:-1])
+                        if self.baseconf.cut:
+                            tmin = self.store.t(self.baseconf.cut[0], args[:-1])
+                            tmax = self.store.t(self.baseconf.cut[1], args[:-1])
                             if None in (tmin, tmax):
                                 continue
 
@@ -941,9 +932,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                         tmin = tr.tmin
                         tmax = tr.tmax
 
-                        if conf.fade:
+                        if self.baseconf.fade:
                             ta, tb, tc, td = [
-                                self.store.t(v, args[:-1]) for v in conf.fade]
+                                self.store.t(v, args[:-1]) for v in self.baseconf.fade]
 
                             if None in (ta, tb, tc, td):
                                 continue
@@ -974,10 +965,10 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                                 yout = 0.0
 
                             y2 = anti_fin * yin + \
-                                 fin * fout * y + \
-                                 anti_fout * yout
+                                fin * fout * y + \
+                                anti_fout * yout
 
-                            if conf.relevel_with_fade_in:
+                            if self.baseconf.relevel_with_fade_in:
                                 y2 -= yin
 
                             tr.set_ydata(y2)
@@ -1001,8 +992,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                 if interrupted:
                     raise KeyboardInterrupt()
 
-            logger.info('Done with step %i / %i, block %i / %i' %
-                    (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
+            logger.info(
+                'Done with step %i / %i, block %i / %i' %
+                (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
 
 def init(store_dir, variant):
@@ -1014,7 +1006,8 @@ def init(store_dir, variant):
 
     modelling_code_id = 'qseis2d.%s' % variant
 
-    qseis2d = QSeis2dConfigFull(qseiss_version=variant, qseisr_version=variant)
+    qseis2d = QSeis2dConfig()
+
     qseis2d.time_region = (
         gf.meta.Timing('begin-50'),
         gf.meta.Timing('end+100'))
