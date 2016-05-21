@@ -1612,6 +1612,8 @@ class Store(BaseStore):
 
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
 
+        tlens = tmaxs - tmins
+
         i = num.nanargmin(tmins)
         if not num.isfinite(i):
             raise MakeTimingParamsFailed('determination of time window failed')
@@ -1646,6 +1648,7 @@ class Store(BaseStore):
         return dict(
             tmin=tminmin,
             tmax=num.nanmax(tmaxs),
+            tlenmax=num.nanmax(tlens),
             tmin_vred=tmin_vred,
             tlenmax_vred=tlenmax_vred,
             vred=vred)

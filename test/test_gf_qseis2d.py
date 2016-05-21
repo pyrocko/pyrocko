@@ -7,7 +7,7 @@ import numpy as num
 
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
-import qseis2d
+from pyrocko.fomosto import qseis2d
 
 logger = logging.getLogger('test_gf_qseis2d')
 
