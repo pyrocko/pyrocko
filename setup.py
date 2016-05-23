@@ -377,8 +377,12 @@ setup(
             include_dirs=[numpy.get_include()],
             libraries=extension_libs_parstack,
             extra_compile_args=extension_args_parstack,
-            sources=[pjoin('src', 'parstack_ext.c')],
-        )
+            sources=[pjoin('src', 'parstack_ext.c')]),
+
+        Extension(
+            'ahfullgreen_ext',
+            include_dirs=[numpy.get_include()],
+            sources=[pjoin('src', 'ahfullgreen_ext.c')]),
     ],
 
     scripts=[
