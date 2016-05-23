@@ -8,7 +8,7 @@ import signal
 
 from tempfile import mkdtemp
 from subprocess import Popen, PIPE
-from os.path import join as pjoin
+import os.path as op
 from scipy.integrate import cumtrapz
 
 from pyrocko.guts import Float, Int, Tuple, List, Bool, Object, String
@@ -37,7 +37,7 @@ qseis2d_components = {
 }
 
 # defaults
-default_qseiss_outdir = 'QSeisS_GF'
+default_gf_directory = 'qsei2d_green'
 default_fk_basefilename = 'green'
 default_source_depth = 10.0
 default_time_region = (Timing('-10'), Timing('+890'))
@@ -157,9 +157,8 @@ class QSeisSConfigFull(QSeisSConfig):
     receiver_max_distance = Float.T(default=10000.0)  # [km]
     nsamples = Int.T(default=256)
 
-    qseiss_outdir = String.T(default=default_qseiss_outdir)
-    info_basefilename = String.T(default='info')
-    fk_basefilename = String.T(default=default_fk_basefilename)
+    info_path = String.T(default='green.info')
+    fk_path = String.T(default='green.fk')
 
     earthmodel_1d = gf.meta.Earthmodel1D.T(optional=True)
 
@@ -188,13 +187,6 @@ class QSeisSConfigFull(QSeisSConfig):
         d['n_model_lines'] = nlines
         d['model_lines'] = model_str
 
-        d['str_source_depth'] = '%4f' % self.source.depth
-        d['str_fk_filename'] = "'%s_%.3fkm.fk'" % (
-            self.fk_basefilename, self.source.depth)
-
-        d['str_info_filename'] = "'%s_%s_%.3fkm.txt'" % (
-            self.fk_basefilename, self.info_basefilename, self.source.depth)
-
         if not self.slowness_window:
             d['str_slowness_window'] = str_float_vals(default_slowness_window)
         else:
@@ -218,7 +210,7 @@ class QSeisSConfigFull(QSeisSConfig):
 #	============
 # 1. source depth [km]
 #------------------------------------------------------------------------------
- %(str_source_depth)s                   |dble;
+ %(source_depth)e                   |dble;
 #------------------------------------------------------------------------------
 #
 #	RECEIVER-SITE PARAMETERS
@@ -226,15 +218,15 @@ class QSeisSConfigFull(QSeisSConfig):
 # 1. receiver-site basement depth [km]
 # 2. max. epicental distance [km]
 #------------------------------------------------------------------------------
- %(receiver_basement_depth)4f              |dble;
- %(receiver_max_distance)4f                |dble;
+ %(receiver_basement_depth)e              |dble;
+ %(receiver_max_distance)e                |dble;
 #------------------------------------------------------------------------------
 #	TIME SAMPLING PARAMETERS
 #	========================
 # 1. length of time window [sec]
 # 2. number of time samples (<= 2*nfmax in qsglobal.h)
 #------------------------------------------------------------------------------
- %(time_window)6f      |dble: t_window;
+ %(time_window)e      |dble: t_window;
  %(nsamples)i         |int: no_t_samples;
 #------------------------------------------------------------------------------
 #	SLOWNESS WINDOW PARAMETERS
@@ -250,7 +242,7 @@ class QSeisSConfigFull(QSeisSConfig):
 #------------------------------------------------------------------------------
  %(str_slowness_window)s             |dble: slw(1-4);
  %(wavenumber_sampling)e             |dble: sample_rate;
- %(aliasing_suppression_factor)f     |dble: supp_factor;
+ %(aliasing_suppression_factor)e     |dble: supp_factor;
 #------------------------------------------------------------------------------
 #	OPTIONS FOR PARTIAL SOLUTIONS
 #	=============================
@@ -281,8 +273,8 @@ class QSeisSConfigFull(QSeisSConfig):
 # 2. file name of Green's functions (binary files including explosion, strike
 #    -slip, dip-slip and clvd sources)
 #------------------------------------------------------------------------------
- %(str_info_filename)s
- %(str_fk_filename)s
+ '%(info_path)s'
+ '%(fk_path)s'
 #------------------------------------------------------------------------------
 #	GLOBAL MODEL PARAMETERS
 #	=======================
@@ -362,8 +354,8 @@ class QSeisRConfigFull(QSeisRConfig):
 
     time_reduction = Float.T(default=0.0)
 
-    qseiss_outdir = String.T(default=default_qseiss_outdir)
-    fk_basefilename = String.T(default=default_fk_basefilename)
+    info_path = String.T(default='green.info')
+    fk_path = String.T(default='green.fk')
 
     output_format = Int.T(default=1)  # 1/2 components in [Z, R, T]/[E, N, U]
     output_filename = String.T(default='seis.dat')
@@ -385,14 +377,13 @@ class QSeisRConfigFull(QSeisRConfig):
         return qseis2d_components[self.output_format]
 
     def get_output_filename(self, rundir):
-        return pjoin(rundir, self.output_filename)
+        return op.join(rundir, self.output_filename)
 
     def string_for_config_R(self):
 
         def aggregate(l):
             return len(l), '\n'.join([''] + [x.string_for_config() for x in l])
 
-        assert self.fk_basefilename is not None
         assert self.earthmodel_receiver_1d is not None
 
         d = self.__dict__.copy()
@@ -404,11 +395,6 @@ class QSeisRConfigFull(QSeisRConfig):
 
         d['str_receiver'] = self.receiver.string_for_config()
 
-        qseiss_outdir = os.path.relpath(self.qseiss_outdir)
-        self.fk_filename = '%s_%.3fkm.fk' % (
-            self.fk_basefilename, self.source.depth)
-
-        d['str_fk_filename'] = "'%s'" % pjoin(qseiss_outdir, self.fk_filename)
         d['str_output_filename'] = "'%s'" % self.output_filename
 
         model_str, nlines = cake_model_to_config(self.earthmodel_receiver_1d)
@@ -465,7 +451,7 @@ class QSeisRConfigFull(QSeisRConfig):
 #------------------------------------------------------------------------------
  %(str_source_location)s                        |dble(2);
  %(str_source)s                                |dble(6);
- %(str_fk_filename)s                                |char;
+ '%(fk_path)s'                                |char;
  %(wavelet_duration)e %(wavelet_type)i %(str_w_samples)s  |dble, int, dbls;
 #------------------------------------------------------------------------------
 #	RECEIVER PARAMETERS
@@ -517,6 +503,8 @@ class QSeis2dConfig(Object):
     fade = Tuple.T(4, Timing.T(), optional=True)
     relevel_with_fade_in = Bool.T(default=False)
 
+    gf_directory = String.T('qseis2d_green')
+
 
 class QSeis2dError(gf.store.StoreError):
     pass
@@ -531,15 +519,15 @@ class QSeisSRunner:
     '''
     Takes QSeis2dConfigFull or QSeisSConfigFull objects, runs the program.
     '''
-    def __init__(self, outdir):
-        util.ensuredir(outdir)
-        self.outdir = outdir
+    def __init__(self, tmp, keep_tmp=False):
+        self.tempdir = mkdtemp(prefix='qseisRrun-', dir=tmp)
+        self.keep_tmp = keep_tmp
         self.config = None
 
     def run(self, config):
         self.config = config
 
-        input_fn = pjoin(self.outdir, 'input')
+        input_fn = op.join(self.tempdir, 'input')
 
         f = open(input_fn, 'w')
         input_str = config.string_for_config_S()
@@ -552,8 +540,7 @@ class QSeisSRunner:
         program = program_bins['qseis2d.qseisS%s' % config.qseiss_version]
 
         old_wd = os.getcwd()
-
-        os.chdir(self.outdir)
+        os.chdir(self.tempdir)
 
         interrupted = []
 
@@ -607,12 +594,21 @@ class QSeisSRunner:
 qseisS has been invoked as "%s"
 in the directory %s'''.lstrip() % (
                 input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.outdir))
+                self.tempdir))
 
         self.qseiss_output = output_str
         self.qseiss_error = error_str
 
         os.chdir(old_wd)
+
+    def __del__(self):
+        if self.tempdir:
+            if not self.keep_tmp:
+                shutil.rmtree(self.tempdir)
+                self.tempdir = None
+            else:
+                logger.warn(
+                    'not removing temporary directory: %s' % self.tempdir)
 
 
 class QSeisRRunner:
@@ -627,16 +623,14 @@ class QSeisRRunner:
 
     def run(self, config):
         self.config = config
-        self.config.qseiss_outdir = os.path.abspath(self.config.qseiss_outdir)
 
-        old_wd = os.getcwd()
-
-        os.chdir(self.tempdir)
-
-        input_fn = pjoin(self.tempdir, 'input')
+        input_fn = op.join(self.tempdir, 'input')
 
         f = open(input_fn, 'w')
         input_str = config.string_for_config_R()
+
+        old_wd = os.getcwd()
+        os.chdir(self.tempdir)
 
         logger.debug('===== begin qseisR input =====\n'
                      '%s===== end qseisR input =====' % input_str)
@@ -744,26 +738,37 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
         self.store = gf.store.Store(store_dir, 'w')
 
+        storeconf = self.store.config
+
         if step == 0:
-            block_size = (1, 1, self.store.config.ndistances)
+            block_size = (1, 1, storeconf.ndistances)
         else:
             if block_size is None:
                 block_size = (1, 1, 1)  # QSeisR does only allow one receiver
 
-        if len(self.store.config.ns) == 2:
+        if len(storeconf.ns) == 2:
             block_size = block_size[1:]
 
         gf.builder.Builder.__init__(
-            self, self.store.config, step, block_size=block_size)
+            self, storeconf, step, block_size=block_size)
 
         baseconf = self.store.get_extra('qseis2d')
 
         conf_s = QSeisSConfigFull(**baseconf.qseis_s_config.items())
         conf_r = QSeisRConfigFull(**baseconf.qseis_r_config.items())
 
-        conf_s.earthmodel_1d = self.store.config.earthmodel_1d
-        conf_r.earthmodel_receiver_1d = \
-            self.store.config.earthmodel_receiver_1d
+        conf_s.earthmodel_1d = storeconf.earthmodel_1d
+        if storeconf.earthmodel_receiver_1d is not None:
+            conf_r.earthmodel_receiver_1d = \
+                storeconf.earthmodel_receiver_1d
+
+        else:
+            conf_r.earthmodel_receiver_1d = \
+                storeconf.earthmodel_1d.extract(
+                    depth_max='moho')
+                    #depth_max=conf_s.receiver_basement_depth*km)
+
+            print conf_r
 
         deltat = 1.0 / self.gf_config.sample_rate
 
@@ -782,16 +787,16 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             if 'slowness_window' not in shared:
                 if conf_s.calc_slowness_window:
                     phases = [
-                        self.store.config.tabulated_phases[i].phases
+                        storeconf.tabulated_phases[i].phases
                         for i in range(len(
-                            self.store.config.tabulated_phases))]
+                            storeconf.tabulated_phases))]
 
                     all_phases = []
                     map(all_phases.extend, phases)
 
                     mean_source_depth = num.mean((
-                        self.store.config.source_depth_min,
-                        self.store.config.source_depth_max))
+                        storeconf.source_depth_min,
+                        storeconf.source_depth_max))
 
                     arrivals = conf_s.earthmodel_1d.arrivals(
                         phases=all_phases,
@@ -820,9 +825,11 @@ class QSeis2dGFBuilder(gf.builder.Builder):
         self.qseis_r_config = conf_r
         self.qseis_baseconf = baseconf
 
-        self.tmp_qseisR = tmp
-        if self.tmp_qseisR is not None:
-            util.ensuredir(self.tmp_qseisR)
+        self.tmp = tmp
+        if self.tmp is not None:
+            util.ensuredir(self.tmp)
+
+        util.ensuredir(baseconf.gf_directory)
 
     def work_block(self, iblock):
         if len(self.store.config.ns) == 2:
@@ -838,11 +845,18 @@ class QSeis2dGFBuilder(gf.builder.Builder):
         conf_s = copy.deepcopy(self.qseis_s_config)
         conf_r = copy.deepcopy(self.qseis_r_config)
 
-        fk_filename = '%s_%.3fkm.fk' % (conf_s.fk_basefilename, source_depth)
+        gf_directory = op.abspath(self.qseis_baseconf.gf_directory)
 
-        gf_path = pjoin(conf_s.qseiss_outdir, fk_filename)
+        fk_path = op.join(gf_directory, 'green_%.3fkm.fk' % source_depth)
+        info_path = op.join(gf_directory, 'green_%.3fkm.info' % source_depth)
 
-        if self.step == 0 and os.path.isfile(gf_path):
+        conf_s.fk_path = fk_path
+        conf_s.info_path = info_path
+
+        conf_r.fk_path = fk_path
+        conf_r.info_path = info_path
+
+        if self.step == 0 and os.path.isfile(fk_path):
             logger.info('Skipping step %i / %i, block %i / %i'
                         '(GF already exists)' %
                         (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
@@ -857,7 +871,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
         if self.step == 0:
             conf_s.source_depth = source_depth
-            runner = QSeisSRunner(outdir=conf_s.qseiss_outdir)
+            runner = QSeisSRunner(tmp=self.tmp)
             runner.run(conf_s)
 
         else:
@@ -869,7 +883,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                                         lon=0.0,
                                         depth=source_depth)
 
-            runner = QSeisRRunner(tmp=self.tmp_qseisR)
+            runner = QSeisRRunner(tmp=self.tmp)
 
             mmt1 = (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
                     {'r': (0, 1), 't': (3, 1), 'z': (5, 1)})
@@ -921,9 +935,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                         else:
                             args = (rz, sz, x, ig)
 
-                        if self.baseconf.cut:
-                            tmin = self.store.t(self.baseconf.cut[0], args[:-1])
-                            tmax = self.store.t(self.baseconf.cut[1], args[:-1])
+                        if self.qseis_baseconf.cut:
+                            tmin = self.store.t(self.qseis_baseconf.cut[0], args[:-1])
+                            tmax = self.store.t(self.qseis_baseconf.cut[1], args[:-1])
                             if None in (tmin, tmax):
                                 continue
 
@@ -932,9 +946,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                         tmin = tr.tmin
                         tmax = tr.tmax
 
-                        if self.baseconf.fade:
+                        if self.qseis_baseconf.fade:
                             ta, tb, tc, td = [
-                                self.store.t(v, args[:-1]) for v in self.baseconf.fade]
+                                self.store.t(v, args[:-1]) for v in self.qseis_baseconf.fade]
 
                             if None in (ta, tb, tc, td):
                                 continue
@@ -968,7 +982,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                                 fin * fout * y + \
                                 anti_fout * yout
 
-                            if self.baseconf.relevel_with_fade_in:
+                            if self.qseis_baseconf.relevel_with_fade_in:
                                 y2 -= yin
 
                             tr.set_ydata(y2)
