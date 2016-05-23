@@ -3157,7 +3157,7 @@ class LayeredModel(object):
                 and 
                 (depth_max is None 
                     or self.zeq(depth_max, element.zbot) 
-                    or depth_max >= element.ztop)):
+                    or depth_max >= element.zbot)):
 
                 mod_extracted.append(element)
 
