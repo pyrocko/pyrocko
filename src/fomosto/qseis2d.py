@@ -84,7 +84,7 @@ class QSeis2dSource(Object):
     depth = Float.T(default=default_source_depth)
 
     def string_for_config(self):
-        return '%(lat)f %(lon)15f ' % self.__dict__
+        return '%(lat)e %(lon)15e ' % self.__dict__
 
 
 class QSeisRSourceMech(Object):
@@ -520,7 +520,7 @@ class QSeisSRunner:
     Takes QSeis2dConfigFull or QSeisSConfigFull objects, runs the program.
     '''
     def __init__(self, tmp, keep_tmp=False):
-        self.tempdir = mkdtemp(prefix='qseisRrun-', dir=tmp)
+        self.tempdir = mkdtemp(prefix='qseisSrun-', dir=tmp)
         self.keep_tmp = keep_tmp
         self.config = None
 
