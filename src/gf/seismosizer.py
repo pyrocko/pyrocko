@@ -2382,7 +2382,7 @@ class LocalEngine(Engine):
 
         If no *store_id* is provided the store
         associated with the *default_store_id* is returned.
-        Raises :py:exec`NoDefaultStoreSet` if *default_store_id* is undefined.
+        Raises :py:exc:`NoDefaultStoreSet` if *default_store_id* is undefined.
         '''
 
         if store_id is None:
