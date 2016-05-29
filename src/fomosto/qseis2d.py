@@ -483,6 +483,15 @@ class QSeisRConfigFull(QSeisRConfig):
 #------------------------------------------------------------------------------
 %(model_receiver_lines)s
 #-----------------------END OF INPUT PARAMETERS--------------------------------
+#
+#-Requirements to use QSEIS2d: ------------------------------------------------
+# (1) Teleseismic bady waves with penetration depth much larger than the
+#     receiver-site basement depth
+# (2) The last layer parameters of the receiver-site structure should be
+#     identical with that of the source-site model at the depth which is
+#     defined as the common basement depth
+# (3) The cutoff frequency should be high enough for separating different
+#     wave types.
 '''  # noqa
         return template % d
 
