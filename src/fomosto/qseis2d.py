@@ -785,7 +785,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             d = self.store.make_timing_params(
                 baseconf.time_region[0], baseconf.time_region[1])
 
-            shared['time_window_min'] = d['tlenmax']
+            shared['time_window_min'] = float(
+                    num.ceil( d['tlenmax'] / self.gf_config.sample_rate) * \
+                                             self.gf_config.sample_rate)
 
         time_window_min = shared['time_window_min']
 
