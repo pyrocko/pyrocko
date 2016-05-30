@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <complex.h>
 
 typedef npy_float64 float64_t;
 
@@ -62,7 +63,7 @@ int good_array(PyObject* o, int typenum, ssize_t size_want) {
     return 1;
 }
 
-static ahfullgreen_error_t numpy_or_none_to_c(
+static ahfullgreen_error_t numpy_or_none_to_c_double(
         PyObject* o, ssize_t size_want, double **arr, size_t *size) {
 
     if (o == Py_None) {
@@ -81,6 +82,25 @@ static ahfullgreen_error_t numpy_or_none_to_c(
     return SUCCESS;
 }
 
+static ahfullgreen_error_t numpy_or_none_to_c_complex(
+        PyObject* o, ssize_t size_want, double complex **arr, size_t *size) {
+
+    if (o == Py_None) {
+        if (size_want > 0) {
+            PyErr_SetString(Error, "array is of wrong size");
+            return BAD_ARRAY;
+        }
+        *arr = NULL;
+        *size = 0;
+    } else {
+        if (!good_array(o, NPY_COMPLEX128, -1)) return BAD_ARRAY;
+        *arr = PyArray_DATA((PyArrayObject*)o);
+        *size = PyArray_SIZE((PyArrayObject*)o);
+    }
+
+    return SUCCESS;
+}
+
 static ahfullgreen_error_t add_seismogram(
         double vp,
         double vs,
@@ -90,28 +110,29 @@ static ahfullgreen_error_t add_seismogram(
         double *x,
         double *f,
         double *m6,
-        int out_type,  // 0: time trace, 1: spectra
-        int out_quantity,  // 0: displacement, 1: velocity, 2: acceleration
+        int out_quantity,  // 1: velocity, 2: acceleration
         double out_delta,
         double out_offset,
         size_t out_size,
-        double *out_x,
-        double *out_y,
-        double *out_z
+        double complex *out_x,
+        double complex *out_y,
+        double complex *out_z
         ) {
 
     double r, r2, r4;
     double gamma[3];
-    double *out[3];
+    double complex *out[3];
+    double complex *b1, *b2, *b3;
 
     int p_map[6] = {0, 1, 2, 0, 0, 1};
     int q_map[6] = {0, 1, 2, 1, 2, 2};
     int pq_factor[6] = {1, 1, 1, 2, 2, 2};
 
-    int n, p, q;
-    int m;
+    int n, p, q, i, m;
 
     double a1, a2, a3, a4, a5, a6, a7, a8;
+
+    double complex iw, dfactor;
 
     r = sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
     if (r == 0.0) {
@@ -124,14 +145,37 @@ static ahfullgreen_error_t add_seismogram(
     out[1] = out_y;
     out[2] = out_z;
 
+    b1 = (double complex*)calloc(out_size, sizeof(double complex));
+    b2 = (double complex*)calloc(out_size, sizeof(double complex));
+    b3 = (double complex*)calloc(out_size, sizeof(double complex));
+
+    for (i=0; i<out_size; i++) {
+        iw = I * (out_offset + out_delta * i);
+        dfactor = 1.0;
+        if (out_quantity == 1) {
+            dfactor = iw;
+        } else if (out_quantity == 2) {
+            dfactor = iw * iw;
+        }
+        if (i != 0) {
+            b2[i] = dfactor * cexp(-iw * r/vp);
+            b3[i] = dfactor * cexp(-iw * r/vs);
+            b1[i] = dfactor * (r/vp + 1.0/iw) * b2[i]/iw - (r/vs + 1.0/iw) * b3[i]/iw;
+        } else {
+            b2[i] = 0.0;
+            b3[i] = 0.0;
+            b1[i] = 0.0;
+        }
+    }
+
     for (n=0; n<3; n++) {
         if (out[n] == NULL) continue;
 
         for (m=0; m<6; m++) {
             p = p_map[m];
             q = q_map[m];
-            r2 = r*r
-            r4 = r2*r2
+            r2 = r*r;
+            r4 = r2*r2;
 
             a1 = pq_factor[m] * (
                 15. * gamma[n] * gamma[p] * gamma[q] -
@@ -160,6 +204,11 @@ static ahfullgreen_error_t add_seismogram(
             a5 = - pq_factor[m] * (gamma[q] * (gamma[n] * gamma[p] - (n==p))) /
                 (4. * M_PI * density * vs*vs*vs * r);
 
+            for (i=0; i<out_size; i++) {
+                iw = I * (out_offset + out_delta * i);
+                out[n][i] += (a1*b1[i] + a2*b2[i] + a3*b3[i] +
+                            iw*a4*b2[i] + iw*a5*b3[i]) * m6[m];
+            }
         }
 
         for (p=0; p<3; p++) {
@@ -173,8 +222,15 @@ static ahfullgreen_error_t add_seismogram(
             a8 = - (gamma[n] * gamma[p] - (n==p)) /
                 (4. * M_PI * density * vs * vs * r);
 
+            for (i=0; i<out_size; i++) {
+                out[n][i] += (a6*b1[i] + a7*b2[i] + a8*b3[i]) * f[p];
+            }
         }
     }
+
+    free(b3);
+    free(b2);
+    free(b1);
 
     return SUCCESS;
 }
@@ -184,7 +240,6 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
     double *x;
     double *f;
     double *m6;
-    int out_type;  // 0: time trace, 1: spectra
     int out_quantity;  // 0: displacement, 1: velocity, 2: acceleration
     double out_delta;
     double out_offset;
@@ -199,30 +254,30 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
     PyObject *out_y_arr;
     PyObject *out_z_arr;
 
-    double *out_x;
-    double *out_y;
-    double *out_z;
+    double complex *out_x;
+    double complex *out_y;
+    double complex *out_z;
     ahfullgreen_error_t err;
     size_t dummy_size;
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "dddddOOOiiddOOO",
+    if (!PyArg_ParseTuple(args, "dddddOOOiddOOO",
             &vp, &vs, &density, &qp, &qs, &x_arr, &f_arr, &m6_arr,
-            &out_type, &out_quantity, &out_delta, &out_offset,
+            &out_quantity, &out_delta, &out_offset,
             &out_x_arr, &out_y_arr, &out_z_arr)) {
 
         PyErr_SetString(Error,
             "usage: add_seismogram(vp, vs, density, qp, qs, x, f, m6, "
-            "out_type, out_quantity, out_delta, out_offset, "
+            "out_quantity, out_delta, out_offset, "
             "out_x, out_y, out_z)");
 
         return NULL;
     }
 
-    if (SUCCESS != numpy_or_none_to_c(out_x_arr, -1, &out_x, &out_x_size)) return NULL;
-    if (SUCCESS != numpy_or_none_to_c(out_y_arr, -1, &out_y, &out_y_size)) return NULL;
-    if (SUCCESS != numpy_or_none_to_c(out_z_arr, -1, &out_z, &out_z_size)) return NULL;
+    if (SUCCESS != numpy_or_none_to_c_complex(out_x_arr, -1, &out_x, &out_x_size)) return NULL;
+    if (SUCCESS != numpy_or_none_to_c_complex(out_y_arr, -1, &out_y, &out_y_size)) return NULL;
+    if (SUCCESS != numpy_or_none_to_c_complex(out_z_arr, -1, &out_z, &out_z_size)) return NULL;
 
     out_size = max(max(out_x_size, out_y_size), out_z_size);
 
@@ -234,13 +289,13 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    if (SUCCESS != numpy_or_none_to_c(x_arr, 3, &x, &dummy_size)) return NULL;
-    if (SUCCESS != numpy_or_none_to_c(f_arr, 3, &f, &dummy_size)) return NULL;
-    if (SUCCESS != numpy_or_none_to_c(m6_arr, 6, &m6, &dummy_size)) return NULL;
+    if (SUCCESS != numpy_or_none_to_c_double(x_arr, 3, &x, &dummy_size)) return NULL;
+    if (SUCCESS != numpy_or_none_to_c_double(f_arr, 3, &f, &dummy_size)) return NULL;
+    if (SUCCESS != numpy_or_none_to_c_double(m6_arr, 6, &m6, &dummy_size)) return NULL;
 
     err = add_seismogram(
         vp, vs, density, qp, qs, x, f, m6,
-        out_type, out_quantity, out_delta, out_offset, out_size,
+        out_quantity, out_delta, out_offset, out_size,
         out_x, out_y, out_z);
 
     if (err != SUCCESS) {
