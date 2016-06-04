@@ -535,7 +535,7 @@ class Station(Object):
 
         out_groups = []
         for kind, components in cg.iteritems():
-            for sys in ('ENZ', '12Z'):
+            for sys in ('ENZ', '12Z', 'XYZ'):
                 if allin(sys, components):
                     out_groups.append( tuple([ kind+c for c in sys ]) )
 
