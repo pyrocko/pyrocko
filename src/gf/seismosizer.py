@@ -2435,6 +2435,14 @@ class LocalEngine(Engine):
         store_ = self.get_store(target.store_id)
         receiver = target.receiver(store_)
 
+        if target.tmin and target.tmax is not None:
+            n_f = store_.config.sample_rate
+            itmin = int(num.floor(target.tmin * n_f))
+            nsamples = int(num.ceil((target.tmax - target.tmin) * n_f))
+        else:
+            itmin = None
+            nsamples = None
+
         tcounters.append(xtime())
 
         base_source = self._cached_discretize_basesource(
@@ -2444,6 +2452,7 @@ class LocalEngine(Engine):
 
         base_seismogram = store_.seismogram(
             base_source, receiver, components,
+            itmin=itmin, nsamples=nsamples,
             interpolation=target.interpolation,
             optimization=target.optimization)
 
