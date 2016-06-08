@@ -1578,6 +1578,7 @@ class Store(BaseStore):
             ip.dump(fn)
 
     def seismogram(self, source, receiver, components, deltat=None,
+                   itmin=None, nsamples=None,
                    interpolation='nearest_neighbor', optimization='enable'):
 
         out = {}
@@ -1598,6 +1599,7 @@ class Store(BaseStore):
             if component in components:
                 gtr = self.sum(args, delays, weights,
                                decimate=decimate,
+                               itmin=itmin, nsamples=nsamples,
                                interpolation=interpolation,
                                optimization=optimization)
 
