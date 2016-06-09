@@ -2431,12 +2431,12 @@ def nextpow2(i):
     
 def snapper_w_offset(nmax, offset, delta, snapfun=math.ceil):
     def snap(x):
-        return max(0,min(snapfun((x-offset)/delta),nmax))
+        return max(0,min(int(snapfun((x-offset)/delta)),nmax))
     return snap
 
 def snapper(nmax, delta, snapfun=math.ceil):
     def snap(x):
-        return max(0,min(snapfun(x/delta),nmax))
+        return max(0,min(int(snapfun(x/delta)),nmax))
     return snap
 
 def apply_costaper(a, b, c, d, y, x0, dx):
