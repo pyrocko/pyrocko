@@ -1203,7 +1203,11 @@ class FigureFrame(QFrame):
             pass
 
         from matplotlib.figure import Figure
-        from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+	try:
+             from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
+        except:
+             from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+
         from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 
         layout = QGridLayout()
