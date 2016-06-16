@@ -1157,6 +1157,9 @@ class Pile(TracesGroup):
     def get_deltatmax(self):
         return self.deltatmax
 
+    def is_empty(self):
+        return self.tmin is None and self.tmax is None
+
     def __str__(self):
         if self.tmin is not None and self.tmax is not None:
             tmin = util.time_to_str(self.tmin)
