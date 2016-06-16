@@ -2096,9 +2096,9 @@ class Response(Object):
                 elif get == 'results':
                     yield source, target, result
 
-    def snuffle(self):
+    def snuffle(self, **kwargs):
         '''Open *snuffler* with requested traces.'''
-        trace.snuffle(self.pyrocko_traces())
+        trace.snuffle(self.pyrocko_traces(), **kwargs)
 
 
 class Engine(Object):
