@@ -65,11 +65,11 @@ def check_string_id(s):
 #
 # Time of first sample of the trace as a multiple of the sampling interval. All
 # GF samples must be evaluated at multiples of the sampling interval with
-# respect to a global reference time zero.
+# respect to a global reference time zero. Must be set also for zero traces.
 #
 # - nsamples
 #
-# Number of samples in the GF trace.
+# Number of samples in the GF trace. Should be set to zero for zero traces.
 #
 # - begin_value, end_value
 #
@@ -436,7 +436,7 @@ class BaseStore:
             return None
 
         elif ipos == 1:
-            return Zero
+            return GFTrace(is_zero=True, itmin=itmin)
 
         if decimate == 1:
             ilo = max(itmin, itmin_data) - itmin_data
@@ -523,7 +523,7 @@ class BaseStore:
             raise DuplicateInsert('record %i already in store' % irecord)
 
         if trace.is_zero or num.all(trace.data == 0.0):
-            self._records[irecord] = (1, 0, 0, 0., 0.)
+            self._records[irecord] = (1, trace.itmin, 0, 0., 0.)
             return
 
         ndata = trace.data.size
@@ -634,17 +634,15 @@ class BaseStore:
         if not self._f_index:
             self.open()
 
+        if len(irecords) == 0:
+            return Zero
+
         deltat = self._deltat * decimate
 
         datas = []
         itmins = []
         for i, delay, weight in zip(irecords, delays, weights):
-            if weight == 0:
-                continue
-
             tr = self._get(i, None, None, decimate, 'reference')
-            if tr.is_zero:
-                continue
 
             idelay_floor = int(math.floor(delay/deltat))
             idelay_ceil = int(math.ceil(delay/deltat))
@@ -658,8 +656,6 @@ class BaseStore:
                 itmins.append(tr.itmin + idelay_ceil)
                 datas.append(tr.data.copy()*weight*(delay/deltat-idelay_floor))
 
-        if not itmins:
-            return Zero
 
         itmin_all = min(itmins)
 
@@ -675,11 +671,12 @@ class BaseStore:
 
         arr = num.zeros((len(datas), nsamples_all), dtype=gf_dtype)
         for i, itmin_, data in zip(num.arange(len(datas)), itmins, datas):
-            ilo = itmin_-itmin_all
-            ihi = ilo + data.size
-            arr[i, :ilo] = data[0]
-            arr[i, ilo:ihi] = data
-            arr[i, ihi:] = data[-1]
+            if data.size > 0:
+                ilo = itmin_-itmin_all
+                ihi = ilo + data.size
+                arr[i, :ilo] = data[0]
+                arr[i, ilo:ihi] = data
+                arr[i, ihi:] = data[-1]
 
         sum_arr = arr.sum(axis=0)
 
