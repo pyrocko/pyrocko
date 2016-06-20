@@ -208,6 +208,7 @@ static store_error_t store_get(
 
     if (REC_ZERO == data_offset) {
         *trace = ZERO_TRACE;
+        trace->itmin = xe32toh(record->itmin);
         return SUCCESS;
     }
 
@@ -308,10 +309,6 @@ static store_error_t store_sum(
                 return err;
             }
 
-            if (is_zero || 0.0 == weights[j]) {
-                continue;
-            }
-
             itmax = itmin + nsamples - 1;
 
             if (ihave) {
@@ -323,10 +320,6 @@ static store_error_t store_sum(
                 itmax_d = itmax + delays[j]/deltat;
                 ihave = 1;
             }
-        }
-
-        if (!ihave) {
-            return SUCCESS; /* result is zero */
         }
 
         itmin = floor(itmin_d);
