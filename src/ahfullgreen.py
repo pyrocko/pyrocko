@@ -49,9 +49,6 @@ def add_seismogram(
 
     coeffs_stf = stf(omega/(2.*math.pi))
 
-    #coeffs_stf[:] = 1.0
-    print coeffs_stf
-
     r = math.sqrt(num.sum(x**2))
 
     ext.add_seismogram(
@@ -102,8 +99,8 @@ class Gauss(object):
 if __name__ == '__main__':
 
     x = (1000., 0., 0.)
-    f = (1., 0., 0.)
-    m6 = (0., 0., 0., 0., 0., 0.)
+    f = (0., 0., 0.)
+    m6 = (0., 0., 0., 1., 0., 0.)
 
     vp = 3600.
     vs = 2000.
@@ -114,22 +111,28 @@ if __name__ == '__main__':
 
     n = int(num.round(tlen / deltat))
 
+
     out_x = num.zeros(n)
+    out_y = num.zeros(n)
+    out_z = num.zeros(n)
 
     import pylab as lab
 
     tau = 0.01
     t = num.arange(1000) * deltat
     lab.plot(t, num.exp(-t**2/tau**2))
-    lab.show()
+    #lab.show()
 
     add_seismogram(
         vp, vs, 1.0, 1.0, 1.0, x, f, m6, 'displacement', deltat, 0.0,
-        out_x, None, None, Gauss(tau))
+        out_x, out_y, out_z, Gauss(tau))
 
 
-    tr = trace.Trace('', 'Yeah!', '', 'N', deltat=deltat, tmin=0.0, ydata=out_x)
+    trs = []
+    for out, comp in zip([out_x, out_y, out_z], 'NED'):
+        tr = trace.Trace('', 'Naja!', '', comp, deltat=deltat, tmin=0.0, ydata=out)
+        trs.append(tr)
 
-    tr.snuffle()
+    trace.snuffle(trs)
 
 

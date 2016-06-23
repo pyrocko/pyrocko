@@ -123,16 +123,16 @@ static ahfullgreen_error_t add_seismogram(
     double gamma[3];
     double complex *out[3];
     double complex *b1, *b2, *b3;
+    double m[3][3] = {{m6[0], m6[3], m6[4]},
+         {m6[3], m6[1], m6[5]},
+         {m6[4], m6[5], m6[2]}};
 
-    int p_map[6] = {0, 1, 2, 0, 0, 1};
-    int q_map[6] = {0, 1, 2, 1, 2, 2};
-    int pq_factor[6] = {1, 1, 1, 2, 2, 2};
-
-    int n, p, q, i, m;
+    int n, p, q, i;
 
     double a1, a2, a3, a4, a5, a6, a7, a8;
 
     double complex iw, dfactor;
+
 
     r = sqrt(x[0]*x[0] + x[1]*x[1] + x[2]*x[2]);
     if (r == 0.0) {
@@ -171,43 +171,45 @@ static ahfullgreen_error_t add_seismogram(
     for (n=0; n<3; n++) {
         if (out[n] == NULL) continue;
 
-        for (m=0; m<6; m++) {
-            p = p_map[m];
-            q = q_map[m];
-            r2 = r*r;
-            r4 = r2*r2;
+        for (p=0; p<3; p++) {
+            for (q=0; q<3; q++) {
+                r2 = r*r;
+                r4 = r2*r2;
 
-            a1 = pq_factor[m] * (
-                15. * gamma[n] * gamma[p] * gamma[q] -
-                3. * gamma[n] * (p==q) -
-                3. * gamma[p] * (n==q) -
-                3. * gamma[q] * (n==p)) /
-                (4. * M_PI * density * r4);
+                a1 = (
+                    15. * gamma[n] * gamma[p] * gamma[q] -
+                    3. * gamma[n] * (p==q) -
+                    3. * gamma[p] * (n==q) -
+                    3. * gamma[q] * (n==p)) /
+                    (4. * M_PI * density * r4);
 
-            a2 = pq_factor[m] * (
-                6. * gamma[n] * gamma[p] * gamma[q] -
-                gamma[n] * (p==q) -
-                gamma[p] * (n==q) -
-                gamma[q] * (n==p)) /
-                (4. * M_PI * density * vp*vp * r2);
+                a2 = (
+                    6. * gamma[n] * gamma[p] * gamma[q] -
+                    gamma[n] * (p==q) -
+                    gamma[p] * (n==q) -
+                    gamma[q] * (n==p)) /
+                    (4. * M_PI * density * vp*vp * r2);
 
-            a3 = - pq_factor[m] * (
-                6. * gamma[n] * gamma[p] * gamma[q] -
-                gamma[n] * (p==q) -
-                gamma[p] * (n==q) -
-                2. * gamma[q] * (n==p)) /
-                (4. * M_PI * density * vs*vs * r2);
+                a3 = - (
+                    6. * gamma[n] * gamma[p] * gamma[q] -
+                    gamma[n] * (p==q) -
+                    gamma[p] * (n==q) -
+                    2. * gamma[q] * (n==p)) /
+                    (4. * M_PI * density * vs*vs * r2);
 
-            a4 = pq_factor[m] * (gamma[n] * gamma[p] * gamma[q]) /
-                (4. * M_PI * density * vp*vp*vp * r);
+                a1 = a2 = a3 = 0.;
 
-            a5 = - pq_factor[m] * (gamma[q] * (gamma[n] * gamma[p] - (n==p))) /
-                (4. * M_PI * density * vs*vs*vs * r);
+                a4 = (gamma[n] * gamma[p] * gamma[q]) /
+                    (4. * M_PI * density * vp*vp*vp * r);
 
-            for (i=0; i<out_size; i++) {
-                iw = I * (out_offset + out_delta * i);
-                out[n][i] += (a1*b1[i] + a2*b2[i] + a3*b3[i] +
-                            iw*a4*b2[i] + iw*a5*b3[i]) * m6[m];
+                a5 = - (gamma[q] * (gamma[n] * gamma[p] - (n==p))) /
+                    (4. * M_PI * density * vs*vs*vs * r);
+
+                for (i=0; i<out_size; i++) {
+                    iw = I * (out_offset + out_delta * i);
+                    out[n][i] += (a1*b1[i] + a2*b2[i] + a3*b3[i] +
+                                iw*a4*b2[i] + iw*a5*b3[i]) * m[p][q];
+                }
             }
         }
 
