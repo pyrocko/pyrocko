@@ -10,7 +10,7 @@ class AhfullgreenError(Exception):
 def add_seismogram(
         vp, vs, density, qp, qs, x, f, m6,
         out_quantity, out_delta, out_offset,
-        out_x, out_y, out_z, stf):
+        out_x, out_y, out_z, stf, want_far=1, want_intermediate=1, want_near=1):
 
     ns = [out.size for out in (out_x, out_y, out_z) if out is not None]
 
@@ -41,11 +41,7 @@ def add_seismogram(
     out_spec_delta = float(2.0 * math.pi / (n*out_delta))
     out_spec_offset = 0.0
 
-    print out_spec_delta
-
     omega = out_spec_offset + out_spec_delta * num.arange(nout)
-
-    print omega[-1]/(2.*math.pi)
 
     coeffs_stf = stf(omega/(2.*math.pi))
 
@@ -54,7 +50,7 @@ def add_seismogram(
     ext.add_seismogram(
         float(vp), float(vs), float(density), float(qp), float(qs),
         x, f, m6, oc_c, out_spec_delta, out_spec_offset,
-        specs[0], specs[1], specs[2])
+        specs[0], specs[1], specs[2], want_far, want_intermediate, want_near)
 
 
     tp = r / vp
@@ -63,8 +59,8 @@ def add_seismogram(
     tpad = stf.t_cutoff()
 
     if tpad is not None:
-        icut1 = max(0, int(num.floor((tp - tpad) / deltat)))
-        icut2 = min(n, int(num.ceil((ts + tpad) / deltat)))
+        icut1 = max(0, int(num.floor((tp - tpad) / out_delta)))
+        icut2 = min(n, int(num.ceil((ts + tpad) / out_delta)))
     else:
         icut1 = 0
         icut2 = n
@@ -83,6 +79,18 @@ def add_seismogram(
         else:
             out[:] += temp
 
+
+class Impulse(object):
+    def __init__(self):
+        pass
+
+    def t_cutoff(self):
+        return None
+
+    def __call__(self, f):
+        omega = num.ones(len(f))
+
+        return omega
 
 class Gauss(object):
     def __init__(self, tau):
