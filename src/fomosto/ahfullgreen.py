@@ -71,8 +71,6 @@ class AhfullgreenConfigFull(AhfullgreenConfig):
 
         conf = AhfullgreenConfigFull()
         conf.receiver_distances = [2000.]
-        #conf.time_start = -5.0
-        #conf.time_reduction_velocity = 15.0
         conf.earthmodel_1d = example_model()
         return conf
 
@@ -104,11 +102,10 @@ class AhfullgreenRunner:
 
         l = elements[1].m
         vp, vs, density, qp, qs = (l.vp, l.vs, l.rho, l.qp, l.qs)
-        f = (0., 0., 0.)   # single force
+        f = (0., 0., 0.)
         m6 = config.source_mech.m6()
         ns = config.nsamples
         deltat = config.deltat
-        #vred = config.time_reduction_velocity
         tmin = 0.
         for i_distance, d in enumerate(config.receiver_distances):
             outx = num.zeros(ns)
@@ -127,7 +124,6 @@ class AhfullgreenRunner:
                 self.traces.append(tr)
 
     def get_traces(self):
-        # return traces and empty traces list
         tmp = self.traces
         self.traces = []
         return tmp
@@ -203,12 +199,6 @@ class AhfullGFBuilder(gf.builder.Builder):
 
         distances = num.linspace(firstx, firstx + (nx-1)*dx, nx).tolist()
 
-        #mmt1 = (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
-        #        {'r': (0, +1), 't': (3, +1), 'z': (5, +1)})
-        #mmt2 = (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
-        #        {'r': (1, +1), 't': (4, +1), 'z': (6, +1)})
-        #mmt3 = (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
-        #        {'r': (2, +1), 'z': (7, +1)})
         mmt1 = (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
                 {'r': (0, +1), 't': (3, +1), 'z': (5, +1)})
         mmt2 = (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
@@ -219,29 +209,12 @@ class AhfullGFBuilder(gf.builder.Builder):
                 {'r': (8, +1), 'z': (9, +1)})
 
         component_scheme = self.store.config.component_scheme
-        #if component_scheme != 'elastic10':
-        #    raise Exception('Invalid component scheme')
-        #off = 8
-
-        #msf = (None, {
-        #    'fz.tr': (off+0, +1),
-        #    'fh.tr': (off+1, +1),
-        #    'fh.tt': (off+2, -1),
-        #    'fz.tz': (off+3, +1),
-        #    'fh.tz': (off+4, +1)})
 
         if component_scheme == 'elastic8':
             gfmapping = [mmt1, mmt2, mmt3]
 
         if component_scheme == 'elastic10':
             gfmapping = [mmt1, mmt2, mmt3, mmt4]
-
-        #elif component_scheme == 'elastic13':
-        #    gfmapping = [mmt1, mmt2, mmt3, msf]
-
-        #elif component_scheme == 'elastic15':
-        #    gfmapping = [mmt1, mmt2, mmt3, mmt4, msf]
-
 
         conf.receiver_distances = distances
 
@@ -288,9 +261,6 @@ class AhfullGFBuilder(gf.builder.Builder):
                         tmax = self.store.t(conf.cut[1], args[:-1])
                         tmax = math.ceil(tmax/conf.deltat)*conf.deltat
                         if None in (tmin, tmax):
-                            # maybe notify the user, that begin / end timings
-                            # are inappropriate?
-                            logger.error("tmin or tmax from begin and end is None")
                             continue
                         tr.chop(tmin, tmax)
 
@@ -301,7 +271,6 @@ class AhfullGFBuilder(gf.builder.Builder):
                             self.store.t(v, args[:-1]) for v in conf.fade]
 
                         if None in (ta, tb, tc, td):
-                            logger.error("ta, tb, tx, td is None")
                             continue
 
                         if not (ta <= tb and tb <= tc and tc <= td):
