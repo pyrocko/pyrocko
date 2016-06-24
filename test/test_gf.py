@@ -7,7 +7,7 @@ import unittest
 from tempfile import mkdtemp
 import numpy as num
 
-from pyrocko import gf, util, cake
+from pyrocko import gf, util, cake, trace
 
 
 r2d = 180. / math.pi
@@ -379,6 +379,34 @@ class GFTestCase(unittest.TestCase):
 
             self.assertTrue(numeq(data, tr.ydata, 0.01))
 
+    def test_stf_pre_post(self):
+        store_dir = self.get_pulse_store_dir()
+        engine = gf.LocalEngine(store_dirs=[store_dir])
+        store = engine.get_store('pulse')
+
+        trs = []
+        for mode in ['pre', 'post']:
+            for duration in [0., 0.05, 0.1]:
+                source = gf.ExplosionSource(
+                    time=store.config.deltat * 0.5,
+                    depth=200.,
+                    moment=1.0,
+                    stf=gf.BoxcarSTF(duration=duration),
+                    stf_mode=mode)
+
+                target = gf.Target(
+                    codes=('', 'STA', '', 'Z'),
+                    north_shift=500.,
+                    east_shift=0.,
+                    store_id='pulse')
+
+                xtrs = engine.process(source, target).pyrocko_traces()
+                for tr in xtrs:
+                    tr.set_codes(location='%3.1f_%s' % (duration, mode))
+                    trs.append(tr)
+
+        trace.snuffle(trs)
+
     def test_timing(self):
         store_dir = self.get_regional_ttt_store_dir()
 
@@ -493,7 +521,6 @@ class GFTestCase(unittest.TestCase):
                 moment=1.0,
                 length=100.,
                 width=0.,
-                risetime=0.01,
                 nucleation_x=-1)
 
             for depth in [100., 200., 300.]

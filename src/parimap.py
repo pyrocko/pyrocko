@@ -1,10 +1,14 @@
 import Queue
-import itertools
 import multiprocessing
 import traceback
+import errno
 
 
-def worker(q_in, q_out, function, eprintignore):
+def worker(q_in, q_out, function, eprintignore, pshared):
+    kwargs = {}
+    if pshared is not None:
+        kwargs['pshared'] = pshared
+
     while True:
         i, args = q_in.get()
         if i is None:
@@ -12,25 +16,34 @@ def worker(q_in, q_out, function, eprintignore):
 
         r, e = None, None
         try:
-            r = function(*args)
+            r = function(*args, **kwargs)
         except Exception, e:
             if eprintignore is not None and not isinstance(e, eprintignore):
                 traceback.print_exc()
 
         q_out.put((i, r, e))
 
+
 def parimap(function, *iterables, **kwargs):
-    assert all(k in ('nprocs', 'eprintignore') for k in kwargs.keys())
+    assert all(
+        k in ('nprocs', 'eprintignore', 'pshared') for k in kwargs.keys())
 
     nprocs = kwargs.get('nprocs', None)
     eprintignore = kwargs.get('eprintignore', 'all')
+    pshared = kwargs.get('pshared', None)
 
     if eprintignore == 'all':
         eprintignore = None
 
     if nprocs == 1:
-        for r in itertools.imap(function, *iterables):
-            yield r
+        iterables = map(iter, iterables)
+        kwargs = {}
+        if pshared is not None:
+            kwargs['pshared'] = pshared
+
+        while True:
+            args = [next(it) for it in iterables]
+            yield function(*args, **kwargs)
 
         return
 
@@ -56,7 +69,7 @@ def parimap(function, *iterables, **kwargs):
                 if len(procs) < nrun + 1:
                     p = multiprocessing.Process(
                         target=worker,
-                        args=(q_in, q_out, function, eprintignore))
+                        args=(q_in, q_out, function, eprintignore, pshared))
                     p.daemon = True
                     p.start()
                     procs.append(p)
@@ -74,7 +87,13 @@ def parimap(function, *iterables, **kwargs):
                 if nrun < nprocs and not all_written and not error_ahead:
                     results.append(q_out.get_nowait())
                 else:
-                    results.append(q_out.get())
+                    while True:
+                        try:
+                            results.append(q_out.get())
+                            break
+                        except IOError, e:
+                            if e.errno != errno.EINTR:
+                                raise
 
                 nrun -= 1
 
@@ -107,4 +126,3 @@ def parimap(function, *iterables, **kwargs):
             break
 
     [p.join() for p in procs]
-

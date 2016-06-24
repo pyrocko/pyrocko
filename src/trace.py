@@ -1130,7 +1130,13 @@ class Trace(object):
         adata, aproc = a.run_chain(tmin, tmax, deltat, setup, nocache)
         bdata, bproc = b.run_chain(tmin, tmax, deltat, setup, nocache)
 
-        m, n = Lx_norm(bdata, adata, norm=setup.norm)
+        if setup.domain != 'cc_max_norm':
+            m, n = Lx_norm(bdata, adata, norm=setup.norm)
+        else:
+            ctr = correlate(aproc, bproc, mode='full', normalization='normal')
+            ccmax = ctr.max()[1]
+            m = 0.5 - 0.5 * ccmax
+            n = 0.5
 
         if debug:
             return m, n, aproc, bproc
@@ -1242,7 +1248,8 @@ class Trace(object):
             .replace('%l', '%(location)s')\
             .replace('%c', '%(channel)s')\
             .replace('%b', '%(tmin)s')\
-            .replace('%e', '%(tmax)s')
+            .replace('%e', '%(tmax)s')\
+            .replace('%j', '%(julianday)s')
 
         params = dict(zip( ('network', 'station', 'location', 'channel'), self.nslc_id))
         params['tmin'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S')
@@ -1251,6 +1258,7 @@ class Trace(object):
         params['tmax_ms'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S.3FRAC')
         params['tmin_us'] = util.time_to_str(self.tmin, format='%Y-%m-%d_%H-%M-%S.6FRAC')
         params['tmax_us'] = util.time_to_str(self.tmax, format='%Y-%m-%d_%H-%M-%S.6FRAC')
+        params['julianday'] = util.julian_day_of_year(self.tmin)
         params.update(additional)
         return template % params
 
@@ -1936,6 +1944,10 @@ class CosTaper(Taper):
     def span(self, y, x0, dx):
         return span_costaper(self.a, self.b, self.c, self.d, y, x0, dx)
 
+    def time_span(self):
+        return self.a, self.d
+
+
 class CosFader(Taper):
     ''' Cosine Fader.
 
@@ -1971,6 +1983,55 @@ class CosFader(Taper):
 
     def span(self, y, x0, dx):
         return 0, y.size
+
+    def time_span(self):
+        raise None, None
+
+
+def none_min(l):
+    if None in l:
+        return None
+    else:
+        return min(x for x in l if x is not None)
+
+
+def none_max(l):
+    if None in l:
+        return None
+    else:
+        return max(x for x in l if x is not None)
+
+
+class MultiplyTaper(Taper):
+    '''Multiplication of several tapers.'''
+
+    tapers = List.T(Taper.T())
+
+    def __init__(self, tapers=None):
+        if tapers is None:
+            tapers = []
+
+        Taper.__init__(self, tapers=tapers)
+
+    def __call__(self, y, x0, dx):
+        for taper in self.tapers:
+            taper(y, x0, dx)
+
+    def span(self, y, x0, dx):
+        spans = []
+        for taper in self.tapers:
+            spans.append(taper.span(y, x0, dx))
+
+        mins, maxs = zip(*spans)
+        return min(mins), max(maxs)
+
+    def time_span(self):
+        spans = []
+        for taper in self.tapers:
+            spans.append(taper.time_span())
+
+        mins, maxs = zip(*spans)
+        return none_min(mins), none_max(maxs)
 
 
 class GaussTaper(Taper):
@@ -2672,7 +2733,8 @@ class DomainChoice(StringChoice):
         'time_domain',
         'frequency_domain',
         'envelope',
-        'absolute']
+        'absolute',
+        'cc_max_norm']
 
 
 class MisfitSetup(Object):
@@ -2682,7 +2744,7 @@ class MisfitSetup(Object):
     :param norm: L-norm classifier
     :param taper: Object of :py:class:`Taper`
     :param filter: Object of :py:class:`FrequencyResponse`
-    :param domain: ['time_domain', 'frequency_domain', 'envelope', 'absolute']
+    :param domain: ['time_domain', 'frequency_domain', 'envelope', 'absolute', 'cc_max_norm']
 
     Can be dumped to a yaml file.
     '''

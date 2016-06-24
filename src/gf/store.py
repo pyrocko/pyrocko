@@ -65,11 +65,11 @@ def check_string_id(s):
 #
 # Time of first sample of the trace as a multiple of the sampling interval. All
 # GF samples must be evaluated at multiples of the sampling interval with
-# respect to a global reference time zero.
+# respect to a global reference time zero. Must be set also for zero traces.
 #
 # - nsamples
 #
-# Number of samples in the GF trace.
+# Number of samples in the GF trace. Should be set to zero for zero traces.
 #
 # - begin_value, end_value
 #
@@ -436,7 +436,7 @@ class BaseStore:
             return None
 
         elif ipos == 1:
-            return Zero
+            return GFTrace(is_zero=True, itmin=itmin)
 
         if decimate == 1:
             ilo = max(itmin, itmin_data) - itmin_data
@@ -523,7 +523,7 @@ class BaseStore:
             raise DuplicateInsert('record %i already in store' % irecord)
 
         if trace.is_zero or num.all(trace.data == 0.0):
-            self._records[irecord] = (1, 0, 0, 0., 0.)
+            self._records[irecord] = (1, trace.itmin, 0, 0., 0.)
             return
 
         ndata = trace.data.size
@@ -634,17 +634,15 @@ class BaseStore:
         if not self._f_index:
             self.open()
 
+        if len(irecords) == 0:
+            return Zero
+
         deltat = self._deltat * decimate
 
         datas = []
         itmins = []
         for i, delay, weight in zip(irecords, delays, weights):
-            if weight == 0:
-                continue
-
             tr = self._get(i, None, None, decimate, 'reference')
-            if tr.is_zero:
-                continue
 
             idelay_floor = int(math.floor(delay/deltat))
             idelay_ceil = int(math.ceil(delay/deltat))
@@ -658,8 +656,6 @@ class BaseStore:
                 itmins.append(tr.itmin + idelay_ceil)
                 datas.append(tr.data.copy()*weight*(delay/deltat-idelay_floor))
 
-        if not itmins:
-            return Zero
 
         itmin_all = min(itmins)
 
@@ -675,11 +671,12 @@ class BaseStore:
 
         arr = num.zeros((len(datas), nsamples_all), dtype=gf_dtype)
         for i, itmin_, data in zip(num.arange(len(datas)), itmins, datas):
-            ilo = itmin_-itmin_all
-            ihi = ilo + data.size
-            arr[i, :ilo] = data[0]
-            arr[i, ilo:ihi] = data
-            arr[i, ihi:] = data[-1]
+            if data.size > 0:
+                ilo = itmin_-itmin_all
+                ihi = ilo + data.size
+                arr[i, :ilo] = data[0]
+                arr[i, ilo:ihi] = data
+                arr[i, ihi:] = data[-1]
 
         sum_arr = arr.sum(axis=0)
 
@@ -694,7 +691,7 @@ class BaseStore:
         return GFTrace(sum_arr, itmin, deltat)
 
     def _optimize(self, irecords, delays, weights):
-        if irecords.size < 2:
+        if num.unique(irecords).size == irecords.size:
             return irecords, delays, weights
 
         deltat = self._deltat
@@ -759,11 +756,14 @@ class BaseStore:
                 itmin -= itoffset
 
             try:
+                t0 = time.time()
                 tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
                     (delays - itoffset*self._deltat).astype(num.float32),
                     weights.astype(num.float32),
                     int(itmin), int(nsamples)))
+
+                t1 = time.time()
                 tr.itmin += itoffset
                 return tr
 
@@ -1073,7 +1073,7 @@ class Store(BaseStore):
         store, decimate = self._decimated_store(decimate)
         if interpolation == 'nearest_neighbor':
             irecord = store.config.irecord(*args)
-            return store._get(irecord, itmin, nsamples, decimate,
+            tr = store._get(irecord, itmin, nsamples, decimate,
                               implementation)
 
         elif interpolation in ('multilinear', 'off'):
@@ -1081,9 +1081,15 @@ class Store(BaseStore):
             if interpolation == 'off' and len(irecords) != 1:
                 raise NotAllowedToInterpolate()
 
-            return store._sum(irecords, num.zeros(len(irecords)), weights,
+            tr = store._sum(irecords, num.zeros(len(irecords)), weights,
                               itmin, nsamples, decimate, implementation,
                               'disable')
+
+        # to prevent problems with rounding errors (BaseStore saves deltat
+        # as a 4-byte floating point value, value from YAML config is more
+        # accurate)
+        tr.deltat = self.config.deltat * decimate
+        return tr
 
     def sum(self, args, delays, weights, itmin=None, nsamples=None,
             decimate=1, interpolation='nearest_neighbor', implementation='c',
@@ -1111,8 +1117,15 @@ class Store(BaseStore):
             weights = num.repeat(weights, neach) * ip_weights
             delays = num.repeat(delays, neach)
 
-        return store._sum(irecords, delays, weights, itmin, nsamples, decimate,
+        tr = store._sum(irecords, delays, weights, itmin, nsamples, decimate,
                           implementation, optimization)
+
+        # to prevent problems with rounding errors (BaseStore saves deltat
+        # as a 4-byte floating point value, value from YAML config is more
+        # accurate)
+        tr.deltat = self.config.deltat * decimate
+        return tr
+
 
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
@@ -1423,6 +1436,8 @@ class Store(BaseStore):
                    interpolation='nearest_neighbor', optimization='enable'):
 
         out = {}
+
+        dts = 0.
         for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 
@@ -1430,9 +1445,11 @@ class Store(BaseStore):
                 gtr = self.sum(args, delays, weights,
                                interpolation=interpolation,
                                optimization=optimization)
+
                 out[component] = gtr
 
         return out
+
 
 __all__ = '''
 gf_dtype

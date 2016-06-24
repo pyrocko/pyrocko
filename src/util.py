@@ -285,6 +285,27 @@ def polylinefit(x,y, n_or_xnodes):
 
     return xnodes, ynodes, rms_error
 
+def plf_integrate_piecewise(x_edges, x, y):
+    '''Calculate definite integral of piece-wise linear function on intervals.
+
+    Use trapezoidal rule to calculate definite integral of a piece-wise
+    linear function for a series of consecutive intervals. `x_edges` and `x`
+    must be sorted.
+
+    :param x_edges: array with edges of the intervals
+    :param x, y: arrays with coordinates of piece-wise linear function's
+                 control points
+    '''
+
+    x_all = num.concatenate((x, x_edges))
+    ii = num.argsort(x_all)
+    y_edges = num.interp(x_edges, x, y)
+    y_all = num.concatenate((y, y_edges))
+    xs = x_all[ii]
+    ys = y_all[ii]
+    y_all[ii[1:]] = num.cumsum((xs[1:] - xs[:-1]) * 0.5 * (ys[1:] + ys[:-1]))
+    return num.diff(y_all[-len(y_edges):])
+
 class GlobalVars:
     reuse_store = dict()
     decitab_nmax = 0
@@ -401,6 +422,14 @@ def mk_decitab(nmax=100):
 def zfmt(n):
     return '%%0%ii' % (int(math.log10(n - 1 )) + 1)
     
+def julian_day_of_year(timestamp):
+    '''Get the day number after the 1st of January of year in *timestamp*.
+
+    :returns: day number as int
+    '''
+
+    return time.gmtime(int(timestamp)).tm_yday
+
 def day_start(timestamp):
     '''Get beginning of day for any point in time.
     

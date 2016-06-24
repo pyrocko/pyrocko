@@ -737,16 +737,18 @@ def command_tttview(args):
         depth = store.config.source_depth_min + (store.config.source_depth_max \
                                              - store.config.source_depth_min)/2.
 
-    arrivals = num.empty(num_d)
-    for phase_id in phase_ids:
-        arrivals[:] = num.NAN
-        for i, d in enumerate(distances):
-            arrivals[i]= store.t(phase_id, (depth, d))
-        axes.plot(distances/1000, arrivals, label=phase_id) 
-    axes.set_title('source depth %s km' % (depth/1000))
-    axes.set_xlabel('distance [km]')
-    axes.set_ylabel('TT [s]')
-    axes.legend()
+    if isinstance(store.config, gf.ConfigTypeA):
+        arrivals = num.empty(num_d)
+        for phase_id in phase_ids:
+            arrivals[:] = num.NAN
+            for i, d in enumerate(distances):
+                arrivals[i]= store.t(phase_id, (depth, d))
+            axes.plot(distances/1000, arrivals, label=phase_id) 
+        axes.set_title('source depth %s km' % (depth/1000))
+        axes.set_xlabel('distance [km]')
+        axes.set_ylabel('TT [s]')
+        axes.legend()
+
     plt.tight_layout()
     plt.show()
 

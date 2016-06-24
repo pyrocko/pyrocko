@@ -162,13 +162,9 @@ static store_error_t store_read(
     size_t nhave;
     ssize_t nread;
 
-    if (-1 == lseek(store->f_data, data_offset, SEEK_SET)) {
-        return BAD_STORE;
-    }
-
     nhave = 0;
     while (nhave < nbytes) {
-        nread = read(store->f_data, data, nbytes-nhave);
+        nread = pread(store->f_data, data, nbytes-nhave, data_offset+nhave);
         if (-1 == nread) {
             return READ_DATA_FAILED;
         }
@@ -212,6 +208,7 @@ static store_error_t store_get(
 
     if (REC_ZERO == data_offset) {
         *trace = ZERO_TRACE;
+        trace->itmin = xe32toh(record->itmin);
         return SUCCESS;
     }
 
@@ -312,10 +309,6 @@ static store_error_t store_sum(
                 return err;
             }
 
-            if (is_zero || 0.0 == weights[j]) {
-                continue;
-            }
-
             itmax = itmin + nsamples - 1;
 
             if (ihave) {
@@ -327,10 +320,6 @@ static store_error_t store_sum(
                 itmax_d = itmax + delays[j]/deltat;
                 ihave = 1;
             }
-        }
-
-        if (!ihave) {
-            return SUCCESS; /* result is zero */
         }
 
         itmin = floor(itmin_d);
@@ -454,22 +443,15 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
 
     store->f_index = f_index;
     store->f_data = f_data;
-    if (-1 == lseek(store->f_index, 0, SEEK_SET)) {
-        return SEEK_INDEX_FAILED;
-    }
-    if (8 != read(store->f_index, &store->nrecords, 8)) {
+    if (8 != pread(store->f_index, &store->nrecords, 8, 0)) {
         return READ_INDEX_FAILED;
     }
-    if (4 != read(store->f_index, &store->deltat, 4)) {
+    if (4 != pread(store->f_index, &store->deltat, 4, 8)) {
         return READ_INDEX_FAILED;
     }
 
     store->nrecords = xe64toh(store->nrecords);
     store->deltat = fe32toh(store->deltat);
-
-    if (-1 == lseek(store->f_index, -GF_STORE_HEADER_SIZE, SEEK_CUR)) {
-        return SEEK_INDEX_FAILED;
-    }
 
     if (-1 == fstat(store->f_data, &st)) {
         return FSTAT_TRACES_FAILED;

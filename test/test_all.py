@@ -10,6 +10,7 @@ from test_util import UtilTestCase
 from test_gf import GFTestCase
 from test_gf_sources import GFSourcesTestCase
 from test_gf_qseis import GFQSeisTestCase
+from test_gf_stf import GFSTFTestCase
 from test_parimap import ParimapTestCase
 from test_response import ResponseTestCase
 from test_datacube import DataCubeTestCase
@@ -17,7 +18,7 @@ from test_fdsn import FDSNStationTestCase
 from test_ims import IMSTestCase
 from test_guts import GutsTestCase
 from test_parstack import ParstackTestCase
-from geonames import GeonamesTestCase
+from test_geonames import GeonamesTestCase
 
 import unittest
 import optparse

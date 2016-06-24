@@ -37,7 +37,7 @@ def random_rotation(x=None):
 
     # after Arvo 1992 - "Fast random rotation matrices"
 
-    if x:
+    if x is not None:
         x1,x2,x3 = x
     else:
         x1,x2,x3 = num.random.random(3)
@@ -85,12 +85,63 @@ def to6(m):
 
 def symmat6(*vals):
     '''Create symmetric 3x3 matrix from its 6 non-redundant values.
-     
+
     vals = [ Axx, Ayy, Azz, Axy, Axz, Ayz ]'''
-    
+
     return num.matrix([[vals[0], vals[3], vals[4]],
                        [vals[3], vals[1], vals[5]],
                        [vals[4], vals[5], vals[2]]], dtype=num.float)
+
+
+def values_to_matrix(values):
+    '''Convert anything to moment tensor represented as a NumPy matrix.
+
+    Transforms :py:class:`MomentTensor` objects, tuples, lists and NumPy arrays
+    with 3x3 or 3, 4, 6, or 7 elements into NumPy 3x3 matrix objects.
+
+    The following parameter sequences and objects are supported::
+
+        [strike, dip, rake]
+        [strike, dip, rake, magnitude]
+        [mnn, mee, mdd, mne, mnd, med]
+        [mnn, mee, mdd, mne, mnd, med, magnitude]
+        [[mnn, mne, mnd], [mne, mee, med], [mnd, med, mdd]]
+        MomentTensor_object
+    '''
+
+    if isinstance(values, (tuple, list)):
+        values = num.asarray(values, dtype=num.float)
+    
+    if isinstance(values, MomentTensor):
+        return values.m()
+
+    elif isinstance(values, num.ndarray):
+        if values.shape == (3,):
+            strike, dip, rake = values
+            rotmat1 = euler_to_matrix(d2r*dip, d2r*strike, -d2r*rake)
+            return rotmat1.T * MomentTensor._m_unrot * rotmat1
+
+        elif values.shape == (4,):
+            strike, dip, rake, magnitude = values
+            moment = magnitude_to_moment(magnitude)
+            rotmat1 = euler_to_matrix(d2r*dip, d2r*strike, -d2r*rake)
+            return rotmat1.T * MomentTensor._m_unrot * rotmat1 * moment
+
+        elif values.shape == (6,):
+            return symmat6(*values)
+
+        elif values.shape == (7,):
+            magnitude = values[6]
+            moment = magnitude_to_moment(magnitude)
+            mt = symmat6(*values[:6])
+            mt *= moment / (num.linalg.norm(mt) / math.sqrt(2.0))
+            return mt
+
+        elif values.shape == (3, 3):
+            return num.asmatrix(values, dtype=num.float)
+
+    raise Exception('cannot convert object to 3x3 matrix')
+
 
 def moment_to_magnitude( moment ):
     return num.log10(moment*1.0e7)/1.5 - 10.7
@@ -227,14 +278,57 @@ def eigh_check(a):
 r2d = 180./math.pi
 d2r = 1./r2d
 
-    
+
+def random_mt(x=None, scalar_moment=1.0, magnitude=None):
+    if magnitude is not None:
+        scalar_moment = magnitude_to_moment(magnitude)
+
+    if x is None:
+        x = num.random.random(6)
+
+    evals = x[:3] * 2. - 1.0
+    evals /= num.sqrt(num.sum(evals**2))
+    rotmat = random_rotation(x[3:])
+    return rotmat * num.matrix(num.diag(evals)) * rotmat.T
+
+
+def random_m6(*args, **kwargs):
+    return to6(random_mt(*args, **kwargs))
+
+
+def random_dc(x=None, scalar_moment=1.0, magnitude=None):
+    if magnitude is not None:
+        scalar_moment = magnitude_to_moment(magnitude)
+
+    rotmat = random_rotation(x)
+    return scalar_moment * (rotmat * MomentTensor._m_unrot * rotmat.T)
+
 
 def sm(m):
     return "/ %5.2F %5.2F %5.2F \\\n" % (m[0,0], m[0,1], m[0,2]) +\
     "| %5.2F %5.2F %5.2F |\n"  % (m[1,0], m[1,1], m[1,2]) +\
     "\\ %5.2F %5.2F %5.2F /\n" % (m[2,0] ,m[2,1], m[2,2])
 
+
+def as_mt(mt):
+    if isinstance(mt, MomentTensor):
+        return mt
+    else:
+        return MomentTensor.from_values(mt)
+
+
 class MomentTensor(Object):
+
+    '''
+    Moment tensor object
+       
+    
+
+    :param m: NumPy matrix in north-east-down convention
+    :param m_up_south_east: NumPy matrix in up-south-east convention
+    :param strike, dip, rake: fault plane angles in [degrees]
+    :param scalar_moment: scalar moment in [Nm]
+    ''' 
 
     mnn__ = Float.T(default=0.0)
     mee__ = Float.T(default=0.0)
@@ -257,25 +351,53 @@ class MomentTensor(Object):
     _u_evals, _u_evecs = eigh_check(_m_unrot)
 
     @classmethod
-    def random_dc(self, x=None, scalar_moment=1.0, magnitude=None):
-        if magnitude is not None:
-            scalar_moment = magnitude_to_moment(magnitude)
-        rotmat = random_rotation(x)
-        return MomentTensor(m=scalar_moment * rotmat * MomentTensor._m_unrot * rotmat.T)
+    def random_dc(cls, x=None, scalar_moment=1.0, magnitude=None):
+        '''
+        Create random oriented double-couple moment tensor
+
+        The rotations used are uniformly distributed in the space of rotations.
+        '''
+        return MomentTensor(
+            m=random_dc(x=x, scalar_moment=scalar_moment, magnitude=magnitude))
+
+    @classmethod
+    def random_mt(cls, x=None, scalar_moment=1.0, magnitude=None):
+        '''
+        Create random moment tensor
+
+        Moment tensors produced by this function appear uniformly distributed
+        when shown in a Hudson's diagram. The rotations used are unifomly
+        distributed in the space of rotations.
+        '''
+        return MomentTensor(
+            m=random_mt(x=x, scalar_moment=scalar_moment, magnitude=magnitude))
+
+    @classmethod
+    def from_values(cls, values):
+        '''
+        Alternative constructor for moment tensor objects
+
+        This constructor takes a :py:class:`MomentTensor` object, a tuple, list
+        or NumPy array with 3x3 or 3, 4, 6, or 7 elements to build a Moment
+        tensor object.
+
+        The *values* argument is interpreted depending on shape as follows::
+
+            [strike, dip, rake]
+            [strike, dip, rake, magnitude]
+            [mnn, mee, mdd, mne, mnd, med]
+            [mnn, mee, mdd, mne, mnd, med, magnitude]
+            [[mnn, mne, mnd], [mne, mee, med], [mnd, med, mdd]]
+            MomentTensor_object
+        '''
+
+        m = values_to_matrix(values)
+        return MomentTensor(m=m)
 
     def __init__(self, m=None, m_up_south_east=None, strike=0., dip=0., rake=0., scalar_moment=1.,
                  mnn=None, mee=None, mdd=None, mne=None, mnd=None, med=None,
                  strike1=None, dip1=None, rake1=None, strike2=None, dip2=None, rake2=None, magnitude=None, moment=None):
 
-        '''Create moment tensor object based on 3x3 moment tensor matrix or orientation of 
-           fault plane and scalar moment.
-           
-        In:
-           m -- Matrix in north-east-down convention
-           m_up_south_east -- Matrix in up-south-east convention
-           strike, dip, rake -- Fault plane angles in [degrees]
-           scalar_moment -- Scalar moment in [Nm]
-        ''' 
         Object.__init__(self, init_props=False)
 
         if any(mxx is not None for mxx in (mnn, mee, mdd, mne, mnd, med)):
@@ -423,15 +545,23 @@ class MomentTensor(Object):
         return (self._m_eigenvecs.T)[2]
     
     def null_axis(self):
+        '''Get diretion of the null axis.'''
         return self._m_eigenvecs.T[1]
     
     def eigenvals(self):
+        '''
+        Get the eigenvalues of the moment tensor in accending order.
+
+        :returns: ``(ep, en, et)``
+        '''
+
         return self._m_eigenvals
 
     def eigensystem(self):
-        '''Get eigenvalues and eigenvectors of moment tensor.
+        '''
+        Get the eigenvalues and eigenvectors of the moment tensor.
 
-        returns ep, en, et, vp, vn, vt'''
+        :returns: ``(ep, en, et, vp, vn, vt)``'''
 
         vp = self.p_axis().A.flatten()
         vn = self.null_axis().A.flatten() 
@@ -448,12 +578,23 @@ class MomentTensor(Object):
         return self._m.copy()
 
     def m6(self):
+        '''
+        Get the moment tensor as a six-element array.
+
+        :returns: ``(mnn, mee, mdd, mne, mnd, med)``
+        '''
         return to6(self._m)
     
     def m_up_south_east(self):
+        '''Get moment tensor in up-south-east convention as 3x3 matrix.'''
+
         return self._to_up_south_east.T * self._m * self._to_up_south_east
 
     def m6_up_south_east(self):
+        '''Get moment tensor in up-south-east convention as a six-element array.
+
+        :returns: ``(muu, mss, mee, mus, mue, mse)``
+        '''
         return to6(self.m_up_south_east())
     
     def m_plain_double_couple(self):
@@ -467,7 +608,14 @@ class MomentTensor(Object):
         return moment_to_magnitude(self.scalar_moment())
 
     def scalar_moment(self):
-        '''Get the scalar moment of the moment tensor.'''
+        '''
+        Get the scalar moment of the moment tensor (Frobenius norm based)
+        
+        The scalar moment is calculated based on the Euclidean (Frobenius) norm
+        (Silver and Jordan, 1982). The scalar moment returned by this function
+        differs from the standard decomposition based definition of the scalar
+        moment for non-double-couple moment tensors.
+        '''
         return num.linalg.norm(self._m_eigenvals)/math.sqrt(2.)
 
     @property
@@ -508,7 +656,8 @@ class MomentTensor(Object):
         return s
 
     def deviatoric(self):
-        '''Get deviatoric part of moment tensor.
+        '''
+        Get deviatoric part of moment tensor.
         
         Returns a new moment tensor object with zero trace.
         '''
@@ -522,6 +671,21 @@ class MomentTensor(Object):
         return mt
 
     def standard_decomposition(self):
+        '''Decompose moment tensor into isotropic, DC and CLVD components.
+
+        Standard decomposition according to e.g. Jost and Herrmann 1989 is
+        returned as::
+
+            [
+                (moment_iso, ratio_iso, m_iso),
+                (moment_dc, ratio_dc, m_dc),
+                (moment_clvd, ratio_clvd, m_clvd),
+                (moment_devi, ratio_devi, m_devi),
+                (moment, 1.0, m)
+            ]
+        '''
+
+
         epsilon = 1e-6
 
         m = self.m()

@@ -46,36 +46,8 @@ class EnhancedSacPzResponse(Object):
 
 
 def make_stationxml_response(presponse, input_unit, output_unit):
-    norm_factor = 1.0/float(abs(
-        presponse.evaluate(num.array([1.0]))[0]/presponse.constant))
-
-    pzs = fs.PolesZeros(
-        pz_transfer_function_type='LAPLACE (RADIANS/SECOND)',
-        normalization_factor=norm_factor,
-        normalization_frequency=fs.Frequency(1.0),
-        zero_list=[fs.PoleZero(real=fs.FloatNoUnit(z.real),
-                               imaginary=fs.FloatNoUnit(z.imag))
-                   for z in presponse.zeros],
-        pole_list=[fs.PoleZero(real=fs.FloatNoUnit(z.real),
-                               imaginary=fs.FloatNoUnit(z.imag))
-                   for z in presponse.poles])
-
-    pzs.validate()
-
-    stage = fs.ResponseStage(
-        number=1,
-        poles_zeros_list=[pzs],
-        stage_gain=fs.Gain(presponse.constant/norm_factor))
-
-    resp = fs.Response(
-        instrument_sensitivity=fs.Sensitivity(
-            value=stage.stage_gain.value,
-            input_units=fs.Units(input_unit),
-            output_units=fs.Units(output_unit)),
-
-        stage_list=[stage])
-
-    return resp
+    return fs.Response.from_pyrocko_pz_response(
+        presponse, input_unit, output_unit, 1.0)
 
 
 this_year = time.gmtime()[0]

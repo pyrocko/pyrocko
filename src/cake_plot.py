@@ -461,8 +461,8 @@ def mpl_init():
     matplotlib.rc('axes', linewidth=1.5)
     matplotlib.rc('xtick', direction='out')
     matplotlib.rc('ytick', direction='out')
-    matplotlib.rc('xtick.major', size=5)
-    matplotlib.rc('ytick.major', size=5)
+    matplotlib.rc('xtick.major', size=5, width=1.5)
+    matplotlib.rc('ytick.major', size=5, width=1.5)
     matplotlib.rc('figure', facecolor='white')
 
 def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None, axes=None, phase_colors={}):

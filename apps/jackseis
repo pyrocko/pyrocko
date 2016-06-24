@@ -149,12 +149,12 @@ if __name__ == '__main__':
         metavar='TEMPLATE',
         help='set output path to TEMPLATE. Available placeholders '
              'are %n: network, %s: station, %l: location, %c: channel, '
-             '%b: begin time, %e: end time. The following additional '
-             'placeholders use the window begin and end times rather than '
-             'trace begin and end times (to suppress producing many small '
-             'files for gappy traces), %(wmin_year)s, %(wmin_month)s, '
-             '%(wmin_day)s, %(wmin)s, %(wmax_year)s, %(wmax_month)s, '
-             '%(wmax_day)s, %(wmax)s. Example: '
+             '%b: begin time, %e: end time, %j: julian day of year. The '
+             'following additional placeholders use the window begin and end '
+             'times rather than trace begin and end times (to suppress '
+             'producing many small files for gappy traces), %(wmin_year)s, '
+             '%(wmin_month)s, %(wmin_day)s, %(wmin)s, %(wmax_year)s, '
+             '%(wmax_month)s, %(wmax_day)s, %(wmax)s. Example: '
              '--output=\'data/%s/trace-%s-%c.mseed\'')
 
     parser.add_option(

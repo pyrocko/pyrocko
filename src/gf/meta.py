@@ -5,11 +5,12 @@ import fnmatch
 import numpy as num
 from pyrocko.guts import Object, SObject, String, StringChoice, \
     StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError, \
-    Timestamp
+    Timestamp, Tuple
 from pyrocko.guts import dump, load  # noqa
 
 from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit, moment_tensor
+from pyrocko.config import config
 
 guts_prefix = 'pf'
 
@@ -17,6 +18,14 @@ d2r = math.pi / 180.
 r2d = 1.0 / d2r
 km = 1000.
 vicinity_eps = 1e-5
+
+
+def latlondepth_to_carthesian(lat, lon, depth):
+    radius = config().earthradius - depth
+    x = radius * math.cos(d2r*lat) * math.cos(d2r*lon)
+    y = radius * math.cos(d2r*lat) * math.sin(d2r*lon)
+    z = radius * math.sin(d2r*lat)
+    return x, y, z
 
 
 class Earthmodel1D(Object):
@@ -286,16 +295,25 @@ class TPDef(Object):
 
 
 class OutOfBounds(Exception):
-    def __init__(self, values=None):
+    def __init__(self, values=None, reason=None):
         Exception.__init__(self)
         self.values = values
+        self.reason = reason
+        self.context = None
 
     def __str__(self):
+        scontext = ''
+        if self.context:
+            scontext = '\n%s' % str(self.context)
+
+        if self.reason:
+            scontext += '\n%s' % self.reason
+
         if self.values:
-            return 'out of bounds: (%s)' % ','.join('%g' % x
-                                                    for x in self.values)
+            return 'out of bounds: (%s)%s' % (
+                ','.join('%g' % x for x in self.values), scontext)
         else:
-            return 'out of bounds'
+            return 'out of bounds%s' % scontext
 
 
 class Location(Object):
@@ -354,7 +372,7 @@ class Location(Object):
             if self.north_shift == 0.0 and self.east_shift == 0.0:
                 self._latlon = self.lat, self.lon
             else:
-                self._latlon = map(float, orthodrome.ne_to_latlon(
+                self._latlon = tuple(float(x) for x in orthodrome.ne_to_latlon(
                     self.lat, self.lon, self.north_shift, self.east_shift))
 
         return self._latlon
@@ -384,7 +402,7 @@ class Location(Object):
 
     def distance_to(self, other):
         '''
-        Compute distance [m] to other location object.
+        Compute surface distance [m] to other location object.
         '''
 
         if self.same_origin(other):
@@ -403,6 +421,29 @@ class Location(Object):
 
             return float(orthodrome.distance_accurate50m_numpy(
                 slat, slon, rlat, rlon)[0])
+
+    def distance_3d_to(self, other):
+        '''
+        Compute 3D distance [m] to other location object.
+        '''
+        if self.same_origin(other):
+            if isinstance(other, Location):
+                return math.sqrt((self.north_shift - other.north_shift)**2 +
+                                 (self.east_shift - other.east_shift)**2 +
+                                 (self.depth - other.depth)**2)
+            else:
+                return 0.0
+        else:
+            slat, slon = self.effective_latlon
+            try:
+                rlat, rlon = other.effective_latlon
+            except AttributeError:
+                rlat, rlon = other.lat, other.lon
+
+            sx, sy, sz = latlondepth_to_carthesian(slat, slon, self.depth)
+            rx, ry, rz = latlondepth_to_carthesian(rlat, rlon, other.depth)
+
+            return math.sqrt((sx-rx)**2 + (sy-ry)**2 + (sz-rz)**2)
 
     def azibazi_to(self, other):
         '''
@@ -441,7 +482,23 @@ class Location(Object):
 
 
 class Receiver(Location):
-    pass
+    codes = Tuple.T(
+        3, String.T(),
+        optional=True,
+        help='network, station, and location codes')
+
+    def pyrocko_station(self):
+        from pyrocko import model
+
+        lat, lon = self.effective_latlon
+
+        return model.Station(
+            network=self.codes[0],
+            station=self.codes[1],
+            location=self.codes[2],
+            lat=lat,
+            lon=lon,
+            depth=self.depth)
 
 
 def g(x, d):
@@ -907,49 +964,58 @@ class DiscretizedMTSource(DiscretizedSource):
     _provided_schemes = (
         'elastic8',
         'elastic10',
+        'elastic18',
     )
 
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
 
-        azis, bazis = self.azibazis_to(receiver)
-
-        sa = num.sin(azis*d2r)
-        ca = num.cos(azis*d2r)
-        s2a = num.sin(2.*azis*d2r)
-        c2a = num.cos(2.*azis*d2r)
-        sb = num.sin(bazis*d2r-num.pi)
-        cb = num.cos(bazis*d2r-num.pi)
-
         m6s = self.m6s
+        n = m6s.shape[0]
 
-        f0 = m6s[:, 0]*ca**2 + m6s[:, 1]*sa**2 + m6s[:, 3]*s2a
-        f1 = m6s[:, 4]*ca + m6s[:, 5]*sa
-        f2 = m6s[:, 2]
-        f3 = 0.5*(m6s[:, 1]-m6s[:, 0])*s2a + m6s[:, 3]*c2a
-        f4 = m6s[:, 5]*ca - m6s[:, 4]*sa
-        f5 = m6s[:, 0]*sa**2 + m6s[:, 1]*ca**2 - m6s[:, 3]*s2a
+        if scheme == 'elastic18':
+            w_n = m6s.flatten()
+            g_n = num.tile(num.arange(0, 6), n)
+            w_e = m6s.flatten()
+            g_e = num.tile(num.arange(6, 12), n)
+            w_d = m6s.flatten()
+            g_d = num.tile(num.arange(12, 18), n)
 
-        n = azis.size
+        else:
+            azis, bazis = self.azibazis_to(receiver)
 
-        cat = num.concatenate
-        rep = num.repeat
+            sa = num.sin(azis*d2r)
+            ca = num.cos(azis*d2r)
+            s2a = num.sin(2.*azis*d2r)
+            c2a = num.cos(2.*azis*d2r)
+            sb = num.sin(bazis*d2r-num.pi)
+            cb = num.cos(bazis*d2r-num.pi)
 
-        if scheme == 'elastic8':
-            w_n = cat((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
-            g_n = rep((0, 1, 2, 3, 4), n)
-            w_e = cat((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
-            g_e = rep((0, 1, 2, 3, 4), n)
-            w_d = cat((f0, f1, f2))
-            g_d = rep((5, 6, 7), n)
+            f0 = m6s[:, 0]*ca**2 + m6s[:, 1]*sa**2 + m6s[:, 3]*s2a
+            f1 = m6s[:, 4]*ca + m6s[:, 5]*sa
+            f2 = m6s[:, 2]
+            f3 = 0.5*(m6s[:, 1]-m6s[:, 0])*s2a + m6s[:, 3]*c2a
+            f4 = m6s[:, 5]*ca - m6s[:, 4]*sa
+            f5 = m6s[:, 0]*sa**2 + m6s[:, 1]*ca**2 - m6s[:, 3]*s2a
 
-        elif scheme == 'elastic10':
-            w_n = cat((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
-            g_n = rep((0, 1, 2, 8, 3, 4), n)
-            w_e = cat((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
-            g_e = rep((0, 1, 2, 8, 3, 4), n)
-            w_d = cat((f0, f1, f2, f5))
-            g_d = rep((5, 6, 7, 9), n)
+            cat = num.concatenate
+            rep = num.repeat
+
+            if scheme == 'elastic8':
+                w_n = cat((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
+                g_n = rep((0, 1, 2, 3, 4), n)
+                w_e = cat((sb*f0, sb*f1, sb*f2, cb*f3, cb*f4))
+                g_e = rep((0, 1, 2, 3, 4), n)
+                w_d = cat((f0, f1, f2))
+                g_d = rep((5, 6, 7), n)
+
+            elif scheme == 'elastic10':
+                w_n = cat((cb*f0, cb*f1, cb*f2, cb*f5, -sb*f3, -sb*f4))
+                g_n = rep((0, 1, 2, 8, 3, 4), n)
+                w_e = cat((sb*f0, sb*f1, sb*f2, sb*f5, cb*f3, cb*f4))
+                g_e = rep((0, 1, 2, 8, 3, 4), n)
+                w_d = cat((f0, f1, f2, f5))
+                g_d = rep((5, 6, 7, 9), n)
 
         return (
             ('displacement.n', w_n, g_n),
@@ -1120,6 +1186,7 @@ class ComponentSchemes(StringChoice):
         'elastic5',   # sf
         'elastic13',  # ff + sf
         'elastic15',  # nf + ff + sf
+        'elastic18',  # 3d
         'poroelastic10')
 
 
@@ -1178,6 +1245,7 @@ class Config(Object):
         self._index_function = None
         self._indices_function = None
         self._vicinity_function = None
+        self.validate(regularize=True, depth=1)
         self._do_auto_updates = True
         self.update()
 
@@ -1207,8 +1275,8 @@ class Config(Object):
     def vicinities(self, *args):
         return self._vicinities_function(*args)
 
-    def iter_nodes(self, level=None):
-        return nditer_outer(self.coords[:level])
+    def iter_nodes(self, level=None, minlevel=None):
+        return nditer_outer(self.coords[minlevel:level])
 
     def iter_extraction(self, gdef, level=None):
         i = 0
@@ -1273,9 +1341,13 @@ Index variables are (source_depth, distance, component).'''
         return self.receiver_depth
 
     def _update(self):
-        self.mins = num.array([self.source_depth_min, self.distance_min])
-        self.maxs = num.array([self.source_depth_max, self.distance_max])
-        self.deltas = num.array([self.source_depth_delta, self.distance_delta])
+        self.mins = num.array(
+            [self.source_depth_min, self.distance_min], dtype=num.float)
+        self.maxs = num.array(
+            [self.source_depth_max, self.distance_max], dtype=num.float)
+        self.deltas = num.array(
+            [self.source_depth_delta, self.distance_delta],
+            dtype=num.float)
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
                             vicinity_eps).astype(num.int) + 1
         self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
@@ -1435,17 +1507,20 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
         self.mins = num.array([
             self.receiver_depth_min,
             self.source_depth_min,
-            self.distance_min])
+            self.distance_min],
+            dtype=num.float)
 
         self.maxs = num.array([
             self.receiver_depth_max,
             self.source_depth_max,
-            self.distance_max])
+            self.distance_max],
+            dtype=num.float)
 
         self.deltas = num.array([
             self.receiver_depth_delta,
             self.source_depth_delta,
-            self.distance_delta])
+            self.distance_delta],
+            dtype=num.float)
 
         self.ns = num.floor((self.maxs - self.mins) / self.deltas +
                             vicinity_eps).astype(num.int) + 1
@@ -1604,6 +1679,275 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
             self.distance_min/km,
             self.distance_max/km,
             self.distance_delta/km)
+
+
+class ConfigTypeC(Config):
+    '''Cartesian 3D source volume, fixed receiver positions
+
+    Index variables are (
+        ireceiver,
+        source_depth,
+        source_east_shift,
+        source_north_shift,
+        component).'''
+
+    receivers = List.T(Receiver.T())
+
+    source_origin = Location.T()
+    source_depth_min = Float.T()
+    source_depth_max = Float.T()
+    source_depth_delta = Float.T()
+    source_east_shift_min = Float.T()
+    source_east_shift_max = Float.T()
+    source_east_shift_delta = Float.T()
+    source_north_shift_min = Float.T()
+    source_north_shift_max = Float.T()
+    source_north_shift_delta = Float.T()
+
+    short_type = 'C'
+
+    def get_distance(self, args):
+        ireceiver, _, source_east_shift, source_north_shift, _ = args
+        sorig = self.source_origin
+        sloc = Location(
+            lat=sorig.lat,
+            lon=sorig.lon,
+            north_shift=sorig.north_shift + source_north_shift,
+            east_shift=sorig.east_shift + source_east_shift)
+
+        self.receivers[args[0]].distance_to(sloc)
+
+    def get_source_depth(self, args):
+        return args[1]
+
+    def get_receiver_depth(self, args):
+        return self.receivers[args[0]].depth
+
+    def _update(self):
+        self.mins = num.array([
+            self.source_depth_min,
+            self.source_east_shift_min,
+            self.source_north_shift_min],
+            dtype=num.float)
+
+        self.maxs = num.array([
+            self.source_depth_max,
+            self.source_east_shift_max,
+            self.source_north_shift_max],
+            dtype=num.float)
+
+        self.deltas = num.array([
+            self.source_depth_delta,
+            self.source_east_shift_delta,
+            self.source_north_shift_delta],
+            dtype=num.float)
+
+        self.ns = num.floor((self.maxs - self.mins) / self.deltas +
+                            vicinity_eps).astype(num.int) + 1
+        self.effective_maxs = self.mins + self.deltas * (self.ns - 1)
+        self.deltat = 1.0/self.sample_rate
+        self.nreceivers = len(self.receivers)
+        self.nrecords = \
+            self.nreceivers * num.product(self.ns) * self.ncomponents
+
+        self.coords = (num.arange(self.nreceivers),) + \
+            tuple(num.linspace(mi, ma, n) for (mi, ma, n) in
+                  zip(self.mins, self.effective_maxs, self.ns)) + \
+            (num.arange(self.ncomponents),)
+        self.nreceiver_depths, self.nsource_depths, self.ndistances = self.ns
+
+        self._distances_cache = {}
+
+    def _make_index_functions(self):
+
+        amin, bmin, cmin = self.mins
+        da, db, dc = self.deltas
+        na, nb, nc = self.ns
+        ng = self.ncomponents
+        nr = self.nreceivers
+
+        def index_function(ir, a, b, c, ig):
+            ia = int(round((a - amin) / da))
+            ib = int(round((b - bmin) / db))
+            ic = int(round((c - cmin) / dc))
+            try:
+                return num.ravel_multi_index((ir, ia, ib, ic, ig),
+                                             (nr, na, nb, nc, ng))
+            except ValueError:
+                raise OutOfBounds()
+
+        def indices_function(ir, a, b, c, ig):
+            ia = num.round((a - amin) / da).astype(int)
+            ib = num.round((b - bmin) / db).astype(int)
+            ic = num.round((c - cmin) / dc).astype(int)
+
+            try:
+                return num.ravel_multi_index((ir, ia, ib, ic, ig),
+                                             (nr, na, nb, nc, ng))
+            except ValueError:
+                raise OutOfBounds()
+
+        def vicinity_function(ir, a, b, c, ig):
+            ias = indi12((a - amin) / da, na)
+            ibs = indi12((b - bmin) / db, nb)
+            ics = indi12((c - cmin) / dc, nc)
+
+            if not (0 <= ir < nr):
+                raise OutOfBounds()
+
+            if not (0 <= ig < ng):
+                raise OutOfBounds()
+
+            indis = []
+            weights = []
+            iir = ir*na*nb*nc*ng
+            for ia, va in ias:
+                iia = ia*nb*nc*ng
+                for ib, vb in ibs:
+                    iib = ib*nc*ng
+                    for ic, vc in ics:
+                        indis.append(iir + iia + iib + ic*ng + ig)
+                        weights.append(va*vb*vc)
+
+            return num.array(indis), num.array(weights)
+
+        def vicinities_function(ir, a, b, c, ig):
+
+            xa = (a-amin) / da
+            xb = (b-bmin) / db
+            xc = (c-cmin) / dc
+
+            xa_fl = num.floor(xa)
+            xa_ce = num.ceil(xa)
+            xb_fl = num.floor(xb)
+            xb_ce = num.ceil(xb)
+            xc_fl = num.floor(xc)
+            xc_ce = num.ceil(xc)
+            va_fl = 1.0 - (xa - xa_fl)
+            va_ce = (1.0 - (xa_ce - xa)) * (xa_ce - xa_fl)
+            vb_fl = 1.0 - (xb - xb_fl)
+            vb_ce = (1.0 - (xb_ce - xb)) * (xb_ce - xb_fl)
+            vc_fl = 1.0 - (xc - xc_fl)
+            vc_ce = (1.0 - (xc_ce - xc)) * (xc_ce - xc_fl)
+
+            ia_fl = xa_fl.astype(num.int)
+            ia_ce = xa_ce.astype(num.int)
+            ib_fl = xb_fl.astype(num.int)
+            ib_ce = xb_ce.astype(num.int)
+            ic_fl = xc_fl.astype(num.int)
+            ic_ce = xc_ce.astype(num.int)
+
+            if num.any(ia_fl < 0) or num.any(ia_fl >= na):
+                raise OutOfBounds()
+
+            if num.any(ia_ce < 0) or num.any(ia_ce >= na):
+                raise OutOfBounds()
+
+            if num.any(ib_fl < 0) or num.any(ib_fl >= nb):
+                raise OutOfBounds()
+
+            if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
+                raise OutOfBounds()
+
+            if num.any(ic_fl < 0) or num.any(ic_fl >= nc):
+                raise OutOfBounds()
+
+            if num.any(ic_ce < 0) or num.any(ic_ce >= nc):
+                raise OutOfBounds()
+
+            irig = ir*na*nb*nc*ng + ig
+
+            irecords = num.empty(a.size*8, dtype=num.int)
+            irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
+            irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
+            irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
+            irecords[3::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
+            irecords[4::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
+            irecords[5::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
+            irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
+            irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
+
+            weights = num.empty(a.size*8, dtype=num.float)
+            weights[0::8] = va_fl * vb_fl * vc_fl
+            weights[1::8] = va_ce * vb_fl * vc_fl
+            weights[2::8] = va_fl * vb_ce * vc_fl
+            weights[3::8] = va_ce * vb_ce * vc_fl
+            weights[4::8] = va_fl * vb_fl * vc_ce
+            weights[5::8] = va_ce * vb_fl * vc_ce
+            weights[6::8] = va_fl * vb_ce * vc_ce
+            weights[7::8] = va_ce * vb_ce * vc_ce
+
+            return irecords, weights
+
+        self._index_function = index_function
+        self._indices_function = indices_function
+        self._vicinity_function = vicinity_function
+        self._vicinities_function = vicinities_function
+
+    def lookup_ireceiver(self, receiver):
+        k = (receiver.lat, receiver.lon,
+             receiver.north_shift, receiver.east_shift)
+        dh = min(self.source_north_shift_delta, self.source_east_shift_delta)
+        dv = self.source_depth_delta
+
+        for irec, rec in enumerate(self.receivers):
+            if (k, irec) not in self._distances_cache:
+                self._distances_cache[k, irec] = math.sqrt(
+                    (receiver.distance_to(rec)/dh)**2 +
+                    ((rec.depth - receiver.depth)/dv)**2)
+
+            if self._distances_cache[k, irec] < 0.1:
+                return irec
+
+        raise OutOfBounds(
+            reason='No GFs available for receiver at (%g, %g).' %
+            receiver.effective_latlon)
+
+    def make_indexing_args(self, source, receiver, icomponents):
+        nc = icomponents.size
+
+        dists = source.distances_to(self.source_origin)
+        azis, _ = source.azibazis_to(self.source_origin)
+
+        source_north_shifts = - num.cos(d2r*azis) * dists
+        source_east_shifts = - num.sin(d2r*azis) * dists
+        source_depths = source.depths - self.source_origin.depth
+
+        n = dists.size
+        ireceivers = num.empty(nc, dtype=num.int)
+        ireceivers.fill(self.lookup_ireceiver(receiver))
+
+        return (ireceivers,
+                num.tile(source_depths, nc/n),
+                num.tile(source_east_shifts, nc/n),
+                num.tile(source_north_shifts, nc/n),
+                icomponents)
+
+    def make_indexing_args1(self, source, receiver):
+        dist = source.distance_to(self.source_origin)
+        azi, _ = source.azibazi_to(self.source_origin)
+
+        source_north_shift = - num.cos(d2r*azi) * dist
+        source_east_shift = - num.sin(d2r*azi) * dist
+        source_depth = source.depth - self.source_origin.depth
+
+        return (self.lookup_ireceiver(receiver),
+                source_depth,
+                source_east_shift,
+                source_north_shift)
+
+    @property
+    def short_extent(self):
+        return '%g:%g:%g x %g:%g:%g x %g:%g:%g' % (
+            self.source_depth_min/km,
+            self.source_depth_max/km,
+            self.source_depth_delta/km,
+            self.source_east_shift_min/km,
+            self.source_east_shift_max/km,
+            self.source_east_shift_delta/km,
+            self.source_north_shift_min/km,
+            self.source_north_shift_max/km,
+            self.source_north_shift_delta/km)
 
 
 class Weighting(Object):
@@ -1817,6 +2161,7 @@ ComponentSchemes
 Config
 ConfigTypeA
 ConfigTypeB
+ConfigTypeC
 GridSpecError
 Weighting
 Taper
@@ -1825,6 +2170,7 @@ WaveformType
 ChannelSelection
 StationSelection
 WaveformSelection
+nditer_outer
 dump
 load
 '''.split()

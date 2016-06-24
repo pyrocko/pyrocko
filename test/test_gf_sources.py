@@ -49,13 +49,14 @@ class GFSourcesTestCase(unittest.TestCase):
     def test_source_to_event(self):
 
         for S in gf.source_classes:
+            stf = gf.TriangularSTF(effective_duration=2.0)
             s1 = S(lat=10., lon=20., depth=1000.,
-                   north_shift=500., east_shift=500.)
+                   north_shift=500., east_shift=500., stf=stf)
             ev = s1.pyrocko_event()
             s2 = S.from_pyrocko_event(ev)
             assert numeq(
-                [s1.effective_lat, s1.effective_lon, s1.depth],
-                [s2.effective_lat, s2.effective_lon, s2.depth], 0.001)
+                [s1.effective_lat, s1.effective_lon, s1.depth, s1.stf.effective_duration],
+                [s2.effective_lat, s2.effective_lon, s2.depth, s2.stf.effective_duration], 0.001)
 
     def test_source_dict(self):
         s1 = gf.DCSource(strike=0.)

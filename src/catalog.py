@@ -357,7 +357,7 @@ class GlobalCMT(EarthquakeCatalog):
                     time=t,
                     name=data.eventname,
                     depth=data.depth_km*1000.,
-                    magnitude=mt.moment_magnitude(),
+                    magnitude=float(mt.moment_magnitude()),
                     duration=data.half_duration * 2.,
                     region=data.region.rstrip(),
                     catalog=data.catalog)

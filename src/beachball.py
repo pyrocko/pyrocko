@@ -2,7 +2,29 @@ from pyrocko import moment_tensor as mtm
 from math import pi as PI
 import numpy as num
 
-import matplotlib.pyplot as plt
+from matplotlib.collections import PathCollection
+from matplotlib.path import Path
+from matplotlib.transforms import Transform
+
+NA = num.newaxis
+
+
+class BeachballError(Exception):
+    pass
+
+
+class FixedPointOffsetTransform(Transform):
+    def __init__(self, trans, dpi_scale_trans, fixed_point):
+        Transform.__init__(self)
+        self.input_dims = self.output_dims = 2
+        self.has_inverse = False
+        self.trans = trans
+        self.dpi_scale_trans = dpi_scale_trans
+        self.fixed_point = num.asarray(fixed_point, dtype=num.float)
+
+    def transform_non_affine(self, values):
+        fp = self.trans.transform(self.fixed_point)
+        return fp + self.dpi_scale_trans.transform(values)
 
 
 def vnorm(points):
@@ -34,11 +56,11 @@ def circulation(points, axis):
     flip = num.sum(av*bv, axis=1) < 0.0
     phi[flip] = num.sign(phi[flip])*(PI - num.abs(phi[flip]))
     if num.any(phi == PI) or num.any(phi == -PI):
-        raise Exception('ambiguous circulation')
+        raise BeachballError('ambiguous circulation')
 
     result = num.sum(phi) / (2.0*PI)
     if int(round(result*100.)) not in [100, -100]:
-        raise Exception('circulation error')
+        raise BeachballError('circulation error')
 
     return result
 
@@ -224,9 +246,9 @@ def numpy_xyz2rtp(xyz):
 
 def circle_points(aphi, sign=1.0):
     vecs = num.empty((aphi.size, 3), dtype=num.float)
-    vecs[:,0] = num.cos(sign*aphi)
-    vecs[:,1] = num.sin(sign*aphi)
-    vecs[:,2] = 0.0
+    vecs[:, 0] = num.cos(sign*aphi)
+    vecs[:, 1] = num.sin(sign*aphi)
+    vecs[:, 2] = 0.0
     return vecs
 
 
@@ -329,33 +351,179 @@ def draw_eigenvectors_mpl(eig, axes):
         axes.text(sign*v[1], sign*v[0], '  '+lab)
 
 
-def plot_beachball_mpl(mt, axes):
-    #mt = mt.deviatoric()
-    eig = mt.eigensystem()
+def project(points, projection='lambert'):
+    points_out = points[:, :2].copy()
+    if projection == 'lambert':
+        factor = 1.0 / num.sqrt(1.0 + points[:, 2])
+    elif projection == 'stereographic':
+        factor = 1.0 / (1.0 + points[:, 2])
+    elif projection == 'orthographic':
+        factor = None
+    else:
+        raise BeachballError(
+            'invalid argument for projection: %s' % projection)
 
+    if factor is not None:
+        points_out *= factor[:, num.newaxis]
+
+    return points_out
+
+
+def inverse_project(points, projection='lambert'):
+    points_out = num.zeros((points.shape[0], 3))
+
+    rsqr = points[:, 0]**2 + points[:, 1]**2
+    if projection == 'lambert':
+        points_out[:, 2] = 1.0 - rsqr
+        points_out[:, 1] = num.sqrt(2.0 - rsqr) * points[:, 1]
+        points_out[:, 0] = num.sqrt(2.0 - rsqr) * points[:, 0]
+    elif projection == 'stereographic':
+        points_out[:, 2] = - (rsqr - 1.0) / (rsqr + 1.0)
+        points_out[:, 1] = 2.0 * points[:, 1] / (rsqr + 1.0)
+        points_out[:, 0] = 2.0 * points[:, 0] / (rsqr + 1.0)
+    elif projection == 'orthographic':
+        points_out[:, 2] = num.sqrt(num.maximum(1.0 - rsqr, 0.0))
+        points_out[:, 1] = points[:, 1]
+        points_out[:, 0] = points[:, 0]
+    else:
+        raise BeachballError(
+            'invalid argument for projection: %s' % projection)
+
+    return points_out
+
+
+def deco_part(mt, mt_type='full'):
+    mt = mtm.as_mt(mt)
+    if mt_type == 'full':
+        return mt
+
+    res = mt.standard_decomposition()
+    m = dict(
+        dc=res[1][2],
+        deviatoric=res[3][2])[mt_type]
+
+    return mtm.MomentTensor(m=m)
+
+
+def choose_transform(axes, size_units, position, size):
+
+    if size_units == 'points':
+        transform = FixedPointOffsetTransform(
+            axes.transData,
+            axes.figure.dpi_scale_trans,
+            position)
+
+        if size is None:
+            size = 12.
+
+        size = size * 0.5 / 72.
+        position = (0., 0.)
+
+    elif size_units == 'data':
+        transform = axes.transData
+
+        if size is None:
+            size = 1.0
+
+        size = size * 0.5
+
+    else:
+        raise BeachballError(
+            'invalid argument for size_units: %s' % size_units)
+
+    position = num.asarray(position, dtype=num.float)
+
+    return transform, position, size
+
+
+def plot_beachball_mpl(
+        mt, axes,
+        beachball_type='deviatoric',
+        position=(0., 0.),
+        size=None,
+        zorder=0,
+        color_t='red',
+        color_p='white',
+        edgecolor='black',
+        linewidth=2,
+        alpha=1.0,
+        projection='lambert',
+        size_units='points'):
+
+    '''
+    Plot beachball diagram to a Matplotlib plot
+
+    :param mt: :py:class:`pyrocko.moment_tensor.MomentTensor` object or an
+        array or sequence which can be converted into an MT object
+    :param beachball_type: ``'deviatoric'`` (default), ``'full'``, or ``'dc'``
+    :param position: position of the beachball in data coordinates
+    :param size: diameter of the beachball either in points or in data
+        coordinates, depending on the *size_units* setting
+    :param zorder: (passed through to matplotlib drawing functions)
+    :param color_t: color for compressional quadrants (default: ``'red'``)
+    :param color_p: color for extensive quadrants (default: ``'white'``)
+    :param edgecolor: color for lines (default: ``'black'``)
+    :param linewidth: linewidth in points (default: ``2``)
+    :param alpha: (passed through to matplotlib drawing functions)
+    :param projection: ``'lambert'`` (default), ``'stereographic'``, or
+        ``'orthographic'``
+    :param size_units: ``'points'`` (default) or ``'data'``, where the
+        latter causes the beachball to be projected in the plots data
+        coordinates (axes must have an aspect ratio of 1.0 or the
+        beachball will be shown distorted when using this).
+    '''
+
+    transform, position, size = choose_transform(
+        axes, size_units, position, size)
+
+    mt = deco_part(mt, beachball_type)
+
+    eig = mt.eigensystem()
+    if eig[0] == 0. and eig[1] == 0. and eig[2] == 0:
+        raise BeachballError('eigenvalues are zero')
+
+    data = []
     for (group, patches, patches_lower, patches_upper,
             lines, lines_lower, lines_upper) in eig2gx(eig):
 
         if group == 'P':
-            color = 'white'
+            color = color_p
         else:
-            color = 'red'
+            color = color_t
 
         # plot "upper" features for lower hemisphere, because coordinate system
         # is NED
+
         for poly in patches_upper:
-            px, py, pz = poly.T
-            axes.fill(py, px, lw=0, fc=color)
+            verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
+            if alpha == 1.0:
+                data.append((Path(verts), color, color, 1.0))
+            else:
+                data.append((Path(verts), color, 'none', 0.0))
 
         for poly in lines_upper:
-            px, py, pz = poly.T
-            axes.plot(py, px, lw=2, color='black')
+            verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
+            data.append((Path(verts), 'none', edgecolor, linewidth))
 
-    # draw_eigenvectors_mpl(eig, axes)
+    paths, facecolors, edgecolors, linewidths = zip(*data)
+    path_collection = PathCollection(
+        paths,
+        facecolors=facecolors,
+        edgecolors=edgecolors,
+        linewidths=linewidths,
+        alpha=alpha,
+        zorder=zorder,
+        transform=transform)
+
+    axes.add_artist(path_collection)
 
 
-def plot_beachball_mpl_construction(mt, axes, show='patches'):
-    #mt = mt.deviatoric()
+def plot_beachball_mpl_construction(
+        mt, axes,
+        show='patches',
+        beachball_type='deviatoric'):
+
+    mt = deco_part(mt, beachball_type)
     eig = mt.eigensystem()
 
     for (group, patches, patches_lower, patches_upper,
@@ -379,25 +547,48 @@ def plot_beachball_mpl_construction(mt, axes, show='patches'):
                 axes.plot(*extr(poly).T, color=color, lw=lw, alpha=0.5)
 
 
-def plot_beachball_mpl_pixmap(mt, axes):
-    #mt = mt.deviatoric()
+def plot_beachball_mpl_pixmap(
+        mt, axes,
+        beachball_type='deviatoric',
+        position=(0., 0.),
+        size=None,
+        zorder=0,
+        color_t='red',
+        color_p='white',
+        edgecolor='black',
+        linewidth=2,
+        alpha=1.0,
+        projection='lambert',
+        size_units='points'):
+
+    if size_units == 'points':
+        raise BeachballError(
+            'size_units="points" not supported in plot_beachball_mpl_pixmap')
+
+    transform, position, size = choose_transform(
+        axes, size_units, position, size)
+
+    mt = deco_part(mt, beachball_type)
+
     ep, en, et, vp, vn, vt = mt.eigensystem()
 
-    nx = 400
-    ny = 400
+    nx = 200
+    ny = 200
 
     x = num.linspace(-1., 1., nx)
     y = num.linspace(-1., 1., ny)
 
-    vecs = num.zeros((nx*ny, 3), dtype=num.float)
-    vecs[:, 0] = num.tile(x, ny)
-    vecs[:, 1] = num.repeat(y, nx)
-    ii_ok = vecs[:, 0]**2 + vecs[:, 1]**2 <= 1.0
-    vecs[ii_ok, 2] = num.sqrt(1.0 - (vecs[ii_ok, 0]**2 + vecs[ii_ok, 1]**2))
-    vecs_ok = vecs[ii_ok, :]
+    vecs2 = num.zeros((nx*ny, 2), dtype=num.float)
+    vecs2[:, 0] = num.tile(x, ny)
+    vecs2[:, 1] = num.repeat(y, nx)
+
+    ii_ok = vecs2[:, 0]**2 + vecs2[:, 1]**2 <= 1.0
+
+    vecs3_ok = inverse_project(vecs2[ii_ok, :], projection)
+
     to_e = num.vstack((vn, vt, vp))
 
-    vecs_e = num.dot(to_e, vecs_ok.T).T
+    vecs_e = num.dot(to_e, vecs3_ok.T).T
     rtp = numpy_xyz2rtp(vecs_e)
 
     atheta, aphi = rtp[:, 1], rtp[:, 2]
@@ -411,92 +602,43 @@ def plot_beachball_mpl_pixmap(mt, axes):
     amps = num.reshape(amps, (ny, nx))
 
     axes.contourf(
-        y, x, amps.T,
+        position[0] + y*size, position[1] + x*size, amps.T,
         levels=[-num.inf, 0., num.inf],
-        colors=['white', 'red'])
+        colors=[color_p, color_t],
+        transform=transform,
+        zorder=zorder,
+        alpha=alpha)
 
     axes.contour(
-        y, x, amps.T,
+        position[0] + y*size, position[1] + x*size, amps.T,
         levels=[0.],
-        colors=['black'],
-        linewidths=2)
+        colors=[edgecolor],
+        linewidths=linewidth,
+        transform=transform,
+        zorder=zorder,
+        alpha=alpha)
 
     phi = num.linspace(0., 2*PI, 361)
     x = num.cos(phi)
     y = num.sin(phi)
-    axes.plot(x, y, lw=2, color='black')
-
+    axes.plot(
+        position[0] + x*size, position[1] + y*size,
+        linewidth=linewidth,
+        color=edgecolor,
+        transform=transform,
+        zorder=zorder,
+        alpha=alpha)
 
 if __name__ == '__main__':
-    from mpl_toolkits.mplot3d import Axes3D  # noqa
+    import sys
+    import matplotlib.pyplot as plt
 
-    nx = 1
-    if nx > 1:
-        plt.ion()
-        plt.show()
+    vals = map(float, sys.argv[1:])
 
     fig = plt.figure()
-    axes1 = fig.add_subplot(2, 3, 1, aspect=1.)
-    axes2 = fig.add_subplot(2, 3, 2, aspect=1.)
-    axes3 = fig.add_subplot(2, 3, 3, aspect=1.)
-    axes4 = fig.add_subplot(2, 3, 4, projection='3d', aspect=1.)
-    axes5 = fig.add_subplot(2, 3, 5, projection='3d', aspect=1.)
-
-    try:
-        import mopad
-    except ImportError:
-        mopad = None
-
-    for x in range(nx):
-        #m6 = num.random.random(6)*2.-1.
-        m6 = (-2.0, -2.0, -2., 0., 0., 0.)
-        m = mtm.symmat6(*m6)
-        mt = mtm.MomentTensor(m=m)
-        #mt = mt.deviatoric()
-
-        #strike = 270.
-        #dip = 0.0
-        #rake = 0.01
-
-        #strike = 360.
-        #dip = 28.373841741182012
-        #rake = 90.
-
-        #mt = mtm.MomentTensor(
-        #    strike=strike,
-        #    dip=dip,
-        #    rake=rake)
-
-        for axes in (axes1, axes2, axes3):
-            axes.cla()
-            axes.axison = False
-            axes.set_xlim(-1.05, 1.05)
-            axes.set_ylim(-1.05, 1.05)
-
-        axes1.set_title('Copacabana')
-        axes2.set_title('Contour')
-        axes3.set_title('MoPaD')
-        axes4.set_title('Patches')
-        axes5.set_title('Lines')
-
-        plot_beachball_mpl(mt, axes1)
-        plot_beachball_mpl_pixmap(mt, axes2)
-
-        plot_beachball_mpl_construction(mt, axes4, show='patches')
-        plot_beachball_mpl_construction(mt, axes5, show='lines')
-
-        if mopad:
-            mop_mt = mopad.MomentTensor(M=mt.m6())
-            mop_beach = mopad.BeachBall(mop_mt)
-            kwargs = dict(
-                plot_projection='ortho',
-                plot_nodalline_width=2,
-                plot_faultplane_width=2,
-                plot_outerline_width=2)
-
-            mop_beach.ploBB(kwargs, ax=axes3)
-
-        fig.canvas.draw()
-
-    if nx == 1:
-        plt.show()
+    axes = fig.add_subplot(1, 1, 1, aspect=1.)
+    axes.axison = False
+    axes.set_xlim(-1.05, 1.05)
+    axes.set_ylim(-1.05, 1.05)
+    plot_beachball_mpl(vals, axes, size_units='data')
+    plt.show()
