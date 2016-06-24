@@ -116,10 +116,13 @@ static ahfullgreen_error_t add_seismogram(
         size_t out_size,
         double complex *out_x,
         double complex *out_y,
-        double complex *out_z
+        double complex *out_z,
+        int want_far,
+        int want_intermediate,
+        int want_near
         ) {
 
-    double r, r2, r4;
+    double r, r2, r4, density4pi;
     double gamma[3];
     double complex *out[3];
     double complex *b1, *b2, *b3;
@@ -130,7 +133,7 @@ static ahfullgreen_error_t add_seismogram(
     int n, p, q, i;
 
     double a1, a2, a3, a4, a5, a6, a7, a8;
-
+    double vp2, vp3, vs2, vs3, w;
     double complex iw, dfactor;
 
 
@@ -138,6 +141,15 @@ static ahfullgreen_error_t add_seismogram(
     if (r == 0.0) {
         return SINGULARITY;
     }
+
+    r2 = r*r;
+    r4 = r2*r2;
+    vs2 = vs*vs;
+    vs3 = vs2*vs;
+    vp2 = vp*vp;
+    vp3 = vp2*vp;
+
+    density4pi = density * M_PI * 4.;
 
     for (n=0; n<3; n++) gamma[n] = x[n]/r;
 
@@ -150,17 +162,18 @@ static ahfullgreen_error_t add_seismogram(
     b3 = (double complex*)calloc(out_size, sizeof(double complex));
 
     for (i=0; i<out_size; i++) {
-        iw = I * (out_offset + out_delta * i);
-        dfactor = 1.0;
+        w = out_offset + out_delta * i;
+        iw = I * w;
+        dfactor = 1.0/iw;
         if (out_quantity == 1) {
-            dfactor = iw;
+            dfactor = 1.0;
         } else if (out_quantity == 2) {
-            dfactor = iw * iw;
+            dfactor = iw;
         }
         if (i != 0) {
-            b2[i] = dfactor * cexp(-iw * r/vp);
-            b3[i] = dfactor * cexp(-iw * r/vs);
-            b1[i] = dfactor * (r/vp + 1.0/iw) * b2[i]/iw - (r/vs + 1.0/iw) * b3[i]/iw;
+            b2[i] = dfactor * cexp(-iw * r/vp) * exp(-w * r / (2*vp*qp));
+            b3[i] = dfactor * cexp(-iw * r/vs) * exp(-w * r / (2*vp*qs));
+            b1[i] = (r/vp + 1.0/iw) * b2[i]/iw - (r/vs + 1.0/iw) * b3[i]/iw;
         } else {
             b2[i] = 0.0;
             b3[i] = 0.0;
@@ -173,37 +186,46 @@ static ahfullgreen_error_t add_seismogram(
 
         for (p=0; p<3; p++) {
             for (q=0; q<3; q++) {
-                r2 = r*r;
-                r4 = r2*r2;
 
-                a1 = (
-                    15. * gamma[n] * gamma[p] * gamma[q] -
-                    3. * gamma[n] * (p==q) -
-                    3. * gamma[p] * (n==q) -
-                    3. * gamma[q] * (n==p)) /
-                    (4. * M_PI * density * r4);
+                if (want_near) {
+                    a1 = (
+                        15. * gamma[n] * gamma[p] * gamma[q] -
+                        3. * (gamma[n] * (p==q) -
+                        gamma[p] * (n==q) -
+                        gamma[q] * (n==p))) /
+                        (density4pi * r4);
+                } else {
+                    a1 = 0.;
+                }
 
-                a2 = (
-                    6. * gamma[n] * gamma[p] * gamma[q] -
-                    gamma[n] * (p==q) -
-                    gamma[p] * (n==q) -
-                    gamma[q] * (n==p)) /
-                    (4. * M_PI * density * vp*vp * r2);
+                if (want_intermediate) {
+                    a2 = (
+                        6. * gamma[n] * gamma[p] * gamma[q] -
+                        gamma[n] * (p==q) -
+                        gamma[p] * (n==q) -
+                        gamma[q] * (n==p)) /
+                        (density4pi * vp2 * r2);
 
-                a3 = - (
-                    6. * gamma[n] * gamma[p] * gamma[q] -
-                    gamma[n] * (p==q) -
-                    gamma[p] * (n==q) -
-                    2. * gamma[q] * (n==p)) /
-                    (4. * M_PI * density * vs*vs * r2);
+                    a3 = - (
+                        6. * gamma[n] * gamma[p] * gamma[q] -
+                        gamma[n] * (p==q) -
+                        gamma[p] * (n==q) -
+                        2. * gamma[q] * (n==p)) /
+                        (density4pi * vs2 * r2);
+                } else {
+                    a2 = a3 = 0.;
+                }
 
-                a1 = a2 = a3 = 0.;
+                if (want_far) {
+                    a4 = (gamma[n] * gamma[p] * gamma[q]) /
+                        (density4pi * vp3 * r);
 
-                a4 = (gamma[n] * gamma[p] * gamma[q]) /
-                    (4. * M_PI * density * vp*vp*vp * r);
 
-                a5 = - (gamma[q] * (gamma[n] * gamma[p] - (n==p))) /
-                    (4. * M_PI * density * vs*vs*vs * r);
+                    a5 = - (gamma[q] * (gamma[n] * gamma[p] - (n==p))) /
+                        (density4pi * vs3 * r);
+                } else {
+                    a4 = a5 = 0.;
+                }
 
                 for (i=0; i<out_size; i++) {
                     iw = I * (out_offset + out_delta * i);
@@ -216,13 +238,13 @@ static ahfullgreen_error_t add_seismogram(
         for (p=0; p<3; p++) {
 
             a6 = (3. * gamma[n] * gamma[p] - (n==p)) /
-                (4. * M_PI * density * r2 * r);
+                (density4pi * r2 * r);
 
             a7 = (gamma[n] * gamma[p]) /
-                (4. * M_PI * density * vp * vp * r);
+                (density4pi * vp2 * r);
 
             a8 = - (gamma[n] * gamma[p] - (n==p)) /
-                (4. * M_PI * density * vs * vs * r);
+                (density4pi * vs2 * r);
 
             for (i=0; i<out_size; i++) {
                 out[n][i] += (a6*b1[i] + a7*b2[i] + a8*b3[i]) * f[p];
@@ -259,20 +281,26 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
     double complex *out_x;
     double complex *out_y;
     double complex *out_z;
+
+    int want_far;
+    int want_intermediate;
+    int want_near;
+
     ahfullgreen_error_t err;
     size_t dummy_size;
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "dddddOOOiddOOO",
+    if (!PyArg_ParseTuple(args, "dddddOOOiddOOOiii",
             &vp, &vs, &density, &qp, &qs, &x_arr, &f_arr, &m6_arr,
             &out_quantity, &out_delta, &out_offset,
-            &out_x_arr, &out_y_arr, &out_z_arr)) {
+            &out_x_arr, &out_y_arr, &out_z_arr, &want_far, &want_intermediate,
+            &want_near)) {
 
         PyErr_SetString(Error,
             "usage: add_seismogram(vp, vs, density, qp, qs, x, f, m6, "
             "out_quantity, out_delta, out_offset, "
-            "out_x, out_y, out_z)");
+            "out_x, out_y, out_z, want_far, want_intermediate, want_near)");
 
         return NULL;
     }
@@ -298,7 +326,7 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
     err = add_seismogram(
         vp, vs, density, qp, qs, x, f, m6,
         out_quantity, out_delta, out_offset, out_size,
-        out_x, out_y, out_z);
+        out_x, out_y, out_z, want_far, want_intermediate, want_near);
 
     if (err != SUCCESS) {
         PyErr_SetString(Error, ahfullgreen_error_names[err]);
