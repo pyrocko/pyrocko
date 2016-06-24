@@ -5,9 +5,13 @@ import math
 from pyrocko import guts
 import unittest
 from tempfile import mkdtemp
+import logging
 import numpy as num
 
 from pyrocko import gf, util, cake, trace
+
+
+logger = logging.getLogger('test_gf.py')
 
 
 r2d = 180. / math.pi
@@ -384,9 +388,9 @@ class GFTestCase(unittest.TestCase):
         engine = gf.LocalEngine(store_dirs=[store_dir])
         store = engine.get_store('pulse')
 
-        trs = []
-        for mode in ['pre', 'post']:
-            for duration in [0., 0.05, 0.1]:
+        for duration in [0., 0.05, 0.1]:
+            trs = []
+            for mode in ['pre', 'post']:
                 source = gf.ExplosionSource(
                     time=store.config.deltat * 0.5,
                     depth=200.,
@@ -405,7 +409,15 @@ class GFTestCase(unittest.TestCase):
                     tr.set_codes(location='%3.1f_%s' % (duration, mode))
                     trs.append(tr)
 
-        trace.snuffle(trs)
+            tmin = max(tr.tmin for tr in trs)
+            tmax = min(tr.tmax for tr in trs)
+            for tr in trs:
+                tr.chop(tmin, tmax)
+
+            amax = max(num.max(num.abs(tr.ydata)) for tr in trs)
+            perc = num.max(num.abs(trs[0].ydata - trs[1].ydata) / amax) * 100.
+            if perc > 0.1:
+                logger.warn('test_stf_pre_post: max difference of %.1f %%' % perc)
 
     def test_timing(self):
         store_dir = self.get_regional_ttt_store_dir()
