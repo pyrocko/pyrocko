@@ -287,9 +287,8 @@ def xcode_version_str():
     try:
         version = Popen(['xcodebuild', '-version'], stdout=PIPE, shell=False)\
             .communicate()[0].split()[1]
-    except OSError as e:
-        if e.errno == os.errno.ENOENT:
-            version = None
+    except IndexError:
+        version = None
     return version
 
 def support_omp():
