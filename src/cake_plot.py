@@ -1,6 +1,8 @@
 import math
 import numpy as num
 from pyrocko import cake
+from pyrocko.plot import mpl_labelspace as labelspace, mpl_init, \
+    mpl_color as str_to_mpl_color, InvalidColorDef
 
 d2r = cake.d2r
 r2d = cake.r2d
@@ -412,14 +414,6 @@ def yscaled(factor, axes):
     yaxis.set_major_formatter( Scaled(factor) )
     yaxis.set_major_locator( ScaledLocator(factor) )
 
-def labelspace(axes):
-    xa = axes.get_xaxis()
-    ya = axes.get_yaxis()
-    for attr in ('labelpad', 'LABELPAD'):
-        if hasattr(xa,attr):
-            setattr(xa, attr, xa.get_label().get_fontsize())
-            setattr(ya, attr, ya.get_label().get_fontsize())
-            break
 
 def labels_rays(axes=None, as_degrees=False):
     axes = getaxes(axes)
@@ -454,16 +448,6 @@ def plot_surface_efficiency(mat):
     plt.ylabel('Energy Normalized Coefficient', position=(-2.,0.5))
     plt.legend()
     plt.show()
-
-def mpl_init():
-    import matplotlib
-    matplotlib.rcdefaults()
-    matplotlib.rc('axes', linewidth=1.5)
-    matplotlib.rc('xtick', direction='out')
-    matplotlib.rc('ytick', direction='out')
-    matplotlib.rc('xtick.major', size=5, width=1.5)
-    matplotlib.rc('ytick.major', size=5, width=1.5)
-    matplotlib.rc('figure', facecolor='white')
 
 def my_xt_plot(paths, zstart, zstop, distances=None, as_degrees=False, vred=None, axes=None, phase_colors={}):
 
