@@ -284,8 +284,12 @@ class custom_build_app(build_ext):
 
 def xcode_version_str():
     from subprocess import Popen, PIPE
-    return Popen(['xcodebuild', '-version'], stdout=PIPE, shell=False)\
-        .communicate()[0].split()[1]
+    try:
+        version = Popen(['xcodebuild', '-version'], stdout=PIPE, shell=False)\
+            .communicate()[0].split()[1]
+    except IndexError:
+        version = None
+    return version
 
 def support_omp():
     import platform
@@ -293,8 +297,12 @@ def support_omp():
     if platform.mac_ver() == ('', ('', '', ''), ''):
         return True
     else:
-        v = StrictVersion(xcode_version_str())
-        return v<StrictVersion('4.2.0')
+        v_string = xcode_version_str()
+        if v_string is None:
+            return False
+        else:
+            v = StrictVersion(v_string)
+            return v<StrictVersion('4.2.0')
 
 
 
