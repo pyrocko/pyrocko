@@ -586,6 +586,8 @@ class PhaseDef(object):
             only deal with the P-SV case.
     '''
 
+    allowed_characters_pattern = r'[0-9a-zA-Z_()<>^v\\.]+'
+    allowed_characters_pattern_classic = r'[a-zA-Z0-9]+'
    
     @staticmethod
     def classic_definitions():

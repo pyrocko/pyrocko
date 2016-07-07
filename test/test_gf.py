@@ -430,6 +430,7 @@ class GFTestCase(unittest.TestCase):
         self.assertEqual(store.t('(S|P)', args), store.t('S', args))
         self.assertEqual(store.t('(P|S)', args), store.t('P', args))
         self.assertEqual(store.t('first(S|P)', args), store.t('P', args))
+
         with self.assertRaises(gf.NoSuchPhase):
             store.t('nonexistant', args)
 
@@ -441,6 +442,17 @@ class GFTestCase(unittest.TestCase):
 
         with self.assertRaises(gf.OutOfBounds):
             print store.t('P', (30*km, 1500*km))
+
+    def test_timing_new_syntax(self):
+        store_dir = self.get_regional_ttt_store_dir()
+
+        store = gf.Store(store_dir)
+
+        args = (10*km, 1500*km)
+
+        assert numeq(store.t('stored:P', args), store.t('cake:P', args), 0.1)
+
+        assert numeq(store.t('vel_surface:15', args), 100., 0.1)
 
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
@@ -561,6 +573,37 @@ class GFTestCase(unittest.TestCase):
             self.assertEqual(tr1.data_len(), tr2.data_len())
             self.assertEqual(tr1.tmin, tr2.tmin)
             self.assertTrue(numeq(tr1.ydata, tr2.ydata, 0.0001))
+
+    def test_timing_defs(self):
+
+        for s, d in [
+                ('100.0', dict(offset=100)),
+                ('cake: P ', dict(offset=0.0, phases=['cake:P'])),
+                ('iaspei: Pdiff', dict(
+                    phases=['iaspei:Pdiff'])),
+                ('{iaspei: Pdiff}-50', dict(
+                    phases=['iaspei:Pdiff'], offset=-50.)),
+                ('{cake: P | iaspei: Pdiff}-10', dict(
+                    offset=-10.,
+                    phases=['cake:P', 'iaspei:Pdiff'])),
+                ('first{cake: p | cake: P}', dict(
+                    phases=['cake:p', 'cake:P'], select='first')),
+                ('first(p|P)-10', dict(
+                    phases=['stored:p', 'stored:P'], select='first',
+                    offset=-10.)),
+                ('{stored:begin}-50', dict(
+                    phases=['stored:begin'], offset=-50.))]:
+            t = gf.Timing(s)
+
+            if 'phases' in d:
+                for a, b in zip(d['phases'], t.phase_defs):
+                    self.assertEqual(a, b)
+
+            if 'offset' in d:
+                self.assertTrue(numeq(d['offset'], t.offset, 0.001))
+
+            if 'select' in d:
+                self.assertEqual(d['select'], t.select)
 
 
 if __name__ == '__main__':
