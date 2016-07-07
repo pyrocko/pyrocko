@@ -139,12 +139,28 @@ class Reference(Object):
         return references
 
 
-_fpat = r'[+-](\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
+_fpat = r'[+-]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
 _spat = StringID.pattern[1:-1]
+_cake_pat = cake.PhaseDef.allowed_characters_pattern
+_iaspei_pat = cake.PhaseDef.allowed_characters_pattern_classic
 
-timing_regex = re.compile(
+_ppat = r'(' \
+    r'cake:' + _cake_pat + \
+    r'|iaspei:' + _iaspei_pat + \
+    r'|vel_surface:' + _fpat + \
+    r'|vel:' + _fpat + \
+    r'|stored:' + _spat + \
+    r')'
+
+
+timing_regex_old = re.compile(
     r'^((first|last)?\((' + _spat + r'(\|' + _spat + r')*)\)|(' +
     _spat + r'))?(' + _fpat + ')?$')
+
+
+timing_regex = re.compile(
+    r'^((first|last)?\{(' + _ppat + r'(\|' + _ppat + r')*)\}|(' +
+    _ppat + r'))?(' + _fpat + ')?$')
 
 
 class PhaseSelect(StringChoice):
@@ -165,51 +181,86 @@ class Timing(SObject):
 
     Timings can be instantiated from a simple string defintion i.e. with
     ``Timing(str)`` where ``str`` is something like
-    ``'SELECT(PHASE_IDS)[+-]OFFSET'`` where ``'SELECT'`` is ``'first'``,
-    ``'last'`` or empty, ``'PHASE_IDS'`` is a ``'|'``-separated list of phase
-    names, and ``'OFFSET'`` is the time offset in seconds.
+    ``'SELECT{PHASE_DEFS}[+-]OFFSET'`` where ``'SELECT'`` is ``'first'``,
+    ``'last'`` or empty, ``'PHASE_DEFS'`` is a ``'|'``-separated list of phase
+    definitions, and ``'OFFSET'`` is the time offset in seconds. Phase
+    definitions can be specified in either of the following ways:
+
+    * ``'stored:PHASE_ID'`` - retrieves value from stored travel time table
+    * ``'cake:CAKE_PHASE_DEF'`` - evaluates first arrival of phase with cake 
+      (see :py:class:`pyrocko.cake.PhaseDef`)
+    * ``'vel_surface:VELOCITY'`` - arrival according to surface distance / 
+      velocity [km/s]
+    * ``'vel:VELOCITY'`` - arrival according to 3D-distance / velocity [km/s]
 
     **Examples:**
 
-    * ``'100'`` : absolute time; 100 s.
-    * ``'P-100'`` : 100 s before arrival of P phase.
-    * ``'(A|B)'`` : time instant of phase arrival A, or B if A is undefined for
-      a given geometry.
-    * ``'first(A|B)'`` : as above, but the earlier arrival of A and B
-      is chosen, if both phases are defined for a given geometry.
-    * ``'last(A|B)'`` : as above but the later arrival is chosen.
-    * ``'first(A|B|C)-100'`` : 100 s before first out of arrivals A, B, and C.
+    * ``'100'`` : absolute time; 100 s
+    * ``'{stored:P}-100'`` : 100 s before arrival of P phase according to 
+      stored travel time table named ``'P'``
+    * ``'{stored:A|stored:B}'`` : time instant of phase arrival A, or B if A is
+      undefined for a given geometry
+    * ``'first{stored:A|stored:B}'`` : as above, but the earlier arrival of A
+      and B is chosen, if both phases are defined for a given geometry
+    * ``'last{stored:A|stored:B}'`` : as above but the later arrival is chosen
+    * ``'first{stored:A|stored:B|stored:C}-100'`` : 100 s before first out of
+      arrivals A, B, and C
     '''
 
     def __init__(self, s=None, **kwargs):
 
         if s is not None:
+            s = re.sub(r'\s+', '', s)
             try:
                 offset = float(s)
-                phase_ids = []
+                phase_defs = []
                 select = ''
 
-            except:
+            except ValueError:
+                matched = False
                 m = timing_regex.match(s)
                 if m:
                     if m.group(3):
-                        phase_ids = m.group(3).split('|')
-                    elif m.group(5):
-                        phase_ids = [m.group(5)]
+                        phase_defs = m.group(3).split('|')
+                    elif m.group(19):
+                        phase_defs = [m.group(19)]
                     else:
-                        phase_ids = []
+                        phase_defs = []
 
                     select = m.group(2) or ''
 
                     offset = 0.0
-                    if m.group(6):
-                        offset = float(m.group(6))
+                    if m.group(27):
+                        offset = float(m.group(27))
+
+                    matched = True
 
                 else:
+                    m = timing_regex_old.match(s)
+                    if m:
+                        if m.group(3):
+                            phase_defs = m.group(3).split('|')
+                        elif m.group(5):
+                            phase_defs = [m.group(5)]
+                        else:
+                            phase_defs = []
+
+                        select = m.group(2) or ''
+
+                        offset = 0.0
+                        if m.group(6):
+                            offset = float(m.group(6))
+
+                        phase_defs = [
+                            'stored:' + phase_def for phase_def in phase_defs]
+
+                        matched = True
+
+                if not matched:
                     raise InvalidTimingSpecification(s)
 
             kwargs = dict(
-                phase_ids=phase_ids,
+                phase_defs=phase_defs,
                 select=select,
                 offset=offset)
 
@@ -217,25 +268,26 @@ class Timing(SObject):
 
     def __str__(self):
         l = []
-        if self.phase_ids:
-            sphases = '|'.join(self.phase_ids)
-            if len(self.phase_ids) > 1 or self.select:
-                sphases = '(%s)' % sphases
+        if self.phase_defs:
+            sphases = '|'.join(self.phase_defs)
+            #if len(self.phase_defs) > 1 or self.select:
+            sphases = '{%s}' % sphases
 
             if self.select:
                 sphases = self.select + sphases
 
             l.append(sphases)
 
-        if self.offset != 0.0 or not self.phase_ids:
+        if self.offset != 0.0 or not self.phase_defs:
             l.append('%+g' % self.offset)
 
         return ''.join(l)
 
     def evaluate(self, get_phase, args):
         try:
-            if self.phase_ids:
-                phases = [get_phase(phase_id) for phase_id in self.phase_ids]
+            if self.phase_defs:
+                phases = [
+                    get_phase(phase_def) for phase_def in self.phase_defs]
                 times = [phase(args) for phase in phases]
                 times = [t+self.offset for t in times if t is not None]
                 if not times:
@@ -252,7 +304,7 @@ class Timing(SObject):
         except spit.OutOfBounds:
             raise OutOfBounds(args)
 
-    phase_ids = List.T(StringID.T())
+    phase_defs = List.T(String.T())
     offset = Float.T(default=0.0)
     select = PhaseSelect.T(
         default='',
@@ -1331,8 +1383,11 @@ Index variables are (source_depth, distance, component).'''
 
     short_type = 'A'
 
-    def get_distance(self, args):
+    def get_surface_distance(self, args):
         return args[1]
+
+    def get_distance(self, args):
+        return math.sqrt(args[0]**2 + args[1]**2)
 
     def get_source_depth(self, args):
         return args[0]
@@ -1495,6 +1550,9 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
     short_type = 'B'
 
     def get_distance(self, args):
+        return math.sqrt((args[1] - args[0])**2 + args[2]**2)
+
+    def get_surface_distance(self, args):
         return args[2]
 
     def get_source_depth(self, args):
@@ -1706,7 +1764,7 @@ class ConfigTypeC(Config):
 
     short_type = 'C'
 
-    def get_distance(self, args):
+    def get_surface_distance(self, args):
         ireceiver, _, source_east_shift, source_north_shift, _ = args
         sorig = self.source_origin
         sloc = Location(
@@ -1715,7 +1773,20 @@ class ConfigTypeC(Config):
             north_shift=sorig.north_shift + source_north_shift,
             east_shift=sorig.east_shift + source_east_shift)
 
-        self.receivers[args[0]].distance_to(sloc)
+        return self.receivers[args[0]].distance_to(sloc)
+
+    def get_distance(self, args):
+        # to be improved...
+        ireceiver, sdepth, source_east_shift, source_north_shift, _ = args
+        sorig = self.source_origin
+        sloc = Location(
+            lat=sorig.lat,
+            lon=sorig.lon,
+            north_shift=sorig.north_shift + source_north_shift,
+            east_shift=sorig.east_shift + source_east_shift)
+
+        return math.sqrt(
+            self.receivers[args[0]].distance_to(sloc)**2 + sdepth**2)
 
     def get_source_depth(self, args):
         return args[1]

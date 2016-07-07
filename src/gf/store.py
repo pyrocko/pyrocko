@@ -1256,14 +1256,65 @@ class Store(BaseStore):
 
         return fn
 
-    def get_phase(self, phase_id):
+    def get_phase(self, phase_def):
+        provider, phase_def = phase_def.split(':', 1)
+        if provider == 'stored':
+            phase_id = phase_def
+            if phase_id not in self._phases:
+                fn = self._phase_filename(phase_id)
+                spt = spit.SPTree(filename=fn)
+                self._phases[phase_id] = spt
 
-        if phase_id not in self._phases:
-            fn = self._phase_filename(phase_id)
-            spt = spit.SPTree(filename=fn)
-            self._phases[phase_id] = spt
+            return self._phases[phase_id]
 
-        return self._phases[phase_id]
+        elif provider == 'vel':
+            vel = float(phase_def) * 1000.
+
+            def evaluate(args):
+                return self.config.get_distance(args) / vel
+
+            return evaluate
+
+        elif provider == 'vel_surface':
+            vel = float(phase_def) * 1000.
+
+            def evaluate(args):
+                return self.config.get_surface_distance(args) / vel
+
+            return evaluate
+
+        elif provider == 'cake':
+            from pyrocko import cake
+            mod = self.config.earthmodel_1d
+            phases = [cake.PhaseDef(phase_def)]
+
+            def evaluate(args):
+                if len(args) == 2:
+                    zr, zs, x = (self.config.receiver_depth,) + args
+                elif len(args) == 3:
+                    zr, zs, x = args
+                else:
+                    assert False
+
+                t = []
+                if phases:
+                    rays = mod.arrivals(
+                        phases=phases,
+                        distances=[x*cake.m2d],
+                        zstart=zs,
+                        zstop=zr)
+
+                    for ray in rays:
+                        t.append(ray.t)
+
+                if t:
+                    return min(t)
+                else:
+                    return None
+
+            return evaluate
+
+        raise StoreError('unsupported phase provider: %s' % provider)
 
     def t(self, timing, *args):
         '''Compute interpolated phase arrivals.
@@ -1314,7 +1365,7 @@ class Store(BaseStore):
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
-            x = self.config.get_distance(args)
+            x = self.config.get_surface_distance(args)
             data.append((x, tmin, tmax))
 
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
