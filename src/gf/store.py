@@ -1128,7 +1128,7 @@ class Store(BaseStore):
 
         store, decimate = self._decimated_store(decimate)
         if interpolation == 'nearest_neighbor':
-            irecord = store.config.irecor(d*args)
+            irecord = store.config.irecord(*args)
             tr = store._get(irecord, itmin, nsamples, decimate,
                               implementation)
 
