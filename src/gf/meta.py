@@ -296,6 +296,11 @@ class Timing(SObject):
         return ''.join(l)
 
     def evaluate(self, get_phase, args):
+        '''Extract onset from *get_phase* callback method.
+
+        :param get_phase: callback method which evaluates *args* and returns
+          either one onset time or a numpy array of onset times.
+        :param args: arguments evaluated by *get_phase*.'''
         try:
             if self.offset_is_slowness and self.offset != 0.0:
                 phase_offset = get_phase(
@@ -312,9 +317,9 @@ class Timing(SObject):
                 if not times:
                     return None
                 elif self.select == 'first':
-                    return min(times)
+                    return num.nanmin(times, axis=0)
                 elif self.select == 'last':
-                    return max(times)
+                    return num.nanmax(times, axis=0)
                 else:
                     return times[0]
             else:
