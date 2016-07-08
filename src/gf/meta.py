@@ -568,7 +568,7 @@ class DiscretizedSource(Object):
     '''Base class for discretized sources.
 
     To compute synthetic seismograms, the parameterized source models (see of
-    :py:class:`pyrocko.seismosizer.Source` derived classes) are first
+    :py:class:`pyrocko.gf.seismosizer.Source` derived classes) are first
     discretized into a number of point sources. These spacio-temporal point
     source distributions are represented by subclasses of the
     :py:class:`DiscretizedSource`. For elastodynamic problems there is the
@@ -1231,6 +1231,22 @@ class DiscretizedPorePressureSource(DiscretizedSource):
 
 
 class ComponentSchemes(StringChoice):
+    '''
+    Different Green's Function component schemes are available:
+    
+    ================= ===========
+    \                 Description
+    ================= ===========
+    ``elastic10``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT sources only
+    ``elastic8``      Elastodynamic for far-field only :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT sources only
+    ``elastic2``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, purely isotropic sources only
+    ``elastic5``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, SF sources only
+    ``elastic15``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT and SF sources
+    ``elastic13``     Elastodynamic for far-field only :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT and SF sources
+    ``elastic18``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeC` stores, MT sources only
+    ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores
+    ================= ===========
+    '''
     choices = (
         'elastic10',  # nf + ff
         'elastic8',   # ff
@@ -1260,7 +1276,23 @@ class CircularRegion(Region):
 
 
 class Config(Object):
-    '''Greens function store meta information.'''
+    '''
+    Green's function store meta information.
+
+    Currently implemented :py:class:`pyrocko.gf.store.Store` configurations are:
+
+    * :py:class:`pyrocko.gf.meta.ConfigTypeA` - 1D earth model, single receiver depth
+        * Problem is invariant to horizontal translations and rotations around vertical axis.
+        * All receivers must be at the same depth (e.g. at the surface)
+        * High level index variables: ``(source_depth, receiver_distance, component)``
+    * :py:class:`pyrocko.gf.meta.ConfigTypeB` - 1D earth model, variable receiver depth
+        * Symmetries like in Type A but has additional index for receiver depth
+        * High level index variables: ``(source_depth, receiver_distance, receiver_depth, component)``
+    * :py:class:`pyrocko.gf.meta.ConfigTypeC` - no symmetrical constraints but fixed receiver positions
+        * Cartesian source volume around a reference point
+        * High level index variables: ``(ireceiver, source_depth, source_east_shift, source_north_shift, component)``
+
+    '''
 
     id = StringID.T()
 
