@@ -383,6 +383,49 @@ class GFTestCase(unittest.TestCase):
 
             self.assertTrue(numeq(data, tr.ydata, 0.01))
 
+    def test_pulse_decimate(self):
+        store_dir = self.get_pulse_store_dir()
+
+        store = gf.Store(store_dir)
+        store.make_decimated(2)
+
+        engine = gf.LocalEngine(store_dirs=[store_dir])
+        pulse = engine.get_store_extra(None, 'pulse')
+
+        source = gf.ExplosionSource(
+            time=0.0,
+            depth=100.,
+            moment=1.0)
+
+        targets = [
+            gf.Target(
+                codes=('', 'STA', '%s' % sample_rate, component),
+                sample_rate=sample_rate,
+                north_shift=500.,
+                east_shift=0.)
+
+            for component in 'N'
+            for sample_rate in [None, store.config.sample_rate / 2.0]
+        ]
+
+        response = engine.process(source, targets)
+
+        trs = []
+        for source, target, tr in response.iter_results():
+            tr.extend(0., 1.)
+            if target.sample_rate is None:
+                tr.downsample_to(2./store.config.sample_rate, snap=True)
+
+            trs.append(tr)
+
+        tmin = max(tr.tmin for tr in trs)
+        tmax = min(tr.tmax for tr in trs)
+
+        for tr in trs:
+            tr.chop(tmin, tmax)
+
+        self.assertTrue(numeq(trs[0].ydata, trs[1].ydata, 0.01))
+
     def test_stf_pre_post(self):
         store_dir = self.get_pulse_store_dir()
         engine = gf.LocalEngine(store_dirs=[store_dir])

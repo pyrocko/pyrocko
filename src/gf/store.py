@@ -1184,7 +1184,7 @@ class Store(BaseStore):
         :rtype: :py:class:`pyrocko.gf.store.GFTrace`
         '''
 
-        store, decimate = self._decimated_store(decimate)
+        store, decimate_ = self._decimated_store(decimate)
 
         if interpolation == 'nearest_neighbor':
             irecords = store.config.irecords(*args)
@@ -1195,7 +1195,7 @@ class Store(BaseStore):
             weights = num.repeat(weights, neach) * ip_weights
             delays = num.repeat(delays, neach)
 
-        tr = store._sum(irecords, delays, weights, itmin, nsamples, decimate,
+        tr = store._sum(irecords, delays, weights, itmin, nsamples, decimate_,
                           implementation, optimization)
 
         # to prevent problems with rounding errors (BaseStore saves deltat
@@ -1577,10 +1577,19 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def seismogram(self, source, receiver, components,
+    def seismogram(self, source, receiver, components, deltat=None,
                    interpolation='nearest_neighbor', optimization='enable'):
 
         out = {}
+
+        if deltat is None:
+            decimate = 1
+        else:
+            decimate = int(round(deltat/self.config.deltat))
+            if abs(deltat / (decimate * self.config.deltat) - 1.0) > 0.001:
+                raise StoreError(
+                    'unavailable decimation ratio target.deltat / store.deltat'
+                    ' = %g / %g' % (deltat, self.config.deltat))
 
         dts = 0.
         for (component, args, delays, weights) in \
@@ -1588,6 +1597,7 @@ class Store(BaseStore):
 
             if component in components:
                 gtr = self.sum(args, delays, weights,
+                               decimate=decimate,
                                interpolation=interpolation,
                                optimization=optimization)
 

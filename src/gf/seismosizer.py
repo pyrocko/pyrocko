@@ -2442,8 +2442,14 @@ class LocalEngine(Engine):
 
         tcounters.append(xtime())
 
+        if target.sample_rate is not None:
+            deltat = 1./target.sample_rate
+        else:
+            deltat = None
+
         base_seismogram = store_.seismogram(
             base_source, receiver, components,
+            deltat=deltat,
             interpolation=target.interpolation,
             optimization=target.optimization)
 
