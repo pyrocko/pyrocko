@@ -1315,7 +1315,35 @@ class Config(Object):
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')
 
+    def get_store_shear_moduli_points(self, points, interpolation='nearest_neighbor'):
+        '''
+        Get shear moduli for given point sources in cartesian coordinates.
+        '''
+        store_depth_profile = self.coords[0]
+        
+        earthmod = self.earthmodel_1d
+        
+        vs_profile = earthmod.profile('vs')
+        z_profile = earthmod.profile('z')
+        rho_profile = earthmod.profile('rho')
+        
+        store_vs_profile = num.interp(
+            store_depth_profile, z_profile, vs_profile)
+        store_rho_profile = num.interp(
+            store_depth_profile, z_profile, rho_profile)
+        store_shear_modulus_profile = \
+            num.power(store_vs_profile, 2) * store_rho_profile
 
+        if interpolation == 'multilinear':
+            kind = 'linear'
+        elif interpolation == 'nearest_neighbor':
+            kind = 'nearest'
+                
+        shear_moduli_interpolator = interp1d(
+            store_depth_profile, store_shear_modulus_profile, kind=kind)
+        return shear_moduli_interpolator(points[:,2])
+
+    
 class ConfigTypeA(Config):
     '''Cylindrical symmetry, fixed receiver depth
 

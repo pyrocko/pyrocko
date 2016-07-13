@@ -9,6 +9,7 @@ import resource
 pjoin = os.path.join
 
 import numpy as num
+from scipy.interpolate import interp1d
 
 from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
     Timestamp, Int, SObject, ArgumentError, Dict
@@ -180,7 +181,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
 
-    return points2, times2, amplitudes2
+    return points2, times2, amplitudes2, dl, dw
 
 
 def outline_rect_source(strike, dip, length, width):
@@ -1396,15 +1397,20 @@ class RectangularSource(DCSource):
         default=3500.,
         help='speed of rupture front [m/s]')
 
+    slip = Float.T(
+        optional=True,
+        help='Slip on the rectangular source area [m]')
+
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
             self.width,
             self.nucleation_x,
             self.nucleation_y,
-            self.velocity)
-
-    def discretize_basesource(self, store):
+            self.velocity,
+            self.slip)
+        
+    def discretize_basesource(self, store, target):
 
         if self.nucleation_x is not None:
             nucx = self.nucleation_x * 0.5 * self.length
@@ -1418,15 +1424,27 @@ class RectangularSource(DCSource):
 
         stf = self.effective_stf_pre()
 
-        points, times, amplitudes = discretize_rect_source(
+        points, times, amplitudes, dl, dw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
-        n = times.size
+        if self.slip is not None:
+            shear_moduli = store.config.get_store_shear_moduli_points(
+                points=points, interpolation=target.interpolation)
+                                                                 
+            amplitudes *= dl * dw * shear_moduli * self.slip
 
-        mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake,
-                              scalar_moment=1.0/n)
+            n = times.size
+
+            mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake)
+
+            self.moment = 1.0
+        else:
+            n = times.size
+
+            mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake,
+                scalar_moment=1.0/n)
 
         m6s = num.repeat(mot.m6()[num.newaxis, :], n, axis=0)
         m6s[:, :] *= amplitudes[:, num.newaxis]
@@ -1551,7 +1569,7 @@ class DoubleDCSource(SourceWithMagnitude):
         else:
             return self.effective_stf_pre()
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
         a1 = 1.0 - self.mix
         a2 = self.mix
         mot1 = mt.MomentTensor(strike=self.strike1, dip=self.dip1,
@@ -1657,7 +1675,7 @@ class RingfaultSource(SourceWithMagnitude):
     def get_factor(self):
         return self.sign * self.moment
 
-    def discretize_basesource(self, store=None):
+    def discretize_basesource(self, store=None, target=None):
         n = self.npointsources
         phi = num.linspace(0, 2.0*num.pi, n, endpoint=False)
 
@@ -1733,7 +1751,7 @@ class SFSource(Source):
     def get_factor(self):
         return 1.0
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
         forces = num.array([[self.fn, self.fe, self.fd]], dtype=num.float)
@@ -1773,7 +1791,7 @@ class PorePressurePointSource(Source):
     def get_factor(self):
         return self.pp
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
         return meta.DiscretizedPorePressureSource(pp=arr(1.0),
                                                   **self._dparams_base())
 
@@ -1809,7 +1827,7 @@ class PorePressureLineSource(Source):
     def get_factor(self):
         return self.pp
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
 
         n = 2 * num.ceil(self.length / min(store.config.deltas)) + 1
 
@@ -2422,9 +2440,9 @@ class LocalEngine(Engine):
                 target.store_id,
                 source.__class__.__name__))
 
-    def _cached_discretize_basesource(self, source, store, cache):
+    def _cached_discretize_basesource(self, source, store, cache, target):
         if (source, store) not in cache:
-            cache[source, store] = source.discretize_basesource(store)
+            cache[source, store] = source.discretize_basesource(store, target)
 
         return cache[source, store]
 
@@ -2438,7 +2456,7 @@ class LocalEngine(Engine):
         tcounters.append(xtime())
 
         base_source = self._cached_discretize_basesource(
-            source, store_, dsource_cache)
+            source, store_, dsource_cache, target)
 
         tcounters.append(xtime())
 
