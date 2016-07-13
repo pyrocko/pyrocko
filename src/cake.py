@@ -3144,24 +3144,61 @@ class LayeredModel(object):
         return mod_simple
 
     def extract(self, depth_min=None, depth_max=None):
+        '''Extract :py:class:`LayeredModel` from :py:class:`LayeredModel`.
+
+        :param depth_min: depth of upper cut
+        :param depth_max: depth of lower cut
+
+        Interpolates a :py:class:`GradientLayer` at *depth_min* and/or
+        *depth_max*.'''
+        assert depth_min<depth_max
 
         if isinstance(depth_min, basestring):
             depth_min = self.discontinuity(depth_min).z
-        
+
         if isinstance(depth_max, basestring):
             depth_max = self.discontinuity(depth_max).z
 
         mod_extracted = LayeredModel()
         for element in self.elements():
-            if ((depth_min is None 
-                    or self.zeq(depth_min, element.ztop)
-                    or depth_min <= element.ztop )
-                and 
-                (depth_max is None 
-                    or self.zeq(depth_max, element.zbot) 
-                    or depth_max >= element.zbot)):
+            l = None
+            if (depth_min >= element.ztop and depth_min <= element.zbot):
+                if isinstance(element, Interface) or\
+                        isinstance(element, Surface):
+                    l = element
+                else:
+                    interface_material = element.material(depth_min)
+                    if isinstance(element, HomogeneousLayer):
+                        l = HomogeneousLayer(
+                            depth_min, min(element.zbot, depth_max),
+                            interface_material, name=element.name)
+                    if isinstance(element, GradientLayer):
+                        l = GradientLayer(
+                            depth_min, min(element.zbot, depth_max),
+                            interface_material,
+                            element.mbot, name=element.name)
+                mod_extracted.append(l)
 
-                mod_extracted.append(element)
+            if depth_min < element.ztop and depth_max > element.zbot:
+                l = element
+                mod_extracted.append(l)
+
+            if depth_max <= element.zbot and depth_max > element.ztop:
+                if isinstance(element, Interface):
+                    l = element
+                else:
+                    interface_material = element.material(depth_max)
+                    if isinstance(element, HomogeneousLayer):
+                        l = HomogeneousLayer(
+                            depth_min, min(element.zbot, depth_max),
+                            interface_material, name=element.name)
+                    if isinstance(element, GradientLayer):
+                        l = GradientLayer(
+                            depth_min, min(element.zbot, depth_max),
+                            element.mtop,
+                            interface_material,
+                            name=element.name)
+                mod_extracted.append(l)
 
         return mod_extracted
 
