@@ -3002,6 +3002,12 @@ class LayeredModel(object):
                 yield getter(layer.mbot)
 
     def profile(self, get):
+        '''
+        Get parameter profile along depth of the earthmodel.
+        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``, or ``'z'``)
+        :type get: string
+        '''
+        
         return num.array( list(self.iter_material_parameter(get)))
 
     def min(self, get='vp'):
