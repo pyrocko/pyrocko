@@ -3,6 +3,8 @@ import math
 import re
 import fnmatch
 import numpy as num
+from scipy.interpolate import interp1d
+
 from pyrocko.guts import Object, SObject, String, StringChoice, \
     StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError, \
     Timestamp, Tuple
@@ -1399,9 +1401,9 @@ class Config(Object):
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')
 
-    def get_store_shear_moduli_points(self, points, interpolation='nearest_neighbor'):
+    def get_store_shear_moduli_points(self, z_points, interpolation='nearest_neighbor'):
         '''
-        Get shear moduli for given point sources in cartesian coordinates.
+        Get shear moduli for given point sources depths in cartesian coordinates.
         '''
         store_depth_profile = self.coords[0]
         
@@ -1422,10 +1424,10 @@ class Config(Object):
             kind = 'linear'
         elif interpolation == 'nearest_neighbor':
             kind = 'nearest'
-                
+
         shear_moduli_interpolator = interp1d(
             store_depth_profile, store_shear_modulus_profile, kind=kind)
-        return shear_moduli_interpolator(points[:,2])
+        return shear_moduli_interpolator(z_points)
 
     
 class ConfigTypeA(Config):

@@ -9,7 +9,6 @@ import resource
 pjoin = os.path.join
 
 import numpy as num
-from scipy.interpolate import interp1d
 
 from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
     Timestamp, Int, SObject, ArgumentError, Dict
@@ -1431,7 +1430,8 @@ class RectangularSource(DCSource):
 
         if self.slip is not None:
             shear_moduli = store.config.get_store_shear_moduli_points(
-                points=points, interpolation=target.interpolation)
+                z_points=self.depth + points[:,2],
+                interpolation=target.interpolation)
                                                                  
             amplitudes *= dl * dw * shear_moduli * self.slip
 
