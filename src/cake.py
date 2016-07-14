@@ -1111,6 +1111,7 @@ class Layer(object):
         self.zbot = zbot
         self.zmid = ( self.ztop + self.zbot ) * 0.5
         self.name = name
+        self.ilayer = None
 
     def _update_potint_coefs(self):
         potint_p = potint_s = False
@@ -1261,6 +1262,22 @@ class Layer(object):
             return -direction
         else:
             return direction
+
+    def resize(self, depth_min=None, depth_max=None):
+        '''Change layer thinkness and interpolate :py:class:`Material` if
+        required.'''
+        if depth_min:
+            mtop = self.material(depth_min)
+
+        if depth_max:
+            mbot = self.material(depth_max)
+
+        self.mtop = mtop if depth_min else self.mtop
+        self.mbot = mbot if depth_max else self.mbot
+        self.ztop = depth_min
+        self.zbot = depth_max
+        self.zmid = depth_min + (depth_max - depth_min)/2.
+
 
 class DoesNotTurn(Exception):
     pass
@@ -1486,6 +1503,9 @@ class Discontinuity(object):
         self.zbot = z
         self.ztop = z
         self.name = name
+
+    def copy(self):
+        return copy.copy(self)
 
 class Interface(Discontinuity):
     '''Representation of an interface in a layered earth model.
