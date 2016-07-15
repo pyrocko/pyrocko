@@ -748,8 +748,10 @@ class GFTestCase(unittest.TestCase):
 
             return return_times
 
-        tf = gf.Timing('first('+'|'.join([str(pd) for pd in phase_defs])+')+2.5')
-        tl = gf.Timing('last('+'|'.join([str(pd) for pd in phase_defs])+')-2.5')
+        tf = gf.Timing('first('+'|'.join(
+            [str(pd) for pd in phase_defs])+')+2.5')
+        tl = gf.Timing('last('+'|'.join(
+            [str(pd) for pd in phase_defs])+')-2.5')
 
         first_onset = tf.evaluate(get_phase, args)
         last_onset = tl.evaluate(get_phase, args)
@@ -771,6 +773,27 @@ class GFTestCase(unittest.TestCase):
         self.assertTrue((last_onset == max_times).all())
         self.assertTrue(len(first_onset) == nvals)
         self.assertTrue(len(last_onset) == nvals)
+
+    def test_timing_store_evaluate_many(self):
+        store_dir = self.get_regional_ttt_store_dir()
+
+        store = gf.Store(store_dir)
+        n = 100
+        config = store.config
+        zs = num.random.uniform(
+            config.source_depth_min, config.source_depth_max, n)
+        ds = num.random.uniform(
+            config.distance_min, config.distance_max, n)
+
+        args = num.vstack((zs, ds)).T
+
+        arrs = store.t('P', args)
+        arrs2 = []
+        for a in args:
+            arrs2.append(store.t('P', tuple(a)))
+
+        assert numeq(arrs, arrs2, 1e-7)
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
