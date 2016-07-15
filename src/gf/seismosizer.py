@@ -1072,7 +1072,7 @@ class ExplosionSource(SourceWithMagnitude):
     def get_factor(self):
         return mt.magnitude_to_moment(self.magnitude)
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
         return meta.DiscretizedExplosionSource(
@@ -1132,7 +1132,7 @@ class RectangularExplosionSource(ExplosionSource):
                                         self.width, self.nucleation_x,
                                         self.nucleation_y, self.velocity)
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
 
         if self.nucleation_x is not None:
             nucx = self.nucleation_x * 0.5 * self.length
@@ -1188,7 +1188,7 @@ class DCSource(SourceWithMagnitude):
     def get_factor(self):
         return mt.magnitude_to_moment(self.magnitude)
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
         mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake)
 
         times, amplitudes = self.effective_stf_pre().discretize_t(
@@ -1265,7 +1265,7 @@ class CLVDSource(Source):
     def m6_astuple(self):
         return tuple(self.m6.tolist())
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
         return meta.DiscretizedMTSource(
@@ -1338,7 +1338,7 @@ class MTSource(Source):
     def base_key(self):
         return Source.base_key(self) + self.m6_astuple
 
-    def discretize_basesource(self, store):
+    def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
         return meta.DiscretizedMTSource(
