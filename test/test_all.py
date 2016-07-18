@@ -19,6 +19,7 @@ from test_ims import IMSTestCase
 from test_guts import GutsTestCase
 from test_parstack import ParstackTestCase
 from test_geonames import GeonamesTestCase
+from test_cake import CakeTestCase
 
 import unittest
 import optparse
