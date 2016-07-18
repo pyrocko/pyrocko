@@ -1472,7 +1472,17 @@ class Store(BaseStore):
             vel = float(phase_def) * 1000.
 
             def evaluate(args):
-                return self.config.get_distance(args) / vel
+                if isinstance(args, num.ndarray):
+                    if args.shape[1] == 2:
+                        return num.sqrt(
+                            args.T[0]**2 + args.T[1]**2) / vel
+                    elif args.shape[1] == 3:
+                        return num.sqrt(
+                            (args.T[1]-args.T[0])**2 + args.T[2]**2) / vel
+                    else:
+                        assert False
+                else:
+                    return self.config.get_distance(args) / vel
 
             return evaluate
 
@@ -1480,7 +1490,15 @@ class Store(BaseStore):
             vel = float(phase_def) * 1000.
 
             def evaluate(args):
-                return self.config.get_surface_distance(args) / vel
+                if isinstance(args, num.ndarray):
+                    if args.shape[1] == 2:
+                        return args.T[1] / vel
+                    elif args.shape[1] == 3:
+                        return args.T[2] / vel
+                    else:
+                        assert False
+                else:
+                    return self.config.get_surface_distance(args) / vel
 
             return evaluate
 
@@ -1490,28 +1508,59 @@ class Store(BaseStore):
             phases = [cake.PhaseDef(phase_def)]
 
             def evaluate(args):
-                if len(args) == 2:
-                    zr, zs, x = (self.config.receiver_depth,) + args
-                elif len(args) == 3:
-                    zr, zs, x = args
+                if isinstance(args, num.ndarray):
+                    if args.shape[1] == 2:
+                        zr = num.empty(args.shape[0])
+                        zr[:] = self.config.receiver_depth
+                        zs, x = args.T
+                    elif args.shape[1] == 3:
+                        zr, zs, x = args.T
+                    else:
+                        assert False
+
+                    n = len(args)
+                    t = num.empty(n)
+                    if phases:
+                        for i in xrange(n):
+                            tmp = []
+                            rays = mod.arrivals(
+                                phases=phases,
+                                distances=[x[i]*cake.m2d],
+                                zstart=zs[i],
+                                zstop=zr[i])
+
+                            for ray in rays:
+                                tmp.append(ray.t)
+
+                            if tmp:
+                                t[i] = min(tmp)
+                            else:
+                                t[i] = num.nan
+                    return t
+
                 else:
-                    assert False
+                    if len(args) == 2:
+                        zr, zs, x = (self.config.receiver_depth,) + args
+                    elif len(args) == 3:
+                        zr, zs, x = args
+                    else:
+                        assert False
 
-                t = []
-                if phases:
-                    rays = mod.arrivals(
-                        phases=phases,
-                        distances=[x*cake.m2d],
-                        zstart=zs,
-                        zstop=zr)
+                    t = []
+                    if phases:
+                        rays = mod.arrivals(
+                            phases=phases,
+                            distances=[x*cake.m2d],
+                            zstart=zs,
+                            zstop=zr)
 
-                    for ray in rays:
-                        t.append(ray.t)
+                        for ray in rays:
+                            t.append(ray.t)
 
-                if t:
-                    return min(t)
-                else:
-                    return None
+                    if t:
+                        return min(t)
+                    else:
+                        return None
 
             return evaluate
 
