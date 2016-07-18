@@ -1111,6 +1111,7 @@ class Layer(object):
         self.zbot = zbot
         self.zmid = ( self.ztop + self.zbot ) * 0.5
         self.name = name
+        self.ilayer = None
 
     def _update_potint_coefs(self):
         potint_p = potint_s = False
@@ -1261,6 +1262,22 @@ class Layer(object):
             return -direction
         else:
             return direction
+
+    def resize(self, depth_min=None, depth_max=None):
+        '''Change layer thinkness and interpolate :py:class:`Material` if
+        required.'''
+        if depth_min:
+            mtop = self.material(depth_min)
+
+        if depth_max:
+            mbot = self.material(depth_max)
+
+        self.mtop = mtop if depth_min else self.mtop
+        self.mbot = mbot if depth_max else self.mbot
+        self.ztop = depth_min
+        self.zbot = depth_max
+        self.zmid = depth_min + (depth_max - depth_min)/2.
+
 
 class DoesNotTurn(Exception):
     pass
@@ -1486,6 +1503,9 @@ class Discontinuity(object):
         self.zbot = z
         self.ztop = z
         self.name = name
+
+    def copy(self):
+        return copy.deepcopy(self)
 
 class Interface(Discontinuity):
     '''Representation of an interface in a layered earth model.
@@ -3144,23 +3164,39 @@ class LayeredModel(object):
         return mod_simple
 
     def extract(self, depth_min=None, depth_max=None):
+        '''Extract :py:class:`LayeredModel` from :py:class:`LayeredModel`.
+
+        :param depth_min: depth of upper cut
+        :param depth_max: depth of lower cut
+
+        Interpolates a :py:class:`GradientLayer` at *depth_min* and/or
+        *depth_max*.'''
+        assert depth_min<depth_max
 
         if isinstance(depth_min, basestring):
             depth_min = self.discontinuity(depth_min).z
-        
+
         if isinstance(depth_max, basestring):
             depth_max = self.discontinuity(depth_max).z
 
         mod_extracted = LayeredModel()
-        for element in self.elements():
-            if ((depth_min is None 
-                    or self.zeq(depth_min, element.ztop)
-                    or depth_min <= element.ztop )
-                and 
-                (depth_max is None 
-                    or self.zeq(depth_max, element.zbot) 
-                    or depth_max >= element.zbot)):
 
+        for element in self.elements():
+            element = element.copy()
+            do_append = False
+            if depth_min <= element.ztop and depth_max >= element.zbot:
+                mod_extracted.append(element)
+                continue
+
+            if depth_min > element.ztop and depth_min < element.zbot:
+                _, element = element.split(depth_min)
+                do_append = True
+
+            if depth_max < element.zbot and depth_max > element.ztop:
+                element, _ = element.split(depth_max)
+                do_append = True
+
+            if do_append:
                 mod_extracted.append(element)
 
         return mod_extracted
