@@ -3180,7 +3180,6 @@ class LayeredModel(object):
             depth_max = self.discontinuity(depth_max).z
 
         mod_extracted = LayeredModel()
-        ilayer = 0
 
         for element in self.elements():
             element = element.copy()
