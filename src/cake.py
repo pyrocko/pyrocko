@@ -1505,7 +1505,7 @@ class Discontinuity(object):
         self.name = name
 
     def copy(self):
-        return copy.copy(self)
+        return copy.deepcopy(self)
 
 class Interface(Discontinuity):
     '''Representation of an interface in a layered earth model.
