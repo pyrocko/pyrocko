@@ -779,6 +779,7 @@ class GFTestCase(unittest.TestCase):
 
         store = gf.Store(store_dir)
         n = 100
+        vel = 100.
         config = store.config
         zs = num.random.uniform(
             config.source_depth_min, config.source_depth_max, n)
@@ -787,13 +788,25 @@ class GFTestCase(unittest.TestCase):
 
         args = num.vstack((zs, ds)).T
 
-        arrs = store.t('P', args)
-        arrs2 = []
-        for a in args:
-            arrs2.append(store.t('P', tuple(a)))
+        arrs_ref = num.empty(len(args))
+        for i, a in enumerate(args):
+            arrs_ref[i] = store.t('P', tuple(a))
 
-        assert numeq(arrs, arrs2, 1e-7)
+        arrs_p = store.t('P', args)
+        arrs_p_cake = store.t('cake:P', args)
+        arrs_vel = store.t('vel:%s' % vel, args)
+        arrs_vel_horizontal = store.t('vel_surface:%s' % vel, args)
 
+        assert numeq(arrs_ref, arrs_p, 1e-1)
+        assert numeq(arrs_ref, arrs_p_cake, 1.)
+        self.assertEqual(arrs_vel.shape, (len(args),))
+        self.assertEqual(arrs_vel_horizontal.shape, (len(args),))
+        assert all(args.T[1]/(vel*1000.) == arrs_vel_horizontal)
+
+        self.assertTrue(all(store.t('first{vel:%s|stored:P}' % vel, args) ==
+                        arrs_vel))
+        self.assertTrue(all(store.t('last{vel:%s|stored:P}' % vel, args) ==
+                        arrs_p))
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
