@@ -120,7 +120,7 @@ def cl_parse(command, args, setup=None, details=None):
     description = descr[0].upper() + descr[1:] + '.'
 
     if details:
-        description = description + '\n\n%s' % details
+        description = description + ' %s' % details
 
     parser = OptionParser(usage=susage, description=description)
 
@@ -708,7 +708,7 @@ def command_tttview(args):
                 help='Source depth in km')
 
     parser, options, args = cl_parse('tttview', args, setup=setup,
-        details=' Comma seperated phase ids, eg. \'fomosto tttview Pdiff,S\'.')
+        details='Comma seperated <phase-ids>, eg. \'fomosto tttview Pdiff,S\'.')
     try:
         phase_ids = args.pop().split(',')
     except:
