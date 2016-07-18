@@ -28,7 +28,8 @@ class CakeTestCase(unittest.TestCase):
             (cake.HomogeneousLayer, 1., 2., 1.5, m1, m1),
             (cake.GradientLayer, 1., None, 2., cake.Material(2., 2.), m2),
             (cake.GradientLayer, None, 2., 1., m1, cake.Material(3., 3.)),
-            (cake.GradientLayer, 1., 2., 1.5, cake.Material(2., 2.,), cake.Material(3., 3.)),
+            (cake.GradientLayer, 1., 2., 1.5,
+                cake.Material(2., 2.,), cake.Material(3., 3.)),
             (cake.GradientLayer, None, 4., 2., m1, cake.Material(5., 5.)),
         ]
 
@@ -86,7 +87,8 @@ class CakeTestCase(unittest.TestCase):
             if isinstance(elements[-1], cake.Layer):
                 self.assertEqual(elements[-1].ilayer, n_layers-1)
                 for k, v in elements[-1].mbot.__dict__.items():
-                    self.assertAlmostEqual(v, interface_material_bot.__dict__[k], 6)
+                    self.assertAlmostEqual(
+                        v, interface_material_bot.__dict__[k], 6)
             self.assertEqual(elements[0].ztop, zmin)
             self.assertEqual(elements[-1].zbot, zmax)
 
