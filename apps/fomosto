@@ -48,7 +48,7 @@ subcommand_usages = {
         'import':        'import <source> <destination> [options]',
         'export':        'export [store-dir] <destination> [options]',
         'ttt':           'ttt [store-dir] [options]',
-        'tttview':       'tttview [store-dir] <phase-id> [options]',
+        'tttview':       'tttview [store-dir] <phase-ids> [options]',
         'tttextract':    'tttextract [store-dir] <phase> <selection>',
         'server':        'server [options] <store-super-dir> ...',
         'download':      'download [options] <site> <store-id>',
@@ -106,19 +106,23 @@ def add_common_options(parser):
 def process_common_options(options):
     util.setup_logging(program_name, options.loglevel)
 
-def cl_parse(command, args, setup=None):
+def cl_parse(command, args, setup=None, details=None):
     usage = subcommand_usages[command]
     descr = subcommand_descriptions[command]
 
     if isinstance(usage, basestring):
-        usage = [ usage ]
+        usage = [usage]
 
     susage = '%s %s' % (program_name, usage[0])
     for s in usage[1:]:
         susage += '\n%s%s %s' % (' '*7, program_name, s)
-        
-    parser = OptionParser(usage=susage,
-            description=descr[0].upper() + descr[1:] + '.' )
+
+    description = descr[0].upper() + descr[1:] + '.'
+
+    if details:
+        description = description + ' %s' % details
+
+    parser = OptionParser(usage=susage, description=description)
 
     if setup:
         setup(parser)
@@ -703,18 +707,19 @@ def command_tttview(args):
         parser.add_option('--source-depth', dest='depth', type=float,
                 help='Source depth in km')
 
-    parser, options, args = cl_parse('tttview', args, setup=setup)
+    parser, options, args = cl_parse('tttview', args, setup=setup,
+        details='Comma seperated <phase-ids>, eg. \'fomosto tttview Pdiff,S\'.')
     try:
         phase_ids = args.pop().split(',')
     except:
-        parser.error('cannot get <phase-id> argument')
+        parser.error('cannot get <phase-ids> argument')
 
     np = 1
     store_dir = get_store_dir(args)
     for phase_id in phase_ids:
         try:
             store = gf.Store(store_dir)
-            phase = store.get_phase(phase_id)
+            phase = store.get_stored_phase(phase_id)
             axes = plt.subplot(2, len(phase_ids), np)
             labelspace(axes)
             xscaled(1./km, axes)
