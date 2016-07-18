@@ -1343,16 +1343,24 @@ class Store(BaseStore):
 
         return fn
 
+    def get_stored_phase(self, phase_id):
+        """Get stored phase from GF STore
+        
+        :returns: Phase information
+        :rtype: :py:class:`pyrocko.spit.SPTree`
+        """
+        if phase_id not in self._phases:
+            fn = self._phase_filename(phase_id)
+            spt = spit.SPTree(filename=fn)
+            self._phases[phase_id] = spt
+
+        return self._phases[phase_id]
+
     def get_phase(self, phase_def):
         provider, phase_def = phase_def.split(':', 1)
-        if provider == 'stored':
-            phase_id = phase_def
-            if phase_id not in self._phases:
-                fn = self._phase_filename(phase_id)
-                spt = spit.SPTree(filename=fn)
-                self._phases[phase_id] = spt
 
-            return self._phases[phase_id]
+        if provider == 'stored':
+            return self.get_stored_phase(phase_def)
 
         elif provider == 'vel':
             vel = float(phase_def) * 1000.
