@@ -619,19 +619,22 @@ class Response(Object):
         for stage in self.stage_list:
             responses.extend(stage.get_pyrocko_response(nslc))
 
-        if not self.stage_list:
+        if not self.stage_list and self.instrument_sensitivity:
             responses.append(
                 trace.PoleZeroResponse(
                     constant=self.instrument_sensitivity.value))
 
         if fake_input_units is not None:
-            if self.instrument_sensitivity.input_units is None:
+            if not self.instrument_sensitivity or \
+                    self.instrument_sensitivity.input_units is None:
+
                 raise NoResponseInformation('no input units given')
 
             input_units = self.instrument_sensitivity.input_units.name
 
             try:
                 conresp = conversion[fake_input_units, input_units]
+
             except KeyError:
                 raise NoResponseInformation(
                     'cannot convert between units: %s, %s'
