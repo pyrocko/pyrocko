@@ -10,6 +10,7 @@ _header_data = [
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
+_string_header = (_column_mapping['Time'], _column_mapping['Label'])
 
 class MarkerItemDelegate(QStyledItemDelegate):
     '''Takes are of the table's style.'''
@@ -24,6 +25,12 @@ class MarkerSortFilterProxyModel(QSortFilterProxyModel):
     def __init__(self):
         QSortFilterProxyModel.__init__(self)
         self.sort(1, Qt.AscendingOrder)
+
+    def lessThan(self, left, right):
+        if left.column() not in _string_header:
+            return left.data().toDouble()[0] > right.data().toDouble()[0]
+        else:
+            return left > right
 
 
 class MarkerTableView(QTableView):
@@ -84,7 +91,6 @@ class MarkerTableView(QTableView):
 
     def clicked(self, model_index):
         '''Ignore mouse clicks.'''
-
         pass
 
     def double_clicked(self, model_index):
@@ -251,9 +257,8 @@ class MarkerTableModel(QAbstractTableModel):
         else:
             self.last_active_event = self.pile_viewer.get_active_event()
 
-        index = indices[0]
         markers = self.pile_viewer.markers
-        omarker = markers[index]
+        omarker = markers[indices[0]]
         if not isinstance(omarker, EventMarker):
             return
 
