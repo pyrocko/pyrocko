@@ -84,7 +84,7 @@ class NotMultipleOfSamplingInterval(Exception):
 sampling_check_eps = 1e-5
 
 
-class GFTrace:
+class GFTrace(object):
 
     '''
     Green's Function trace class for handling traces from the GF Store.
@@ -116,6 +116,9 @@ class GFTrace:
         self.itmin = itmin
         self.deltat = deltat
         self.is_zero = is_zero
+        self.n_records_stacked = None
+        self.t_stack = None
+        self.t_optimize = None
 
         if data is not None and data.size > 0:
             if begin_value is None:
@@ -151,6 +154,15 @@ class GFTrace:
                 s.append(' '*7)
 
         return '|'.join(s)
+
+
+class GFValue(object):
+
+    def __init__(self, value):
+        self.value = value
+        self.n_records_stacked = None
+        self.t_stack = None
+        self.t_optimize = None
 
 
 def make_same_span(tracesdict):
@@ -281,6 +293,7 @@ class BaseStore:
         self._deltat = None
         self._f_index = None
         self._f_data = None
+        self._end_values = None
 
     def open(self):
         index_fn = self.index_fn()
@@ -745,17 +758,43 @@ class BaseStore:
 
         return irecords3, delays3, weights3
 
+    def _optimize_statics(self, irecords, weights):
+        if num.unique(irecords).size == irecords.size:
+            return irecords, weights
+
+        iorder = num.argsort(irecords)
+
+        irecords2 = irecords[iorder]
+        weights2 = weights[iorder]
+
+        ui = num.empty(irecords2.size, dtype=num.bool)
+        ui[1:] = num.diff(irecords2) != 0
+
+        ui[0] = 0
+        ind2 = num.cumsum(ui)
+        ui[0] = 1
+        ind1 = num.where(ui)[0]
+
+        irecords3 = irecords2[ind1]
+        weights3 = num.bincount(ind2, weights2)
+
+        return irecords3, weights3
+
+
     def _sum(self, irecords, delays, weights, itmin, nsamples, decimate,
              implementation, optimization):
 
         if not self._f_index:
             self.open()
 
+        t0 = time.time()
         if optimization == 'enable':
             irecords, delays, weights = self._optimize(
                 irecords, delays, weights)
         else:
             assert optimization == 'disable'
+
+        t1 = time.time()
 
         if implementation == 'c' and decimate == 1:
             if delays.size != 0:
@@ -771,28 +810,59 @@ class BaseStore:
             else:
                 itmin -= itoffset
 
+
             try:
-                t0 = time.time()
                 tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
                     (delays - itoffset*self._deltat).astype(num.float32),
                     weights.astype(num.float32),
                     int(itmin), int(nsamples)))
 
-                t1 = time.time()
                 tr.itmin += itoffset
-                return tr
 
             except store_ext.StoreExtError, e:
                 raise StoreError(str(e))
 
         elif implementation == 'alternative':
-            return self._sum_impl_alternative(irecords, delays, weights,
+            tr = self._sum_impl_alternative(irecords, delays, weights,
                                               itmin, nsamples, decimate)
 
         else:
-            return self._sum_impl_reference(irecords, delays, weights,
+            tr = self._sum_impl_reference(irecords, delays, weights,
                                             itmin, nsamples, decimate)
+
+        t2 = time.time()
+
+        tr.n_records_stacked = irecords.size
+        tr.t_optimize = t1 - t0
+        tr.t_stack = t2 - t1
+
+        return tr
+
+    def _sum_statics(self, irecords, weights, implementation, optimization):
+
+        if not self._f_index:
+            self.open()
+
+        t0 = time.time()
+        if optimization == 'enable':
+            irecords, weights = self._optimize_statics(
+                irecords, weights)
+        else:
+            assert optimization == 'disable'
+
+        t1 = time.time()
+
+        value = num.sum(self._end_values[irecords] * weights)
+        val = GFValue(value)
+
+        t2 = time.time()
+
+        val.n_records_stacked = irecords.size
+        val.t_optimize = t1 - t0
+        val.t_stack = t2 - t1
+
+        return val
 
     def _load_index(self):
         if self._use_memmap:
@@ -808,6 +878,8 @@ class BaseStore:
         assert len(records) == self._nrecords
 
         self._records = records
+
+        self._end_values = self._records['end_value']
 
     def _save_index(self):
         self._f_index.seek(0)
@@ -1204,6 +1276,19 @@ class Store(BaseStore):
         tr.deltat = self.config.deltat * decimate
         return tr
 
+    def sum_statics(self, args, weights,
+            decimate=1, interpolation='nearest_neighbor', implementation='c',
+            optimization='enable'):
+
+        if interpolation == 'nearest_neighbor':
+            irecords = self.config.irecords(*args)
+        else:
+            assert interpolation == 'multilinear'
+            irecords, ip_weights = self.config.vicinities(*args)
+            neach = irecords.size / args[0].size
+            weights = num.repeat(weights, neach) * ip_weights
+
+        return self._sum_statics(irecords, weights, implementation, optimization)
 
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
@@ -1585,6 +1670,33 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
+    def statics(self, source, receiver, components,
+            interpolation='nearest_neighbor', optimization='enable'):
+
+        out = {}
+
+        for (component, args, _, weights) in \
+                self.config.make_sum_params(source, receiver):
+
+            if component in components:
+                gval = self.sum_statics(
+                    args, weights,
+                    interpolation=interpolation,
+                    optimization=optimization)
+
+                gtr = GFTrace(
+                    data=num.array([0., gval.value], dtype=gf_dtype),
+                    itmin=0,
+                    deltat=self.config.deltat)
+
+                gtr.n_records_stacked = gval.n_records_stacked
+                gtr.t_stack = gval.t_stack
+                gtr.t_optimize = gval.t_optimize
+
+                out[component] = gtr
+
+        return out
+
     def seismogram(self, source, receiver, components, deltat=None,
                    itmin=None, nsamples=None,
                    interpolation='nearest_neighbor', optimization='enable'):
@@ -1600,7 +1712,6 @@ class Store(BaseStore):
                     'unavailable decimation ratio target.deltat / store.deltat'
                     ' = %g / %g' % (deltat, self.config.deltat))
 
-        dts = 0.
         for (component, args, delays, weights) in \
                 self.config.make_sum_params(source, receiver):
 

@@ -1983,6 +1983,10 @@ class Target(meta.Receiver):
 
 class Result(Object):
     trace = SeismosizerTrace.T(optional=True)
+    n_records_stacked = Int.T(optional=True)
+    n_shared_stacking = Int.T(optional=True)
+    t_optimize = Float.T(optional=True)
+    t_stack = Float.T(optional=True)
 
 
 class Request(Object):
@@ -2057,12 +2061,16 @@ class ProcessingStats(Object):
     t_perc_make_base_seismogram = Float.T()
     t_perc_make_same_span = Float.T()
     t_perc_post_process = Float.T()
+    t_perc_optimize = Float.T()
+    t_perc_stack = Float.T()
     t_wallclock = Float.T()
     t_cpu = Float.T()
     n_read_blocks = Int.T()
     n_results = Int.T()
     n_subrequests = Int.T()
     n_stores = Int.T()
+    n_records_stacked = Int.T()
+    
 
 
 class Response(Object):
@@ -2243,11 +2251,25 @@ def process_subrequest(work, pshared=None):
 
         raise
 
+    n_records_stacked = 0
+    t_optimize = 0.0
+    t_stack = 0.0
+    for _, tr in base_seismogram.iteritems():
+        n_records_stacked += tr.n_records_stacked
+        t_optimize += tr.t_optimize
+        t_stack += tr.t_stack
+
+
     results = []
     for isource, source in zip(isources, sources):
         for itarget, target in zip(itargets, targets):
             try:
                 result = engine._post_process(base_seismogram, source, target)
+                result.n_records_stacked = n_records_stacked
+                result.n_shared_stacking = len(sources) * len(targets)
+                result.t_optimize = t_optimize
+                result.t_stack = t_stack
+
             except SeismosizerError, e:
                 result = e
 
@@ -2503,6 +2525,7 @@ class LocalEngine(Engine):
 
         return target.post_process(self, source, tr)
 
+
     def process(self, *args, **kwargs):
         '''Process a request.
 
@@ -2598,18 +2621,33 @@ class LocalEngine(Engine):
             (rs1.ru_inblock + rc1.ru_inblock) -
             (rs0.ru_inblock + rc0.ru_inblock))
 
+        n_records_stacked = 0.0
+        t_optimize = 0.0
+        t_stack = 0.0
+        for results in results_list:
+            for result in results:
+                shr = float(result.n_shared_stacking)
+                n_records_stacked += float(result.n_records_stacked) / shr
+                t_optimize += float(result.t_optimize) / shr
+                t_stack += float(result.t_stack) / shr
+
+        n_records_stacked = int(n_records_stacked)
+
         stats = ProcessingStats(
             t_perc_get_store_and_receiver=perc[0],
             t_perc_discretize_source=perc[1],
             t_perc_make_base_seismogram=perc[2],
             t_perc_make_same_span=perc[3],
             t_perc_post_process=perc[4],
+            t_perc_optimize=float(t_optimize / tcumusum * 100.),
+            t_perc_stack=float(t_stack / tcumusum * 100.),
             t_wallclock=t_wallclock,
             t_cpu=t_cpu,
             n_read_blocks=n_read_blocks,
             n_results=len(request.targets) * len(request.sources),
             n_subrequests=nsub,
-            n_stores=len(store_ids))
+            n_stores=len(store_ids),
+            n_records_stacked=n_records_stacked)
 
         return Response(
             request=request,
