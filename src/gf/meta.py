@@ -2155,6 +2155,9 @@ class WaveformSelection(Object):
 
 
 def indi12(x, n):
+    '''
+    Get linear interpolation index and weight.
+    '''
     r = round(x)
     if abs(r - x) < vicinity_eps:
         i = int(r)
