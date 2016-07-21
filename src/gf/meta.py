@@ -1258,9 +1258,9 @@ class ComponentSchemes(StringChoice):
     '''
     Different Green's Function component schemes are available:
 
-    ================= ===========
+    ================= =========================================================
     \                 Description
-    ================= ===========
+    ================= =========================================================
     ``elastic10``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
                       and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT
                       sources only
@@ -1285,7 +1285,7 @@ class ComponentSchemes(StringChoice):
                       stores, MT sources only
     ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
                       and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores
-    ================= ===========
+    ================= =========================================================
     '''
 
     choices = (
@@ -1325,21 +1325,26 @@ class Config(Object):
 
     * :py:class:`pyrocko.gf.meta.ConfigTypeA` - cylindrical symmetry,
       1D earth model, single receiver depth
-        * Problem is invariant to horizontal translations and rotations around
-          vertical axis.
-        * All receivers must be at the same depth (e.g. at the surface)
-        * High level index variables: ``(source_depth, receiver_distance,
-          component)``
+
+      * Problem is invariant to horizontal translations and rotations around
+        vertical axis.
+      * All receivers must be at the same depth (e.g. at the surface)
+      * High level index variables: ``(source_depth, receiver_distance,
+        component)``
+
     * :py:class:`pyrocko.gf.meta.ConfigTypeB` - cylindrical symmetry, 1D earth
       model, variable receiver depth
-        * Symmetries like in Type A but has additional index for receiver depth
-        * High level index variables: ``(source_depth, receiver_distance,
-          receiver_depth, component)``
+
+      * Symmetries like in Type A but has additional index for receiver depth
+      * High level index variables: ``(source_depth, receiver_distance,
+        receiver_depth, component)``
+
     * :py:class:`pyrocko.gf.meta.ConfigTypeC` - no symmetrical constraints but
       fixed receiver positions
-        * Cartesian source volume around a reference point
-        * High level index variables: ``(ireceiver, source_depth,
-          source_east_shift, source_north_shift, component)``
+
+      * Cartesian source volume around a reference point
+      * High level index variables: ``(ireceiver, source_depth,
+        source_east_shift, source_north_shift, component)``
     '''
 
     id = StringID.T()
@@ -1482,9 +1487,10 @@ class ConfigTypeA(Config):
 
     * Problem is invariant to horizontal translations and rotations around
       vertical axis.
+
     * All receivers must be at the same depth (e.g. at the surface)
-     High level index variables: ``(source_depth, receiver_distance,
-     component)``
+      High level index variables: ``(source_depth, receiver_distance,
+      component)``
     '''
 
     receiver_depth = Float.T(default=0.0)
@@ -1652,6 +1658,7 @@ class ConfigTypeB(Config):
 
     * Symmetries like in :py:class:`ConfigTypeA` but has additional index for
       receiver depth
+
     * High level index variables: ``(source_depth, receiver_distance,
       receiver_depth, component)``
     '''
@@ -1863,6 +1870,7 @@ class ConfigTypeC(Config):
     No symmetrical constraints but fixed receiver positions.
 
     * Cartesian 3D source volume around a reference point
+
     * High level index variables: ``(ireceiver, source_depth,
       source_east_shift, source_north_shift, component)``
     '''
