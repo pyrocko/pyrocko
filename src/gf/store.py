@@ -132,8 +132,8 @@ class GFTrace(object):
     @property
     def t(self):
         '''
-        Time vector of the GF trace.        
-        
+        Time vector of the GF trace.
+
         :returns: Time vector
         :rtype: :py:class:`numpy.Array`
         '''
@@ -542,7 +542,8 @@ class BaseStore:
             self.open()
 
         assert self.mode == 'w'
-        assert trace.is_zero or abs(trace.deltat - self._deltat) < 1e-7 * self._deltat
+        assert trace.is_zero or \
+            abs(trace.deltat - self._deltat) < 1e-7 * self._deltat
         assert 0 <= irecord < self._nrecords, \
             'irecord = %i, nrecords = %i' % (irecord, self._nrecords)
 
@@ -685,7 +686,6 @@ class BaseStore:
                 itmins.append(tr.itmin + idelay_ceil)
                 datas.append(tr.data.copy()*weight*(delay/deltat-idelay_floor))
 
-
         itmin_all = min(itmins)
 
         itmax_all = max(itmin_ + data.size for (itmin_, data) in
@@ -780,7 +780,6 @@ class BaseStore:
 
         return irecords3, weights3
 
-
     def _sum(self, irecords, delays, weights, itmin, nsamples, decimate,
              implementation, optimization):
 
@@ -810,7 +809,6 @@ class BaseStore:
             else:
                 itmin -= itoffset
 
-
             try:
                 tr = GFTrace(*store_ext.store_sum(
                     self.cstore, irecords.astype(num.uint64),
@@ -825,11 +823,11 @@ class BaseStore:
 
         elif implementation == 'alternative':
             tr = self._sum_impl_alternative(irecords, delays, weights,
-                                              itmin, nsamples, decimate)
+                                            itmin, nsamples, decimate)
 
         else:
             tr = self._sum_impl_reference(irecords, delays, weights,
-                                            itmin, nsamples, decimate)
+                                          itmin, nsamples, decimate)
 
         t2 = time.time()
 
@@ -971,6 +969,7 @@ def remake_dir(dpath, force):
 
 class MakeTimingParamsFailed(StoreError):
     pass
+
 
 class Store(BaseStore):
 
@@ -1148,13 +1147,14 @@ class Store(BaseStore):
                 if valid_string_id(x)]
 
     def put(self, args, trace):
-        
         '''
         Insert trace into GF store.
 
         Store a single GF trace at (high-level) index `args`.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g. ``(source_depth, distance, component)`` as in :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+            ``(source_depth, distance, component)`` as in
+            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
         :returns: GF Trace at `args`
         :rtype: :py:class:`pyrocko.gf.store.GFTrace`
@@ -1181,7 +1181,9 @@ class Store(BaseStore):
         an integer in the range [2,8], the trace is decimated on the fly or, if
         available, the trace is read from a decimated version of the GF store.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g. ``(source_depth, distance, component)`` as in :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+            ``(source_depth, distance, component)`` as in
+            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
         :param itmin: Index of tmin (`itmin` * dt), defaults to None
         :type itmin: integer, optional
@@ -1189,7 +1191,9 @@ class Store(BaseStore):
         :type nsamples: integer, optional
         :param decimate: Decimatation factor, defaults to 1
         :type decimate: integer, optional
-        :param interpolation: Interpolation method ``['nearest_neighbor', 'multilinear', 'off']``, defaults to ``'nearest_neighbor'``
+        :param interpolation: Interpolation method
+            ``['nearest_neighbor', 'multilinear', 'off']``, defaults to
+            ``'nearest_neighbor'``
         :type interpolation: str, optional
         :param implementation: Implementation mode, defaults to ``'c'``
         :type implementation: str, optional
@@ -1202,7 +1206,7 @@ class Store(BaseStore):
         if interpolation == 'nearest_neighbor':
             irecord = store.config.irecord(*args)
             tr = store._get(irecord, itmin, nsamples, decimate,
-                              implementation)
+                            implementation)
 
         elif interpolation in ('multilinear', 'off'):
             irecords, weights = store.config.vicinity(*args)
@@ -1210,8 +1214,8 @@ class Store(BaseStore):
                 raise NotAllowedToInterpolate()
 
             tr = store._sum(irecords, num.zeros(len(irecords)), weights,
-                              itmin, nsamples, decimate, implementation,
-                              'disable')
+                            itmin, nsamples, decimate, implementation,
+                            'disable')
 
         # to prevent problems with rounding errors (BaseStore saves deltat
         # as a 4-byte floating point value, value from YAML config is more
@@ -1234,7 +1238,9 @@ class Store(BaseStore):
         is an integer in the range [2,8], decimated traces are used in the
         summation.
 
-        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g. ``(source_depth, distance, component)`` as in :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+        :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+            ``(source_depth, distance, component)`` as in
+            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
         :param delays: Delay times
         :type delays: :py:class:`numpy.Array`
@@ -1246,11 +1252,16 @@ class Store(BaseStore):
         :type nsamples: integer, optional
         :param decimate: Decimatation factor, defaults to 1
         :type decimate: integer, optional
-        :param interpolation: Interpolation method ``['nearest_neighbor', 'multilinear', 'off']``, defaults to ``'nearest_neighbor'``
+        :param interpolation: Interpolation method
+            ``['nearest_neighbor', 'multilinear', 'off']``, defaults to
+            ``'nearest_neighbor'``
         :type interpolation: str, optional
-        :param implementation: Implementation mode ``['c', 'alternative']`` where ``'alternative'`` uses a Python implementation, defaults to `'c'`
+        :param implementation: Implementation mode ``['c', 'alternative']``
+            where ``'alternative'`` uses a Python implementation, defaults to
+            `'c'`
         :type implementation: str, optional
-        :param optimization: Optimization mode ``['enable', 'disable']``, defaults to ``'enable'``
+        :param optimization: Optimization mode ``['enable', 'disable']``,
+            defaults to ``'enable'``
         :type optimization: str, optional
         :returns: Stacked GF Trace.
         :rtype: :py:class:`pyrocko.gf.store.GFTrace`
@@ -1268,7 +1279,7 @@ class Store(BaseStore):
             delays = num.repeat(delays, neach)
 
         tr = store._sum(irecords, delays, weights, itmin, nsamples, decimate_,
-                          implementation, optimization)
+                        implementation, optimization)
 
         # to prevent problems with rounding errors (BaseStore saves deltat
         # as a 4-byte floating point value, value from YAML config is more
@@ -1276,7 +1287,8 @@ class Store(BaseStore):
         tr.deltat = self.config.deltat * decimate
         return tr
 
-    def sum_statics(self, args, weights,
+    def sum_statics(
+            self, args, weights,
             decimate=1, interpolation='nearest_neighbor', implementation='c',
             optimization='enable'):
 
@@ -1288,7 +1300,8 @@ class Store(BaseStore):
             neach = irecords.size / args[0].size
             weights = num.repeat(weights, neach) * ip_weights
 
-        return self._sum_statics(irecords, weights, implementation, optimization)
+        return self._sum_statics(
+            irecords, weights, implementation, optimization)
 
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
@@ -1430,7 +1443,7 @@ class Store(BaseStore):
 
     def get_stored_phase(self, phase_id):
         """Get stored phase from GF STore
-        
+
         :returns: Phase information
         :rtype: :py:class:`pyrocko.spit.SPTree`
         """
@@ -1503,18 +1516,25 @@ class Store(BaseStore):
         **Examples:**
 
         If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeA`::
-            
+
             test_store.t('p', (1000, 10000))
-            test_store.t('last{P|Pdiff}', (1000, 10000)) # The latter arrival of P or diffracted P phase
+            test_store.t('last{P|Pdiff}', (1000, 10000)) # The latter arrival
+                                                         # of P or diffracted
+                                                         # P phase
 
         If ``test_store`` is of :py:class:`pyrocko.gf.meta.ConfigTypeB`::
 
             test_store.t('S', (1000, 1000, 10000))
-            test_store.t('first{P|p|Pdiff|sP}', (1000, 1000, 10000)) # The first arrival of the given phases is selected
+            test_store.t('first{P|p|Pdiff|sP}', (1000, 1000, 10000)) # The
+                        `                                # first arrival of
+                                                         # the given phases is
+                                                         # selected
 
         :param timing: Timing string as described above
         :type timing: string or :py:class:`pyrocko.gf.meta.Timing`
-        :param \*args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g. ``(source_depth, distance, component)`` as in :py:class:`pyrocko.gf.meta.ConfigTypeA`.
+        :param \*args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
+            ``(source_depth, distance, component)`` as in
+            :py:class:`pyrocko.gf.meta.ConfigTypeA`.
         :type \*args: tuple
         :returns: Phase arrival according to `timing`
         :rtype: float or None
@@ -1670,7 +1690,8 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def statics(self, source, receiver, components,
+    def statics(
+            self, source, receiver, components,
             interpolation='nearest_neighbor', optimization='enable'):
 
         out = {}

@@ -204,7 +204,8 @@ class InvalidGridDef(Exception):
 
 
 class Range(SObject):
-    '''Convenient range specification
+    '''
+    Convenient range specification.
 
     Equivalent ways to sepecify the range [ 0., 1000., ... 10000. ]::
 
@@ -534,7 +535,7 @@ class Cloneable(object):
 
     def clone(self, **kwargs):
         '''
-        Make a copy of the object
+        Make a copy of the object.
 
         A new object of the same class is created and initialized with the
         parameters of the object on which this method is called on. If `kwargs`
@@ -553,7 +554,10 @@ class Cloneable(object):
 
     @classmethod
     def keys(cls):
-        '''Get list of the source model's parameter names.'''
+        '''
+        Get list of the source model's parameter names.
+        '''
+
         return cls.T.propnames
 
 
@@ -714,7 +718,6 @@ class TriangularSTF(STF):
 
     @property
     def effective_duration(self):
-        ra = self.peak_ratio
         return self.duration * self.factor_duration_to_effective(
             self.peak_ratio)
 
@@ -806,7 +809,7 @@ class STFMode(StringChoice):
 
 class Source(meta.Location, Cloneable):
     '''
-    Base class for all source models
+    Base class for all source models.
     '''
 
     name = String.T(optional=True, default='')
@@ -827,7 +830,8 @@ class Source(meta.Location, Cloneable):
         meta.Location.__init__(self, **kwargs)
 
     def update(self, **kwargs):
-        '''Change some of the source models parameters.
+        '''
+        Change some of the source models parameters.
 
         Example::
 
@@ -844,11 +848,13 @@ class Source(meta.Location, Cloneable):
           rake: 0.0
 
         '''
+
         for (k, v) in kwargs.iteritems():
             self[k] = v
 
     def grid(self, **variables):
-        '''Create grid of source model variations.
+        '''
+        Create grid of source model variations.
 
         :returns: :py:class:`SourceGrid` instance.
 
@@ -1011,7 +1017,7 @@ class Source(meta.Location, Cloneable):
 
 class SourceWithMagnitude(Source):
     '''
-    Base class for sources containing a moment magnitude
+    Base class for sources containing a moment magnitude.
     '''
 
     magnitude = Float.T(
@@ -1465,7 +1471,9 @@ class RectangularSource(DCSource):
 
 
 class DoubleDCSource(SourceWithMagnitude):
-    '''Two double-couple point sources separated in space and time.'''
+    '''
+    Two double-couple point sources separated in space and time.
+    '''
 
     strike1 = Float.T(
         default=0.0,
@@ -1626,7 +1634,9 @@ class DoubleDCSource(SourceWithMagnitude):
 
 
 class RingfaultSource(SourceWithMagnitude):
-    '''A ring fault with vertical doublecouples.'''
+    '''
+    A ring fault with vertical doublecouples.
+    '''
 
     diameter = Float.T(
         default=1.0,
@@ -1755,7 +1765,7 @@ class SFSource(Source):
 
 class PorePressurePointSource(Source):
     '''
-    Excess pore pressure point source
+    Excess pore pressure point source.
 
     For poro-elastic initial value problem where an excess pore pressure is
     brought into a small source volume.
@@ -1780,7 +1790,7 @@ class PorePressurePointSource(Source):
 
 class PorePressureLineSource(Source):
     '''
-    Excess pore pressure line source
+    Excess pore pressure line source.
 
     The line source is centered at (north_shift, east_shift, depth).
     '''
@@ -2070,7 +2080,6 @@ class ProcessingStats(Object):
     n_subrequests = Int.T()
     n_stores = Int.T()
     n_records_stacked = Int.T()
-    
 
 
 class Response(Object):
@@ -2083,7 +2092,10 @@ class Response(Object):
     stats = ProcessingStats.T()
 
     def pyrocko_traces(self):
-        '''Return a list of requested :py:class:`trace.Trace` instances.'''
+        '''
+        Return a list of requested :py:class:`trace.Trace` instances.
+        '''
+
         traces = []
         for results in self.results_list:
             for result in results:
@@ -2092,10 +2104,13 @@ class Response(Object):
         return traces
 
     def iter_results(self, get='pyrocko_traces'):
-        '''Generator function to iterate over results of request.
+        '''
+        Generator function to iterate over results of request.
 
         Yields associated :py:class:`Source`, :py:class:`Target`,
-        :py:class:`trace.Trace` instances in each iteration.'''
+        :py:class:`trace.Trace` instances in each iteration.
+        '''
+
         for isource, source in enumerate(self.request.sources):
             for itarget, target in enumerate(self.request.targets):
                 result = self.results_list[isource][itarget]
@@ -2105,7 +2120,10 @@ class Response(Object):
                     yield source, target, result
 
     def snuffle(self, **kwargs):
-        '''Open *snuffler* with requested traces.'''
+        '''
+        Open *snuffler* with requested traces.
+        '''
+
         trace.snuffle(self.pyrocko_traces(), **kwargs)
 
 
@@ -2115,7 +2133,10 @@ class Engine(Object):
     '''
 
     def get_store_ids(self):
-        '''Get list of available GF store IDs'''
+        '''
+        Get list of available GF store IDs
+        '''
+
         return []
 
 
@@ -2259,7 +2280,6 @@ def process_subrequest(work, pshared=None):
         t_optimize += tr.t_optimize
         t_stack += tr.t_stack
 
-
     results = []
     for isource, source in zip(isources, sources):
         for itarget, target in zip(itargets, targets):
@@ -2377,7 +2397,9 @@ class LocalEngine(Engine):
         return self._id_to_store_dir[store_id]
 
     def get_store_ids(self):
-        '''Get list of available store IDs.'''
+        '''
+        Get list of available store IDs.
+        '''
 
         self._scan_stores()
         return sorted(self._id_to_store_dir.keys())
@@ -2525,9 +2547,9 @@ class LocalEngine(Engine):
 
         return target.post_process(self, source, tr)
 
-
     def process(self, *args, **kwargs):
-        '''Process a request.
+        '''
+        Process a request.
 
         ::
 
