@@ -937,8 +937,10 @@ class Trace(object):
         tzero = self.tmin
         
         for itrig_pos in itrig_positions:
-            ibeg = int(itrig_pos)
-            iend = int(min(len(self.ydata), itrig_pos + tsearch/self.deltat))
+            ibeg = itrig_pos
+            iend = min(
+                len(self.ydata),
+                itrig_pos + int(math.ceil(tsearch/self.deltat)))
             ipeak = num.argmax(y[ibeg:iend])
             tpeak = self.tmin + (ipeak+ibeg)*self.deltat
             apeak = y[ibeg+ipeak]

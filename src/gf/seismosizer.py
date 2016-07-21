@@ -1841,7 +1841,7 @@ class PorePressureLineSource(Source):
 
     def discretize_basesource(self, store, target=None):
 
-        n = int(2 * num.ceil(self.length / min(store.config.deltas)) + 1)
+        n = 2 * int(math.ceil(self.length / num.min(store.config.deltas))) + 1
 
         a = num.linspace(-0.5*self.length, 0.5*self.length, n)
 
