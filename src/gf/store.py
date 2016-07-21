@@ -1694,8 +1694,7 @@ class Store(BaseStore):
             self, source, receiver, components,
             interpolation='nearest_neighbor', optimization='enable'):
 
-        out = {}
-
+        out = [None,] * len(components)
         for (component, args, _, weights) in \
                 self.config.make_sum_params(source, receiver):
 
@@ -1705,16 +1704,16 @@ class Store(BaseStore):
                     interpolation=interpolation,
                     optimization=optimization)
 
-                gtr = GFTrace(
-                    data=num.array([0., gval.value], dtype=gf_dtype),
-                    itmin=0,
-                    deltat=self.config.deltat)
+                #gtr = GFTrace(
+                #    data=num.array([0., gval.value], dtype=gf_dtype),
+                #    itmin=0,
+                #    deltat=self.config.deltat)
 
-                gtr.n_records_stacked = gval.n_records_stacked
-                gtr.t_stack = gval.t_stack
-                gtr.t_optimize = gval.t_optimize
+                #gtr.n_records_stacked = gval.n_records_stacked
+                #gtr.t_stack = gval.t_stack
+                #gtr.t_optimize = gval.t_optimize
 
-                out[component] = gtr
+                out[components.index(component)] = gval.value
 
         return out
 
