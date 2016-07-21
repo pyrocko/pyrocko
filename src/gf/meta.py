@@ -660,11 +660,17 @@ class DiscretizedSource(Object):
 
     @property
     def effective_north_shifts(self):
-        return self.north_shifts or num.zeros(self.times.size)
+        if self.north_shifts is not None:
+            return self.north_shifts
+        else:
+            return num.zeros(self.times.size)
 
     @property
     def effective_east_shifts(self):
-        return self.east_shifts or num.zeros(self.times.size)
+        if self.east_shifts is not None:
+            return self.east_shifts
+        else:
+            return num.zeros(self.times.size)
 
     def same_origin(self, receiver):
         '''
@@ -752,7 +758,13 @@ class DiscretizedSource(Object):
 
         lats, lons = num.hstack(latlons)
 
-        same_ref = num.all(lats == lats[0]) and num.all(lons == lons[0])
+        if all((s.lats is None and s.lons is None) for s in sources):
+            rlats = num.array([s.lat for s in sources], dtype=num.float)
+            rlons = num.array([s.lon for s in sources], dtype=num.float)
+            same_ref = num.all(
+                rlats == rlats[0]) and num.all(rlons == rlons[0])
+        else:
+            same_ref = False
 
         cat = num.concatenate
         times = cat([s.times for s in sources])
@@ -1452,18 +1464,19 @@ class Config(Object):
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')
 
-    def get_store_shear_moduli_points(self, z_points, interpolation='nearest_neighbor'):
+    def get_store_shear_moduli_points(self, z_points,
+                                      interpolation='nearest_neighbor'):
         '''
-        Get shear moduli for given point sources depths in cartesian coordinates.
+        Get shear moduli for given point sources depths.
         '''
         store_depth_profile = self.coords[0]
-        
+
         earthmod = self.earthmodel_1d
-        
+
         vs_profile = earthmod.profile('vs')
         z_profile = earthmod.profile('z')
         rho_profile = earthmod.profile('rho')
-        
+
         store_vs_profile = num.interp(
             store_depth_profile, z_profile, vs_profile)
         store_rho_profile = num.interp(
@@ -1480,7 +1493,7 @@ class Config(Object):
             store_depth_profile, store_shear_modulus_profile, kind=kind)
         return shear_moduli_interpolator(z_points)
 
-    
+
 class ConfigTypeA(Config):
     '''
     Cylindrical symmetry, 1D earth model, single receiver depth
