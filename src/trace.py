@@ -919,7 +919,7 @@ class Trace(object):
     def peaks(self, threshold, tsearch, deadtime=False, nblock_duration_detection=100):
         '''Detect peaks above given threshold.
         
-        From every instant, where the signal rises above *threshold*, a of time
+        From every instant, where the signal rises above *threshold*, a time
         length of *tsearch* seconds is searched for a maximum. A list with
         tuples (time, value) for each detected peak is returned. The *deadtime*
         argument turns on a special deadtime duration detection algorithm useful
