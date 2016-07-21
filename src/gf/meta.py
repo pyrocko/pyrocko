@@ -189,16 +189,16 @@ class Timing(SObject):
     definitions can be specified in either of the following ways:
 
     * ``'stored:PHASE_ID'`` - retrieves value from stored travel time table
-    * ``'cake:CAKE_PHASE_DEF'`` - evaluates first arrival of phase with cake 
+    * ``'cake:CAKE_PHASE_DEF'`` - evaluates first arrival of phase with cake
       (see :py:class:`pyrocko.cake.PhaseDef`)
-    * ``'vel_surface:VELOCITY'`` - arrival according to surface distance / 
+    * ``'vel_surface:VELOCITY'`` - arrival according to surface distance /
       velocity [km/s]
     * ``'vel:VELOCITY'`` - arrival according to 3D-distance / velocity [km/s]
 
     **Examples:**
 
     * ``'100'`` : absolute time; 100 s
-    * ``'{stored:P}-100'`` : 100 s before arrival of P phase according to 
+    * ``'{stored:P}-100'`` : 100 s before arrival of P phase according to
       stored travel time table named ``'P'``
     * ``'{stored:A|stored:B}'`` : time instant of phase arrival A, or B if A is
       undefined for a given geometry
@@ -272,7 +272,7 @@ class Timing(SObject):
         l = []
         if self.phase_defs:
             sphases = '|'.join(self.phase_defs)
-            #if len(self.phase_defs) > 1 or self.select:
+            # if len(self.phase_defs) > 1 or self.select:
             sphases = '{%s}' % sphases
 
             if self.select:
@@ -329,7 +329,10 @@ def mkdefs(s):
 
 
 class TPDef(Object):
-    '''Maps an arrival phase identifier to an arrival phase definition'''
+    '''
+    Maps an arrival phase identifier to an arrival phase definition.
+    '''
+
     id = StringID.T(
         help='name used to identify the phase')
     definition = String.T(
@@ -372,7 +375,7 @@ class OutOfBounds(Exception):
 
 class Location(Object):
     '''
-    Geographical location
+    Geographical location.
 
     The location is given by a reference point at the earth's surface
     (:py:attr:`lat`, :py:attr:`lon`) and a cartesian offset from this point
@@ -480,6 +483,7 @@ class Location(Object):
         '''
         Compute 3D distance [m] to other location object.
         '''
+
         if self.same_origin(other):
             if isinstance(other, Location):
                 return math.sqrt((self.north_shift - other.north_shift)**2 +
@@ -587,6 +591,7 @@ class DiscretizedSource(Object):
     Alternatively latitude and longitude of each contained point source can be
     specified directly (:py:attr:`lats`, :py:attr:`lons`).
     '''
+
     times = Array.T(shape=(None,), dtype=num.float)
     lats = Array.T(shape=(None,), dtype=num.float, optional=True)
     lons = Array.T(shape=(None,), dtype=num.float, optional=True)
@@ -598,7 +603,8 @@ class DiscretizedSource(Object):
 
     @classmethod
     def check_scheme(cls, scheme):
-        '''Check if given GF component scheme is supported by the class.
+        '''
+        Check if given GF component scheme is supported by the class.
 
         Raises :py:class:`UnavailableScheme` if the given scheme is not
         supported by this discretized source class.
@@ -611,7 +617,9 @@ class DiscretizedSource(Object):
 
     @classmethod
     def provided_components(cls, scheme):
-        '''Get list of components which are provided for given scheme.'''
+        '''
+        Get list of components which are provided for given scheme.
+        '''
 
         cls.check_scheme(scheme)
         return cls._provided_components
@@ -632,6 +640,7 @@ class DiscretizedSource(Object):
         '''
         Property holding the offset-corrected lats and lons of all points.
         '''
+
         if self._latlons is None:
             if self.lats is not None and self.lons is not None:
                 if (self.north_shifts is not None and
@@ -661,6 +670,7 @@ class DiscretizedSource(Object):
         '''
         Check if receiver has same reference point.
         '''
+
         return (g(self.lat, 0.0) == receiver.lat and
                 g(self.lon, 0.0) == receiver.lon and
                 self.lats is None and self.lons is None)
@@ -670,6 +680,7 @@ class DiscretizedSource(Object):
         Compute azimuths and backaziumuths to/from receiver, for all contained
         points.
         '''
+
         if self.same_origin(receiver):
             azis = r2d * num.arctan2(receiver.east_shift - self.east_shifts,
                                      receiver.north_shift - self.north_shifts)
@@ -686,6 +697,7 @@ class DiscretizedSource(Object):
         '''
         Compute distances to receiver for all contained points.
         '''
+
         if self.same_origin(receiver):
             return num.sqrt((self.north_shifts - receiver.north_shift)**2 +
                             (self.east_shifts - receiver.east_shift)**2)
@@ -719,13 +731,15 @@ class DiscretizedSource(Object):
 
     @classmethod
     def combine(cls, sources, **kwargs):
-        '''Combine several discretized source models.
+        '''
+        Combine several discretized source models.
 
         Concatenenates all point sources in the given discretized ``sources``.
         Care must be taken when using this function that the external amplitude
         factors and reference times of the parameterized (undiscretized)
         sources match or are accounted for.
         '''
+
         first = sources[0]
 
         if not all(type(s) == type(first) for s in sources):
@@ -896,13 +910,15 @@ class DiscretizedExplosionSource(DiscretizedSource):
 
     @classmethod
     def combine(cls, sources, **kwargs):
-        '''Combine several discretized source models.
+        '''
+        Combine several discretized source models.
 
         Concatenenates all point sources in the given discretized ``sources``.
         Care must be taken when using this function that the external amplitude
         factors and reference times of the parameterized (undiscretized)
         sources match or are accounted for.
         '''
+
         if 'm0s' not in kwargs:
             kwargs['m0s'] = num.concatenate([s.m0s for s in sources])
 
@@ -973,13 +989,15 @@ class DiscretizedSFSource(DiscretizedSource):
 
     @classmethod
     def combine(cls, sources, **kwargs):
-        '''Combine several discretized source models.
+        '''
+        Combine several discretized source models.
 
         Concatenenates all point sources in the given discretized ``sources``.
         Care must be taken when using this function that the external amplitude
         factors and reference times of the parameterized (undiscretized)
         sources match or are accounted for.
         '''
+
         if 'forces' not in kwargs:
             kwargs['forces'] = num.vstack([s.forces for s in sources])
 
@@ -1122,13 +1140,15 @@ class DiscretizedMTSource(DiscretizedSource):
 
     @classmethod
     def combine(cls, sources, **kwargs):
-        '''Combine several discretized source models.
+        '''
+        Combine several discretized source models.
 
         Concatenenates all point sources in the given discretized ``sources``.
         Care must be taken when using this function that the external amplitude
         factors and reference times of the parameterized (undiscretized)
         sources match or are accounted for.
         '''
+
         if 'm6s' not in kwargs:
             kwargs['m6s'] = num.vstack([s.m6s for s in sources])
 
@@ -1218,13 +1238,15 @@ class DiscretizedPorePressureSource(DiscretizedSource):
 
     @classmethod
     def combine(cls, sources, **kwargs):
-        '''Combine several discretized source models.
+        '''
+        Combine several discretized source models.
 
         Concatenenates all point sources in the given discretized ``sources``.
         Care must be taken when using this function that the external amplitude
         factors and reference times of the parameterized (undiscretized)
         sources match or are accounted for.
         '''
+
         if 'pp' not in kwargs:
             kwargs['pp'] = num.concatenate([s.pp for s in sources])
 
@@ -1235,20 +1257,37 @@ class DiscretizedPorePressureSource(DiscretizedSource):
 class ComponentSchemes(StringChoice):
     '''
     Different Green's Function component schemes are available:
-    
+
     ================= ===========
     \                 Description
     ================= ===========
-    ``elastic10``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT sources only
-    ``elastic8``      Elastodynamic for far-field only :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT sources only
-    ``elastic2``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, purely isotropic sources only
-    ``elastic5``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, SF sources only
-    ``elastic15``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT and SF sources
-    ``elastic13``     Elastodynamic for far-field only :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT and SF sources
-    ``elastic18``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeC` stores, MT sources only
-    ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA` and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores
+    ``elastic10``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT
+                      sources only
+    ``elastic8``      Elastodynamic for far-field only
+                      :py:class:`pyrocko.gf.meta.ConfigTypeA` and
+                      :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
+                      MT sources only
+    ``elastic2``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
+                      purely isotropic sources only
+    ``elastic5``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, SF
+                      sources only
+    ``elastic15``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT
+                      and SF sources
+    ``elastic13``     Elastodynamic for far-field only
+                      :py:class:`pyrocko.gf.meta.ConfigTypeA` and
+                      :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT and SF
+                      sources
+    ``elastic18``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeC`
+                      stores, MT sources only
+    ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores
     ================= ===========
     '''
+
     choices = (
         'elastic10',  # nf + ff
         'elastic8',   # ff
@@ -1281,19 +1320,26 @@ class Config(Object):
     '''
     Green's function store meta information.
 
-    Currently implemented :py:class:`pyrocko.gf.store.Store` configurations are:
+    Currently implemented :py:class:`pyrocko.gf.store.Store` configurations
+    are:
 
-    * :py:class:`pyrocko.gf.meta.ConfigTypeA` - 1D earth model, single receiver depth
-        * Problem is invariant to horizontal translations and rotations around vertical axis.
+    * :py:class:`pyrocko.gf.meta.ConfigTypeA` - cylindrical symmetry,
+      1D earth model, single receiver depth
+        * Problem is invariant to horizontal translations and rotations around
+          vertical axis.
         * All receivers must be at the same depth (e.g. at the surface)
-        * High level index variables: ``(source_depth, receiver_distance, component)``
-    * :py:class:`pyrocko.gf.meta.ConfigTypeB` - 1D earth model, variable receiver depth
+        * High level index variables: ``(source_depth, receiver_distance,
+          component)``
+    * :py:class:`pyrocko.gf.meta.ConfigTypeB` - cylindrical symmetry, 1D earth
+      model, variable receiver depth
         * Symmetries like in Type A but has additional index for receiver depth
-        * High level index variables: ``(source_depth, receiver_distance, receiver_depth, component)``
-    * :py:class:`pyrocko.gf.meta.ConfigTypeC` - no symmetrical constraints but fixed receiver positions
+        * High level index variables: ``(source_depth, receiver_distance,
+          receiver_depth, component)``
+    * :py:class:`pyrocko.gf.meta.ConfigTypeC` - no symmetrical constraints but
+      fixed receiver positions
         * Cartesian source volume around a reference point
-        * High level index variables: ``(ireceiver, source_depth, source_east_shift, source_north_shift, component)``
-
+        * High level index variables: ``(ireceiver, source_depth,
+          source_east_shift, source_north_shift, component)``
     '''
 
     id = StringID.T()
@@ -1431,9 +1477,15 @@ class Config(Object):
 
     
 class ConfigTypeA(Config):
-    '''Cylindrical symmetry, fixed receiver depth
+    '''
+    Cylindrical symmetry, 1D earth model, single receiver depth
 
-Index variables are (source_depth, distance, component).'''
+    * Problem is invariant to horizontal translations and rotations around
+      vertical axis.
+    * All receivers must be at the same depth (e.g. at the surface)
+     High level index variables: ``(source_depth, receiver_distance,
+     component)``
+    '''
 
     receiver_depth = Float.T(default=0.0)
     source_depth_min = Float.T()
@@ -1595,9 +1647,14 @@ Index variables are (source_depth, distance, component).'''
 
 
 class ConfigTypeB(Config):
-    '''Cylindrical symmetry
+    '''
+    Cylindrical symmetry, 1D earth model, variable receiver depth
 
-Index variables are (receiver_depth, source_depth, distance, component).'''
+    * Symmetries like in :py:class:`ConfigTypeA` but has additional index for
+      receiver depth
+    * High level index variables: ``(source_depth, receiver_distance,
+      receiver_depth, component)``
+    '''
 
     receiver_depth_min = Float.T()
     receiver_depth_max = Float.T()
@@ -1802,14 +1859,13 @@ Index variables are (receiver_depth, source_depth, distance, component).'''
 
 
 class ConfigTypeC(Config):
-    '''Cartesian 3D source volume, fixed receiver positions
+    '''
+    No symmetrical constraints but fixed receiver positions.
 
-    Index variables are (
-        ireceiver,
-        source_depth,
-        source_east_shift,
-        source_north_shift,
-        component).'''
+    * Cartesian 3D source volume around a reference point
+    * High level index variables: ``(ireceiver, source_depth,
+      source_east_shift, source_north_shift, component)``
+    '''
 
     receivers = List.T(Receiver.T())
 
@@ -2158,6 +2214,7 @@ def indi12(x, n):
     '''
     Get linear interpolation index and weight.
     '''
+
     r = round(x)
     if abs(r - x) < vicinity_eps:
         i = int(r)
