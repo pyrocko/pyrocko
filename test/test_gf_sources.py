@@ -110,6 +110,7 @@ class GFSourcesTestCase(unittest.TestCase):
 
     def test_combine_dsources(self):
         store = self.dummy_store()
+        dummy_target = gf.Target()
         for S in gf.source_classes:
             if not hasattr(S, 'discretize_basesource'):
                 continue
@@ -120,7 +121,7 @@ class GFSourcesTestCase(unittest.TestCase):
                       north_shift=500., east_shift=500.)
                     for lat in lats]
 
-                dsources = [s.discretize_basesource(store) for s in sources]
+                dsources = [s.discretize_basesource(store, target=dummy_target) for s in sources]
 
                 DS = dsources[0].__class__
 
@@ -129,13 +130,14 @@ class GFSourcesTestCase(unittest.TestCase):
 
     def test_source_times(self):
         store = self.dummy_store()
+        dummy_target = gf.Target()
         for S in gf.source_classes:
             if not hasattr(S, 'discretize_basesource'):
                 continue
 
             for t in [0.0, util.str_to_time('2014-01-01 10:00:00')]:
                 source = S(time=t)
-                dsource = source.discretize_basesource(store)
+                dsource = source.discretize_basesource(store, target=dummy_target)
                 cent = dsource.centroid()
                 assert numeq(cent.time + source.get_timeshift(), t, 0.0001)
 
