@@ -1414,7 +1414,7 @@ class RectangularSource(DCSource):
             self.nucleation_y,
             self.velocity,
             self.slip)
-        
+
     def discretize_basesource(self, store, target):
 
         if self.nucleation_x is not None:
@@ -1436,20 +1436,22 @@ class RectangularSource(DCSource):
 
         if self.slip is not None:
             shear_moduli = store.config.get_store_shear_moduli_points(
-                z_points=self.depth + points[:,2],
+                z_points=self.depth + points[:, 2],
                 interpolation=target.interpolation)
-                                                                 
+
             amplitudes *= dl * dw * shear_moduli * self.slip
 
             n = times.size
 
-            mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake)
+            mot = mt.MomentTensor(
+                strike=self.strike, dip=self.dip, rake=self.rake)
 
             self.moment = 1.0
         else:
             n = times.size
 
-            mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake,
+            mot = mt.MomentTensor(
+                strike=self.strike, dip=self.dip, rake=self.rake,
                 scalar_moment=1.0/n)
 
         m6s = num.repeat(mot.m6()[num.newaxis, :], n, axis=0)
