@@ -3024,7 +3024,8 @@ class LayeredModel(object):
     def profile(self, get):
         '''
         Get parameter profile along depth of the earthmodel.
-        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``, or ``'z'``)
+
+        :param get: property to be queried (``'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``, or ``'z'``)
         :type get: string
         '''
         
@@ -3033,7 +3034,7 @@ class LayeredModel(object):
     def min(self, get='vp'):
         '''Find minimum value of a material property or depth defined in the model.
 
-        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``, or ``'z'``)
+        :param get: property to be queried (``'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, or ``'qs'``, or ``'z'``)
         '''
 
         return min(self.iter_material_parameter(get))
@@ -3041,7 +3042,7 @@ class LayeredModel(object):
     def max(self, get='vp'):
         '''Find maximum value of a material property or depth defined in the model.
         
-        :param get: property to be queried (```'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, ``'qs'``, or ``'z'``)
+        :param get: property to be queried (``'vp'``, ``'vs'``, ``'rho'``, ``'qp'``, ``'qs'``, or ``'z'``)
         '''
 
         return max(self.iter_material_parameter(get))
