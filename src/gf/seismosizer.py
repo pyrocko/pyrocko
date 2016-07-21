@@ -1152,7 +1152,7 @@ class RectangularExplosionSource(ExplosionSource):
 
         stf = self.effective_stf_pre()
 
-        points, times, amplitudes = discretize_rect_source(
+        points, times, amplitudes, dl, dw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
@@ -1841,7 +1841,7 @@ class PorePressureLineSource(Source):
 
     def discretize_basesource(self, store, target=None):
 
-        n = 2 * num.ceil(self.length / min(store.config.deltas)) + 1
+        n = int(2 * num.ceil(self.length / min(store.config.deltas)) + 1)
 
         a = num.linspace(-0.5*self.length, 0.5*self.length, n)
 
