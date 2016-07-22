@@ -3172,8 +3172,10 @@ class LayeredModel(object):
 
     def extract(self, depth_min=None, depth_max=None):
         '''Extract :py:class:`LayeredModel` from :py:class:`LayeredModel`.
+
         :param depth_min: depth of upper cut
         :param depth_max: depth of lower cut
+
         Interpolates a :py:class:`GradientLayer` at *depth_min* and/or
         *depth_max*.'''
         assert depth_min<depth_max
