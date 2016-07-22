@@ -2671,10 +2671,11 @@ class LocalEngine(Engine):
         t_stack = 0.0
         for results in results_list:
             for result in results:
-                shr = float(result.n_shared_stacking)
-                n_records_stacked += float(result.n_records_stacked) / shr
-                t_optimize += float(result.t_optimize) / shr
-                t_stack += float(result.t_stack) / shr
+                if isinstance(result, Result):
+                    shr = float(result.n_shared_stacking)
+                    n_records_stacked += float(result.n_records_stacked) / shr
+                    t_optimize += float(result.t_optimize) / shr
+                    t_stack += float(result.t_stack) / shr
 
         n_records_stacked = int(n_records_stacked)
 
