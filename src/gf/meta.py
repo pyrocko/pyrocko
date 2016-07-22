@@ -1464,11 +1464,24 @@ class Config(Object):
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')
 
-    def get_store_shear_moduli_points(self, z_points,
-                                      interpolation='nearest_neighbor'):
+    def get_shear_moduli(self, lat, lon, points,
+                         interpolation='nearest_neighbor'):
         '''
-        Get shear moduli for given point sources depths.
+        Get shear moduli at given points from contained velocity model.
+
+        :param lat, lon: surface origin for coordinate system of `points`
+        :param points: NumPy array of shape `(N, 3)`, where each row is
+            a point ``(north, east, depth)``, relative to origin at
+            ``(lat, lon)``
+        :param interpolation: interpolation method. Choose from
+            ``('nearest_neighbor', 'multilinear')``
+        :returns: NumPy array of length N with extracted shear moduli at each
+            point
+
+        The default implementation retrieves and interpolates the shear moduli
+        from the contained 1D velocity profile.
         '''
+
         store_depth_profile = self.coords[0]
 
         earthmod = self.earthmodel_1d
@@ -1491,7 +1504,7 @@ class Config(Object):
 
         shear_moduli_interpolator = interp1d(
             store_depth_profile, store_shear_modulus_profile, kind=kind)
-        return shear_moduli_interpolator(z_points)
+        return shear_moduli_interpolator(points[:, 2])
 
 
 class ConfigTypeA(Config):
