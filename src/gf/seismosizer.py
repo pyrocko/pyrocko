@@ -6,8 +6,6 @@ import re
 import logging
 import resource
 
-pjoin = os.path.join
-
 import numpy as num
 
 from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
@@ -20,6 +18,8 @@ from pyrocko import trace, model, parimap, util
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
 import pyrocko.config
+
+pjoin = os.path.join
 
 guts_prefix = 'pf'
 
