@@ -631,7 +631,10 @@ class BoxcarSTF(STF):
 
     anchor = Float.T(
         default=0.0,
-        help='anchor point (-1.0: left, 0.0: center, +1.0: right)')
+        help='anchor point with respect to source.time:\n'
+             '-1.0: left -> source duration [0, T] ~ hypo central time\n'
+             ' 0.0: center -> source duration [-T/2, T/2] ~ centroid time\n'
+             '+1.0: right -> source duration [-T, 0] ~ rupture end time')
 
     @classmethod
     def factor_duration_to_effective(cls):
@@ -685,7 +688,10 @@ class TriangularSTF(STF):
 
     anchor = Float.T(
         default=0.0,
-        help='anchor point (-1.0: left, 0.0: centroid, +1.0: right)')
+        help='anchor point with respect to source.time:\n'
+             '-1.0: left -> source duration [0, T] ~ hypo central time\n'
+             ' 0.0: center -> source duration [-T/2, T/2] ~ centroid time\n'
+             '+1.0: right -> source duration [-T, 0] ~ rupture end time')
 
     @classmethod
     def factor_duration_to_effective(cls, peak_ratio=None):
@@ -768,7 +774,10 @@ class HalfSinusoidSTF(STF):
 
     anchor = Float.T(
         default=0.0,
-        help='anchor point (-1.0: left, 0.0: center, +1.0: right)')
+        help='anchor point with respect to source.time:\n'
+             '-1.0: left -> source duration [0, T] ~ hypo central time\n'
+             ' 0.0: center -> source duration [-T/2, T/2] ~ centroid time\n'
+             '+1.0: right -> source duration [-T, 0] ~ rupture end time')
 
     @classmethod
     def factor_duration_to_effective(cls):
