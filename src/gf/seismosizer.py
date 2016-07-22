@@ -1435,8 +1435,11 @@ class RectangularSource(DCSource):
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
         if self.slip is not None:
-            shear_moduli = store.config.get_store_shear_moduli_points(
-                z_points=self.depth + points[:, 2],
+            points2 = points.copy()
+            points2[:, 2] += self.depth
+            shear_moduli = store.config.get_shear_moduli(
+                self.lat, self.lon,
+                points=points2,
                 interpolation=target.interpolation)
 
             amplitudes *= dl * dw * shear_moduli * self.slip
