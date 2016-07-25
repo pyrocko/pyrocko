@@ -3173,12 +3173,11 @@ class LayeredModel(object):
     def extract(self, depth_min=None, depth_max=None):
         '''Extract :py:class:`LayeredModel` from :py:class:`LayeredModel`.
 
-        :param depth_min: depth of upper cut
-        :param depth_max: depth of lower cut
+        :param depth_min: depth of upper cut or name of :py:class:`Interface`
+        :param depth_max: depth of lower cut or name of :py:class:`Interface`
 
         Interpolates a :py:class:`GradientLayer` at *depth_min* and/or
         *depth_max*.'''
-        assert depth_min<depth_max
 
         if isinstance(depth_min, basestring):
             depth_min = self.discontinuity(depth_min).z
@@ -3191,7 +3190,8 @@ class LayeredModel(object):
         for element in self.elements():
             element = element.copy()
             do_append = False
-            if depth_min <= element.ztop and depth_max >= element.zbot:
+            if (depth_min <= element.ztop or depth_min is None) and\
+                    (depth_max >= element.zbot or depth_max is None):
                 mod_extracted.append(element)
                 continue
 
