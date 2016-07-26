@@ -116,9 +116,9 @@ class GFTrace(object):
         self.itmin = itmin
         self.deltat = deltat
         self.is_zero = is_zero
-        self.n_records_stacked = None
-        self.t_stack = None
-        self.t_optimize = None
+        self.n_records_stacked = 0.
+        self.t_stack = 0.
+        self.t_optimize = 0.
 
         if data is not None and data.size > 0:
             if begin_value is None:
@@ -160,9 +160,9 @@ class GFValue(object):
 
     def __init__(self, value):
         self.value = value
-        self.n_records_stacked = None
-        self.t_stack = None
-        self.t_optimize = None
+        self.n_records_stacked = 0.
+        self.t_stack = 0.
+        self.t_optimize = 0.
 
 
 def make_same_span(tracesdict):
