@@ -859,7 +859,7 @@ class Source(meta.Location, Cloneable):
         '''
 
         for (k, v) in kwargs.iteritems():
-            if k not in self:
+            if k not in self.keys():
                 if self.stf is not None:
                     self.stf[k] = v
                 else:
