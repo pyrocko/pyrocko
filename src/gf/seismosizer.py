@@ -859,7 +859,15 @@ class Source(meta.Location, Cloneable):
         '''
 
         for (k, v) in kwargs.iteritems():
-            self[k] = v
+            if k not in self.keys():
+                if self.stf is not None:
+                    self.stf[k] = v
+                else:
+                    raise Exception('Please set a STF before updating its'
+                                    ' parameters.')
+            else:
+                self[k] = v
+
 
     def grid(self, **variables):
         '''
