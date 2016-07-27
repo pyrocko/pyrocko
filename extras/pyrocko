@@ -3,13 +3,13 @@
 
 _opt_filenames()
 {
-    echo $(compgen -o filenames -A file $cur)
+    echo $(compgen -o filenames -A file -- $cur)
 }
 
 _opt_dirnames()
 {
-    echo $(compgen -o dirnames $cur)
-}
+    echo $(compgen -o plusdirs -f -- $cur)
+} 
 
 _fomosto_options()
 {
@@ -53,7 +53,7 @@ _fomosto_options()
     elif [ $COMP_CWORD = 3 ]; then
         opts=${arg_subsub[${COMP_WORDS[1]}]}
     fi
-    COMPREPLY=( $(compgen -W '${opts}' $cur) )
+    COMPREPLY=( $(compgen -W '${opts}' -- $cur) )
     return 0
 }
 
@@ -68,10 +68,10 @@ _snuffler_options()
         opts="--help --pattern --stations --event --markers --follow --force-cache --store-path --store-interval --ntracks --opengl --debug"
     fi
     opts="$opts $(_opt_dirnames) $(_opt_filenames)"
-    COMPREPLY=( $(compgen -W '${opts}' $cur) )
+    COMPREPLY=( $(compgen -W '${opts}' -- $cur) )
     return 0
 }
 
-complete -F _fomosto_options fomosto
-complete -F _snuffler_options snuffler
+complete -o nospace -o filenames -F _fomosto_options fomosto
+complete -o nospace -o filenames -F _snuffler_options snuffler
 
