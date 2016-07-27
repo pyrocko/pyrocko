@@ -1845,7 +1845,7 @@ def MakePileViewerMainClass(base):
                     amount = 10
                 self.nudge_selected_markers(dir*amount)
 
-            if keytext in 'degaA':
+            if keytext in 'degaApPnN':
                 self.emit_selected_markers()
             self.update()
             self.update_status()
