@@ -8,3 +8,11 @@ before_install:
     - sudo apt-get install python-yaml python-progressbar
     - sudo easy_install pyavl
 
+install:
+    - sudo python setup.py install
+
+script:
+    - python test/test_all.py
+
+notifications:
+    email: false
