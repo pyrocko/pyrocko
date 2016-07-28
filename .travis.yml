@@ -11,7 +11,7 @@ install:
     - sudo python setup.py install
 
 script:
-    - python test/test_all.py
+    - sudo python test/test_all.py
 
 notifications:
     email: false
