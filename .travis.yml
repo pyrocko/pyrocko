@@ -2,10 +2,12 @@ language: python
 python:
     - 2.7
 cache: pip
+virtualenv:
+    system_site_packages: true
 
 addons:
     apt:
-        packages: [python-dev, python-numpy-dev, gfortran, libblas-dev, libatlas-dev, libopenblas-dev, liblapack-dev  ]
+        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev ]
 
 
 before_install:
