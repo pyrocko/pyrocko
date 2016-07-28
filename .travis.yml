@@ -7,14 +7,14 @@ virtualenv:
 
 addons:
     apt:
-        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev ]
+        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml ]
 
 
 before_install:
-    - "pip install scipy matplotlib pyyaml progressbar setuptools flake8"
+    - "pip install progressbar setuptools flake8"
     - "easy_install pyavl"
     - "curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx" 
-    - "cd fomosto-qseis-2006a; ./configure; make; cd ..; export PATH=$PATH:`pwd`/src"
+    - "cd fomosto-qseis-2006a; ./configure; make; export PATH=$PATH:`pwd`/src; cd .."
 
 before_script:
     - "flake8 src/ apps/ --exit-zero"
