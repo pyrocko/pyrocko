@@ -1790,10 +1790,11 @@ def MakePileViewerMainClass(base):
             elif keytext in ('0', '1', '2', '3', '4', '5'):
                 for marker in self.selected_markers():
                     marker.set_kind(int(keytext))
-    
+                self.emit(SIGNAL('markers_changed'))
+
             elif key_event.key() in fkey_map:
                 self.set_phase_kind(self.selected_markers(), fkey_map[key_event.key()])
-                
+
             elif key_event.key() == Qt.Key_Escape:
                 if self.picking:
                     self.stop_picking(0,0,abort=True)
