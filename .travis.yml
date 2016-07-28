@@ -7,7 +7,7 @@ cache: pip
 
 addons:
     apt:
-        packages: [python-dev, python-numpy-dev, gfortran, libblas-dev, libatlas-dev]
+        packages: [python-dev, python-numpy-dev, gfortran, libblas-dev, libatlas-dev, libopenblas-dev, liblapack-dev  ]
 
 
 before_install:
