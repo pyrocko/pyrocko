@@ -5,8 +5,12 @@ python:
     - 2.7
 cache: pip
 
+addons:
+    apt:
+        packages: [python-dev, numpy-dev, gfortran, libblas-dev, libatlas-dev]
+
+
 before_install:
-    - "sudo apt-get install make git python-dev python-numpy-dev gfortran libblas-dev libblas-dev libatlas-dev"
     - "pip install scipy matplotlib pyyaml progressbar setuptools flake8"
     - "sudo easy_install pyavl"
     - "curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx" 
