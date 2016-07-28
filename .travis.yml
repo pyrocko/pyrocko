@@ -7,7 +7,7 @@ cache: pip
 
 before_install:
     - "sudo apt-get install make git python-dev python-numpy-dev gfortran libblas-dev libblas-dev libatlas-dev"
-    - "pip install numpy scipy matplotlib pyyaml progressbar setuptools flake8"
+    - "pip install scipy matplotlib pyyaml progressbar setuptools flake8"
     - "sudo easy_install pyavl"
     - "curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx" 
     - "cd fomosto-qseis-2006a; ./configure; sudo  make install; cd .."
