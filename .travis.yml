@@ -11,7 +11,7 @@ before_install:
     - "cd fomosto-qseis-2006a; ./configure; sudo  make install; cd .."
 
 before_script:
-    - "flake8"
+    - "flake8 src/ apps/ --exit-zero"
 
 install:
     - "sudo python setup.py install"
