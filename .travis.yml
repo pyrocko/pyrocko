@@ -4,9 +4,9 @@ language: python
 python: 2.7
 
 before_install:
-    - "sudo apt-get install make git python-dev python-setuptools python-numpy python-numpy-dev python-scipy python-matplotlib python-yaml python-progressbar gfortran"
+    - "sudo apt-get install make git python-dev python-numpy-dev gfortran"
+    - "pip install numpy scipy matplotlib yaml progressbar setuptools flake8"
     - "sudo easy_install pyavl"
-    - "pip install flake8 --use-mirrors"
     - "curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx" 
     - "cd fomosto-qseis-2006a; ./configure; sudo  make install; cd .."
 
