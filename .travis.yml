@@ -6,8 +6,8 @@ python: 2.7
 before_install:
     - sudo apt-get install make git python-dev python-setuptools python-numpy python-numpy-dev python-scipy python-matplotlib python-yaml python-progressbar gfortran
     - sudo easy_install pyavl
-    - curl -s http://kinherd.org/fomosto-qseis-2006.tar.gz | tar zvx
-    - cd fomosto-qseis-2006; ./configure; sudo  make install; cd .. 
+    - curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx 
+    - cd fomosto-qseis-2006a; ./configure; sudo  make install; cd ..
 
 install:
     - sudo python setup.py install
