@@ -14,6 +14,7 @@ except ImportError:
             return ''
 
 import os
+import shutil
 import time
 from os.path import join as pjoin
 
@@ -231,6 +232,13 @@ class custom_build_ext(build_ext):
     def run(self):
         make_prerequisites()
         build_ext.run(self)
+        # Install bash_autocompletion
+        print 'Installing bash completion...',
+        try:
+            shutil.copy('extras/pyrocko', '/etc/bash_completion.d/pyrocko')
+            print 'ok'
+        except:
+            print 'failed'
 
 class custom_build_app(build_ext):
     def run(self):
@@ -401,8 +409,6 @@ setup(
         'apps/jackseis',
         'apps/gmtpy-epstopdf',
         'apps/automap'],
-
-    data_files=[('/etc/bash_completion.d', ['extras/pyrocko'])],
 
     package_data={
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
