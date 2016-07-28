@@ -20,10 +20,10 @@ before_script:
     - "flake8 src/ apps/ --exit-zero"
 
 install:
-    - "sudo python setup.py install"
+    - "pip install ."
 
 script:
-    - "sudo python test/test_all.py"
+    - "python test/test_all.py"
 
 notifications:
     email: false
