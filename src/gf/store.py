@@ -377,9 +377,13 @@ class BaseStore:
     def sum(self, irecords, delays, weights, itmin=None,
             nsamples=None, decimate=1, implementation='c',
             optimization='enable'):
-
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
                          implementation, optimization)
+
+    def sum_statics(self, irecords, weights, implementation=None,
+                    optimization='enable'):
+        return self._sum_statics(irecords, weights, implementation,
+                                 optimization)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
