@@ -1,10 +1,12 @@
 sudo: required
 
 language: python
-python: 2.7
+python:
+    - 2.7
+cache: pip
 
 before_install:
-    - "sudo apt-get install make git python-dev python-numpy-dev gfortran libblas-dev libblas-devi libatlas-dev"
+    - "sudo apt-get install make git python-dev python-numpy-dev gfortran libblas-dev libblas-dev libatlas-dev"
     - "pip install numpy scipy matplotlib pyyaml progressbar setuptools flake8"
     - "sudo easy_install pyavl"
     - "curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx" 
