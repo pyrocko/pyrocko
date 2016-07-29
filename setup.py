@@ -403,7 +403,7 @@ setup(
         'apps/automap'],
 
     package_data={
-        packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
-                   'data/colortables/*.cpt']},
+        packname: ['src/data/*.png', 'src/data/*.html', 'src/data/earthmodels/*.nd',
+                   'src/data/colortables/*.cpt']},
 )
 
