@@ -20,7 +20,7 @@ before_script:
     - "flake8 src/ apps/ --exit-zero"
 
 install:
-    - "pip install ."
+    - "sudo python setup.py install."
 
 script:
     - "python test/test_all.py"
