@@ -9,7 +9,7 @@ virtualenv:
 
 addons:
     apt:
-        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml ]
+        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml python-tk ]
 
 
 before_install:
