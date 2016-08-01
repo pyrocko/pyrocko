@@ -2,12 +2,12 @@ language: python
 
 matrix:
     include:
-        #        - os: linux
-        #  sudo: required
-        #  python: 2.7
-        #  cache: pip
-        #  virtualenv:
-        #      system_site_packages: true
+        - os: linux
+          sudo: required
+          python: 2.7
+          cache: pip
+          virtualenv:
+              system_site_packages: true
         - os: osx
           osx_image: xcode7.3
           language: generic
@@ -27,7 +27,7 @@ before_install:
     - 'cd fomosto-qseis-2006a; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..'
 
 before_script:
-    - "flake8 src/ apps/ --exit-zero"
+    - 'if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ --exit-zero; fi'
 
 install:
     - "sudo python setup.py install"
