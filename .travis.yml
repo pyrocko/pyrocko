@@ -1,16 +1,17 @@
-sudo: true
-
 language: python
-python:
-    - 2.7
-cache: pip
-virtualenv:
-    system_site_packages: true
+
+matrix:
+    include:
+        - os: linux
+          sudo: required
+          python: 2.7
+          cache: pip
+          virtualenv:
+              system_site_packages: true
 
 addons:
     apt:
         packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml, python-tk ]
-
 
 before_install:
     - "pip install progressbar setuptools flake8"
