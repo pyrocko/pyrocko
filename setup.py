@@ -15,6 +15,7 @@ except ImportError:
 
 import os
 import time
+import shutil
 from os.path import join as pjoin
 
 from distutils.core import setup, Extension
@@ -225,6 +226,12 @@ class custom_build_py(build_py):
     def run(self):
         make_info_module(packname, version)
         build_py.run(self)
+        try:
+            shutil.copy('extras/pyrocko', '/etc/bash_completion.d/pyrocko')
+            print 'Installing pyrocko bash_completion...'
+        except:
+            pass
+
 
 
 class custom_build_ext(build_ext):
