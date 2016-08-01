@@ -2478,6 +2478,18 @@ class LocalEngine(Engine):
         store = self.get_store(store_id)
         return store.get_extra(key)
 
+    def close_cashed_stores(self):
+        '''
+        Close and remove ids from cashed stores.
+        '''
+        store_ids = []
+        for store_id, store in self._open_stores.iteritems():
+            store.close()
+            store_ids.append(store_id)
+
+        for store_id in store_ids:
+            self._open_stores.pop(store_id)
+
     def channel_rule(self, source, target):
         store_ = self.get_store(target.store_id)
         cprovided = source.provided_components(store_.config.component_scheme)
