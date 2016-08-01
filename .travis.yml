@@ -8,12 +8,19 @@ matrix:
           cache: pip
           virtualenv:
               system_site_packages: true
+        - os: osx
+          osx_image: xcode7.3
+          language: generic
 
 addons:
     apt:
         packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml, python-tk ]
 
 before_install:
+    - "if [[ "$TRAVIS_OS_NAME" == "osx" ]]; brew tap homebrew/science; fi"
+    - "if [[ "$TRAVIS_OS_NAME" == "osx" ]]; brew tap homebrew/python; fi"
+    - "if [[ "$TRAVIS_OS_NAME" == "osx" ]]; brew update; fi"
+    - "if [[ "$TRAVIS_OS_NAME" == "osx" ]]; brew install python numpy scipy matplotlib gfortran gcc; fi"
     - "pip install progressbar setuptools flake8"
     - "easy_install pyavl"
     - "curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx" 
