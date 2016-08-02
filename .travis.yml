@@ -21,7 +21,7 @@ before_install:
     - 'if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/python; fi'
     - 'if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi'
     - 'if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install python numpy scipy matplotlib gcc libyaml; fi'
-    - 'pip install progressbar setuptools flake8 pyyaml'
+    - 'pip install progressbar setuptools flake8 pyyaml coveralls'
     - 'easy_install pyavl'
     - 'curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx'
     - 'cd fomosto-qseis-2006a; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..'
@@ -30,10 +30,14 @@ before_script:
     - 'if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ --exit-zero; fi'
 
 install:
-    - "sudo python setup.py install"
+    - sudo python setup.py install
 
 script:
-    - "python test/test_all.py"
+    - python test/test_all.py
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
+
+after_success:
+    - coveralls
 
 notifications:
     email: false
