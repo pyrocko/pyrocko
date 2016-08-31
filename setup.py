@@ -409,8 +409,6 @@ setup(
         'apps/gmtpy-epstopdf',
         'apps/automap'],
 
-    data_files=[('/etc/bash_completion.d', ['extras/pyrocko'])],
-
     package_data={
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
                    'data/colortables/*.cpt']},
