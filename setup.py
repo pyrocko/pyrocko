@@ -222,6 +222,7 @@ proceed? [y/n]'%open(fn, 'r').read())
             print p.stdout.readline().rstrip()
         print p.stdout.read()
 
+
 class custom_build_py(build_py):
     def run(self):
         make_info_module(packname, version)
@@ -229,8 +230,12 @@ class custom_build_py(build_py):
         try:
             shutil.copy('extras/pyrocko', '/etc/bash_completion.d/pyrocko')
             print 'Installing pyrocko bash_completion...'
-        except:
-            pass
+        except IOError as e:
+            import errno
+            if e.errno == errno.EACCES:
+                pass
+            else:
+                raise e
 
 
 
