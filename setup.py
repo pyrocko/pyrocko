@@ -232,8 +232,8 @@ class custom_build_py(build_py):
             print 'Installing pyrocko bash_completion...'
         except IOError as e:
             import errno
-            if e.errno == errno.EACCES:
-                pass
+            if e.errno in (errno.EACCES, errno.ENOENT):
+                print e
             else:
                 raise e
 
