@@ -322,10 +322,40 @@ class GFTestCase(unittest.TestCase):
                             implementation='reference')
 
                         self.assertEqual(a.itmin, c.itmin)
-                        self.assertTrue(numeq(a.data, c.data, 0.01))
+                        num.testing.assert_array_almost_equal(a.data, c.data, 2)
 
                         self.assertEqual(b.itmin, c.itmin)
-                        self.assertTrue(numeq(b.data, c.data, 0.01))
+                        num.testing.assert_array_almost_equal(b.data, c.data, 2)
+
+        store.close()
+
+    def test_sum_statics(self):
+
+        nrecords = 8
+
+        store = gf.BaseStore(self.create(nrecords=nrecords))
+        for i in xrange(5):
+            n = random.randint(0, 5)
+            indices = num.random.randint(nrecords, size=n)
+            weights = num.random.random(n)
+            shifts = num.random.random(n)*nrecords
+
+            dyn = store.sum(
+                indices, shifts, weights,
+                itmin=None,
+                nsamples=None,
+                decimate=1,
+                implementation='c',
+                optimization='enable')
+
+            sta = store.sum_statics(
+                indices, weights, 
+                implementation=None,
+                optimization='enable')
+
+            if len(dyn.data) > 0:
+                num.testing.assert_array_almost_equal(dyn.data[-1], sta.value,
+                                                      5)
 
         store.close()
 

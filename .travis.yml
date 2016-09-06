@@ -1,0 +1,43 @@
+language: python
+
+matrix:
+    include:
+        - os: linux
+          sudo: required
+          python: 2.7
+          cache: pip
+          virtualenv:
+              system_site_packages: true
+        - os: osx
+          osx_image: xcode7.3
+          language: generic
+
+addons:
+    apt:
+        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml, python-tk, libyaml-dev ]
+
+before_install:
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/science; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/python; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install python numpy scipy matplotlib gcc libyaml; fi
+    - pip install progressbar setuptools flake8 pyyaml coveralls
+    - easy_install pyavl
+    - curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx
+    - cd fomosto-qseis-2006a; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+
+before_script:
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ --exit-zero; fi
+
+install:
+    - sudo python setup.py install
+
+script:
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python test/test_all.py ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
+
+after_success:
+    - coveralls
+
+notifications:
+    email: false

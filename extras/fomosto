@@ -1,0 +1,60 @@
+# bash-completion
+# For fomosto, the grinding mill!
+
+_opt_filenames()
+{
+    echo $(compgen -o filenames -A file $cur)
+}
+
+_opt_dirnames()
+{
+    echo $(compgen -o dirnames $cur)
+}
+
+_fomosto_options()
+{
+    local cur opts
+    COMPREPLY=()
+    opts=""
+
+    cur=${COMP_WORDS[COMP_CWORD]}
+
+    _avail_types="qseis.2006a qseis.2006 qssp.2010 qssp.2010beta ahfullgreen"
+    _std="--help -h --loglevel"
+    
+    declare -A arg_subsub
+    arg_subsub["build"]="--force --nworkers --continue --step --block $_std"
+    arg_subsub["stats"]="$_std"
+    arg_subsub["check"]="$_std"
+    arg_subsub["decimate"]=""
+    arg_subsub["redeploy"]=""
+    arg_subsub["view"]="--show-phases --extract $_std"
+    arg_subsub["extract"]="--format --output $_std"
+    arg_subsub["import"]=""
+    arg_subsub["export"]=""
+    arg_subsub["ttt"]="--force"
+    arg_subsub["tttview"]="--source-depth $_std"
+    arg_subsub["tttextract"]="--output $_std"
+    arg_subsub["server"]="--port --ip $_std"
+    arg_subsub["download"]="--force $_std"
+    arg_subsub["modelview"]="--paramerters $_std"
+    arg_subsub["upgrade"]="$_std"
+    arg_subsub["addref"]="$_std"
+    arg_subsub["qc"]="$_std"    
+
+    if [ $COMP_CWORD = 1 ]; then
+        opts="upgrade stats qc modelview decimate redeploy ttt download init addref export build tttextract tttview import server extract check view"
+    elif [ $COMP_CWORD = 2 ]; then
+    	if [ ${COMP_WORDS[1]} = "init" ]; then
+    		opts="$_avail_types"
+    	else
+    		opts="$(_opt_dirnames)"
+    	fi
+    elif [ $COMP_CWORD = 3 ]; then
+        opts=${arg_subsub[${COMP_WORDS[1]}]}
+    fi
+    COMPREPLY=( $(compgen -W '${opts}' $cur) )
+    return 0
+}
+complete -F _fomosto_options fomosto
+
