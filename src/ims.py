@@ -1868,7 +1868,10 @@ class BeamSection(Section):
     @classmethod
     def read(cls, reader):
         DataType.read(reader)
-        end = lambda line: line.upper().startswith('BEAMID')
+
+        def end(line):
+            return line.upper().startswith('BEAMID')
+
         group = list(cls.read_table(reader, cls.beam_group_header, BeamGroup,
                                     end))
 
@@ -2307,6 +2310,7 @@ class XW01(FreeFormatLine):
 re_comment = re.compile(r'^(%(.+)\s*| \((#?)(.+)\)\s*)$')
 re_comment_usa_dmc = re.compile(r'^(%(.+)\s*| ?\((#?)(.+)\)\s*)$')
 
+
 class Reader(object):
     def __init__(self, f, load_data=True, version=None, dialect=None):
         self._f = f
@@ -2381,7 +2385,6 @@ class Reader(object):
 
                 self._comment_lines.append(
                     (self._current_lpos, comment_type, comment))
-
 
             elif self._current_line[:10].upper() == 'TIME_STAMP':
                 self._time_stamps.append(
