@@ -11,9 +11,9 @@ characters, respectively.
 ============ =========================== ========= ======== ======
 format       format identifier           load      save     note
 ============ =========================== ========= ======== ======
-Mini-SEED    mseed                       yes       yes      
+Mini-SEED    mseed                       yes       yes
 SAC          sac                         yes       yes      [#f1]_
-SEG Y rev1   segy                        some               
+SEG Y rev1   segy                        some
 SEISAN       seisan, seisan.l, seisan.b  yes                [#f2]_
 KAN          kan                         yes                [#f3]_
 YAFF         yaff                        yes       yes      [#f4]_
@@ -21,22 +21,27 @@ ASCII Table  text                                  yes      [#f5]_
 GSE1         gse1                        some
 GSE2         gse2                        some
 DATACUBE     datacube                    yes
-SUDS         suds                        some 
+SUDS         suds                        some
 ============ =========================== ========= ======== ======
 
 .. rubric:: Notes
 
-.. [#f1] For SAC files, the endianness is guessed. Additional header information is stored in the :py:class:`Trace`'s ``meta`` attribute. 
-.. [#f2] Seisan waveform files can be in little (``seisan.l``) or big endian (``seisan.b``) format. ``seisan`` currently is an alias for ``seisan.l``.
-.. [#f3] The KAN file format has only been seen once by the author, and support for it may be removed again.
-.. [#f4] YAFF is an in-house, experimental file format, which should not be released into the wild.
-.. [#f5] ASCII tables with two columns (time and amplitude) are output - meta information will be lost.
+.. [#f1] For SAC files, the endianness is guessed. Additional header
+    information is stored in the :py:class:`Trace`'s ``meta`` attribute.
+.. [#f2] Seisan waveform files can be in little (``seisan.l``) or big endian
+    (``seisan.b``) format. ``seisan`` currently is an alias for ``seisan.l``.
+.. [#f3] The KAN file format has only been seen once by the author, and support
+    for it may be removed again.
+.. [#f4] YAFF is an in-house, experimental file format, which should not be
+    released into the wild.
+.. [#f5] ASCII tables with two columns (time and amplitude) are output - meta
+    information will be lost.
 '''
 
-import os, logging
-from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf, datacube, suds
-from pyrocko import gse2_io_wrap
-from pyrocko import util, trace
+import os
+import logging
+from pyrocko import mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf
+from pyrocko import datacube, suds, gse2_io_wrap, util, trace
 from pyrocko.io_common import FileLoadError, FileSaveError
 
 import numpy as num
@@ -57,13 +62,13 @@ def allowed_formats(operation, use=None, default=None):
         return ', '.join("``'%s'``" % fmt for fmt in l)
 
     elif use == 'cli_help':
-        return ', '.join(fmt + ['', ' [default]'][fmt==default] for fmt in l)
+        return ', '.join(fmt + ['', ' [default]'][fmt == default] for fmt in l)
 
     else:
         return l
 
 
-def load(filename, format='mseed', getdata=True, substitutions=None ):
+def load(filename, format='mseed', getdata=True, substitutions=None):
     '''Load traces from file.
 
     :param format: format of the file (%s)
@@ -82,12 +87,15 @@ def load(filename, format='mseed', getdata=True, substitutions=None ):
     ``'.kan'``, ``'.sgy'``, ``'.segy'``, ``'.yaff'``, everything else is
     assumed to be in Mini-SEED format.
 
-    This function calls :py:func:`iload` and aggregates the loaded traces in a list.
+    This function calls :py:func:`iload` and aggregates the loaded traces in a
+    list.
     '''
 
-    return list(iload(filename, format=format, getdata=getdata, substitutions=substitutions))
+    return list(iload(
+        filename, format=format, getdata=getdata, substitutions=substitutions))
 
 load.__doc__ %= allowed_formats('load', 'doc')
+
 
 def detect_format(filename):
     try:
@@ -97,20 +105,26 @@ def detect_format(filename):
     except OSError, e:
         raise FileLoadError(e)
 
-    format = None
-    for mod, fmt in (
-            (yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'),
-            (gse2_io_wrap, 'gse2'), (datacube, 'datacube'), (suds, 'suds')):
+    for mod, fmt in [
+            (yaff, 'yaff'),
+            (mseed, 'mseed'),
+            (sac, 'sac'),
+            (gse1, 'gse1'),
+            (gse2_io_wrap, 'gse2'),
+            (datacube, 'datacube'),
+            (suds, 'suds')]:
 
         if mod.detect(data):
             return fmt
 
     raise FileLoadError(UnknownFormat(filename))
 
-def iload(filename, format='mseed', getdata=True, substitutions=None ):
+
+def iload(filename, format='mseed', getdata=True, substitutions=None):
     '''Load traces from file (iterator version).
-    
-    This function works like :py:func:`load`, but returns an iterator which yields the loaded traces.
+
+    This function works like :py:func:`load`, but returns an iterator which
+    yields the loaded traces.
     '''
     load_data = getdata
 
@@ -129,14 +143,14 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
         make_substitutions(tr, substitutions)
         tr.set_mtime(mtime)
         return tr
-    
+
     extension_to_format = {
-            '.yaff': 'yaff',
-            '.sac': 'sac',
-            '.kan': 'kan',
-            '.segy': 'segy',
-            '.sgy': 'segy',
-            '.gse': 'gse2'}
+        '.yaff': 'yaff',
+        '.sac': 'sac',
+        '.kan': 'kan',
+        '.segy': 'segy',
+        '.sgy': 'segy',
+        '.gse': 'gse2'}
 
     if format == 'from_extension':
         format = 'mseed'
@@ -145,35 +159,36 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
 
     if format == 'detect':
         format = detect_format(filename)
-   
+
     format_to_module = {
-            'kan': kan,
-            'segy': segy,
-            'yaff': yaff,
-            'sac': sac,
-            'mseed': mseed,
-            'seisan': seisan_waveform,
-            'gse1': gse1,
-            'gse2': gse2_io_wrap,
-            'gcf': gcf,
-            'datacube': datacube,
-            'suds': suds,
+        'kan': kan,
+        'segy': segy,
+        'yaff': yaff,
+        'sac': sac,
+        'mseed': mseed,
+        'seisan': seisan_waveform,
+        'gse1': gse1,
+        'gse2': gse2_io_wrap,
+        'gcf': gcf,
+        'datacube': datacube,
+        'suds': suds,
     }
 
     add_args = {
-            'seisan': { 'subformat': subformat },
+        'seisan': {'subformat': subformat},
     }
 
     if format not in format_to_module:
         raise UnsupportedFormat(format)
 
     mod = format_to_module[format]
-    
-    for tr in mod.iload(filename, load_data=load_data,
-            **add_args.get(format, {})):
+
+    for tr in mod.iload(
+            filename, load_data=load_data, **add_args.get(format, {})):
+
         yield subs(tr)
 
-    
+
 def save(traces, filename_template, format='mseed', additional={},
          stations=None, overwrite=True):
     '''Save traces to file(s).
@@ -194,11 +209,11 @@ def save(traces, filename_template, format='mseed', additional={},
 
     .. note::
         Network, station, location, and channel codes may be silently truncated
-        to file format specific maximum lengthes. 
+        to file format specific maximum lengthes.
     '''
 
     if isinstance(traces, trace.Trace):
-        traces = [ traces ]
+        traces = [traces]
 
     if format == 'from_extension':
         format = os.path.splitext(filename_template)[1][1:]
@@ -237,9 +252,9 @@ def save(traces, filename_template, format='mseed', additional={},
 
             f.write(fn)
             fns.append(fn)
-            
+
         return fns
-   
+
     elif format == 'text':
         fns = []
         for tr in traces:
@@ -253,28 +268,30 @@ def save(traces, filename_template, format='mseed', additional={},
                                     % fn)
 
             util.ensuredirs(fn)
-            x,y = tr.get_xdata(), tr.get_ydata()
-            num.savetxt(fn, num.transpose((x,y)))
+            x, y = tr.get_xdata(), tr.get_ydata()
+            num.savetxt(fn, num.transpose((x, y)))
             fns.append(fn)
         return fns
-            
+
     elif format == 'yaff':
-        return yaff.save(traces, filename_template, additional, 
+        return yaff.save(traces, filename_template, additional,
                          overwrite=overwrite)
     else:
         raise UnsupportedFormat(format)
 
 save.__doc__ %= allowed_formats('save', 'doc')
 
+
 class UnknownFormat(Exception):
     def __init__(self, filename):
         Exception.__init__(self, 'Unknown file format: %s' % filename)
+
 
 class UnsupportedFormat(Exception):
     def __init__(self, format):
         Exception.__init__(self, 'Unsupported file format: %s' % format)
 
+
 def make_substitutions(tr, substitutions):
     if substitutions:
         tr.set_codes(**substitutions)
-
