@@ -116,9 +116,9 @@ class GFTrace(object):
         self.itmin = itmin
         self.deltat = deltat
         self.is_zero = is_zero
-        self.n_records_stacked = None
-        self.t_stack = None
-        self.t_optimize = None
+        self.n_records_stacked = 0.
+        self.t_stack = 0.
+        self.t_optimize = 0.
 
         if data is not None and data.size > 0:
             if begin_value is None:
@@ -160,9 +160,9 @@ class GFValue(object):
 
     def __init__(self, value):
         self.value = value
-        self.n_records_stacked = None
-        self.t_stack = None
-        self.t_optimize = None
+        self.n_records_stacked = 0.
+        self.t_stack = 0.
+        self.t_optimize = 0.
 
 
 def make_same_span(tracesdict):
@@ -377,9 +377,13 @@ class BaseStore:
     def sum(self, irecords, delays, weights, itmin=None,
             nsamples=None, decimate=1, implementation='c',
             optimization='enable'):
-
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
                          implementation, optimization)
+
+    def sum_statics(self, irecords, weights, implementation=None,
+                    optimization='enable'):
+        return self._sum_statics(irecords, weights, implementation,
+                                 optimization)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)

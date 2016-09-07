@@ -213,6 +213,11 @@ def save(traces, filename_template, format='mseed', additional={},
             if not overwrite and os.path.exists(fn):
                 raise FileSaveError('file exists: %s' % fn)
 
+            if fn in fns:
+                raise FileSaveError('file just created would be overwritten: '
+                                    '%s (multiple traces map to same filename)'
+                                    % fn)
+
             util.ensuredirs(fn)
 
             f = sac.SacFile(from_trace=tr)
@@ -236,6 +241,11 @@ def save(traces, filename_template, format='mseed', additional={},
             fn = tr.fill_template(filename_template, **additional)
             if not overwrite and os.path.exists(fn):
                 raise FileSaveError('file exists: %s' % fn)
+
+            if fn in fns:
+                raise FileSaveError('file just created would be overwritten: '
+                                    '%s (multiple traces map to same filename)'
+                                    % fn)
 
             util.ensuredirs(fn)
             x,y = tr.get_xdata(), tr.get_ydata()

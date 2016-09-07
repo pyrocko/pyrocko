@@ -139,8 +139,8 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     l = length
     w = width
 
-    nl = 2 * num.ceil(l / mindeltagf) + 1
-    nw = 2 * num.ceil(w / mindeltagf) + 1
+    nl = 2 * int(num.ceil(l / mindeltagf)) + 1
+    nw = 2 * int(num.ceil(w / mindeltagf)) + 1
 
     n = int(nl*nw)
 
@@ -2477,6 +2477,18 @@ class LocalEngine(Engine):
     def get_store_extra(self, store_id, key):
         store = self.get_store(store_id)
         return store.get_extra(key)
+
+    def close_cashed_stores(self):
+        '''
+        Close and remove ids from cashed stores.
+        '''
+        store_ids = []
+        for store_id, store in self._open_stores.iteritems():
+            store.close()
+            store_ids.append(store_id)
+
+        for store_id in store_ids:
+            self._open_stores.pop(store_id)
 
     def channel_rule(self, source, target):
         store_ = self.get_store(target.store_id)

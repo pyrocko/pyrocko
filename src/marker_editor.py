@@ -6,11 +6,12 @@ from pyrocko.gui_util import EventMarker, PhaseMarker
 from pyrocko import util, orthodrome
 
 _header_data = [
-    'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Dist [km]']
+    'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]']
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
 _string_header = (_column_mapping['Time'], _column_mapping['Label'])
+
 
 class MarkerItemDelegate(QStyledItemDelegate):
     '''Takes are of the table's style.'''
@@ -57,10 +58,10 @@ class MarkerTableView(QTableView):
 
         show_initially = ['Type', 'Time', 'Magnitude']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
-                            'Latitude/Longitude', 'Distance [km]']
-        self.menu_items = dict(zip(self.menu_labels, [0, 1, 2, 3, 4, 5, 7]))
-        self.editable_columns_events = [2, 3, 4, 5, 6]
-        self.editable_columns_phases = [2, 3, 4, 5, 6]
+                            'Latitude/Longitude', 'Kind', 'Distance [km]']
+        self.menu_items = dict(zip(self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8]))
+        self.editable_columns_events = [2, 3, 4, 5, 6, 7]
+        self.editable_columns_phases = [2, 3, 4, 5, 6, 7]
         self.editable_columns = \
             self.editable_columns_events + self.editable_columns_phases
 
@@ -235,6 +236,9 @@ class MarkerTableModel(QAbstractTableModel):
                 else:
                     s = ''
 
+            if index.column() == _column_mapping['Kind']:
+                s = '{:d}'.format(marker.kind)
+
             if index.column() == _column_mapping['Dist [km]']:
                 if marker in self.distances.keys():
                     s = '{0:6.1f}'.format(self.distances[marker])
@@ -279,10 +283,8 @@ class MarkerTableModel(QAbstractTableModel):
         dists = orthodrome.distance_accurate50m_numpy(lats, lons, olats, olons)
         dists /= 1000.
         self.distances = dict(zip(emarkers, dists))
+        self.marker_table_view.viewport().repaint()
         self.emit(SIGNAL('dataChanged()'))
-
-        # expensive!
-        self.reset()
 
     def done(self):
         self.emit(SIGNAL('dataChanged()'))
@@ -406,6 +408,11 @@ class MarkerEditor(QFrame):
             self.pile_viewer,
             SIGNAL('changed_marker_selection'),
             self.update_selection_model)
+
+        self.connect(
+            self.pile_viewer,
+            SIGNAL('markers_changed'),
+            self.marker_table.viewport().repaint)
 
         self.marker_table.toggle_columns()
 
