@@ -4,7 +4,7 @@ from os.path import expanduser, expandvars
 from copy import deepcopy
 
 from pyrocko import util
-from pyrocko.guts import Object, Float, String, load, dump, List
+from pyrocko.guts import Object, Float, String, load, dump, List, Dict
 
 guts_prefix = 'pf'
 
@@ -13,6 +13,8 @@ pyrocko_dir_tmpl = os.environ.get(
     os.path.join('~', '.pyrocko'))
 
 conf_path_tmpl = os.path.join(pyrocko_dir_tmpl, 'config.pf')
+default_phase_key_mapping = {
+    'F1': 'P', 'F2': 'S', 'F3': 'R', 'F4': 'Q', 'F5': '?'}
 
 
 class BadConfig(Exception):
@@ -30,6 +32,8 @@ class PyrockoConfig(Object):
     earthradius = Float.T(default=6371.*1000.)
     gf_store_dirs = List.T(PathWithPlaceholders.T())
     gf_store_superdirs = List.T(PathWithPlaceholders.T())
+    phase_key_mapping = Dict.T(
+        String.T(), String.T(), default=default_phase_key_mapping)
     topo_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'topo'))
     geonames_dir = PathWithPlaceholders.T(
@@ -38,6 +42,9 @@ class PyrockoConfig(Object):
         default=os.path.join(pyrocko_dir_tmpl, 'leap-seconds.list'))
     leapseconds_url = String.T(
         default='http://www.ietf.org/timezones/data/leap-seconds.list')
+
+    def get_phase_name(self, key):
+        return self.phase_key_mapping.get('F%s' % key, 'Undefined')
 
 
 def expand(x):
