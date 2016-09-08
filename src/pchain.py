@@ -34,7 +34,7 @@ class Chain(object):
         for stage in stages:
             if not isinstance(stage, Stage):
                 stage = Stage(stage)
-            
+
             stage._parent = parent
             parent = stage
             self.stages.append(stage)
@@ -42,7 +42,6 @@ class Chain(object):
     def clear(self):
         for stage in self.stages:
             stage.clear()
-    
+
     def __call__(self, *x, **kwargs):
         return self.stages[len(x)-1](*x, **kwargs)
-
