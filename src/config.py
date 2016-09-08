@@ -34,6 +34,7 @@ class PyrockoConfig(Object):
     gf_store_superdirs = List.T(PathWithPlaceholders.T())
     phase_key_mapping = Dict.T(
         String.T(), String.T(), default=default_phase_key_mapping)
+    visible_length_default = String.T(default='Short')
     topo_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'topo'))
     geonames_dir = PathWithPlaceholders.T(
@@ -42,6 +43,10 @@ class PyrockoConfig(Object):
         default=os.path.join(pyrocko_dir_tmpl, 'leap-seconds.list'))
     leapseconds_url = String.T(
         default='http://www.ietf.org/timezones/data/leap-seconds.list')
+
+    @property
+    def visible_length_options(self):
+        return {'Short': 6000, 'Medium': 20000, 'Long': 60000}
 
     def get_phase_name(self, key):
         return self.phase_key_mapping.get('F%s' % key, 'Undefined')
