@@ -1,8 +1,6 @@
 
-import numpy as num
-
-from PyQt4.QtCore import *  # noqa
-from PyQt4.QtGui import *  # noqa
+from PyQt4 import QtCore as qc
+from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import make_QPolygonF, LinValControl
 from pyrocko.pile_viewer import Projection
@@ -11,10 +9,10 @@ from pyrocko import beachball, moment_tensor as mtm
 from pyrocko import plot
 
 
-class BeachballView(QWidget):
+class BeachballView(qg.QWidget):
 
     def __init__(self, *args):
-        QWidget.__init__(self, *args)
+        qg.QWidget.__init__(self, *args)
         mt = mtm.MomentTensor(m=mtm.symmat6(1., -1., 2., 0., -2., 1.))
         print mt
         self._mt = mt
@@ -27,8 +25,8 @@ class BeachballView(QWidget):
     def paintEvent(self, paint_ev):
         '''Called by QT whenever widget needs to be painted.'''
 
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter = qg.QPainter(self)
+        painter.setRenderHint(qg.QPainter.Antialiasing)
         self.drawit(painter)
 
     def drawit(self, p):
@@ -47,8 +45,8 @@ class BeachballView(QWidget):
         yproj.set_in_range(-1., 1.)
         yproj.set_out_range(h-(h-s)/2., (h-s)/2.)
 
-        #m = mtm.symmat6(*(num.random.random(6)*2.-1.))
-        #mtm.MomentTensor(m=m)
+        # m = mtm.symmat6(*(num.random.random(6)*2.-1.))
+        # mtm.MomentTensor(m=m)
 
         mt = self._mt
 
@@ -63,10 +61,10 @@ class BeachballView(QWidget):
                 lines, lines_lower, lines_upper) in beachball.eig2gx(eig):
 
             color = group_to_color[group]
-            brush = QBrush(QColor(*color))
+            brush = qg.QBrush(qg.QColor(*color))
             p.setBrush(brush)
 
-            pen = QPen(QColor(*color))
+            pen = qg.QPen(qg.QColor(*color))
             pen.setWidth(1)
             p.setPen(pen)
 
@@ -76,7 +74,7 @@ class BeachballView(QWidget):
                 p.drawPolygon(points)
 
             color = (0, 0, 0)
-            pen = QPen(QColor(*color))
+            pen = qg.QPen(qg.QColor(*color))
             pen.setWidth(2)
             p.setPen(pen)
 
@@ -86,10 +84,10 @@ class BeachballView(QWidget):
                 p.drawPolyline(points)
 
 
-class MomentTensorEditor(QFrame):
+class MomentTensorEditor(qg.QFrame):
 
     def __init__(self, *args):
-        QFrame.__init__(self, *args)
+        qg.QFrame.__init__(self, *args)
 
         self._mt = mtm.MomentTensor(m=mtm.symmat6(1., -1., 2., 0., -2., 1.))
 
@@ -101,7 +99,7 @@ class MomentTensorEditor(QFrame):
             (LinValControl, 'Dip 2', 0., 90., 0., 4),
             (LinValControl, 'Slip-Rake 2', -180., 180., 0., 5)]
 
-        layout = QGridLayout()
+        layout = qg.QGridLayout()
         self.setLayout(layout)
 
         val_controls = []
@@ -112,7 +110,7 @@ class MomentTensorEditor(QFrame):
             for icol, widget in enumerate(val_control.widgets()):
                 layout.addWidget(widget, irow, icol)
             self.connect(
-                val_control, SIGNAL('valchange(PyQt_PyObject,int)'),
+                val_control, qc.SIGNAL('valchange(PyQt_PyObject,int)'),
                 self.valchange)
 
         self.val_controls = val_controls
@@ -138,4 +136,4 @@ class MomentTensorEditor(QFrame):
         self.adjust_values()
 
         self.emit(
-            SIGNAL('moment_tensor_changed(PyQt_PyObject)'), self._mt)
+            qc.SIGNAL('moment_tensor_changed(PyQt_PyObject)'), self._mt)
