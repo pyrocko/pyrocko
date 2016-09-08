@@ -657,13 +657,11 @@ def sort_actions(menu):
         menu.addAction(action)
 
 
-fkey_map = dict(zip((
-    qc.Qt.Key_F1,
-    qc.Qt.Key_F2,
-    qc.Qt.Key_F3,
-    qc.Qt.Key_F4,
-    qc.Qt.Key_F5,
-    qc.Qt.Key_F10), (1, 2, 3, 4, 5, 0)))
+fkey_map = dict(zip(
+    (qc.Qt.Key_F1, qc.Qt.Key_F2, qc.Qt.Key_F3, qc.Qt.Key_F4, qc.Qt.Key_F5,
+     qc.Qt.Key_F6, qc.Qt.Key_F7, qc.Qt.Key_F8, qc.Qt.Key_F9, qc.Qt.Key_F10,
+     qc.Qt.Key_F11, qc.Qt.Key_F12),
+    range(12)))
 
 
 class PileViewerMainException(Exception):
@@ -710,7 +708,7 @@ def MakePileViewerMainClass(base):
             self.message = None
             self.reloaded = False
             self.pile_has_changed = False
-            self.phase_names = {1: 'P', 2: 'S', 3: 'R', 4: 'Q', 5: '?'}
+            self.config = pyrocko.config.config()
 
             self.tax = TimeAx()
             self.setBackgroundRole(qg.QPalette.Base)
@@ -2026,9 +2024,8 @@ def MakePileViewerMainClass(base):
                     marker.set_kind(int(keytext))
                 self.emit(qc.SIGNAL('markers_changed'))
 
-            elif key_event.key() in fkey_map:
-                self.set_phase_kind(
-                    self.selected_markers(), fkey_map[key_event.key()])
+            elif key_event.key() in fkey_map.keys():
+                self.handle_fkeys(key_event.key())
 
             elif key_event.key() == qc.Qt.Key_Escape:
                 if self.picking:
@@ -2090,6 +2087,11 @@ def MakePileViewerMainClass(base):
                 self.emit_selected_markers()
             self.update()
             self.update_status()
+
+        def handle_fkeys(self, key):
+            self.set_phase_kind(
+                self.selected_markers(),
+                fkey_map[key] + 1)
 
         def emit_selected_markers(self):
             _indexes = []
@@ -2208,7 +2210,7 @@ def MakePileViewerMainClass(base):
                 self.load(paths)
 
         def get_phase_name(self, kind):
-            return self.phase_names.get(kind, 'Unknown')
+            return self.config.get_phase_name(kind)
 
         def set_phase_kind(self, markers, kind):
             phasename = self.get_phase_name(kind)
