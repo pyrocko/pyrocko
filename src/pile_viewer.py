@@ -536,7 +536,7 @@ class Projection(object):
     def copy(self):
         return copy.copy(self)
 
-def add_radiobuttongroup(menu, menudef, obj, target):
+def add_radiobuttongroup(menu, menudef, obj, target, default=None):
     group = QActionGroup(menu)
     menuitems = []
     for l, v in menudef:
@@ -546,8 +546,11 @@ def add_radiobuttongroup(menu, menudef, obj, target):
         k.setCheckable(True)
         obj.connect(group, SIGNAL('triggered(QAction*)'), target)
         menuitems.append((k,v))
+        if default is not None and l == default:
+            k.setChecked(True)
             
-    menuitems[0][0].setChecked(True)
+    if default is None:
+        menuitems[0][0].setChecked(True)
     return menuitems
 
 def sort_actions(menu):
@@ -810,16 +813,18 @@ def MakePileViewerMainClass(base):
             self.menuitem_watch.setChecked(False)
             self.menu.addAction(self.menuitem_watch)
 
-
-            self.visible_length_menu = QMenu('Visible Length', self.menu)
-            menudef = [
-                ('Short', 6000),
-                ('Medium', 20000),
-                ('Long', 60000),
-            ]
             
-            self.menuitems_visible_length = add_radiobuttongroup(self.visible_length_menu, menudef, self, self.visible_length_change)
-            self.visible_length = menudef[0][1]
+            self.visible_length_menu = QMenu('Visible Length', self.menu)
+
+            menudef = [(k, v) for k, v in
+                       self.config.visible_length_options.items()]
+
+            vl_default = self.config.visible_length_default
+            self.menuitems_visible_length = add_radiobuttongroup(
+                self.visible_length_menu, menudef, self,
+                self.visible_length_change,
+                default=vl_default)
+            self.visible_length = self.config.visible_length_options[vl_default]
             self.menu.addMenu( self.visible_length_menu )
             
             self.menu.addSeparator()
