@@ -37,7 +37,16 @@ def parstack(arrays, offsets, shifts, weights, method,
     return result, offset
 
 
-def parstack_numpy(arrays, offsets, shifts, weights, method, lengthout, offsetout, result, nparallel):
+def parstack_numpy(
+        arrays,
+        offsets,
+        shifts,
+        weights,
+        method,
+        lengthout,
+        offsetout,
+        result,
+        nparallel):
 
     # nparallel is ignored here
 
