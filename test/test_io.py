@@ -1,4 +1,4 @@
-from pyrocko import mseed, trace, util, io
+from pyrocko import mseed, trace, util, io, suds
 from pyrocko.io import FileLoadError
 import unittest
 import numpy as num
@@ -89,6 +89,18 @@ class IOTestCase( unittest.TestCase ):
             i += 1
 
         assert i == 24
+
+    def testReadSUDS(self):
+        fpath = common.test_data_file('test.suds')
+        i = 0
+        for tr in io.load(fpath, format='detect'):
+            i += 1
+
+        assert i == 251
+
+        stations = suds.load_stations(fpath)
+
+        assert len(stations) == 91
 
 
 if __name__ == "__main__":
