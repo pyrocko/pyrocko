@@ -613,7 +613,7 @@ def MakePileViewerMainClass(base):
             self.message = None
             self.reloaded = False
             self.pile_has_changed = False
-            self.config = pyrocko.config.config()
+            self.config = pyrocko.config.config('snuffler')
 
             self.tax = TimeAx()
             self.setBackgroundRole( QPalette.Base )
@@ -816,15 +816,14 @@ def MakePileViewerMainClass(base):
             
             self.visible_length_menu = QMenu('Visible Length', self.menu)
 
-            menudef = [(k, v) for k, v in
-                       self.config.visible_length_options.items()]
+            menudef = [(x.key, x.value) for x in
+                       self.config.visible_length_setting]
 
-            vl_default = self.config.visible_length_default
             self.menuitems_visible_length = add_radiobuttongroup(
                 self.visible_length_menu, menudef, self,
-                self.visible_length_change,
-                default=vl_default)
-            self.visible_length = self.config.visible_length_options[vl_default]
+                self.visible_length_change)
+
+            self.visible_length = menudef[0][1]
             self.menu.addMenu( self.visible_length_menu )
             
             self.menu.addSeparator()
