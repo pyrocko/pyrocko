@@ -21,6 +21,7 @@ ASCII Table  text                                  yes      [#f5]_
 GSE1         gse1                        some
 GSE2         gse2                        some
 DATACUBE     datacube                    yes
+SUDS         suds                        some 
 ============ =========================== ========= ======== ======
 
 .. rubric:: Notes
@@ -33,7 +34,7 @@ DATACUBE     datacube                    yes
 '''
 
 import os, logging
-from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf, datacube
+from pyrocko import mseed, sac, kan, segy, yaff, file, seisan_waveform, gse1, gcf, datacube, suds
 from pyrocko import gse2_io_wrap
 from pyrocko import util, trace
 from pyrocko.io_common import FileLoadError, FileSaveError
@@ -47,7 +48,7 @@ def allowed_formats(operation, use=None, default=None):
     if operation == 'load':
         l = ['detect', 'from_extension', 'mseed', 'sac', 'segy', 'seisan',
              'seisan.l', 'seisan.b', 'kan', 'yaff', 'gse1', 'gse2', 'gcf',
-             'datacube']
+             'datacube', 'suds']
 
     elif operation == 'save':
         l = ['mseed', 'sac', 'text', 'yaff', 'gse2']
@@ -97,7 +98,10 @@ def detect_format(filename):
         raise FileLoadError(e)
 
     format = None
-    for mod, fmt in ((yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'), (gse2_io_wrap, 'gse2'), (datacube, 'datacube')):
+    for mod, fmt in (
+            (yaff, 'yaff'), (mseed, 'mseed'), (sac, 'sac'), (gse1, 'gse1'),
+            (gse2_io_wrap, 'gse2'), (datacube, 'datacube'), (suds, 'suds')):
+
         if mod.detect(data):
             return fmt
 
@@ -153,6 +157,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None ):
             'gse2': gse2_io_wrap,
             'gcf': gcf,
             'datacube': datacube,
+            'suds': suds,
     }
 
     add_args = {
