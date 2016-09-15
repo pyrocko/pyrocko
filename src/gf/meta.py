@@ -827,7 +827,7 @@ class DiscretizedSource(Object):
     def moments(self):
         return None
 
-    def plot(self, ax=None, system='cartesian', show=True):
+    def plot(self, ax=None, system='cartesian', show=True, colorbar=False):
         import matplotlib as mpl
         plt = mpl.pyplot
         if not ax:
@@ -857,7 +857,7 @@ class DiscretizedSource(Object):
             x, y, self.depths, s=s*40, c=c, vmin=self.times.min(),
             vmax=self.times.max(), cmap=mpl.cm.YlGnBu)
 
-        if colorize:
+        if colorize and colorbar:
             plt.gcf().colorbar(mappable)
 
         if show:
