@@ -833,9 +833,11 @@ def detect_gmt_installation():
 
     if not output:
         raise ValueError("Can't find GMT installation via PATH")
-
     gmtbin = os.path.dirname(output)
-    gmthome = os.environ['GMTHOME']  # should throw a KeyError if not satisfied
+    try:
+        gmthome = os.environ['GMTHOME']  # should throw a KeyError if not satisfied
+    except KeyError:
+        raise Exception('GMTHOME environment variable undefinded')
 
     gmtversion = get_gmt_version(pjoin(gmtbin, 'gmtdefaults'), gmthome)
     return gmtversion, gmthome, gmtbin
