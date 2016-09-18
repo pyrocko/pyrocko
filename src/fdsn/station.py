@@ -65,6 +65,7 @@ def same(x, eps=0.0):
 
 this_year = time.gmtime()[0]
 
+
 class DummyAwareOptionalTimestamp(Object):
     dummy_for = float
 
@@ -100,7 +101,8 @@ class DummyAwareOptionalTimestamp(Object):
                 val = float(val)
 
             else:
-                raise ValidationError('%s: cannot convert "%s" to float' % (self.xname(), val))
+                raise ValidationError(
+                    '%s: cannot convert "%s" to float' % (self.xname(), val))
 
             return val
 
@@ -526,10 +528,12 @@ class Comment(Object):
 
     id = Counter.T(optional=True, xmlstyle='attribute')
     value = Unicode.T(xmltagname='Value')
-    begin_effective_time = Timestamp.T(optional=True,
-                                       xmltagname='BeginEffectiveTime')
-    end_effective_time = DummyAwareOptionalTimestamp.T(optional=True,
-                                     xmltagname='EndEffectiveTime')
+    begin_effective_time = Timestamp.T(
+        optional=True,
+        xmltagname='BeginEffectiveTime')
+    end_effective_time = DummyAwareOptionalTimestamp.T(
+        optional=True,
+        xmltagname='EndEffectiveTime')
     author_list = List.T(Person.T(xmltagname='Author'))
 
 
@@ -579,9 +583,9 @@ class ResponseStage(Object):
                 '(%s.%s.%s.%s)' % nslc)
 
         if (self.coefficients_list or
-              self.response_list or
-              self.fir or
-              self.polynomial):
+                self.response_list or
+                self.fir or
+                self.polynomial):
 
             logger.debug('unhandled response at stage %i' % self.number)
 
@@ -646,22 +650,22 @@ class Response(Object):
         return trace.MultiplyResponse(responses)
 
     @classmethod
-    def from_pyrocko_pz_response(cls, presponse, input_unit, output_unit, 
+    def from_pyrocko_pz_response(cls, presponse, input_unit, output_unit,
                                  normalization_frequency=1.0):
 
         norm_factor = 1.0/float(abs(
             presponse.evaluate(num.array([normalization_frequency]))[0]
-            /presponse.constant))
+            / presponse.constant))
 
         pzs = PolesZeros(
             pz_transfer_function_type='LAPLACE (RADIANS/SECOND)',
             normalization_factor=norm_factor,
             normalization_frequency=Frequency(normalization_frequency),
             zero_list=[PoleZero(real=FloatNoUnit(z.real),
-                                   imaginary=FloatNoUnit(z.imag))
+                                imaginary=FloatNoUnit(z.imag))
                        for z in presponse.zeros],
             pole_list=[PoleZero(real=FloatNoUnit(z.real),
-                                   imaginary=FloatNoUnit(z.imag))
+                                imaginary=FloatNoUnit(z.imag))
                        for z in presponse.poles])
 
         pzs.validate()
@@ -680,6 +684,7 @@ class Response(Object):
             stage_list=[stage])
 
         return resp
+
 
 class BaseNode(Object):
     '''A base node type for derivation from: Network, Station and
@@ -835,7 +840,7 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
         info = '\n'.join(
             '    %s: %s' % (x.code, x.position_values) for
             x in channels)
-    
+
         mess = 'encountered inconsistencies in channel ' \
                'lat/lon/elevation/depth ' \
                'for %s.%s.%s: \n%s' % (nsl + (info,))
@@ -848,7 +853,8 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
             logger.warn(' -> using mean values')
 
     apos = num.array([x.position_values for x in channels], dtype=num.float)
-    mlat, mlon, mele, mdep = num.nansum(apos, axis=0) / num.sum(num.isfinite(apos), axis=0)
+    mlat, mlon, mele, mdep = num.nansum(apos, axis=0) \
+        / num.sum(num.isfinite(apos), axis=0)
 
     groups = {}
     for channel in channels:
@@ -860,10 +866,15 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
     pchannels = []
     for code in sorted(groups.keys()):
         data = [
-            (channel.code, value_or_none(channel.azimuth), value_or_none(channel.dip))
+            (channel.code, value_or_none(channel.azimuth),
+                value_or_none(channel.dip))
             for channel in groups[code]]
 
-        azimuth, dip = util.consistency_merge(data, message='channel orientation values differ:', error=inconsistencies)
+        azimuth, dip = util.consistency_merge(
+            data,
+            message='channel orientation values differ:',
+            error=inconsistencies)
+
         pchannels.append(model.Channel(code, azimuth=azimuth, dip=dip))
 
     return model.Station(
@@ -925,19 +936,20 @@ class FDSNStationXML(Object):
                     for loc in sorted(loc_to_channels.keys()):
                         channels = loc_to_channels[loc]
                         if nslcs is not None:
-                            channels = [channel for channel in channels 
-                                        if (network.code, station.code, loc, channel.code) in nslcs]
+                            channels = [channel for channel in channels
+                                        if (network.code, station.code, loc,
+                                            channel.code) in nslcs]
 
                         if not channels:
                             continue
 
-                        pos = lat, lon, elevation, depth = \
-                            channels[0].position_values
-
                         nsl = network.code, station.code, loc
-                        
+
                         pstations.append(
-                            pyrocko_station_from_channels(nsl, channels, inconsistencies=inconsistencies))
+                            pyrocko_station_from_channels(
+                                nsl,
+                                channels,
+                                inconsistencies=inconsistencies))
                 else:
                     pstations.append(model.Station(
                         network.code, station.code, '*',
