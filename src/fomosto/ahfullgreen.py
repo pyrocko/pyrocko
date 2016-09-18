@@ -7,21 +7,16 @@ import copy
 import signal
 
 from tempfile import mkdtemp
-from subprocess import Popen, PIPE
-from os.path import join as pjoin
 
-from pyrocko.guts import Float, Int, Tuple, List, Complex, Bool, Object, String
-from pyrocko import trace, util, cake, model, moment_tensor
+from pyrocko.guts import Float, Int, Tuple, List, Object
+from pyrocko import trace, util, cake
 from pyrocko import gf
-from pyrocko.ahfullgreen import add_seismogram, Impulse, Gauss
+from pyrocko.ahfullgreen import add_seismogram, Impulse
+from pyrocko.moment_tensor import MomentTensor, symmat6
 
 km = 1000.
 
 guts_prefix = 'pf'
-
-Timing = gf.meta.Timing
-
-from pyrocko.moment_tensor import MomentTensor, symmat6
 
 logger = logging.getLogger('fomosto.ahfullgreen')
 
@@ -32,8 +27,10 @@ program_bins = {
 
 components = 'r t z'.split()
 
+
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
+
 
 def example_model():
     material = cake.Material(vp=3000., vs=1000., rho=3000., qp=200., qs=100.)
@@ -46,12 +43,11 @@ def example_model():
 
 class AhfullgreenConfig(Object):
 
-    time_region = Tuple.T(2, Timing.T(), default=(
-        Timing('-10'), Timing('+890')))
+    time_region = Tuple.T(2, gf.Timing.T(), default=(
+        gf.Timing('-10'), gf.Timing('+890')))
 
-    cut = Tuple.T(2, Timing.T(), optional=True)
-    fade = Tuple.T(4, Timing.T(), optional=True)
-
+    cut = Tuple.T(2, gf.Timing.T(), optional=True)
+    fade = Tuple.T(4, gf.Timing.T(), optional=True)
 
     def items(self):
         return dict(self.T.inamevals(self))
@@ -118,9 +114,9 @@ class AhfullgreenRunner:
             for i_comp, o in enumerate((outx, outy, outz)):
                 comp = components[i_comp]
                 tr = trace.Trace('', '%04i' % i_distance, '', comp,
-                                tmin=tmin, ydata=o, deltat=deltat,
-                                             meta=dict(distance=d,
-                                                       azimuth=0.))
+                                 tmin=tmin, ydata=o, deltat=deltat,
+                                 meta=dict(distance=d, azimuth=0.))
+
                 self.traces.append(tr)
 
     def get_traces(self):
@@ -220,8 +216,6 @@ class AhfullGFBuilder(gf.builder.Builder):
 
         for mt, gfmap in gfmapping:
             if mt:
-                m = mt.m()
-                f = float
                 conf.source_mech = mt
             else:
                 conf.source_mech = None
@@ -336,12 +330,12 @@ def init(store_dir, variant):
 
     ahfull = AhfullgreenConfig()
     ahfull.time_region = (
-        gf.meta.Timing('begin-2'),
-        gf.meta.Timing('end+2'))
+        gf.Timing('begin-2'),
+        gf.Timing('end+2'))
 
     ahfull.cut = (
-        gf.meta.Timing('begin-2'),
-        gf.meta.Timing('end+2'))
+        gf.Timing('begin-2'),
+        gf.Timing('end+2'))
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
