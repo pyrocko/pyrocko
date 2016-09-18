@@ -1,23 +1,21 @@
 import numpy as num
-import logging, os, shutil, glob, copy, signal
+import logging
+import os
+import shutil
+import glob
+import copy
+import signal
 
 from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
-from pyrocko.guts import *
-from pyrocko.guts_array import *
+from pyrocko.guts import Object, Float, String, Bool, Tuple, Int, List
 from pyrocko import trace, util, cake
 from pyrocko import gf
-from pyrocko.parimap import parimap
-
-guts_prefix = 'pf'
-
-Timing = gf.meta.Timing
-
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
-from cStringIO import StringIO
+guts_prefix = 'pf'
 
 logger = logging.getLogger('fomosto.qssp')
 
@@ -28,12 +26,13 @@ program_bins = {
 }
 
 qssp_components = {
-    1: 'ae an az gr sd te tn ue un uz ve vn vz'.split(), 
+    1: 'ae an az gr sd te tn ue un uz ve vn vz'.split(),
     2: 'ar at ap gr sd tt tp ur ut up vr vt vp'.split(),
 }
 
+
 def str_float_vals(vals):
-    return ' '.join( [ '%e' % val for val in vals ] )
+    return ' '.join(['%e' % val for val in vals])
 
 
 def cake_model_to_config(mod):
@@ -41,22 +40,23 @@ def cake_model_to_config(mod):
     srows = []
     for i, row in enumerate(mod.to_scanlines()):
         depth, vp, vs, rho, qp, qs = row
-        row = [ depth/k, vp/k, vs/k, rho/k, qp, qs ]
-        srows.append( '%i %s' % (i+1, str_float_vals(row)) )
+        row = [depth/k, vp/k, vs/k, rho/k, qp, qs]
+        srows.append('%i %s' % (i+1, str_float_vals(row)))
 
     return '\n'.join(srows), len(srows)
 
 
 class QSSPSource(Object):
-    lat = Float.T(default=0.0) 
+    lat = Float.T(default=0.0)
     lon = Float.T(default=0.0)
     depth = Float.T(default=10.0)
     torigin = Float.T(default=0.0)
     trise = Float.T(default=1.0)
 
     def string_for_config(self):
-        return '%(lat)15e %(lon)15e %(depth)15e %(torigin)15e %(trise)15e' % \
-                self.__dict__
+        return '%(lat)15e %(lon)15e %(depth)15e %(torigin)15e %(trise)15e' \
+            % self.__dict__
+
 
 class QSSPSourceMT(QSSPSource):
     munit = Float.T(default=1.0)
@@ -64,13 +64,14 @@ class QSSPSourceMT(QSSPSource):
     mtt = Float.T(default=1.0)
     mpp = Float.T(default=1.0)
     mrt = Float.T(default=0.0)
-    mrp= Float.T(default=0.0)
+    mrp = Float.T(default=0.0)
     mtp = Float.T(default=0.0)
 
     def string_for_config(self):
         return '%(munit)15e %(mrr)15e %(mtt)15e %(mpp)15e ' \
-               '%(mrt)15e %(mrp)15e %(mtp)15e ' % self.__dict__ + \
-               QSSPSource.string_for_config(self)
+               '%(mrt)15e %(mrp)15e %(mtp)15e ' \
+            % self.__dict__ + QSSPSource.string_for_config(self)
+
 
 class QSSPSourceDC(QSSPSource):
     moment = Float.T(default=1.0e9)
@@ -79,8 +80,9 @@ class QSSPSourceDC(QSSPSource):
     rake = Float.T(default=0.0)
 
     def string_for_config(self):
-        return '%(moment)15e %(strike)15e %(dip)15e %(rake)15e ' % \
-                self.__dict__ + QSSPSource.string_for_config(self)
+        return '%(moment)15e %(strike)15e %(dip)15e %(rake)15e ' \
+            % self.__dict__ + QSSPSource.string_for_config(self)
+
 
 class QSSPReceiver(Object):
     lat = Float.T(default=10.0)
@@ -92,6 +94,7 @@ class QSSPReceiver(Object):
     def string_for_config(self):
         return "%(lat)15e %(lon)15e '%(name)s' %(tstart)e" % self.__dict__
 
+
 class QSSPGreen(Object):
     depth = Float.T(default=10.0)
     filename = String.T(default='GF_10km')
@@ -100,10 +103,11 @@ class QSSPGreen(Object):
     def string_for_config(self):
         return "%(depth)15e '%(filename)s' %(calculate)i" % self.__dict__
 
+
 class QSSPConfig(Object):
     qssp_version = String.T(default='2010beta')
-    time_region = Tuple.T(2, Timing.T(), default=(
-        Timing('-10'), Timing('+890')))
+    time_region = Tuple.T(2, gf.Timing.T(), default=(
+        gf.Timing('-10'), gf.Timing('+890')))
 
     frequency_max = Float.T(optional=True)
     slowness_max = Float.T(default=0.4)
@@ -131,17 +135,18 @@ class QSSPConfig(Object):
 
     include_physical_dispersion = Bool.T(default=False)
 
-    source_patch_radius = Float.T(default=0.0) 
+    source_patch_radius = Float.T(default=0.0)
 
-    cut = Tuple.T(2, Timing.T(), optional=True)
+    cut = Tuple.T(2, gf.Timing.T(), optional=True)
 
-    fade = Tuple.T(4, Timing.T(), optional=True)
+    fade = Tuple.T(4, gf.Timing.T(), optional=True)
     relevel_with_fade_in = Bool.T(default=False)
     nonzero_fade_in = Bool.T(default=False)
     nonzero_fade_out = Bool.T(default=False)
 
     def items(self):
-        return dict( self.T.inamevals(self) )
+        return dict(self.T.inamevals(self))
+
 
 class QSSPConfigFull(QSSPConfig):
     time_window = Float.T(default=900.0)
@@ -164,18 +169,19 @@ class QSSPConfigFull(QSSPConfig):
     @staticmethod
     def example():
         conf = QSSPConfigFull()
-        conf.sources.append( QSSPSourceMT() )
-        lats = [ 20. ]
-        conf.receivers.extend( QSSPReceiver(lat=lat) for lat in lats )
-        conf.greens_functions.append( QSSPGreen() )
+        conf.sources.append(QSSPSourceMT())
+        lats = [20.]
+        conf.receivers.extend(QSSPReceiver(lat=lat) for lat in lats)
+        conf.greens_functions.append(QSSPGreen())
         return conf
 
     @property
     def components(self):
         return qssp_components[self.output_format]
-    
+
     def get_output_filenames(self, rundir):
-        return [ pjoin(rundir, self.output_filename+'.'+c) for c in self.components ]
+        return [
+            pjoin(rundir, self.output_filename+'.'+c) for c in self.components]
 
     def ensure_gf_directory(self):
         util.ensuredir(self.gf_directory)
@@ -183,12 +189,12 @@ class QSSPConfigFull(QSSPConfig):
     def string_for_config(self):
 
         def aggregate(l):
-            return len(l), '\n'.join( x.string_for_config() for x in l )
+            return len(l), '\n'.join(x.string_for_config() for x in l)
 
         assert len(self.greens_functions) > 0
         assert len(self.sources) > 0
         assert len(self.receivers) > 0
-        
+
         d = self.__dict__.copy()
 
         if self.output_time_window is None:
@@ -209,7 +215,6 @@ class QSSPConfigFull(QSSPConfig):
         d['n_model_lines'] = nlines
         d['model_lines'] = model_str
 
-
         if len(self.sources) == 0 or isinstance(self.sources[0], QSSPSourceMT):
             d['point_source_type'] = 1
         else:
@@ -223,12 +228,16 @@ class QSSPConfigFull(QSSPConfig):
             d['scutoff'] = '%i' % self.cutoff_harmonic_degree_sd
 
             d['sfilter_doc'] = '''
-# 3. selection of order of Butterworth low-pass filter (if <= 0, then no filtering), corner
-#    frequency (smaller than the cut-off frequency defined above)
+# 3. selection of order of Butterworth low-pass filter (if <= 0, then no
+#    filtering), corner frequency (smaller than the cut-off frequency defined
+#    above)
 '''.strip()
 
             if self.bandpass_order != 0:
-                raise QSSPError('this version of qssp does not support bandpass settings, use lowpass instead')
+                raise QSSPError(
+                    'this version of qssp does not support bandpass '
+                    'settings, use lowpass instead')
+
             d['sfilter'] = '%i %f' % (
                 self.lowpass_order,
                 self.lowpass_corner)
@@ -236,8 +245,8 @@ class QSSPConfigFull(QSSPConfig):
         elif self.qssp_version == '2010':
             d['scutoff_doc'] = '''
 #    (SH waves), minimum and maximum cutoff harmonic degrees
-#    Note: if the near-field static displacement is desired, the minimum cutoff harmonic
-#          degree should not be smaller than, e.g., 2000.
+#    Note: if the near-field static displacement is desired, the minimum
+#          cutoff harmonic degree should not be smaller than, e.g., 2000.
 '''.strip()
 
             d['scutoff'] = '%i %i' % (
@@ -245,12 +254,15 @@ class QSSPConfigFull(QSSPConfig):
                 self.cutoff_harmonic_degree_max)
 
             d['sfilter_doc'] = '''
-# 3. selection of order of Butterworth bandpass filter (if <= 0, then no filtering), lower
-#    and upper corner frequencies (smaller than the cut-off frequency defined above)
+# 3. selection of order of Butterworth bandpass filter (if <= 0, then no
+#    filtering), lower and upper corner frequencies (smaller than the cut-off
+#    frequency defined above)
 '''.strip()
 
             if self.lowpass_order != 0:
-                raise QSSPError('this version of qssp does not support lowpass settings, use bandpass instead')
+                raise QSSPError(
+                    'this version of qssp does not support lowpass settings, '
+                    'use bandpass instead')
 
             d['sfilter'] = '%i %f %f' % (
                 self.bandpass_order,
@@ -302,7 +314,7 @@ class QSSPConfigFull(QSSPConfig):
 #          quadratically with the cut-off frequency.
 #-------------------------------------------------------------------------------------------
     %(time_window)e   %(sampling_interval)e
-    %(frequency_max)e 
+    %(frequency_max)e
     %(slowness_max)e
     %(antialiasing_factor)e
 #-------------------------------------------------------------------------------------------
@@ -348,7 +360,7 @@ class QSSPConfigFull(QSSPConfig):
 #    Moment   Strike    Dip       Rake      Lat   Lon   Depth  T_origin T_rise
 #    [Nm]     [deg]     [deg]     [deg]     [deg] [deg] [km]   [sec]    [sec]
 #-------------------------------------------------------------------------------------------
-  %(n_source_lines)i     %(point_source_type)i 
+  %(n_source_lines)i     %(point_source_type)i
 %(source_lines)s
 #-------------------------------------------------------------------------------------------
 #
@@ -369,7 +381,7 @@ class QSSPConfigFull(QSSPConfig):
 #    (Note: Time_reduction = start time of the time window)
 #-------------------------------------------------------------------------------------------
   '%(output_filename)s'  %(output_format)i
-  %(output_time_window)e 
+  %(output_time_window)e
   %(sfilter)s
   %(output_slowness_min)e    %(output_slowness_max)e
   %(n_receiver_lines)i
@@ -390,11 +402,11 @@ class QSSPConfigFull(QSSPConfig):
 #-------------------------------------------------------------------------------------------
 %(model_lines)s
 #---------------------------------end of all inputs-----------------------------------------
-'''
+'''  # noqa
 
         return template % d
 
-        
+
 class QSSPError(gf.store.StoreError):
     pass
 
@@ -403,36 +415,36 @@ class Interrupted(gf.store.StoreError):
     def __str__(self):
         return 'Interrupted.'
 
-        
+
 class QSSPRunner:
-    
+
     def __init__(self, tmp=None, keep_tmp=False):
-            
+
         self.tempdir = mkdtemp(prefix='qssprun-', dir=tmp)
         self.keep_tmp = keep_tmp
         self.config = None
-    
+
     def run(self, config):
         self.config = config
-        
+
         input_fn = pjoin(self.tempdir, 'input')
-                
+
         f = open(input_fn, 'w')
         input_str = config.string_for_config()
-        
+
         logger.debug('===== begin qssp input =====\n'
                      '%s===== end qssp input =====' % input_str)
-        
-        f.write( input_str )
+
+        f.write(input_str)
         f.close()
         program = program_bins['qssp.%s' % config.qssp_version]
-        
+
         old_wd = os.getcwd()
 
         os.chdir(self.tempdir)
-        
+
         interrupted = []
-        
+
         def signal_handler(signum, frame):
             os.kill(proc.pid, signal.SIGTERM)
             interrupted.append(True)
@@ -444,26 +456,28 @@ class QSSPRunner:
             except OSError:
                 os.chdir(old_wd)
                 raise QSSPError('could not start qssp: "%s"' % program)
-            
+
             (output_str, error_str) = proc.communicate('input\n')
-        
+
         finally:
             signal.signal(signal.SIGINT, original)
 
         if interrupted:
             raise KeyboardInterrupt()
-       
+
         logger.debug('===== begin qssp output =====\n'
                      '%s===== end qssp output =====' % output_str)
 
         errmess = []
         if proc.returncode != 0:
-            errmess.append('qssp had a non-zero exit state: %i' % proc.returncode)
+            errmess.append(
+                'qssp had a non-zero exit state: %i' % proc.returncode)
         if error_str:
 
-            logger.warn('qssp emitted something via stderr: \n\n%s' % error_str)
+            logger.warn(
+                'qssp emitted something via stderr: \n\n%s' % error_str)
 
-            #errmess.append('qssp emitted something via stderr')
+            # errmess.append('qssp emitted something via stderr')
         if output_str.lower().find('error') != -1:
             errmess.append("the string 'error' appeared in qssp output")
 
@@ -477,33 +491,38 @@ class QSSPRunner:
 ===== begin qssp error =====
 %s===== end qssp error =====
 %s
-qssp has been invoked as "%s"'''.lstrip() %
-            (input_str, output_str, error_str, '\n'.join(errmess), program))
-        
+qssp has been invoked as "%s"'''.lstrip() % (
+                input_str,
+                output_str,
+                error_str,
+                '\n'.join(errmess),
+                program))
+
         self.qssp_output = output_str
         self.qssp_error = error_str
-        
+
         os.chdir(old_wd)
-        
+
     def get_traces(self):
-       
+
         fns = self.config.get_output_filenames(self.tempdir)
         traces = []
         for comp, fn in zip(self.config.components, fns):
             data = num.loadtxt(fn, skiprows=1, dtype=num.float)
             nsamples, ntraces = data.shape
             ntraces -= 1
-            deltat = (data[-1,0] - data[0,0])/(nsamples-1)
-            toffset = data[0,0]
+            deltat = (data[-1, 0] - data[0, 0])/(nsamples-1)
+            toffset = data[0, 0]
             for itrace in xrange(ntraces):
                 rec = self.config.receivers[itrace]
                 tmin = rec.tstart + toffset
-                tr = trace.Trace( '', '%04i' % itrace, '', comp,
-                        tmin=tmin, deltat=deltat, ydata=data[:,itrace+1],
-                        meta=dict(distance=rec.distance))
-                
+                tr = trace.Trace(
+                    '', '%04i' % itrace, '', comp,
+                    tmin=tmin, deltat=deltat, ydata=data[:, itrace+1],
+                    meta=dict(distance=rec.distance))
+
                 traces.append(tr)
-        
+
         return traces
 
     def __del__(self):
@@ -512,31 +531,38 @@ qssp has been invoked as "%s"'''.lstrip() %
                 shutil.rmtree(self.tempdir)
                 self.tempdir = None
             else:
-                logger.warn('not removing temporary directory: %s' % self.tempdir)
+                logger.warn(
+                    'not removing temporary directory: %s' % self.tempdir)
+
 
 class QSSPGFBuilder(gf.builder.Builder):
     nsteps = 2
 
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None ):
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None):
         self.gfmapping = [
-            (MomentTensor( m=symmat6(1,0,0,1,0,0) ), {'un': (0, -1), 'ue': (3, -1), 'uz': (5, -1) }),
-            (MomentTensor( m=symmat6(0,0,0,0,1,1) ), {'un': (1, -1), 'ue': (4, -1), 'uz': (6, -1) }),
-            (MomentTensor( m=symmat6(0,0,1,0,0,0) ), {'un': (2, -1),                'uz': (7, -1) }),
-            (MomentTensor( m=symmat6(0,1,0,0,0,0) ), {'un': (8, -1),                'uz': (9, -1) }),
+            (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
+             {'un': (0, -1), 'ue': (3, -1), 'uz': (5, -1)}),
+            (MomentTensor(m=symmat6(0, 0, 0, 0, 1, 1)),
+             {'un': (1, -1), 'ue': (4, -1), 'uz': (6, -1)}),
+            (MomentTensor(m=symmat6(0, 0, 1, 0, 0, 0)),
+             {'un': (2, -1), 'uz': (7, -1)}),
+            (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
+             {'un': (8, -1), 'uz': (9, -1)}),
         ]
 
         self.store = gf.store.Store(store_dir, 'w')
 
         if step == 0:
-            block_size = (1,1,self.store.config.ndistances)
+            block_size = (1, 1, self.store.config.ndistances)
         else:
             if block_size is None:
-                block_size = (1,1,51)
+                block_size = (1, 1, 51)
 
         if len(self.store.config.ns) == 2:
             block_size = block_size[1:]
 
-        gf.builder.Builder.__init__(self, self.store.config, step, block_size=block_size)
+        gf.builder.Builder.__init__(
+            self, self.store.config, step, block_size=block_size)
 
         baseconf = self.store.get_extra('qssp')
 
@@ -545,11 +571,11 @@ class QSSPGFBuilder(gf.builder.Builder):
         conf.earthmodel_1d = self.store.config.earthmodel_1d
 
         if 'time_window' not in shared:
-            d = self.store.make_timing_params(conf.time_region[0], conf.time_region[1])
+            d = self.store.make_timing_params(
+                conf.time_region[0], conf.time_region[1])
             shared['time_window'] = d['tmax']
             shared['tstart'] = d['tmin']
 
-        deltat = self.store.config.deltat
         conf.time_window = shared['time_window']
 
         self.tmp = tmp
@@ -559,82 +585,95 @@ class QSSPGFBuilder(gf.builder.Builder):
         util.ensuredir(conf.gf_directory)
 
         self.qssp_config = conf
-        
+
     def work_block(self, iblock):
         if len(self.store.config.ns) == 2:
             (sz, firstx), (sz, lastx), (ns, nx) = \
-                    self.get_block_extents(iblock)
+                self.get_block_extents(iblock)
 
             rz = self.store.config.receiver_depth
         else:
             (rz, sz, firstx), (rz, sz, lastx), (nr, ns, nx) = \
-                    self.get_block_extents(iblock)
+                self.get_block_extents(iblock)
 
-        gf_filename = 'GF_%gkm_%gkm' % (sz/km, rz/km) 
+        gf_filename = 'GF_%gkm_%gkm' % (sz/km, rz/km)
 
         conf = copy.deepcopy(self.qssp_config)
 
         gf_path = os.path.join(conf.gf_directory, '?_' + gf_filename)
 
         if self.step == 0 and len(glob.glob(gf_path)) == 7:
-            logger.info('Skipping step %i / %i, block %i / %i (GF already exists)' %
-                (self.step+1, self.nsteps, iblock+1, self.nblocks))
-            return 
+            logger.info(
+                'Skipping step %i / %i, block %i / %i (GF already exists)'
+                % (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
-        logger.info('Starting step %i / %i, block %i / %i' % 
-                (self.step+1, self.nsteps, iblock+1, self.nblocks))
+            return
+
+        logger.info(
+            'Starting step %i / %i, block %i / %i' %
+            (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
         runner = QSSPRunner(tmp=self.tmp)
-        
+
         conf.receiver_depth = rz/km
-        conf.sampling_interval = deltat = 1.0/self.gf_config.sample_rate
+        conf.sampling_interval = 1.0 / self.gf_config.sample_rate
 
         dx = self.gf_config.distance_delta
 
         if self.step == 0:
-            distances = [ firstx ]
+            distances = [firstx]
         else:
-            distances = num.linspace(firstx, 
-                    firstx + (nx-1)*dx, nx)
+            distances = num.linspace(firstx, firstx + (nx-1)*dx, nx)
 
-        conf.receivers = [ 
-                QSSPReceiver( lat=90-d*cake.m2d, lon=180., tstart=0.0, distance=d) for 
-                    d in distances ]
+        conf.receivers = [
+            QSSPReceiver(
+                lat=90-d*cake.m2d, lon=180., tstart=0.0, distance=d)
+            for d in distances]
 
         if self.step == 0:
             gf_filename = 'TEMP' + gf_filename[2:]
 
-        gfs = [ QSSPGreen( filename=gf_filename,
-            depth= sz/km, calculate=(self.step==0) ) ]
+        gfs = [QSSPGreen(
+            filename=gf_filename,
+            depth=sz/km,
+            calculate=(self.step == 0))]
 
         conf.greens_functions = gfs
 
-        trise = 0.001*conf.sampling_interval # make it short like a delta impulse
+        trise = 0.001*conf.sampling_interval  # make it short (delta impulse)
 
         if self.step == 0:
-            conf.sources = [ QSSPSourceMT(lat=90-0.001*dx*cake.m2d, lon=0.0, 
-                trise=trise, torigin=0.0) ]
+            conf.sources = [QSSPSourceMT(
+                lat=90-0.001*dx*cake.m2d,
+                lon=0.0,
+                trise=trise,
+                torigin=0.0)]
 
             runner.run(conf)
             gf_path = os.path.join(conf.gf_directory, '?_' + gf_filename)
             for s in glob.glob(gf_path):
                 d = s.replace('TEMP_', 'GF_')
-                os.rename(s,d)
+                os.rename(s, d)
 
         else:
-            for mt, gfmap in self.gfmapping[:[3,4][self.gf_config.ncomponents==10]]:
+            for mt, gfmap in self.gfmapping[
+                    :[3, 4][self.gf_config.ncomponents == 10]]:
                 m = mt.m_up_south_east()
 
-                conf.sources = [ QSSPSourceMT(lat=90-0.001*dx*cake.m2d, lon=0.0, 
-                    mrr = m[0,0], mtt = m[1,1], mpp = m[2,2],
-                    mrt = m[0,1], mrp = m[0,2], mtp = m[1,2],
-                    trise=trise, torigin=0.0) ]
+                conf.sources = [QSSPSourceMT(
+                    lat=90-0.001*dx*cake.m2d,
+                    lon=0.0,
+                    mrr=m[0, 0], mtt=m[1, 1], mpp=m[2, 2],
+                    mrt=m[0, 1], mrp=m[0, 2], mtp=m[1, 2],
+                    trise=trise,
+                    torigin=0.0)]
 
                 runner.run(conf)
-       
+
                 rawtraces = runner.get_traces()
-                
+
                 interrupted = []
+
                 def signal_handler(signum, frame):
                     interrupted.append(True)
 
@@ -649,9 +688,9 @@ class QSSPGFBuilder(gf.builder.Builder):
                             ig, factor = gfmap[tr.channel]
 
                             if len(self.store.config.ns) == 2:
-                                args = (sz,x,ig)
+                                args = (sz, x, ig)
                             else:
-                                args = (rz,sz,x,ig)
+                                args = (rz, sz, x, ig)
 
                             if conf.cut:
                                 tmin = self.store.t(conf.cut[0], args[:-1])
@@ -666,7 +705,9 @@ class QSSPGFBuilder(gf.builder.Builder):
 
                             if conf.fade:
                                 ta, tb, tc, td = [
-                                        self.store.t(v, args[:-1]) for v in conf.fade]
+                                    self.store.t(v, args[:-1])
+                                    for v in conf.fade]
+
                                 if None in (ta, tb, tc, td):
                                     continue
 
@@ -685,12 +726,14 @@ class QSSPGFBuilder(gf.builder.Builder):
                                 sum_anti_fin = num.sum(anti_fin)
                                 sum_anti_fout = num.sum(anti_fout)
 
-                                if conf.nonzero_fade_in and sum_anti_fin != 0.0:
+                                if conf.nonzero_fade_in \
+                                        and sum_anti_fin != 0.0:
                                     yin = num.sum(anti_fin*y) / sum_anti_fin
                                 else:
                                     yin = 0.0
 
-                                if conf.nonzero_fade_out and sum_anti_fout != 0.0:
+                                if conf.nonzero_fade_out \
+                                        and sum_anti_fout != 0.0:
                                     yout = num.sum(anti_fout*y) / sum_anti_fout
                                 else:
                                     yout = 0.0
@@ -707,13 +750,14 @@ class QSSPGFBuilder(gf.builder.Builder):
 
                             try:
                                 self.store.put(args, gf_tr)
-                            except gf.store.DuplicateInsert, e:
+                            except gf.store.DuplicateInsert:
                                 duplicate_inserts += 1
 
                 finally:
                     if duplicate_inserts:
-                        logger.warn('%i insertions skipped (duplicates)' %
-                                duplicate_inserts)
+                        logger.warn(
+                            '%i insertions skipped (duplicates)'
+                            % duplicate_inserts)
 
                     self.store.unlock()
                     signal.signal(signal.SIGINT, original)
@@ -721,11 +765,13 @@ class QSSPGFBuilder(gf.builder.Builder):
                 if interrupted:
                     raise KeyboardInterrupt()
 
-        logger.info('Done with step %i / %i, block %i / %i' % 
-                (self.step+1, self.nsteps, iblock+1, self.nblocks))
+        logger.info(
+            'Done with step %i / %i, block %i / %i' % (
+                self.step+1, self.nsteps, iblock+1, self.nblocks))
 
 
 km = 1000.
+
 
 def init(store_dir, variant):
     if variant is None:
@@ -736,52 +782,63 @@ def init(store_dir, variant):
 
     qssp = QSSPConfig(qssp_version=variant)
     qssp.time_region = (
-            gf.meta.Timing('begin-50'),
-            gf.meta.Timing('end+100'))
+        gf.Timing('begin-50'),
+        gf.Timing('end+100'))
 
     qssp.cut = (
-            gf.meta.Timing('begin-50'),
-            gf.meta.Timing('end+100'))
+        gf.Timing('begin-50'),
+        gf.Timing('end+100'))
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
     config = gf.meta.ConfigTypeA(
-            id = store_id,
-            ncomponents = 10,
-            sample_rate = 0.2,
-            receiver_depth = 0*km,
-            source_depth_min = 10*km,
-            source_depth_max = 20*km,
-            source_depth_delta = 10*km,
-            distance_min = 100*km,
-            distance_max = 1000*km,
-            distance_delta = 10*km,
-            earthmodel_1d = cake.load_model(),
-            modelling_code_id = 'qssp',
-            tabulated_phases = [
-                    gf.meta.TPDef(
-                        id = 'begin',
-                        definition = 'p,P,p\\,P\\,Pv_(cmb)p'),
-                    gf.meta.TPDef(
-                        id = 'end',
-                        definition = '2.5'),
-                    gf.meta.TPDef(
-                        id = 'P',
-                        definition = '!P'),
-                    gf.meta.TPDef(
-                        id = 'S',
-                        definition = '!S'),
-                    gf.meta.TPDef(
-                        id = 'p',
-                        definition = '!p'),
-                    gf.meta.TPDef(
-                        id = 's',
-                        definition = '!s')
-            ])
+        id=store_id,
+        ncomponents=10,
+        sample_rate=0.2,
+        receiver_depth=0*km,
+        source_depth_min=10*km,
+        source_depth_max=20*km,
+        source_depth_delta=10*km,
+        distance_min=100*km,
+        distance_max=1000*km,
+        distance_delta=10*km,
+        earthmodel_1d=cake.load_model(),
+        modelling_code_id='qssp',
+        tabulated_phases=[
+            gf.meta.TPDef(
+                id='begin',
+                definition='p,P,p\\,P\\,Pv_(cmb)p'),
+            gf.meta.TPDef(
+                id='end',
+                definition='2.5'),
+            gf.meta.TPDef(
+                id='P',
+                definition='!P'),
+            gf.meta.TPDef(
+                id='S',
+                definition='!S'),
+            gf.meta.TPDef(
+                id='p',
+                definition='!p'),
+            gf.meta.TPDef(
+                id='s',
+                definition='!s')])
 
     config.validate()
-    return gf.store.Store.create_editables(store_dir, config=config, extra={'qssp': qssp})
+    return gf.store.Store.create_editables(
+        store_dir,
+        config=config,
+        extra={'qssp': qssp})
 
-def build(store_dir, force=False, nworkers=None, continue_=False, step=None, iblock=None):
-    return QSSPGFBuilder.build(store_dir, force=force, nworkers=nworkers,
-            continue_=continue_, step=step, iblock=iblock)
+
+def build(
+        store_dir,
+        force=False,
+        nworkers=None,
+        continue_=False,
+        step=None,
+        iblock=None):
+
+    return QSSPGFBuilder.build(
+        store_dir, force=force, nworkers=nworkers, continue_=continue_,
+        step=step, iblock=iblock)
