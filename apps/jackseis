@@ -37,6 +37,7 @@ name_to_dtype = {
     'float32': num.float32,
     'float64': num.float64}
 
+
 def str_to_seconds(s):
     if s.endswith('s'):
         return float(s[:-1])
@@ -240,7 +241,6 @@ if __name__ == '__main__':
              'int64, float32, float64. The output file format must support '
              'the given type.')
 
-
     (options, args) = parser.parse_args(sys.argv[1:])
 
     if len(args) == 0:
@@ -403,7 +403,8 @@ if __name__ == '__main__':
 
             if options.output_data_type != 'same':
                 for tr in traces:
-                    tr.ydata = tr.ydata.astype(name_to_dtype[options.output_data_type])
+                    tr.ydata = tr.ydata.astype(
+                        name_to_dtype[options.output_data_type])
 
             if replacements:
                 for tr in traces:
