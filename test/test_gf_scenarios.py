@@ -1,4 +1,3 @@
-import sys
 import unittest
 import logging
 import random
@@ -18,6 +17,7 @@ transchan = {
     'e': 'E',
     'n': 'N',
     'u': 'Z'}
+
 
 def rand(mi, ma):
     mi = float(mi)
@@ -39,6 +39,7 @@ def to_kiwi_source(source):
         length_b=(source.nucleation_x - -1.)/2. * source.length,
         width=source.width,
         rise_time=source.stf.duration)
+
 
 class GFScenariosTestCase(unittest.TestCase):
 
@@ -136,6 +137,7 @@ class GFScenariosTestCase(unittest.TestCase):
                             temperature, sourcetype, channels, nprocs, t1-t0,
                             sps, sps/sps_ref)
 
+                    del resp
 
     def test_against_kiwi(self):
         engine = gf.get_engine()
@@ -194,7 +196,7 @@ class GFScenariosTestCase(unittest.TestCase):
 
         nsources = 10
 
-        nprocs_max = multiprocessing.cpu_count()
+        # nprocs_max = multiprocessing.cpu_count()
         nprocs = 1
 
         try:
@@ -205,7 +207,7 @@ class GFScenariosTestCase(unittest.TestCase):
                 hosts=['localhost']*nprocs,
                 balance_method='123321',
                 effective_dt=0.5,
-                verbose=False )
+                verbose=False)
 
             ksource = to_kiwi_source(base_source)
 
@@ -223,7 +225,6 @@ class GFScenariosTestCase(unittest.TestCase):
             trace.snuffle(trs + trs2)
 
             seis.set_synthetic_reference()
-
 
             for sourcetype in ['point', 'rect']:
                 sources = []
@@ -270,18 +271,22 @@ class GFScenariosTestCase(unittest.TestCase):
                     if temperature == 'hot':
                         dur_pyrocko = t1 - t0
 
+                    del resp
+
                 ksources = map(to_kiwi_source, sources)
 
                 for temperature in ['cold', 'hot']:
                     t0 = time.time()
-                    seis.make_misfits_for_sources(ksources, show_progress=False)
+                    seis.make_misfits_for_sources(
+                        ksources, show_progress=False)
                     t1 = time.time()
                     if temperature == 'hot':
                         dur_kiwi = t1 - t0
 
-                print 'pyrocko %-5s %5.2fs  %5.1fx' % (sourcetype, dur_pyrocko, 1.0)
-                print 'kiwi    %-5s %5.2fs  %5.1fx' % (sourcetype, dur_kiwi, dur_pyrocko/dur_kiwi)
-
+                print 'pyrocko %-5s %5.2fs  %5.1fx' % (
+                    sourcetype, dur_pyrocko, 1.0)
+                print 'kiwi    %-5s %5.2fs  %5.1fx' % (
+                    sourcetype, dur_kiwi, dur_pyrocko/dur_kiwi)
 
         finally:
             seis.close()

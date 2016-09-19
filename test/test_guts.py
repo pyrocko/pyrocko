@@ -5,51 +5,64 @@ import math
 import re
 import sys
 
-from pyrocko.guts import *
+from pyrocko.guts import *  # noqa
+
 
 class SamplePat(StringPattern):
     pattern = r'[a-z]{3}'
 
-class SampleChoice(StringChoice):
-    choices = [ 'a', 'bcd', 'efg' ]
 
-basic_types = (Bool, Int, Float, String, Unicode, Complex, Timestamp,
-        SamplePat, SampleChoice)
+class SampleChoice(StringChoice):
+    choices = ['a', 'bcd', 'efg']
+
+basic_types = (
+    Bool, Int, Float, String, Unicode, Complex, Timestamp, SamplePat,
+    SampleChoice)
+
 
 def tstamp(*args):
     return float(calendar.timegm(args))
 
 samples = {}
-samples[Bool] = [ True, False ]
-samples[Int] = [ 2**n for n in [1,30] ] #,31,65] ] 
-samples[Float] = [ 0., 1., math.pi, float('inf'), float('-inf'), float('nan') ]
-samples[String] = [ '', 'test', 'abc def', '<', '\n', '"', '\'', 
-        ''.join(chr(x) for x in range(32,128)) ] # chr(0) and other special chars don't work with xml...
-samples[Unicode] = [ u'aoeu \u00e4 \u0100' ]
-samples[Complex] = [ 1.0+5J, 0.0J, complex(math.pi,1.0) ]
-samples[Timestamp] = [ 0.0, 
-        tstamp(2030,1,1,0,0,0), 
-        tstamp(1960,1,1,0,0,0),
-        tstamp(2010,10,10,10,10,10) + 0.000001]
+samples[Bool] = [True, False]
+samples[Int] = [2**n for n in [1, 30]]  # ,31,65] ]
+samples[Float] = [0., 1., math.pi, float('inf'), float('-inf'), float('nan')]
+samples[String] = [
+    '', 'test', 'abc def', '<', '\n', '"', '\'',
+    ''.join(chr(x) for x in range(32, 128))]
+# chr(0) and other special chars don't work with xml...
 
-samples[SamplePat] = [ 'aaa', 'zzz' ]
-samples[SampleChoice] = [ 'a', 'bcd', 'efg' ]
+samples[Unicode] = [u'aoeu \u00e4 \u0100']
+samples[Complex] = [1.0+5J, 0.0J, complex(math.pi, 1.0)]
+samples[Timestamp] = [
+    0.0,
+    tstamp(2030, 1, 1, 0, 0, 0),
+    tstamp(1960, 1, 1, 0, 0, 0),
+    tstamp(2010, 10, 10, 10, 10, 10) + 0.000001]
+
+samples[SamplePat] = ['aaa', 'zzz']
+samples[SampleChoice] = ['a', 'bcd', 'efg']
 
 regularize = {}
-regularize[Bool] = [ (1, True), (0, False), ('0', False), ('False', False) ]
-regularize[Int] = [ ('1', 1), (1.0, 1), (1.1, 1) ]
-regularize[Float] = [ ('1.0', 1.0), (1, 1.0), ('inf', float('inf')), ('nan', float('nan')) ]
-regularize[String] = [ (1, '1') ]
-regularize[Unicode] = [ (1, u'1') ]
-regularize[Timestamp] = [ 
-        ('2010-01-01 10:20:01', tstamp(2010,1,1,10,20,1)),
-        ('2010-01-01T10:20:01', tstamp(2010,1,1,10,20,1)),
-        ('2010-01-01T10:20:01.11Z', tstamp(2010,1,1,10,20,1)+0.11),
-        ('2030-12-12 00:00:10.11111', tstamp(2030,12,12,0,0,10)+0.11111)
+regularize[Bool] = [(1, True), (0, False), ('0', False), ('False', False)]
+regularize[Int] = [('1', 1), (1.0, 1), (1.1, 1)]
+regularize[Float] = [
+    ('1.0', 1.0),
+    (1, 1.0),
+    ('inf', float('inf')),
+    ('nan', float('nan'))]
+regularize[String] = [(1, '1')]
+regularize[Unicode] = [(1, u'1')]
+regularize[Timestamp] = [
+    ('2010-01-01 10:20:01',  tstamp(2010, 1, 1, 10, 20, 1)),
+    ('2010-01-01T10:20:01',  tstamp(2010, 1, 1, 10, 20, 1)),
+    ('2010-01-01T10:20:01.11Z',  tstamp(2010, 1, 1, 10, 20, 1)+0.11),
+    ('2030-12-12 00:00:10.11111',  tstamp(2030, 12, 12, 0, 0, 10)+0.11111)
 ]
 
 
 from contextlib import contextmanager
+
 
 class GutsTestCase(unittest.TestCase):
 
@@ -70,10 +83,12 @@ class GutsTestCase(unittest.TestCase):
             assert value is None, 'expected None but got %s' % value
 
     def assertEqualNanAware(self, a, b):
-        if isinstance(a, float) and isinstance(b, float) and math.isnan(a) and math.isnan(b):
-            return 
-        
-        self.assertEqual(a,b)
+        if isinstance(a, float) \
+                and isinstance(b, float) \
+                and math.isnan(a) and math.isnan(b):
+            return
+
+        self.assertEqual(a, b)
 
     def testStringChoice(self):
         class X(Object):
@@ -88,7 +103,7 @@ class GutsTestCase(unittest.TestCase):
     def testAny(self):
         class X(Object):
             y = Int.T(default=1)
-            
+
         class A(Object):
             x = Any.T()
             l = List.T(Any.T())
@@ -148,12 +163,11 @@ class GutsTestCase(unittest.TestCase):
             m = Union.T(members=[Int.T(), StringChoice.T(['small', 'large'])])
 
         class U(Union):
-            members = [ Int.T(), StringChoice.T(['small', 'large']) ]
-    
+            members = [Int.T(), StringChoice.T(['small', 'large'])]
+
         class X2(Object):
             xmltagname = 'root'
             m = U.T()
-
 
         for X in [X1, X2]:
             X = X1
@@ -194,18 +208,20 @@ class GutsTestCase(unittest.TestCase):
             choices = [A.T(xmltagname='a'), B.T(xmltagname='b')]
 
         class C1(Object):
-            xmltagname='root1'
+            xmltagname = 'root1'
             ab = Choice.T(choices=[A.T(xmltagname='a'), B.T(xmltagname='b')])
 
         class C2(Object):
-            xmltagname='root2'
+            xmltagname = 'root2'
             ab = AB.T()
-    
+
         for C in (C1, C2):
             for good in (A(), B()):
                 c = C(ab=good)
                 c.validate()
-                for dumpx, loadx in ((dump, load_string), (dump_xml, load_xml_string)):
+                for dumpx, loadx in (
+                        (dump, load_string),
+                        (dump_xml, load_xml_string)):
                     c2 = loadx(dumpx(c))
                     self.assertEqual(type(c2), C)
                     self.assertEqual(type(c2.ab), type(good))
@@ -221,14 +237,14 @@ class GutsTestCase(unittest.TestCase):
             m = List.T(Int.T())
             xmltagname = 'a'
 
-        a = A(m=[1,2,3])
+        a = A(m=[1, 2, 3])
 
         class A(Object):
             m = Int.T()
             xmltagname = 'a'
-        
+
         with self.assertRaises(ArgumentError):
-            a2 = load_xml_string(a.dump_xml())
+            load_xml_string(a.dump_xml())
 
     def testDeferred(self):
         class A(Object):
@@ -238,6 +254,7 @@ class GutsTestCase(unittest.TestCase):
             p = A.T()
 
         a = A(p=B(p=A()))
+        del a
 
     def testListDeferred(self):
         class A(Object):
@@ -247,7 +264,8 @@ class GutsTestCase(unittest.TestCase):
         class B(Object):
             p = List.T(A.T())
 
-        a = A(p=[B(p=[A()])], q=[B(),B()])
+        a = A(p=[B(p=[A()])], q=[B(), B()])
+        del a
 
     def testOptionalList(self):
         class A(Object):
@@ -266,6 +284,7 @@ class GutsTestCase(unittest.TestCase):
             a = Defer('A.T', optional=True)
 
         a = A(a=A(a=A()))
+        del a
 
     def testOrder(self):
         class A(Object):
@@ -277,7 +296,7 @@ class GutsTestCase(unittest.TestCase):
             c = Int.T(default=4)
 
         b = B()
-        names = [ k for (k,v) in b.T.inamevals(b) ]
+        names = [k for (k, v) in b.T.inamevals(b)]
         assert names == ['a', 'b', 'c']
 
     def testOrderDeferred(self):
@@ -285,12 +304,11 @@ class GutsTestCase(unittest.TestCase):
             a = Defer('B.T')
             b = Int.T(default=0)
 
-
         class B(Object):
             x = Int.T(default=1)
 
         a = A(a=B())
-        names = [ k for (k,v) in a.T.inamevals(a) ]
+        names = [k for (k, v) in a.T.inamevals(a)]
 
         assert names == ['a', 'b']
 
@@ -367,19 +385,19 @@ class GutsTestCase(unittest.TestCase):
         from pyrocko.guts_array import Array
         import numpy as num
 
-        shapes = [ (None,), (1,), (10,), (1000,) ]
+        shapes = [(None,), (1,), (10,), (1000,)]
         for shape in shapes:
             for serialize_as in ('base64', 'table'):
                 class A(Object):
                     xmltagname = 'aroot'
                     arr = Array.T(
                         shape=shape,
-                        dtype=num.int, 
+                        dtype=num.int,
                         serialize_as=serialize_as,
                         serialize_dtype='>i8')
 
                 n = shape[0] or 1000
-                a = A(arr=num.arange(n, dtype=num.int))        
+                a = A(arr=num.arange(n, dtype=num.int))
 
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
@@ -391,9 +409,9 @@ class GutsTestCase(unittest.TestCase):
                     with self.assertRaises(ValidationError):
                         a = A(arr=num.arange(n+10, dtype=num.int))
                         a.validate()
-                        
-        for s0 in [ None, 2, 10 ]:
-            for s1 in [ None, 2, 10 ]:
+
+        for s0 in [None, 2, 10]:
+            for s1 in [None, 2, 10]:
                 class A(Object):
                     xmltagname = 'aroot'
                     arr = Array.T(
@@ -402,7 +420,7 @@ class GutsTestCase(unittest.TestCase):
 
                 n0 = s0 or 100
                 n1 = s1 or 100
-                a = A(arr=num.arange(n0*n1, dtype=num.int).reshape((n0,n1)))
+                a = A(arr=num.arange(n0*n1, dtype=num.int).reshape((n0, n1)))
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
 
@@ -420,7 +438,8 @@ class GutsTestCase(unittest.TestCase):
             pass
 
         class USAddress(Object):
-            country = String.T(default='US', optional=True, xmlstyle='attribute')
+            country = String.T(
+                default='US', optional=True, xmlstyle='attribute')
             name = String.T()
             street = String.T()
             city = String.T()
@@ -481,50 +500,48 @@ class GutsTestCase(unittest.TestCase):
    </items>
 </purchaseOrder>
 '''
-        po1 = load_xml_string(xml) 
+        po1 = load_xml_string(xml)
         po2 = load_xml_string(po1.dump_xml())
-        
+
         self.assertEqual(po1.dump(), po2.dump())
 
     def testDumpLoad(self):
 
         from tempfile import NamedTemporaryFile as NTF
-        from cStringIO import StringIO
 
         class A(Object):
             xmltagname = 'a'
             p = Int.T()
 
         a1 = A(p=33)
-        an = [ a1, a1, a1 ]
+        an = [a1, a1, a1]
 
-        def check1(a,b):
+        def check1(a, b):
             self.assertEqual(a.p, b.p)
 
-        def checkn(a,b):
-            for ea, eb in zip(a,b):
+        def checkn(a, b):
+            for ea, eb in zip(a, b):
                 self.assertEqual(ea.p, eb.p)
 
         for (a, xdump, xload, check) in [
-                    (a1, dump, load, check1), 
-                    (a1, dump_xml, load_xml, check1),
-                    (an, dump_all, load_all, checkn), 
-                    (an, dump_all, iload_all, checkn), 
-                    (an, dump_all_xml, load_all_xml, checkn),
-                    (an, dump_all_xml, iload_all_xml, checkn)
-                ]:
+                (a1, dump, load, check1),
+                (a1, dump_xml, load_xml, check1),
+                (an, dump_all, load_all, checkn),
+                (an, dump_all, iload_all, checkn),
+                (an, dump_all_xml, load_all_xml, checkn),
+                (an, dump_all_xml, iload_all_xml, checkn)]:
 
             for header in (False, True, 'custom header'):
                 # via string
                 s = xdump(a, header=header)
                 b = xload(string=s)
-                check(a,b)
+                check(a, b)
 
                 # via file
                 f = NTF()
                 xdump(a, filename=f.name, header=header)
                 b = xload(filename=f.name)
-                check(a,b)
+                check(a, b)
                 f.close()
 
                 # via stream
@@ -532,40 +549,41 @@ class GutsTestCase(unittest.TestCase):
                 xdump(a, stream=f, header=header)
                 f.seek(0)
                 b = xload(stream=f)
-                check(a,b)
+                check(a, b)
                 f.close()
 
         b1 = A.load(string=a1.dump())
-        check1(a1,b1)
+        check1(a1, b1)
 
         f = NTF()
         a1.dump(filename=f.name)
         b1 = A.load(filename=f.name)
-        check1(a1,b1)
+        check1(a1, b1)
         f.close()
 
         f = NTF()
         a1.dump(stream=f)
         f.seek(0)
         b1 = A.load(stream=f)
-        check1(a1,b1)
+        check1(a1, b1)
         f.close()
-    
+
         b1 = A.load_xml(string=a1.dump_xml())
-        check1(a1,b1)
+        check1(a1, b1)
 
         f = NTF()
         a1.dump_xml(filename=f.name)
         b1 = A.load_xml(filename=f.name)
-        check1(a1,b1)
+        check1(a1, b1)
         f.close()
 
         f = NTF()
         a1.dump_xml(stream=f)
         f.seek(0)
         b1 = A.load_xml(stream=f)
-        check1(a1,b1)
+        check1(a1, b1)
         f.close()
+
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 
@@ -590,7 +608,7 @@ def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 
         x.validate(regularize=sample_in is not sample)
         self.assertEqualNanAware(sample, x.a)
-        
+
         if not xml:
             x2 = load_string(x.dump())
 
@@ -620,17 +638,17 @@ def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 for Type in samples:
     for isample, sample in enumerate(samples[Type]):
         for xml in (False, True):
-            setattr(GutsTestCase, 'testBasicType' + Type.__name__ + 
-                    str(isample) + ['','XML'][xml], 
+            setattr(GutsTestCase, 'testBasicType' + Type.__name__ +
+                    str(isample) + ['', 'XML'][xml],
                     makeBasicTypeTest(Type, sample, xml=xml))
 
 for Type in regularize:
     for isample, (sample_in, sample) in enumerate(regularize[Type]):
         for xml in (False, True):
             setattr(GutsTestCase, 'testBasicTypeRegularize' + Type.__name__ +
-                    str(isample) + ['','XML'][xml], 
-                    makeBasicTypeTest(Type, sample, sample_in=sample_in, xml=xml))
-                
+                    str(isample) + ['', 'XML'][xml],
+                    makeBasicTypeTest(
+                        Type, sample, sample_in=sample_in, xml=xml))
+
 if __name__ == '__main__':
     unittest.main()
-
