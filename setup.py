@@ -127,7 +127,7 @@ def double_install_check():
     initpyc = '__init__.pyc'
     i = 1
 
-    dates = sorted([x[0] for x in found])
+    dates = sorted([xx[0] for xx in found])
 
     if len(found) > 1:
         print >>e, 'sys.path configuration is: \n  %s' % '\n  '.join(sys.path)
@@ -189,10 +189,11 @@ class double_install_check_cls(Command):
 
 install.sub_commands.append(['double_install_check', None])
 
+
 class Prereqs(Command):
     description = '''Install prerequisites'''
-    user_options = [('force-yes', None,
-                        'Do not ask for confirmation to install'),]
+    user_options = [
+        ('force-yes', None, 'Do not ask for confirmation to install')]
 
     def initialize_options(self):
         self.force_yes = False
@@ -206,13 +207,13 @@ class Prereqs(Command):
         import platform
 
         distribution = platform.linux_distribution()[0].lower().rstrip()
-        distribution = 'debian' if distribution=='ubuntu' else distribution
-        fn = 'prerequisites/prerequisites_%s.sh'%distribution
+        distribution = 'debian' if distribution == 'ubuntu' else distribution
+        fn = 'prerequisites/prerequisites_%s.sh' % distribution
 
         if not self.force_yes:
             confirm = raw_input('Execute: %s \n\
-proceed? [y/n]'%open(fn, 'r').read())
-            if not confirm.lower()=='y':
+proceed? [y/n]' % open(fn, 'r').read())
+            if not confirm.lower() == 'y':
                 sys.exit(0)
 
         p = Popen(['sh', fn], stdin=PIPE, stdout=PIPE, stderr=STDOUT,
@@ -221,6 +222,7 @@ proceed? [y/n]'%open(fn, 'r').read())
         while p.poll() is None:
             print p.stdout.readline().rstrip()
         print p.stdout.read()
+
 
 class custom_build_py(build_py):
     def run(self):
@@ -233,16 +235,16 @@ class custom_build_py(build_py):
             pass
 
 
-
 class custom_build_ext(build_ext):
     def run(self):
         make_prerequisites()
         build_ext.run(self)
 
+
 class custom_build_app(build_ext):
     def run(self):
         self.make_app()
-    
+
     def make_app(self):
         import glob
         import os
@@ -251,28 +253,27 @@ class custom_build_app(build_ext):
 
         APP = ['apps/snuffler']
         DATA_FILES = []
-            #('data', ['src/data'])
-            #]
-        OPTIONS = {'argv_emulation': True,
-                   'iconfile':'src/data/snuffler.icns',
-                   'packages':'pyrocko',
-                   'excludes': [
-                    'PyQt4.QtDesigner',
-                             'PyQt4.QtScript',
-                             'PyQt4.QtScriptTools',
-                             'PyQt4.QtTest',
-                             'PyQt4.QtCLucene',
-                             'PyQt4.QtDeclarative',
-                             'PyQt4.QtHelp',
-                             'PyQt4.QtSql',
-                             'PyQt4.QtTest',
-                             'PyQt4.QtXml',
-                             'PyQt4.QtXmlPatterns',
-                             'PyQt4.QtMultimedia',
-                             'PyQt4.phonon',
-                             'matplotlib.tests',
-                             'matplotlib.testing'],
-                   'plist':'src/data/Info.plist'}
+        OPTIONS = {
+            'argv_emulation': True,
+            'iconfile': 'src/data/snuffler.icns',
+            'packages': 'pyrocko',
+            'excludes': [
+                'PyQt4.QtDesigner',
+                'PyQt4.QtScript',
+                'PyQt4.QtScriptTools',
+                'PyQt4.QtTest',
+                'PyQt4.QtCLucene',
+                'PyQt4.QtDeclarative',
+                'PyQt4.QtHelp',
+                'PyQt4.QtSql',
+                'PyQt4.QtTest',
+                'PyQt4.QtXml',
+                'PyQt4.QtXmlPatterns',
+                'PyQt4.QtMultimedia',
+                'PyQt4.phonon',
+                'matplotlib.tests',
+                'matplotlib.testing'],
+            'plist': 'src/data/Info.plist'}
 
         setup(
             app=APP,
@@ -282,10 +283,14 @@ class custom_build_app(build_ext):
         )
 
         # Manually delete files which refuse to be ignored using 'excludes':
-        want_delete = glob.glob("dist/snuffler.app/Contents/Frameworks/libvtk*")
+        want_delete = glob.glob(
+            'dist/snuffler.app/Contents/Frameworks/libvtk*')
+
         map(os.remove, want_delete)
 
-        want_delete_dir = glob.glob("dist/Snuffler.app/Contents/Resources/lib/python2.7/matplotlib/test*")
+        want_delete_dir = glob.glob(
+            'dist/Snuffler.app/Contents/Resources/lib/python2.7/'
+            'matplotlib/test*')
         map(shutil.rmtree, want_delete_dir)
 
 
@@ -298,6 +303,7 @@ def xcode_version_str():
         version = None
     return version
 
+
 def support_omp():
     import platform
     from distutils.version import StrictVersion
@@ -309,8 +315,7 @@ def support_omp():
             return False
         else:
             v = StrictVersion(v_string)
-            return v<StrictVersion('4.2.0')
-
+            return v < StrictVersion('4.2.0')
 
 
 if support_omp():
@@ -415,4 +420,3 @@ setup(
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
                    'data/colortables/*.cpt']},
 )
-
