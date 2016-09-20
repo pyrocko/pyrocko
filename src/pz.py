@@ -1,23 +1,27 @@
-import scipy.signal as sig
-import numpy as num
-import sys, math
-from pyrocko import trace
+import math
 from cStringIO import StringIO
 
+import numpy as num
+
+from pyrocko import trace
+
 d2r = math.pi/180.
+
 
 class SacPoleZeroError(Exception):
     pass
 
+
 def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
-    '''Read SAC Pole-Zero file.
-    
-       Returns (zeros, poles, constant).
     '''
-    
+    Read SAC Pole-Zero file.
+
+    Returns (zeros, poles, constant).
+    '''
+
     if filename is not None:
         f = open(filename, 'r')
-    
+
     elif file is not None:
         f = file
 
@@ -33,15 +37,22 @@ def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
     comments = []
     for iline, line in enumerate(f):
         toks = line.split()
-        if len(toks) == 0: continue
-        if toks[0][0] in '*#': 
+        if len(toks) == 0:
+            continue
+
+        if toks[0][0] in '*#':
             comments.append(line)
             continue
+
         if len(toks) != 2:
             f.close()
-            raise SacPoleZeroError('Expected 2 tokens in line %i of file %s' % (iline+1, filename))
-        
-        if toks[0].startswith('*'): continue
+            raise SacPoleZeroError(
+                'Expected 2 tokens in line %i of file %s'
+                % (iline+1, filename))
+
+        if toks[0].startswith('*'):
+            continue
+
         lsect = toks[0].upper()
         if lsect in sects:
             atsect = lsect
@@ -54,44 +65,62 @@ def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
                 constant = float(toks[1])
         else:
             if atsect:
-                sectdata[atsect].append(complex(float(toks[0]), float(toks[1])))
-    
+                sectdata[atsect].append(
+                    complex(float(toks[0]), float(toks[1])))
+
     if f != file:
         f.close()
-    
+
     poles = sectdata['POLES']
     zeros = sectdata['ZEROS']
     npoles_ = len(poles)
     nzeros_ = len(zeros)
     if npoles_ > npoles:
-        raise SacPoleZeroError('Expected %i poles but found %i in pole-zero file "%s"' % (npoles, npoles_, filename))
+        raise SacPoleZeroError(
+            'Expected %i poles but found %i in pole-zero file "%s"'
+            % (npoles, npoles_, filename))
     if nzeros_ > nzeros:
-        raise SacPoleZeroError('Expected %i zeros but found %i in pole-zero file "%s"' % (nzeros, nzeros_, filename))
-    
-    if npoles_ < npoles: poles.extend([complex(0.)]*(npoles-npoles_))
-    if nzeros_ < npoles: zeros.extend([complex(0.)]*(nzeros-nzeros_))
-    
+        raise SacPoleZeroError(
+            'Expected %i zeros but found %i in pole-zero file "%s"'
+            % (nzeros, nzeros_, filename))
+
+    if npoles_ < npoles:
+        poles.extend([complex(0.)]*(npoles-npoles_))
+
+    if nzeros_ < npoles:
+        zeros.extend([complex(0.)]*(nzeros-nzeros_))
+
     if len(poles) == 0 and len(zeros) == 0:
-        raise SacPoleZeroError('No poles and zeros found in file "%s"' % (filename))
-    
+        raise SacPoleZeroError(
+            'No poles and zeros found in file "%s"' % (filename))
+
     if not num.all(num.isfinite(poles)):
-        raise SacPoleZeroError('Not finite pole(s) found in pole-zero file "%s"' % (constant, filename))
+        raise SacPoleZeroError(
+            'Not finite pole(s) found in pole-zero file "%s"'
+            % (constant, filename))
+
     if not num.all(num.isfinite(zeros)):
-        raise SacPoleZeroError('Not finite zero(s) found in pole-zero file "%s"' % (constant, filename))
+        raise SacPoleZeroError(
+            'Not finite zero(s) found in pole-zero file "%s"'
+            % (constant, filename))
+
     if not num.isfinite(constant):
-        raise SacPoleZeroError('Ivalid constant (%g) found in pole-zero file "%s"' % (constant, filename))
-    
+        raise SacPoleZeroError(
+            'Ivalid constant (%g) found in pole-zero file "%s"'
+            % (constant, filename))
+
     if get_comments:
         return zeros, poles, constant, comments
     else:
         return zeros, poles, constant
+
 
 def write_sac_zpk(zeros, poles, constant, filename):
     if hasattr(filename, 'write'):
         f = filename
     else:
         f = open('w', filename)
-    
+
     def write_complex(x):
         f.write('%12.8g %12.8g\n' % (complex(x).real, complex(x).imag))
 
@@ -109,8 +138,9 @@ def write_sac_zpk(zeros, poles, constant, filename):
     if not hasattr(filename, 'write'):
         f.close()
 
+
 def evaluate(zeros, poles, constant, fmin=0.001, fmax=100., nf=100):
-    
+
     logfmin = math.log(fmin)
     logfmax = math.log(fmax)
     logf = num.linspace(logfmin, logfmax, nf)
@@ -118,21 +148,28 @@ def evaluate(zeros, poles, constant, fmin=0.001, fmax=100., nf=100):
     trans = trace.PoleZeroResponse(zeros, poles, constant)
     return f, trans.evaluate(f)
 
+
 def evaluate_at(zeros, poles, constant, f):
-    jomeg = 1.0j* 2.*math.pi*f
-    
+    jomeg = 1.0j * 2. * math.pi * f
+
     a = constant
     for z in zeros:
         a *= jomeg-z
     for p in poles:
         a /= jomeg-p
-    
+
     return a
 
-def plot_amplitudes_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100, fnorm=None):
-    
+
+def plot_amplitudes_zpk(
+        zpks, filename_pdf,
+        fmin=0.001,
+        fmax=100.,
+        nf=100,
+        fnorm=None):
+
     import gmtpy
-    
+
     p = gmtpy.LogLogPlot(width=30*gmtpy.cm, yexp=0)
     for i, (zeros, poles, constant) in enumerate(zpks):
         f, h = evaluate(zeros, poles, constant, fmin, fmax, nf)
@@ -143,17 +180,16 @@ def plot_amplitudes_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100, fnorm
         p.plot((f, amp), '-W2p,%s' % gmtpy.color(i))
 
     p.save(filename_pdf)
-    
-    
+
+
 def plot_phases_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100):
-    
+
     import gmtpy
-    
+
     p = gmtpy.LogLinPlot(width=30*gmtpy.cm)
     for i, (zeros, poles, constant) in enumerate(zpks):
         f, h = evaluate(zeros, poles, constant, fmin, fmax, nf)
-        phase = num.unwrap(num.angle(h)) /d2r
+        phase = num.unwrap(num.angle(h)) / d2r
         p.plot((f, phase), '-W1p,%s' % gmtpy.color(i))
 
     p.save(filename_pdf)
-    

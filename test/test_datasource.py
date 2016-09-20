@@ -4,8 +4,9 @@ import random
 import sys
 
 # simulate a 'bad' serial line data source, which produces samples at varying
-# sampling rates, which may hang for some time, or produce samples at an 
+# sampling rates, which may hang for some time, or produce samples at an
 # inaccurate timing
+
 
 def produce(deltat, duration):
     tbegin = time.time()
@@ -15,17 +16,17 @@ def produce(deltat, duration):
         nt = t/deltat
         while n < nt:
             d = random.randint(-127, 128)
-            sys.stdout.write( "%i\n" % d )
-            n += 1    
-        
+            sys.stdout.write("%i\n" % d)
+            n += 1
+
         sys.stdout.flush()
-        
+
         tsleep = max(0.02, random.random()**10)
         time.sleep(tsleep)
-        
+
         if t > duration:
             break
-        
+
 
 produce(0.025, 30.)
 time.sleep(10)

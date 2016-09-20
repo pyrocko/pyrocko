@@ -89,8 +89,6 @@ mantle
                     definition='2.5'),
             ])
 
-
-
         config.validate()
         gf.store.Store.create_editables(
             store_dir, config=config, extra={'qseis': qsconf})

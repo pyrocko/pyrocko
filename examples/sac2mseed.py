@@ -11,4 +11,3 @@ for filename in sys.argv[1:]:
         out_filename = filename + '.mseed'
 
     io.save(traces, out_filename)
-

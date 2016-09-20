@@ -1,10 +1,6 @@
 
 import time
-import os
 from collections import defaultdict
-op = os.path
-
-import numpy as num
 
 from pyrocko import trace, util, pz, io_common
 from pyrocko.fdsn import station as fs

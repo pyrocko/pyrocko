@@ -123,10 +123,14 @@ def iload(filename, load_data, endianness='>'):
                 (ortrace_num,) = \
                     struct.unpack(endianness+'1I', trace_header[12:16])
 
-                tvals = struct.unpack(endianness+'12H', trace_header[94:94+12*2])
+                tvals = struct.unpack(
+                    endianness+'12H', trace_header[94:94+12*2])
+
                 (nsamples_this, deltat_us_this) = tvals[-2:]
 
-                tscalar = struct.unpack(endianness+'1H', trace_header[214:216])[0]
+                tscalar = struct.unpack(
+                    endianness+'1H', trace_header[214:216])[0]
+
                 if tscalar == 0:
                     tscalar = 1.
                 elif tscalar < 0:
@@ -143,14 +147,19 @@ def iload(filename, load_data, endianness='>'):
                     if year < 100:
                         year += 2000
 
-                    tmin = calendar.timegm((year, 1, doy, hour, minute, second))
+                    tmin = calendar.timegm(
+                        (year, 1, doy, hour, minute, second))
+
                 except:
                     raise SEGYError('invalid start date/time')
 
                 if fixed_length_traces:
-                    if (nsamples_this, deltat_us_this) != (nsamples, deltat_us):
-                        raise SEGYError('trace of incorrect length or sampling '
-                                        'rate (trace=%i)' % itrace+1)
+                    if (nsamples_this, deltat_us_this) \
+                            != (nsamples, deltat_us):
+
+                        raise SEGYError(
+                            'trace of incorrect length or sampling '
+                            'rate (trace=%i)' % itrace+1)
 
                 if load_data:
                     datablock = f.read(nsamples_this*sample_size)

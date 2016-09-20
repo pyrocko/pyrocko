@@ -1,14 +1,18 @@
-'''Snuffling infrastructure
+'''
+Snuffling infrastructure
 
-This module provides the base class :py:class:`Snuffling` for
-user-defined snufflings and some utilities for their handling.
+This module provides the base class :py:class:`Snuffling` for user-defined
+snufflings and some utilities for their handling.
 '''
 
+import os
+import sys
+import logging
+import traceback
+import tempfile
 
-import os, sys, logging, traceback, tempfile
-
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
+from PyQt4 import QtCore as qc
+from PyQt4 import QtGui as qg
 
 from pyrocko import pile, config
 
@@ -16,37 +20,48 @@ from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
     WebKitFrame, Marker, EventMarker, PhaseMarker, load_markers, save_markers
 
 
+Marker, load_markers, save_markers  # noqa
+
 logger = logging.getLogger('pyrocko.snuffling')
+
 
 def _str_traceback():
     return '%s' % (traceback.format_exc(sys.exc_info()[2]))
 
-class MyFrame(QFrame):
+
+class MyFrame(qg.QFrame):
     def showEvent(self, ev):
-        self.emit(SIGNAL('widgetVisibilityChanged(bool)'), True)
+        self.emit(qc.SIGNAL('widgetVisibilityChanged(bool)'), True)
 
     def hideEvent(self, ev):
-        self.emit(SIGNAL('widgetVisibilityChanged(bool)'), False)
+        self.emit(qc.SIGNAL('widgetVisibilityChanged(bool)'), False)
+
 
 class Param:
     '''
     Definition of an adjustable floating point parameter for the
     snuffling. The snuffling may display controls for user input for
     such parameters.
-    
-    :param name:            labels the parameter on the snuffling's control panel
-    :param ident:           identifier of the parameter
-    :param default:         default value 
-    :param minimum:         minimum value for the parameter
-    :param maximum:         maximum value for the parameter
-    :param low_is_none:     if ``True``: parameter is set to None at lowest value 
-                            of parameter range (optional) 
-    :param high_is_none:    if ``True``: parameter is set to None at highest value 
-                            of parameter range (optional)
-    :param low_is_zero:     if ``True``: parameter is set to value 0 at lowest value 
-                            of parameter range (optional)'''
-    
-    def __init__(self, name, ident, default, minimum, maximum, low_is_none=None, high_is_none=None, low_is_zero=False):
+
+    :param name: labels the parameter on the snuffling's control panel
+    :param ident: identifier of the parameter
+    :param default: default value
+    :param minimum: minimum value for the parameter
+    :param maximum: maximum value for the parameter
+    :param low_is_none: if ``True``: parameter is set to None at lowest value
+        of parameter range (optional)
+    :param high_is_none: if ``True``: parameter is set to None at highest value
+        of parameter range (optional)
+    :param low_is_zero: if ``True``: parameter is set to value 0 at lowest
+        value of parameter range (optional)
+    '''
+
+    def __init__(
+            self, name, ident, default, minimum, maximum,
+            low_is_none=None,
+            high_is_none=None,
+            low_is_zero=False):
+
         if low_is_none and default == minimum:
             default = None
         if high_is_none and default == maximum:
@@ -62,28 +77,31 @@ class Param:
         self.low_is_zero = low_is_zero
         self._control = None
 
+
 class Switch:
     '''
     Definition of a boolean switch for the snuffling. The snuffling
     may display a checkbox for such a switch.
-    
+
     :param name:    labels the switch on the snuffling's control panel
     :param ident:   identifier of the parameter
-    :param default: default value'''
+    :param default: default value
+    '''
 
     def __init__(self, name, ident, default):
         self.name = name
         self.ident = ident
         self.default = default
 
+
 class Choice:
     '''
     Definition of a string choice for the snuffling. The snuffling
     may display a menu for such a choice.
-    
+
     :param name:    labels the menu on the snuffling's control panel
     :param ident:   identifier of the parameter
-    :param default: default value 
+    :param default: default value
     :param choices: tuple of other options
     '''
 
@@ -93,15 +111,16 @@ class Choice:
         self.default = default
         self.choices = choices
 
+
 class Snuffling:
     '''Base class for user snufflings.
-    
+
     Snufflings are plugins for snuffler (and other applications using the
     :py:class:`pyrocko.pile_viewer.PileOverview` class defined in
     ``pile_viewer.py``). They can be added, removed and reloaded at runtime and
     should provide a simple way of extending the functionality of snuffler.
-    
-    A snuffling has access to all data available in a pile viewer, can process 
+
+    A snuffling has access to all data available in a pile viewer, can process
     this data and can create and add new traces and markers to the viewer.
     '''
 
@@ -112,19 +131,19 @@ class Snuffling:
         self._viewer = None
         self._tickets = []
         self._markers = []
-        
+
         self._delete_panel = None
         self._delete_menuitem = None
-        
+
         self._panel_parent = None
         self._menu_parent = None
-        
+
         self._panel = None
         self._menuitem = None
         self._helpmenuitem = None
         self._parameters = []
         self._param_controls = {}
-       
+
         self._triggers = []
 
         self._live_update = True
@@ -140,52 +159,60 @@ class Snuffling:
         self._pre_process_hook_enabled = False
         self._post_process_hook_enabled = False
 
-        self._no_viewer_pile = None 
+        self._no_viewer_pile = None
         self._cli_params = {}
         self._filename = None
         self._force_panel = False
 
-
     def setup(self):
-        '''Setup the snuffling.
-        
-        This method should be implemented in subclass and contain e.g. calls to 
+        '''
+        Setup the snuffling.
+
+        This method should be implemented in subclass and contain e.g. calls to
         :py:meth:`set_name` and :py:meth:`add_parameter`.
         '''
-        
+
         pass
 
     def module_dir(self):
-        '''Returns the path of the directory where snufflings are stored.
-        The default path is ``$HOME/.snufflings``.'''
+        '''
+        Returns the path of the directory where snufflings are stored.
+
+        The default path is ``$HOME/.snufflings``.
+        '''
+
         return self._path
-    
+
     def init_gui(self, viewer, panel_parent, menu_parent, reloaded=False):
-        '''Set parent viewer and hooks to add panel and menu entry.
-        
+        '''
+        Set parent viewer and hooks to add panel and menu entry.
+
         This method is called from the
         :py:class:`pyrocko.pile_viewer.PileOverview` object. Calls
-        :py:meth:`setup_gui`.  '''
-        
+        :py:meth:`setup_gui`.
+        '''
+
         self._viewer = viewer
         self._panel_parent = panel_parent
         self._menu_parent = menu_parent
 
         self.setup_gui(reloaded=reloaded)
-        
+
     def setup_gui(self, reloaded=False):
-        '''Create and add gui elements to the viewer.
-        
-        This method is initially called from :py:meth:`init_gui`. It is also called,
-        e.g. when new parameters have been added or if the name of the snuffling 
-        has been changed.
         '''
-        
+        Create and add gui elements to the viewer.
+
+        This method is initially called from :py:meth:`init_gui`. It is also
+        called, e.g. when new parameters have been added or if the name of the
+        snuffling has been changed.
+        '''
+
         if self._panel_parent is not None:
             self._panel = self.make_panel(self._panel_parent)
             if self._panel:
-                self._panel_parent.add_panel(self.get_name(), self._panel, reloaded)
-       
+                self._panel_parent.add_panel(
+                    self.get_name(), self._panel, reloaded)
+
         if self._menu_parent is not None:
             self._menuitem = self.make_menuitem(self._menu_parent)
             self._helpmenuitem = self.make_helpmenuitem(self._menu_parent)
@@ -193,37 +220,45 @@ class Snuffling:
                 self._menu_parent.add_snuffling_menuitem(self._menuitem)
 
             if self._helpmenuitem:
-                self._menu_parent.add_snuffling_help_menuitem(self._helpmenuitem)
+                self._menu_parent.add_snuffling_help_menuitem(
+                    self._helpmenuitem)
 
     def set_force_panel(self, bool=True):
-        '''Force to create a panel.
-
-        :param bool: if ``True`` will create a panel with Help, Clear and Run button.
         '''
+        Force to create a panel.
+
+        :param bool: if ``True`` will create a panel with Help, Clear and Run
+            button.
+        '''
+
         self._force_panel = bool
 
     def make_cli_parser1(self):
         import optparse
+
         class MyOptionParser(optparse.OptionParser):
             def error(self, msg):
                 logger.error(msg)
                 self.exit(1)
 
         parser = MyOptionParser()
-        
-        parser.add_option('--format',
-                dest='format',
-                default='from_extension',
-                choices=('mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan.l',
-                    'seisan.b', 'gse1', 'gcf', 'yaff', 'datacube',
-                    'from_extension', 'detect'),
-                help='assume files are of given FORMAT [default: \'%default\']' )
 
-        parser.add_option('--pattern',
-                dest='regex',
-                metavar='REGEX',
-                help='only include files whose paths match REGEX')
-        
+        parser.add_option(
+            '--format',
+            dest='format',
+            default='from_extension',
+            choices=(
+                'mseed', 'sac', 'kan', 'segy', 'seisan', 'seisan.l',
+                'seisan.b', 'gse1', 'gcf', 'yaff', 'datacube',
+                'from_extension', 'detect'),
+            help='assume files are of given FORMAT [default: \'%default\']')
+
+        parser.add_option(
+            '--pattern',
+            dest='regex',
+            metavar='REGEX',
+            help='only include files whose paths match REGEX')
+
         self.add_params_to_cli_parser(parser)
         self.configure_cli_parser(parser)
         return parser
@@ -238,17 +273,18 @@ class Snuffling:
 
         for param in self._parameters:
             if isinstance(param, Param):
-                parser.add_option('--' + param.ident,
-                        dest=param.ident,
-                        default = param.default,
-                        type = 'float',
-                        help = param.name)
-        
+                parser.add_option(
+                    '--' + param.ident,
+                    dest=param.ident,
+                    default=param.default,
+                    type='float',
+                    help=param.name)
+
     def setup_cli(self):
         self.setup()
         parser = self.make_cli_parser1()
         (options, args) = parser.parse_args()
-        
+
         for param in self._parameters:
             if isinstance(param, Param):
                 setattr(self, param.ident, getattr(options, param.ident))
@@ -260,40 +296,45 @@ class Snuffling:
         return options, args, parser
 
     def delete_gui(self):
-        '''Remove the gui elements of the snuffling.
-        
-        This removes the panel and menu entry of the widget from the viewer and
-        also removes all traces and markers added with the :py:meth:`add_traces` 
-        and :py:meth:`add_markers` methods.
         '''
-        
+        Remove the gui elements of the snuffling.
+
+        This removes the panel and menu entry of the widget from the viewer and
+        also removes all traces and markers added with the
+        :py:meth:`add_traces` and :py:meth:`add_markers` methods.
+        '''
+
         self.cleanup()
-        
+
         if self._panel is not None:
             self._panel_parent.remove_panel(self._panel)
             self._panel = None
-            
+
         if self._menuitem is not None:
             self._menu_parent.remove_snuffling_menuitem(self._menuitem)
             self._menuitem = None
 
         if self._helpmenuitem is not None:
-            self._menu_parent.remove_snuffling_help_menuitem(self._helpmenuitem)
-            
+            self._menu_parent.remove_snuffling_help_menuitem(
+                self._helpmenuitem)
+
     def set_name(self, name):
-        '''Set the snuffling's name.
-        
+        '''
+        Set the snuffling's name.
+
         The snuffling's name is shown as a menu entry and in the panel header.
         '''
-        
+
         self._name = name
         self.reset_gui()
-    
+
     def get_name(self):
-        '''Get the snuffling's name.'''
-        
+        '''
+        Get the snuffling's name.
+        '''
+
         return self._name
-    
+
     def set_have_pre_process_hook(self, bool):
         self._have_pre_process_hook = bool
         self._live_update = False
@@ -310,85 +351,107 @@ class Snuffling:
         self._pile_ = False
 
     def enable_pile_changed_notifications(self):
-        '''Get informed when pile changed.
+        '''
+        Get informed when pile changed.
 
         When activated, the :py:meth:`pile_changed` method is called on every
         update in the viewer's pile.
         '''
+
         viewer = self.get_viewer()
         viewer.connect(
             viewer,
-            SIGNAL('pile_has_changed_signal()'),
+            qc.SIGNAL('pile_has_changed_signal()'),
             self.pile_changed)
 
     def disable_pile_changed_notifications(self):
-        '''Stop getting informed about changes in viewer's pile.'''
+        '''
+        Stop getting informed about changes in viewer's pile.
+        '''
 
         viewer = self.get_viewer()
         viewer.disconnect(
             viewer,
-            SIGNAL('pile_has_changed_signal()'),
+            qc.SIGNAL('pile_has_changed_signal()'),
             self.pile_changed)
 
     def pile_changed(self):
-        '''Called when the connected viewer's pile has changed.
-
-        Must be activated with a call to :py:meth:`enable_pile_changed_notifications`.
         '''
+        Called when the connected viewer's pile has changed.
+
+        Must be activated with a call to
+        :py:meth:`enable_pile_changed_notifications`.
+        '''
+
         pass
 
     def reset_gui(self, reloaded=False):
-        '''Delete and recreate the snuffling's panel.'''
+        '''
+        Delete and recreate the snuffling's panel.
+        '''
+
         if self._panel or self._menuitem:
             sett = self.get_settings()
             self.delete_gui()
             self.setup_gui(reloaded=reloaded)
             self.set_settings(sett)
-   
+
     def show_message(self, kind, message):
-        '''Display a message box.
+        '''
+        Display a message box.
 
         :param kind: string defining kind of message
         :param message: the message to be displayed
         '''
 
         try:
-            viewer = self.get_viewer()
-            box = QMessageBox(self.get_viewer())
+            box = qg.QMessageBox(self.get_viewer())
             box.setText('%s: %s' % (kind.capitalize(), message))
             box.exec_()
         except NoViewerSet:
             pass
-    
-    def error(self, message):
-        '''Show an error message box.
 
-        :param message: specifying the error'''
+    def error(self, message):
+        '''
+        Show an error message box.
+
+        :param message: specifying the error
+        '''
+
         logger.error('%s: %s' % (self._name, message))
         self.show_message('error', message)
 
     def warn(self, message):
-        '''Display a warning message.
- 
-        :param message: specifying the warning'''
+        '''
+        Display a warning message.
+
+        :param message: specifying the warning
+        '''
+
         logger.warn('%s: %s' % (self._name, message))
         self.show_message('warning', message)
 
     def fail(self, message):
-        '''Show an error message box and raise :py:exc:`SnufflingCallFailed`
+        '''
+        Show an error message box and raise :py:exc:`SnufflingCallFailed`
         exception.
 
-        :param message: specifying the error'''
+        :param message: specifying the error
+        '''
+
         self.error(message)
-        raise SnufflingCallFailed(message) 
-  
+        raise SnufflingCallFailed(message)
+
     def pylab(self, name=None, get='axes'):
-        '''Create a :py:class:`FigureFrame` and return either the frame,
+        '''
+        Create a :py:class:`FigureFrame` and return either the frame,
         a :py:class:`matplotlib.figure.Figure` instance or a
         :py:class:`matplotlib.axes.Axes` instance.
 
         :param name: labels the figure frame's tab
-        :param get: 'axes'|'figure'|'frame' (optional)'''
+        :param get: 'axes'|'figure'|'frame' (optional)
+        '''
+
         if name is None:
             self._iplot += 1
             name = 'Plot %i (%s)' % (self._iplot, self.get_name())
@@ -403,32 +466,43 @@ class Snuffling:
             return fframe
 
     def figure(self, name=None):
-        '''Returns a :py:class:`matplotlib.figure.Figure` instance
-        which can be displayed within snuffler by calling :py:meth:`canvas.draw`.
+        '''
+        Returns a :py:class:`matplotlib.figure.Figure` instance
+        which can be displayed within snuffler by calling
+        :py:meth:`canvas.draw`.
 
         :param name: labels the tab of the figure
         '''
+
         return self.pylab(name=name, get='figure')
 
     def axes(self, name=None):
-        '''Returns a :py:class:`matplotlib.axes.Axes` instance.
+        '''
+        Returns a :py:class:`matplotlib.axes.Axes` instance.
 
-        :param name: labels the tab of axes'''
+        :param name: labels the tab of axes
+        '''
+
         return self.pylab(name=name, get='axes')
 
     def figure_frame(self, name=None):
-        '''Create a :py:class:`pyrocko.gui_util.FigureFrame`.
+        '''
+        Create a :py:class:`pyrocko.gui_util.FigureFrame`.
 
-        :param name: labels the tab figure frame'''
+        :param name: labels the tab figure frame
+        '''
+
         return self.pylab(name=name, get='figure_frame')
 
     def web_frame(self, url=None, name=None):
-        '''Creates a :py:class:`WebKitFrame` which can be used as a browser
+        '''
+        Creates a :py:class:`WebKitFrame` which can be used as a browser
         within snuffler.
 
         :param: url: url to open
         :param: name: labels the tab
         '''
+
         if name is None:
             self._iplot += 1
             name = 'Web browser %i (%s)' % (self._iplot, self.get_name())
@@ -438,10 +512,12 @@ class Snuffling:
         return f
 
     def tempdir(self):
-        '''Create a temporary directory and return its absolute path.
+        '''
+        Create a temporary directory and return its absolute path.
 
         The directory and all its contents are removed when the Snuffling
-        instance is deleted.'''
+        instance is deleted.
+        '''
 
         if self._tempdir is None:
             self._tempdir = tempfile.mkdtemp('', 'snuffling-tmp-')
@@ -449,59 +525,66 @@ class Snuffling:
         return self._tempdir
 
     def set_live_update(self, live_update):
-        '''Enable/disable live updating.
-        
-        When live updates are enabled, the :py:meth:`call` method is called whenever
-        the user changes a parameter. If it is disabled, the user has to 
-        initiate such a call manually by triggering the snuffling's menu item
-        or pressing the call button.
         '''
+        Enable/disable live updating.
+
+        When live updates are enabled, the :py:meth:`call` method is called
+        whenever the user changes a parameter. If it is disabled, the user has
+        to initiate such a call manually by triggering the snuffling's menu
+        item or pressing the call button.
+        '''
+
         self._live_update = live_update
         if self._have_pre_process_hook:
             self._pre_process_hook_enabled = live_update
         if self._have_post_process_hook:
             self._post_process_hook_enabled = live_update
-    
+
     def add_parameter(self, param):
-        '''Add an adjustable parameter to the snuffling.
-        
-        :param param: object of type :py:class:`Param`, :py:class:`Switch`, or :py:class:`Choice`.
-        
+        '''
+        Add an adjustable parameter to the snuffling.
+
+        :param param: object of type :py:class:`Param`, :py:class:`Switch`, or
+            :py:class:`Choice`.
+
         For each parameter added, controls are added to the snuffling's panel,
         so that the parameter can be adjusted from the gui.
         '''
-        
+
         self._parameters.append(param)
         self._set_parameter_value(param.ident, param.default)
-        
+
         if self._panel is not None:
             self.delete_gui()
             self.setup_gui()
-   
+
     def add_trigger(self, name, method):
-        '''Add a button to the snuffling's panel.
+        '''
+        Add a button to the snuffling's panel.
 
         :param name:    string that labels the button
         :param method:  method associated with the button
         '''
 
         self._triggers.append((name, method))
-        
+
         if self._panel is not None:
             self.delete_gui()
             self.setup_gui()
 
     def get_parameters(self):
-        '''Get the snuffling's adjustable parameter definitions.
-        
+        '''
+        Get the snuffling's adjustable parameter definitions.
+
         Returns a list of objects of type :py:class:`Param`.
         '''
-        
+
         return self._parameters
-   
+
     def get_parameter(self, ident):
-        '''Get one of the snuffling's adjustable parameter definitions.
-        
+        '''
+        Get one of the snuffling's adjustable parameter definitions.
+
         :param ident: identifier of the parameter
 
         Returns an object of type :py:class:`Param` or ``None``.
@@ -513,14 +596,15 @@ class Snuffling:
         return None
 
     def set_parameter(self, ident, value):
-        '''Set one of the snuffling's adjustable parameters.
-        
+        '''
+        Set one of the snuffling's adjustable parameters.
+
         :param ident: identifier of the parameter
         :param value: new value of the parameter
 
         Adjusts the control of a parameter without calling :py:meth:`call`.
         '''
-        
+
         self._set_parameter_value(ident, value)
 
         control = self._param_controls.get(ident, None)
@@ -528,7 +612,8 @@ class Snuffling:
             control.set_value(value)
 
     def set_parameter_range(self, ident, vmin, vmax):
-        '''Set the range of one of the snuffling's adjustable parameters.
+        '''
+        Set the range of one of the snuffling's adjustable parameters.
 
         :param ident: identifier of the parameter
         :param vmin,vmax: new minimum and maximum value for the parameter
@@ -541,7 +626,8 @@ class Snuffling:
             control.set_range(vmin, vmax)
 
     def set_parameter_choices(self, ident, choices):
-        '''Update the choices of a Choice parameter.
+        '''
+        Update the choices of a Choice parameter.
 
         :param ident: identifier of the parameter
         :param choices: list of strings
@@ -551,19 +637,24 @@ class Snuffling:
         if control:
             selected_choice = control.set_choices(choices)
             self._set_parameter_value(ident, selected_choice)
-    
+
     def _set_parameter_value(self, ident, value):
         setattr(self, ident, value)
 
     def get_parameter_value(self, ident):
-        '''Get the current value of a parameter.
+        '''
+        Get the current value of a parameter.
 
-        :param ident: identifier of the parameter'''
+        :param ident: identifier of the parameter
+        '''
         return getattr(self, ident)
 
     def get_settings(self):
-        '''Returns a dictionary with identifiers of all parameters as keys and 
-        their values as the dictionaries values.'''
+        '''
+        Returns a dictionary with identifiers of all parameters as keys and
+        their values as the dictionaries values.
+        '''
+
         params = self.get_parameters()
         settings = {}
         for param in params:
@@ -573,39 +664,42 @@ class Snuffling:
 
     def set_settings(self, settings):
         params = self.get_parameters()
-        dparams = dict( [ (param.ident, param) for param in params ] )
-        for k,v in settings.iteritems():
+        dparams = dict([(param.ident, param) for param in params])
+        for k, v in settings.iteritems():
             if k in dparams:
-                self._set_parameter_value(k,v)
+                self._set_parameter_value(k, v)
                 if k in self._param_controls:
                     control = self._param_controls[k]
                     control.set_value(v)
 
     def get_viewer(self):
-        '''Get the parent viewer.
-        
-        Returns a reference to an object of type :py:class:`PileOverview`, which is the
-        main viewer widget.
-        
-        If no gui has been initialized for the snuffling, a :py:exc:`NoViewerSet` 
-        exception is raised.
         '''
-        
+        Get the parent viewer.
+
+        Returns a reference to an object of type :py:class:`PileOverview`,
+        which is the main viewer widget.
+
+        If no gui has been initialized for the snuffling, a
+        :py:exc:`NoViewerSet` exception is raised.
+        '''
+
         if self._viewer is None:
             raise NoViewerSet()
         return self._viewer
-    
+
     def get_pile(self):
-        '''Get the pile.
-        
-        If a gui has been initialized, a reference to the viewer's internal pile
-        is returned. If not, the :py:meth:`make_pile` method (which may be overloaded in
-        subclass) is called to create a pile. This can be utilized to make 
-        hybrid snufflings, which may work also in a standalone mode.
         '''
-        
+        Get the pile.
+
+        If a gui has been initialized, a reference to the viewer's internal
+        pile is returned. If not, the :py:meth:`make_pile` method (which may be
+        overloaded in subclass) is called to create a pile. This can be
+        utilized to make hybrid snufflings, which may work also in a standalone
+        mode.
+        '''
+
         try:
-            p =self.get_viewer().get_pile()
+            p = self.get_viewer().get_pile()
         except NoViewerSet:
             if self._no_viewer_pile is None:
                 self._no_viewer_pile = self.make_pile()
@@ -614,13 +708,16 @@ class Snuffling:
 
         return p
 
-    def get_active_event_and_stations(self, trange=(-3600.,3600.), missing='warn'):
-        '''Get event and stations with available data for active event.
+    def get_active_event_and_stations(
+            self, trange=(-3600., 3600.), missing='warn'):
 
-        :param trange: (begin, end), time range around event origin time to query for
-                       available data 
+        '''
+        Get event and stations with available data for active event.
+
+        :param trange: (begin, end), time range around event origin time to
+            query for available data
         :param missing: string, what to do in case of missing station
-                        information: ``'warn'``, ``'raise'`` or ``'ignore'``.
+            information: ``'warn'``, ``'raise'`` or ``'ignore'``.
 
         :returns: ``(event, stations)``
         '''
@@ -630,11 +727,17 @@ class Snuffling:
 
         event = v.get_active_event()
         if event is None:
-            self.fail('No active event set. '
-                'Select an event and press "e" to make it the "active event"')
+            self.fail(
+                'No active event set. Select an event and press "e" to make '
+                'it the "active event"')
 
         stations = {}
-        for traces in p.chopper(event.time+trange[0], event.time+trange[1], load_data=False, degap=False):
+        for traces in p.chopper(
+                event.time+trange[0],
+                event.time+trange[1],
+                load_data=False,
+                degap=False):
+
             for tr in traces:
                 try:
                     skey = v.station_key(tr)
@@ -645,7 +748,9 @@ class Snuffling:
                     stations[skey] = station
 
                 except KeyError:
-                    s = 'No station information for station key "%s".' % '.'.join(skey)
+                    s = 'No station information for station key "%s".' \
+                        % '.'.join(skey)
+
                     if missing == 'warn':
                         logger.warn(s)
                     elif missing == 'raise':
@@ -657,38 +762,51 @@ class Snuffling:
 
                     stations[skey] = None
 
-        return event, [ s for s in stations.values() if s is not None ]
+        return event, [st for st in stations.values() if st is not None]
 
     def get_stations(self):
-        '''Get all stations known to the viewer.'''
+        '''
+        Get all stations known to the viewer.
+        '''
 
         v = self.get_viewer()
         stations = v.stations.values()
         return stations
 
     def get_markers(self):
-        '''Get all markers from the viewer.'''
+        '''
+        Get all markers from the viewer.
+        '''
 
         return self.get_viewer().get_markers()
 
     def get_event_markers(self):
-        '''Get all event markers from the viewer.'''
+        '''
+        Get all event markers from the viewer.
+        '''
 
-        return [m for m in self.get_viewer().get_markers() if isinstance(m, EventMarker)]
+        return [m for m in self.get_viewer().get_markers()
+                if isinstance(m, EventMarker)]
 
     def get_selected_markers(self):
-        '''Get all selected markers from the viewer.'''
+        '''
+        Get all selected markers from the viewer.
+        '''
 
         return self.get_viewer().selected_markers()
 
     def get_selected_event_markers(self):
-        '''Get all selected event markers from the viewer.'''
+        '''
+        Get all selected event markers from the viewer.
+        '''
 
-        return [m for m in self.get_viewer().selected_markers() if isinstance(m, EventMarker)]
-
+        return [m for m in self.get_viewer().selected_markers()
+                if isinstance(m, EventMarker)]
 
     def get_active_event_and_phase_markers(self):
-        '''Get the marker of the active event and any associated phase markers'''
+        '''
+        Get the marker of the active event and any associated phase markers
+        '''
 
         viewer = self.get_viewer()
         markers = viewer.get_markers()
@@ -712,17 +830,19 @@ class Snuffling:
              m.get_event() == event])
 
     def get_viewer_trace_selector(self, mode='inview'):
-        '''Get currently active trace selector from viewer.
+        '''
+        Get currently active trace selector from viewer.
 
-        :param mode: set to ``'inview'`` (default) to only include selections 
-                currently shown in the viewer, ``'visible' to include all
-                traces not currenly hidden by hide or quick-select commands, or
-                ``'all'`` to disable any restrictions.
+        :param mode: set to ``'inview'`` (default) to only include selections
+            currently shown in the viewer, ``'visible' to include all traces
+            not currenly hidden by hide or quick-select commands, or ``'all'``
+            to disable any restrictions.
         '''
 
         viewer = self.get_viewer()
 
-        rtrue = lambda tr: True
+        def rtrue(tr):
+            return True
 
         if mode == 'inview':
             return viewer.trace_selector or rtrue
@@ -734,9 +854,10 @@ class Snuffling:
             raise Exception('invalid mode argument')
 
     def chopper_selected_traces(self, fallback=False, marker_selector=None,
-                                mode='inview', *args, **kwargs ):
+                                mode='inview', *args, **kwargs):
 
-        '''Iterate over selected traces.
+        '''
+        Iterate over selected traces.
 
         Shortcut to get all trace data contained in the selected markers in the
         running snuffler. For each selected marker,
@@ -768,7 +889,8 @@ class Snuffling:
 
             pile = self.get_pile()
 
-            rtrue = lambda tr: True
+            def rtrue(tr):
+                return True
 
             trace_selector_arg = kwargs.pop('trace_selector', rtrue)
             trace_selector_viewer = self.get_viewer_trace_selector(mode)
@@ -778,11 +900,13 @@ class Snuffling:
                     if not marker.nslc_ids:
                         trace_selector_marker = rtrue
                     else:
-                        trace_selector_marker = \
-                            lambda tr: marker.match_nslc(tr.nslc_id)
+                        def trace_selector_marker(tr):
+                            return marker.match_nslc(tr.nslc_id)
 
-                    trace_selector = lambda tr: trace_selector_arg(tr) and \
-                        trace_selector_viewer(tr) and trace_selector_marker(tr)
+                    def trace_selector(tr):
+                        return trace_selector_arg(tr) \
+                            and trace_selector_viewer(tr) \
+                            and trace_selector_marker(tr)
 
                     for traces in pile.chopper(
                             tmin=marker.tmin,
@@ -794,8 +918,9 @@ class Snuffling:
                         yield traces
 
             elif fallback:
-                trace_selector = lambda tr: trace_selector_arg(tr) and \
-                    trace_selector_viewer(tr)
+                def trace_selector(tr):
+                    return trace_selector_arg(tr) \
+                        and trace_selector_viewer(tr)
 
                 tmin, tmax = viewer.get_time_range()
                 for traces in pile.chopper(
@@ -811,76 +936,94 @@ class Snuffling:
 
         except NoViewerSet:
             pile = self.get_pile()
-            for traces in  pile.chopper(*args, **kwargs):
+            for traces in pile.chopper(*args, **kwargs):
                 yield traces
 
     def get_selected_time_range(self, fallback=False):
-        '''Get the time range spanning all selected markers.
-
-        :param fallback: if ``True`` and no marker is selected return begin and end
-                         of visible time range
         '''
-        
+        Get the time range spanning all selected markers.
+
+        :param fallback: if ``True`` and no marker is selected return begin and
+            end of visible time range
+        '''
+
         viewer = self.get_viewer()
         markers = viewer.selected_markers()
-        mins = [ marker.tmin for marker in markers ]
-        maxs = [ marker.tmax for marker in markers ]
-        
+        mins = [marker.tmin for marker in markers]
+        maxs = [marker.tmax for marker in markers]
+
         if mins and maxs:
             tmin = min(mins)
             tmax = max(maxs)
-            
+
         elif fallback:
-            tmin, tmax  = viewer.get_time_range()
-            
+            tmin, tmax = viewer.get_time_range()
+
         else:
             raise NoTracesSelected()
-            
+
         return tmin, tmax
 
     def panel_visibility_changed(self, bool):
-        '''Called when the snuffling's panel becomes visible or is hidden.
-        
-        Can be overloaded in subclass, e.g. to perform additional setup actions when the panel is activated the first time.
         '''
+        Called when the snuffling's panel becomes visible or is hidden.
+
+        Can be overloaded in subclass, e.g. to perform additional setup actions
+        when the panel is activated the first time.
+        '''
+
         pass
 
     def make_pile(self):
-        '''Create a pile.
-        
-        To be overloaded in subclass. The default implementation just calls
-        :py:func:`pyrocko.pile.make_pile` to create a pile from command line arguments.
         '''
-        
+        Create a pile.
+
+        To be overloaded in subclass. The default implementation just calls
+        :py:func:`pyrocko.pile.make_pile` to create a pile from command line
+        arguments.
+        '''
+
         cachedirname = config.config().cache_dir
         sources = self._cli_params.get('sources', sys.argv[1:])
-        return pile.make_pile(sources, cachedirname=cachedirname, regex=self._cli_params['regex'], fileformat=self._cli_params['format'])
-        
+        return pile.make_pile(
+            sources,
+            cachedirname=cachedirname,
+            regex=self._cli_params['regex'],
+            fileformat=self._cli_params['format'])
+
     def make_panel(self, parent):
-        '''Create a widget for the snuffling's control panel.
-        
-        Normally called from the :py:meth:`setup_gui` method. Returns ``None`` if no panel
-        is needed (e.g. if the snuffling has no adjustable parameters).'''
-    
+        '''
+        Create a widget for the snuffling's control panel.
+
+        Normally called from the :py:meth:`setup_gui` method. Returns ``None``
+        if no panel is needed (e.g. if the snuffling has no adjustable
+        parameters).
+        '''
+
         params = self.get_parameters()
         self._param_controls = {}
         if params or self._force_panel:
             sarea = MyScrollArea(parent.get_panel_parent_widget())
-            sarea.setFrameStyle(QFrame.NoFrame)
-            sarea.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding))
+            sarea.setFrameStyle(qg.QFrame.NoFrame)
+            sarea.setSizePolicy(qg.QSizePolicy(
+                qg.QSizePolicy.Expanding, qg.QSizePolicy.Expanding))
             frame = MyFrame(sarea)
-            self.get_viewer().connect(frame, SIGNAL('widgetVisibilityChanged(bool)'),
-                                      self.panel_visibility_changed)
-            frame.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
-            frame.setFrameStyle(QFrame.NoFrame)
+            self.get_viewer().connect(
+                frame,
+                qc.SIGNAL('widgetVisibilityChanged(bool)'),
+                self.panel_visibility_changed)
+
+            frame.setSizePolicy(qg.QSizePolicy(
+                qg.QSizePolicy.Expanding, qg.QSizePolicy.Minimum))
+            frame.setFrameStyle(qg.QFrame.NoFrame)
             sarea.setWidget(frame)
             sarea.setWidgetResizable(True)
-            layout = QGridLayout()
-            layout.setContentsMargins(0,0,0,0)
+            layout = qg.QGridLayout()
+            layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
-            frame.setLayout( layout )
-            
-            parlayout = QGridLayout()
+            frame.setLayout(layout)
+
+            parlayout = qg.QGridLayout()
 
             irow = 0
             ipar = 0
@@ -889,23 +1032,42 @@ class Snuffling:
             for iparam, param in enumerate(params):
                 if isinstance(param, Param):
                     if param.minimum <= 0.0:
-                        param_control = LinValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none)
+                        param_control = LinValControl(
+                            high_is_none=param.high_is_none,
+                            low_is_none=param.low_is_none)
                     else:
-                        param_control = ValControl(high_is_none=param.high_is_none, low_is_none=param.low_is_none, low_is_zero=param.low_is_zero)
-                    
-                    param_control.setup(param.name, param.minimum, param.maximum, param.default, iparam)
-                    self.get_viewer().connect( param_control, SIGNAL("valchange(PyQt_PyObject,int)"), self.modified_snuffling_panel )
+                        param_control = ValControl(
+                            high_is_none=param.high_is_none,
+                            low_is_none=param.low_is_none,
+                            low_is_zero=param.low_is_zero)
+
+                    param_control.setup(
+                        param.name,
+                        param.minimum,
+                        param.maximum,
+                        param.default,
+                        iparam)
+
+                    self.get_viewer().connect(
+                        param_control,
+                        qc.SIGNAL("valchange(PyQt_PyObject,int)"),
+                        self.modified_snuffling_panel)
 
                     self._param_controls[param.ident] = param_control
                     for iw, w in enumerate(param_control.widgets()):
                         parlayout.addWidget(w, ipar, iw)
 
-                    ipar +=1
+                    ipar += 1
                     have_params = True
 
                 elif isinstance(param, Choice):
-                    param_widget = ChoiceControl(param.ident, param.default, param.choices, param.name)
-                    self.get_viewer().connect( param_widget, SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.choose_on_snuffling_panel )
+                    param_widget = ChoiceControl(
+                        param.ident, param.default, param.choices, param.name)
+                    self.get_viewer().connect(
+                        param_widget,
+                        qc.SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'),
+                        self.choose_on_snuffling_panel)
+
                     self._param_controls[param.ident] = param_widget
                     parlayout.addWidget(param_widget, ipar, 0, 1, 3)
                     ipar += 1
@@ -914,206 +1076,251 @@ class Snuffling:
                 elif isinstance(param, Switch):
                     have_switches = True
 
-            if have_params: 
-                parframe = QFrame(sarea)
-                parframe.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
+            if have_params:
+                parframe = qg.QFrame(sarea)
+                parframe.setSizePolicy(qg.QSizePolicy(
+                    qg.QSizePolicy.Expanding, qg.QSizePolicy.Minimum))
                 parframe.setLayout(parlayout)
                 layout.addWidget(parframe, irow, 0)
                 irow += 1
 
             if have_switches:
-                swlayout = QGridLayout()
+                swlayout = qg.QGridLayout()
                 isw = 0
                 for iparam, param in enumerate(params):
                     if isinstance(param, Switch):
-                        param_widget = SwitchControl(param.ident, param.default, param.name)
-                        self.get_viewer().connect( param_widget, SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.switch_on_snuffling_panel )
+                        param_widget = SwitchControl(
+                            param.ident, param.default, param.name)
+                        self.get_viewer().connect(
+                            param_widget,
+                            qc.SIGNAL('sw_toggled(PyQt_PyObject,bool)'),
+                            self.switch_on_snuffling_panel)
+
                         self._param_controls[param.ident] = param_widget
-                        swlayout.addWidget( param_widget, isw/10, isw%10 )
+                        swlayout.addWidget(param_widget, isw/10, isw % 10)
                         isw += 1
-                
-                swframe = QFrame(sarea)
-                swframe.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
-                swframe.setLayout( swlayout )
-                layout.addWidget( swframe, irow, 0 )
+
+                swframe = qg.QFrame(sarea)
+                swframe.setSizePolicy(qg.QSizePolicy(
+                    qg.QSizePolicy.Expanding, qg.QSizePolicy.Minimum))
+                swframe.setLayout(swlayout)
+                layout.addWidget(swframe, irow, 0)
                 irow += 1
-            
-            butframe = QFrame(sarea)
-            butframe.setSizePolicy(QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum))
-            butlayout = QHBoxLayout()
-            butframe.setLayout( butlayout )
 
-            live_update_checkbox = QCheckBox('Auto-Run')
+            butframe = qg.QFrame(sarea)
+            butframe.setSizePolicy(qg.QSizePolicy(
+                qg.QSizePolicy.Expanding, qg.QSizePolicy.Minimum))
+            butlayout = qg.QHBoxLayout()
+            butframe.setLayout(butlayout)
+
+            live_update_checkbox = qg.QCheckBox('Auto-Run')
             if self._live_update:
-                live_update_checkbox.setCheckState(Qt.Checked)
+                live_update_checkbox.setCheckState(qc.Qt.Checked)
 
-            butlayout.addWidget( live_update_checkbox )
-            self.get_viewer().connect( live_update_checkbox, SIGNAL("toggled(bool)"), self.live_update_toggled )
+            butlayout.addWidget(live_update_checkbox)
+            self.get_viewer().connect(
+                live_update_checkbox,
+                qc.SIGNAL("toggled(bool)"),
+                self.live_update_toggled)
 
-            help_button = QPushButton('Help')
-            butlayout.addWidget( help_button )
-            self.get_viewer().connect( help_button, SIGNAL("clicked()"), self.help_button_triggered)
+            help_button = qg.QPushButton('Help')
+            butlayout.addWidget(help_button)
+            self.get_viewer().connect(
+                help_button,
+                qc.SIGNAL("clicked()"),
+                self.help_button_triggered)
 
-            clear_button = QPushButton('Clear')
-            butlayout.addWidget( clear_button )
-            self.get_viewer().connect( clear_button, SIGNAL("clicked()"), self.clear_button_triggered )
-        
-            call_button = QPushButton('Run')
-            butlayout.addWidget( call_button )
-            self.get_viewer().connect( call_button, SIGNAL("clicked()"), self.call_button_triggered )
+            clear_button = qg.QPushButton('Clear')
+            butlayout.addWidget(clear_button)
+            self.get_viewer().connect(
+                clear_button,
+                qc.SIGNAL("clicked()"),
+                self.clear_button_triggered)
+
+            call_button = qg.QPushButton('Run')
+            butlayout.addWidget(call_button)
+            self.get_viewer().connect(
+                call_button,
+                qc.SIGNAL("clicked()"),
+                self.call_button_triggered)
 
             for name, method in self._triggers:
-                but = QPushButton(name)
+                but = qg.QPushButton(name)
+
                 def call_and_update(method):
                     def f():
                         try:
                             method()
                         except SnufflingError, e:
-                            if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+                            if not isinstance(e, SnufflingCallFailed):
+                                # those have logged within error()
                                 logger.error('%s: %s' % (self._name, e))
-                            logger.error('%s: Snuffling action failed' % self._name)
+                            logger.error(
+                                '%s: Snuffling action failed' % self._name)
 
                         self.get_viewer().update()
                     return f
 
-                self.get_viewer().connect( but, SIGNAL('clicked()'), call_and_update(method) )
-                butlayout.addWidget( but )
+                self.get_viewer().connect(
+                    but,
+                    qc.SIGNAL('clicked()'),
+                    call_and_update(method))
+
+                butlayout.addWidget(but)
 
             layout.addWidget(butframe, irow, 0)
 
             irow += 1
-            spacer = QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Expanding)
+            spacer = qg.QSpacerItem(
+                0, 0, qg.QSizePolicy.Expanding, qg.QSizePolicy.Expanding)
+
             layout.addItem(spacer, irow, 0)
 
-            return sarea 
-            
+            return sarea
+
         else:
             return None
-    
+
     def make_helpmenuitem(self, parent):
-        '''Create the help menu item for the snuffling.'''
-        
-        item = QAction(self.get_name(), None)
-
-        self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.help_button_triggered)
-        return item
-    
-    def make_menuitem(self, parent):
-        '''Create the menu item for the snuffling.
-        
-        This method may be overloaded in subclass and return ``None``, if no menu 
-        entry is wanted.
         '''
-        
-        item = QAction(self.get_name(), None)
-        item.setCheckable(self._have_pre_process_hook or self._have_post_process_hook)
+        Create the help menu item for the snuffling.
+        '''
 
-        self.get_viewer().connect( item, SIGNAL("triggered(bool)"), self.menuitem_triggered )
+        item = qg.QAction(self.get_name(), None)
+
+        self.get_viewer().connect(
+            item,
+            qc.SIGNAL("triggered(bool)"),
+            self.help_button_triggered)
+
         return item
-    
-    def output_filename(self, caption='Save File', dir='', filter='',\
-                        selected_filter=None):
-        '''Query user for an output filename.
-        
+
+    def make_menuitem(self, parent):
+        '''
+        Create the menu item for the snuffling.
+
+        This method may be overloaded in subclass and return ``None``, if no
+        menu entry is wanted.
+        '''
+
+        item = qg.QAction(self.get_name(), None)
+        item.setCheckable(
+            self._have_pre_process_hook or self._have_post_process_hook)
+
+        self.get_viewer().connect(
+            item, qc.SIGNAL("triggered(bool)"), self.menuitem_triggered)
+
+        return item
+
+    def output_filename(
+            self,
+            caption='Save File',
+            dir='',
+            filter='',
+            selected_filter=None):
+
+        '''
+        Query user for an output filename.
+
         This is currently a wrapper to :py:func:`QFileDialog.getSaveFileName`.
-        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the
         dialog.
         '''
-        
+
         if not dir and self._previous_output_filename:
             dir = self._previous_output_filename
-            
-        fn = QFileDialog.getSaveFileName(
-            self.get_viewer(),
-            caption,
-            dir,
-            filter,
-            selected_filter)
-            
+
+        fn = qg.QFileDialog.getSaveFileName(
+            self.get_viewer(), caption, dir, filter, selected_filter)
+
         if not fn:
             raise UserCancelled()
-        
+
         self._previous_output_filename = fn
         return str(fn)
 
     def input_directory(self, caption='Open Directory', dir=''):
-        '''Query user for an input directory.
+        '''
+        Query user for an input directory.
 
         This is a wrapper to :py:func:`QFileDialog.getExistingDirectory`.
-        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the
         dialog.
         '''
 
         if not dir and self._previous_input_directory:
             dir = self._previous_input_directory
 
-        dirn = QFileDialog.getExistingDirectory(None, 
-                                                caption, 
-                                                dir,
-                                                QFileDialog.ShowDirsOnly)
+        dirn = qg.QFileDialog.getExistingDirectory(
+            None, caption, dir, qg.QFileDialog.ShowDirsOnly)
+
         if not dirn:
             raise UserCancelled()
 
-        self._previous_input_directory = dirn 
+        self._previous_input_directory = dirn
         return str(dirn)
 
-    def input_filename(self, caption='Open File', dir='', filter='', \
+    def input_filename(self, caption='Open File', dir='', filter='',
                        selected_filter=None):
-        '''Query user for an input filename.
+        '''
+        Query user for an input filename.
 
         This is currently a wrapper to :py:func:`QFileDialog.getOpenFileName`.
-        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the
         dialog.
         '''
-        
+
         if not dir and self._previous_input_filename:
             dir = self._previous_input_filename
-            
-        fn = QFileDialog.getOpenFileName(
+
+        fn = qg.QFileDialog.getOpenFileName(
             self.get_viewer(),
             caption,
             dir,
             filter,
             selected_filter)
-            
+
         if not fn:
             raise UserCancelled()
-        
+
         self._previous_input_filename = fn
         return str(fn)
 
     def input_dialog(self, caption='', request='', directory=False):
-        '''Query user for a text input.
+        '''
+        Query user for a text input.
 
         This is currently a wrapper to :py:func:`QInputDialog.getText`.
-        A :py:exc:`UserCancelled` exception is raised if the user cancels the 
+        A :py:exc:`UserCancelled` exception is raised if the user cancels the
         dialog.
         '''
-            
-        inp, ok = QInputDialog.getText(self.get_viewer(), 'Input', caption)
-            
+
+        inp, ok = qg.QInputDialog.getText(self.get_viewer(), 'Input', caption)
+
         if not ok:
             raise UserCancelled()
-        
+
         return inp
 
     def modified_snuffling_panel(self, value, iparam):
-        '''Called when the user has played with an adjustable parameter.
-        
-        The default implementation sets the parameter, calls the snuffling's 
-        :py:meth:`call` method and finally triggers an update on the viewer 
+        '''
+        Called when the user has played with an adjustable parameter.
+
+        The default implementation sets the parameter, calls the snuffling's
+        :py:meth:`call` method and finally triggers an update on the viewer
         widget.
         '''
-        
+
         param = self.get_parameters()[iparam]
         self._set_parameter_value(param.ident, value)
         if self._live_update:
             self.check_call()
             self.get_viewer().update()
-        
 
     def switch_on_snuffling_panel(self, ident, state):
-        '''Called when the user has toggled a switchable parameter.'''
+        '''
+        Called when the user has toggled a switchable parameter.
+        '''
 
         self._set_parameter_value(ident, state)
         if self._live_update:
@@ -1121,7 +1328,9 @@ class Snuffling:
             self.get_viewer().update()
 
     def choose_on_snuffling_panel(self, ident, state):
-        '''Called when the user has made a choice about a choosable parameter.'''
+        '''
+        Called when the user has made a choice about a choosable parameter.
+        '''
 
         self._set_parameter_value(ident, state)
         if self._live_update:
@@ -1129,10 +1338,13 @@ class Snuffling:
             self.get_viewer().update()
 
     def menuitem_triggered(self, arg):
-        '''Called when the user has triggered the snuffling's menu.
-        
-        The default implementation calls the snuffling's :py:meth:`call` method and triggers
-        an update on the viewer widget.'''
+        '''
+        Called when the user has triggered the snuffling's menu.
+
+        The default implementation calls the snuffling's :py:meth:`call` method
+        and triggers an update on the viewer widget.
+        '''
+
         self.check_call()
 
         if self._have_pre_process_hook:
@@ -1145,110 +1357,129 @@ class Snuffling:
             self.get_viewer().clean_update()
         else:
             self.get_viewer().update()
-        
+
     def call_button_triggered(self):
-        '''Called when the user has clicked the snuffling's call button.
-        
-        The default implementation calls the snuffling's :py:meth:`call` method and triggers
-        an update on the viewer widget.'''
+        '''
+        Called when the user has clicked the snuffling's call button.
+
+        The default implementation calls the snuffling's :py:meth:`call` method
+        and triggers an update on the viewer widget.
+        '''
+
         self.check_call()
         self.get_viewer().update()
-        
+
     def clear_button_triggered(self):
-        '''Called when the user has clicked the snuffling's clear button.
-        
-        This calls the :py:meth:`cleanup` method and triggers an update on the viewer 
-        widget.'''
+        '''
+        Called when the user has clicked the snuffling's clear button.
+
+        This calls the :py:meth:`cleanup` method and triggers an update on the
+        viewer widget.
+        '''
+
         self.cleanup()
         self.get_viewer().update()
 
     def help_button_triggered(self):
-        '''Creates a :py:class:`QLabel` which contains the documentation as 
+        '''
+        Creates a :py:class:`QLabel` which contains the documentation as
         given in the snufflings' __doc__ string.
         '''
 
         if self.__doc__:
             if self.__doc__.strip().startswith('<html>'):
-                    doc = QLabel(self.__doc__)
+                    doc = qg.QLabel(self.__doc__)
             else:
                 try:
                     import markdown
-                    doc = QLabel(markdown.markdown(self.__doc__))
+                    doc = qg.QLabel(markdown.markdown(self.__doc__))
 
                 except ImportError:
-                    doc = QLabel(self.__doc__)
+                    doc = qg.QLabel(self.__doc__)
         else:
-            doc = QLabel('This snuffling does not provide any online help.')
+            doc = qg.QLabel('This snuffling does not provide any online help.')
 
-        labels = [ doc ]
+        labels = [doc]
 
         if self._filename:
-            import cgi, urllib
+            import cgi
+            import urllib
             code = open(self._filename, 'r').read()
 
-            doc_src = QLabel('''<html><body>
+            doc_src = qg.QLabel(
+                '''<html><body>
 <hr />
 <center><em>May the source be with you, young Skywalker!</em><br /><br />
 <a href="file://%s"><code>%s</code></a></center>
 <br />
 <p style="margin-left: 2em; margin-right: 2em; background-color:#eed;">
 <pre style="white-space: pre-wrap"><code>%s
-</code></pre></p></body></html>''' \
-            % (urllib.quote(self._filename), 
-               cgi.escape(self._filename), cgi.escape(code)))
+</code></pre></p></body></html>'''
+                % (
+                    urllib.quote(self._filename),
+                    cgi.escape(self._filename),
+                    cgi.escape(code)))
 
             labels.append(doc_src)
 
-
         for h in labels:
-            h.setAlignment( Qt.AlignTop | Qt.AlignLeft)
+            h.setAlignment(qc.Qt.AlignTop | qc.Qt.AlignLeft)
             h.setWordWrap(True)
 
-        self._viewer.show_doc('Help: %s'%self._name, labels, target='panel')
-        
+        self._viewer.show_doc('Help: %s' % self._name, labels, target='panel')
+
     def live_update_toggled(self, on):
-        '''Called when the checkbox for live-updates has been toggled.'''
-        
-        self.set_live_update(on)
-        
-    def add_traces(self, traces):
-        '''Add traces to the viewer.
-        
-        :param traces: list of objects of type :py:class:`pyrocko.trace.Trace`
-            
-        The traces are put into a :py:class:`pyrocko.pile.MemTracesFile` and added to the viewer's 
-        internal pile for display. Note, that unlike with the traces from the 
-        files given on the command line, these traces are kept in memory and so
-        may quickly occupy a lot of ram if a lot of traces are added.
-        
-        This method should be preferred over modifying the viewer's internal 
-        pile directly, because this way, the snuffling has a chance to
-        automatically remove its private traces again (see :py:meth:`cleanup` method).
         '''
-        
+        Called when the checkbox for live-updates has been toggled.
+        '''
+
+        self.set_live_update(on)
+
+    def add_traces(self, traces):
+        '''
+        Add traces to the viewer.
+
+        :param traces: list of objects of type :py:class:`pyrocko.trace.Trace`
+
+        The traces are put into a :py:class:`pyrocko.pile.MemTracesFile` and
+        added to the viewer's internal pile for display. Note, that unlike with
+        the traces from the files given on the command line, these traces are
+        kept in memory and so may quickly occupy a lot of ram if a lot of
+        traces are added.
+
+        This method should be preferred over modifying the viewer's internal
+        pile directly, because this way, the snuffling has a chance to
+        automatically remove its private traces again (see :py:meth:`cleanup`
+        method).
+        '''
+
         ticket = self.get_viewer().add_traces(traces)
-        self._tickets.append( ticket )
+        self._tickets.append(ticket)
         return ticket
 
     def add_trace(self, tr):
-        '''Add a trace to the viewer.
-        
+        '''
+        Add a trace to the viewer.
+
         See :py:meth:`add_traces`.
         '''
+
         self.add_traces([tr])
 
     def add_markers(self, markers):
-        '''Add some markers to the display.
-        
-        Takes a list of objects of type :py:class:`pyrocko.gui_util.Marker` and adds
-        these to the viewer.
         '''
-        
+        Add some markers to the display.
+
+        Takes a list of objects of type :py:class:`pyrocko.gui_util.Marker` and
+        adds these to the viewer.
+        '''
+
         self.get_viewer().add_markers(markers)
         self._markers.extend(markers)
 
     def add_marker(self, marker):
-        '''Add a marker to the display.
+        '''
+        Add a marker to the display.
 
         See :py:meth:`add_markers`.
         '''
@@ -1256,37 +1487,42 @@ class Snuffling:
         self.add_markers([marker])
 
     def cleanup(self):
-        '''Remove all traces and markers which have been added so far by the snuffling.'''
-        
+        '''
+        Remove all traces and markers which have been added so far by the
+        snuffling.
+        '''
+
         try:
             viewer = self.get_viewer()
             viewer.release_data(self._tickets)
             viewer.remove_markers(self._markers)
-            
+
         except NoViewerSet:
             pass
-        
+
         self._tickets = []
         self._markers = []
-   
+
     def check_call(self):
         try:
             self.call()
             return 0
         except SnufflingError, e:
-            if not isinstance(e, SnufflingCallFailed):  # those have logged within error()
+            if not isinstance(e, SnufflingCallFailed):
+                # those have logged within error()
                 logger.error('%s: %s' % (self._name, e))
             logger.error('%s: Snuffling action failed' % self._name)
             return 1
 
     def call(self):
-        '''Main work routine of the snuffling.
-        
-        This method is called when the snuffling's menu item has been triggered
-        or when the user has played with the panel controls. To be overloaded in
-        subclass. The default implementation does nothing useful.
         '''
-        
+        Main work routine of the snuffling.
+
+        This method is called when the snuffling's menu item has been triggered
+        or when the user has played with the panel controls. To be overloaded
+        in subclass. The default implementation does nothing useful.
+        '''
+
         pass
 
     def pre_process_hook(self, traces):
@@ -1294,12 +1530,13 @@ class Snuffling:
 
     def post_process_hook(self, traces):
         return traces
-    
+
     def pre_destroy(self):
-        '''Called when the snuffling instance is about to be deleted.
-        
+        '''
+        Called when the snuffling instance is about to be deleted.
+
         Can be overloaded to do user-defined cleanup actions.  The
-        default implementation calls :py:meth:`cleanup` and deletes 
+        default implementation calls :py:meth:`cleanup` and deletes
         the snuffling`s tempory directory, if needed.
         '''
 
@@ -1312,38 +1549,57 @@ class Snuffling:
 class SnufflingError(Exception):
     pass
 
+
 class NoViewerSet(SnufflingError):
-    '''This exception is raised, when no viewer has been set on a Snuffling.'''
-    
+    '''
+    This exception is raised, when no viewer has been set on a Snuffling.
+    '''
+
     def __str__(self):
-        return 'No GUI available. Maybe this Snuffling cannot be run in command line mode?'
+        return 'No GUI available. ' \
+               'Maybe this Snuffling cannot be run in command line mode?'
+
 
 class MissingStationInformation(SnufflingError):
-    '''Raised when station information is missing.'''
+    '''
+    Raised when station information is missing.
+    '''
+
 
 class NoTracesSelected(SnufflingError):
-    '''This exception is raised, when no traces have been selected in the viewer 
-    and we cannot fallback to using the current view.'''
+    '''
+    This exception is raised, when no traces have been selected in the viewer
+    and we cannot fallback to using the current view.
+    '''
 
     def __str__(self):
         return 'No traces have been selected / are available.'
 
+
 class UserCancelled(SnufflingError):
-    '''This exception is raised, when the user has cancelled a snuffling dialog.'''
-    
+    '''
+    This exception is raised, when the user has cancelled a snuffling dialog.
+    '''
+
     def __str__(self):
         return 'The user has cancelled a dialog.'
 
+
 class SnufflingCallFailed(SnufflingError):
-    '''This exception is raised, when :py:meth:`Snuffling.fail` is called from :py:meth:`Snuffling.call`.'''
+    '''
+    This exception is raised, when :py:meth:`Snuffling.fail` is called from
+    :py:meth:`Snuffling.call`.
+    '''
 
 
 class InvalidSnufflingFilename(Exception):
     pass
 
+
 class SnufflingModule:
-    '''Utility class to load/reload snufflings from a file.
-    
+    '''
+    Utility class to load/reload snufflings from a file.
+
     The snufflings are created by user modules which have the special function
     :py:func:`__snufflings__` which return the snuffling instances to be
     exported. The snuffling module is attached to a handler class, which makes
@@ -1354,9 +1610,9 @@ class SnufflingModule:
     :py:meth:`remove_snufflings` which may be called from the handler class,
     when needed.
     '''
-    
+
     mtimes = {}
-    
+
     def __init__(self, path, name, handler):
         self._path = path
         self._name = name
@@ -1364,12 +1620,12 @@ class SnufflingModule:
         self._module = None
         self._snufflings = []
         self._handler = handler
-        
+
     def load_if_needed(self):
         filename = os.path.join(self._path, self._name+'.py')
         mtime = os.stat(filename)[8]
-        sys.path[0:0] = [ self._path ]
-        if self._module == None:
+        sys.path[0:0] = [self._path]
+        if self._module is None:
             try:
                 logger.debug('Loading snuffling module %s' % filename)
                 if self._name in sys.modules:
@@ -1381,11 +1637,11 @@ class SnufflingModule:
                 for snuffling in self._module.__snufflings__():
                     snuffling._filename = filename
                     self.add_snuffling(snuffling)
-                    
+
             except:
                 logger.error(_str_traceback())
                 raise BrokenSnufflingModule(filename)
-                            
+
         elif self._mtime != mtime:
             logger.warn('Reloading snuffling module %s' % filename)
             settings = self.remove_snufflings()
@@ -1398,78 +1654,82 @@ class SnufflingModule:
                 for snuffling in self._module.__snufflings__():
                     snuffling._filename = filename
                     self.add_snuffling(snuffling, reloaded=True)
-                
+
                 if len(self._snufflings) == len(settings):
                     for sett, snuf in zip(settings, self._snufflings):
                         snuf.set_settings(sett)
 
             except:
                 logger.error(_str_traceback())
-                raise BrokenSnufflingModule(filename)            
-            
+                raise BrokenSnufflingModule(filename)
+
         self._mtime = mtime
         sys.path[0:1] = []
-    
+
     def add_snuffling(self, snuffling, reloaded=False):
-        snuffling._path = self._path 
+        snuffling._path = self._path
         snuffling.setup()
         self._snufflings.append(snuffling)
         self._handler.add_snuffling(snuffling, reloaded=reloaded)
-    
+
     def remove_snufflings(self):
         settings = []
         for snuffling in self._snufflings:
             settings.append(snuffling.get_settings())
             self._handler.remove_snuffling(snuffling)
-            
+
         self._snufflings = []
         return settings
-    
+
+
 class BrokenSnufflingModule(Exception):
     pass
 
 
-class MyScrollArea(QScrollArea):
+class MyScrollArea(qg.QScrollArea):
 
     def sizeHint(self):
-        s = QSize()
+        s = qc.QSize()
         s.setWidth(self.widget().sizeHint().width())
         s.setHeight(self.widget().sizeHint().height())
         return s
 
-class SwitchControl(QCheckBox):
+
+class SwitchControl(qg.QCheckBox):
     def __init__(self, ident, default, *args):
-        QCheckBox.__init__(self, *args)
+        qg.QCheckBox.__init__(self, *args)
         self.ident = ident
         self.setChecked(default)
-        self.connect(self, SIGNAL('toggled(bool)'), self.sw_toggled)
+        self.connect(self, qc.SIGNAL('toggled(bool)'), self.sw_toggled)
 
     def sw_toggled(self, state):
-        self.emit(SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.ident, state)
+        self.emit(
+            qc.SIGNAL('sw_toggled(PyQt_PyObject,bool)'), self.ident, state)
 
     def set_value(self, state):
         self.blockSignals(True)
         self.setChecked(state)
         self.blockSignals(False)
 
-class ChoiceControl(QFrame):
+
+class ChoiceControl(qg.QFrame):
     def __init__(self, ident, default, choices, name, *args):
-        QFrame.__init__(self, *args)
-        self.label = QLabel(name, self)
+        qg.QFrame.__init__(self, *args)
+        self.label = qg.QLabel(name, self)
         self.label.setMinimumWidth(120)
-        self.cbox = QComboBox(self)
-        self.layout = QHBoxLayout(self)
+        self.cbox = qg.QComboBox(self)
+        self.layout = qg.QHBoxLayout(self)
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.cbox)
-        self.layout.setContentsMargins(0,0,0,0)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setSpacing(0)
         self.ident = ident
         self.choices = choices
         for ichoice, choice in enumerate(choices):
-            self.cbox.addItem(QString(choice))
-        
+            self.cbox.addItem(qc.QString(choice))
+
         self.set_value(default)
-        self.connect(self.cbox, SIGNAL('activated(int)'), self.choosen)
+        self.connect(self.cbox, qc.SIGNAL('activated(int)'), self.choosen)
 
     def set_choices(self, choices):
         icur = self.cbox.currentIndex()
@@ -1481,7 +1741,7 @@ class ChoiceControl(QFrame):
         self.choices = choices
         self.cbox.clear()
         for ichoice, choice in enumerate(choices):
-            self.cbox.addItem(QString(choice))
+            self.cbox.addItem(qc.QString(choice))
 
         if selected_choice is not None and selected_choice in choices:
             self.set_value(selected_choice)
@@ -1490,9 +1750,11 @@ class ChoiceControl(QFrame):
             self.set_value(choices[0])
             return choices[0]
 
-        
     def choosen(self, i):
-        self.emit(SIGNAL('choosen(PyQt_PyObject,PyQt_PyObject)'), self.ident, self.choices[i])
+        self.emit(qc.SIGNAL(
+            'choosen(PyQt_PyObject,PyQt_PyObject)'),
+            self.ident,
+            self.choices[i])
 
     def set_value(self, v):
         self.cbox.blockSignals(True)
@@ -1500,7 +1762,3 @@ class ChoiceControl(QFrame):
             if choice == v:
                 self.cbox.setCurrentIndex(i)
         self.cbox.blockSignals(False)
-
-del bin
-del hex
-del oct

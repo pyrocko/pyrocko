@@ -1,5 +1,6 @@
 import sys
 
+
 class ProgressBar:
     def __init__(self, widgets=['progress'], maxval=1, *args, **kwargs):
         self._widgets = widgets
@@ -16,10 +17,15 @@ class ProgressBar:
 
     def update(self, val):
         self._val = val
-        sys.stderr.write( '%s  %i/%i %3.0f%%\n' % (self.label(), self._val, self._maxval, 100.*float(self._val)/float(self._maxval)) )
+        sys.stderr.write('%s  %i/%i %3.0f%%\n' % (
+            self.label(),
+            self._val,
+            self._maxval,
+            100.*float(self._val) / float(self._maxval)))
 
     def finish(self):
         sys.stderr.write('%s done\n' % self.label())
+
 
 class Bar:
     def __init__(self, *args, **kwargs):
@@ -29,5 +35,3 @@ class Bar:
 class Percentage:
     def __init__(self, *args, **kwargs):
         pass
-
-

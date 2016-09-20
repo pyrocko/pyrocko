@@ -57,7 +57,7 @@ class Builder:
         begins = self.gf_config.mins + ibegins * self.gf_config.deltas
         ends = self.gf_config.mins + (iends-1) * self.gf_config.deltas
         return begins, ends, iends - ibegins
-    
+
     @classmethod
     def __work_block(cls, args):
         try:
@@ -73,15 +73,15 @@ class Builder:
                 raise
 
         return store_dir, step, iblock
-    
+
     @classmethod
-    def build(cls, store_dir, force=False, nworkers=None, continue_=False, 
+    def build(cls, store_dir, force=False, nworkers=None, continue_=False,
               step=None, iblock=None):
 
         if step is None:
             steps = range(cls.nsteps)
         else:
-            steps = [ step ]
+            steps = [step]
 
         if iblock is not None and step is None and cls.nsteps != 1:
             raise store.StoreError('--step option must be given')
@@ -116,7 +116,8 @@ class Builder:
                            if (step, x) not in done]
             else:
                 if not (0 <= iblock < builder.nblocks):
-                    raise store.StoreError('invalid block index %i' % (iblock+1))
+                    raise store.StoreError(
+                        'invalid block index %i' % (iblock+1))
 
                 iblocks = [iblock]
 

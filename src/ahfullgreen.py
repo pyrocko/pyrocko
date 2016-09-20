@@ -3,6 +3,7 @@ import numpy as num
 from pyrocko import trace
 from pyrocko import ahfullgreen_ext as ext
 
+
 class AhfullgreenError(Exception):
     pass
 
@@ -10,7 +11,8 @@ class AhfullgreenError(Exception):
 def add_seismogram(
         vp, vs, density, qp, qs, x, f, m6,
         out_quantity, out_delta, out_offset,
-        out_x, out_y, out_z, stf, want_far=1, want_intermediate=1, want_near=1):
+        out_x, out_y, out_z, stf,
+        want_far=1, want_intermediate=1, want_near=1):
 
     ns = [out.size for out in (out_x, out_y, out_z) if out is not None]
 
@@ -33,10 +35,9 @@ def add_seismogram(
     m6 = num.asarray(m6, num.float)
 
     oc_c = {
-        'displacement': 1, # treated externally
+        'displacement': 1,  # treated externally
         'velocity': 1,
         'acceleration': 2}[out_quantity]
-
 
     out_spec_delta = float(2.0 * math.pi / (n*out_delta))
     out_spec_offset = 0.0
@@ -51,7 +52,6 @@ def add_seismogram(
         float(vp), float(vs), float(density), float(qp), float(qs),
         x, f, m6, oc_c, out_spec_delta, out_spec_offset,
         specs[0], specs[1], specs[2], want_far, want_intermediate, want_near)
-
 
     tp = r / vp
     ts = r / vs
@@ -92,6 +92,7 @@ class Impulse(object):
 
         return omega
 
+
 class Gauss(object):
     def __init__(self, tau):
         self._tau = tau
@@ -103,6 +104,7 @@ class Gauss(object):
         omega = f * 2. * math.pi
 
         return num.exp(-(omega**2 * self._tau**2 / 8.))
+
 
 if __name__ == '__main__':
 
@@ -119,7 +121,6 @@ if __name__ == '__main__':
 
     n = int(num.round(tlen / deltat))
 
-
     out_x = num.zeros(n)
     out_y = num.zeros(n)
     out_z = num.zeros(n)
@@ -129,18 +130,16 @@ if __name__ == '__main__':
     tau = 0.01
     t = num.arange(1000) * deltat
     lab.plot(t, num.exp(-t**2/tau**2))
-    #lab.show()
+    # lab.show()
 
     add_seismogram(
         vp, vs, 1.0, 1.0, 1.0, x, f, m6, 'displacement', deltat, 0.0,
         out_x, out_y, out_z, Gauss(tau))
 
-
     trs = []
     for out, comp in zip([out_x, out_y, out_z], 'NED'):
-        tr = trace.Trace('', 'Naja!', '', comp, deltat=deltat, tmin=0.0, ydata=out)
+        tr = trace.Trace(
+            '', 'Naja!', '', comp, deltat=deltat, tmin=0.0, ydata=out)
         trs.append(tr)
 
     trace.snuffle(trs)
-
-

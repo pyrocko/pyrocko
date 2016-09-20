@@ -1,10 +1,17 @@
-import os, select, pickle, struct, sys, errno
+import os
+import pickle
+import struct
+import sys
+import errno
+
 
 class EOF(Exception):
     pass
-   
+
+
 class NoSuchCommand(Exception):
     pass
+
 
 def readn(fh, size):
     nread = 0
@@ -24,7 +31,8 @@ def readn(fh, size):
             raise EOF()
         nread += len(data)
     return data
-    
+
+
 def readobj(fh):
     data = readn(fh, 8)
     if len(data) == 0:
@@ -34,10 +42,12 @@ def readobj(fh):
     payload = pickle.loads(data)
     return payload
 
+
 def writeobj(fh, obj):
     data = pickle.dumps(obj)
     os.write(fh, struct.pack('>Q', len(data)))
     os.write(fh, data)
+
 
 class Forked:
     def __init__(self, flipped=False):
@@ -48,9 +58,9 @@ class Forked:
         self.up_w = None
         self.flipped = flipped
         self.commands = []
-   
+
     def __getattr__(self, k):
-        def f( *args, **kwargs):
+        def f(*args, **kwargs):
             return self.call(k, *args, **kwargs)
         return f
 
@@ -64,8 +74,10 @@ class Forked:
         down_r, down_w = os.pipe()
         up_r, up_w = os.pipe()
         self.pid = os.fork()
-    
-        if (not self.flipped and self.pid == 0) or (self.flipped and self.pid != 0):
+
+        if (not self.flipped and self.pid == 0) or (
+                self.flipped and self.pid != 0):
+
             os.close(down_w)
             os.close(up_r)
             self.up_w = up_w
@@ -84,11 +96,11 @@ class Forked:
             os.close(down_r)
             self.down_w = down_w
             self.up_r = up_r
-    
+
     def run(self):
         while self.process():
             pass
-            
+
     def process(self):
         try:
             payload = readobj(self.down_r)
@@ -102,20 +114,20 @@ class Forked:
             pass
         writeobj(self.up_w, (payback, exception))
         return True
-        
+
     def call(self, command, *args, **kwargs):
         if self.down_w is None:
             self.start()
-        
+
         if self.down_w is not None:
-            writeobj(self.down_w, (command,args,kwargs))
+            writeobj(self.down_w, (command, args, kwargs))
             payback, exception = readobj(self.up_r)
             if exception is not None:
                 raise exception
             return payback
         else:
             sys.exit()
-            
+
     def close(self):
         if self.down_w is not None:
             import os
@@ -123,14 +135,10 @@ class Forked:
             os.close(self.up_r)
             self.down_w = None
             self.up_r = None
-            
+
         if self.pid is not None and self.pid != 0:
             os.wait()
-        
+
     def __del__(self):
         if self.down_w is not None:
             self.close()
-            
-            
-
-

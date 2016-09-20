@@ -11,16 +11,16 @@ rest_sts2 = trace.PoleZeroResponse(poles, zeros, 1./constant)
 
 traces = io.load('test.mseed')
 out_traces = []
-for trace in traces:
-    
-    displacement =  trace.transfer(
-        1000.,                       # rise and fall of time domain taper in [s]
-        (0.001, 0.002, 5., 10.),     # frequency domain taper in [Hz]
+for tr in traces:
+
+    displacement = tr.transfer(
+        1000.,                      # rise and fall of time domain taper in [s]
+        (0.001, 0.002, 5., 10.),    # frequency domain taper in [Hz]
         transfer_function=rest_sts2)
-    
+
     # change channel id, so we can distinguish the traces in a trace viewer.
-    displacement.set_codes(channel='D'+trace.channel[-1])
-    
+    displacement.set_codes(channel='D'+tr.channel[-1])
+
     out_traces.append(displacement)
-        
+
 io.save(out_traces, 'displacement.mseed')

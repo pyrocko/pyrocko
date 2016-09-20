@@ -4,7 +4,7 @@ import unittest
 import numpy as num
 
 import common
-from pyrocko import util, io, datacube_ext, datacube, trace
+from pyrocko import util, io, datacube_ext, datacube
 
 
 class DataCubeTestCase(unittest.TestCase):
@@ -55,7 +55,7 @@ class DataCubeTestCase(unittest.TestCase):
             for tr in trs[imode]:
                 tr.set_codes(location='i=%s' % imode)
 
-        import pylab as lab
+        # import pylab as lab
         for cha in ['p0', 'p1', 'p2']:
             t1 = [tr for tr in trs['off'] if tr.channel == cha][0]
             t2 = [tr for tr in trs['sinc'] if tr.channel == cha][0]
@@ -67,17 +67,17 @@ class DataCubeTestCase(unittest.TestCase):
             while it < nt:
                 y1 = t1.ydata[it:it+nb]
                 y2 = t2.ydata[it:it+nb]
-                dd.append( abs(num.mean(y1) - num.mean(y2)))
+                dd.append(abs(num.mean(y1) - num.mean(y2)))
                 assert dd[-1] < 1.0
                 it += nb
 
-            t = num.arange(len(dd))*600.
-            d = num.array(dd)
-            #lab.plot(t / 3600., d)
+            # t = num.arange(len(dd))*600.
+            # d = num.array(dd)
+            # lab.plot(t / 3600., d)
 
-        #lab.show()
+        # lab.show()
 
-        #trace.snuffle(trs['off'] + trs['sinc'])
+        # trace.snuffle(trs['off'] + trs['sinc'])
 
     def benchmark_load(self):
         mode = {

@@ -1,5 +1,6 @@
 
-import random, time
+import random
+import time
 import tempfile
 import os
 import fcntl
@@ -8,8 +9,10 @@ import errno
 from pyrocko import util
 from pyrocko.parimap import parimap
 
+
 class Crash(Exception):
     pass
+
 
 def imapemulation(function, *iterables):
     iterables = map(iter, iterables)
@@ -20,23 +23,24 @@ def imapemulation(function, *iterables):
         else:
             yield function(*args)
 
+
 class ParimapTestCase(unittest.TestCase):
 
     def test_parimap(self):
 
-        #random.seed(0)
+        # random.seed(0)
 
         for i in range(50):
-            nprocs = random.randint(1,10)
-            nx = random.randint(0,1000)
-            ny = random.randint(0,1000)
-            icrash = random.randint(0,1000)
+            nprocs = random.randint(1, 10)
+            nx = random.randint(0, 1000)
+            ny = random.randint(0, 1000)
+            icrash = random.randint(0, 1000)
 
-            #print 'testing %i %i %i %i...' % (nprocs, nx, ny, icrash)
+            # print 'testing %i %i %i %i...' % (nprocs, nx, ny, icrash)
 
-            def work(x,y):
+            def work(x, y):
                 if x == icrash:
-                    raise Crash(str((x,y)))
+                    raise Crash(str((x, y)))
 
                 a = random.random()
                 if a > 0.5:
@@ -44,7 +48,10 @@ class ParimapTestCase(unittest.TestCase):
 
                 return x+y
 
-            I1 = parimap(work, xrange(nx), xrange(ny), nprocs=nprocs, eprintignore=Crash)
+            I1 = parimap(
+                work, xrange(nx), xrange(ny),
+                nprocs=nprocs, eprintignore=Crash)
+
             I2 = imapemulation(work, xrange(nx), xrange(ny))
 
             while True:
@@ -64,7 +71,7 @@ class ParimapTestCase(unittest.TestCase):
                     end2 = True
                 except Crash, e2:
                     pass
-                    
+
                 assert r1 == r2, str((r1, r2))
                 assert type(e1) == type(e2)
                 assert end1 == end2
@@ -92,16 +99,16 @@ class ParimapTestCase(unittest.TestCase):
             assert '' == f.read()
             f.write('%s' % x)
             f.flush()
-            #time.sleep(0.01)
+            # time.sleep(0.01)
             f.seek(0)
             f.truncate(0)
             fcntl.lockf(f, fcntl.LOCK_UN)
             f.close()
-        
-        fos, fn = tempfile.mkstemp()#(dir='/try/with/nfs/mounted/dir')
+
+        fos, fn = tempfile.mkstemp()  # (dir='/try/with/nfs/mounted/dir')
         f = open(fn, 'w')
         f.close()
-        
+
         for x in parimap(work, xrange(100), nprocs=10, eprintignore=()):
             pass
 
@@ -111,4 +118,3 @@ class ParimapTestCase(unittest.TestCase):
 if __name__ == '__main__':
     util.setup_logging('test_parimap', 'warning')
     unittest.main()
-

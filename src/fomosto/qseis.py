@@ -13,14 +13,13 @@ from os.path import join as pjoin
 from pyrocko.guts import Float, Int, Tuple, List, Complex, Bool, Object, String
 from pyrocko import trace, util, cake
 from pyrocko import gf
+from pyrocko.moment_tensor import MomentTensor, symmat6
 
 km = 1000.
 
 guts_prefix = 'pf'
 
 Timing = gf.meta.Timing
-
-from pyrocko.moment_tensor import MomentTensor, symmat6
 
 logger = logging.getLogger('fomosto.qseis')
 
@@ -32,6 +31,7 @@ program_bins = {
 
 qseis_components = 'r t z v'.split()
 qseis_greenf_names = ('ex', 'ss', 'ds', 'cl', 'fz', 'fh')
+
 
 def nextpow2(i):
     return 2**int(math.ceil(math.log(i)/math.log(2.)))
@@ -253,7 +253,8 @@ class QSeisConfigFull(QSeisConfig):
             d['str_w_samples'] = ''
 
         if self.receiver_filter:
-            d['str_receiver_filter'] = self.receiver_filter.string_for_config(self.qseis_version)
+            d['str_receiver_filter'] = self.receiver_filter.string_for_config(
+                self.qseis_version)
         else:
             if self.qseis_version == '2006a':
                 d['str_receiver_filter'] = '(1.0,0.0)\n0\n#\n0'
@@ -630,7 +631,8 @@ class QSeisRunner:
                 'qseis had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            logger.warn('qseis emitted something via stderr:\n\n%s' % error_str)
+            logger.warn(
+                'qseis emitted something via stderr:\n\n%s' % error_str)
 
             # errmess.append('qseis emitted something via stderr')
 

@@ -155,6 +155,6 @@ def select_dem_names(kind, dmin, dmax, region):
     return ok
 
 if __name__ == '__main__':
-    #comparison((-180., 180., -90, 90), dems=[etopo1_d8])
+    # comparison((-180., 180., -90, 90), dems=[etopo1_d8])
     util.setup_logging('topo', 'info')
     comparison((30, 31, 30, 31), dems=[srtmgl3, srtmgl3_d2])

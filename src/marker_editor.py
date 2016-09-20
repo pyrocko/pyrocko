@@ -1,6 +1,6 @@
 import numpy as num
-from PyQt4.QtCore import *  # noqa
-from PyQt4.QtGui import *  # noqa
+from PyQt4 import QtCore as qc
+from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker
 from pyrocko import util, orthodrome
@@ -13,19 +13,19 @@ _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 _string_header = (_column_mapping['Time'], _column_mapping['Label'])
 
 
-class MarkerItemDelegate(QStyledItemDelegate):
+class MarkerItemDelegate(qg.QStyledItemDelegate):
     '''Takes are of the table's style.'''
 
     def __init__(self, *args, **kwargs):
-        QStyledItemDelegate.__init__(self, *args, **kwargs)
+        qg.QStyledItemDelegate.__init__(self, *args, **kwargs)
 
 
-class MarkerSortFilterProxyModel(QSortFilterProxyModel):
+class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     '''Sorts the table's columns.'''
 
     def __init__(self):
-        QSortFilterProxyModel.__init__(self)
-        self.sort(1, Qt.AscendingOrder)
+        qg.QSortFilterProxyModel.__init__(self)
+        self.sort(1, qc.Qt.AscendingOrder)
 
     def lessThan(self, left, right):
         if left.column() not in _string_header:
@@ -34,27 +34,29 @@ class MarkerSortFilterProxyModel(QSortFilterProxyModel):
             return left > right
 
 
-class MarkerTableView(QTableView):
+class MarkerTableView(qg.QTableView):
     def __init__(self, *args, **kwargs):
-        QTableView.__init__(self, *args, **kwargs)
+        qg.QTableView.__init__(self, *args, **kwargs)
 
-        self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.setSelectionMode(QAbstractItemView.ContiguousSelection)
-        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setEditTriggers(QAbstractItemView.DoubleClicked)
+        self.setSelectionBehavior(qg.QAbstractItemView.SelectRows)
+        self.setSelectionMode(qg.QAbstractItemView.ContiguousSelection)
+        self.setHorizontalScrollMode(qg.QAbstractItemView.ScrollPerPixel)
+        self.setEditTriggers(qg.QAbstractItemView.DoubleClicked)
         self.setSortingEnabled(True)
-        self.sortByColumn(1, Qt.AscendingOrder)
+        self.sortByColumn(1, qc.Qt.AscendingOrder)
         self.setAlternatingRowColors(True)
 
         self.setShowGrid(False)
         self.verticalHeader().hide()
         self.pile_viewer = None
 
-        self.connect(self, SIGNAL('clicked(QModelIndex)'), self.clicked)
+        self.connect(self, qc.SIGNAL('clicked(QModelIndex)'), self.clicked)
         self.connect(
-            self, SIGNAL('doubleClicked(QModelIndex)'), self.double_clicked)
+            self,
+            qc.SIGNAL('doubleClicked(QModelIndex)'),
+            self.double_clicked)
 
-        self.header_menu = QMenu(self)
+        self.header_menu = qg.QMenu(self)
 
         show_initially = ['Type', 'Time', 'Magnitude']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
@@ -67,8 +69,8 @@ class MarkerTableView(QTableView):
 
         self.column_actions = {}
         for hd in self.menu_labels:
-            a = QAction(QString(hd), self.header_menu)
-            self.connect(a, SIGNAL('triggered(bool)'), self.toggle_columns)
+            a = qg.QAction(qc.QString(hd), self.header_menu)
+            self.connect(a, qc.SIGNAL('triggered(bool)'), self.toggle_columns)
             a.setCheckable(True)
             if hd in show_initially:
                 a.setChecked(True)
@@ -78,9 +80,11 @@ class MarkerTableView(QTableView):
             self.column_actions[hd] = a
 
         header = self.horizontalHeader()
-        header.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.connect(header, SIGNAL('customContextMenuRequested(QPoint)'),
-                     self.show_context_menu)
+        header.setContextMenuPolicy(qc.Qt.CustomContextMenu)
+        self.connect(
+            header,
+            qc.SIGNAL('customContextMenuRequested(QPoint)'),
+            self.show_context_menu)
 
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
@@ -117,9 +121,9 @@ class MarkerTableView(QTableView):
                     self.model().update_distances()
 
 
-class MarkerTableModel(QAbstractTableModel):
+class MarkerTableModel(qc.QAbstractTableModel):
     def __init__(self, *args, **kwargs):
-        QAbstractTableModel.__init__(self, *args, **kwargs)
+        qc.QAbstractTableModel.__init__(self, *args, **kwargs)
         self.pile_viewer = None
         self.headerdata = _header_data
         self.distances = {}
@@ -131,15 +135,15 @@ class MarkerTableModel(QAbstractTableModel):
 
         self.pile_viewer = viewer
         self.connect(self.pile_viewer,
-                     SIGNAL('markers_added(int,int)'),
+                     qc.SIGNAL('markers_added(int,int)'),
                      self.markers_added)
 
         self.connect(self.pile_viewer,
-                     SIGNAL('markers_removed(int, int)'),
+                     qc.SIGNAL('markers_removed(int, int)'),
                      self.markers_removed)
 
         self.connect(self.pile_viewer,
-                     SIGNAL('changed_marker_selection'),
+                     qc.SIGNAL('changed_marker_selection'),
                      self.update_distances)
 
     def rowCount(self, parent):
@@ -153,33 +157,33 @@ class MarkerTableModel(QAbstractTableModel):
     def markers_added(self, istart, istop):
         '''Insert rows into table.'''
 
-        self.beginInsertRows(QModelIndex(), istart, istop)
+        self.beginInsertRows(qc.QModelIndex(), istart, istop)
         self.endInsertRows()
 
     def markers_removed(self, i_from, i_to):
         '''Remove rows from table.'''
 
-        self.beginRemoveRows(QModelIndex(), i_from, i_to)
+        self.beginRemoveRows(qc.QModelIndex(), i_from, i_to)
         self.endRemoveRows()
         self.marker_table_view.updateGeometries()
 
     def headerData(self, col, orientation, role):
         '''Set and format header data.'''
 
-        if orientation == Qt.Horizontal:
-            if role == Qt.DisplayRole:
-                return QVariant(self.headerdata[col])
-            elif role == Qt.SizeHintRole:
-                return QSize(10, 20)
+        if orientation == qc.Qt.Horizontal:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(self.headerdata[col])
+            elif role == qc.Qt.SizeHintRole:
+                return qc.QSize(10, 20)
         else:
-            return QVariant()
+            return qc.QVariant()
 
     def data(self, index, role):
         '''Set data in each of the table's cell.'''
 
         if not self.pile_viewer:
-            return QVariant()
-        if role == Qt.DisplayRole:
+            return qc.QVariant()
+        if role == qc.Qt.DisplayRole:
             imarker = index.row()
             marker = self.pile_viewer.markers[imarker]
 
@@ -245,9 +249,9 @@ class MarkerTableModel(QAbstractTableModel):
                 else:
                     s = ''
 
-            return QVariant(QString(s))
+            return qc.QVariant(qc.QString(s))
 
-        return QVariant()
+        return qc.QVariant()
 
     def update_distances(self, indices):
         '''Calculate and update distances between events.'''
@@ -284,16 +288,16 @@ class MarkerTableModel(QAbstractTableModel):
         dists /= 1000.
         self.distances = dict(zip(emarkers, dists))
         self.marker_table_view.viewport().repaint()
-        self.emit(SIGNAL('dataChanged()'))
+        self.emit(qc.SIGNAL('dataChanged()'))
 
     def done(self):
-        self.emit(SIGNAL('dataChanged()'))
+        self.emit(qc.SIGNAL('dataChanged()'))
         return True
 
     def setData(self, index, value, role):
         '''Manipulate :py:class:`EventMarker` instances.'''
 
-        if role == Qt.EditRole:
+        if role == qc.Qt.EditRole:
             imarker = index.row()
             marker = self.pile_viewer.markers[imarker]
             if index.column() in [_column_mapping[c] for c in [
@@ -344,21 +348,21 @@ class MarkerTableModel(QAbstractTableModel):
         '''Set flags for cells which the user can edit.'''
 
         if index.column() not in self.marker_table_view.editable_columns:
-            return Qt.ItemFlags(33)
+            return qc.Qt.ItemFlags(33)
         else:
             if isinstance(self.pile_viewer.markers[index.row()], EventMarker):
                 if index.column() in self.marker_table_view.editable_columns:
-                    return Qt.ItemFlags(35)
+                    return qc.Qt.ItemFlags(35)
             if index.column() == _column_mapping['Label']:
-                return Qt.ItemFlags(35)
-        return Qt.ItemFlags(33)
+                return qc.Qt.ItemFlags(35)
+        return qc.Qt.ItemFlags(33)
 
 
-class MarkerEditor(QFrame):
+class MarkerEditor(qg.QFrame):
     def __init__(self, *args, **kwargs):
-        QFrame.__init__(self, *args, **kwargs)
+        qg.QFrame.__init__(self, *args, **kwargs)
 
-        layout = QGridLayout()
+        layout = qg.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.marker_table = MarkerTableView()
@@ -376,22 +380,22 @@ class MarkerEditor(QFrame):
 
         header = self.marker_table.horizontalHeader()
         header.setDefaultSectionSize(30)
-        header.setResizeMode(0, QHeaderView.Interactive)
+        header.setResizeMode(0, qg.QHeaderView.Interactive)
         header.resizeSection(0, 40)
         for i in xrange(len(_header_data)):
-            header.setResizeMode(i+2, QHeaderView.Interactive)
+            header.setResizeMode(i+2, qg.QHeaderView.Interactive)
             header.resizeSection(i+2, 70)
-        header.setResizeMode(1, QHeaderView.Interactive)
+        header.setResizeMode(1, qg.QHeaderView.Interactive)
         header.resizeSection(1, 190)
         header.setStretchLastSection(True)
 
         self.setMinimumWidth(335)
 
-        self.selection_model = QItemSelectionModel(self.proxy_filter)
+        self.selection_model = qg.QItemSelectionModel(self.proxy_filter)
         self.marker_table.setSelectionModel(self.selection_model)
         self.connect(
             self.selection_model,
-            SIGNAL('selectionChanged(QItemSelection, QItemSelection)'),
+            qc.SIGNAL('selectionChanged(QItemSelection,QItemSelection)'),
             self.set_selected_markers)
 
         layout.addWidget(self.marker_table, 0, 0)
@@ -406,12 +410,12 @@ class MarkerEditor(QFrame):
         self.marker_table.set_viewer(viewer)
         self.connect(
             self.pile_viewer,
-            SIGNAL('changed_marker_selection'),
+            qc.SIGNAL('changed_marker_selection'),
             self.update_selection_model)
 
         self.connect(
             self.pile_viewer,
-            SIGNAL('markers_changed'),
+            qc.SIGNAL('markers_changed'),
             self.marker_table.viewport().repaint)
 
         self.marker_table.toggle_columns()
@@ -438,10 +442,10 @@ class MarkerEditor(QFrame):
         :param indices: list of indices of selected markers.'''
 
         self.selection_model.clearSelection()
-        selections = QItemSelection()
+        selections = qg.QItemSelection()
         num_columns = len(_header_data)
-        flag = QItemSelectionModel.SelectionFlags(
-            (QItemSelectionModel.Current | QItemSelectionModel.Select))
+        flag = qg.QItemSelectionModel.SelectionFlags(
+            (qg.QItemSelectionModel.Current | qg.QItemSelectionModel.Select))
 
         for i in indices:
             left = self.proxy_filter.mapFromSource(
@@ -450,7 +454,7 @@ class MarkerEditor(QFrame):
             right = self.proxy_filter.mapFromSource(
                 self.marker_model.index(i, num_columns-1))
 
-            row_selection = QItemSelection(left, right)
+            row_selection = qg.QItemSelection(left, right)
             row_selection.select(left, right)
             selections.merge(row_selection, flag)
 
@@ -461,7 +465,7 @@ class MarkerEditor(QFrame):
             self.selection_model.setCurrentIndex(
                 self.proxy_filter.mapFromSource(
                     self.marker_model.index(indices[0], 0)),
-                QItemSelectionModel.SelectCurrent)
+                qg.QItemSelectionModel.SelectCurrent)
 
         self.selection_model.select(selections, flag)
 
