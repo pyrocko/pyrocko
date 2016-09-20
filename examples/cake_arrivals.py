@@ -13,7 +13,7 @@ model = cake.load_model('prem-no-ocean.m')
 source_depth = 300. * km
 
 # Distances as a numpy array [deg].
-distances = num.linspace(1500,3000,16)*km * cake.m2d
+distances = num.linspace(1500, 3000, 16)*km * cake.m2d
 
 # Define the phase to use.
 Phase = cake.PhaseDef('P')
@@ -22,4 +22,3 @@ Phase = cake.PhaseDef('P')
 print 'distance [km]      time [s]'
 for arrival in model.arrivals(distances, phases=Phase, zstart=source_depth):
     print '%13g %13g' % (arrival.x*cake.d2m/km, arrival.t)
-

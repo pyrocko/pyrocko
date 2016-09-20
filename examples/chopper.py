@@ -1,10 +1,11 @@
 from pyrocko import pile, io, util
-import time, calendar
+import time
+import calendar
 
 p = pile.make_pile(['test.mseed'])
 
 # get timestamp for full hour before first data sample in all selected traces
-tmin = calendar.timegm( time.gmtime(p.tmin)[:4] + ( 0, 0 ) )
+tmin = calendar.timegm(time.gmtime(p.tmin)[:4] + (0, 0))
 
 # iterate over the data, with a window length of one hour
 for traces in p.chopper(tmin=tmin, tinc=3600):
