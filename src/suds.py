@@ -76,10 +76,10 @@ class SudsStationcomp(SudsStructBase, namedtuple(
             elevation=self.elev)
 
         station.add_channel(
-                model.Channel(
-                    name=cha,
-                    azimuth=self.azim,
-                    dip=self.incid - 90.))
+            model.Channel(
+                name=cha,
+                azimuth=self.azim,
+                dip=self.incid - 90.))
 
         return station
 
@@ -224,7 +224,6 @@ def _iload(filename, load_data=True, want=('traces', 'stations')):
                         else:
                             f.seek(tag.data_length, 1)
                             tr = s.to_trace(None)
-
 
                         yield tr
                     else:
