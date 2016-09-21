@@ -1,6 +1,6 @@
 
 import os
-from os.path import expanduser, expandvars
+import os.path as op
 from copy import deepcopy
 
 from pyrocko import util
@@ -12,7 +12,10 @@ pyrocko_dir_tmpl = os.environ.get(
     'PYROCKO_DIR',
     os.path.join('~', '.pyrocko'))
 
-conf_path_tmpl = os.path.join(pyrocko_dir_tmpl, 'config{module}.pf')
+
+def make_conf_path_tmpl(name='config'):
+    return op.join(pyrocko_dir_tmpl, '%s.pf' % name)
+
 
 default_phase_key_mapping = {
     'F1': 'P', 'F2': 'S', 'F3': 'R', 'F4': 'Q', 'F5': '?'}
@@ -45,7 +48,13 @@ class VisibleLengthSetting(Object):
     value = Float.T()
 
 
-class SnufflerConfig(Object):
+class ConfigBase(Object):
+    @classmethod
+    def default(cls):
+        return cls()
+
+
+class SnufflerConfig(ConfigBase):
     visible_length_setting = List.T(
         VisibleLengthSetting.T(),
         default=[VisibleLengthSetting(key='Short', value=6000.),
@@ -58,7 +67,7 @@ class SnufflerConfig(Object):
         return self.phase_key_mapping.get('F%s' % key, 'Undefined')
 
 
-class PyrockoConfig(Object):
+class PyrockoConfig(ConfigBase):
     cache_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'cache'))
     earthradius = Float.T(default=6371.*1000.)
@@ -74,6 +83,12 @@ class PyrockoConfig(Object):
         default='http://www.ietf.org/timezones/data/leap-seconds.list')
 
 
+config_cls = {
+    'config': PyrockoConfig,
+    'snuffler': SnufflerConfig
+}
+
+
 def fill_template(tmpl, config_type):
     tmpl = tmpl .format(
         module=('.' + config_type) if config_type != 'pyrocko' else '')
@@ -81,7 +96,7 @@ def fill_template(tmpl, config_type):
 
 
 def expand(x):
-    x = expanduser(expandvars(x))
+    x = op.expanduser(op.expandvars(x))
     return x
 
 
@@ -116,43 +131,37 @@ def processed(config):
 def mtime(p):
     return os.stat(p).st_mtime
 
-g_conf_mtime = None
-g_conf = None
 
-configs = {'pyrocko': PyrockoConfig,
-           'snuffler': SnufflerConfig}
+g_conf_mtime = {}
+g_conf = {}
 
 
-def raw_config(config_type):
-    global g_conf
-    global g_conf_mtime
+def raw_config(config_name='config'):
 
-    conf_path = expand(conf_path_tmpl)
-    conf_path = fill_template(conf_path, config_type)
+    conf_path = expand(make_conf_path_tmpl(config_name))
 
-    if not os.path.exists(conf_path):
-        g_conf = configs[config_type]()
-        write_config(g_conf, config_type)
+    if not op.exists(conf_path):
+        g_conf[config_name] = config_cls[config_name].default()
+        write_config(g_conf[config_name], config_name)
 
     conf_mtime_now = mtime(conf_path)
-    if conf_mtime_now != g_conf_mtime:
-        g_conf = load(filename=conf_path)
-        if not isinstance(g_conf, configs[config_type]):
+    if conf_mtime_now != g_conf_mtime.get(config_name, None):
+        g_conf[config_name] = load(filename=conf_path)
+        if not isinstance(g_conf[config_name], config_cls[config_name]):
             raise BadConfig('config file does not contain a '
-                            'valid {config_cls} section.'
-                            .format(configs[config_type].__class__.__name__))
+                            'valid "%s" section.' %
+                            config_cls[config_name].__name__)
 
-        g_conf_mtime = conf_mtime_now
+        g_conf_mtime[config_name] = conf_mtime_now
 
-    return g_conf
-
-
-def config(config_type='pyrocko'):
-    return processed(raw_config(config_type))
+    return g_conf[config_name]
 
 
-def write_config(conf, config_type):
-    conf_path = expand(conf_path_tmpl)
-    conf_path = fill_template(conf_path, config_type)
+def config(config_name='config'):
+    return processed(raw_config(config_name))
+
+
+def write_config(conf, config_name='config'):
+    conf_path = expand(make_conf_path_tmpl(config_name))
     util.ensuredirs(conf_path)
     dump(conf, filename=conf_path)
