@@ -88,14 +88,15 @@ def expand(x):
 def rec_expand(x):
     for prop, val in x.T.ipropvals(x):
         if prop.multivalued:
-            for i, ele in enumerate(val):
-                if isinstance(prop.content_t, PathWithPlaceholders.T):
-                    newele = expand(ele)
-                    if newele != ele:
-                        val[i] = newele
+            if val is not None:
+                for i, ele in enumerate(val):
+                    if isinstance(prop.content_t, PathWithPlaceholders.T):
+                        newele = expand(ele)
+                        if newele != ele:
+                            val[i] = newele
 
-                elif isinstance(ele, Object):
-                    rec_expand(ele)
+                    elif isinstance(ele, Object):
+                        rec_expand(ele)
         else:
             if isinstance(prop, PathWithPlaceholders.T):
                 newval = expand(val)
