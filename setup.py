@@ -71,7 +71,7 @@ def make_info_module(packname, version):
 git_sha1 = %s
 local_modifications = %s
 version = %s
-long_version = %s
+long_version = %s  # noqa
 installed_date = %s
 ''' % tuple([repr(x) for x in (
         sha1, local_modifications, version, combi, datestr)])
