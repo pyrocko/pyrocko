@@ -2215,7 +2215,7 @@ def MakePileViewerMainClass(base):
 
             for marker in markers:
                 if isinstance(marker, PhaseMarker):
-                    if kind == 0:
+                    if kind == 10:
                         marker.convert_to_marker()
                     else:
                         marker.set_phasename(phasename)
@@ -2225,7 +2225,7 @@ def MakePileViewerMainClass(base):
                     pass
 
                 else:
-                    if kind != 0:
+                    if kind != 10:
                         event = self.get_active_event()
                         marker.convert_to_phase_marker(
                             event, phasename, None, False)
