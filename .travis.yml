@@ -27,7 +27,7 @@ before_install:
     - cd fomosto-qseis-2006a; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
 
 before_script:
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ --exit-zero; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ test/ ; fi
 
 install:
     - sudo python setup.py install
