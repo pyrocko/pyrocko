@@ -1,7 +1,8 @@
 import unittest
 import tempfile
 import numpy as num
-from pyrocko import fdsn, util, trace, iris_ws
+from pyrocko import util, trace, iris_ws
+from pyrocko.fdsn import station as fdsn_station, ws as fdsn_ws
 
 import common
 
@@ -15,7 +16,7 @@ class FDSNStationTestCase(unittest.TestCase):
         ok = False
         for fn in ['geeil.iris.xml', 'geeil.geofon.xml']:
             fpath = common.test_data_file(fn)
-            x = fdsn.station.load_xml(filename=fpath)
+            x = fdsn_station.load_xml(filename=fpath)
             for network in x.network_list:
                 assert network.code == 'GE'
                 for station in network.station_list:
@@ -36,7 +37,7 @@ class FDSNStationTestCase(unittest.TestCase):
 
     def test_retrieve(self):
         for site in ['geofon', 'iris']:
-            fsx = fdsn.ws.station(site=site,
+            fsx = fdsn_ws.station(site=site,
                                   network='GE',
                                   station='EIL',
                                   level='channel')
@@ -47,12 +48,12 @@ class FDSNStationTestCase(unittest.TestCase):
     def test_read_big(self):
         for site in ['iris']:
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
-            fdsn.station.load_xml(filename=fpath)
+            fdsn_station.load_xml(filename=fpath)
 
     def OFF_test_response(self):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
-        sx = fdsn.ws.station(
+        sx = fdsn_ws.station(
             site='iris',
             network='IU',
             channel='?HZ',
@@ -62,7 +63,7 @@ class FDSNStationTestCase(unittest.TestCase):
 
         for nslc in sx.nslc_code_list:
             net, sta, loc, cha = nslc
-            sxr = fdsn.ws.station(
+            sxr = fdsn_ws.station(
                 site='iris',
                 network=net,
                 station=sta,

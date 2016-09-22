@@ -1,1 +1,1 @@
-from pyrocko.info import *
+from pyrocko.info import *  # noqa

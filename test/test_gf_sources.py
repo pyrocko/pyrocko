@@ -55,8 +55,10 @@ class GFSourcesTestCase(unittest.TestCase):
             ev = s1.pyrocko_event()
             s2 = S.from_pyrocko_event(ev)
             assert numeq(
-                [s1.effective_lat, s1.effective_lon, s1.depth, s1.stf.effective_duration],
-                [s2.effective_lat, s2.effective_lon, s2.depth, s2.stf.effective_duration], 0.001)
+                [s1.effective_lat, s1.effective_lon,
+                 s1.depth, s1.stf.effective_duration],
+                [s2.effective_lat, s2.effective_lon,
+                 s2.depth, s2.stf.effective_duration], 0.001)
 
     def test_source_dict(self):
         s1 = gf.DCSource(strike=0.)
@@ -121,7 +123,9 @@ class GFSourcesTestCase(unittest.TestCase):
                       north_shift=500., east_shift=500.)
                     for lat in lats]
 
-                dsources = [s.discretize_basesource(store, target=dummy_target) for s in sources]
+                dsources = [
+                    s.discretize_basesource(store, target=dummy_target)
+                    for s in sources]
 
                 DS = dsources[0].__class__
 
@@ -137,7 +141,8 @@ class GFSourcesTestCase(unittest.TestCase):
 
             for t in [0.0, util.str_to_time('2014-01-01 10:00:00')]:
                 source = S(time=t)
-                dsource = source.discretize_basesource(store, target=dummy_target)
+                dsource = source.discretize_basesource(
+                    store, target=dummy_target)
                 cent = dsource.centroid()
                 assert numeq(cent.time + source.get_timeshift(), t, 0.0001)
 

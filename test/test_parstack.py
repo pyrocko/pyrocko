@@ -9,12 +9,15 @@ from pyrocko import util, trace, autopick
 
 from pyrocko.parstack import parstack
 
+
 def numeq(a, b, eps):
     return (num.all(num.asarray(a).shape == num.asarray(b).shape and
             num.abs(num.asarray(a) - num.asarray(b)) < eps))
 
+
 def g(l, a):
     return num.array([getattr(x, a) for x in l])
+
 
 class ParstackTestCase(unittest.TestCase):
 
@@ -22,7 +25,7 @@ class ParstackTestCase(unittest.TestCase):
         for i in xrange(100):
             narrays = random.randint(1, 5)
             arrays = [
-                num.random.random(random.randint(5,10))
+                num.random.random(random.randint(5, 10))
                 for j in xrange(narrays)
             ]
             offsets = num.random.randint(-5, 6, size=narrays).astype(num.int32)
@@ -31,10 +34,11 @@ class ParstackTestCase(unittest.TestCase):
                 -5, 6, size=(nshifts, narrays)).astype(num.int32)
             weights = num.random.random((nshifts, narrays))
 
-            for method in (0,1):
+            for method in (0, 1):
                 for nparallel in xrange(1, 5):
                     r1, o1 = parstack(
-                        arrays, offsets, shifts, weights, method, impl='openmp', 
+                        arrays, offsets, shifts, weights, method,
+                        impl='openmp',
                         nparallel=nparallel)
 
                     r2, o2 = parstack(
@@ -47,7 +51,7 @@ class ParstackTestCase(unittest.TestCase):
         for i in xrange(10):
             narrays = random.randint(1, 5)
             arrays = [
-                num.random.random(random.randint(5,10))
+                num.random.random(random.randint(5, 10))
                 for j in xrange(narrays)
             ]
             offsets = num.random.randint(-5, 6, size=narrays).astype(num.int32)
@@ -58,18 +62,17 @@ class ParstackTestCase(unittest.TestCase):
 
             for nparallel in xrange(1, 5):
                 r1, o1 = parstack(
-                    arrays, offsets, shifts, weights, 0, 
+                    arrays, offsets, shifts, weights, 0,
                     nparallel=nparallel,
                     impl='openmp')
 
                 for impl in ['openmp', 'numpy']:
                     r2, o2 = parstack(
-                        arrays, offsets, shifts, weights, 0, 
+                        arrays, offsets, shifts, weights, 0,
                         lengthout=r1.shape[1],
                         offsetout=o1,
                         nparallel=nparallel,
                         impl=impl)
-
 
                     assert o1 == o2
                     assert numeq(r1, r2, 1e-9)
@@ -77,7 +80,7 @@ class ParstackTestCase(unittest.TestCase):
                     n = r1.shape[1]
                     for k in xrange(n):
                         r3, o3 = parstack(
-                            arrays, offsets, shifts, weights, 0, 
+                            arrays, offsets, shifts, weights, 0,
                             lengthout=n,
                             offsetout=o1-k,
                             nparallel=nparallel,
@@ -88,7 +91,7 @@ class ParstackTestCase(unittest.TestCase):
 
                     for k in xrange(n):
                         r3, o3 = parstack(
-                            arrays, offsets, shifts, weights, 0, 
+                            arrays, offsets, shifts, weights, 0,
                             lengthout=n,
                             offsetout=o1+k,
                             nparallel=nparallel,
@@ -99,7 +102,7 @@ class ParstackTestCase(unittest.TestCase):
 
                     for k in xrange(n):
                         r3, o3 = parstack(
-                            arrays, offsets, shifts, weights, 0, 
+                            arrays, offsets, shifts, weights, 0,
                             lengthout=n-k,
                             offsetout=o1,
                             nparallel=nparallel,
@@ -112,7 +115,7 @@ class ParstackTestCase(unittest.TestCase):
         for i in xrange(10):
             narrays = random.randint(1, 5)
             arrays = [
-                num.random.random(random.randint(5,10))
+                num.random.random(random.randint(5, 10))
                 for i in xrange(narrays)
             ]
             offsets = num.random.randint(-5, 6, size=narrays).astype(num.int32)
@@ -124,7 +127,7 @@ class ParstackTestCase(unittest.TestCase):
             for method in (0,):
                 for nparallel in xrange(1, 4):
                     result, offset = parstack(
-                        arrays, offsets, shifts, weights, method, 
+                        arrays, offsets, shifts, weights, method,
                         result=None,
                         nparallel=nparallel,
                         impl='openmp')
@@ -132,13 +135,12 @@ class ParstackTestCase(unittest.TestCase):
                     result1 = result.copy()
                     for k in xrange(5):
                         result, offset = parstack(
-                            arrays, offsets, shifts, weights, method, 
+                            arrays, offsets, shifts, weights, method,
                             result=result,
                             nparallel=nparallel,
                             impl='openmp')
 
                         assert numeq(result, result1*(k+2), 1e-9)
-            
 
     def benchmark(self):
 
@@ -174,9 +176,8 @@ class ParstackTestCase(unittest.TestCase):
                 print '%s, %i, %i, %g' % (impl, nparallel, nsamples, score)
 
     def off_test_synthetic(self):
-        
+
         from pyrocko import gf
-        from pyrocko import orthodrome as od
 
         km = 1000.
         nstations = 10
@@ -207,7 +208,7 @@ class ParstackTestCase(unittest.TestCase):
             north_shift=50*km,
             east_shift=50*km,
             depth=edepth)
-            
+
         store = engine.get_store(store_id)
 
         response = engine.process(source, targets)
@@ -252,7 +253,7 @@ class ParstackTestCase(unittest.TestCase):
 
         nnorth = 50
         neast = 50
-        
+
         size = 400*km
 
         north = num.linspace(-size/2., size/2., nnorth)
@@ -263,27 +264,37 @@ class ParstackTestCase(unittest.TestCase):
 
         def tcal(target, i):
             try:
-                return store.t('any_P', gf.Location(north_shift=north2[i], east_shift=east2[i], depth=depth), target)
+                return store.t(
+                    'any_P',
+                    gf.Location(
+                        north_shift=north2[i],
+                        east_shift=east2[i],
+                        depth=depth),
+                    target)
+
             except gf.OutOfBounds:
                 return 0.0
 
         nsls = sorted(station_stalta_traces.keys())
-        
+
         tts = num.fromiter((tcal(station_targets[nsl][0], i)
                            for i in xrange(nnorth*neast)
                            for nsl in nsls), dtype=num.float)
 
-        ctrs = station_stalta_traces.values()
-        
-        arrays = [station_stalta_traces[nsl].ydata.astype(num.float) for nsl in nsls]
-        offsets = num.array([int(round(station_stalta_traces[nsl].tmin / deltat)) for nsl in nsls], dtype=num.int32)
-        shifts = -num.array([int(round(tt / deltat)) for tt in tts], dtype=num.int32).reshape(nnorth*neast, nstations)
+        arrays = [
+            station_stalta_traces[nsl].ydata.astype(num.float) for nsl in nsls]
+        offsets = num.array(
+            [int(round(station_stalta_traces[nsl].tmin / deltat))
+             for nsl in nsls], dtype=num.int32)
+        shifts = -num.array(
+            [int(round(tt / deltat))
+             for tt in tts], dtype=num.int32).reshape(nnorth*neast, nstations)
         weights = num.ones((nnorth*neast, nstations))
 
         print shifts[25*neast + 25] * deltat
 
         print offsets.dtype, shifts.dtype, weights.dtype
-        
+
         print 'stack start'
         mat, ioff = parstack(arrays, offsets, shifts, weights, 1)
         print 'stack stop'
@@ -294,11 +305,13 @@ class ParstackTestCase(unittest.TestCase):
 
         fig = plt.figure()
 
-        axes = fig.add_subplot(1,1,1, aspect=1.0)
+        axes = fig.add_subplot(1, 1, 1, aspect=1.0)
 
         axes.contourf(east/km, north/km, mat)
-        
-        axes.plot(g(targets, 'east_shift')/km, g(targets, 'north_shift')/km, '^')
+
+        axes.plot(
+            g(targets, 'east_shift')/km,
+            g(targets, 'north_shift')/km, '^')
         axes.plot(source.east_shift/km, source.north_shift/km, 'o')
         plt.show()
 
@@ -306,4 +319,3 @@ class ParstackTestCase(unittest.TestCase):
 if __name__ == '__main__':
     util.setup_logging('test_parstack', 'warning')
     unittest.main()
-

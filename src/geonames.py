@@ -152,9 +152,11 @@ def load_all_keep(zfn, fn, minpop=1000000, region=None, exclude=()):
 
 
 def get_cities_region(region, minpop=0):
-    return load_all_keep('cities1000.zip', 'cities1000.txt',
-                           region=region, minpop=minpop,
-                           exclude=('PPLX',))
+    return load_all_keep(
+        'cities1000.zip', 'cities1000.txt',
+        region=region,
+        minpop=minpop,
+        exclude=('PPLX',))
 
 
 def get_cities(lat, lon, radius, minpop=0):

@@ -20,7 +20,6 @@ import cgi
 from cStringIO import StringIO
 import os
 import traceback
-import zlib
 import posixpath
 import urllib
 import re
@@ -32,7 +31,7 @@ __version__ = '1.0'
 
 
 def popall(self):
-    #Preallocate the list to save memory resizing.
+    # Preallocate the list to save memory resizing.
     r = len(self)*[None]
     for i in xrange(len(r)):
         r[i] = self.popleft()
@@ -85,9 +84,9 @@ class RequestHandler(asynchat.async_chat, SHRH):
     MessageClass = ParseHeaders
     blocksize = 4096
 
-    #In enabling the use of buffer objects by setting use_buffer to True,
-    #any data block sent will remain in memory until it has actually been
-    #sent.
+    # In enabling the use of buffer objects by setting use_buffer to True,
+    # any data block sent will remain in memory until it has actually been
+    # sent.
     use_buffer = False
 
     def __init__(self, conn, addr, server):
@@ -171,7 +170,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
             self.body = cgi.parse_qs(qs, keep_blank_values=1)
         else:
             self.body = {}
-        #self.handle_post_body()
+        # self.handle_post_body()
         self.handle_data()
 
     def handle_data(self):
@@ -232,20 +231,21 @@ class RequestHandler(asynchat.async_chat, SHRH):
         O = self.outgoing
         while len(O):
             a = O.popleft()
-            #handle end of request disconnection
+            # handle end of request disconnection
             if a is None:
-                #Some clients have issues with keep-alive connections, or
-                #perhaps I implemented them wrong.
+                # Some clients have issues with keep-alive connections, or
+                # perhaps I implemented them wrong.
 
-                #If the user is running a Python version < 2.4.1, there is a
-                #bug with SimpleHTTPServer:
-                #    http://python.org/sf/1097597
-                #So we should be closing anyways, even though the client will
-                #claim a partial download, so as to prevent hung-connections.
-                #if self.close_connection:
+                # If the user is running a Python version < 2.4.1, there is a
+                # bug with SimpleHTTPServer:
+                #     http://python.org/sf/1097597
+                # So we should be closing anyways, even though the client will
+                # claim a partial download, so as to prevent hung-connections.
+                # if self.close_connection:
                 self.close()
                 return
-            #handle file objects
+
+            # handle file objects
             elif hasattr(a, 'read'):
                 _a, a = a, a.read(self.blocksize)
                 if not a:
@@ -256,14 +256,14 @@ class RequestHandler(asynchat.async_chat, SHRH):
                     O.appendleft(_a)  # noqa
                     break
 
-            #handle string/buffer objects
+            # handle string/buffer objects
             elif len(a):
                 break
         else:
-            #if we get here, the outgoing deque is empty
+            # if we get here, the outgoing deque is empty
             return
 
-        #if we get here, 'a' is a string or buffer object of length > 0
+        # if we get here, 'a' is a string or buffer object of length > 0
         try:
             num_sent = self.send(a)
             if num_sent < len(a):
@@ -331,7 +331,8 @@ class RequestHandler(asynchat.async_chat, SHRH):
         f = StringIO()
         displaypath = cgi.escape(urllib.unquote(self.path))
         f.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-        f.write("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
+        f.write("<html>\n<title>Directory listing for %s</title>\n"
+                % displaypath)
         f.write("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
         f.write("<hr>\n<ul>\n")
         for name in list:
@@ -403,6 +404,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
         self.end_headers()
         return f
 
+
 class SeismosizerHandler(RequestHandler):
 
     stores_path = '/gfws/static/stores/'
@@ -412,7 +414,7 @@ class SeismosizerHandler(RequestHandler):
         S = self.stores_path
         P = self.process_path
         for x in (S,):
-            if re.match(r'^' + x[:-1] +'$', self.path):
+            if re.match(r'^' + x[:-1] + '$', self.path):
                 return self.redirect(x)
 
         if re.match(r'^' + S + gf.StringID.pattern[1:-1], self.path):
@@ -420,21 +422,21 @@ class SeismosizerHandler(RequestHandler):
 
         elif re.match(r'^' + S + '$', self.path):
             return self.list_stores()
-        
+
         elif re.match(r'^' + P + '$', self.path):
             return self.process()
 
         else:
             self.send_error(404, "File not found")
             return None
-    
+
     def translate_path(self, path):
-        path = path.split('?',1)[0]
-        path = path.split('#',1)[0]
+        path = path.split('?', 1)[0]
+        path = path.split('#', 1)[0]
         path = posixpath.normpath(urllib.unquote(path))
         words = path.split('/')
         words = filter(None, words)
-        
+
         path = '/'
         if words[:3] == self.stores_path.split('/')[1:-1] and len(words) > 3:
             engine = self.server.engine
@@ -445,11 +447,12 @@ class SeismosizerHandler(RequestHandler):
                 words = words[4:]
         else:
             return None
-                
+
         for word in words:
             drive, word = os.path.splitdrive(word)
             head, word = os.path.split(word)
-            if word in (os.curdir, os.pardir): continue
+            if word in (os.curdir, os.pardir):
+                continue
             path = os.path.join(path, word)
 
         return path
@@ -469,11 +472,11 @@ class SeismosizerHandler(RequestHandler):
         store_ids = list(engine.get_store_ids())
         store_ids.sort(key=lambda x: x.lower())
 
-        stores = [ engine.get_store(store_id) for store_id in store_ids ]
+        stores = [engine.get_store(store_id) for store_id in store_ids]
 
         templates = {
-            'html': Template(
-'''<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+            'html': Template('''
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <html>
 <title>{{ title }}</title>
 <body>
@@ -500,21 +503,19 @@ class SeismosizerHandler(RequestHandler):
 </hr>
 </body>
 </html>
-'''),
-            'text': Template(
-'''{% for store in stores %}{#
+'''.lstrip()),
+            'text': Template('''
+{% for store in stores %}{#
 #}{{ store.config.id.ljust(25) }} {#
 #}{{ store.config.short_type.center(5) }} {#
 #}{{ store.config.short_extent.rjust(30) }} km {#
 #}{{ "%10.2g"|format(store.config.sample_rate) }} Hz {#
 #}{{ store.size_index_and_data_human.rjust(8) }}
-{% endfor %}''')}
+{% endfor %}'''.lstrip())}
 
-        
         format = self.body.get('format', ['html'])[0]
         if format not in ('html', 'text'):
             format = 'html'
-
 
         title = "Green's function stores listing"
         s = templates[format].render(stores=stores, title=title).encode('utf8')
@@ -534,7 +535,7 @@ class SeismosizerHandler(RequestHandler):
         except (gf.BadRequest, gf.StoreError), e:
             self.send_error(400, str(e))
             return
-        
+
         f = StringIO()
         resp.dump(stream=f)
         length = f.tell()
@@ -558,6 +559,7 @@ class SeismosizerHandler(RequestHandler):
 
         else:
             RequestHandler.guess_type(self, path)
+
 
 class Server(asyncore.dispatcher):
     def __init__(self, ip, port, handler, engine):
@@ -597,8 +599,8 @@ class Server(asyncore.dispatcher):
 def run(ip, port, engine):
     s = Server(ip, port, SeismosizerHandler, engine)
     asyncore.loop()
+    del s
 
 if __name__ == '__main__':
     engine = gf.LocalEngine(store_superdirs=sys.argv[1:])
-    run_server('', 8080, engine)
-
+    run('', 8080, engine)

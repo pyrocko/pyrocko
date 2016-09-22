@@ -128,7 +128,6 @@ class SRTMGL3(dataset.TiledGlobalDataset):
 if __name__ == '__main__':
     import sys
 
-    from pyrocko import util
     util.setup_logging('pyrocko.topo.srtmgl3', 'info')
 
     if len(sys.argv) != 2:

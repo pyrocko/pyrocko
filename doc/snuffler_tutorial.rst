@@ -225,9 +225,11 @@ traces. Here are some different normal markers:
 A color may be assigned to the selected markers using the number keys :kbd:`0` - :kbd:`5`.
 
 To enhance a *normal marker* to a *phase marker*, use the function keys
-:kbd:`<F1>` - :kbd:`<F5>`. A *phase marker* differs from a normal marker by
-having a phase name and in that it may be associated to an event. Normally,
-phase markers are associated to the current *active event* (see above). If
+:kbd:`<F1>` - :kbd:`<F9>`. The mapping of :kbd:`<F>` keys to phase names can be
+modified in the snuffler configuration file: :file:`~/.pyrocko/snuffler.pf`.
+A *phase marker* differs from a normal marker by having a phase name and in
+that it may be associated to an event.
+Normally, phase markers are associated to the current *active event* (see above). If
 there is no active event, you may associate them later. To (re)associate a
 phase marker to an (other) event, select both, phase marker and event, then
 press :kbd:`e` (use the :kbd:`shift` key while clicking to select more than one

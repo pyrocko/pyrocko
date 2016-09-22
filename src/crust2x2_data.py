@@ -3,27 +3,33 @@
 Reference
 ---------
 
-Please refer to the REM web site if you use this model: 
+Please refer to the REM web site if you use this model:
 
     http://igppweb.ucsd.edu/~gabi/rem.html
 
 or
 
 Bassin, C., Laske, G. and Masters, G., The Current Limits of Resolution for
-Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000. A 
+Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000. A
 description of CRUST 5.1 can be found in: Mooney, Laske and Masters, Crust 5.1:
 a global crustal model at 5x5 degrees, JGR, 103, 727-747, 1998.
 '''
 
-import bz2, binascii
+import bz2
+import binascii
+
+
 def split80(s):
-    return '\n'.join( [ s[i:i+80] for i in range(0,len(s),80) ])
-        
+    return '\n'.join([s[i:i+80] for i in range(0, len(s), 80)])
+
+
 def encode(s):
     return split80(binascii.b2a_base64(bz2.compress(s)))
 
+
 def decode(s):
     return bz2.decompress(binascii.a2b_base64(s)).lstrip()
+
 
 readme = '''
 QlpoOTFBWSZTWcRGC08AABx/gAtSQgBw7//yf//f4L////BgCo2222rdnLj6dGvb1i8dh2mEkQW2CUFh
@@ -802,4 +808,3 @@ w10EwOPVBTB5k4QmE+1H3hr84Pj/vaDl3n019XieeY5Z3TLEPxPZtTJibuY+oMbD369zL/XlScuq119O
 EZhmYLbFxt1NSUpOIfNYRIthv1GiqthRnzl2nOhXbdp2I2Rard0OJIEw3iaFjCsGDzc0Nxn+F3JFOFCQ
 zX8JXQ==
 '''
-

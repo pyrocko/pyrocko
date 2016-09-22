@@ -15,20 +15,21 @@ class IMSTestCase(unittest.TestCase):
 
     def test_cm6(self):
         from pyrocko import ims_ext
+        a1 = num.random.randint(-2**31, 2**31-1, 10000).astype(num.int32)
+        a2 = num.random.randint(-2**31, 2**31-1, 10000).astype(num.int32)[::2]
 
         for values in [
-                num.random.randint(-2**31, 2**31-1, 10000).astype(num.int32),
-                num.random.randint(-2**31, 2**31-1, 10000).astype(num.int32)[::2],
+                a1,
+                a2,
                 filled_int32(10, 0),
                 filled_int32(10, 2**31),
                 filled_int32(10, 2**31-1),
                 num.zeros(0, dtype=num.int32)]:
 
             s = ims_ext.encode_cm6(values)
-            values2 = ims_ext.decode_cm6(s,0)
+            values2 = ims_ext.decode_cm6(s, 0)
             assert values.size == values2.size
             assert num.all(values == values2)
-
 
     def test_read_write(self):
         fns = [
@@ -47,12 +48,12 @@ class IMSTestCase(unittest.TestCase):
 
         for sec in ims.iload(fpaths):
             if isinstance(sec, ims.WID2Section):
-                tr = sec.pyrocko_trace()
+                sec.pyrocko_trace()
 
         s = ims.dump_string(ims.iload(fpaths))
         for sec in ims.iload_string(s):
             if isinstance(sec, ims.WID2Section):
-                tr = sec.pyrocko_trace()
+                sec.pyrocko_trace()
 
     def test_ref_example1(self):
         s = '''DATA_TYPE WAVEFORM GSE2.1:CM6'''

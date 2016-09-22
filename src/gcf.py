@@ -1,4 +1,6 @@
-import sys, struct, re
+import sys
+import struct
+import re
 from StringIO import StringIO
 from collections import namedtuple
 import numpy as num
@@ -7,25 +9,30 @@ from pyrocko import util, trace
 
 guralp_zero = util.str_to_time('1989-11-17 00:00:00')
 
+
 class GCFLoadError(FileLoadError):
     pass
+
 
 class EOF(Exception):
     pass
 
-Header = namedtuple('Header',
-        '''
-        block_type
-        system_id
-        stream_id
-        instrument_type
-        time
-        gain
-        ttl
-        sample_rate
-        compression
-        nrecords
-        '''.split())
+
+Header = namedtuple(
+    'Header',
+    '''
+    block_type
+    system_id
+    stream_id
+    instrument_type
+    time
+    gain
+    ttl
+    sample_rate
+    compression
+    nrecords
+    '''.split())
+
 
 def read(f, n, eof_ok=False):
     data = f.read(n)
@@ -34,8 +41,9 @@ def read(f, n, eof_ok=False):
 
     if len(data) != n:
         raise GCFLoadError('Unexpected end of file')
-    
+
     return data
+
 
 def read_header(f, endianness='>'):
     e = endianness
@@ -90,8 +98,8 @@ def read_header(f, endianness='>'):
 
         else:
             raise FileLoadError('Unexpected block type found.')
-            
-        return Header(block_type, system_id, stream_id, instrument_type, 
+
+        return Header(block_type, system_id, stream_id, instrument_type,
                       time, gain, ittl, 0.0, compression, nrecords)
     else:
         block_type = 'data_block'
@@ -100,16 +108,16 @@ def read_header(f, endianness='>'):
             raise FileLoadError('Unexpected data stream ID')
 
         sample_rate_tab = {
-                157: (0.1, None),
-                161: (0.125, None),
-                162: (0.2, None),
-                164: (0.25, None),
-                167: (0.5, None),
-                171: (400., 8),
-                174: (500., 2),
-                176: (1000., 4),
-                179: (2000., 8),
-                181: (4000., 16) }
+            157: (0.1, None),
+            161: (0.125, None),
+            162: (0.2, None),
+            164: (0.25, None),
+            167: (0.5, None),
+            171: (400., 8),
+            174: (500., 2),
+            176: (1000., 4),
+            179: (2000., 8),
+            181: (4000., 16)}
 
         if israte in sample_rate_tab:
             sample_rate, tfod = sample_rate_tab[israte]
@@ -122,23 +130,24 @@ def read_header(f, endianness='>'):
             compression = compression & 0b1111
             time += toff
 
-        if compression not in (1,2,4):
+        if compression not in (1, 2, 4):
             raise GCFLoadError(
-                    'Unsupported compression code: %i' % compression)
+                'Unsupported compression code: %i' % compression)
 
-        return Header(block_type, system_id, stream_id, instrument_type, 
+        return Header(block_type, system_id, stream_id, instrument_type,
                       time, gain, ittl, sample_rate, compression, nrecords)
+
 
 def read_data(f, h, endianness='>'):
     e = endianness
     data = read(f, 1024 - 16)
     first = struct.unpack(e+'i', data[0:4])[0]
-    dtype = { 1: e+'i4', 2: e+'i2', 4: e+'i1' }
+    dtype = {1: e+'i4', 2: e+'i2', 4: e+'i1'}
     if h.compression not in dtype:
         raise GCFLoadError('Unsupported compression code: %i' % h.compression)
 
     nsamples = h.compression * h.nrecords
-    difs = num.fromstring(data[4:4+h.nrecords*4], dtype=dtype[h.compression], 
+    difs = num.fromstring(data[4:4+h.nrecords*4], dtype=dtype[h.compression],
                           count=nsamples)
     samples = difs.astype(num.int32)
     samples[0] += first
@@ -149,19 +158,18 @@ def read_data(f, h, endianness='>'):
 
     return samples
 
+
 def read_status(f, h):
     data = read(f, 1024 - 16)
     return data[:h.nrecords*4]
+
 
 def iload(filename, load_data=True):
     traces = {}
 
     f = open(filename, 'r')
     try:
-        p1 = 0
         while True:
-
-            p2 = f.tell()
             h = read_header(f)
             if h.block_type == 'data_block':
                 deltat = 1.0 / h.sample_rate
@@ -186,13 +194,14 @@ def iload(filename, load_data=True):
                     else:
                         del traces[nslc]
                         yield tr
-                        
-                if nslc not in traces: 
-                    traces[nslc] = trace.Trace(*nslc,
-                            tmin = h.time,
-                            deltat =  deltat,
-                            ydata = samples,
-                            tmax = tmax)
+
+                if nslc not in traces:
+                    traces[nslc] = trace.Trace(
+                        *nslc,
+                        tmin=h.time,
+                        deltat=deltat,
+                        ydata=samples,
+                        tmax=tmax)
 
             else:
                 f.seek(1024 - 16, 1)
@@ -200,6 +209,7 @@ def iload(filename, load_data=True):
     except EOF:
         for tr in traces.values():
             yield tr
+
 
 def detect(first512):
     # does not work properly, produces too many false positives
@@ -209,11 +219,12 @@ def detect(first512):
             return False
 
         f = StringIO(first512)
-        h = read_header(f)
+        read_header(f)
         return True
 
     except:
         return False
+
 
 if __name__ == '__main__':
     from pyrocko import util
@@ -226,4 +237,3 @@ if __name__ == '__main__':
             all_traces.extend(iload(fn))
 
     trace.snuffle(all_traces)
-

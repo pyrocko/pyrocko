@@ -2483,8 +2483,8 @@ class LocalEngine(Engine):
         Close and remove ids from cashed stores.
         '''
         store_ids = []
-        for store_id, store in self._open_stores.iteritems():
-            store.close()
+        for store_id, store_ in self._open_stores.iteritems():
+            store_.close()
             store_ids.append(store_id)
 
         for store_id in store_ids:

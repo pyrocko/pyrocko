@@ -108,8 +108,8 @@ def rget(url, path, force=False, method='download', stats=None,
          status_callback=None, entries_wanted=None):
 
     if stats is None:
-        stats = [0, None] # bytes received, bytes expected
-    
+        stats = [0, None]  # bytes received, bytes expected
+
     if not url.endswith('/'):
         url = url + '/'
 
@@ -120,7 +120,7 @@ def rget(url, path, force=False, method='download', stats=None,
     l = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', data)
     l = sorted(set(x for x in l if x.rstrip('/') not in ('.', '..')))
     if entries_wanted is not None:
-        l = [ x for x in l if x.rstrip('/') in entries_wanted ]
+        l = [x for x in l if x.rstrip('/') in entries_wanted]
 
     if method == 'download':
         if os.path.exists(path):
@@ -135,7 +135,7 @@ def rget(url, path, force=False, method='download', stats=None,
         if x.endswith('/'):
             rget(
                 url + x,
-                os.path.join(path, x), 
+                os.path.join(path, x),
                 force=force,
                 method=method,
                 stats=stats,
@@ -181,6 +181,7 @@ def rget(url, path, force=False, method='download', stats=None,
 
     return stats[0]
 
+
 def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
                       store_id=None, force=False):
 
@@ -188,14 +189,17 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
 
     stores_url = ujoin(url, 'stores')
 
-    tlast = [ time.time() ]
-    def status_callback(i,n):
+    tlast = [time.time()]
+
+    def status_callback(i, n):
         tnow = time.time()
         if (tnow - tlast[0]) > 5 or i == n:
-            print '%s / %s [%.1f%%]' % (util.human_bytesize(i), util.human_bytesize(n), i*100.0/n)
+            print '%s / %s [%.1f%%]' % (
+                util.human_bytesize(i), util.human_bytesize(n), i*100.0/n)
+
             tlast[0] = tnow
 
-    wanted = [ 'config', 'extra', 'index', 'phases', 'traces' ]
+    wanted = ['config', 'extra', 'index', 'phases', 'traces']
 
     try:
         if store_id is None:
@@ -206,7 +210,7 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
             stotal = rget(
                 store_url, store_id, force=force, method='calcsize',
                 entries_wanted=wanted)
-                          
+
             rget(
                 store_url, store_id, force=force, stats=[0, stotal],
                 status_callback=status_callback, entries_wanted=wanted)
@@ -223,5 +227,5 @@ def seismosizer(url=g_url, site=g_default_site, majorversion=1,
 
     from pyrocko.gf import meta
 
-    return meta.load(stream=_request(url, post=urllib.urlencode({'request': request.dump()})))
-
+    return meta.load(stream=_request(url, post=urllib.urlencode(
+        {'request': request.dump()})))

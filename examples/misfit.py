@@ -1,8 +1,7 @@
 from pyrocko import trace
-from math import sqrt
 import numpy as num
 
-# Let's create three traces: One trace as the reference (rt) and two as test 
+# Let's create three traces: One trace as the reference (rt) and two as test
 # traces (tt1 and tt2):
 ydata1 = num.random.random(1000)
 ydata2 = num.random.random(1000)

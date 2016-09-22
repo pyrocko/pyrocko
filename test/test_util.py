@@ -55,7 +55,7 @@ class UtilTestCase(unittest.TestCase):
             tt1 = time.time()
             for i in xrange(10000):
                 s = util.tts(t)
-                t2 = util.stt(s)
+                util.stt(s)
 
             tt2 = time.time()
             print tt2 - tt1
@@ -73,7 +73,7 @@ class UtilTestCase(unittest.TestCase):
         from_sys = {}
         import platform
         if platform.system() != 'Darwin':
-            for t, n in util.read_leap_seconds(): # not available on Mac OS X
+            for t, n in util.read_leap_seconds():  # not available on Mac OS X
                 from_sys[t] = n
 
         for t, n in util.read_leap_seconds2():

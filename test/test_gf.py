@@ -8,7 +8,7 @@ from tempfile import mkdtemp
 import logging
 import numpy as num
 
-from pyrocko import gf, util, cake, trace
+from pyrocko import gf, util, cake
 
 
 logger = logging.getLogger('test_gf.py')
@@ -180,7 +180,7 @@ class GFTestCase(unittest.TestCase):
 
         pulse = PulseConfig()
 
-        #fnyq_spatial = pulse.velocity / math.sqrt(conf.distance_delta**2 +
+        # fnyq_spatial = pulse.velocity / math.sqrt(conf.distance_delta**2 +
         #                                       conf.source_depth_delta**2)
 
         store_dir = mkdtemp(prefix='gfstore')
@@ -322,10 +322,12 @@ class GFTestCase(unittest.TestCase):
                             implementation='reference')
 
                         self.assertEqual(a.itmin, c.itmin)
-                        num.testing.assert_array_almost_equal(a.data, c.data, 2)
+                        num.testing.assert_array_almost_equal(
+                            a.data, c.data, 2)
 
                         self.assertEqual(b.itmin, c.itmin)
-                        num.testing.assert_array_almost_equal(b.data, c.data, 2)
+                        num.testing.assert_array_almost_equal(
+                            b.data, c.data, 2)
 
         store.close()
 
@@ -349,7 +351,7 @@ class GFTestCase(unittest.TestCase):
                 optimization='enable')
 
             sta = store.sum_statics(
-                indices, weights, 
+                indices, weights,
                 implementation=None,
                 optimization='enable')
 
@@ -420,7 +422,7 @@ class GFTestCase(unittest.TestCase):
         store.make_decimated(2)
 
         engine = gf.LocalEngine(store_dirs=[store_dir])
-        pulse = engine.get_store_extra(None, 'pulse')
+        # pulse = engine.get_store_extra(None, 'pulse')
 
         source = gf.ExplosionSource(
             time=0.0,
@@ -490,7 +492,8 @@ class GFTestCase(unittest.TestCase):
             amax = max(num.max(num.abs(tr.ydata)) for tr in trs)
             perc = num.max(num.abs(trs[0].ydata - trs[1].ydata) / amax) * 100.
             if perc > 0.1:
-                logger.warn('test_stf_pre_post: max difference of %.1f %%' % perc)
+                logger.warn(
+                    'test_stf_pre_post: max difference of %.1f %%' % perc)
 
     def test_timing(self):
         store_dir = self.get_regional_ttt_store_dir()

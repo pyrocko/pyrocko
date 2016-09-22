@@ -135,12 +135,12 @@ _gmt_installations = {}
 # Set fixed installation(s) to use...
 # (use this, if you want to use different GMT versions simultaneously.)
 
-#_gmt_installations['4.2.1'] = { 'home': '/sw/etch-ia32/gmt-4.2.1',
-#                               'bin':  '/sw/etch-ia32/gmt-4.2.1/bin' }
-#_gmt_installations['4.3.0'] = { 'home': '/sw/etch-ia32/gmt-4.3.0',
-#                               'bin':  '/sw/etch-ia32/gmt-4.3.0/bin' }
-#_gmt_installations['4.3.1'] = { 'home': '/sw/share/gmt',
-#                               'bin':  '/sw/bin' }
+# _gmt_installations['4.2.1'] = {'home': '/sw/etch-ia32/gmt-4.2.1',
+#                                'bin':  '/sw/etch-ia32/gmt-4.2.1/bin'}
+# _gmt_installations['4.3.0'] = {'home': '/sw/etch-ia32/gmt-4.3.0',
+#                                'bin':  '/sw/etch-ia32/gmt-4.3.0/bin'}
+# _gmt_installations['4.3.1'] = {'home': '/sw/share/gmt',
+#                                'bin':  '/sw/bin' }
 
 # ... or let GmtPy autodetect GMT via $PATH and $GMTHOME
 
@@ -881,8 +881,8 @@ def gmt_default_config(version):
 
     xversion = appropriate_defaults_version(version)
 
-    #if not version in _gmt_defaults_by_version:
-    #    raise Exception('No GMT defaults for version %s found' % version)
+    # if not version in _gmt_defaults_by_version:
+    #     raise Exception('No GMT defaults for version %s found' % version)
 
     gmt_defaults = _gmt_defaults_by_version[xversion]
 
@@ -913,7 +913,7 @@ def diff_defaults(v1, v2):
         if k not in d1:
             print '%s not in %s' % (k, v1)
 
-#diff_defaults('4.5.2', '4.5.3')
+# diff_defaults('4.5.2', '4.5.3')
 
 
 def setup_gmt_installations():
@@ -1755,7 +1755,7 @@ class ScaleGuru(Guru):
                                     num.isfinite(xmasked), xmasked)
                                 range_this = (
                                     scap(xmasked_finite,
-                                        (100.-percent_interval)/2.),
+                                         (100.-percent_interval)/2.),
                                     scap(xmasked_finite,
                                          100.-(100.-percent_interval)/2.))
                     else:
@@ -3227,7 +3227,7 @@ class GMT:
     def draw_layout(self, layout):
         '''Use psxy to draw layout; for debugging'''
 
-        #corners = layout.get_corners(descend=True)
+        # corners = layout.get_corners(descend=True)
         rects = num.array(layout.get_sizes(), dtype=num.float)
         rects_wid = rects[:, 0, 0]
         rects_hei = rects[:, 0, 1]
@@ -3237,7 +3237,7 @@ class GMT:
         prects = (rects_center_x, rects_center_y, num.arange(nrects),
                   num.zeros(nrects), rects_hei, rects_wid)
 
-        #points = num.array(corners, dtype=num.float)
+        # points = num.array(corners, dtype=num.float)
 
         cptfile = self.tempfilename()
         self.makecpt(
@@ -3418,7 +3418,7 @@ class Simple:
     def draw_density(self, gmt, widget, scaler):
 
         R = scaler.R()
-        #par = scaler.get_params()
+        # par = scaler.get_params()
         rxyj = R + widget.XYJ()
         innerticks = False
         for dpd in self.density_plot_defs:
@@ -3671,7 +3671,7 @@ if __name__ == '__main__':
         shutil.rmtree(examples_dir)
     os.mkdir(examples_dir)
 
-    ### Example 1
+    # Example 1
 
     gmt = GMT()
     gmt.pscoast(R='g', J='E32/30/170/8i', B='10g10', D='c', A=10000,
@@ -3679,7 +3679,7 @@ if __name__ == '__main__':
     gmt.save(pjoin(examples_dir, 'example1.pdf'))
     gmt.save(pjoin(examples_dir, 'example1.ps'))
 
-    ### Example 2
+    # Example 2
 
     gmt = GMT(
         config=dict(PAPER_MEDIA='Custom_%ix%i' % (int(7*inch), int(7*inch))))
@@ -3714,7 +3714,7 @@ if __name__ == '__main__':
     gmt.save(pjoin(examples_dir, 'example2.ps'))
     gmt.save(pjoin(examples_dir, 'example2.pdf'))
 
-    ### Example 3
+    # Example 3
 
     conf = {'PAGE_COLOR': '0/0/0', 'BASEMAP_FRAME_RGB': '255/255/255'}
     gmt = GMT(config=conf)
@@ -3732,7 +3732,7 @@ if __name__ == '__main__':
     gmt.psxy(in_rows=rows, R=True, J=True)
     gmt.save(pjoin(examples_dir, 'example3.pdf'))
 
-    ### Example 4
+    # Example 4
 
     x = num.linspace(0., math.pi*6, 1001)
     y1 = num.sin(x) * 1e-9
@@ -3756,7 +3756,7 @@ if __name__ == '__main__':
     gmt.save(pjoin(examples_dir, 'example4.pdf'), bbox=layout.bbox())
     gmt.save(pjoin(examples_dir, 'example4.ps'), bbox=layout.bbox())
 
-    ### Example 5
+    # Example 5
 
     x = num.linspace(0., 1e9, 1001)
     y = num.sin(x)
@@ -3774,7 +3774,7 @@ if __name__ == '__main__':
     gmt.psxy(in_columns=(x, y), *(widget.JXY() + guru.R()))
     gmt.save(pjoin(examples_dir, 'example5.pdf'), bbox=layout.bbox())
 
-    ### Example 6
+    # Example 6
 
     gmt = GMT(config={'PAPER_MEDIA': 'a3'})
     nx, ny = 2, 5
