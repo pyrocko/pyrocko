@@ -952,12 +952,15 @@ class Marker(object):
 
         self.__class__ = PhaseMarker
         self._event = event
-        self._event_hash = event.get_hash()
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
         self._incidence_angle = incidence_angle
         self._takeoff_angle = takeoff_angle
+        if self._event:
+            self._event_hash = event.get_hash()
+        else:
+            self._event_hash = None
 
     def convert_to_event_marker(self, lat=0., lon=0.):
         if isinstance(self, EventMarker):
