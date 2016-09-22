@@ -4,8 +4,14 @@ import calendar
 import math
 import re
 import sys
+from contextlib import contextmanager
 
-from pyrocko.guts import *  # noqa
+
+from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
+    SObject, Unicode, Complex, Timestamp, DateTimestamp, StringChoice, Defer, \
+    ArgumentError, ValidationError, Any, List, Tuple, Union, Choice, \
+    load, load_string, load_xml_string, load_xml, load_all, iload_all, \
+    load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml
 
 
 class SamplePat(StringPattern):
@@ -59,9 +65,6 @@ regularize[Timestamp] = [
     ('2010-01-01T10:20:01.11Z',  tstamp(2010, 1, 1, 10, 20, 1)+0.11),
     ('2030-12-12 00:00:10.11111',  tstamp(2030, 12, 12, 0, 0, 10)+0.11111)
 ]
-
-
-from contextlib import contextmanager
 
 
 class GutsTestCase(unittest.TestCase):

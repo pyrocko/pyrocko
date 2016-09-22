@@ -131,7 +131,10 @@ class TraceTestCase(unittest.TestCase):
         sazi = math.sin(azi*d2r)
         rot45 = num.array(
             [[cazi, sazi, 0], [-sazi, cazi, 0], [0, 0, -1]], dtype=num.float)
-        C = lambda x: model.Channel(x)
+
+        def C(x):
+            return model.Channel(x)
+
         rotated = trace.project(
             [n, e, d],
             rot45,

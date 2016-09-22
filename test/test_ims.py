@@ -48,13 +48,12 @@ class IMSTestCase(unittest.TestCase):
 
         for sec in ims.iload(fpaths):
             if isinstance(sec, ims.WID2Section):
-                tr = sec.pyrocko_trace()
+                sec.pyrocko_trace()
 
         s = ims.dump_string(ims.iload(fpaths))
         for sec in ims.iload_string(s):
             if isinstance(sec, ims.WID2Section):
-                tr = sec.pyrocko_trace()
-                del tr
+                sec.pyrocko_trace()
 
     def test_ref_example1(self):
         s = '''DATA_TYPE WAVEFORM GSE2.1:CM6'''

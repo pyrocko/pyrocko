@@ -16,8 +16,8 @@ class MomentTensorTestCase(unittest.TestCase):
     def testMagnitudeMoment(self):
         for i in range(1, 10):
             mag = float(i)
-            assert abs(mag - moment_to_magnitude(magnitude_to_moment(mag))) < 1e-6, \
-                'Magnitude to moment to magnitude test failed.'
+            assert abs(mag - moment_to_magnitude(magnitude_to_moment(mag))) \
+                < 1e-6, 'Magnitude to moment to magnitude test failed.'
 
     def testAnyAngles(self):
         '''Check some arbitrary angles.'''
