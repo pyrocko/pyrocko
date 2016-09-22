@@ -4,13 +4,14 @@ import math
 import time
 import os
 import numpy as num
+import cPickle as pickle
 
 sometime = 1234567890.
 d2r = num.pi/180.
 
 
 def numeq(a, b, eps):
-    return num.all(num.abs(num.array(a) - num.array(b)) < eps)
+    return num.all(num.abs(num.array(a) - num.array(b)) <= eps)
 
 
 def floats(l):
@@ -663,6 +664,13 @@ class TraceTestCase(unittest.TestCase):
 
         assert numeq(y, z, 1e-6)
         assert taper.time_span() == taper2.time_span()
+
+    def test_pickle(self):
+        y = num.random.random(10000)
+        t1 = trace.Trace(tmin=0, ydata=y, deltat=0.01)
+        s = pickle.dumps(t1)
+        t2 = pickle.loads(s)
+        assert numeq(t1.ydata, t2.ydata, 0.0)
 
 
 if __name__ == "__main__":

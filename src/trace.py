@@ -107,13 +107,22 @@ class Trace(object):
 
     def __getstate__(self):
         return (self.network, self.station, self.location, self.channel,
-                self.tmin, self.tmax, self.deltat, self.mtime)
+                self.tmin, self.tmax, self.deltat, self.mtime,
+                self.ydata, self.meta)
 
     def __setstate__(self, state):
-        self.network, self.station, self.location, self.channel, self.tmin, \
-            self.tmax, self.deltat, self.mtime = state
-        self.ydata = None
-        self.meta = None
+        if len(state) == 10:
+            self.network, self.station, self.location, self.channel, \
+                self.tmin, self.tmax, self.deltat, self.mtime, \
+                self.ydata, self.meta = state
+
+        else:
+            # backward compatibility with old behaviour
+            self.network, self.station, self.location, self.channel, \
+                self.tmin, self.tmax, self.deltat, self.mtime = state
+            self.ydata = None
+            self.meta = None
+
         self._growbuffer = None
         self._update_ids()
 

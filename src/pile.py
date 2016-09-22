@@ -257,9 +257,16 @@ class TracesFileCache(object):
             trf.by_mtime = None
             trf.data_use_count = 0
             trf.data_loaded = False
-            trf.traces = [tr.copy(data=False) for tr in trf.traces]
+            traces = []
             for tr in trf.traces:
+                tr = tr.copy(data=False)
+                tr.ydata = None
+                tr.meta = None
                 tr.file = trf
+                traces.append(tr)
+
+            trf.traces = traces
+
             cache_copy[fn] = trf
 
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
