@@ -952,6 +952,7 @@ class Marker(object):
 
         self.__class__ = PhaseMarker
         self._event = event
+        self._event_hash = event.get_hash()
         self._phasename = phasename
         self._polarity = polarity
         self._automatic = automatic
@@ -967,6 +968,7 @@ class Marker(object):
 
         self.__class__ = EventMarker
         self._event = model.Event(lat, lon, self.tmin, name='Event')
+        self._event_hash = self._event.get_hash()
         self._active = False
         self.tmax = self.tmin
         self.nslc_ids = []
