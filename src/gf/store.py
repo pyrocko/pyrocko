@@ -1212,11 +1212,15 @@ class Store(BaseStore):
             tr = store._get(irecord, itmin, nsamples, decimate,
                             implementation)
 
-        elif interpolation in ('multilinear', 'off'):
+        elif interpolation == 'off':
             irecords, weights = store.config.vicinity(*args)
-            if interpolation == 'off' and len(irecords) != 1:
+            if len(irecords) != 1:
                 raise NotAllowedToInterpolate()
+            else:
+                tr = store._get(irecords[0], itmin, nsamples, decimate,
+                                implementation)
 
+        elif interpolation == 'multilinear':
             tr = store._sum(irecords, num.zeros(len(irecords)), weights,
                             itmin, nsamples, decimate, implementation,
                             'disable')
