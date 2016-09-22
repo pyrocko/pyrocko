@@ -710,6 +710,21 @@ def command_export(args):
                 logger.warn('cannot get %s, (%s)' % (sindex((z, x, ig)), e))
                 data_out.append(None)
 
+        # put a zero valued sample to no-data zero-traces at a compatible time
+        tmins = [
+            entry[0][0]
+            for entry in data_out
+            if entry is not None and entry[0].size != 0]
+
+        if tmins:
+            tmin = min(tmins)
+            for entry in data_out:
+                if entry is not None and entry[0].size == 0:
+                    entry[0].resize(1)
+                    entry[1].resize(1)
+                    entry[0][0] = tmin
+                    entry[1][0] = 0.0
+
         out_db.put_traces_slow(x, z, data_out)
 
         if show_progress:
