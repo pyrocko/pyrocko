@@ -33,6 +33,9 @@ before_install:
 
 before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ test/ ; fi
+    - "export DISPLAY=:99.0"
+    - "sh -e /etc/init.d/xvfb start"
+    - sleep 3
 
 install:
     - sudo python setup.py install
@@ -40,7 +43,6 @@ install:
 script:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python test/test_all.py ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then xvfb-run pyrocko test/test_gui.py ; fi
 
 after_success:
     - coveralls
