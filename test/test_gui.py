@@ -8,6 +8,8 @@ from pyrocko import pile_viewer as pyrocko_pile_viewer
 from pyrocko import gui_util, util
 from pyrocko import config
 
+import common
+
 
 class GUITest(unittest.TestCase):
 
@@ -15,7 +17,8 @@ class GUITest(unittest.TestCase):
         unittest.TestCase.__init__(self, *args, **kwargs)
 
         self.snuffler = Snuffler()
-        p = make_pile('data/test2.mseed')
+        fpath = common.test_data_file('test2.mseed')
+        p = make_pile(fpath)
         win = SnufflerWindow(pile=p, show=False)
         self.pile_viewer = win.pile_viewer
         self.viewer = self.pile_viewer.viewer
