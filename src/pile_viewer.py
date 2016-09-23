@@ -1512,7 +1512,7 @@ def MakePileViewerMainClass(base):
 
             if color is None:
                 def color(tr):
-                    tr.location
+                    return tr.location
 
             self.gather = gather
             keys = self.pile.gather_keys(gather, self.trace_filter)
@@ -2473,7 +2473,7 @@ def MakePileViewerMainClass(base):
 
             if self.trace_filter is not None:
                 def tselector(x):
-                    selector(x) and self.trace_filter(x)
+                    return selector(x) and self.trace_filter(x)
 
             else:
                 tselector = selector
