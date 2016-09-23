@@ -11,15 +11,14 @@ from pyrocko import config
 
 class GUITest(unittest.TestCase):
 
-    def setUp(self):
+    def __init__(self, *args, **kwargs):
+        unittest.TestCase.__init__(self, *args, **kwargs)
+
         self.snuffler = Snuffler()
         p = make_pile('data/test2.mseed')
         win = SnufflerWindow(pile=p, show=False)
         self.pile_viewer = win.pile_viewer
         self.viewer = self.pile_viewer.viewer
-
-    def tearDown(self):
-        QTest.keyPress(self.pile_viewer, 'q')
 
     def test_markers(self):
         QTest.mouseDClick(self.viewer, Qt.LeftButton)
@@ -75,6 +74,7 @@ class GUITest(unittest.TestCase):
         # cleanup
         QTest.keyPress(self.pile_viewer, Qt.Key_Backspace)
         self.assertEqual(len(self.viewer.get_markers()), 0)
+        QTest.keyPress(self.pile_viewer, 'q')
 
 if __name__ == '__main__':
     util.setup_logging('test_gui', 'warning')
