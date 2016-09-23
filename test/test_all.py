@@ -29,9 +29,14 @@ from test_automap import AutomapTestCase  # noqa
 from test_tectonics import TectonicsTestCase  # noqa
 from test_gui import GUITest  # noqa
 
+import platform
 import unittest
 import optparse
 import sys
+
+if platform.mac_ver() == ('', ('', '', ''), ''):
+    from test_gui import GUITest  # noqa
+
 
 if __name__ == '__main__':
     pyrocko.util.setup_logging('test_all', 'warning')
