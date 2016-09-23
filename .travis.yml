@@ -17,7 +17,7 @@ addons:
         packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
             python-scipy, gfortran, libatlas-dev, libopenblas-dev,
             python-matplotlib, python-yaml, python-tk, libyaml-dev,
-            poppler-utils, ghostscript, imagemagick ]
+            poppler-utils, ghostscript, imagemagick, xvfb ]
 
 before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
@@ -40,6 +40,7 @@ install:
 script:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python test/test_all.py ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then xvfb-run pyrocko test/test_gui.py ; fi
 
 after_success:
     - coveralls
