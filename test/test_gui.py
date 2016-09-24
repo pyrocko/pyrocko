@@ -1,6 +1,7 @@
 import unittest
 from PyQt4.QtTest import QTest
 from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QStyleOptionSlider, QStyle
 import common
 
 from pyrocko.snuffler import Snuffler, SnufflerWindow
@@ -20,9 +21,15 @@ class GUITest(unittest.TestCase):
         super(GUITest, cls).setUpClass()
         cls.snuffler = Snuffler()  # noqa
         fpath = common.test_data_file('test2.mseed')
-        p = make_pile(fpath)
+        p = make_pile(fpath, show_progress=False)
         cls.win = SnufflerWindow(pile=p, show=False)
         cls.pile_viewer = cls.win.pile_viewer
+        pv = cls.pile_viewer
+        cls.main_control_defaults = dict(
+            highpass_control=pv.highpass_control.get_value(),
+            lowpass_control=pv.lowpass_control.get_value(),
+            gain_control=pv.gain_control.get_value(),
+            rot_control=pv.rot_control.get_value())
 
     @classmethod
     def tearDownClass(cls):
@@ -30,6 +37,13 @@ class GUITest(unittest.TestCase):
         Quit snuffler.
         '''
         QTest.keyPress(cls.pile_viewer, 'q')
+
+    def setUp(self):
+        '''
+        reset GUI to initial state
+        '''
+        for k, v in self.main_control_defaults.items():
+            getattr(self.pile_viewer, k).set_value(v)
 
     def tearDown(self):
         self.clear_all_markers()
@@ -53,6 +67,24 @@ class GUITest(unittest.TestCase):
             else:
                 QTest.keyClick(qmenu, Qt.Key_Down)
 
+    def get_slider_position(self, slider):
+        style = slider.style()
+        opt = QStyleOptionSlider()
+        return style.subControlRect(
+            QStyle.CC_Slider, opt, QStyle.SC_SliderHandle)
+
+    def drag_slider(self, slider):
+        ''' Click *slider*, drag from one side to the other, release mouse
+        button repeat to restore inital state'''
+        position = self.get_slider_position(slider)
+        QTest.mouseMove(slider, pos=position.topLeft())
+        QTest.mousePress(slider, Qt.LeftButton)
+        QTest.mouseMove(slider, pos=position.bottomRight())
+        QTest.mouseRelease(slider, Qt.LeftButton)
+        QTest.mousePress(slider, Qt.LeftButton)
+        QTest.mouseMove(slider, pos=position.topLeft())
+        QTest.mouseRelease(slider, Qt.LeftButton)
+
     def add_one_pick(self):
         '''Add a single pick to pile_viewer'''
         pv = self.pile_viewer
@@ -61,6 +93,12 @@ class GUITest(unittest.TestCase):
         # This should be done also by mouseDClick().
         QTest.mouseRelease(pv.viewer, Qt.LeftButton)
         QTest.mouseClick(pv.viewer, Qt.LeftButton)
+
+    def test_main_control_sliders(self):
+        self.drag_slider(self.pile_viewer.highpass_control.slider)
+        self.drag_slider(self.pile_viewer.lowpass_control.slider)
+        self.drag_slider(self.pile_viewer.gain_control.slider)
+        self.drag_slider(self.pile_viewer.rot_control.slider)
 
     def test_markers(self):
         self.add_one_pick()
