@@ -1448,4 +1448,3 @@ class VTKFrame(qg.QFrame):
 
     def add_actor(self, actor):
         self.renderer.AddActor(actor)
-
