@@ -1467,7 +1467,7 @@ def read_leap_seconds2():
 
         except Exception:
             raise LeapSecondsError(
-                'cannot download leap seconds list from %s to %s' (url, fn))
+                'cannot download leap seconds list from %s to %s' % (url, fn))
 
         return parse_leap_seconds_list(fn)
 
