@@ -6,7 +6,7 @@ import re
 
 import numpy as num
 
-from pyrocko import util
+from pyrocko import util, config
 from pyrocko.topo import tile, dataset
 
 citation = '''
@@ -45,6 +45,7 @@ class SRTMGL3(dataset.TiledGlobalDataset):
 
         self.raw_data_url = raw_data_url
         self._available_tilenames = None
+        self.config = config.config()
 
     def tilename(self, itx, ity):
         itx -= 180
@@ -96,7 +97,11 @@ class SRTMGL3(dataset.TiledGlobalDataset):
         fpath = self.tilepath(tilename)
         fn = self.tilefilename(tilename)
         url = self.raw_data_url + '/' + fn
-        self.download_file(url, fpath)
+        if self.config.earthdata_credentials:
+            cred = self.config.earthdata_credentials
+        else:
+            cred = (None, None)
+        self.download_file(url, fpath, *cred)
 
     def download(self):
         for tn in self.available_tilenames():
