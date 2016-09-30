@@ -1,32 +1,32 @@
 #!/bin/bash
+
+set -e
+
 if [ ! -f maintenance/update-pages.sh ] ; then
     echo "must be run from pyrocko's toplevel directory"
     exit 1
 fi
 
 if [ ! -d pages ] ; then
-    git clone -n git@github.com:pyrocko/pyrocko.git pages || exit 1
-    cd pages || exit 1
-    git checkout -b gh-pages origin/gh-pages || exit 1
-    cd ..
+    git clone -b gh-pages -n git@github.com:pyrocko/pyrocko.git pages
 fi
-cd pages || exit 1
-git pull origin gh-pages || exit 1
+cd pages
+git pull origin gh-pages
 cd ..
-cd doc || exit 1
-make clean || exit 1
-make html $1 || exit 1
+cd doc
+make clean
+make html $1
 cd ..
 
 VERSION=v0.3
 
 if [ ! -d pages/$VERSION ] ; then
-    mkdir pages/$VERSION || exit 1
+    mkdir pages/$VERSION
 fi
-cp -R doc/_build/html/* pages/$VERSION/ || exit 1
-cd pages/$VERSION || exit 1
+cp -R doc/_build/html/* pages/$VERSION/
+cd pages/$VERSION
 
-git add * || exit 1
-git commit || exit 1
+git add *
+git commit
 git push origin gh-pages
 
