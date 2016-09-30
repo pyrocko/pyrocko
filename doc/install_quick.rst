@@ -10,3 +10,7 @@ on some popular systems.
    Fedora <install_fedora>
    OpenSuse <install_suse>
    Mac OS X <install_mac>
+
+For instructions on how to install Pyrocko on other systems or if the
+installation with any of the above procedures fails, see
+:doc:`install_details`.

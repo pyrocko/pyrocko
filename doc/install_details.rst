@@ -42,27 +42,25 @@ Python (the \*-dev packages) is also system specific.
 Download and install Pyrocko
 ----------------------------
 
-**Either:** the easy way, using *easy_install*::
-
-    sudo easy_install http://github.com/pyrocko/pyrocko/tarball/master
-
-**Or:** the proper way, using *git* and *setup.py*::
+Use *git* to download the software package and the included script *setup.py*
+to install::
 
     cd ~/src/   # or wherever you keep your source packages
-    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    git clone https://github.com/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install
 
-**Warning:** If you switch from one installation method to the other, you have
-to manually remove the old installation - otherwise you will end up with two
-parallel installations of Pyrocko which will cause trouble.
+**Note:** If you have previously installed pyrocko using other tools like e.g.
+*easy_install*, you should manually remove the old installation - otherwise you
+will end up with two parallel installations of Pyrocko which will cause
+trouble.
 
 Updating
 --------
 
-If you later want to update Pyrocko, run the following commands (this assumes
-that you have used *git* to download Pyrocko):: 
+If you later would like to update Pyrocko, run the following commands (this
+assumes that you have used *git* to download Pyrocko):: 
 
-    cd ~/src/pyrocko   # or wherever the Pyrocko source are 
+    cd ~/src/pyrocko   # assuming the Pyrocko software package is here
     git pull origin master 
-    sudo python setup.py install  
+    sudo python setup.py install
