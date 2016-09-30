@@ -8,9 +8,9 @@ First steps
 -----------
 
 Suppose we want to have a quick look on some seismic waveforms in a file
-`test.mseed <https://github.com/downloads/emolch/pyrocko/test.mseed>`_.  The file is
-in Mini-SEED format, which is the default file format, when working with
-Snuffler.  Download the file, then run the command ::
+`test.mseed <https://github.com/downloads/emolch/pyrocko/test.mseed>`_. The
+file is in Mini-SEED format, which is the default file format, when working
+with Snuffler.  Download the file, then run the command::
 
     snuffler test.mseed
 
@@ -47,7 +47,7 @@ How to get help:
 
 * Press :kbd:`?` or select :guilabel:`Help` from the main menu.
 * Use ``snuffler --help`` to see what command line options are available.
-* There is a `manual <http://emolch.github.com/pyrocko/current/snuffler>`_.
+* There is a `manual <http://pyrocko.org/current/snuffler>`_.
 
 Before continuing, you should make yourself a bit familiar with basic
 navigation in Snuffler.
@@ -81,11 +81,11 @@ a snap.
   directory is usually emptied on restart of the computer. It is possible to
   use a custom location, when you have a very large set of files and don't want
   to loose the meta data cache on restart. This can be set with the
-  :option:`--cache` command line option.
+  :option:`snuffler --cache` command line option.
 
 You may now use this small example dataset `testdata.tar
-<https://github.com/downloads/emolch/pyrocko/testdata.tar>`_ with 153 files from some stations in Germany
-(3 days, 17 stations with 3 channels each, 23MB).
+<https://github.com/downloads/emolch/pyrocko/testdata.tar>`_ with 153 files
+from some stations in Germany (3 days, 17 stations with 3 channels each, 23MB).
 
 Untar the file and look at the data using Snuffler::
 
@@ -102,8 +102,8 @@ Of course, you can also restrict it to use only specific files::
     When using shell globbing like this, you may bump into the maximum command
     line length limit. This is because the shell expands the :file:`*` argument
     into lots of filenames and most shells have a limit on how long a command
-    line can be. If that happens, you may the :option:`--pattern` command
-    line option to avoid that problem::
+    line can be. If that happens, you may the :option:`snuffler --pattern`
+    command line option to avoid that problem::
     
         snuffler --pattern='.*LHZ.*' testdata
 
@@ -167,8 +167,8 @@ Events and station coordinates
 
 Now we might like to sort the stations according to distance to the event.  To
 do this, Snuffler needs station and event coordinates. A simple way to tell
-Snuffler something about your stations is via the :option:`--stations` command
-line option::
+Snuffler something about your stations is via the :option:`snuffler --stations`
+command line option::
 
     snuffler --stations=testdata/stations.txt testdata
 
@@ -222,18 +222,21 @@ traces. Here are some different normal markers:
 .. image:: _static/screenshot9.png
     :align: center
 
-A color may be assigned to the selected markers using the number keys :kbd:`0` - :kbd:`5`.
+A color may be assigned to the selected markers using the number keys :kbd:`0`
+- :kbd:`5`.
 
 To enhance a *normal marker* to a *phase marker*, use the function keys
 :kbd:`<F1>` - :kbd:`<F9>`. The mapping of :kbd:`<F>` keys to phase names can be
 modified in the snuffler configuration file: :file:`~/.pyrocko/snuffler.pf`.
 A *phase marker* differs from a normal marker by having a phase name and in
 that it may be associated to an event.
-Normally, phase markers are associated to the current *active event* (see above). If
-there is no active event, you may associate them later. To (re)associate a
-phase marker to an (other) event, select both, phase marker and event, then
-press :kbd:`e` (use the :kbd:`shift` key while clicking to select more than one
-marker). :kbd:`<F10>` converts a *phase marker* back to a normal marker.
+
+Normally, phase markers are associated to the current *active event* (see
+above). If there is no active event, you may associate them later. To
+(re)associate a phase marker to an (other) event, select both, phase marker and
+event, then press :kbd:`e` (use the :kbd:`shift` key while clicking to select
+more than one marker). :kbd:`<F10>` converts a *phase marker* back to a normal
+marker.
 
 To enhance a *normal marker* to an *event marker*, select the marker and press
 :kbd:`e` (the new event marker will also be the new *active event*).
@@ -245,10 +248,11 @@ To enhance a *normal marker* to an *event marker*, select the marker and press
     original normal marker was created. This way, you can easily sort the
     traces according to their distance to this station. 
 
-A table listing all markers opens when pressing the key :kbd:`m`. By default, columns
-indicating the *type* (*T*), the *time* and - if available - the *magnitude*
-(*M*) of an *event marker*'s associated event are displayed. Further columns can
-be added by right-clicking the table's headers and activating the desired
-column. Left-click on a column's header sorts the table by the values given in
-that column. The *Label*, *Depth*, *Lat*, *Lon* and the *magnitude* (*M*) can be
-set from within the table by a double-click on the underlying field.
+A table listing all markers opens when pressing the key :kbd:`m`. By default,
+columns indicating the *type* (*T*), the *time* and - if available - the
+*magnitude* (*M*) of an *event marker*'s associated event are displayed.
+Further columns can be added by right-clicking the table's headers and
+activating the desired column. Left-click on a column's header sorts the table
+by the values given in that column. The *Label*, *Depth*, *Lat*, *Lon* and the
+*magnitude* (*M*) can be set from within the table by a double-click on the
+underlying field.

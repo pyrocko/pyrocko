@@ -44,12 +44,12 @@ Download and install Pyrocko
 
 **Either:** the easy way, using *easy_install*::
 
-    sudo easy_install http://github.com/emolch/pyrocko/tarball/master
+    sudo easy_install http://github.com/pyrocko/pyrocko/tarball/master
 
 **Or:** the proper way, using *git* and *setup.py*::
 
     cd ~/src/   # or wherever you keep your source packages
-    git clone git://github.com/emolch/pyrocko.git pyrocko
+    git clone git://github.com/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install
 
