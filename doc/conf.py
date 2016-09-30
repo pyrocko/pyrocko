@@ -44,7 +44,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pyrocko'
-copyright = u'2012, Sebastian Heimann'
+copyright = u'2016, The Pyrocko Developers'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -171,7 +171,7 @@ html_show_sphinx = False
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'http://emolch.github.com/pyrocko'
+html_use_opensearch = 'http://pyrocko.org/pyrocko/'
 
 # This is the file name suffix for HTML files (e.g. ".xhtml").
 #html_file_suffix = None
@@ -192,7 +192,7 @@ latex_paper_size = 'a4'
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
   ('index', 'Pyrocko.tex', u'Pyrocko Documentation',
-   u'Sebastian Heimann', 'manual'),
+   u'The Pyrocko Developers', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -228,7 +228,7 @@ autodoc_member_order = 'bysource'
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'pyrocko', u'Pyrocko Documentation',
-     [u'Sebastian Heimann'], 1)
+     [u'The Pyrocko Developers'], 1)
 ]
 
 def process_signature(app, what, name, obj, options, signature, return_annotation):
