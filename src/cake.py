@@ -2879,7 +2879,7 @@ class LayeredModel(object):
         '''Add a layer or discontinuity at bottom of model.
 
         :param element: object of subclass of  :py:class:`Layer` or
-        :py:class:`Discontinuity`.
+            :py:class:`Discontinuity`.
         '''
 
         if isinstance(element, Layer):
