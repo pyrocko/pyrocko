@@ -5,7 +5,7 @@ if [ ! -f maintenance/update-pages.sh ] ; then
 fi
 
 if [ ! -d pages ] ; then
-    git clone -n git@github.com:emolch/pyrocko.git pages || exit 1
+    git clone -n git@github.com:pyrocko/pyrocko.git pages || exit 1
     cd pages || exit 1
     git checkout -b gh-pages origin/gh-pages || exit 1
     cd ..
@@ -15,7 +15,7 @@ git pull origin gh-pages || exit 1
 cd ..
 cd doc || exit 1
 make clean || exit 1
-make html || exit 1
+make html $1 || exit 1
 cd ..
 
 VERSION=v0.3
