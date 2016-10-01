@@ -22,7 +22,7 @@ class GUITest(unittest.TestCase):
         cls.snuffler = Snuffler()  # noqa
         fpath = common.test_data_file('test2.mseed')
         p = make_pile(fpath, show_progress=False)
-        cls.win = SnufflerWindow(pile=p, show=False)
+        cls.win = SnufflerWindow(pile=p, show=True)
         cls.pile_viewer = cls.win.pile_viewer
         pv = cls.pile_viewer
         cls.main_control_defaults = dict(
