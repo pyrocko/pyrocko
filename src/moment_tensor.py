@@ -10,13 +10,21 @@ guts_prefix = 'pf'
 dynecm = 1e-7
 
 
-def rotation_from_axis_and_angle(angle, axis):
+def random_axis():
+    while True:
+        axis = num.random.random(3) * 2.0 - 1.0
+        uabs = math.sqrt(num.sum(axis**2))
+        if 0.001 < uabs < 1.0:
+            return axis / uabs
+
+
+def rotation_from_angle_and_axis(angle, axis):
 
     if len(axis) == 2:
         theta, phi = axis
-        ux = math.sin(theta)*math.cos(phi)
-        uy = math.sin(theta)*math.sin(phi)
-        uz = math.cos(theta)
+        ux = math.sin(d2r*theta)*math.cos(d2r*phi)
+        uy = math.sin(d2r*theta)*math.sin(d2r*phi)
+        uz = math.cos(d2r*theta)
 
     elif len(axis) == 3:
         axis = num.asarray(axis)
@@ -25,8 +33,8 @@ def rotation_from_axis_and_angle(angle, axis):
     else:
         assert False
 
-    ct = math.cos(angle)
-    st = math.sin(angle)
+    ct = math.cos(d2r*angle)
+    st = math.sin(d2r*angle)
     return num.matrix([
         [ct + ux**2*(1.-ct), ux*uy*(1.-ct)-uz*st, ux*uz*(1.-ct)+uy*st],
         [uy*ux*(1.-ct)+uz*st, ct+uy**2*(1.-ct), uy*uz*(1.-ct)-ux*st],
@@ -785,3 +793,56 @@ def other_plane(strike, dip, rake):
         return both_sdr[1]
     else:
         return both_sdr[0]
+
+
+def _tpb2q(t, p, b):
+    eps = 0.001
+    tqw = 1. + t[0] + p[1] + b[2]
+    tqx = 1. + t[0] - p[1] - b[2]
+    tqy = 1. - t[0] + p[1] - b[2]
+    tqz = 1. - t[0] - p[1] + b[2]
+
+    q = num.zeros(4)
+    if tqw > eps:
+        q[0] = 0.5 * math.sqrt(tqw)
+        q[1:] = p[2] - b[1], b[0] - t[2], t[1] - p[0]
+    elif tqx > eps:
+        q[0] = 0.5 * math.sqrt(tqx)
+        q[1:] = p[2] - b[1], p[0] + t[1], b[0] + t[2]
+    elif tqy > eps:
+        q[0] = 0.5 * math.sqrt(tqy)
+        q[1:] = b[0] - t[2], p[0] + t[1], b[1] + p[2]
+    elif tqz > eps:
+        q[0] = 0.5 * math.sqrt(tqz)
+        q[1:] = t[1] - p[0], b[0] + t[2], b[1] + p[2]
+    else:
+        raise Exception('should not reach this line, check theory!')
+        # q[0] = max(0.5 * math.sqrt(tqx), eps)
+        # q[1:] = p[2] - b[1], p[0] + t[1], b[0] + t[2]
+
+    q[1:] /= 4.0 * q[0]
+
+    q /= math.sqrt(num.sum(q**2))
+
+    return q
+
+_pbt2tpb = num.matrix(((0., 0., 1.), (1., 0., 0.), (0., 1., 0.)))
+
+
+def kagan_angle(mt1, mt2):
+    '''
+    Given two moment tensors, return the Kagan angle in degrees.
+
+    After Kagan (1991) and Tape & Tape (2012).
+    '''
+
+    ai = _pbt2tpb * mt1._m_eigenvecs.T
+    aj = _pbt2tpb * mt2._m_eigenvecs.T
+
+    u = ai * aj.T
+
+    tk, pk, bk = u.A
+
+    qk = _tpb2q(tk, pk, bk)
+
+    return 2. * r2d * math.acos(num.max(num.abs(qk)))
