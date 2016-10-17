@@ -5,6 +5,7 @@ import shutil
 import glob
 import copy
 import signal
+import math
 
 from tempfile import mkdtemp
 from subprocess import Popen, PIPE
@@ -126,7 +127,9 @@ class QSSPConfig(Object):
     spheroidal_modes = Bool.T(default=True)
     toroidal_modes = Bool.T(default=True)
 
-    cutoff_harmonic_degree_sd = Int.T(default=0)
+    # only available in 2010beta:
+    cutoff_harmonic_degree_sd = Int.T(optional=True, default=0)
+
     cutoff_harmonic_degree_min = Int.T(default=0)
     cutoff_harmonic_degree_max = Int.T(default=25000)
 
@@ -569,13 +572,19 @@ class QSSPGFBuilder(gf.builder.Builder):
         conf = QSSPConfigFull(**baseconf.items())
         conf.gf_directory = pjoin(store_dir, 'qssp_green')
         conf.earthmodel_1d = self.store.config.earthmodel_1d
+        deltat = self.store.config.deltat
 
         if 'time_window' not in shared:
             d = self.store.make_timing_params(
                 conf.time_region[0], conf.time_region[1])
-            shared['time_window'] = d['tmax']
-            shared['tstart'] = d['tmin']
 
+            tmax = math.ceil(d['tmax'] / deltat) * deltat
+            tmin = math.floor(d['tmin'] / deltat) * deltat
+
+            shared['time_window'] = tmax - tmin
+            shared['tstart'] = tmin
+
+        self.tstart = shared['tstart']
         conf.time_window = shared['time_window']
 
         self.tmp = tmp
@@ -627,7 +636,11 @@ class QSSPGFBuilder(gf.builder.Builder):
 
         conf.receivers = [
             QSSPReceiver(
-                lat=90-d*cake.m2d, lon=180., tstart=0.0, distance=d)
+                lat=90-d*cake.m2d,
+                lon=180.,
+                tstart=self.tstart,
+                distance=d)
+
             for d in distances]
 
         if self.step == 0:
