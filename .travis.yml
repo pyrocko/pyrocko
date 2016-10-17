@@ -21,7 +21,8 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/science; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/python; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink libyaml; fi
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install matplotlib gcc libyaml; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
     - pip install progressbar setuptools flake8 pyyaml coveralls
     - easy_install pyavl
     - curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx
