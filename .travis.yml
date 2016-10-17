@@ -21,7 +21,7 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/science; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/python; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink libyaml; fi
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install python numpy; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install numpy; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew link numpy; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install scipy matplotlib gcc libyaml; fi
     - pip install progressbar setuptools flake8 pyyaml coveralls
