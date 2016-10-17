@@ -3144,7 +3144,8 @@ def MakePileViewerMainClass(base):
                                                 if self.highpass < \
                                                         0.5/trace.deltat:
                                                     trace.highpass(
-                                                        4, self.highpass)
+                                                        4, self.highpass,
+                                                        demean=False)
 
                             processed_traces.append(trace)
 
