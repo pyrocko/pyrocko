@@ -25,6 +25,10 @@ Rosen, P. A. et al., 2000, Synthetic aperture radar interferometry, Proc. IEEE,
 '''
 
 
+class AuthenticationRequired(Exception):
+    pass
+
+
 class SRTMGL3(dataset.TiledGlobalDataset):
 
     def __init__(
@@ -100,7 +104,12 @@ class SRTMGL3(dataset.TiledGlobalDataset):
         if self.config.earthdata_credentials:
             cred = self.config.earthdata_credentials
         else:
-            cred = (None, None)
+            raise AuthenticationRequired(
+                '\n\nRegister at https://urs.earthdata.nasa.gov/users/new ' +
+                'and provide credentials in your local ~/.pyrocko/config.pf ' +
+                'as follows:\n' +
+                'earthdata_credentials: [username, password]')
+
         self.download_file(url, fpath, *cred)
 
     def download(self):
