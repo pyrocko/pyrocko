@@ -17,7 +17,8 @@ from PyQt4 import QtGui as qg
 from pyrocko import pile, config
 
 from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
-    WebKitFrame, Marker, EventMarker, PhaseMarker, load_markers, save_markers
+    WebKitFrame, VTKFrame, Marker, EventMarker, PhaseMarker, load_markers, \
+    save_markers
 
 
 Marker, load_markers, save_markers  # noqa
@@ -499,8 +500,8 @@ class Snuffling:
         Creates a :py:class:`WebKitFrame` which can be used as a browser
         within snuffler.
 
-        :param: url: url to open
-        :param: name: labels the tab
+        :param url: url to open
+        :param name: labels the tab
         '''
 
         if name is None:
@@ -508,6 +509,32 @@ class Snuffling:
             name = 'Web browser %i (%s)' % (self._iplot, self.get_name())
 
         f = WebKitFrame(url)
+        self._panel_parent.add_tab(name, f)
+        return f
+
+    def vtk_frame(self, name=None, actors=None):
+        '''
+        Create a :py:class:`pyrocko.gui_util.VTKFrame` to render interactive 3D
+        graphics.
+
+        :param actors: list of VTKActors
+        :param name: labels the tab
+
+        Initialize the interactive rendering by calling the frames'
+        :py:meth`initialize` method after having added all actors to the frames
+        renderer.
+
+        Requires installation of vtk including python wrapper.
+        '''
+        if name is None:
+            self._iplot += 1
+            name = 'VTK %i (%s)' % (self._iplot, self.get_name())
+
+        try:
+            f = VTKFrame(actors=actors)
+        except ImportError as e:
+            self.fail(e)
+
         self._panel_parent.add_tab(name, f)
         return f
 

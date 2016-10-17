@@ -1416,3 +1416,35 @@ class WebKitFrame(qg.QFrame):
         layout.addWidget(self.web_widget, 0, 0)
         if url:
             self.web_widget.load(qc.QUrl(url))
+
+
+class VTKFrame(qg.QFrame):
+
+    def __init__(self, actors=None, parent=None):
+        import vtk
+        from vtk.qt4.QVTKRenderWindowInteractor import \
+            QVTKRenderWindowInteractor
+
+        qg.QFrame.__init__(self, parent)
+        layout = qg.QGridLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.setLayout(layout)
+
+        self.vtk_widget = QVTKRenderWindowInteractor(self)
+        layout.addWidget(self.vtk_widget, 0, 0)
+
+        self.renderer = vtk.vtkRenderer()
+        self.vtk_widget.GetRenderWindow().AddRenderer(self.renderer)
+        self.iren = self.vtk_widget.GetRenderWindow().GetInteractor()
+
+        if actors:
+            for a in actors:
+                self.renderer.AddActor(a)
+
+    def init(self):
+        self.iren.Initialize()
+
+    def add_actor(self, actor):
+        self.renderer.AddActor(actor)
