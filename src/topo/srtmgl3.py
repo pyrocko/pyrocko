@@ -6,7 +6,7 @@ import re
 
 import numpy as num
 
-from pyrocko import util
+from pyrocko import util, config
 from pyrocko.topo import tile, dataset
 
 citation = '''
@@ -23,6 +23,10 @@ Remote Sens., 72:206-210.
 Rosen, P. A. et al., 2000, Synthetic aperture radar interferometry, Proc. IEEE,
 88:333-382.
 '''
+
+
+class AuthenticationRequired(Exception):
+    pass
 
 
 class SRTMGL3(dataset.TiledGlobalDataset):
@@ -45,6 +49,7 @@ class SRTMGL3(dataset.TiledGlobalDataset):
 
         self.raw_data_url = raw_data_url
         self._available_tilenames = None
+        self.config = config.config()
 
     def tilename(self, itx, ity):
         itx -= 180
@@ -96,7 +101,16 @@ class SRTMGL3(dataset.TiledGlobalDataset):
         fpath = self.tilepath(tilename)
         fn = self.tilefilename(tilename)
         url = self.raw_data_url + '/' + fn
-        self.download_file(url, fpath)
+        if self.config.earthdata_credentials:
+            cred = self.config.earthdata_credentials
+        else:
+            raise AuthenticationRequired(
+                '\n\nRegister at https://urs.earthdata.nasa.gov/users/new ' +
+                'and provide credentials in your local ~/.pyrocko/config.pf ' +
+                'as follows:\n' +
+                'earthdata_credentials: [username, password]')
+
+        self.download_file(url, fpath, *cred)
 
     def download(self):
         for tn in self.available_tilenames():

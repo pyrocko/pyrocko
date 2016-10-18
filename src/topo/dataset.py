@@ -58,8 +58,8 @@ class TiledGlobalDataset(object):
         d = 360. / (self.nx - 1)
         return self.covers(region) and dmin <= d <= dmax
 
-    def download_file(self, url, fpath):
-        util.download_file(url, fpath)
+    def download_file(self, url, fpath, username=None, password=None):
+        util.download_file(url, fpath, username, password)
 
     def x(self):
         return self.xmin + num.arange(self.nx) * self.dx
