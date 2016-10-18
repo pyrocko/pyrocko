@@ -346,11 +346,14 @@ def radius_to_region(lat, lon, radius):
 
 
 def geographic_midpoint(lats, lons, weights=None):
-    '''Calculated by finding the center of gravity.
+    '''Calculate geographic midpoints by finding the center of gravity.
 
     :param lats: array of latitudes
     :param lons: array of longitudes
     :param weights: array weighting factors (optinal)
+
+    This method suffers from instabilities if points are centered around the
+    poles.
     '''
     if not weights:
         weights = num.ones(len(lats))
