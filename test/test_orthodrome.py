@@ -76,6 +76,36 @@ class OrthodromeTestCase(unittest.TestCase):
             assert num.all(num.abs(dist1-dist2) < 0.0001)
             assert num.all(num.abs(dist1-dist3) < 0.0001)
 
+    def test_midpoint(self):
+        center_lons = num.linspace(0., 180., 5)
+        center_lats = [0., 89.]
+        npoints = 10000.
+        half_side_length = 1000000.
+        distance_error_max = 50000.
+        for lat in center_lats:
+            for lon in center_lons:
+                n = num.random.uniform(
+                    -half_side_length, half_side_length, npoints)
+                e = num.random.uniform(
+                    -half_side_length, half_side_length, npoints)
+                dlats, dlons = orthodrome.ne_to_latlon(lat, lon, n, e)
+                clat, clon = orthodrome.geographic_midpoint(dlats, dlons)
+                d = orthodrome.distance_accurate50m_numpy(
+                    clat, clon, lat, lon)[0]
+                if False:
+                    import matplotlib.pyplot as plt
+                    fig = plt.figure()
+                    ax = fig.add_subplot(111)
+                    ax.scatter(n, e)
+                    c_n, c_e = orthodrome.latlon_to_ne_numpy(
+                        lat, lon, clat, clon)
+                    ax.plot(c_n, c_e, 'ro')
+                    plt.show()
+                self.assertTrue(d < distance_error_max, 'Distance %s > %s' %
+                                (d, distance_error_max) +
+                                '(maximum error)\n tested lat/lon: %s/%s' %
+                                (lat, lon))
+
 
 def serialgrid(x, y):
     return num.repeat(x, y.size), num.tile(y, x.size)
