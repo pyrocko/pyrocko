@@ -160,9 +160,18 @@ class Material(object):
                     'if qp or qs are given, qk and qmu should not be given.')
 
             if qp is None:
-                self.qp = 1456.
+                if self.vs != 0.0:
+                    l = (4.0/3.0)*(self.vs/self.vp)**2
+                    self.qp = self.qs / l
+                else:
+                    self.qp = 1456.
+
             if qs is None:
-                self.qs = 600.
+                if self.vs != 0.0:
+                    l = (4.0/3.0)*(self.vs/self.vp)**2
+                    self.qs = self.qp * l
+                else:
+                    self.vs = 600.
 
         elif qp is None and qs is None and qk is None and qmu is None:
             if self.vs == 0.:
