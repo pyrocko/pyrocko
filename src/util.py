@@ -1099,10 +1099,14 @@ def match_nslc(patterns, nslc):
         match_nslc('*.HAM3.*.BH?', ('GR', 'HAM3', '', 'BHZ'))   # -> True
     '''
 
-    if isinstance(patterns, str):
+    if isinstance(patterns, basestring):
         patterns = [patterns]
 
-    s = '.'.join(nslc)
+    if not isinstance(nslc, basestring):
+        s = '.'.join(nslc)
+    else:
+        s = nslc
+
     for pattern in patterns:
         if _nslc_pattern(pattern).match(s):
             return True
