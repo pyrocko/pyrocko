@@ -495,41 +495,6 @@ class GFTestCase(unittest.TestCase):
                 logger.warn(
                     'test_stf_pre_post: max difference of %.1f %%' % perc)
 
-    def test_timing(self):
-        store_dir = self.get_regional_ttt_store_dir()
-
-        store = gf.Store(store_dir)
-
-        args = (10*km, 1500*km)
-        assert(store.t('P', args) is not None)
-        self.assertEqual(store.t('last(S|P)', args), store.t('S', args))
-        self.assertEqual(store.t('(S|P)', args), store.t('S', args))
-        self.assertEqual(store.t('(P|S)', args), store.t('P', args))
-        self.assertEqual(store.t('first(S|P)', args), store.t('P', args))
-
-        with self.assertRaises(gf.NoSuchPhase):
-            store.t('nonexistant', args)
-
-        with self.assertRaises(AssertionError):
-            store.t('P', (10*km,))
-
-        with self.assertRaises(gf.OutOfBounds):
-            print store.t('P', (10*km, 5000*km))
-
-        with self.assertRaises(gf.OutOfBounds):
-            print store.t('P', (30*km, 1500*km))
-
-    def test_timing_new_syntax(self):
-        store_dir = self.get_regional_ttt_store_dir()
-
-        store = gf.Store(store_dir)
-
-        args = (10*km, 1500*km)
-
-        assert numeq(store.t('stored:P', args), store.t('cake:P', args), 0.1)
-
-        assert numeq(store.t('vel_surface:15', args), 100., 0.1)
-
     def benchmark_get(self):
         store_dir = self.get_benchmark_store_dir()
 
@@ -680,6 +645,45 @@ class GFTestCase(unittest.TestCase):
 
             if 'select' in d:
                 self.assertEqual(d['select'], t.select)
+
+    def test_timing(self):
+        store_dir = self.get_regional_ttt_store_dir()
+
+        store = gf.Store(store_dir)
+
+        args = (10*km, 1500*km)
+        assert(store.t('P', args) is not None)
+        self.assertEqual(store.t('last(S|P)', args), store.t('S', args))
+        self.assertEqual(store.t('(S|P)', args), store.t('S', args))
+        self.assertEqual(store.t('(P|S)', args), store.t('P', args))
+        self.assertEqual(store.t('first(S|P)', args), store.t('P', args))
+
+        with self.assertRaises(gf.NoSuchPhase):
+            store.t('nonexistant', args)
+
+        with self.assertRaises(AssertionError):
+            store.t('P', (10*km,))
+
+        with self.assertRaises(gf.OutOfBounds):
+            print store.t('P', (10*km, 5000*km))
+
+        with self.assertRaises(gf.OutOfBounds):
+            print store.t('P', (30*km, 1500*km))
+
+    def test_timing_new_syntax(self):
+        store_dir = self.get_regional_ttt_store_dir()
+
+        store = gf.Store(store_dir)
+
+        args = (10*km, 1500*km)
+
+        assert numeq(store.t('stored:P', args), store.t('cake:P', args), 0.1)
+        assert numeq(store.t('vel_surface:15', args), 100., 0.1)
+        assert numeq(store.t('+0.1S', args), 150., 0.1)
+        assert numeq(
+            store.t('{stored:P}+0.1S', args),
+            store.t('{cake:P}', args) + store.t('{vel_surface:10}', args),
+            0.1)
 
 
 if __name__ == '__main__':

@@ -162,7 +162,7 @@ timing_regex_old = re.compile(
 
 timing_regex = re.compile(
     r'^((first|last)?\{(' + _ppat + r'(\|' + _ppat + r')*)\}|(' +
-    _ppat + r'))?(' + _fpat + ')?$')
+    _ppat + r'))?(' + _fpat + 'S?)?$')
 
 
 class PhaseSelect(StringChoice):
@@ -183,10 +183,13 @@ class Timing(SObject):
 
     Timings can be instantiated from a simple string defintion i.e. with
     ``Timing(str)`` where ``str`` is something like
-    ``'SELECT{PHASE_DEFS}[+-]OFFSET'`` where ``'SELECT'`` is ``'first'``,
+    ``'SELECT{PHASE_DEFS}[+-]OFFSET[S]'`` where ``'SELECT'`` is ``'first'``,
     ``'last'`` or empty, ``'PHASE_DEFS'`` is a ``'|'``-separated list of phase
-    definitions, and ``'OFFSET'`` is the time offset in seconds. Phase
-    definitions can be specified in either of the following ways:
+    definitions, and ``'OFFSET'`` is the time offset in seconds. If the an
+    ``'S'`` is appended to ``'OFFSET'``, it is interpreted as a surface
+    slowness in [s/km].
+
+    Phase definitions can be specified in either of the following ways:
 
     * ``'stored:PHASE_ID'`` - retrieves value from stored travel time table
     * ``'cake:CAKE_PHASE_DEF'`` - evaluates first arrival of phase with cake
@@ -212,9 +215,11 @@ class Timing(SObject):
     def __init__(self, s=None, **kwargs):
 
         if s is not None:
+            offset_is_slowness = False
             s = re.sub(r'\s+', '', s)
             try:
-                offset = float(s)
+                offset = float(s.rstrip('S'))
+                offset_is_slowness = s.endswith('S')
                 phase_defs = []
                 select = ''
 
@@ -232,8 +237,10 @@ class Timing(SObject):
                     select = m.group(2) or ''
 
                     offset = 0.0
-                    if m.group(27):
-                        offset = float(m.group(27))
+                    soff = m.group(27)
+                    if soff:
+                        offset = float(soff.rstrip('S'))
+                        offset_is_slowness = soff.endswith('S')
 
                     matched = True
 
@@ -264,7 +271,8 @@ class Timing(SObject):
             kwargs = dict(
                 phase_defs=phase_defs,
                 select=select,
-                offset=offset)
+                offset=offset,
+                offset_is_slowness=offset_is_slowness)
 
         SObject.__init__(self, **kwargs)
 
@@ -282,16 +290,25 @@ class Timing(SObject):
 
         if self.offset != 0.0 or not self.phase_defs:
             l.append('%+g' % self.offset)
+            if self.offset_is_slowness:
+                l.append('S')
 
         return ''.join(l)
 
     def evaluate(self, get_phase, args):
         try:
+            if self.offset_is_slowness and self.offset != 0.0:
+                phase_offset = get_phase(
+                    'vel_surface:%g' % (1.0/self.offset))
+                offset = phase_offset(args)
+            else:
+                offset = self.offset
+
             if self.phase_defs:
                 phases = [
                     get_phase(phase_def) for phase_def in self.phase_defs]
                 times = [phase(args) for phase in phases]
-                times = [t+self.offset for t in times if t is not None]
+                times = [t+offset for t in times if t is not None]
                 if not times:
                     return None
                 elif self.select == 'first':
@@ -301,13 +318,14 @@ class Timing(SObject):
                 else:
                     return times[0]
             else:
-                return self.offset
+                return offset
 
         except spit.OutOfBounds:
             raise OutOfBounds(args)
 
     phase_defs = List.T(String.T())
     offset = Float.T(default=0.0)
+    offset_is_slowness = Bool.T(default=False)
     select = PhaseSelect.T(
         default='',
         help=('Can be either ``\'%s\'``, ``\'%s\'``, or ``\'%s\'``. ' %
