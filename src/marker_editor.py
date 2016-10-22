@@ -28,10 +28,13 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
         self.sort(1, qc.Qt.AscendingOrder)
 
     def lessThan(self, left, right):
-        if left.column() not in _string_header:
-            return left.data().toDouble()[0] > right.data().toDouble()[0]
-        else:
+        if left.column() == _column_mapping['Time']:
+            return util.stt(str(left.data().toString())) > \
+                util.stt(str(right.data().toString()))
+        elif left.column() == _column_mapping['Label']:
             return left > right
+        else:
+            return left.data().toDouble()[0] > right.data().toDouble()[0]
 
 
 class MarkerTableView(qg.QTableView):
@@ -447,12 +450,14 @@ class MarkerEditor(qg.QFrame):
         flag = qg.QItemSelectionModel.SelectionFlags(
             (qg.QItemSelectionModel.Current | qg.QItemSelectionModel.Select))
 
-        for i in indices:
+        for chunk in indices:
+            istart = min(chunk)
+            istop = max(chunk)
             left = self.proxy_filter.mapFromSource(
-                self.marker_model.index(i, 0))
+                self.marker_model.index(istart, 0))
 
             right = self.proxy_filter.mapFromSource(
-                self.marker_model.index(i, num_columns-1))
+                self.marker_model.index(istop, num_columns-1))
 
             row_selection = qg.QItemSelection(left, right)
             row_selection.select(left, right)
@@ -461,15 +466,13 @@ class MarkerEditor(qg.QFrame):
         if len(indices) != 0:
             self.marker_table.setCurrentIndex(
                 self.proxy_filter.mapFromSource(
-                    self.marker_model.index(indices[0], 0)))
+                    self.marker_model.index(indices[0][0], 0)))
             self.selection_model.setCurrentIndex(
                 self.proxy_filter.mapFromSource(
-                    self.marker_model.index(indices[0], 0)),
+                    self.marker_model.index(indices[0][0], 0)),
                 qg.QItemSelectionModel.SelectCurrent)
-
-        self.selection_model.select(selections, flag)
-
-        if len(indices) != 0:
             self.marker_table.scrollTo(
                 self.proxy_filter.mapFromSource(
-                    self.marker_model.index(indices[0], 0)))
+                    self.marker_model.index(indices[0][0], 0)))
+
+        self.selection_model.select(selections, flag)

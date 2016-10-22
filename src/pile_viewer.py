@@ -2098,6 +2098,9 @@ def MakePileViewerMainClass(base):
             for sm in selected_markers:
                 if sm in markers:
                     _indexes.append(markers.index(sm))
+
+            _indexes.sort()
+            _indexes = make_chunks(_indexes)
             self.emit(qc.SIGNAL('changed_marker_selection'), _indexes)
 
         def toggle_marker_editor(self):
