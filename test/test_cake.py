@@ -119,6 +119,30 @@ class CakeTestCase(unittest.TestCase):
             if zmin == 0.:
                 assert isinstance(elements[0], cake.Surface)
 
+    def test_material(self):
+        mat = cake.Material(
+            poisson=0.20, rho=3000., qp=100.)
+        mat1 = cake.Material(
+            vp=mat.vp, poisson=mat.poisson(), rho=mat.rho, qp=mat.qp)
+        mat2 = cake.Material(
+            vp=mat.vp, vs=mat1.vs, rho=mat1.rho, qs=mat1.qs)
+        mat3 = cake.Material(
+            lame=mat2.lame(), rho=mat2.rho, qp=mat2.qp, qs=mat2.qs)
+        mat4 = cake.Material(
+            vs=mat3.vs, poisson=mat3.poisson(), rho=mat3.rho,
+            qk=mat3.qk(), qmu=mat3.qmu())
+
+        mat5 = eval('cake.'+repr(mat))
+
+        for matx in (mat1, mat2, mat3, mat4, mat5):
+            self.assertEqual(mat.vp, matx.vp)
+            self.assertEqual(mat.vs, matx.vs)
+            self.assertEqual(mat.rho, matx.rho)
+            self.assertEqual(mat.qp, matx.qp)
+            self.assertEqual(mat.qs, matx.qs)
+            self.assertEqual(mat.describe(), matx.describe())
+
+
 if __name__ == "__main__":
     util.setup_logging('test_cake', 'warning')
     unittest.main()
