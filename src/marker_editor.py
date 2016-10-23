@@ -95,6 +95,7 @@ class MarkerTableView(qg.QTableView):
         self.pile_viewer = viewer
 
     def keyPressEvent(self, key_event):
+        '''Propagate *key_event* to pile_viewer.'''
         self.pile_viewer.keyPressEvent(key_event)
 
     def clicked(self, model_index):
@@ -446,33 +447,23 @@ class MarkerEditor(qg.QFrame):
 
         self.selection_model.clearSelection()
         selections = qg.QItemSelection()
-        num_columns = len(_header_data)
-        flag = qg.QItemSelectionModel.SelectionFlags(
-            (qg.QItemSelectionModel.Current | qg.QItemSelectionModel.Select))
+        selection_flags = qg.QItemSelectionModel.SelectionFlags(
+            (qg.QItemSelectionModel.Select |
+             qg.QItemSelectionModel.Rows |
+             qg.QItemSelectionModel.Current))
 
         for chunk in indices:
-            istart = min(chunk)
-            istop = max(chunk)
-            left = self.proxy_filter.mapFromSource(
-                self.marker_model.index(istart, 0))
-
-            right = self.proxy_filter.mapFromSource(
-                self.marker_model.index(istop, num_columns-1))
-
-            row_selection = qg.QItemSelection(left, right)
-            row_selection.select(left, right)
-            selections.merge(row_selection, flag)
+            mi_start = self.marker_model.index(min(chunk), 0)
+            mi_stop = self.marker_model.index(max(chunk), 0)
+            row_selection = self.proxy_filter.mapSelectionFromSource(
+                qg.QItemSelection(mi_start, mi_stop))
+            selections.merge(row_selection, selection_flags)
 
         if len(indices) != 0:
-            self.marker_table.setCurrentIndex(
-                self.proxy_filter.mapFromSource(
-                    self.marker_model.index(indices[0][0], 0)))
+            self.marker_table.scrollTo(self.proxy_filter.mapFromSource(
+                mi_start))
+            self.marker_table.setCurrentIndex(mi_start)
             self.selection_model.setCurrentIndex(
-                self.proxy_filter.mapFromSource(
-                    self.marker_model.index(indices[0][0], 0)),
-                qg.QItemSelectionModel.SelectCurrent)
-            self.marker_table.scrollTo(
-                self.proxy_filter.mapFromSource(
-                    self.marker_model.index(indices[0][0], 0)))
+                mi_start, selection_flags)
 
-        self.selection_model.select(selections, flag)
+        self.selection_model.select(selections, selection_flags)
