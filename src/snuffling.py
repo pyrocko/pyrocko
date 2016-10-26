@@ -1651,8 +1651,8 @@ class SnufflingModule:
     def load_if_needed(self):
         filename = os.path.join(self._path, self._name+'.py')
         mtime = os.stat(filename)[8]
-        sys.path[0:0] = [self._path]
         if self._module is None:
+            sys.path[0:0] = [self._path]
             try:
                 logger.debug('Loading snuffling module %s' % filename)
                 if self._name in sys.modules:
@@ -1669,12 +1669,17 @@ class SnufflingModule:
                 logger.error(_str_traceback())
                 raise BrokenSnufflingModule(filename)
 
+            finally:
+                sys.path[0:1] = []
+
         elif self._mtime != mtime:
             logger.warn('Reloading snuffling module %s' % filename)
             settings = self.remove_snufflings()
+            sys.path[0:0] = [self._path]
             try:
 
                 sys.modules[self._name] = self._module
+
                 reload(self._module)
                 del sys.modules[self._name]
 
@@ -1690,8 +1695,10 @@ class SnufflingModule:
                 logger.error(_str_traceback())
                 raise BrokenSnufflingModule(filename)
 
+            finally:
+                sys.path[0:1] = []
+
         self._mtime = mtime
-        sys.path[0:1] = []
 
     def add_snuffling(self, snuffling, reloaded=False):
         snuffling._path = self._path
