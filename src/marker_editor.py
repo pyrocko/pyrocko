@@ -122,7 +122,9 @@ class MarkerTableView(qg.QTableView):
             else:
                 self.setColumnHidden(self.menu_items[header], hide)
                 if header == 'Dist [km]':
-                    self.model().update_distances()
+                    p = self.pile_viewer
+                    i = p.markers.index(p.get_active_event_marker())
+                    self.model().update_distances([i])
 
 
 class MarkerTableModel(qc.QAbstractTableModel):
@@ -257,9 +259,10 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
         return qc.QVariant()
 
-    def update_distances(self, indices):
+    def update_distances(self, indices=None):
         '''Calculate and update distances between events.'''
-
+        indices = indices or [[]]
+        indices = [i for ii in indices for i in ii]
         if len(indices) != 1 or self.marker_table_view.horizontalHeader()\
                 .isSectionHidden(_column_mapping['Dist [km]']):
             return
@@ -293,6 +296,10 @@ class MarkerTableModel(qc.QAbstractTableModel):
         self.distances = dict(zip(emarkers, dists))
         self.marker_table_view.viewport().repaint()
         self.emit(qc.SIGNAL('dataChanged()'))
+
+        if self.marker_table_view.horizontalHeader().sortIndicatorSection() ==\
+                _column_mapping['Dist [km]']:
+            self.sort(_column_mapping['Dist [km]'])
 
     def done(self):
         self.emit(qc.SIGNAL('dataChanged()'))
@@ -369,20 +376,20 @@ class MarkerEditor(qg.QFrame):
         layout = qg.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
-        self.marker_table = MarkerTableView()
-        self.marker_table.setItemDelegate(
-            MarkerItemDelegate(self.marker_table))
+        self.marker_table_view = MarkerTableView()
+        self.marker_table_view.setItemDelegate(
+            MarkerItemDelegate(self.marker_table_view))
 
         self.marker_model = MarkerTableModel()
-        self.marker_model.marker_table_view = self.marker_table
+        self.marker_model.marker_table_view = self.marker_table_view
 
         self.proxy_filter = MarkerSortFilterProxyModel()
         self.proxy_filter.setDynamicSortFilter(True)
         self.proxy_filter.setSourceModel(self.marker_model)
 
-        self.marker_table.setModel(self.proxy_filter)
+        self.marker_table_view.setModel(self.proxy_filter)
 
-        header = self.marker_table.horizontalHeader()
+        header = self.marker_table_view.horizontalHeader()
         header.setDefaultSectionSize(30)
         header.setResizeMode(0, qg.QHeaderView.Interactive)
         header.resizeSection(0, 40)
@@ -396,13 +403,13 @@ class MarkerEditor(qg.QFrame):
         self.setMinimumWidth(335)
 
         self.selection_model = qg.QItemSelectionModel(self.proxy_filter)
-        self.marker_table.setSelectionModel(self.selection_model)
+        self.marker_table_view.setSelectionModel(self.selection_model)
         self.connect(
             self.selection_model,
             qc.SIGNAL('selectionChanged(QItemSelection,QItemSelection)'),
             self.set_selected_markers)
 
-        layout.addWidget(self.marker_table, 0, 0)
+        layout.addWidget(self.marker_table_view, 0, 0)
 
         self.pile_viewer = None
 
@@ -411,7 +418,7 @@ class MarkerEditor(qg.QFrame):
 
         self.pile_viewer = viewer
         self.marker_model.set_viewer(viewer)
-        self.marker_table.set_viewer(viewer)
+        self.marker_table_view.set_viewer(viewer)
         self.connect(
             self.pile_viewer,
             qc.SIGNAL('changed_marker_selection'),
@@ -420,9 +427,9 @@ class MarkerEditor(qg.QFrame):
         self.connect(
             self.pile_viewer,
             qc.SIGNAL('markers_changed'),
-            self.marker_table.viewport().repaint)
+            self.marker_table_view.viewport().repaint)
 
-        self.marker_table.toggle_columns()
+        self.marker_table_view.toggle_columns()
 
     def set_selected_markers(self, selected, deselected):
         ''' set markers selected in viewer at selection in table.'''
@@ -444,7 +451,6 @@ class MarkerEditor(qg.QFrame):
         '''Adopt marker selections done in the pile_viewer in the tableview.
 
         :param indices: list of indices of selected markers.'''
-
         self.selection_model.clearSelection()
         selections = qg.QItemSelection()
         selection_flags = qg.QItemSelectionModel.SelectionFlags(
@@ -460,9 +466,9 @@ class MarkerEditor(qg.QFrame):
             selections.merge(row_selection, selection_flags)
 
         if len(indices) != 0:
-            self.marker_table.scrollTo(self.proxy_filter.mapFromSource(
+            self.marker_table_view.scrollTo(self.proxy_filter.mapFromSource(
                 mi_start))
-            self.marker_table.setCurrentIndex(mi_start)
+            self.marker_table_view.setCurrentIndex(mi_start)
             self.selection_model.setCurrentIndex(
                 mi_start, selection_flags)
 
