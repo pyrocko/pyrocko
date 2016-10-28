@@ -1650,7 +1650,14 @@ class SnufflingModule:
 
     def load_if_needed(self):
         filename = os.path.join(self._path, self._name+'.py')
-        mtime = os.stat(filename)[8]
+
+        try:
+            mtime = os.stat(filename)[8]
+        except OSError as e:
+            if e.errno == 2:
+                logger.error(e)
+                raise BrokenSnufflingModule(filename)
+
         if self._module is None:
             sys.path[0:0] = [self._path]
             try:
