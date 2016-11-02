@@ -13,6 +13,10 @@ _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
 _string_header = (_column_mapping['Time'], _column_mapping['Label'])
 
+_header_sizes = [70] * len(_header_data)
+_header_sizes[0] = 40
+_header_sizes[1] = 190
+
 
 class MarkerItemDelegate(qg.QStyledItemDelegate):
     '''Takes are of the table's style.'''
@@ -67,8 +71,9 @@ class MarkerTableView(qg.QTableView):
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
                             'Kagan Angle [deg]']
-        self.menu_items = dict(
-            zip(self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8, 9]))
+        self.menu_items = dict(zip(self.menu_labels,
+                                   [0, 1, 2, 3, 4, 5, 7, 8, 9]))
+
         self.editable_columns = [2, 3, 4, 5, 6, 7]
 
         self.column_actions = {}
@@ -119,26 +124,28 @@ class MarkerTableView(qg.QTableView):
 
     def toggle_columns(self):
         '''Toggle columns depending in checked state. '''
+        width = 0
         for header, ca in self.column_actions.items():
             hide = not ca.isChecked()
-            self.horizontalHeader().setSectionHidden(
-                self.menu_items[header], hide)
+            self.setColumnHidden(self.menu_items[header], hide)
             if header == 'Latitude/Longitude':
                 self.setColumnHidden(self.menu_items[header]+1, hide)
-            elif header in ['Distance [km]', 'Kagan Angle [deg]']:
+            if not hide:
+                width += _header_sizes[self.menu_labels.index(header)]
+            if header in ['Distance [km]', 'Kagan Angle [deg]']:
                 p = self.pile_viewer
                 active_event = p.get_active_event_marker()
                 if active_event:
                     i = p.markers.index(p.get_active_event_marker())
                     self.model().sourceModel().update_distances_and_angles(
                         [[i]])
+        self.parent().setMinimumWidth(width)
 
 
 class MarkerTableModel(qc.QAbstractTableModel):
     def __init__(self, *args, **kwargs):
         qc.QAbstractTableModel.__init__(self, *args, **kwargs)
         self.pile_viewer = None
-        self.headerdata = _header_data
         self.distances = {}
         self.kagan_angles = {}
         self.last_active_event = None
@@ -187,7 +194,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
         if orientation == qc.Qt.Horizontal:
             if role == qc.Qt.DisplayRole:
-                return qc.QVariant(self.headerdata[col])
+                return qc.QVariant(_header_data[col])
             elif role == qc.Qt.SizeHintRole:
                 return qc.QSize(10, 20)
         else:
@@ -260,10 +267,10 @@ class MarkerTableModel(qc.QAbstractTableModel):
         :param indices: list of lists of indices (optional)
 
         Ideally, indices are consecutive for best performance.'''
-        want_angles = not self.marker_table_view.horizontalHeader()\
-            .isSectionHidden(_column_mapping['Kagan Angle [deg]'])
-        want_distance = not self.marker_table_view.horizontalHeader()\
-            .isSectionHidden(_column_mapping['Dist [km]'])
+        want_angles = not self.marker_table_view.isColumnHidden(
+            _column_mapping['Kagan Angle [deg]'])
+        want_distance = not self.marker_table_view.isColumnHidden(
+            _column_mapping['Dist [km]'])
 
         if not (want_distance or want_angles):
             return
@@ -403,7 +410,7 @@ class MarkerEditor(qg.QFrame):
         layout = qg.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
-        self.marker_table_view = MarkerTableView()
+        self.marker_table_view = MarkerTableView(self)
         self.marker_table_view.setItemDelegate(
             MarkerItemDelegate(self.marker_table_view))
 
@@ -418,17 +425,11 @@ class MarkerEditor(qg.QFrame):
         self.marker_table_view.setModel(self.proxy_filter)
 
         header = self.marker_table_view.horizontalHeader()
-        header.setDefaultSectionSize(30)
-        header.setResizeMode(0, qg.QHeaderView.Interactive)
-        header.resizeSection(0, 40)
-        for i in xrange(len(_header_data)):
-            header.setResizeMode(i+2, qg.QHeaderView.Interactive)
-            header.resizeSection(i+2, 70)
-        header.setResizeMode(1, qg.QHeaderView.Interactive)
-        header.resizeSection(1, 190)
-        header.setStretchLastSection(True)
+        for i_s, s in enumerate(_header_sizes):
+            header.setResizeMode(i_s, qg.QHeaderView.Interactive)
+            header.resizeSection(i_s, s)
 
-        self.setMinimumWidth(335)
+        header.setStretchLastSection(True)
 
         self.selection_model = qg.QItemSelectionModel(self.proxy_filter)
         self.marker_table_view.setSelectionModel(self.selection_model)
@@ -440,6 +441,7 @@ class MarkerEditor(qg.QFrame):
         layout.addWidget(self.marker_table_view, 0, 0)
 
         self.pile_viewer = None
+        self._size_hint = qc.QSize(1, 1)
 
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
