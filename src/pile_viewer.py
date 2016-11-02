@@ -3985,7 +3985,7 @@ class PileViewer(qg.QFrame):
         return frame
 
     def marker_editor(self):
-        editor = pyrocko.marker_editor.MarkerEditor()
+        editor = pyrocko.marker_editor.MarkerEditor(self)
         editor.set_viewer(self.get_view())
         self.connect(
             editor.get_marker_model(),
