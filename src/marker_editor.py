@@ -3,7 +3,7 @@ from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker
-from pyrocko import util, orthodrome, moment_tensor
+from pyrocko import orthodrome, moment_tensor
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
@@ -24,6 +24,12 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         qg.QStyledItemDelegate.__init__(self, *args, **kwargs)
 
+    def displayText(self, value, locale):
+        if (value.type() == qc.QVariant.DateTime):
+            return value.toDateTime().toString('yyyy-MM-dd HH:mm:ss.zzz')
+        else:
+            return value.toString()
+
 
 class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     '''Sorts the table's columns.'''
@@ -33,11 +39,7 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
         self.sort(1, qc.Qt.DescendingOrder)
 
     def lessThan(self, left, right):
-        left_column = left.column()
-        if left_column == _column_mapping['Time']:
-            return util.stt(str(left.data().toString())) > \
-                util.stt(str(right.data().toString()))
-        elif left_column == _column_mapping['Label']:
+        if left.column() in [1, 3]:
             return left > right
         else:
             return left.data().toFloat()[0] > right.data().toFloat()[0]
@@ -125,6 +127,8 @@ class MarkerTableView(qg.QTableView):
     def toggle_columns(self):
         '''Toggle columns depending in checked state. '''
         width = 0
+        want_distances = False
+        want_angles = False
         for header, ca in self.column_actions.items():
             hide = not ca.isChecked()
             self.setColumnHidden(self.menu_items[header], hide)
@@ -132,13 +136,16 @@ class MarkerTableView(qg.QTableView):
                 self.setColumnHidden(self.menu_items[header]+1, hide)
             if not hide:
                 width += _header_sizes[self.menu_labels.index(header)]
-            if header in ['Distance [km]', 'Kagan Angle [deg]']:
-                p = self.pile_viewer
-                active_event = p.get_active_event_marker()
-                if active_event:
-                    i = p.markers.index(p.get_active_event_marker())
-                    self.model().sourceModel().update_distances_and_angles(
-                        [[i]])
+            if header == 'Distance [km]':
+                want_distances = True
+            elif header == 'Kagan Angle [deg]':
+                want_angles = True
+        p = self.pile_viewer
+        active_event = p.get_active_event_marker()
+        if active_event:
+            i = p.markers.index(p.get_active_event_marker())
+            self.model().sourceModel().update_distances_and_angles(
+                [[i]], want_distances=want_distances, want_angles=want_angles)
         self.parent().setMinimumWidth(width)
 
 
@@ -205,74 +212,79 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
         if not self.pile_viewer:
             return qc.QVariant()
+
         if role == qc.Qt.DisplayRole:
             imarker = index.row()
             marker = self.pile_viewer.markers[imarker]
             s = ''
-            if index.column() == _column_mapping['T']:
-                if isinstance(marker, EventMarker):
-                    s = 'E'
-                elif isinstance(marker, PhaseMarker):
-                    s = 'P'
+            if index.column() == _column_mapping['Time']:
+                return qc.QVariant(
+                    qc.QDateTime.fromMSecsSinceEpoch(marker.tmin*1000))
 
-            elif index.column() == _column_mapping['Time']:
-                s = util.time_to_str(marker.tmin)
+            elif index.column() == _column_mapping['T']:
+                if isinstance(marker, EventMarker):
+                    s = qc.QString('E')
+                elif isinstance(marker, PhaseMarker):
+                    s = qc.QString('P')
 
             elif index.column() == _column_mapping['M']:
                 if isinstance(marker, EventMarker):
                     e = marker.get_event()
                     if e.moment_tensor is not None:
-                        s = '%2.1f' % (e.moment_tensor.magnitude)
+                        s = round(e.moment_tensor.magnitude, 1)
                     elif e.magnitude is not None:
-                        s = '%2.1f' % (e.magnitude)
+                        s = round(e.magnitude, 1)
 
             elif index.column() == _column_mapping['Label']:
                 if isinstance(marker, EventMarker):
-                    s = str(marker.label())
+                    s = qc.QString(marker.label())
                 elif isinstance(marker, PhaseMarker):
-                    s = str(marker.get_label())
+                    s = qc.QString(marker.get_label())
 
             elif index.column() == _column_mapping['Depth [km]']:
                 if isinstance(marker, EventMarker):
                     d = marker.get_event().depth
                     if d is not None:
-                        s = '{0:4.1f}'.format(marker.get_event().depth/1000.)
+                        s = round(marker.get_event().depth/1000., 1)
 
             elif index.column() == _column_mapping['Lat']:
                 if isinstance(marker, EventMarker):
-                    s = '{0:4.2f}'.format(marker.get_event().lat)
+                    s = round(marker.get_event().lat, 2)
 
             elif index.column() == _column_mapping['Lon']:
                 if isinstance(marker, EventMarker):
-                    s = '{0:4.2f}'.format(marker.get_event().lon)
+                    s = round(marker.get_event().lon, 2)
 
             elif index.column() == _column_mapping['Kind']:
-                s = '{:d}'.format(marker.kind)
+                s = marker.kind
 
             elif index.column() == _column_mapping['Dist [km]']:
                 if marker in self.distances.keys():
-                    s = '{0:6.1f}'.format(self.distances[marker])
+                    s = self.distances[marker]
 
             elif index.column() == _column_mapping['Kagan Angle [deg]']:
                 if marker in self.kagan_angles.keys():
-                    s = '{0:6.1f}'.format(self.kagan_angles[marker])
+                    s = round(self.kagan_angles[marker], 1)
 
-            return qc.QVariant(qc.QString(s))
+            return qc.QVariant(s)
 
         return qc.QVariant()
 
-    def update_distances_and_angles(self, indices=None):
+    def update_distances_and_angles(self, indices=None, want_angles=False,
+                                    want_distances=False):
         '''Calculate and update distances and kagan angles between events.
 
         :param indices: list of lists of indices (optional)
 
         Ideally, indices are consecutive for best performance.'''
-        want_angles = not self.marker_table_view.isColumnHidden(
-            _column_mapping['Kagan Angle [deg]'])
-        want_distance = not self.marker_table_view.isColumnHidden(
-            _column_mapping['Dist [km]'])
+        want_angles = want_angles or \
+            not self.marker_table_view.isColumnHidden(
+                _column_mapping['Kagan Angle [deg]'])
+        want_distances = want_distances or \
+            not self.marker_table_view.isColumnHidden(
+                _column_mapping['Dist [km]'])
 
-        if not (want_distance or want_angles):
+        if not (want_distances or want_angles):
             return
 
         indices = indices or [[]]
@@ -301,7 +313,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
             events = [em.get_event() for em in emarkers]
             nevents = len(events)
 
-        if want_distance:
+        if want_distances:
             lats = num.zeros(nevents)
             lons = num.zeros(nevents)
             for i in xrange(nevents):
@@ -315,6 +327,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
             dists = orthodrome.distance_accurate50m_numpy(
                 lats, lons, olats, olons)
             dists /= 1000.
+            dists = map(lambda x: round(x, 1), dists)
             self.distances = dict(zip(emarkers, dists))
 
         if want_angles:
