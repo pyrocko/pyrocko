@@ -26,7 +26,7 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
 
     def displayText(self, value, locale):
         if (value.type() == qc.QVariant.DateTime):
-            return value.toDateTime().toString('yyyy-MM-dd HH:mm:ss.zzz')
+            return value.toDateTime().toUTC().toString('yyyy-MM-dd HH:mm:ss.zzz')
         else:
             return value.toString()
 
@@ -419,7 +419,6 @@ class MarkerEditor(qg.QFrame):
 
     def __init__(self, *args, **kwargs):
         qg.QFrame.__init__(self, *args, **kwargs)
-
         layout = qg.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
