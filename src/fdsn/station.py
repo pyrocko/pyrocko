@@ -901,10 +901,17 @@ class FDSNStationXML(Object):
 
     xmltagname = 'FDSNStationXML'
 
-    def get_pyrocko_stations(self, nslcs=None, time=None, timespan=None,
+    def get_pyrocko_stations(self, nslcs=None, nsls=None,
+                             time=None, timespan=None,
                              inconsistencies='warn'):
 
         assert inconsistencies in ('raise', 'warn')
+
+        if nslcs is not None:
+            nslcs = set(nslcs)
+
+        if nsls is not None:
+            nsls = set(nsls)
 
         tt = ()
         if time is not None:
@@ -944,6 +951,8 @@ class FDSNStationXML(Object):
                             continue
 
                         nsl = network.code, station.code, loc
+                        if nsls is not None and nsl not in nsls:
+                            continue
 
                         pstations.append(
                             pyrocko_station_from_channels(
