@@ -34,15 +34,17 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
 class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     '''Sorts the table's columns.'''
 
-    def __init__(self):
-        qg.QSortFilterProxyModel.__init__(self)
+    def __init__(self, *args, **kwargs):
+        qg.QSortFilterProxyModel.__init__(self, *args, **kwargs)
         self.sort(1, qc.Qt.DescendingOrder)
 
     def lessThan(self, left, right):
-        if left.column() in [1, 3]:
-            return left > right
+        if left.column() == 1:
+            return left.data().toDateTime() < right.data().toDateTime()
+        elif left.column() == 3:
+            return left.data().toString() < right.data().toString()
         else:
-            return left.data().toFloat()[0] > right.data().toFloat()[0]
+            return left.data().toFloat()[0] < right.data().toFloat()[0]
 
 
 class MarkerTableView(qg.QTableView):
@@ -214,8 +216,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
             return qc.QVariant()
 
         if role == qc.Qt.DisplayRole:
-            imarker = index.row()
-            marker = self.pile_viewer.markers[imarker]
+            marker = self.pile_viewer.markers[index.row()]
             s = ''
             if index.column() == _column_mapping['Time']:
                 return qc.QVariant(
@@ -465,11 +466,6 @@ class MarkerEditor(qg.QFrame):
             self.pile_viewer,
             qc.SIGNAL('changed_marker_selection'),
             self.update_selection_model)
-
-        self.connect(
-            self.pile_viewer,
-            qc.SIGNAL('markers_changed'),
-            self.marker_table_view.viewport().repaint)
 
         self.marker_table_view.toggle_columns()
 
