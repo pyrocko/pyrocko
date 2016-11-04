@@ -55,13 +55,14 @@ class FDSNStationTestCase(unittest.TestCase):
         tmax = stt('2014-01-02 00:00:00')
         sx = fdsn_ws.station(
             site='iris',
-            network='IU',
+            network='II',
             channel='?HZ',
             startbefore=tmin,
             endafter=tmax,
             level='channel', format='text', matchtimeseries=True)
 
         for nslc in sx.nslc_code_list:
+            print nslc
             net, sta, loc, cha = nslc
             sxr = fdsn_ws.station(
                 site='iris',
@@ -92,7 +93,8 @@ class FDSNStationTestCase(unittest.TestCase):
 
             fo.close()
 
-            resp_sx = sxr.get_pyrocko_response(nslc, timespan=(tmin, tmax))
+            resp_sx = sxr.get_pyrocko_response(nslc, timespan=(tmin, tmax),
+                fake_input_units='M/S')
             resp_er = trace.Evalresp(fn, target='vel', nslc_id=nslc, time=tmin)
             fmin = 0.001
             fmax = 100.

@@ -3,6 +3,7 @@ import logging
 import datetime
 import calendar
 import re
+import math
 
 import numpy as num
 
@@ -458,15 +459,25 @@ class PolesZeros(BaseFilter):
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
 
     def get_pyrocko_response(self):
-        if self.pz_transfer_function_type != 'LAPLACE (RADIANS/SECOND)':
+        if self.pz_transfer_function_type not in (
+                'LAPLACE (RADIANS/SECOND)',
+                'LAPLACE (HERTZ)'):
+
             raise NoResponseInformation(
                 'cannot convert PoleZero response of type %s' %
                 self.pz_transfer_function_type)
 
+        factor = 1.0
+        cfactor = 1.0
+        if self.pz_transfer_function_type == 'LAPLACE (HERTZ)':
+            factor = 2. * math.pi
+            cfactor = (2. * math.pi)**(
+                len(self.pole_list) - len(self.zero_list))
+
         resp = trace.PoleZeroResponse(
-            constant=self.normalization_factor,
-            zeros=[z.value() for z in self.zero_list],
-            poles=[p.value() for p in self.pole_list])
+            constant=self.normalization_factor*cfactor,
+            zeros=[z.value()*factor for z in self.zero_list],
+            poles=[p.value()*factor for p in self.pole_list])
 
         computed_normalization_factor = self.normalization_factor / abs(
             resp.evaluate(num.array([self.normalization_frequency.value]))[0])
@@ -570,10 +581,6 @@ class ResponseStage(Object):
     def get_pyrocko_response(self, nslc):
         responses = []
         for pzs in self.poles_zeros_list:
-            if pzs.pz_transfer_function_type != 'LAPLACE (RADIANS/SECOND)':
-                logger.debug('unhandled response at stage %i' % self.number)
-                continue
-
             pz = pzs.get_pyrocko_response()
             responses.append(pz)
 
