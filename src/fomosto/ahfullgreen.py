@@ -34,10 +34,10 @@ def nextpow2(i):
 
 def example_model():
     material = cake.Material(vp=3000., vs=1000., rho=3000., qp=200., qs=100.)
-    layer = cake.HomogeneousLayer(
-        ztop=0., zbot=30*km, m=material, name='fullspace')
     mod = cake.LayeredModel()
-    mod.append(layer)
+    mod.append(cake.Surface(0., material))
+    mod.append(cake.HomogeneousLayer(
+        ztop=0., zbot=30*km, m=material))
     return mod
 
 
@@ -80,6 +80,18 @@ class Interrupted(gf.store.StoreError):
         return 'Interrupted.'
 
 
+def model_parameters_zero_d(model):
+    elements = list(model.elements())
+
+    if len(elements) != 2:
+        raise AhfullgreenError('More than one layer in earthmodel')
+    if not isinstance(elements[1], cake.HomogeneousLayer):
+        raise AhfullgreenError('Layer has to be a HomogeneousLayer')
+
+    l = elements[1].m
+    return (l.vp, l.vs, l.rho, l.qp, l.qs)
+    
+
 class AhfullgreenRunner:
 
     def __init__(self, tmp=None, keep_tmp=False):
@@ -89,15 +101,7 @@ class AhfullgreenRunner:
         self.traces = []
 
     def run(self, config):
-        elements = list(config.earthmodel_1d.elements())
-
-        if len(elements) != 2:
-            raise AhfullgreenError('More than one layer in earthmodel')
-        if not isinstance(elements[1], cake.HomogeneousLayer):
-            raise AhfullgreenError('Layer has to be a HomogeneousLayer')
-
-        l = elements[1].m
-        vp, vs, density, qp, qs = (l.vp, l.vs, l.rho, l.qp, l.qs)
+        vp, vs, density, qp, qs = model_parameters_zero_d(config.earthmodel_1d)
         f = (0., 0., 0.)
         m6 = config.source_mech.m6()
         ns = config.nsamples
@@ -323,48 +327,63 @@ class AhfullGFBuilder(gf.builder.Builder):
                     (index+1, self.nblocks))
 
 
-def init(store_dir, variant):
-    assert variant is None
+def init(store_dir, variant, store_id=None):
+    if variant is None:
+        variant = 'type_a'
+        
+    assert variant in ('type_a', 'type_b') 
+
 
     modelling_code_id = 'ahfullgreen'
 
-    ahfull = AhfullgreenConfig()
-    ahfull.time_region = (
-        gf.Timing('begin-2'),
-        gf.Timing('end+2'))
+    model = example_model()
 
-    ahfull.cut = (
-        gf.Timing('begin-2'),
-        gf.Timing('end+2'))
+    vp, vs, density, qp, qs = model_parameters_zero_d(model)
 
-    store_id = os.path.basename(os.path.realpath(store_dir))
+    ahfull = AhfullgreenConfig(
+        time_region=(
+            gf.Timing('{vel:%g}-2' % (vp/1000.)),
+            gf.Timing('{vel:%g}+2' % (vs/1000.))))
+        #cut=(
+        #    gf.Timing('{vel:%g}-2' % (vp/1000.)),
+        #    gf.Timing('{vel:%g}+2' % (vs/1000.))))
 
-    config = gf.meta.ConfigTypeA(
+    if store_id is None:
+        store_id = os.path.basename(os.path.realpath(store_dir))
+
+    config_cls = {
+        'type_a': gf.meta.ConfigTypeA,
+        'type_b': gf.meta.ConfigTypeB}[variant]
+    
+    if variant == 'type_a':
+        receivers = dict(
+            receiver_depth=0*km)
+    elif variant == 'type_b':
+        receivers = dict(
+            receiver_depth_min=0*km,
+            receiver_depth_max=10*km,
+            receiver_depth_delta=10*km)
+
+    config = config_cls(
         id=store_id,
         ncomponents=10,
         sample_rate=20.,
-        receiver_depth=0*km,
         source_depth_min=1*km,
         source_depth_max=10*km,
         source_depth_delta=1*km,
         distance_min=1*km,
         distance_max=20*km,
         distance_delta=1*km,
-        earthmodel_1d=example_model(),
+        earthmodel_1d=model,
         modelling_code_id=modelling_code_id,
         tabulated_phases=[
             gf.meta.TPDef(
-                id='begin',
-                definition='p'),
+                id='anyP',
+                definition='p,p\\,P,P\\'),
             gf.meta.TPDef(
-                id='end',
-                definition='s'),
-            gf.meta.TPDef(
-                id='p',
-                definition='p'),
-            gf.meta.TPDef(
-                id='s',
-                definition='s')])
+                id='anyS',
+                definition='s,s\\,S,S\\')],
+        **receivers)
 
     config.validate()
     return gf.store.Store.create_editables(
