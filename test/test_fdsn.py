@@ -94,7 +94,7 @@ class FDSNStationTestCase(unittest.TestCase):
             fo.close()
 
             resp_sx = sxr.get_pyrocko_response(nslc, timespan=(tmin, tmax),
-                fake_input_units='M/S')
+                                               fake_input_units='M/S')
             resp_er = trace.Evalresp(fn, target='vel', nslc_id=nslc, time=tmin)
             fmin = 0.001
             fmax = 100.
