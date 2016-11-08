@@ -1,13 +1,15 @@
 import numpy as num
+import math
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker
 from pyrocko import orthodrome, moment_tensor
+from pyrocko.beachball import mt2beachball
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
-    'Kagan Angle [deg]']
+    'Kagan Angle [deg]', 'MT']
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
@@ -16,19 +18,125 @@ _string_header = (_column_mapping['Time'], _column_mapping['Label'])
 _header_sizes = [70] * len(_header_data)
 _header_sizes[0] = 40
 _header_sizes[1] = 190
+_header_sizes[10] = 30
+
+
+class BeachballWidget(qg.QWidget):
+
+    def __init__(self, moment_tensor=None, *args, **kwargs):
+        qg.QWidget.__init__(self, *args, **kwargs)
+        self.colors = {'white': qg.QColor(255, 255, 255, 255),
+                       'red': qg.QColor(255, 0, 0, 255),
+                       'green': qg.QColor(0, 255, 0, 255),
+                       'none': None}
+        self.brushs_pens = {}
+        for k, c in self.colors.items():
+            self.brushs_pens[k] = (qg.QBrush(c), qg.QPen(c))
+        self.moment_tensor = moment_tensor
+        self.setGeometry(0, 0, 50, 50)
+
+    def paintEvent(self, e):
+        center = e.rect().center()
+        painter = qg.QPainter(self)
+        data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
+                            position=(center.x(), center.y()))
+        for pdata in data:
+            paths, fill, edges, thickness = pdata
+            brush, pen = self.brushs_pens[fill]
+            polygon = qg.QPolygonF()
+
+            for x, y in paths:
+                polygon.append(qc.QPointF(x, y))
+
+            painter.save()
+            painter.setBrush(brush)
+            pen.setWidth(1)
+            painter.setPen(pen)
+            painter.drawPolygon(polygon)
+            painter.restore()
+
+    def to_qpixmap(self):
+        return qg.QPixmap().grabWidget(self, self.rect())
 
 
 class MarkerItemDelegate(qg.QStyledItemDelegate):
-    '''Takes are of the table's style.'''
+    '''Takes care of the table's style.'''
 
     def __init__(self, *args, **kwargs):
         qg.QStyledItemDelegate.__init__(self, *args, **kwargs)
+        self.colors = {'white': qg.QColor(255, 255, 255, 255),
+                       'red': qg.QColor(255, 0, 0, 255),
+                       'none': None}
+        self.c_alignment = qc.Qt.AlignHCenter
+        self.bbcache = qg.QPixmapCache()
+
+    def initStyleOption(self, option, index):
+        super(MarkerItemDelegate,self).initStyleOption(option, index)
+        if option.state & qg.QStyle.State_Selected:
+            option.state &= ~ qg.QStyle.State_Selected
+            option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 255))
+
+    def paint(self, painter, option, index):
+        if index.column() == 10:
+            mt = self.get_mt_from_index(index)
+            if mt:
+                key = qc.QString(''.join(map(lambda x: str(round(x, 1)), mt.m6())))
+                pixmap = qg.QPixmap()
+                found = self.bbcache.find(key, pixmap)
+                painter.save()
+                if found:
+                    pixmap = pixmap.scaled(option.rect.size(),
+                                           aspectRatioMode=qc.Qt.KeepAspectRatioByExpanding)
+                else:
+                    pixmap = BeachballWidget(mt).to_qpixmap()
+                    self.bbcache.insert(key, pixmap)
+                painter.drawPixmap(option.rect, pixmap)
+                painter.restore()
+
+        qg.QStyledItemDelegate.paint(self,painter, option, index)
 
     def displayText(self, value, locale):
         if (value.type() == qc.QVariant.DateTime):
             return value.toDateTime().toUTC().toString('yyyy-MM-dd HH:mm:ss.zzz')
         else:
             return value.toString()
+
+    def get_mt_from_index(self, index):
+        tv = self.parent()
+        pf = tv.model()
+        pv = tv.pile_viewer
+        marker = pv.markers[tv.model().mapToSource(index).row()]
+        if isinstance(marker, EventMarker):
+            return marker.get_event().moment_tensor
+        else:
+            return None
+
+    def draw_beachball(self, painter, index, option):
+
+        mt = self.get_mt_from_index(index)
+        if not mt:
+            return
+        data = self.bbcache.get(mt._m, None)
+        center = option.rect.center()
+        if not data:
+            data = mt2beachball(mt, size=1)
+            self.bbcache[mt._m] = data
+
+        for ip, pdata in enumerate(data):
+            paths, fill, edges, thickness = pdata
+            color = self.colors[fill]
+            polygon = qg.QPolygonF()
+            for x, y in paths:
+                polygon.append(qc.QPointF(x+center.x(), y+center.y()))
+
+            brush = qg.QBrush(color)
+            painter.save()
+            painter.setBrush(brush)
+            pen = qg.QPen(color)
+            pen.setWidth(thickness)
+            painter.setPen(pen)
+            painter.drawPolygon(polygon)
+            painter.restore()
 
 
 class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
@@ -71,12 +179,12 @@ class MarkerTableView(qg.QTableView):
 
         self.header_menu = qg.QMenu(self)
 
-        show_initially = ['Type', 'Time', 'Magnitude']
+        show_initially = ['Type', 'Time', 'Magnitude', 'MT']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
-                            'Kagan Angle [deg]']
+                            'Kagan Angle [deg]', 'MT']
         self.menu_items = dict(zip(self.menu_labels,
-                                   [0, 1, 2, 3, 4, 5, 7, 8, 9]))
+                                   [0, 1, 2, 3, 4, 5, 7, 8, 9, 10]))
 
         self.editable_columns = [2, 3, 4, 5, 6, 7]
 
@@ -215,8 +323,9 @@ class MarkerTableModel(qc.QAbstractTableModel):
         if not self.pile_viewer:
             return qc.QVariant()
 
+        marker = self.pile_viewer.markers[index.row()]
+
         if role == qc.Qt.DisplayRole:
-            marker = self.pile_viewer.markers[index.row()]
             s = ''
             if index.column() == _column_mapping['Time']:
                 return qc.QVariant(
@@ -266,6 +375,9 @@ class MarkerTableModel(qc.QAbstractTableModel):
             elif index.column() == _column_mapping['Kagan Angle [deg]']:
                 if marker in self.kagan_angles.keys():
                     s = round(self.kagan_angles[marker], 1)
+
+            elif index.column() == _column_mapping['MT']:
+                return qc.QVariant()
 
             return qc.QVariant(s)
 
@@ -442,7 +554,7 @@ class MarkerEditor(qg.QFrame):
             header.setResizeMode(i_s, qg.QHeaderView.Interactive)
             header.resizeSection(i_s, s)
 
-        header.setStretchLastSection(True)
+        header.setStretchLastSection(False)
 
         self.selection_model = qg.QItemSelectionModel(self.proxy_filter)
         self.marker_table_view.setSelectionModel(self.selection_model)
