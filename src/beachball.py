@@ -435,6 +435,46 @@ def choose_transform(axes, size_units, position, size):
 
     return transform, position, size
 
+def mt2beachball(
+        mt,
+        beachball_type='deviatoric',
+        position=(0., 0.),
+        size=None,
+        color_t='red',
+        color_p='white',
+        edgecolor='black',
+        linewidth=2,
+        projection='lambert'):
+
+    position = num.asarray(position, dtype=num.float)
+    size = size or 1
+    mt = deco_part(mt, beachball_type)
+
+    eig = mt.eigensystem()
+    if eig[0] == 0. and eig[1] == 0. and eig[2] == 0:
+        raise BeachballError('eigenvalues are zero')
+
+    data = []
+    for (group, patches, patches_lower, patches_upper,
+            lines, lines_lower, lines_upper) in eig2gx(eig):
+
+        if group == 'P':
+            color = color_p
+        else:
+            color = color_t
+
+        for poly in patches_upper:
+            verts = project(poly, projection)[:, ::-1] * size + \
+                position[NA, :]
+            data.append((verts, color, color, 1.0))
+
+        for poly in lines_upper:
+            verts = project(poly, projection)[:, ::-1] * size + \
+                position[NA, :]
+            data.append((verts, 'none', edgecolor, linewidth))
+    return data
+
+
 
 def plot_beachball_mpl(
         mt, axes,
