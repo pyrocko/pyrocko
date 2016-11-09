@@ -685,6 +685,92 @@ class GFTestCase(unittest.TestCase):
             store.t('{cake:P}', args) + store.t('{vel_surface:10}', args),
             0.1)
 
+    def test_timing_evaluate(self):
+        phase_defs = 'abcdefg'
+        args = "dummy"
+
+        times = {}
+        times_list = []
+        for phase_def in phase_defs:
+            times_list.append(num.random.random())
+            times[str("stored:" + phase_def)] = {args: times_list[-1]}
+
+        times_min = num.min(times_list)
+        times_max = num.max(times_list)
+
+        def get_phase(phase_def):
+
+            t = times[phase_def]
+
+            def return_time(args):
+                return t[args]
+
+            return return_time
+
+        tf = gf.Timing(
+            'first('+'|'.join([str(pd) for pd in phase_defs]) + ')-10')
+        tl = gf.Timing(
+            'last('+'|'.join([str(pd) for pd in phase_defs]) + ')+10')
+
+        first_onset = tf.evaluate(get_phase, args)
+        last_onset = tl.evaluate(get_phase, args)
+
+        self.assertEqual(first_onset, times_min-10)
+        self.assertEqual(last_onset, times_max+10)
+
+    def test_timing_evaluate_many(self):
+        phase_defs = 'abcdefg'
+        nvals = 20
+        args = range(nvals)
+        times = {}
+        times_list = []
+
+        min_times = num.empty(nvals)
+        min_times[:] = num.nan
+        max_times = num.empty(nvals)
+        max_times[:] = num.nan
+
+        for phase_def in phase_defs:
+            data = num.random.random(nvals)
+            data[num.random.randint(0, nvals)] = num.nan
+            times_list.append(data)
+            times[str("stored:" + phase_def)] = dict(zip(args, times_list[-1]))
+
+            min_times = num.nanmin((min_times, times_list[-1]), 0)
+            max_times = num.nanmax((max_times, times_list[-1]), 0)
+
+        def get_phase(phase_def):
+            t = times[phase_def]
+
+            def return_times(args):
+                vals = num.array([t[k] for k in args])
+                return vals
+
+            return return_times
+
+        tf = gf.Timing('first('+'|'.join([str(pd) for pd in phase_defs])+')+2.5')
+        tl = gf.Timing('last('+'|'.join([str(pd) for pd in phase_defs])+')-2.5')
+
+        first_onset = tf.evaluate(get_phase, args)
+        last_onset = tl.evaluate(get_phase, args)
+
+        self.assertTrue((first_onset == min_times+2.5).all())
+        self.assertTrue((last_onset == max_times-2.5).all())
+        self.assertTrue(len(first_onset) == nvals)
+        self.assertTrue(len(last_onset) == nvals)
+
+        tf = gf.Timing('first{stored:'+'|stored:'.join([str(pd) for pd in
+                                                        phase_defs])+'}')
+        tl = gf.Timing('last{stored:'+'|stored:'.join([str(pd) for pd in
+                                                       phase_defs])+'}')
+
+        first_onset = tf.evaluate(get_phase, args)
+        last_onset = tl.evaluate(get_phase, args)
+
+        self.assertTrue((first_onset == min_times).all())
+        self.assertTrue((last_onset == max_times).all())
+        self.assertTrue(len(first_onset) == nvals)
+        self.assertTrue(len(last_onset) == nvals)
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
