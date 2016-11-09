@@ -4,6 +4,8 @@
 
 /* security limit for length of traces, shifts and offsets (samples) */
 #define SLIMIT 1000000
+#define D2R 180. * M_PI
+#define R2D 180. / M_PI
 
 #define inlimits(i) (-SLIMIT <= (i) && (i) <= SLIMIT)
 #define inposlimits(i) (0 <= (i) && (i) <= SLIMIT)
@@ -129,6 +131,42 @@ const char* store_error_names[] = {
 #define REC_EMPTY 0
 #define REC_ZERO 1
 #define REC_SHORT 2
+
+int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_intp* shape_want) {
+    if (!PyArray_Check(o)) {
+        PyErr_SetString(Error, "not a NumPy array" );
+        return 0;
+    }
+
+    if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
+        PyErr_SetString(Error, "array of unexpected type");
+        return 0;
+    }
+
+    if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
+        PyErr_SetString(Error, "array is not contiguous or not well behaved");
+        return 0;
+    }
+
+    if (size_want != -1 && size_want != PyArray_SIZE((PyArrayObject*)o)) {
+        PyErr_SetString(Error, "array is of wrong size");
+        return 0;
+    }
+    if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)o)) {
+        PyErr_SetString(Error, "array is of wrong ndim");
+        return 0;
+    }
+
+    if (ndim_want != -1) {
+        for (i=0; i<ndim_want; i++) {
+            if shape_want[i] != -1 && shape_want[i] != PyArray_SHAPE((PyArrayObject*)o)[i] {
+                PyErr_SetString(Error, "array is of wrong shape");
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
 
 static trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL };
 static store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL, NULL };
@@ -642,6 +680,50 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("Nififf", array, trace.itmin, store->deltat,
                          trace.is_zero, trace.begin_value, trace.end_value);
 }
+static PyObject* w_make_weights_elastic10_mt(PyObject *dummy, PyObject *args) {
+    PyObject *source_coords, *receiver_coords;
+    PyObject *sources_arr, *receivers_arr, *ms_arr;
+    float32_t *sources, *receivers;
+    int nsrc, nrecv;
+    npy_intp shape_want_coords[2] = {-1, 5};
+    npy_intp shape_want_ms[2] = {-1, 6};
+
+
+    if (!PyArg_ParseTuple(args, "OOO", &source_coords_arr, &ms_arr, &receiver_coords_arr)) {
+        return NULL;
+    }
+    
+    if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        return NULL;
+    }
+
+    if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
+        return NULL;
+    }
+
+    if (!good_array(receiver_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        return NULL;
+    }
+
+    sources = PyArray_DATA(sources_arr);
+    ms = 
+    receivers = PyArray_DATA(receivers_arr);
+    
+    // nrecv = sizeof(receivers);
+    // sources = PyArray_FROM_OTF(arg_sources, NPY_DOUBLE, NPY_IN_ARRAY);
+    // printf("%f", sources[0]);
+    return 
+}
+
+static double cosdelta(double alat, double alon, double blat, double blon){
+    return min(1., sin(alat*D2R) *sin(blat*D2R) + 
+            cos(alat*D2R) * cos(blat*D2R) * cos(D2R* (blon - alon)));
+}
+
+static double azimuth(double alat,double alon, double blat, double blon){
+    return atan2((cos(D2R * alon) * cos(D2R * blat) * sin(D2R * (blon-alon))),
+            (sin(D2R * blat)-sin(D2R * alat)) * cosdelta(alat, alon, blat, blon));
+}
 
 static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     PyObject *capsule, *irecords_arr, *delays_arr, *weights_arr;
@@ -756,6 +838,9 @@ static PyMethodDef StoreExtMethods[] = {
 
     {"store_sum", w_store_sum, METH_VARARGS,
         "Get weight-and-delay-sum of GF traces." },
+
+    {"make_weights_elastic10_mt", w_make_weights_elastic10_mt, METH_VARARGS,
+        "help!" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
