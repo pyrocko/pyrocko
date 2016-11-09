@@ -136,33 +136,33 @@ const char* store_error_names[] = {
 
 int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_intp* shape_want) {
     if (!PyArray_Check(o)) {
-        PyErr_SetString(Error, "not a NumPy array" );
+        PyErr_SetString(StoreExtError, "not a NumPy array" );
         return 0;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(Error, "array of unexpected type");
+        PyErr_SetString(StoreExtError, "array of unexpected type");
         return 0;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(Error, "array is not contiguous or not well behaved");
+        PyErr_SetString(StoreExtError, "array is not contiguous or not well behaved");
         return 0;
     }
 
     if (size_want != -1 && size_want != PyArray_SIZE((PyArrayObject*)o)) {
-        PyErr_SetString(Error, "array is of wrong size");
+        PyErr_SetString(StoreExtError, "array is of wrong size");
         return 0;
     }
     if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)o)) {
-        PyErr_SetString(Error, "array is of wrong ndim");
+        PyErr_SetString(StoreExtError, "array is of wrong ndim");
         return 0;
     }
 
     if (ndim_want != -1) {
-        for (i=0; i<ndim_want; i++) {
-            if shape_want[i] != -1 && shape_want[i] != PyArray_SHAPE((PyArrayObject*)o)[i] {
-                PyErr_SetString(Error, "array is of wrong shape");
+        for (int i=0; i<ndim_want; i++) {
+            if (shape_want[i] != -1 && shape_want[i] != PyArray_SHAPE((PyArrayObject*)o)[i]) {
+                PyErr_SetString(StoreExtError, "array is of wrong shape");
                 return 0;
             }
         }
@@ -885,22 +885,13 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
         PyErr_SetString(StoreExtError, "invalid cstore argument");
         return NULL;
     }
-    if (!PyArray_Check(irecords_arr) ||
-            NPY_UINT64 != PyArray_TYPE((PyArrayObject*)irecords_arr)) {
-        PyErr_SetString(StoreExtError,
-            "store_sum: 'irecords' must be a NumPy array of type uint64");
+    if (!good_array(irecords_arr, NPY_UINT64, -1, -1, -1)) {
         return NULL;
     }
-    if (!PyArray_Check(delays_arr) ||
-            NPY_FLOAT32 != PyArray_TYPE((PyArrayObject*)delays_arr)) {
-        PyErr_SetString(StoreExtError,
-            "store_sum: 'delays' must be a NumPy array of type float32");
+    if (!good_array(delays_arr, NPY_FLOAT32, -1, -1, -1)) {
         return NULL;
     }
-    if (!PyArray_Check(weights_arr) ||
-            NPY_FLOAT32 != PyArray_TYPE((PyArrayObject*)weights_arr)) {
-        PyErr_SetString(StoreExtError,
-            "store_sum: 'weights' must be a NumPy array of type float32");
+    if (!good_array(weights_arr, NPY_FLOAT32, -1, -1, -1)) {
         return NULL;
     }
     if (!inlimits(itmin)) {
