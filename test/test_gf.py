@@ -708,7 +708,7 @@ class GFTestCase(unittest.TestCase):
 
         return self._dummy_store
 
-    def test_make_weights_elastic10(self):
+    def test_make_weights_elastic10_benchmark(self):
         from pyrocko.gf import store_ext
         store = self.dummy_store()
         for xxx in [0., 1*km, 2*km, 5*km]:
@@ -730,9 +730,37 @@ class GFTestCase(unittest.TestCase):
                 t0 = time.time()
                 for dsource, target in zip(dsources, targets):
                     xx = dsource.make_weights(target, 'elastic10', implementation=implementation)
+                    print xx
 
                 t1 = time.time()
                 print implementation, t1 - t0
+
+    def test_make_weights_elastic10(self):
+        from pyrocko.gf import store_ext
+        store = self.dummy_store()
+        for xxx in [0., 1*km, 2*km, 5*km]:
+            source = gf.RectangularSource(
+                    lat=0., lon=0., depth=10*km, north_shift=0.1, east_shift=0.1, width=xxx, length=xxx)
+
+            targets = [gf.Target(
+                lat=random.random()*10.,
+                lon=random.random()*10,
+                north_shift=0.1,
+                east_shift=0.1) for x in xrange(1000)]
+
+            dsources = [
+                source.discretize_basesource(store, target) for target in targets]
+
+            for dsource, target in zip(dsources, targets):
+                print dsource, target
+                result_c = list(dsource.make_weights(target, 'elastic10', implementation='c'))
+                result_n = list(dsource.make_weights(target, 'elastic10', implementation='numpy'))
+
+                for i in xrange(len(result_c)):
+                    self.assertEqual(result_c[i][0], result_n[i][0])
+                    num.testing.assert_array_almost_equal(result_c[i][1], result_n[i][1], 8)
+                    num.testing.assert_array_almost_equal(result_c[i][2], result_n[i][2], 8)
+
 
 
 if __name__ == '__main__':
