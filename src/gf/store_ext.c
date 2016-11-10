@@ -4,8 +4,11 @@
 
 /* security limit for length of traces, shifts and offsets (samples) */
 #define SLIMIT 1000000
-#define D2R 180. * M_PI
-#define R2D 180. / M_PI
+
+#define D2R (M_PI / 180.)
+#define R2D (1.0 / D2R)
+
+#define EARTHRADIUS 6371000.0
 
 #define inlimits(i) (-SLIMIT <= (i) && (i) <= SLIMIT)
 #define inposlimits(i) (0 <= (i) && (i) <= SLIMIT)
@@ -32,6 +35,7 @@
 
 typedef npy_float32 gf_dtype;
 typedef npy_float32 float32_t;
+typedef npy_float64 float64_t;
 
 #if (PY_VERSION_HEX >= 0x02070000)
   #define HAVE_CAPSULE
@@ -135,6 +139,8 @@ const char* store_error_names[] = {
 #define NCOMPONENTS_MAX 3
 
 int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_intp* shape_want) {
+    int i;
+
     if (!PyArray_Check(o)) {
         PyErr_SetString(StoreExtError, "not a NumPy array" );
         return 0;
@@ -151,18 +157,18 @@ int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_i
     }
 
     if (size_want != -1 && size_want != PyArray_SIZE((PyArrayObject*)o)) {
-        PyErr_SetString(StoreExtError, "array is of wrong size");
+        PyErr_SetString(StoreExtError, "array is of unexpected size");
         return 0;
     }
     if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)o)) {
-        PyErr_SetString(StoreExtError, "array is of wrong ndim");
+        PyErr_SetString(StoreExtError, "array is of unexpected ndim");
         return 0;
     }
 
     if (ndim_want != -1) {
-        for (int i=0; i<ndim_want; i++) {
-            if (shape_want[i] != -1 && shape_want[i] != PyArray_SHAPE((PyArrayObject*)o)[i]) {
-                PyErr_SetString(StoreExtError, "array is of wrong shape");
+        for (i=0; i<ndim_want; i++) {
+            if (shape_want[i] != -1 && shape_want[i] != PyArray_DIMS((PyArrayObject*)o)[i]) {
+                PyErr_SetString(StoreExtError, "array is of unexpected shape");
                 return 0;
             }
         }
@@ -683,8 +689,82 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
                          trace.is_zero, trace.begin_value, trace.end_value);
 }
 
-float64_t sqr(float64_t x) {
+static float64_t sqr(float64_t x) {
     return x*x;
+}
+
+static float64_t clip(float64_t x, float64_t mi, float64_t ma) {
+    return x < mi ? mi : (x > ma ? ma : x);
+}
+
+static float64_t wrap(float64_t x, float64_t mi, float64_t ma) {
+    return x - floor((x-mi)/(ma-mi)) * (ma-mi);
+}
+
+
+static float64_t cosdelta(float64_t alat, float64_t alon, float64_t blat, float64_t blon) {
+    return min(1., sin(alat*D2R) * sin(blat*D2R) + 
+            cos(alat*D2R) * cos(blat*D2R) * cos(D2R* (blon - alon)));
+}
+
+static void azibazi(float64_t alat, float64_t alon, float64_t blat, float64_t blon, float64_t *azi, float64_t *bazi) {
+    float64_t cd;
+    cd = cosdelta(alat, alon, blat, blon);
+    *azi = R2D * atan2(
+        cos(D2R * alat) * cos(D2R * blat) * sin(D2R * (blon-alon)),
+        sin(D2R * blat) - sin(D2R * alat) * cd);
+    *bazi = R2D * atan2(
+        cos(D2R * blat) * cos(D2R * alat) * sin(D2R * (alon-blon)),
+        sin(D2R * alat) - sin(D2R * blat) * cd);
+}
+
+static void ne_to_latlon(float64_t lat, float64_t lon, float64_t north, float64_t east, float64_t *lat_new, float64_t *lon_new) {
+    float64_t a, b, c, gamma, alphasign, alpha;
+
+    a = sqrt(sqr(north) + sqr(east)) / EARTHRADIUS;
+    gamma = atan2(east, north);
+
+    b = 0.5*M_PI - lat*D2R;
+
+    alphasign = gamma < 0.0 ? -1.0 : 1.0;
+    gamma = fabs(gamma);
+
+    c = acos(clip(cos(a)*cos(b)+sin(a)*sin(b)*cos(gamma), -1., 1.));
+
+    alpha = asin(clip(sin(a)*sin(gamma)/sin(c), -1., 1.));
+    alpha = cos(a) - cos(b)*cos(c) < 0.0 ? (alpha > 0.0 ? M_PI-alpha : -M_PI-alpha) : alpha;
+
+
+    *lat_new = R2D * (0.5*M_PI - c);
+    *lon_new = wrap(lon + R2D*alpha*alphasign, -180., 180.);
+}
+
+static void azibazi4(float64_t *a, float64_t *b, float64_t *azi, float64_t *bazi) {
+    /* azimuth and backazimuth for (lat,lon,north,east) coordinates */
+
+    float64_t alat, alon, anorth, aeast;
+    float64_t blat, blon, bnorth, beast;
+    float64_t alat_eff, alon_eff;
+    float64_t blat_eff, blon_eff;
+    
+    alat = a[0];
+    alon = a[1];
+    anorth = a[2];
+    aeast = a[3];
+    blat = b[0];
+    blon = b[1];
+    bnorth = b[2];
+    beast = b[3];
+
+    if (alat == blat && alon == blon) { /* carthesian */
+        *azi = atan2(beast - aeast, bnorth - anorth) * R2D;
+        *bazi = *azi + 180.0;
+    } else { /* spherical */
+        ne_to_latlon(alat, alon, anorth, aeast, &alat_eff, &alon_eff);
+        ne_to_latlon(blat, blon, bnorth, beast, &blat_eff, &blon_eff);
+        azibazi(alat_eff, alon_eff, blat_eff, blon_eff, azi, bazi);
+        azibazi(blat_eff, blon_eff, alat_eff, alon_eff, bazi, azi);
+    }
 }
 
 static void make_weights_elastic10(
@@ -696,9 +776,17 @@ static void make_weights_elastic10(
         float64_t **ws, 
         uint64_t **gs) {
 
+    static const uint64_t gs0[6] = {0, 1, 2, 8, 3, 4};
+    static const uint64_t gs1[6] = {0, 1, 2, 8, 3, 4};
+    static const uint64_t gs2[4] = {5, 6, 7, 9};
+
+    float64_t azi, bazi, sa, ca, s2a, c2a, sb, cb, f0, f1, f2, f3, f4, f5;
+    size_t ireceiver, isource, im, iw;
+    size_t nsummands[3] = {6, 6, 4};
+
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
         for (isource=0; isource<nsources; isource++) {
-            azibazi(source_coords[isource*5], receiver_coords[ireceiver*5], azi, bazi);
+            azibazi4(&(source_coords[isource*5]), &(receiver_coords[ireceiver*5]), &azi, &bazi);
             sa = sin(azi*D2R);
             ca = cos(azi*D2R);
             s2a = sin(2.0*azi*D2R);
@@ -737,21 +825,28 @@ static void make_weights_elastic10(
             ws[2][iw + 3] = f5;
         }
     }
+
+    memcpy(gs[0], gs0, sizeof(gs0));
+    memcpy(gs[1], gs1, sizeof(gs1));
+    memcpy(gs[2], gs2, sizeof(gs2));
 }
 
 static PyObject* w_make_weights_elastic10_mt(PyObject *dummy, PyObject *args) {
-    PyObject *source_coords, *receiver_coords;
-    PyObject *sources_arr, *receivers_arr, *ms_arr;
-    float64_t *sources, *receivers;
-    int nsrc, nrecv;
+    PyObject *source_coords_arr, *receiver_coords_arr, *ms_arr;
+    float64_t *source_coords, *receiver_coords, *ms;
     npy_intp shape_want_coords[2] = {-1, 5};
     npy_intp shape_want_ms[2] = {-1, 6};
     float64_t *ws[NCOMPONENTS_MAX];
     uint64_t *gs[NCOMPONENTS_MAX];
-    int ncomponents = 3;
-    int nsummands[] = {6, 6, 4};
+    static const size_t ncomponents = 3;
+    size_t icomponent;
+    static const size_t nsummands[3] = {6, 6, 4};
+    size_t nsources, nreceivers;
     PyArrayObject *ws_arr, *gs_arr;
     PyObject *out_list, *out_tuple;
+    npy_intp array_dims[1]; 
+    
+    (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OOO", &source_coords_arr, &ms_arr, &receiver_coords_arr)) {
         return NULL;
@@ -769,18 +864,18 @@ static PyObject* w_make_weights_elastic10_mt(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    sources = PyArray_DATA(sources_arr);
-    nsources = PyArray_SHAPE(sources_arr)[0];
+    source_coords = PyArray_DATA(source_coords_arr);
+    nsources = PyArray_DIMS(source_coords_arr)[0];
     ms = PyArray_DATA(ms_arr);
-    receivers = PyArray_DATA(receivers_arr);
-    nreceivers = PyArray_SHAPE(receivers_arr)[0];
+    receiver_coords = PyArray_DATA(receiver_coords_arr);
+    nreceivers = PyArray_DIMS(receiver_coords_arr)[0];
 
     out_list = Py_BuildValue("[]");
     for (icomponent=0; icomponent<ncomponents; icomponent++) {
-        array_dims[0] = nsource * nreceivers * nsummands[icomponent];
-        ws_arr = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+        array_dims[0] = nsources * nreceivers * nsummands[icomponent];
+        ws_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
         array_dims[0] = nsummands[icomponent];
-        gs_arr = PyArray_SimpleNew(1, array_dims, NPY_UINT64);
+        gs_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_UINT64);
         ws[icomponent] = PyArray_DATA(ws_arr);
         gs[icomponent] = PyArray_DATA(gs_arr);
 
@@ -795,62 +890,6 @@ static PyObject* w_make_weights_elastic10_mt(PyObject *dummy, PyObject *args) {
     return out_list;
 }
 
-static double cosdelta(double alat, double alon, double blat, double blon){
-    return min(1., sin(alat*D2R) *sin(blat*D2R) + 
-            cos(alat*D2R) * cos(blat*D2R) * cos(D2R* (blon - alon)));
-}
-
-static double azibazi(double alat, double alon, double blat, double blon){
-    return atan2((cos(D2R * alon) * cos(D2R * blat) * sin(D2R * (blon-alon))),
-            (sin(D2R * blat)-sin(D2R * alat)) * cosdelta(alat, alon, blat, blon));
-}
-
-static double clip(double x, double mi, double ma) {
-    return x < mi ? mi : (x > ma ? ma : x);
-}
-
-static double wrap(double x, double mi, double ma) {
-    return x - floor((x-mi)/(ma-mi)) * (ma-mi);
-}
-
-static void ne_to_latlon(double lat, double lon, double north, double east, double *lat_new, double *lon_new) {
-    
-    a = sqrt(sqr(north), sqr(east)) / EARTHRADIUS;
-    gamma = arctan2(east, north)
-
-    b = 0.5*M_PI - lat*D2R
-
-    alphasign = gamma < 0.0 ? -1.0 : 1.0;
-    gamma = fabs(gamma);
-
-    c = acos(clip(cos(a)*cos(b)+sin(a)*sin(b)*cos(gamma), -1., 1.));
-    alpha = asin(clip(sin(a)*sin(gamma)/sin(c), -1., 1.));
-    alpha = cos(a) - cos(b)*cos(c) < 0.0 ? (alpha > 0.0 ? math.pi-alpha : -math.pi-alpha) : alpha;
-
-    *lat_new = R2D * (0.5*M_PI - c);
-    *lon_new = wrap(lon + R2D*alpha*alphasign, -180., 180.);
-}
-
-static void azibazi4(double *a, double *b, double *azi, double *bazi) {
-    /* azimuth and backazimuth for (lat,lon,north,east) coordinates */
-    
-    alat = a[0];
-    alon = a[1];
-    anorth = a[2];
-    aeast = a[3];
-    blat = b[0];
-    blon = b[1];
-    bnorth = b[2];
-    beast = b[3];
-
-    if (alat == blat && alon == blon) { /* carthesian */
-        azi = atan2(beast - aeast, bnorth - anorth)*R2D;
-        bazi = azi + 180.;
-    } else {
-        ne_to_latlon(alat, alon, anorth, aeast, &alat_eff, &alon_eff);
-        ne_to_latlon(blat, blon, bnorth, beast, &blat_eff, &blon_eff);
-    }
-}
 
 static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     PyObject *capsule, *irecords_arr, *delays_arr, *weights_arr;
@@ -885,13 +924,13 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
         PyErr_SetString(StoreExtError, "invalid cstore argument");
         return NULL;
     }
-    if (!good_array(irecords_arr, NPY_UINT64, -1, -1, -1)) {
+    if (!good_array(irecords_arr, NPY_UINT64, -1, 1, NULL)) {
         return NULL;
     }
-    if (!good_array(delays_arr, NPY_FLOAT32, -1, -1, -1)) {
+    if (!good_array(delays_arr, NPY_FLOAT32, -1, 1, NULL)) {
         return NULL;
     }
-    if (!good_array(weights_arr, NPY_FLOAT32, -1, -1, -1)) {
+    if (!good_array(weights_arr, NPY_FLOAT32, -1, 1, NULL)) {
         return NULL;
     }
     if (!inlimits(itmin)) {

@@ -59,6 +59,7 @@ class GFTestCase(unittest.TestCase):
         self.pulse_store_dir = None
         self.regional_ttt_store_dir = None
         self.benchmark_store_dir = None
+        self._dummy_store = None
 
     def __del__(self):
         import shutil
@@ -685,7 +686,55 @@ class GFTestCase(unittest.TestCase):
             store.t('{cake:P}', args) + store.t('{vel_surface:10}', args),
             0.1)
 
+    def dummy_store(self):
+        if self._dummy_store is None:
+
+            conf = gf.ConfigTypeA(
+                id='empty_regional',
+                source_depth_min=0.,
+                source_depth_max=20*km,
+                source_depth_delta=1*km,
+                distance_min=1*km,
+                distance_max=2000*km,
+                distance_delta=1*km,
+                sample_rate=2.0,
+                ncomponents=10)
+
+            store_dir = mkdtemp(prefix='gfstore')
+            self.tempdirs.append(store_dir)
+
+            gf.Store.create(store_dir, config=conf)
+            self._dummy_store = gf.Store(store_dir)
+
+        return self._dummy_store
+
+    def test_make_weights_elastic10(self):
+        from pyrocko.gf import store_ext
+        store = self.dummy_store()
+        for xxx in [0., 1*km, 2*km, 5*km]:
+            source = gf.RectangularSource(
+                    lat=0., lon=0., depth=10*km, north_shift=0.1, east_shift=0.1, width=xxx, length=xxx)
+
+            targets = [gf.Target(
+                lat=random.random()*10.,
+                lon=random.random()*10,
+                north_shift=0.1,
+                east_shift=0.1) for x in xrange(1000)]
+
+            dsources = [
+                source.discretize_basesource(store, target) for target in targets]
+
+            print dsources[0].nelements
+
+            for implementation in ('numpy', 'c'):
+                t0 = time.time()
+                for dsource, target in zip(dsources, targets):
+                    xx = dsource.make_weights(target, 'elastic10', implementation=implementation)
+
+                t1 = time.time()
+                print implementation, t1 - t0
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main()
+    unittest.main(defaultTest='GFTestCase.test_make_weights_elastic10')
