@@ -14,6 +14,8 @@ from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit, moment_tensor
 from pyrocko.config import config
 
+from pyrocko.gf import store_ext
+
 guts_prefix = 'pf'
 
 d2r = math.pi / 180.
@@ -760,6 +762,24 @@ class DiscretizedSource(Object):
 
         return lat, lon, north_shift, east_shift
 
+    def coords5(self):
+        xs = num.zeros((self.nelements, 5))
+
+        if self.lats is not None and self.lons is not None:
+            xs[:, 0] = self.lats
+            xs[:, 1] = self.lons
+        else:
+            xs[:, 0] = self.lat
+            xs[:, 1] = self.lon
+
+        if self.north_shifts is not None and self.east_shifts is not None:
+            xs[:, 2] = self.north_shifts
+            xs[:, 3] = self.east_shifts
+
+        xs[:, 4] = self.depths
+
+        return xs
+
     @property
     def nelements(self):
         return self.times.size
@@ -1080,11 +1100,30 @@ class DiscretizedMTSource(DiscretizedSource):
         'elastic18',
     )
 
-    def make_weights(self, receiver, scheme):
+    def make_weights(self, receiver, scheme, implementation='numpy'):
         self.check_scheme(scheme)
 
         m6s = self.m6s
         n = m6s.shape[0]
+        rep = num.repeat
+
+        if implementation == 'c':
+            if scheme == 'elastic10':
+                source_coords = self.coords5()
+                receiver_coords = num.array(
+                    [[receiver.lat, receiver.lon, receiver.north_shift,
+                      receiver.east_shift, receiver.depth]])
+                ((w_n, g_n), (w_e, g_e), (w_d, g_d)) = \
+                    store_ext.make_weights_elastic10_mt(
+                        source_coords, m6s, receiver_coords)
+
+                return (
+                    ('displacement.n', w_n, rep(g_n, n)),
+                    ('displacement.e', w_e, rep(g_e, n)),
+                    ('displacement.d', w_d, rep(g_d, n)),
+                )
+            else:
+                raise NotImplemented('scheme %s not implemented in c')
 
         if scheme == 'elastic18':
             w_n = m6s.flatten()
@@ -1112,7 +1151,6 @@ class DiscretizedMTSource(DiscretizedSource):
             f5 = m6s[:, 0]*sa**2 + m6s[:, 1]*ca**2 - m6s[:, 3]*s2a
 
             cat = num.concatenate
-            rep = num.repeat
 
             if scheme == 'elastic8':
                 w_n = cat((cb*f0, cb*f1, cb*f2, -sb*f3, -sb*f4))
