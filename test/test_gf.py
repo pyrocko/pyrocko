@@ -752,7 +752,7 @@ class GFTestCase(unittest.TestCase):
                 source.discretize_basesource(store, target) for target in targets]
 
             for dsource, target in zip(dsources, targets):
-                print dsource, target
+                #print dsource, target
                 result_c = list(dsource.make_weights(target, 'elastic10', implementation='c'))
                 result_n = list(dsource.make_weights(target, 'elastic10', implementation='numpy'))
 
