@@ -803,7 +803,50 @@ static void azibazi4(float64_t *a, float64_t *b, float64_t *azi, float64_t *bazi
 }
 
 
-static void make_weights_elastic10(
+static void make_weights_elastic10() {
+
+    azibazidist4(source_coords, receiver_coords, &azi, &bazi, &dist);
+    sa = sin(azi*D2R);
+    ca = cos(azi*D2R);
+    s2a = sin(2.0*azi*D2R);
+    c2a = cos(2.0*azi*D2R);
+    sb = sin(bazi*D2R-M_PI);
+    cb = cos(bazi*D2R-M_PI);
+
+    im = isource*6;
+    f0 = ms[im + 0]*sqr(ca) + ms[im + 1]*sqr(sa) + ms[im + 3]*s2a;
+    f1 = ms[im + 4]*ca + ms[im + 5]*sa;
+    f2 = ms[im + 2];
+    f3 = 0.5*(ms[im + 1]-ms[im + 0])*s2a + ms[im + 3]*c2a;
+    f4 = ms[im + 5]*ca - ms[im + 4]*sa;
+    f5 = ms[im + 0]*sqr(sa) + ms[im + 1]*sqr(ca) - ms[im + 3]*s2a;
+
+    w[0][0] = cb * f0;
+    w[0][1] = cb * f1;
+    w[0][2] = cb * f2;
+    w[0][3] = cb * f5;
+    w[0][4] = -sb * f3;
+    w[0][5] = -sb * f4;
+
+    w[1][0] = sb * f0;
+    w[1][1] = sb * f1;
+    w[1][2] = sb * f2;
+    w[1][3] = sb * f5;
+    w[1][4] = cb * f3;
+    w[1][5] = cb * f4;
+
+    w[2][0] = f0;
+    w[2][1] = f1;
+    w[2][2] = f2;
+    w[2][3] = f5;
+}
+
+void index_mappping_type_a_index (*source_coords, *receiver_coords, *dist, irecord) {
+
+}
+
+
+static void make_sum_params(
         float64_t *source_coords,
         float64_t *ms,
         float64_t *receiver_coords,
@@ -822,49 +865,31 @@ static void make_weights_elastic10(
 
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
         for (isource=0; isource<nsources; isource++) {
-            azibazi4(&source_coords[isource*5], &receiver_coords[ireceiver*5], &azi, &bazi);
-            sa = sin(azi*D2R);
-            ca = cos(azi*D2R);
-            s2a = sin(2.0*azi*D2R);
-            c2a = cos(2.0*azi*D2R);
-            sb = sin(bazi*D2R-M_PI);
-            cb = cos(bazi*D2R-M_PI);
-
-            im = isource*6;
-            f0 = ms[im + 0]*sqr(ca) + ms[im + 1]*sqr(sa) + ms[im + 3]*s2a;
-            f1 = ms[im + 4]*ca + ms[im + 5]*sa;
-            f2 = ms[im + 2];
-            f3 = 0.5*(ms[im + 1]-ms[im + 0])*s2a + ms[im + 3]*c2a;
-            f4 = ms[im + 5]*ca - ms[im + 4]*sa;
-            f5 = ms[im + 0]*sqr(sa) + ms[im + 1]*sqr(ca) - ms[im + 3]*s2a;
-
-            iw = (ireceiver*nsources + isource)*scheme->nsummands[0];
-            ws[0][iw + 0] = cb * f0;
-            ws[0][iw + 1] = cb * f1;
-            ws[0][iw + 2] = cb * f2;
-            ws[0][iw + 3] = cb * f5;
-            ws[0][iw + 4] = -sb * f3;
-            ws[0][iw + 5] = -sb * f4;
-
-            iw = (ireceiver*nsources + isource)*scheme->nsummands[1];
-            ws[1][iw + 0] = sb * f0;
-            ws[1][iw + 1] = sb * f1;
-            ws[1][iw + 2] = sb * f2;
-            ws[1][iw + 3] = sb * f5;
-            ws[1][iw + 4] = cb * f3;
-            ws[1][iw + 5] = cb * f4;
-
-            iw = (ireceiver*nsources + isource)*scheme->nsummands[2];
-            ws[2][iw + 0] = f0;
-            ws[2][iw + 1] = f1;
-            ws[2][iw + 2] = f2;
-            ws[2][iw + 3] = f5;
+            scheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], w, &dist);
+            if (interpolation == MULTILINEAR)  {
+                index_mapping->vicinity(isource_coords[isource*5], receiver_coords[ireceiver*5], &dist, irecord_bases, weights_ip);
+                for (iip=0; iip<nip; iip++) {
+                    for (icomponent=0; icomponent<scheme->ncomponents; icomponent++) {
+                        iw_base = (ireceiver*nsources + isource)*scheme->nsummands[icomponent];
+                        for (isummand=0; isummand<scheme->nsummands[icomponent]; isummand++) {
+                            
+                            ws[icomponent][iw+isummand] = iw_base + weights_ip[iip] * iw[icomponent][isummand];
+                            irecords[icomponent][iw+isummand] = irecord_bases[iip] + ig[icomponent][isummand];
+                        }
+                    }
+                }
+            } else if (interpolation == NEAREST_NEIGHBOR) {
+                index_mapping->index(isource_coords[isource*5], receiver_coords[ireceiver*5], &dist, &irecord_base);
+                for (icomponent=0; icomponent<scheme->ncomponents; icomponent++) {
+                    iw_base = (ireceiver*nsources + isource)*scheme->nsummands[icomponent];
+                    for (isummand=0; isummand<scheme->nsummands[icomponent]; isummand++) {
+                        ws[icomponent][iw+isummand] = iw_base + iw[icomponent][isummand];
+                        irecords[icomponent][iw+isummand] = irecord_base + ig[icomponent][isummand];
+                    }
+                }
+            }
         }
     }
-
-    memcpy(gs[0], gs0, sizeof(gs0));
-    memcpy(gs[1], gs1, sizeof(gs1));
-    memcpy(gs[2], gs2, sizeof(gs2));
 }
 
 
