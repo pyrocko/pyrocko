@@ -20,6 +20,17 @@ class Loc:
 
 class OrthodromeTestCase(unittest.TestCase):
 
+    def testDistancePythonC(self):
+        from pyrocko import orthodrome_ext
+        loc1 = orthodrome.Loc(42., 23.)
+        loc2 = orthodrome.Loc(49., 10.)
+
+        dist_py = orthodrome.distance_accurate50m(loc1, loc2)
+        dist_c = orthodrome_ext.distance_accurate50m(loc1.lat, loc1.lon,
+                                                     loc2.lat, loc2.lon)
+
+        self.assertEqual(dist_py, dist_c)
+
     def testGridDistances(self):
         for i in range(100):
             gsize = random.uniform(0., 1.)*2.*10.**random.uniform(4., 7.)
