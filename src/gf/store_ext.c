@@ -767,6 +767,72 @@ static void azibazi4(float64_t *a, float64_t *b, float64_t *azi, float64_t *bazi
     }
 }
 
+
+static void make_weights_elastic8(
+        float64_t *source_coords,
+        float64_t *ms,
+        float64_t *receiver_coords,
+        size_t nsources,
+        size_t nreceivers, 
+        float64_t **ws, 
+        uint64_t **gs) {
+
+    static const uint64_t gs0[6] = {0, 1, 2, 3, 4};
+    static const uint64_t gs1[6] = {0, 1, 2, 3, 4};
+    static const uint64_t gs2[4] = {5, 6, 7};
+
+
+    float64_t azi, bazi, sa, ca, s2a, c2a, sb, cb, f0, f1, f2, f3, f4;
+    size_t ireceiver, isource, im, iw;
+    size_t nsummands[3] = {6, 6, 4};
+
+    for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
+        for (isource=0; isource<nsources; isource++) {
+            azibazi4(&(source_coords[isource*5]), &(receiver_coords[ireceiver*5]), &azi, &bazi);
+            sa = sin(azi*D2R);
+            ca = cos(azi*D2R);
+            s2a = sin(2.0*azi*D2R);
+            c2a = cos(2.0*azi*D2R);
+            sb = sin(bazi*D2R-M_PI);
+            cb = cos(bazi*D2R-M_PI);
+
+            im = isource*6;
+            f0 = ms[im + 0]*sqr(ca) + ms[im + 1]*sqr(sa) + ms[im + 3]*s2a;
+            f1 = ms[im + 4]*ca + ms[im + 5]*sa;
+            f2 = ms[im + 2];
+            f3 = 0.5*(ms[im + 1]-ms[im + 0])*s2a + ms[im + 3]*c2a;
+            f4 = ms[im + 5]*ca - ms[im + 4]*sa;
+
+            iw = (ireceiver*nsources + isource)*nsummands[0];
+            ws[0][iw + 0] = cb * f0;
+            ws[0][iw + 1] = cb * f1;
+            ws[0][iw + 2] = cb * f2;
+            ws[0][iw + 4] = -sb * f3;
+            ws[0][iw + 5] = -sb * f4;
+
+            iw = (ireceiver*nsources + isource)*nsummands[1];
+            ws[1][iw + 0] = sb * f0;
+            ws[1][iw + 1] = sb * f1;
+            ws[1][iw + 2] = sb * f2;
+            ws[1][iw + 4] = cb * f3;
+            ws[1][iw + 5] = cb * f4;
+
+            iw = (ireceiver*nsources + isource)*nsummands[2];
+            ws[2][iw + 0] = f0;
+            ws[2][iw + 1] = f1;
+            ws[2][iw + 2] = f2;
+        }
+    }
+
+    memcpy(gs[0], gs0, sizeof(gs0));
+    memcpy(gs[1], gs1, sizeof(gs1));
+    memcpy(gs[2], gs2, sizeof(gs2));
+}
+
+            
+            
+
+
 static void make_weights_elastic10(
         float64_t *source_coords,
         float64_t *ms,
@@ -829,6 +895,66 @@ static void make_weights_elastic10(
     memcpy(gs[0], gs0, sizeof(gs0));
     memcpy(gs[1], gs1, sizeof(gs1));
     memcpy(gs[2], gs2, sizeof(gs2));
+}
+
+
+static PyObject* w_make_weights_elastic8_mt(PyObject *dummy, PyObject *args) {
+    PyObject *source_coords_arr, *receiver_coords_arr, *ms_arr;
+    float64_t *source_coords, *receiver_coords, *ms;
+    npy_intp shape_want_coords[2] = {-1, 5};
+    npy_intp shape_want_ms[2] = {-1, 6};
+    float64_t *ws[NCOMPONENTS_MAX];
+    uint64_t *gs[NCOMPONENTS_MAX];
+    static const size_t ncomponents = 3;
+    size_t icomponent;
+    static const size_t nsummands[3] = {6, 6, 4};
+    size_t nsources, nreceivers;
+    PyArrayObject *ws_arr, *gs_arr;
+    PyObject *out_list, *out_tuple;
+    npy_intp array_dims[1]; 
+    
+    (void)dummy; /* silence warning */
+
+    if (!PyArg_ParseTuple(args, "OOO", &source_coords_arr, &ms_arr, &receiver_coords_arr)) {
+        return NULL;
+    }
+    
+    if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        return NULL;
+    }
+
+    if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
+        return NULL;
+    }
+
+    if (!good_array(receiver_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
+        return NULL;
+    }
+
+    source_coords = PyArray_DATA(source_coords_arr);
+    nsources = PyArray_DIMS(source_coords_arr)[0];
+    ms = PyArray_DATA(ms_arr);
+    receiver_coords = PyArray_DATA(receiver_coords_arr);
+    nreceivers = PyArray_DIMS(receiver_coords_arr)[0];
+
+    out_list = Py_BuildValue("[]");
+    for (icomponent=0; icomponent<ncomponents; icomponent++) {
+        array_dims[0] = nsources * nreceivers * nsummands[icomponent];
+        ws_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+        array_dims[0] = nsummands[icomponent];
+        gs_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_UINT64);
+        ws[icomponent] = PyArray_DATA(ws_arr);
+        gs[icomponent] = PyArray_DATA(gs_arr);
+
+        out_tuple = Py_BuildValue("(N,N)", (PyObject*)ws_arr, (PyObject*)gs_arr);
+
+        PyList_Append(out_list, out_tuple);
+        Py_DECREF(out_tuple);
+    }
+
+    make_weights_elastic10(source_coords, ms, receiver_coords, nsources, nreceivers, ws, gs);
+    
+    return out_list;
 }
 
 static PyObject* w_make_weights_elastic10_mt(PyObject *dummy, PyObject *args) {
