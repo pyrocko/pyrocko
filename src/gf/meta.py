@@ -1553,10 +1553,20 @@ class ConfigTypeA(Config):
     short_type = 'A'
 
     def get_surface_distance(self, args):
-        return args[1]
+        if isinstance(args, num.ndarray):
+            return args[args.shape[1]-1]
+        else:
+            return args[1]
 
     def get_distance(self, args):
-        return math.sqrt(args[0]**2 + args[1]**2)
+        if args.shape[1] == 2:
+            return num.sqrt(
+                args.T[0]**2 + args.T[1]**2)
+        elif args.shape[1] == 3:
+            return num.sqrt(
+                (args.T[1]-args.T[0])**2 + args.T[2]**2)
+        else:
+            assert False
 
     def get_source_depth(self, args):
         return args[0]
@@ -1728,7 +1738,10 @@ class ConfigTypeB(Config):
         return math.sqrt((args[1] - args[0])**2 + args[2]**2)
 
     def get_surface_distance(self, args):
-        return args[2]
+        if isinstance(args, num.ndarray):
+            return args[args.shape[1]-1]
+        else:
+            return args[2]
 
     def get_source_depth(self, args):
         return args[1]

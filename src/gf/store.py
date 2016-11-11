@@ -1472,17 +1472,7 @@ class Store(BaseStore):
             vel = float(phase_def) * 1000.
 
             def evaluate(args):
-                if isinstance(args, num.ndarray):
-                    if args.shape[1] == 2:
-                        return num.sqrt(
-                            args.T[0]**2 + args.T[1]**2) / vel
-                    elif args.shape[1] == 3:
-                        return num.sqrt(
-                            (args.T[1]-args.T[0])**2 + args.T[2]**2) / vel
-                    else:
-                        assert False
-                else:
-                    return self.config.get_distance(args) / vel
+                return self.config.get_distance(args) / vel
 
             return evaluate
 
@@ -1490,15 +1480,7 @@ class Store(BaseStore):
             vel = float(phase_def) * 1000.
 
             def evaluate(args):
-                if isinstance(args, num.ndarray):
-                    if args.shape[1] == 2:
-                        return args.T[1] / vel
-                    elif args.shape[1] == 3:
-                        return args.T[2] / vel
-                    else:
-                        assert False
-                else:
-                    return self.config.get_surface_distance(args) / vel
+                return self.config.get_surface_distance(args) / vel
 
             return evaluate
 
