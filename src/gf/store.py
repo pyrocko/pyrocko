@@ -1722,6 +1722,25 @@ class Store(BaseStore):
 
         return out
 
+    def statics2(
+            self, source, multi_location, components,
+            interpolation='nearest_neighbor', optimization='enable'):
+
+        out = [None] * len(components)
+
+        for (component, args, _, weights) in \
+                self.config.make_sum_params2(source, multi_location):
+
+            if component in components:
+                gval = self.sum_statics(
+                    args, weights,
+                    interpolation=interpolation,
+                    optimization=optimization)
+
+                out[components.index(component)] = gval.value
+        
+        return out
+
     def seismogram(self, source, receiver, components, deltat=None,
                    itmin=None, nsamples=None,
                    interpolation='nearest_neighbor', optimization='enable'):

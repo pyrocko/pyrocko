@@ -570,6 +570,10 @@ class Location(Object):
         self._latlon = elat, elon  # unchanged
 
 
+class MultiLocation(Object):
+    coords5 = Array.T(shape=(None, 5), dtype=num.float)
+
+
 class Receiver(Location):
     codes = Tuple.T(
         3, String.T(),
@@ -734,6 +738,9 @@ class DiscretizedSource(Object):
         '''
         Compute distances to receiver for all contained points.
         '''
+
+        if isinstance(receiver, MultiLocation):
+
 
         if self.same_origin(receiver):
             return num.sqrt((self.north_shifts - receiver.north_shift)**2 +
@@ -1108,14 +1115,19 @@ class DiscretizedMTSource(DiscretizedSource):
         rep = num.repeat
 
         if implementation == 'c':
-            if scheme == 'elastic10':
+            if scheme in ('elastic10', 'elastic8'):
                 source_coords = self.coords5()
                 receiver_coords = num.array(
                     [[receiver.lat, receiver.lon, receiver.north_shift,
                       receiver.east_shift, receiver.depth]])
+                    
                 ((w_n, g_n), (w_e, g_e), (w_d, g_d)) = \
-                    store_ext.make_weights_elastic10_mt(
-                        source_coords, m6s, receiver_coords)
+                    store_ext.make_weights(
+                        source_coords, m6s, receiver_coords, scheme)
+
+                w_n = w_n.reshape((n, w_n.size/n)).T.reshape((w_n.size,))
+                w_e = w_e.reshape((n, w_e.size/n)).T.reshape((w_e.size,))
+                w_d = w_d.reshape((n, w_d.size/n)).T.reshape((w_d.size,))
 
                 return (
                     ('displacement.n', w_n, rep(g_n, n)),
@@ -1123,7 +1135,7 @@ class DiscretizedMTSource(DiscretizedSource):
                     ('displacement.d', w_d, rep(g_d, n)),
                 )
             else:
-                raise NotImplemented('scheme %s not implemented in c')
+                raise NotImplemented('scheme %s not implemented in c' % scheme)
 
         if scheme == 'elastic18':
             w_n = m6s.flatten()
@@ -1528,6 +1540,17 @@ class Config(Object):
 
         return out
 
+    def make_sum_params2(self, source, multi_location):
+        out = []
+        delays = source.times
+
+        source_coords = source.coords5()
+        receiver_coords = multi_location.coords5
+
+        return store_ext.make_sum_params(
+            source.times, source_coords, receiver_coords, self.component_scheme, self.short_type)
+        
+
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')
 
@@ -1730,6 +1753,8 @@ class ConfigTypeA(Config):
         return (num.tile(source.depths, nc/n),
                 num.tile(dists, nc/n),
                 icomponents)
+
+        
 
     def make_indexing_args1(self, source, receiver):
         return (source.depth, source.distance_to(receiver))
