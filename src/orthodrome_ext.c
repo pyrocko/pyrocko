@@ -127,7 +127,7 @@ static void azibazi4(float64_t *a, float64_t *b, float64_t *azi, float64_t *bazi
     float64_t blat, blon, bnorth, beast;
     float64_t alat_eff, alon_eff;
     float64_t blat_eff, blon_eff;
-    
+
     alat = a[0];
     alon = a[1];
     anorth = a[2];
@@ -190,18 +190,37 @@ static void distance_accurate_50m(float64_t alat, float64_t alon, float64_t blat
 Wrapper shizzle
 */
 
+static PyObject* w_azibazi(PyObject *dummy, PyObject *args){
+
+    (void) dummy;
+
+    float64_t alat, alon, blat, blon;
+    float64_t azi, bazi;
+
+    if (! PyArg_ParseTuple(args, "dddd", &alat, &alon, &blat, &blon)) {
+        PyErr_SetString(OrthodromeExtError, "azibazi: invalid call!");
+        return NULL;
+    }
+
+    azibazi(alat, alon, blat, blon, &azi, &bazi);
+    return Py_BuildValue("dd", azi, bazi);
+}
+
 static PyObject* w_distance_accurate_50m(PyObject *dummy, PyObject *args) {
+
+    (void)dummy;
+
     float64_t alat, alon, blat, blon, dist;
     if (! PyArg_ParseTuple(args, "dddd", &alat, &alon, &blat, &blon)) {
         PyErr_SetString(OrthodromeExtError, "distance_accurate_50m: invalid call!");
         return NULL;
     }
     if (alat > 90. || alat < -90. || alat > 90. || blat < -90.) {
-        PyErr_SetString(OrthodromeExtError, "distance_accurate_50m: Latitude must be between -90 and 90 degree.");
+        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Latitude must be between -90 and 90 degree.");
         return NULL;
     }
     if (alon > 180. || alon < -180. || alon > 180. || blon < -180.) {
-        PyErr_SetString(OrthodromeExtError, "distance_accurate_50m: Longitude must be between -180 and 180 degree.");
+        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Longitude must be between -180 and 180 degree.");
         return NULL;
     }
     distance_accurate_50m(alat, alon, blat, blon, &dist);
@@ -211,6 +230,9 @@ static PyObject* w_distance_accurate_50m(PyObject *dummy, PyObject *args) {
 static PyMethodDef OrthodromeExtMethods[] = {
     {"distance_accurate50m",  w_distance_accurate_50m, METH_VARARGS,
         "Calculate distance between a pair of lat lon points on elliptic earth" },
+
+    {"azibazi",  w_azibazi, METH_VARARGS,
+        "Calculate azimuth and backazimuth for tuple (alat, alon, blat, blon)" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
