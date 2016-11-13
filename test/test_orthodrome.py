@@ -5,6 +5,7 @@ import random
 import numpy as num
 
 from pyrocko import orthodrome, util
+from pyrocko import orthodrome_ext
 import pyrocko.config
 
 config = pyrocko.config.config()
@@ -14,22 +15,74 @@ d2r = 1./r2d
 km = 1000.
 
 
-class Loc:
-    pass
-
-
 class OrthodromeTestCase(unittest.TestCase):
 
+    def get_critical_random_locations(self, ntest):
+        '''
+        Create list of ((lat1, lon1, lat2, lon2), assertions, exceptions)
+        tuples.
+        :param assertions: list of functions
+        :param exceptions: list of expected exceptions
+
+        TODO: expected exceptions may vary depending on the tested method.
+        Maybe remove this or change logic.
+        '''
+        nasty_locations = [
+            ((0., 0., 0., 0.), num.testing.assert_almost_equal, None),
+            ((90., 0., -90., 0.), num.testing.assert_almost_equal, None),
+            ((91., 0., -91., 0.), num.testing.assert_almost_equal, ValueError),
+            ((0., -180., 0., 180.), num.testing.assert_almost_equal, None),
+            ((1000., -1000., -1000., 1000.), num.testing.assert_almost_equal, ValueError)
+        ]
+
+        assert ntest >= len(nasty_locations)
+
+        lats1 = num.random.uniform(-90., 90., ntest)
+        lats2 = num.random.uniform(-90., 90., ntest)
+        lons1 = num.random.uniform(-180., 180., ntest)
+        lons2 = num.random.uniform(-180., 180., ntest)
+
+        assertions = [num.testing.assert_almost_equal] * ntest
+        exceptions = [None] * ntest
+
+        for i, (llll, assertion, exception) in enumerate(nasty_locations):
+            lats1[i], lons1[i], lats2[i], lons2[i] = llll
+            assertions[i] = assertion
+            exceptions[i] = exception
+
+        return lats1, lons1, lats2, lons2, assertions #, exceptions
+
+    def testAziBaziPythonC(self):
+        from pyrocko.gf.meta import Location
+        ntest = 100
+        lats1, lons1, lats2, lons2, assertions = \
+            self.get_critical_random_locations(ntest)
+
+        for i in xrange(ntest):
+            loc1 = Location(lat=lats1[i], lon=lons1[i])
+            loc2 = Location(lat=lats2[i], lon=lons2[i])
+
+            azibazi_py = loc1.azibazi_to(loc2)
+            azibazi_c = orthodrome_ext.azibazi(
+                loc1.lat, loc1.lon, loc2.lat, loc2.lon)
+
+            assertion = assertions[i]
+            #with self.assertRaises(exceptions[i]):
+            assertion(azibazi_py, azibazi_c)
+
     def testDistancePythonC(self):
-        from pyrocko import orthodrome_ext
-        loc1 = orthodrome.Loc(42., 23.)
-        loc2 = orthodrome.Loc(49., 10.)
+        ntest = 100
+        lats1, lons1, lats2, lons2, assertions = self.get_critical_random_locations(ntest)
+        for i in xrange(ntest):
 
-        dist_py = orthodrome.distance_accurate50m(loc1, loc2)
-        dist_c = orthodrome_ext.distance_accurate50m(loc1.lat, loc1.lon,
-                                                     loc2.lat, loc2.lon)
+            loc1 = orthodrome.Loc(lats1[i], lons1[i])
+            loc2 = orthodrome.Loc(lats2[i], lons2[i])
 
-        self.assertEqual(dist_py, dist_c)
+            dist_py = orthodrome.distance_accurate50m(loc1, loc2)
+            dist_c = orthodrome_ext.distance_accurate50m(
+                loc1.lat, loc1.lon, loc2.lat, loc2.lon)
+
+            assertions[i](dist_py, dist_c)
 
     def testGridDistances(self):
         for i in range(100):
@@ -52,12 +105,8 @@ class OrthodromeTestCase(unittest.TestCase):
 
             for la, lo, no, ea in zip(
                     lat_grid, lon_grid, north_grid, east_grid):
-                a = Loc()
-                a.lat = la
-                a.lon = lo
-                b = Loc()
-                b.lat = lat
-                b.lon = lon
+                a = orthodrome.Loc(lat=la, lon=lo)
+                b = orthodrome.Loc(lat=lat, lon=lon)
 
                 cd = orthodrome.cosdelta(a, b)
                 assert cd <= 1.0
