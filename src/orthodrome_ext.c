@@ -90,13 +90,19 @@ static float64_t cosdelta(float64_t alat, float64_t alon, float64_t blat, float6
 
 static void azibazi(float64_t alat, float64_t alon, float64_t blat, float64_t blon, float64_t *azi, float64_t *bazi) {
     float64_t cd;
-    cd = cosdelta(alat, alon, blat, blon);
-    *azi = R2D * atan2(
-        cos(D2R * alat) * cos(D2R * blat) * sin(D2R * (blon-alon)),
-        sin(D2R * blat) - sin(D2R * alat) * cd);
-    *bazi = R2D * atan2(
-        cos(D2R * blat) * cos(D2R * alat) * sin(D2R * (alon-blon)),
-        sin(D2R * alat) - sin(D2R * blat) * cd);
+    if (alat == blat && alon == blon){
+        *azi = 0.;
+        *bazi = 180.;
+    } else {
+
+        cd = cosdelta(alat, alon, blat, blon);
+        *azi = R2D * atan2(
+            cos(D2R * alat) * cos(D2R * blat) * sin(D2R * (blon-alon)),
+            sin(D2R * blat) - sin(D2R * alat) * cd);
+        *bazi = R2D * atan2(
+            cos(D2R * blat) * cos(D2R * alat) * sin(D2R * (alon-blon)),
+            sin(D2R * alat) - sin(D2R * blat) * cd);
+    }
 }
 
 static void ne_to_latlon(float64_t lat, float64_t lon, float64_t north, float64_t east, float64_t *lat_new, float64_t *lon_new) {
