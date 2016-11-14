@@ -144,14 +144,25 @@ typedef struct {
     const char *name;
     const size_t ncomponents;
     const size_t *nsummands;
+    const uint64_t **igs;
     const make_weights_function make_weights;
 } component_scheme_t;
 
-const size_t summands_elastic10[] = {6, 6, 4};
-const size_t summands_elastic8[] = {5, 5, 3};
+const size_t nsummands_elastic10[] = {6, 6, 4};
+static const uint64_t igs_elastic10_0[] = {0, 1, 2, 8, 3, 4};
+static const uint64_t igs_elastic10_1[] = {0, 1, 2, 8, 3, 4};
+static const uint64_t igs_elastic10_2[] = {5, 6, 7, 9};
+static const uint64_t (*igs_elastic10)[] = {igs_elastic10_0, igs_elastic10_1, igs_elastic10_2}
+
+const size_t nsummands_elastic8[] = {5, 5, 3};
+static const uint64_t igs_elastic8_0[] = {0, 1, 2, 3, 4};
+static const uint64_t igs_elastic8_1[] = {0, 1, 2, 3, 4};
+static const uint64_t igs_elastic8_2[] = {5, 6, 7};
+static const uint64_t (*igs_elastic8)[] = {igs_elastic8_0, igs_elastic8_1, igs_elastic8_2}
+
 const component_scheme_t component_schemes[] = {
-    {"elastic10", 3, summands_elastic10, make_weights_elastic10},
-    {"elastic8", 3, summands_elastic8, make_weights_elastic8},
+    {"elastic10", 3, nsummands_elastic10, igs_elastic10, make_weights_elastic10},
+    {"elastic8", 3, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
     {NULL, 0, NULL, NULL}, 
 };
 
@@ -803,9 +814,16 @@ static void azibazi4(float64_t *a, float64_t *b, float64_t *azi, float64_t *bazi
 }
 
 
-static void make_weights_elastic10() {
+static void make_weights_elastic10(
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *receiver_coords,
+        float64_t **ws) {
 
-    azibazidist4(source_coords, receiver_coords, &azi, &bazi, &dist);
+    float64_t azi, bazi, f0, f1, f2, f3, f4, f5;
+    float64_t sa, ca, s2a, c2a, sb, cb;
+
+    azibazi4(source_coords, receiver_coords, &azi, &bazi);
     sa = sin(azi*D2R);
     ca = cos(azi*D2R);
     s2a = sin(2.0*azi*D2R);
@@ -813,33 +831,74 @@ static void make_weights_elastic10() {
     sb = sin(bazi*D2R-M_PI);
     cb = cos(bazi*D2R-M_PI);
 
-    im = isource*6;
-    f0 = ms[im + 0]*sqr(ca) + ms[im + 1]*sqr(sa) + ms[im + 3]*s2a;
-    f1 = ms[im + 4]*ca + ms[im + 5]*sa;
-    f2 = ms[im + 2];
-    f3 = 0.5*(ms[im + 1]-ms[im + 0])*s2a + ms[im + 3]*c2a;
-    f4 = ms[im + 5]*ca - ms[im + 4]*sa;
-    f5 = ms[im + 0]*sqr(sa) + ms[im + 1]*sqr(ca) - ms[im + 3]*s2a;
+    f0 = ms[0]*sqr(ca) + ms[1]*sqr(sa) + ms[3]*s2a;
+    f1 = ms[4]*ca + ms[5]*sa;
+    f2 = ms[2];
+    f3 = 0.5*(ms[1]-ms[0])*s2a + ms[3]*c2a;
+    f4 = ms[5]*ca - ms[4]*sa;
+    f5 = ms[0]*sqr(sa) + ms[1]*sqr(ca) - ms[3]*s2a;
 
-    w[0][0] = cb * f0;
-    w[0][1] = cb * f1;
-    w[0][2] = cb * f2;
-    w[0][3] = cb * f5;
-    w[0][4] = -sb * f3;
-    w[0][5] = -sb * f4;
+    ws[0][0] = cb * f0;
+    ws[0][1] = cb * f1;
+    ws[0][2] = cb * f2;
+    ws[0][3] = cb * f5;
+    ws[0][4] = -sb * f3;
+    ws[0][5] = -sb * f4;
 
-    w[1][0] = sb * f0;
-    w[1][1] = sb * f1;
-    w[1][2] = sb * f2;
-    w[1][3] = sb * f5;
-    w[1][4] = cb * f3;
-    w[1][5] = cb * f4;
+    ws[1][0] = sb * f0;
+    ws[1][1] = sb * f1;
+    ws[1][2] = sb * f2;
+    ws[1][3] = sb * f5;
+    ws[1][4] = cb * f3;
+    ws[1][5] = cb * f4;
 
-    w[2][0] = f0;
-    w[2][1] = f1;
-    w[2][2] = f2;
-    w[2][3] = f5;
+    ws[2][0] = f0;
+    ws[2][1] = f1;
+    ws[2][2] = f2;
+    ws[2][3] = f5;
 }
+
+
+static void make_weights_elastic8
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *receiver_coords,
+        float64_t **ws) {
+
+    float64_t azi, bazi, f0, f1, f2, f3, f4, f5;
+    float64_t sa, ca, s2a, c2a, sb, cb;
+
+    azibazi4(source_coords, receiver_coords, &azi, &bazi);
+    sa = sin(azi*D2R);
+    ca = cos(azi*D2R);
+    s2a = sin(2.0*azi*D2R);
+    c2a = cos(2.0*azi*D2R);
+    sb = sin(bazi*D2R-M_PI);
+    cb = cos(bazi*D2R-M_PI);
+
+    f0 = ms[0]*sqr(ca) + ms[1]*sqr(sa) + ms[3]*s2a;
+    f1 = ms[4]*ca + ms[5]*sa;
+    f2 = ms[2];
+    f3 = 0.5*(ms[1]-ms[0])*s2a + ms[3]*c2a;
+    f4 = ms[5]*ca - ms[4]*sa;
+
+    ws[0][0] = cb * f0;
+    ws[0][1] = cb * f1;
+    ws[0][2] = cb * f2;
+    ws[0][3] = -sb * f3;
+    ws[0][4] = -sb * f4;
+
+    ws[1][0] = sb * f0;
+    ws[1][1] = sb * f1;
+    ws[1][2] = sb * f2;
+    ws[1][3] = cb * f3;
+    ws[1][4] = cb * f4;
+
+    ws[2][0] = f0;
+    ws[2][1] = f1;
+    ws[2][2] = f2;
+}
+
 
 void index_mappping_type_a_index (*source_coords, *receiver_coords, *dist, irecord) {
 
@@ -852,39 +911,40 @@ static void make_sum_params(
         float64_t *receiver_coords,
         size_t nsources,
         size_t nreceivers, 
+        component_scheme_t *scheme;
+        index_mapping_t *index_mapping;
         float64_t **ws, 
-        uint64_t **gs) {
+        uint64_t **irecords) {
 
-    static const uint64_t gs0[6] = {0, 1, 2, 8, 3, 4};
-    static const uint64_t gs1[6] = {0, 1, 2, 8, 3, 4};
-    static const uint64_t gs2[4] = {5, 6, 7, 9};
     const component_scheme_t *scheme = &component_schemes[ELASTIC10];
 
-    float64_t azi, bazi, sa, ca, s2a, c2a, sb, cb, f0, f1, f2, f3, f4, f5;
-    size_t ireceiver, isource, im, iw;
+    size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, iout
+
+    nip = index_mapping->vicinity_nip;
 
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
         for (isource=0; isource<nsources; isource++) {
-            scheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], w, &dist);
+            scheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], w);
             if (interpolation == MULTILINEAR)  {
                 index_mapping->vicinity(isource_coords[isource*5], receiver_coords[ireceiver*5], &dist, irecord_bases, weights_ip);
                 for (iip=0; iip<nip; iip++) {
                     for (icomponent=0; icomponent<scheme->ncomponents; icomponent++) {
-                        iw_base = (ireceiver*nsources + isource)*scheme->nsummands[icomponent];
-                        for (isummand=0; isummand<scheme->nsummands[icomponent]; isummand++) {
-                            
-                            ws[icomponent][iw+isummand] = iw_base + weights_ip[iip] * iw[icomponent][isummand];
-                            irecords[icomponent][iw+isummand] = irecord_bases[iip] + ig[icomponent][isummand];
+                        iout = (ireceiver*nsources + isource)*scheme->nsummands[icomponent]*nip;
+                        nsummands = scheme->nsummands[icomponent];
+                        for (isummand=0; isummand<nsummands; isummand++) {
+                            ws[icomponent][iout+iip*nsummands+isummand] = weights_ip[iip] * ws[icomponent][isummand];
+                            irecords[icomponent][iout+iip*nsummands+isummand] = irecord_bases[iip] + scheme->igs[icomponent][isummand];
                         }
                     }
                 }
             } else if (interpolation == NEAREST_NEIGHBOR) {
-                index_mapping->index(isource_coords[isource*5], receiver_coords[ireceiver*5], &dist, &irecord_base);
+                index_mapping->index(isource_coords[isource*5], receiver_coords[ireceiver*5], &irecord_base);
                 for (icomponent=0; icomponent<scheme->ncomponents; icomponent++) {
-                    iw_base = (ireceiver*nsources + isource)*scheme->nsummands[icomponent];
-                    for (isummand=0; isummand<scheme->nsummands[icomponent]; isummand++) {
-                        ws[icomponent][iw+isummand] = iw_base + iw[icomponent][isummand];
-                        irecords[icomponent][iw+isummand] = irecord_base + ig[icomponent][isummand];
+                    iout = (ireceiver*nsources + isource)*scheme->nsummands[icomponent];
+                    nsummands = scheme->nsummands[icomponent];
+                    for (isummand=0; isummand<nsummands; isummand++) {
+                        ws[icomponent][iout+isummand] = ws[icomponent][isummand]
+                        irecords[icomponent][iout+isummand] = irecord_base + igs[icomponent][isummand];
                     }
                 }
             }
