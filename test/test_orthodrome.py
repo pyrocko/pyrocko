@@ -19,20 +19,14 @@ class OrthodromeTestCase(unittest.TestCase):
 
     def get_critical_random_locations(self, ntest):
         '''
-        Create list of ((lat1, lon1, lat2, lon2), assertions, exceptions)
-        tuples.
-        :param assertions: list of functions
-        :param exceptions: list of expected exceptions
-
-        TODO: expected exceptions may vary depending on the tested method.
-        Maybe remove this or change logic.
+        Create list of random (lat1, lon1, lat2, lon2) including critical
+        locations.
         '''
+
         nasty_locations = [
-            ((0., 0., 0., 0.), num.testing.assert_almost_equal, None),
-            ((90., 0., -90., 0.), num.testing.assert_almost_equal, None),
-            ((91., 0., -91., 0.), num.testing.assert_almost_equal, ValueError),
-            ((0., -180., 0., 180.), num.testing.assert_almost_equal, None),
-            ((1000., -1000., -1000., 1000.), num.testing.assert_almost_equal, ValueError)
+            (0., 0., 0., 0.),
+            (90., 0., -90., 0.),
+            (0., -180., 0., 180.),
         ]
 
         assert ntest >= len(nasty_locations)
@@ -42,37 +36,52 @@ class OrthodromeTestCase(unittest.TestCase):
         lons1 = num.random.uniform(-180., 180., ntest)
         lons2 = num.random.uniform(-180., 180., ntest)
 
-        assertions = [num.testing.assert_almost_equal] * ntest
-        exceptions = [None] * ntest
-
-        for i, (llll, assertion, exception) in enumerate(nasty_locations):
+        for i, llll in enumerate(nasty_locations):
             lats1[i], lons1[i], lats2[i], lons2[i] = llll
-            assertions[i] = assertion
-            exceptions[i] = exception
 
-        return lats1, lons1, lats2, lons2, assertions #, exceptions
+        return lats1, lons1, lats2, lons2
+
+    def testRaisesValueError(self):
+        '''
+        Assert that orthodrome_ext implementations raise a ValueError when
+        working on undefined lats/lons.
+        '''
+        for lat1, lon1, lat2, lon2 in [
+                (91., 0., 0., 0.),
+                (0., 181., 0., 0.),
+                (0., 0., 91., 0.),
+                (0., 0., 0., 181.), ]:
+            for f in [1, -1]:
+
+                lat1 *= f
+                lon1 *= f
+                lat2 *= f
+                lon2 *= f
+
+                with self.assertRaises(ValueError):
+                    orthodrome_ext.azibazi(lat1, lon1, lat2, lon2)
+
+                with self.assertRaises(ValueError):
+                    orthodrome_ext.distance_accurate50m(lat1, lon1, lat2, lon2)
 
     def testAziBaziPythonC(self):
         from pyrocko.gf.meta import Location
         ntest = 100
-        lats1, lons1, lats2, lons2, assertions = \
-            self.get_critical_random_locations(ntest)
+        lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
 
         for i in xrange(ntest):
-            loc1 = Location(lat=lats1[i], lon=lons1[i])
-            loc2 = Location(lat=lats2[i], lon=lons2[i])
+            loc1 = Location(lat=float(lats1[i]), lon=float(lons1[i]))
+            loc2 = Location(lat=float(lats2[i]), lon=float(lons2[i]))
 
             azibazi_py = loc1.azibazi_to(loc2)
             azibazi_c = orthodrome_ext.azibazi(
                 loc1.lat, loc1.lon, loc2.lat, loc2.lon)
-
-            assertion = assertions[i]
-            #with self.assertRaises(exceptions[i]):
-            assertion(azibazi_py, azibazi_c)
+            err_msg = "loc1 %s loc2 %s\n" % (loc1, loc2)
+            num.testing.assert_almost_equal(azibazi_py, azibazi_c, err_msg=err_msg)
 
     def testDistancePythonC(self):
         ntest = 100
-        lats1, lons1, lats2, lons2, assertions = self.get_critical_random_locations(ntest)
+        lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
         for i in xrange(ntest):
 
             loc1 = orthodrome.Loc(lats1[i], lons1[i])
@@ -81,8 +90,8 @@ class OrthodromeTestCase(unittest.TestCase):
             dist_py = orthodrome.distance_accurate50m(loc1, loc2)
             dist_c = orthodrome_ext.distance_accurate50m(
                 loc1.lat, loc1.lon, loc2.lat, loc2.lon)
-
-            assertions[i](dist_py, dist_c)
+            err_msg = "loc1 %s loc2 %s\n" % (loc1, loc2)
+            num.testing.assert_almost_equal(dist_py, dist_c, err_msg=err_msg)
 
     def testGridDistances(self):
         for i in range(100):
