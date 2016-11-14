@@ -407,6 +407,12 @@ setup(
             'ahfullgreen_ext',
             include_dirs=[numpy.get_include()],
             sources=[pjoin('src', 'ahfullgreen_ext.c')]),
+
+        Extension(
+            'orthodrome_ext',
+            include_dirs=[numpy.get_include()],
+            extra_compile_args=[],
+            sources=[pjoin('src', 'orthodrome_ext.c')]),
     ],
 
     scripts=[
