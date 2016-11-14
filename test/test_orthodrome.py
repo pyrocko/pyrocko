@@ -3,12 +3,15 @@ import math
 import random
 
 import numpy as num
+import logging
 
 from pyrocko import orthodrome, util
 from pyrocko import orthodrome_ext
+from common import benchmark
 import pyrocko.config
 
 config = pyrocko.config.config()
+logger = logging.getLogger('OrthodromeTest')
 
 r2d = 180./math.pi
 d2r = 1./r2d
@@ -64,29 +67,104 @@ class OrthodromeTestCase(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     orthodrome_ext.distance_accurate50m(lat1, lon1, lat2, lon2)
 
+    @benchmark
+    def testAziBaziPython(self):
+        from pyrocko.gf.meta import Location
+        ntest = 1000
+        lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
+
+        loc1 = Location()
+        loc2 = Location()
+        for i in xrange(ntest):
+            loc1.lat, loc1.lon = lats1[i], lons1[i]
+            loc2.lat, loc2.lon = lats2[i], lons2[i]
+            loc1.azibazi_to(loc2)
+
+    @benchmark
+    def testAzimuthArrayPython(self):
+        ntest = 1000
+        locs = self.get_critical_random_locations(ntest)
+        orthodrome.azimuth_numpy(*locs)
+
+    @benchmark
+    def testAzimuthArrayC(self):
+        ntest = 1000
+        locs = self.get_critical_random_locations(ntest)
+        orthodrome_ext.azibazi_numpy(*locs)
+
+    @benchmark
+    def testAziBaziC(self):
+        ntest = 1000
+        lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
+        for i in xrange(ntest):
+            orthodrome_ext.azibazi(lats1[i], lons1[i], lats2[i], lons2[i])
+
     def testAziBaziPythonC(self):
         from pyrocko.gf.meta import Location
         ntest = 100
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
 
+        loc1 = Location()
+        loc2 = Location()
         for i in xrange(ntest):
-            loc1 = Location(lat=float(lats1[i]), lon=float(lons1[i]))
-            loc2 = Location(lat=float(lats2[i]), lon=float(lons2[i]))
+            loc1.lat, loc1.lon = lats1[i], lons1[i]
+            loc2.lat, loc2.lon = lats2[i], lons2[i]
 
             azibazi_py = loc1.azibazi_to(loc2)
             azibazi_c = orthodrome_ext.azibazi(
                 loc1.lat, loc1.lon, loc2.lat, loc2.lon)
-            err_msg = "loc1 %s loc2 %s\n" % (loc1, loc2)
-            num.testing.assert_almost_equal(azibazi_py, azibazi_c, err_msg=err_msg)
+            num.testing.assert_almost_equal(azibazi_py, azibazi_c)
+
+    @benchmark
+    def testDistanceArrayPython(self):
+        ntest = 10000
+        locs = self.get_critical_random_locations(ntest)
+        orthodrome.distance_accurate50m_numpy(*locs)
+
+    @benchmark
+    def testDistanceArrayC(self):
+        ntest = 10000
+        locs = self.get_critical_random_locations(ntest)
+        orthodrome_ext.distance_accurate50m_numpy(*locs)
+
+    def testDistanceArrayPythonC(self):
+        ntest = 10000
+        locs = self.get_critical_random_locations(ntest)
+        a = orthodrome_ext.distance_accurate50m_numpy(*locs)
+        b = orthodrome.distance_accurate50m_numpy(*locs)
+        num.testing.assert_array_almost_equal(a, b)
+
+    @benchmark
+    def testDistanceC(self):
+        ntest = 1000
+        lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
+        loc1 = orthodrome.Loc(0., 0.)
+        loc2 = orthodrome.Loc(0., 0.)
+        for i in xrange(ntest):
+            loc1.lat, loc1.lon = lats1[i], lons1[i]
+            loc2.lat, loc2.lon = lats2[i], lons2[i]
+            orthodrome_ext.distance_accurate50m(loc1.lat, loc1.lon,
+                                                loc2.lat, loc2.lon)
+
+    @benchmark
+    def testDistancePython(self):
+        ntest = 1000
+        lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
+        loc1 = orthodrome.Loc(0., 0.)
+        loc2 = orthodrome.Loc(0., 0.)
+        for i in xrange(ntest):
+            loc1.lat, loc1.lon = lats1[i], lons1[i]
+            loc2.lat, loc2.lon = lats2[i], lons2[i]
+            orthodrome.distance_accurate50m(loc1, loc2)
 
     def testDistancePythonC(self):
         ntest = 100
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
+        loc1 = orthodrome.Loc(0., 0.)
+        loc2 = orthodrome.Loc(0., 0.)
         for i in xrange(ntest):
-
-            loc1 = orthodrome.Loc(lats1[i], lons1[i])
-            loc2 = orthodrome.Loc(lats2[i], lons2[i])
-
+            loc1.lat, loc1.lon = lats1[i], lons1[i]
+            loc2.lat, loc2.lon = lats2[i], lons2[i]
             dist_py = orthodrome.distance_accurate50m(loc1, loc2)
             dist_c = orthodrome_ext.distance_accurate50m(
                 loc1.lat, loc1.lon, loc2.lat, loc2.lon)
@@ -148,7 +226,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def test_midpoint(self):
         center_lons = num.linspace(0., 180., 5)
         center_lats = [0., 89.]
-        npoints = 10000.
+        npoints = 10000
         half_side_length = 1000000.
         distance_error_max = 50000.
         for lat in center_lats:
@@ -271,5 +349,5 @@ def plot_erroneous_ne_to_latlon():
 
 
 if __name__ == "__main__":
-    util.setup_logging('test_orthodrome', 'warning')
+    util.setup_logging('test_orthodrome', 'info')
     unittest.main()
