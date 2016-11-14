@@ -190,6 +190,19 @@ static void distance_accurate_50m(float64_t alat, float64_t alon, float64_t blat
 Wrapper shizzle
 */
 
+static int check_latlon_ranges(float64_t alat, float64_t alon, float64_t blat, float64_t blon){
+    if (alat > 90. || alat < -90. || blat > 90. || blat < -90.) {
+        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Latitude must be between -90 and 90 degree.");
+        return 0;
+    }
+    if (alon > 180. || alon < -180. || blon > 180. || blon < -180.) {
+        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Longitude must be between -180 and 180 degree.");
+        return 0;
+    }
+
+    return 1;
+}
+
 static PyObject* w_azibazi(PyObject *dummy, PyObject *args){
 
     (void) dummy;
@@ -201,6 +214,10 @@ static PyObject* w_azibazi(PyObject *dummy, PyObject *args){
         PyErr_SetString(OrthodromeExtError, "azibazi: invalid call!");
         return NULL;
     }
+
+    if (! check_latlon_ranges(alat, alon, blat, blon)) {
+        return NULL;
+    };
 
     azibazi(alat, alon, blat, blon, &azi, &bazi);
     return Py_BuildValue("dd", azi, bazi);
@@ -215,14 +232,10 @@ static PyObject* w_distance_accurate_50m(PyObject *dummy, PyObject *args) {
         PyErr_SetString(OrthodromeExtError, "distance_accurate_50m: invalid call!");
         return NULL;
     }
-    if (alat > 90. || alat < -90. || alat > 90. || blat < -90.) {
-        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Latitude must be between -90 and 90 degree.");
+    if (! check_latlon_ranges(alat, alon, blat, blon)) {
         return NULL;
-    }
-    if (alon > 180. || alon < -180. || alon > 180. || blon < -180.) {
-        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Longitude must be between -180 and 180 degree.");
-        return NULL;
-    }
+    };
+
     distance_accurate_50m(alat, alon, blat, blon, &dist);
     return Py_BuildValue("d", dist);
 }
