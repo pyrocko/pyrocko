@@ -68,6 +68,10 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
         return NULL;
     }
 
+    if (start_stage==-1 && stop_stage) {
+        PyErr_Warn(EvalrespError, (char*)"Need to define start_stage, otherwise stop_stage is ignored.");
+    }
+
     freqs_array_cont = PyArray_GETCONTIGUOUS((PyArrayObject*)freqs_array);
     nfreqs = PyArray_SIZE(freqs_array_cont);
 
