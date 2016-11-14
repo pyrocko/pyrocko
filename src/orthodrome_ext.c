@@ -6,7 +6,6 @@
 #define EARTHRADIUS_EQ 6378140.0
 #define EARTHRADIUS 6371000.0
 
-
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
@@ -25,7 +24,7 @@
 #define min(a, b) \
    ({ __typeof__ (a) _a = (a); \
       __typeof__ (b) _b = (b); \
-     _a < _b ? _a : _b; })
+     _a < _b ? _a : _b; })  
 
 static PyObject *OrthodromeExtError;
 
@@ -42,11 +41,6 @@ int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_i
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
         PyErr_SetString(OrthodromeExtError, "array of unexpected type");
-        return 0;
-    }
-
-    if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(OrthodromeExtError, "array is not contiguous or not well behaved");
         return 0;
     }
 
@@ -105,6 +99,13 @@ static void azibazi(float64_t alat, float64_t alon, float64_t blat, float64_t bl
     }
 }
 
+static void azibazi_array(float64_t *alats, float64_t *alons, float64_t *blats, float64_t *blons, npy_intp size, float64_t *azis, float64_t *bazis) {
+    npy_intp i;
+    for (i = 0; i < size; i++) {
+        azibazi(alats[i], alons[i], blats[i], blons[i], &azis[i], &bazis[i]);
+    }
+}
+
 static void ne_to_latlon(float64_t lat, float64_t lon, float64_t north, float64_t east, float64_t *lat_new, float64_t *lon_new) {
     float64_t a, b, c, gamma, alphasign, alpha;
 
@@ -154,7 +155,20 @@ static void azibazi4(float64_t *a, float64_t *b, float64_t *azi, float64_t *bazi
     }
 }
 
-static void distance_accurate_50m(float64_t alat, float64_t alon, float64_t blat, float64_t blon, float64_t *dist) {
+int check_latlon_ranges(float64_t alat, float64_t alon, float64_t blat, float64_t blon){
+    if (alat > 90. || alat < -90. || blat > 90. || blat < -90.) {
+        PyErr_SetString(PyExc_ValueError, "distance_accurate50m: Latitude must be between -90 and 90 degree.");
+        return 0;
+    }
+    if (alon > 180. || alon < -180. || blon > 180. || blon < -180.) {
+        PyErr_SetString(PyExc_ValueError, "distance_accurate50m: Longitude must be between -180 and 180 degree.");
+        return 0;
+    }
+
+    return 1;
+}
+
+static void distance_accurate50m(float64_t alat, float64_t alon, float64_t blat, float64_t blon, float64_t *dist) {
     /* more accurate distance calculation based on a spheroid of rotation
 
     returns distance in [m] between points a and b
@@ -167,6 +181,7 @@ static void distance_accurate_50m(float64_t alat, float64_t alon, float64_t blat
               Richmond 2000 (2nd ed., 2nd printing), ISBN 0-943396-61-1 */
     float64_t f, g, l, s, c, w, r;
     // float64_t d, h1, h2;
+    // check_latlon_ranges(alat, alon, blat, blon);
     f = (alat + blat) * D2R / 2.;
     g = (alat - blat) * D2R / 2.;
     l = (alon - blon) * D2R / 2.;
@@ -192,29 +207,22 @@ static void distance_accurate_50m(float64_t alat, float64_t alon, float64_t blat
          EARTH_OBLATENESS * ((3.*r+1.) / (2.*s)) * sqr(cos(f)) * sqr(sin(g)));
 }
 
+static void distance_accurate50m_array(float64_t *alats, float64_t *alons, float64_t *blats, float64_t *blons, npy_intp npairs, float64_t *dists) {
+    npy_intp i;
+    for (i = 0; i < npairs; i++) {
+        distance_accurate50m(alats[i], alons[i], blats[i], blons[i], &dists[i]);
+    }
+}
+
 /*
 Wrapper shizzle
 */
 
-static int check_latlon_ranges(float64_t alat, float64_t alon, float64_t blat, float64_t blon){
-    if (alat > 90. || alat < -90. || blat > 90. || blat < -90.) {
-        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Latitude must be between -90 and 90 degree.");
-        return 0;
-    }
-    if (alon > 180. || alon < -180. || blon > 180. || blon < -180.) {
-        PyErr_SetString(PyExc_ValueError, "distance_accurate_50m: Longitude must be between -180 and 180 degree.");
-        return 0;
-    }
-
-    return 1;
-}
-
 static PyObject* w_azibazi(PyObject *dummy, PyObject *args){
-
-    (void) dummy;
-
     float64_t alat, alon, blat, blon;
     float64_t azi, bazi;
+    
+    (void) dummy;
 
     if (! PyArg_ParseTuple(args, "dddd", &alat, &alon, &blat, &blon)) {
         PyErr_SetString(OrthodromeExtError, "azibazi: invalid call!");
@@ -229,29 +237,151 @@ static PyObject* w_azibazi(PyObject *dummy, PyObject *args){
     return Py_BuildValue("dd", azi, bazi);
 }
 
-static PyObject* w_distance_accurate_50m(PyObject *dummy, PyObject *args) {
+static PyObject* w_distance_accurate50m(PyObject *dummy, PyObject *args) {
+    float64_t alat, alon, blat, blon, dist;
 
     (void)dummy;
-
-    float64_t alat, alon, blat, blon, dist;
     if (! PyArg_ParseTuple(args, "dddd", &alat, &alon, &blat, &blon)) {
-        PyErr_SetString(OrthodromeExtError, "distance_accurate_50m: invalid call!");
+        PyErr_SetString(OrthodromeExtError, "distance_accurate50m: invalid call!");
         return NULL;
     }
     if (! check_latlon_ranges(alat, alon, blat, blon)) {
         return NULL;
     };
 
-    distance_accurate_50m(alat, alon, blat, blon, &dist);
+    distance_accurate50m(alat, alon, blat, blon, &dist);
     return Py_BuildValue("d", dist);
 }
 
+static PyObject * w_distance_accurate50m_numpy(PyObject *dummy, PyObject *args) {
+    PyObject *alats_arr, *alons_arr, *blats_arr, *blons_arr;
+    PyArrayObject *c_alats_arr, *c_alons_arr, *c_blats_arr, *c_blons_arr, *dists_arr;
+    float64_t *alats, *alons, *blats, *blons;
+    npy_intp size[1];
+
+    (void) dummy;
+    if (! PyArg_ParseTuple(args, "OOOO", &alats_arr, &alons_arr, &blats_arr, &blons_arr)) {
+        PyErr_SetString(OrthodromeExtError, "distance_accurate50m_numpy: invalid call!");
+        return NULL;
+    }
+
+    if (! (good_array(alats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) ||
+           good_array(blats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1))) {
+        return NULL;
+    }
+
+    c_alats_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) alats_arr);
+    c_alons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) alons_arr);
+    c_blats_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blats_arr);
+    c_blons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blons_arr);
+    
+    if (PyArray_SIZE(c_alats_arr) + PyArray_SIZE(c_alons_arr) - PyArray_SIZE(c_blats_arr) - PyArray_SIZE(c_blons_arr)) { 
+        PyErr_SetString(PyExc_ValueError, "distance_accurate50m_numpy: dimension mismatch!");
+        return NULL;   
+    }
+
+    alats = PyArray_DATA(c_alats_arr);
+    alons = PyArray_DATA(c_alons_arr);
+    blats = PyArray_DATA(c_blats_arr);
+    blons = PyArray_DATA(c_blons_arr);
+
+    size[0] = PyArray_SIZE((PyArrayObject*) alats_arr);
+    dists_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
+
+    distance_accurate50m_array(alats, alons, blats, blons, size[0], PyArray_DATA(dists_arr));
+
+    return (PyObject *) dists_arr;
+}
+
+static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
+    PyObject *alats_arr, *alons_arr, *blats_arr, *blons_arr;
+    PyArrayObject *c_alats_arr, *c_alons_arr, *c_blats_arr, *c_blons_arr, *azis_arr, *bazis_arr;
+    float64_t *alats, *alons, *blats, *blons;
+    npy_intp size[1];
+
+    (void) dummy;
+    if (! PyArg_ParseTuple(args, "OOOO", &alats_arr, &alons_arr, &blats_arr, &blons_arr)) {
+        PyErr_SetString(OrthodromeExtError, "distance_accurate50m_numpy: invalid call!");
+        return NULL;
+    }
+
+    if (! (good_array(alats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) ||
+           good_array(blats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1))) {
+        return NULL;
+    }
+
+    c_alats_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) alats_arr);
+    c_alons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) alons_arr);
+    c_blats_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blats_arr);
+    c_blons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blons_arr);
+    
+    if (PyArray_SIZE(c_alats_arr) + PyArray_SIZE(c_alons_arr) - PyArray_SIZE(c_blats_arr) - PyArray_SIZE(c_blons_arr)) { 
+        PyErr_SetString(PyExc_ValueError, "distance_accurate50m_numpy: dimension mismatch!");
+        return NULL;   
+    }
+
+    alats = PyArray_DATA(c_alats_arr);
+    alons = PyArray_DATA(c_alons_arr);
+    blats = PyArray_DATA(c_blats_arr);
+    blons = PyArray_DATA(c_blons_arr);
+
+    size[0] = PyArray_SIZE((PyArrayObject*) alats_arr);
+    azis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
+    bazis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
+
+    azibazi_array(alats, alons, blats, blons, size[0], PyArray_DATA(azis_arr), PyArray_DATA(azis_arr));
+
+    return Py_BuildValue("NN", (PyObject *) azis_arr, (PyObject *) bazis_arr);
+}
+
 static PyMethodDef OrthodromeExtMethods[] = {
-    {"distance_accurate50m",  w_distance_accurate_50m, METH_VARARGS,
-        "Calculate distance between a pair of lat lon points on elliptic earth" },
+    {"distance_accurate50m",  w_distance_accurate50m, METH_VARARGS,
+"Calculate distance between a pair of (lat1, lon1, lat2, lon2) points on elliptic earth. \
+:param lat1: Latitude of point 1. \
+:type lat1: float \
+:param lon1: Longitude of point 1. \
+:type lon1: float \
+:param lat1: Latitude of point 2. \
+:type lat1: float \
+:param lon1: Longitude of point 2. \
+:type lon1: float"
+},
+
+    {"distance_accurate50m_numpy",  w_distance_accurate50m_numpy, METH_VARARGS,
+"Calculate distance between a arrays of (lat1, lon1, lat2, lon2) numpy arrays on elliptic earth. \
+:param lat1: Latitudes \
+:type lat1: :py:class:numpy.array \
+:param lon1: Longitudes \
+:type lon1: :py:class:numpy.array \
+:param lat1: Latitudes \
+:type lat1: :py:class:numpy.array \
+:param lon1: Longitudes \
+:type lon1: :py:class:numpy.array \
+" },
 
     {"azibazi",  w_azibazi, METH_VARARGS,
-        "Calculate azimuth and backazimuth for tuple (alat, alon, blat, blon)" },
+"Calculate azimuth and backazimuth for tuple (alat, alon, blat, blon) \
+:param lat1: Latitude of point 1. \
+:type lat1: float \
+:param lon1: Longitude of point 1. \
+:type lon1: float \
+:param lat1: Latitude of point 2. \
+:type lat1: float \
+:param lon1: Longitude of point 2. \
+:type lon1: float" 
+},
+
+    {"azibazi_numpy",  w_azibazi_numpy, METH_VARARGS,
+"Calculate azimuth and backazimuth for tuple (alats, alons, blats, blons) of numpy arrays. \
+:param lat1: Latitudes \
+:type lat1: :py:class:numpy.array \
+:param lon1: Longitudes \
+:type lon1: :py:class:numpy.array \
+:param lat1: Latitudes \
+:type lat1: :py:class:numpy.array \
+:param lon1: Longitudes \
+:type lon1: :py:class:numpy.array \
+" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
