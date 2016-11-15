@@ -293,7 +293,7 @@ int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_i
         return 0;
     }
 
-    if (ndim_want != -1) {
+    if (ndim_want != -1 && shape_want != NULL) {
         for (i=0; i<ndim_want; i++) {
             if (shape_want[i] != -1 && shape_want[i] != PyArray_DIMS((PyArrayObject*)o)[i]) {
                 PyErr_SetString(StoreExtError, "array is of unexpected shape");
