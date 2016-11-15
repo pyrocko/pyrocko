@@ -70,11 +70,13 @@ typedef npy_float64 float64_t;
 
 static PyObject *StoreExtError;
 
+#define NDIMS_CONTINUOUS_MAX 4
+
 typedef struct {
-    float64_t *mins;
-    float64_t *maxs;
-    float64_t *deltas;
-    uint64_t *ns;
+    float64_t mins[NDIMS_CONTINUOUS_MAX];
+    float64_t maxs[NDIMS_CONTINUOUS_MAX];
+    float64_t deltas[NDIMS_CONTINUOUS_MAX];
+    uint64_t ns[NDIMS_CONTINUOUS_MAX];
     uint64_t ncomponents;
 } mapping_t;
 
@@ -95,6 +97,7 @@ typedef struct {
     record_t *records;
     gf_dtype *data;
     gf_dtype **memdata;
+    mapping_t *mapping;
 } store_t;
 
 typedef struct {
@@ -229,13 +232,14 @@ static store_error_t vicinity_function_type_a(const mapping_t*, const float64_t*
 typedef struct {
     const char *name;
     const size_t vicinity_nip;
+    const size_t ndims_continuous;
     const irecord_function_t irecord;
     const vicinity_function_t vicinity;
 } mapping_scheme_t;
 
 
 const mapping_scheme_t mapping_schemes[] = {
-    {"type_a", 4, irecord_function_type_a, vicinity_function_type_a},
+    {"type_a", 4, 2, irecord_function_type_a, vicinity_function_type_a},
     {NULL, 0, NULL, NULL},
 };
 
@@ -304,8 +308,8 @@ int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_i
     return 1;
 }
 
-static trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL };
-static store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL, NULL };
+static const trace_t ZERO_TRACE = { 1, 0, 0, 0.0, 0.0, NULL };
+static const store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL, NULL, NULL };
 
 static store_error_t store_get_span(const store_t *store, uint64_t irecord,
                              int32_t *itmin, int32_t *nsamples, int *is_zero) {
@@ -617,6 +621,8 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
 
     store->f_index = f_index;
     store->f_data = f_data;
+    store->mapping = NULL;
+
     if (8 != pread(store->f_index, &store->nrecords, 8, 0)) {
         return READ_INDEX_FAILED;
     }
@@ -702,6 +708,10 @@ void store_deinit(store_t *store) {
         free(store->memdata);
     }
 
+    if (store->mapping != NULL) {
+        free(store->mapping);
+    }
+
     *store = ZERO_STORE;
 }
 
@@ -754,11 +764,43 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
 #endif
 }
 
-static PyObject* w_store_init_mapping(PyObject *dummy, PyObject *args) {
+static store_error_t store_mapping_init(
+        float64_t *mins, 
+        float64_t *maxs, 
+        float64_t *deltas, 
+        uint64_t *ns, 
+        mapping_scheme_t mscheme,
+        mapping_t *mapping) {
+
+    size_t i;
+
+    for (i=0; i<mscheme->ndims_continuous; i++) {
+        mapping->mins[i] = mins[i];
+        mapping->maxs[i] = maxs[i];
+        mapping->deltas[i] = deltas[i];
+        mapping->ns[i] = ns[i];
+    }
+
+    return SUCCESS;
+}
+
+static void store_mapping_deinit(mapping_t *mapping) {
+}
+
+static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
+    PyObject *capsule;
+    char *mapping_scheme_name;
+    PyObject *mins_arr, *maxs_arr, *deltas_arr, *ns_arr;
+    float64_t *mins, *maxs, *deltas;
+    uint64_t *ns;
+    uint64_t ncomponents;
+    store_t *store;
+    store_error_t err;
+    mapping_t *mapping;
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "OOO", &capsule, &mins_arr, &maxs_arr, &deltas_arr, &ns_arr, &ncomponents)) {
+    if (!PyArg_ParseTuple(args, "OcOOO", &capsule, &mapping_scheme_name, &mins_arr, &maxs_arr, &deltas_arr, &ns_arr, ncomponents)) {
         PyErr_SetString(StoreExtError, "usage store_init_mapping(cstore, mins, maxs, deltas, ns, ncomponents)");
         return NULL;
     }
@@ -771,8 +813,14 @@ static PyObject* w_store_init_mapping(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    if (!good_array(mins_arr, NPY_FLOAT64, -1, 1, NULL)) return NULL;
-    n = PyArray_SIZE(mins_arr);
+    mscheme = get_mapping_scheme(mapping_scheme_name);
+    if (mscheme == NULL) {
+        PyErr_SetString(StoreExtError, "store_init_mapping: invalid mapping scheme name");
+        return NULL;
+    }
+    n = mscheme->ndims_continuous;
+
+    if (!good_array(mins_arr, NPY_FLOAT64, n, 1, NULL)) return NULL;
     if (!good_array(maxs_arr, NPY_FLOAT64, n, 1, NULL)) return NULL;
     if (!good_array(deltas_arr, NPY_FLOAT64, n, 1, NULL)) return NULL;
     if (!good_array(ns_arr, NPY_UINT64, n, 1, NULL)) return NULL;
@@ -783,7 +831,32 @@ static PyObject* w_store_init_mapping(PyObject *dummy, PyObject *args) {
     store = (store_t*)PyCObject_AsVoidPtr(capsule);
 #endif
 
+    mapping = (mapping_t*)calloc(1, sizeof(mapping_t));
+    if (store == NULL) {
+        PyErr_SetString(StoreExtError, "memory allocation failed.");
+        return NULL;
+    }
 
+    mins = PyArray_DATA(mins_arr);
+    maxs = PyArray_DATA(maxs_arr);
+    deltas = PyArray_DATA(deltas_arr);
+    ns = PyArray_DATA(ns_arr);
+    
+    err = store_mapping_init(mins, maxs, deltas, ns, mapping);
+    if (SUCCESS != err) {
+        PyErr_SetString(StoreExtError, store_error_names[err]);
+        store_mapping_deinit(mapping);
+        free(mapping);
+        return NULL;
+    }
+    if (store->mapping != NULL) {
+        store_mapping_deinit(store->mapping);
+        free(store->mapping);
+    }
+    store->mapping = mapping;
+
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 
