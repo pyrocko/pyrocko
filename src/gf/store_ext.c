@@ -121,6 +121,7 @@ typedef enum {
     BAD_STORE,
     MMAP_INDEX_FAILED,
     MMAP_TRACES_FAILED,
+    INDEX_OUT_OF_BOUNDS,
 } store_error_t;
 
 const char* store_error_names[] = {
@@ -138,6 +139,7 @@ const char* store_error_names[] = {
     "BAD_STORE",
     "MMAP_INDEX_FAILED",
     "MMAP_TRACES_FAILED",
+    "INDEX_OUT_OF_BOUNDS",
 };
 
 #define REC_EMPTY 0
@@ -198,6 +200,8 @@ const component_scheme_t *get_component_scheme(char *name) {
 
 /* mapping scheme defs */
 
+#define VICINITY_NIP_MAX 8
+
 typedef enum {
     TYPE_A = 0,
     TYPE_B,
@@ -210,21 +214,17 @@ typedef enum {
     UNDEFINED_INTERPOLATION_SCHEME,
 } interpolation_scheme_id;
 
-const char *interpolation_scheme_names = {
+const char* interpolation_scheme_names[] = {
     "nearest_neighbor",
     "multilinear",
     NULL,
 };
 
-typedef uint64_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*);
-static uint64_t irecord_function_type_a(const mapping_t*, const float64_t*, const float64_t*);
-static uint64_t irecord_function_type_b(const mapping_t*, const float64_t*, const float64_t*);
-static uint64_t irecord_function_type_c(const mapping_t*, const float64_t*, const float64_t*);
+typedef store_error_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
+static store_error_t irecord_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 
-typedef void (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
-static void vicinity_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
-static void vicinity_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
-static void vicinity_function_type_c(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+static store_error_t vicinity_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
 typedef struct {
     const char *name;
@@ -236,8 +236,6 @@ typedef struct {
 
 const mapping_scheme_t mapping_schemes[] = {
     {"type_a", 4, irecord_function_type_a, vicinity_function_type_a},
-    {"type_b", 8, irecord_function_type_b, vicinity_function_type_b},
-    {"type_c", 8, irecord_function_type_c, vicinity_function_type_c},
     {NULL, 0, NULL, NULL},
 };
 
@@ -253,12 +251,13 @@ const mapping_scheme_t *get_mapping_scheme(char *name) {
     return NULL;
 }
 
-interpolation_scheme_id get_interpolation_scheme_id(name) {
+interpolation_scheme_id get_interpolation_scheme_id(char *name) {
+    const char **s;
     s = interpolation_scheme_names;
     interpolation_scheme_id i;
     i = 0;
     while (s != NULL) {
-        if (0 == strcmp(s, name)) {
+        if (0 == strcmp(*s, name)) {
             return i;
         }
         i++;
@@ -755,6 +754,39 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
 #endif
 }
 
+static PyObject* w_store_init_mapping(PyObject *dummy, PyObject *args) {
+
+    (void)dummy; /* silence warning */
+
+    if (!PyArg_ParseTuple(args, "OOO", &capsule, &mins_arr, &maxs_arr, &deltas_arr, &ns_arr, &ncomponents)) {
+        PyErr_SetString(StoreExtError, "usage store_init_mapping(cstore, mins, maxs, deltas, ns, ncomponents)");
+        return NULL;
+    }
+#ifdef HAVE_CAPSULE
+    if (!PyCapsule_IsValid(capsule, NULL)) {
+#else
+    if (!PyCObject_Check(capsule)) {
+#endif
+        PyErr_SetString(StoreExtError, "invalid cstore argument");
+        return NULL;
+    }
+
+    if (!good_array(mins_arr, NPY_FLOAT64, -1, 1, NULL)) return NULL;
+    n = PyArray_SIZE(mins_arr);
+    if (!good_array(maxs_arr, NPY_FLOAT64, n, 1, NULL)) return NULL;
+    if (!good_array(deltas_arr, NPY_FLOAT64, n, 1, NULL)) return NULL;
+    if (!good_array(ns_arr, NPY_UINT64, n, 1, NULL)) return NULL;
+
+#ifdef HAVE_CAPSULE
+    store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
+#else
+    store = (store_t*)PyCObject_AsVoidPtr(capsule);
+#endif
+
+
+}
+
+
 static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     PyObject *capsule;
     uint64_t irecord;
@@ -991,16 +1023,72 @@ static void make_weights_elastic8(
 }
 
 
-static uint64_t irecord_function_type_a(const mapping_t *mapping, const float64_t *source_coords, const float64_t *receiver_coords) {
-    return 0;
+static store_error_t irecord_function_type_a(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecord) {
 
+    float64_t v[2];
+    uint64_t i[2];
+    v[0] = source_coords[4];
+    v[1] = distance4(source_coords, receiver_coords);
+    i[0] = (uint64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
+    i[1] = (uint64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
+    if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1]) {
+        return INDEX_OUT_OF_BOUNDS;
+    }
+    *irecord = i[0]*mapping->ns[0] + i[1];
+    return SUCCESS;
 }
 
-static void vicinity_function_type_a(const mapping_t *mapping, const float64_t *source_coords, const float64_t *receiver_coords, uint64_t *irecords, float64_t *weights_ip) {
+static store_error_t vicinity_function_type_a(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecords,
+        float64_t *weights) {
 
+    float64_t v[2], w_fl[2], w_ce[2];
+    float64_t x, x_fl, x_ce;
+    uint64_t i_fl[2], i_ce[2];
+    uint64_t *ns;
+    size_t k;
+
+    v[0] = source_coords[4];
+    v[1] = distance4(source_coords, receiver_coords);
+
+    ns = mapping->ns;
+
+    for (k=0; k<2; k++) {
+        x = v[k]-ns[k] / mapping->deltas[k];
+        x_fl = floor(x);
+        x_ce = ceil(x);
+
+        w_fl[k] = 1.0 - (x - x_fl);
+        w_ce[k] = (1.0 - (x_ce - x)) * (x_ce - x_fl);
+
+        i_fl[k] = (uint64_t)x_fl;
+        i_ce[k] = (uint64_t)x_ce;
+
+        if (i_fl[k] >= ns[k] || i_ce[k] > ns[k]) {
+            return INDEX_OUT_OF_BOUNDS;
+        }
+    }
+
+    irecords[0] = i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2];
+    irecords[1] = i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2];
+    irecords[2] = i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2];
+    irecords[3] = i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2];
+
+    weights[0] = w_fl[0] * w_fl[1];
+    weights[1] = w_ce[0] * w_fl[1];
+    weights[2] = w_fl[0] * w_ce[1];
+    weights[3] = w_ce[0] * w_ce[1];
+    return SUCCESS;
 }
 
-static void make_sum_params(
+static store_error_t make_sum_params(
         const float64_t *source_coords,
         const float64_t *ms,
         const float64_t *receiver_coords,
@@ -1015,8 +1103,9 @@ static void make_sum_params(
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, iout;
     float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
-    uint64_t irecord_base, *irecord_bases;
+    uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t *weights_ip;
+    store_error_t err;
 
     nip = mscheme->vicinity_nip;
 
@@ -1024,7 +1113,15 @@ static void make_sum_params(
         for (isource=0; isource<nsources; isource++) {
             cscheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], ws_this);
             if (interpolation == MULTILINEAR)  {
-                mscheme->vicinity(mapping, &source_coords[isource*5], &receiver_coords[ireceiver*5], irecord_bases, weights_ip);
+                err = mscheme->vicinity(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases,
+                    weights_ip);
+
+                if (err != SUCCESS) return err;
+
                 for (iip=0; iip<nip; iip++) {
                     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
                         iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent]*nip;
@@ -1036,18 +1133,27 @@ static void make_sum_params(
                     }
                 }
             } else if (interpolation == NEAREST_NEIGHBOR) {
-                irecord_base = mscheme->irecord(mapping, &source_coords[isource*5], &receiver_coords[ireceiver*5]);
+                err = mscheme->irecord(
+                    mapping,
+                    &source_coords[isource*5],
+                    &receiver_coords[ireceiver*5],
+                    irecord_bases);
+
+                if (err != SUCCESS) return err;
+
                 for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
                     iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent];
                     nsummands = cscheme->nsummands[icomponent];
                     for (isummand=0; isummand<nsummands; isummand++) {
                         ws[icomponent][iout+isummand] = ws[icomponent][isummand];
-                        irecords[icomponent][iout+isummand] = irecord_base + cscheme->igs[icomponent][isummand];
+                        irecords[icomponent][iout+isummand] = irecord_bases[0] + cscheme->igs[icomponent][isummand];
                     }
                 }
             }
         }
     }
+
+    return SUCCESS;
 }
 
 
@@ -1162,6 +1268,7 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     const component_scheme_t *cscheme;
     const mapping_scheme_t *mscheme;
     interpolation_scheme_id interpolation;
+    store_error_t err;
 
     (void)dummy; /* silence warning */
 
@@ -1220,7 +1327,7 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
         Py_DECREF(out_tuple);
     }
 
-    make_sum_params(
+    err = make_sum_params(
         source_coords,
         ms,
         receiver_coords,
@@ -1233,12 +1340,21 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
         weights,
         irecords);
 
+    if (SUCCESS != err) {
+        Py_DECREF(out_list);
+        PyErr_SetString(StoreExtError, store_error_names[err]);
+        return NULL;
+    }
+
     return out_list;
 }
 
 static PyMethodDef StoreExtMethods[] = {
     {"store_init",  w_store_init, METH_VARARGS,
         "Initialize store struct." },
+
+    {"store_init_mapping", w_store_init_mapping, METH_VARARGS,
+        "Initialize store index mapping." },
 
     {"store_get", w_store_get, METH_VARARGS,
         "Get a GF trace." },
