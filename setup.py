@@ -364,6 +364,7 @@ setup(
             include_dirs=[numpy.get_include(), 'libmseed'],
             library_dirs=['libmseed'],
             libraries=['mseed'],
+            extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'mseed_ext.c')]),
 
         Extension(
@@ -371,6 +372,7 @@ setup(
             include_dirs=[numpy.get_include(), 'evalresp-3.3.0/include'],
             library_dirs=['evalresp-3.3.0/lib'],
             libraries=['evresp'],
+            extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'evalresp_ext.c')]),
 
         Extension(
@@ -388,6 +390,7 @@ setup(
         Extension(
             'autopick_ext',
             include_dirs=[numpy.get_include()],
+            extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'autopick_ext.c')]),
 
         Extension(
@@ -406,12 +409,13 @@ setup(
         Extension(
             'ahfullgreen_ext',
             include_dirs=[numpy.get_include()],
+            extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'ahfullgreen_ext.c')]),
 
         Extension(
             'orthodrome_ext',
             include_dirs=[numpy.get_include()],
-            extra_compile_args=[],
+            extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'orthodrome_ext.c')]),
     ],
 
