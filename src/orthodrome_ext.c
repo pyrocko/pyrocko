@@ -336,52 +336,50 @@ static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
 
 static PyMethodDef OrthodromeExtMethods[] = {
     {"distance_accurate50m",  w_distance_accurate50m, METH_VARARGS,
-"Calculate distance between a pair of (lat1, lon1, lat2, lon2) points on elliptic earth. \
-:param lat1: Latitude of point 1. \
-:type lat1: float \
-:param lon1: Longitude of point 1. \
-:type lon1: float \
-:param lat1: Latitude of point 2. \
-:type lat1: float \
-:param lon1: Longitude of point 2. \
-:type lon1: float"
+"Calculate distance between a pair of (alat, alon, blat, blon) points on elliptic earth.\n\n\
+:param alat: Latitude of point 1.\n\
+:type alat: float\n\
+:param alon: Longitude of point 1.\n\
+:type alon: float\n\
+:param alat: Latitude of point 2.\n\
+:type alat: float\n\
+:param alon: Longitude of point 2.\n\
+:type alon: float"
 },
 
     {"distance_accurate50m_numpy",  w_distance_accurate50m_numpy, METH_VARARGS,
-"Calculate distance between a arrays of (lat1, lon1, lat2, lon2) numpy arrays on elliptic earth. \
-:param lat1: Latitudes \
-:type lat1: :py:class:numpy.array \
-:param lon1: Longitudes \
-:type lon1: :py:class:numpy.array \
-:param lat1: Latitudes \
-:type lat1: :py:class:numpy.array \
-:param lon1: Longitudes \
-:type lon1: :py:class:numpy.array \
-" },
+"Calculate distance between a arrays of (alat, alon, blat, blon) numpy arrays on elliptic earth.\n\n\
+:param alat: Latitudes\n\
+:type alat: :py:class:numpy.array\n\
+:param alon: Longitudes\n\
+:type alon: :py:class:numpy.array\n\
+:param alat: Latitudes\n\
+:type alat: :py:class:numpy.array\n\
+:param alon: Longitudes\n\
+:type alon: :py:class:numpy.array" },
 
     {"azibazi",  w_azibazi, METH_VARARGS,
-"Calculate azimuth and backazimuth for tuple (alat, alon, blat, blon) \
-:param lat1: Latitude of point 1. \
-:type lat1: float \
-:param lon1: Longitude of point 1. \
-:type lon1: float \
-:param lat1: Latitude of point 2. \
-:type lat1: float \
-:param lon1: Longitude of point 2. \
-:type lon1: float" 
+"Calculate azimuth and backazimuth for tuple (alat, alon, blat, blon).\n\n\
+:param alat: Latitude of point 1.\n\
+:type alat: float\n\
+:param alon: Longitude of point 1.\n\
+:type alon: float\n\
+:param alat: Latitude of point 2.\n\
+:type alat: float\n\
+:param alon: Longitude of point 2.\n\
+:type alon: float" 
 },
 
     {"azibazi_numpy",  w_azibazi_numpy, METH_VARARGS,
-"Calculate azimuth and backazimuth for tuple (alats, alons, blats, blons) of numpy arrays. \
-:param lat1: Latitudes \
-:type lat1: :py:class:numpy.array \
-:param lon1: Longitudes \
-:type lon1: :py:class:numpy.array \
-:param lat1: Latitudes \
-:type lat1: :py:class:numpy.array \
-:param lon1: Longitudes \
-:type lon1: :py:class:numpy.array \
-" },
+"Calculate azimuth and backazimuth for tuple (alats, alons, blats, blons) of numpy arrays.\n\n\
+:param alat: Latitudes\n\
+:type alat: :py:class:numpy.array\n\
+:param alon: Longitudes\n\
+:type alon: :py:class:numpy.array\n\
+:param alat: Latitudes\n\
+:type alat: :py:class:numpy.array\n\
+:param alon: Longitudes\n\
+:type alon: :py:class:numpy.array" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

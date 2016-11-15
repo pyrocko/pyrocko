@@ -7,11 +7,12 @@ import logging
 
 from pyrocko import orthodrome, util
 from pyrocko import orthodrome_ext
-from common import benchmark
+from common import Benchmark
 import pyrocko.config
 
 config = pyrocko.config.config()
 logger = logging.getLogger('OrthodromeTest')
+benchmark = Benchmark()
 
 r2d = 180./math.pi
 d2r = 1./r2d
@@ -348,5 +349,6 @@ def plot_erroneous_ne_to_latlon():
             print 'ok', gsize, lat, lon
 
 if __name__ == "__main__":
-    util.setup_logging('test_orthodrome', 'info')
-    unittest.main()
+    util.setup_logging('test_orthodrome', 'warning')
+    unittest.main(exit=False)
+    print benchmark
