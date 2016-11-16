@@ -240,7 +240,7 @@ typedef struct {
 
 const mapping_scheme_t mapping_schemes[] = {
     {"type_a", 4, 2, irecord_function_type_a, vicinity_function_type_a},
-    {NULL, 0, NULL, NULL},
+    {NULL, 0, 0, NULL, NULL},
 };
 
 const mapping_scheme_t *get_mapping_scheme(char *name) {
@@ -270,7 +270,7 @@ interpolation_scheme_id get_interpolation_scheme_id(char *name) {
     return UNDEFINED_INTERPOLATION_SCHEME;
 }
 
-int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_intp* shape_want) {
+int good_array(PyObject* o, int typenum_want, npy_intp size_want, int ndim_want, npy_intp* shape_want) {
     int i;
 
     if (!PyArray_Check(o)) {
@@ -278,7 +278,7 @@ int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_i
         return 0;
     }
 
-    if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
+    if (PyArray_TYPE((PyArrayObject*)o) != typenum_want) {
         PyErr_SetString(StoreExtError, "array of unexpected type");
         return 0;
     }
@@ -452,7 +452,7 @@ static store_error_t store_sum(
         const uint64_t *irecords,
         const float32_t *delays,
         const float32_t *weights,
-        int32_t n,
+        int n,
         int32_t itmin,
         int32_t nsamples,
         trace_t *result) {
@@ -765,11 +765,11 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
 }
 
 static store_error_t store_mapping_init(
-        float64_t *mins, 
-        float64_t *maxs, 
-        float64_t *deltas, 
-        uint64_t *ns, 
-        mapping_scheme_t mscheme,
+        float64_t *mins,
+        float64_t *maxs,
+        float64_t *deltas,
+        uint64_t *ns,
+        mapping_scheme_t *mscheme,
         mapping_t *mapping) {
 
     size_t i;
@@ -785,6 +785,7 @@ static store_error_t store_mapping_init(
 }
 
 static void store_mapping_deinit(mapping_t *mapping) {
+    (void)mapping;
 }
 
 static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
@@ -793,14 +794,16 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
     PyObject *mins_arr, *maxs_arr, *deltas_arr, *ns_arr;
     float64_t *mins, *maxs, *deltas;
     uint64_t *ns;
-    uint64_t ncomponents;
+    int ncomponents_;
     store_t *store;
     store_error_t err;
     mapping_t *mapping;
+    const mapping_scheme_t *mscheme;
+    npy_intp n;
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "OcOOO", &capsule, &mapping_scheme_name, &mins_arr, &maxs_arr, &deltas_arr, &ns_arr, ncomponents)) {
+    if (!PyArg_ParseTuple(args, "OcOOOOi", &capsule, &mapping_scheme_name, &mins_arr, &maxs_arr, &deltas_arr, &ns_arr, ncomponents)) {
         PyErr_SetString(StoreExtError, "usage store_init_mapping(cstore, mins, maxs, deltas, ns, ncomponents)");
         return NULL;
     }
@@ -837,11 +840,11 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
         return NULL;
     }
 
-    mins = PyArray_DATA(mins_arr);
-    maxs = PyArray_DATA(maxs_arr);
-    deltas = PyArray_DATA(deltas_arr);
-    ns = PyArray_DATA(ns_arr);
-    
+    mins = PyArray_DATA((PyArrayObject*)mins_arr);
+    maxs = PyArray_DATA((PyArrayObject*)maxs_arr);
+    deltas = PyArray_DATA(PyArrayObject*)deltas_arr);
+    ns = PyArray_DATA(PyArrayObject*)ns_arr);
+
     err = store_mapping_init(mins, maxs, deltas, ns, mapping);
     if (SUCCESS != err) {
         PyErr_SetString(StoreExtError, store_error_names[err]);
@@ -862,23 +865,25 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
 
 static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     PyObject *capsule;
-    uint64_t irecord;
     store_t *store;
     gf_dtype *adata;
     trace_t trace;
     PyArrayObject *array = NULL;
     npy_intp array_dims[1] = {0};
-    int32_t itmin;
-    int32_t nsamples;
+    unsigned long long int irecord_
+    int itmin_, nsamples_;
+    uint64_t irecord;
+    int32_t itmin, nsamples;
     int i;
     store_error_t err;
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord, &itmin, &nsamples)) {
-        PyErr_SetString(StoreExtError, "usage store_get(cstore, irecord, itmin, nsamples)");
+    if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord_, &itmin_, &nsamples_)) {
+        PyErr_SetString(StoreExtError, "usage: store_get(cstore, irecord, itmin, nsamples)");
         return NULL;
     }
+
 #ifdef HAVE_CAPSULE
     if (!PyCapsule_IsValid(capsule, NULL)) {
 #else
@@ -887,14 +892,20 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
         PyErr_SetString(StoreExtError, "invalid cstore argument");
         return NULL;
     }
-    if (!inlimits(itmin)) {
+
+    irecord = irecord_;
+
+    if (!inlimits(itmin_)) {
         PyErr_SetString(StoreExtError, "invalid itmin argument");
         return NULL;
     }
-    if (!(inposlimits(nsamples) || -1 == nsamples)) {
+    itmin = itmin_;
+
+    if (!(inposlimits(nsamples_) || -1 == nsamples_)) {
         PyErr_SetString(StoreExtError, "invalid nsamples argument");
         return NULL;
     }
+    nsamples = nsamples_;
 
 #ifdef HAVE_CAPSULE
     store = (store_t*)PyCapsule_GetPointer(capsule, NULL);
@@ -1237,18 +1248,18 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     trace_t result;
     PyArrayObject *array = NULL;
     npy_intp array_dims[1] = {0};
-    PyArrayObject *c_irecords_arr, *c_delays_arr, *c_weights_arr;
     uint64_t *irecords;
     float32_t *delays, *weights;
-    npy_intp n, n1, n2;
-    int32_t itmin;
-    int32_t nsamples;
+    npy_intp n_;
+    int n;
+    int itmin_, nsamples_;
+    int32_t itmin, nsamples;
     store_error_t err;
 
     (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr,
-                                     &weights_arr, &itmin, &nsamples)) {
+                                     &weights_arr, &itmin_, &nsamples_)) {
         PyErr_SetString(StoreExtError,
             "usage: store_sum(cstore, irecords, delays, weights, itmin, nsamples)");
 
@@ -1260,24 +1271,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
 #else
     if (!PyCObject_Check(capsule)) {
 #endif
-        PyErr_SetString(StoreExtError, "invalid cstore argument");
-        return NULL;
-    }
-    if (!good_array(irecords_arr, NPY_UINT64, -1, 1, NULL)) {
-        return NULL;
-    }
-    if (!good_array(delays_arr, NPY_FLOAT32, -1, 1, NULL)) {
-        return NULL;
-    }
-    if (!good_array(weights_arr, NPY_FLOAT32, -1, 1, NULL)) {
-        return NULL;
-    }
-    if (!inlimits(itmin)) {
-        PyErr_SetString(StoreExtError, "invalid itmin argument");
-        return NULL;
-    }
-    if (!(inposlimits(nsamples) || -1 == nsamples)) {
-        PyErr_SetString(StoreExtError, "invalid nsamples argument");
+        PyErr_SetString(StoreExtError, "store_sum: invalid cstore argument");
         return NULL;
     }
 #ifdef HAVE_CAPSULE
@@ -1286,23 +1280,31 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     store = (store_t*)PyCObject_AsVoidPtr(capsule);
 #endif
 
-    c_irecords_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)irecords_arr);
-    c_delays_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)delays_arr);
-    c_weights_arr = PyArray_GETCONTIGUOUS((PyArrayObject*)weights_arr);
+    if (!good_array(irecords_arr, NPY_UINT64, -1, 1, NULL)) return NULL;
+    n_ = PyArray_SIZE(irecords_arr);
+    if (!good_array(delays_arr, NPY_FLOAT32, n_, 1, NULL)) return NULL;
+    if (!good_array(weights_arr, NPY_FLOAT32, n_, 1, NULL)) return NULL;
 
-    n = PyArray_SIZE(c_irecords_arr);
-    n1 = PyArray_SIZE(c_delays_arr);
-    n2 = PyArray_SIZE(c_weights_arr);
+    if (!inlimits(n_)) {
+        PyErr_SetString(StoreExtError, "store_sum: invalid number of entries in arrays");
+    }
+    n = n_;
 
-    if (n != n1 || n != n2) {
-        PyErr_SetString(StoreExtError,
-            "store_sum: 'irecords', 'delays', and 'weights' must have same length");
+    if (!inlimits(itmin_)) {
+        PyErr_SetString(StoreExtError, "store_sum: invalid itmin argument");
         return NULL;
     }
+    itmin = itmin_;
 
-    irecords = PyArray_DATA(c_irecords_arr);
-    delays = PyArray_DATA(c_delays_arr);
-    weights = PyArray_DATA(c_weights_arr);
+    if (!(inposlimits(nsamples_) || -1 == nsamples_)) {
+        PyErr_SetString(StoreExtError, "store_sum: invalid nsamples argument");
+        return NULL;
+    }
+    nsamples = nsamples_;
+
+    irecords = PyArray_DATA((PyArrayObject*)irecords_arr);
+    delays = PyArray_DATA((PyArrayObject*)delays_arr);
+    weights = PyArray_DATA((PyArrayObject*)weights_arr);
 
     err = store_sum(store, irecords, delays, weights, n, itmin, nsamples, &result);
     if (SUCCESS != err) {
