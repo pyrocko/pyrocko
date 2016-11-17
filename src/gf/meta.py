@@ -727,10 +727,6 @@ class DiscretizedSource(Object):
         '''
         Compute distances to receiver for all contained points.
         '''
-
-        if isinstance(receiver, MultiLocation):
-
-
         if self.same_origin(receiver):
             return num.sqrt((self.north_shifts - receiver.north_shift)**2 +
                             (self.east_shifts - receiver.east_shift)**2)
@@ -1096,35 +1092,12 @@ class DiscretizedMTSource(DiscretizedSource):
         'elastic18',
     )
 
-    def make_weights(self, receiver, scheme, implementation='numpy'):
+    def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
 
         m6s = self.m6s
         n = m6s.shape[0]
         rep = num.repeat
-
-        if implementation == 'c':
-            if scheme in ('elastic10', 'elastic8'):
-                source_coords = self.coords5()
-                receiver_coords = num.array(
-                    [[receiver.lat, receiver.lon, receiver.north_shift,
-                      receiver.east_shift, receiver.depth]])
-                    
-                ((w_n, g_n), (w_e, g_e), (w_d, g_d)) = \
-                    store_ext.make_weights(
-                        source_coords, m6s, receiver_coords, scheme)
-
-                w_n = w_n.reshape((n, w_n.size/n)).T.reshape((w_n.size,))
-                w_e = w_e.reshape((n, w_e.size/n)).T.reshape((w_e.size,))
-                w_d = w_d.reshape((n, w_d.size/n)).T.reshape((w_d.size,))
-
-                return (
-                    ('displacement.n', w_n, rep(g_n, n)),
-                    ('displacement.e', w_e, rep(g_e, n)),
-                    ('displacement.d', w_d, rep(g_d, n)),
-                )
-            else:
-                raise NotImplemented('scheme %s not implemented in c' % scheme)
 
         if scheme == 'elastic18':
             w_n = m6s.flatten()

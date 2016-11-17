@@ -252,7 +252,7 @@ def remove_if_exists(fn, force=False):
             raise CannotCreate('file %s already exists' % fn)
 
 
-class BaseStore:
+class BaseStore(object):
 
     @staticmethod
     def index_fn_(store_dir):
@@ -294,6 +294,7 @@ class BaseStore:
         self._f_index = None
         self._f_data = None
         self._end_values = None
+        self.cstore = None
 
     def open(self):
         index_fn = self.index_fn()
@@ -1109,6 +1110,16 @@ class Store(BaseStore):
             if os.path.isdir(self._decimated_store_dir(decimate)):
                 self._decimated[decimate] = None
 
+    def open(self):
+        if not self._f_index:
+            BaseStore.open(self)
+            c = self.config
+
+            mscheme = 'type_' + c.short_type.lower()
+            print self.cstore, mscheme, c.mins, c.maxs, c.deltas, c.ns, c.ncomponents
+            store_ext.store_mapping_init(
+                self.cstore, mscheme, c.mins, c.maxs, c.deltas, c.ns.astype(num.uint64), c.ncomponents)
+
     def save_config(self, make_backup=False):
         config_fn = os.path.join(self.store_dir, 'config')
         if make_backup:
@@ -1732,7 +1743,7 @@ class Store(BaseStore):
                     optimization=optimization)
 
                 out[components.index(component)] = gval.value
-        
+
         return out
 
     def seismogram(self, source, receiver, components, deltat=None,

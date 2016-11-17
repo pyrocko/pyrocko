@@ -151,7 +151,6 @@ static void azibazi4(float64_t *a, float64_t *b, float64_t *azi, float64_t *bazi
         ne_to_latlon(alat, alon, anorth, aeast, &alat_eff, &alon_eff);
         ne_to_latlon(blat, blon, bnorth, beast, &blat_eff, &blon_eff);
         azibazi(alat_eff, alon_eff, blat_eff, blon_eff, azi, bazi);
-        azibazi(blat_eff, blon_eff, alat_eff, alon_eff, bazi, azi);
     }
 }
 
