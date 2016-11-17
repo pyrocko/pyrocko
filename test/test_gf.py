@@ -708,10 +708,12 @@ class GFTestCase(unittest.TestCase):
 
         return self._dummy_store
 
-    def test_make_weights_elastic10_benchmark(self):
+    def test_make_sum_table(self):
         from pyrocko.gf import store_ext
         store = self.dummy_store()
-        for xxx in [0., 1*km, 2*km, 5*km]:
+        store.open()
+        interpolation = 'multilinear'
+        for xxx in [0., 1*km, 2*km, 5*km, 8*km]:
             source = gf.RectangularSource(
                     lat=0., lon=0., depth=10*km, north_shift=0.1, east_shift=0.1, width=xxx, length=xxx)
 
@@ -723,46 +725,48 @@ class GFTestCase(unittest.TestCase):
 
             dsources = [
                 source.discretize_basesource(store, target) for target in targets]
+
+            source_coordss = [
+                dsource.coords5() for dsource in dsources]
 
             print dsources[0].nelements
 
-            for implementation in ('numpy', 'c'):
-                t0 = time.time()
-                for dsource, target in zip(dsources, targets):
-                    xx = dsource.make_weights(target, 'elastic10', implementation=implementation)
-                    print xx
+            receiver_coords_combi = num.empty((len(targets), 5))
+            for itarget, target in enumerate(targets):
+                receiver = target.receiver(store)
+                receiver_coords_combi[itarget, :] = \
+                    [receiver.lat, receiver.lon, receiver.north_shift,
+                      receiver.east_shift, receiver.depth]
 
-                t1 = time.time()
-                print implementation, t1 - t0
+            t0 = time.time()
+            store_ext.make_sum_params(store.cstore, source_coordss[0], dsource.m6s, receiver_coords_combi, 'elastic10', interpolation)
+            t1 = time.time()
 
-    def test_make_weights_elastic10(self):
-        from pyrocko.gf import store_ext
-        store = self.dummy_store()
-        for xxx in [0., 1*km, 2*km, 5*km]:
-            source = gf.RectangularSource(
-                    lat=0., lon=0., depth=10*km, north_shift=0.1, east_shift=0.1, width=xxx, length=xxx)
+            for itarget, source_coords, target in zip(xrange(len(targets)), source_coordss, targets):
+                store_ext.make_sum_params(store.cstore, source_coords, dsource.m6s, receiver_coords_combi[itarget:itarget+1, :], 'elastic10', interpolation)
 
-            targets = [gf.Target(
-                lat=random.random()*10.,
-                lon=random.random()*10,
-                north_shift=0.1,
-                east_shift=0.1) for x in xrange(1000)]
 
-            dsources = [
-                source.discretize_basesource(store, target) for target in targets]
+            t2 = time.time()
 
             for dsource, target in zip(dsources, targets):
-                #print dsource, target
-                result_c = list(dsource.make_weights(target, 'elastic10', implementation='c'))
-                result_n = list(dsource.make_weights(target, 'elastic10', implementation='numpy'))
+                for (component, args, delays, weights) in \
+                        store.config.make_sum_params(dsource, receiver):
 
-                for i in xrange(len(result_c)):
-                    self.assertEqual(result_c[i][0], result_n[i][0])
-                    num.testing.assert_array_almost_equal(result_c[i][1], result_n[i][1], 8)
-                    num.testing.assert_array_almost_equal(result_c[i][2], result_n[i][2], 8)
+                    if interpolation == 'nearest_neighbor':
+                        irecords = store.config.irecords(*args)
+                    else:
+                        assert interpolation == 'multilinear'
+                        irecords, ip_weights = store.config.vicinities(*args)
+                        neach = irecords.size / args[0].size
+                        weights = num.repeat(weights, neach) * ip_weights
+                        delays = num.repeat(delays, neach)
+
+            t3 = time.time()
+
+            print t1 - t0, t2 - t1, t3 - t2, 'x %g' %((t3 - t2) / (t1 - t0)), 'x %g'% ((t3 - t2) / (t2 - t1))
 
 
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main(defaultTest='GFTestCase.test_make_weights_elastic10')
+    unittest.main(defaultTest='GFTestCase.test_make_sum_table')
