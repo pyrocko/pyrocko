@@ -28,13 +28,13 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
     double listinterp_tension = 1000.0;
     char *datime;
     struct response *first, *r;
-
+    
     PyArrayObject *freqs_array = NULL, *freqs_array_cont = NULL;
     PyObject      *rvec_array = NULL;
     PyObject      *elem, *out_list;
     npy_intp      array_dims[1] = {0};
-
-     if (!PyArg_ParseTuple(args, "sssssssOssiiiiid",
+    
+    if (!PyArg_ParseTuple(args, "sssssssOssiiiiid",
                             &sta_list,
                             &cha_list,
                             &net_code,
@@ -87,22 +87,21 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
 
 
 
-    r = first;
-    while (r) {
+    while (first) {
     
         array_dims[0] = nfreqs;
         rvec_array = PyArray_SimpleNew(1, array_dims, NPY_COMPLEX128);
-        memcpy( PyArray_DATA((PyArrayObject*)rvec_array), r->rvec, nfreqs*16 );
+        memcpy( PyArray_DATA((PyArrayObject*)rvec_array), first->rvec, nfreqs*16 );
         
         elem = Py_BuildValue("(s,s,s,s,N)",  
-            r->station, r->network, r->locid, r->channel, rvec_array);
+            first->station, first->network, first->locid, first->channel, rvec_array);
                 
         PyList_Append(out_list, elem);
         Py_DECREF(elem);
                 
-        r = r->next;
+        first = first->next;
     } 
-    free_response(r);
+    free_response(first);
 
     return out_list;
 }
