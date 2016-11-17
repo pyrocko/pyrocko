@@ -2420,7 +2420,8 @@ class Evalresp(FrequencyResponse):
     Calls evalresp and generates values of the instrument response transfer
     function.
 
-    :param respfile: response file in evalresp format
+    :param respfile: response file or directory containing response files in
+        evalresp format
     :param trace: trace for which the response is to be extracted from the file
     :param target: ``'dis'`` for displacement or ``'vel'`` for velocity
     '''
