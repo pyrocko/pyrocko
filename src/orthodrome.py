@@ -556,17 +556,17 @@ def latlon_to_ne(refloc, loc):
 def latlon_to_ne_numpy(lat0, lon0, lat, lon):
     '''Relative cartesian coordinates with respect to a reference location.
 
-       For two locations, a reference location A and another location B, given in
-       geographical coordinates in degrees, the corresponding cartesian
-       coordinates are calculated.
-       Assisting functions are 'azimuth' and 'distance_accurate50m'
+    For two locations, a reference location (*lat0*, *lon0*) and another location B, given
+    in geographical coordinates in degrees, the corresponding cartesian
+    coordinates are calculated. Assisting functions are :py:func:`azimuth`
+    and :py:func:`distance_accurate50m`.
 
     :param lat0: reference location latitude
     :param lon0: reference location longitude
     :param lat: absolute location latitude
     :param lon: absolute location longitude
 
-    :return: n, e : relative north and east positions
+    :return: (*n*, *e*): relative north and east positions
 
     Implemented formulations:
 

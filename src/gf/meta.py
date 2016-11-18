@@ -508,7 +508,9 @@ class Location(Object):
 
         .. math::
 
-        |Delta = \\sqrt{\Delta \\bf{x}^2 + \Delta \\bf{y}^2 + \Delta \\bf{z}^2}
+            \\Delta = \\sqrt{\\Delta {\\bf x}^2 + \\Delta {\\bf y}^2 + \
+                      \\Delta {\\bf z}^2}
+
         '''
 
         if self.same_origin(other):
