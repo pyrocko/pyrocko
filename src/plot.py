@@ -489,7 +489,7 @@ def mpl_margins(
     :param w: set ``left`` and ``right`` at once
     :param h: set ``top`` and ``bottom`` at once
     :param nw: number of subplots horizontally
-    :param nw: number of subplots vertically
+    :param nh: number of subplots vertically
     :param all: set ``left``, ``top``, ``right``, and ``bottom`` at once
     '''
 
