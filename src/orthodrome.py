@@ -12,46 +12,64 @@ m2d = 1./d2m
 
 
 class Loc:
+    '''Simple location representation
+
+        :attrib lat: Latitude degree
+        :attrib lon: Longitude degree
+    '''
     def __init__(self, lat, lon):
         self.lat = lat
         self.lon = lon
 
 
 def clip(x, mi, ma):
+    ''' Clipping data array ``x``
+
+    :param x: Continunous data to be clipped
+    :param mi: Clip minimum
+    :param ma: Clip maximum
+    :type x: :py:class:`numpy.ndarray`
+    :type mi: float
+    :type ma: float
+
+    :return: Clipped data
+    :rtype: :py:class:`numpy.ndarray`
+    '''
     return num.minimum(num.maximum(mi, x), ma)
 
 
 def wrap(x, mi, ma):
     '''Wrapping continuous data to fundamental phase values.
 
-    Input: x - continous data
-
-           mi, ma  - minimum and maximum range value of wrapped data
-
-    Returns: wrapped x
-
     .. math::
-
         x_{\\mathrm{wrapped}} = x_{\\mathrm{cont},i} - \
-                        \\frac{ x_{\\mathrm{cont},i} - r_{\\mathrm{min}} }\
-                          { r_{\\mathrm{max}} -  r_{\\mathrm{min}}} \
-                         \cdot ( r_{\\mathrm{max}} -  r_{\\mathrm{min}}),\ \quad
-        x_{\\mathrm{wrapped}}\; \in \;[ r_{\\mathrm{min}},\, r_{\\mathrm{max}}].
+            \\frac{ x_{\\mathrm{cont},i} - r_{\\mathrm{min}} }\
+                  { r_{\\mathrm{max}} -  r_{\\mathrm{min}}} \
+            \cdot ( r_{\\mathrm{max}} -  r_{\\mathrm{min}}),\ \quad
+        x_{\\mathrm{wrapped}}\; \in
+            \;[ r_{\\mathrm{min}},\, r_{\\mathrm{max}}].
+
+    :param x: Continunous data to be wrapped
+    :param mi: Minimum value of wrapped data
+    :param ma: Maximum value of wrapped data
+    :type x: :py:class:`numpy.ndarray`
+    :type mi: float
+    :type ma: float
+
+    :return: Wrapped data
+    :rtype: :py:class:`numpy.ndarray`
     '''
     return x - num.floor((x-mi)/(ma-mi)) * (ma-mi)
 
 
 def cosdelta(a, b):
-    '''Cosine of the angular distance between two points A and B on a sphere.
+    '''Cosine of the angular distance between two points ``a`` and ``b`` on
+    a sphere.
 
-    This function (find implementation below) returns the cosine of the distance
-    angle 'delta' between two points A and B, coordinates of
+    This function (find implementation below) returns the cosine of the
+    distance angle 'delta' between two points ``a`` and ``b``, coordinates of
     which are expected to be given in geographical coordinates and in degrees.
     For numerical stability a maximum of 1.0 is enforced.
-
-    Input: a, b
-
-    returns: cosdelta
 
     .. math::
 
@@ -64,6 +82,14 @@ def cosdelta(a, b):
                      \\sin( B_{\\mathrm{lat'}} ) + \
                      \\cos(A_{\\mathrm{lat'}})  \\cos( B_{\\mathrm{lat'}} ) \
                      \\cos( B_{\\mathrm{lon'}} - A_{\\mathrm{lon'}} )
+
+    :param a: Location point A
+    :type a: :py:class:`pyrocko.orthodrome.Loc`
+    :param b: Location point B
+    :type b: :py:class:`pyrocko.orthodrome.Loc`
+
+    :return: cosdelta
+    :rtype: float
     '''
     return min(
         1.0,
@@ -73,20 +99,29 @@ def cosdelta(a, b):
 
 
 def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
-    '''Cosine of the angular distance between two points A and B on a sphere.
+    '''Cosine of the angular distance between two points ``a`` and ``b``
+    on a sphere.
 
     This function returns the cosines of the distance
-    angles 'delta' between two points A and B given in numpy arrays. The
-    coordinates are expected to be given in geographical coordinates
-    and in degrees. For numerical stability a maximum of 1.0 is enforced.
+    angles *delta* between two points ``a`` and ``b`` given as
+    :py:class:`numpy.ndarray`.
+    The coordinates are expected to be given in geographical coordinates
+    and in degrees. For numerical stability a maximum of ``1.0`` is enforced.
 
     Please find the details of the implementation in the documentation of
-    the function 'cosdelta' above.
+    the function :py:func:`pyrocko.orthodrome.cosdelta` above.
 
-    Input: a_lats, a_lons, b_lats, b_lons (in degrees)
+    :param a_lats: Latitudes (degree) point A
+    :param a_lons: Longitudes (degree) point A
+    :param b_lats: Latitudes (degree) point B
+    :param b_lons: Longitudes (degree) point B
+    :type a_lats: :py:class:`numpy.ndarray`
+    :type a_lons: :py:class:`numpy.ndarray`
+    :type b_lats: :py:class:`numpy.ndarray`
+    :type b_lons: :py:class:`numpy.ndarray`
 
-    Returns: cosdelta
-
+    :return: cosdelta
+    :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
     '''
     return num.minimum(
         1.0,
@@ -99,12 +134,8 @@ def azimuth(a, b):
     '''Azimuth calculation
 
     This function (find implementation below) returns azimuth ...
-    between points A and B, coordinates of
+    between points ``a`` and ``b``, coordinates of
     which are expected to be given in geographical coordinates and in degrees.
-
-    Input: a, b (in degrees)
-
-    Returns: azimuth
 
     .. math::
 
@@ -113,12 +144,18 @@ def azimuth(a, b):
         B_{\\mathrm{lat'}} = \\frac{ \pi}{180} \cdot B_{lat}, \quad \
         B_{\\mathrm{lon'}} = \\frac{ \pi}{180} \cdot B_{lon}\\\\
 
-        \\varphi_{\\mathrm{azi},AB} = \\frac{180}{\pi} \\arctan \left[ \\frac{  \
+        \\varphi_{\\mathrm{azi},AB} = \\frac{180}{\pi} \\arctan \left[ \\frac{\
                 \\cos( A_{\\mathrm{lat'}}) \\cos( B_{\\mathrm{lat'}} ) \
                 \\sin(B_{\\mathrm{lon'}} - A_{\\mathrm{lon'}} )} \
                 {\\sin ( B_{\\mathrm{lat'}} ) - \\sin( A_{\\mathrm{lat'}} \
                   cosdelta) } \\right]
 
+    :param a: Location point A
+    :type a: :py:class:`pyrocko.orthodrome.Loc`
+    :param b: Location point B
+    :type b: :py:class:`pyrocko.orthodrome.Loc`
+
+    :return: Azimuth in degree
     '''
     return r2d*math.atan2(
         math.cos(a.lat*d2r) * math.cos(b.lat*d2r) *
@@ -127,19 +164,27 @@ def azimuth(a, b):
 
 
 def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
-    '''Calculation of the azimuth (track angle) from a location A towards B.
+    '''Calculation of the azimuth (*track angle*) from a location A towards B.
 
-    This function returns azimuths (track angles) from locations A towards B
-    given in numpy arrays. Coordinates are expected to be given in geographical
-    coordinates and in degrees.
+    This function returns azimuths (*track angles*) from locations A towards B
+    given in :py:class:`numpy.ndarray`. Coordinates are expected to be given in
+    geographical coordinates and in degrees.
 
     Please find the details of the implementation in the documentation of the
-    function 'azimuth' above.
+    function :py:func:`pyrocko.orthodrome.azimuth`.
 
 
-    Input: a, b (in degrees)
+    :param a_lats: Latitudes (degree) point A
+    :param a_lons: Longitudes (degree) point A
+    :param b_lats: Latitudes (degree) point B
+    :param b_lons: Longitudes (degree) point B
+    :type a_lats: :py:class:`numpy.ndarray`, ``(N)``
+    :type a_lons: :py:class:`numpy.ndarray`, ``(N)``
+    :type b_lats: :py:class:`numpy.ndarray`, ``(N)``
+    :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
 
-    Returns: azimuth
+    :return: Azimuths in degrees
+    :rtype: :py:class:`numpy.ndarray`, ``(N)``
     '''
     if _cosdelta is None:
         _cosdelta = cosdelta_numpy(a_lats, a_lons, b_lats, b_lons)
@@ -151,15 +196,23 @@ def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
 
 
 def azidist_numpy(*args):
-    '''Calculation of the azimuth (track angle) and the distance from
+    '''Calculation of the azimuth (*track angle*) and the distance from
     locations A towards B on a sphere.
 
-    The assisting functions used are 'cosdelta' and 'azimuth'
-    Input:
+    The assisting functions used are :py:func:`pyrocko.orthodrome.cosdelta` and
+    :py:func:`pyrocko.orthodrome.azimuth`
 
-    Returns:
+    :param a_lats: Latitudes (degree) point A
+    :param a_lons: Longitudes (degree) point A
+    :param b_lats: Latitudes (degree) point B
+    :param b_lons: Longitudes (degree) point B
+    :type a_lats: :py:class:`numpy.ndarray`, ``(N)``
+    :type a_lons: :py:class:`numpy.ndarray`, ``(N)``
+    :type b_lats: :py:class:`numpy.ndarray`, ``(N)``
+    :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
 
-
+    :return: Azimuths in degrees, distances in degrees
+    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
     _cosdelta = cosdelta_numpy(*args)
     _azimuths = azimuth_numpy(_cosdelta=_cosdelta, *args)
@@ -169,14 +222,17 @@ def azidist_numpy(*args):
 def distance_accurate50m(a, b):
     ''' Accurate distance calculation based on a spheroid of rotation.
 
-    Function returns distance in [m] between points A and B, coordinates of
-    which must be given in geographical coordinates and in degrees. The returned
-    distance should be accurate to 50\,m using WGS84. Values for the Earth's
-    equator radius and the Earth's oblateness (f_oblate) are defined in the
-    pyrocko configuration file.
-    (from wikipedia :  http://de.wikipedia.org/wiki/Orthodrome, based on:
-    Meeus, J.: Astronomical Algorithms, S 85, Willmann-Bell,
-    Richmond 2000 (2nd ed., 2nd printing), ISBN 0-943396-61-1)
+    Function returns distance in meter between points A and B, coordinates of
+    which must be given in geographical coordinates and in degrees.
+    The returned distance should be accurate to 50\,m using WGS84.
+    Values for the Earth's equator radius and the Earth's oblateness
+    (``f_oblate``) are defined in the pyrocko configuration file
+    :py:class:`pyrocko.config`.
+
+    From wikipedia (http://de.wikipedia.org/wiki/Orthodrome), based on:
+
+    ``Meeus, J.: Astronomical Algorithms, S 85, Willmann-Bell,
+    Richmond 2000 (2nd ed., 2nd printing), ISBN 0-943396-61-1``
 
     .. math::
 
@@ -216,6 +272,14 @@ def distance_accurate50m(a, b):
                  \\cos^2(G) - h_2\, f_{\\mathrm{oblate}} \
                  \cdot \\cos^2(F) \\sin^2(G)]
 
+
+    :param a: Location point A
+    :type a: :py:class:`pyrocko.orthodrome.Loc`
+    :param b: Location point B
+    :type b: :py:class:`pyrocko.orthodrome.Loc`
+
+    :return: Distance in meter
+    :rtype: float
     '''
 
     f = (a.lat + b.lat)*d2r / 2.
@@ -241,17 +305,20 @@ def distance_accurate50m(a, b):
 
 
 def distance_accurate50m_numpy(a_lats, a_lons, b_lats, b_lons):
-    ''' Accurate calculation of distances based on a spheroid of rotation.
+    ''' Accurate distance calculation based on a spheroid of rotation.
 
-    Function returns distances in [m] between point array a and b,
+    Function returns distance in meter between points ``a`` and ``b``,
     coordinates of which must be given in geographical coordinates and in
-    degrees. The returned
-    distance should be accurate to 50\,m using WGS84. Values for the Earth's
-    equator radius and the Earth's oblateness (f_oblate) are defined in the
-    pyrocko configuration file.
-    (from wikipedia :  http://de.wikipedia.org/wiki/Orthodrome, based on:
-    Meeus, J.: Astronomical Algorithms, S 85, Willmann-Bell,
-    Richmond 2000 (2nd ed., 2nd printing), ISBN 0-943396-61-1)
+    degrees.
+    The returned distance should be accurate to 50\,m using WGS84.
+    Values for the Earth's equator radius and the Earth's oblateness
+    (``f_oblate``) are defined in the pyrocko configuration file
+    :py:class:`pyrocko.config`.
+
+    From wikipedia (http://de.wikipedia.org/wiki/Orthodrome), based on:
+
+    ``Meeus, J.: Astronomical Algorithms, S 85, Willmann-Bell,
+    Richmond 2000 (2nd ed., 2nd printing), ISBN 0-943396-61-1``
 
     .. math::
 
@@ -271,25 +338,38 @@ def distance_accurate50m_numpy(a_lats, a_lons, b_lats, b_lons):
         w_i = \\arctan \\left( \\sqrt{\\frac{S_i}{C_i}} \\right), \quad \
         r_i =  \\sqrt{\\frac{S_i}{C_i} }
 
-    The spherical-earth distance D between a and b, can be given with:
+    The spherical-earth distance ``D`` between ``a`` and ``b``,
+    can be given with:
 
     .. math::
 
         D_{\\mathrm{sphere},i} = 2w_i \cdot R_{\\mathrm{equator}}
 
     The oblateness of the Earth requires some correction with
-    correction factors h1 and h2:
+    correction factors ``h1`` and ``h2``:
 
      .. math::
 
         h_{1.i} = \\frac{3r - 1}{2C_i}, \quad \
         h_{2,i} = \\frac{3r +1 }{2S_i}\\\\[0.5cm]
 
-        D_{AB,i} = D_{\\mathrm{sphere},i} \cdot [1 + h_{1,i} \,f_{\\mathrm{oblate}} \
+        D_{AB,i} = D_{\\mathrm{sphere},i} \cdot [1 + h_{1,i}
+            \,f_{\\mathrm{oblate}} \
             \cdot \\sin^2(F_i) \
             \\cos^2(G_i) - h_{2,i}\, f_{\\mathrm{oblate}} \
             \cdot \\cos^2(F_i) \\sin^2(G_i)]
 
+    :param a_lats: Latitudes (degree) point A
+    :param a_lons: Longitudes (degree) point A
+    :param b_lats: Latitudes (degree) point B
+    :param b_lons: Longitudes (degree) point B
+    :type a_lats: :py:class:`numpy.ndarray`, ``(N)``
+    :type a_lons: :py:class:`numpy.ndarray`, ``(N)``
+    :type b_lats: :py:class:`numpy.ndarray`, ``(N)``
+    :type b_lons: :py:class:`numpy.ndarray`, ``(N)``
+
+    :return: Distances in degrees
+    :rtype: :py:class:`numpy.ndarray`, ``(N)``
     '''
 
     eq = num.logical_and(a_lats == b_lats, a_lons == b_lons)
@@ -335,10 +415,11 @@ def distance_accurate50m_numpy(a_lats, a_lons, b_lats, b_lons):
 
 def ne_to_latlon(lat0, lon0, north_m, east_m):
     '''Transform local cartesian coordinates to latitude and longitude.
-    
-    From east and north coordinates (x and y coordinate arrays) relative to a
-    reference differences in longitude and latitude are calculated, which are
-    effectively changes in azimuth and distance, respectively:
+
+    From east and north coordinates (``x`` and ``y`` coordinate
+    :py:class:`numpy.ndarray`)  relative to a reference differences in
+    longitude and latitude are calculated, which are effectively changes in
+    azimuth and distance, respectively:
 
     .. math::
 
@@ -348,13 +429,20 @@ def ne_to_latlon(lat0, lon0, north_m, east_m):
         \\text{azimuth change:}\; \Delta \\bf{\gamma} &= \\arctan( \\bf{x}  \
                                                          / \\bf{y}).
 
-    Input:
-    lat0, lon0:      Origin of the cartesian coordinate system.
-    north_m, east_m: 1D numpy arrays with distances from origin in meters.
-
-    Returns: lat, lon: 1D numpy arrays with latitudes and longitudes
-
     The projection used preserves the azimuths of the input points.
+
+    :param lat0: Latitude origin of the cartesian coordinate system.
+    :param lon0: Longitude origin of the cartesian coordinate system.
+    :param north_m: Northing distances from origin in meters.
+    :param east_m: Easting distances from origin in meters.
+    :type north_m: :py:class:`numpy.ndarray`, ``(N)``
+    :type east_m: :py:class:`numpy.ndarray`, ``(N)``
+    :type lat0: float
+    :type lon0: float
+
+    :return: Array with latitudes and longitudes
+    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
+
     '''
 
     a = num.sqrt(north_m**2+east_m**2)/config().earthradius
@@ -375,12 +463,8 @@ def azidist_to_latlon(lat0, lon0, azimuth_deg, distance_deg):
 def azidist_to_latlon_rad(lat0, lon0, azimuth_rad, distance_rad):
     ''' Absolute latitudes and longitudes are calculated from relative changes.
 
-    For numerical stability a range between of -1.0 and 1.0 is enforced for c
-    and alpha.
-
-    Input: lat0, lon0 (in degrees)
-
-    Returns: lat, lon - shifted latitudes and longitudes
+    For numerical stability a range between of ``-1.0`` and ``1.0`` is
+    enforced for ``c`` and ``alpha``.
 
     .. math::
 
@@ -392,25 +476,40 @@ def azidist_to_latlon_rad(lat0, lon0, azimuth_rad, distance_rad):
 
         \mathrm{b} &= \\frac{\pi}{2} -\\frac{\pi}{180} \;\mathrm{lat_0}\\\\
         {\\bf c}_i &=\\arccos[\; \cos(\Delta {\\bf{a}}_i) \cos(\mathrm{b}) \
-              + |\Delta \gamma_i| \,\sin(\Delta {\\bf a}_i) \sin(\mathrm{b})\; ] \\\\
+              + |\Delta \gamma_i| \,\sin(\Delta {\\bf a}_i)
+                \sin(\mathrm{b})\; ] \\\\
         \mathrm{lat}_i &=  \\frac{180}{\pi}  \
                           \\left(\\frac{\pi}{2} - {\\bf c}_i \\right)
 
     .. math::
 
          \\alpha_i &= \\arcsin \\left[ \; \\frac{ \sin(\Delta {\\bf a}_i ) \
-                         \sin(|\Delta \\gamma_i|)}{\sin({\\bf c}_i)}\; \\right] \\\\
+                         \sin(|\Delta \\gamma_i|)}{\sin({\\bf c}_i)}\;
+                         \\right] \\\\
         \\alpha_i &= \\begin{cases}
                  \\alpha_i, &\\text{if}  \; \cos(\Delta {\\bf a}_i) - \
                  \cos(\mathrm{b}) \cos({\\bf{c}}_i) > 0, \; \
                  \\text{else} \\\\
-                 \pi - \\alpha_i, & \\text{if} \; \\alpha_i > 0,\; \\text{else}\\\\
+                 \pi - \\alpha_i, & \\text{if} \; \\alpha_i > 0,\;
+                 \\text{else}\\\\
                 -\pi - \\alpha_i, & \\text{if} \; \\alpha_i < 0.
                 \\end{cases} \\\\
         \mathrm{lon}_i &=   \mathrm{lon_0} + \
-             \\frac{180}{\pi} \, \\frac{\Delta \gamma_i }{|\Delta \gamma_i|}  \
+             \\frac{180}{\pi} \, \\frac{\Delta \gamma_i }{|\Delta \gamma_i|} \
                             \cdot \\alpha_i  \
                              \\text{, with $\\alpha_i \\in [-\pi,\pi]$}
+
+    :param lat0: Latitude origin of the cartesian coordinate system.
+    :param lon0: Longitude origin of the cartesian coordinate system.
+    :param distance_rad: Distances from origin in radians.
+    :param azimuth_rad: Azimuth from radians.
+    :type distance_rad: :py:class:`numpy.ndarray`, ``(N)``
+    :type azimuth_rad: :py:class:`numpy.ndarray`, ``(N)``
+    :type lat0: float
+    :type lon0: float
+
+    :return: Array with latitudes and longitudes
+    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
 
     a = distance_rad
@@ -442,20 +541,17 @@ def azidist_to_latlon_rad(lat0, lon0, azimuth_rad, distance_rad):
 def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
     '''Transform local cartesian coordinates to latitude and longitude.
 
-    Like ne_to_latlon(), but this method (implementation below), although it
-    should be numerically more stable, suffers problems at points which are 'across the pole' as seen
-    from the cartesian origin.
-
-    Input: lat0, lon0, north_shift, east_shift
-
-    Returns: lat, lon
+    Like :py:func:`pyrocko.orthodrome.ne_to_latlon`,
+    but this method (implementation below), although it should be numerically
+    more stable, suffers problems at points which are *across the pole*
+    as seen from the cartesian origin.
 
     .. math::
 
-        \\text{distance change:}\; \Delta {{\\bf a}_i} &= \sqrt{{\\bf{y}}^2_i + \
-                                           {\\bf{x}}^2_i }/ \mathrm{R_E},\\\\
-        \\text{azimuth change:}\; \Delta {\\bf \gamma}_i &= \\arctan( {\\bf x}_i  \
-                                                         / {\\bf y}_i). \\\\
+        \\text{distance change:}\; \Delta {{\\bf a}_i} &=\sqrt{{\\bf{y}}^2_i +
+                                        {\\bf{x}}^2_i }/ \mathrm{R_E},\\\\
+        \\text{azimuth change:}\; \Delta {\\bf \gamma}_i &=
+                                        \\arctan( {\\bf x}_i {\\bf y}_i). \\\\
         \mathrm{b} &= \\frac{\pi}{2} -\\frac{\pi}{180} \;\mathrm{lat_0}\\\\
 
     .. math::
@@ -493,6 +589,17 @@ def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
                                       \\frac{\gamma_i}{|\gamma_i|}, \
                                      \\text{ with}\; \gamma \\in [-\pi,\pi]
 
+    :param lat0: Latitude origin of the cartesian coordinate system.
+    :param lon0: Longitude origin of the cartesian coordinate system.
+    :param north_m: Northing distances from origin in meters.
+    :param east_m: Easting distances from origin in meters.
+    :type north_m: :py:class:`numpy.ndarray`, ``(N)``
+    :type east_m: :py:class:`numpy.ndarray`, ``(N)``
+    :type lat0: float
+    :type lon0: float
+
+    :return: Array with latitudes and longitudes
+    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
 
     b = math.pi/2.-lat0*d2r
@@ -530,7 +637,8 @@ def latlon_to_ne(refloc, loc):
     For two locations, a reference location A and another location B, given in
     geographical coordinates in degrees, the corresponding cartesian
     coordinates are calculated.
-    Assisting functions are 'azimuth' and 'distance_accurate50m'
+    Assisting functions are :py:func:`pyrocko.orthodrome.azimuth' and
+    :py:func:`pyrocko.orthodrome.distance_accurate50m`
 
     .. math::
 
@@ -540,11 +648,15 @@ def latlon_to_ne(refloc, loc):
 
         n &= D_{AB} \cdot \\cos( \\frac{\pi }{180} \
                                     \\varphi_{\\mathrm{azi},AB} )\\\\
-        e &= D_{AB} \cdot \\sin( \\frac{\pi }{180} \\varphi_{\\mathrm{azi},AB} )
+        e &= D_{AB} \cdot \\sin( \\frac{\pi }{180} \\varphi_{\\mathrm{azi},AB})
 
-    Input: refloc, loc
+    :param refloc: Location reference point
+    :type refloc: :py:class:`pyrocko.orthodrome.Loc`
+    :param loc: Location of interest
+    :type loc: :py:class:`pyrocko.orthodrome.Loc`
 
-    Returns: n, e
+    :return: Northing and easting from refloc to location
+    :rtype: tuple, float
 
     '''
     azi = azimuth(refloc, loc)
@@ -556,9 +668,10 @@ def latlon_to_ne(refloc, loc):
 def latlon_to_ne_numpy(lat0, lon0, lat, lon):
     '''Relative cartesian coordinates with respect to a reference location.
 
-    For two locations, a reference location (*lat0*, *lon0*) and another location B, given
-    in geographical coordinates in degrees, the corresponding cartesian
-    coordinates are calculated. Assisting functions are :py:func:`azimuth`
+    For two locations, a reference location (``lat0``, ``lon0``) and another
+    location B, given in geographical coordinates in degrees,
+    the corresponding cartesian coordinates are calculated.
+    Assisting functions are :py:func:`azimuth`
     and :py:func:`distance_accurate50m`.
 
     :param lat0: reference location latitude
@@ -567,6 +680,7 @@ def latlon_to_ne_numpy(lat0, lon0, lat, lon):
     :param lon: absolute location longitude
 
     :return: (*n*, *e*): relative north and east positions
+    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
 
     Implemented formulations:
 
@@ -668,8 +782,6 @@ def positive_region(region):
 
 def radius_to_region(lat, lon, radius):
     '''
-
-
     :param lat:
     :param lon:
     :param radius:
@@ -703,12 +815,18 @@ def radius_to_region(lat, lon, radius):
 def geographic_midpoint(lats, lons, weights=None):
     '''Calculate geographic midpoints by finding the center of gravity.
 
-    :param lats: array of latitudes
-    :param lons: array of longitudes
-    :param weights: array weighting factors (optinal)
-
     This method suffers from instabilities if points are centered around the
     poles.
+
+    :param lats: array of latitudes
+    :param lons: array of longitudes
+    :param weights: array weighting factors (optional)
+    :type lats: :py:class:`numpy.ndarray`, ``(N)``
+    :type lons: :py:class:`numpy.ndarray`, ``(N)``
+    :type weights: :py:class:`numpy.ndarray`, ``(N)``
+
+    :return: Latitudes and longitudes of the modpoints
+    :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
     '''
     if not weights:
         weights = num.ones(len(lats))
