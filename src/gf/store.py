@@ -196,6 +196,7 @@ def make_same_span(tracesdict):
 
     return out
 
+
 Zero = GFTrace(is_zero=True, itmin=0)
 
 

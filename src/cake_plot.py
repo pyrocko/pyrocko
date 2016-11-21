@@ -135,6 +135,7 @@ def dark(color, factor=0.5):
 def to01(c):
     return tuple(x/255. for x in c)
 
+
 colors = [to01(tango_colors[x+i]) for i in '321' for x in
           'scarletred chameleon skyblue chocolate orange plum'.split()]
 shades = [light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1, 9)]

@@ -155,6 +155,7 @@ def make_stationxml(responses, inconsistencies='warn'):
         created=time.time(),
         network_list=[networks[net_] for net_ in sorted(networks.keys())])
 
+
 if __name__ == '__main__':
 
     import sys

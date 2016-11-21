@@ -663,6 +663,7 @@ class Snuffler(qg.QApplication):
     def myQuit(self, *args):
         self.quit()
 
+
 app = None
 
 

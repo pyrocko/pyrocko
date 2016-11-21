@@ -103,6 +103,7 @@ class DataCubeTestCase(unittest.TestCase):
             print 'with interpolation: %10.3f' % (t1 - t0)
             del trs
 
+
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')
     unittest.main()

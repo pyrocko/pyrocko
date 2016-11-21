@@ -22,6 +22,7 @@ class ForkedTestCase(unittest.TestCase):
         except SystemExit:
             pass
 
+
 if __name__ == "__main__":
     util.setup_logging('test_forked', 'warning')
     unittest.main()

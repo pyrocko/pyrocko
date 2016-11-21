@@ -95,6 +95,7 @@ class UtilTestCase(unittest.TestCase):
         yy = util.plf_integrate_piecewise(x_edges, x, y)
         assert num.all(num.abs(yy - num.array([0.5, 1.0, 0.5])) < 1e-6)
 
+
 if __name__ == "__main__":
     util.setup_logging('test_util', 'warning')
     unittest.main()

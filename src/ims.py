@@ -229,6 +229,7 @@ def x_int_angle():
 
     return float_or_none, string
 
+
 x_int_angle.width = 3
 x_int_angle.help_type = 'int [0, 360]'
 
@@ -284,12 +285,14 @@ def x_date_time(fmt='%Y/%m/%d %H:%M:%S.3FRAC'):
 
     return parse, string
 
+
 x_date_time.width = 23
 x_date_time.help_type = 'YYYY/MM/DD HH:MM:SS.FFF'
 
 
 def x_date():
     return x_date_time(fmt='%Y/%m/%d')
+
 
 x_date.width = 10
 x_date.help_type = 'YYYY/MM/DD'
@@ -298,6 +301,7 @@ x_date.help_type = 'YYYY/MM/DD'
 def x_date_iris():
     return x_date_time(fmt='%m/%d/%Y')
 
+
 x_date_iris.width = 10
 x_date_iris.help_type = 'MM/DD/YYYY'
 
@@ -305,12 +309,14 @@ x_date_iris.help_type = 'MM/DD/YYYY'
 def x_date_time_no_seconds():
     return x_date_time(fmt='%Y/%m/%d %H:%M')
 
+
 x_date_time_no_seconds.width = 16
 x_date_time_no_seconds.help_type = 'YYYY/MM/DD HH:MM'
 
 
 def x_date_time_2frac():
     return x_date_time(fmt='%Y/%m/%d %H:%M:%S.2FRAC')
+
 
 x_date_time_2frac.width = 22
 x_date_time_2frac.help_type = 'YYYY/MM/DD HH:MM:SS.FF'
@@ -329,6 +335,7 @@ def x_yesno():
         return 'ny'[int(b)]
 
     return parse, string
+
 
 x_yesno.width = 1
 x_yesno.help_type = 'yes/no'
