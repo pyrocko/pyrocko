@@ -117,6 +117,7 @@ def num_to_html(num):
 
     return snum
 
+
 gap_lap_tolerance = 5.
 
 
@@ -159,6 +160,7 @@ class ObjectStyle(object):
     def __init__(self, frame_pen, fill_brush):
         self.frame_pen = frame_pen
         self.fill_brush = fill_brush
+
 
 box_styles = []
 box_alpha = 100
@@ -203,6 +205,7 @@ def get_working_system_time_range():
         except:
             break
     return lo, hi
+
 
 working_system_time_range = get_working_system_time_range()
 
@@ -3674,6 +3677,7 @@ def MakePileViewerMainClass(base):
             return clearit, hideit, error
 
     return PileViewerMain
+
 
 PileViewerMain = MakePileViewerMainClass(qg.QWidget)
 GLPileViewerMain = MakePileViewerMainClass(qgl.QGLWidget)

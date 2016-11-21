@@ -242,6 +242,7 @@ def latlon_to_ne_numpy(lat0, lon0, lat, lon):
     e = num.sin(azi*d2r)*dist
     return n, e
 
+
 _wgs84 = None
 
 

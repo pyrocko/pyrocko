@@ -216,6 +216,7 @@ def papersize(paper, orientation='landscape', units='point'):
 
     return apply_units((w, h), units)
 
+
 papersize.__doc__ %= (_doc_papersizes, _doc_units)
 
 
@@ -553,6 +554,7 @@ def mpl_margins(
 
     return labelpos
 
+
 mpl_margins.__doc__ %= _doc_units
 
 
@@ -584,6 +586,7 @@ def mpl_papersize(paper, orientation='landscape'):
     '''
 
     return papersize(paper, orientation=orientation, units='inch')
+
 
 mpl_papersize.__doc__ %= _doc_papersizes
 

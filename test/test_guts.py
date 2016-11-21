@@ -21,6 +21,7 @@ class SamplePat(StringPattern):
 class SampleChoice(StringChoice):
     choices = ['a', 'bcd', 'efg']
 
+
 basic_types = (
     Bool, Int, Float, String, Unicode, Complex, Timestamp, SamplePat,
     SampleChoice)
@@ -28,6 +29,7 @@ basic_types = (
 
 def tstamp(*args):
     return float(calendar.timegm(args))
+
 
 samples = {}
 samples[Bool] = [True, False]
@@ -638,6 +640,7 @@ def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 
     return basicTypeTest
 
+
 for Type in samples:
     for isample, sample in enumerate(samples[Type]):
         for xml in (False, True):
@@ -652,6 +655,7 @@ for Type in regularize:
                     str(isample) + ['', 'XML'][xml],
                     makeBasicTypeTest(
                         Type, sample, sample_in=sample_in, xml=xml))
+
 
 if __name__ == '__main__':
     unittest.main()
