@@ -75,12 +75,7 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                        'none': None}
         self.c_alignment = qc.Qt.AlignHCenter
         self.bbcache = qg.QPixmapCache()
-
-    def initStyleOption(self, option, index):
-        super(MarkerItemDelegate, self).initStyleOption(option, index)
-        if option.state & qg.QStyle.State_Selected:
-            option.state &= ~ qg.QStyle.State_Selected
-            option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 255))
+        self.active_marker_index = -1
 
     def paint(self, painter, option, index):
         if index.column() == 10:
@@ -97,7 +92,17 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                     self.bbcache.insert(key, pixmap)
                 a, b, c, d = option.rect.getRect()
                 painter.save()
+                painter.setRenderHint(qg.QPainter.Antialiasing)
                 painter.drawPixmap(a, b, d, d, pixmap)
+                painter.restore()
+
+        iactive = self.parent().active_event_index
+        if iactive is not None:
+            if self.parent().model().mapToSource(index).row() == iactive:
+                painter.save()
+                #painter->setBrush(selectionBrush);
+                rect = option.rect
+                painter.drawRoundedRect(rect.adjusted(1,1,-1,-1), 5, 5)
                 painter.restore()
 
         qg.QStyledItemDelegate.paint(self, painter, option, index)
@@ -214,6 +219,8 @@ class MarkerTableView(qg.QTableView):
             qc.SIGNAL('customContextMenuRequested(QPoint)'),
             self.show_context_menu)
 
+        self.active_event_index = None
+
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
 
@@ -257,13 +264,16 @@ class MarkerTableView(qg.QTableView):
                 want_distances = True
             elif header == 'Kagan Angle [deg]':
                 want_angles = True
-        p = self.pile_viewer
-        active_event = p.get_active_event_marker()
-        if active_event:
-            i = p.markers.index(p.get_active_event_marker())
+
+        if self.active_event_index:
             self.model().sourceModel().update_distances_and_angles(
-                [[i]], want_distances=want_distances, want_angles=want_angles)
+                [[i_active_marker]], want_distances=want_distances, want_angles=want_angles)
         self.parent().setMinimumWidth(width)
+
+    def set_active_event_index(self, i):
+        if i == -1:
+            i = None
+        self.active_event_index = i
 
 
 class MarkerTableModel(qc.QAbstractTableModel):
@@ -543,8 +553,8 @@ class MarkerEditor(qg.QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         self.marker_table_view = MarkerTableView(self)
-        self.marker_table_view.setItemDelegate(
-            MarkerItemDelegate(self.marker_table_view))
+        self.delegate = MarkerItemDelegate(self.marker_table_view)
+        self.marker_table_view.setItemDelegate(self.delegate)
 
         self.marker_model = MarkerTableModel()
         self.marker_model.marker_table_view = self.marker_table_view
@@ -585,6 +595,11 @@ class MarkerEditor(qg.QFrame):
             self.pile_viewer,
             qc.SIGNAL('changed_marker_selection'),
             self.update_selection_model)
+
+        self.connect(
+            self.pile_viewer,
+            qc.SIGNAL('active_event_marker_changed(int)'),
+            self.marker_table_view.set_active_event_index)
 
         self.marker_table_view.toggle_columns()
 
