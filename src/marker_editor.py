@@ -1,11 +1,13 @@
 import numpy as num
-import math
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker
 from pyrocko import orthodrome, moment_tensor
-from pyrocko.beachball import mt2beachball
+from pyrocko.beachball import mt2beachball, BeachballError
+import logging
+
+logger = logging.getLogger('pyrocko.marker_editor')
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
@@ -18,7 +20,7 @@ _string_header = (_column_mapping['Time'], _column_mapping['Label'])
 _header_sizes = [70] * len(_header_data)
 _header_sizes[0] = 40
 _header_sizes[1] = 190
-_header_sizes[10] = 30
+_header_sizes[10] = 20
 
 
 class BeachballWidget(qg.QWidget):
@@ -38,21 +40,25 @@ class BeachballWidget(qg.QWidget):
     def paintEvent(self, e):
         center = e.rect().center()
         painter = qg.QPainter(self)
-        data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
-                            position=(center.x(), center.y()))
-        for pdata in data:
-            paths, fill, edges, thickness = pdata
-            brush, pen = self.brushs_pens[fill]
-            polygon = qg.QPolygonF()
+        painter.save()
+        try:
+            data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
+                                position=(center.x(), center.y()))
+            for pdata in data:
+                paths, fill, edges, thickness = pdata
+                brush, pen = self.brushs_pens[fill]
+                polygon = qg.QPolygonF()
 
-            for x, y in paths:
-                polygon.append(qc.QPointF(x, y))
+                for x, y in paths:
+                    polygon.append(qc.QPointF(x, y))
 
-            painter.save()
-            painter.setBrush(brush)
-            pen.setWidth(1)
-            painter.setPen(pen)
-            painter.drawPolygon(polygon)
+                painter.setBrush(brush)
+                pen.setWidth(1)
+                painter.setPen(pen)
+                painter.drawPolygon(polygon)
+        except BeachballError as e:
+            logger.exception(e)
+        finally:
             painter.restore()
 
     def to_qpixmap(self):
@@ -71,7 +77,7 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
         self.bbcache = qg.QPixmapCache()
 
     def initStyleOption(self, option, index):
-        super(MarkerItemDelegate,self).initStyleOption(option, index)
+        super(MarkerItemDelegate, self).initStyleOption(option, index)
         if option.state & qg.QStyle.State_Selected:
             option.state &= ~ qg.QStyle.State_Selected
             option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 255))
@@ -80,30 +86,31 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
         if index.column() == 10:
             mt = self.get_mt_from_index(index)
             if mt:
-                key = qc.QString(''.join(map(lambda x: str(round(x, 1)), mt.m6())))
+                key = qc.QString(
+                    ''.join(map(lambda x: str(round(x, 1)), mt.m6())))
                 pixmap = qg.QPixmap()
                 found = self.bbcache.find(key, pixmap)
-                painter.save()
                 if found:
-                    pixmap = pixmap.scaled(option.rect.size(),
-                                           aspectRatioMode=qc.Qt.KeepAspectRatioByExpanding)
+                    pixmap = pixmap.scaledToHeight(option.rect.height())
                 else:
                     pixmap = BeachballWidget(mt).to_qpixmap()
                     self.bbcache.insert(key, pixmap)
-                painter.drawPixmap(option.rect, pixmap)
+                a, b, c, d = option.rect.getRect()
+                painter.save()
+                painter.drawPixmap(a, b, d, d, pixmap)
                 painter.restore()
 
-        qg.QStyledItemDelegate.paint(self,painter, option, index)
+        qg.QStyledItemDelegate.paint(self, painter, option, index)
 
     def displayText(self, value, locale):
         if (value.type() == qc.QVariant.DateTime):
-            return value.toDateTime().toUTC().toString('yyyy-MM-dd HH:mm:ss.zzz')
+            return value.toDateTime().toUTC().toString(
+                'yyyy-MM-dd HH:mm:ss.zzz')
         else:
             return value.toString()
 
     def get_mt_from_index(self, index):
         tv = self.parent()
-        pf = tv.model()
         pv = tv.pile_viewer
         marker = pv.markers[tv.model().mapToSource(index).row()]
         if isinstance(marker, EventMarker):
@@ -179,7 +186,7 @@ class MarkerTableView(qg.QTableView):
 
         self.header_menu = qg.QMenu(self)
 
-        show_initially = ['Type', 'Time', 'Magnitude', 'MT']
+        show_initially = ['Type', 'Time', 'Magnitude']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
                             'Kagan Angle [deg]', 'MT']
@@ -554,7 +561,7 @@ class MarkerEditor(qg.QFrame):
             header.setResizeMode(i_s, qg.QHeaderView.Interactive)
             header.resizeSection(i_s, s)
 
-        header.setStretchLastSection(False)
+        header.setStretchLastSection(True)
 
         self.selection_model = qg.QItemSelectionModel(self.proxy_filter)
         self.marker_table_view.setSelectionModel(self.selection_model)
