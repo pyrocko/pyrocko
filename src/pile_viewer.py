@@ -3510,6 +3510,7 @@ def MakePileViewerMainClass(base):
             for snuffling in list(self.snufflings):
                 self.remove_snuffling(snuffling)
 
+            self.emit(qc.SIGNAL('about_to_close()'))
             self.return_tag = return_tag
 
         def set_error_message(self, key, value):
@@ -3529,6 +3530,7 @@ def MakePileViewerMainClass(base):
             clearit, hideit, error = False, True, None
             if len(toks) >= 1:
                 command = toks[0].lower()
+
                 try:
                     quick_filter_commands = {
                         'n': '%s.*.*.*',
@@ -3727,8 +3729,6 @@ class PileViewer(qg.QFrame):
         self.setFrameShape(qg.QFrame.StyledPanel)
         self.setFrameShadow(qg.QFrame.Sunken)
 
-        self.history = ['']
-
         self.input_area = qg.QFrame(self)
         ia_layout = qg.QGridLayout()
         ia_layout.setContentsMargins(11, 11, 11, 11)
@@ -3750,10 +3750,10 @@ class PileViewer(qg.QFrame):
 
         self.connect(self.inputline,
                      qc.SIGNAL('history_down()'),
-                     lambda: self.inputline_history(-1))
+                     lambda: self.step_through_history(1))
         self.connect(self.inputline,
                      qc.SIGNAL('history_up()'),
-                     lambda: self.inputline_history(1))
+                     lambda: self.step_through_history(-1))
 
         self.connect(
             self.inputline,
@@ -3762,6 +3762,7 @@ class PileViewer(qg.QFrame):
 
         self.inputline.setFocusPolicy(qc.Qt.ClickFocus)
         self.input_area.hide()
+        self.history = None
 
         self.inputline_error_str = None
 
@@ -3799,12 +3800,18 @@ class PileViewer(qg.QFrame):
             self.viewer,
             qc.SIGNAL('pile_has_changed_signal()'),
             self.adjust_controls)
+        self.connect(
+            self.viewer,
+            qc.SIGNAL('about_to_close()'),
+            self.save_inputline_history)
 
     def get_progressbars(self):
         return self.progressbars
 
     def inputline_show(self):
-        self.hist_ind = 0
+        if not self.history:
+            self.load_inputline_history()
+
         self.input_area.show()
         self.inputline.setFocus(qc.Qt.OtherFocusReason)
         self.inputline.selectAll()
@@ -3836,7 +3843,14 @@ class PileViewer(qg.QFrame):
             self.inputline_set_error(error)
 
         if clearit:
-            self.history.append(line)
+            line = line.strip()
+            if line != '':
+                if len(self.history) >= 1:
+                    if line != self.history[-1]:
+                        self.history.append(line)
+                else:
+                    self.history.append(line)
+
             self.inputline.blockSignals(True)
             qpat, qinp = self.viewer.get_quick_filter_patterns()
             if qpat is None:
@@ -3849,15 +3863,53 @@ class PileViewer(qg.QFrame):
             self.viewer.setFocus(qc.Qt.OtherFocusReason)
             self.input_area.hide()
 
+        self.hist_ind = len(self.history)
+
     def inputline_aborted(self):
+        '''Hide the input line.'''
         self.viewer.setFocus(qc.Qt.OtherFocusReason)
+        self.hist_ind = len(self.history)
         self.input_area.hide()
 
-    def inputline_history(self, ud=1):
+    def save_inputline_history(self):
+        '''
+        Save input line history to "$HOME/.pyrocko/.snuffler_history.pf"
+        '''
+        if not self.history:
+            return
+
+        conf = pyrocko.config
+        fn_hist = conf.expand(conf.make_conf_path_tmpl('.snuffler_history'))
+        with open(fn_hist, 'w') as f:
+            i = min(100, len(self.history))
+            for c in self.history[-i:]:
+                f.write('%s\n' % c)
+
+    def load_inputline_history(self):
+        '''
+        Load input line history from "$HOME/.pyrocko/.snuffler_history.pf"
+        '''
+        conf = pyrocko.config
+        fn_hist = conf.expand(conf.make_conf_path_tmpl('.snuffler_history'))
+        if not os.path.exists(fn_hist):
+            open(fn_hist, 'w+').close()
+
+        with open(fn_hist, 'r') as f:
+            self.history = [l.strip() for l in f.readlines()]
+
+        self.hist_ind = len(self.history)
+
+    def step_through_history(self, ud=1):
+        '''
+        Step through input line history and set the input line text.
+        '''
+        n = len(self.history)
         self.hist_ind += ud
-        if len(self.history) != 0:
-            self.inputline.setText(
-                self.history[-self.hist_ind % len(self.history)])
+        self.hist_ind %= (n + 1)
+        if len(self.history) != 0 and self.hist_ind != n:
+            self.inputline.setText(self.history[self.hist_ind])
+        else:
+            self.inputline.setText('')
 
     def inputline_finished(self):
         pass
