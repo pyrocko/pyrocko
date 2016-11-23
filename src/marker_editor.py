@@ -34,7 +34,9 @@ class BeachballWidget(qg.QWidget):
                        'none': None}
         self.brushs_pens = {}
         for k, c in self.colors.items():
-            self.brushs_pens[k] = (qg.QBrush(c), qg.QPen(c))
+            pen = qg.QPen(c)
+            pen.setWidth(1)
+            self.brushs_pens[k] = (qg.QBrush(c), pen)
         self.moment_tensor = moment_tensor
         self.setGeometry(0, 0, 50, 50)
 
@@ -54,7 +56,6 @@ class BeachballWidget(qg.QWidget):
                     polygon.append(qc.QPointF(x, y))
 
                 painter.setBrush(brush)
-                pen.setWidth(1)
                 painter.setPen(pen)
                 painter.drawPolygon(polygon)
         except BeachballError as e:
@@ -77,6 +78,13 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
         self.c_alignment = qc.Qt.AlignHCenter
         self.bbcache = qg.QPixmapCache()
 
+    def initStyleOption(self, option, index):
+        super(MarkerItemDelegate,self).initStyleOption(option, index)
+        if option.state & qg.QStyle.State_Selected:
+            option.state &= ~ qg.QStyle.State_Selected
+            #option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 25))
+
+
     def paint(self, painter, option, index):
         if index.column() == 10:
             mt = self.get_mt_from_index(index)
@@ -94,6 +102,10 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                 painter.save()
                 painter.setRenderHint(qg.QPainter.Antialiasing)
                 painter.drawPixmap(a, b, d, d, pixmap)
+                if (option.state & qg.QStyle.State_Selected):
+                    brush = option.backgroundBrush
+                    brush.setColor(self.colors['red'])
+                    painter.setBrush(brush)
                 painter.restore()
 
         iactive = self.parent().active_event_index
@@ -129,33 +141,6 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
         else:
             return None
 
-    def draw_beachball(self, painter, index, option):
-
-        mt = self.get_mt_from_index(index)
-        if not mt:
-            return
-        data = self.bbcache.get(mt._m, None)
-        center = option.rect.center()
-        if not data:
-            data = mt2beachball(mt, size=1)
-            self.bbcache[mt._m] = data
-
-        for ip, pdata in enumerate(data):
-            paths, fill, edges, thickness = pdata
-            color = self.colors[fill]
-            polygon = qg.QPolygonF()
-            for x, y in paths:
-                polygon.append(qc.QPointF(x+center.x(), y+center.y()))
-
-            brush = qg.QBrush(color)
-            painter.save()
-            painter.setBrush(brush)
-            pen = qg.QPen(color)
-            pen.setWidth(thickness)
-            painter.setPen(pen)
-            painter.drawPolygon(polygon)
-            painter.restore()
-
 
 class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     '''Sorts the table's columns.'''
@@ -176,9 +161,8 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
 class MarkerTableView(qg.QTableView):
     def __init__(self, *args, **kwargs):
         qg.QTableView.__init__(self, *args, **kwargs)
-
+        self.setFocusPolicy(qc.Qt.NoFocus)
         self.setSelectionBehavior(qg.QAbstractItemView.SelectRows)
-        self.setSelectionMode(qg.QAbstractItemView.ContiguousSelection)
         self.setHorizontalScrollMode(qg.QAbstractItemView.ScrollPerPixel)
         self.setEditTriggers(qg.QAbstractItemView.DoubleClicked)
         self.setSortingEnabled(True)
