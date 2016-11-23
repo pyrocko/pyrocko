@@ -206,6 +206,7 @@ class GUITest(unittest.TestCase):
 
                 options.remove(oa)
 
+
 if __name__ == '__main__':
     util.setup_logging('test_gui', 'warning')
     unittest.main()
