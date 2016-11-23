@@ -79,11 +79,10 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
         self.bbcache = qg.QPixmapCache()
 
     def initStyleOption(self, option, index):
-        super(MarkerItemDelegate,self).initStyleOption(option, index)
+        super(MarkerItemDelegate, self).initStyleOption(option, index)
         if option.state & qg.QStyle.State_Selected:
             option.state &= ~ qg.QStyle.State_Selected
-            #option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 25))
-
+            # option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 25))
 
     def paint(self, painter, option, index):
         if index.column() == 10:
