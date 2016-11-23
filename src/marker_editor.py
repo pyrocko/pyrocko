@@ -3,8 +3,9 @@ from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker
-from pyrocko import orthodrome, moment_tensor
 from pyrocko.beachball import mt2beachball, BeachballError
+from pyrocko import orthodrome, moment_tensor
+from pyrocko.plot import tango_colors
 import logging
 
 logger = logging.getLogger('pyrocko.marker_editor')
@@ -75,7 +76,6 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                        'none': None}
         self.c_alignment = qc.Qt.AlignHCenter
         self.bbcache = qg.QPixmapCache()
-        self.active_marker_index = -1
 
     def paint(self, painter, option, index):
         if index.column() == 10:
@@ -97,12 +97,18 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                 painter.restore()
 
         iactive = self.parent().active_event_index
-        if iactive is not None:
-            if self.parent().model().mapToSource(index).row() == iactive:
+        if iactive is not None and \
+                self.parent().model().mapToSource(index).row() == iactive:
                 painter.save()
-                #painter->setBrush(selectionBrush);
+
                 rect = option.rect
-                painter.drawRoundedRect(rect.adjusted(1,1,-1,-1), 5, 5)
+                x1, y1, x2, y2 = rect.getCoords()
+                pen = painter.pen()
+                pen.setWidth(2)
+                pen.setColor(qg.QColor(*tango_colors['scarletred3']))
+                painter.setPen(pen)
+                painter.drawLine(qc.QLineF(x1, y1, x2, y1))
+                painter.drawLine(qc.QLineF(x1, y2, x2, y2))
                 painter.restore()
 
         qg.QStyledItemDelegate.paint(self, painter, option, index)
@@ -267,16 +273,19 @@ class MarkerTableView(qg.QTableView):
 
         if self.active_event_index:
             self.model().sourceModel().update_distances_and_angles(
-                [[i_active_marker]], want_distances=want_distances, want_angles=want_angles)
+                [[self.active_event_index]],
+                want_distances=want_distances, want_angles=want_angles)
         self.parent().setMinimumWidth(width)
 
     def set_active_event_index(self, i):
         if i == -1:
             i = None
         self.active_event_index = i
+        self.viewport().update()
 
 
 class MarkerTableModel(qc.QAbstractTableModel):
+
     def __init__(self, *args, **kwargs):
         qc.QAbstractTableModel.__init__(self, *args, **kwargs)
         self.pile_viewer = None
