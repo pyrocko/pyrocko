@@ -435,6 +435,7 @@ def choose_transform(axes, size_units, position, size):
 
     return transform, position, size
 
+
 def mt2beachball(
         mt,
         beachball_type='deviatoric',
@@ -473,7 +474,6 @@ def mt2beachball(
                 position[NA, :]
             data.append((verts, 'none', edgecolor, linewidth))
     return data
-
 
 
 def plot_beachball_mpl(
