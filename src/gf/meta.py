@@ -1554,7 +1554,7 @@ class ConfigTypeA(Config):
 
     def get_surface_distance(self, args):
         if isinstance(args, num.ndarray):
-            return args[args.shape[1]-1]
+            return args.T[args.shape[1]-1]
         else:
             return args[1]
 
@@ -1739,7 +1739,7 @@ class ConfigTypeB(Config):
 
     def get_surface_distance(self, args):
         if isinstance(args, num.ndarray):
-            return args[args.shape[1]-1]
+            return args.T[args.shape[1]-1]
         else:
             return args[2]
 
