@@ -229,6 +229,7 @@ class BeachballTestCase(unittest.TestCase):
         if nx == 1:
             plt.show()
 
+
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')
     unittest.main()

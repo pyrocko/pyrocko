@@ -64,6 +64,7 @@ def same(x, eps=0.0):
     else:
         return all(r == x[0] for r in x)
 
+
 this_year = time.gmtime()[0]
 
 

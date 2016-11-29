@@ -91,6 +91,7 @@ class CatalogTestCase(unittest.TestCase):
         ev = cat.get_event(ident)
         is_the_haiti_event(ev)
 
+
 if __name__ == "__main__":
     util.setup_logging('test_catalog', 'debug')
     unittest.main()

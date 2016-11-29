@@ -116,6 +116,7 @@ class Definition:
     def get_fields(self):
         return list(self.fields)
 
+
 blockette_definitions = [
 
     Definition(10, 'Volume Identifier Blockette', 'V', [
@@ -343,6 +344,7 @@ class DatalessSeedReader:
             raise NotABlockette()
         blockette_length = int(s)
         return blockette_type, blockette_length
+
 
 if __name__ == '__main__':
     dsr = DatalessSeedReader()

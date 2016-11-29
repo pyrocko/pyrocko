@@ -932,6 +932,7 @@ def setup_gmt_installations():
             newest_installed_gmt_version()]
         setup_gmt_installations.have_done = True
 
+
 setup_gmt_installations.have_done = False
 
 _paper_sizes_a = '''A0 2380 3368
@@ -3663,6 +3664,7 @@ def nice_palette(gmt, widget, scaleguru, cptfile, zlabeloffset=0.8*inch,
             in_rows=[(1, 1, label_font_size, -90, label_font, 'CB',
                      par_ax['zlabel'])],
             *widget.JXY())
+
 
 if __name__ == '__main__':
 

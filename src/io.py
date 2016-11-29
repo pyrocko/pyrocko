@@ -94,6 +94,7 @@ def load(filename, format='mseed', getdata=True, substitutions=None):
     return list(iload(
         filename, format=format, getdata=getdata, substitutions=substitutions))
 
+
 load.__doc__ %= allowed_formats('load', 'doc')
 
 
@@ -278,6 +279,7 @@ def save(traces, filename_template, format='mseed', additional={},
                          overwrite=overwrite)
     else:
         raise UnsupportedFormat(format)
+
 
 save.__doc__ %= allowed_formats('save', 'doc')
 

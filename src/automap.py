@@ -1065,6 +1065,7 @@ def cpt_merge_wet_dry(wet, dry):
 
     return combi
 
+
 if __name__ == '__main__':
     from pyrocko import util
     util.setup_logging('pyrocko.automap', 'info')

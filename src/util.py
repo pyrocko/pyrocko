@@ -798,6 +798,7 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
 
     return time.strftime(format, time.gmtime(ts))
 
+
 tts = time_to_str
 
 
@@ -994,6 +995,7 @@ class UnpackError(Exception):
     '''
 
     pass
+
 
 ruler = ''.join(['%-10i' % i for i in range(8)]) \
     + '\n' + '0123456789' * 8 + '\n'
@@ -1354,6 +1356,7 @@ def human_bytesize(value):
             return '%.0f %s' % (x, ext)
 
     return '%i Bytes' % value
+
 
 re_compatibility = re.compile(
     r'!pyrocko\.(trace|gf\.(meta|seismosizer)|fomosto\.' +

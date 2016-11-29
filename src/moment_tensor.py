@@ -1,4 +1,3 @@
-
 import random
 import math
 import numpy as num
@@ -166,6 +165,7 @@ def moment_to_magnitude(moment):
 def magnitude_to_moment(magnitude):
     return 10.0**(1.5*(magnitude+10.7))*1.0e-7
 
+
 magnitude_1Nm = moment_to_magnitude(1.0)
 
 
@@ -303,6 +303,7 @@ def eigh_check(a):
     evals, evecs = num.linalg.eigh(a)
     assert evals[0] <= evals[1] <= evals[2]
     return evals, evecs
+
 
 r2d = 180./math.pi
 d2r = 1./r2d
@@ -825,6 +826,7 @@ def _tpb2q(t, p, b):
     q /= math.sqrt(num.sum(q**2))
 
     return q
+
 
 _pbt2tpb = num.matrix(((0., 0., 1.), (1., 0., 0.), (0., 1., 0.)))
 

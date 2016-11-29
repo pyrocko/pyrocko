@@ -196,6 +196,7 @@ mantle
 
         # trace.snuffle(trs+trs2)
 
+
 if __name__ == '__main__':
     util.setup_logging('test_gf_qseis', 'warning')
     unittest.main()

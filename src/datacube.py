@@ -254,6 +254,7 @@ def detect(first512):
 
     return True
 
+
 if __name__ == '__main__':
     import sys
     plot_timeline(sys.argv[1:])

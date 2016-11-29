@@ -36,6 +36,7 @@ us_to_cc_regex = re.compile(r'([a-z])_([a-z])')
 def us_to_cc(s):
     return us_to_cc_regex.sub(lambda pat: pat.group(1)+pat.group(2).upper(), s)
 
+
 cc_to_us_regex1 = re.compile(r'([a-z])([A-Z]+)([a-z]|$)')
 cc_to_us_regex2 = re.compile(r'([A-Z])([A-Z][a-z])')
 
@@ -732,6 +733,7 @@ class String(Object):
 class Unicode(Object):
     dummy_for = unicode
 
+
 guts_plain_dummy_types = (String, Unicode, Int, Float, Complex, Bool)
 
 
@@ -1232,6 +1234,7 @@ def multi_constructor(loader, tag_suffix, node):
 def dict_noflow_representer(dumper, data):
     return dumper.represent_mapping(
         'tag:yaml.org,2002:map', data, flow_style=False)
+
 
 yaml.add_multi_representer(Object, multi_representer, Dumper=SafeDumper)
 yaml.add_multi_constructor('!', multi_constructor, Loader=SafeLoader)

@@ -629,6 +629,7 @@ def plot_beachball_mpl_pixmap(
         zorder=zorder,
         alpha=alpha)
 
+
 if __name__ == '__main__':
     import sys
     import matplotlib.pyplot as plt
