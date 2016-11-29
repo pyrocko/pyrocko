@@ -13,6 +13,7 @@ g_site_abbr = {
     'iris': 'http://service.iris.edu',
     'orfeus': 'http://www.orfeus-eu.org',
     'bgr': 'http://eida.bgr.de',
+    'geonet': 'http://service.geonet.org.nz',
 }
 
 
