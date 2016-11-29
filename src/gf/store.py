@@ -1484,10 +1484,13 @@ class Store(BaseStore):
 
             return evaluate
 
-        elif provider == 'cake':
+        elif provider in ('cake', 'iaspei'):
             from pyrocko import cake
             mod = self.config.earthmodel_1d
-            phases = [cake.PhaseDef(phase_def)]
+            if provider == 'cake':
+                phases = [cake.PhaseDef(phase_def)]
+            else:
+                phases = cake.PhaseDef.classic(phase_def)
 
             def evaluate(args):
                 if len(args) == 2:
