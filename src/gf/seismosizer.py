@@ -1662,7 +1662,11 @@ class DoubleDCSource(SourceWithMagnitude):
                 magnitude=float(mt.moment_magnitude()))
 
         d.update(kwargs)
-        return super(DoubleDCSource, cls).from_pyrocko_event(ev, **d)
+        source = super(DoubleDCSource, cls).from_pyrocko_event(ev, **d)
+        source.stf1 = source.stf
+        source.stf2 = HalfSinusoidSTF(effective_duration=0.)
+        source.stf = None
+        return source
 
 
 class RingfaultSource(SourceWithMagnitude):
