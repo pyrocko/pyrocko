@@ -1591,6 +1591,40 @@ class DoubleDCSource(SourceWithMagnitude):
         else:
             return self.effective_stf_pre()
 
+    def split(self):
+        a1 = 1.0 - self.mix
+        a2 = self.mix
+        delta_north = math.cos(self.azimuth*d2r) * self.distance
+        delta_east = math.sin(self.azimuth*d2r) * self.distance
+
+        dc1 = DCSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time - self.delta_time*a1,
+            north_shift=self.north_shift - delta_north*a1,
+            east_shift=self.east_shift - delta_north*a1,
+            depth=self.depth - self.delta_depth*a1,
+            moment=self.moment*a1,
+            strike=self.strike1,
+            dip=self.dip1,
+            rake=self.rake1,
+            stf=self.stf1)
+
+        dc2 = DCSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time + self.delta_time*a2,
+            north_shift=self.north_shift + delta_north*a2,
+            east_shift=self.east_shift + delta_north*a2,
+            depth=self.depth + self.delta_depth*a2,
+            moment=self.moment*a2,
+            strike=self.strike2,
+            dip=self.dip2,
+            rake=self.rake2,
+            stf=self.stf2)
+
+        return dc1, dc2
+
     def discretize_basesource(self, store, target=None):
         a1 = 1.0 - self.mix
         a2 = self.mix
