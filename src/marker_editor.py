@@ -3,50 +3,169 @@ from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker
-from pyrocko import util, orthodrome
+from pyrocko.beachball import mt2beachball, BeachballError
+from pyrocko import orthodrome, moment_tensor
+from pyrocko.plot import tango_colors
+import logging
+
+logger = logging.getLogger('pyrocko.marker_editor')
 
 _header_data = [
-    'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]']
+    'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
+    'Kagan Angle [deg]', 'MT']
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
 _string_header = (_column_mapping['Time'], _column_mapping['Label'])
 
+_header_sizes = [70] * len(_header_data)
+_header_sizes[0] = 40
+_header_sizes[1] = 190
+_header_sizes[10] = 20
+
+
+class BeachballWidget(qg.QWidget):
+
+    def __init__(self, moment_tensor=None, *args, **kwargs):
+        qg.QWidget.__init__(self, *args, **kwargs)
+        self.colors = {'white': qg.QColor(255, 255, 255, 255),
+                       'red': qg.QColor(255, 0, 0, 255),
+                       'green': qg.QColor(0, 255, 0, 255),
+                       'none': None}
+        self.brushs_pens = {}
+        for k, c in self.colors.items():
+            pen = qg.QPen(c)
+            pen.setWidth(1)
+            self.brushs_pens[k] = (qg.QBrush(c), pen)
+        self.moment_tensor = moment_tensor
+        self.setGeometry(0, 0, 50, 50)
+
+    def paintEvent(self, e):
+        center = e.rect().center()
+        painter = qg.QPainter(self)
+        painter.save()
+        try:
+            data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
+                                position=(center.x(), center.y()))
+            for pdata in data:
+                paths, fill, edges, thickness = pdata
+                brush, pen = self.brushs_pens[fill]
+                polygon = qg.QPolygonF()
+
+                for x, y in paths:
+                    polygon.append(qc.QPointF(x, y))
+
+                painter.setBrush(brush)
+                painter.setPen(pen)
+                painter.drawPolygon(polygon)
+        except BeachballError as e:
+            logger.exception(e)
+        finally:
+            painter.restore()
+
+    def to_qpixmap(self):
+        return qg.QPixmap().grabWidget(self, self.rect())
+
 
 class MarkerItemDelegate(qg.QStyledItemDelegate):
-    '''Takes are of the table's style.'''
+    '''Takes care of the table's style.'''
 
     def __init__(self, *args, **kwargs):
         qg.QStyledItemDelegate.__init__(self, *args, **kwargs)
+        self.colors = {'white': qg.QColor(255, 255, 255, 255),
+                       'red': qg.QColor(255, 0, 0, 255),
+                       'none': None}
+        self.c_alignment = qc.Qt.AlignHCenter
+        self.bbcache = qg.QPixmapCache()
+
+    def initStyleOption(self, option, index):
+        super(MarkerItemDelegate, self).initStyleOption(option, index)
+        if option.state & qg.QStyle.State_Selected:
+            option.state &= ~ qg.QStyle.State_Selected
+            # option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 25))
+
+    def paint(self, painter, option, index):
+        if index.column() == 10:
+            mt = self.get_mt_from_index(index)
+            if mt:
+                key = qc.QString(
+                    ''.join(map(lambda x: str(round(x, 1)), mt.m6())))
+                pixmap = qg.QPixmap()
+                found = self.bbcache.find(key, pixmap)
+                if found:
+                    pixmap = pixmap.scaledToHeight(option.rect.height())
+                else:
+                    pixmap = BeachballWidget(mt).to_qpixmap()
+                    self.bbcache.insert(key, pixmap)
+                a, b, c, d = option.rect.getRect()
+                painter.save()
+                painter.setRenderHint(qg.QPainter.Antialiasing)
+                painter.drawPixmap(a, b, d, d, pixmap)
+                if (option.state & qg.QStyle.State_Selected):
+                    brush = option.backgroundBrush
+                    brush.setColor(self.colors['red'])
+                    painter.setBrush(brush)
+                painter.restore()
+
+        iactive = self.parent().active_event_index
+        if iactive is not None and \
+                self.parent().model().mapToSource(index).row() == iactive:
+                painter.save()
+
+                rect = option.rect
+                x1, y1, x2, y2 = rect.getCoords()
+                pen = painter.pen()
+                pen.setWidth(2)
+                pen.setColor(qg.QColor(*tango_colors['scarletred3']))
+                painter.setPen(pen)
+                painter.drawLine(qc.QLineF(x1, y1, x2, y1))
+                painter.drawLine(qc.QLineF(x1, y2, x2, y2))
+                painter.restore()
+
+        qg.QStyledItemDelegate.paint(self, painter, option, index)
+
+    def displayText(self, value, locale):
+        if (value.type() == qc.QVariant.DateTime):
+            return value.toDateTime().toUTC().toString(
+                'yyyy-MM-dd HH:mm:ss.zzz')
+        else:
+            return value.toString()
+
+    def get_mt_from_index(self, index):
+        tv = self.parent()
+        pv = tv.pile_viewer
+        marker = pv.markers[tv.model().mapToSource(index).row()]
+        if isinstance(marker, EventMarker):
+            return marker.get_event().moment_tensor
+        else:
+            return None
 
 
 class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     '''Sorts the table's columns.'''
 
-    def __init__(self):
-        qg.QSortFilterProxyModel.__init__(self)
-        self.sort(1, qc.Qt.AscendingOrder)
+    def __init__(self, *args, **kwargs):
+        qg.QSortFilterProxyModel.__init__(self, *args, **kwargs)
+        self.sort(1, qc.Qt.DescendingOrder)
 
     def lessThan(self, left, right):
-        if left.column() == _column_mapping['Time']:
-            return util.stt(str(left.data().toString())) > \
-                util.stt(str(right.data().toString()))
-        elif left.column() == _column_mapping['Label']:
-            return left > right
+        if left.column() == 1:
+            return left.data().toDateTime() < right.data().toDateTime()
+        elif left.column() == 3:
+            return left.data().toString() < right.data().toString()
         else:
-            return left.data().toDouble()[0] > right.data().toDouble()[0]
+            return left.data().toFloat()[0] < right.data().toFloat()[0]
 
 
 class MarkerTableView(qg.QTableView):
     def __init__(self, *args, **kwargs):
         qg.QTableView.__init__(self, *args, **kwargs)
-
+        self.setFocusPolicy(qc.Qt.NoFocus)
         self.setSelectionBehavior(qg.QAbstractItemView.SelectRows)
-        self.setSelectionMode(qg.QAbstractItemView.ContiguousSelection)
         self.setHorizontalScrollMode(qg.QAbstractItemView.ScrollPerPixel)
         self.setEditTriggers(qg.QAbstractItemView.DoubleClicked)
         self.setSortingEnabled(True)
-        self.sortByColumn(1, qc.Qt.AscendingOrder)
+        self.sortByColumn(1, qc.Qt.DescendingOrder)
         self.setAlternatingRowColors(True)
 
         self.setShowGrid(False)
@@ -63,12 +182,12 @@ class MarkerTableView(qg.QTableView):
 
         show_initially = ['Type', 'Time', 'Magnitude']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
-                            'Latitude/Longitude', 'Kind', 'Distance [km]']
-        self.menu_items = dict(zip(self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8]))
-        self.editable_columns_events = [2, 3, 4, 5, 6, 7]
-        self.editable_columns_phases = [2, 3, 4, 5, 6, 7]
-        self.editable_columns = \
-            self.editable_columns_events + self.editable_columns_phases
+                            'Latitude/Longitude', 'Kind', 'Distance [km]',
+                            'Kagan Angle [deg]', 'MT']
+        self.menu_items = dict(zip(self.menu_labels,
+                                   [0, 1, 2, 3, 4, 5, 7, 8, 9, 10]))
+
+        self.editable_columns = [2, 3, 4, 5, 6, 7]
 
         self.column_actions = {}
         for hd in self.menu_labels:
@@ -89,14 +208,19 @@ class MarkerTableView(qg.QTableView):
             qc.SIGNAL('customContextMenuRequested(QPoint)'),
             self.show_context_menu)
 
+        self.active_event_index = None
+
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
 
         self.pile_viewer = viewer
 
     def keyPressEvent(self, key_event):
-        '''Propagate *key_event* to pile_viewer.'''
-        self.pile_viewer.keyPressEvent(key_event)
+        '''Propagate *key_event* to pile_viewer, unless up/down pressed.'''
+        if key_event.key() in [qc.Qt.Key_Up, qc.Qt.Key_Down]:
+            qg.QTableView.keyPressEvent(self, key_event)
+        else:
+            self.pile_viewer.keyPressEvent(key_event)
 
     def clicked(self, model_index):
         '''Ignore mouse clicks.'''
@@ -114,27 +238,45 @@ class MarkerTableView(qg.QTableView):
         self.header_menu.popup(self.mapToGlobal(point))
 
     def toggle_columns(self):
+        '''Toggle columns depending in checked state. '''
+        width = 0
+        want_distances = False
+        want_angles = False
         for header, ca in self.column_actions.items():
             hide = not ca.isChecked()
+            self.setColumnHidden(self.menu_items[header], hide)
             if header == 'Latitude/Longitude':
-                self.setColumnHidden(self.menu_items[header], hide)
                 self.setColumnHidden(self.menu_items[header]+1, hide)
-            else:
-                self.setColumnHidden(self.menu_items[header], hide)
-                if header == 'Dist [km]':
-                    p = self.pile_viewer
-                    i = p.markers.index(p.get_active_event_marker())
-                    self.model().update_distances([i])
+            if not hide:
+                width += _header_sizes[self.menu_labels.index(header)]
+            if header == 'Distance [km]':
+                want_distances = True
+            elif header == 'Kagan Angle [deg]':
+                want_angles = True
+
+        if self.active_event_index:
+            self.model().sourceModel().update_distances_and_angles(
+                [[self.active_event_index]],
+                want_distances=want_distances, want_angles=want_angles)
+        self.parent().setMinimumWidth(width)
+
+    def set_active_event_index(self, i):
+        if i == -1:
+            i = None
+        self.active_event_index = i
+        self.viewport().update()
 
 
 class MarkerTableModel(qc.QAbstractTableModel):
+
     def __init__(self, *args, **kwargs):
         qc.QAbstractTableModel.__init__(self, *args, **kwargs)
         self.pile_viewer = None
-        self.headerdata = _header_data
         self.distances = {}
+        self.kagan_angles = {}
         self.last_active_event = None
         self.row_count = 0
+        self.proxy_filter = None
 
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
@@ -150,7 +292,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
         self.connect(self.pile_viewer,
                      qc.SIGNAL('changed_marker_selection'),
-                     self.update_distances)
+                     self.update_distances_and_angles)
 
     def rowCount(self, parent):
         if not self.pile_viewer:
@@ -178,7 +320,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
         if orientation == qc.Qt.Horizontal:
             if role == qc.Qt.DisplayRole:
-                return qc.QVariant(self.headerdata[col])
+                return qc.QVariant(_header_data[col])
             elif role == qc.Qt.SizeHintRole:
                 return qc.QSize(10, 20)
         else:
@@ -189,82 +331,88 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
         if not self.pile_viewer:
             return qc.QVariant()
+
+        marker = self.pile_viewer.markers[index.row()]
+
         if role == qc.Qt.DisplayRole:
-            imarker = index.row()
-            marker = self.pile_viewer.markers[imarker]
-
-            if index.column() == _column_mapping['T']:
-                if isinstance(marker, EventMarker):
-                    s = 'E'
-                elif isinstance(marker, PhaseMarker):
-                    s = 'P'
-                else:
-                    s = ''
-
+            s = ''
             if index.column() == _column_mapping['Time']:
-                s = util.time_to_str(marker.tmin)
+                return qc.QVariant(
+                    qc.QDateTime.fromMSecsSinceEpoch(marker.tmin*1000))
 
-            if index.column() == _column_mapping['M']:
+            elif index.column() == _column_mapping['T']:
+                if isinstance(marker, EventMarker):
+                    s = qc.QString('E')
+                elif isinstance(marker, PhaseMarker):
+                    s = qc.QString('P')
+
+            elif index.column() == _column_mapping['M']:
                 if isinstance(marker, EventMarker):
                     e = marker.get_event()
                     if e.moment_tensor is not None:
-                        s = '%2.1f' % (e.moment_tensor.magnitude)
+                        s = round(e.moment_tensor.magnitude, 1)
                     elif e.magnitude is not None:
-                        s = '%2.1f' % (e.magnitude)
-                    else:
-                        s = ''
-                else:
-                    s = ''
+                        s = round(e.magnitude, 1)
 
-            if index.column() == _column_mapping['Label']:
+            elif index.column() == _column_mapping['Label']:
                 if isinstance(marker, EventMarker):
-                    s = str(marker.label())
+                    s = qc.QString(marker.label())
                 elif isinstance(marker, PhaseMarker):
-                    s = str(marker.get_label())
-                else:
-                    s = ''
+                    s = qc.QString(marker.get_label())
 
-            if index.column() == _column_mapping['Depth [km]']:
+            elif index.column() == _column_mapping['Depth [km]']:
                 if isinstance(marker, EventMarker):
                     d = marker.get_event().depth
                     if d is not None:
-                        s = '{0:4.1f}'.format(marker.get_event().depth/1000.)
-                    else:
-                        s = ''
-                else:
-                    s = ''
+                        s = round(marker.get_event().depth/1000., 1)
 
-            if index.column() == _column_mapping['Lat']:
+            elif index.column() == _column_mapping['Lat']:
                 if isinstance(marker, EventMarker):
-                    s = '{0:4.2f}'.format(marker.get_event().lat)
-                else:
-                    s = ''
+                    s = round(marker.get_event().lat, 2)
 
-            if index.column() == _column_mapping['Lon']:
+            elif index.column() == _column_mapping['Lon']:
                 if isinstance(marker, EventMarker):
-                    s = '{0:4.2f}'.format(marker.get_event().lon)
-                else:
-                    s = ''
+                    s = round(marker.get_event().lon, 2)
 
-            if index.column() == _column_mapping['Kind']:
-                s = '{:d}'.format(marker.kind)
+            elif index.column() == _column_mapping['Kind']:
+                s = marker.kind
 
-            if index.column() == _column_mapping['Dist [km]']:
+            elif index.column() == _column_mapping['Dist [km]']:
                 if marker in self.distances.keys():
-                    s = '{0:6.1f}'.format(self.distances[marker])
-                else:
-                    s = ''
+                    s = self.distances[marker]
 
-            return qc.QVariant(qc.QString(s))
+            elif index.column() == _column_mapping['Kagan Angle [deg]']:
+                if marker in self.kagan_angles.keys():
+                    s = round(self.kagan_angles[marker], 1)
+
+            elif index.column() == _column_mapping['MT']:
+                return qc.QVariant()
+
+            return qc.QVariant(s)
 
         return qc.QVariant()
 
-    def update_distances(self, indices=None):
-        '''Calculate and update distances between events.'''
+    def update_distances_and_angles(self, indices=None, want_angles=False,
+                                    want_distances=False):
+        '''Calculate and update distances and kagan angles between events.
+
+        :param indices: list of lists of indices (optional)
+
+        Ideally, indices are consecutive for best performance.'''
+        want_angles = want_angles or \
+            not self.marker_table_view.isColumnHidden(
+                _column_mapping['Kagan Angle [deg]'])
+        want_distances = want_distances or \
+            not self.marker_table_view.isColumnHidden(
+                _column_mapping['Dist [km]'])
+
+        if not (want_distances or want_angles):
+            return
+
         indices = indices or [[]]
         indices = [i for ii in indices for i in ii]
-        if len(indices) != 1 or self.marker_table_view.horizontalHeader()\
-                .isSectionHidden(_column_mapping['Dist [km]']):
+
+        if len(indices) != 1:
             return
 
         if self.last_active_event == self.pile_viewer.get_active_event():
@@ -273,41 +421,61 @@ class MarkerTableModel(qc.QAbstractTableModel):
             self.last_active_event = self.pile_viewer.get_active_event()
 
         markers = self.pile_viewer.markers
+        nmarkers = len(markers)
         omarker = markers[indices[0]]
         if not isinstance(omarker, EventMarker):
             return
+        else:
+            oevent = omarker.get_event()
 
         emarkers = [m for m in markers if isinstance(m, EventMarker)]
         if len(emarkers) < 2:
             return
+        else:
+            events = [em.get_event() for em in emarkers]
+            nevents = len(events)
 
-        lats = num.zeros(len(emarkers))
-        lons = num.zeros(len(emarkers))
-        for i in xrange(len(emarkers)):
-            lats[i] = emarkers[i].get_event().lat
-            lons[i] = emarkers[i].get_event().lon
+        if want_distances:
+            lats = num.zeros(nevents)
+            lons = num.zeros(nevents)
+            for i in xrange(nevents):
+                lats[i] = events[i].lat
+                lons[i] = events[i].lon
 
-        olats = num.zeros(len(emarkers))
-        olons = num.zeros(len(emarkers))
-        olats[:] = omarker.get_event().lat
-        olons[:] = omarker.get_event().lon
-        dists = orthodrome.distance_accurate50m_numpy(lats, lons, olats, olons)
-        dists /= 1000.
-        self.distances = dict(zip(emarkers, dists))
-        self.marker_table_view.viewport().repaint()
-        self.emit(qc.SIGNAL('dataChanged()'))
+            olats = num.zeros(nevents)
+            olons = num.zeros(nevents)
+            olats[:] = oevent.lat
+            olons[:] = oevent.lon
+            dists = orthodrome.distance_accurate50m_numpy(
+                lats, lons, olats, olons)
+            dists /= 1000.
+            dists = map(lambda x: round(x, 1), dists)
+            self.distances = dict(zip(emarkers, dists))
 
-        if self.marker_table_view.horizontalHeader().sortIndicatorSection() ==\
-                _column_mapping['Dist [km]']:
-            self.sort(_column_mapping['Dist [km]'])
+        if want_angles:
+            if oevent.moment_tensor:
+                for em in emarkers:
+                    e = em.get_event()
+                    if e.moment_tensor:
+                        a = moment_tensor.kagan_angle(
+                            oevent.moment_tensor, e.moment_tensor)
+                        self.kagan_angles[em] = a
+            else:
+                self.kagan_angles = {}
+
+        istart = self.index(0, 0)
+        istop = self.index(nmarkers-1, len(_header_data)-1)
+
+        self.emit(qc.SIGNAL('dataChanged(QModelIndex, QModelIndex)'),
+                  istart,
+                  istop)
 
     def done(self):
-        self.emit(qc.SIGNAL('dataChanged()'))
+        self.emit(qc.SIGNAL('dataChanged'))
         return True
 
     def setData(self, index, value, role):
         '''Manipulate :py:class:`EventMarker` instances.'''
-
         if role == qc.Qt.EditRole:
             imarker = index.row()
             marker = self.pile_viewer.markers[imarker]
@@ -370,15 +538,15 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
 
 class MarkerEditor(qg.QFrame):
+
     def __init__(self, *args, **kwargs):
         qg.QFrame.__init__(self, *args, **kwargs)
-
         layout = qg.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
-        self.marker_table_view = MarkerTableView()
-        self.marker_table_view.setItemDelegate(
-            MarkerItemDelegate(self.marker_table_view))
+        self.marker_table_view = MarkerTableView(self)
+        self.delegate = MarkerItemDelegate(self.marker_table_view)
+        self.marker_table_view.setItemDelegate(self.delegate)
 
         self.marker_model = MarkerTableModel()
         self.marker_model.marker_table_view = self.marker_table_view
@@ -386,21 +554,16 @@ class MarkerEditor(qg.QFrame):
         self.proxy_filter = MarkerSortFilterProxyModel()
         self.proxy_filter.setDynamicSortFilter(True)
         self.proxy_filter.setSourceModel(self.marker_model)
+        self.marker_model.proxy_filter = self.proxy_filter
 
         self.marker_table_view.setModel(self.proxy_filter)
 
         header = self.marker_table_view.horizontalHeader()
-        header.setDefaultSectionSize(30)
-        header.setResizeMode(0, qg.QHeaderView.Interactive)
-        header.resizeSection(0, 40)
-        for i in xrange(len(_header_data)):
-            header.setResizeMode(i+2, qg.QHeaderView.Interactive)
-            header.resizeSection(i+2, 70)
-        header.setResizeMode(1, qg.QHeaderView.Interactive)
-        header.resizeSection(1, 190)
-        header.setStretchLastSection(True)
+        for i_s, s in enumerate(_header_sizes):
+            header.setResizeMode(i_s, qg.QHeaderView.Interactive)
+            header.resizeSection(i_s, s)
 
-        self.setMinimumWidth(335)
+        header.setStretchLastSection(True)
 
         self.selection_model = qg.QItemSelectionModel(self.proxy_filter)
         self.marker_table_view.setSelectionModel(self.selection_model)
@@ -412,6 +575,7 @@ class MarkerEditor(qg.QFrame):
         layout.addWidget(self.marker_table_view, 0, 0)
 
         self.pile_viewer = None
+        self._size_hint = qc.QSize(1, 1)
 
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
@@ -426,8 +590,8 @@ class MarkerEditor(qg.QFrame):
 
         self.connect(
             self.pile_viewer,
-            qc.SIGNAL('markers_changed'),
-            self.marker_table_view.viewport().repaint)
+            qc.SIGNAL('active_event_marker_changed(int)'),
+            self.marker_table_view.set_active_event_index)
 
         self.marker_table_view.toggle_columns()
 

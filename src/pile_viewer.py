@@ -1239,14 +1239,23 @@ def MakePileViewerMainClass(base):
 
             self.set_active_event_marker(m)
 
+        def deactivate_event_marker(self):
+            if self.active_event_marker:
+                self.active_event_marker.set_active(False)
+
+            self.emit(qc.SIGNAL('active_event_marker_changed(int)'), -1)
+
         def set_active_event_marker(self, event_marker):
             if self.active_event_marker:
                 self.active_event_marker.set_active(False)
+
             self.active_event_marker = event_marker
             event_marker.set_active(True)
             event = event_marker.get_event()
             self.set_origin(event)
-            self.emit(qc.SIGNAL('active_event_changed()'))
+            i_active = self.markers.index(self.active_event_marker)
+
+            self.emit(qc.SIGNAL('active_event_marker_changed(int)'), i_active)
 
         def set_active_event(self, event):
             for marker in self.markers:
@@ -1706,7 +1715,7 @@ def MakePileViewerMainClass(base):
                 self.remove_marker_from_menu(indx, indx)
                 self.markers.remove(marker)
                 if marker is self.active_event_marker:
-                    self.active_event_marker.set_active(False)
+                    self.deactivate_event_marker()
                     self.active_event_marker = None
 
             except ValueError:
@@ -1731,7 +1740,7 @@ def MakePileViewerMainClass(base):
                     for marker in about_to_remove:
                         self.markers.remove(marker)
                         if marker is self.active_event_marker:
-                            self.active_event_marker.set_active(False)
+                            self.deactivate_event_marker()
                             self.active_event_marker = None
 
                 except ValueError:
@@ -1987,6 +1996,9 @@ def MakePileViewerMainClass(base):
 
             elif keytext == 'd':
                 self.deselect_all()
+
+            elif keytext == 'E':
+                self.deactivate_event_marker()
 
             elif keytext == 'e':
                 markers = self.selected_markers()
@@ -3985,7 +3997,7 @@ class PileViewer(qg.QFrame):
         return frame
 
     def marker_editor(self):
-        editor = pyrocko.marker_editor.MarkerEditor()
+        editor = pyrocko.marker_editor.MarkerEditor(self)
         editor.set_viewer(self.get_view())
         self.connect(
             editor.get_marker_model(),
