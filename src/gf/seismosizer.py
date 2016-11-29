@@ -1599,8 +1599,8 @@ class DoubleDCSource(SourceWithMagnitude):
         mot2 = mt.MomentTensor(strike=self.strike2, dip=self.dip2,
                                rake=self.rake2, scalar_moment=a2)
 
-        delta_north = math.cos(self.azimuth*d2r)
-        delta_east = math.sin(self.azimuth*d2r)
+        delta_north = math.cos(self.azimuth*d2r) * self.distance
+        delta_east = math.sin(self.azimuth*d2r) * self.distance
 
         times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
             store.config.deltat, -self.delta_time*a1)
