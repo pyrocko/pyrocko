@@ -497,7 +497,7 @@ def plot_beachball_mpl(
         for poly in patches_upper:
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
             if alpha == 1.0:
-                data.append((Path(verts), color, color, 1.0))
+                data.append((Path(verts), color, color, linewidth))
             else:
                 data.append((Path(verts), color, 'none', 0.0))
 
