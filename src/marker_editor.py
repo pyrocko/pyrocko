@@ -78,12 +78,6 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
         self.c_alignment = qc.Qt.AlignHCenter
         self.bbcache = qg.QPixmapCache()
 
-    def initStyleOption(self, option, index):
-        super(MarkerItemDelegate, self).initStyleOption(option, index)
-        if option.state & qg.QStyle.State_Selected:
-            option.state &= ~ qg.QStyle.State_Selected
-            # option.backgroundBrush = qg.QBrush(qg.QColor(180, 0, 0, 25))
-
     def paint(self, painter, option, index):
         if index.column() == 10:
             mt = self.get_mt_from_index(index)
@@ -160,11 +154,13 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
 class MarkerTableView(qg.QTableView):
     def __init__(self, *args, **kwargs):
         qg.QTableView.__init__(self, *args, **kwargs)
-        self.setFocusPolicy(qc.Qt.NoFocus)
         self.setSelectionBehavior(qg.QAbstractItemView.SelectRows)
         self.setHorizontalScrollMode(qg.QAbstractItemView.ScrollPerPixel)
         self.setEditTriggers(qg.QAbstractItemView.DoubleClicked)
         self.setSortingEnabled(True)
+        self.setStyleSheet(
+            'QTableView{selection-background-color: rgb(130, 130, 130 );}')
+
         self.sortByColumn(1, qc.Qt.DescendingOrder)
         self.setAlternatingRowColors(True)
 
