@@ -20,11 +20,10 @@ import pyrocko.snuffling
 import pyrocko.snufflings
 import pyrocko.marker_editor
 
-from pyrocko.util import hpfloat
+from pyrocko.util import hpfloat, gmtime_x, mystrftime
 
 from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker,\
-    PhaseMarker, make_QPolygonF, draw_label, Label, gmtime_x, mystrftime, \
-    Progressbars
+    PhaseMarker, make_QPolygonF, draw_label, Label, Progressbars
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg

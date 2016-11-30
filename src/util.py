@@ -802,6 +802,27 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
 tts = time_to_str
 
 
+def mystrftime(fmt=None, tt=None, milliseconds=0):
+
+    if fmt is None:
+        fmt = '%Y-%m-%d %H:%M:%S .%r'
+
+    if tt is None:
+        tt = time.time()
+
+    fmt = fmt.replace('%r', '%03i' % int(round(milliseconds)))
+    fmt = fmt.replace('%u', '%06i' % int(round(milliseconds*1000)))
+    fmt = fmt.replace('%n', '%09i' % int(round(milliseconds*1000000)))
+    return time.strftime(fmt, tt)
+
+
+def gmtime_x(timestamp):
+    etimestamp = float(num.floor(timestamp))
+    tt = time.gmtime(etimestamp)
+    ms = (timestamp-etimestamp)*1000
+    return tt, ms
+
+
 def plural_s(n):
     if n == 1:
         return ''
