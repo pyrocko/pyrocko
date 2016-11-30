@@ -1570,7 +1570,11 @@ class DoubleDCSource(SourceWithMagnitude):
     discretized_source_class = meta.DiscretizedMTSource
 
     def base_key(self):
-        return Source.base_key(self) + (
+        return (
+            self.depth, self.lat, self.north_shift,
+            self.lon, self.east_shift, type(self)) + \
+            self.effective_stf1_pre().base_key() + \
+            self.effective_stf2_pre().base_key() + (
             self.strike1, self.dip1, self.rake1,
             self.strike2, self.dip2, self.rake2,
             self.delta_time, self.delta_depth,
@@ -1580,16 +1584,13 @@ class DoubleDCSource(SourceWithMagnitude):
         return self.moment
 
     def effective_stf1_pre(self):
-        if self.stf1 is not None:
-            return self.stf1
-        else:
-            return self.effective_stf_pre()
+        return self.stf1 or self.stf or g_unit_pulse
 
     def effective_stf2_pre(self):
-        if self.stf2 is not None:
-            return self.stf2
-        else:
-            return self.effective_stf_pre()
+        return self.stf2 or self.stf or g_unit_pulse
+
+    def effective_stf_post(self):
+        return g_unit_pulse
 
     def split(self):
         a1 = 1.0 - self.mix
@@ -1602,7 +1603,7 @@ class DoubleDCSource(SourceWithMagnitude):
             lon=self.lon,
             time=self.time - self.delta_time*a1,
             north_shift=self.north_shift - delta_north*a1,
-            east_shift=self.east_shift - delta_north*a1,
+            east_shift=self.east_shift - delta_east*a1,
             depth=self.depth - self.delta_depth*a1,
             moment=self.moment*a1,
             strike=self.strike1,
@@ -1615,7 +1616,7 @@ class DoubleDCSource(SourceWithMagnitude):
             lon=self.lon,
             time=self.time + self.delta_time*a2,
             north_shift=self.north_shift + delta_north*a2,
-            east_shift=self.east_shift + delta_north*a2,
+            east_shift=self.east_shift + delta_east*a2,
             depth=self.depth + self.delta_depth*a2,
             moment=self.moment*a2,
             strike=self.strike2,
@@ -1623,7 +1624,7 @@ class DoubleDCSource(SourceWithMagnitude):
             rake=self.rake2,
             stf=self.stf2)
 
-        return dc1, dc2
+        return [dc1, dc2]
 
     def discretize_basesource(self, store, target=None):
         a1 = 1.0 - self.mix
