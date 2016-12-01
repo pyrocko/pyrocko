@@ -35,10 +35,10 @@ class BeachballWidget(qg.QWidget):
         self.brushs_pens = {}
         for k, c in self.colors.items():
             pen = qg.QPen(c)
-            pen.setWidth(2)
+            pen.setWidthF(3)
             self.brushs_pens[k] = (qg.QBrush(c), pen)
         self.moment_tensor = moment_tensor
-        self.setGeometry(0, 0, 50, 50)
+        self.setGeometry(0, 0, 100, 100)
         self.setAttribute(qc.Qt.WA_TranslucentBackground)
 
     def paintEvent(self, e):
@@ -53,6 +53,7 @@ class BeachballWidget(qg.QWidget):
                 brush, pen = self.brushs_pens[fill]
                 polygon = qg.QPolygonF()
                 polygon = make_QPolygonF(*paths.T)
+                painter.setRenderHint(qg.QPainter.Antialiasing)
                 painter.setBrush(brush)
                 painter.setPen(pen)
                 painter.drawPolygon(polygon)
@@ -200,6 +201,11 @@ class MarkerTableView(qg.QTableView):
 
         self.active_event_index = None
 
+        self.right_click_menu = qg.QMenu(self)
+        print_action = qg.QAction('Print Table', self.right_click_menu)
+        print_action.triggered.connect(self.print_menu)
+        self.right_click_menu.addAction(print_action)
+
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
 
@@ -216,6 +222,28 @@ class MarkerTableView(qg.QTableView):
     def clicked(self, model_index):
         '''Ignore mouse clicks.'''
         pass
+
+    def contextMenuEvent(self, event):
+        self.right_click_menu.popup(qg.QCursor.pos())
+
+    def print_menu(self):
+        printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
+        printer_dialog = qg.QPrintDialog(printer, self)
+        if printer_dialog.exec_() == qg.QDialog.Accepted:
+            rect = printer.pageRect()
+            painter = qg.QPainter()
+            painter.begin(printer)
+            xscale = rect.width() / (self.width()*1.1)
+            yscale = rect.height() / (self.height() * 1.1)
+            scale = min(xscale, yscale)
+            painter.translate(rect.x() + rect.width()/2,
+                              rect.y() + rect.height()/2)
+            painter.scale(scale, scale)
+            painter.translate(-self.width()/2, -self.height()/2)
+            painter.setRenderHints(qg.QPainter.HighQualityAntialiasing |
+                                   qg.QPainter.TextAntialiasing)
+            self.render(painter)
+            painter.end()
 
     def double_clicked(self, model_index):
         if model_index.column() in self.editable_columns:
