@@ -848,3 +848,10 @@ def kagan_angle(mt1, mt2):
     qk = _tpb2q(tk, pk, bk)
 
     return 2. * r2d * math.acos(num.max(num.abs(qk)))
+
+if __name__ == '__main__':
+
+    import sys
+    v = map(float, sys.argv[1:])
+    mt = MomentTensor.from_values(v)
+    print mt
