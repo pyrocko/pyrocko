@@ -1609,7 +1609,7 @@ class DoubleDCSource(SourceWithMagnitude):
             strike=self.strike1,
             dip=self.dip1,
             rake=self.rake1,
-            stf=self.stf1)
+            stf=self.stf1 or self.stf)
 
         dc2 = DCSource(
             lat=self.lat,
@@ -1622,7 +1622,7 @@ class DoubleDCSource(SourceWithMagnitude):
             strike=self.strike2,
             dip=self.dip2,
             rake=self.rake2,
-            stf=self.stf2)
+            stf=self.stf2 or self.stf)
 
         return [dc1, dc2]
 
