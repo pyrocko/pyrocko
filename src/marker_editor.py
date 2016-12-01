@@ -2,7 +2,7 @@ import numpy as num
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
-from pyrocko.gui_util import EventMarker, PhaseMarker
+from pyrocko.gui_util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.beachball import mt2beachball, BeachballError
 from pyrocko import orthodrome, moment_tensor
 from pyrocko.plot import tango_colors
@@ -28,17 +28,18 @@ class BeachballWidget(qg.QWidget):
 
     def __init__(self, moment_tensor=None, *args, **kwargs):
         qg.QWidget.__init__(self, *args, **kwargs)
-        self.colors = {'white': qg.QColor(255, 255, 255, 255),
-                       'red': qg.QColor(255, 0, 0, 255),
-                       'green': qg.QColor(0, 255, 0, 255),
+        self.colors = {'white': qc.Qt.white,
+                       'green': qc.Qt.green,
+                       'red': qc.Qt.red,
                        'none': None}
         self.brushs_pens = {}
         for k, c in self.colors.items():
             pen = qg.QPen(c)
-            pen.setWidth(1)
+            pen.setWidth(2)
             self.brushs_pens[k] = (qg.QBrush(c), pen)
         self.moment_tensor = moment_tensor
         self.setGeometry(0, 0, 50, 50)
+        self.setAttribute(qc.Qt.WA_TranslucentBackground)
 
     def paintEvent(self, e):
         center = e.rect().center()
@@ -51,10 +52,7 @@ class BeachballWidget(qg.QWidget):
                 paths, fill, edges, thickness = pdata
                 brush, pen = self.brushs_pens[fill]
                 polygon = qg.QPolygonF()
-
-                for x, y in paths:
-                    polygon.append(qc.QPointF(x, y))
-
+                polygon = make_QPolygonF(*paths.T)
                 painter.setBrush(brush)
                 painter.setPen(pen)
                 painter.drawPolygon(polygon)
@@ -72,13 +70,26 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
 
     def __init__(self, *args, **kwargs):
         qg.QStyledItemDelegate.__init__(self, *args, **kwargs)
-        self.colors = {'white': qg.QColor(255, 255, 255, 255),
-                       'red': qg.QColor(255, 0, 0, 255),
-                       'none': None}
         self.c_alignment = qc.Qt.AlignHCenter
         self.bbcache = qg.QPixmapCache()
 
     def paint(self, painter, option, index):
+        iactive = self.parent().active_event_index
+
+        if iactive is not None and \
+                self.parent().model().mapToSource(index).row() == iactive:
+                painter.save()
+
+                rect = option.rect
+                x1, y1, x2, y2 = rect.getCoords()
+                pen = painter.pen()
+                pen.setWidth(2)
+                pen.setColor(qg.QColor(*tango_colors['scarletred3']))
+                painter.setPen(pen)
+                painter.drawLine(qc.QLineF(x1, y1, x2, y1))
+                painter.drawLine(qc.QLineF(x1, y2, x2, y2))
+                painter.restore()
+
         if index.column() == 10:
             mt = self.get_mt_from_index(index)
             if mt:
@@ -94,29 +105,11 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                 a, b, c, d = option.rect.getRect()
                 painter.save()
                 painter.setRenderHint(qg.QPainter.Antialiasing)
-                painter.drawPixmap(a, b, d, d, pixmap)
-                if (option.state & qg.QStyle.State_Selected):
-                    brush = option.backgroundBrush
-                    brush.setColor(self.colors['red'])
-                    painter.setBrush(brush)
+                painter.drawPixmap(a+d/2., b, d, d, pixmap)
                 painter.restore()
 
-        iactive = self.parent().active_event_index
-        if iactive is not None and \
-                self.parent().model().mapToSource(index).row() == iactive:
-                painter.save()
-
-                rect = option.rect
-                x1, y1, x2, y2 = rect.getCoords()
-                pen = painter.pen()
-                pen.setWidth(2)
-                pen.setColor(qg.QColor(*tango_colors['scarletred3']))
-                painter.setPen(pen)
-                painter.drawLine(qc.QLineF(x1, y1, x2, y1))
-                painter.drawLine(qc.QLineF(x1, y2, x2, y2))
-                painter.restore()
-
-        qg.QStyledItemDelegate.paint(self, painter, option, index)
+        else:
+            qg.QStyledItemDelegate.paint(self, painter, option, index)
 
     def displayText(self, value, locale):
         if (value.type() == qc.QVariant.DateTime):
@@ -159,7 +152,8 @@ class MarkerTableView(qg.QTableView):
         self.setEditTriggers(qg.QAbstractItemView.DoubleClicked)
         self.setSortingEnabled(True)
         self.setStyleSheet(
-            'QTableView{selection-background-color: rgb(130, 130, 130 );}')
+            'QTableView{selection-background-color: \
+            rgba(130, 130, 130, 100% );}')
 
         self.sortByColumn(1, qc.Qt.DescendingOrder)
         self.setAlternatingRowColors(True)
