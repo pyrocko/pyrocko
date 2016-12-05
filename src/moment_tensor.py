@@ -849,6 +849,7 @@ def kagan_angle(mt1, mt2):
 
     return 2. * r2d * math.acos(num.max(num.abs(qk)))
 
+
 if __name__ == '__main__':
 
     import sys
