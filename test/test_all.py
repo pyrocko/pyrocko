@@ -21,6 +21,8 @@ from test_parstack import ParstackTestCase  # noqa
 from test_geonames import GeonamesTestCase  # noqa
 from test_cake import CakeTestCase  # noqa
 from test_beachball import BeachballTestCase  # noqa
+from test_gmtpy import GmtPyTestCase  # noqa
+from test_automap import AutomapTestCase  # noqa
 
 import unittest
 import optparse

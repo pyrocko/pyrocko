@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 
-import os
-import shutil
-import tempfile
 import math
 import random
 import logging
 
-from subprocess import check_call, Popen, PIPE
 from cStringIO import StringIO
 
 import numpy as num
@@ -27,6 +23,7 @@ km = 1000.
 d2m = d2r*earthradius
 m2d = 1./d2m
 cm = gmtpy.cm
+
 
 def point_in_region(p, r):
     p = [num.mod(x, 360.) for x in p]
@@ -176,7 +173,7 @@ class Map(Object):
     gmt_config = Dict.T(String.T(), String.T())
     comment = String.T(optional=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, gmtversion='newest', **kwargs):
         Object.__init__(self, **kwargs)
         self._gmt = None
         self._scaler = None
@@ -192,6 +189,7 @@ class Map(Object):
         self._jxyr = None
         self._prep_topo_have = None
         self._labels = []
+        self._gmtversion = gmtversion
 
     def save(self, outpath, resolution=75., oversample=2., size=None,
              width=None, height=None):
@@ -219,22 +217,8 @@ class Map(Object):
         if self.show_topo and self.show_topo_scale:
             self._draw_topo_scale()
 
-        gmt = self._gmt
-        if outpath.endswith('.eps'):
-            tmppath = gmt.tempfilename() + '.eps'
-        elif outpath.endswith('.ps'):
-            tmppath = gmt.tempfilename() + '.ps'
-        else:
-            tmppath = gmt.tempfilename() + '.pdf'
-
-        gmt.save(tmppath)
-
-        if any(outpath.endswith(x) for x in ('.eps', '.ps', '.pdf')):
-            shutil.copy(tmppath, outpath)
-        else:
-            convert_graph(tmppath, outpath,
-                          resolution=resolution, oversample=oversample,
-                          size=size, width=width, height=height)
+        gmt.save(outpath, resolution=resolution, oversample=oversample,
+                 size=size, width=width, height=height)
 
     @property
     def scaler(self):
@@ -377,60 +361,59 @@ class Map(Object):
         w, h = self.width, self.height
         scaler = self._scaler
 
-        gmtconf = dict(
-            TICK_PEN='1.25p',
-            TICK_LENGTH='0.2c',
-            ANNOT_FONT_PRIMARY='1',
-            ANNOT_FONT_SIZE_PRIMARY='12p',
-            LABEL_FONT='1',
-            LABEL_FONT_SIZE='12p',
-            CHAR_ENCODING='ISOLatin1+',
-            BASEMAP_TYPE='fancy',
-            PLOT_DEGREE_FORMAT='D',
-            PAPER_MEDIA='Custom_%ix%i' % (
-                w*gmtpy.cm,
-                h*gmtpy.cm),
-            GRID_PEN_PRIMARY='thinnest/0/50/0',
-            DOTS_PR_INCH='1200',
-            OBLIQUE_ANNOTATION='6')
-
-        gmtconf5 = dict(
-            MAP_TICK_PEN_PRIMARY='1.25p',
-            MAP_TICK_PEN_SECONDARY='1.25p',
-            MAP_TICK_LENGTH_PRIMARY='0.2c',
-            MAP_TICK_LENGTH_SECONDARY='0.6c',
-            FONT_ANNOT_PRIMARY='12p,Helvetica,black',
-            FONT_LABEL='12p,Helvetica,black',
-            PS_CHAR_ENCODING='ISOLatin1+',
-            MAP_FRAME_TYPE='fancy',
-            FORMAT_GEO_MAP='D',
-            PS_MEDIA='Custom_%ix%i' % (
-                w*gmtpy.cm,
-                h*gmtpy.cm),
-            PS_PAGE_ORIENTATION='portrait',
-            MAP_GRID_PEN_PRIMARY='thinnest,0/50/0',
-            #DOTS_PR_INCH='1200',
-            MAP_ANNOT_OBLIQUE='6') 
+        if gmtpy.is_gmt5(self._gmtversion):
+            gmtconf = dict(
+                MAP_TICK_PEN_PRIMARY='1.25p',
+                MAP_TICK_PEN_SECONDARY='1.25p',
+                MAP_TICK_LENGTH_PRIMARY='0.2c',
+                MAP_TICK_LENGTH_SECONDARY='0.6c',
+                FONT_ANNOT_PRIMARY='12p,1,black',
+                FONT_LABEL='12p,1,black',
+                PS_CHAR_ENCODING='ISOLatin1+',
+                MAP_FRAME_TYPE='fancy',
+                FORMAT_GEO_MAP='D',
+                PS_MEDIA='Custom_%ix%i' % (
+                    w*gmtpy.cm,
+                    h*gmtpy.cm),
+                PS_PAGE_ORIENTATION='portrait',
+                MAP_GRID_PEN_PRIMARY='thinnest,0/50/0',
+                MAP_ANNOT_OBLIQUE='6')
+        else:
+            gmtconf = dict(
+                TICK_PEN='1.25p',
+                TICK_LENGTH='0.2c',
+                ANNOT_FONT_PRIMARY='1',
+                ANNOT_FONT_SIZE_PRIMARY='12p',
+                LABEL_FONT='1',
+                LABEL_FONT_SIZE='12p',
+                CHAR_ENCODING='ISOLatin1+',
+                BASEMAP_TYPE='fancy',
+                PLOT_DEGREE_FORMAT='D',
+                PAPER_MEDIA='Custom_%ix%i' % (
+                    w*gmtpy.cm,
+                    h*gmtpy.cm),
+                GRID_PEN_PRIMARY='thinnest/0/50/0',
+                DOTS_PR_INCH='1200',
+                OBLIQUE_ANNOTATION='6')
 
         gmtconf.update(
             (k.upper(), v) for (k, v) in self.gmt_config.iteritems())
 
-        gmt = gmtpy.GMT(config=gmtconf5)
+        gmt = gmtpy.GMT(config=gmtconf, version=self._gmtversion)
 
         layout = gmt.default_layout()
 
         layout.set_fixed_margins(*[x*cm for x in self._expand_margins()])
 
         widget = layout.get_widget()
-        # widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        # widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         widget['P'] = widget['J']
         widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        # widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        # scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
         scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
 
-        aspect = gmtpy.aspect_for_projection(*(widget.J() + scaler.R()))
+        # aspect = gmtpy.aspect_for_projection(
+        #     gmt.installation['version'], *(widget.J() + scaler.R()))
+
+        aspect = self._map_aspect(jr=widget.J() + scaler.R())
         widget.set_aspect(aspect)
 
         self._gmt = gmt
@@ -500,13 +483,22 @@ class Map(Object):
                     t2.x(), t2.y(), t2.data, filename=grdfile2,
                     naming='lonlat')
 
-                gmt.grdsample(
-                    grdfile2,
-                    G=grdfile,
-                    Q='l',
-                    I='%g/%g' % (t.dx, t.dy),
-                    R=grdfile,
-                    out_discard=True)
+                if gmt.is_gmt5():
+                    gmt.grdsample(
+                        grdfile2,
+                        G=grdfile,
+                        n='l',
+                        I='%g/%g' % (t.dx, t.dy),
+                        R=grdfile,
+                        out_discard=True)
+                else:
+                    gmt.grdsample(
+                        grdfile2,
+                        G=grdfile,
+                        Q='l',
+                        I='%g/%g' % (t.dx, t.dy),
+                        R=grdfile,
+                        out_discard=True)
 
                 gmt.grdmath(
                     grdfile, '0.0', 'AND', '=', grdfile2,
@@ -556,7 +548,7 @@ class Map(Object):
             level.vmin /= km
             level.vmax /= km
 
-        topo_cpt = self.gmt.tempfilename()
+        topo_cpt = self.gmt.tempfilename() + '.cpt'
         write_cpt(combi, topo_cpt)
 
         (w, h), (xo, yo) = self.widget.get_size()
@@ -634,12 +626,23 @@ class Map(Object):
             fontsize = self.gmt.label_font_size()
 
             _, east, south, _ = self._wesn
+            if gmt.is_gmt5():
+                row = [
+                    1, 0,
+                    '%gp,%s,%s' % (fontsize, 0, 'black'), 'BR',
+                    self.comment]
+
+                farg = ['-F+f+j']
+            else:
+                row = [1, 0, fontsize, 0, 0, 'BR', self.comment]
+                farg = []
+
             gmt.pstext(
-                in_rows=[[1, 0, fontsize, 0, 0, 'BR', self.comment]],
+                in_rows=[row],
                 N=True,
                 R=(0, 1, 0, 1),
                 D='%gp/%gp' % (-fontsize*0.2, fontsize*0.3),
-                *widget.PXY())
+                *(widget.PXY() + farg))
 
     def draw_axes(self):
         if not self._have_drawn_axes:
@@ -656,7 +659,7 @@ class Map(Object):
         gmt.pscoast(
             M=True,
             D=cres,
-            W='thinnest/black',
+            W='thinnest,black',
             A=minarea,
             out_filename=checkfile,
             *self._jxyr)
@@ -672,17 +675,26 @@ class Map(Object):
 
         return False
 
-    def project(self, lats, lons):
+    def have_coastlines(self):
+        self.gmt
+        return self._have_coastlines()
+
+    def project(self, lats, lons, jr=None):
         onepoint = False
         if isinstance(lats, float) and isinstance(lons, float):
             lats = [lats]
             lons = [lons]
             onepoint = True
 
-        j, _, _, r = self.jxyr
-        (xo, yo) = self.widget.get_size()[1]
+        if jr is not None:
+            j, r = jr
+            gmt = gmtpy.GMT(version=self._gmtversion)
+        else:
+            j, _, _, r = self.jxyr
+            gmt = self.gmt
+
         f = StringIO()
-        self.gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f, D='p')
+        gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f, D='p')
         f.seek(0)
         data = num.loadtxt(f, ndmin=2)
         xs, ys = data.T
@@ -690,6 +702,21 @@ class Map(Object):
             xs = xs[0]
             ys = ys[0]
         return xs, ys
+
+    def _map_box(self, jr=None):
+        ll_lon, ll_lat, ur_lon, ur_lat = self._corners
+
+        xs_corner, ys_corner = self.project(
+            (ll_lat, ur_lat), (ll_lon, ur_lon), jr=jr)
+
+        w = xs_corner[1] - xs_corner[0]
+        h = ys_corner[1] - ys_corner[0]
+
+        return w, h
+
+    def _map_aspect(self, jr=None):
+        w, h = self._map_box(jr=jr)
+        return h/w
 
     def _draw_labels(self):
         if self._labels:
@@ -702,49 +729,16 @@ class Map(Object):
             sx = num.array(sx, dtype=num.float)
             sy = num.array(sy, dtype=num.float)
 
-            j, _, _, r = self.jxyr
-            f = StringIO()
-            self.gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f,
-                                D='p')
-            f.seek(0)
-            data = num.loadtxt(f, ndmin=2)
-            xs, ys = data.T
+            xs, ys = self.project(lats, lons)
+
+            w, h = self._map_box()
+
             dxs = num.zeros(n)
             dys = num.zeros(n)
 
-            g = gmtpy.GMT()
-            if g.is_gmt5():
-                g.psbasemap('-B+g0', finish=True, *(j, r))
-            else:
-                g.psbasemap('-G0', finish=True, *(j, r))
-
-            l, b, r, t = g.bbox()
-            h = (t-b)
-            w = (r-l)
-
             for i in xrange(n):
-                g = gmtpy.GMT()
-                g.pstext(
-                    in_rows=[[0, 0, fontsize, 0, 1, 'BL', texts[i]]],
-                    finish=True,
-                    R=(0, 1, 0, 1),
-                    J='x10p',
-                    N=True,
-                    **styles[i])
-
-                fn = g.tempfilename()
-                g.save(fn)
-
-                (_, stderr) = Popen(
-                    ['gs', '-q', '-dNOPAUSE', '-dBATCH', '-r720',
-                     '-sDEVICE=bbox', fn],
-                    stderr=PIPE).communicate()
-
-                dx, dy = None, None
-                for line in stderr.splitlines():
-                    if line.startswith('%%HiResBoundingBox:'):
-                        l, b, r, t = [float(x) for x in line.split()[-4:]]
-                        dx, dy = r-l, t-b
+                dx, dy = gmtpy.text_box(
+                    texts[i], font=1, fontsize=fontsize, **styles[i])
 
                 dxs[i] = dx
                 dys[i] = dy
@@ -836,9 +830,25 @@ class Map(Object):
                     anchor = anchor_strs[ianchor]
                     yoff = [-sy[i], sy[i]][anchor[0] == 'B']
                     xoff = [-sx[i], sx[i]][anchor[1] == 'L']
-                    row = (lons[i], lats[i], fontsize, 0, 1, anchor, texts[i])
+                    if self.gmt.is_gmt5():
+                        row = (
+                            lons[i], lats[i],
+                            '%i,%s,%s' % (fontsize, 1, 'black'),
+                            anchor,
+                            texts[i])
+
+                        farg = ['-F+f+j']
+                    else:
+                        row = (
+                            lons[i], lats[i],
+                            fontsize, 0, 1, anchor,
+                            texts[i])
+                        farg = []
+
                     self.gmt.pstext(
-                        in_rows=[row], D='%gp/%gp' % (xoff, yoff), *self.jxyr,
+                        in_rows=[row],
+                        D='%gp/%gp' % (xoff, yoff),
+                        *(self.jxyr + farg),
                         **styles[i])
 
     def draw_labels(self):
@@ -860,7 +870,7 @@ class Map(Object):
     def draw_cities(self,
                     exact=None,
                     include=[],
-                    exclude=['City of London'],  # duplicate entry in geonames
+                    exclude=[],
                     nmax_soft=10,
                     psxy_style=dict(S='s5p', G='black')):
 
@@ -874,7 +884,8 @@ class Map(Object):
             minpop = 10**3
             for minpop_new in [1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7]:
                 cities_new = [
-                    c for c in cities if c.population > minpop_new]
+                    c for c in cities
+                    if c.population > minpop_new or c.name in include]
 
                 if len(cities_new) == 0 or (
                         len(cities_new) < 3 and len(cities) < nmax_soft*2):
@@ -902,56 +913,6 @@ class Map(Object):
                 self.add_label(c.lat, c.lon, text)
 
         self._cities_minpop = minpop
-
-
-def convert_graph(in_filename, out_filename, resolution=75., oversample=2.,
-                  width=None, height=None, size=None):
-
-    _, tmp_filename_base = tempfile.mkstemp()
-
-    try:
-        if out_filename.endswith('.svg'):
-            fmt_arg = '-svg'
-            tmp_filename = tmp_filename_base
-            oversample = 1.0
-        else:
-            fmt_arg = '-png'
-            tmp_filename = tmp_filename_base + '-1.png'
-
-        if size is not None:
-            scale_args = ['-scale-to', '%i' % int(round(size*oversample))]
-        elif width is not None:
-            scale_args = ['-scale-to-x', '%i' % int(round(width*oversample))]
-        elif height is not None:
-            scale_args = ['-scale-to-y', '%i' % int(round(height*oversample))]
-        else:
-            scale_args = ['-r', '%i' % int(round(resolution * oversample))]
-
-        check_call(['pdftocairo'] + scale_args +
-                   [fmt_arg, in_filename, tmp_filename_base])
-
-        if oversample > 1.:
-            check_call([
-                'convert',
-                tmp_filename,
-                '-resize', '%i%%' % int(round(100.0/oversample)),
-                out_filename])
-
-        else:
-            if out_filename.endswith('.png') or out_filename.endswith('.svg'):
-                shutil.move(tmp_filename, out_filename)
-            else:
-                check_call(['convert', tmp_filename, out_filename])
-
-    except:
-        raise
-
-    finally:
-        if os.path.exists(tmp_filename_base):
-            os.remove(tmp_filename_base)
-
-        if os.path.exists(tmp_filename):
-            os.remove(tmp_filename)
 
 
 def rand(mi, ma):

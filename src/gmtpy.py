@@ -19,6 +19,147 @@ import numpy as num
 import copy
 from select import select
 
+find_bb = re.compile(r'%%BoundingBox:((\s+[-0-9]+){4})')
+find_hiresbb = re.compile(r'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
+
+
+def have_gmt():
+    try:
+        get_gmt_installation('newest')
+        return True
+
+    except GMTInstallationProblem:
+        return False
+
+
+def have_pixmaptools():
+    for prog in [['pdftocairo'], ['convert'], ['gs', '-h']]:
+        try:
+            subprocess.call(
+                prog,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        except OSError:
+            return False
+
+    return True
+
+
+class GmtPyError(Exception):
+    pass
+
+
+class GMTInstallationProblem(GmtPyError):
+    pass
+
+
+def convert_graph(in_filename, out_filename, resolution=75., oversample=2.,
+                  width=None, height=None, size=None):
+
+    _, tmp_filename_base = tempfile.mkstemp()
+
+    try:
+        if out_filename.endswith('.svg'):
+            fmt_arg = '-svg'
+            tmp_filename = tmp_filename_base
+            oversample = 1.0
+        else:
+            fmt_arg = '-png'
+            tmp_filename = tmp_filename_base + '-1.png'
+
+        if size is not None:
+            scale_args = ['-scale-to', '%i' % int(round(size*oversample))]
+        elif width is not None:
+            scale_args = ['-scale-to-x', '%i' % int(round(width*oversample))]
+        elif height is not None:
+            scale_args = ['-scale-to-y', '%i' % int(round(height*oversample))]
+        else:
+            scale_args = ['-r', '%i' % int(round(resolution * oversample))]
+
+        try:
+            subprocess.check_call(
+                ['pdftocairo'] + scale_args +
+                [fmt_arg, in_filename, tmp_filename_base])
+        except OSError as e:
+            raise GmtPyError(
+                'Cannot start `pdftocairo`, is it installed? (%s)' % str(e))
+
+        if oversample > 1.:
+            try:
+                subprocess.check_call([
+                    'convert',
+                    tmp_filename,
+                    '-resize', '%i%%' % int(round(100.0/oversample)),
+                    out_filename])
+            except:
+                raise GmtPyError(
+                    'Cannot start `convert`, is it installed? (%s)' % str(e))
+
+        else:
+            if out_filename.endswith('.png') or out_filename.endswith('.svg'):
+                shutil.move(tmp_filename, out_filename)
+            else:
+                try:
+                    subprocess.check_call(
+                        ['convert', tmp_filename, out_filename])
+                except:
+                    raise GmtPyError(
+                        'Cannot start `convert`, is it installed? (%s)'
+                        % str(e))
+
+    except:
+        raise
+
+    finally:
+        if os.path.exists(tmp_filename_base):
+            os.remove(tmp_filename_base)
+
+        if os.path.exists(tmp_filename):
+            os.remove(tmp_filename)
+
+
+def get_bbox(s):
+    for pat in [find_hiresbb, find_bb]:
+        m = pat.search(s)
+        if m:
+            bb = [float(x) for x in m.group(1).split()]
+            return bb
+
+    raise Exception('Cannot find bbox')
+
+
+def replace_bbox(bbox, *args):
+
+    def repl(m):
+        if m.group(1):
+            return '%%HiResBoundingBox: ' + ' '.join(
+                '%.3f' % float(x) for x in bbox)
+        else:
+            return '%%%%BoundingBox: %i %i %i %i' % (
+                    int(math.floor(bbox[0])),
+                    int(math.floor(bbox[1])),
+                    int(math.ceil(bbox[2])),
+                    int(math.ceil(bbox[3])))
+
+    pat = re.compile(r'%%(HiRes)?BoundingBox:((\s+[0-9.]+){4})')
+    if len(args) == 1:
+        s = args[0]
+        return pat.sub(repl, s)
+
+    else:
+        fin, fout = args
+        nn = 0
+        for line in fin:
+            line, n = pat.subn(repl, line)
+            nn += n
+            fout.write(line)
+            if nn == 2:
+                break
+
+        if nn == 2:
+            for line in fin:
+                fout.write(line)
+
 
 def escape_shell_arg(s):
     '''This function should be used for debugging output only - it could be
@@ -155,6 +296,10 @@ def newest_installed_gmt_version():
     return sorted(_gmt_installations.keys(), cmp=cmp_version)[-1]
 
 
+def all_installed_gmt_versions():
+    return sorted(_gmt_installations.keys(), cmp=cmp_version)
+
+
 # To have consistent defaults, they are hardcoded here and should not be
 # changed.
 
@@ -227,7 +372,7 @@ PS_IMAGE_COMPRESS       = none
 PS_IMAGE_FORMAT         = ascii
 PS_LINE_CAP             = round
 PS_LINE_JOIN            = miter
-PS_MITER_LIMIT          = 0
+PS_MITER_LIMIT          = 35
 PS_VERBOSE                      = FALSE
 GLOBAL_X_SCALE          = 1
 GLOBAL_Y_SCALE          = 1
@@ -335,7 +480,7 @@ PS_IMAGE_COMPRESS	= none
 PS_IMAGE_FORMAT		= ascii
 PS_LINE_CAP		= round
 PS_LINE_JOIN		= miter
-PS_MITER_LIMIT		= 0
+PS_MITER_LIMIT		= 35
 PS_VERBOSE		= FALSE
 GLOBAL_X_SCALE		= 1
 GLOBAL_Y_SCALE		= 1
@@ -443,7 +588,7 @@ PS_IMAGE_COMPRESS	= none
 PS_IMAGE_FORMAT		= ascii
 PS_LINE_CAP		= round
 PS_LINE_JOIN		= miter
-PS_MITER_LIMIT		= 0
+PS_MITER_LIMIT		= 35
 PS_VERBOSE		= FALSE
 GLOBAL_X_SCALE		= 1
 GLOBAL_Y_SCALE		= 1
@@ -551,7 +696,7 @@ PS_IMAGE_COMPRESS       = lzw
 PS_IMAGE_FORMAT         = ascii
 PS_LINE_CAP             = round
 PS_LINE_JOIN            = miter
-PS_MITER_LIMIT          = 0
+PS_MITER_LIMIT          = 35
 PS_VERBOSE              = FALSE
 GLOBAL_X_SCALE          = 1
 GLOBAL_Y_SCALE          = 1
@@ -661,7 +806,7 @@ PS_IMAGE_COMPRESS       = lzw
 PS_IMAGE_FORMAT         = ascii
 PS_LINE_CAP             = round
 PS_LINE_JOIN            = miter
-PS_MITER_LIMIT          = 0
+PS_MITER_LIMIT          = 35
 PS_VERBOSE              = FALSE
 TRANSPARENCY            = 0
 #-------- I/O Format Parameters -------------
@@ -771,7 +916,7 @@ PS_IMAGE_COMPRESS       = lzw
 PS_IMAGE_FORMAT         = ascii
 PS_LINE_CAP             = round
 PS_LINE_JOIN            = miter
-PS_MITER_LIMIT          = 0
+PS_MITER_LIMIT          = 35
 PS_VERBOSE              = FALSE
 TRANSPARENCY            = 0
 #-------- I/O Format Parameters -------------
@@ -830,15 +975,15 @@ COLOR_HSV_MAX_V = 1
 #
 # DIR Parameters
 #
-DIR_DATA = 
-DIR_DCW = 
-DIR_GSHHG = /usr/local/share/coast
+DIR_DATA =
+DIR_DCW =
+DIR_GSHHG =
 #
 # FONT Parameters
 #
-FONT_ANNOT_PRIMARY = 12p,Helvetica,black
-FONT_ANNOT_SECONDARY = 14p,Helvetica,black
-FONT_LABEL = 16p,Helvetica,black
+FONT_ANNOT_PRIMARY = 14p,Helvetica,black
+FONT_ANNOT_SECONDARY = 16p,Helvetica,black
+FONT_LABEL = 14p,Helvetica,black
 FONT_LOGO = 8p,Helvetica,black
 FONT_TITLE = 24p,Helvetica,black
 #
@@ -861,7 +1006,7 @@ FORMAT_TIME_STAMP = %Y %b %d %H:%M:%S
 # GMT Miscellaneous Parameters
 #
 GMT_COMPATIBILITY = 4
-GMT_CUSTOM_LIBS = 
+GMT_CUSTOM_LIBS =
 GMT_EXTRAPOLATE_VAL = NaN
 GMT_FFT = auto
 GMT_HISTORY = true
@@ -887,8 +1032,8 @@ IO_SEGMENT_MARKER = >
 MAP_ANNOT_MIN_ANGLE = 20
 MAP_ANNOT_MIN_SPACING = 0p
 MAP_ANNOT_OBLIQUE = 1
-MAP_ANNOT_OFFSET_PRIMARY = 5p
-MAP_ANNOT_OFFSET_SECONDARY = 5p
+MAP_ANNOT_OFFSET_PRIMARY = 0.075i
+MAP_ANNOT_OFFSET_SECONDARY = 0.075i
 MAP_ANNOT_ORTHO = we
 MAP_DEFAULT_PEN = default,black
 MAP_DEGREE_SYMBOL = ring
@@ -900,7 +1045,7 @@ MAP_GRID_CROSS_SIZE_PRIMARY = 0p
 MAP_GRID_CROSS_SIZE_SECONDARY = 0p
 MAP_GRID_PEN_PRIMARY = default,black
 MAP_GRID_PEN_SECONDARY = thinner,black
-MAP_LABEL_OFFSET = 8p
+MAP_LABEL_OFFSET = 0.1944i
 MAP_LINE_STEP = 0.75p
 MAP_LOGO = false
 MAP_LOGO_POS = BL/-54p/-54p
@@ -934,7 +1079,7 @@ PS_LINE_JOIN = miter
 PS_MITER_LIMIT = 35
 PS_MEDIA = a4
 PS_PAGE_COLOR = white
-PS_PAGE_ORIENTATION = landscape
+PS_PAGE_ORIENTATION = portrait
 PS_SCALE_X = 1
 PS_SCALE_Y = 1
 PS_TRANSPARENCY = Normal
@@ -950,11 +1095,13 @@ TIME_WEEK_START = Monday
 TIME_Y2K_OFFSET_YEAR = 1950
 '''
 
-def get_gmt_version(gmtdefaultsbinary, gmthomedir):
+
+def get_gmt_version(gmtdefaultsbinary, gmthomedir=None):
     args = [gmtdefaultsbinary]
 
     environ = os.environ.copy()
-    environ['GMTHOME'] = gmthomedir
+    environ['GMTHOME'] = gmthomedir or ''
+
     p = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
@@ -962,48 +1109,81 @@ def get_gmt_version(gmtdefaultsbinary, gmthomedir):
         env=environ)
 
     (stdout, stderr) = p.communicate()
-    m = re.search(r'(\d+(\.\d+)*)', stderr) or re.search(r'# GMT (\d+(\.\d+)*)', stdout)
+    m = re.search(r'(\d+(\.\d+)*)', stderr) \
+        or re.search(r'# GMT (\d+(\.\d+)*)', stdout)
+
     if not m:
-        raise Exception("Can't extract version number from output of %s" %
-                        gmtdefaultsbinary)
+        raise GMTInstallationProblem(
+            "Can't extract version number from output of %s"
+            % gmtdefaultsbinary)
 
     return m.group(1)
 
 
-def detect_gmt_installation():
-    output = subprocess.Popen(
-        ["which", "gmtdefaults"],
-        stdout=subprocess.PIPE).communicate()[0].strip()
+def detect_gmt_installations():
 
-    if not output:
-        raise ValueError("Can't find GMT installation via PATH")
+    installations = {}
+    errmesses = []
 
-    gmtbin = os.path.dirname(output)
-    gmthome = os.environ['GMTHOME']  # should throw a KeyError if not satisfied
-
-    gmtversion = get_gmt_version(pjoin(gmtbin, 'gmtdefaults'), gmthome)
-    return gmtversion, gmthome, gmtbin
-
-
-def check_default_ubuntu_gmt_path():
-    gmtbin = pjoin('/', 'usr', 'lib', 'gmt', 'bin')
-    gmthome = pjoin('/', 'usr', 'lib', 'gmt')
-    gmtversion = get_gmt_version(pjoin(gmtbin, 'gmtdefaults'), gmthome)
-    return gmtversion, gmthome, gmtbin
-
-
-def check_detect_gmt_installation():
+    # GMT 4.x:
     try:
-        return detect_gmt_installation()
-    except (ValueError, KeyError):
-        pass
+        p = subprocess.Popen(
+            ['GMT'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+
+        (stdout, stderr) = p.communicate()
+
+        m = re.search(r'^\s+Version\s+(\d+(\.\d+)*)$', stderr, re.M)
+        if not m:
+            raise GMTInstallationProblem(
+                "Can't version number from output of GMT")
+
+        version = m.group(1)
+
+        m = re.search(r'^\s+executables\s+(.+)$', stderr, re.M)
+        if not m:
+            raise GMTInstallationProblem(
+                "Can't extract executables dir from output of GMT")
+
+        gmtbin = m.group(1)
+
+        m = re.search(r'^\s+shared data\s+(.+)$', stderr, re.M)
+        if not m:
+            raise GMTInstallationProblem(
+                "Can't extract shared dir from output of GMT")
+
+        gmtshare = m.group(1)
+        if not gmtshare.endswith('/share'):
+            raise GMTInstallationProblem(
+                "Can't determine GMTHOME from output of GMT")
+
+        gmthome = gmtshare[:-6]
+
+        installations[version] = {
+            'home': gmthome,
+            'bin': gmtbin}
+
+    except OSError as e:
+        errmesses.append(('GMT', str(e)))
 
     try:
-        return check_default_ubuntu_gmt_path()
-    except:
-        pass
+        version = subprocess.check_output(['gmt', '--version']).strip()
+        gmtbin = subprocess.check_output(['gmt', '--show-bindir']).strip()
+        installations[version] = {
+            'bin': gmtbin}
 
-    raise Exception("Can't find GMT installation via PATH or default location")
+    except (OSError, subprocess.CalledProcessError) as e:
+        errmesses.append(('gmt', str(e)))
+
+    if not installations:
+        s = []
+        for (progname, errmess) in errmesses:
+            s.append('Cannot start "%s" executable: %s' % (progname, errmess))
+
+        raise GMTInstallationProblem(', '.join(s))
+
+    return installations
 
 
 def appropriate_defaults_version(version):
@@ -1060,20 +1240,59 @@ def diff_defaults(v1, v2):
 # diff_defaults('4.5.2', '4.5.3')
 
 
+def check_gmt_installation(installation):
+
+    home_dir = installation.get('home', None)
+    bin_dir = installation['bin']
+    version = installation['version']
+
+    for d in home_dir, bin_dir:
+        if d is not None:
+            if not os.path.exists(d):
+                logging.error(('Directory does not exist: %s\n'
+                              'Check your GMT installation.') % d)
+
+    gmtdefaults = pjoin(bin_dir, 'gmtdefaults')
+
+    versionfound = get_gmt_version(gmtdefaults, home_dir)
+
+    if versionfound != version:
+        raise GMTInstallationProblem((
+            'Expected GMT version %s but found version %s.\n'
+            '(Looking at output of %s)') % (
+                version, versionfound, gmtdefaults))
+
+
+def get_gmt_installation(version):
+    setup_gmt_installations()
+    if version != 'newest' and version not in _gmt_installations:
+        logging.warn('GMT version %s not installed, taking version %s instead'
+                     % (version, newest_installed_gmt_version()))
+
+        version = 'newest'
+
+    if version == 'newest':
+        version = newest_installed_gmt_version()
+
+    installation = dict(_gmt_installations[version])
+
+    return installation
+
+
 def setup_gmt_installations():
     if not setup_gmt_installations.have_done:
         if not _gmt_installations:
-            gmtversion, gmthome, gmtbin = check_detect_gmt_installation()
-            _gmt_installations[gmtversion] = {'home': gmthome, 'bin': gmtbin}
+
+            _gmt_installations.update(detect_gmt_installations())
 
         # store defaults as dicts into the gmt installations dicts
         for version, installation in _gmt_installations.iteritems():
             installation['defaults'] = gmt_default_config(version)
             installation['version'] = version
 
-        # alias for the newest installed gmt version
-        _gmt_installations['newest'] = _gmt_installations[
-            newest_installed_gmt_version()]
+        for installation in _gmt_installations.values():
+            check_gmt_installation(installation)
+
         setup_gmt_installations.have_done = True
 
 
@@ -1129,14 +1348,30 @@ def all_paper_sizes():
     setup_paper_sizes()
     return _paper_sizes
 
+
 def measure_unit(gmt_config):
-    return gmt_config.get('MEASURE_UNIT', gmt_config['PROJ_LENGTH_UNIT'])
+    for k in ['MEASURE_UNIT', 'PROJ_LENGTH_UNIT']:
+        if k in gmt_config:
+            return gmt_config[k]
+
+    raise GmtPyError('cannot get measure unit / proj length unit from config')
+
 
 def paper_media(gmt_config):
-    return gmt_config.get('PAPER_MEDIA', gmt_config['PS_MEDIA'])
+    for k in ['PAPER_MEDIA', 'PS_MEDIA']:
+        if k in gmt_config:
+            return gmt_config[k]
+
+    raise GmtPyError('cannot get paper media from config')
+
 
 def page_orientation(gmt_config):
-    return gmt_config.get('PAGE_ORIENTATION', gmt_config['PS_PAGE_ORIENTATION'])
+    for k in ['PAGE_ORIENTATION', 'PS_PAGE_ORIENTATION']:
+        if k in gmt_config:
+            return gmt_config[k]
+
+    raise GmtPyError('cannot get paper orientation from config')
+
 
 def make_bbox(width, height, gmt_config, margins=(0.8, 0.8, 0.8, 0.8)):
 
@@ -1164,41 +1399,6 @@ def make_bbox(width, height, gmt_config, margins=(0.8, 0.8, 0.8, 0.8)):
         bb4 = bb2 + int((width+leftmargin+rightmargin))
 
     return xoffset, yoffset, (bb1, bb2, bb3, bb4)
-
-
-def check_gmt_installation(installation):
-
-    home_dir = installation['home']
-    bin_dir = installation['bin']
-    version = installation['version']
-
-    for d in home_dir, bin_dir:
-        if not os.path.exists(d):
-            logging.error(('Directory does not exist: %s\n'
-                          'Check your GMT installation.') % d)
-
-    gmtdefaults = pjoin(bin_dir, 'gmtdefaults')
-
-    versionfound = get_gmt_version(gmtdefaults, home_dir)
-
-    if versionfound != version:
-        raise Exception(('Expected GMT version %s but found version %s.\n'
-                         '(Looking at output of %s)') %
-                        (version, versionfound, gmtdefaults))
-
-
-def get_gmt_installation(version):
-    setup_gmt_installations()
-    if version not in _gmt_installations:
-        logging.warn('GMT version %s not installed, taking version %s instead'
-                     % (version, newest_installed_gmt_version()))
-        version = 'newest'
-
-    installation = dict(_gmt_installations[version])
-
-    check_gmt_installation(installation)
-
-    return installation
 
 
 def gmtdefaults_as_text(version='newest'):
@@ -1239,8 +1439,8 @@ def savegrd(x, y, z, filename, title=None, naming='xy'):
     nc.createDimension(kx, nx)
     nc.createDimension(ky, ny)
 
-    xvar = nc.createVariable(kx, 'f', (kx,))
-    yvar = nc.createVariable(ky, 'f', (ky,))
+    xvar = nc.createVariable(kx, 'd', (kx,))
+    yvar = nc.createVariable(ky, 'd', (ky,))
     if naming == 'xy':
         xvar.long_name = kx
         yvar.long_name = ky
@@ -1250,11 +1450,11 @@ def savegrd(x, y, z, filename, title=None, naming='xy'):
         yvar.long_name = 'latitude'
         yvar.units = 'degrees_north'
 
-    zvar = nc.createVariable('z', 'f', (ky, kx))
+    zvar = nc.createVariable('z', 'd', (ky, kx))
 
-    xvar[:] = x.astype(num.float32)
-    yvar[:] = y.astype(num.float32)
-    zvar[:] = z.astype(num.float32)
+    xvar[:] = x.astype(num.float64)
+    yvar[:] = y.astype(num.float64)
+    zvar[:] = z.astype(num.float64)
 
     nc.close()
 
@@ -1351,7 +1551,7 @@ def guess_field_size(x_sorted, y_sorted, z=None, mode=None):
         return nxs, nys, 0
     elif nxs >= xs.size*critical_fraction and nys >= xs.size*critical_fraction:
         # possibly randomly sampled
-        nxs = int(math.sqrt(x.size))
+        nxs = int(math.sqrt(xs.size))
         nys = nxs
         return nxs, nys, 2
     else:
@@ -2768,14 +2968,64 @@ class GridLayout(Widget):
         return children
 
 
-def aspect_for_projection(*args, **kwargs):
-    gmt = GMT()
+def is_gmt5(version='newest'):
+    return get_gmt_installation(version)['version'][0] == '5'
+
+
+def aspect_for_projection(gmtversion, *args, **kwargs):
+
+    gmt = GMT(version=gmtversion, eps_mode=True)
+
     if gmt.is_gmt5():
         gmt.psbasemap('-B+gblack', finish=True, *args, **kwargs)
+        fn = gmt.tempfilename('test.eps')
+        gmt.save(fn, crop_eps_mode=True)
+        with open(fn, 'rb') as f:
+            s = f.read()
+
+        l, b, r, t = get_bbox(s)
     else:
         gmt.psbasemap('-G0', finish=True, *args, **kwargs)
-    l, b, r, t = gmt.bbox()
+        l, b, r, t = gmt.bbox()
+
     return (t-b)/(r-l)
+
+
+def text_box(
+        text, font=0, fontsize=12., angle=0, gmtversion='newest', **kwargs):
+
+    gmt = GMT(version=gmtversion)
+    if gmt.is_gmt5():
+        row = [0, 0, text]
+        farg = ['-F+f%gp,%s,%s+j%s' % (fontsize, font, 'black', 'BL')]
+    else:
+        row = [0, 0, fontsize, 0, font, 'BL', text]
+        farg = []
+
+    gmt.pstext(
+        in_rows=[row],
+        finish=True,
+        R=(0, 1, 0, 1),
+        J='x10p',
+        N=True,
+        *farg,
+        **kwargs)
+
+    fn = gmt.tempfilename() + '.ps'
+    gmt.save(fn)
+
+    (_, stderr) = subprocess.Popen(
+        ['gs', '-q', '-dNOPAUSE', '-dBATCH', '-r720', '-sDEVICE=bbox', fn],
+        stderr=subprocess.PIPE).communicate()
+
+    dx, dy = None, None
+    for line in stderr.splitlines():
+        if line.startswith('%%HiResBoundingBox:'):
+            l, b, r, t = [float(x) for x in line.split()[-4:]]
+            dx, dy = r-l, t-b
+            break
+
+    return dx, dy
 
 
 class TableLiner:
@@ -2849,7 +3099,8 @@ font_tab = {
     1: 'Helvetica-Bold',
 }
 
-font_tab_rev = dict((v,k) for (k,v) in font_tab.iteritems())
+font_tab_rev = dict((v, k) for (k, v) in font_tab.iteritems())
+
 
 class GMT:
     '''A thin wrapper to GMT command execution.
@@ -2889,13 +3140,30 @@ class GMT:
 
     '''
 
-    def __init__(self, config=None, kontinue=None, version='newest'):
+    def __init__(
+            self,
+            config=None,
+            kontinue=None,
+            version='newest',
+            config_papersize=None,
+            eps_mode=False):
 
         self.installation = get_gmt_installation(version)
         self.gmt_config = dict(self.installation['defaults'])
+        self.eps_mode = eps_mode
 
         if config:
             self.gmt_config.update(config)
+
+        if config_papersize:
+            if not isinstance(config_papersize, basestring):
+                config_papersize = 'Custom_%ix%i' % (
+                    int(config_papersize[0]), int(config_papersize[1]))
+
+            if self.is_gmt5():
+                self.gmt_config['PS_MEDIA'] = config_papersize
+            else:
+                self.gmt_config['PAPER_MEDIA'] = config_papersize
 
         self.tempdir = tempfile.mkdtemp("", "gmtpy-")
         self.gmt_config_filename = pjoin(self.tempdir, 'gmt.conf')
@@ -2911,7 +3179,7 @@ class GMT:
         self.finished = False
 
         self.environ = os.environ.copy()
-        self.environ['GMTHOME'] = self.installation['home']
+        self.environ['GMTHOME'] = self.installation.get('home', '')
         # GMT isolation mode: works only properly with GMT version >= 4.2.2
         self.environ['GMT_TMPDIR'] = self.tempdir
 
@@ -3212,28 +3480,29 @@ class GMT:
         filename = self.tempfilename('breakpoint-%s' % ident)
         self.load_unfinished(filename)
 
-    def save(self, filename=None, bbox=None, raster_dpi=150,
-             raster_antialias=True):
+    def save(self, filename=None, bbox=None, resolution=150, oversample=2.,
+             width=None, height=None, size=None, crop_eps_mode=False):
 
-        '''Finish and save figure as PDF, PS or PPM file.
+        '''
+        Finish and save figure as PDF, PS or PPM file.
 
-           If filename ends with ``'.pdf'`` a PDF file is created by piping the
-           GMT output through :program:`epstopdf`.
+        If filename ends with ``'.pdf'`` a PDF file is created by piping the
+        GMT output through :program:`gmtpy-epstopdf`.
 
-           If filename ends with ``'.ppm'`` a PPM file is created by running
-           :program:`epstopdf` and :program:`pdftoppm`. ``raster_dpi``
-           specifies the resolution, which is passed to :program:`pdftoppm`.
+        If filename ends with ``'.png'`` a PNG file is created by running
+        :program:`gmtpy-epstopdf`, :program:`pdftocairo` and
+        :program:`convert`. ``resolution`` specifies the resolution in DPI for
+        raster file formats. Rasterization is done at a higher resolution if
+        ``oversample`` is set to a value higher than one. The output image size
+        can also be controlled by setting ``width``, ``height`` or ``size``
+        instead of ``resolution``. When ``size`` is given, the image is scaled
+        so that ``max(width, height) == size``.
 
-           The bounding box is set according to the values given in
-           ``bbox``.'''
+        The bounding box is set according to the values given in ``bbox``.
+        '''
 
         if not self.finished:
             self.psxy(R=True, J=True, finish=True)
-
-        if bbox:
-            oldbb = re.compile(r'%%BoundingBox:((\s+\d+){4})')
-            newbb = '%%%%BoundingBox: %s' % ' '.join(
-                [str(int(x)) for x in bbox])
 
         if filename:
             tempfn = pjoin(self.tempdir, 'incomplete')
@@ -3241,44 +3510,56 @@ class GMT:
         else:
             out = sys.stdout
 
-        if bbox:
-            out.write(oldbb.sub(newbb, self.output.getvalue()))
+        if bbox and not self.is_gmt5():
+            out.write(replace_bbox(bbox, self.output.getvalue()))
         else:
             out.write(self.output.getvalue())
 
         if filename:
             out.close()
 
-        if filename.endswith('.ppm'):
-            pdffilename = pjoin(self.tempdir, 'incomplete.pdf')
-            subprocess.call(['gmtpy-epstopdf', '--res=300',
-                             '--outfile=' + pdffilename, tempfn])
-            interbasefn = pjoin(self.tempdir, 'incomplete')
-            aa = ['-aa', 'no']
-            if raster_antialias:
-                aa = ['-aa', 'yes']
-            subprocess.call(['pdftoppm', '-r', '%i' % raster_dpi] + aa +
-                            [pdffilename, interbasefn])
-            for interfn in [interbasefn+'-1.ppm', interbasefn+'-000001.ppm']:
-                # depends on version of pdftoppm
-                if os.path.exists(interfn):
-                    shutil.move(interfn, filename)
-                    break
+        if filename.endswith('.ps') or (
+                not self.is_gmt5() and filename.endswith('.eps')):
 
-        elif filename.endswith('.pdf'):
-            subprocess.call(['gmtpy-epstopdf', '--res=300',
-                             '--outfile=' + filename, tempfn])
-        else:
             shutil.move(tempfn, filename)
+            return
+
+        if self.is_gmt5():
+            if crop_eps_mode:
+                addarg = ['-A0']
+            else:
+                addarg = []
+
+            subprocess.call(
+                [pjoin(self.installation['bin'], 'psconvert'),
+                 '-Te', '-F%s' % tempfn + '.eps', tempfn, ] + addarg)
+
+            if bbox:
+                with open(tempfn + '.eps', 'rb') as fin:
+                    with open(tempfn + '-fixbb.eps', 'wb') as fout:
+                        replace_bbox(bbox, fin, fout)
+
+                shutil.move(tempfn + '-fixbb.eps', tempfn + '.eps')
+
+        else:
+            shutil.move(tempfn, tempfn + '.eps')
+
+        if filename.endswith('.pdf'):
+            subprocess.call(['gmtpy-epstopdf', '--res=%i' % resolution,
+                             '--outfile=' + filename, tempfn + '.eps'])
+        else:
+            subprocess.call([
+                'gmtpy-epstopdf',
+                '--res=%i' % (resolution * oversample),
+                '--outfile=' + tempfn + '.pdf', tempfn + '.eps'])
+
+            convert_graph(
+                tempfn + '.pdf', filename,
+                resolution=resolution, oversample=oversample,
+                size=size, width=width, height=height)
 
     def bbox(self):
-        find_bb = re.compile(r'%%BoundingBox:((\s+\d+){4})')
-        m = find_bb.search(self.output.getvalue())
-        if m:
-            bb = [float(x) for x in m.group(1).split()]
-            return bb
-        else:
-            raise Exception('Cannot find bbox')
+        return get_bbox(self.output.getvalue())
 
     def get_command_log(self):
         '''Get the command log.'''
@@ -3293,7 +3574,6 @@ class GMT:
 
     def page_size_points(self):
         '''Try to get paper size of output postscript file in points.'''
-
 
         pm = paper_media(self.gmt_config).lower()
         if pm.endswith('+') or pm.endswith('-'):
@@ -3364,7 +3644,7 @@ class GMT:
                 spacer.set_horizontal(0.5*cm)
                 palette_widget.set_horizontal(0.5*cm)
 
-            if pm.endswith('+'):
+            if pm.endswith('+') or self.eps_mode:
                 outer = CenterLayout()
                 outer.set_policy((w, h), (0., 0.))
                 inner = FrameLayout()
@@ -3426,7 +3706,7 @@ class GMT:
 
         # points = num.array(corners, dtype=num.float)
 
-        cptfile = self.tempfilename()
+        cptfile = self.tempfilename() + '.cpt'
         self.makecpt(
             C='ocean',
             T='%g/%g/%g' % (-nrects, nrects, 1),
@@ -3471,22 +3751,33 @@ class DensityPlotDef:
 
 
 class TextDef:
-    def __init__(self, data, size=9, justify='MC', fontno=0, offset=(0, 0)):
+    def __init__(
+            self,
+            data,
+            size=9,
+            justify='MC',
+            fontno=0,
+            offset=(0, 0),
+            color='black'):
+
         self.data = data
         self.size = size
         self.justify = justify
         self.fontno = fontno
         self.offset = offset
+        self.color = color
 
 
 class Simple:
-    def __init__(self, gmtconfig=None, **simple_config):
+    def __init__(self, gmtconfig=None, gmtversion='newest', **simple_config):
         self.data = []
         self.symbols = []
         self.config = copy.deepcopy(simple_config)
         self.gmtconfig = gmtconfig
         self.density_plot_defs = []
         self.text_defs = []
+
+        self.gmtversion = gmtversion
 
         self.data_x = []
         self.symbols_x = []
@@ -3506,6 +3797,7 @@ class Simple:
                           draw_layout=False)
 
         self.setup_defaults()
+        self.fixate_widget_aspect = False
 
     def setup_defaults(self):
         pass
@@ -3541,10 +3833,15 @@ class Simple:
         h = conf.pop('height')
         margins = conf.pop('margins')
 
-        gmtconfig = {'PAPER_MEDIA': 'Custom_%ix%i' % (w, h), }
+        gmtconfig = {}
         if self.gmtconfig is not None:
             gmtconfig.update(self.gmtconfig)
-        gmt = GMT(config=gmtconfig)
+
+        gmt = GMT(
+            version=self.gmtversion,
+            config=gmtconfig,
+            config_papersize='Custom_%ix%i' % (w, h))
+
         layout = gmt.default_layout(with_palette=conf['with_palette'])
         layout.set_min_margins(*margins)
         if conf['with_palette']:
@@ -3610,7 +3907,7 @@ class Simple:
         innerticks = False
         for dpd in self.density_plot_defs:
 
-            fn_cpt = gmt.tempfilename()
+            fn_cpt = gmt.tempfilename() + '.cpt'
 
             if dpd.zscaler is not None:
                 s = dpd.zscaler
@@ -3643,7 +3940,11 @@ class Simple:
                         out_discard=True,
                         *R)
 
-                gmt.grdimage(fn_grid, C=fn_cpt, E='i', S='l', *rxyj)
+                if gmt.is_gmt5():
+                    gmt.grdimage(fn_grid, C=fn_cpt, E='i', n='l', *rxyj)
+
+                else:
+                    gmt.grdimage(fn_grid, C=fn_cpt, E='i', S='l', *rxyj)
 
                 if dpd.contour:
                     gmt.grdcontour(fn_grid,  C=fn_cpt, W='0.5p,black', *rxyj)
@@ -3698,10 +3999,19 @@ class Simple:
             angle = 0
             fontno = td.fontno
             justify = td.justify
-            gmt.pstext(in_rows=[(x, y, size, angle, fontno, justify, text)],
-                       D='%gp/%gp' % td.offset,  *rxyj)
+            color = td.color
+            if gmt.is_gmt5():
+                gmt.pstext(
+                    in_rows=[(x, y, text)],
+                    F='+f%gp,%s,%s+a%g+j%s' % (
+                        size, fontno, color, angle, justify),
+                    D='%gp/%gp' % td.offset,  *rxyj)
+            else:
+                gmt.pstext(
+                    in_rows=[(x, y, size, angle, fontno, justify, text)],
+                    D='%gp/%gp' % td.offset,  *rxyj)
 
-    def save(self, filename, raster_dpi=150):
+    def save(self, filename, resolution=150):
 
         conf = dict(self.default_config)
         conf.update(self.config)
@@ -3711,8 +4021,12 @@ class Simple:
         scaler_x, scaler_y = self.setup_scaling_extra(scaler, conf)
 
         self.setup_projection(widget, scaler, conf)
-        aspect = aspect_for_projection(*(widget.J() + scaler.R()))
-        widget.set_aspect(aspect)
+        if self.fixate_widget_aspect:
+            aspect = aspect_for_projection(
+                gmt.installation['version'], *(widget.J() + scaler.R()))
+
+            widget.set_aspect(aspect)
+
         if conf['draw_layout']:
             gmt.draw_layout(layout)
         cptfile = None
@@ -3730,7 +4044,7 @@ class Simple:
                          innerticks=innerticks,
                          zlabeloffset=conf['zlabeloffset'])
 
-        gmt.save(filename, raster_dpi=raster_dpi)
+        gmt.save(filename, resolution=resolution)
 
 
 class LinLinPlot(Simple):
@@ -3769,6 +4083,10 @@ class LogLogPlot(Simple):
 
 class AziDistPlot(Simple):
 
+    def __init__(self, *args, **kwargs):
+        Simple.__init__(self, *args, **kwargs)
+        self.fixate_widget_aspect = True
+
     def setup_defaults(self):
         self.set_defaults(
             height=15.*cm,
@@ -3785,6 +4103,10 @@ class AziDistPlot(Simple):
 
 
 class MPlot(Simple):
+
+    def __init__(self, *args, **kwargs):
+        Simple.__init__(self, *args, **kwargs)
+        self.fixate_widget_aspect = True
 
     def setup_defaults(self):
         self.set_defaults(xmode='min-max', ymode='min-max')
@@ -3850,145 +4172,3 @@ def nice_palette(gmt, widget, scaleguru, cptfile, zlabeloffset=0.8*inch,
             in_rows=[(1, 1, label_font_size, -90, label_font, 'CB',
                      par_ax['zlabel'])],
             *widget.JXY())
-
-
-if __name__ == '__main__':
-
-    examples_dir = 'gmtpy_module_examples'
-    if os.path.exists(examples_dir):
-        shutil.rmtree(examples_dir)
-    os.mkdir(examples_dir)
-
-    # Example 1
-
-    gmt = GMT()
-    gmt.pscoast(R='g', J='E32/30/170/8i', B='10g10', D='c', A=10000,
-                S=(114, 159, 207), G=(233, 185, 110), W='thinnest')
-    gmt.save(pjoin(examples_dir, 'example1.pdf'))
-    gmt.save(pjoin(examples_dir, 'example1.ps'))
-
-    # Example 2
-
-    gmt = GMT(
-        config=dict(PAPER_MEDIA='Custom_%ix%i' % (int(7*inch), int(7*inch))))
-
-    gmt.pscoast(
-        R='g',
-        J='E%g/%g/%g/%gi' % (0., 0., 160., 6.),
-        B='0g0',
-        D='c',
-        A=10000,
-        S=(114, 159, 207),
-        G=(233, 185, 110),
-        W='thinnest',
-        X='c',
-        Y='c')
-
-    rows = []
-    for i in range(5):
-        strike = random.random() * 360.
-        dip = random.random() * 90.
-        rake = random.random() * 360.-180.
-        lat = random.random() * 180.-90.
-        lon = random.random() * 360.-180.
-        rows.append([lon, lat, 0., strike, dip, rake, 4., 0., 0.,
-                     '%.3g, %.3g, %.3g' % (strike, dip, rake)])
-    gmt.psmeca(
-        R=True,
-        J=True,
-        S='a0.5',
-        in_rows=rows)
-
-    gmt.save(pjoin(examples_dir, 'example2.ps'))
-    gmt.save(pjoin(examples_dir, 'example2.pdf'))
-
-    # Example 3
-
-    conf = {'PAGE_COLOR': '0/0/0', 'BASEMAP_FRAME_RGB': '255/255/255'}
-    gmt = GMT(config=conf)
-    widget = gmt.default_layout().get_widget()
-    gmt.psbasemap(
-        R=(-5, 5, -5, 5),
-        J='X%gi/%gi' % (5, 5),
-        B='1:Time [s]:/1:Amplitude [m]:WSen',
-        G='100/100/100')
-
-    rows = []
-    for i in range(11):
-        rows.append((i-5., random.random()*10.-5.))
-
-    gmt.psxy(in_rows=rows, R=True, J=True)
-    gmt.save(pjoin(examples_dir, 'example3.pdf'))
-
-    # Example 4
-
-    x = num.linspace(0., math.pi*6, 1001)
-    y1 = num.sin(x) * 1e-9
-    y2 = 2.0 * num.cos(x) * 1e-9
-
-    xax = Ax(label='Time', unit='s')
-    yax = Ax(label='Amplitude', unit='m', scaled_unit='nm',
-             scaled_unit_factor=1e9, approx_ticks=5, space=0.05)
-
-    guru = ScaleGuru([(x, y1), (x, y2)], axes=(xax, yax))
-    gmt = GMT(
-        config={'PAPER_MEDIA': 'Custom_%ix%i' % (int(8*inch), int(3*inch))})
-    layout = gmt.default_layout()
-    widget = layout.get_widget()
-
-    gmt.draw_layout(layout)
-
-    gmt.psbasemap(*(widget.JXY() + guru.RB(ax_projection=True)))
-    gmt.psxy(in_columns=(x, y1), *(widget.JXY() + guru.R()))
-    gmt.psxy(in_columns=(x, y2), *(widget.JXY() + guru.R()))
-    gmt.save(pjoin(examples_dir, 'example4.pdf'), bbox=layout.bbox())
-    gmt.save(pjoin(examples_dir, 'example4.ps'), bbox=layout.bbox())
-
-    # Example 5
-
-    x = num.linspace(0., 1e9, 1001)
-    y = num.sin(x)
-
-    axx = Ax(label='Time', unit='s')
-    ayy = Ax(label='Amplitude', scaled_unit='cm', scaled_unit_factor=100.,
-             space=0.05, approx_ticks=5)
-
-    guru = ScaleGuru([(x, y)], axes=(axx, ayy))
-
-    gmt = GMT(config=conf)
-    layout = gmt.default_layout()
-    widget = layout.get_widget()
-    gmt.psbasemap(*(widget.JXY() + guru.RB(ax_projection=True)))
-    gmt.psxy(in_columns=(x, y), *(widget.JXY() + guru.R()))
-    gmt.save(pjoin(examples_dir, 'example5.pdf'), bbox=layout.bbox())
-
-    # Example 6
-
-    gmt = GMT(config={'PAPER_MEDIA': 'a3'})
-    nx, ny = 2, 5
-    grid = GridLayout(nx, ny)
-
-    layout = gmt.default_layout()
-    layout.set_widget('center', grid)
-
-    widgets = []
-    for iy in range(ny):
-        for ix in range(nx):
-            inner = FrameLayout()
-            inner.set_fixed_margins(1.*cm*golden_ratio, 1.*cm*golden_ratio,
-                                    1.*cm, 1.*cm)
-            grid.set_widget(ix, iy, inner)
-            inner.set_vertical(0, (iy+1.))
-            widgets.append(inner.get_widget('center'))
-
-    gmt.draw_layout(layout)
-    for widget in widgets:
-        x = num.linspace(0., 10., 5)
-        y = num.random.rand(5)
-        xax = Ax(approx_ticks=4, snap=True)
-        yax = Ax(approx_ticks=4, snap=True)
-        guru = ScaleGuru([(x, y)], axes=(xax, yax))
-        gmt.psbasemap(*(widget.JXY() + guru.RB(ax_projection=True)))
-        gmt.psxy(in_columns=(x, y), *(widget.JXY() + guru.R()))
-
-    gmt.save(pjoin(examples_dir, 'example6.pdf'), bbox=layout.bbox())
