@@ -14,7 +14,7 @@ matrix:
 
 addons:
     apt:
-        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml, python-tk, libyaml-dev ]
+        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml, python-tk, libyaml-dev, gmt ]
 
 before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
