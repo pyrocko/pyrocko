@@ -283,7 +283,7 @@ class GmtPyTestCase(unittest.TestCase):
 
         for version in gmtpy.all_installed_gmt_versions():
             s = gmtpy.text_box('Hello', gmtversion=version)
-            assert_allclose(s, (25.8, 9.), rtol=0.01)
+            assert_allclose(s, (25.8, 9.), rtol=0.1)
             s = gmtpy.text_box(
                 'Abc def ghi jkl mno pqr stu vwx yz',
                 gmtversion=version)

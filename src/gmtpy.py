@@ -35,9 +35,11 @@ def have_gmt():
 def have_pixmaptools():
     for prog in [['pdftocairo'], ['convert'], ['gs', '-h']]:
         try:
-            subprocess.call(
+            p = subprocess.Popen(
                 prog,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            (stdout, stderr) = p.communicate()
 
         except OSError:
             return False
@@ -1134,35 +1136,36 @@ def detect_gmt_installations():
 
         (stdout, stderr) = p.communicate()
 
-        m = re.search(r'^\s+Version\s+(\d+(\.\d+)*)$', stderr, re.M)
+        m = re.search(r'Version\s+(\d+(\.\d+)*)', stderr, re.M)
         if not m:
             raise GMTInstallationProblem(
                 "Can't version number from output of GMT")
 
         version = m.group(1)
+        if version[0] != '5':
 
-        m = re.search(r'^\s+executables\s+(.+)$', stderr, re.M)
-        if not m:
-            raise GMTInstallationProblem(
-                "Can't extract executables dir from output of GMT")
+            m = re.search(r'^\s+executables\s+(.+)$', stderr, re.M)
+            if not m:
+                raise GMTInstallationProblem(
+                    "Can't extract executables dir from output of GMT")
 
-        gmtbin = m.group(1)
+            gmtbin = m.group(1)
 
-        m = re.search(r'^\s+shared data\s+(.+)$', stderr, re.M)
-        if not m:
-            raise GMTInstallationProblem(
-                "Can't extract shared dir from output of GMT")
+            m = re.search(r'^\s+shared data\s+(.+)$', stderr, re.M)
+            if not m:
+                raise GMTInstallationProblem(
+                    "Can't extract shared dir from output of GMT")
 
-        gmtshare = m.group(1)
-        if not gmtshare.endswith('/share'):
-            raise GMTInstallationProblem(
-                "Can't determine GMTHOME from output of GMT")
+            gmtshare = m.group(1)
+            if not gmtshare.endswith('/share'):
+                raise GMTInstallationProblem(
+                    "Can't determine GMTHOME from output of GMT")
 
-        gmthome = gmtshare[:-6]
+            gmthome = gmtshare[:-6]
 
-        installations[version] = {
-            'home': gmthome,
-            'bin': gmtbin}
+            installations[version] = {
+                'home': gmthome,
+                'bin': gmtbin}
 
     except OSError as e:
         errmesses.append(('GMT', str(e)))
@@ -1252,15 +1255,16 @@ def check_gmt_installation(installation):
                 logging.error(('Directory does not exist: %s\n'
                               'Check your GMT installation.') % d)
 
-    gmtdefaults = pjoin(bin_dir, 'gmtdefaults')
+    if version[0] != '5':
+        gmtdefaults = pjoin(bin_dir, 'gmtdefaults')
 
-    versionfound = get_gmt_version(gmtdefaults, home_dir)
+        versionfound = get_gmt_version(gmtdefaults, home_dir)
 
-    if versionfound != version:
-        raise GMTInstallationProblem((
-            'Expected GMT version %s but found version %s.\n'
-            '(Looking at output of %s)') % (
-                version, versionfound, gmtdefaults))
+        if versionfound != version:
+            raise GMTInstallationProblem((
+                'Expected GMT version %s but found version %s.\n'
+                '(Looking at output of %s)') % (
+                    version, versionfound, gmtdefaults))
 
 
 def get_gmt_installation(version):
@@ -3317,7 +3321,11 @@ class GMT:
             out_stream = self.output
 
         # run the command
-        args = [pjoin(self.installation['bin'], command)]
+        if self.is_gmt5():
+            args = [pjoin(self.installation['bin'], 'gmt'), command]
+        else:
+            args = [pjoin(self.installation['bin'], command)]
+
         if not os.path.isfile(args[0]):
             raise Exception('No such file: %s' % args[0])
         args.extend(options)
@@ -3531,7 +3539,7 @@ class GMT:
                 addarg = []
 
             subprocess.call(
-                [pjoin(self.installation['bin'], 'psconvert'),
+                [pjoin(self.installation['bin'], 'gmt'), 'psconvert',
                  '-Te', '-F%s' % tempfn + '.eps', tempfn, ] + addarg)
 
             if bbox:
