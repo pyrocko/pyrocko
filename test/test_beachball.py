@@ -165,7 +165,6 @@ class BeachballTestCase(unittest.TestCase):
             mt, show=True, size=20., size_units='points', position=(0.5, 0.5))
 
     def show_comparison(self, nx=10):
-        import matplotlib
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import Axes3D  # noqa
 
