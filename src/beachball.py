@@ -49,7 +49,6 @@ def close_poly(points):
 
 
 def circulation(points, axis):
-    eps = 0.001
     points2 = points[:, ((axis+2) % 3, (axis+1) % 3)].copy()
     points2 *= 1.0 / num.sqrt(1.0 + num.abs(points[:, 2]))[:, num.newaxis]
 
