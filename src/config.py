@@ -76,6 +76,8 @@ class PyrockoConfig(ConfigBase):
     gf_store_superdirs = List.T(PathWithPlaceholders.T())
     topo_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'topo'))
+    tectonics_dir = PathWithPlaceholders.T(
+        default=os.path.join(pyrocko_dir_tmpl, 'tectonics'))
     geonames_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'geonames'))
     leapseconds_path = PathWithPlaceholders.T(

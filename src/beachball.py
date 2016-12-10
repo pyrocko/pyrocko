@@ -41,27 +41,23 @@ def clean_poly(points):
     return points
 
 
+def close_poly(points):
+    if not num.all(points[0, :] == points[-1, :]):
+        points = num.vstack((points, points[0:1, :]))
+
+    return points
+
+
 def circulation(points, axis):
-    points2 = points[:, ((axis+2) % 3, (axis+1) % 3)]
-    phi1 = num.arctan2(points2[:, 1], points2[:, 0])
-    points2[:, 0] += num.cos(phi1) * (1.0-abs(points[:, axis]))
-    points2[:, 1] += num.sin(phi1) * (1.0-abs(points[:, axis]))
-    points2 = clean_poly(points2)
-    vecs = points2[1:] - points2[:-1]
-    vecs = num.vstack((vecs, vecs[0:1, :]))
-    av = vecs[:-1, :]
-    bv = vecs[1:, :]
-    zs = num.cross(av, bv)
-    phi = num.arcsin(zs / (vnorm(av) * vnorm(bv)))
-    flip = num.sum(av*bv, axis=1) < 0.0
-    phi[flip] = num.sign(phi[flip])*(PI - num.abs(phi[flip]))
-    if num.any(phi == PI) or num.any(phi == -PI):
-        raise BeachballError('ambiguous circulation')
+    eps = 0.001
+    points2 = points[:, ((axis+2) % 3, (axis+1) % 3)].copy()
+    points2 *= 1.0 / num.sqrt(1.0 + num.abs(points[:, 2]))[:, num.newaxis]
 
-    result = num.sum(phi) / (2.0*PI)
-    if int(round(result*100.)) not in [100, -100]:
-        raise BeachballError('circulation error')
+    result = -num.sum(
+        (points2[1:, 0] - points2[:-1, 0]) *
+        (points2[1:, 1] + points2[:-1, 1]))
 
+    result -= (points2[0, 0] - points[-1, 0]) * points[0, 1] + points[-1, 1]
     return result
 
 
