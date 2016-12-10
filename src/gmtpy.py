@@ -239,7 +239,7 @@ def color(x=None):
     '''
 
     if x is None:
-        return '%i/%i/%i' % [random.randint(0, 255) for _x in 'rgb']
+        return '%i/%i/%i' % tuple(random.randint(0, 255) for _ in 'rgb')
 
     if isinstance(x, int):
         if 0 <= x < len(graph_colors):
@@ -2881,15 +2881,23 @@ class GridLayout(Widget):
     def get_min_size(self):
         sh, sv = Widget.get_min_size(self)
         esh, esv = self.sub_min_sizes_as_array()
-        sh = max(sh, num.sum(esh.max(0)))
-        sv = max(sv, num.sum(esv.max(1)))
+        if esh.size != 0:
+            sh = max(sh, num.sum(esh.max(0)))
+        if esv.size != 0:
+            sv = max(sv, num.sum(esv.max(1)))
         return sh, sv
 
     def get_grow(self):
         ghs, gvs = Widget.get_grow(self)
         egh, egv = self.sub_grows_as_array()
-        gh = num.sum(egh.max(0))*ghs
-        gv = num.sum(egv.max(1))*gvs
+        if egh.size != 0:
+            gh = num.sum(egh.max(0))*ghs
+        else:
+            gh = 1.0
+        if egv.size != 0:
+            gv = num.sum(egv.max(1))*gvs
+        else:
+            gv = 1.0
         return gh, gv
 
     def set_size(self, size, offset):
@@ -2898,8 +2906,15 @@ class GridLayout(Widget):
         egh, egv = self.sub_grows_as_array()
 
         # available additional space
-        ah = sh - num.sum(esh.max(0))
-        av = sv - num.sum(esv.max(1))
+        empty = esh.size == 0
+
+        if not empty:
+            ah = sh - num.sum(esh.max(0))
+            av = sv - num.sum(esv.max(1))
+        else:
+            av = sv
+            ah = sh
+
         if ah < 0.0:
             raise Exception("Container not wide enough for contents "
                             "(GridLayout, available: %g cm, needed: %g cm)"
@@ -2911,34 +2926,36 @@ class GridLayout(Widget):
 
         nx, ny = esh.shape
 
-        # distribute additional space on rows and columns
-        # according to grow weights and minimal sizes
-        gsh = egh.sum(1)[:, num.newaxis].repeat(ny, axis=1)
-        nesh = esh.copy()
-        nesh += num.where(gsh > 0.0, ah*egh/gsh, 0.0)
-        nsh = num.maximum(nesh.max(0), esh.max(0))
+        if not empty:
+            # distribute additional space on rows and columns
+            # according to grow weights and minimal sizes
+            gsh = egh.sum(1)[:, num.newaxis].repeat(ny, axis=1)
+            nesh = esh.copy()
+            nesh += num.where(gsh > 0.0, ah*egh/gsh, 0.0)
 
-        gsv = egv.sum(0)[num.newaxis, :].repeat(nx, axis=0)
-        nesv = esv.copy()
-        nesv += num.where(gsv > 0.0, av*egv/gsv, 0.0)
-        nsv = num.maximum(nesv.max(1), esv.max(1))
+            nsh = num.maximum(nesh.max(0), esh.max(0))
 
-        ah = sh - sum(nsh)
-        av = sv - sum(nsv)
+            gsv = egv.sum(0)[num.newaxis, :].repeat(nx, axis=0)
+            nesv = esv.copy()
+            nesv += num.where(gsv > 0.0, av*egv/gsv, 0.0)
+            nsv = num.maximum(nesv.max(1), esv.max(1))
 
-        oh += ah/2.
-        ov += av/2.
-        sh -= ah
-        sv -= av
+            ah = sh - sum(nsh)
+            av = sv - sum(nsv)
 
-        # resize child widgets
-        neov = ov + sum(nsv)
-        for row, nesv in zip(self.grid, nsv):
-            neov -= nesv
-            neoh = oh
-            for w, nesh in zip(row, nsh):
-                w.set_size((nesh, nesv), (neoh, neov))
-                neoh += nesh
+            oh += ah/2.
+            ov += av/2.
+            sh -= ah
+            sv -= av
+
+            # resize child widgets
+            neov = ov + sum(nsv)
+            for row, nesv in zip(self.grid, nsv):
+                neov -= nesv
+                neoh = oh
+                for w, nesh in zip(row, nsh):
+                    w.set_size((nesh, nesv), (neoh, neov))
+                    neoh += nesh
 
         Widget.set_size(self, (sh, sv), (oh, ov))
 
@@ -2996,14 +3013,14 @@ def aspect_for_projection(gmtversion, *args, **kwargs):
 
 
 def text_box(
-        text, font=0, fontsize=12., angle=0, gmtversion='newest', **kwargs):
+        text, font=0, font_size=12., angle=0, gmtversion='newest', **kwargs):
 
     gmt = GMT(version=gmtversion)
     if gmt.is_gmt5():
         row = [0, 0, text]
-        farg = ['-F+f%gp,%s,%s+j%s' % (fontsize, font, 'black', 'BL')]
+        farg = ['-F+f%gp,%s,%s+j%s' % (font_size, font, 'black', 'BL')]
     else:
-        row = [0, 0, fontsize, 0, font, 'BL', text]
+        row = [0, 0, font_size, 0, font, 'BL', text]
         farg = []
 
     gmt.pstext(

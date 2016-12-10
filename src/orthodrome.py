@@ -780,6 +780,15 @@ def positive_region(region):
     return (west, east, south, north)
 
 
+def points_in_region(p, region):
+    w, e, s, n = positive_region(region)
+    return num.logical_and(
+        num.logical_and(s <= p[:, 0], p[:, 0] <= n),
+        num.logical_or(
+            num.logical_and(w <= p[:, 1], p[:, 1] <= e),
+            num.logical_and(w-360. <= p[:, 1], p[:, 1] <= e-360.)))
+
+
 def radius_to_region(lat, lon, radius):
     '''
     :param lat:

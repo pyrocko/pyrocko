@@ -125,6 +125,22 @@ class AutomapTestCase(unittest.TestCase):
             m.save(fpath)
             self.compare_with_ref(fname, 0.01, show=False)
 
+    def test_new_zealand(self):
+        m = automap.Map(
+            lat=-42.57,
+            lon=173.01,
+            radius=1000.*km,
+            width=20.,
+            height=20.,
+            color_dry=gmtpy.color_tup('aluminium1'),
+            show_topo=False,
+            show_rivers=False,
+            show_plates=True)
+
+        m.draw_cities()
+
+        m.save('test.pdf')
+
 
 if __name__ == "__main__":
     util.setup_logging('test_automap', 'warning')
