@@ -420,20 +420,23 @@ class TBase(object):
             if prop in baseprops:
                 continue
 
-            descr = [prop.classname_for_help()]
-            if prop.optional:
-                descr.append('*optional*')
-
-            d = prop.default()
-            if d is not None:
-                descr.append('*default:* ``%s``' % repr(d))
-
             if prop.help is not None:
-                descr.append(prop.help)
+                descr = [prop.help]
+            else:
+                descr = []
+
+            if prop.optional:
+                descr.append('*(optional)*')
 
             l.append('    .. py:attribute:: %s' % prop.name)
             l.append('')
-            l.append('      %s' % ', '.join(descr))
+            l.append('      %s' % ' '.join(descr))
+
+            d = prop.default()
+            if d is not None:
+                l.append('          :Default: ``%s``' % repr(d))
+
+            l.append('          :Type: %s' % prop.classname_for_help())
             l.append('')
 
         return '\n'.join(l)
