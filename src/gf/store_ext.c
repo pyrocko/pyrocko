@@ -1252,7 +1252,7 @@ static store_error_t vicinity_function_type_a(
     ns = mapping->ns;
 
     for (k=0; k<2; k++) {
-        x = v[k]-ns[k] / mapping->deltas[k];
+        x = (v[k] - mapping->mins[k]) / mapping->deltas[k];
         x_fl = floor(x);
         x_ce = ceil(x);
 
@@ -1262,7 +1262,7 @@ static store_error_t vicinity_function_type_a(
         i_fl[k] = (uint64_t)x_fl;
         i_ce[k] = (uint64_t)x_ce;
 
-        if (i_fl[k] >= ns[k] || i_ce[k] > ns[k]) {
+        if (i_fl[k] >= ns[k] || i_ce[k] >= ns[k]) {
             return INDEX_OUT_OF_BOUNDS;
         }
     }
@@ -1302,6 +1302,7 @@ static store_error_t make_sum_params(
 
     for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
         for (isource=0; isource<nsources; isource++) {
+            printf("%zu %zu\n", ireceiver, isource);
             cscheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], ws_this);
             if (interpolation == MULTILINEAR)  {
                 err = mscheme->vicinity(
@@ -1336,7 +1337,7 @@ static store_error_t make_sum_params(
                     iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent];
                     nsummands = cscheme->nsummands[icomponent];
                     for (isummand=0; isummand<nsummands; isummand++) {
-                        ws[icomponent][iout+isummand] = ws[icomponent][isummand];
+                        ws[icomponent][iout+isummand] = ws_this[icomponent*NSUMMANDS_MAX + isummand];
                         irecords[icomponent][iout+isummand] = irecord_bases[0] + cscheme->igs[icomponent][isummand];
                     }
                 }
@@ -1439,6 +1440,8 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
 
     (void)dummy; /* silence warning */
 
+    printf("testabcabc\n");
+
     if (!PyArg_ParseTuple(
             args, "OOOOss", &capsule, &source_coords_arr, &ms_arr,
             &receiver_coords_arr, &component_scheme_name, 
@@ -1514,11 +1517,14 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
         weights,
         irecords);
 
+
     if (SUCCESS != err) {
         Py_DECREF(out_list);
         PyErr_SetString(StoreExtError, store_error_names[err]);
         return NULL;
     }
+
+    printf("testtest\n");
 
     return out_list;
 }
@@ -1537,7 +1543,7 @@ static PyMethodDef StoreExtMethods[] = {
         "Get weight-and-delay-sum of GF traces." },
 
     {"make_sum_params", w_make_sum_params, METH_VARARGS,
-        "help!" },
+        "Prepare parameters for weight-and-delay-sum." },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
