@@ -721,7 +721,7 @@ class GFTestCase(unittest.TestCase):
                 lat=random.random()*10.,
                 lon=random.random()*10,
                 north_shift=0.1,
-                east_shift=0.1) for x in xrange(1000)]
+                east_shift=0.1) for x in xrange(1)]
 
             dsources = [
                 source.discretize_basesource(store, target) for target in targets]
