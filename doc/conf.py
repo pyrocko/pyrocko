@@ -13,7 +13,7 @@
 
 import sys, os
 from pyrocko import version as pyrocko_version
-
+import sphinx_py3doc_enhanced_theme
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -35,6 +35,7 @@ templates_path = ['_templates']
 
 # The suffix of source filenames.
 source_suffix = '.rst'
+imgmath_image_format = 'svg'
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'
@@ -94,25 +95,38 @@ modindex_common_prefix = [ 'pyrocko.' ]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'pyrockotheme'
+html_theme = 'sphinx_py3doc_enhanced_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-        #'rightsidebar' : True, 
-        'nosidebar': True,
-        'footerbgcolor': '#204a87',
-        'relbarbgcolor': '#3465a4',
-        'headbgcolor': '#eeeeec',
-        'headtextcolor': '#204a87',
-        'linkcolor': '#204a87',
-        'visitedlinkcolor': '#204a87',
-        'codebgcolor': '#f7f3eb',
-        }
+    #'rightsidebar' : True, 
+    'nosidebar': True,
+    'footerbgcolor': '#204a87',
+    'relbarbgcolor': '#3465a4',
+    'headbgcolor': '#eeeeec',
+    'headtextcolor': '#204a87',
+    'linkcolor': '#204a87',
+    'visitedlinkcolor': '#204a87',
+    'codebgcolor': '#f7f3eb',
+    }
+
+html_theme_options = {
+    # 'githuburl': 'https://github.com/ionelmc/sphinx-py3doc-enhanced-theme/',
+    'bodyfont': '"Lucida Grande",Arial,sans-serif',
+    'headfont': '"Lucida Grande",Arial,sans-serif',
+    'codefont': 'monospace,sans-serif',
+    'linkcolor': '#0072AA',
+    'visitedlinkcolor': '#6363bb',
+    'extrastyling': True,
+    'appendcss': open('style.css').read(),
+}
+pygments_style = 'friendly'
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = ['.']
+html_theme_path = [sphinx_py3doc_enhanced_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
@@ -127,7 +141,7 @@ html_logo = None
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
-# pixels large.
+# pixels large
 #html_favicon = None
 
 # Add any paths that contain custom static files (such as style sheets) here,
