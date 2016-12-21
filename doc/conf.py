@@ -118,9 +118,10 @@ html_theme_options = {
     'headfont': '"Lucida Grande",Arial,sans-serif',
     'codefont': 'monospace,sans-serif',
     'linkcolor': '#0072AA',
-    'visitedlinkcolor': '#6363bb',
+    'visitedlinkcolor': '',
     'extrastyling': True,
     'appendcss': open('style.css').read(),
+    'fontawesome': 'https://use.fontawesome.com/d51e5952e5.js',
 }
 pygments_style = 'friendly'
 

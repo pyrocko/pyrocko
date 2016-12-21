@@ -1,7 +1,11 @@
-div.document {
-    max-width: 1200px;
-    margin-left: auto;
-    margin-right: auto;
+body {
+    background-color: rgb(250, 250, 250);
+}
+
+
+
+div.documentwrapper {
+    background-color: rgb(250, 250, 250);
 }
 
 p.caption {
@@ -18,18 +22,110 @@ table.docutils {
     border: 1px solid rgba(221, 221, 221, 0.4);
 }
 
-td.field-body {
-    width: 100%;
+th.field-name {
+    min-width: 15%;
+    max-width: 25%;
+    background-color: #fff !important;
+}
+
+td.field-body strong {
+    font-style: italic;
+}
+
+table.docutils {
+    border: none !important;
+    box-shadow: none !important;
 }
 
 table.docutils th {
     border-radius: 0px;
+    background-color: #fff;
 }
 
 table {
-    box-shadow: 1px 1px 1px rgba(239, 239, 239, 0.6);
+    text-shadow: 1px 1px 1px rgba(221, 221, 221, 0.6);
 }  
 
 code {
     text-shadow: 1px 1px 1px rgba(221, 221, 221, 0.6);
+}
+
+div.bodywrapper {
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+    border: 1px solid rgb(236, 233, 233);
+    /* border: 1px solid rgb(236, 233, 233); */
+    box-shadow: 1px 1px 2px rgb(225, 225, 225);
+    padding: 50px 20px;
+    background-color: #fff;
+}
+
+div.body {
+    padding: none !important;
+}
+
+div.body img {
+    box-shadow: none !important;
+}
+
+div.highlight pre {
+    background-color: #fbf6e6 !important;
+}
+
+div.sphinxsidebar {
+    background-color: #fff;
+    box-shadow: 1px 1px 2px rgb(225, 225, 225);
+    border: 1px solid rgb(236, 233, 233);
+}
+
+div.related {
+    padding: 10px 20px;
+    border-radius: 3px;
+    box-shadow: 1px 1px 2px rgb(225, 225, 225);
+    border: 1px solid rgb(236, 233, 233);
+    max-width: 1000px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+dl.attribute, dl.method {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+div.footer {
+    margin-top: 2em;
+    text-align: center;
+}
+
+@media only screen and (max-width: 1024px) {
+    div.related:first-child li.responsive-menu {
+        display: inline-block;
+    }
+    div.related:nth-child(3) li {
+        display: none;
+    }
+    div.related:nth-child(3) li.right {
+        display: inline-block;
+    }
+    div.related:nth-child(3) {
+        height: 5ex;
+    }
+    div.sphinxsidebar {
+        margin: 0;
+        width: 100%;
+        border-top: 2px solid #777;
+    }
+    div.bodywrapper {
+        margin: 0;
+    }
+    div.body {
+        padding: 0;
+    }
+    #sidebarbutton {
+        display: none;
+    }
+    div.sphinxsidebarwrapper {
+        position: inherit;
+    }
 }
