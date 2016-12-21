@@ -1,0 +1,35 @@
+div.document {
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+p.caption {
+    text-align: left !important;
+}
+
+div.figure {
+    border-radius: 3px;
+}
+
+table.docutils {
+    min-width: 100% !important;
+    border-radius: 0px !important;
+    border: 1px solid rgba(221, 221, 221, 0.4);
+}
+
+td.field-body {
+    width: 100%;
+}
+
+table.docutils th {
+    border-radius: 0px;
+}
+
+table {
+    box-shadow: 1px 1px 1px rgba(239, 239, 239, 0.6);
+}  
+
+code {
+    text-shadow: 1px 1px 1px rgba(221, 221, 221, 0.6);
+}
