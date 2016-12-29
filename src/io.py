@@ -41,7 +41,7 @@ SUDS         suds                        some
 import os
 import logging
 from pyrocko import mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf
-from pyrocko import datacube, suds, gse2_io_wrap, util, trace
+from pyrocko import datacube, suds, css, gse2_io_wrap, util, trace
 from pyrocko.io_common import FileLoadError, FileSaveError
 
 import numpy as num
@@ -53,7 +53,7 @@ def allowed_formats(operation, use=None, default=None):
     if operation == 'load':
         l = ['detect', 'from_extension', 'mseed', 'sac', 'segy', 'seisan',
              'seisan.l', 'seisan.b', 'kan', 'yaff', 'gse1', 'gse2', 'gcf',
-             'datacube', 'suds']
+             'datacube', 'suds', 'css']
 
     elif operation == 'save':
         l = ['mseed', 'sac', 'text', 'yaff', 'gse2']
@@ -151,7 +151,8 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
         '.kan': 'kan',
         '.segy': 'segy',
         '.sgy': 'segy',
-        '.gse': 'gse2'}
+        '.gse': 'gse2',
+        '.wfdisc': 'css'}
 
     if format == 'from_extension':
         format = 'mseed'
@@ -173,6 +174,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
         'gcf': gcf,
         'datacube': datacube,
         'suds': suds,
+        'css': css,
     }
 
     add_args = {
