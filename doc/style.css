@@ -1,16 +1,21 @@
 body {
     background-color: rgb(250, 250, 250);
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 15px 0px;
 }
 
-
-
-div.documentwrapper {
-    background-color: rgb(250, 250, 250);
+div.document {
+    border: 1px solid rgb(236, 233, 233);
+    box-shadow: 1px 1px 2px rgb(225, 225, 225);
+    border-radius: 3px;
 }
 
 
 div.body {
     color: #2e3436;
+    padding: 20px;
 }
 
 div.body pre {
@@ -54,6 +59,24 @@ table.field-list th {
     padding: 0px;
 }
 
+td.field-body strong {
+    font-style: italic;
+}
+
+table.docutils {
+    border: none !important;
+    box-shadow: none !important;
+}
+
+table.docutils th {
+    border-radius: 0px;
+    background-color: #fff;
+}
+
+table {
+    text-shadow: 1px 1px 1px rgba(221, 221, 221, 0.6);
+}  
+
 table.field-list strong {
     font-weight: normal;
     font-style: italic;
@@ -89,17 +112,6 @@ dl.gattribute dd p:first-child {
     margin: 0px;
 }
 
-div.bodywrapper {
-    max-width: 1000px;
-    margin-left: auto;
-    margin-right: auto;
-    border: 1px solid rgb(236, 233, 233);
-    /* border: 1px solid rgb(236, 233, 233); */
-    box-shadow: 1px 1px 2px rgb(225, 225, 225);
-    padding: 50px 20px;
-    background-color: #fff;
-}
-
 div.body {
     padding: none !important;
 }
@@ -113,28 +125,37 @@ div.highlight pre {
 }
 
 div.sphinxsidebar {
-    background-color: #fff;
-    box-shadow: 1px 1px 2px rgb(225, 225, 225);
-    border: 1px solid rgb(236, 233, 233);
+    display: none;
 }
 
 div.related {
-    padding: 10px 20px;
     border-radius: 3px;
     box-shadow: 1px 1px 2px rgb(225, 225, 225);
     border: 1px solid rgb(236, 233, 233);
-    max-width: 1000px;
-    margin-right: auto;
-    margin-left: auto;
 }
 
-dl.attribute, dl.method {
+div.related ul {
+    padding: 0px 10px;
+}
+
+dl.function, dl.class, dl.exception {
     border-bottom: 1px solid #f0f0f0;
+}
+
+dl.method, dl.attribute, dl.gattribute {
+    border-top: 1px solid #f0f0f0;
+    margin-top: 15px;
 }
 
 div.footer {
     margin-top: 2em;
     text-align: center;
+}
+
+span.viewcode-link {
+    color: #c0c0c0;
+    font-size: 80%;
+    font-family: Monospace;
 }
 
 @media only screen and (max-width: 1024px) {

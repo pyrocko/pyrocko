@@ -128,15 +128,17 @@ html_theme_options = {
     }
 
 html_theme_options = {
-    'githuburl': 'https://github.com/pyrocko/pyrocko/',
+    # 'githuburl': 'https://github.com/pyrocko/pyrocko/',
     'bodyfont': '"Lucida Grande",Arial,sans-serif',
     'headfont': '"Lucida Grande",Arial,sans-serif',
     'codefont': 'monospace,sans-serif',
     'linkcolor': '#204a87',
     'visitedlinkcolor': '#204a87',
     'extrastyling': True,
+    'nosidebar': True,
     'appendcss': open('style.css').read(),
-    'fontawesome': 'https://use.fontawesome.com/d51e5952e5.js',
+    # 'googlewebfonturl': 'https://fonts.googleapis.com/css?family=Roboto+Slab',
+    # 'bodyfont': '"Roboto Slab",Arial,sans-serif',
 }
 pygments_style = 'friendly'
 
