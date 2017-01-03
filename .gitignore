@@ -10,3 +10,4 @@ pages
 tags
 test/data
 scratch
+*.sublime-*
