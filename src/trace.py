@@ -1185,7 +1185,8 @@ class Trace(object):
         '''
         Extend trace to given span.
 
-        :param tmin, tmax:  new span
+        :param tmin: begin time of new span
+        :param tmax: end time of new span
         :param fillmethod: 'zeros' or 'repeat'
         '''
 
@@ -2239,7 +2240,7 @@ def same_sampling_rate(a, b, eps=1.0e-6):
     '''
     Check if two traces have the same sampling rate.
 
-    :param a, b: input traces
+    :param a,b: input traces
     :param eps: relative tolerance
     '''
 
