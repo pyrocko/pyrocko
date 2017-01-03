@@ -427,13 +427,14 @@ class TBase(object):
             if d is not None:
                 descr.append('*default:* ``%s``' % repr(d))
 
-            if prop.help is not None:
-                descr.append(prop.help)
 
-            l.append('    .. py:attribute:: %s' % prop.name)
+            l.append('    .. py:gattribute:: %s' % prop.name)
             l.append('')
             l.append('      %s' % ', '.join(descr))
-            l.append('')
+            l.append('      ')
+            if prop.help is not None:
+                l.append('      %s' % prop.help)
+                l.append('')
 
         return '\n'.join(l)
 

@@ -8,46 +8,85 @@ div.documentwrapper {
     background-color: rgb(250, 250, 250);
 }
 
-p.caption {
-    text-align: left !important;
+
+div.body {
+    color: #2e3436;
+}
+
+div.body pre {
+    background-color: #fbf6e6;
+}
+
+div.body span:target + h5 {
+    background: #e6ddba;
+    text-shadow: none;
+}
+
+div.body code.descname, div.body tt.descname {
+    font-size: 100%;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    text-shadow: none;
+}
+
+img, div.figure {
+    box-shadow: none;
+}
+
+code, tt {
+    text-shadow: none;
 }
 
 div.figure {
     border-radius: 3px;
 }
 
-table.docutils {
-    min-width: 100% !important;
-    border-radius: 0px !important;
-    border: 1px solid rgba(221, 221, 221, 0.4);
+table.field-list {
+    border: none;
+    box-shadow: none;
 }
 
-th.field-name {
-    min-width: 15%;
-    max-width: 25%;
-    background-color: #fff !important;
+table.field-list th {
+    background-color: white;
+    display: block;
+    margin: 0px;
+    padding: 0px;
 }
 
-td.field-body strong {
+table.field-list strong {
+    font-weight: normal;
     font-style: italic;
 }
 
-table.docutils {
-    border: none !important;
-    box-shadow: none !important;
-}
-
-table.docutils th {
-    border-radius: 0px;
-    background-color: #fff;
+table.field-list td {
+    display: block;
+    margin: 0px;
+    margin-left: 30px;
+    padding: 0px;
 }
 
 table {
-    text-shadow: 1px 1px 1px rgba(221, 221, 221, 0.6);
-}  
+    box-shadow: 1px 1px 1px rgba(239, 239, 239, 0.6);
+}
 
-code {
-    text-shadow: 1px 1px 1px rgba(221, 221, 221, 0.6);
+dl.gattribute dt {
+    white-space: nowrap;
+    display: inline-block;
+    min-width: 20%;
+}
+dl.gattribute dd {
+    display: inline;
+    margin-left: 3px;
+}
+dl.gattribute dd p {
+    margin-top: 3px;
+    margin-left: 30px;
+    margin-bottom: 0px;
+}
+dl.gattribute dd p:first-child {
+    display: inline-block;
+    margin: 0px;
 }
 
 div.bodywrapper {

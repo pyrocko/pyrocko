@@ -345,7 +345,7 @@ def plf_integrate_piecewise(x_edges, x, y):
     must be sorted.
 
     :param x_edges: array with edges of the intervals
-    :param x, y: arrays with coordinates of piece-wise linear function's
+    :param x,y: arrays with coordinates of piece-wise linear function's
                  control points
     '''
 

@@ -357,7 +357,7 @@ class MomentTensor(Object):
 
     :param m: NumPy matrix in north-east-down convention
     :param m_up_south_east: NumPy matrix in up-south-east convention
-    :param strike, dip, rake: fault plane angles in [degrees]
+    :param strike,dip,rake: fault plane angles in [degrees]
     :param scalar_moment: scalar moment in [Nm]
     '''
 
