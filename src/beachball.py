@@ -494,7 +494,7 @@ def plot_beachball_mpl(
     :param beachball_type: ``'deviatoric'`` (default), ``'full'``, or ``'dc'``
     :param position: position of the beachball in data coordinates
     :param size: diameter of the beachball either in points or in data
-        coordinates, depending on the *size_units* setting
+        coordinates, depending on the ``size_units`` setting
     :param zorder: (passed through to matplotlib drawing functions)
     :param color_t: color for compressional quadrants (default: ``'red'``)
     :param color_p: color for extensive quadrants (default: ``'white'``)

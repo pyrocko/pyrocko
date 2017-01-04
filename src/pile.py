@@ -552,7 +552,7 @@ class TracesGroup(object):
 
     def relevant(self, tmin, tmax, group_selector=None, trace_selector=None):
         '''Return list of :py:class:`pyrocko.trace.Trace` objects where given
-        arguments *tmin* and *tmax* match.
+        arguments ``tmin`` and ``tmax`` match.
 
         :param tmin: start time
         :param tmax: end time
@@ -1097,9 +1097,9 @@ class Pile(TracesGroup):
         :param degap: whether to try to connect traces and to remove gaps and
             overlaps
         :param maxgap: maximum gap size in samples which is filled with
-            interpolated samples when *degap* is ``True``
+            interpolated samples when ``degap`` is ``True``
         :param maxlap: maximum overlap size in samples which is removed when
-            *degap* is ``True``
+            ``degap`` is ``True``
         :param keep_current_files_open: whether to keep cached trace data in
             memory after the iterator has ended
         :param accessor_id: if given, used as a key to identify different

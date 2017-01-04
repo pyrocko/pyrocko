@@ -212,7 +212,7 @@ class MarkerTableView(qg.QTableView):
         self.pile_viewer = viewer
 
     def keyPressEvent(self, key_event):
-        '''Propagate *key_event* to pile_viewer, unless up/down pressed.'''
+        '''Propagate ``key_event`` to pile_viewer, unless up/down pressed.'''
         if key_event.key() in [qc.Qt.Key_Up, qc.Qt.Key_Down]:
             qg.QTableView.keyPressEvent(self, key_event)
             self.pile_viewer.go_to_selection()
