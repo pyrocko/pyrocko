@@ -12,22 +12,11 @@
 # All configuration values have a default; values that are commented out serve
 # to show the default.
 
-from sphinx.domains import python as pdom
 import sys
 import os
 from pyrocko import version as pyrocko_version
-import sphinx_py3doc_enhanced_theme
+import sphinx_sleekcat_theme
 
-
-class GAttributePyClassmember(pdom.PyClassmember):
-    def get_signature_prefix(self, sig):
-        return u'\u2666 '
-
-
-pdom.PythonDomain.object_types['gattribute'] = pdom.ObjType(
-    pdom.l_('gattribute'), 'gattr', 'obj')
-pdom.PythonDomain.directives['gattribute'] = GAttributePyClassmember
-pdom.PythonDomain.roles['gattr'] = pdom.PyXRefRole()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -110,23 +99,11 @@ modindex_common_prefix = [ 'pyrocko.' ]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'sphinx_py3doc_enhanced_theme'
+html_theme = 'sphinx_sleekcat_theme'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {
-    #'rightsidebar' : True, 
-    'nosidebar': True,
-    'footerbgcolor': '#204a87',
-    'relbarbgcolor': '#3465a4',
-    'headbgcolor': '#eeeeec',
-    'headtextcolor': '#204a87',
-    'linkcolor': '#204a87',
-    'visitedlinkcolor': '#204a87',
-    'codebgcolor': '#f7f3eb',
-    }
-
 html_theme_options = {
     # 'githuburl': 'https://github.com/pyrocko/pyrocko/',
     'bodyfont': '"Lucida Grande",Arial,sans-serif',
@@ -134,17 +111,15 @@ html_theme_options = {
     'codefont': 'monospace,sans-serif',
     'linkcolor': '#204a87',
     'visitedlinkcolor': '#204a87',
-    'extrastyling': True,
     'nosidebar': True,
-    'appendcss': open('style.css').read(),
+    # 'appendcss': open('style.css').read(),
     # 'googlewebfonturl': 'https://fonts.googleapis.com/css?family=Roboto+Slab',
     # 'bodyfont': '"Roboto Slab",Arial,sans-serif',
 }
 pygments_style = 'friendly'
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = ['.']
-html_theme_path = [sphinx_py3doc_enhanced_theme.get_html_theme_path()]
+html_theme_path = [sphinx_sleekcat_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
