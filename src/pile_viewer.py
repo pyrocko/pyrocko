@@ -1706,7 +1706,7 @@ def MakePileViewerMainClass(base):
                 len_before, len(self.markers)-1)
 
         def remove_marker(self, marker):
-            '''Remove a *marker* from the :py:class:`PileViewer`.
+            '''Remove a ``marker`` from the :py:class:`PileViewer`.
 
             :param marker: :py:class:`Marker` (or subclass) instance'''
             try:
@@ -1721,7 +1721,7 @@ def MakePileViewerMainClass(base):
                 pass
 
         def remove_markers(self, markers):
-            '''Remove a list of *markers* from the :py:class:`PileViewer`.
+            '''Remove a list of ``markers`` from the :py:class:`PileViewer`.
 
             :param markers: list of :py:class:`Marker` (or subclass)
                             instances'''
@@ -2565,7 +2565,7 @@ def MakePileViewerMainClass(base):
             return i_labels, indx
 
         def draw_visible_markers(self, markers, p, vcenter_projection):
-            """Draw non-overlapping *markers*."""
+            """Draw non-overlapping ``markers``."""
             markers = filter(
                 lambda x: (
                     x.get_tmin() < self.tmax
