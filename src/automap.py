@@ -197,20 +197,22 @@ class Map(Object):
     def save(self, outpath, resolution=75., oversample=2., size=None,
              width=None, height=None):
 
-        '''Save the image.
+        '''
+        Save the image.
 
-        Save the image to *outpath*. The format is determined by the filename
+        Save the image to ``outpath``. The format is determined by the filename
         extension. Formats are handled as follows: ``'.eps'`` and ``'.ps'``
         produce EPS and PS, respectively, directly with GMT. If the file name
         ends with ``'.pdf'``, GMT output is fed through ``gmtpy-epstopdf`` to
         create a PDF file. For any other filename extension, output is first
         converted to PDF with ``gmtpy-epstopdf``, then with ``pdftocairo`` to
-        PNG with a resolution oversampled by the factor *oversample* and
+        PNG with a resolution oversampled by the factor ``oversample`` and
         finally the PNG is downsampled and converted to the target format with
         ``convert``. The resolution of rasterized target image can be
-        controlled either by *resolution* in DPI or by specifying *width* or
-        *height* or *size*, where the latter fits the image into a square with
-        given side length.'''
+        controlled either by ``resolution`` in DPI or by specifying ``width``
+        or ``height`` or ``size``, where the latter fits the image into a
+        square with given side length.
+        '''
 
         gmt = self.gmt
         self.draw_labels()

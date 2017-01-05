@@ -679,7 +679,7 @@ def latlon_to_ne_numpy(lat0, lon0, lat, lon):
     :param lat: absolute location latitude
     :param lon: absolute location longitude
 
-    :return: (*n*, *e*): relative north and east positions
+    :return: ``(n, e)``: relative north and east positions
     :rtype: :py:class:`numpy.ndarray`, ``(2xN)``
 
     Implemented formulations:

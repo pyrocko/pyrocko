@@ -222,9 +222,9 @@ class Range(SObject):
     existing range, the existing range's specification values would be filled
     in where missing.
 
-    The values are distributed with equal spacing, unless the *spacing*
+    The values are distributed with equal spacing, unless the ``spacing``
     argument is modified.  The values can be created offset or relative to an
-    external base value with the *relative* argument if the use context
+    external base value with the ``relative`` argument if the use context
     supports this.
 
     The range specification can be expressed with a short string
@@ -538,9 +538,9 @@ class Cloneable(object):
         Make a copy of the object.
 
         A new object of the same class is created and initialized with the
-        parameters of the object on which this method is called on. If `kwargs`
-        are given, these are used to override any of the initialization
-        parameters.
+        parameters of the object on which this method is called on. If
+        ``kwargs`` are given, these are used to override any of the
+        initialization parameters.
         '''
 
         d = dict(self)
@@ -1560,12 +1560,12 @@ class DoubleDCSource(SourceWithMagnitude):
     stf1 = STF.T(
         optional=True,
         help='Source time function of subsource 1 '
-             '(if given, overrides STF from attribute `stf`)')
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
 
     stf2 = STF.T(
         optional=True,
         help='Source time function of subsource 2 '
-             '(if given, overrides STF from attribute `stf`)')
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
 
     discretized_source_class = meta.DiscretizedMTSource
 
@@ -2495,9 +2495,10 @@ class LocalEngine(Engine):
         :param store_id: identifier of the store (optional)
         :returns: :py:class:`pyrocko.gf.store.Store` object
 
-        If no *store_id* is provided the store
-        associated with the *default_store_id* is returned.
-        Raises :py:exc:`NoDefaultStoreSet` if *default_store_id* is undefined.
+        If no ``store_id`` is provided the store
+        associated with the :py:gattr:`default_store_id` is returned.
+        Raises :py:exc:`NoDefaultStoreSet` if :py:gattr:`default_store_id` is
+        undefined.
         '''
 
         if store_id is None:
@@ -2877,6 +2878,7 @@ BadRequest
 NoSuchStore
 InterpolationMethod
 OptimizationMethod
+STFMode
 Filter
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
 Target

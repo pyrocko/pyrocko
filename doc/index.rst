@@ -1,32 +1,26 @@
 
-.. image:: _static/snuffler.png
-    :align: left 
+.. image:: _static/pyrocko_shadow.png
+    :align: left
 
 Pyrocko Manual
 ==============
 
-Pyrocko is a seismology toolbox and library, written in the Python programming
-language. Snuffler is a seismogram browser built on top of Pyrocko.
+Pyrocko is open source toolbox and library for seismology.
 
-If you need help with Pyrocko or Snuffler don't hesitate to contact the
-`Snuffler mailing list <https://lists.zmaw.de/mailman/listinfo/snuffler>`_.  To
-download the software or if you wish to contribute, please use the `Pyrocko
-project page on GitHub <http://github.com/pyrocko/pyrocko>`_.
+.. raw:: html
+
+   <div style="clear:both"></div>
 
 Contents
 --------
 
 .. toctree::
    :maxdepth: 2
-   
+
+   overview
    install
-   snuffler
-   snuffler_tutorial
-   snuffling_howto
-   cake_doc
-   fomosto
-   examples
-   reference
+   apps
+   library
 
 Indices and tables
 ------------------

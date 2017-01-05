@@ -340,9 +340,9 @@ def plf_integrate_piecewise(x_edges, x, y):
     '''
     Calculate definite integral of piece-wise linear function on intervals.
 
-    Use trapezoidal rule to calculate definite integral of a piece-wise
-    linear function for a series of consecutive intervals. `x_edges` and `x`
-    must be sorted.
+    Use trapezoidal rule to calculate definite integral of a piece-wise linear
+    function for a series of consecutive intervals. ``x_edges`` and ``x`` must
+    be sorted.
 
     :param x_edges: array with edges of the intervals
     :param x,y: arrays with coordinates of piece-wise linear function's
@@ -462,7 +462,7 @@ def mk_decitab(nmax=100):
     successive application of :py:func:`decimation` with small integer
     downsampling factors (because using large downampling factors can make the
     decimation unstable or slow). This function sets up a table with downsample
-    sequences for factors up to `nmax`.
+    sequences for factors up to ``nmax``.
     '''
 
     tab = GlobalVars.decitab
@@ -494,7 +494,7 @@ def zfmt(n):
 
 def julian_day_of_year(timestamp):
     '''
-    Get the day number after the 1st of January of year in *timestamp*.
+    Get the day number after the 1st of January of year in ``timestamp``.
 
     :returns: day number as int
     '''
@@ -764,8 +764,8 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
     :returns: string representing UTC time
 
     Uses the semantics of :py:func:`time.strftime` but additionally allows for
-    fractional seconds. If *format* contains ``'.xFRAC'``, where ``x`` is a
-    digit between 1 and 9, this is replaced with the fractional part of *t*
+    fractional seconds. If ``format`` contains ``'.xFRAC'``, where ``x`` is a
+    digit between 1 and 9, this is replaced with the fractional part of ``t``
     with ``x`` digits precision.
     '''
 
@@ -876,7 +876,7 @@ def reuse(x):
     :param x: hashable object
     :returns: reference to x or an equivalent object
 
-    Cache object *x* in a global dict for reuse, or if x already
+    Cache object ``x`` in a global dict for reuse, or if x already
     is in that dict, return a reference to it.
     '''
 
@@ -913,13 +913,13 @@ def select_files(paths, selector=None, regex=None, show_progress=True):
     :param show_progress: if True, indicate start and stop of processing
     :returns: list of path names
 
-    Recursively finds all files under given entry points *paths*. If parameter
-    *regex* is a regular expression, only files with matching path names are
-    included. If additionally parameter *selector* is given a callback
-    function, only files for which the callback returns ``True`` are included.
-    The callback should take a single argument. The callback is called with a
-    single argument, an object, having as attributes, any named groups given in
-    *regex*.
+    Recursively finds all files under given entry points ``paths``. If
+    parameter ``regex`` is a regular expression, only files with matching path
+    names are included. If additionally parameter ``selector`` is given a
+    callback function, only files for which the callback returns ``True`` are
+    included. The callback should take a single argument. The callback is
+    called with a single argument, an object, having as attributes, any named
+    groups given in ``regex``.
 
     Examples
 
@@ -1264,7 +1264,7 @@ class TableWriter:
         :param row: iterable of values
         :param minfieldwidths: minimum field widths for the values
 
-        Each value in in `row` is converted to a string and optionally padded
+        Each value in in ``row`` is converted to a string and optionally padded
         with blanks. The resulting strings are output separated with blanks. If
         any values given are strings and if they contain whitespace, they are
         quoted with single quotes, and any internal single quotes are
@@ -1579,7 +1579,7 @@ def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     iload.__doc__ = '''
         Load %s information from given source(s)
 
-        The *source* can be specified as the name of a %s file, the name of a
+        The ``source`` can be specified as the name of a %s file, the name of a
         directory containing %s files, a glob pattern of %s files, an open
         filehandle or an iterator yielding any of the forementioned sources.
 
@@ -1601,7 +1601,7 @@ def consistency_check(list_of_tuples, message='values differ:'):
     Check for inconsistencies.
 
     Given a list of tuples, check that all tuple elements except for first one
-    match. E.g. [('STA.N', 55.3, 103.2), ('STA.E', 55.3, 103.2)] would be
+    match. E.g. ``[('STA.N', 55.3, 103.2), ('STA.E', 55.3, 103.2)]`` would be
     valid because the coordinates at the two channels are the same.
     '''
 
