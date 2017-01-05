@@ -5,7 +5,7 @@
 Pyrocko Manual
 ==============
 
-Pyrocko is open source toolbox and library for seismology.
+Pyrocko is an open source toolbox and library for seismology.
 
 .. raw:: html
 
