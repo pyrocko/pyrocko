@@ -29,3 +29,4 @@ Library Reference
    reference_ims
    reference_plot
    reference_gmtpy
+   reference_tectonics
