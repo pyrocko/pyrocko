@@ -1,7 +1,7 @@
-Cake
-====
+Cake manual
+===========
 
-Cake is a module which can be used to solve classical seismic ray theory
+Cake is a tool which can be used to solve classical seismic ray theory
 problems for layered earth models (layer cake models).
 
 For various seismic phases it can calculate:
@@ -21,58 +21,58 @@ Invocation
 
 .. program:: cake
 
-::  
+::
 
-    cake <subcommand> [options] 
+    cake <subcommand> [options]
 
 Subcommands:
 
-.. describe::    print          
+.. describe::    print
 
     get information on model/phase/material properties
 
-.. describe::    arrivals       
+.. describe::    arrivals
 
     print list of phase arrivals
 
-.. describe::    paths          
-    
+.. describe::    paths
+
     print ray path details
 
-.. describe::    plot-xt        
+.. describe::    plot-xt
 
     plot traveltime vs distance curves
 
-.. describe::    plot-xp        
+.. describe::    plot-xp
 
     plot ray parameter vs distance curves
 
-.. describe::    plot-rays      
+.. describe::    plot-rays
 
     plot ray propagation paths
 
-.. describe::    plot           
+.. describe::    plot
 
     plot combination of ray and traveltime curves
 
-.. describe::    plot-model     
+.. describe::    plot-model
 
     plot velocity model
 
-.. describe::    list-models    
+.. describe::    list-models
 
     list builtin velocity models
 
-.. describe::    list-phase-map 
+.. describe::    list-phase-map
 
     show translation table for classic phase names
 
-.. describe::    simplify-model 
+.. describe::    simplify-model
 
     create a simplified version of a layered model
 
 .. describe::    scatter
- 
+
     show details about scattering at model interfaces
 
 To get further help and a list of available options for any subcommand run::
@@ -90,35 +90,35 @@ above.
 
 Phases:
 """""""
-    
+
 Seismic phase arrivals may be either specified as traditional phase names
-(e.g. P, S, PP, PcP, ...) or in Cake's own syntax which is more powerful. 
+(e.g. P, S, PP, PcP, ...) or in Cake's own syntax which is more powerful.
 Use the :option:`--classic` option, for traditional phase names. Use the :option:`--phase`
 option if you want to define phases in Cake's syntax.
 
 .. option::    --phase=PHASE1,PHASE2,..., --phases=PHASE1,PHASE2,...
 
         Comma separated list of seismic phases in Cake's syntax.
-        
+
         The definition of a seismic propagation path in Cake's phase syntax is
         a string consisting of an alternating sequence of *legs* and *knees*.
-        
+
         A *leg* represents seismic wave propagation without any conversions,
         encountering only super-critical reflections. Legs are denoted by ``P``,
         ``p``, ``S``, or ``s``. The capital letters are used when the take-off of
         the *leg* is in downward direction, while the lower case letters
         indicate a take-off in upward direction.
-        
+
         A *knee* is an interaction with an interface. It can be a mode
         conversion, a reflection, or propagation as a headwave or diffracted
         wave.
-        
+
            * conversion is simply denoted as: ``(INTERFACE)`` or ``DEPTH``
            * upperside reflection: ``v(INTERFACE)`` or ``vDEPTH``
            * underside reflection: ``^(INTERFACE)`` or ``^DEPTH``
            * normal kind headwave or diffracted wave: ``v_(INTERFACE)`` or
              ``v_DEPTH``
-        
+
         The interface may be given by name or by depth: INTERFACE is the name
         of an interface defined in the model, DEPTH is the depth of an
         interface in [km] (the interface closest to that depth is chosen).  If
@@ -128,7 +128,7 @@ option if you want to define phases in Cake's syntax.
         The preferred standard interface names in cake are ``conrad``,
         ``moho``, ``cmb`` (core-mantle boundary), and ``icb`` (inner core
         boundary).
-        
+
         The phase definition may end with a backslash ``\``, to indicate that
         the ray should arrive at the receiver from above instead of from
         below. It is possible to restrict the maximum and minimum depth of a
@@ -161,11 +161,11 @@ Source-receiver geometry:
 """""""""""""""""""""""""
 
 .. option::    --sdepth=FLOAT
-    
+
     Source depth [km] (default: 0)
 
 .. option::    --rdepth=FLOAT
-    
+
     Receiver depth [km] (default: 0)
 
 .. option::    --distances=DISTANCES
@@ -179,15 +179,15 @@ An isotropic elastic material may be specified by giving a combination of
 some of the following options.
 
 .. option::    --vp=FLOAT
-    
+
     P-wave velocity [km/s]
 
 .. option::    --vs=FLOAT
-    
+
     S-wave velocity [km/s]
 
 .. option::    --rho=FLOAT
-    
+
     density [g/cm**3]
 
 .. option::    --qp=FLOAT
@@ -246,10 +246,10 @@ General:
     Name or depth [km] of interface to select
 
 
-Command Line Examples
+Command line examples
 ---------------------
 
-Plot P and p Phases
+Plot P and p phases
 ^^^^^^^^^^^^^^^^^^^
 
 Ten receiver distances ranging from 100 km to 1000 km and a source depth of 10km.
@@ -277,7 +277,7 @@ Receivers may be at any depth. Arbitrary reflection/conversion histories may be 
 .. figure:: _static/cake_plot_example_2.png
     :scale: 80%
 
-To print arrival times and other ray parameters, replace ``plot-rays`` with 
+To print arrival times and other ray parameters, replace ``plot-rays`` with
 ``arrivals`` in the command line above.
 
 ::
@@ -285,14 +285,14 @@ To print arrival times and other ray parameters, replace ``plot-rays`` with
     > cake arrivals --sdepth=15 --distances=10 --rdepth=4.443 --crust2loc=0,0 \
                   --phase='pP\,pPv3pP\,pPv3pPv3pP\,p'
 
-    slow    dist  time   take inci effi spre phase             used             
-    s/km    km    s      deg  deg  %    %   
+    slow    dist  time   take inci effi spre phase             used
+    s/km    km    s      deg  deg  %    %
     ----------------------------------------------------------------------------
-    0.09711 10.00 2.3147  128 10.6 58.7  103 p                 (p)              
-    0.09099 10.00 8.1792  132 97.8 49.2  725 pP\               (p^0P\)          
+    0.09711 10.00 2.3147  128 10.6 58.7  103 p                 (p)
+    0.09099 10.00 8.1792  132 97.8 49.2  725 pP\               (p^0P\)
     0.08461 10.00 14.052  136 97.3 8.03  729 pPv3pP\           (p^0Pv4.443p^0P\)
     0.07835 10.00 19.931  140 96.8 1.32  710 pPv3pPv3pP\       (p^0Pv4.443p^0Pv4.443p^0P\)
-    
+
 
 Classic phase names
 ^^^^^^^^^^^^^^^^^^^
@@ -320,7 +320,7 @@ Cake phases
 
 It is possible to see the exact definition of a phase using ``cake print ...``::
 
-   
+
     > cake print --classic=Pg
     Phase definition "P<(moho)":
      - P mode propagation, departing downward (may not propagate deeper than interface moho)
@@ -353,12 +353,12 @@ Here's another example to illustrate why cake needs its special phase definition
 Material calculator
 ^^^^^^^^^^^^^^^^^^^
 
-Cake can also be used to convert between different material parameters:: 
+Cake can also be used to convert between different material parameters::
 
     > cake print --vp=5 --poisson=0.25
     P wave velocity     [km/s]    :            5
     S wave velocity     [km/s]    :      2.88675
-    P/S wave vel. ratio           :      1.73205     
+    P/S wave vel. ratio           :      1.73205
     Lame lambda         [GPa]     :      21.6667
     Lame shear modulus  [GPa]     :      21.6667
     Poisson ratio                 :         0.25
@@ -377,15 +377,15 @@ Energy scatter at interface
 The ``scatter`` subcommand may be used to see how much energy (in percent) is
 transmitted through or reflected by an interface for any given surface
 slowness (P-SV case)::
-    
+
     > cake scatter --interface=moho --slowness=0.0
     interface "moho" (35 km)
 
-                 4.349       3.209                     95.65       96.79       
-      \P         /P      \S  /S                        /P          /S          
+                 4.349       3.209                     95.65       96.79
+      \P         /P      \S  /S                        /P          /S
       ----------------   ----------------   ----------------   ----------------
-                 \P          \S             /P         \P      /S  \S          
-                 95.65       96.79                     4.349       3.209       
+                 \P          \S             /P         \P      /S  \S
+                 95.65       96.79                     4.349       3.209
 
 
 
@@ -393,15 +393,15 @@ slowness (P-SV case)::
     interface "moho" (35 km)
 
           3.899  92.69       1.859  3.899       94.24  3.411
-      \P  /S     /P      \S  /S     /P          /S     /P   
+      \P  /S     /P      \S  /S     /P          /S     /P
       ----------------   ----------------   ----------------
-          \S                 \S             /S  \S          
-          3.411              94.24              2.347       
+          \S                 \S             /S  \S
+          3.411              94.24              2.347
 
 
 
 
-Python Script Examples
+Python script examples
 ----------------------
 
 Calculate P-phase arrivals
@@ -410,7 +410,7 @@ Calculate P-phase arrivals
 The following Python script calculates arrival times for the P-phase emitted by an event in a depth of 300km.
 
 ::
-    
+
     '''
     Calculate P-phase arrivals.
     '''

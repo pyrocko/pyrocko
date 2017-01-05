@@ -1,6 +1,6 @@
 
-Writing a Snuffling
-===================
+Extending Snuffler with plugins: Snufflings
+===========================================
 
 Snufflings are small Python scripts which extend the functionality of Snuffler.
 Snuffler looks into the directory ``$HOME/.snufflings`` for snufflings.
@@ -9,12 +9,8 @@ in the main menu of Snuffler - no need to restart Snuffler when a snuffling is
 modified or added.
 
 
-
-
-
-
-An example snuffling to show earthquake catalog information within Snuffler
----------------------------------------------------------------------------
+Example Snuffling to show earthquake catalog information within Snuffler
+------------------------------------------------------------------------
 
 Put the following code into ``$HOME/.snufflings/geofon.py``. It will add four
 items into the *Snufflings* sub-menu of Snuffler (*Get GEOFON events*, *Get
