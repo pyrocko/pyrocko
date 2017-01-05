@@ -94,10 +94,10 @@ class Crust2Profile(object):
     def get_weeded(self, include_waterlayer=False):
         '''Get layers used in the profile.
 
-        :param include_waterlayer: include water layer if `True`. Default is
-            `False`
+        :param include_waterlayer: include water layer if ``True``. Default is
+            ``False``
 
-        :returns: NumPy array with rows `depth`, `vp`, `vs`, `density`
+        :returns: NumPy array with rows ``depth``, ``vp``, ``vs``, ``density``
         '''
         depth = 0.
         layers = []
@@ -218,7 +218,7 @@ class Crust2(object):
     Access CRUST2.0 model.
 
         :param directory: Directory with the data files which contain the
-            CRUST2.0 model data. If this is set to `None`, builtin CRUST2.0
+            CRUST2.0 model data. If this is set to ``None``, builtin CRUST2.0
             files are used.
     '''
 
@@ -243,8 +243,8 @@ class Crust2(object):
         Get crustal profile at a specific location or raw profile for given
         key.
 
-        Get profile for location (lat,lon), or raw profile for given string
-        key.
+        Get profile for location ``(lat, lon)``, or raw profile for given
+        string key.
 
         :rtype: instance of :py:class:`Crust2Profile`
         '''

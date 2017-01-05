@@ -194,7 +194,7 @@ class Marker(object):
         self.kind = kind
 
     def set(self, nslc_ids, tmin, tmax):
-        '''Set *nslc_ids*, start time and end time of :py:class:`Marker`
+        '''Set ``nslc_ids``, start time and end time of :py:class:`Marker`
 
         :param nslc_ids: list or set of (network, station, location, channel)
             tuples

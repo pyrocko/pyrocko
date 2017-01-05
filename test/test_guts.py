@@ -331,14 +331,18 @@ class GutsTestCase(unittest.TestCase):
 
         self.assertEqual(B.__doc__, '''B description
 
-    .. py:attribute:: b
+    .. py:gattribute:: b
 
-      ``float``, *default:* ``0``, the b property
+      ``float``, *default:* ``0``
+      
+      the b property
 
-    .. py:attribute:: c
+    .. py:gattribute:: c
 
-      ``list`` of ``int`` objects, *default:* ``[]``, the c
-''')
+      ``list`` of ``int`` objects, *default:* ``[]``
+      
+      the c
+''')  # noqa
 
     def testContentStyleXML(self):
 

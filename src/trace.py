@@ -39,10 +39,10 @@ class Trace(object):
     :param channel: channel code
     :param tmin: system time of first sample in [s]
     :param tmax: system time of last sample in [s] (if set to ``None`` it is
-        computed from length of *ydata*)
+        computed from length of ``ydata``)
     :param deltat: sampling interval in [s]
     :param ydata: 1D numpy array with data samples (can be ``None`` when
-        *tmax* is not ``None``)
+        ``tmax`` is not ``None``)
     :param mtime: optional modification time
     :param meta: additional meta information (not used, but maintained by the
         library)
@@ -186,13 +186,13 @@ class Trace(object):
         '''
         Add values of other trace (self += other).
 
-        Add values of *other* trace to the values of *self*, where it
-        intersects with *other*.  This method does not change the extent of
-        *self*. If *interpolate* is ``True`` (the default), the values of
-        *other* to be added are interpolated at sampling instants of *self*.
-        Linear interpolation is performed. In this case the sampling rate of
-        *other* must be equal to or lower than that of *self*.  If
-        *interpolate* is ``False``, the sampling rates of the two traces must
+        Add values of ``other`` trace to the values of ``self``, where it
+        intersects with ``other``.  This method does not change the extent of
+        ``self``. If ``interpolate`` is ``True`` (the default), the values of
+        ``other`` to be added are interpolated at sampling instants of
+        ``self``. Linear interpolation is performed. In this case the sampling
+        rate of ``other`` must be equal to or lower than that of ``self``.  If
+        ``interpolate`` is ``False``, the sampling rates of the two traces must
         match.
         '''
 
@@ -215,13 +215,13 @@ class Trace(object):
         '''
         Muliply with values of other trace (self \*= other).
 
-        Multiply values of *other* trace to the values of *self*, where it
-        intersects with *other*.  This method does not change the extent of
-        *self*. If *interpolate* is ``True`` (the default), the values of
-        *other* to be multiplied are interpolated at sampling instants of
-        *self*. Linear interpolation is performed. In this case the sampling
-        rate of *other* must be equal to or lower than that of *self*.  If
-        *interpolate* is ``False``, the sampling rates of the two traces must
+        Multiply values of ``other`` trace to the values of ``self``, where it
+        intersects with ``other``.  This method does not change the extent of
+        ``self``. If ``interpolate`` is ``True`` (the default), the values of
+        ``other`` to be multiplied are interpolated at sampling instants of
+        ``self``. Linear interpolation is performed. In this case the sampling
+        rate of ``other`` must be equal to or lower than that of ``self``.  If
+        ``interpolate`` is ``False``, the sampling rates of the two traces must
         match.
         '''
 
@@ -452,20 +452,20 @@ class Trace(object):
         '''
         Cut the trace to given time span.
 
-        If the *inplace* argument is True (the default) the trace is cut in
+        If the ``inplace`` argument is True (the default) the trace is cut in
         place, otherwise a new trace with the cut part is returned.  By
         default, the indices where to start and end the trace data array are
-        determined by rounding of *tmin* and *tmax* to sampling instances using
-        Python's :py:func:`round` function. This behaviour can be changed with
-        the *snap* argument, which takes a tuple of two functions (one for the
-        lower and one for the upper end) to be used instead of
+        determined by rounding of ``tmin`` and ``tmax`` to sampling instances
+        using Python's :py:func:`round` function. This behaviour can be changed
+        with the ``snap`` argument, which takes a tuple of two functions (one
+        for the lower and one for the upper end) to be used instead of
         :py:func:`round`.  The last sample is by default not included unless
-        *include_last* is set to True.  If the given time span exceeds the
+        ``include_last`` is set to True.  If the given time span exceeds the
         available time span of the trace, the available part is returned,
-        unless *want_incomplete* is set to False - in that case, a
-        :py:exc:`NoData` exception is raised. This exception is always
-        raised, when the requested time span does dot overlap with the trace's
-        time span.
+        unless ``want_incomplete`` is set to False - in that case, a
+        :py:exc:`NoData` exception is raised. This exception is always raised,
+        when the requested time span does dot overlap with the trace's time
+        span.
         '''
 
         if want_incomplete:
@@ -556,7 +556,7 @@ class Trace(object):
         Downsample to given sampling rate.
 
         Tries to downsample the trace to a target sampling interval of
-        *deltat*. This runs the :py:meth:`Trace.downsample` one or several
+        ``deltat``. This runs the :py:meth:`Trace.downsample` one or several
         times. If allow_upsample_max is set to a value larger than 1,
         intermediate upsampling steps are allowed, in order to increase the
         number of possible downsampling ratios.
@@ -603,7 +603,7 @@ class Trace(object):
 
     def resample(self, deltat):
         '''
-        Resample to given sampling rate *deltat*.
+        Resample to given sampling rate ``deltat``.
 
         Resampling is performed in the frequency domain.
         '''
@@ -916,16 +916,15 @@ class Trace(object):
             of 2^n
         :param demean: whether to demean the signal before tapering
 
-        The signal is first demeaned and then tapered using *td_taper*. Then,
+        The signal is first demeaned and then tapered using ``td_taper``. Then,
         the spectrum is calculated and inversely weighted with a smoothed
         version of its amplitude spectrum. A moving average is used for the
-        smoothing. The smoothed spectrum is then tapered using *fd_taper*.
+        smoothing. The smoothed spectrum is then tapered using ``fd_taper``.
         Finally, the smoothed and tapered spectrum is back-transformed into the
         time domain.
 
-        If *td_taper* is set to ``'auto'``, ``CosFader(1.0/width)`` is used. If
-        *fd_taper* is set to ``'auto'``, ``CosFader(width)`` is used.
-
+        If ``td_taper`` is set to ``'auto'``, ``CosFader(1.0/width)`` is used.
+        If ``fd_taper`` is set to ``'auto'``, ``CosFader(width)`` is used.
         '''
 
         ndata = self.data_len()
@@ -1021,8 +1020,8 @@ class Trace(object):
 
         :param inplace: (boolean) snap traces inplace
 
-        If *inplace* is ``False`` and the difference of tmin and tmax of both,
-        the snapped and the original trace is smaller than 0.01 x deltat,
+        If ``inplace`` is ``False`` and the difference of tmin and tmax of
+        both, the snapped and the original trace is smaller than 0.01 x deltat,
         :py:func:`snap` returns the unsnapped instance of the original trace.
         '''
 
@@ -1116,11 +1115,11 @@ class Trace(object):
         '''
         Detect peaks above given threshold.
 
-        From every instant, where the signal rises above *threshold*, a time
-        length of *tsearch* seconds is searched for a maximum. A list with
-        tuples (time, value) for each detected peak is returned. The *deadtime*
-        argument turns on a special deadtime duration detection algorithm
-        useful in combination with recursive STA/LTA filters.
+        From every instant, where the signal rises above ``threshold``, a time
+        length of ``tsearch`` seconds is searched for a maximum. A list with
+        tuples (time, value) for each detected peak is returned. The
+        ``deadtime`` argument turns on a special deadtime duration detection
+        algorithm useful in combination with recursive STA/LTA filters.
         '''
 
         y = self.ydata
@@ -1185,7 +1184,8 @@ class Trace(object):
         '''
         Extend trace to given span.
 
-        :param tmin, tmax:  new span
+        :param tmin: begin time of new span
+        :param tmax: end time of new span
         :param fillmethod: 'zeros' or 'repeat'
         '''
 
@@ -1332,8 +1332,8 @@ class Trace(object):
         :returns: tuple ``(m, n)``, where m is the misfit value and n is the
             normalization divisor
 
-        If the sampling rates of *self* and *candidate* differ, the trace with
-        the higher sampling rate will be downsampled.
+        If the sampling rates of ``self`` and ``candidate`` differ, the trace
+        with the higher sampling rate will be downsampled.
         """
 
         a = self
@@ -1609,7 +1609,7 @@ def minmax(traces, key=None, mode='minmax'):
         used.
     :param mode: 'minmax' or floating point number. If this is 'minmax',
         minimum and maximum of the traces are used, if it is a number, mean +-
-        standard deviation times *mode* is used.
+        standard deviation times ``mode`` is used.
 
     :returns: a dict with the combined data ranges.
 
@@ -1690,7 +1690,7 @@ def degapper(
 
     This method will combine adjacent traces, which match in their network,
     station, location and channel attributes. Overlapping parts are handled
-    according to the `deoverlap` argument.
+    according to the ``deoverlap`` argument.
 
     :param traces: input traces, must be sorted by their full_id attribute.
     :param maxgap: maximum number of samples to interpolate.
@@ -2239,7 +2239,7 @@ def same_sampling_rate(a, b, eps=1.0e-6):
     '''
     Check if two traces have the same sampling rate.
 
-    :param a, b: input traces
+    :param a,b: input traces
     :param eps: relative tolerance
     '''
 
@@ -3253,13 +3253,13 @@ def Lx_norm(u, v, norm=2):
     Calculate the misfit denominator *m* and the normalization devisor *n*
     according to norm.
 
-    The normalization divisor *n* is calculated from *v*.
+    The normalization divisor *n* is calculated from ``v``.
 
     :param u: :py:class:`numpy.array`
     :param v: :py:class:`numpy.array`
     :param norm: (default = 2)
 
-    *u* and *v* must be of same size.
+    ``u`` and ``v`` must be of same size.
     '''
 
     if norm == 1:

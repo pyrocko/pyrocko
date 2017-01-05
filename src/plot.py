@@ -321,8 +321,9 @@ class AutoScaler:
 
         Returns ``(minimum, maximum, increment)`` or ``(maximum, minimum,
         -increment)``, depending on whether data_range is ``(data_min,
-        data_max)`` or ``(data_max, data_min)``. If `override_mode` is defined,
-        the mode attribute is temporarily overridden by the given value.
+        data_max)`` or ``(data_max, data_min)``. If ``override_mode`` is
+        defined, the mode attribute is temporarily overridden by the given
+        value.
         '''
 
         data_min = min(data_range)
@@ -396,9 +397,9 @@ class AutoScaler:
             return mi, ma, inc
 
     def make_exp(self, x):
-        '''Get nice exponent for notation of `x`.
+        '''Get nice exponent for notation of ``x``.
 
-        For ax annotations, give tick increment as `x`.'''
+        For ax annotations, give tick increment as ``x``.'''
 
         if self.exp is not None:
             return self.exp

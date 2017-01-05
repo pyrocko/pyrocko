@@ -88,10 +88,10 @@ graph_colors = [tango_colors[_x] for _x in (
 def color(x=None):
     '''Generate a string for GMT option arguments expecting a color.
 
-    If `x` is None, a random color is returned. If it is an integer, the
+    If ``x`` is None, a random color is returned. If it is an integer, the
     corresponding ``gmtpy.graph_colors[x]`` or black returned. If it is a
     string and the corresponding ``gmtpy.tango_colors[x]`` exists, this is
-    returned, or the string is passed through. If `x` is a tuple, it is
+    returned, or the string is passed through. If ``x`` is a tuple, it is
     transformed into the string form which GMT expects.
     '''
 
@@ -1320,7 +1320,7 @@ class Guru:
 
 
 def nice_value(x):
-    '''Round `x` to nice value.'''
+    '''Round ``x`` to nice value.'''
 
     exp = 1.0
     sign = 1
@@ -1443,8 +1443,9 @@ class AutoScaler:
 
         Returns ``(minimum, maximum, increment)`` or ``(maximum, minimum,
         -increment)``, depending on whether data_range is ``(data_min,
-        data_max)`` or ``(data_max, data_min)``. If `override_mode` is defined,
-        the mode attribute is temporarily overridden by the given value. '''
+        data_max)`` or ``(data_max, data_min)``. If ``override_mode`` is
+        defined, the mode attribute is temporarily overridden by the given
+        value. '''
 
         data_min = min(data_range)
         data_max = max(data_range)
@@ -1517,9 +1518,9 @@ class AutoScaler:
             return mi, ma, inc
 
     def make_exp(self, x):
-        '''Get nice exponent for notation of `x`.
+        '''Get nice exponent for notation of ``x``.
 
-        For ax annotations, give tick increment as `x`.'''
+        For ax annotations, give tick increment as ``x``.'''
 
         if self.exp is not None:
             return self.exp
@@ -1642,7 +1643,7 @@ class Ax(AutoScaler):
         Returns minimum, maximum, increment and label string including unit and
         multiplier for given data range.
 
-        If `ax_projection` is True, values suitable to be displayed on the ax
+        If ``ax_projection`` is True, values suitable to be displayed on the ax
         are returned, e.g. min, max and inc are returned in scaled units.
         Otherwise the values are returned in the original units, without any
         scaling applied. '''
@@ -1804,9 +1805,9 @@ class ScaleGuru(Guru):
         ``'xmin'``, ``'xmax'``, ``'xinc'``, and ``'xlabel'``.
 
         Normally, values corresponding to the scaling of the raw data are
-        produced, but if `ax_projection` is ``True``, values which are suitable
-        to be printed on the axes are returned. This means that in the latter
-        case, the :py:attr:`Ax.scaled_unit` and
+        produced, but if ``ax_projection`` is ``True``, values which are
+        suitable to be printed on the axes are returned. This means that in the
+        latter case, the :py:attr:`Ax.scaled_unit` and
         :py:attr:`Ax.scaled_unit_factor` attributes as set on the axes are
         respected and that a common 10^x factor is factored out and put to the
         label string. '''
@@ -2021,9 +2022,10 @@ class Widget(Guru):
 
         Returns: (new_size, new_offset)
 
-        Given a box as `size` and `offset`, return `new_size` and `new_offset`,
-        such that the widget's sizing and aspect constraints are fullfilled.
-        The returned box is centered on the given input box. '''
+        Given a box as ``size`` and ``offset``, return ``new_size`` and
+        ``new_offset``, such that the widget's sizing and aspect constraints
+        are fullfilled. The returned box is centered on the given input box.
+        '''
 
         sh, sv = size
         oh, ov = offset
@@ -2116,8 +2118,8 @@ class Widget(Guru):
 
         Returns list with coordinate tuples.
 
-        If `descend` is True, the returned list will contain corner coordinates
-        of all sub-widgets.
+        If ``descend`` is True, the returned list will contain corner
+        coordinates of all sub-widgets.
         '''
 
         self.do_layout()
@@ -2445,7 +2447,7 @@ class FrameLayout(Widget):
 
         '''Set one of the sub-widgets.
 
-        `which` should be one of ``'left'``, ``'right'``, ``'top'``,
+        ``which`` should be one of ``'left'``, ``'right'``, ``'top'``,
         ``'bottom'`` or ``'center'``. '''
 
         if widget is None:
@@ -2462,7 +2464,7 @@ class FrameLayout(Widget):
 
         '''Get one of the sub-widgets.
 
-        `which` should be one of ``'left'``, ``'right'``, ``'top'``,
+        ``which`` should be one of ``'left'``, ``'right'``, ``'top'``,
         ``'bottom'`` or ``'center'``. '''
 
         if which in ('left', 'right', 'top', 'bottom', 'center'):
@@ -2490,7 +2492,7 @@ class GridLayout(Widget):
 
     def __init__(self, nx=2, ny=2, horizontal=None, vertical=None):
 
-        '''Create new grid layout with `nx` columns and `ny` rows.'''
+        '''Create new grid layout with ``nx`` columns and ``ny`` rows.'''
 
         Widget.__init__(self, horizontal, vertical)
         self.grid = []
@@ -2588,7 +2590,7 @@ class GridLayout(Widget):
 
         '''Set one of the sub-widgets.
 
-        Sets the sub-widget in column `ix` and row `iy`. The indices are
+        Sets the sub-widget in column ``ix`` and row ``iy``. The indices are
         counted from zero. '''
 
         if widget is None:
@@ -2601,7 +2603,7 @@ class GridLayout(Widget):
 
         '''Get one of the sub-widgets.
 
-        Gets the sub-widget from column `ix` and row `iy`. The indices are
+        Gets the sub-widget from column ``ix`` and row ``iy``. The indices are
         counted from zero.'''
 
         return self.grid[iy][ix]
@@ -2690,8 +2692,8 @@ class LineStreamChopper:
 class GMT:
     '''A thin wrapper to GMT command execution.
 
-    A dict `config` may be given to override some of the default GMT
-    parameters. The `version` argument may be used to select a specific GMT
+    A dict ``config`` may be given to override some of the default GMT
+    parameters. The ``version`` argument may be used to select a specific GMT
     version, which should be used with this GMT instance. The selected
     version of GMT has to be installed on the system, must be supported by
     gmtpy and gmtpy must know where to find it.
@@ -2931,8 +2933,8 @@ class GMT:
         output file maintained by the GMT instance on which this method is
         called.
 
-        Except for a few keyword arguments listed below, any `kwargs` and
-        `addargs` are converted into command line options and arguments and
+        Except for a few keyword arguments listed below, any ``kwargs`` and
+        ``addargs`` are converted into command line options and arguments and
         passed to the GMT command. Numbers in keyword arguments are converted
         into strings. E.g. ``S=10`` is translated into ``'-S10'``. Tuples of
         numbers or strings are converted into strings where the elements of the
@@ -2946,39 +2948,40 @@ class GMT:
         not interested in the output.
 
         The standard input of the GMT process is fed by data selected with one
-        of the following `in_*` keyword arguments:
+        of the following ``in_*`` keyword arguments:
 
-        ============== ========================================================
-        `in_stream`    Data is read from an open file like object.
-        `in_filename`  Data is read from the given file.
-        `in_string`    String content is dumped to the process.
-        `in_columns`   A 2D nested iterable whose elements can be accessed as
-                       ``in_columns[icolumn][irow]`` is converted into an ascii
-                       table, which is fed to the process.
-        `in_rows`      A 2D nested iterable whos elements can be accessed as
-                       ``in_rows[irow][icolumn]`` is converted into an ascii
-                       table, which is fed to the process.
-        ============== ========================================================
+        =============== =======================================================
+        ``in_stream``   Data is read from an open file like object.
+        ``in_filename`` Data is read from the given file.
+        ``in_string``   String content is dumped to the process.
+        ``in_columns``  A 2D nested iterable whose elements can be accessed as
+                        ``in_columns[icolumn][irow]`` is converted into an
+                        ascii
+                        table, which is fed to the process.
+        ``in_rows``     A 2D nested iterable whos elements can be accessed as
+                        ``in_rows[irow][icolumn]`` is converted into an ascii
+                        table, which is fed to the process.
+        =============== =======================================================
 
         The standard output of the GMT process may be redirected by one of the
         following options:
 
-        ============= =========================================================
-        out_stream    Output is fed to an open file like object.
-        out_filename  Output is dumped to the given file.
-        out_discard   If True, output is dumped to :file:`/dev/null`.
-        ============= =========================================================
+        ================= =====================================================
+        ``out_stream``    Output is fed to an open file like object.
+        ``out_filename``  Output is dumped to the given file.
+        ``out_discard``   If True, output is dumped to :file:`/dev/null`.
+        ================= =====================================================
 
         Additional keyword arguments:
 
         ===================== =================================================
-        config                Dict with GMT defaults which override the
+        ``config``            Dict with GMT defaults which override the
                               currently active set of defaults exclusively
                               during this call.
-        finish                If True, the postscript file, which is maintained
+        ``finish``            If True, the postscript file, which is maintained
                               by the GMT instance is finished, and no further
                               plotting is allowed.
-        suppress_defaults     Suppress appending of the ``'+gmtdefaults'``
+        ``suppress_defaults`` Suppress appending of the ``'+gmtdefaults'``
                               option to the command.
         ===================== =================================================
 
@@ -2991,8 +2994,8 @@ class GMT:
     def tempfilename(self, name=None):
         '''Get filename for temporary file in the private temp directory.
 
-           If no `name` argument is given, a random name is picked. If `name`
-           is given, returns a path ending in that `name`.'''
+           If no ``name`` argument is given, a random name is picked. If
+           ``name`` is given, returns a path ending in that ``name``.'''
 
         if not name:
             name = ''.join(
@@ -3038,10 +3041,11 @@ class GMT:
            GMT output through :program:`epstopdf`.
 
            If filename ends with ``'.ppm'`` a PPM file is created by running
-           :program:`epstopdf` and :program:`pdftoppm`. `raster_dpi` specifies
-           the resolution, which is passed to :program:`pdftoppm`.
+           :program:`epstopdf` and :program:`pdftoppm`. ``raster_dpi``
+           specifies the resolution, which is passed to :program:`pdftoppm`.
 
-           The bounding box is set according to the values given in `bbox`.'''
+           The bounding box is set according to the values given in
+           ``bbox``.'''
 
         if not self.finished:
             self.psxy(R=True, J=True, finish=True)

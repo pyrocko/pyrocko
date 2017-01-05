@@ -396,16 +396,30 @@ class TBase(object):
     def deferred(self):
         return []
 
-    def classname_for_help(self):
+    def classname_for_help(self, strip_module=''):
         if self.dummy_cls in guts_plain_dummy_types:
             return '``%s``' % self.cls.__name__
         else:
             mod = self.cls.__module__
             cls = self.cls.__name__
-            if mod == '__builtin__':
-                return ':py:class:`%s`' % cls
+            if self.dummy_cls is not self.cls:
+                if self.dummy_cls.__module__ == strip_module:
+                    sadd = ' (:py:class:`%s`)' % (
+                        self.dummy_cls.__name__)
+                else:
+                    sadd = ' (:py:class:`%s.%s`)' % (
+                        self.dummy_cls.__module__, self.dummy_cls.__name__)
             else:
-                return ':py:class:`%s.%s`' % (mod, cls)
+                sadd = ''
+
+            if mod == '__builtin__':
+                return '``%s``%s' % (cls, sadd)
+
+            elif self.cls.__module__ == strip_module:
+                return ':py:class:`%s`%s' % (cls, sadd)
+
+            else:
+                return ':py:class:`%s.%s`%s' % (mod, cls, sadd)
 
     @classmethod
     def props_help_string(cls):
@@ -420,7 +434,9 @@ class TBase(object):
             if prop in baseprops:
                 continue
 
-            descr = [prop.classname_for_help()]
+            descr = [
+                prop.classname_for_help(strip_module=cls.dummy_cls.__module__)]
+
             if prop.optional:
                 descr.append('*optional*')
 
@@ -428,13 +444,13 @@ class TBase(object):
             if d is not None:
                 descr.append('*default:* ``%s``' % repr(d))
 
-            if prop.help is not None:
-                descr.append(prop.help)
-
-            l.append('    .. py:attribute:: %s' % prop.name)
+            l.append('    .. py:gattribute:: %s' % prop.name)
             l.append('')
             l.append('      %s' % ', '.join(descr))
-            l.append('')
+            l.append('      ')
+            if prop.help is not None:
+                l.append('      %s' % prop.help)
+                l.append('')
 
         return '\n'.join(l)
 
@@ -783,9 +799,9 @@ class Dict(Object):
         def to_save_xml(self, val):
             raise NotImplementedError()
 
-        def classname_for_help(self):
+        def classname_for_help(self, strip_module=''):
             return '``dict`` of %s objects' % \
-                self.content_t.classname_for_help()
+                self.content_t.classname_for_help(strip_module=strip_module)
 
 
 class List(Object):
@@ -838,9 +854,9 @@ class List(Object):
             if defer is self.content_t:
                 self.content_t = t_inst
 
-        def classname_for_help(self):
+        def classname_for_help(self, strip_module=''):
             return '``list`` of %s objects' % \
-                self.content_t.classname_for_help()
+                self.content_t.classname_for_help(strip_module=strip_module)
 
 
 def make_typed_list_class(t):
@@ -916,13 +932,15 @@ class Tuple(Object):
         def to_save_xml(self, val):
             return [self.content_t.to_save_xml(v) for v in val]
 
-        def classname_for_help(self):
+        def classname_for_help(self, strip_module=''):
             if self.n is not None:
                 return '``tuple`` of %i %s objects' % (
-                    self.n, self.content_t.classname_for_help())
+                    self.n, self.content_t.classname_for_help(
+                        strip_module=strip_module))
             else:
                 return '``tuple`` of %s objects' % (
-                    self.content_t.classname_for_help())
+                    self.content_t.classname_for_help(
+                        strip_module=strip_module))
 
 
 class Timestamp(Object):

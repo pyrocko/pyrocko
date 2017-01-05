@@ -478,6 +478,8 @@ class Location(Object):
     def distance_to(self, other):
         '''
         Compute surface distance [m] to other location object.
+
+
         '''
 
         if self.same_origin(other):
@@ -500,6 +502,15 @@ class Location(Object):
     def distance_3d_to(self, other):
         '''
         Compute 3D distance [m] to other location object.
+
+        All coordinates are transformed to cartesian coordinates if necessary
+        then distance is:
+
+        .. math::
+
+            \\Delta = \\sqrt{\\Delta {\\bf x}^2 + \\Delta {\\bf y}^2 + \
+                      \\Delta {\\bf z}^2}
+
         '''
 
         if self.same_origin(other):
@@ -1487,8 +1498,8 @@ class Config(Object):
         '''
         Get shear moduli at given points from contained velocity model.
 
-        :param lat, lon: surface origin for coordinate system of `points`
-        :param points: NumPy array of shape `(N, 3)`, where each row is
+        :param lat: surface origin for coordinate system of ``points``
+        :param points: NumPy array of shape ``(N, 3)``, where each row is
             a point ``(north, east, depth)``, relative to origin at
             ``(lat, lon)``
         :param interpolation: interpolation method. Choose from
