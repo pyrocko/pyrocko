@@ -47,7 +47,7 @@ How to get help:
 
 * Press :kbd:`?` or select :guilabel:`Help` from the main menu.
 * Use ``snuffler --help`` to see what command line options are available.
-* There is a `manual <http://pyrocko.org/current/snuffler>`_.
+* There is a :doc:`apps_snuffler_manual`
 
 Before continuing, you should make yourself a bit familiar with basic
 navigation in Snuffler.
