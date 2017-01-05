@@ -1,5 +1,5 @@
 
-Snuffler Tutorial
+Snuffler tutorial
 =================
 
 This document describes basic usage of Snuffler.

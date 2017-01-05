@@ -1,12 +1,11 @@
 
-.. image:: _static/snuffler.png
+.. image:: _static/pyrocko_shadow.png
     :align: left
 
 Pyrocko Manual
 ==============
 
-This document describes Pyrocko, an open source toolbox and library for
-seismology.
+Pyrocko is open source toolbox and library for seismology.
 
 .. raw:: html
 

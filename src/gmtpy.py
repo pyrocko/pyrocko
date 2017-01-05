@@ -2950,37 +2950,38 @@ class GMT:
         The standard input of the GMT process is fed by data selected with one
         of the following ``in_*`` keyword arguments:
 
-        ============== ========================================================
-        ``in_stream``    Data is read from an open file like object.
-        ``in_filename``  Data is read from the given file.
-        ``in_string``    String content is dumped to the process.
-        ``in_columns``   A 2D nested iterable whose elements can be accessed as
-                       ``in_columns[icolumn][irow]`` is converted into an ascii
-                       table, which is fed to the process.
-        ``in_rows``      A 2D nested iterable whos elements can be accessed as
-                       ``in_rows[irow][icolumn]`` is converted into an ascii
-                       table, which is fed to the process.
-        ============== ========================================================
+        =============== =======================================================
+        ``in_stream``   Data is read from an open file like object.
+        ``in_filename`` Data is read from the given file.
+        ``in_string``   String content is dumped to the process.
+        ``in_columns``  A 2D nested iterable whose elements can be accessed as
+                        ``in_columns[icolumn][irow]`` is converted into an
+                        ascii
+                        table, which is fed to the process.
+        ``in_rows``     A 2D nested iterable whos elements can be accessed as
+                        ``in_rows[irow][icolumn]`` is converted into an ascii
+                        table, which is fed to the process.
+        =============== =======================================================
 
         The standard output of the GMT process may be redirected by one of the
         following options:
 
-        ============= =========================================================
-        out_stream    Output is fed to an open file like object.
-        out_filename  Output is dumped to the given file.
-        out_discard   If True, output is dumped to :file:`/dev/null`.
-        ============= =========================================================
+        ================= =====================================================
+        ``out_stream``    Output is fed to an open file like object.
+        ``out_filename``  Output is dumped to the given file.
+        ``out_discard``   If True, output is dumped to :file:`/dev/null`.
+        ================= =====================================================
 
         Additional keyword arguments:
 
         ===================== =================================================
-        config                Dict with GMT defaults which override the
+        ``config``            Dict with GMT defaults which override the
                               currently active set of defaults exclusively
                               during this call.
-        finish                If True, the postscript file, which is maintained
+        ``finish``            If True, the postscript file, which is maintained
                               by the GMT instance is finished, and no further
                               plotting is allowed.
-        suppress_defaults     Suppress appending of the ``'+gmtdefaults'``
+        ``suppress_defaults`` Suppress appending of the ``'+gmtdefaults'``
                               option to the command.
         ===================== =================================================
 

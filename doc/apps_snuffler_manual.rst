@@ -1,8 +1,8 @@
 
-Snuffler
-========
+Snuffler manual
+===============
 
-Snuffler is a seismogram browser.
+Snuffler is a seismogram browser and workbench.
 
 * read waveforms in Mini-SEED, SAC and other file formats
 * visually browse through seismic waveform archives
