@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')
+
 import pyrocko.util
 
 from test_orthodrome import OrthodromeTestCase  # noqa
