@@ -1,13 +1,12 @@
-from struct import unpack
 import os
 import numpy as num
 import logging
-
 from pyrocko import trace, util
+from struct import unpack
 
 
 logging.basicConfig(level='INFO')
-logger = logging.getLogger('css-convert')
+logger = logging.getLogger('css')
 
 use_template = True
 
@@ -35,7 +34,7 @@ template = [
     ('clip', str, (147, 148), 'clipped flag'),
     ('dir', str, (149, 213), 'directory'),
     ('dfile', str, (214, 246), 'data file'),
-    ('foff', int, (247, 257), 'byte offset of data seg ment within file'),
+    ('foff', int, (247, 257), 'byte offset of data segment within file'),
     ('commid', int, (258, 267), 'comment identifier'),
     ('Iddate', util.stt, (268, 287), 'load date')
 ]
@@ -51,7 +50,10 @@ class CSSWfError(Exception):
         }
         kwargs['convert'] = f2str[kwargs['convert']]
 
-        error_str = 'Error while parsing "{data}" to {convert} (line {iline}, \
+        error_str = 'Successfully parsed:\n'
+        for k, v in kwargs['d'].items():
+            error_str += '%s: %s\n' % (k, v)
+        error_str += 'Error while parsing "{data}" to {convert} (line {iline}, \
 columns {istart} - {istop}, description="{desc}")'.format(**kwargs)
         Exception.__init__(self, error_str)
         self.error_arguments = kwargs
@@ -67,7 +69,7 @@ class Wfdisc():
         self.data = []
         self.read()
 
-    def read_wf_file(self, fn, nbytes, dtype):
+    def read_wf_file(self, fn, nbytes, dtype, foff=0):
         ''' Read binary waveform file
         :param fn: filename
         :param nbytes: number of bytes to be read
@@ -75,8 +77,9 @@ class Wfdisc():
         '''
         with open(fn, 'rb') as f:
             fmt = dtype % nbytes
+            f.seek(foff)
             try:
-                data = num.array(unpack(fmt, f.read(nbytes * 4 + 1)),
+                data = num.array(unpack(fmt, f.read(nbytes * 4)),
                                  dtype=num.int32)
             except:
                 logger.exception('Error while unpacking %s' % fn)
@@ -98,6 +101,7 @@ class Wfdisc():
                                 iline=iline+1, data=line[istart:istop],
                                 ident=ident, convert=convert,
                                 istart=istart+1, istop=istop+1, desc=desc,
+                                d=d
                             )
                 else:
                     d = {}
@@ -110,7 +114,12 @@ class Wfdisc():
                     d['datatype'] = template[-8][1](split[-8])
                     d['dir'] = template[-6][1](split[-6])
                     d['dfile'] = template[-5][1](split[-5])
-                self.data.append(d)
+
+                fn = os.path.join(d['dir'], d['dfile'])
+                if os.path.isfile(fn):
+                    self.data.append(d)
+                else:
+                    logger.info('no such file: %s' % fn)
 
     def iter_pyrocko_traces(self, load_data=True):
         for idata, d in enumerate(self.data):
@@ -120,10 +129,10 @@ class Wfdisc():
                 if load_data:
                     ydata = self.read_wf_file(
                             fn, d['nsamp'],
-                            storage_types[d['datatype']])
+                            storage_types[d['datatype']],
+                            d['foff'])
                 else:
                     ydata = None
-
             except IOError as e:
                 if e.errno == 2:
                     logger.debug(e)
