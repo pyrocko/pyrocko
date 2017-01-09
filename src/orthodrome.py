@@ -767,7 +767,7 @@ def positive_region(region):
 
     :param region: ``(west, east, south, north)``
     :returns: ``(west, east, south, north)``, where ``west <= east`` and
-    where west and east are in the range ``[-180., 180.+360.[``
+        where ``west`` and ``east`` are in the range ``[-180., 180.+360.[``
     '''
     west, east, south, north = [float(x) for x in region]
 
