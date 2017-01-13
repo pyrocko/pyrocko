@@ -199,18 +199,16 @@ class TraceTestCase(unittest.TestCase):
         assert a.ydata.size == 10000*1000
 
     def testDownsampling(self):
-
-
         for (dt1, dt2, test_fail) in [
                 (1./125., 1/10., True),
                 (1., 5., False)]:
 
             n = 1024
-            # dtinter = 1./util.lcm(1./dt1, 1./dt2)
-            # upsratio = dt1/dtinter
             xdata = num.arange(n, dtype=num.float)
             ydata = num.exp(-((xdata-n/2)/10.)**2)
-            t = trace.Trace(ydata=ydata, tmin=sometime, deltat=dt1, location='1')
+            t = trace.Trace(
+                ydata=ydata, tmin=sometime, deltat=dt1, location='1')
+
             t2 = t.copy()
             t2.set_codes(location='2')
             if test_fail:
@@ -221,7 +219,7 @@ class TraceTestCase(unittest.TestCase):
 
             assert t2.deltat == dt2
 
-            #trace.snuffle([t, t2])
+            # trace.snuffle([t, t2])
 
     def testFiltering(self):
         tmin = sometime

@@ -559,7 +559,7 @@ class Trace(object):
         ``deltat``. This runs the :py:meth:`Trace.downsample` one or several
         times. If allow_upsample_max is set to a value larger than 1,
         intermediate upsampling steps are allowed, in order to increase the
-        number of possible downsampling ratios. 
+        number of possible downsampling ratios.
 
         If the requested ratio is not supported, an exception of type
         :py:exc:`pyrocko.util.UnavailableDecimation` is raised.
