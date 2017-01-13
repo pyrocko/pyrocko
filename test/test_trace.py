@@ -200,18 +200,28 @@ class TraceTestCase(unittest.TestCase):
 
     def testDownsampling(self):
 
-        n = 1024
-        dt1 = 1./125.
-        dt2 = 1./10.
-        # dtinter = 1./util.lcm(1./dt1, 1./dt2)
-        # upsratio = dt1/dtinter
-        xdata = num.arange(n, dtype=num.float)
-        ydata = num.exp(-((xdata-n/2)/10.)**2)
-        t = trace.Trace(ydata=ydata, tmin=sometime, deltat=dt1, location='1')
-        t2 = t.copy()
-        t2.set_codes(location='2')
-        t2.downsample_to(dt2, allow_upsample_max=10)
-        # io.save([t, t2], 'test.mseed')
+
+        for (dt1, dt2, test_fail) in [
+                (1./125., 1/10., True),
+                (1., 5., False)]:
+
+            n = 1024
+            # dtinter = 1./util.lcm(1./dt1, 1./dt2)
+            # upsratio = dt1/dtinter
+            xdata = num.arange(n, dtype=num.float)
+            ydata = num.exp(-((xdata-n/2)/10.)**2)
+            t = trace.Trace(ydata=ydata, tmin=sometime, deltat=dt1, location='1')
+            t2 = t.copy()
+            t2.set_codes(location='2')
+            if test_fail:
+                with self.assertRaises(trace.UnavailableDecimation):
+                    t2.downsample_to(dt2, allow_upsample_max=1)
+
+            t2.downsample_to(dt2, allow_upsample_max=10)
+
+            assert t2.deltat == dt2
+
+            #trace.snuffle([t, t2])
 
     def testFiltering(self):
         tmin = sometime
