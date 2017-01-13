@@ -107,7 +107,7 @@ class AhfullgreenRunner:
             outx = num.zeros(ns)
             outy = num.zeros(ns)
             outz = num.zeros(ns)
-            x = (d, 0.0, config.source_depth)
+            x = (d, 0.0, config.receiver_depth-config.source_depth)
             add_seismogram(vp, vs, density, qp, qs, x, f, m6, 'displacement',
                            deltat, 0.0, outx, outy, outz, stf=Impulse())
 
