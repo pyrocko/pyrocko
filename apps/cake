@@ -64,7 +64,7 @@ want to define phases in Cake's syntax.
 ''')
         group.add_option(
             '--phase', '--phases', dest='phases', action="append",
-            default=['P'], metavar='PHASE1,PHASE2,...',
+            default=[], metavar='PHASE1,PHASE2,...',
             help='''Comma separated list of seismic phases in Cake\'s syntax.
 
 The definition of a seismic propagation path in Cake's phase syntax is a string
@@ -307,6 +307,10 @@ as in --phases.''')
 
         except (cake.PhaseDefParseError, cake.UnknownClassicPhase), e:
             parser.error(e)
+
+        if not phases and 'phases' in required:
+            s = process_color('P', phase_colors)
+            phases.append(cake.PhaseDef(s))
 
         if phases:
             d['phase_colors'] = phase_colors

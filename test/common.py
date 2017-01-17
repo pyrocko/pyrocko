@@ -5,8 +5,12 @@ from pyrocko import util
 benchmark_results = []
 
 
+def test_data_file_no_download(fn):
+    return os.path.join(os.path.split(__file__)[0], 'data', fn)
+
+
 def test_data_file(fn):
-    fpath = os.path.join(os.path.split(__file__)[0], 'data', fn)
+    fpath = test_data_file_no_download(fn)
     if not os.path.exists(fpath):
         url = 'http://kinherd.org/pyrocko_test_data/' + fn
         util.download_file(url, fpath)
@@ -15,8 +19,8 @@ def test_data_file(fn):
 
 
 class Benchmark(object):
-    def __init__(self, prefix=''):
-        self.prefix = prefix
+    def __init__(self, prefix=None):
+        self.prefix = prefix or ''
         self.results = []
 
     def __call__(self, func):
@@ -31,9 +35,19 @@ class Benchmark(object):
 
     def __str__(self):
         rstr = ['Benchmark results']
-        indent = max([len(name) for name, _ in self.results])
+        if self.prefix != '':
+            rstr[-1] += ' - %s' % self.prefix
+
+        if len(self.results) > 0:
+            indent = max([len(name) for name, _ in self.results])
+        else:
+            indent = 0
         rstr.append('=' * (indent + 17))
+        rstr.insert(0, rstr[-1])
         for res in self.results:
             rstr.append(
                 '{0:<{indent}}{1:.8f} s'.format(*res, indent=indent+5))
+        if len(self.results) == 0:
+            rstr.append('None ran!')
+
         return '\n'.join(rstr)

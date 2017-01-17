@@ -485,6 +485,7 @@ def nditer_outer(x):
         x,
         op_axes=(num.identity(len(x_), dtype=num.int)-1).tolist() + add)
 
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
 

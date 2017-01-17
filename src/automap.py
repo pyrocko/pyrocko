@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 
-import os
-import shutil
-import tempfile
 import math
 import random
 import logging
 
-from subprocess import check_call, Popen, PIPE
 from cStringIO import StringIO
 
 import numpy as num
@@ -18,6 +14,8 @@ from pyrocko.guts_array import Array
 from pyrocko import orthodrome as od
 from pyrocko import gmtpy, topo
 
+points_in_region = od.points_in_region
+
 logger = logging.getLogger('pyrocko.automap')
 
 earthradius = 6371000.0
@@ -27,21 +25,6 @@ km = 1000.
 d2m = d2r*earthradius
 m2d = 1./d2m
 cm = gmtpy.cm
-
-
-def point_in_region(p, r):
-    p = [num.mod(x, 360.) for x in p]
-    r = [num.mod(x, 360.) for x in r]
-    if r[0] <= r[1]:
-        blon = r[0] <= p[0] <= r[1]
-    else:
-        blon = not (r[1] < p[0] < r[0])
-    if r[2] <= r[3]:
-        blat = r[2] <= p[1] <= r[3]
-    else:
-        blat = not (r[3] < p[1] < r[2])
-
-    return blon and blat
 
 
 def darken(c, f=0.7):
@@ -157,6 +140,7 @@ class Map(Object):
     show_topo_scale = Bool.T(default=False)
     show_center_mark = Bool.T(default=False)
     show_rivers = Bool.T(default=True)
+    show_plates = Bool.T(default=False)
     illuminate_factor_land = Float.T(default=0.5)
     illuminate_factor_ocean = Float.T(default=0.25)
     color_wet = Tuple.T(3, Int.T(), default=(216, 242, 254))
@@ -177,7 +161,7 @@ class Map(Object):
     gmt_config = Dict.T(String.T(), String.T())
     comment = String.T(optional=True)
 
-    def __init__(self, **kwargs):
+    def __init__(self, gmtversion='newest', **kwargs):
         Object.__init__(self, **kwargs)
         self._gmt = None
         self._scaler = None
@@ -193,24 +177,28 @@ class Map(Object):
         self._jxyr = None
         self._prep_topo_have = None
         self._labels = []
+        self._area_labels = []
+        self._gmtversion = gmtversion
 
     def save(self, outpath, resolution=75., oversample=2., size=None,
              width=None, height=None):
 
-        '''Save the image.
+        '''
+        Save the image.
 
-        Save the image to *outpath*. The format is determined by the filename
+        Save the image to ``outpath``. The format is determined by the filename
         extension. Formats are handled as follows: ``'.eps'`` and ``'.ps'``
         produce EPS and PS, respectively, directly with GMT. If the file name
         ends with ``'.pdf'``, GMT output is fed through ``gmtpy-epstopdf`` to
         create a PDF file. For any other filename extension, output is first
         converted to PDF with ``gmtpy-epstopdf``, then with ``pdftocairo`` to
-        PNG with a resolution oversampled by the factor *oversample* and
+        PNG with a resolution oversampled by the factor ``oversample`` and
         finally the PNG is downsampled and converted to the target format with
         ``convert``. The resolution of rasterized target image can be
-        controlled either by *resolution* in DPI or by specifying *width* or
-        *height* or *size*, where the latter fits the image into a square with
-        given side length.'''
+        controlled either by ``resolution`` in DPI or by specifying ``width``
+        or ``height`` or ``size``, where the latter fits the image into a
+        square with given side length.
+        '''
 
         gmt = self.gmt
         self.draw_labels()
@@ -218,22 +206,8 @@ class Map(Object):
         if self.show_topo and self.show_topo_scale:
             self._draw_topo_scale()
 
-        gmt = self._gmt
-        if outpath.endswith('.eps'):
-            tmppath = gmt.tempfilename() + '.eps'
-        elif outpath.endswith('.ps'):
-            tmppath = gmt.tempfilename() + '.ps'
-        else:
-            tmppath = gmt.tempfilename() + '.pdf'
-
-        gmt.save(tmppath)
-
-        if any(outpath.endswith(x) for x in ('.eps', '.ps', '.pdf')):
-            shutil.copy(tmppath, outpath)
-        else:
-            convert_graph(tmppath, outpath,
-                          resolution=resolution, oversample=oversample,
-                          size=size, width=width, height=height)
+        gmt.save(outpath, resolution=resolution, oversample=oversample,
+                 size=size, width=width, height=height)
 
     @property
     def scaler(self):
@@ -307,6 +281,9 @@ class Map(Object):
         else:
             hreg *= hpage/wpage
 
+        self._wreg = wreg
+        self._hreg = hreg
+
         self._corners = corners(self.lon, self.lat, wreg, hreg)
         west, east, south, north = extent(self.lon, self.lat, wreg, hreg, 10)
 
@@ -376,42 +353,59 @@ class Map(Object):
         w, h = self.width, self.height
         scaler = self._scaler
 
-        gmtconf = dict(
-            TICK_PEN='1.25p',
-            TICK_LENGTH='0.2c',
-            ANNOT_FONT_PRIMARY='1',
-            ANNOT_FONT_SIZE_PRIMARY='12p',
-            LABEL_FONT='1',
-            LABEL_FONT_SIZE='12p',
-            CHAR_ENCODING='ISOLatin1+',
-            BASEMAP_TYPE='fancy',
-            PLOT_DEGREE_FORMAT='D',
-            PAPER_MEDIA='Custom_%ix%i' % (
-                w*gmtpy.cm,
-                h*gmtpy.cm),
-            GRID_PEN_PRIMARY='thinnest/0/50/0',
-            DOTS_PR_INCH='1200',
-            OBLIQUE_ANNOTATION='6')
+        if gmtpy.is_gmt5(self._gmtversion):
+            gmtconf = dict(
+                MAP_TICK_PEN_PRIMARY='1.25p',
+                MAP_TICK_PEN_SECONDARY='1.25p',
+                MAP_TICK_LENGTH_PRIMARY='0.2c',
+                MAP_TICK_LENGTH_SECONDARY='0.6c',
+                FONT_ANNOT_PRIMARY='12p,1,black',
+                FONT_LABEL='12p,1,black',
+                PS_CHAR_ENCODING='ISOLatin1+',
+                MAP_FRAME_TYPE='fancy',
+                FORMAT_GEO_MAP='D',
+                PS_MEDIA='Custom_%ix%i' % (
+                    w*gmtpy.cm,
+                    h*gmtpy.cm),
+                PS_PAGE_ORIENTATION='portrait',
+                MAP_GRID_PEN_PRIMARY='thinnest,0/50/0',
+                MAP_ANNOT_OBLIQUE='6')
+        else:
+            gmtconf = dict(
+                TICK_PEN='1.25p',
+                TICK_LENGTH='0.2c',
+                ANNOT_FONT_PRIMARY='1',
+                ANNOT_FONT_SIZE_PRIMARY='12p',
+                LABEL_FONT='1',
+                LABEL_FONT_SIZE='12p',
+                CHAR_ENCODING='ISOLatin1+',
+                BASEMAP_TYPE='fancy',
+                PLOT_DEGREE_FORMAT='D',
+                PAPER_MEDIA='Custom_%ix%i' % (
+                    w*gmtpy.cm,
+                    h*gmtpy.cm),
+                GRID_PEN_PRIMARY='thinnest/0/50/0',
+                DOTS_PR_INCH='1200',
+                OBLIQUE_ANNOTATION='6')
 
         gmtconf.update(
             (k.upper(), v) for (k, v) in self.gmt_config.iteritems())
 
-        gmt = gmtpy.GMT(config=gmtconf)
+        gmt = gmtpy.GMT(config=gmtconf, version=self._gmtversion)
 
         layout = gmt.default_layout()
 
         layout.set_fixed_margins(*[x*cm for x in self._expand_margins()])
 
         widget = layout.get_widget()
-        # widget['J'] = ('-JT%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        # widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         widget['P'] = widget['J']
-        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width_m)gm'
-        # widget['J'] = ('-JE%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        # scaler['R'] = '-R%(xmin)g/%(xmax)g/%(ymin)g/%(ymax)g'
+        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
         scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
 
-        aspect = gmtpy.aspect_for_projection(*(widget.J() + scaler.R()))
+        # aspect = gmtpy.aspect_for_projection(
+        #     gmt.installation['version'], *(widget.J() + scaler.R()))
+
+        aspect = self._map_aspect(jr=widget.J() + scaler.R())
         widget.set_aspect(aspect)
 
         self._gmt = gmt
@@ -452,10 +446,13 @@ class Map(Object):
         if demname not in self._prep_topo_have:
 
             grdfile = gmt.tempfilename()
+
+            is_flat = num.all(t.data[0] == t.data)
+
             gmtpy.savegrd(
                 t.x(), t.y(), t.data, filename=grdfile, naming='lonlat')
 
-            if self.illuminate:
+            if self.illuminate and not is_flat:
                 if k == 'ocean':
                     factor = self.illuminate_factor_ocean
                 else:
@@ -481,13 +478,22 @@ class Map(Object):
                     t2.x(), t2.y(), t2.data, filename=grdfile2,
                     naming='lonlat')
 
-                gmt.grdsample(
-                    grdfile2,
-                    G=grdfile,
-                    Q='l',
-                    I='%g/%g' % (t.dx, t.dy),
-                    R=grdfile,
-                    out_discard=True)
+                if gmt.is_gmt5():
+                    gmt.grdsample(
+                        grdfile2,
+                        G=grdfile,
+                        n='l',
+                        I='%g/%g' % (t.dx, t.dy),
+                        R=grdfile,
+                        out_discard=True)
+                else:
+                    gmt.grdsample(
+                        grdfile2,
+                        G=grdfile,
+                        Q='l',
+                        I='%g/%g' % (t.dx, t.dy),
+                        R=grdfile,
+                        out_discard=True)
 
                 gmt.grdmath(
                     grdfile, '0.0', 'AND', '=', grdfile2,
@@ -537,7 +543,7 @@ class Map(Object):
             level.vmin /= km
             level.vmax /= km
 
-        topo_cpt = self.gmt.tempfilename()
+        topo_cpt = self.gmt.tempfilename() + '.cpt'
         write_cpt(combi, topo_cpt)
 
         (w, h), (xo, yo) = self.widget.get_size()
@@ -573,6 +579,9 @@ class Map(Object):
             W='thinnest,%s' % gmtpy.color(darken(gmtpy.color_tup(color_dry))),
             A=minarea,
             *(rivers+self._jxyr), **fill)
+
+        if self.show_plates:
+            self.draw_plates()
 
     def _draw_axes(self):
         gmt = self._gmt
@@ -612,16 +621,26 @@ class Map(Object):
             *self._jxyr)
 
         if self.comment:
-            fontsize = self.gmt.to_points(
-                self.gmt.gmt_config['LABEL_FONT_SIZE'])
+            font_size = self.gmt.label_font_size()
 
             _, east, south, _ = self._wesn
+            if gmt.is_gmt5():
+                row = [
+                    1, 0,
+                    '%gp,%s,%s' % (font_size, 0, 'black'), 'BR',
+                    self.comment]
+
+                farg = ['-F+f+j']
+            else:
+                row = [1, 0, font_size, 0, 0, 'BR', self.comment]
+                farg = []
+
             gmt.pstext(
-                in_rows=[[1, 0, fontsize, 0, 0, 'BR', self.comment]],
+                in_rows=[row],
                 N=True,
                 R=(0, 1, 0, 1),
-                D='%gp/%gp' % (-fontsize*0.2, fontsize*0.3),
-                *widget.PXY())
+                D='%gp/%gp' % (-font_size*0.2, font_size*0.3),
+                *(widget.PXY() + farg))
 
     def draw_axes(self):
         if not self._have_drawn_axes:
@@ -638,33 +657,43 @@ class Map(Object):
         gmt.pscoast(
             M=True,
             D=cres,
-            W='thinnest/black',
+            W='thinnest,black',
             A=minarea,
             out_filename=checkfile,
             *self._jxyr)
 
+        points = []
         with open(checkfile, 'r') as f:
             for line in f:
                 ls = line.strip()
                 if ls.startswith('#') or ls.startswith('>') or ls == '':
                     continue
                 plon, plat = [float(x) for x in ls.split()]
-                if point_in_region((plon, plat), self._wesn):
-                    return True
+                points.append((plat, plon))
 
-        return False
+        points = num.array(points, dtype=num.float)
+        return num.any(points_in_region(points, self._wesn))
 
-    def project(self, lats, lons):
+    def have_coastlines(self):
+        self.gmt
+        return self._have_coastlines()
+
+    def project(self, lats, lons, jr=None):
         onepoint = False
         if isinstance(lats, float) and isinstance(lons, float):
             lats = [lats]
             lons = [lons]
             onepoint = True
 
-        j, _, _, r = self.jxyr
-        (xo, yo) = self.widget.get_size()[1]
+        if jr is not None:
+            j, r = jr
+            gmt = gmtpy.GMT(version=self._gmtversion)
+        else:
+            j, _, _, r = self.jxyr
+            gmt = self.gmt
+
         f = StringIO()
-        self.gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f, D='p')
+        gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f, D='p')
         f.seek(0)
         data = num.loadtxt(f, ndmin=2)
         xs, ys = data.T
@@ -673,57 +702,64 @@ class Map(Object):
             ys = ys[0]
         return xs, ys
 
+    def _map_box(self, jr=None):
+        ll_lon, ll_lat, ur_lon, ur_lat = self._corners
+
+        xs_corner, ys_corner = self.project(
+            (ll_lat, ur_lat), (ll_lon, ur_lon), jr=jr)
+
+        w = xs_corner[1] - xs_corner[0]
+        h = ys_corner[1] - ys_corner[0]
+
+        return w, h
+
+    def _map_aspect(self, jr=None):
+        w, h = self._map_box(jr=jr)
+        return h/w
+
     def _draw_labels(self):
+        points_taken = []
+        regions_taken = []
+
+        def no_points_in_rect(xs, ys, xmin, ymin, xmax, ymax):
+            xx = not num.any(la(la(xmin < xs, xs < xmax),
+                                la(ymin < ys, ys < ymax)))
+            return xx
+
+        def roverlaps(a, b):
+            return (a[0] < b[2] and b[0] < a[2] and
+                    a[1] < b[3] and b[1] < a[3])
+
+        w, h = self._map_box()
+
+        label_font_size = self.gmt.label_font_size()
+
         if self._labels:
-            fontsize = self.gmt.to_points(
-                self.gmt.gmt_config['LABEL_FONT_SIZE'])
 
             n = len(self._labels)
 
-            lons, lats, texts, sx, sy, styles = zip(*self._labels)
+            lons, lats, texts, sx, sy, colors, fonts, font_sizes, styles = \
+                zip(*self._labels)
+
+            font_sizes = [
+                (font_size or label_font_size) for font_size in font_sizes]
 
             sx = num.array(sx, dtype=num.float)
             sy = num.array(sy, dtype=num.float)
 
-            j, _, _, r = self.jxyr
-            f = StringIO()
-            self.gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f,
-                                D='p')
-            f.seek(0)
-            data = num.loadtxt(f, ndmin=2)
-            xs, ys = data.T
+            xs, ys = self.project(lats, lons)
+
+            points_taken.append((xs, ys))
+
             dxs = num.zeros(n)
             dys = num.zeros(n)
 
-            g = gmtpy.GMT()
-            g.psbasemap('-G0', finish=True, *(j, r))
-            l, b, r, t = g.bbox()
-            h = (t-b)
-            w = (r-l)
-
             for i in xrange(n):
-                g = gmtpy.GMT()
-                g.pstext(
-                    in_rows=[[0, 0, fontsize, 0, 1, 'BL', texts[i]]],
-                    finish=True,
-                    R=(0, 1, 0, 1),
-                    J='x10p',
-                    N=True,
+                dx, dy = gmtpy.text_box(
+                    texts[i],
+                    font=fonts[i],
+                    font_size=font_sizes[i],
                     **styles[i])
-
-                fn = g.tempfilename()
-                g.save(fn)
-
-                (_, stderr) = Popen(
-                    ['gs', '-q', '-dNOPAUSE', '-dBATCH', '-r720',
-                     '-sDEVICE=bbox', fn],
-                    stderr=PIPE).communicate()
-
-                dx, dy = None, None
-                for line in stderr.splitlines():
-                    if line.startswith('%%HiResBoundingBox:'):
-                        l, b, r, t = [float(x) for x in line.split()[-4:]]
-                        dx, dy = r-l, t-b
 
                 dxs[i] = dx
                 dys[i] = dy
@@ -742,11 +778,6 @@ class Map(Object):
                 (xs, ys - sy - dys, xs + sx + dxs, ys),
                 (xs - sx - dxs, ys, xs, ys + sy + dys)]
 
-            def no_points_in_rect(xs, ys, xmin, ymin, xmax, ymax):
-                xx = not num.any(la(la(xmin < xs, xs < xmax),
-                                    la(ymin < ys, ys < ymax)))
-                return xx
-
             for i in xrange(n):
                 for ianch in xrange(4):
                     anchors_ok[ianch][i] &= no_points_in_rect(
@@ -762,10 +793,6 @@ class Map(Object):
                     anchor_take.append(choices[0])
                 else:
                     anchor_take.append(None)
-
-            def roverlaps(a, b):
-                return (a[0] < b[2] and b[0] < a[2] and
-                        a[1] < b[3] and b[1] < a[3])
 
             def cost(anchor_take):
                 noverlaps = 0
@@ -811,14 +838,112 @@ class Map(Object):
 
             for i in xrange(n):
                 ianchor = anchor_take[i]
+                color = colors[i]
+                if color is None:
+                    color = 'black'
+
                 if ianchor is not None:
+                    regions_taken.append([xxx[i] for xxx in arects[ianchor]])
+
                     anchor = anchor_strs[ianchor]
+
                     yoff = [-sy[i], sy[i]][anchor[0] == 'B']
                     xoff = [-sx[i], sx[i]][anchor[1] == 'L']
-                    row = (lons[i], lats[i], fontsize, 0, 1, anchor, texts[i])
+                    if self.gmt.is_gmt5():
+                        row = (
+                            lons[i], lats[i],
+                            '%i,%s,%s' % (font_sizes[i], fonts[i], color),
+                            anchor,
+                            texts[i])
+
+                        farg = ['-F+f+j']
+                    else:
+                        row = (
+                            lons[i], lats[i],
+                            font_sizes[i], 0, fonts[i], anchor,
+                            texts[i])
+                        farg = ['-G%s' % color]
+
                     self.gmt.pstext(
-                        in_rows=[row], D='%gp/%gp' % (xoff, yoff), *self.jxyr,
+                        in_rows=[row],
+                        D='%gp/%gp' % (xoff, yoff),
+                        *(self.jxyr + farg),
                         **styles[i])
+
+        if self._area_labels:
+
+            for lons, lats, text, color, font, font_size, style in \
+                    self._area_labels:
+
+                if font_size is None:
+                    font_size = label_font_size
+
+                if color is None:
+                    color = 'black'
+
+                if self.gmt.is_gmt5():
+                    farg = ['-F+f+j']
+                else:
+                    farg = ['-G%s' % color]
+
+                xs, ys = self.project(lats, lons)
+                dx, dy = gmtpy.text_box(
+                    text, font=font, font_size=font_size, **style)
+
+                rects = [xs-0.5*dx, ys-0.5*dy, xs+0.5*dx, ys+0.5*dy]
+
+                locs_ok = num.ones(xs.size, dtype=num.bool)
+
+                for iloc in xrange(xs.size):
+                    rcandi = [xxx[iloc] for xxx in rects]
+
+                    locs_ok[iloc] = True
+                    locs_ok[iloc] &= (
+                        0 < rcandi[0] and rcandi[2] < w
+                        and 0 < rcandi[1] and rcandi[3] < h)
+
+                    overlap = False
+                    for r in regions_taken:
+                        if roverlaps(r, rcandi):
+                            overlap = True
+                            break
+
+                    locs_ok[iloc] &= not overlap
+
+                    for xs_taken, ys_taken in points_taken:
+                        locs_ok[iloc] &= no_points_in_rect(
+                            xs_taken, ys_taken, *rcandi)
+
+                        if not locs_ok[iloc]:
+                            break
+
+                rows = []
+                for iloc, (lon, lat) in enumerate(zip(lons, lats)):
+                    if not locs_ok[iloc]:
+                        continue
+
+                    if self.gmt.is_gmt5():
+                        row = (
+                            lon, lat,
+                            '%i,%s,%s' % (font_size, font, color),
+                            'MC',
+                            text)
+
+                    else:
+                        row = (
+                            lon, lat,
+                            font_size, 0, font, 'MC',
+                            text)
+
+                    rows.append(row)
+
+                    regions_taken.append([xxx[iloc] for xxx in rects])
+                    break
+
+                self.gmt.pstext(
+                    in_rows=rows,
+                    *(self.jxyr + farg),
+                    **style)
 
     def draw_labels(self):
         self.gmt
@@ -826,8 +951,31 @@ class Map(Object):
             self._draw_labels()
             self._have_drawn_labels = True
 
-    def add_label(self, lat, lon, text, offset_x=5., offset_y=5., style={}):
-        self._labels.append((lon, lat, text, offset_x, offset_y, style))
+    def add_label(
+            self, lat, lon, text,
+            offset_x=5., offset_y=5.,
+            color=None,
+            font='1',
+            font_size=None,
+            style={}):
+
+        if 'G' in style:
+            style = style.copy()
+            color = style.pop('G')
+
+        self._labels.append(
+            (lon, lat, text, offset_x, offset_y, color, font, font_size,
+             style))
+
+    def add_area_label(
+            self, lat, lon, text,
+            color=None,
+            font='3',
+            font_size=None,
+            style={}):
+
+        self._area_labels.append(
+            (lon, lat, text, color, font, font_size, style))
 
     def cities_in_region(self):
         from pyrocko import geonames
@@ -839,7 +987,7 @@ class Map(Object):
     def draw_cities(self,
                     exact=None,
                     include=[],
-                    exclude=['City of London'],  # duplicate entry in geonames
+                    exclude=[],
                     nmax_soft=10,
                     psxy_style=dict(S='s5p', G='black')):
 
@@ -853,7 +1001,8 @@ class Map(Object):
             minpop = 10**3
             for minpop_new in [1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6, 3e6, 1e7]:
                 cities_new = [
-                    c for c in cities if c.population > minpop_new]
+                    c for c in cities
+                    if c.population > minpop_new or c.name in include]
 
                 if len(cities_new) == 0 or (
                         len(cities_new) < 3 and len(cities) < nmax_soft*2):
@@ -882,55 +1031,142 @@ class Map(Object):
 
         self._cities_minpop = minpop
 
+    def draw_plates(self):
+        from pyrocko import tectonics
 
-def convert_graph(in_filename, out_filename, resolution=75., oversample=2.,
-                  width=None, height=None, size=None):
+        neast = 20
+        nnorth = max(1, int(round(num.round(self._hreg/self._wreg * neast))))
+        norths = num.linspace(-self._hreg*0.5, self._hreg*0.5, nnorth)
+        easts = num.linspace(-self._wreg*0.5, self._wreg*0.5, neast)
+        norths2 = num.repeat(norths, neast)
+        easts2 = num.tile(easts, nnorth)
+        lats, lons = od.ne_to_latlon(
+            self.lat, self.lon, norths2, easts2)
 
-    _, tmp_filename_base = tempfile.mkstemp()
+        bird = tectonics.PeterBird2003()
+        plates = bird.get_plates()
 
-    try:
-        if out_filename.endswith('.svg'):
-            fmt_arg = '-svg'
-            tmp_filename = tmp_filename_base
-            oversample = 1.0
-        else:
-            fmt_arg = '-png'
-            tmp_filename = tmp_filename_base + '-1.png'
+        color_plates = gmtpy.color('aluminium5')
+        color_velocities = gmtpy.color('skyblue1')
+        color_velocities_lab = gmtpy.color(darken(gmtpy.color_tup('skyblue1')))
 
-        if size is not None:
-            scale_args = ['-scale-to', '%i' % int(round(size*oversample))]
-        elif width is not None:
-            scale_args = ['-scale-to-x', '%i' % int(round(width*oversample))]
-        elif height is not None:
-            scale_args = ['-scale-to-y', '%i' % int(round(height*oversample))]
-        else:
-            scale_args = ['-r', '%i' % int(round(resolution * oversample))]
+        points = num.vstack((lats, lons)).T
+        used = []
+        for plate in plates:
+            mask = plate.contains_points(points)
+            if num.any(mask):
+                used.append((plate, mask))
 
-        check_call(['pdftocairo'] + scale_args +
-                   [fmt_arg, in_filename, tmp_filename_base])
+        if len(used) > 1:
 
-        if oversample > 1.:
-            check_call([
-                'convert',
-                tmp_filename,
-                '-resize', '%i%%' % int(round(100.0/oversample)),
-                out_filename])
+            candi_fixed = {}
 
-        else:
-            if out_filename.endswith('.png') or out_filename.endswith('.svg'):
-                shutil.move(tmp_filename, out_filename)
-            else:
-                check_call(['convert', tmp_filename, out_filename])
+            label_data = []
+            for plate, mask in used:
 
-    except:
-        raise
+                mean_north = num.mean(norths2[mask])
+                mean_east = num.mean(easts2[mask])
+                iorder = num.argsort(num.sqrt(
+                        (norths2[mask] - mean_north)**2 +
+                        (easts2[mask] - mean_east)**2))
 
-    finally:
-        if os.path.exists(tmp_filename_base):
-            os.remove(tmp_filename_base)
+                lat_candis = lats[mask][iorder]
+                lon_candis = lons[mask][iorder]
 
-        if os.path.exists(tmp_filename):
-            os.remove(tmp_filename)
+                candi_fixed[plate.name] = lat_candis.size
+
+                label_data.append((
+                    lat_candis, lon_candis, plate, color_plates))
+
+            boundaries = bird.get_boundaries()
+
+            size = 2
+
+            psxy_kwargs = []
+
+            for boundary in boundaries:
+                if num.any(points_in_region(boundary.points, self._wesn)):
+                    for typ, part in boundary.split_types(
+                            [['SUB'],
+                             ['OSR', 'OTF', 'OCB', 'CTF', 'CCB', 'CRB']]):
+
+                        lats, lons = part.T
+
+                        kwargs = {}
+                        if typ[0] == 'SUB':
+                            if boundary.kind == '\\':
+                                kwargs['S'] = 'f%g/%gp+t+r' % (
+                                    0.45*size, 3.*size)
+                            elif boundary.kind == '/':
+                                kwargs['S'] = 'f%g/%gp+t+l' % (
+                                    0.45*size, 3.*size)
+
+                            kwargs['G'] = color_plates
+
+                        kwargs['in_columns'] = (lons, lats)
+                        kwargs['W'] = '%gp,%s' % (size, color_plates),
+
+                        psxy_kwargs.append(kwargs)
+
+                        if boundary.kind == '\\':
+                            if boundary.name2 in candi_fixed:
+                                candi_fixed[boundary.name2] += neast*nnorth
+
+                        elif boundary.kind == '/':
+                            if boundary.name1 in candi_fixed:
+                                candi_fixed[boundary.name1] += neast*nnorth
+
+            candi_fixed = [name for name in sorted(
+                candi_fixed.keys(), key=lambda name: -candi_fixed[name])]
+
+            candi_fixed.append(None)
+
+            gsrm = tectonics.GSRM1()
+
+            for name in candi_fixed:
+                if name not in gsrm.plate_names() \
+                        and name not in gsrm.plate_alt_names():
+
+                    continue
+
+                lats, lons, vnorth, veast, vnorth_err, veast_err, corr = \
+                    gsrm.get_velocities(name, region=self._wesn)
+
+                fixed_plate_name = name
+
+                self.gmt.psvelo(
+                    in_columns=(
+                        lons, lats, veast, vnorth, veast_err, vnorth_err,
+                        corr),
+                    W='0.25p,%s' % color_velocities,
+                    A='9p+e+g%s' % color_velocities,
+                    S='e0.2p/0.95/10',
+                    *self.jxyr)
+
+                for _ in xrange(len(lons) / 50 + 1):
+                    ii = random.randint(0, len(lons)-1)
+                    v = math.sqrt(vnorth[ii]**2 + veast[ii]**2)
+                    self.add_label(
+                        lats[ii], lons[ii], '%.0f' % v,
+                        font_size=0.7*self.gmt.label_font_size(),
+                        style=dict(
+                            G=color_velocities_lab))
+
+                break
+
+            for (lat_candis, lon_candis, plate, color) in label_data:
+                full_name = bird.full_name(plate.name)
+                if plate.name == fixed_plate_name:
+                    full_name = '@_' + full_name + '@_'
+
+                self.add_area_label(
+                    lat_candis, lon_candis,
+                    full_name,
+                    color=color,
+                    font='3')
+
+            for kwargs in psxy_kwargs:
+                self.gmt.psxy(*self.jxyr, **kwargs)
 
 
 def rand(mi, ma):
@@ -1065,19 +1301,32 @@ def cpt_merge_wet_dry(wet, dry):
 
     return combi
 
+
 if __name__ == '__main__':
     from pyrocko import util
     util.setup_logging('pyrocko.automap', 'info')
 
-    m = Map(
-        lat=rand(40, 70.),
-        lon=rand(0., 20.),
-        radius=math.exp(rand(math.log(10*km), math.log(2000*km))),
-        width=rand(10, 20), height=rand(10, 20),
-        show_grid=True,
-        show_topo=True,
-        illuminate=True)
+    import sys
+    if len(sys.argv) == 2:
 
-    m.draw_cities()
-    print m
-    m.save('map.pdf')
+        n = int(sys.argv[1])
+
+    for i in xrange(n):
+        m = Map(
+            lat=rand(-60., 60.),
+            lon=rand(-180., 180.),
+            radius=math.exp(rand(math.log(500*km), math.log(3000*km))),
+            width=30., height=30.,
+            show_grid=True,
+            show_topo=True,
+            color_dry=(238, 236, 230),
+            topo_cpt_wet='light_sea_uniform',
+            topo_cpt_dry='light_land_uniform',
+            illuminate=True,
+            illuminate_factor_ocean=0.15,
+            show_rivers=False,
+            show_plates=True)
+
+        m.draw_cities()
+        print m
+        m.save('map_%02i.pdf' % i)

@@ -13,6 +13,7 @@ def literal_presenter(dumper, data):
     return dumper.represent_scalar(
         'tag:yaml.org,2002:str', str(data), style='|')
 
+
 guts.SafeDumper.add_representer(literal, literal_presenter)
 
 

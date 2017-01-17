@@ -54,11 +54,19 @@ class GFSourcesTestCase(unittest.TestCase):
                    north_shift=500., east_shift=500., stf=stf)
             ev = s1.pyrocko_event()
             s2 = S.from_pyrocko_event(ev)
-            assert numeq(
-                [s1.effective_lat, s1.effective_lon,
-                 s1.depth, s1.stf.effective_duration],
-                [s2.effective_lat, s2.effective_lon,
-                 s2.depth, s2.stf.effective_duration], 0.001)
+
+            if not isinstance(s1, gf.DoubleDCSource):
+                assert numeq(
+                    [s1.effective_lat, s1.effective_lon,
+                     s1.depth, s1.stf.effective_duration],
+                    [s2.effective_lat, s2.effective_lon,
+                     s2.depth, s2.stf.effective_duration], 0.001)
+            else:
+                assert numeq(
+                    [s1.effective_lat, s1.effective_lon,
+                     s1.depth, s1.stf.effective_duration],
+                    [s2.effective_lat, s2.effective_lon,
+                     s2.depth, s2.stf1.effective_duration], 0.001)
 
     def test_source_dict(self):
         s1 = gf.DCSource(strike=0.)

@@ -712,7 +712,7 @@ class GFTestCase(unittest.TestCase):
         from pyrocko.gf import store_ext
         store = self.dummy_store()
         store.open()
-        interpolation = 'multilinear'
+        interpolation = 'nearest_neighbor'
         for xxx in [0., 1*km, 2*km, 5*km, 8*km]:
             source = gf.RectangularSource(
                     lat=0., lon=0., depth=10*km, north_shift=0.1, east_shift=0.1, width=xxx, length=xxx)
@@ -728,8 +728,6 @@ class GFTestCase(unittest.TestCase):
 
             source_coordss = [
                 dsource.coords5() for dsource in dsources]
-
-            print dsources[0].nelements
 
             receiver_coords_combi = num.empty((len(targets), 5))
             for itarget, target in enumerate(targets):

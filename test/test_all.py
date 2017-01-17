@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Agg')  # noqa
+
 import pyrocko.util
 
 from test_orthodrome import OrthodromeTestCase  # noqa
@@ -20,6 +23,10 @@ from test_guts import GutsTestCase  # noqa
 from test_parstack import ParstackTestCase  # noqa
 from test_geonames import GeonamesTestCase  # noqa
 from test_cake import CakeTestCase  # noqa
+from test_beachball import BeachballTestCase  # noqa
+from test_gmtpy import GmtPyTestCase  # noqa
+from test_automap import AutomapTestCase  # noqa
+from test_tectonics import TectonicsTestCase  # noqa
 
 import unittest
 import optparse

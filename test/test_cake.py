@@ -3,6 +3,8 @@ import numpy as num
 
 from pyrocko import cake, util
 
+km = 1000.
+
 
 class CakeTestCase(unittest.TestCase):
 
@@ -141,6 +143,49 @@ class CakeTestCase(unittest.TestCase):
             self.assertEqual(mat.qp, matx.qp)
             self.assertEqual(mat.qs, matx.qs)
             self.assertEqual(mat.describe(), matx.describe())
+
+    def test_classic(self):
+        phase = cake.PhaseDef.classic('PP')[0]
+        assert str(phase) == '''
+Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
+ - P mode propagation, departing downward \
+(may not propagate deeper than interface cmb)
+ - passing through moho on upgoing path
+ - P mode propagation, departing upward
+ - surface reflection
+ - P mode propagation, departing downward \
+(may not propagate deeper than interface cmb)
+ - passing through moho on upgoing path
+ - P mode propagation, departing upward
+ - arriving at target from below'''.strip()
+
+        mod = cake.load_model()
+        rays = mod.arrivals(
+            phases=[phase], distances=[5000*km*cake.m2d], zstart=500.)
+
+	assert str(rays[0]).split() == '''10.669 s/deg    5000 km  601.9 s  \
+33.8   33.8  17%  12% P<(cmb)(moho)pP<(cmb)(moho)p (P^0P)            \
+0_1_2_3_(4-5)_(6-7)_8_(7-6)_(5-4)_3_2_1_0|\
+0_1_2_3_(4-5)_(6-7)_8_(7-6)_(5-4)_3_2_1_0'''.split()
+
+        assert abs(rays[0].t - 601.9) < 0.2
+
+    def test_simplify(self):
+        mod1 = cake.load_model()
+        mod2 = mod1.simplify()
+        phases = cake.PhaseDef.classic('Pdiff')
+        rays1 = mod1.arrivals(phases=phases, distances=[120.], zstart=500.)
+        rays2 = mod2.arrivals(phases=phases, distances=[120.], zstart=500.)
+        assert abs(rays1[0].t - 915.9) < 0.1
+        assert abs(rays2[0].t - 915.9) < 0.1
+
+    def test_path(self):
+        mod = cake.load_model()
+        phase = cake.PhaseDef('P')
+        ray = mod.arrivals(phases=[phase], distances=[70.], zstart=100.)
+
+        z, x, t = ray[0].zxt_path_subdivided()
+        assert z[0].size == 681
 
 
 if __name__ == "__main__":

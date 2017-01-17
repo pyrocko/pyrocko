@@ -1,0 +1,452 @@
+import os.path as op
+import math
+from collections import defaultdict
+
+import numpy as num
+from matplotlib.path import Path
+
+from pyrocko import util, config
+from pyrocko.guts_array import Array
+from pyrocko.guts import Object, String
+from pyrocko.moment_tensor import euler_to_matrix, d2r, r2d
+from pyrocko.beachball import spoly_cut
+from pyrocko import orthodrome as od
+
+
+def latlon_to_xyz(latlons):
+    if latlons.ndim == 1:
+        return latlon_to_xyz(latlons[num.newaxis, :])[0]
+
+    points = num.zeros((latlons.shape[0], 3))
+    lats = latlons[:, 0]
+    lons = latlons[:, 1]
+    points[:, 0] = num.cos(lats*d2r) * num.cos(lons*d2r)
+    points[:, 1] = num.cos(lats*d2r) * num.sin(lons*d2r)
+    points[:, 2] = num.sin(lats*d2r)
+    return points
+
+
+def xyz_to_latlon(xyz):
+    if xyz.ndim == 1:
+        return xyz_to_latlon(xyz[num.newaxis, :])[0]
+
+    latlons = num.zeros((xyz.shape[0], 2))
+    latlons[:, 0] = num.arctan2(
+        xyz[:, 2], num.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2)) * r2d
+    latlons[:, 1] = num.arctan2(
+        xyz[:, 1], xyz[:, 0]) * r2d
+    return latlons
+
+
+def rot_to_00(lat, lon):
+    rot0 = euler_to_matrix(0., -90.*d2r, 0.).A
+    rot1 = euler_to_matrix(-d2r*lat, 0., -d2r*lon).A
+    return num.dot(rot0.T, num.dot(rot1, rot0)).T
+
+
+def distances3d(a, b):
+    return num.sqrt(num.sum((a-b)**2, axis=a.ndim-1))
+
+
+class Farside(Exception):
+    pass
+
+
+PI = math.pi
+
+
+def circulation(points2):
+    return num.sum(
+        (points2[1:, 0] - points2[:-1, 0])
+        * (points2[1:, 1] + points2[:-1, 1]))
+
+
+def stereographic(points):
+    dists = distances3d(points[1:, :], points[:-1, :])
+    if dists.size > 0:
+        maxdist = num.max(dists)
+        cutoff = maxdist**2 / 2.
+    else:
+        cutoff = 1.0e-5
+
+    points = points.copy()
+    if num.any(points[:, 0] < -1. + cutoff):
+        raise Farside()
+
+    points_out = points[:, 1:].copy()
+    factor = 1.0 / (1.0 + points[:, 0])
+    points_out *= factor[:, num.newaxis]
+
+    return points_out
+
+
+def stereographic_poly(points):
+    dists = distances3d(points[1:, :], points[:-1, :])
+    if dists.size > 0:
+        maxdist = num.max(dists)
+        cutoff = maxdist**2 / 2.
+    else:
+        cutoff = 1.0e-5
+
+    points = points.copy()
+    if num.any(points[:, 0] < -1. + cutoff):
+        raise Farside()
+
+    points_out = points[:, 1:].copy()
+    factor = 1.0 / (1.0 + points[:, 0])
+    points_out *= factor[:, num.newaxis]
+
+    if circulation(points_out) >= 0:
+        raise Farside()
+
+    return points_out
+
+
+class Plate(Object):
+
+    name = String.T()
+    points = Array.T(dtype=num.float, shape=(None, 2))
+
+    def max_interpoint_distance(self):
+        p = latlon_to_xyz(self.points)
+        return math.sqrt(num.max(num.sum(
+            (p[num.newaxis, :, :] - p[:, num.newaxis, :])**2, axis=2)))
+
+    def contains_point(self, point):
+        rot = rot_to_00(point[0], point[1])
+        points_xyz = latlon_to_xyz(self.points)
+        points_rot = num.dot(rot, points_xyz.T).T
+        groups = spoly_cut([points_rot], axis=0)
+        for group in groups:
+            for points_g in group:
+                try:
+                    points2 = stereographic_poly(points_g)
+                    p = Path(points2, closed=True)
+                    if p.contains_point((0., 0.)):
+                        return True
+
+                except Farside:
+                    pass
+
+        return False
+
+    def contains_points(self, points):
+        points_xyz = latlon_to_xyz(points)
+        center_xyz = num.mean(points_xyz, axis=0)
+
+        assert num.all(
+            distances3d(points_xyz, center_xyz[num.newaxis, :]) < 1.0)
+
+        lat, lon = xyz_to_latlon(center_xyz)
+        rot = rot_to_00(lat, lon)
+
+        points_rot_xyz = num.dot(rot, points_xyz.T).T
+        points_rot_pro = stereographic(points_rot_xyz)
+
+        poly_xyz = latlon_to_xyz(self.points)
+        poly_rot_xyz = num.dot(rot, poly_xyz.T).T
+        groups = spoly_cut([poly_rot_xyz], axis=0)
+        result = num.zeros(points.shape[0], dtype=num.int)
+        for group in groups:
+            for poly_rot_group_xyz in group:
+                try:
+                    poly_rot_group_pro = stereographic_poly(poly_rot_group_xyz)
+                    p = Path(poly_rot_group_pro, closed=True)
+                    if hasattr(p, 'contains_points'):
+                        result += p.contains_points(points_rot_pro)
+                    else:
+                        for i in xrange(result.size):
+                            result[i] += p.contains_point(points_rot_pro[i, :])
+
+                except Farside:
+                    pass
+
+        return result.astype(num.bool)
+
+
+class Boundary(Object):
+
+    name1 = String.T()
+    name2 = String.T()
+    kind = String.T()
+    points = Array.T(dtype=num.float, shape=(None, 2))
+    cpoints = Array.T(dtype=num.float, shape=(None, 2))
+    itypes = Array.T(dtype=num.int, shape=(None))
+
+    def split_types(self, groups=None):
+        xyz = latlon_to_xyz(self.points)
+        xyzmid = (xyz[1:] + xyz[:-1, :]) * 0.5
+        cxyz = latlon_to_xyz(self.cpoints)
+        d = distances3d(xyzmid[num.newaxis, :, :], cxyz[:, num.newaxis, :])
+        idmin = num.argmin(d, axis=0)
+        itypes = self.itypes[idmin]
+
+        if groups is None:
+            groupmap = num.arange(len(self._index_to_type))
+        else:
+            d = {}
+            for igroup, group in enumerate(groups):
+                for name in group:
+                    d[name] = igroup
+
+            groupmap = num.array(
+                [d[name] for name in self._index_to_type],
+                dtype=num.int)
+
+        iswitch = num.concatenate(
+            ([0],
+             num.where(groupmap[itypes[1:]] != groupmap[itypes[:-1]])[0]+1,
+             [itypes.size]))
+
+        results = []
+        for ii in xrange(iswitch.size-1):
+            if groups is not None:
+                tt = [self._index_to_type[ityp] for ityp in num.unique(
+                    itypes[iswitch[ii]:iswitch[ii+1]])]
+            else:
+                tt = self._index_to_type[itypes[iswitch[ii]]]
+
+            results.append((tt, self.points[iswitch[ii]:iswitch[ii+1]+1]))
+
+        return results
+
+
+class Dataset(object):
+
+    def __init__(self, name, data_dir, citation):
+        self.name = name
+        self.citation = citation
+        self.data_dir = data_dir
+
+    def fpath(self, filename):
+        return op.join(self.data_dir, filename)
+
+    def download_file(self, url, fpath, username=None, password=None):
+        util.download_file(url, fpath, username, password)
+
+
+class PlatesDataset(Dataset):
+    pass
+
+
+class PeterBird2003(PlatesDataset):
+    __citation = '''
+    Bird, Peter. "An updated digital model of plate boundaries." Geochemistry,
+    Geophysics, Geosystems 4.3 (2003).
+    '''
+
+    def __init__(
+            self,
+            name='PeterBird2003',
+            data_dir=None,
+            raw_data_url=('http://peterbird.name/oldFTP/PB2002/%s')):
+
+        if data_dir is None:
+            data_dir = op.join(config.config().tectonics_dir, name)
+
+        PlatesDataset.__init__(
+            self,
+            name,
+            data_dir=data_dir,
+            citation=self.__citation)
+
+        self.raw_data_url = raw_data_url
+
+        self.filenames = [
+            '2001GC000252_readme.txt',
+            'PB2002_boundaries.dig.txt',
+            'PB2002_orogens.dig.txt',
+            'PB2002_plates.dig.txt',
+            'PB2002_poles.dat.txt',
+            'PB2002_steps.dat.txt']
+
+        self._full_names = None
+
+    def full_name(self, name):
+        if not self._full_names:
+            fn = util.data_file(op.join('tectonics', 'bird2003_plates.txt'))
+
+            with open(fn, 'r') as f:
+                self._full_names = dict(
+                    line.strip().split(None, 1) for line in f)
+
+        return self._full_names[name]
+
+    def download_if_needed(self):
+        for fn in self.filenames:
+            fpath = self.fpath(fn)
+            if not op.exists(fpath):
+                self.download_file(self.raw_data_url % fn, fpath)
+
+    def get_boundaries(self):
+        self.download_if_needed()
+        fpath = self.fpath('PB2002_steps.dat.txt')
+
+        d = defaultdict(list)
+        ntyp = 0
+        type_to_index = {}
+        index_to_type = []
+        with open(fpath, 'rb') as f:
+            data = []
+            for line in f:
+                t = line.split()
+                s = t[1].lstrip(':')
+                name1, kind, name2 = s[0:2], s[2], s[3:5]
+
+                alon, alat, blon, blat = map(float, t[2:6])
+                mlat = (alat + blat) * 0.5
+                dlon = ((blon - alon) + 180.) % 360. - 180.
+                mlon = alon + dlon * 0.5
+                typ = t[14].strip(':*')
+
+                if typ not in type_to_index:
+                    ntyp += 1
+                    type_to_index[typ] = ntyp - 1
+                    index_to_type.append(typ)
+
+                ityp = type_to_index[typ]
+                d[name1, kind, name2].append((mlat, mlon, ityp))
+
+        d2 = {}
+        for k in d:
+            d2[k] = (
+                num.array([l[:2] for l in d[k]], dtype=num.float),
+                num.array([l[2] for l in d[k]], dtype=num.int))
+
+        fpath = self.fpath('PB2002_boundaries.dig.txt')
+        boundaries = []
+        name1 = ''
+        name2 = ''
+        kind = '-'
+        with open(fpath, 'rb') as f:
+            data = []
+            for line in f:
+                if line.startswith('***'):
+                    cpoints, itypes = d2[name1, kind, name2]
+                    boundaries.append(Boundary(
+                        name1=name1,
+                        name2=name2,
+                        kind=kind,
+                        points=num.array(data, dtype=num.float),
+                        cpoints=cpoints,
+                        itypes=itypes))
+
+                    boundaries[-1]._type_to_index = type_to_index
+                    boundaries[-1]._index_to_type = index_to_type
+
+                    data = []
+                elif line.startswith(' '):
+                    data.append(map(float, line.split(','))[::-1])
+                else:
+                    s = line.strip()
+                    name1, kind, name2 = s[0:2], s[2], s[3:5]
+
+        return boundaries
+
+    def get_plates(self):
+        self.download_if_needed()
+        fpath = self.fpath('PB2002_plates.dig.txt')
+        plates = []
+        name = ''
+        with open(fpath, 'rb') as f:
+            data = []
+            for line in f:
+                if line.startswith('***'):
+                    plates.append(Plate(
+                        name=name,
+                        points=num.array(data, dtype=num.float)))
+
+                    data = []
+                elif line.startswith(' '):
+                    data.append(map(float, line.split(','))[::-1])
+                else:
+                    name = line.strip()
+
+        return plates
+
+
+class StrainRateDataset(Dataset):
+    pass
+
+
+class GSRM1(StrainRateDataset):
+    __citation = '''Kreemer, C., W.E. Holt, and A.J. Haines, "An integrated
+    global model of present-day plate motions and plate boundary deformation",
+    Geophys. J. Int., 154, 8-34, 2003.'''
+
+    def __init__(
+            self,
+            name='GSRM1.2',
+            data_dir=None,
+            raw_data_url=('http://gsrm.unavco.org/model/files/1.2/%s')):
+
+        if data_dir is None:
+            data_dir = op.join(config.config().tectonics_dir, name)
+
+        StrainRateDataset.__init__(
+            self,
+            name,
+            data_dir=data_dir,
+            citation=self.__citation)
+
+        self.raw_data_url = raw_data_url
+        self._full_names = None
+        self._names = None
+
+    def full_names(self):
+        if not self._full_names:
+            fn = util.data_file(op.join('tectonics', 'gsrm1_plates.txt'))
+
+            with open(fn, 'r') as f:
+                self._full_names = dict(
+                    line.strip().split(None, 1) for line in f)
+
+        return self._full_names
+
+    def full_name(self, name):
+        name = self.plate_alt_names().get(name, name)
+        return self.full_names()[name]
+
+    def plate_names(self):
+        if self._names is None:
+            self._names = sorted(self.full_names().keys())
+
+        return self._names
+
+    def plate_alt_names(self):
+        # 'African Plate' is named 'Nubian Plate' in GSRM1
+        return {'AF': 'NU'}
+
+    def download_if_needed(self, fn):
+        fpath = self.fpath(fn)
+        if not op.exists(fpath):
+            self.download_file(self.raw_data_url % fn, fpath)
+
+    def get_velocities(self, reference_name=None, region=None):
+        reference_name = self.plate_alt_names().get(
+            reference_name, reference_name)
+
+        if reference_name is None:
+            reference_name = 'NNR'
+
+        fn = 'velocity_%s.dat' % reference_name
+
+        self.download_if_needed(fn)
+        fpath = self.fpath(fn)
+        data = []
+        with open(fpath, 'rb') as f:
+            for line in f:
+                if line.strip().startswith('#'):
+                    continue
+                t = line.split()
+                data.append(map(float, t))
+
+        arr = num.array(data, dtype=num.float)
+
+        if region is not None:
+            points = arr[:, 1::-1]
+            mask = od.points_in_region(points, region)
+            arr = arr[mask, :]
+
+        lons, lats, veast, vnorth, veast_err, vnorth_err, corr = arr.T
+        return lats, lons, vnorth, veast, vnorth_err, veast_err, corr

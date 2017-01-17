@@ -34,7 +34,7 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
     PyObject      *elem, *out_list;
     npy_intp      array_dims[1] = {0};
 
-     if (!PyArg_ParseTuple(args, "sssssssOssiiiiid",
+    if (!PyArg_ParseTuple(args, "sssssssOssiiiiid",
                             &sta_list,
                             &cha_list,
                             &net_code,
@@ -56,12 +56,12 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
                                        "listinterp_out_flag, listinterp_in_flag, listinterp_tension)" );
         return NULL;
     }
-    
+
     if (!PyArray_Check(freqs_array)) {
         PyErr_SetString(EvalrespError, "Frequencies must be given as NumPy array." );
         return NULL;
     }
-    
+
     assert( sizeof(double) == 8 );
     if (!PyArray_TYPE(freqs_array) == NPY_FLOAT64) {
         PyErr_SetString(EvalrespError, "Frequencies must be of type double.");
@@ -86,34 +86,33 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
         PyErr_SetString(EvalrespError, "Function evresp() failed" );
         return NULL;
     }
-    
-    out_list = Py_BuildValue("[]");
 
+    out_list = Py_BuildValue("[]");
 
 
     r = first;
     while (r) {
-    
+
         array_dims[0] = nfreqs;
         rvec_array = PyArray_SimpleNew(1, array_dims, NPY_COMPLEX128);
         memcpy( PyArray_DATA((PyArrayObject*)rvec_array), r->rvec, nfreqs*16 );
-        
-        elem = Py_BuildValue("(s,s,s,s,N)",  
+
+        elem = Py_BuildValue("(s,s,s,s,N)",
             r->station, r->network, r->locid, r->channel, rvec_array);
-                
+
         PyList_Append(out_list, elem);
         Py_DECREF(elem);
-                
+
         r = r->next;
-    } 
-    free_response(r);
+    }
+    free_response(first);
 
     return out_list;
 }
 
 
 static PyMethodDef EVALRESPMethods[] = {
-    {"evalresp",  evresp_wrapper, METH_VARARGS, 
+    {"evalresp",  evresp_wrapper, METH_VARARGS,
     "" },
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
@@ -129,7 +128,7 @@ initevalresp_ext(void)
     import_array();
 
     EvalrespError = PyErr_NewException("evalresp_ext.error", NULL, NULL);
-    Py_INCREF(EvalrespError);  /* required, because other code could remove `error` 
+    Py_INCREF(EvalrespError);  /* required, because other code could remove `error`
                                from the module, what would create a dangling
                                pointer. */
     PyModule_AddObject(m, "EvalrespError", EvalrespError);

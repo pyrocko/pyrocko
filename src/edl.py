@@ -22,6 +22,7 @@ def hexdump(chars, sep=' ', width=16):
 def quotechars(chars):
     return ''.join(['.', c][c.isalnum()] for c in chars)
 
+
 MINBLOCKSIZE = 192
 
 
@@ -55,6 +56,7 @@ class NoGPSTime(GPSError):
 
 class GPSTimeNotUTC(GPSError):
     pass
+
 
 block_def = {}
 

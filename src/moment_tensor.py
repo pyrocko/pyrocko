@@ -1,4 +1,3 @@
-
 import random
 import math
 import numpy as num
@@ -166,19 +165,21 @@ def moment_to_magnitude(moment):
 def magnitude_to_moment(magnitude):
     return 10.0**(1.5*(magnitude+10.7))*1.0e-7
 
+
 magnitude_1Nm = moment_to_magnitude(1.0)
 
 
 def euler_to_matrix(alpha, beta, gamma):
-    '''Given the euler angles alpha,beta,gamma, create rotation matrix
+    '''Given euler angle triplet, create rotation matrix
 
-    Given coordinate system (x,y,z) and rotated system (xs,ys,zs)
-    the line of nodes is the intersection between the x-y and the xs-ys
+    Given coordinate system `(x,y,z)` and rotated system `(xs,ys,zs)`
+    the line of nodes is the intersection between the `x,y` and the `xs,ys`
     planes.
 
-    :param alpha: is the angle between the z-axis and the zs-axis [rad]
-    :param beta:  is the angle between the x-axis and the line of nodes [rad]
-    :param gamma: is the angle between the line of nodes and the xs-axis [rad]
+    :param alpha: is the angle between the `z`-axis and the `zs`-axis [rad]
+    :param beta:  is the angle between the `x`-axis and the line of nodes [rad]
+    :param gamma: is the angle between the line of nodes and the `xs`-axis
+        [rad]
 
     Usage for moment tensors::
 
@@ -304,6 +305,7 @@ def eigh_check(a):
     assert evals[0] <= evals[1] <= evals[2]
     return evals, evecs
 
+
 r2d = 180./math.pi
 d2r = 1./r2d
 
@@ -356,7 +358,7 @@ class MomentTensor(Object):
 
     :param m: NumPy matrix in north-east-down convention
     :param m_up_south_east: NumPy matrix in up-south-east convention
-    :param strike, dip, rake: fault plane angles in [degrees]
+    :param strike,dip,rake: fault plane angles in [degrees]
     :param scalar_moment: scalar moment in [Nm]
     '''
 
@@ -415,7 +417,7 @@ class MomentTensor(Object):
         or NumPy array with 3x3 or 3, 4, 6, or 7 elements to build a Moment
         tensor object.
 
-        The *values* argument is interpreted depending on shape as follows::
+        The ``values`` argument is interpreted depending on shape as follows::
 
             [strike, dip, rake]
             [strike, dip, rake, magnitude]
@@ -826,6 +828,7 @@ def _tpb2q(t, p, b):
 
     return q
 
+
 _pbt2tpb = num.matrix(((0., 0., 1.), (1., 0., 0.), (0., 1., 0.)))
 
 
@@ -846,3 +849,11 @@ def kagan_angle(mt1, mt2):
     qk = _tpb2q(tk, pk, bk)
 
     return 2. * r2d * math.acos(num.max(num.abs(qk)))
+
+
+if __name__ == '__main__':
+
+    import sys
+    v = map(float, sys.argv[1:])
+    mt = MomentTensor.from_values(v)
+    print mt

@@ -1,0 +1,52 @@
+AF African Plate
+AM Amurian Plate
+AN Antarctic Plate
+AP Altiplano Plate
+AR Arabian Plate
+AS Aegean Sea Plate
+AT Anatolian Plate
+AU Australian Plate
+BH Bird's Head Plate
+BR Balmoral Reef Plate
+BS Banda Sea Plate
+BU Burma Plate
+CA Caribbean Plate
+CL Caroline Plate
+CO Cocos Plate
+CR Conway Reef Plate
+EA Easter Plate
+EU Eurasian Plate
+FT Futuna Plate
+GP Galapagos Microplate
+IN Indian Plate
+JF Juan de Fuca Plate
+JZ Juan Fernandez Plate
+KE Kermadec Plate
+MA Mariana Plate
+MN Manus Plate
+MO Maoke Plate
+MS Molucca Sea Plate
+NA North American Plate
+NB North Bismarck Plate
+ND North Andes Plate
+NH New Hebrides Plate
+NI Niuafo'ou Plate
+NZ Nazca Plate
+OK Okhotsk Plate
+ON Okinawa Plate
+PA Pacific Plate
+PM Panama Plate
+PS Philippine Sea Plate
+RI Rivera Plate
+SA South American Plate
+SB South Bismarck Plate
+SC Scotia Plate
+SL Shetland Plate
+SO Somali Plate
+SS Solomon Sea Plate
+SU Sunda Plate
+SW South Sandwich Plate
+TI Timor Plate
+TO Tonga Plate
+WL Woodlark Plate
+YA Yangtze Plate

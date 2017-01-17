@@ -88,6 +88,7 @@ def positive_region(region):
 def ascii_str(u):
     return u.encode('ascii', 'replace')
 
+
 geoname_types = (
     int, unicode, ascii_str, unicode, float, float, str, str, str, str,
     unicode, unicode, unicode, unicode, int, str, str, str, str)

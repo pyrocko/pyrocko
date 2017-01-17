@@ -1,4 +1,3 @@
-
 import os
 import signal
 import errno
@@ -154,5 +153,6 @@ class Builder:
                 signal.signal(signal.SIGINT, original)
 
         os.remove(status_fn)
+
 
 __all__ = ['Builder']

@@ -222,9 +222,9 @@ class Range(SObject):
     existing range, the existing range's specification values would be filled
     in where missing.
 
-    The values are distributed with equal spacing, unless the *spacing*
+    The values are distributed with equal spacing, unless the ``spacing``
     argument is modified.  The values can be created offset or relative to an
-    external base value with the *relative* argument if the use context
+    external base value with the ``relative`` argument if the use context
     supports this.
 
     The range specification can be expressed with a short string
@@ -538,9 +538,9 @@ class Cloneable(object):
         Make a copy of the object.
 
         A new object of the same class is created and initialized with the
-        parameters of the object on which this method is called on. If `kwargs`
-        are given, these are used to override any of the initialization
-        parameters.
+        parameters of the object on which this method is called on. If
+        ``kwargs`` are given, these are used to override any of the
+        initialization parameters.
         '''
 
         d = dict(self)
@@ -1560,17 +1560,21 @@ class DoubleDCSource(SourceWithMagnitude):
     stf1 = STF.T(
         optional=True,
         help='Source time function of subsource 1 '
-             '(if given, overrides STF from attribute `stf`)')
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
 
     stf2 = STF.T(
         optional=True,
         help='Source time function of subsource 2 '
-             '(if given, overrides STF from attribute `stf`)')
+             '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
 
     discretized_source_class = meta.DiscretizedMTSource
 
     def base_key(self):
-        return Source.base_key(self) + (
+        return (
+            self.depth, self.lat, self.north_shift,
+            self.lon, self.east_shift, type(self)) + \
+            self.effective_stf1_pre().base_key() + \
+            self.effective_stf2_pre().base_key() + (
             self.strike1, self.dip1, self.rake1,
             self.strike2, self.dip2, self.rake2,
             self.delta_time, self.delta_depth,
@@ -1580,16 +1584,47 @@ class DoubleDCSource(SourceWithMagnitude):
         return self.moment
 
     def effective_stf1_pre(self):
-        if self.stf1 is not None:
-            return self.stf1
-        else:
-            return self.effective_stf_pre()
+        return self.stf1 or self.stf or g_unit_pulse
 
     def effective_stf2_pre(self):
-        if self.stf2 is not None:
-            return self.stf2
-        else:
-            return self.effective_stf_pre()
+        return self.stf2 or self.stf or g_unit_pulse
+
+    def effective_stf_post(self):
+        return g_unit_pulse
+
+    def split(self):
+        a1 = 1.0 - self.mix
+        a2 = self.mix
+        delta_north = math.cos(self.azimuth*d2r) * self.distance
+        delta_east = math.sin(self.azimuth*d2r) * self.distance
+
+        dc1 = DCSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time - self.delta_time*a1,
+            north_shift=self.north_shift - delta_north*a1,
+            east_shift=self.east_shift - delta_east*a1,
+            depth=self.depth - self.delta_depth*a1,
+            moment=self.moment*a1,
+            strike=self.strike1,
+            dip=self.dip1,
+            rake=self.rake1,
+            stf=self.stf1 or self.stf)
+
+        dc2 = DCSource(
+            lat=self.lat,
+            lon=self.lon,
+            time=self.time + self.delta_time*a2,
+            north_shift=self.north_shift + delta_north*a2,
+            east_shift=self.east_shift + delta_east*a2,
+            depth=self.depth + self.delta_depth*a2,
+            moment=self.moment*a2,
+            strike=self.strike2,
+            dip=self.dip2,
+            rake=self.rake2,
+            stf=self.stf2 or self.stf)
+
+        return [dc1, dc2]
 
     def discretize_basesource(self, store, target=None):
         a1 = 1.0 - self.mix
@@ -1599,8 +1634,8 @@ class DoubleDCSource(SourceWithMagnitude):
         mot2 = mt.MomentTensor(strike=self.strike2, dip=self.dip2,
                                rake=self.rake2, scalar_moment=a2)
 
-        delta_north = math.cos(self.azimuth*d2r)
-        delta_east = math.sin(self.azimuth*d2r)
+        delta_north = math.cos(self.azimuth*d2r) * self.distance
+        delta_east = math.sin(self.azimuth*d2r) * self.distance
 
         times1, amplitudes1 = self.effective_stf1_pre().discretize_t(
             store.config.deltat, -self.delta_time*a1)
@@ -1662,7 +1697,11 @@ class DoubleDCSource(SourceWithMagnitude):
                 magnitude=float(mt.moment_magnitude()))
 
         d.update(kwargs)
-        return super(DoubleDCSource, cls).from_pyrocko_event(ev, **d)
+        source = super(DoubleDCSource, cls).from_pyrocko_event(ev, **d)
+        source.stf1 = source.stf
+        source.stf2 = HalfSinusoidSTF(effective_duration=0.)
+        source.stf = None
+        return source
 
 
 class RingfaultSource(SourceWithMagnitude):
@@ -2456,9 +2495,10 @@ class LocalEngine(Engine):
         :param store_id: identifier of the store (optional)
         :returns: :py:class:`pyrocko.gf.store.Store` object
 
-        If no *store_id* is provided the store
-        associated with the *default_store_id* is returned.
-        Raises :py:exc:`NoDefaultStoreSet` if *default_store_id* is undefined.
+        If no ``store_id`` is provided the store
+        associated with the :py:gattr:`default_store_id` is returned.
+        Raises :py:exc:`NoDefaultStoreSet` if :py:gattr:`default_store_id` is
+        undefined.
         '''
 
         if store_id is None:
@@ -2838,6 +2878,7 @@ BadRequest
 NoSuchStore
 InterpolationMethod
 OptimizationMethod
+STFMode
 Filter
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
 Target

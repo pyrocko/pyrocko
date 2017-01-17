@@ -41,27 +41,23 @@ def clean_poly(points):
     return points
 
 
+def close_poly(points):
+    if not num.all(points[0, :] == points[-1, :]):
+        points = num.vstack((points, points[0:1, :]))
+
+    return points
+
+
 def circulation(points, axis):
-    points2 = points[:, ((axis+2) % 3, (axis+1) % 3)]
-    phi1 = num.arctan2(points2[:, 1], points2[:, 0])
-    points2[:, 0] += num.cos(phi1) * (1.0-abs(points[:, axis]))
-    points2[:, 1] += num.sin(phi1) * (1.0-abs(points[:, axis]))
-    points2 = clean_poly(points2)
-    vecs = points2[1:] - points2[:-1]
-    vecs = num.vstack((vecs, vecs[0:1, :]))
-    av = vecs[:-1, :]
-    bv = vecs[1:, :]
-    zs = num.cross(av, bv)
-    phi = num.arcsin(zs / (vnorm(av) * vnorm(bv)))
-    flip = num.sum(av*bv, axis=1) < 0.0
-    phi[flip] = num.sign(phi[flip])*(PI - num.abs(phi[flip]))
-    if num.any(phi == PI) or num.any(phi == -PI):
-        raise BeachballError('ambiguous circulation')
+    points2 = points[:, ((axis+2) % 3, (axis+1) % 3)].copy()
+    points2 *= 1.0 / num.sqrt(1.0 + num.abs(points[:, 2]))[:, num.newaxis]
 
-    result = num.sum(phi) / (2.0*PI)
-    if int(round(result*100.)) not in [100, -100]:
-        raise BeachballError('circulation error')
+    result = -num.sum(
+        (points2[1:, 0] - points2[:-1, 0]) *
+        (points2[1:, 1] + points2[:-1, 1]))
 
+    result -= (points2[0, 0] - points2[-1, 0]) \
+        * (points2[0, 1] + points2[-1, 1])
     return result
 
 
@@ -436,6 +432,46 @@ def choose_transform(axes, size_units, position, size):
     return transform, position, size
 
 
+def mt2beachball(
+        mt,
+        beachball_type='deviatoric',
+        position=(0., 0.),
+        size=None,
+        color_t='red',
+        color_p='white',
+        edgecolor='black',
+        linewidth=2,
+        projection='lambert'):
+
+    position = num.asarray(position, dtype=num.float)
+    size = size or 1
+    mt = deco_part(mt, beachball_type)
+
+    eig = mt.eigensystem()
+    if eig[0] == 0. and eig[1] == 0. and eig[2] == 0:
+        raise BeachballError('eigenvalues are zero')
+
+    data = []
+    for (group, patches, patches_lower, patches_upper,
+            lines, lines_lower, lines_upper) in eig2gx(eig):
+
+        if group == 'P':
+            color = color_p
+        else:
+            color = color_t
+
+        for poly in patches_upper:
+            verts = project(poly, projection)[:, ::-1] * size + \
+                position[NA, :]
+            data.append((verts, color, color, 1.0))
+
+        for poly in lines_upper:
+            verts = project(poly, projection)[:, ::-1] * size + \
+                position[NA, :]
+            data.append((verts, 'none', edgecolor, linewidth))
+    return data
+
+
 def plot_beachball_mpl(
         mt, axes,
         beachball_type='deviatoric',
@@ -458,7 +494,7 @@ def plot_beachball_mpl(
     :param beachball_type: ``'deviatoric'`` (default), ``'full'``, or ``'dc'``
     :param position: position of the beachball in data coordinates
     :param size: diameter of the beachball either in points or in data
-        coordinates, depending on the *size_units* setting
+        coordinates, depending on the ``size_units`` setting
     :param zorder: (passed through to matplotlib drawing functions)
     :param color_t: color for compressional quadrants (default: ``'red'``)
     :param color_p: color for extensive quadrants (default: ``'white'``)
@@ -497,7 +533,7 @@ def plot_beachball_mpl(
         for poly in patches_upper:
             verts = project(poly, projection)[:, ::-1] * size + position[NA, :]
             if alpha == 1.0:
-                data.append((Path(verts), color, color, 1.0))
+                data.append((Path(verts), color, color, linewidth))
             else:
                 data.append((Path(verts), color, 'none', 0.0))
 
@@ -628,6 +664,7 @@ def plot_beachball_mpl_pixmap(
         transform=transform,
         zorder=zorder,
         alpha=alpha)
+
 
 if __name__ == '__main__':
     import sys

@@ -340,12 +340,12 @@ class Leg(object):
 
         .. py:attribute:: depthmin
 
-           `None`, a number (a depth in [m]) or a string (an interface name),
+           ``None``, a number (a depth in [m]) or a string (an interface name),
            minimum depth.
 
         .. py:attribute:: depthmax
 
-           `None`, a number (a depth in [m]) or a string (an interface name),
+           ``None``, a number (a depth in [m]) or a string (an interface name),
            maximum depth.
 
     '''
@@ -2795,7 +2795,7 @@ class Ray(object):
         Three arrays (depth, distance, time) with points on the ray's path of
         propagation are returned. The number of points which are used in each
         ray segment (passage through one layer) may be controlled by the
-        `points_per_straight` parameter.
+        ``points_per_straight`` parameter.
         '''
         return self.path.zxt_path_subdivided(
             num.atleast_1d(self.p), self.endgaps,
@@ -2940,7 +2940,7 @@ class LayeredModel(object):
         :param direction: direction of traversal :py:const:`DOWN` or
             :py:const:`UP`.
 
-        Returns first layer which touches depth `z` (tolerant at boundaries).
+        Returns first layer which touches depth ``z`` (tolerant at boundaries).
         '''
 
         for l in self.layers(direction):
@@ -2958,7 +2958,7 @@ class LayeredModel(object):
             :py:const:`UP`
         :returns: object of type :py:class:`Material`
 
-        If given depth `z` happens to be at an interface, the material of the
+        If given depth ``z`` happens to be at an interface, the material of the
         first layer with respect to the the traversal ordering is returned.
         '''
 
@@ -3523,10 +3523,10 @@ class LayeredModel(object):
         possible, by a lower number of layers.  Piecewise linear functions are
         fitted against the original model parameter's piecewise linear
         functions.  Successively larger numbers of layers are tried, until the
-        difference to the original model is below `max_rel_error`. The
+        difference to the original model is below ``max_rel_error``. The
         difference is measured as the RMS error of the fit normalized by the
         mean of the input (i.e. the fitted curves should deviate, on average,
-        less than 0.1% from the input curves if `max_rel_error` = 0.001).'''
+        less than 0.1% from the input curves if ``max_rel_error`` = 0.001).'''
 
         mod_simple = LayeredModel()
 
@@ -3555,8 +3555,8 @@ class LayeredModel(object):
         :param depth_min: depth of upper cut or name of :py:class:`Interface`
         :param depth_max: depth of lower cut or name of :py:class:`Interface`
 
-        Interpolates a :py:class:`GradientLayer` at *depth_min* and/or
-        *depth_max*.'''
+        Interpolates a :py:class:`GradientLayer` at ``depth_min`` and/or
+        ``depth_max``.'''
 
         if isinstance(depth_min, basestring):
             depth_min = self.discontinuity(depth_min).z
@@ -3897,7 +3897,7 @@ def filled(v, *args, **kwargs):
     '''
     Create NumPy array filled with given value.
 
-    This works like :py:func:`numpy.ones` but initializes the array with `v`
+    This works like :py:func:`numpy.ones` but initializes the array with ``v``
     instead of ones.
     '''
     x = num.empty(*args, **kwargs)

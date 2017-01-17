@@ -1,4 +1,4 @@
-Fomosto Tutorial
+Fomosto tutorial
 ================
 
 Fomosto is a tool to help create and work with pre-calculated and stored
@@ -13,7 +13,7 @@ seismogram calculation over source imaging techniques to source inversion
 methods.  Calculation of Green's functions is a computationally expensive
 operation and it can be of advantage to calculate them in advance. The same
 Green's function traces can then be reused several or many times as required in
-a typical application. 
+a typical application.
 
 Regarding Green's function creation as an independent step in a use-case's
 processing chain encourages to store these in an application independant form.
@@ -31,7 +31,7 @@ Pyrocko contains a flexible framework to store and work with pre-calculated
 Green's functions. It is implemented in the :py:mod:`pyrocko.gf` subpackage.
 Also included, is a powerful front end tool to create, inspect, and manipulate
 Green's function stores: the :program:`fomosto` tool ("*forward model storage
-tool*"). 
+tool*").
 
 Invocation and online help
 --------------------------
@@ -44,7 +44,7 @@ started without any arguments.
 ::
 
     $ fomosto
-    Usage: fomosto <subcommand> <arguments> ... [options] 
+    Usage: fomosto <subcommand> <arguments> ... [options]
 
     Subcommands:
 
@@ -108,7 +108,7 @@ is created::
     |-- config       # (1)
     `-- extra/
         `-- qseis    # (2)
-   
+
 
 The file ``config`` (1) contains general settings and the file ``extra/qseis``
 (2) contains extra settings which are specific to the QSEIS modelling code.
@@ -116,7 +116,7 @@ These files are in the `YAML <http://yaml.org/>`_ format, which is good
 compromise between human and computer readability. The contents of the
 configuration files are disussed in the next section.  The default
 configuration produced by the ``fomosto init`` command can be used without any
-modifications for a quick functional test. 
+modifications for a quick functional test.
 
 First step is to create tabulated phase arrivals::
 
@@ -134,13 +134,13 @@ Now, we can calculate the Green's function traces::
     $ fomosto build
 
 Green's functions are built in parallel, if possible. The number of worker processes
-may be limited with the ``--nworkers=N`` option. 
+may be limited with the ``--nworkers=N`` option.
 
 We now have a complete Green's function store, ready to be used. This is the
 directory structure of the store::
 
     my_first_gfs/         # this directory represents the GF store
-    |-- config            # general settings 
+    |-- config            # general settings
     |-- decimated/        # directory for decimated variants of the store
     |-- extra/            # any extra meta information is in here
     |   `-- qseis         # e.g. parameters used for the initial modelling
@@ -155,17 +155,17 @@ directory structure of the store::
     `-- traces            # big binary file with the actual GF data samples
 
 We may now want to change some configuration values and rebuild the Green's
-functions. 
+functions.
 
 Configuration
 -------------
-    
+
 .. highlight :: yaml
 
 These are the initial contents of the ``config`` file::
 
 
-    --- !pyrocko.gf.meta.ConfigTypeA  # this type is for cylindrical symmetry with 
+    --- !pyrocko.gf.meta.ConfigTypeA  # this type is for cylindrical symmetry with
                                       # receivers all at the same depth
 
     # this label should be set to something unique if the GF store should be published
@@ -174,8 +174,8 @@ These are the initial contents of the ``config`` file::
     # indicates, that QSEIS is/was used for the modelling
     modelling_code_id: qseis
 
-    # a layered earth model, used for modelling of the Green's functions 
-    # and for calculation of phase arrivals. Format is the 'nd' format 
+    # a layered earth model, used for modelling of the Green's functions
+    # and for calculation of phase arrivals. Format is the 'nd' format
     # as used in cake.
 
     earthmodel_1d: |2  # '|2' means that a text block indented with 2 blanks follows
@@ -185,16 +185,16 @@ These are the initial contents of the ``config`` file::
          35.             6.5            3.85           2.9         1283.           600.
       mantle
          35.             8.04           4.48           3.58        1449.           600.
-         
+
          ...
-    
+
     sample_rate: 0.2  # [Hz]
     ncomponents: 10   # number of Green's function components (always use 10 with QSEIS).
 
-    # travel time tables are calculated for the phase arrivals defined below 
+    # travel time tables are calculated for the phase arrivals defined below
     # the travel time tables can be referenced at other points in the configuration
     # by their id
-    tabulated_phases: 
+    tabulated_phases:
     - !pyrocko.gf.meta.TPDef
       id: begin
       definition: p,P,p\,P\,Pv_(cmb)p     # phase defintions in *cake* syntax, first available arrival is used
@@ -208,7 +208,7 @@ These are the initial contents of the ``config`` file::
       ...
 
     # uniform receiver depth with this type of GF config
-    receiver_depth: 0.0  # [m]          
+    receiver_depth: 0.0  # [m]
 
     # extents and spacing of the GF traces [m]
     source_depth_min: 10000.0
@@ -230,7 +230,7 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
     # with the folowing setting, Green's functions will be calculated for (at
     # least) the time region between  'begin' minus 50 seconds to 'end' plus 100
     # seconds, where 'begin' and  'end' are tabulated phases as defined in the
-    # main main configuration 
+    # main main configuration
 
     time_region: [begin-50, end+100]  # see note below
 
@@ -238,7 +238,7 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
 
     cut: [begin-50, end+100]  # see note below
 
-    # following docs are excerpts from the QSEIS documentation 
+    # following docs are excerpts from the QSEIS documentation
 
     # select slowness integration algorithm (0 = suggested for full wave-field
     # modelling; 1 or 2 = suggested when using a slowness window with narrow
@@ -295,15 +295,15 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
     gradient_resolution_vp: 0.0
     gradient_resolution_vs: 0.0
     gradient_resolution_density: 0.0
-    
+
     # wavelet duration [unit = time sample rather than sec!], that is about
     # equal to the half-amplitude cut-off period of the wavelet (> 0. if <= 0,
-    # then default value = 2 time samples will be used) 
+    # then default value = 2 time samples will be used)
 
     wavelet_duration_samples: 0.001
 
-    # switch for the wavelet form (0 = user's own wavelet; 1 = default wavelet: 
-    # normalized square half-sinusoid for simulating a physical delta impulse; 
+    # switch for the wavelet form (0 = user's own wavelet; 1 = default wavelet:
+    # normalized square half-sinusoid for simulating a physical delta impulse;
     # 2 = tapered Heaviside wavelet, i.e. integral of wavelet 1)
 
     wavelet_type: 2
@@ -311,7 +311,7 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
 .. highlight:: console
 
 .. note::
-   
+
     The syntax for the timings in the ``time_region`` and ``cut`` in the above
     example configuration is described in :py:class:`pyrocko.gf.meta.Timing`.
 
@@ -351,7 +351,7 @@ the surface and *f_max* is the highest frequency to be analysed. For example if
 we want to study waveforms in a frequency range of up to 2 Hz and the slowest
 horizontal velocities are 2 km/s, we need a grid spacing well below 1 km so we
 may try with 250 m. The Green's functions should be calculated with a temporal
-sampling rate of at least 4 Hz in this example, better more. 
+sampling rate of at least 4 Hz in this example, better more.
 
 Typically there is some trial and error involved in determining a stable and
 efficient set of parameters for a new modelling setup. The strategy is to first
@@ -448,11 +448,11 @@ example if we want to extend an existing store with more additional source
 depths, or if we wish to extract a subset of an existing database.  This is
 done with Fomosto by creating an empty target store with the desired extents
 and by then copying the relevant traces from the source stores to the target
-store. 
+store.
 
 1) Create empty copy of ``my_first_gfs``::
 
-        $ fomosto init redeploy my_first_gfs derived  
+        $ fomosto init redeploy my_first_gfs derived
 
 2) Adjust parameters in ``derived/config``; e.g. change the extents of the
    store.
@@ -464,33 +464,33 @@ store.
 
       $ fomosto redeploy my_first_gfs derived
 
-Python Script Examples
+Python script examples
 ----------------------
 
-Retrieve synthetic seismograms from a local store 
+Retrieve synthetic seismograms from a local store
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. highlight:: python
 
-It is assumed that a :py:class:`pyrocko.gf.store.Store` with store ID 
-*crust2_dd* has been downloaded in advance. A list of currently available 
-stores can be found at http://kinherd.org/gfs.html as well as how to download 
-such stores. 
+It is assumed that a :py:class:`pyrocko.gf.store.Store` with store ID
+*crust2_dd* has been downloaded in advance. A list of currently available
+stores can be found at http://kinherd.org/gfs.html as well as how to download
+such stores.
 
 ::
 
     from pyrocko.gf import LocalEngine, Target, DCSource
     from pyrocko import trace
     from pyrocko.gui_util import PhaseMarker
-    
+
     # We need a pyrocko.gf.Engine object which provides us with the traces
     # extracted from the store. In this case we are going to use a local
     # engine since we are going to query a local store.
     engine = LocalEngine(store_superdirs=['/media/usb/stores'])
-    
+
     # The store we are going extract data from:
     store_id = 'crust2_dd'
-    
+
     # Define a list of pyrocko.gf.Target objects, representing the recording
     # devices. In this case one station with a three component sensor will
     # serve fine for demonstation.
@@ -502,7 +502,7 @@ such stores.
             store_id=store_id,
             codes=('', 'STA', '', channel_code))
         for channel_code in channel_codes]
-    
+
     # Let's use a double couple source representation.
     source_dc = DCSource(
         lat=11.,
@@ -512,34 +512,34 @@ such stores.
         dip=40.,
         rake=60.,
         magnitude=4.)
-    
+
     # Processing that data will return a pyrocko.gf.Reponse object.
     response = engine.process(source_dc, targets)
-    
+
     # This will return a list of the requested traces:
     synthetic_traces = response.pyrocko_traces()
-    
-    # In addition to that it is also possible to extract interpolated travel times 
+
+    # In addition to that it is also possible to extract interpolated travel times
     # of phases which have been defined in the store's config file.
     store = engine.get_store(store_id)
-    
+
     markers = []
     for t in targets:
         dist = t.distance_to(source_dc)
         depth = source_dc.depth
         arrival_time = store.t('p', (depth, dist))
-        m = PhaseMarker(tmin=arrival_time, 
+        m = PhaseMarker(tmin=arrival_time,
                         tmax=arrival_time,
                         phasename='p',
                         nslc_ids=(t.codes,))
         markers.append(m)
-    
+
     # Processing that data will return a pyrocko.gf.Response object.
     response = engine.process(source_dc, targets)
-    
+
     # This will return a list of the requested traces:
     synthetic_traces = response.pyrocko_traces()
-    
+
     # Finally, let's scrutinize these traces.
     trace.snuffle(synthetic_traces, markers=markers)
 

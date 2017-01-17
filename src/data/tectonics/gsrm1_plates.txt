@@ -1,0 +1,19 @@
+EU Eurasian Plate
+NA North American Plate
+PA Pacific Plate
+SA South American Plate
+CA Caribbean Plate
+OK Okhotsk Plate
+PH Philippine Sea Plate
+NZ Nazca Plate
+AN Antarctic Plate
+AU Australian Plate
+IN Indian Plate
+AR Arabian Plate
+AT Anatolian Plate
+AM Amurian Plate
+SC Yangtze Plate
+SU Sunda Plate
+TA Tarim Plate
+NU African Plate
+SO Somali Plate

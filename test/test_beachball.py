@@ -31,6 +31,8 @@ def fuzz_angle(mi, ma):
 class BeachballTestCase(unittest.TestCase):
 
     def compare_beachball(self, mt, show=False, **kwargs):
+        import matplotlib
+        matplotlib.use('Agg')
         from matplotlib import pyplot as plt
         from matplotlib import image
 
@@ -228,6 +230,7 @@ class BeachballTestCase(unittest.TestCase):
 
         if nx == 1:
             plt.show()
+
 
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')

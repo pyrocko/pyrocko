@@ -196,6 +196,7 @@ def make_same_span(tracesdict):
 
     return out
 
+
 Zero = GFTrace(is_zero=True, itmin=0)
 
 
@@ -1029,15 +1030,15 @@ class Store(BaseStore):
         '''
         Create new GF store.
 
-        Creates a new GF store at path `store_dir`. The layout of the GF is
-        defined with the parameters given in `config`, which should be an
+        Creates a new GF store at path ``store_dir``. The layout of the GF is
+        defined with the parameters given in ``config``, which should be an
         object of a subclass of :py:class:`pyrocko.gf.meta.Config`. This
-        function will refuse to overwrite an existing GF store, unless `force`
-        is set  to ``True``. If more information, e.g. parameters used for the
-        modelling code, earth models or other, should be saved along with the
-        GF store, these may be provided though a dict given to `extra`. The
-        keys of this dict must be names and the values must be *guts* type
-        objects.
+        function will refuse to overwrite an existing GF store, unless
+        ``force`` is set  to ``True``. If more information, e.g. parameters
+        used for the modelling code, earth models or other, should be saved
+        along with the GF store, these may be provided though a dict given to
+        ``extra``. The keys of this dict must be names and the values must be
+        *guts* type objects.
 
         :param store_dir: GF Store path
         :type store_dir: string
@@ -1116,9 +1117,10 @@ class Store(BaseStore):
             c = self.config
 
             mscheme = 'type_' + c.short_type.lower()
-            print self.cstore, mscheme, c.mins, c.maxs, c.deltas, c.ns, c.ncomponents
             store_ext.store_mapping_init(
-                self.cstore, mscheme, c.mins, c.maxs, c.deltas, c.ns.astype(num.uint64), c.ncomponents)
+                self.cstore, mscheme,
+                c.mins, c.maxs, c.deltas, c.ns.astype(num.uint64),
+                c.ncomponents)
 
     def save_config(self, make_backup=False):
         config_fn = os.path.join(self.store_dir, 'config')
@@ -1165,13 +1167,13 @@ class Store(BaseStore):
         '''
         Insert trace into GF store.
 
-        Store a single GF trace at (high-level) index `args`.
+        Store a single GF trace at (high-level) index ``args``.
 
         :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
             :py:class:`pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
-        :returns: GF Trace at `args`
+        :returns: GF Trace at ``args``
         :rtype: :py:class:`pyrocko.gf.store.GFTrace`
         '''
 
@@ -1190,17 +1192,19 @@ class Store(BaseStore):
         '''
         Retrieve GF trace from store.
 
-        Retrieve a single GF trace from the store at (high-level) index `args`.
-        By default, the full trace is retrieved. Given `itmin` and `nsamples`,
-        only the selected portion of the trace is extracted. If `decimate` is
-        an integer in the range [2,8], the trace is decimated on the fly or, if
-        available, the trace is read from a decimated version of the GF store.
+        Retrieve a single GF trace from the store at (high-level) index
+        ``args``. By default, the full trace is retrieved. Given ``itmin`` and
+        ``nsamples``, only the selected portion of the trace is extracted. If
+        ``decimate`` is an integer in the range [2,8], the trace is decimated
+        on the fly or, if available, the trace is read from a decimated version
+        of the GF store.
 
         :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
             ``(source_depth, distance, component)`` as in
             :py:class:`pyrocko.gf.meta.ConfigTypeA`.
         :type args: tuple
-        :param itmin: Index of tmin (`itmin` * dt), defaults to None
+        :param itmin: Start time index (start time is ``itmin * dt``),
+            defaults to None
         :type itmin: integer, optional
         :param nsamples: Number of samples, defaults to None
         :type nsamples: integer, optional
@@ -1213,7 +1217,7 @@ class Store(BaseStore):
         :param implementation: Implementation mode, defaults to ``'c'``
         :type implementation: str, optional
 
-        :returns: GF Trace at `args`
+        :returns: GF Trace at ``args``
         :rtype: :py:class:`pyrocko.gf.store.GFTrace`
         '''
 
@@ -1248,13 +1252,12 @@ class Store(BaseStore):
         '''
         Sum delayed and weighted GF traces.
 
-        Calculate sum of delayed and weighted GF traces. `args` is a tuple of
+        Calculate sum of delayed and weighted GF traces. ``args`` is a tuple of
         arrays forming the (high-level) indices of the GF traces to be
         selected.  Delays and weights for the summation are given in the arrays
-        `delays` and `weights`. If `itmin` and `nsamples` are given,
-        computation is restricted to the output time range * (decimated)
-        sampling interval x [ itmin, (itmin + nsamples - 1) ]*.  If `decimate`
-        is an integer in the range [2,8], decimated traces are used in the
+        ``delays`` and ``weights``. ``itmin`` and ``nsamples`` can be given to
+        restrict to computation to a given time interval.  If ``decimate`` is
+        an integer in the range [2,8], decimated traces are used in the
         summation.
 
         :param args: :py:class:`pyrocko.gf.meta.Config` index tuple, e.g.
@@ -1265,7 +1268,8 @@ class Store(BaseStore):
         :type delays: :py:class:`numpy.Array`
         :param weights: Trace weights
         :type weights: :py:class:`numpy.Array`
-        :param itmin: Index of tmin (`itmin` * dt), defaults to None
+        :param itmin: Start time index (start time is ``itmin * dt``),
+            defaults to None
         :type itmin: integer, optional
         :param nsamples: Number of samples, defaults to None
         :type nsamples: integer, optional
@@ -1328,16 +1332,16 @@ class Store(BaseStore):
         Create decimated version of GF store.
 
         Create a downsampled version of the GF store. Downsampling is done for
-        the integer factor `decimate` which should be in the range [2,8].  If
-        `config` is ``None``, all traces of the GF store are decimated and held
-        available (i.e. the index mapping of the original store is used),
+        the integer factor ``decimate`` which should be in the range [2,8].  If
+        ``config`` is ``None``, all traces of the GF store are decimated and
+        held available (i.e. the index mapping of the original store is used),
         otherwise, a different spacial stepping can be specified by giving a
-        modified GF store configuration in `config` (see :py:meth:`create`).
-        Decimated GF sub-stores are created under the `decimated` subdirectory
-        within the GF store directory. Holding available decimated versions of
-        the GF store can save computation time, IO bandwidth, or decrease
-        memory footprint at the cost of increased disk space usage, when
-        computation are done for lower frequency signals.
+        modified GF store configuration in ``config`` (see :py:meth:`create`).
+        Decimated GF sub-stores are created under the ``decimated``
+        subdirectory within the GF store directory. Holding available decimated
+        versions of the GF store can save computation time, IO bandwidth, or
+        decrease memory footprint at the cost of increased disk space usage,
+        when computation are done for lower frequency signals.
 
         :param decimate: Decimate factor
         :type decimate: integer
@@ -1495,10 +1499,13 @@ class Store(BaseStore):
 
             return evaluate
 
-        elif provider == 'cake':
+        elif provider in ('cake', 'iaspei'):
             from pyrocko import cake
             mod = self.config.earthmodel_1d
-            phases = [cake.PhaseDef(phase_def)]
+            if provider == 'cake':
+                phases = [cake.PhaseDef(phase_def)]
+            else:
+                phases = cake.PhaseDef.classic(phase_def)
 
             def evaluate(args):
                 if len(args) == 2:
@@ -1555,7 +1562,7 @@ class Store(BaseStore):
             ``(source_depth, distance, component)`` as in
             :py:class:`pyrocko.gf.meta.ConfigTypeA`.
         :type \*args: tuple
-        :returns: Phase arrival according to `timing`
+        :returns: Phase arrival according to ``timing``
         :rtype: float or None
         '''
 
@@ -1583,8 +1590,8 @@ class Store(BaseStore):
         * ``'vred'``, ``'tmin_vred'``: slope [m/s] and offset [s] of reduction
           velocity [m/s] appropriate to catch begin timing over all GF points
         * ``'tlenmax_vred'``: maximum time length needed to cover all end
-          timings, when using linear slope given with (`vred`, `tmin_vred`) as
-          start
+          timings, when using linear slope given with (``vred``, ``tmin_vred``)
+          as start
         '''
 
         data = []

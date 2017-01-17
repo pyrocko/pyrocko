@@ -216,6 +216,7 @@ def papersize(paper, orientation='landscape', units='point'):
 
     return apply_units((w, h), units)
 
+
 papersize.__doc__ %= (_doc_papersizes, _doc_units)
 
 
@@ -320,8 +321,9 @@ class AutoScaler:
 
         Returns ``(minimum, maximum, increment)`` or ``(maximum, minimum,
         -increment)``, depending on whether data_range is ``(data_min,
-        data_max)`` or ``(data_max, data_min)``. If `override_mode` is defined,
-        the mode attribute is temporarily overridden by the given value.
+        data_max)`` or ``(data_max, data_min)``. If ``override_mode`` is
+        defined, the mode attribute is temporarily overridden by the given
+        value.
         '''
 
         data_min = min(data_range)
@@ -395,9 +397,9 @@ class AutoScaler:
             return mi, ma, inc
 
     def make_exp(self, x):
-        '''Get nice exponent for notation of `x`.
+        '''Get nice exponent for notation of ``x``.
 
-        For ax annotations, give tick increment as `x`.'''
+        For ax annotations, give tick increment as ``x``.'''
 
         if self.exp is not None:
             return self.exp
@@ -489,7 +491,7 @@ def mpl_margins(
     :param w: set ``left`` and ``right`` at once
     :param h: set ``top`` and ``bottom`` at once
     :param nw: number of subplots horizontally
-    :param nw: number of subplots vertically
+    :param nh: number of subplots vertically
     :param all: set ``left``, ``top``, ``right``, and ``bottom`` at once
     '''
 
@@ -553,6 +555,7 @@ def mpl_margins(
 
     return labelpos
 
+
 mpl_margins.__doc__ %= _doc_units
 
 
@@ -584,6 +587,7 @@ def mpl_papersize(paper, orientation='landscape'):
     '''
 
     return papersize(paper, orientation=orientation, units='inch')
+
 
 mpl_papersize.__doc__ %= _doc_papersizes
 

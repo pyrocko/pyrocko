@@ -6,6 +6,7 @@ import glob
 import copy
 import signal
 import math
+import time
 
 from tempfile import mkdtemp
 from subprocess import Popen, PIPE
@@ -622,6 +623,8 @@ class QSSPGFBuilder(gf.builder.Builder):
             'Starting step %i / %i, block %i / %i' %
             (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
+        tbeg = time.time()
+
         runner = QSSPRunner(tmp=self.tmp)
 
         conf.receiver_depth = rz/km
@@ -778,9 +781,10 @@ class QSSPGFBuilder(gf.builder.Builder):
                 if interrupted:
                     raise KeyboardInterrupt()
 
+        tend = time.time()
         logger.info(
-            'Done with step %i / %i, block %i / %i' % (
-                self.step+1, self.nsteps, iblock+1, self.nblocks))
+            'Done with step %i / %i, block %i / %i, wallclock time: %.0f s' % (
+                self.step+1, self.nsteps, iblock+1, self.nblocks, tend-tbeg))
 
 
 km = 1000.

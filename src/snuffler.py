@@ -411,10 +411,10 @@ class SnufflerWindow(qg.QMainWindow):
     def __init__(
             self, pile, stations=None, events=None, markers=None, ntracks=12,
             follow=None, controls=True, opengl=False):
-
         qg.QMainWindow.__init__(self)
 
         self.dockwidget_to_toggler = {}
+        self.dockwidgets = []
 
         self.setWindowTitle("Snuffler")
 
@@ -426,7 +426,6 @@ class SnufflerWindow(qg.QMainWindow):
         self.add_panel(
             'Markers', self.marker_editor, visible=False,
             where=qc.Qt.RightDockWidgetArea)
-
         if stations:
             self.get_view().add_stations(stations)
 
@@ -471,10 +470,6 @@ class SnufflerWindow(qg.QMainWindow):
     def get_view(self):
         return self.pile_viewer.get_view()
 
-    def dockwidgets(self):
-        return [w for w in self.findChildren(qg.QDockWidget)
-                if not w.isFloating()]
-
     def get_panel_parent_widget(self):
         return self
 
@@ -484,10 +479,14 @@ class SnufflerWindow(qg.QMainWindow):
     def add_panel(self, name, panel, visible=False, volatile=False,
                   where=qc.Qt.BottomDockWidgetArea):
 
-        dws = [dw for dw in self.dockwidgets()
-               if self.dockWidgetArea(dw) == where]
+        if not self.dockwidgets:
+            self.dockwidgets = []
+
+        dws = filter(lambda x: self.dockWidgetArea(x) == where,
+                     self.dockwidgets)
 
         dockwidget = qg.QDockWidget(name, self)
+        self.dockwidgets.append(dockwidget)
         dockwidget.setWidget(panel)
         panel.setParent(dockwidget)
         self.addDockWidget(where, dockwidget)
@@ -662,6 +661,7 @@ class Snuffler(qg.QApplication):
 
     def myQuit(self, *args):
         self.quit()
+
 
 app = None
 

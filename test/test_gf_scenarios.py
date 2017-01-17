@@ -292,6 +292,7 @@ class GFScenariosTestCase(unittest.TestCase):
             seis.close()
             del seis
 
+
 if __name__ == '__main__':
     util.setup_logging('test_gf_scenarios', 'warning')
     unittest.main()
