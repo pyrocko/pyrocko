@@ -307,6 +307,7 @@ int good_array(PyObject* o, int typenum_want, npy_intp size_want, int ndim_want,
         return 0;
     }
     if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)o)) {
+        printf("dim: %d\n", PyArray_NDIM((PyArrayObject*)o));
         PyErr_SetString(StoreExtError, "array is of unexpected ndim");
         return 0;
     }
@@ -1405,6 +1406,7 @@ static store_error_t make_sum_params(
                         for (isummand=0; isummand<nsummands; isummand++) {
                             ws[icomponent][iout+iip*nsummands+isummand] = weights_ip[iip] * ws_this[icomponent*NSUMMANDS_MAX + isummand];
                             irecords[icomponent][iout+iip*nsummands+isummand] = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
+                            /*printf("%d\n", iout+iip*nsummands+isummand);*/
                         }
                     }
                 }

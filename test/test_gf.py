@@ -7,12 +7,13 @@ import unittest
 from tempfile import mkdtemp
 import logging
 import numpy as num
+from common import Benchmark
 
 from pyrocko import gf, util, cake
 
 
 logger = logging.getLogger('test_gf.py')
-
+benchmark = Benchmark()
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
@@ -715,7 +716,9 @@ class GFTestCase(unittest.TestCase):
         interpolation = 'nearest_neighbor'
         for xxx in [0., 1*km, 2*km, 5*km, 8*km]:
             source = gf.RectangularSource(
-                    lat=0., lon=0., depth=10*km, north_shift=0.1, east_shift=0.1, width=xxx, length=xxx)
+                lat=0., lon=0.,
+                depth=10*km, north_shift=0.1, east_shift=0.1,
+                width=xxx, length=xxx)
 
             targets = [gf.Target(
                 lat=random.random()*10.,
@@ -724,27 +727,47 @@ class GFTestCase(unittest.TestCase):
                 east_shift=0.1) for x in xrange(1)]
 
             dsources = [
-                source.discretize_basesource(store, target) for target in targets]
+                source.discretize_basesource(store, target)
+                for target in targets]
 
-            source_coordss = [
-                dsource.coords5() for dsource in dsources]
+            source_coordss = num.array([
+                dsource.coords5() for dsource in dsources])
+            source_coordss = num.squeeze(source_coordss, 0)
+
+            mts = num.array([
+                dsource.m6s for dsource in dsources])
+            mts = num.squeeze(mts, 0)
 
             receiver_coords_combi = num.empty((len(targets), 5))
             for itarget, target in enumerate(targets):
                 receiver = target.receiver(store)
                 receiver_coords_combi[itarget, :] = \
                     [receiver.lat, receiver.lon, receiver.north_shift,
-                      receiver.east_shift, receiver.depth]
+                     receiver.east_shift, receiver.depth]
 
             t0 = time.time()
-            store_ext.make_sum_params(store.cstore, source_coordss[0], dsource.m6s, receiver_coords_combi, 'elastic10', interpolation)
+
+            store_ext.make_sum_params(
+                store.cstore,
+                source_coordss,
+                mts,
+                receiver_coords_combi,
+                'elastic10',
+                interpolation)
+
             t1 = time.time()
 
-            for itarget, source_coords, target in zip(xrange(len(targets)), source_coordss, targets):
-                store_ext.make_sum_params(store.cstore, source_coords, dsource.m6s, receiver_coords_combi[itarget:itarget+1, :], 'elastic10', interpolation)
+            # for itarget, source_coords, target in zip(
+            #   xrange(len(targets)), source_coordss, targets):
+            #     store_ext.make_sum_params(
+            #         store.cstore,
+            #         source_coords,
+            #         dsource.m6s,
+            #         receiver_coords_combi[itarget:itarget+1, :],
+            #         'elastic10',
+            #         interpolation)
 
-
-            t2 = time.time()
+            t2 = time.time()+1
 
             for dsource, target in zip(dsources, targets):
                 for (component, args, delays, weights) in \
@@ -760,11 +783,100 @@ class GFTestCase(unittest.TestCase):
                         delays = num.repeat(delays, neach)
 
             t3 = time.time()
+            print t1 - t0,\
+                t2 - t1,\
+                t3 - t2,\
+                'x %g' % ((t3 - t2) / (t1 - t0))
 
-            print t1 - t0, t2 - t1, t3 - t2, 'x %g' %((t3 - t2) / (t1 - t0)), 'x %g'% ((t3 - t2) / (t2 - t1))
+    def test_sum_benchmark(self):
+        from pyrocko.gf import store_ext
+        benchmark.show_factor = True
+
+        def test_weights_bench(store, dim, ntargets, interpolation):
+            source = gf.RectangularSource(
+                lat=0., lon=0.,
+                depth=10*km, north_shift=0.1, east_shift=0.1,
+                width=dim, length=dim)
+
+            targets = [gf.Target(
+                lat=random.random()*10.,
+                lon=random.random()*10.,
+                north_shift=0.1,
+                east_shift=0.1) for x in xrange(ntargets)]
+
+            dsources = [
+                source.discretize_basesource(store, target)
+                for target in targets]
+
+            source_coords_arr = num.array([
+                dsource.coords5()[0, :] for dsource in dsources])
+
+            mts_arr = num.array([
+                dsource.m6s[0, :] for dsource in dsources])
+
+            receiver_coords_arr = num.empty((len(targets), 5))
+            for itarget, target in enumerate(targets):
+                receiver = target.receiver(store)
+                receiver_coords_arr[itarget, :] = \
+                    [receiver.lat, receiver.lon, receiver.north_shift,
+                     receiver.east_shift, receiver.depth]
+
+            label = '_dim%dkm_nt%d_%s' % (int(dim)/1e3,
+                                          len(targets),
+                                          interpolation)
+
+            @benchmark.labeled('c%s' % label)
+            def sum_c():
+                return store_ext.make_sum_params(
+                    store.cstore,
+                    source_coords_arr,
+                    mts_arr,
+                    receiver_coords_arr,
+                    'elastic10',
+                    interpolation)
+
+            @benchmark.labeled('python%s' % label)
+            def sum_python():
+
+                for itar, target in enumerate(targets):
+                    receiver = target.receiver(store)
+                    dsource = source.discretize_basesource(store, target)
+
+                    for (component, args, delays, weights) in \
+                            store.config.make_sum_params(
+                                dsource, receiver):
+
+                        if interpolation == 'nearest_neighbor':
+                            irecords = store.config.irecords(*args)
+                        else:
+                            assert interpolation == 'multilinear'
+                            irecords, ip_weights =\
+                                store.config.vicinities(*args)
+                            neach = irecords.size / args[0].size
+                            weights = num.repeat(weights, neach)\
+                                * ip_weights
+                            delays = num.repeat(delays, neach)
+
+            rc = sum_c()
+            rp = sum_python()
+            print benchmark.__str__(header=False)
+            benchmark.clear()
+
+        '''
+        Testing loop
+        '''
+        dims = [1*km, 2*km, 5*km, 8*km]
+        ntargets = [100]
+
+        store = self.dummy_store()
+        store.open()
+
+        for d in dims:
+            for nt in ntargets:
+                test_weights_bench(store, d, nt, 'multilinear')
 
 
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main(defaultTest='GFTestCase.test_make_sum_table')
+    unittest.main(defaultTest='GFTestCase.test_sum_benchmark')
