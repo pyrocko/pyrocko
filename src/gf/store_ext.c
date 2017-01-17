@@ -146,6 +146,12 @@ static store_error_t irecord_function_type_a(const mapping_t*, const float64_t*,
 typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 static store_error_t vicinity_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
+typedef store_error_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
+static store_error_t irecord_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
+
+typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+static store_error_t vicinity_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+
 typedef struct {
     const char *name;
     const size_t vicinity_nip;
@@ -157,6 +163,7 @@ typedef struct {
 
 const mapping_scheme_t mapping_schemes[] = {
     {"type_a", 4, 2, irecord_function_type_a, vicinity_function_type_a},
+    {"type_b", 4, 2, irecord_function_type_b, vicinity_function_type_b},
     {NULL, 0, 0, NULL, NULL},
 };
 
@@ -1094,7 +1101,7 @@ static void distance_accurate50m(float64_t alat, float64_t alon, float64_t blat,
 
 
 static void distance4(const float64_t *a, const float64_t *b, float64_t *distance) {
-    /* azimuth and backazimuth for (lat,lon,north,east) coordinates */
+    /* Distance (lat,lon,north,east) coordinates */
 
     float64_t alat, alon, anorth, aeast;
     float64_t blat, blon, bnorth, beast;
@@ -1279,6 +1286,84 @@ static store_error_t vicinity_function_type_a(
     return SUCCESS;
 }
 
+static store_error_t irecord_function_type_b(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecord) {
+
+    float64_t v[2];
+    uint64_t i[3];
+    v[0] = source_coords[4];
+    distance4(source_coords, receiver_coords, &v[1]);
+    v[2] = receiver_coords[4];
+
+    i[0] = (uint64_t)(round((v[0] - mapping->mins[0]) / mapping->deltas[0]));
+    i[1] = (uint64_t)(round((v[1] - mapping->mins[1]) / mapping->deltas[1]));
+    i[2] = (uint64_t)(round((v[2] - mapping->mins[2]) / mapping->deltas[2]));
+    if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1] || i[2] >= mapping->ns[2]) {
+        return INDEX_OUT_OF_BOUNDS;
+    }
+    *irecord = i[0]*mapping->ns[0] + i[1]*mapping->ns[1] + i[2];
+    return SUCCESS;
+}
+
+static store_error_t vicinity_function_type_b(
+        const mapping_t *mapping,
+        const float64_t *source_coords,
+        const float64_t *receiver_coords,
+        uint64_t *irecords,
+        float64_t *weights) {
+
+    float64_t v[3], w_fl[3], w_ce[3];
+    float64_t x, x_fl, x_ce;
+    uint64_t i_fl[3], i_ce[3];
+    const uint64_t *ns;
+    size_t k;
+
+    v[0] = source_coords[4];
+    distance4(source_coords, receiver_coords, &v[1]);
+    v[2] = receiver_coords[4];
+
+    ns = mapping->ns;
+
+    for (k=0; k<3; k++) {
+        x = (v[k] - mapping->mins[k]) / mapping->deltas[k];
+        x_fl = floor(x);
+        x_ce = ceil(x);
+
+        w_fl[k] = 1.0 - (x - x_fl);
+        w_ce[k] = (1.0 - (x_ce - x)) * (x_ce - x_fl);
+
+        i_fl[k] = (uint64_t)x_fl;
+        i_ce[k] = (uint64_t)x_ce;
+
+        if (i_fl[k] >= ns[k] || i_ce[k] >= ns[k]) {
+            return INDEX_OUT_OF_BOUNDS;
+        }
+    }
+
+    /* irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig */
+    irecords[0] = i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2]*ns[2] + i_fl[2]*ns[2];
+    irecords[1] = i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2]*ns[2] + i_fl[2]*ns[2];
+    irecords[2] = i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2]*ns[2] + i_fl[2]*ns[2];
+    irecords[3] = i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2]*ns[2] + i_fl[2]*ns[2];
+    irecords[4] = i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2]*ns[2] + i_ce[2]*ns[2];
+    irecords[5] = i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2]*ns[2] + i_ce[2]*ns[2];
+    irecords[6] = i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2]*ns[2] + i_ce[2]*ns[2];
+    irecords[7] = i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2]*ns[2] + i_ce[2]*ns[2];
+
+    weights[0] = w_fl[0] * w_fl[1] * w_fl[2];
+    weights[1] = w_ce[0] * w_fl[1] * w_fl[2];
+    weights[2] = w_fl[0] * w_ce[1] * w_fl[2];
+    weights[3] = w_ce[0] * w_ce[1] * w_fl[2];
+    weights[4] = w_fl[0] * w_fl[1] * w_ce[2];
+    weights[5] = w_ce[0] * w_fl[1] * w_ce[2];
+    weights[6] = w_fl[0] * w_ce[1] * w_ce[2];
+    weights[7] = w_ce[0] * w_ce[1] * w_ce[2];
+    return SUCCESS;
+}
+
 static store_error_t make_sum_params(
         const float64_t *source_coords,
         const float64_t *ms,
@@ -1426,7 +1511,7 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     npy_intp shape_want_ms[2] = {-1, 6};
     float64_t *weights[NCOMPONENTS_MAX];
     uint64_t *irecords[NCOMPONENTS_MAX];
-    size_t icomponent;
+    size_t icomponent, vicinities_nip;
     size_t nsources, nreceivers;
     PyArrayObject *weights_arr, *irecords_arr;
     PyObject *out_list, *out_tuple;
@@ -1489,9 +1574,15 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     receiver_coords = PyArray_DATA((PyArrayObject*)receiver_coords_arr);
     nreceivers = PyArray_DIMS((PyArrayObject*)receiver_coords_arr)[0];
 
+    if (interpolation == NEAREST_NEIGHBOR) {
+        vicinities_nip = 1;
+    } else {
+        vicinities_nip = mscheme->vicinity_nip;
+    }
+
     out_list = Py_BuildValue("[]");
     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-        array_dims[0] = nsources * nreceivers * cscheme->nsummands[icomponent];
+        array_dims[0] = nsources * nreceivers * cscheme->nsummands[icomponent] * vicinities_nip;
         weights_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
         irecords_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_UINT64);
 
