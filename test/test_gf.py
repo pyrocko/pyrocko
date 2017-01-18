@@ -804,15 +804,9 @@ class GFTestCase(unittest.TestCase):
                 north_shift=0.1,
                 east_shift=0.1) for x in xrange(ntargets)]
 
-            dsources = [
-                source.discretize_basesource(store, target)
-                for target in targets]
-
-            source_coords_arr = num.array([
-                dsource.coords5()[0, :] for dsource in dsources])
-
-            mts_arr = num.array([
-                dsource.m6s[0, :] for dsource in dsources])
+            dsource = source.discretize_basesource(store, targets[0])
+            source_coords_arr = dsource.coords5()
+            mts_arr = dsource.m6s
 
             receiver_coords_arr = num.empty((len(targets), 5))
             for itarget, target in enumerate(targets):
@@ -820,10 +814,10 @@ class GFTestCase(unittest.TestCase):
                 receiver_coords_arr[itarget, :] = \
                     [receiver.lat, receiver.lon, receiver.north_shift,
                      receiver.east_shift, receiver.depth]
-
-            label = '_dim%dkm_nt%d_%s' % (int(dim)/1e3,
-                                          len(targets),
-                                          interpolation)
+            ns = mts_arr.shape[0]
+            label = '_ns%04d_nt%04d_%s' % (ns,
+                                           len(targets),
+                                           interpolation)
 
             @benchmark.labeled('c%s' % label)
             def sum_c():
@@ -835,46 +829,89 @@ class GFTestCase(unittest.TestCase):
                     'elastic10',
                     interpolation)
 
-            @benchmark.labeled('python%s' % label)
+            @benchmark.labeled('p%s' % label)
             def sum_python():
-
+                weights_c = []
+                irecords_c = []
                 for itar, target in enumerate(targets):
                     receiver = target.receiver(store)
                     dsource = source.discretize_basesource(store, target)
 
-                    for (component, args, delays, weights) in \
-                            store.config.make_sum_params(
-                                dsource, receiver):
+                    for i, (component, args, delays, weights) in \
+                            enumerate(store.config.make_sum_params(
+                                dsource, receiver)):
+                        if len(weights_c) <= i:
+                            weights_c.append([])
+                            irecords_c.append([])
 
                         if interpolation == 'nearest_neighbor':
-                            irecords = store.config.irecords(*args)
+                            irecords = num.array(store.config.irecords(*args))
+                            weights = num.array(weights)
                         else:
                             assert interpolation == 'multilinear'
                             irecords, ip_weights =\
                                 store.config.vicinities(*args)
                             neach = irecords.size / args[0].size
-                            weights = num.repeat(weights, neach)\
-                                * ip_weights
+                            weights = num.repeat(weights, neach) * ip_weights
                             delays = num.repeat(delays, neach)
+
+                        weights_c[i].append(weights)
+                        irecords_c[i].append(irecords)
+                for c in xrange(len(weights_c)):
+                    weights_c[c] = num.concatenate([w for w in weights_c[c]])
+                    irecords_c[c] = num.concatenate([ir for
+                                                     ir in irecords_c[c]])
+
+                return zip(weights_c, irecords_c)
 
             rc = sum_c()
             rp = sum_python()
+
             print benchmark.__str__(header=False)
             benchmark.clear()
+
+            # Comparing the results
+            if isinstance(store.config, gf.meta.ConfigTypeA):
+                idim = 4
+            elif isinstance(store.config, gf.meta.ConfigTypeB):
+                idim = 8
+            if interpolation == 'nearest_neighbor':
+                idim = 1
+
+            for i, nsummands in enumerate([6, 6, 4]):
+                for r in [0, 1]:
+                    r_c = rc[i][r]
+                    r_p = rp[i][r].reshape(ntargets, nsummands, ns*idim)
+                    r_p = num.transpose(r_p, axes=[0, 2, 1])
+
+                    num.testing.assert_almost_equal(r_c, r_p.flatten())
+                if False:
+                    print 'irecord_c: {0:>7}, {1:>7}'.format(
+                        rc[i][1].min(), rc[i][1].max())
+                    print 'irecord_p: {0:>7}, {1:>7}'.format(
+                        rp[i][1].min(), rp[i][1].max())
+
+                if False:
+                    print 'weights_c: {0:>7}, {1:>7}'.format(
+                        rc[i][0].min(), rc[i][0].max())
+                    print 'weights_p: {0:>7}, {1:>7}'.format(
+                        rp[i][0].min(), rp[i][0].max())
 
         '''
         Testing loop
         '''
-        dims = [1*km, 2*km, 5*km, 8*km]
-        ntargets = [100]
+        dims = [2*km, 5*km, 8*km, 16*km]
+        ntargets = [10, 100, 1000]
 
+        # dims = [16*km]
+        # ntargets = [1000]
         store = self.dummy_store()
         store.open()
 
-        for d in dims:
-            for nt in ntargets:
-                test_weights_bench(store, d, nt, 'multilinear')
-
+        for interpolation in ['multilinear', 'nearest_neighbor']:
+            for d in dims:
+                for nt in ntargets:
+                    test_weights_bench(store, d, nt, interpolation)
 
 
 if __name__ == '__main__':
