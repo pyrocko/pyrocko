@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 
 #if defined(__linux__)
   #include <endian.h>
@@ -1380,57 +1381,66 @@ static store_error_t make_sum_params(
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, iout;
     float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
-    uint64_t irecord_bases[VICINITY_NIP_MAX];
+    uint64_t irecord_bases[VICINITY_NIP_MAX], nthreads;
     float64_t weights_ip[VICINITY_NIP_MAX];
     store_error_t err;
 
     nip = mscheme->vicinity_nip;
+    Py_BEGIN_ALLOW_THREADS
+    #pragma omp parallel \
+        shared (source_coords, ms, receiver_coords, nsources, nreceivers, \
+                cscheme, mscheme, mapping, interpolation, ws, irecords, nip) \
+        private (ws_this, err, iout, nsummands, isource, icomponent, isummand, irecord_bases, weights_ip, iip) \
 
-    for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
-        for (isource=0; isource<nsources; isource++) {
-            cscheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], ws_this);
-            if (interpolation == MULTILINEAR)  {
-                err = mscheme->vicinity(
-                    mapping,
-                    &source_coords[isource*5],
-                    &receiver_coords[ireceiver*5],
-                    irecord_bases,
-                    weights_ip);
+    {
+        #pragma omp for schedule (dynamic)
+        for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
+            for (isource=0; isource<nsources; isource++) {
+                cscheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], ws_this);
+                if (interpolation == MULTILINEAR)  {
+                    err = mscheme->vicinity(
+                        mapping,
+                        &source_coords[isource*5],
+                        &receiver_coords[ireceiver*5],
+                        irecord_bases,
+                        weights_ip);
 
-                if (err != SUCCESS) return err;
+                    /*if (err != SUCCESS) return err;*/
 
-                for (iip=0; iip<nip; iip++) {
-                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                        iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent]*nip;
-                        nsummands = cscheme->nsummands[icomponent];
-                        for (isummand=0; isummand<nsummands; isummand++) {
-                            ws[icomponent][iout+iip*nsummands+isummand] = weights_ip[iip] * ws_this[icomponent*NSUMMANDS_MAX + isummand];
-                            irecords[icomponent][iout+iip*nsummands+isummand] = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
-                            /*printf("%d\n", iout+iip*nsummands+isummand);*/
+                    for (iip=0; iip<nip; iip++) {
+                        for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                            iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent]*nip;
+                            nsummands = cscheme->nsummands[icomponent];
+                            for (isummand=0; isummand<nsummands; isummand++) {
+                                ws[icomponent][iout+iip*nsummands+isummand] = weights_ip[iip] * ws_this[icomponent*NSUMMANDS_MAX + isummand];
+                                irecords[icomponent][iout+iip*nsummands+isummand] = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
+                                /*printf("%d\n", iout+iip*nsummands+isummand);*/
+                            }
                         }
                     }
-                }
-            } else if (interpolation == NEAREST_NEIGHBOR) {
-                err = mscheme->irecord(
-                    mapping,
-                    &source_coords[isource*5],
-                    &receiver_coords[ireceiver*5],
-                    irecord_bases);
+                } else if (interpolation == NEAREST_NEIGHBOR) {
+                    err = mscheme->irecord(
+                        mapping,
+                        &source_coords[isource*5],
+                        &receiver_coords[ireceiver*5],
+                        irecord_bases);
 
-                if (err != SUCCESS) return err;
+                    /*if (err != SUCCESS) return err;*/
 
-                for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
-                    iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent];
-                    nsummands = cscheme->nsummands[icomponent];
-                    for (isummand=0; isummand<nsummands; isummand++) {
-                        ws[icomponent][iout+isummand] = ws_this[icomponent*NSUMMANDS_MAX + isummand];
-                        irecords[icomponent][iout+isummand] = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+                    for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
+                        iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent];
+                        nsummands = cscheme->nsummands[icomponent];
+                        for (isummand=0; isummand<nsummands; isummand++) {
+                            ws[icomponent][iout+isummand] = ws_this[icomponent*NSUMMANDS_MAX + isummand];
+                            irecords[icomponent][iout+isummand] = irecord_bases[0] + cscheme->igs[icomponent][isummand];
+                        }
                     }
                 }
             }
         }
-    }
 
+    }
+    Py_END_ALLOW_THREADS
     return SUCCESS;
 }
 

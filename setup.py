@@ -396,7 +396,9 @@ setup(
         Extension(
             'gf.store_ext',
             include_dirs=[numpy.get_include()],
-            extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'],
+            extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra',
+                                '-fopenmp'],
+            extra_link_args=['-lgomp'],
             sources=[pjoin('src', 'gf', 'store_ext.c')]),
 
         Extension(
