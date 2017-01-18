@@ -1237,7 +1237,7 @@ static store_error_t irecord_function_type_a(
     if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1]) {
         return INDEX_OUT_OF_BOUNDS;
     }
-    *irecord = i[0]*mapping->ns[0] + i[1];
+    *irecord = (i[0]*mapping->ns[1] + i[1])*mapping->ng;
     return SUCCESS;
 }
 
@@ -1275,10 +1275,10 @@ static store_error_t vicinity_function_type_a(
         }
     }
 
-    irecords[0] = i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2];
-    irecords[1] = i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2];
-    irecords[2] = i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2];
-    irecords[3] = i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2];
+    irecords[0] = mapping->ng * (i_fl[0]*ns[1] + i_fl[1]);
+    irecords[1] = mapping->ng * (i_ce[0]*ns[1] + i_fl[1]);
+    irecords[2] = mapping->ng * (i_fl[0]*ns[1] + i_ce[1]);
+    irecords[3] = mapping->ng * (i_ce[0]*ns[1] + i_ce[1]);
 
     weights[0] = w_fl[0] * w_fl[1];
     weights[1] = w_ce[0] * w_fl[1];
@@ -1305,7 +1305,7 @@ static store_error_t irecord_function_type_b(
     if (i[0] >= mapping->ns[0] || i[1] >= mapping->ns[1] || i[2] >= mapping->ns[2]) {
         return INDEX_OUT_OF_BOUNDS;
     }
-    *irecord = i[0]*mapping->ns[0] + i[1]*mapping->ns[1] + i[2];
+    *irecord = (i[0]*mapping->ns[1]*mapping->ns[2] + i[1]*mapping->ns[2] + i[2]) * mapping->ng;
     return SUCCESS;
 }
 
@@ -1345,14 +1345,14 @@ static store_error_t vicinity_function_type_b(
     }
 
     /* irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig */
-    irecords[0] = i_fl[0]*ns[1]*ns[2]*ns[3] + i_fl[1]*ns[2]*ns[3] + i_fl[2]*ns[3];
-    irecords[1] = i_ce[0]*ns[1]*ns[2]*ns[3] + i_fl[1]*ns[2]*ns[3] + i_fl[2]*ns[3];
-    irecords[2] = i_fl[0]*ns[1]*ns[2]*ns[3] + i_ce[1]*ns[2]*ns[3] + i_fl[2]*ns[3];
-    irecords[3] = i_ce[0]*ns[1]*ns[2]*ns[3] + i_ce[1]*ns[2]*ns[3] + i_fl[2]*ns[3];
-    irecords[4] = i_fl[0]*ns[1]*ns[2]*ns[3] + i_fl[1]*ns[2]*ns[3] + i_ce[2]*ns[3];
-    irecords[5] = i_ce[0]*ns[1]*ns[2]*ns[3] + i_fl[1]*ns[2]*ns[3] + i_ce[2]*ns[3];
-    irecords[6] = i_fl[0]*ns[1]*ns[2]*ns[3] + i_ce[1]*ns[2]*ns[3] + i_ce[2]*ns[3];
-    irecords[7] = i_ce[0]*ns[1]*ns[2]*ns[3] + i_ce[1]*ns[2]*ns[3] + i_ce[2]*ns[3];
+    irecords[0] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_fl[2]);
+    irecords[1] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_fl[2]);
+    irecords[2] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_fl[2]);
+    irecords[3] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_fl[2]);
+    irecords[4] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_ce[2]);
+    irecords[5] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_fl[1]*ns[2] + i_ce[2]);
+    irecords[6] = mapping->ng * (i_fl[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_ce[2]);
+    irecords[7] = mapping->ng * (i_ce[0]*ns[1]*ns[2] + i_ce[1]*ns[2] + i_ce[2]);
 
     weights[0] = w_fl[0] * w_fl[1] * w_fl[2];
     weights[1] = w_ce[0] * w_fl[1] * w_fl[2];
