@@ -101,7 +101,7 @@ class Geofon(EarthquakeCatalog):
 
         ipage = 1
         while True:
-            url = ('http://geofon.gfz-potsdam.de/db/eqinfo.php?' + '&'.join([
+            url = ('http://geofon.gfz-potsdam.de/eqinfo/list.php?' + '&'.join([
                 'page=%i' % ipage,
                 'datemin=%s' % dmin,
                 'datemax=%s' % dmax,
@@ -132,7 +132,7 @@ class Geofon(EarthquakeCatalog):
         logger.debug('In Geofon.get_event("%s")' % name)
 
         if name not in self.events:
-            url = 'http://geofon.gfz-potsdam.de/db/eqpage.php?id=%s' % name
+            url = 'http://geofon.gfz-potsdam.de/eqinfo/event.php?id=%s' % name
             logger.debug('Opening URL: %s' % url)
             page = urllib2.urlopen(url).read()
             logger.debug('Received page (%i bytes)' % len(page))
