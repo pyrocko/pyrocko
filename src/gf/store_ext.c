@@ -1376,21 +1376,29 @@ static store_error_t make_sum_params(
         const mapping_scheme_t *mscheme,
         const mapping_t *mapping,
         interpolation_scheme_id interpolation,
+        int32_t nthreads,
         float64_t **ws,
         uint64_t **irecords) {
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, iout;
     float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
-    uint64_t irecord_bases[VICINITY_NIP_MAX], nthreads;
+    uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
     store_error_t err = SUCCESS;
+    
+    if (nthreads > omp_get_num_procs()) {
+        nthreads = omp_get_num_procs();
+        printf("make_sum_params - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
+    }
 
     nip = mscheme->vicinity_nip;
     Py_BEGIN_ALLOW_THREADS
     #pragma omp parallel \
         shared (source_coords, ms, receiver_coords, nsources, nreceivers, \
                 cscheme, mscheme, mapping, interpolation, ws, irecords, nip) \
-        private (ws_this, iout, nsummands, isource, icomponent, isummand, irecord_bases, weights_ip, iip)
+        private (ws_this, iout, nsummands, isource, icomponent, isummand, irecord_bases, weights_ip, iip) \
+        reduction (+: err) \
+        num_threads (nthreads)
     {
         #pragma omp for schedule (dynamic)
         for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
@@ -1422,7 +1430,6 @@ static store_error_t make_sum_params(
                         &receiver_coords[ireceiver*5],
                         irecord_bases);
 
-
                     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
                         iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent];
                         nsummands = cscheme->nsummands[icomponent];
@@ -1434,7 +1441,6 @@ static store_error_t make_sum_params(
                 }
             }
         }
-
     }
     Py_END_ALLOW_THREADS
     if (err != SUCCESS)
@@ -1520,6 +1526,7 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     npy_intp shape_want_ms[2] = {-1, 6};
     float64_t *weights[NCOMPONENTS_MAX];
     uint64_t *irecords[NCOMPONENTS_MAX];
+    int32_t nthreads;
     size_t icomponent, vicinities_nip;
     size_t nsources, nreceivers;
     PyArrayObject *weights_arr, *irecords_arr;
@@ -1535,10 +1542,11 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(
-            args, "OOOOss", &capsule, &source_coords_arr, &ms_arr,
+            args, "OOOOssI", &capsule, &source_coords_arr, &ms_arr,
             &receiver_coords_arr, &component_scheme_name, 
-            &interpolation_scheme_name)) {
-
+            &interpolation_scheme_name, &nthreads)) {
+        PyErr_SetString(StoreExtError,
+            "usage: make_sum_params(cstore, source_coords, moment_tensors, receiver_coords, component_scheme, interpolation_name, nthreads)");
         return NULL;
     }
 
@@ -1612,6 +1620,7 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
         mscheme,
         store->mapping,
         interpolation,
+        nthreads,
         weights,
         irecords);
 
