@@ -137,21 +137,26 @@ class Geofon(EarthquakeCatalog):
             page = urllib2.urlopen(url).read()
             logger.debug('Received page (%i bytes)' % len(page))
 
-            d = self._parse_event_page(page)
-            ev = model.Event(
-                lat=d['epicenter'][0],
-                lon=d['epicenter'][1],
-                time=d['time'],
-                name=name,
-                depth=d['depth'],
-                magnitude=d['magnitude'],
-                region=d['region'],
-                catalog='GEOFON')
+            try:
+                d = self._parse_event_page(page)
 
-            if d['have_moment_tensor']:
-                ev.moment_tensor = True
+                ev = model.Event(
+                    lat=d['epicenter'][0],
+                    lon=d['epicenter'][1],
+                    time=d['time'],
+                    name=name,
+                    depth=d['depth'],
+                    magnitude=d['magnitude'],
+                    region=d['region'],
+                    catalog='GEOFON')
 
-            self.events[name] = ev
+                if d['have_moment_tensor']:
+                    ev.moment_tensor = True
+
+                self.events[name] = ev
+
+            except NotFound:
+                raise NotFound(url)  # reraise with url
 
         ev = self.events[name]
 
@@ -290,6 +295,10 @@ class Geofon(EarthquakeCatalog):
                         d[k] = wanted_map[k](v)
 
         d['have_moment_tensor'] = page.find('Moment tensor solution') != -1
+
+        for k in wanted_map:
+            if k not in d:
+                raise NotFound()
 
         return d
 
@@ -615,12 +624,15 @@ class USGS(EarthquakeCatalog):
 
 
 class NotFound(Exception):
-    def __init__(self, url):
+    def __init__(self, url=None):
         Exception.__init__(self)
         self._url = url
 
     def __str__(self):
-        return 'No results for request %s' % self._url
+        if self._url:
+            return 'No results for request %s' % self._url
+        else:
+            return 'No results for request'
 
 
 def ws_request(url, post=False, **kwargs):
