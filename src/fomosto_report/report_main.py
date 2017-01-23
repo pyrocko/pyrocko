@@ -46,7 +46,7 @@ class FilterFrequencyError(GreensFunctionError):
     def __str__(self):
         return 'Cannot set {0} frequency to both an absolute and' \
                ' revlative value.'.format(self.frequency)
- 
+
 
 class SourceError(GreensFunctionError):
 
@@ -1168,7 +1168,7 @@ class GreensFunctionTest(Object):
         src1 = gft.createSource('DC', depth, 0., 90., 0., **kwargs)
         # src2 = gft.createSource('DC', depth, -90., 90., -90., **kwargs)
         src3 = gft.createSource('DC', depth, 45., 90., 180., **kwargs)
-        src4 = gft.createSource('Explosion', depth, 0., 90., **kwargs)
+        # src4 = gft.createSource('Explosion', depth, 0., 90., **kwargs)
 
         if 'store_id' not in kwargs:
             kwargs['store_id'] = gft.store_id
@@ -1180,7 +1180,7 @@ class GreensFunctionTest(Object):
         sen3 = gft.createSensors(strike=0., codes=('', 'STA', '', 'Z'),
                                  azimuth=0., dip=-90., **kwargs)
 
-        gft.trace_configs = [[src3, sen1], [src1,sen2], [src3, sen3]]
+        gft.trace_configs = [[src3, sen1], [src1, sen2], [src3, sen3]]
         # gft.trace_configs = [[src3, sen1]]
         # gft.trace_configs = [[src3, sen1], [src1, sen2], [src3, sen3],
         #                      [src4, 'all']]

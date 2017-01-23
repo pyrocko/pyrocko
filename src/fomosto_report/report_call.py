@@ -1,6 +1,5 @@
 import os
 import sys
-import imp
 from optparse import OptionParser, OptionGroup
 from collections import OrderedDict
 
@@ -469,6 +468,7 @@ def command_dnone(command, args):
     if out_filename is not None:
         return gfts, out_filename
 
+
 program_name = 'fomosto report'
 usage = 'Create a pdf of displacment and velocity traces, max. amplitude of' \
         ' traces and' \
@@ -477,6 +477,7 @@ usage = 'Create a pdf of displacment and velocity traces, max. amplitude of' \
         '{1}\n\nTo get further help and a list of available options for any' \
         ' subcommand run:\n\n{2}{0} <subcommand> --help\n\n'. \
         format(program_name, dict_to_string(subcmds_desc), ' '*4)
+
 
 def run_program(args):
     if len(args) < 1:
@@ -511,6 +512,7 @@ def run_program(args):
             else:
                 for i in lst[0]:
                     f.write(i.dump())
+
 
 if __name__ == '__main__':
     run_program(sys.argv)
