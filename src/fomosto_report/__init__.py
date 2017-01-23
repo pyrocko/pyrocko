@@ -1,2 +1,2 @@
-from report_main import *
-from report_call import *
+from report_main import * #noqa
+from report_call import * #noqa
