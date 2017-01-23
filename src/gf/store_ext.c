@@ -89,6 +89,7 @@ typedef enum {
     MMAP_INDEX_FAILED,
     MMAP_TRACES_FAILED,
     INDEX_OUT_OF_BOUNDS,
+    NTARGETS_OUT_OF_BOUNDS,
 } store_error_t;
 
 const char* store_error_names[] = {
@@ -107,6 +108,7 @@ const char* store_error_names[] = {
     "MMAP_INDEX_FAILED",
     "MMAP_TRACES_FAILED",
     "INDEX_OUT_OF_BOUNDS",
+    "NTARGETS_OUT_OF_BOUNDS",
 };
 
 #define NDIMS_CONTINUOUS_MAX 4
@@ -181,8 +183,6 @@ typedef struct {
     gf_dtype begin_value;
     gf_dtype end_value;
 } record_t;
-
-
 
 typedef struct {
     int f_index;
@@ -622,6 +622,82 @@ static store_error_t store_sum(
     result->end_value = end_value;
     result->data = out;
 
+    return SUCCESS;
+}
+
+static store_error_t store_sum_static(
+        const store_t *store,
+        const uint64_t *irecords,
+        const float32_t *delays,
+        const float32_t *weights,
+        int32_t it,
+        int32_t ntargets,
+        size_t nsummands,
+        gf_dtype *result) {
+
+    float32_t weight, delay;
+    trace_t trace;
+    float32_t deltat = store->deltat;
+    int idx;
+    int j, t;
+    uint n;
+    int idelay_floor, idelay_ceil;
+    float w1, w2;
+    store_error_t err;
+
+    if (0 == nsummands || 0 == ntargets)
+        return SUCCESS;
+
+    if (!inlimits(it))
+        return BAD_REQUEST;
+
+    result = NULL;
+    result = (gf_dtype*)calloc(ntargets, sizeof(gf_dtype));
+    if (result == NULL)
+        return ALLOC_FAILED;
+
+    for (t=0; t<ntargets; t++) {
+        for (n=0; n<nsummands; n++) {
+            j = t*nsummands + n;
+
+            delay = delays[j];
+            weight = weights[j];
+            idelay_floor = (int)floor(delay/deltat);
+            idelay_ceil = (int)ceil(delay/deltat);
+
+            if (0.0 == weight)
+                continue;
+
+            if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
+                free(result);
+                return BAD_REQUEST;
+            }
+
+            printf("%d\n", irecords[j]);
+
+            err = store_get(store, irecords[j], &trace);
+            if (SUCCESS != err) {
+                free(result);
+                return err;
+            }
+
+            if (trace.is_zero)
+                continue;
+
+            idx = it + idelay_floor - trace.itmin;
+            if (idx >= trace.nsamples)
+                idx = trace.nsamples - 1;
+
+            if (idelay_floor == idelay_ceil || (idx+1) >= trace.nsamples) {
+                result[t] = fe32toh(trace.data[idx]) * weight;
+            } else {
+                w1 = (idelay_ceil - delay/deltat) * weight;
+                w2 = (delay/deltat - idelay_floor) * weight;
+                result[t] += fe32toh(trace.data[idx + 1]) * w1
+                            + fe32toh(trace.data[idx]) * w2;
+            }
+        }
+    }
     return SUCCESS;
 }
 
@@ -1377,7 +1453,7 @@ static store_error_t make_sum_params(
         const mapping_t *mapping,
         interpolation_scheme_id interpolation,
         int32_t nthreads,
-        float64_t **ws,
+        float32_t **ws,
         uint64_t **irecords) {
 
     size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, iout;
@@ -1518,13 +1594,86 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
                          result.is_zero, result.begin_value, result.end_value);
 }
 
+static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
+    PyObject *capsule, *irecords_arr, *delays_arr, *weights_arr;
+    store_t *store;
+    gf_dtype *adata;
+    gf_dtype *result;
+    PyArrayObject *array = NULL;
+    uint64_t *irecords;
+    float32_t *delays, *weights;
+    npy_intp shape[1];
+    int32_t it, ntargets;
+    size_t nsummands;
+    store_error_t err;
+
+    (void)dummy; /* silence warning */
+
+    if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr,
+                                     &weights_arr, &it, &ntargets)) {
+        PyErr_SetString(StoreExtError,
+            "usage: store_sum_static(cstore, irecords, delays, weights, it, ntargets)");
+
+        return NULL;
+    }
+
+    store = get_store_from_capsule(capsule);
+    
+    nsummands = PyArray_SIZE((PyArrayObject*)irecords_arr) / ntargets;
+    if (store == NULL) {
+        PyErr_SetString(StoreExtError, "store_sum_static: invalid store");
+        return NULL;
+    }
+    if (!good_array(irecords_arr, NPY_UINT64, nsummands * ntargets, 1, NULL)) {
+            PyErr_SetString(StoreExtError, "store_sum_static: unhealthy irecords array");
+            return NULL;
+    }
+    if (!good_array(delays_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
+        PyErr_SetString(StoreExtError, "store_sum_static: unhealthy delays array");
+        return NULL;
+    }
+    if (!good_array(weights_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
+        PyErr_SetString(StoreExtError, "store_sum_static: unhealthy weights array");
+        return NULL;
+    }
+/*    if (!inlimits((uint64_t) PyArray_Max((PyArrayObject*)irecords_arr, 0))) {
+        PyErr_SetString(StoreExtError, "store_sum_static: referenced greensfunction exceeds database");
+        return NULL;
+    }*/
+    if (!inlimits(it)) {
+        PyErr_SetString(StoreExtError, "store_sum_static: invalid it argument");
+        return NULL;
+    }
+
+    printf("%d\n", nsummands);
+
+    irecords = PyArray_DATA((PyArrayObject*)irecords_arr);
+    delays = PyArray_DATA((PyArrayObject*)delays_arr);
+    weights = PyArray_DATA((PyArrayObject*)weights_arr);
+
+    err = store_sum_static(store, irecords, delays, weights, it, ntargets, nsummands, result);
+    if (SUCCESS != err) {
+        PyErr_SetString(StoreExtError, store_error_names[err]);
+        return NULL;
+    }
+
+    shape[0] = (npy_intp) ntargets;
+    /*array = (PyArrayObject*)PyArray_EMPTY(1, shape, NPY_FLOAT32, 0);*/
+    array = (PyArrayObject*)PyArray_SimpleNewFromData(1, shape, NPY_FLOAT32, result);
+    adata = (gf_dtype*)PyArray_DATA(array);
+    /*memcpy(adata, result, ntargets * sizeof(gf_dtype));
+    free(result); */
+
+    return Py_BuildValue("N", array);
+}
+
 
 static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     PyObject *capsule, *source_coords_arr, *receiver_coords_arr, *ms_arr;
     float64_t *source_coords, *receiver_coords, *ms;
     npy_intp shape_want_coords[2] = {-1, 5};
     npy_intp shape_want_ms[2] = {-1, 6};
-    float64_t *weights[NCOMPONENTS_MAX];
+    float32_t *weights[NCOMPONENTS_MAX];
     uint64_t *irecords[NCOMPONENTS_MAX];
     int32_t nthreads;
     size_t icomponent, vicinities_nip;
@@ -1598,7 +1747,7 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     out_list = Py_BuildValue("[]");
     for (icomponent=0; icomponent<cscheme->ncomponents; icomponent++) {
         array_dims[0] = nsources * nreceivers * cscheme->nsummands[icomponent] * vicinities_nip;
-        weights_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
+        weights_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_FLOAT32);
         irecords_arr = (PyArrayObject*)PyArray_SimpleNew(1, array_dims, NPY_UINT64);
 
         weights[icomponent] = PyArray_DATA(weights_arr);
@@ -1646,6 +1795,9 @@ static PyMethodDef StoreExtMethods[] = {
 
     {"store_sum", w_store_sum, METH_VARARGS,
         "Get weight-and-delay-sum of GF traces." },
+
+    {"store_sum_static", w_store_sum_static, METH_VARARGS,
+        "Get weight-and-delay-sum of GF samples for static displacement." },
 
     {"make_sum_params", w_make_sum_params, METH_VARARGS,
         "Prepare parameters for weight-and-delay-sum." },
