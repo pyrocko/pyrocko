@@ -201,13 +201,6 @@ class GreensFunctionTest(Object):
         self.changed_dist_min = False
         self.changed_dist_max = False
 
-    def __cleanup(self):
-        shutil.rmtree(self.temp_dir)
-        for i in ['.aux', '.log', '.out', '.toc']:
-            path = '{0}{1}{2}'.format(self.pdf_dir, self.pdf_name, i)
-            if os.path.exists(path):
-                os.remove(path)
-
     def __addToMessage(self, msg):
         if self.message is None:
             self.message = '\nmessage(s) for store {0}:\n'. \
@@ -217,6 +210,13 @@ class GreensFunctionTest(Object):
     def __printMessage(self):
         if self.message is not None:
             print self.message
+
+    def cleanup(self):
+        shutil.rmtree(self.temp_dir)
+        for i in ['.aux', '.log', '.out', '.toc']:
+            path = '{0}{1}{2}'.format(self.pdf_dir, self.pdf_name, i)
+            if os.path.exists(path):
+                os.remove(path)
 
     def getSourceString(self, sid):
         if sid not in self.sources:
@@ -549,9 +549,9 @@ class GreensFunctionTest(Object):
         subprocess.call(pro_call)
         subprocess.call(pro_call)
         subprocess.call(pro_call)
-        self.__cleanup()
+        self.cleanup()
         if gft2 is not None:
-            gft2.__cleanup()
+            gft2.cleanup()
 
     @staticmethod
     def __formatLatexString(string):
@@ -560,7 +560,7 @@ class GreensFunctionTest(Object):
         pat = re.compile('|'.join(rep.keys()))
         return pat.sub(lambda m: rep[re.escape(m.group(0))], string)
 
-    def createPDF(self, *trc_ids):
+    def createPDF(self, create_latex=True, *trc_ids):
         trcs = self.traces
         if len(trc_ids) == 0:
             trc_ids = trcs.keys()
@@ -618,11 +618,12 @@ class GreensFunctionTest(Object):
                 src_str = self.__formatLatexString(self.sources[src_id].dump())
                 sen_str = self.__formatLatexString(self.sensors[sen_id].dump())
                 chapters.append([ttl, src_str, sen_str, img_data])
-        self.__createLatexDoc(
-            [[self.__formatLatexString(self.store_id),
-              self.__formatLatexString(self.phase_ratio_string),
-              artefacts]],
-            chapters, model=mdl_path)
+        if create_latex:
+            self.__createLatexDoc(
+                [[self.__formatLatexString(self.store_id),
+                  self.__formatLatexString(self.phase_ratio_string),
+                  artefacts]],
+                chapters, model=mdl_path)
 
     @classmethod
     def createComparisonPDF(cls, gft1, gft2, *trc_ids, **kwargs):
@@ -1019,6 +1020,23 @@ class GreensFunctionTest(Object):
                 profile /= 1e3
             ax.plot(profile, -z)
             ax.set_xlabel(opt)
+            ax.xaxis.set_label_coords(0.5, -0.13)
+            pos = ax.get_position()
+            if i == 0 or i == 4:
+                ax.set_ylabel('Depth')
+            if i > 1:
+                for j in ax.xaxis.get_ticklabels()[1::2]:
+                    j.set_visible(False)
+            if (i / 4) == 0:
+                y = pos.y0 * 1.025
+                ax.set_position([pos.x0, y, pos.width,
+                                 pos.height - (y - pos.y0)])
+            else:
+                y = pos.height * 0.975
+                ax.set_position([pos.x0, pos.y0, pos.width, y])
+        ax.annotate('Earth model parameters', xy=(0.5, 0.95),
+                    fontsize=(self.__notesize * 2), xycoords='figure fraction',
+                    ha='center', va='top')
         return self.__saveTempFigure(fig)
 
     @staticmethod
@@ -1031,6 +1049,8 @@ class GreensFunctionTest(Object):
         labelpos = plot.mpl_margins(fig, w=7., h=6., units=fontsize,
                                     wspace=7., nw=cols, nh=rows)
         for cnt in range(1, (cols * rows) + 1):
+            if fig_type == 'profile' and cnt >= 8:
+                continue
             ax = fig.add_subplot(rows, cols, cnt)
             labelpos(ax, 2., 2.25)
             if fig_type.startswith('maxamp'):
