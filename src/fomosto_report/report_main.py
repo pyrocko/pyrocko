@@ -156,7 +156,8 @@ class GreensFunctionTest(Object):
 
         if self.store_dir[-1] != '/':
             self.store_dir += '/'
-        self.engine = gf.LocalEngine(store_superdirs=[self.store_dir])
+        self.engine = gf.LocalEngine(
+            store_dirs=[self.store_dir + self.store_id])
         self.store = self.engine.get_store(store_id)
 
         if self.rel_lowpass_frequency is not None:
