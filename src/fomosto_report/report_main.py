@@ -861,7 +861,9 @@ class GreensFunctionTest(Object):
                           markersize=3,
                           color=plot.to01(plot.graph_colors[i % 7]))
 
-            lfax.legend(loc='lower right', shadow=False, fontsize=10.)
+            # plt.setp(ltext, fontsise=10.)
+            lfax.legend(loc='lower right', shadow=False, prop={'size': 10.})
+            # lfax.legend(loc='lower right', shadow=False, fontsize=10.)
 
         xmin = times[0] - diff
         xmax = times[-1] + diff
