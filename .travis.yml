@@ -23,7 +23,7 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink libyaml; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
-    - pip install progressbar setuptools flake8 pyyaml coveralls
+    - pip install progressbar setuptools flake8 pyyaml coveralls jinja2
     - easy_install pyavl
     - curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx
     - cd fomosto-qseis-2006a; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
