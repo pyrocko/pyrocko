@@ -13,6 +13,7 @@ from pyrocko.guts import Object, Float, Tuple, List, load
 
 import common
 
+guts_prefix = 'test_ahfull'
 
 logger = logging.getLogger('test_gf_ahfull')
 
