@@ -488,11 +488,14 @@ def mpl_margins(
     relative to the subplot width and height.
 
     :param units: Unit multiplier or unit as string: %s
+    :param left,right,top,bottom: margin space
     :param w: set ``left`` and ``right`` at once
     :param h: set ``top`` and ``bottom`` at once
+    :param all: set ``left``, ``top``, ``right``, and ``bottom`` at once
     :param nw: number of subplots horizontally
     :param nh: number of subplots vertically
-    :param all: set ``left``, ``top``, ``right``, and ``bottom`` at once
+    :param wspace: horizontal spacing between subplots
+    :param hspace: vertical spacing between subplots
     '''
 
     left, top, right, bottom = map(
