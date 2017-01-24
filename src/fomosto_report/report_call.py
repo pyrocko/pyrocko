@@ -36,28 +36,28 @@ subcmds_desc = OrderedDict([
 subcmds_uses = {
         'single':           'single <input config file> [options]',
         'double':           'double <input config file> [options]',
-        'sstandard':        'sstandard  <store dir> <store id> [options]',
-        'dstandard':        'dstandard <store dir> <store id1> <store id2>'
+        'sstandard':        'sstandard  <store dir> [options]',
+        'dstandard':        'dstandard <store dir1> <store dir2>'
                             ' <sensor distance minimum>'
                             ' <sensor distance maximum> [options]',
-        'slow':             'slow  <store dir> <store id> [options]',
-        'dlow':             'dlow <store dir> <store id1> <store id2>'
+        'slow':             'slow  <store dir> [options]',
+        'dlow':             'dlow <store dir1> <store dir2>'
                             ' <sensor distance minimum>'
                             ' <sensor distance maximum> [options]',
-        'slowband':         'slowband  <store dir> <store id> [options]',
-        'dlowband':         'dlowband <store dir> <store id1> <store id2>'
+        'slowband':         'slowband  <store dir> [options]',
+        'dlowband':         'dlowband <store dir1> <store dir2>'
                             ' <sensor distance minimum>'
                             ' <sensor distance maximum> [options]',
-        'shighband':        'shighband  <store dir> <store id> [options]',
-        'dhighband':        'dhighband <store dir> <store id1> <store id2>'
+        'shighband':        'shighband  <store dir> [options]',
+        'dhighband':        'dhighband <store dir1> <store dir2>'
                             ' <sensor distance minimum>'
                             ' <sensor distance maximum> [options]',
-        'shigh':            'shigh <store dir> <store id> [options]',
-        'dhigh':            'dhigh <store dir> <store id1> <store id2>'
+        'shigh':            'shigh <store dir> [options]',
+        'dhigh':            'dhigh <store dir1> <store dir2>'
                             ' <sensor distance minimum>'
                             ' <sensor distance maximum> [options]',
-        'snone':            'snone <store dir> <store id> [options]',
-        'dnone':            'dnone <store dir> <store id1> <store id2>'
+        'snone':            'snone <store dir> [options]',
+        'dnone':            'dnone <store dir1> <store dir2>'
                             ' <sensor distance minimum>'
                             ' <sensor distance maximum> [options]'}
 
@@ -182,28 +182,23 @@ def verify_arguements(command, allowed, args):
         raise TypeError('{0}() takes {1} arguements ({2} given)'.format(
             command, allowed, len(args)))
 
-    st_dir = args.pop(0)
-    if not os.path.exists(st_dir):
-        raise OSError('Path does not exist: {0}'.format(st_dir))
+    dir1 = args.pop(0)
+    if not os.path.exists(dir1):
+        raise OSError('Path does not exist: {0}'.format(dir1))
 
     if allowed == 1:
-        return st_dir
+        return dir1
 
-    if st_dir[-1] != '/':
-        st_dir += '/'
-    st_id = args.pop(0)
-    if not os.path.exists(st_dir + st_id):
-        raise OSError('Store does not exist: {0}'.format(st_id))
+    dir2 = args.pop(0)
+    if not os.path.exists(dir2):
+        raise OSError('Path does not exist: {0}'.format(dir1))
 
     if args:
-        st_id2 = args.pop(0)
-        if not os.path.exists(st_dir + st_id2):
-            raise OSError('Store does not exist: {0}'.format(st_id2))
         sen_min = float(args.pop(0))
         sen_max = float(args.pop(0))
-        return st_dir, st_id, st_id2, sen_min, sen_max
+        return dir1, dir2, sen_min, sen_max
     else:
-        return st_dir, st_id
+        return dir1, dir2
 
 
 def verify_options(command, **opts):
@@ -250,9 +245,9 @@ def command_sstandard(command, args):
         add_sensor_options(parser)
 
     parser, opts, args = cl_parse(command, args, setup)
-    st_dir, st_id = verify_arguements('sstandard', 2, args)
+    st_dir = verify_arguements('sstandard', 1, args)
     out_filename = opts.pop('output')
-    gft = gftest.runStandardCheck(st_dir, st_id, **opts)
+    gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
         return gft, out_filename
 
@@ -269,10 +264,10 @@ def command_slow(command, args):
                           default=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    st_dir, st_id = verify_arguements('slow', 2, args)
+    st_dir = verify_arguements('slow', 1, args)
     opts['rel_highpass_frequency'] = None
     out_filename = opts.pop('output')
-    gft = gftest.runStandardCheck(st_dir, st_id, **opts)
+    gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
         return gft, out_filename
 
@@ -289,10 +284,10 @@ def command_shigh(command, args):
                           default=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    st_dir, st_id = verify_arguements('shigh', 2, args)
+    st_dir = verify_arguements('shigh', 1, args)
     opts['rel_lowpass_frequency'] = None
     out_filename = opts.pop('output')
-    gft = gftest.runStandardCheck(st_dir, st_id, **opts)
+    gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
         return gft, out_filename
 
@@ -306,10 +301,10 @@ def command_slowband(command, args):
         parser.set_defaults(highpass_frequency=0.004)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    st_dir, st_id = verify_arguements('slowband', 2, args)
+    st_dir = verify_arguements('slowband', 1, args)
     verify_options('slowband', **opts)
     out_filename = opts.pop('output')
-    gft = gftest.runStandardCheck(st_dir, st_id, **opts)
+    gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
         return gft, out_filename
 
@@ -323,10 +318,10 @@ def command_shighband(command, args):
         parser.set_defaults(rel_highpass_frequency=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    st_dir, st_id = verify_arguements('shighband', 2, args)
+    st_dir = verify_arguements('shighband', 1, args)
     verify_options('shighband', **opts)
     out_filename = opts.pop('output')
-    gft = gftest.runStandardCheck(st_dir, st_id, **opts)
+    gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
         return gft, out_filename
 
@@ -337,11 +332,11 @@ def command_snone(command, args):
         add_sensor_options(parser)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    st_dir, st_id = verify_arguements('snone', 2, args)
+    st_dir = verify_arguements('snone', 1, args)
     opts['rel_lowpass_frequency'] = None
     opts['rel_highpass_frequency'] = None
     out_filename = opts.pop('output')
-    gft = gftest.runStandardCheck(st_dir, st_id, **opts)
+    gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
         return gft, out_filename
 
@@ -367,10 +362,9 @@ def command_dstandard(command, args):
         add_double_options(parser)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    dir, id1, id2, smin, smax = verify_arguements('dstandard', 5, args)
+    dir1, dir2, smin, smax = verify_arguements('dstandard', 4, args)
     out_filename = opts.pop('output')
-    gfts = gftest.runComparissonStandardCheck(dir, id1, id2, smin, smax,
-                                              **opts)
+    gfts = gftest.runComparissonStandardCheck(dir1, dir2, smin, smax, **opts)
     if out_filename is not None:
         return gfts, out_filename
 
@@ -387,11 +381,10 @@ def command_dlow(command, args):
                           default=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    dir, id1, id2, smin, smax = verify_arguements('dlow', 5, args)
+    dir1, dir2, smin, smax = verify_arguements('dlow', 4, args)
     opts['rel_highpass_frequency'] = None
     out_filename = opts.pop('output')
-    gfts = gftest.runComparissonStandardCheck(dir, id1, id2, smin, smax,
-                                              **opts)
+    gfts = gftest.runComparissonStandardCheck(dir1, dir2, smin, smax, **opts)
     if out_filename is not None:
         return gfts, out_filename
 
@@ -408,11 +401,10 @@ def command_dhigh(command, args):
                           default=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    dir, id1, id2, smin, smax = verify_arguements('dhigh', 5, args)
+    dir1, dir2, smin, smax = verify_arguements('dhigh', 4, args)
     opts['rel_lowpass_frequency'] = None
     out_filename = opts.pop('output')
-    gfts = gftest.runComparissonStandardCheck(dir, id1, id2, smin, smax,
-                                              **opts)
+    gfts = gftest.runComparissonStandardCheck(dir1, dir2, smin, smax, **opts)
     if out_filename is not None:
         return gfts, out_filename
 
@@ -426,11 +418,10 @@ def command_dlowband(command, args):
         parser.set_defaults(highpass_frequency=0.004)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    dir, id1, id2, smin, smax = verify_arguements('dlowband', 5, args)
+    dir1, dir2, smin, smax = verify_arguements('dlowband', 4, args)
     verify_options('dlowband', **opts)
     out_filename = opts.pop('output')
-    gfts = gftest.runComparissonStandardCheck(dir, id1, id2, smin, smax,
-                                              **opts)
+    gfts = gftest.runComparissonStandardCheck(dir1, dir2, smin, smax, **opts)
     if out_filename is not None:
         return gfts, out_filename
 
@@ -444,11 +435,10 @@ def command_dhighband(command, args):
         parser.set_defaults(rel_highpass_frequency=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    dir, id1, id2, smin, smax = verify_arguements('dhighband', 5, args)
+    dir1, dir2, smin, smax = verify_arguements('dhighband', 4, args)
     verify_options('dhighband', **opts)
     out_filename = opts.pop('output')
-    gfts = gftest.runComparissonStandardCheck(dir, id1, id2, smin, smax,
-                                              **opts)
+    gfts = gftest.runComparissonStandardCheck(dir1, dir2, smin, smax, **opts)
     if out_filename is not None:
         return gfts, out_filename
 
@@ -459,12 +449,11 @@ def command_dnone(command, args):
         add_double_options(parser)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
-    dir, id1, id2, smin, smax = verify_arguements('dnone', 5, args)
+    dir1, dir2, smin, smax = verify_arguements('dnone', 4, args)
     opts['rel_lowpass_frequency'] = None
     opts['rel_highpass_frequency'] = None
     out_filename = opts.pop('output')
-    gfts = gftest.runComparissonStandardCheck(dir, id1, id2, smin, smax,
-                                              **opts)
+    gfts = gftest.runComparissonStandardCheck(dir1, dir2, smin, smax, **opts)
     if out_filename is not None:
         return gfts, out_filename
 

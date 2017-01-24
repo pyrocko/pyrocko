@@ -111,7 +111,7 @@ class SensorArray(Target):
 
 class GreensFunctionTest(Object):
 
-    __valid_properties = ['store_dir', 'store_id', 'pdf_dir',
+    __valid_properties = ['store_dir', 'pdf_dir',
                           'lowpass_frequency', 'rel_lowpass_frequency',
                           'highpass_frequency', 'rel_highpass_frequency',
                           'filter_order',
@@ -122,7 +122,6 @@ class GreensFunctionTest(Object):
     __has_phase = True
 
     store_dir = String.T()
-    store_id = String.T()
     pdf_dir = String.T(default=os.path.expanduser('~'))
     lowpass_frequency = Float.T(optional=True)
     highpass_frequency = Float.T(optional=True)
@@ -146,8 +145,8 @@ class GreensFunctionTest(Object):
                 tdict[k] = args[k]
         return tdict
 
-    def __init__(self, store_dir, store_id, **kwargs):
-        Object.__init__(self, store_dir=store_dir, store_id=store_id, **kwargs)
+    def __init__(self, store_dir, **kwargs):
+        Object.__init__(self, store_dir=store_dir, **kwargs)
 
         if self.lowpass_frequency and self.rel_lowpass_frequency:
             raise FilterFrequencyError('lowpass')
@@ -156,9 +155,10 @@ class GreensFunctionTest(Object):
 
         if self.store_dir[-1] != '/':
             self.store_dir += '/'
-        self.engine = gf.LocalEngine(
-            store_dirs=[self.store_dir + self.store_id])
-        self.store = self.engine.get_store(store_id)
+        self.engine = gf.LocalEngine(store_dirs=[self.store_dir])
+        ids = self.engine.get_store_ids()
+        self.store_id = ids[0]
+        self.store = self.engine.get_store(self.store_id)
 
         if self.rel_lowpass_frequency is not None:
             self.lowpass_frequency = self.store.config.sample_rate * \
@@ -1177,10 +1177,10 @@ class GreensFunctionTest(Object):
         return [src.distance_to(sen) for sen in self.sensors[sen_id].sensors]
 
     @classmethod
-    def __createStandardSetups(cls, store_dir, store_id, **kwargs):
+    def __createStandardSetups(cls, store_dir, **kwargs):
         tdict = cls.__get_valid_arguments(kwargs)
 
-        gft = cls(store_dir, store_id, **tdict)
+        gft = cls(store_dir, **tdict)
 
         if 'source_depth' in kwargs:
             depth = kwargs['source_depth']
@@ -1191,8 +1191,6 @@ class GreensFunctionTest(Object):
         src3 = gft.createSource('DC', depth, 45., 90., 180., **kwargs)
         # src4 = gft.createSource('Explosion', depth, 0., 90., **kwargs)
 
-        if 'store_id' not in kwargs:
-            kwargs['store_id'] = gft.store_id
         SensorArray.validate_args(kwargs)
         sen1 = gft.createSensors(strike=0., codes=('', 'STA', '', 'R'),
                                  azimuth=0., dip=0., **kwargs)
@@ -1233,7 +1231,7 @@ class GreensFunctionTest(Object):
 
     @classmethod
     def runStandardCheck(
-            cls, store_dir, store_id, source_depth=None,
+            cls, store_dir, source_depth=None,
             lowpass_frequency=None, highpass_frequency=None,
             rel_lowpass_frequency=(1. / 110), rel_highpass_frequency=(1. / 16),
             distance_min=None, distance_max=None, sensor_count=50,
@@ -1249,8 +1247,8 @@ class GreensFunctionTest(Object):
 
     @classmethod
     def runComparissonStandardCheck(
-            cls, store_dir, store_id1, store_id2,
-            distance_min, distance_max, together=True, source_depth=None,
+            cls, store_dir1, store_dir2, distance_min, distance_max,
+            together=True, source_depth=None,
             lowpass_frequency=None, highpass_frequency=None,
             rel_lowpass_frequency=(1. / 110), rel_highpass_frequency=(1. / 16),
             filter_order=4, pdf_dir=None, plot_velocity=False,
@@ -1258,13 +1256,12 @@ class GreensFunctionTest(Object):
 
         args = locals()
         del args['cls']
-        del args['store_dir']
         args['change_dists'] = False
-        gft1 = cls.__createStandardSetups(store_dir, store_id1, **args)
+        gft1 = cls.__createStandardSetups(store_dir1, **args)
         if 'source_depth' not in args or args['source_depth'] is None:
             args['source_depth'] = gft1.sources[gft1.sources.keys()[0]].depth
 
-        gft2 = cls.__createStandardSetups(store_dir, store_id2, **args)
+        gft2 = cls.__createStandardSetups(store_dir2, **args)
 
         cls.createComparisonPDF(gft1, gft2, together=together)
         gft1.__printMessage()

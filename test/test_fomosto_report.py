@@ -46,7 +46,6 @@ mantle
 
         store_dir = mkdtemp(prefix='gft_')
         self.tempdirs.append(store_dir)
-        store_id = 'gft_test'
 
         qsconf = qseis.QSeisConfig()
         qsconf.qseis_version = '2006a'
@@ -63,7 +62,7 @@ mantle
         qsconf.sw_flat_earth_transform = 0
 
         config = gf.meta.ConfigTypeA(
-            id=store_id,
+            id='gft_test',
             ncomponents=10,
             sample_rate=0.25,
             receiver_depth=0.*km,
@@ -102,10 +101,7 @@ mantle
             else:
                 raise
 
-        tmp = store_dir.split('/')
-        tmp.pop(-1)
-        store_path = '/'.join(tmp)
-        gft = gftest(store_path, store_id, sensor_count=2, pdf_dir=store_dir,
+        gft = gftest(store_dir, sensor_count=2, pdf_dir=store_dir,
                      plot_velocity=True, rel_lowpass_frequency=(1. / 110),
                      rel_highpass_frequency=(1. / 16))
 
