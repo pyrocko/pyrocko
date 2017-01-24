@@ -60,6 +60,14 @@ started without any arguments.
         export        convert GF store to Kiwi GFDB format
         ttt           create travel time tables
         tttview       plot travel time table
+        tttextract    extract selected travel times',
+        server        run seismosizer server,
+        download      download GF store from a server,
+        modelview     plot earthmodels,
+        upgrade       upgrade store format to latest version,
+        addref        import citation references to GF store config,
+        qc            quality check,
+        report        report for Green's Function databases,
 
     To get further help and a list of available options for any subcommand run:
 
@@ -401,6 +409,11 @@ Other diagnostic subcommands are ``fomosto tttview`` to visualize the travel
 time tables, ``fomosto stats`` to summarize some technical details, and
 ``fomosto check`` which checks the store for *NaN* values and some other
 problems.
+
+Running the report subcommand
+-----------------------------
+
+
 
 Creating decimated variants of a Green's function store
 -------------------------------------------------------
