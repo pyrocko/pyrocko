@@ -27,7 +27,6 @@ from test_beachball import BeachballTestCase  # noqa
 from test_gmtpy import GmtPyTestCase  # noqa
 from test_automap import AutomapTestCase  # noqa
 from test_tectonics import TectonicsTestCase  # noqa
-from test_gui import GUITest  # noqa
 
 import platform
 import unittest
