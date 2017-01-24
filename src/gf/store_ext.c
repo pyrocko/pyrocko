@@ -5,12 +5,14 @@
 /* security limit for length of traces, shifts and offsets (samples) */
 #define SLIMIT 1000000
 
+#define SQR(a)  ( (a) * (a) )
 #define D2R (M_PI / 180.)
 #define R2D (1.0 / D2R)
 
 #define EARTHRADIUS 6371000.0
 #define EARTH_OBLATENESS 1./298.257223563
 #define EARTHRADIUS_EQ 6378140.0
+#define NPY_GFDTYPE NPY_FLOAT32
 
 #define inlimits(i) (-SLIMIT <= (i) && (i) <= SLIMIT)
 #define inposlimits(i) (0 <= (i) && (i) <= SLIMIT)
@@ -308,7 +310,6 @@ int good_array(PyObject* o, int typenum_want, npy_intp size_want, int ndim_want,
         return 0;
     }
     if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)o)) {
-        printf("dim: %d\n", PyArray_NDIM((PyArrayObject*)o));
         PyErr_SetString(StoreExtError, "array is of unexpected ndim");
         return 0;
     }
@@ -330,7 +331,6 @@ static const store_t ZERO_STORE = { 0, 0, 0, 0, 0.0, NULL, NULL, NULL, NULL, NUL
 static store_error_t store_get_span(const store_t *store, uint64_t irecord,
                              int32_t *itmin, int32_t *nsamples, int *is_zero) {
     record_t *record;
-
     if (irecord >= store->nrecords) {
         return INVALID_RECORD;
     }
@@ -463,6 +463,44 @@ static void trace_trim_sticky(trace_t *trace, int32_t itmin, int32_t nsamples) {
     trace->data += ilo;
 }
 
+
+static store_error_t store_sum_nsamples(
+            const store_t *store,
+            const uint64_t *irecords,
+            const float32_t *delays,
+            int n,
+            int32_t *nsamples) {
+    float itmin_d, itmax_d, idelay;
+    int32_t itmax, itmin, ns;
+    int ihave, is_zero, j;
+    store_error_t err;
+    itmin_d = itmax_d = 0.0;
+    ihave = 0;
+    for (j=0; j<n; j++) {
+        err = store_get_span(store, irecords[j], &itmin, &ns, &is_zero);
+        if (SUCCESS != err) {
+            return err;
+        }
+
+        itmax = itmin + ns - 1;
+        idelay = delays[j]/store->deltat;
+
+        if (ihave) {
+            itmin_d = min(itmin_d, itmin + idelay);
+            itmax_d = max(itmax_d, itmax + idelay);
+        }
+        else {
+            itmin_d = itmin + idelay;
+            itmax_d = itmax + idelay;
+            ihave = 1;
+        }
+    }
+
+    itmin = (int32_t) floor(itmin_d);
+    *nsamples = (int32_t) ceil(itmax_d) - itmin + 1;
+    return SUCCESS;
+}
+
 static store_error_t store_sum(
         const store_t *store,
         const uint64_t *irecords,
@@ -471,21 +509,16 @@ static store_error_t store_sum(
         int n,
         int32_t itmin,
         int32_t nsamples,
-        trace_t *result) {
+        trace_t *result,
+        gf_dtype *out) {
 
-    int32_t itmax;
-    int is_zero;
-    float itmin_d, itmax_d;
     float32_t weight, delay;
     trace_t trace;
     float32_t deltat = store->deltat;
     gf_dtype begin_value, end_value;
-    gf_dtype *out;
     int ilo;
-    /*int32_t ifloor, iceil;*/
     int i, j;
     int idelay_floor, idelay_ceil;
-    int ihave;
     float w1, w2;
     store_error_t err;
 
@@ -494,42 +527,8 @@ static store_error_t store_sum(
         return SUCCESS;
     }
 
-    if (-1 == nsamples) {
-        itmin_d = itmax_d = 0.;
-        ihave = 0;
-        for (j=0; j<n; j++) {
-            err = store_get_span(store, irecords[j], &itmin, &nsamples, &is_zero);
-            if (SUCCESS != err) {
-                return err;
-            }
-
-            itmax = itmin + nsamples - 1;
-
-            if (ihave) {
-                itmin_d = min(itmin_d, itmin + delays[j]/deltat);
-                itmax_d = max(itmax_d, itmax + delays[j]/deltat);
-            }
-            else {
-                itmin_d = itmin + delays[j]/deltat;
-                itmax_d = itmax + delays[j]/deltat;
-                ihave = 1;
-            }
-        }
-
-        itmin = floor(itmin_d);
-        nsamples = ceil(itmax_d) - itmin + 1;
-    }
-
     if (!inlimits(itmin) || !inposlimits(nsamples)) {
         return BAD_REQUEST;
-    }
-
-    out = NULL;
-    if (0 != nsamples) {
-        out = (gf_dtype*)calloc(nsamples, sizeof(gf_dtype));
-        if (out == NULL) {
-            return ALLOC_FAILED;
-        }
     }
 
     begin_value = 0.0;
@@ -541,23 +540,19 @@ static store_error_t store_sum(
         weight = weights[j];
         idelay_floor = (int)floor(delay/deltat);
         idelay_ceil = (int)ceil(delay/deltat);
-        if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
-            free(out);
+        if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))
             return BAD_REQUEST;
-        }
 
         if (0.0 == weight) {
             continue;
         }
 
         err = store_get(store, irecords[j], &trace);
-        if (SUCCESS != err) {
-            free(out);
+        if (SUCCESS != err)
             return err;
-        }
-        if (trace.is_zero) {
+
+        if (trace.is_zero)
             continue;
-        }
 
         trace_trim_sticky(&trace, itmin - idelay_ceil, nsamples + idelay_ceil - idelay_floor);
 
@@ -633,6 +628,7 @@ static store_error_t store_sum_static(
         int32_t it,
         int32_t ntargets,
         size_t nsummands,
+        int32_t nthreads,
         gf_dtype *result) {
 
     float32_t weight, delay;
@@ -643,7 +639,7 @@ static store_error_t store_sum_static(
     uint n;
     int idelay_floor, idelay_ceil;
     float w1, w2;
-    store_error_t err;
+    store_error_t err=SUCCESS;
 
     if (0 == nsummands || 0 == ntargets)
         return SUCCESS;
@@ -651,53 +647,59 @@ static store_error_t store_sum_static(
     if (!inlimits(it))
         return BAD_REQUEST;
 
-    result = NULL;
-    result = (gf_dtype*)calloc(ntargets, sizeof(gf_dtype));
     if (result == NULL)
         return ALLOC_FAILED;
 
-    for (t=0; t<ntargets; t++) {
-        for (n=0; n<nsummands; n++) {
-            j = t*nsummands + n;
+    if (nthreads == 0)
+        nthreads = omp_get_num_procs();
 
-            delay = delays[j];
-            weight = weights[j];
-            idelay_floor = (int)floor(delay/deltat);
-            idelay_ceil = (int)ceil(delay/deltat);
-
-            if (0.0 == weight)
-                continue;
-
-            if (!inlimits(idelay_floor) || !inlimits(idelay_ceil)) {
-                free(result);
-                return BAD_REQUEST;
-            }
-
-            printf("%d\n", irecords[j]);
-
-            err = store_get(store, irecords[j], &trace);
-            if (SUCCESS != err) {
-                free(result);
-                return err;
-            }
-
-            if (trace.is_zero)
-                continue;
-
-            idx = it + idelay_floor - trace.itmin;
-            if (idx >= trace.nsamples)
-                idx = trace.nsamples - 1;
-
-            if (idelay_floor == idelay_ceil || (idx+1) >= trace.nsamples) {
-                result[t] = fe32toh(trace.data[idx]) * weight;
-            } else {
-                w1 = (idelay_ceil - delay/deltat) * weight;
-                w2 = (delay/deltat - idelay_floor) * weight;
-                result[t] += fe32toh(trace.data[idx + 1]) * w1
-                            + fe32toh(trace.data[idx]) * w2;
+    #pragma omp parallel \
+        shared (store, irecords, delays, weights, ntargets, nsummands, \
+                result, it, deltat) \
+        private (j, n, delay, weight, idelay_floor, idelay_ceil, idx, trace, w1, w2) \
+        reduction (+: err) \
+        num_threads (nthreads)
+    {
+    #pragma omp for schedule (static)
+        for (t=0; t<ntargets; t++) {
+            for (n=0; n<nsummands; n++) {
+                j = t*nsummands + n;
+    
+                delay = delays[j];
+                weight = weights[j];
+                idelay_floor = (int)floor(delay/deltat);
+                idelay_ceil = (int)ceil(delay/deltat);
+    
+                if (0.0 == weight)
+                    continue;
+    
+                if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))
+                    err += BAD_REQUEST;
+    
+                err += store_get(store, irecords[j], &trace);
+    
+                if (trace.is_zero)
+                    continue;
+    
+                idx = it + idelay_floor - trace.itmin;
+                if (idx >= trace.nsamples)
+                    idx = trace.nsamples - 1;
+                if (idx < 0)
+                    idx = 0;
+    
+                if (idelay_floor == idelay_ceil || (idx+1) >= trace.nsamples) {
+                    result[t] += fe32toh(trace.data[idx]) * weight;
+                } else {
+                    w1 = (idelay_ceil - delay/deltat) * weight;
+                    w2 = (delay/deltat - idelay_floor) * weight;
+                    result[t] += fe32toh(trace.data[idx + 1]) * w1
+                                + fe32toh(trace.data[idx]) * w2;
+                }
             }
         }
     }
+    if (err != SUCCESS)
+        return err;
     return SUCCESS;
 }
 
@@ -714,6 +716,7 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
     store->f_index = f_index;
     store->f_data = f_data;
     store->mapping = NULL;
+    store->mapping_scheme = NULL;
 
     if (8 != pread(store->f_index, &store->nrecords, 8, 0)) {
         return READ_INDEX_FAILED;
@@ -774,7 +777,44 @@ static store_error_t store_init(int f_index, int f_data, store_t *store) {
             return ALLOC_FAILED;
         }
     }
+
     return SUCCESS;
+}
+
+static store_error_t store_mapping_init(
+        const store_t *store,
+        const mapping_scheme_t *mscheme,
+        const float64_t *mins,
+        const float64_t *maxs,
+        const float64_t *deltas,
+        const uint64_t *ns,
+        uint64_t ng,
+        mapping_t *mapping) {
+
+    size_t i;
+    uint64_t nrecords_check;
+
+    nrecords_check = 1;
+    for (i=0; i<mscheme->ndims_continuous; i++) {
+        mapping->mins[i] = mins[i];
+        mapping->maxs[i] = maxs[i];
+        mapping->deltas[i] = deltas[i];
+        mapping->ns[i] = ns[i];
+        nrecords_check *= ns[i];
+    }
+
+    mapping->ng = ng;
+    nrecords_check *= ng;
+
+    if (nrecords_check != store->nrecords) {
+        return BAD_REQUEST;
+    }
+
+    return SUCCESS;
+}
+
+static void store_mapping_deinit(mapping_t *mapping) {
+    (void)mapping;
 }
 
 void store_deinit(store_t *store) {
@@ -859,44 +899,6 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
 #endif
 }
 
-static store_error_t store_mapping_init(
-        const store_t *store,
-        const mapping_scheme_t *mscheme,
-        const float64_t *mins,
-        const float64_t *maxs,
-        const float64_t *deltas,
-        const uint64_t *ns,
-        uint64_t ng,
-        mapping_t *mapping) {
-
-    size_t i;
-    uint64_t nrecords_check;
-
-    nrecords_check = 1;
-
-    for (i=0; i<mscheme->ndims_continuous; i++) {
-        mapping->mins[i] = mins[i];
-        mapping->maxs[i] = maxs[i];
-        mapping->deltas[i] = deltas[i];
-        mapping->ns[i] = ns[i];
-        nrecords_check *= ns[i];
-    }
-
-    mapping->ng = ng;
-    nrecords_check *= ng;
-
-    if (nrecords_check != store->nrecords) {
-        return BAD_REQUEST;
-    }
-
-    return SUCCESS;
-}
-
-static void store_mapping_deinit(mapping_t *mapping) {
-    (void)mapping;
-}
-
-
 static store_t* get_store_from_capsule(PyObject *capsule) {
 
     store_t *store;
@@ -945,7 +947,8 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
     }
 
     store = get_store_from_capsule(capsule);
-    if (store == NULL) return NULL;
+    if (store == NULL)
+        return NULL;
 
     mscheme = get_mapping_scheme(mapping_scheme_name);
     if (mscheme == NULL) {
@@ -1017,7 +1020,8 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     }
 
     store = get_store_from_capsule(capsule);
-    if (store == NULL) return NULL;
+    if (store == NULL)
+        return NULL;
 
     irecord = irecord_;
 
@@ -1054,10 +1058,6 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
                          trace.is_zero, trace.begin_value, trace.end_value);
 }
 
-static float64_t sqr(float64_t x) {
-    return x*x;
-}
-
 static float64_t clip(float64_t x, float64_t mi, float64_t ma) {
     return x < mi ? mi : (x > ma ? ma : x);
 }
@@ -1092,7 +1092,7 @@ static void ne_to_latlon(float64_t lat, float64_t lon, float64_t north, float64_
         return;
     }
 
-    a = sqrt(sqr(north) + sqr(east)) / EARTHRADIUS;
+    a = sqrt(SQR(north) + SQR(east)) / EARTHRADIUS;
     gamma = atan2(east, north);
 
     b = 0.5*M_PI - lat*D2R;
@@ -1156,8 +1156,8 @@ static void distance_accurate50m(float64_t alat, float64_t alon, float64_t blat,
     g = (alat - blat) * D2R / 2.;
     l = (alon - blon) * D2R / 2.;
 
-    s = sqr(sin(g)) * sqr(cos(l)) + sqr(cos(f)) * sqr(sin(l));
-    c = sqr(cos(g)) * sqr(cos(l)) + sqr(sin(f)) * sqr(sin(l));
+    s = SQR(sin(g)) * SQR(cos(l)) + SQR(cos(f)) * SQR(sin(l));
+    c = SQR(cos(g)) * SQR(cos(l)) + SQR(sin(f)) * SQR(sin(l));
 
     w = atan(sqrt(s/c));
 
@@ -1173,8 +1173,8 @@ static void distance_accurate50m(float64_t alat, float64_t alon, float64_t blat,
 
     *dist = 2. * w * EARTHRADIUS_EQ *
         (1. +
-         EARTH_OBLATENESS * ((3.*r-1.) / (2.*c)) * sqr(sin(f)) * sqr(cos(g)) -
-         EARTH_OBLATENESS * ((3.*r+1.) / (2.*s)) * sqr(cos(f)) * sqr(sin(g)));
+         EARTH_OBLATENESS * ((3.*r-1.) / (2.*c)) * SQR(sin(f)) * SQR(cos(g)) -
+         EARTH_OBLATENESS * ((3.*r+1.) / (2.*s)) * SQR(cos(f)) * SQR(sin(g)));
 }
 
 
@@ -1196,7 +1196,7 @@ static void distance4(const float64_t *a, const float64_t *b, float64_t *distanc
     beast = b[3];
 
     if (alat == blat && alon == blon) { /* carthesian */
-        *distance = sqrt(sqr(bnorth - anorth) + sqr(beast - aeast));
+        *distance = sqrt(SQR(bnorth - anorth) + SQR(beast - aeast));
     } else { /* spherical */
         ne_to_latlon(alat, alon, anorth, aeast, &alat_eff, &alon_eff);
         ne_to_latlon(blat, blon, bnorth, beast, &blat_eff, &blon_eff);
@@ -1223,12 +1223,12 @@ static void make_weights_elastic10(
     sb = sin(bazi*D2R-M_PI);
     cb = cos(bazi*D2R-M_PI);
 
-    f0 = ms[0]*sqr(ca) + ms[1]*sqr(sa) + ms[3]*s2a;
+    f0 = ms[0]*SQR(ca) + ms[1]*SQR(sa) + ms[3]*s2a;
     f1 = ms[4]*ca + ms[5]*sa;
     f2 = ms[2];
     f3 = 0.5*(ms[1]-ms[0])*s2a + ms[3]*c2a;
     f4 = ms[5]*ca - ms[4]*sa;
-    f5 = ms[0]*sqr(sa) + ms[1]*sqr(ca) - ms[3]*s2a;
+    f5 = ms[0]*SQR(sa) + ms[1]*SQR(ca) - ms[3]*s2a;
 
     ioff = 0 * NSUMMANDS_MAX;
     ws[ioff + 0] = cb * f0;
@@ -1272,7 +1272,7 @@ static void make_weights_elastic8(
     sb = sin(bazi*D2R-M_PI);
     cb = cos(bazi*D2R-M_PI);
 
-    f0 = ms[0]*sqr(ca) + ms[1]*sqr(sa) + ms[3]*s2a;
+    f0 = ms[0]*SQR(ca) + ms[1]*SQR(sa) + ms[3]*s2a;
     f1 = ms[4]*ca + ms[5]*sa;
     f2 = ms[2];
     f3 = 0.5*(ms[1]-ms[0])*s2a + ms[3]*c2a;
@@ -1460,8 +1460,10 @@ static store_error_t make_sum_params(
     float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
-    store_error_t err = SUCCESS;
-    
+    store_error_t err = SUCCESS;    
+
+    if (nthreads == 0)
+        nthreads = omp_get_num_procs();
     if (nthreads > omp_get_num_procs()) {
         nthreads = omp_get_num_procs();
         printf("make_sum_params - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
@@ -1542,7 +1544,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     (void)dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr,
-                                     &weights_arr, &itmin_, &nsamples_)) {
+                          &weights_arr, &itmin_, &nsamples_)) {
         PyErr_SetString(StoreExtError,
             "usage: store_sum(cstore, irecords, delays, weights, itmin, nsamples)");
 
@@ -1577,42 +1579,47 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     irecords = PyArray_DATA((PyArrayObject*)irecords_arr);
     delays = PyArray_DATA((PyArrayObject*)delays_arr);
     weights = PyArray_DATA((PyArrayObject*)weights_arr);
+    
+    if (nsamples == -1) {
+        err = store_sum_nsamples(store, irecords, delays, n, &nsamples);
+        if (SUCCESS != err) {
+            PyErr_SetString(StoreExtError, store_error_names[err]);
+            return NULL;    
+        }
+    }
 
-    err = store_sum(store, irecords, delays, weights, n, itmin, nsamples, &result);
+    array_dims[0] = nsamples;
+    array = (PyArrayObject*)PyArray_ZEROS(1, array_dims, NPY_GFDTYPE, 0);
+    adata = (gf_dtype*)PyArray_DATA(array);
+
+    err = store_sum(store, irecords, delays, weights, n, itmin, nsamples, &result, adata);
     if (SUCCESS != err) {
         PyErr_SetString(StoreExtError, store_error_names[err]);
         return NULL;
     }
-
-    array_dims[0] = result.nsamples;
-    array = (PyArrayObject*)PyArray_EMPTY(1, array_dims, NPY_FLOAT32, 0);
-    adata = (gf_dtype*)PyArray_DATA(array);
-    memcpy(adata, result.data, result.nsamples*sizeof(gf_dtype));
-    free(result.data);
 
     return Py_BuildValue("Nififf", array, result.itmin, store->deltat,
                          result.is_zero, result.begin_value, result.end_value);
 }
 
 static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
-    PyObject *capsule, *irecords_arr, *delays_arr, *weights_arr;
+    PyObject *capsule;
+    PyArrayObject *irecords_arr, *delays_arr, *weights_arr, *result_arr;
     store_t *store;
-    gf_dtype *adata;
     gf_dtype *result;
-    PyArrayObject *array = NULL;
     uint64_t *irecords;
     float32_t *delays, *weights;
     npy_intp shape[1];
-    int32_t it, ntargets;
+    int32_t it, ntargets, nthreads;
     size_t nsummands;
     store_error_t err;
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr,
-                                     &weights_arr, &it, &ntargets)) {
+    if (!PyArg_ParseTuple(args, "OOOOiii", &capsule, &irecords_arr, &delays_arr,
+                                     &weights_arr, &it, &ntargets, &nthreads)) {
         PyErr_SetString(StoreExtError,
-            "usage: store_sum_static(cstore, irecords, delays, weights, it, ntargets)");
+            "usage: store_sum_static(cstore, irecords, delays, weights, it, ntargets, nthreads)");
 
         return NULL;
     }
@@ -1624,47 +1631,37 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
         PyErr_SetString(StoreExtError, "store_sum_static: invalid store");
         return NULL;
     }
-    if (!good_array(irecords_arr, NPY_UINT64, nsummands * ntargets, 1, NULL)) {
+    if (!good_array((PyObject*)irecords_arr, NPY_UINT64, nsummands * ntargets, 1, NULL)) {
             PyErr_SetString(StoreExtError, "store_sum_static: unhealthy irecords array");
             return NULL;
     }
-    if (!good_array(delays_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
+    if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
         PyErr_SetString(StoreExtError, "store_sum_static: unhealthy delays array");
         return NULL;
     }
-    if (!good_array(weights_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
+    if (!good_array((PyObject*)weights_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
         PyErr_SetString(StoreExtError, "store_sum_static: unhealthy weights array");
         return NULL;
     }
-/*    if (!inlimits((uint64_t) PyArray_Max((PyArrayObject*)irecords_arr, 0))) {
-        PyErr_SetString(StoreExtError, "store_sum_static: referenced greensfunction exceeds database");
-        return NULL;
-    }*/
     if (!inlimits(it)) {
         PyErr_SetString(StoreExtError, "store_sum_static: invalid it argument");
         return NULL;
     }
 
-    printf("%d\n", nsummands);
-
     irecords = PyArray_DATA((PyArrayObject*)irecords_arr);
     delays = PyArray_DATA((PyArrayObject*)delays_arr);
     weights = PyArray_DATA((PyArrayObject*)weights_arr);
 
-    err = store_sum_static(store, irecords, delays, weights, it, ntargets, nsummands, result);
+    shape[0] = (npy_intp) ntargets;
+    result_arr = (PyArrayObject*) PyArray_ZEROS(1, shape, NPY_GFDTYPE, 0);
+    result = PyArray_DATA(result_arr);
+    
+    err = store_sum_static(store, irecords, delays, weights, it, ntargets, nsummands, nthreads, result);
     if (SUCCESS != err) {
         PyErr_SetString(StoreExtError, store_error_names[err]);
         return NULL;
     }
-
-    shape[0] = (npy_intp) ntargets;
-    /*array = (PyArrayObject*)PyArray_EMPTY(1, shape, NPY_FLOAT32, 0);*/
-    array = (PyArrayObject*)PyArray_SimpleNewFromData(1, shape, NPY_FLOAT32, result);
-    adata = (gf_dtype*)PyArray_DATA(array);
-    /*memcpy(adata, result, ntargets * sizeof(gf_dtype));
-    free(result); */
-
-    return Py_BuildValue("N", array);
+    return (PyObject*) result_arr;
 }
 
 

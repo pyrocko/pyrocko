@@ -315,12 +315,11 @@ class BaseStore(object):
             self.mode = ''
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
 
-        if self.mode == 'r':
-            try:
-                self.cstore = store_ext.store_init(
-                    self._f_index.fileno(), self._f_data.fileno())
-            except store_ext.StoreExtError, e:
-                raise StoreError(str(e))
+        try:
+            self.cstore = store_ext.store_init(
+                self._f_index.fileno(), self._f_data.fileno())
+        except store_ext.StoreExtError, e:
+            raise StoreError(str(e))
 
         while True:
             try:

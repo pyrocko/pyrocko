@@ -39,6 +39,7 @@ class GFStaticTest(unittest.TestCase):
             lambda: self.cprofile.dump_stats('/tmp/make_sum_params.cprof'))
 
     def get_qseis_store_dir(self):
+        return '/tmp/gfstoreOiW0kP'
         if self.qseis_store_dir is None:
             self.qseis_store_dir = self._create_qseis_store()
 
@@ -86,11 +87,11 @@ mantle
             sample_rate=0.25,
             receiver_depth=0.*km,
             source_depth_min=10*km,
-            source_depth_max=10*km,
+            source_depth_max=20*km,
             source_depth_delta=1*km,
-            distance_min=550*km,
-            distance_max=560*km,
-            distance_delta=1*km,
+            distance_min=0*km,
+            distance_max=20*km,
+            distance_delta=2.5*km,
             modelling_code_id='qseis.2006a',
             earthmodel_1d=mod,
             tabulated_phases=[
@@ -116,22 +117,27 @@ mantle
 
     def test_sum_static(self):
         from pyrocko.gf import store_ext
+        benchmark.show_factor = True
 
         store = gf.Store(self.get_qseis_store_dir())
         store.open()
-        dim = 5*km
+        dim = 1*km
         ntargets = 1
-        interpolation = 'nearest_neighbor'
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[0]
 
         source = gf.RectangularSource(
             lat=0., lon=0.,
-            depth=10*km, north_shift=0., east_shift=0.,
+            depth=15*km, north_shift=0., east_shift=0.,
             width=dim, length=dim)
 
+        r1 = random.rand()*5*km
+        r2 = random.rand()*5*km
         targets = [gf.Target(
-            lat=0., lon=0.,
-            north_shift=1000*km,
-            east_shift=1050*km) for x in xrange(ntargets)]
+            lat=0.0, lon=0.0,
+            north_shift=5*km+r1,
+            east_shift=0*km+r2)
+                for x in xrange(ntargets)]
 
         dsource = source.discretize_basesource(store, targets[0])
         source_coords_arr = dsource.coords5()
@@ -144,16 +150,38 @@ mantle
                 [receiver.lat, receiver.lon, receiver.north_shift,
                  receiver.east_shift, receiver.depth]
 
+        @benchmark.labeled('timeseries')
+        def sum_timeseries(cstore, irecords, delays, weights, pos):
+            nsummands = weights.size / ntargets
+            res = num.zeros(ntargets)
+            for t in xrange(ntargets):
+                sl = slice(t*nsummands, (t+1) * nsummands)
+                r = store_ext.store_sum(
+                    cstore, irecords[sl], delays[sl], weights[sl], pos, 1)
+                res[t] = r[0]
+            return res
+
+        @benchmark.labeled('static')
+        def sum_static(cstore, irecords, delays, weights, pos, nthreads):
+            return store_ext.store_sum_static(
+                cstore, irecords, delays, weights, pos, ntargets, nthreads)
+
+        for i, (component, args, delays, weights) in \
+            enumerate(store.config.make_sum_params(
+                      dsource, targets[0].receiver(store))):
+            continue
+
         args = (store.cstore, source_coords_arr, mts_arr, receiver_coords_arr,
                 'elastic10', interpolation, 0)
 
         for (weights, irecords) in store_ext.make_sum_params(*args):
             delays = num.zeros_like(weights)
-            print irecords
-            # store_ext.store_sum(
-            #     store.cstore, irecords, delays, weights, 1, 1024)
-            store_ext.store_sum_static(
-                store.cstore, irecords, delays, weights, 100, ntargets)
+            pos = 6
+            t = sum_timeseries(store.cstore, irecords, delays, weights, pos)
+            s = sum_static(store.cstore, irecords, delays, weights, pos, 1)
+            print benchmark.__str__(header=False)
+            benchmark.clear()
+            num.testing.assert_equal(t, s)
 
 
 if __name__ == '__main__':
