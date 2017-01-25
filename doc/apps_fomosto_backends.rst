@@ -76,6 +76,32 @@ to be built with QSSP, run::
 
     $ fomosto init qssp.2010 my_qssp_gfs
 
+The ``psgrn_pscmp`` backend
+---------------------------
+
+Code to calculate synthetic stress/strain/tilt/gravitational fields on a
+layered viscoelastic halfspace. It has been written by Rongjiang Wang
+ [Wang2005]_, [Wang2006]_
+ It uses ...to be completed ...
+
+Use this code for calculating synthetic static and/or viscoelastic displacement
+ fields of tectonic events, magmatic intrusions or fluid migrations. Especially
+useful, if synthetics have to be calculated for many points like for InSAR
+ or GPS.
+
+The stresses, tilts and geoidal changes can still be computed but are (not yet)
+ supported by a fomosto Greens Function store and the respective stacking
+ functions.
+
+The current version of PSGRN/PSCMP is ``2008a`` (at the time of writing,
+ 2017-01-25),
+and can be downloaded from https://github.com/pyrocko/fomosto-psgrn-pscmp .
+
+After downloading and installing, to initialize a Green's function store
+to be built with PSGRN/PSCMP, run::
+
+    $ fomosto init psgrn_pscmp.2008a my_psgrn_pscmp_gfs
+
 References
 ----------
 
@@ -86,6 +112,16 @@ References
     and efficient computation of Green's functions, Bulletin of the
     Seismological Society of America, 89(3), 733-741.0
 
+.. [Wang2005] Wang, R. (2005), The dislocation theory: a consistent way for
+    including the gravity effect in (visco)elastic plane-earth models,
+    Geophysical Journal International, 161, 191-196.
+
+.. [Wang2006] Wang, R., F. Lorenzo-Martin and F. Roth (2006), PSGRN/PSCMP -
+    a new code for calculating co- and post-seismic deformation, geoid and
+    gravity changes based on the viscoelastic-gravitational dislocation theory,
+    Computers and Geosciences, 32, 527-541. DOI:10.1016/j.cageo.2005.08.006.
+
 .. [Wang2017] Wang, R. et al. (submitted), Complete synthetic seismograms
     based on a spherical self-gravitating Earth model with an
     atmosphere-ocean-mantle-core structure
+
