@@ -130,7 +130,8 @@ static ahfullgreen_error_t add_seismogram(
          {m6[3], m6[1], m6[5]},
          {m6[4], m6[5], m6[2]}};
 
-    int n, p, q, i;
+    int n, p, q;
+    size_t i;
 
     double a1, a2, a3, a4, a5, a6, a7, a8;
     double vp2, vp3, vs2, vs3, w;
