@@ -1441,7 +1441,7 @@ def init(store_dir, variant):
     if ('psgrn.' + variant) not in program_bins:
         raise gf.store.StoreError('unsupported psgrn variant: %s' % variant)
 
-    c = PsGrnPsCmp()
+    c = PsGrnPsCmpConfig()
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
