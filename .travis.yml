@@ -29,7 +29,7 @@ before_install:
     - pip install progressbar setuptools flake8 pyyaml coveralls
     - easy_install pyavl
     - git clone https://github.com/pyrocko/fomosto-qseis
-    - cd fomosto-qseis-2006a; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-psgrn-pscmp
     - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-qssp.git
