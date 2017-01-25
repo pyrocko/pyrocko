@@ -2952,6 +2952,16 @@ class InverseEvalresp(FrequencyResponse):
         return 1./transfer
 
 
+def aslist(x):
+    if x is None:
+        return []
+
+    try:
+        return list(x)
+    except TypeError:
+        return [x]
+
+
 class PoleZeroResponse(FrequencyResponse):
     '''
     Evaluates frequency response from pole-zero representation.
@@ -2980,7 +2990,7 @@ class PoleZeroResponse(FrequencyResponse):
         if poles is None:
             poles = []
         FrequencyResponse.__init__(
-            self, zeros=zeros, poles=poles, constant=constant)
+            self, zeros=aslist(zeros), poles=aslist(poles), constant=constant)
 
     def evaluate(self, freqs):
         jomeg = 1.0j * 2.*num.pi*freqs
@@ -2996,6 +3006,37 @@ class PoleZeroResponse(FrequencyResponse):
     def is_scalar(self):
         return len(self.zeros) == 0 and len(self.poles) == 0
 
+    def inverse(self):
+        return PoleZeroResponse(
+            poles=list(self.zeros),
+            zeros=list(self.poles),
+            constant=1.0/self.constant)
+
+    def to_analog(self):
+        b, a = signal.zpk2tf(self.zeros, self.poles, self.constant)
+        return AnalogFilterResponse(aslist(b), aslist(a))
+
+    def to_digital(self, deltat):
+        try:
+            from signal import cont2discrete
+        except ImportError:
+            from pyrocko.scipy_cont2discrete import cont2discrete
+
+        if len(self.zeros) == 0 and len(self.poles) == 0:
+            return self.constant, 1.0
+
+        sysd = cont2discrete(
+            signal.zpk2ss(self.zeros, self.poles, self.constant),
+            deltat,
+            method='zoh')
+
+        b, a = signal.ss2tf(*sysd)
+
+        if b.ndim == 2:
+            b = b[0]
+
+        return DigitalFilterResponse(b, a, deltat)
+
 
 class ButterworthResponse(FrequencyResponse):
     '''
@@ -3010,10 +3051,22 @@ class ButterworthResponse(FrequencyResponse):
     order = Int.T(default=4)
     type = StringChoice.T(choices=['low', 'high'], default='low')
 
+    def to_polezero(self):
+        z, p, k = signal.butter(
+            self.order, self.corner*2.*math.pi,
+            btype=self.type, analog=True, output='zpk')
+
+        return PoleZeroResponse(
+            zeros=aslist(z),
+            poles=aslist(p),
+            constant=float(k))
+
     def evaluate(self, freqs):
         b, a = signal.butter(
-            int(self.order), float(self.corner), self.type, analog=True)
-        w, h = signal.freqs(b, a, freqs)
+            int(self.order), float(self.corner*2.*math.pi),
+            self.type, analog=True)
+
+        w, h = signal.freqs(b, a, freqs*2.*math.pi)
         return h
 
 
@@ -3113,6 +3166,32 @@ class DifferentiationResponse(FrequencyResponse):
         return self.gain * (1.0j * 2. * num.pi * freqs)**self.n
 
 
+class DigitalFilterResponse(FrequencyResponse):
+
+    b = List.T(Float.T())
+    a = List.T(Float.T())
+    deltat = Float.T()
+
+    def __init__(self, b, a, deltat):
+        FrequencyResponse.__init__(
+            self, b=aslist(b), a=aslist(a), deltat=float(deltat))
+
+    def evaluate(self, freqs):
+        ok = freqs <= 0.5/self.deltat
+        coeffs = num.zeros(freqs.size, dtype=num.complex)
+        coeffs[ok] = signal.freqz(
+            self.b, self.a, freqs[ok]*2.*math.pi * self.deltat)[1]
+
+        coeffs[num.logical_not(ok)] = None
+        return coeffs
+
+    def filter(self, tr):
+        assert_same_sampling_rate(self, tr)
+        tr_new = tr.copy(data=False)
+        tr_new.set_ydata(signal.lfilter(self.b, self.a, tr.get_ydata()))
+        return tr_new
+
+
 class AnalogFilterResponse(FrequencyResponse):
     '''
     Frequency response of an analog filter.
@@ -3124,10 +3203,25 @@ class AnalogFilterResponse(FrequencyResponse):
     a = List.T(Float.T())
 
     def __init__(self, b, a):
-        FrequencyResponse.__init__(self, b=b, a=a)
+        FrequencyResponse.__init__(self, b=aslist(b), a=aslist(a))
 
     def evaluate(self, freqs):
-        return signal.freqs(self.b, self.a, freqs/(2.*num.pi))[1]
+        return signal.freqs(self.b, self.a, freqs*2.*math.pi)[1]
+
+    def to_digital(self, deltat):
+        try:
+            from signal import cont2discrete
+        except ImportError:
+            from pyrocko.scipy_cont2discrete import cont2discrete
+
+        if len(self.b) == 1 and len(self.a) == 1:
+            return self.b[0]/self.a[0], 1.0
+
+        b, a, _ = cont2discrete((self.b, self.a), deltat, method='zoh')
+        if b.ndim == 2:
+            b = b[0]
+
+        return DigitalFilterResponse(b, a, deltat)
 
 
 class MultiplyResponse(FrequencyResponse):
