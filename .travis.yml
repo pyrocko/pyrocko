@@ -29,11 +29,11 @@ before_install:
     - pip install progressbar setuptools flake8 pyyaml coveralls
     - easy_install pyavl
     - git clone https://github.com/pyrocko/fomosto-qseis
-    - cd fomosto-qseis-2006a; ./autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - cd fomosto-qseis-2006a; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-psgrn-pscmp
-    - cd fomosto-psgrn-pscmp; ./autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-qssp.git
-    - cd fomosto-qssp; ./autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - cd fomosto-qssp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
 
 before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ test/ ; fi
