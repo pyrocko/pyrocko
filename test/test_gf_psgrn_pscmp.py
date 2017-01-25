@@ -3,7 +3,6 @@ import unittest
 import logging
 from tempfile import mkdtemp
 import numpy as num
-import time
 import os
 
 from pyrocko import orthodrome as ortd
@@ -12,7 +11,7 @@ from pyrocko.fomosto import ps2d
 from pyrocko.guts import Object, Float, List, String
 from pyrocko.guts_array import Array
 
-logger = logging.getLogger('test_gf_qseis')
+logger = logging.getLogger('test_gf_psgrn_pscmp')
 
 km = 1000.
 
@@ -67,7 +66,7 @@ def statics(engine, source, starget):
     return out
 
 
-class GFPs2dTestCase(unittest.TestCase):
+class GFPsgrnPscmpTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
@@ -79,7 +78,7 @@ class GFPs2dTestCase(unittest.TestCase):
         for d in self.tempdirs:
             shutil.rmtree(d)
 
-    def test_pyrocko_gf_vs_ps2d(self):
+    def test_fomosto_vs_psgrn_pscmp(self):
 
         mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
  0. 5.8 3.46 2.6 1264. 600.
@@ -102,7 +101,7 @@ mantle
 
         store_dir = mkdtemp(prefix='gfstore')
         self.tempdirs.append(store_dir)
-        store_id = 'ps2d_test'
+        store_id = 'psgrn_pscmp_test'
 
         version = '2008a'
 
@@ -180,9 +179,7 @@ mantle
             optimization='enable',
             interpolation='multilinear')
 
-        t0 = time.time()
         uz = statics(engine, source, starget)[:, 0]
-        t1 = time.time()
 
         # test against direct pscmp output
         lats2, lons2 = ortd.ne_to_latlon(
@@ -197,10 +194,8 @@ mantle
         ccf.psgrn_outdir = os.path.join(store_dir, c.gf_outdir) + '/'
 
         runner = ps2d.PsCmpRunner(keep_tmp=False)
-        t2 = time.time()
         runner.run(ccf)
         ps2du = runner.get_results(component='displ')[0]
-        t3 = time.time()
 
         uz_ps2d = ps2du[:, 2]
 
@@ -246,6 +241,7 @@ mantle
 
 #        fig.savefig('staticGFvs2d_Afmu_diff.pdf')
 
+
 if __name__ == '__main__':
-    util.setup_logging('test_gf_psgrncmp', 'warning')
+    util.setup_logging('test_gf_psgrn_pscmp', 'warning')
     unittest.main()

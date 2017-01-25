@@ -26,15 +26,12 @@ psgrn_displ_names = ('uz', 'ur', 'ut')
 psgrn_stress_names = ('szz', 'srr', 'stt', 'szr', 'srt', 'stz')
 psgrn_tilt_names = ('tr', 'tt', 'rot')
 psgrn_gravity_names = ('gd', 'gr')
-
+psgrn_components = 'ep ss ds cl'.split()
 
 km = 1000.
 
 guts_prefix = 'pf'
-
-logger = logging.getLogger('Ps2d')
-
-psgrn_components = 'ep ss ds cl'.split()
+logger = logging.getLogger('psgrn_pscmp')
 
 
 def nextpow2(i):
@@ -77,7 +74,7 @@ class PsGrnSpatialSampling(Object):
 
     def string_for_config(self):
         return '%i %15e %15e' % (self.n_steps, self.start_distance,
-                                                        self.end_distance)
+                                 self.end_distance)
 
 
 class PsGrnConfig(Object):
@@ -300,11 +297,6 @@ class PsGrnError(gf.store.StoreError):
     pass
 
 
-class Interrupted(gf.store.StoreError):
-    def __str__(self):
-        return 'Interrupted.'
-
-
 def remove_if_exists(fn, force=False):
     if os.path.exists(fn):
         if force:
@@ -466,8 +458,10 @@ class PsCmpProfile(PsCmpObservation):
     elon = Float.T(
         default=0.,
         help='Profile end longitude')
-    distances = List.T(Float.T(), optional=True,
-            help='Distances [m] for each point on profile from start to end.')
+    distances = List.T(
+        Float.T(),
+        optional=True,
+        help='Distances [m] for each point on profile from start to end.')
 
     def string_for_config(self):
         self.sw = 1
@@ -678,8 +672,8 @@ class PsCmpCoulombStressMasterFault(PsCmpCoulombStress):
     sigma3 = Float.T(default=0.0)
 
     def string_for_config(self):
-        return '%(friction)15e %(skempton_ratio)15e %(master_fault_strike)15f' \
-               '%(master_fault_dip)15f %(master_fault_rake)15f' \
+        return '%(friction)15e %(skempton_ratio)15e %(master_fault_strike)15f'\
+               '%(master_fault_dip)15f %(master_fault_rake)15f'\
                '%(sigma1)15e %(sigma2)15e %(sigma3)15e' % self.__dict__
 
 
@@ -1074,7 +1068,7 @@ class PsCmpConfigFull(PsCmpConfig):
         return template % d
 
 
-class Ps2dConfig(Object):
+class PsGrnPsCmp(Object):
     '''
     Combined config Object of PsGrn and PsCmp.
     '''
@@ -1128,9 +1122,8 @@ class PsCmpRunner:
         original = signal.signal(signal.SIGINT, signal_handler)
         try:
             try:
-                proc = Popen(program,
-                    stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                    close_fds=True)
+                proc = Popen(program, stdin=PIPE, stdout=PIPE, stderr=PIPE,
+                             close_fds=True)
 
             except OSError as err:
                 os.chdir(old_wd)
@@ -1266,7 +1259,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
         points = num.vstack([lats, lons, depths]).T
 
         self.shear_moduli = storeconf.get_shear_moduli(
-            lat=dummy_lat, 
+            lat=dummy_lat,
             lon=dummy_lon,
             points=points,
             interpolation='nearest_neighbor')
@@ -1283,7 +1276,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
         gf.builder.Builder.__init__(
             self, storeconf, step, block_size=block_size)
 
-        baseconf = self.store.get_extra('ps2d')
+        baseconf = self.store.get_extra('psgrn_pscmp')
 
         cg = PsGrnConfigFull(**baseconf.psgrn_config.items())
         cc = PsCmpConfigFull(**baseconf.pscmp_config.items())
@@ -1323,10 +1316,10 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             (self.step+1, self.nsteps, iblock+1, self.nblocks))
 
         if self.step == 0:
-            n_steps_depth = int((fc.source_depth_max - fc.source_depth_min) / \
-                (cg.gf_depth_spacing * km)) + 1
-            n_steps_distance = int((fc.distance_max - fc.distance_min) / \
-                (cg.gf_distance_spacing * km)) + 1
+            n_steps_depth = int((fc.source_depth_max - fc.source_depth_min) /
+                                (cg.gf_depth_spacing * km)) + 1
+            n_steps_distance = int((fc.distance_max - fc.distance_min) /
+                                   (cg.gf_distance_spacing * km)) + 1
 
             cg.depth_grid = PsGrnSpatialSampling(
                 n_steps=n_steps_depth,
@@ -1360,7 +1353,6 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             Ai = 1. / num.power(mtsize, 2)
             mui = 1. / mu
 
-
             gfmapping = [
                 (('nn',),
                  {'un': (0, 0.4 * Ai * mui), 'ud': (5, 0.4 * Ai * mui)}),
@@ -1376,10 +1368,8 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                  {'un': (8, 0.4 * Ai * mui), 'ud': (9, 0.4 * Ai * mui)}),
                 ]
 
-
             for mt, gfmap in gfmapping:
-
-                cc.rectangular_source_patches= []
+                cc.rectangular_source_patches = []
                 for idx in mt:
                     pmt = PsCmpMomentTensor(
                         lat=0.+0.001*dx*cake.m2d,
@@ -1451,7 +1441,7 @@ def init(store_dir, variant):
     if ('psgrn.' + variant) not in program_bins:
         raise gf.store.StoreError('unsupported psgrn variant: %s' % variant)
 
-    c = Ps2dConfig()
+    c = PsGrnPsCmp()
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
@@ -1467,7 +1457,7 @@ def init(store_dir, variant):
         distance_max=1000*km,
         distance_delta=10*km,
         earthmodel_1d=cake.load_model(),
-        modelling_code_id='ps2d.%s' % variant,
+        modelling_code_id='psgrn_pscmp.%s' % variant,
         tabulated_phases=[])    # dummy list
 
     c.validate()
@@ -1475,15 +1465,15 @@ def init(store_dir, variant):
     return gf.store.Store.create_editables(
         store_dir,
         config=config,
-        extra={'ps2d': c})
+        extra={'psgrn_pscmp': c})
 
 
 def build(store_dir,
-        force=False,
-        nworkers=None,
-        continue_=False,
-        step=None,
-        iblock=None):
+          force=False,
+          nworkers=None,
+          continue_=False,
+          step=None,
+          iblock=None):
 
     return PsGrnCmpGFBuilder.build(
         store_dir, force=force, nworkers=nworkers, continue_=continue_,
