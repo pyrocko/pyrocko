@@ -560,33 +560,40 @@ class Trace(object):
         times. If allow_upsample_max is set to a value larger than 1,
         intermediate upsampling steps are allowed, in order to increase the
         number of possible downsampling ratios.
+
+        If the requested ratio is not supported, an exception of type
+        :py:exc:`pyrocko.util.UnavailableDecimation` is raised.
         '''
 
         ratio = deltat/self.deltat
         rratio = round(ratio)
-        if abs(rratio - ratio)/ratio > 0.0001:
-            if allow_upsample_max <= 1:
-                raise util.UnavailableDecimation('ratio = %g' % ratio)
-            else:
-                deltat_inter = 1./util.lcm(1./self.deltat, 1./deltat)
-                upsratio = int(round(self.deltat/deltat_inter))
-                if upsratio > allow_upsample_max:
-                    raise util.UnavailableDecimation('ratio = %g' % ratio)
 
-                if upsratio > 1:
-                    self.drop_growbuffer()
-                    ydata = self.ydata
-                    self.ydata = num.zeros(
-                        ydata.size*upsratio-(upsratio-1), ydata.dtype)
-                    self.ydata[::upsratio] = ydata
-                    for i in range(1, upsratio):
-                        self.ydata[i::upsratio] = \
-                            float(i)/upsratio * ydata[:-1] \
-                            + float(upsratio-i)/upsratio * ydata[1:]
-                    self.deltat = self.deltat/upsratio
+        ok = False
+        for upsratio in xrange(1, allow_upsample_max+1):
+            dratio = (upsratio/self.deltat) / (1./deltat)
+            if abs(dratio - round(dratio)) / dratio < 0.0001 and \
+                    util.decitab(int(round(dratio))):
 
-                    ratio = deltat/self.deltat
-                    rratio = round(ratio)
+                ok = True
+                break
+
+        if not ok:
+            raise util.UnavailableDecimation('ratio = %g' % ratio)
+
+        if upsratio > 1:
+            self.drop_growbuffer()
+            ydata = self.ydata
+            self.ydata = num.zeros(
+                ydata.size*upsratio-(upsratio-1), ydata.dtype)
+            self.ydata[::upsratio] = ydata
+            for i in range(1, upsratio):
+                self.ydata[i::upsratio] = \
+                    float(i)/upsratio * ydata[:-1] \
+                    + float(upsratio-i)/upsratio * ydata[1:]
+            self.deltat = self.deltat/upsratio
+
+            ratio = deltat/self.deltat
+            rratio = round(ratio)
 
         deci_seq = util.decitab(int(rratio))
         finals = []
@@ -1861,6 +1868,30 @@ def rotate_to_rt(n, e, source, receiver, out_channels=('R', 'T')):
             t = tr
 
     return r, t
+
+
+def rotate_to_lqt(traces, backazimuth, incidence, in_channels,
+                  out_channels=('L', 'Q', 'T')):
+    '''Rotate traces from ZNE to LQT system.
+
+    :param traces: list of traces in arbitrary order
+    :param backazimuth: backazimuth in degrees clockwise from north
+    :param incidence: incidence angle in degrees from vertical
+    :param in_channels: input channel names
+    :param out_channels: output channel names (default: ('L', 'Q', 'T'))
+    :returns: list of transformed traces
+    '''
+    i = incidence/180.*num.pi
+    b = backazimuth/180.*num.pi
+
+    ci = num.cos(i)
+    cb = num.cos(b)
+    si = num.sin(i)
+    sb = num.sin(b)
+
+    rotmat = num.array(
+        [[ci, -cb*si, -sb*si], [si, cb*ci, sb*ci], [0., sb, -cb]])
+    return project(traces, rotmat, in_channels, out_channels)
 
 
 def _decompose(a):

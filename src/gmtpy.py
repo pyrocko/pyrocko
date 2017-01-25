@@ -3211,6 +3211,9 @@ class GMT:
     def is_gmt5(self):
         return self.installation['version'][0] == '5'
 
+    def get_version(self):
+        return self.installation['version']
+
     def get_config(self, key):
         return self.gmt_config[key]
 

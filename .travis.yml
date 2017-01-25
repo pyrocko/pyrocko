@@ -14,7 +14,10 @@ matrix:
 
 addons:
     apt:
-        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml, python-tk, libyaml-dev, poppler-utils, ghostscript, imagemagick ]
+        packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
+            python-scipy, gfortran, libatlas-dev, libopenblas-dev,
+            python-matplotlib, python-yaml, python-tk, libyaml-dev,
+            poppler-utils, ghostscript, imagemagick, xvfb ]
 
 before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
@@ -34,6 +37,9 @@ before_install:
 
 before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ test/ ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export DISPLAY=:99.0 ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sh -e /etc/init.d/xvfb start ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
 
 install:
     - sudo python setup.py install

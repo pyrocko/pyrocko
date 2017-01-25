@@ -763,6 +763,12 @@ def distance_accurate15nm(lat1, lon1, lat2, lon2):
 
 
 def positive_region(region):
+    '''Normalize parameterization of a rectangular geographical region.
+
+    :param region: ``(west, east, south, north)``
+    :returns: ``(west, east, south, north)``, where ``west <= east`` and
+        where ``west`` and ``east`` are in the range ``[-180., 180.+360.[``
+    '''
     west, east, south, north = [float(x) for x in region]
 
     assert -180. - 360. <= west < 180.
@@ -781,6 +787,15 @@ def positive_region(region):
 
 
 def points_in_region(p, region):
+    '''
+    Check what points are contained in a rectangular geographical region.
+
+    :param p: NumPy array of shape ``(N, 2)`` where each row is a
+        ``(lat, lon)`` pair [deg]
+    :param region: ``(west, east, south, north)`` [deg]
+    :returns: NumPy array of shape ``(N)``, type ``bool``
+    '''
+
     w, e, s, n = positive_region(region)
     return num.logical_and(
         num.logical_and(s <= p[:, 0], p[:, 0] <= n),
@@ -789,12 +804,30 @@ def points_in_region(p, region):
             num.logical_and(w-360. <= p[:, 1], p[:, 1] <= e-360.)))
 
 
+def point_in_region(p, region):
+    '''
+    Check if a point is contained in a rectangular geographical region.
+
+    :param p: ``(lat, lon)`` [deg]
+    :param region: ``(west, east, south, north)`` [deg]
+    :returns: ``bool``
+    '''
+
+    w, e, s, n = positive_region(region)
+    return num.logical_and(
+        num.logical_and(s <= p[0], p[0] <= n),
+        num.logical_or(
+            num.logical_and(w <= p[1], p[1] <= e),
+            num.logical_and(w-360. <= p[1], p[1] <= e-360.)))
+
+
 def radius_to_region(lat, lon, radius):
     '''
-    :param lat:
-    :param lon:
-    :param radius:
-    :return:
+    Get a rectangular region which fully contains a given circular region.
+
+    :param lat,lon: center of circular region [deg]
+    :param radius: radius of circular region [m]
+    :return: rectangular region as ``(east, west, south, north)`` [deg]
     '''
     radius_deg = radius * m2d
     if radius_deg < 45.:
