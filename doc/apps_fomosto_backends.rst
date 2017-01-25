@@ -81,7 +81,7 @@ The ``psgrn_pscmp`` backend
 
 Code to calculate synthetic stress/strain/tilt/gravitational fields on a
 layered viscoelastic halfspace. It has been written by Rongjiang Wang
- [Wang2005]_, [Wang2006]_
+ [Wang2003]_, [Wang2005]_, [Wang2006]_.
  It uses ...to be completed ...
 
 Use this code for calculating synthetic static and/or viscoelastic displacement
@@ -111,6 +111,10 @@ References
 .. [Wang1999] Wang, R., (1999), A simple orthonormalization method for stable
     and efficient computation of Green's functions, Bulletin of the
     Seismological Society of America, 89(3), 733-741.0
+
+.. [Wang2003] Wang, R., F. Lorenzo-Martín and F. Roth (2003), Computation of
+    deformation induced by earthquakes in a multi-layered elastic crust -
+    FORTRAN programs EDGRN/EDCMP, Computer and Geosciences, 29(2), 195-207.
 
 .. [Wang2005] Wang, R. (2005), The dislocation theory: a consistent way for
     including the gravity effect in (visco)elastic plane-earth models,
