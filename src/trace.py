@@ -1893,6 +1893,7 @@ def rotate_to_lqt(traces, backazimuth, incidence, in_channels,
         [[ci, -cb*si, -sb*si], [si, cb*ci, sb*ci], [0., sb, -cb]])
     return project(traces, rotmat, in_channels, out_channels)
 
+
 def _decompose(a):
     '''
     Decompose matrix into independent submatrices.
