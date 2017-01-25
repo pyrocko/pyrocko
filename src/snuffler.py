@@ -411,6 +411,7 @@ class SnufflerWindow(qg.QMainWindow):
     def __init__(
             self, pile, stations=None, events=None, markers=None, ntracks=12,
             follow=None, controls=True, opengl=False):
+
         qg.QMainWindow.__init__(self)
 
         self.dockwidget_to_toggler = {}

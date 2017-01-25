@@ -348,6 +348,17 @@ def plot_erroneous_ne_to_latlon():
         else:
             print 'ok', gsize, lat, lon
 
+    def test_point_in_region(self):
+        testdata = [
+            ((-20., 180.), (-90., 90., -180., 180.), True),
+            ((-20., 180.), (-90., 90., 170., -170.), True),
+            ((-20., 160.), (-90., 90., 170., -170.), False),
+            ((-20., -160.), (-90., 90., 170., -170.), False),
+        ]
+
+        for point, region, in_region in testdata:
+            assert bool(orthodrome.point_in_region(point, region)) == in_region
+
 
 if __name__ == "__main__":
     util.setup_logging('test_orthodrome', 'warning')

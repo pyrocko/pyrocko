@@ -118,6 +118,21 @@ class TraceTestCase(unittest.TestCase):
         assert numeq(r.get_ydata(), [2., 1.], 1.0e-6)
         assert numeq(t.get_ydata(), [0., -1], 1.0e-6)
 
+    def testLQTRotation(self):
+        ba = 225.
+        inci = 90.-num.arctan(1./num.sqrt(2.))*180./num.pi
+        in_channels = list('ZEN')
+        zdata = num.ones(2)
+        edata = num.ones(2)
+        ndata = num.ones(2)
+        z = trace.Trace(deltat=1., ydata=zdata, tmin=1., channel='Z')
+        e = trace.Trace(deltat=1., ydata=edata, tmin=1., channel='E')
+        n = trace.Trace(deltat=1., ydata=ndata, tmin=1., channel='N')
+        l, q, t = trace.rotate_to_lqt([z, n, e], ba, inci, in_channels)
+        assert(num.all(l.get_ydata() - num.sqrt(3.) < 1.0e-12))
+        assert(num.all(t.get_ydata() < 1.0e-12))
+        assert(num.all(q.get_ydata() < 1.0e-12))
+
     def testProjection(self):
         s2 = math.sqrt(2.)
         ndata = num.array([s2, s2], dtype=num.float)
@@ -199,19 +214,27 @@ class TraceTestCase(unittest.TestCase):
         assert a.ydata.size == 10000*1000
 
     def testDownsampling(self):
+        for (dt1, dt2, test_fail) in [
+                (1./125., 1/10., True),
+                (1., 5., False)]:
 
-        n = 1024
-        dt1 = 1./125.
-        dt2 = 1./10.
-        # dtinter = 1./util.lcm(1./dt1, 1./dt2)
-        # upsratio = dt1/dtinter
-        xdata = num.arange(n, dtype=num.float)
-        ydata = num.exp(-((xdata-n/2)/10.)**2)
-        t = trace.Trace(ydata=ydata, tmin=sometime, deltat=dt1, location='1')
-        t2 = t.copy()
-        t2.set_codes(location='2')
-        t2.downsample_to(dt2, allow_upsample_max=10)
-        # io.save([t, t2], 'test.mseed')
+            n = 1024
+            xdata = num.arange(n, dtype=num.float)
+            ydata = num.exp(-((xdata-n/2)/10.)**2)
+            t = trace.Trace(
+                ydata=ydata, tmin=sometime, deltat=dt1, location='1')
+
+            t2 = t.copy()
+            t2.set_codes(location='2')
+            if test_fail:
+                with self.assertRaises(trace.UnavailableDecimation):
+                    t2.downsample_to(dt2, allow_upsample_max=1)
+
+            t2.downsample_to(dt2, allow_upsample_max=10)
+
+            assert t2.deltat == dt2
+
+            # trace.snuffle([t, t2])
 
     def testFiltering(self):
         tmin = sometime
