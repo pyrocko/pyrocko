@@ -7,7 +7,7 @@ import os
 
 from pyrocko import orthodrome as ortd
 from pyrocko import util, gf, cake  # noqa
-from pyrocko.fomosto import ps2d
+from pyrocko.fomosto import psgrn_pscmp
 from pyrocko.guts import Object, Float, List, String
 from pyrocko.guts_array import Array
 
@@ -105,7 +105,7 @@ mantle
 
         version = '2008a'
 
-        c = ps2d.Ps2dConfig()
+        c = psgrn_pscmp.PsGrnPsCmpConfig()
         c.psgrn_config.sampling_interval = 1.
         c.psgrn_config.version = version
         c.pscmp_config.version = version
@@ -121,21 +121,21 @@ mantle
             distance_min=0. * km,
             distance_max=40. * km,
             distance_delta=0.1 * km,
-            modelling_code_id='ps2d.%s' % version,
+            modelling_code_id='psgrn_pscmp.%s' % version,
             earthmodel_1d=mod,
             tabulated_phases=[])
 
         config.validate()
         gf.store.Store.create_editables(
-            store_dir, config=config, extra={'ps2d': c})
+            store_dir, config=config, extra={'psgrn_pscmp': c})
 
         store = gf.store.Store(store_dir, 'r')
         store.close()
 
         # build store
         try:
-            ps2d.build(store_dir, nworkers=1)
-        except ps2d.PsCmpError, e:
+            psgrn_pscmp.build(store_dir, nworkers=1)
+        except psgrn_pscmp.PsCmpError, e:
             if str(e).find('could not start psgrn/pscmp') != -1:
                 logger.warn('psgrn/pscmp not installed; '
                             'skipping test_pyrocko_gf_vs_pscmp')
@@ -184,16 +184,16 @@ mantle
         # test against direct pscmp output
         lats2, lons2 = ortd.ne_to_latlon(
             origin.lat, origin.lon, norths2, easts2)
-        pscmp_sources = [ps2d.PsCmpRectangularSource(**TestRF)]
+        pscmp_sources = [psgrn_pscmp.PsCmpRectangularSource(**TestRF)]
 
         cc = c.pscmp_config
-        cc.observation = ps2d.PsCmpScatter(lats=lats2, lons=lons2)
+        cc.observation = psgrn_pscmp.PsCmpScatter(lats=lats2, lons=lons2)
         cc.rectangular_source_patches = pscmp_sources
 
-        ccf = ps2d.PsCmpConfigFull(**cc.items())
+        ccf = psgrn_pscmp.PsCmpConfigFull(**cc.items())
         ccf.psgrn_outdir = os.path.join(store_dir, c.gf_outdir) + '/'
 
-        runner = ps2d.PsCmpRunner(keep_tmp=False)
+        runner = psgrn_pscmp.PsCmpRunner(keep_tmp=False)
         runner.run(ccf)
         ps2du = runner.get_results(component='displ')[0]
 

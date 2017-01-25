@@ -1068,7 +1068,7 @@ class PsCmpConfigFull(PsCmpConfig):
         return template % d
 
 
-class PsGrnPsCmp(Object):
+class PsGrnPsCmpConfig(Object):
     '''
     Combined config Object of PsGrn and PsCmp.
     '''
