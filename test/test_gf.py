@@ -827,7 +827,7 @@ class GFTestCase(unittest.TestCase):
                     mts_arr,
                     receiver_coords_arr,
                     'elastic10',
-                    interpolation)
+                    interpolation, 4)
 
             @benchmark.labeled('p%s' % label)
             def sum_python():
@@ -916,4 +916,4 @@ class GFTestCase(unittest.TestCase):
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main(defaultTest='GFTestCase.test_sum_benchmark')
+    unittest.main()

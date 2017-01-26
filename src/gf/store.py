@@ -586,7 +586,12 @@ class BaseStore(object):
         deltat = self._deltat * decimate
 
         if len(irecords) == 0:
-            return Zero
+            if None in (itmin, nsamples):
+                return Zero
+            else:
+                return GFTrace(
+                    num.zeros(nsamples, dtype=gf_dtype), itmin,
+                    deltat, is_zero=True)
 
         assert len(irecords) == len(delays)
         assert len(irecords) == len(weights)
@@ -669,10 +674,15 @@ class BaseStore(object):
         if not self._f_index:
             self.open()
 
-        if len(irecords) == 0:
-            return Zero
-
         deltat = self._deltat * decimate
+
+        if len(irecords) == 0:
+            if None in (itmin, nsamples):
+                return Zero
+            else:
+                return GFTrace(
+                    num.zeros(nsamples, dtype=gf_dtype), itmin,
+                    deltat, is_zero=True)
 
         datas = []
         itmins = []

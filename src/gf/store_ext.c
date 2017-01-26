@@ -464,18 +464,28 @@ static void trace_trim_sticky(trace_t *trace, int32_t itmin, int32_t nsamples) {
 }
 
 
-static store_error_t store_sum_nsamples(
+static store_error_t store_sum_extent(
             const store_t *store,
             const uint64_t *irecords,
             const float32_t *delays,
             int n,
-            int32_t *nsamples) {
+            int32_t *nsamples_,
+            int32_t *itmin_) {
+
     float itmin_d, itmax_d, idelay;
     int32_t itmax, itmin, ns;
     int ihave, is_zero, j;
     store_error_t err;
     itmin_d = itmax_d = 0.0;
+    itmin = 0;
     ihave = 0;
+
+    if (n == 0) {
+        *itmin_ = 0;
+        *nsamples_ = 0;
+        return SUCCESS;
+    }
+
     for (j=0; j<n; j++) {
         err = store_get_span(store, irecords[j], &itmin, &ns, &is_zero);
         if (SUCCESS != err) {
@@ -496,8 +506,8 @@ static store_error_t store_sum_nsamples(
         }
     }
 
-    itmin = (int32_t) floor(itmin_d);
-    *nsamples = (int32_t) ceil(itmax_d) - itmin + 1;
+    *itmin_ = (int32_t) floor(itmin_d);
+    *nsamples_ = (int32_t) ceil(itmax_d) - *itmin_ + 1;
     return SUCCESS;
 }
 
@@ -507,10 +517,7 @@ static store_error_t store_sum(
         const float32_t *delays,
         const float32_t *weights,
         int n,
-        int32_t itmin,
-        int32_t nsamples,
-        trace_t *result,
-        gf_dtype *out) {
+        trace_t *result) {
 
     float32_t weight, delay;
     trace_t trace;
@@ -521,14 +528,24 @@ static store_error_t store_sum(
     int idelay_floor, idelay_ceil;
     float w1, w2;
     store_error_t err;
+    int32_t itmin;
+    int32_t nsamples;
+    gf_dtype *out;
 
-    *result = ZERO_TRACE;
-    if (0 == n) {
-        return SUCCESS;
-    }
+    out = result->data;
+    itmin = result->itmin;
+    nsamples = result->nsamples;
+
+    result->is_zero = 1;
+    result->begin_value = 0.0;
+    result->end_value = 0.0;
 
     if (!inlimits(itmin) || !inposlimits(nsamples)) {
         return BAD_REQUEST;
+    }
+
+    if (0 == n) {
+        return SUCCESS;
     }
 
     begin_value = 0.0;
@@ -611,11 +628,8 @@ static store_error_t store_sum(
     }
 
     result->is_zero = 0;
-    result->itmin = itmin;
-    result->nsamples = nsamples;
     result->begin_value = begin_value;
     result->end_value = end_value;
-    result->data = out;
 
     return SUCCESS;
 }
@@ -664,29 +678,29 @@ static store_error_t store_sum_static(
         for (t=0; t<ntargets; t++) {
             for (n=0; n<nsummands; n++) {
                 j = t*nsummands + n;
-    
+
                 delay = delays[j];
                 weight = weights[j];
                 idelay_floor = (int)floor(delay/deltat);
                 idelay_ceil = (int)ceil(delay/deltat);
-    
+
                 if (0.0 == weight)
                     continue;
-    
+
                 if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))
                     err += BAD_REQUEST;
-    
+
                 err += store_get(store, irecords[j], &trace);
-    
+
                 if (trace.is_zero)
                     continue;
-    
+
                 idx = it + idelay_floor - trace.itmin;
                 if (idx >= trace.nsamples)
                     idx = trace.nsamples - 1;
                 if (idx < 0)
                     idx = 0;
-    
+
                 if (idelay_floor == idelay_ceil || (idx+1) >= trace.nsamples) {
                     result[t] += fe32toh(trace.data[idx]) * weight;
                 } else {
@@ -1460,7 +1474,7 @@ static store_error_t make_sum_params(
     float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
-    store_error_t err = SUCCESS;    
+    store_error_t err = SUCCESS;
 
     if (nthreads == 0)
         nthreads = omp_get_num_procs();
@@ -1529,7 +1543,6 @@ static store_error_t make_sum_params(
 static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     PyObject *capsule, *irecords_arr, *delays_arr, *weights_arr;
     store_t *store;
-    gf_dtype *adata;
     trace_t result;
     PyArrayObject *array = NULL;
     npy_intp array_dims[1] = {0};
@@ -1556,12 +1569,15 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
 
     if (!good_array(irecords_arr, NPY_UINT64, -1, 1, NULL)) return NULL;
     n_ = PyArray_SIZE((PyArrayObject*)irecords_arr);
+    if (!inposlimits(n_)) {
+        PyErr_SetString(StoreExtError,
+            "store_sum: invalid number of entries in arrays");
+        return NULL;
+    }
+
     if (!good_array(delays_arr, NPY_FLOAT32, n_, 1, NULL)) return NULL;
     if (!good_array(weights_arr, NPY_FLOAT32, n_, 1, NULL)) return NULL;
 
-    if (!inlimits(n_)) {
-        PyErr_SetString(StoreExtError, "store_sum: invalid number of entries in arrays");
-    }
     n = n_;
 
     if (!inlimits(itmin_)) {
@@ -1579,20 +1595,23 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     irecords = PyArray_DATA((PyArrayObject*)irecords_arr);
     delays = PyArray_DATA((PyArrayObject*)delays_arr);
     weights = PyArray_DATA((PyArrayObject*)weights_arr);
-    
+
     if (nsamples == -1) {
-        err = store_sum_nsamples(store, irecords, delays, n, &nsamples);
+        err = store_sum_extent(store, irecords, delays, n, &nsamples, &itmin);
         if (SUCCESS != err) {
             PyErr_SetString(StoreExtError, store_error_names[err]);
-            return NULL;    
+            return NULL;
         }
     }
 
     array_dims[0] = nsamples;
     array = (PyArrayObject*)PyArray_ZEROS(1, array_dims, NPY_GFDTYPE, 0);
-    adata = (gf_dtype*)PyArray_DATA(array);
 
-    err = store_sum(store, irecords, delays, weights, n, itmin, nsamples, &result, adata);
+    result.nsamples = nsamples;
+    result.itmin = itmin;
+    result.data = (gf_dtype*)PyArray_DATA(array);
+
+    err = store_sum(store, irecords, delays, weights, n, &result);
     if (SUCCESS != err) {
         PyErr_SetString(StoreExtError, store_error_names[err]);
         return NULL;
