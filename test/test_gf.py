@@ -709,90 +709,11 @@ class GFTestCase(unittest.TestCase):
 
         return self._dummy_store
 
-    def test_make_sum_table(self):
-        from pyrocko.gf import store_ext
-        store = self.dummy_store()
-        store.open()
-        interpolation = 'nearest_neighbor'
-        for xxx in [0., 1*km, 2*km, 5*km, 8*km]:
-            source = gf.RectangularSource(
-                lat=0., lon=0.,
-                depth=10*km, north_shift=0.1, east_shift=0.1,
-                width=xxx, length=xxx)
-
-            targets = [gf.Target(
-                lat=random.random()*10.,
-                lon=random.random()*10,
-                north_shift=0.1,
-                east_shift=0.1) for x in xrange(1)]
-
-            dsources = [
-                source.discretize_basesource(store, target)
-                for target in targets]
-
-            source_coordss = num.array([
-                dsource.coords5() for dsource in dsources])
-            source_coordss = num.squeeze(source_coordss, 0)
-
-            mts = num.array([
-                dsource.m6s for dsource in dsources])
-            mts = num.squeeze(mts, 0)
-
-            receiver_coords_combi = num.empty((len(targets), 5))
-            for itarget, target in enumerate(targets):
-                receiver = target.receiver(store)
-                receiver_coords_combi[itarget, :] = \
-                    [receiver.lat, receiver.lon, receiver.north_shift,
-                     receiver.east_shift, receiver.depth]
-
-            t0 = time.time()
-
-            store_ext.make_sum_params(
-                store.cstore,
-                source_coordss,
-                mts,
-                receiver_coords_combi,
-                'elastic10',
-                interpolation)
-
-            t1 = time.time()
-
-            # for itarget, source_coords, target in zip(
-            #   xrange(len(targets)), source_coordss, targets):
-            #     store_ext.make_sum_params(
-            #         store.cstore,
-            #         source_coords,
-            #         dsource.m6s,
-            #         receiver_coords_combi[itarget:itarget+1, :],
-            #         'elastic10',
-            #         interpolation)
-
-            t2 = time.time()+1
-
-            for dsource, target in zip(dsources, targets):
-                for (component, args, delays, weights) in \
-                        store.config.make_sum_params(dsource, receiver):
-
-                    if interpolation == 'nearest_neighbor':
-                        irecords = store.config.irecords(*args)
-                    else:
-                        assert interpolation == 'multilinear'
-                        irecords, ip_weights = store.config.vicinities(*args)
-                        neach = irecords.size / args[0].size
-                        weights = num.repeat(weights, neach) * ip_weights
-                        delays = num.repeat(delays, neach)
-
-            t3 = time.time()
-            print t1 - t0,\
-                t2 - t1,\
-                t3 - t2,\
-                'x %g' % ((t3 - t2) / (t1 - t0))
-
-    def test_sum_benchmark(self):
+    def test_make_sum_params_benchmark(self):
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 
-        def test_weights_bench(store, dim, ntargets, interpolation):
+        def test_weights_bench(store, dim, ntargets, interpolation, nthreads):
             source = gf.RectangularSource(
                 lat=0., lon=0.,
                 depth=10*km, north_shift=0.1, east_shift=0.1,
@@ -815,9 +736,11 @@ class GFTestCase(unittest.TestCase):
                     [receiver.lat, receiver.lon, receiver.north_shift,
                      receiver.east_shift, receiver.depth]
             ns = mts_arr.shape[0]
-            label = '_ns%04d_nt%04d_%s' % (ns,
-                                           len(targets),
-                                           interpolation)
+            label = '_ns%04d_nt%04d_%s_np%02d' % (
+                ns,
+                len(targets),
+                interpolation,
+                nthreads)
 
             @benchmark.labeled('c%s' % label)
             def sum_c():
@@ -827,7 +750,7 @@ class GFTestCase(unittest.TestCase):
                     mts_arr,
                     receiver_coords_arr,
                     'elastic10',
-                    interpolation, 4)
+                    interpolation, nthreads)
 
             @benchmark.labeled('p%s' % label)
             def sum_python():
@@ -911,7 +834,9 @@ class GFTestCase(unittest.TestCase):
         for interpolation in ['multilinear', 'nearest_neighbor']:
             for d in dims:
                 for nt in ntargets:
-                    test_weights_bench(store, d, nt, interpolation)
+                    for nthreads in [1, 2]:
+                        test_weights_bench(
+                            store, d, nt, interpolation, nthreads)
 
 
 if __name__ == '__main__':
