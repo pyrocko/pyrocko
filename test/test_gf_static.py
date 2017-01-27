@@ -39,7 +39,7 @@ class GFStaticTest(unittest.TestCase):
             lambda: self.cprofile.dump_stats('/tmp/make_sum_params.cprof'))
 
     def get_qseis_store_dir(self):
-        return '/tmp/gfstoreOiW0kP'
+        return '/tmp/gfstorezWTGDW'
         if self.qseis_store_dir is None:
             self.qseis_store_dir = self._create_qseis_store()
 
@@ -122,14 +122,14 @@ mantle
         store = gf.Store(self.get_qseis_store_dir())
         store.open()
         dim = 1*km
-        ntargets = 1
+        ntargets = 1600
         interp = ['nearest_neighbor', 'multilinear']
         interpolation = interp[0]
 
         source = gf.RectangularSource(
             lat=0., lon=0.,
             depth=15*km, north_shift=0., east_shift=0.,
-            width=dim, length=dim)
+            width=2*km, length=5*km)
 
         r1 = random.rand()*5*km
         r2 = random.rand()*5*km
@@ -178,7 +178,7 @@ mantle
             delays = num.zeros_like(weights)
             pos = 6
             t = sum_timeseries(store.cstore, irecords, delays, weights, pos)
-            s = sum_static(store.cstore, irecords, delays, weights, pos, 1)
+            s = sum_static(store.cstore, irecords, delays, weights, pos, 0)
             print benchmark.__str__(header=False)
             benchmark.clear()
             num.testing.assert_equal(t, s)
