@@ -381,10 +381,10 @@ class BaseStore(object):
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
                          implementation, optimization)
 
-    def sum_statics(self, irecords, weights, implementation=None,
-                    optimization='enable'):
-        return self._sum_statics(irecords, weights, implementation,
-                                 optimization)
+    def sum_static(self, irecords, delays, weights, it, ntargets,
+                    optimization='disable', nthreads=0):
+        return self._sum_static(irecords, delays, weights, it, ntargets,
+                                optimization, nthreads)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
@@ -852,7 +852,8 @@ class BaseStore(object):
 
         return tr
 
-    def _sum_statics(self, irecords, weights, implementation, optimization):
+    def _sum_static_python(self, irecords, weights, implementation,
+                            optimization):
 
         if not self._f_index:
             self.open()
@@ -876,6 +877,30 @@ class BaseStore(object):
         val.t_stack = t2 - t1
 
         return val
+
+    def _sum_static(self, irecords, weights, delays, it, ntargets,
+                    optimization, nthreads=0):
+
+        if not self._f_index:
+            self.open()
+
+        t0 = time.time()
+
+        if optimization == 'enable':
+            pass
+            irecords, weights = self._optimize_statics(
+                irecords, weights)
+        else:
+            assert optimization == 'disable'
+        t1 = time.time()
+
+        result = store_ext.store_sum_static(
+            self.cstore, irecords, delays, weights, it, ntargets, nthreads)
+
+        t2 = time.time()
+
+        return result
+
 
     def _load_index(self):
         if self._use_memmap:
@@ -1319,7 +1344,7 @@ class Store(BaseStore):
         tr.deltat = self.config.deltat * decimate
         return tr
 
-    def sum_statics(
+    def sum_static(
             self, args, weights,
             decimate=1, interpolation='nearest_neighbor', implementation='c',
             optimization='enable'):
@@ -1761,6 +1786,8 @@ class Store(BaseStore):
                 out[components.index(component)] = gval.value
 
         return out
+
+    def static_
 
     def seismogram(self, source, receiver, components, deltat=None,
                    itmin=None, nsamples=None,
