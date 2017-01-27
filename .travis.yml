@@ -1,8 +1,5 @@
 language: python
 
-env:
-    - OMP_NUM_THREADS=4
-
 matrix:
     include:
         - os: linux
@@ -44,6 +41,7 @@ before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export DISPLAY=:99.0 ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sh -e /etc/init.d/xvfb start ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
+    - OMP_NUM_THREADS=4
 
 install:
     - sudo python setup.py install
