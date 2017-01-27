@@ -1513,16 +1513,16 @@ class Config(Object):
 
         return out
 
-    def make_sum_params2(self, source, multi_location):
-        out = []
-        delays = source.times
-
+    def make_sum_params_ext(self, source, multi_location,
+                            interpolation='nearest_neighbor', nthreads=0):
+        # delays = num.tile(source.times, multi_location.coords5.shape[0])
         source_coords = source.coords5()
+        moment_tensors = source.m6s
         receiver_coords = multi_location.coords5
 
         return store_ext.make_sum_params(
-            source.times, source_coords, receiver_coords, self.component_scheme, self.short_type)
-        
+            self.cstore, source_coords, moment_tensors, receiver_coords,
+            self.component_scheme, nthreads)
 
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')
@@ -1726,8 +1726,6 @@ class ConfigTypeA(Config):
         return (num.tile(source.depths, nc/n),
                 num.tile(dists, nc/n),
                 icomponents)
-
-        
 
     def make_indexing_args1(self, source, receiver):
         return (source.depth, source.distance_to(receiver))
