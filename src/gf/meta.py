@@ -1721,8 +1721,6 @@ class ConfigTypeA(Config):
                 num.tile(dists, nc/n),
                 icomponents)
 
-        
-
     def make_indexing_args1(self, source, receiver):
         return (source.depth, source.distance_to(receiver))
 

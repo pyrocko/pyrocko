@@ -1478,7 +1478,7 @@ static store_error_t make_sum_params(
 
     if (nthreads == 0)
         nthreads = omp_get_num_procs();
-    if (nthreads > omp_get_num_procs()) {
+    else if (nthreads > omp_get_num_procs()) {
         nthreads = omp_get_num_procs();
         printf("make_sum_params - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
     }

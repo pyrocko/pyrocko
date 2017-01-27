@@ -709,11 +709,12 @@ class GFTestCase(unittest.TestCase):
 
         return self._dummy_store
 
-    def test_make_sum_params_benchmark(self):
+    def test_make_params(self):
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 
-        def test_weights_bench(store, dim, ntargets, interpolation, nthreads):
+        def test_make_params_bench(store, dim, ntargets, interpolation,
+                                   nthreads):
             source = gf.RectangularSource(
                 lat=0., lon=0.,
                 depth=10*km, north_shift=0.1, east_shift=0.1,
@@ -743,7 +744,7 @@ class GFTestCase(unittest.TestCase):
                 nthreads)
 
             @benchmark.labeled('c%s' % label)
-            def sum_c():
+            def make_param_c():
                 return store_ext.make_sum_params(
                     store.cstore,
                     source_coords_arr,
@@ -753,7 +754,7 @@ class GFTestCase(unittest.TestCase):
                     interpolation, nthreads)
 
             @benchmark.labeled('p%s' % label)
-            def sum_python():
+            def make_param_python():
                 weights_c = []
                 irecords_c = []
                 for itar, target in enumerate(targets):
@@ -787,10 +788,10 @@ class GFTestCase(unittest.TestCase):
 
                 return zip(weights_c, irecords_c)
 
-            rc = sum_c()
-            rp = sum_python()
+            rc = make_param_c()
+            rp = make_param_python()
 
-            print benchmark.__str__(header=False)
+            logger.info(benchmark.__str__(header=False))
             benchmark.clear()
 
             # Comparing the results
@@ -801,24 +802,15 @@ class GFTestCase(unittest.TestCase):
             if interpolation == 'nearest_neighbor':
                 idim = 1
 
-            for i, nsummands in enumerate([6, 6, 4]):
+            nsummands_scheme = [5, 5, 3]  # elastic8
+            nsummands_scheme = [6, 6, 4]  # elastic10
+            for i, nsummands in enumerate(nsummands_scheme):
                 for r in [0, 1]:
                     r_c = rc[i][r]
                     r_p = rp[i][r].reshape(ntargets, nsummands, ns*idim)
                     r_p = num.transpose(r_p, axes=[0, 2, 1])
 
                     num.testing.assert_almost_equal(r_c, r_p.flatten())
-                if False:
-                    print 'irecord_c: {0:>7}, {1:>7}'.format(
-                        rc[i][1].min(), rc[i][1].max())
-                    print 'irecord_p: {0:>7}, {1:>7}'.format(
-                        rp[i][1].min(), rp[i][1].max())
-
-                if False:
-                    print 'weights_c: {0:>7}, {1:>7}'.format(
-                        rc[i][0].min(), rc[i][0].max())
-                    print 'weights_p: {0:>7}, {1:>7}'.format(
-                        rp[i][0].min(), rp[i][0].max())
 
         '''
         Testing loop
@@ -835,8 +827,10 @@ class GFTestCase(unittest.TestCase):
             for d in dims:
                 for nt in ntargets:
                     for nthreads in [1, 2]:
-                        test_weights_bench(
+                        test_make_params_bench(
                             store, d, nt, interpolation, nthreads)
+
+        benchmark.show_factor = False
 
 
 if __name__ == '__main__':
