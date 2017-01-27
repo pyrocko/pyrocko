@@ -1,5 +1,9 @@
 language: python
 
+env:
+    global:
+        - OMP_NUM_THREADS=4
+
 matrix:
     include:
         - os: linux
@@ -24,7 +28,7 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/science; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/python; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink libyaml; fi
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml clang-omp; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml homebrew/boneyard/clang-omp; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then xcode-select --install; fi
     - pip install progressbar setuptools flake8 pyyaml coveralls
@@ -32,7 +36,7 @@ before_install:
     - git clone https://github.com/pyrocko/fomosto-qseis
     - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-psgrn-pscmp
-    - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/pscmp:`pwd`/src/psgrn; cd ..
+    - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/psgrn:`pwd`/src/pscmp; cd ..
     - git clone https://github.com/pyrocko/fomosto-qssp.git
     - cd fomosto-qssp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
 
@@ -41,8 +45,6 @@ before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export DISPLAY=:99.0 ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sh -e /etc/init.d/xvfb start ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
-    - export OMP_NUM_THREADS=4
-    - echo $PATH
 
 install:
     - sudo python setup.py install
