@@ -162,7 +162,7 @@ class GFScenariosTestCase(unittest.TestCase):
         base_event = base_source.pyrocko_event()
 
         channels = 'NEZ'
-        nstations = 10
+        nstations = 20
         stations = []
         targets = []
         for istation in xrange(nstations):
@@ -187,7 +187,7 @@ class GFScenariosTestCase(unittest.TestCase):
                     lon=lon,
                     quantity='displacement',
                     interpolation='multilinear',
-                    optimization='enable',
+                    optimization='disable',
                     store_id=store_id)
 
                 targets.append(target)

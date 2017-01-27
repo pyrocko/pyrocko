@@ -569,6 +569,11 @@ class Location(Object):
         self.east_shift = float(e)
         self._latlon = elat, elon  # unchanged
 
+    @property
+    def coords5(self):
+        return num.array([
+            self.lat, self.lon, self.north_shift, self.east_shift, self.depth])
+
 
 class MultiLocation(Object):
     coords5 = Array.T(shape=(None, 5), dtype=num.float)
@@ -1512,17 +1517,6 @@ class Config(Object):
             out.append((comp, args, delays_expanded, weights))
 
         return out
-
-    def make_sum_params2(self, source, multi_location):
-        out = []
-        delays = source.times
-
-        source_coords = source.coords5()
-        receiver_coords = multi_location.coords5
-
-        return store_ext.make_sum_params(
-            source.times, source_coords, receiver_coords, self.component_scheme, self.short_type)
-        
 
     def short_info(self):
         raise NotImplemented('should be implemented in subclass')

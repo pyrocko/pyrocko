@@ -1791,6 +1791,60 @@ class Store(BaseStore):
 
         return out
 
+    def seismogram2(self, source, receiver, components, deltat=None,
+                    itmin=None, nsamples=None,
+                    interpolation='nearest_neighbor', optimization='enable'):
+
+        if not self._f_index:
+            self.open()
+
+        if deltat is None:
+            decimate = 1
+        else:
+            decimate = int(round(deltat/self.config.deltat))
+            if abs(deltat / (decimate * self.config.deltat) - 1.0) > 0.001:
+                raise StoreError(
+                    'unavailable decimation ratio target.deltat / store.deltat'
+                    ' = %g / %g' % (deltat, self.config.deltat))
+
+        store, decimate_ = self._decimated_store(decimate)
+
+        source_coords_arr = source.coords5()
+        mts_arr = source.m6s
+        receiver_coords_arr = receiver.coords5[num.newaxis, :].copy()
+
+        params = store_ext.make_sum_params(
+            store.cstore,
+            source_coords_arr,
+            mts_arr,
+            receiver_coords_arr,
+            'elastic10',
+            interpolation, 1)
+
+        components_scheme = ['displacement.n', 'displacement.e', 'displacement.d']
+
+        out = {}
+        for icomp in xrange(3):
+            comp = components_scheme[icomp]
+            if comp in components:
+                weights, irecords = params[icomp]
+
+                neach = irecords.size / source.times.size
+                delays = num.repeat(source.times, neach)
+
+                tr = store._sum(
+                    irecords, delays, weights, itmin, nsamples, decimate_,
+                    'c', optimization)
+
+                # to prevent problems with rounding errors (BaseStore saves
+                # deltat as a 4-byte floating point value, value from YAML
+                # config is more accurate)
+                tr.deltat = self.config.deltat * decimate
+
+                out[comp] = tr
+
+        return out
+
 
 __all__ = '''
 gf_dtype
