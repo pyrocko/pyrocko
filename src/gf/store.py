@@ -1783,19 +1783,22 @@ class Store(BaseStore):
 
     def seismogram2(self, source, receiver, components, deltat=None,
                     itmin=None, nsamples=None,
-                    interpolation='nearest_neighbor', optimization='enable'):
+                    interpolation='nearest_neighbor',
+                    optimization='enable', nthreads=1):
 
         if not self._f_index:
             self.open()
 
+        config = self.config
+
         if deltat is None:
             decimate = 1
         else:
-            decimate = int(round(deltat/self.config.deltat))
-            if abs(deltat / (decimate * self.config.deltat) - 1.0) > 0.001:
+            decimate = int(round(deltat/config.deltat))
+            if abs(deltat / (decimate * config.deltat) - 1.0) > 0.001:
                 raise StoreError(
                     'unavailable decimation ratio target.deltat / store.deltat'
-                    ' = %g / %g' % (deltat, self.config.deltat))
+                    ' = %g / %g' % (deltat, config.deltat))
 
         store, decimate_ = self._decimated_store(decimate)
 
@@ -1803,19 +1806,20 @@ class Store(BaseStore):
         mts_arr = source.m6s
         receiver_coords_arr = receiver.coords5[num.newaxis, :].copy()
 
+        scheme = config.component_scheme
+
         params = store_ext.make_sum_params(
             store.cstore,
             source_coords_arr,
             mts_arr,
             receiver_coords_arr,
-            'elastic10',
-            interpolation, 1)
+            scheme,
+            interpolation, nthreads)
 
-        components_scheme = ['displacement.n', 'displacement.e', 'displacement.d']
+        provided_components = source.provided_components(scheme)
 
         out = {}
-        for icomp in xrange(3):
-            comp = components_scheme[icomp]
+        for icomp, comp in enumerate(provided_components):
             if comp in components:
                 weights, irecords = params[icomp]
 
@@ -1829,7 +1833,7 @@ class Store(BaseStore):
                 # to prevent problems with rounding errors (BaseStore saves
                 # deltat as a 4-byte floating point value, value from YAML
                 # config is more accurate)
-                tr.deltat = self.config.deltat * decimate
+                tr.deltat = config.deltat * decimate
 
                 out[comp] = tr
 
