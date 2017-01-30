@@ -14,7 +14,7 @@ from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit, moment_tensor
 from pyrocko.config import config
 
-from pyrocko.gf import store_ext
+from pyrocko.gf import store_ext  # noqa
 
 guts_prefix = 'pf'
 
@@ -576,7 +576,9 @@ class Location(Object):
 
 
 class MultiLocation(Object):
-    coords5 = Array.T(shape=(None, 5), dtype=num.float)
+    coords5 = Array.T(
+        shape=(None, 5), dtype=num.float,
+        help='Array of (lats, lons, east_shifts, north_shifts, elevation)')
 
 
 class Receiver(Location):
@@ -1503,7 +1505,10 @@ class Config(Object):
         arrs.append(self.coords[-1])
         return nditer_outer(arrs[:level])
 
-    def make_sum_params(self, source, receiver):
+    def make_sum_params(self, source, receiver, implementation='c',
+                        nthreads=0):
+        assert implementation in ['c', 'python']
+
         out = []
         delays = source.times
         for comp, weights, icomponents in source.make_weights(
