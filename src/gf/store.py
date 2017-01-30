@@ -879,7 +879,7 @@ class BaseStore(object):
         return val
 
     def _sum_static(self, irecords, weights, delays, it, ntargets,
-                    optimization, nthreads=0):
+                    optimization, nthreads):
 
         if not self._f_index:
             self.open()
@@ -1336,22 +1336,6 @@ class Store(BaseStore):
         tr.deltat = self.config.deltat * decimate
         return tr
 
-    def sum_static(
-            self, args, weights,
-            decimate=1, interpolation='nearest_neighbor', implementation='c',
-            optimization='enable'):
-
-        if interpolation == 'nearest_neighbor':
-            irecords = self.config.irecords(*args)
-        else:
-            assert interpolation == 'multilinear'
-            irecords, ip_weights = self.config.vicinities(*args)
-            neach = irecords.size / args[0].size
-            weights = num.repeat(weights, neach) * ip_weights
-
-        return self._sum_statics(
-            irecords, weights, implementation, optimization)
-
     def make_decimated(self, decimate, config=None, force=False,
                        show_progress=False):
         '''
@@ -1742,40 +1726,29 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def statics(
-            self, source, receiver, components,
-            interpolation='nearest_neighbor', optimization='enable'):
+    def statics(self, source, multi_location, components, itsnapshot,
+                interpolation='nearest_neighbor', nthreads=0):
 
         out = [None] * len(components)
-        for (component, args, _, weights) in \
-                self.config.make_sum_params(source, receiver):
+        ntargets = multi_location.shape[0]
+        delays = num.tile(source.times, ntargets)
 
-            if component in components:
-                gval = self.sum_statics(
-                    args, weights,
-                    interpolation=interpolation,
-                    optimization=optimization)
-
-                out[components.index(component)] = gval.value
-
-        return out
-
-    def statics2(
-            self, source, multi_location, components,
-            interpolation='nearest_neighbor', optimization='enable'):
-
-        out = [None] * len(components)
-
-        for (component, args, _, weights) in \
-                self.config.make_sum_params2(source, multi_location):
-
-            if component in components:
-                gval = self.sum_statics(
-                    args, weights,
-                    interpolation=interpolation,
-                    optimization=optimization)
-
-                out[components.index(component)] = gval.value
+        params_args = (self.cstore,
+                       source.coords5,
+                       source.m6s,
+                       multi_location.coords5,
+                       self.config.components_scheme,
+                       interpolation,
+                       nthreads)
+        for c, (weights, irecords) in store_ext.make_sum_params(*params_args):
+            sum_args = (self.cstore,
+                        irecords,
+                        delays,
+                        weights,
+                        itsnapshot,
+                        ntargets,
+                        nthreads)
+            out[c] = self.sum_static(*sum_args)
 
         return out
 

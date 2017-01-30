@@ -326,9 +326,11 @@ def support_omp():
 if support_omp():
     omp_arg = ['-fopenmp']
     omp_lib = ['-lgomp']
+    print('OpenMP found')
 else:
     omp_arg = []
     omp_lib = []
+    print('OpenMP not found')
 
 setup(
     cmdclass={

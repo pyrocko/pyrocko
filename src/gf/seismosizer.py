@@ -1424,7 +1424,7 @@ class RectangularSource(DCSource):
             self.velocity,
             self.slip)
 
-    def discretize_basesource(self, store, target):
+    def discretize_basesource(self, store, target=None):
 
         if self.nucleation_x is not None:
             nucx = self.nucleation_x * 0.5 * self.length
@@ -1444,6 +1444,9 @@ class RectangularSource(DCSource):
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
         if self.slip is not None:
+            if target is None:
+                raise SeismosizerError('Provide a valid target for '
+                                       'slip interpolation')
             points2 = points.copy()
             points2[:, 2] += self.depth
             shear_moduli = store.config.get_shear_moduli(
@@ -1914,6 +1917,32 @@ class PorePressureLineSource(Source):
             east_shifts=points[:, 1],
             depths=points[:, 2],
             pp=num.ones(n)/n)
+
+
+class SpatialTarget(meta.MultiLocation):
+    '''
+    Multilocation spatial target for static offsets
+    '''
+    interpolation = InterpolationMethod.T(
+        default='nearest_neighbor',
+        help='interpolation method to use')
+
+    tsnapshot = Timestamp.T(
+        optional=True,
+        help='time of the desired snapshot, '
+             'by default first snapshot is taken')
+
+
+class SatelliteTarget(SpatialTarget):
+    incident_angles = Array.T(
+        shape=(None, 2), dtype=num.float,
+        help='Line-of-sight incident angles for each location in `coords5` in'
+             ' radians - (theta, phi)\n'
+             ' Theta is the incident angle from East, Phi from North.')
+
+    def post_process(self, engine, source, tr):
+        pass
+
 
 
 class Target(meta.Receiver):

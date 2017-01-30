@@ -657,6 +657,7 @@ static store_error_t store_sum_static(
     int idelay_floor, idelay_ceil;
     float w1, w2;
     store_error_t err=SUCCESS;
+    (void) nthreads;
 
     if (0 == nsummands || 0 == ntargets)
         return SUCCESS;
@@ -667,10 +668,10 @@ static store_error_t store_sum_static(
     if (result == NULL)
         return ALLOC_FAILED;
 
-    if (nthreads == 0)
-        nthreads = omp_get_num_procs();
-
     #if defined(_OPENMP)
+        if (nthreads == 0)
+            nthreads = omp_get_num_procs();
+
         #pragma omp parallel \
             shared (store, irecords, delays, weights, ntargets, nsummands, \
                     result, it, deltat) \
@@ -1482,17 +1483,18 @@ static store_error_t make_sum_params(
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
     store_error_t err = SUCCESS;
+    (void) nthreads;
 
-    if (nthreads == 0)
-        nthreads = omp_get_num_procs();
-    else if (nthreads > omp_get_num_procs()) {
-        nthreads = omp_get_num_procs();
-        printf("make_sum_params - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
-    }
-
-    nip = mscheme->vicinity_nip;
     Py_BEGIN_ALLOW_THREADS
+    nip = mscheme->vicinity_nip;
     #if defined(_OPENMP)
+        if (nthreads == 0)
+            nthreads = omp_get_num_procs();
+        else if (nthreads > omp_get_num_procs()) {
+            nthreads = omp_get_num_procs();
+            printf("make_sum_params - Warning: Desired nthreads exceeds number of physical processors, falling to %d threads\n", nthreads);
+        }
+
         #pragma omp parallel \
             shared (source_coords, ms, receiver_coords, nsources, nreceivers, \
                     cscheme, mscheme, mapping, interpolation, ws, irecords, nip) \
