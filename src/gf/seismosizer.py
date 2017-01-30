@@ -2583,7 +2583,7 @@ class LocalEngine(Engine):
         else:
             deltat = None
 
-        base_seismogram = store_.seismogram(
+        base_seismogram = store_.seismogram2(
             base_source, receiver, components,
             deltat=deltat,
             itmin=itmin, nsamples=nsamples,
