@@ -6,8 +6,8 @@
 #include "numpy/arrayobject.h"
 
 #include <stdlib.h>
-#if !noomp
-# include <omp.h>
+#if defined(_OPENMP)
+    # include <omp.h>
 #endif
 #include <stdio.h>
 
@@ -131,14 +131,15 @@ int parstack(
 
     chunk = CHUNKSIZE;
 
+    Py_BEGIN_ALLOW_THREADS
     if (method == 0) {
-	#if !noomp
+	#if defined(_OPENMP)
         #pragma omp parallel private(ishift, iarray, i, istart, weight) num_threads(nparallel)
 	#endif
         {
 
-	#if !noomp
-        #pragma omp for schedule(dynamic,chunk) nowait
+	#if defined(_OPENMP)
+        #pragma omp for schedule(dynamic, chunk) nowait
 	#endif
         for (ishift=0; ishift<(int)nshifts; ishift++) {
             for (iarray=0; iarray<narrays; iarray++) {
@@ -153,12 +154,12 @@ int parstack(
 
     } else if (method == 1) {
 
-	#if !noomp
+	#if defined(_OPENMP)
         #pragma omp parallel private(ishift, iarray, i, istart, weight, temp, m)
 	#endif
         {
         temp = (double*)calloc(nsamp, sizeof(double));
-	#if !noomp
+	#if defined(_OPENMP)
         #pragma omp for schedule(dynamic,chunk) nowait
 	#endif
         for (ishift=0; ishift<(int)nshifts; ishift++) {
@@ -182,6 +183,7 @@ int parstack(
         free(temp);
         }
     }
+    Py_END_ALLOW_THREADS
     return SUCCESS;
 }
 

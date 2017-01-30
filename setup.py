@@ -187,6 +187,7 @@ class double_install_check_cls(Command):
     def run(self):
         double_install_check()
 
+
 install.sub_commands.append(['double_install_check', None])
 
 
@@ -323,11 +324,11 @@ def support_omp():
 
 
 if support_omp():
-    extension_args_parstack = ['-fopenmp', '-O3', '-Wextra']
-    extension_libs_parstack = ['gomp']
+    omp_arg = ['-fopenmp']
+    omp_lib = ['-lgomp']
 else:
-    extension_args_parstack = ['-Dnoomp', '-O3', '-Wextra']
-    extension_libs_parstack = []
+    omp_arg = []
+    omp_lib = []
 
 setup(
     cmdclass={
@@ -396,16 +397,15 @@ setup(
         Extension(
             'gf.store_ext',
             include_dirs=[numpy.get_include()],
-            extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra',
-                                '-fopenmp'],
-            extra_link_args=['-lgomp'],
+            extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'] + omp_arg,
+            extra_link_args=[] + omp_lib,
             sources=[pjoin('src', 'gf', 'store_ext.c')]),
 
         Extension(
             'parstack_ext',
             include_dirs=[numpy.get_include()],
-            libraries=extension_libs_parstack,
-            extra_compile_args=extension_args_parstack,
+            extra_compile_args=['-Wextra'] + omp_arg,
+            extra_link_args=[] + omp_lib,
             sources=[pjoin('src', 'parstack_ext.c')]),
 
         Extension(
