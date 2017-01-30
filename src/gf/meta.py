@@ -1323,7 +1323,7 @@ class DiscretizedPorePressureSource(DiscretizedSource):
                                                                  **kwargs)
 
 
-class ComponentSchemes(StringChoice):
+class ComponentScheme(StringChoice):
     '''
     Different Green's Function component schemes are available:
 
@@ -1442,7 +1442,7 @@ class Config(Object):
     sample_rate = Float.T(optional=True)
     ncomponents = Int.T(default=1)
     factor = Float.T(default=1.0, optional=True)
-    component_scheme = ComponentSchemes.T(default='elastic10')
+    component_scheme = ComponentScheme.T(default='elastic10')
     tabulated_phases = List.T(TPDef.T())
 
     def __init__(self, **kwargs):
@@ -2441,7 +2441,7 @@ Receiver
 DiscretizedSource
 DiscretizedExplosionSource
 DiscretizedMTSource
-ComponentSchemes
+ComponentScheme
 Config
 ConfigTypeA
 ConfigTypeB
