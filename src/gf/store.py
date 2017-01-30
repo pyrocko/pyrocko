@@ -1829,16 +1829,16 @@ class Store(BaseStore):
 
         store, decimate_ = self._decimated_store(decimate)
 
-        source_coords_arr = source.coords5()
-        mts_arr = source.m6s
-        receiver_coords_arr = receiver.coords5[num.newaxis, :].copy()
-
         scheme = config.component_scheme
+
+        source_coords_arr = source.coords5()
+        source_terms = source.get_source_terms(scheme)
+        receiver_coords_arr = receiver.coords5[num.newaxis, :].copy()
 
         params = store_ext.make_sum_params(
             store.cstore,
             source_coords_arr,
-            mts_arr,
+            source_terms,
             receiver_coords_arr,
             scheme,
             interpolation, nthreads)

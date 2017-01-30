@@ -675,6 +675,12 @@ class DiscretizedSource(Object):
 
         Object.__setattr__(self, name, value)
 
+    def get_source_terms(self, scheme):
+        raise NotImplemented()
+
+    def make_weights(self, receiver, scheme):
+        raise NotImplemented()
+
     @property
     def effective_latlons(self):
         '''
@@ -897,6 +903,17 @@ class DiscretizedExplosionSource(DiscretizedSource):
         'elastic10',
     )
 
+    def get_source_terms(self, scheme):
+        self.check_scheme(scheme)
+
+        if scheme == 'elastic2':
+            return self.m0s[:, num.newaxis]
+
+        elif scheme in ('elastic8', 'elastic10'):
+            m6s = num.zeros(self.m0s.size, 6)
+            m6s[:, 0:3] = self.m0s[:, num.newaxis]
+            return m6s
+
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
 
@@ -1006,9 +1023,12 @@ class DiscretizedSFSource(DiscretizedSource):
 
     _provided_schemes = (
         'elastic5',
-        'elastic13',
-        'elastic15',
     )
+
+    def get_source_terms(self, scheme):
+        self.check_scheme(scheme)
+
+        return self.forces
 
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
@@ -1033,12 +1053,6 @@ class DiscretizedSFSource(DiscretizedSource):
 
         if scheme == 'elastic5':
             ioff = 0
-
-        elif scheme == 'elastic13':
-            ioff = 8
-
-        elif scheme == 'elastic15':
-            ioff = 10
 
         cat = num.concatenate
         rep = num.repeat
@@ -1094,7 +1108,9 @@ class DiscretizedSFSource(DiscretizedSource):
 
 
 class DiscretizedMTSource(DiscretizedSource):
-    m6s = Array.T(shape=(None, 6), dtype=num.float)
+    m6s = Array.T(
+        shape=(None, 6), dtype=num.float,
+        help='rows with (m_nn, m_ee, m_dd, m_ne, m_nd, m_ed)')
 
     _provided_components = (
         'displacement.n',
@@ -1107,6 +1123,10 @@ class DiscretizedMTSource(DiscretizedSource):
         'elastic10',
         'elastic18',
     )
+
+    def get_source_terms(self, scheme):
+        self.check_scheme(scheme)
+        return self.m6s
 
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
@@ -1243,6 +1263,10 @@ class DiscretizedPorePressureSource(DiscretizedSource):
         'poroelastic10',
     )
 
+    def get_source_terms(self, scheme):
+        self.check_scheme(scheme)
+        return self.pp[:, num.newaxis]
+
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
 
@@ -1343,13 +1367,6 @@ class ComponentScheme(StringChoice):
     ``elastic5``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
                       and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, SF
                       sources only
-    ``elastic15``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT
-                      and SF sources
-    ``elastic13``     Elastodynamic for far-field only
-                      :py:class:`pyrocko.gf.meta.ConfigTypeA` and
-                      :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT and SF
-                      sources
     ``elastic18``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeC`
                       stores, MT sources only
     ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
@@ -1360,10 +1377,8 @@ class ComponentScheme(StringChoice):
     choices = (
         'elastic10',  # nf + ff
         'elastic8',   # ff
-        'elastic2',   # explosions
+        'elastic2',   # explosions only
         'elastic5',   # sf
-        'elastic13',  # ff + sf
-        'elastic15',  # nf + ff + sf
         'elastic18',  # 3d
         'poroelastic10')
 
