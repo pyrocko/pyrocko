@@ -214,31 +214,43 @@ typedef struct {
 /* component scheme defs */
 
 #define NCOMPONENTS_MAX 3
-#define NSUMMANDS_MAX 6
 
 typedef enum {
-    ELASTIC10 = 0,
+    ELASTIC2 = 0,
+    ELASTIC5,
     ELASTIC8,
+    ELASTIC10,
+    /*POROELASTIC10,*/
 } component_scheme_id;
 
 typedef void (*make_weights_function_t)(const float64_t*, const float64_t*, const float64_t*, float64_t*);
-static void make_weights_elastic10(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+static void make_weights_elastic2(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+static void make_weights_elastic5(const float64_t*, const float64_t*, const float64_t*, float64_t*);
 static void make_weights_elastic8(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+static void make_weights_elastic10(const float64_t*, const float64_t*, const float64_t*, float64_t*);
+/*static void make_weights_poroelastic10(const float64_t*, const float64_t*, const float64_t*, float64_t*);*/
 
 typedef struct {
     const char *name;
     const size_t nsource_terms;
     const size_t ncomponents;
+    const size_t nsummands_max;
     const size_t *nsummands;
     const uint64_t **igs;
     const make_weights_function_t make_weights;
 } component_scheme_t;
 
-const size_t nsummands_elastic10[] = {6, 6, 4};
-static const uint64_t igs_elastic10_0[] = {0, 1, 2, 8, 3, 4};
-static const uint64_t igs_elastic10_1[] = {0, 1, 2, 8, 3, 4};
-static const uint64_t igs_elastic10_2[] = {5, 6, 7, 9};
-static const uint64_t *igs_elastic10[] = {igs_elastic10_0, igs_elastic10_1, igs_elastic10_2};
+const size_t nsummands_elastic2[] = {1, 1, 1};
+static const uint64_t igs_elastic2_0[] = {0};
+static const uint64_t igs_elastic2_1[] = {0};
+static const uint64_t igs_elastic2_2[] = {1};
+static const uint64_t *igs_elastic2[] = {igs_elastic2_0, igs_elastic2_1, igs_elastic2_2};
+
+const size_t nsummands_elastic5[] = {3, 3, 2};
+static const uint64_t igs_elastic5_0[] = {0, 1, 2};
+static const uint64_t igs_elastic5_1[] = {0, 1, 2};
+static const uint64_t igs_elastic5_2[] = {3, 4};
+static const uint64_t *igs_elastic5[] = {igs_elastic5_0, igs_elastic5_1, igs_elastic5_2};
 
 const size_t nsummands_elastic8[] = {5, 5, 3};
 static const uint64_t igs_elastic8_0[] = {0, 1, 2, 3, 4};
@@ -246,13 +258,19 @@ static const uint64_t igs_elastic8_1[] = {0, 1, 2, 3, 4};
 static const uint64_t igs_elastic8_2[] = {5, 6, 7};
 static const uint64_t *igs_elastic8[] = {igs_elastic8_0, igs_elastic8_1, igs_elastic8_2};
 
+const size_t nsummands_elastic10[] = {6, 6, 4};
+static const uint64_t igs_elastic10_0[] = {0, 1, 2, 8, 3, 4};
+static const uint64_t igs_elastic10_1[] = {0, 1, 2, 8, 3, 4};
+static const uint64_t igs_elastic10_2[] = {5, 6, 7, 9};
+static const uint64_t *igs_elastic10[] = {igs_elastic10_0, igs_elastic10_1, igs_elastic10_2};
+
 const component_scheme_t component_schemes[] = {
-    {"elastic10", 6, 3, nsummands_elastic10, igs_elastic10, make_weights_elastic10},
-    {"elastic8", 6, 3, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
-    {"elastic2", 1, 3, nsummands_elastic2, igs_elastic2, make_weights_elastic2},
-    {"elastic5", 3, 3, nsummands_elastic5, igs_elastic5, make_weights_elastic5},
-    {"poroelastic10", 1, 9, nsummands_poroelastic10, igs_poroelastic10, make_weights_poroelastic10},
-    {NULL, 0, NULL, NULL, NULL},
+    {"elastic2", 1, 3, 1, nsummands_elastic2, igs_elastic2, make_weights_elastic2},
+    {"elastic5", 3, 3, 3, nsummands_elastic5, igs_elastic5, make_weights_elastic5},
+    {"elastic8", 6, 3, 5, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
+    {"elastic10", 6, 3, 6, nsummands_elastic10, igs_elastic10, make_weights_elastic10},
+    /* {"poroelastic10", 1, 9, nsummands_poroelastic10, igs_poroelastic10, make_weights_poroelastic10}, */
+    {NULL, 0, 0, 0, NULL, NULL, NULL},
 };
 
 const component_scheme_t *get_component_scheme(char *name) {
@@ -1231,6 +1249,114 @@ static void distance4(const float64_t *a, const float64_t *b, float64_t *distanc
 }
 
 
+static void make_weights_elastic2(
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *receiver_coords,
+        float64_t *ws) {
+
+    float64_t azi, bazi;
+    float64_t sb, cb;
+    size_t ioff;
+    size_t nsummands_max = component_schemes[ELASTIC2].nsummands_max;
+
+    azibazi4(source_coords, receiver_coords, &azi, &bazi);
+    sb = sin(bazi*D2R-M_PI);
+    cb = cos(bazi*D2R-M_PI);
+
+    ioff = 0 * nsummands_max;
+    ws[ioff + 0] = cb * ms[0];
+
+    ioff = 1 * nsummands_max;
+    ws[ioff + 0] = sb * ms[0];
+
+    ioff = 2 * nsummands_max;
+    ws[ioff + 0] = ms[0];
+}
+
+
+static void make_weights_elastic5(
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *receiver_coords,
+        float64_t *ws) {
+
+    float64_t azi, bazi, f0, f1, f2;
+    float64_t sa, ca, sb, cb;
+    size_t ioff;
+    size_t nsummands_max = component_schemes[ELASTIC5].nsummands_max;
+
+    azibazi4(source_coords, receiver_coords, &azi, &bazi);
+    sa = sin(azi*D2R);
+    ca = cos(azi*D2R);
+    sb = sin(bazi*D2R-M_PI);
+    cb = cos(bazi*D2R-M_PI);
+
+    f0 = ms[2];
+    f1 = ms[0]*ca + ms[1]*sa;
+    f2 = ms[1]*ca - ms[0]*sa;
+
+    ioff = 0 * nsummands_max;
+    ws[ioff + 0] = cb * f0;
+    ws[ioff + 1] = cb * f1;
+    ws[ioff + 2] = -sb * f2;
+
+    ioff = 1 * nsummands_max;
+    ws[ioff + 0] = sb * f0;
+    ws[ioff + 1] = sb * f1;
+    ws[ioff + 2] = cb * f2;
+
+    ioff = 2 * nsummands_max;
+    ws[ioff + 0] = f0;
+    ws[ioff + 1] = f1;
+}
+
+
+static void make_weights_elastic8(
+        const float64_t *source_coords,
+        const float64_t *ms,
+        const float64_t *receiver_coords,
+        float64_t *ws) {
+
+    float64_t azi, bazi, f0, f1, f2, f3, f4;
+    float64_t sa, ca, s2a, c2a, sb, cb;
+    size_t ioff;
+    size_t nsummands_max = component_schemes[ELASTIC8].nsummands_max;
+
+    azibazi4(source_coords, receiver_coords, &azi, &bazi);
+    sa = sin(azi*D2R);
+    ca = cos(azi*D2R);
+    s2a = sin(2.0*azi*D2R);
+    c2a = cos(2.0*azi*D2R);
+    sb = sin(bazi*D2R-M_PI);
+    cb = cos(bazi*D2R-M_PI);
+
+    f0 = ms[0]*SQR(ca) + ms[1]*SQR(sa) + ms[3]*s2a;
+    f1 = ms[4]*ca + ms[5]*sa;
+    f2 = ms[2];
+    f3 = 0.5*(ms[1]-ms[0])*s2a + ms[3]*c2a;
+    f4 = ms[5]*ca - ms[4]*sa;
+
+    ioff = 0 * nsummands_max;
+    ws[ioff + 0] = cb * f0;
+    ws[ioff + 1] = cb * f1;
+    ws[ioff + 2] = cb * f2;
+    ws[ioff + 3] = -sb * f3;
+    ws[ioff + 4] = -sb * f4;
+
+    ioff = 1 * nsummands_max;
+    ws[ioff + 0] = sb * f0;
+    ws[ioff + 1] = sb * f1;
+    ws[ioff + 2] = sb * f2;
+    ws[ioff + 3] = cb * f3;
+    ws[ioff + 4] = cb * f4;
+
+    ioff = 2 * nsummands_max;
+    ws[ioff + 0] = f0;
+    ws[ioff + 1] = f1;
+    ws[ioff + 2] = f2;
+}
+
 static void make_weights_elastic10(
         const float64_t *source_coords,
         const float64_t *ms,
@@ -1240,6 +1366,7 @@ static void make_weights_elastic10(
     float64_t azi, bazi, f0, f1, f2, f3, f4, f5;
     float64_t sa, ca, s2a, c2a, sb, cb;
     size_t ioff;
+    size_t nsummands_max = component_schemes[ELASTIC10].nsummands_max;
 
     azibazi4(source_coords, receiver_coords, &azi, &bazi);
     sa = sin(azi*D2R);
@@ -1256,7 +1383,7 @@ static void make_weights_elastic10(
     f4 = ms[5]*ca - ms[4]*sa;
     f5 = ms[0]*SQR(sa) + ms[1]*SQR(ca) - ms[3]*s2a;
 
-    ioff = 0 * NSUMMANDS_MAX;
+    ioff = 0 * nsummands_max;
     ws[ioff + 0] = cb * f0;
     ws[ioff + 1] = cb * f1;
     ws[ioff + 2] = cb * f2;
@@ -1264,7 +1391,7 @@ static void make_weights_elastic10(
     ws[ioff + 4] = -sb * f3;
     ws[ioff + 5] = -sb * f4;
 
-    ioff = 1 * NSUMMANDS_MAX;
+    ioff = 1 * nsummands_max;
     ws[ioff + 0] = sb * f0;
     ws[ioff + 1] = sb * f1;
     ws[ioff + 2] = sb * f2;
@@ -1272,58 +1399,12 @@ static void make_weights_elastic10(
     ws[ioff + 4] = cb * f3;
     ws[ioff + 5] = cb * f4;
 
-    ioff = 2 * NSUMMANDS_MAX;
+    ioff = 2 * nsummands_max;
     ws[ioff + 0] = f0;
     ws[ioff + 1] = f1;
     ws[ioff + 2] = f2;
     ws[ioff + 3] = f5;
 }
-
-
-static void make_weights_elastic8(
-        const float64_t *source_coords,
-        const float64_t *ms,
-        const float64_t *receiver_coords,
-        float64_t *ws) {
-
-    float64_t azi, bazi, f0, f1, f2, f3, f4;
-    float64_t sa, ca, s2a, c2a, sb, cb;
-    size_t ioff;
-
-    azibazi4(source_coords, receiver_coords, &azi, &bazi);
-    sa = sin(azi*D2R);
-    ca = cos(azi*D2R);
-    s2a = sin(2.0*azi*D2R);
-    c2a = cos(2.0*azi*D2R);
-    sb = sin(bazi*D2R-M_PI);
-    cb = cos(bazi*D2R-M_PI);
-
-    f0 = ms[0]*SQR(ca) + ms[1]*SQR(sa) + ms[3]*s2a;
-    f1 = ms[4]*ca + ms[5]*sa;
-    f2 = ms[2];
-    f3 = 0.5*(ms[1]-ms[0])*s2a + ms[3]*c2a;
-    f4 = ms[5]*ca - ms[4]*sa;
-
-    ioff = 0 * NSUMMANDS_MAX;
-    ws[ioff + 0] = cb * f0;
-    ws[ioff + 1] = cb * f1;
-    ws[ioff + 2] = cb * f2;
-    ws[ioff + 3] = -sb * f3;
-    ws[ioff + 4] = -sb * f4;
-
-    ioff = 1 * NSUMMANDS_MAX;
-    ws[ioff + 0] = sb * f0;
-    ws[ioff + 1] = sb * f1;
-    ws[ioff + 2] = sb * f2;
-    ws[ioff + 3] = cb * f3;
-    ws[ioff + 4] = cb * f4;
-
-    ioff = 2 * NSUMMANDS_MAX;
-    ws[ioff + 0] = f0;
-    ws[ioff + 1] = f1;
-    ws[ioff + 2] = f2;
-}
-
 
 static store_error_t irecord_function_type_a(
         const mapping_t *mapping,
@@ -1482,12 +1563,14 @@ static store_error_t make_sum_params(
         float32_t **ws,
         uint64_t **irecords) {
 
-    size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, iout;
-    float64_t ws_this[NCOMPONENTS_MAX*NSUMMANDS_MAX];
+    size_t ireceiver, isource, iip, nip, icomponent, isummand, nsummands, nsummands_max, iout;
+    float64_t ws_this[cscheme->ncomponents*cscheme->nsummands_max];
     uint64_t irecord_bases[VICINITY_NIP_MAX];
     float64_t weights_ip[VICINITY_NIP_MAX];
     store_error_t err = SUCCESS;
     (void) nthreads;
+
+    nsummands_max = cscheme->nsummands_max;
 
     Py_BEGIN_ALLOW_THREADS
     nip = mscheme->vicinity_nip;
@@ -1524,7 +1607,7 @@ static store_error_t make_sum_params(
                             iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent]*nip;
                             nsummands = cscheme->nsummands[icomponent];
                             for (isummand=0; isummand<nsummands; isummand++) {
-                                ws[icomponent][iout+iip*nsummands+isummand] = weights_ip[iip] * ws_this[icomponent*NSUMMANDS_MAX + isummand];
+                                ws[icomponent][iout+iip*nsummands+isummand] = weights_ip[iip] * ws_this[icomponent*nsummands_max + isummand];
                                 irecords[icomponent][iout+iip*nsummands+isummand] = irecord_bases[iip] + cscheme->igs[icomponent][isummand];
                                 /*printf("%d\n", iout+iip*nsummands+isummand);*/
                             }
@@ -1541,7 +1624,7 @@ static store_error_t make_sum_params(
                         iout = (ireceiver*nsources + isource)*cscheme->nsummands[icomponent];
                         nsummands = cscheme->nsummands[icomponent];
                         for (isummand=0; isummand<nsummands; isummand++) {
-                            ws[icomponent][iout+isummand] = ws_this[icomponent*NSUMMANDS_MAX + isummand];
+                            ws[icomponent][iout+isummand] = ws_this[icomponent*nsummands_max + isummand];
                             irecords[icomponent][iout+isummand] = irecord_bases[0] + cscheme->igs[icomponent][isummand];
                         }
                     }
