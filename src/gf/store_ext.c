@@ -26,7 +26,10 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <omp.h>
+#if defined(_OPENMP)
+    #include <omp.h>
+#endif
+
 
 #if defined(__linux__)
   #include <endian.h>
@@ -667,14 +670,16 @@ static store_error_t store_sum_static(
     if (nthreads == 0)
         nthreads = omp_get_num_procs();
 
-    #pragma omp parallel \
-        shared (store, irecords, delays, weights, ntargets, nsummands, \
-                result, it, deltat) \
-        private (j, n, delay, weight, idelay_floor, idelay_ceil, idx, trace, w1, w2) \
-        reduction (+: err) \
-        num_threads (nthreads)
-    {
-    #pragma omp for schedule (static)
+    #if defined(_OPENMP)
+        #pragma omp parallel \
+            shared (store, irecords, delays, weights, ntargets, nsummands, \
+                    result, it, deltat) \
+            private (j, n, delay, weight, idelay_floor, idelay_ceil, idx, trace, w1, w2) \
+            reduction (+: err) \
+            num_threads (nthreads)
+        {
+        #pragma omp for schedule (static)
+    #endif
         for (t=0; t<ntargets; t++) {
             for (n=0; n<nsummands; n++) {
                 j = t*nsummands + n;
@@ -711,7 +716,9 @@ static store_error_t store_sum_static(
                 }
             }
         }
-    }
+    #if defined(_OPENMP)
+        }
+    #endif
     if (err != SUCCESS)
         return err;
     return SUCCESS;
@@ -1485,14 +1492,16 @@ static store_error_t make_sum_params(
 
     nip = mscheme->vicinity_nip;
     Py_BEGIN_ALLOW_THREADS
-    #pragma omp parallel \
-        shared (source_coords, ms, receiver_coords, nsources, nreceivers, \
-                cscheme, mscheme, mapping, interpolation, ws, irecords, nip) \
-        private (ws_this, iout, nsummands, isource, icomponent, isummand, irecord_bases, weights_ip, iip) \
-        reduction (+: err) \
-        num_threads (nthreads)
-    {
-        #pragma omp for schedule (dynamic)
+    #if defined(_OPENMP)
+        #pragma omp parallel \
+            shared (source_coords, ms, receiver_coords, nsources, nreceivers, \
+                    cscheme, mscheme, mapping, interpolation, ws, irecords, nip) \
+            private (ws_this, iout, nsummands, isource, icomponent, isummand, irecord_bases, weights_ip, iip) \
+            reduction (+: err) \
+            num_threads (nthreads)
+        {
+            #pragma omp for schedule (dynamic)
+    #endif
         for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
             for (isource=0; isource<nsources; isource++) {
                 cscheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], ws_this);
@@ -1533,7 +1542,9 @@ static store_error_t make_sum_params(
                 }
             }
         }
-    }
+    #if defined(_OPENMP)
+        }
+    #endif
     Py_END_ALLOW_THREADS
     if (err != SUCCESS)
         return INDEX_OUT_OF_BOUNDS;
