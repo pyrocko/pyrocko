@@ -227,6 +227,7 @@ static void make_weights_elastic8(const float64_t*, const float64_t*, const floa
 
 typedef struct {
     const char *name;
+    const size_t nsource_terms;
     const size_t ncomponents;
     const size_t *nsummands;
     const uint64_t **igs;
@@ -246,8 +247,11 @@ static const uint64_t igs_elastic8_2[] = {5, 6, 7};
 static const uint64_t *igs_elastic8[] = {igs_elastic8_0, igs_elastic8_1, igs_elastic8_2};
 
 const component_scheme_t component_schemes[] = {
-    {"elastic10", 3, nsummands_elastic10, igs_elastic10, make_weights_elastic10},
-    {"elastic8", 3, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
+    {"elastic10", 6, 3, nsummands_elastic10, igs_elastic10, make_weights_elastic10},
+    {"elastic8", 6, 3, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
+    {"elastic2", 1, 3, nsummands_elastic2, igs_elastic2, make_weights_elastic2},
+    {"elastic5", 3, 3, nsummands_elastic5, igs_elastic5, make_weights_elastic5},
+    {"poroelastic10", 1, 9, nsummands_poroelastic10, igs_poroelastic10, make_weights_poroelastic10},
     {NULL, 0, NULL, NULL, NULL},
 };
 
