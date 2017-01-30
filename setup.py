@@ -323,7 +323,7 @@ def support_omp():
             return v < StrictVersion('4.2.0')
 
 
-if support_omp() and False:
+if support_omp():
     omp_arg = ['-fopenmp']
     omp_lib = ['-lgomp']
 else:
