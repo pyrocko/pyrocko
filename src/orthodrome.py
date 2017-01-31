@@ -875,8 +875,8 @@ def geographic_midpoint(lats, lons, weights=None):
 
     total_weigth = num.sum(weights)
     weights /= total_weigth
-    lats *= d2r
-    lons *= d2r
+    lats = lats * d2r
+    lons = lats * d2r
     x = num.sum(num.cos(lats) * num.cos(lons) * weights)
     y = num.sum(num.cos(lats) * num.sin(lons) * weights)
     z = num.sum(num.sin(lats) * weights)
