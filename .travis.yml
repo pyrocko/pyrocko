@@ -1,5 +1,9 @@
 language: python
 
+env:
+    global:
+        - OMP_NUM_THREADS=4
+
 matrix:
     include:
         - os: linux
@@ -32,16 +36,15 @@ before_install:
     - git clone https://github.com/pyrocko/fomosto-qseis
     - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-psgrn-pscmp
-    - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/psgrn:`pwd`/src/pscmp; cd ..
     - git clone https://github.com/pyrocko/fomosto-qssp.git
-    - cd fomosto-qssp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/pscmp:`pwd`/src/psgrn; cd ..
+    - cd fomosto-qssp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
 
 before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ test/ ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export DISPLAY=:99.0 ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sh -e /etc/init.d/xvfb start ; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
-    - OMP_NUM_THREADS=4
 
 install:
     - sudo python setup.py install
