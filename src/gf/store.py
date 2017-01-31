@@ -381,10 +381,9 @@ class BaseStore(object):
         return self._sum(irecords, delays, weights, itmin, nsamples, decimate,
                          implementation, optimization)
 
-    def sum_static(self, irecords, delays, weights, it, ntargets,
-                   optimization='disable', nthreads=0):
-        return self._sum_static(irecords, delays, weights, it, ntargets,
-                                optimization, nthreads)
+    def sum_statics(self, irecords, delays, weights, it, ntargets, nthreads=0):
+        return self._sum_statics(irecords, delays, weights, it, ntargets,
+                                 nthreads)
 
     def irecord_format(self):
         return util.zfmt(self._nrecords)
@@ -878,18 +877,10 @@ class BaseStore(object):
 
         return val
 
-    def _sum_static(self, irecords, weights, delays, it, ntargets,
-                    optimization, nthreads):
-
+    def _sum_statics(self, irecords, weights, delays, it, ntargets,
+                     nthreads):
         if not self._f_index:
             self.open()
-
-        if optimization == 'enable':
-            logger.warning('sum_static: Optimization not implemented.')
-            # irecords, weights = self._optimize_statics(
-            #     irecords, weights)
-        else:
-            assert optimization == 'disable'
 
         return store_ext.store_sum_static(
             self.cstore, irecords, delays, weights, it, ntargets, nthreads)
@@ -1726,29 +1717,39 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def statics(self, source, multi_location, components, itsnapshot,
+    def statics(self, source, multi_location, itsnapshot,
                 interpolation='nearest_neighbor', nthreads=0):
+        if not self._f_index:
+            self.open()
 
-        out = [None] * len(components)
-        ntargets = multi_location.shape[0]
-        delays = num.tile(source.times, ntargets)
+        out = [None] * 3
+        ntargets = multi_location.ncoords
+        nsources = source.times.shape[0]
+        if ntargets == 0:
+            raise StoreError('MultiLocation.coords5 is empty')
 
-        params_args = (self.cstore,
-                       source.coords5,
-                       source.m6s,
-                       multi_location.coords5,
-                       self.config.components_scheme,
-                       interpolation,
-                       nthreads)
-        for c, (weights, irecords) in store_ext.make_sum_params(*params_args):
-            sum_args = (self.cstore,
-                        irecords,
-                        delays,
-                        weights,
-                        itsnapshot,
-                        ntargets,
-                        nthreads)
-            out[c] = self.sum_static(*sum_args)
+        source_terms = source.get_source_terms(self.config.component_scheme)
+        _delays = num.tile(source.times.astype(num.float32), ntargets)
+
+        params_args = (
+            self.cstore,
+            source.coords5(),
+            source_terms,
+            multi_location.coords5,
+            self.config.component_scheme,
+            interpolation,
+            nthreads)
+        for c, (weights, irecords) in enumerate(
+          store_ext.make_sum_params(*params_args)):
+            delays = num.repeat(_delays, weights.size/ntargets/nsources)
+            sum_args = (
+                irecords,
+                delays,
+                weights,
+                itsnapshot,
+                ntargets,
+                nthreads)
+            out[c] = self.sum_statics(*sum_args)
 
         return out
 

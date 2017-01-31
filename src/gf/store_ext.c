@@ -1751,15 +1751,15 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
         return NULL;
     }
     if (!good_array((PyObject*)irecords_arr, NPY_UINT64, nsummands * ntargets, 1, NULL)) {
-            PyErr_SetString(StoreExtError, "store_sum_static: unhealthy irecords array");
+            /*PyErr_SetString(StoreExtError, "store_sum_static: unhealthy irecords array");*/
             return NULL;
     }
     if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
-        PyErr_SetString(StoreExtError, "store_sum_static: unhealthy delays array");
+        /*PyErr_SetString(StoreExtError, "store_sum_static: unhealthy delays array");*/
         return NULL;
     }
     if (!good_array((PyObject*)weights_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
-        PyErr_SetString(StoreExtError, "store_sum_static: unhealthy weights array");
+        /*PyErr_SetString(StoreExtError, "store_sum_static: unhealthy weights array");*/
         return NULL;
     }
     if (!inlimits(it)) {

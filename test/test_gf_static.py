@@ -33,12 +33,14 @@ class GFStaticTest(unittest.TestCase):
             shutil.rmtree(d)
 
     def setUp(self):
+        return
         self.cprofile = cProfile.Profile()
         self.cprofile.enable()
         self.addCleanup(
             lambda: self.cprofile.dump_stats('/tmp/make_sum_params.cprof'))
 
     def get_qseis_store_dir(self):
+        return '/tmp/gfstoreYCM3Ql'
         if self.qseis_store_dir is None:
             self.qseis_store_dir = self._create_qseis_store()
 
@@ -114,6 +116,36 @@ mantle
         print store_dir
         return store_dir
 
+    @benchmark
+    def test_process_static(self):
+        import time
+        src_length = 2 * km
+        src_width = 5 * km
+        ntargets = 1600
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[0]
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            depth=15*km, north_shift=0., east_shift=0.,
+            width=src_width, length=src_length)
+
+        coords5 = num.zeros((ntargets, 5))
+        coords5[:, 2] = random.rand(ntargets) * 10. * km
+        coords5[:, 3] = random.rand(ntargets) * 10. * km
+
+        target = gf.seismosizer.StaticTarget(
+                coords5=coords5,
+                interpolation=interpolation)
+
+        engine = gf.LocalEngine(store_dirs=[self.get_qseis_store_dir()])
+
+        t = time.time()
+        def timeit():
+            r = engine.process(source, target)  # noqa
+
+        print time.time() - t
+
     def test_sum_static(self):
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
@@ -184,4 +216,4 @@ mantle
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main(defaultTest='GFStaticTest.test_sum_static')
+    unittest.main(defaultTest='GFStaticTest.test_process_static')
