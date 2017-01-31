@@ -1425,6 +1425,7 @@ class Config(Object):
         self._vicinity_function = None
         self.validate(regularize=True, depth=1)
         self._do_auto_updates = True
+        self.check_components()
         self.update()
 
     def __setattr__(self, name, value):
@@ -1436,6 +1437,12 @@ class Config(Object):
 
         except ValueError:
             pass
+    def check_components(self):
+        if self.ncomponents!=int(
+                re.search(r'\d+', self.component_scheme).group()):
+            raise Exception(
+                'ncomponents=%s is inconsistend with component_scheme %s' %
+            (self.ncomponents, self.component_scheme))
 
     def update(self):
         self._update()
