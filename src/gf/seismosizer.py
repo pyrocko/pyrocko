@@ -859,7 +859,15 @@ class Source(meta.Location, Cloneable):
         '''
 
         for (k, v) in kwargs.iteritems():
-            self[k] = v
+            if k not in self.keys():
+                if self.stf is not None:
+                    self.stf[k] = v
+                else:
+                    raise Exception('Please set a STF before updating its'
+                                    ' parameters.')
+            else:
+                self[k] = v
+
 
     def grid(self, **variables):
         '''
@@ -2509,6 +2517,18 @@ class LocalEngine(Engine):
             self._open_stores[store_id] = store.Store(store_dir)
 
         return self._open_stores[store_id]
+
+    def close_cashed_stores(self):
+        '''
+        Close and remove ids from cashed stores.
+        '''
+        store_ids = []
+        for store_id, store in self._open_stores.iteritems():
+            store.close()
+            store_ids.append(store_id)
+
+        for store_id in store_ids:
+            self._open_stores.pop(store_id)
 
     def get_store_config(self, store_id):
         store = self.get_store(store_id)
