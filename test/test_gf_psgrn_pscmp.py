@@ -8,10 +8,10 @@ import os
 from pyrocko import orthodrome as ortd
 from pyrocko import util, gf, cake  # noqa
 from pyrocko.fomosto import psgrn_pscmp
-from pyrocko.guts import Object, Float, List, String
-from pyrocko.guts_array import Array
+from common import Benchmark
 
 logger = logging.getLogger('test_gf_psgrn_pscmp')
+benchmark = Benchmark()
 
 km = 1000.
 
@@ -20,29 +20,12 @@ d2r = 1.0 / r2d
 km = 1000.
 
 
-class StaticTarget(Object):
-    lat = Float.T()
-    lon = Float.T()
-    north_shifts = Array.T(shape=(None,), dtype=num.float)
-    east_shifts = Array.T(shape=(None,), dtype=num.float)
-    depth = Float.T(default=0.0)
-    components = List.T(String.T())
-    store_id = gf.StringID.T()
-    interpolation = gf.InterpolationMethod.T(
-        default='nearest_neighbor',
-        help='interpolation method to use')
-
-    optimization = gf.OptimizationMethod.T(
-        default='enable',
-        optional=True,
-        help='disable/enable optimizations in weight-delay-and-sum operation')
-
-
 def statics(engine, source, starget):
     store = engine.get_store(starget.store_id)
     dsource = source.discretize_basesource(store, starget)
 
     assert len(starget.north_shifts) == len(starget.east_shifts)
+
     out = num.zeros((len(starget.north_shifts), len(starget.components)))
     sfactor = source.get_factor()
     for i, (north, east) in enumerate(
@@ -57,8 +40,7 @@ def statics(engine, source, starget):
 
         values = store.statics(
             dsource, receiver, starget.components,
-            interpolation=starget.interpolation,
-            optimization=starget.optimization)
+            interpolation=starget.interpolation)
 
         for icomponent, value in enumerate(values):
             out[i, icomponent] = value * sfactor
@@ -149,45 +131,45 @@ mantle
 
         # test GF store
         TestRF = dict(
-            lat=origin.lat, lon=origin.lon,
+            lat=origin.lat,
+            lon=origin.lon,
             depth=2. * km,
             width=2. * km,
             length=5. * km,
             rake=90., dip=45., strike=45.,
-            slip=1.,
-                    )
+            slip=1.)
 
         source = gf.RectangularSource(**TestRF)
 
-        nnorth = 40
         neast = 40
+        nnorth = 40
 
-        norths = num.linspace(-20., 20., nnorth) * km
-        easts = num.linspace(-20., 20., neast) * km
-        norths2 = num.repeat(norths, len(easts))
-        easts2 = num.tile(easts, len(norths))
+        coords = num.zeros((neast*nnorth, 5))
+        N, E = num.meshgrid(num.linspace(-20., 20., nnorth),
+                            num.linspace(-20., 20., neast))
+        coords[:, 0] = origin.lat
+        coords[:, 1] = origin.lon
+        coords[:, 2] = N.flatten()
+        coords[:, 3] = E.flatten()
 
-        engine = gf.LocalEngine(store_superdirs=['/tmp'])
+        starget = gf.StaticTarget(
+            coords5=coords,
+            interpolation='nearest_neighbor')
 
-        starget = StaticTarget(
-            lat=origin.lat,
-            lon=origin.lon,
-            east_shifts=easts2,
-            north_shifts=norths2,
-            store_id=store_id,
-            components=['displacement.d'],
-            optimization='enable',
-            interpolation='multilinear')
+        engine = gf.LocalEngine(store_dirs=[store_dir])
 
-        uz = statics(engine, source, starget)[:, 0]
+        r = engine.process(source, starget)
+        un_fomosto = r.static_results()[0].result['displacement.n']
+        ue_fomosto = r.static_results()[0].result['displacement.e']
+        ud_fomosto = r.static_results()[0].result['displacement.d']
 
         # test against direct pscmp output
-        lats2, lons2 = ortd.ne_to_latlon(
-            origin.lat, origin.lon, norths2, easts2)
+        lats, lons = ortd.ne_to_latlon(
+            origin.lat, origin.lon, N.flatten(), E.flatten())
         pscmp_sources = [psgrn_pscmp.PsCmpRectangularSource(**TestRF)]
 
         cc = c.pscmp_config
-        cc.observation = psgrn_pscmp.PsCmpScatter(lats=lats2, lons=lons2)
+        cc.observation = psgrn_pscmp.PsCmpScatter(lats=lats, lons=lons)
         cc.rectangular_source_patches = pscmp_sources
 
         ccf = psgrn_pscmp.PsCmpConfigFull(**cc.items())
@@ -197,12 +179,13 @@ mantle
         runner.run(ccf)
         ps2du = runner.get_results(component='displ')[0]
 
-        uz_ps2d = ps2du[:, 2]
+        un_pscmp = ps2du[:, 0]
+        ue_pscmp = ps2du[:, 1]
+        ud_pscmp = ps2du[:, 2]
 
-        uz = -uz.reshape((nnorth, neast))
-        uz2d = -uz_ps2d.reshape((nnorth, neast))
-
-        num.testing.assert_allclose(uz, uz2d, atol=0.001)
+        num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.001)
+        num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.001)
+        num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.001)
 
         # plotting
 
