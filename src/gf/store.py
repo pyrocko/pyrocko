@@ -155,6 +155,15 @@ class GFTrace(object):
 
         return '|'.join(s)
 
+    def to_trace(self, net, sta, loc, cha):
+        from pyrocko import trace
+        return trace.Trace(
+            net, sta, loc, cha,
+            ydata=self.data,
+            deltat=self.deltat,
+            tmin=self.itmin*self.deltat)
+
+
 
 class GFValue(object):
 
@@ -1803,6 +1812,8 @@ class Store(BaseStore):
         store, decimate_ = self._decimated_store(decimate)
 
         scheme = config.component_scheme
+        scheme_desc = meta.component_scheme_to_description[
+            config.component_scheme]
 
         source_coords_arr = source.coords5()
         source_terms = source.get_source_terms(scheme)
@@ -1816,7 +1827,7 @@ class Store(BaseStore):
             scheme,
             interpolation, nthreads)
 
-        provided_components = source.provided_components(scheme)
+        provided_components = scheme_desc.provided_components
 
         out = {}
         for icomp, comp in enumerate(provided_components):

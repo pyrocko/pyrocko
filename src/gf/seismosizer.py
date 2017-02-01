@@ -982,11 +982,6 @@ class Source(meta.Location, Cloneable):
                     east_shifts=east_shifts,
                     depths=depths)
 
-    @classmethod
-    def provided_components(cls, component_scheme):
-        cls = cls.discretized_source_class
-        return cls.provided_components(component_scheme)
-
     def pyrocko_event(self, **kwargs):
         lat, lon = self.effective_latlon
         duration = None
@@ -1944,7 +1939,6 @@ class SatelliteTarget(SpatialTarget):
         pass
 
 
-
 class Target(meta.Receiver):
     '''
     A single channel of a computation request including post-processing params.
@@ -2561,7 +2555,9 @@ class LocalEngine(Engine):
 
     def channel_rule(self, source, target):
         store_ = self.get_store(target.store_id)
-        cprovided = source.provided_components(store_.config.component_scheme)
+        cprovided = meta.component_scheme_to_description[
+            store_.config.component_scheme].provided_components
+
         quantity = target.effective_quantity()
         try:
             for rule in channel_rules[quantity]:

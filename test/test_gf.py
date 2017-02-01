@@ -9,7 +9,8 @@ import logging
 import numpy as num
 from common import Benchmark
 
-from pyrocko import gf, util, cake
+from pyrocko import gf, util, cake, ahfullgreen, trace
+from pyrocko.fomosto import ahfullgreen as fomosto_ahfullgreen
 
 
 logger = logging.getLogger('test_gf.py')
@@ -23,6 +24,66 @@ km = 1000.
 def numeq(a, b, eps):
     return (num.all(num.asarray(a).shape == num.asarray(b).shape and
             num.abs(num.asarray(a) - num.asarray(b)) < eps))
+
+
+def make_traces_homogeneous(
+        dsource, receiver, material, deltat, net, sta, loc):
+
+    comps = ['displacement.n', 'displacement.e', 'displacement.d']
+    npad = 120
+
+    dists = dsource.distances_to(receiver)
+
+    dists = dsource.distances_to(receiver)
+    azis, _ = dsource.azibazis_to(receiver)
+
+    norths = dists * num.cos(azis*d2r)
+    easts = dists * num.sin(azis*d2r)
+
+    ddepths = receiver.depth - dsource.depths
+
+    d3ds = math.sqrt(norths**2 + easts**2 + ddepths**2)
+
+    tmin = num.min((math.floor(d3ds / material.vp / deltat) - npad) * deltat)
+    tmax = num.max((math.ceil(d3ds / material.vs / deltat) + npad) * deltat)
+
+    ns = int(round((tmax - tmin) / deltat))
+
+    outx = num.zeros(ns)
+    outy = num.zeros(ns)
+    outz = num.zeros(ns)
+
+    traces = []
+    for ielement in xrange(dsource.nelements):
+        x = (norths[ielement], easts[ielement], ddepths[ielement])
+
+        if isinstance(dsource, gf.DiscretizedMTSource):
+            m6 = dsource.m6s[ielement, :]
+            f = (0., 0., 0.)
+        elif isinstance(dsource, gf.DiscretizedSFSource):
+            m6 = (0., 0., 0., 0., 0., 0.)
+            f = dsource.forces[ielement, :]
+        elif isinstance(dsource, gf.DiscretizedExplosionSource):
+            m0 = dsource.m0s[ielement]
+            m6 = (m0, m0, m0, 0., 0., 0.)
+            f = (0., 0., 0.)
+        else:
+            assert False
+
+        ahfullgreen.add_seismogram(
+            material.vp, material.vs, material.rho, material.qp, material.qs,
+            x, f, m6, 'displacement',
+            deltat, tmin, outx, outy, outz,
+            stf=ahfullgreen.Impulse())
+
+        for comp, o in zip(comps, (outx, outy, outz)):
+            tr = trace.Trace(
+                net, sta, loc, comp,
+                tmin=tmin, ydata=o, deltat=deltat)
+
+            traces.append(tr)
+
+    return traces
 
 
 class PulseConfig(guts.Object):
@@ -831,6 +892,149 @@ class GFTestCase(unittest.TestCase):
                             store, d, nt, interpolation, nthreads)
 
         benchmark.show_factor = False
+
+    def _test_homogeneous_scenario(
+            self,
+            config_type_class,
+            component_scheme,
+            discretized_source_class):
+
+        print
+        print config_type_class.short_type, component_scheme, \
+            discretized_source_class.__name__
+
+        store_id = 'homogeneous_%s_%s' % (
+            config_type_class.short_type, component_scheme)
+
+        vp = 5.8 * km
+        vs = 3.46 * km
+
+        mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
+  0. %(vp)g %(vs)g 2.6 1264. 600.
+ 20. %(vp)g %(vs)g 2.6 1264. 600.'''.lstrip() % dict(vp=vp/km, vs=vs/km)))
+
+        store_type = config_type_class.short_type
+        params = dict(
+            id=store_id,
+            sample_rate=1000.,
+            modelling_code_id='ahfullgreen',
+            earthmodel_1d=mod)
+
+        if store_type in ('A', 'B'):
+            params.update(
+                source_depth_min=1.*km,
+                source_depth_max=2.*km,
+                source_depth_delta=0.5*km,
+                distance_min=1.*km,
+                distance_max=2.*km,
+                distance_delta=0.5*km)
+
+        if store_type == 'A':
+            params.update(
+                receiver_depth=1.*km)
+
+        if store_type == 'B':
+            params.update(
+                receiver_depth_min=1.*km,
+                receiver_depth_max=2.*km,
+                receiver_depth_delta=0.5*km)
+
+        if store_type == 'C':
+            params.update(
+                source_depth_min=1.*km,
+                source_depth_max=2.*km,
+                source_depth_delta=0.5*km,
+                source_east_shift_min=1.*km,
+                source_east_shift_max=2.*km,
+                source_east_shift_delta=0.5*km,
+                source_north_shift_min=2.*km,
+                source_north_shift_max=3.*km,
+                source_north_shift_delta=0.5*km)
+
+        config = config_type_class(**params)
+
+        config.validate()
+
+        store_dir = mkdtemp(prefix=store_id)
+        self.tempdirs.append(store_dir)
+
+        gf.store.Store.create_editables(store_dir, config=config)
+
+        store = gf.store.Store(store_dir, 'r')
+        store.make_ttt()
+        store.close()
+
+        fomosto_ahfullgreen.build(store_dir, nworkers=1)
+
+        store = gf.store.Store(store_dir, 'r')
+
+        dsource_type = discretized_source_class.__name__
+
+        params = {}
+        if dsource_type == 'DiscretizedMTSource':
+            params.update(
+                m6s=num.array([[1., 2., 3., 4., 5., 6.]]))
+        elif dsource_type == 'DiscretizedExplosionSource':
+            params.update(
+                m0s=num.array([2.]))
+        elif dsource_type == 'DiscretizedSFSource':
+            params.update(
+                forces=num.array([[1., 2., 3.]]))
+        elif dsource_type == 'DiscretizedPorePressureSource':
+            params.update(
+                pp=num.array([3.]))
+
+        snorth = 2.0*km
+        seast = 2.0*km
+        rnorth = snorth + 1.5*km
+        reast = seast + 0.5*km
+
+        dsource = discretized_source_class(
+            times=num.array([1.*km]),
+            north_shifts=num.array([snorth]),
+            east_shifts=num.array([seast]),
+            depths=num.array([1.*km]),
+            **params)
+
+        receiver = gf.Receiver(
+            north_shift=rnorth,
+            east_shift=reast)
+
+        components = gf.component_scheme_to_description[
+            component_scheme].provided_components
+
+        trs = []
+        for component, gtr in store.seismogram(
+                dsource, receiver, components).iteritems():
+
+            tr = gtr.to_trace('', 'STA', '', component)
+            trs.append(tr)
+
+        trace.snuffle(trs)
+
+
+for config_type_class in gf.config_type_classes:
+    for scheme in config_type_class.provided_schemes:
+        for discretized_source_class in gf.discretized_source_classes:
+            if scheme in discretized_source_class.provided_schemes:
+                name = 'test_homogeneous_scenario__%s__%s__%s' % (
+                    config_type_class.short_type,
+                    scheme,
+                    discretized_source_class.__name__)
+
+                def make_method(
+                        config_type_class, scheme, discretized_source_class):
+
+                    def test_homogeneous_scenario(self):
+                        return self._test_homogeneous_scenario(
+                            config_type_class,
+                            scheme,
+                            discretized_source_class)
+
+                    return test_homogeneous_scenario
+
+                setattr(GFTestCase, name, make_method(
+                    config_type_class, scheme, discretized_source_class))
 
 
 if __name__ == '__main__':

@@ -2,6 +2,8 @@
 import math
 import re
 import fnmatch
+import logging
+
 import numpy as num
 from scipy.interpolate import interp1d
 
@@ -22,6 +24,108 @@ d2r = math.pi / 180.
 r2d = 1.0 / d2r
 km = 1000.
 vicinity_eps = 1e-5
+
+logger = logging.getLogger('pyrocko.gf.meta')
+
+
+class ComponentSchemeDescription(Object):
+    name = String.T()
+    source_terms = List.T(String.T())
+    ncomponents = Int.T()
+    provided_components = List.T(String.T())
+
+
+component_scheme_descriptions = [
+    ComponentSchemeDescription(
+        name='elastic2',
+        source_terms=['m0'],
+        ncomponents=2,
+        provided_components=[
+            'displacement.n', 'displacement.e', 'displacement.d']),
+    ComponentSchemeDescription(
+        name='elastic8',
+        source_terms=['mnn', 'mee', 'mdd', 'mne', 'mnd', 'med'],
+        ncomponents=8,
+        provided_components=[
+            'displacement.n', 'displacement.e', 'displacement.d']),
+    ComponentSchemeDescription(
+        name='elastic10',
+        source_terms=['mnn', 'mee', 'mdd', 'mne', 'mnd', 'med'],
+        ncomponents=10,
+        provided_components=[
+            'displacement.n', 'displacement.e', 'displacement.d']),
+    ComponentSchemeDescription(
+        name='elastic18',
+        source_terms=['mnn', 'mee', 'mdd', 'mne', 'mnd', 'med'],
+        ncomponents=18,
+        provided_components=[
+            'displacement.n', 'displacement.e', 'displacement.d']),
+    ComponentSchemeDescription(
+        name='elastic5',
+        source_terms=['fn', 'fe', 'fd'],
+        ncomponents=5,
+        provided_components=[
+            'displacement.n', 'displacement.e', 'displacement.d']),
+    ComponentSchemeDescription(
+        name='poroelastic10',
+        source_terms=['pore_pressure'],
+        ncomponents=10,
+        provided_components=[
+            'displacement.n', 'displacement.e', 'displacement.d',
+            'vertical_tilt.n', 'vertical_tilt.e',
+            'pore_pressure',
+            'darcy_velocity.n', 'darcy_velocity.e', 'darcy_velocity.d'])]
+
+
+# new names?
+# 'mt_to_displacement_1d'
+# 'mt_to_displacement_1d_ff_only'
+# 'mt_to_gravity_1d'
+# 'mt_to_stress_1d'
+# 'explosion_to_displacement_1d'
+# 'sf_to_displacement_1d'
+# 'mt_to_displacement_3d'
+# 'mt_to_gravity_3d'
+# 'mt_to_stress_3d'
+# 'pore_pressure_to_displacement_1d'
+# 'pore_pressure_to_vertical_tilt_1d'
+# 'pore_pressure_to_pore_pressure_1d'
+# 'pore_pressure_to_darcy_velocity_1d'
+
+
+component_schemes = [c.name for c in component_scheme_descriptions]
+component_scheme_to_description = dict(
+    (c.name, c) for c in component_scheme_descriptions)
+
+
+class ComponentScheme(StringChoice):
+    '''
+    Different Green's Function component schemes are available:
+
+    ================= =========================================================
+    \                 Description
+    ================= =========================================================
+    ``elastic10``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT
+                      sources only
+    ``elastic8``      Elastodynamic for far-field only
+                      :py:class:`pyrocko.gf.meta.ConfigTypeA` and
+                      :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
+                      MT sources only
+    ``elastic2``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
+                      purely isotropic sources only
+    ``elastic5``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, SF
+                      sources only
+    ``elastic18``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeC`
+                      stores, MT sources only
+    ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores
+    ================= =========================================================
+    '''
+
+    choices = component_schemes
 
 
 def latlondepth_to_carthesian(lat, lon, depth):
@@ -612,6 +716,10 @@ class UnavailableScheme(Exception):
     pass
 
 
+class InvalidNComponents(Exception):
+    pass
+
+
 class DiscretizedSource(Object):
     '''Base class for discretized sources.
 
@@ -652,19 +760,10 @@ class DiscretizedSource(Object):
         supported by this discretized source class.
         '''
 
-        if scheme not in cls._provided_schemes:
+        if scheme not in cls.provided_schemes:
             raise UnavailableScheme(
                 'source type "%s" does not support GF component scheme "%s"' %
                 (cls.__name__, scheme))
-
-    @classmethod
-    def provided_components(cls, scheme):
-        '''
-        Get list of components which are provided for given scheme.
-        '''
-
-        cls.check_scheme(scheme)
-        return cls._provided_components
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
@@ -893,13 +992,7 @@ class DiscretizedSource(Object):
 class DiscretizedExplosionSource(DiscretizedSource):
     m0s = Array.T(shape=(None,), dtype=num.float)
 
-    _provided_components = (
-        'displacement.n',
-        'displacement.e',
-        'displacement.d',
-    )
-
-    _provided_schemes = (
+    provided_schemes = (
         'elastic2',
         'elastic8',
         'elastic10',
@@ -1017,13 +1110,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
 class DiscretizedSFSource(DiscretizedSource):
     forces = Array.T(shape=(None, 3), dtype=num.float)
 
-    _provided_components = (
-        'displacement.n',
-        'displacement.e',
-        'displacement.d',
-    )
-
-    _provided_schemes = (
+    provided_schemes = (
         'elastic5',
     )
 
@@ -1114,13 +1201,7 @@ class DiscretizedMTSource(DiscretizedSource):
         shape=(None, 6), dtype=num.float,
         help='rows with (m_nn, m_ee, m_dd, m_ne, m_nd, m_ed)')
 
-    _provided_components = (
-        'displacement.n',
-        'displacement.e',
-        'displacement.d',
-    )
-
-    _provided_schemes = (
+    provided_schemes = (
         'elastic8',
         'elastic10',
         'elastic18',
@@ -1249,19 +1330,7 @@ class DiscretizedMTSource(DiscretizedSource):
 class DiscretizedPorePressureSource(DiscretizedSource):
     pp = Array.T(shape=(None,), dtype=num.float)
 
-    _provided_components = (
-        'displacement.n',
-        'displacement.e',
-        'displacement.d',
-        'vertical_tilt.n',
-        'vertical_tilt.e',
-        'pore_pressure',
-        'darcy_velocity.n',
-        'darcy_velocity.e',
-        'darcy_velocity.d',
-    )
-
-    _provided_schemes = (
+    provided_schemes = (
         'poroelastic10',
     )
 
@@ -1349,42 +1418,6 @@ class DiscretizedPorePressureSource(DiscretizedSource):
                                                                  **kwargs)
 
 
-class ComponentScheme(StringChoice):
-    '''
-    Different Green's Function component schemes are available:
-
-    ================= =========================================================
-    \                 Description
-    ================= =========================================================
-    ``elastic10``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT
-                      sources only
-    ``elastic8``      Elastodynamic for far-field only
-                      :py:class:`pyrocko.gf.meta.ConfigTypeA` and
-                      :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
-                      MT sources only
-    ``elastic2``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
-                      purely isotropic sources only
-    ``elastic5``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, SF
-                      sources only
-    ``elastic18``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeC`
-                      stores, MT sources only
-    ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores
-    ================= =========================================================
-    '''
-
-    choices = (
-        'elastic10',  # nf + ff
-        'elastic8',   # ff
-        'elastic2',   # explosions only
-        'elastic5',   # sf
-        'elastic18',  # 3d
-        'poroelastic10')
-
-
 class Region(Object):
     name = String.T(optional=True)
 
@@ -1457,10 +1490,10 @@ class Config(Object):
     frequency_min = Float.T(optional=True)
     frequency_max = Float.T(optional=True)
     sample_rate = Float.T(optional=True)
-    ncomponents = Int.T(default=1)
     factor = Float.T(default=1.0, optional=True)
     component_scheme = ComponentScheme.T(default='elastic10')
     tabulated_phases = List.T(TPDef.T())
+    ncomponents = Int.T(optional=True)
 
     def __init__(self, **kwargs):
         self._do_auto_updates = False
@@ -1471,6 +1504,17 @@ class Config(Object):
         self.validate(regularize=True, depth=1)
         self._do_auto_updates = True
         self.update()
+
+    def check_ncomponents(self):
+        ncomponents = component_scheme_to_description[
+            self.component_scheme].ncomponents
+
+        if self.ncomponents is None:
+            self.ncomponents = ncomponents
+        elif ncomponents != self.ncomponents:
+            raise InvalidNComponents(
+                'ncomponents=%i incompatible with component_scheme="%s"' % (
+                    self.ncomponents, self.component_scheme))
 
     def __setattr__(self, name, value):
         Object.__setattr__(self, name, value)
@@ -1483,6 +1527,7 @@ class Config(Object):
             pass
 
     def update(self):
+        self.check_ncomponents()
         self._update()
         self._make_index_functions()
 
@@ -1605,6 +1650,8 @@ class ConfigTypeA(Config):
     distance_delta = Float.T()
 
     short_type = 'A'
+
+    provided_schemes = ['elastic2', 'elastic8', 'elastic10', 'poroelastic10']
 
     def get_surface_distance(self, args):
         return args[1]
@@ -1777,6 +1824,8 @@ class ConfigTypeB(Config):
     distance_delta = Float.T()
 
     short_type = 'B'
+
+    provided_schemes = ['elastic2', 'elastic8', 'elastic10', 'poroelastic10']
 
     def get_distance(self, args):
         return math.sqrt((args[1] - args[0])**2 + args[2]**2)
@@ -1992,6 +2041,8 @@ class ConfigTypeC(Config):
     source_north_shift_delta = Float.T()
 
     short_type = 'C'
+
+    provided_schemes = ['elastic18']
 
     def get_surface_distance(self, args):
         ireceiver, _, source_east_shift, source_north_shift, _ = args
@@ -2441,6 +2492,15 @@ def filledi(x, n):
     return a
 
 
+config_type_classes = [ConfigTypeA, ConfigTypeB, ConfigTypeC]
+
+discretized_source_classes = [
+        DiscretizedExplosionSource,
+        DiscretizedSFSource,
+        DiscretizedMTSource,
+        DiscretizedPorePressureSource]
+
+
 __all__ = '''
 Earthmodel1D
 StringID
@@ -2458,14 +2518,12 @@ TPDef
 OutOfBounds
 Location
 Receiver
-DiscretizedSource
-DiscretizedExplosionSource
-DiscretizedMTSource
+'''.split() + [
+    S.__name__ for S in discretized_source_classes + config_type_classes] + '''
 ComponentScheme
+component_scheme_to_description
+component_schemes
 Config
-ConfigTypeA
-ConfigTypeB
-ConfigTypeC
 GridSpecError
 Weighting
 Taper
@@ -2477,4 +2535,6 @@ WaveformSelection
 nditer_outer
 dump
 load
+discretized_source_classes
+config_type_classes
 '''.split()

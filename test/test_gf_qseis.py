@@ -79,7 +79,6 @@ mantle
 
         config = gf.meta.ConfigTypeA(
             id='qseis_test',
-            ncomponents=10,
             sample_rate=0.25,
             receiver_depth=0.*km,
             source_depth_min=10*km,
@@ -250,7 +249,6 @@ mantle
 
         config = gf.meta.ConfigTypeA(
             id=store_id_qseis,
-            ncomponents=10,
             sample_rate=sample_rate,
             receiver_depth=0.*km,
             source_depth_min=1.*km,
@@ -294,7 +292,6 @@ mantle
 
         config = gf.meta.ConfigTypeA(
             id=store_id_ahfull,
-            ncomponents=10,
             sample_rate=sample_rate,
             receiver_depth=0.*km,
             source_depth_min=1.*km,

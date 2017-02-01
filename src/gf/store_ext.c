@@ -249,10 +249,7 @@ static const uint64_t *igs_elastic8[] = {igs_elastic8_0, igs_elastic8_1, igs_ela
 const component_scheme_t component_schemes[] = {
     {"elastic10", 6, 3, nsummands_elastic10, igs_elastic10, make_weights_elastic10},
     {"elastic8", 6, 3, nsummands_elastic8, igs_elastic8, make_weights_elastic8},
-    {"elastic2", 1, 3, nsummands_elastic2, igs_elastic2, make_weights_elastic2},
-    {"elastic5", 3, 3, nsummands_elastic5, igs_elastic5, make_weights_elastic5},
-    {"poroelastic10", 1, 9, nsummands_poroelastic10, igs_poroelastic10, make_weights_poroelastic10},
-    {NULL, 0, NULL, NULL, NULL},
+    {NULL, 0, 0, NULL, NULL, NULL},
 };
 
 const component_scheme_t *get_component_scheme(char *name) {
