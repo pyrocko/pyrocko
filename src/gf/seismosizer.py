@@ -1970,7 +1970,6 @@ class StaticResult(Object):
         shape=(None,),
         optional=True)
     t_stack = Float.T(
-        shape=(None,),
         optional=True)
 
 
@@ -2211,23 +2210,23 @@ class Request(Object):
 
 
 class ProcessingStats(Object):
-    t_perc_get_store_and_receiver = Float.T()
-    t_perc_discretize_source = Float.T()
-    t_perc_make_base_seismogram = Float.T()
-    t_perc_make_same_span = Float.T()
-    t_perc_post_process = Float.T()
-    t_perc_optimize = Float.T()
-    t_perc_stack = Float.T()
-    t_perc_static_get_store = Float.T()
-    t_perc_static_sum_statics = Float.T()
-    t_perc_static_post_process = Float.T()
-    t_wallclock = Float.T()
-    t_cpu = Float.T()
-    n_read_blocks = Int.T()
-    n_results = Int.T()
-    n_subrequests = Int.T()
-    n_stores = Int.T()
-    n_records_stacked = Int.T()
+    t_perc_get_store_and_receiver = Float.T(default=0)
+    t_perc_discretize_source = Float.T(default=0)
+    t_perc_make_base_seismogram = Float.T(default=0)
+    t_perc_make_same_span = Float.T(default=0)
+    t_perc_post_process = Float.T(default=0)
+    t_perc_optimize = Float.T(default=0)
+    t_perc_stack = Float.T(default=0)
+    t_perc_static_get_store = Float.T(default=0)
+    t_perc_static_sum_statics = Float.T(default=0)
+    t_perc_static_post_process = Float.T(default=0)
+    t_wallclock = Float.T(default=0)
+    t_cpu = Float.T(default=0)
+    n_read_blocks = Int.T(default=0)
+    n_results = Int.T(default=0)
+    n_subrequests = Int.T(default=0)
+    n_stores = Int.T(default=0)
+    n_records_stacked = Int.T(default=0)
 
 
 class Response(Object):
@@ -2870,71 +2869,54 @@ class LocalEngine(Engine):
         rs1 = resource.getrusage(resource.RUSAGE_SELF)
         rc1 = resource.getrusage(resource.RUSAGE_CHILDREN)
 
-        if tcounters_dyn_list:
+        s = ProcessingStats()
+
+        if request.has_dynamic:
             tcumu_dyn = num.sum(num.vstack(tcounters_dyn_list), axis=0)
             tcumusum_dyn = num.sum(tcumu_dyn)
             perc_dyn = map(float, tcumu_dyn/tcumusum_dyn * 100.)
+            (s.t_perc_get_store_and_receiver,
+             s.t_perc_discretize_source,
+             s.t_perc_make_base_seismogram,
+             s.t_perc_make_same_span,
+             s.t_perc_post_process) = perc_dyn
         else:
-            tcumu_dyn = 0.
             tcumusum_dyn = 0.
-            perc_dyn = [0.] * 5
 
-        if tcounters_static_list:
+        if request.has_statics:
             tcumu_static = num.sum(num.vstack(tcounters_static_list), axis=0)
             tcumusum_static = num.sum(tcumu_static)
             perc_static = map(float, tcumu_static/tcumusum_static * 100.)
-        else:
-            tcumu_static = 0.
-            tcumusum_static = 0.
-            perc_static = [0.] * 5
+            (s.t_perc_static_get_store,
+             s.t_perc_static_sum_statics,
+             s.t_perc_static_post_process) = perc_static
 
-        t_wallclock = tt1 - tt0
-
-        t_cpu = (
+        s.t_wallclock = tt1 - tt0
+        s.t_cpu = (
             (rs1.ru_utime + rs1.ru_stime + rc1.ru_utime + rc1.ru_stime) -
             (rs0.ru_utime + rs0.ru_stime + rc0.ru_utime + rc0.ru_stime))
-        n_read_blocks = (
+        s.n_read_blocks = (
             (rs1.ru_inblock + rc1.ru_inblock) -
             (rs0.ru_inblock + rc0.ru_inblock))
 
-        n_records_stacked = 0.0
-        t_optimize = 0.0
-        t_stack = 0.0
+        n_records_stacked = 0.
         for results in results_list:
             for result in results:
                 if isinstance(result, Result):
                     shr = float(result.n_shared_stacking)
-                    n_records_stacked += float(result.n_records_stacked) / shr
-                    t_optimize += float(result.t_optimize) / shr
-                    t_stack += float(result.t_stack) / shr
-
-        n_records_stacked = int(n_records_stacked)
-
-        stats = ProcessingStats(
-            t_perc_get_store_and_receiver=perc_dyn[0],
-            t_perc_discretize_source=perc_dyn[1],
-            t_perc_make_base_seismogram=perc_dyn[2],
-            t_perc_make_same_span=perc_dyn[3],
-            t_perc_post_process=perc_dyn[4],
-            t_perc_optimize=float(t_optimize / tcumusum_dyn * 100.),
-            t_perc_stack=float(t_stack / tcumusum_dyn * 100.),
-
-            t_perc_static_get_store=perc_static[0],
-            t_perc_static_sum_statics=perc_static[1],
-            t_perc_static_post_process=perc_static[2],
-
-            t_wallclock=t_wallclock,
-            t_cpu=t_cpu,
-            n_read_blocks=n_read_blocks,
-            n_results=len(request.targets) * len(request.sources),
-            n_subrequests=nsub,
-            n_stores=len(store_ids),
-            n_records_stacked=n_records_stacked)
+                    n_records_stacked += float(result.n_records_stacked) /\
+                        shr
+                    s.t_perc_optimize += float(result.t_optimize) / shr
+                    s.t_perc_stack += float(result.t_stack) / shr
+        s.n_records_stacked = int(n_records_stacked)
+        if tcumusum_dyn != 0.:
+            s.t_perc_optimize /= tcumusum_dyn * 100 
+            s.t_perc_stack /= tcumusum_dyn * 100
 
         return Response(
             request=request,
             results_list=results_list,
-            stats=stats)
+            stats=s)
 
 
 class RemoteEngine(Engine):

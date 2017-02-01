@@ -40,11 +40,15 @@ class GFStaticTest(unittest.TestCase):
             lambda: self.cprofile.dump_stats('/tmp/make_sum_params.cprof'))
 
     def get_qseis_store_dir(self):
-        return '/tmp/gfstoreYCM3Ql'
+        return '/tmp/gfstoreiWM9Su'
         if self.qseis_store_dir is None:
             self.qseis_store_dir = self._create_qseis_store()
 
         return self.qseis_store_dir
+
+
+    def _create_psgrn_pscmp_store(self):
+        pass
 
     def _create_qseis_store(self):
         mod = cake.LayeredModel.from_scanlines(cake.read_nd_model_str('''
@@ -141,9 +145,7 @@ mantle
         engine = gf.LocalEngine(store_dirs=[self.get_qseis_store_dir()])
 
         t = time.time()
-        def timeit():
-            r = engine.process(source, target)  # noqa
-
+        r = engine.process(source, target)  # noqa
         print time.time() - t
 
     def test_sum_static(self):
