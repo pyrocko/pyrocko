@@ -1657,7 +1657,8 @@ class ConfigTypeA(Config):
 
     short_type = 'A'
 
-    provided_schemes = ['elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10']
+    provided_schemes = [
+        'elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10']
 
     def get_surface_distance(self, args):
         return args[1]
@@ -1831,7 +1832,8 @@ class ConfigTypeB(Config):
 
     short_type = 'B'
 
-    provided_schemes = ['elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10']
+    provided_schemes = [
+        'elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10']
 
     def get_distance(self, args):
         return math.sqrt((args[1] - args[0])**2 + args[2]**2)

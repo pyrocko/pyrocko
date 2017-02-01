@@ -1796,9 +1796,6 @@ class Store(BaseStore):
                     interpolation='nearest_neighbor',
                     optimization='enable', nthreads=1):
 
-        if not self._f_index:
-            self.open()
-
         config = self.config
 
         if deltat is None:
@@ -1811,6 +1808,9 @@ class Store(BaseStore):
                     ' = %g / %g' % (deltat, config.deltat))
 
         store, decimate_ = self._decimated_store(decimate)
+
+        if not store._f_index:
+            store.open()
 
         scheme = config.component_scheme
         scheme_desc = meta.component_scheme_to_description[

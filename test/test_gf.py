@@ -405,28 +405,28 @@ class GFTestCase(unittest.TestCase):
         store = gf.BaseStore(self.create(nrecords=nrecords))
         for i in xrange(5):
             n = random.randint(0, 5)
-            indices = num.random.randint(nrecords, size=n)
-            weights = num.random.random(n)
-            shifts = num.random.random(n)*nrecords
+            indices = num.random.randint(nrecords, size=n).astype(num.uint64)
+            weights = num.random.random(n).astype(num.float32)
+            shifts = (num.random.random(n)*nrecords).astype(num.float32)
+
+            it = random.randint(0, 5)
 
             dyn = store.sum(
                 indices, shifts, weights,
-                itmin=0,
+                itmin=it,
                 nsamples=1,
                 decimate=1,
                 implementation='c',
                 optimization='enable')
 
-            sta = store.sum_static(
+            sta = store.sum_statics(
                 indices, shifts, weights,
-                1, 1,
-                implementation=None,
-                optimization='disable',
+                it, 1,
                 nthreads=1)
 
             if len(dyn.data) > 0:
                 num.testing.assert_array_almost_equal(
-                    dyn.data[-1], sta.value, 5)
+                    dyn.data[-1], sta[0], 5)
 
         store.close()
 
@@ -882,11 +882,14 @@ class GFTestCase(unittest.TestCase):
         '''
         Testing loop
         '''
-        dims = [2*km, 5*km, 8*km, 16*km]
-        ntargets = [10, 100, 1000]
+        # dims = [2*km, 5*km, 8*km, 16*km]
+        # ntargets = [10, 100, 1000]
 
         # dims = [16*km]
         # ntargets = [1000]
+        dims = [2*km, 5*km]
+        ntargets = [10, 100]
+
         store = self.dummy_store()
         store.open()
 
@@ -905,16 +908,10 @@ class GFTestCase(unittest.TestCase):
             component_scheme,
             discretized_source_class):
 
-        print
-        print config_type_class.short_type, component_scheme, \
-            discretized_source_class.__name__,
-
         if config_type_class.short_type == 'C' \
                 or component_scheme.startswith('poro'):
 
-            print ':-/ ... skipped'
-            return
-
+            assert False
 
         store_id = 'homogeneous_%s_%s' % (
             config_type_class.short_type, component_scheme)
@@ -1039,7 +1036,6 @@ class GFTestCase(unittest.TestCase):
         tmin = max(tr.tmin for tr in trs1+trs2)
         tmax = min(tr.tmax for tr in trs1+trs2)
         for tr in trs1+trs2:
-            #tr.lowpass(4., 0.25*store.config.sample_rate, demean=False)
             tr.chop(tmin, tmax)
 
         assert tr.data_len() > 2
@@ -1068,7 +1064,6 @@ class GFTestCase(unittest.TestCase):
             trace.snuffle(trs1+trs2)
 
         assert num.all(ds < limit)
-        print ':-D'
 
 
 for config_type_class in gf.config_type_classes:
@@ -1083,6 +1078,10 @@ for config_type_class in gf.config_type_classes:
                 def make_method(
                         config_type_class, scheme, discretized_source_class):
 
+                    @unittest.skipIf(
+                        scheme.startswith('poro')
+                        or config_type_class.short_type == 'C',
+                        'todo: test poro and store type C')
                     def test_homogeneous_scenario(self):
                         return self._test_homogeneous_scenario(
                             config_type_class,

@@ -63,8 +63,8 @@ def make_seismogram(
     icut = int(num.ceil((omega_cut - out_spec_offset) / out_spec_delta))
 
     coeffs_stf[icut:] *= 0.5 + 0.5 * num.cos(
-            math.pi * num.minimum(
-                1.0, (omega[icut:] - omega_cut) / (omega_max - omega_cut)))
+        math.pi * num.minimum(
+            1.0, (omega[icut:] - omega_cut) / (omega_max - omega_cut)))
 
     ext.add_seismogram(
         float(vp), float(vs), float(density), float(qp), float(qs),
