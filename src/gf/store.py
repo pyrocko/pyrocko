@@ -885,7 +885,7 @@ class BaseStore(object):
 
         return val
 
-    def _sum_statics(self, irecords, weights, delays, it, ntargets,
+    def _sum_statics(self, irecords, delays, weights, it, ntargets,
                      nthreads):
         if not self._f_index:
             self.open()
@@ -1725,21 +1725,23 @@ class Store(BaseStore):
             util.ensuredirs(fn)
             ip.dump(fn)
 
-    def statics(self, source, multi_location, itsnapshot,
+    def statics(self, source, multi_location, itsnapshot, components,
                 interpolation='nearest_neighbor', nthreads=0):
         if not self._f_index:
             self.open()
 
-        out = [None] * 3
+        out = {}
         ntargets = multi_location.ncoords
         nsources = source.times.shape[0]
+        source_terms = source.get_source_terms(self.config.component_scheme)
+        delays = num.tile(source.times.astype(num.float32), ntargets)
+        scheme_desc = meta.component_scheme_to_description[
+            self.config.component_scheme]
+
         if ntargets == 0:
             raise StoreError('MultiLocation.coords5 is empty')
 
-        source_terms = source.get_source_terms(self.config.component_scheme)
-        _delays = num.tile(source.times.astype(num.float32), ntargets)
-
-        params_args = (
+        sum_params = store_ext.make_sum_params(
             self.cstore,
             source.coords5(),
             source_terms,
@@ -1747,18 +1749,19 @@ class Store(BaseStore):
             self.config.component_scheme,
             interpolation,
             nthreads)
-        for c, (weights, irecords) in enumerate(
-                store_ext.make_sum_params(*params_args)):
 
-            delays = num.repeat(_delays, weights.size/ntargets/nsources)
-            sum_args = (
+        for icomp, comp in enumerate(scheme_desc.provided_components):
+            if comp not in components:
+                continue
+            weights, irecords = sum_params[icomp]
+            delays_ = num.repeat(delays, weights.size/ntargets/nsources)
+            out[comp] = self.sum_statics(
                 irecords,
-                delays,
+                delays_,
                 weights,
                 itsnapshot,
                 ntargets,
                 nthreads)
-            out[c] = self.sum_statics(*sum_args)
 
         return out
 

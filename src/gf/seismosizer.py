@@ -982,6 +982,11 @@ class Source(meta.Location, Cloneable):
                     east_shifts=east_shifts,
                     depths=depths)
 
+    @classmethod
+    def provided_components(cls, component_scheme):
+        cls = cls.discretized_source_class
+        return cls.provided_components(component_scheme)
+
     def pyrocko_event(self, **kwargs):
         lat, lon = self.effective_latlon
         duration = None
@@ -1410,6 +1415,11 @@ class RectangularSource(DCSource):
         optional=True,
         help='Slip on the rectangular source area [m]')
 
+    interpolation = InterpolationMethod.T(
+        optional=True,
+        default='nearest_neighbor',
+        help='Shear moduli interpolation technique to discretize slip')
+
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
@@ -1439,15 +1449,12 @@ class RectangularSource(DCSource):
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
         if self.slip is not None:
-            if target is None:
-                raise SeismosizerError('Provide a valid target for '
-                                       'slip interpolation')
             points2 = points.copy()
             points2[:, 2] += self.depth
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points2,
-                interpolation=target.interpolation)
+                interpolation=self.interpolation)
 
             amplitudes *= dl * dw * shear_moduli * self.slip
 
@@ -1920,6 +1927,7 @@ class StaticTarget(meta.MultiLocation):
     '''
     quantity = meta.QuantityType.T(
         optional=True,
+        default='displacement',
         help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
              'If not given, it is guessed from the channel code.')
 
@@ -1945,27 +1953,25 @@ class StaticTarget(meta.MultiLocation):
                 self.tsnapshot,
                 self.interpolation)
 
+    def post_process(self, engine, source, statics):
+        return StaticResult(result=statics)
+
 
 class SatelliteTarget(StaticTarget):
-    incident_angles = Array.T(
-        shape=(None, 2), dtype=num.float,
-        help='Line-of-sight incident angles for each location in `coords5` in'
-             ' radians - (theta, phi)\n'
-             ' Theta is the incident angle from East, Phi from North.')
+    theta = Array.T(
+        shape=(None, 1), dtype=num.float,
+        help='Line-of-sight incident angle for each location in `coords5`.')
 
-    def post_process(self, engine, source, static):
-        return StaticResult(result=static)
+    phi = Array.T(
+        shape=(None, 1), dtype=num.float,
+        help='Line-of-sight incident angle for each location in `coords5`.')
 
-
-class StaticResult(Object):
-    result = Array.T(
-        shape=(None,),
-        optional=True)
-    n_records_stacked = Array.T(
-        shape=(None,),
-        optional=True)
-    t_stack = Float.T(
-        optional=True)
+    def post_process(self, engine, source, statics):
+        statics['displacement.los'] =\
+            (num.sin(self.theta) * -statics['displacement.d'] +
+             num.cos(self.phi) * statics['displacement.e'] +
+             num.sin(self.phi) * statics['displacement.n'])
+        return StaticResult(result=statics)
 
 
 class Target(meta.Receiver):
@@ -2115,11 +2121,18 @@ class Target(meta.Receiver):
 
 
 class Result(Object):
-    trace = SeismosizerTrace.T(optional=True)
     n_records_stacked = Int.T(optional=True)
+    t_stack = Float.T(optional=True)
+
+
+class DynamicResult(Result):
+    trace = SeismosizerTrace.T(optional=True)
     n_shared_stacking = Int.T(optional=True)
     t_optimize = Float.T(optional=True)
-    t_stack = Float.T(optional=True)
+
+
+class StaticResult(Result):
+    result = Dict.T()
 
 
 class Request(Object):
@@ -2205,18 +2218,19 @@ class Request(Object):
 
 
 class ProcessingStats(Object):
-    t_perc_get_store_and_receiver = Float.T(default=0)
-    t_perc_discretize_source = Float.T(default=0)
-    t_perc_make_base_seismogram = Float.T(default=0)
-    t_perc_make_same_span = Float.T(default=0)
-    t_perc_post_process = Float.T(default=0)
-    t_perc_optimize = Float.T(default=0)
-    t_perc_stack = Float.T(default=0)
-    t_perc_static_get_store = Float.T(default=0)
-    t_perc_static_sum_statics = Float.T(default=0)
-    t_perc_static_post_process = Float.T(default=0)
-    t_wallclock = Float.T(default=0)
-    t_cpu = Float.T(default=0)
+    t_perc_get_store_and_receiver = Float.T(default=0.)
+    t_perc_discretize_source = Float.T(default=0.)
+    t_perc_make_base_seismogram = Float.T(default=0.)
+    t_perc_make_same_span = Float.T(default=0.)
+    t_perc_post_process = Float.T(default=0.)
+    t_perc_optimize = Float.T(default=0.)
+    t_perc_stack = Float.T(default=0.)
+    t_perc_static_get_store = Float.T(default=0.)
+    t_perc_static_discretize_basesource = Float.T(default=0.)
+    t_perc_static_sum_statics = Float.T(default=0.)
+    t_perc_static_post_process = Float.T(default=0.)
+    t_wallclock = Float.T(default=0.)
+    t_cpu = Float.T(default=0.)
     n_read_blocks = Int.T(default=0)
     n_results = Int.T(default=0)
     n_subrequests = Int.T(default=0)
@@ -2241,9 +2255,21 @@ class Response(Object):
         traces = []
         for results in self.results_list:
             for result in results:
+                if not isinstance(result, DynamicResult):
+                    continue
                 traces.append(result.trace.pyrocko_trace())
 
         return traces
+
+    def static_results(self):
+        statics = []
+        for results in self.results_list:
+            for result in results:
+                if not isinstance(result, StaticResult):
+                    continue
+                statics.append(result)
+
+        return statics
 
     def iter_results(self, get='pyrocko_traces'):
         '''
@@ -2386,29 +2412,6 @@ class OutOfBoundsContext(Object):
     components = List.T(String.T())
 
 
-def process_static(work, sources, targets, engine):
-    for w in work:
-        _, _, isources, itargets = w
-
-        sources = [sources[isource] for isource in isources]
-        targets = [targets[itarget] for itarget in itargets]
-
-        for isource, source in zip(isources, sources):
-            for itarget, target in zip(itargets, targets):
-                try:
-                    result, tcounters = engine.base_statics(
-                        source, target, [], nthreads=0)
-                except meta.OutOfBounds, e:
-                    e.context = OutOfBoundsContext(
-                        source=sources[0],
-                        target=targets[0],
-                        distance=sources[0].distance_to(targets[0]),
-                        components='')
-                    raise
-
-                yield (isource, itarget, result), tcounters
-
-
 def process_subrequest_dynamic(work, pshared=None):
     engine = pshared['engine']
     _, _, isources, itargets = work
@@ -2448,7 +2451,8 @@ def process_subrequest_dynamic(work, pshared=None):
     for isource, source in zip(isources, sources):
         for itarget, target in zip(itargets, targets):
             try:
-                result = engine._post_process(base_seismogram, source, target)
+                result = engine._post_process_seismogram(
+                    base_seismogram, source, target)
                 result.n_records_stacked = n_records_stacked
                 result.n_shared_stacking = len(sources) * len(targets)
                 result.t_optimize = t_optimize
@@ -2462,6 +2466,34 @@ def process_subrequest_dynamic(work, pshared=None):
     tcounters.append(xtime())
 
     return results, tcounters
+
+
+def process_static(work, sources, targets, engine, nthreads=0):
+    for w in work:
+        _, _, isources, itargets = w
+
+        sources = [sources[isource] for isource in isources]
+        targets = [targets[itarget] for itarget in itargets]
+
+        for isource, source in zip(isources, sources):
+            for itarget, target in zip(itargets, targets):
+                components = [target.quantity + '.' + s for s in 'ned']
+
+                try:
+                    base_statics, tcounters = engine.base_statics(
+                        source, target, components, nthreads)
+                except meta.OutOfBounds, e:
+                    e.context = OutOfBoundsContext(
+                        source=sources[0],
+                        target=targets[0],
+                        distance=sources[0].distance_to(targets[0]),
+                        components=components)
+                    raise
+                result = engine._post_process_statics(
+                    base_statics, source, target)
+                tcounters.append(xtime())
+
+                yield (isource, itarget, result), tcounters
 
 
 class LocalEngine(Engine):
@@ -2625,9 +2657,7 @@ class LocalEngine(Engine):
 
     def channel_rule(self, source, target):
         store_ = self.get_store(target.store_id)
-        cprovided = meta.component_scheme_to_description[
-            store_.config.component_scheme].provided_components
-
+        cprovided = source.provided_components(store_.config.component_scheme)
         quantity = target.effective_quantity()
         try:
             for rule in channel_rules[quantity]:
@@ -2708,6 +2738,7 @@ class LocalEngine(Engine):
             base_source,
             target,
             target.tsnapshot,
+            components,
             target.interpolation,
             nthreads)
 
@@ -2715,7 +2746,7 @@ class LocalEngine(Engine):
 
         return base_statics, tcounters
 
-    def _post_process(self, base_seismogram, source, target):
+    def _post_process_seismogram(self, base_seismogram, source, target):
         deltat = base_seismogram.values()[0].deltat
 
         rule = self.channel_rule(source, target)
@@ -2747,6 +2778,9 @@ class LocalEngine(Engine):
             tmin=tmin)
 
         return target.post_process(self, source, tr)
+
+    def _post_process_statics(self, base_statics, source, starget):
+        return starget.post_process(self, source, base_statics)
 
     def process(self, *args, **kwargs):
         '''
@@ -2847,7 +2881,8 @@ class LocalEngine(Engine):
               work_static,
               request.sources,
               request.targets,
-              self):
+              self,
+              nthreads=nprocs):
 
                 tcounters_static_list.append(num.diff(tcounters_static))
 
@@ -2870,21 +2905,22 @@ class LocalEngine(Engine):
 
         if request.has_dynamic:
             tcumu_dyn = num.sum(num.vstack(tcounters_dyn_list), axis=0)
-            tcumusum_dyn = num.sum(tcumu_dyn)
-            perc_dyn = map(float, tcumu_dyn/tcumusum_dyn * 100.)
+            t_dyn = num.sum(tcumu_dyn)
+            perc_dyn = map(float, tcumu_dyn/t_dyn * 100.)
             (s.t_perc_get_store_and_receiver,
              s.t_perc_discretize_source,
              s.t_perc_make_base_seismogram,
              s.t_perc_make_same_span,
              s.t_perc_post_process) = perc_dyn
         else:
-            tcumusum_dyn = 0.
+            t_dyn = 0.
 
         if request.has_statics:
             tcumu_static = num.sum(num.vstack(tcounters_static_list), axis=0)
-            tcumusum_static = num.sum(tcumu_static)
-            perc_static = map(float, tcumu_static/tcumusum_static * 100.)
+            t_static = num.sum(tcumu_static)
+            perc_static = map(float, tcumu_static/t_static * 100.)
             (s.t_perc_static_get_store,
+             s.t_perc_static_discretize_basesource,
              s.t_perc_static_sum_statics,
              s.t_perc_static_post_process) = perc_static
 
@@ -2899,16 +2935,17 @@ class LocalEngine(Engine):
         n_records_stacked = 0.
         for results in results_list:
             for result in results:
-                if isinstance(result, Result):
-                    shr = float(result.n_shared_stacking)
-                    n_records_stacked += float(result.n_records_stacked) /\
-                        shr
-                    s.t_perc_optimize += float(result.t_optimize) / shr
-                    s.t_perc_stack += float(result.t_stack) / shr
+                if not isinstance(result, DynamicResult):
+                    continue
+                shr = float(result.n_shared_stacking)
+                n_records_stacked += float(result.n_records_stacked) /\
+                    shr
+                s.t_perc_optimize += float(result.t_optimize) / shr
+                s.t_perc_stack += float(result.t_stack) / shr
         s.n_records_stacked = int(n_records_stacked)
-        if tcumusum_dyn != 0.:
-            s.t_perc_optimize /= tcumusum_dyn * 100 
-            s.t_perc_stack /= tcumusum_dyn * 100
+        if t_dyn != 0.:
+            s.t_perc_optimize /= t_dyn * 100
+            s.t_perc_stack /= t_dyn * 100
 
         return Response(
             request=request,
@@ -3036,7 +3073,10 @@ STFMode
 Filter
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
 Target
+StaticTarget
+SatelliteTarget
 Result
+StaticResult
 Request
 SeismosizerTrace
 ProcessingStats

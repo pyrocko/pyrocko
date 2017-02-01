@@ -53,7 +53,6 @@ class GFBenchmarkTest(unittest.TestCase):
         return self._dummy_store
 
     def setUp(self):
-        # return False
         self.cprofile = cProfile.Profile()
         self.cprofile.enable()
         self.addCleanup(

@@ -48,6 +48,8 @@ class Benchmark(object):
         return wrapper
 
     def __str__(self, header=True):
+        if not self.results:
+            return 'No benchmarks ran'
         tmin = min([r[1] for r in self.results])
         tmax = max([r[1] for r in self.results])
 
@@ -55,7 +57,7 @@ class Benchmark(object):
         if self.prefix != '':
             rstr[-1] += ' - %s' % self.prefix
 
-        if len(self.results) > 0:
+        if self.results:
             indent = max([len(name) for name, _ in self.results])
         else:
             indent = 0

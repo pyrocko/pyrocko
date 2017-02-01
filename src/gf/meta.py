@@ -690,6 +690,26 @@ class MultiLocation(Object):
             return 0
         return self.coords5.shape[0]
 
+    @property
+    def lats(self):
+        return self.coords5[:, 0]
+
+    @property
+    def lons(self):
+        return self.coords5[:, 1]
+
+    @property
+    def north_shifts(self):
+        return self.coords5[:, 2]
+
+    @property
+    def east_shifts(self):
+        return self.coords5[:, 3]
+
+    @property
+    def depths(self):
+        return self.coords5[:, 4]
+
 
 class Receiver(Location):
     codes = Tuple.T(
