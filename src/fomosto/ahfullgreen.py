@@ -54,22 +54,8 @@ class AhfullgreenError(gf.store.StoreError):
     pass
 
 
-def earthmodel_1d_to_homogeneous(earthmodel_1d):
-    elements = list(earthmodel_1d.elements())
-
-    if len(elements) != 2:
-        raise AhfullgreenError('More than one layer in earthmodel')
-    if not isinstance(elements[1], cake.HomogeneousLayer):
-        raise AhfullgreenError('Layer has to be a HomogeneousLayer')
-
-    l = elements[1].m
-    return l.vp, l.vs, l.rho, l.qp, l.qs
-
-
-def make_traces(earthmodel_1d, source_mech, deltat, distances,
+def make_traces(material, source_mech, deltat, norths, easts,
                 source_depth, receiver_depth):
-
-    vp, vs, density, qp, qs = earthmodel_1d_to_homogeneous(earthmodel_1d)
 
     f = (0., 0., 0.)
     m6 = source_mech.m6()
@@ -77,29 +63,33 @@ def make_traces(earthmodel_1d, source_mech, deltat, distances,
     npad = 120
 
     traces = []
-    for i_distance, d in enumerate(distances):
+    for i_distance, (north, east) in enumerate(zip(norths, easts)):
         d3d = math.sqrt(
-            d**2 + (receiver_depth - source_depth)**2)
+            north**2 + east**2 + (receiver_depth - source_depth)**2)
 
-        tmin = (math.floor(d3d / vp / deltat) - npad) * deltat
-        tmax = (math.ceil(d3d / vs / deltat) + npad) * deltat
+        tmin = (math.floor(d3d / material.vp / deltat) - npad) * deltat
+        tmax = (math.ceil(d3d / material.vs / deltat) + npad) * deltat
         ns = int(round((tmax - tmin) / deltat))
 
         outx = num.zeros(ns)
         outy = num.zeros(ns)
         outz = num.zeros(ns)
 
-        x = (d, 0.0, receiver_depth-source_depth)
+        x = (north, east, receiver_depth-source_depth)
 
-        add_seismogram(vp, vs, density, qp, qs, x, f, m6, 'displacement',
-                       deltat, tmin, outx, outy, outz,
-                       stf=Impulse())
+        add_seismogram(
+            material.vp, material.vs, material.rho, material.qp, material.qs,
+            x, f, m6, 'displacement',
+            deltat, tmin, outx, outy, outz,
+            stf=Impulse())
 
         for i_comp, o in enumerate((outx, outy, outz)):
             comp = components[i_comp]
             tr = trace.Trace('', '%04i' % i_distance, '', comp,
                              tmin=tmin, ydata=o, deltat=deltat,
-                             meta=dict(distance=d, azimuth=0.))
+                             meta=dict(
+                                 distance=math.sqrt(north**2 + east**2),
+                                 azimuth=0.))
 
             traces.append(tr)
 
@@ -160,9 +150,11 @@ class AhfullGFBuilder(gf.builder.Builder):
 
         for mt, gfmap in gfmapping:
             conf.source_mech = mt
+
             rawtraces = make_traces(
-                self.store.config.earthmodel_1d,
-                mt, 1.0/self.store.config.sample_rate, distances, sz, rz)
+                self.store.config.earthmodel_1d.require_homogeneous(),
+                mt, 1.0/self.store.config.sample_rate,
+                distances, num.zeros_like(distances), sz, rz)
 
             interrupted = []
 

@@ -3637,6 +3637,16 @@ class LayeredModel(object):
                     newmod.append(element)
         return newmod
 
+    def require_homogeneous(self):
+        elements = list(self.elements())
+
+        if len(elements) != 2:
+            raise LayeredModelError('More than one layer in earthmodel')
+        if not isinstance(elements[1], HomogeneousLayer):
+            raise LayeredModelError('Layer has to be a HomogeneousLayer')
+
+        return elements[1].m
+
     def __str__(self):
         return '\n'.join(str(element) for element in self._elements)
 
