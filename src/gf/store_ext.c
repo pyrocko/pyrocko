@@ -1593,7 +1593,7 @@ static store_error_t make_sum_params(
     #endif
         for (ireceiver=0; ireceiver<nreceivers; ireceiver++) {
             for (isource=0; isource<nsources; isource++) {
-                cscheme->make_weights(&source_coords[isource*5], &ms[isource*6], &receiver_coords[ireceiver*5], ws_this);
+                cscheme->make_weights(&source_coords[isource*5], &ms[isource*cscheme->nsource_terms], &receiver_coords[ireceiver*5], ws_this);
                 if (interpolation == MULTILINEAR)  {
                     err += mscheme->vicinity(
                         mapping,
@@ -1839,6 +1839,8 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     if (!good_array(source_coords_arr, NPY_FLOAT64, -1, 2, shape_want_coords)) {
         return NULL;
     }
+
+    shape_want_ms[1] = cscheme->nsource_terms;
 
     if (!good_array(ms_arr, NPY_FLOAT64, -1, 2, shape_want_ms)) {
         return NULL;

@@ -4,7 +4,6 @@ import os
 import math
 import signal
 
-from pyrocko.guts import Float, List, Object
 from pyrocko import trace, cake
 from pyrocko import gf
 from pyrocko.ahfullgreen import add_seismogram, Impulse
@@ -33,23 +32,6 @@ def example_model():
     return mod
 
 
-class AhfullgreenConfigFull(Object):
-
-    source_depth = Float.T(default=10.0)
-    receiver_depth = Float.T(default=0.0)
-    receiver_distances = List.T(Float.T())
-    deltat = Float.T()
-
-    earthmodel_1d = gf.meta.Earthmodel1D.T(optional=True)
-
-    @staticmethod
-    def example():
-        conf = AhfullgreenConfigFull()
-        conf.receiver_distances = [2000.]
-        conf.earthmodel_1d = example_model()
-        return conf
-
-
 class AhfullgreenError(gf.store.StoreError):
     pass
 
@@ -57,8 +39,12 @@ class AhfullgreenError(gf.store.StoreError):
 def make_traces(material, source_mech, deltat, norths, easts,
                 source_depth, receiver_depth):
 
-    f = (0., 0., 0.)
-    m6 = source_mech.m6()
+    if isinstance(source_mech, MomentTensor):
+        m6 = source_mech.m6()
+        f = (0., 0., 0.)
+    elif isinstance(source_mech, tuple):
+        m6 = (0., 0., 0., 0., 0., 0.)
+        f = source_mech
 
     npad = 120
 
@@ -120,10 +106,6 @@ class AhfullGFBuilder(gf.builder.Builder):
             (rz, sz, firstx), (rz, sz, lastx), (nr, ns, nx) = \
                 self.get_block_extents(index)
 
-        conf = AhfullgreenConfigFull(
-            earthmodel_1d=self.store.config.earthmodel_1d,
-            deltat=1.0/self.store.config.sample_rate)
-
         logger.info('Starting block %i / %i' %
                     (index+1, self.nblocks))
 
@@ -139,21 +121,35 @@ class AhfullGFBuilder(gf.builder.Builder):
                 {'r': (2, +1), 'z': (7, +1)})
         mmt4 = (MomentTensor(m=symmat6(0, 1, 0, 0, 0, 0)),
                 {'r': (8, +1), 'z': (9, +1)})
+        mmt0 = (MomentTensor(m=symmat6(1, 1, 1, 0, 0, 0)),
+                {'r': (0, +1), 'z': (1, +1)})
 
         component_scheme = self.store.config.component_scheme
 
         if component_scheme == 'elastic8':
             gfmapping = [mmt1, mmt2, mmt3]
 
-        if component_scheme == 'elastic10':
+        elif component_scheme == 'elastic10':
             gfmapping = [mmt1, mmt2, mmt3, mmt4]
 
-        for mt, gfmap in gfmapping:
-            conf.source_mech = mt
+        elif component_scheme == 'elastic2':
+            gfmapping = [mmt0]
+
+        elif component_scheme == 'elastic5':
+            gfmapping = [
+                ((1., 1., 0.), {'r': (1, +1), 'z': (4, +1), 't': (2, +1)}),
+                ((0., 0., 1.), {'r': (0, +1), 'z': (3, +1)})]
+
+        else:
+            raise gf.UnavailableScheme(
+                'fomosto backend "ahfullgreen" cannot handle component scheme '
+                '"%s"' % component_scheme)
+
+        for source_mech, gfmap in gfmapping:
 
             rawtraces = make_traces(
                 self.store.config.earthmodel_1d.require_homogeneous(),
-                mt, 1.0/self.store.config.sample_rate,
+                source_mech, 1.0/self.store.config.sample_rate,
                 distances, num.zeros_like(distances), sz, rz)
 
             interrupted = []
@@ -202,8 +198,6 @@ class AhfullGFBuilder(gf.builder.Builder):
 
             if interrupted:
                 raise KeyboardInterrupt()
-
-            conf.gf_sw_source_types = (0, 0, 0, 0, 0, 0)
 
         logger.info('Done with block %i / %i' %
                     (index+1, self.nblocks))

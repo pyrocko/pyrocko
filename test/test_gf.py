@@ -42,10 +42,14 @@ def make_traces_homogeneous(
 
     ddepths = receiver.depth - dsource.depths
 
-    d3ds = math.sqrt(norths**2 + easts**2 + ddepths**2)
+    d3ds = num.sqrt(norths**2 + easts**2 + ddepths**2)
+    times = dsource.times
+    toff = math.floor(num.min(times) / deltat) * deltat
 
-    tmin = num.min((math.floor(d3ds / material.vp / deltat) - npad) * deltat)
-    tmax = num.max((math.ceil(d3ds / material.vs / deltat) + npad) * deltat)
+    tmin = num.min(
+        (num.floor(times + d3ds / material.vp / deltat) - npad) * deltat)
+    tmax = num.max(
+        (num.ceil(times + d3ds / material.vs / deltat) + npad) * deltat)
 
     ns = int(round((tmax - tmin) / deltat))
 
@@ -73,15 +77,15 @@ def make_traces_homogeneous(
         ahfullgreen.add_seismogram(
             material.vp, material.vs, material.rho, material.qp, material.qs,
             x, f, m6, 'displacement',
-            deltat, tmin, outx, outy, outz,
+            deltat, tmin - (times[ielement] - toff), outx, outy, outz,
             stf=ahfullgreen.Impulse())
 
-        for comp, o in zip(comps, (outx, outy, outz)):
-            tr = trace.Trace(
-                net, sta, loc, comp,
-                tmin=tmin, ydata=o, deltat=deltat)
+    for comp, o in zip(comps, (outx, outy, outz)):
+        tr = trace.Trace(
+            net, sta, loc, comp,
+            tmin=tmin + toff, ydata=o, deltat=deltat)
 
-            traces.append(tr)
+        traces.append(tr)
 
     return traces
 
@@ -903,7 +907,14 @@ class GFTestCase(unittest.TestCase):
 
         print
         print config_type_class.short_type, component_scheme, \
-            discretized_source_class.__name__
+            discretized_source_class.__name__,
+
+        if config_type_class.short_type == 'C' \
+                or component_scheme.startswith('poro'):
+
+            print ':-/ ... skipped'
+            return
+
 
         store_id = 'homogeneous_%s_%s' % (
             config_type_class.short_type, component_scheme)
@@ -920,6 +931,7 @@ class GFTestCase(unittest.TestCase):
             id=store_id,
             sample_rate=1000.,
             modelling_code_id='ahfullgreen',
+            component_scheme=component_scheme,
             earthmodel_1d=mod)
 
         if store_type in ('A', 'B'):
@@ -927,18 +939,18 @@ class GFTestCase(unittest.TestCase):
                 source_depth_min=1.*km,
                 source_depth_max=2.*km,
                 source_depth_delta=0.5*km,
-                distance_min=1.*km,
-                distance_max=2.*km,
+                distance_min=4.*km,
+                distance_max=6.*km,
                 distance_delta=0.5*km)
 
         if store_type == 'A':
             params.update(
-                receiver_depth=1.*km)
+                receiver_depth=3.*km)
 
         if store_type == 'B':
             params.update(
-                receiver_depth_min=1.*km,
-                receiver_depth_max=2.*km,
+                receiver_depth_min=2.*km,
+                receiver_depth_max=3.*km,
                 receiver_depth_delta=0.5*km)
 
         if store_type == 'C':
@@ -975,51 +987,95 @@ class GFTestCase(unittest.TestCase):
         params = {}
         if dsource_type == 'DiscretizedMTSource':
             params.update(
-                m6s=num.array([[1., 2., 3., 4., 5., 6.]]))
+                m6s=num.array([
+                    [1., 2., 3., 4., 5., 6.],
+                    [1., 2., 3., 4., 5., 6.]]))
         elif dsource_type == 'DiscretizedExplosionSource':
             params.update(
-                m0s=num.array([2.]))
+                m0s=num.array([2., 2.]))
         elif dsource_type == 'DiscretizedSFSource':
             params.update(
-                forces=num.array([[1., 2., 3.]]))
+                forces=num.array([[1., 2., 3.], [1., 2., 3.]]))
         elif dsource_type == 'DiscretizedPorePressureSource':
             params.update(
-                pp=num.array([3.]))
+                pp=num.array([3., 3.]))
 
         snorth = 2.0*km
         seast = 2.0*km
-        rnorth = snorth + 1.5*km
-        reast = seast + 0.5*km
+        sdepth = 1.0*km
+        rnorth = snorth + 3.*km
+        reast = seast + 4.*km
+        rdepth = 3.0*km
+
+        t0 = 10.0 * store.config.deltat
 
         dsource = discretized_source_class(
-            times=num.array([1.*km]),
-            north_shifts=num.array([snorth]),
-            east_shifts=num.array([seast]),
-            depths=num.array([1.*km]),
+            times=num.array([t0, t0+5.*store.config.deltat]),
+            north_shifts=num.array([snorth, snorth]),
+            east_shifts=num.array([seast, seast]),
+            depths=num.array([sdepth, sdepth]),
             **params)
 
         receiver = gf.Receiver(
             north_shift=rnorth,
-            east_shift=reast)
+            east_shift=reast,
+            depth=rdepth)
 
         components = gf.component_scheme_to_description[
             component_scheme].provided_components
 
-        trs = []
-        for component, gtr in store.seismogram(
+        trs1 = []
+        for component, gtr in store.seismogram2(
                 dsource, receiver, components).iteritems():
 
             tr = gtr.to_trace('', 'STA', '', component)
-            trs.append(tr)
+            trs1.append(tr)
 
-        trace.snuffle(trs)
+        trs2 = make_traces_homogeneous(
+            dsource, receiver,
+            store.config.earthmodel_1d.require_homogeneous(),
+            store.config.deltat, '', 'STA', 'a')
+
+        tmin = max(tr.tmin for tr in trs1+trs2)
+        tmax = min(tr.tmax for tr in trs1+trs2)
+        for tr in trs1+trs2:
+            #tr.lowpass(4., 0.25*store.config.sample_rate, demean=False)
+            tr.chop(tmin, tmax)
+
+        assert tr.data_len() > 2
+
+        trs1.sort(key=lambda tr: tr.channel)
+        trs2.sort(key=lambda tr: tr.channel)
+
+        denom = 0.0
+        for t1, t2 in zip(trs1, trs2):
+            assert t1.channel == t2.channel
+            denom += num.sum(t1.ydata**2) + num.sum(t2.ydata**2)
+
+        ds = []
+        for t1, t2 in zip(trs1, trs2):
+            ds.append(2.0 * num.sum((t1.ydata - t2.ydata)**2) / denom)
+
+        ds = num.array(ds)
+
+        if component_scheme == 'elastic8':
+            limit = 1e-2
+        else:
+            limit = 1e-6
+
+        if not num.all(ds < limit):
+            print ds
+            trace.snuffle(trs1+trs2)
+
+        assert num.all(ds < limit)
+        print ':-D'
 
 
 for config_type_class in gf.config_type_classes:
     for scheme in config_type_class.provided_schemes:
         for discretized_source_class in gf.discretized_source_classes:
             if scheme in discretized_source_class.provided_schemes:
-                name = 'test_homogeneous_scenario__%s__%s__%s' % (
+                name = 'test_homogeneous_scenario_%s_%s_%s' % (
                     config_type_class.short_type,
                     scheme,
                     discretized_source_class.__name__)
@@ -1032,6 +1088,8 @@ for config_type_class in gf.config_type_classes:
                             config_type_class,
                             scheme,
                             discretized_source_class)
+
+                    test_homogeneous_scenario.__name__ = name
 
                     return test_homogeneous_scenario
 

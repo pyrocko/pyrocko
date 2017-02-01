@@ -890,8 +890,8 @@ class DiscretizedSource(Object):
             xs[:, 0] = self.lats
             xs[:, 1] = self.lons
         else:
-            xs[:, 0] = self.lat
-            xs[:, 1] = self.lon
+            xs[:, 0] = g(self.lat, 0.0)
+            xs[:, 1] = g(self.lon, 0.0)
 
         if self.north_shifts is not None and self.east_shifts is not None:
             xs[:, 2] = self.north_shifts
@@ -1008,10 +1008,10 @@ class DiscretizedExplosionSource(DiscretizedSource):
         self.check_scheme(scheme)
 
         if scheme == 'elastic2':
-            return self.m0s[:, num.newaxis]
+            return self.m0s[:, num.newaxis].copy()
 
         elif scheme in ('elastic8', 'elastic10'):
-            m6s = num.zeros(self.m0s.size, 6)
+            m6s = num.zeros((self.m0s.size, 6))
             m6s[:, 0:3] = self.m0s[:, num.newaxis]
             return m6s
 
@@ -1342,7 +1342,7 @@ class DiscretizedPorePressureSource(DiscretizedSource):
 
     def get_source_terms(self, scheme):
         self.check_scheme(scheme)
-        return self.pp[:, num.newaxis]
+        return self.pp[:, num.newaxis].copy()
 
     def make_weights(self, receiver, scheme):
         self.check_scheme(scheme)
@@ -1657,7 +1657,7 @@ class ConfigTypeA(Config):
 
     short_type = 'A'
 
-    provided_schemes = ['elastic2', 'elastic8', 'elastic10', 'poroelastic10']
+    provided_schemes = ['elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10']
 
     def get_surface_distance(self, args):
         return args[1]
@@ -1831,7 +1831,7 @@ class ConfigTypeB(Config):
 
     short_type = 'B'
 
-    provided_schemes = ['elastic2', 'elastic8', 'elastic10', 'poroelastic10']
+    provided_schemes = ['elastic2', 'elastic5', 'elastic8', 'elastic10', 'poroelastic10']
 
     def get_distance(self, args):
         return math.sqrt((args[1] - args[0])**2 + args[2]**2)
@@ -2501,10 +2501,10 @@ def filledi(x, n):
 config_type_classes = [ConfigTypeA, ConfigTypeB, ConfigTypeC]
 
 discretized_source_classes = [
-        DiscretizedExplosionSource,
-        DiscretizedSFSource,
-        DiscretizedMTSource,
-        DiscretizedPorePressureSource]
+    DiscretizedExplosionSource,
+    DiscretizedSFSource,
+    DiscretizedMTSource,
+    DiscretizedPorePressureSource]
 
 
 __all__ = '''
@@ -2543,4 +2543,5 @@ dump
 load
 discretized_source_classes
 config_type_classes
+UnavailableScheme
 '''.split()

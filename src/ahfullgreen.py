@@ -142,10 +142,10 @@ def add_seismogram(
             return int(round((t-t0)/deltat))
 
         out[ind(tmin, out_offset):ind(tmax, out_offset)+1] \
-            = temp[ind(tmin, tstart):ind(tmax, tstart)+1]
+            += temp[ind(tmin, tstart):ind(tmax, tstart)+1]
 
-        out[:ind(tmin, out_offset)] = 0.
-        out[ind(tmax, out_offset)+1:] = temp[ind(tmax, tstart)]
+        out[:ind(tmin, out_offset)] += 0.
+        out[ind(tmax, out_offset)+1:] += temp[ind(tmax, tstart)]
 
 
 class Impulse(object):

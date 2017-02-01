@@ -164,7 +164,6 @@ class GFTrace(object):
             tmin=self.itmin*self.deltat)
 
 
-
 class GFValue(object):
 
     def __init__(self, value):
@@ -1749,7 +1748,8 @@ class Store(BaseStore):
             interpolation,
             nthreads)
         for c, (weights, irecords) in enumerate(
-          store_ext.make_sum_params(*params_args)):
+                store_ext.make_sum_params(*params_args)):
+
             delays = num.repeat(_delays, weights.size/ntargets/nsources)
             sum_args = (
                 irecords,
