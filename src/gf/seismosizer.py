@@ -1914,29 +1914,58 @@ class PorePressureLineSource(Source):
             pp=num.ones(n)/n)
 
 
-class SpatialTarget(meta.MultiLocation):
+class StaticTarget(meta.MultiLocation):
     '''
     Multilocation spatial target for static offsets
     '''
+    quantity = meta.QuantityType.T(
+        optional=True,
+        help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
+             'If not given, it is guessed from the channel code.')
+
     interpolation = InterpolationMethod.T(
         default='nearest_neighbor',
         help='interpolation method to use')
 
     tsnapshot = Timestamp.T(
-        optional=True,
+        optional=False,
+        default=1,
         help='time of the desired snapshot, '
              'by default first snapshot is taken')
 
+    store_id = meta.StringID.T(
+        optional=True,
+        help='ID of Green\'s function store to use for the computation. '
+             'If not given, the processor may use a system default.')
 
-class SatelliteTarget(SpatialTarget):
+    def base_key(self):
+        return (self.store_id,
+                self.coords5.shape,
+                self.quantity,
+                self.tsnapshot,
+                self.interpolation)
+
+
+class SatelliteTarget(StaticTarget):
     incident_angles = Array.T(
         shape=(None, 2), dtype=num.float,
         help='Line-of-sight incident angles for each location in `coords5` in'
              ' radians - (theta, phi)\n'
              ' Theta is the incident angle from East, Phi from North.')
 
-    def post_process(self, engine, source, tr):
-        pass
+    def post_process(self, engine, source, static):
+        return StaticResult(result=static)
+
+
+class StaticResult(Object):
+    result = Array.T(
+        shape=(None,),
+        optional=True)
+    n_records_stacked = Array.T(
+        shape=(None,),
+        optional=True)
+    t_stack = Float.T(
+        optional=True)
 
 
 class Target(meta.Receiver):
@@ -2129,10 +2158,26 @@ class Request(Object):
         if isinstance(sources, Source):
             sources = [sources]
 
-        if isinstance(targets, Target):
+        if isinstance(targets, Target) or isinstance(targets, StaticTarget):
             targets = [targets]
 
         Object.__init__(self, sources=sources, targets=targets, **kwargs)
+
+    @property
+    def targets_dynamic(self):
+        return [t for t in self.targets if isinstance(t, Target)]
+
+    @property
+    def targets_static(self):
+        return [t for t in self.targets if isinstance(t, StaticTarget)]
+
+    @property
+    def has_dynamic(self):
+        return True if len(self.targets_dynamic) > 0 else False
+
+    @property
+    def has_statics(self):
+        return True if len(self.targets_static) > 0 else False
 
     def subsources_map(self):
         m = defaultdict(list)
@@ -2160,20 +2205,23 @@ class Request(Object):
 
 
 class ProcessingStats(Object):
-    t_perc_get_store_and_receiver = Float.T()
-    t_perc_discretize_source = Float.T()
-    t_perc_make_base_seismogram = Float.T()
-    t_perc_make_same_span = Float.T()
-    t_perc_post_process = Float.T()
-    t_perc_optimize = Float.T()
-    t_perc_stack = Float.T()
-    t_wallclock = Float.T()
-    t_cpu = Float.T()
-    n_read_blocks = Int.T()
-    n_results = Int.T()
-    n_subrequests = Int.T()
-    n_stores = Int.T()
-    n_records_stacked = Int.T()
+    t_perc_get_store_and_receiver = Float.T(default=0)
+    t_perc_discretize_source = Float.T(default=0)
+    t_perc_make_base_seismogram = Float.T(default=0)
+    t_perc_make_same_span = Float.T(default=0)
+    t_perc_post_process = Float.T(default=0)
+    t_perc_optimize = Float.T(default=0)
+    t_perc_stack = Float.T(default=0)
+    t_perc_static_get_store = Float.T(default=0)
+    t_perc_static_sum_statics = Float.T(default=0)
+    t_perc_static_post_process = Float.T(default=0)
+    t_wallclock = Float.T(default=0)
+    t_cpu = Float.T(default=0)
+    n_read_blocks = Int.T(default=0)
+    n_results = Int.T(default=0)
+    n_subrequests = Int.T(default=0)
+    n_stores = Int.T(default=0)
+    n_records_stacked = Int.T(default=0)
 
 
 class Response(Object):
@@ -2312,7 +2360,7 @@ class HorizontalVectorRule(Rule):
         return data
 
 
-class ScalarRule(object):
+class ScalarRule(Rule):
     def __init__(self, quantity, differentiate=0):
         self.c = quantity
 
@@ -2338,7 +2386,30 @@ class OutOfBoundsContext(Object):
     components = List.T(String.T())
 
 
-def process_subrequest(work, pshared=None):
+def process_static(work, sources, targets, engine):
+    for w in work:
+        _, _, isources, itargets = w
+
+        sources = [sources[isource] for isource in isources]
+        targets = [targets[itarget] for itarget in itargets]
+
+        for isource, source in zip(isources, sources):
+            for itarget, target in zip(itargets, targets):
+                try:
+                    result, tcounters = engine.base_statics(
+                        source, target, [], nthreads=0)
+                except meta.OutOfBounds, e:
+                    e.context = OutOfBoundsContext(
+                        source=sources[0],
+                        target=targets[0],
+                        distance=sources[0].distance_to(targets[0]),
+                        components='')
+                    raise
+
+                yield (isource, itarget, result), tcounters
+
+
+def process_subrequest_dynamic(work, pshared=None):
     engine = pshared['engine']
     _, _, isources, itargets = work
 
@@ -2363,7 +2434,6 @@ def process_subrequest(work, pshared=None):
             target=targets[0],
             distance=sources[0].distance_to(targets[0]),
             components=components)
-
         raise
 
     n_records_stacked = 0
@@ -2623,6 +2693,28 @@ class LocalEngine(Engine):
 
         return base_seismogram, tcounters
 
+    def base_statics(self, source, target, components, nthreads):
+        tcounters = [xtime()]
+
+        store_ = self.get_store(target.store_id)
+
+        tcounters.append(xtime())
+
+        base_source = source.discretize_basesource(store_)
+
+        tcounters.append(xtime())
+
+        base_statics = store_.statics(
+            base_source,
+            target,
+            target.tsnapshot,
+            target.interpolation,
+            nthreads)
+
+        tcounters.append(xtime())
+
+        return base_statics, tcounters
+
     def _post_process(self, base_seismogram, source, target):
         deltat = base_seismogram.values()[0].deltat
 
@@ -2688,49 +2780,84 @@ class LocalEngine(Engine):
 
         rs0 = resource.getrusage(resource.RUSAGE_SELF)
         rc0 = resource.getrusage(resource.RUSAGE_CHILDREN)
-        tt0 = time.time()
-
-        source_index = dict((x, i) for (i, x) in enumerate(request.sources))
-        target_index = dict((x, i) for (i, x) in enumerate(request.targets))
+        tt0 = xtime()
 
         # make sure stores are open before fork()
         store_ids = set(target.store_id for target in request.targets)
         for store_id in store_ids:
             self.get_store(store_id)
 
+        source_index = dict((x, i) for (i, x) in
+                            enumerate(request.sources))
+        target_index = dict((x, i) for (i, x) in
+                            enumerate(request.targets))
+
         m = request.subrequest_map()
         skeys = sorted(m.keys())
         results_list = []
+
         for i in xrange(len(request.sources)):
             results_list.append([None] * len(request.targets))
 
+        tcounters_dyn_list = []
+        tcounters_static_list = []
         nsub = len(skeys)
-        work = [(i, nsub,
-                [source_index[source] for source in m[k][0]],
-                [target_index[target] for target in m[k][1]])
+        isub = 0
+
+        # Processing dynamic targets through
+        # parimap(process_subrequest_dynamic)
+        if request.has_dynamic:
+            work_dynamic = [
+                (i, nsub,
+                 [source_index[source] for source in m[k][0]],
+                 [target_index[target] for target in m[k][1]
+                  if not isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
-        isub = 0
-        tcounters_list = []
-        for ii_results, tcounters in parimap.parimap(
-                process_subrequest, work,
-                pshared=dict(
-                    engine=self,
-                    sources=request.sources,
-                    targets=request.targets,
-                    dsource_cache={}),
+            for ii_results, tcounters_dyn in parimap.parimap(
+                    process_subrequest_dynamic, work_dynamic,
+                    pshared=dict(
+                        engine=self,
+                        sources=request.sources,
+                        targets=request.targets,
+                        dsource_cache={}),
 
-                nprocs=nprocs):
+                    nprocs=nprocs):
 
-            tcounters_list.append(num.diff(tcounters))
+                tcounters_dyn_list.append(num.diff(tcounters_dyn))
 
-            for isource, itarget, result in ii_results:
+                for isource, itarget, result in ii_results:
+                    results_list[isource][itarget] = result
+
+                if status_callback:
+                    status_callback(isub, nsub)
+
+                isub += 1
+
+        # Processing static targets through process_static
+        if request.has_statics:
+            work_static = [
+                (i, nsub,
+                 [source_index[source] for source in m[k][0]],
+                 [target_index[target] for target in m[k][1]
+                  if isinstance(target, StaticTarget)])
+                for (i, k) in enumerate(skeys)]
+
+            for ii_results, tcounters_static in process_static(
+              work_static,
+              request.sources,
+              request.targets,
+              self):
+
+                tcounters_static_list.append(num.diff(tcounters_static))
+
+                isource, itarget, result = ii_results
                 results_list[isource][itarget] = result
 
-            if status_callback:
-                status_callback(isub, nsub)
+                if status_callback:
+                    status_callback(isub, nsub)
 
-            isub += 1
+                isub += 1
 
         if status_callback:
             status_callback(nsub, nsub)
@@ -2739,52 +2866,54 @@ class LocalEngine(Engine):
         rs1 = resource.getrusage(resource.RUSAGE_SELF)
         rc1 = resource.getrusage(resource.RUSAGE_CHILDREN)
 
-        tcumu = num.sum(num.vstack(tcounters_list), axis=0)
-        tcumusum = num.sum(tcumu)
+        s = ProcessingStats()
 
-        perc = map(float, tcumu/tcumusum * 100.)
-        t_wallclock = tt1 - tt0
+        if request.has_dynamic:
+            tcumu_dyn = num.sum(num.vstack(tcounters_dyn_list), axis=0)
+            tcumusum_dyn = num.sum(tcumu_dyn)
+            perc_dyn = map(float, tcumu_dyn/tcumusum_dyn * 100.)
+            (s.t_perc_get_store_and_receiver,
+             s.t_perc_discretize_source,
+             s.t_perc_make_base_seismogram,
+             s.t_perc_make_same_span,
+             s.t_perc_post_process) = perc_dyn
+        else:
+            tcumusum_dyn = 0.
 
-        t_cpu = (
+        if request.has_statics:
+            tcumu_static = num.sum(num.vstack(tcounters_static_list), axis=0)
+            tcumusum_static = num.sum(tcumu_static)
+            perc_static = map(float, tcumu_static/tcumusum_static * 100.)
+            (s.t_perc_static_get_store,
+             s.t_perc_static_sum_statics,
+             s.t_perc_static_post_process) = perc_static
+
+        s.t_wallclock = tt1 - tt0
+        s.t_cpu = (
             (rs1.ru_utime + rs1.ru_stime + rc1.ru_utime + rc1.ru_stime) -
             (rs0.ru_utime + rs0.ru_stime + rc0.ru_utime + rc0.ru_stime))
-        n_read_blocks = (
+        s.n_read_blocks = (
             (rs1.ru_inblock + rc1.ru_inblock) -
             (rs0.ru_inblock + rc0.ru_inblock))
 
-        n_records_stacked = 0.0
-        t_optimize = 0.0
-        t_stack = 0.0
+        n_records_stacked = 0.
         for results in results_list:
             for result in results:
                 if isinstance(result, Result):
                     shr = float(result.n_shared_stacking)
-                    n_records_stacked += float(result.n_records_stacked) / shr
-                    t_optimize += float(result.t_optimize) / shr
-                    t_stack += float(result.t_stack) / shr
-
-        n_records_stacked = int(n_records_stacked)
-
-        stats = ProcessingStats(
-            t_perc_get_store_and_receiver=perc[0],
-            t_perc_discretize_source=perc[1],
-            t_perc_make_base_seismogram=perc[2],
-            t_perc_make_same_span=perc[3],
-            t_perc_post_process=perc[4],
-            t_perc_optimize=float(t_optimize / tcumusum * 100.),
-            t_perc_stack=float(t_stack / tcumusum * 100.),
-            t_wallclock=t_wallclock,
-            t_cpu=t_cpu,
-            n_read_blocks=n_read_blocks,
-            n_results=len(request.targets) * len(request.sources),
-            n_subrequests=nsub,
-            n_stores=len(store_ids),
-            n_records_stacked=n_records_stacked)
+                    n_records_stacked += float(result.n_records_stacked) /\
+                        shr
+                    s.t_perc_optimize += float(result.t_optimize) / shr
+                    s.t_perc_stack += float(result.t_stack) / shr
+        s.n_records_stacked = int(n_records_stacked)
+        if tcumusum_dyn != 0.:
+            s.t_perc_optimize /= tcumusum_dyn * 100 
+            s.t_perc_stack /= tcumusum_dyn * 100
 
         return Response(
             request=request,
             results_list=results_list,
-            stats=stats)
+            stats=s)
 
 
 class RemoteEngine(Engine):

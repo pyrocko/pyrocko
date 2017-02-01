@@ -407,20 +407,22 @@ class GFTestCase(unittest.TestCase):
 
             dyn = store.sum(
                 indices, shifts, weights,
-                itmin=None,
-                nsamples=None,
+                itmin=0,
+                nsamples=1,
                 decimate=1,
                 implementation='c',
                 optimization='enable')
 
-            sta = store.sum_statics(
-                indices, weights,
+            sta = store.sum_static(
+                indices, shifts, weights,
+                1, 1,
                 implementation=None,
-                optimization='enable')
+                optimization='disable',
+                nthreads=1)
 
             if len(dyn.data) > 0:
-                num.testing.assert_array_almost_equal(dyn.data[-1], sta.value,
-                                                      5)
+                num.testing.assert_array_almost_equal(
+                    dyn.data[-1], sta.value, 5)
 
         store.close()
 

@@ -684,6 +684,12 @@ class MultiLocation(Object):
         shape=(None, 5), dtype=num.float,
         help='Array of (lats, lons, east_shifts, north_shifts, elevation)')
 
+    @property
+    def ncoords(self):
+        if self.coords5 is None:
+            return 0
+        return self.coords5.shape[0]
+
 
 class Receiver(Location):
     codes = Tuple.T(
