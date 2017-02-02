@@ -619,6 +619,7 @@ static store_error_t store_sum(
             /*ihi = ilo - 1;*/
             w1 = (idelay_ceil - delay/deltat) * weight;
             w2 = (delay/deltat - idelay_floor) * weight;
+            /* printf("- w1 %f, w2 %f\n", w1, w2); */
             /*for (i=0; i<nsamples; i++) {
                 ifloor = i + ilo;
                 iceil = i + ihi;
@@ -667,16 +668,16 @@ static store_error_t store_sum_static(
         int32_t it,
         int32_t ntargets,
         size_t nsummands,
+        size_t nsources,
         int32_t nthreads,
         gf_dtype *result) {
 
     float32_t weight, delay;
     trace_t trace;
     float32_t deltat = store->deltat;
-    int idx;
-    int j, t;
-    uint n;
     int idelay_floor, idelay_ceil;
+    int j, t, idx;
+    uint n, nsummands_src;
     float w1, w2;
     store_error_t err=SUCCESS;
     (void) nthreads;
@@ -689,6 +690,8 @@ static store_error_t store_sum_static(
 
     if (result == NULL)
         return ALLOC_FAILED;
+
+    nsummands_src = nsummands / nsources;
 
     #if defined(_OPENMP)
         if (nthreads == 0)
@@ -707,10 +710,11 @@ static store_error_t store_sum_static(
             for (n=0; n<nsummands; n++) {
                 j = t*nsummands + n;
 
-                delay = delays[j];
+                delay = delays[n / nsummands_src];
                 weight = weights[j];
-                idelay_floor = (int)floor(delay/deltat);
-                idelay_ceil = (int)ceil(delay/deltat);
+                idelay_floor = (int) floor(delay/deltat);
+                idelay_ceil = (int) ceil(delay/deltat);
+
 
                 if (0.0 == weight)
                     continue;
@@ -734,8 +738,9 @@ static store_error_t store_sum_static(
                 } else {
                     w1 = (idelay_ceil - delay/deltat) * weight;
                     w2 = (delay/deltat - idelay_floor) * weight;
+                    /* printf("w1 %f, w2 %f\n", w1, w2); */
                     result[t] += fe32toh(trace.data[idx + 1]) * w1
-                                + fe32toh(trace.data[idx]) * w2;
+                                 + fe32toh(trace.data[idx]) * w2;
                 }
             }
         }
@@ -743,7 +748,7 @@ static store_error_t store_sum_static(
         }
     #endif
     if (err != SUCCESS)
-        return err;
+        return BAD_REQUEST;
     return SUCCESS;
 }
 
@@ -1730,7 +1735,7 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
     float32_t *delays, *weights;
     npy_intp shape[1];
     int32_t it, ntargets, nthreads;
-    size_t nsummands;
+    size_t nsummands, nsources;
     store_error_t err;
 
     (void)dummy; /* silence warning */
@@ -1746,6 +1751,8 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
     store = get_store_from_capsule(capsule);
     
     nsummands = PyArray_SIZE((PyArrayObject*)irecords_arr) / ntargets;
+    nsources = PyArray_SIZE((PyArrayObject*)delays_arr);
+
     if (store == NULL) {
         PyErr_SetString(StoreExtError, "store_sum_static: invalid store");
         return NULL;
@@ -1754,8 +1761,9 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
             /*PyErr_SetString(StoreExtError, "store_sum_static: unhealthy irecords array");*/
             return NULL;
     }
-    if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
-        /*PyErr_SetString(StoreExtError, "store_sum_static: unhealthy delays array");*/
+    if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, -1, 1, NULL) ||
+        nsummands % nsources != 0) {
+        PyErr_SetString(StoreExtError, "store_sum_static: unhealthy delays array");
         return NULL;
     }
     if (!good_array((PyObject*)weights_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
@@ -1775,7 +1783,7 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
     result_arr = (PyArrayObject*) PyArray_ZEROS(1, shape, NPY_GFDTYPE, 0);
     result = PyArray_DATA(result_arr);
     
-    err = store_sum_static(store, irecords, delays, weights, it, ntargets, nsummands, nthreads, result);
+    err = store_sum_static(store, irecords, delays, weights, it, ntargets, nsummands, nsources, nthreads, result);
     if (SUCCESS != err) {
         PyErr_SetString(StoreExtError, store_error_names[err]);
         return NULL;

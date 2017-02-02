@@ -23,3 +23,4 @@ from pyrocko.gf.meta import *  # noqa
 from pyrocko.gf.store import *  # noqa
 from pyrocko.gf.builder import *  # noqa
 from pyrocko.gf.seismosizer import *  # noqa
+from pyrocko.gf.targets import *  # noqa

@@ -8,7 +8,7 @@ import resource
 
 import numpy as num
 
-from pyrocko.guts import Object, Float, String, StringChoice, List, Tuple, \
+from pyrocko.guts import Object, Float, String, StringChoice, List, \
     Timestamp, Int, SObject, ArgumentError, Dict
 
 from pyrocko.guts_array import Array
@@ -17,13 +17,14 @@ from pyrocko import moment_tensor as mt
 from pyrocko import trace, model, parimap, util
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
+from .targets import Target, StaticTarget
 import pyrocko.config
 
 pjoin = os.path.join
 
 guts_prefix = 'pf'
 
-d2r = math.pi/180.
+d2r = math.pi / 180.
 
 logger = logging.getLogger('pyrocko.gf.seismosizer')
 
@@ -59,18 +60,6 @@ class NoSuchStore(BadRequest):
 
     def __str__(self):
         return 'no GF store with id "%s" found.' % self.store_id
-
-
-class Filter(Object):
-    pass
-
-
-class InterpolationMethod(StringChoice):
-    choices = ['nearest_neighbor', 'multilinear']
-
-
-class OptimizationMethod(StringChoice):
-    choices = ['enable', 'disable']
 
 
 def ufloat(s):
@@ -474,46 +463,6 @@ class GridDef(Object):
 
     def shorthand(self):
         return '; '.join(str(x) for x in self.elements)
-
-
-class SeismosizerTrace(Object):
-
-    codes = Tuple.T(
-        4, String.T(),
-        default=('', 'STA', '', 'Z'),
-        help='network, station, location and channel codes')
-
-    data = Array.T(
-        shape=(None,),
-        dtype=num.float32,
-        serialize_as='base64',
-        serialize_dtype=num.dtype('<f4'),
-        help='numpy array with data samples')
-
-    deltat = Float.T(
-        default=1.0,
-        help='sampling interval [s]')
-
-    tmin = Timestamp.T(
-        default=0.0,
-        help='time of first sample as a system timestamp [s]')
-
-    def pyrocko_trace(self):
-        c = self.codes
-        return trace.Trace(c[0], c[1], c[2], c[3],
-                           ydata=self.data,
-                           deltat=self.deltat,
-                           tmin=self.tmin)
-
-    @classmethod
-    def from_pyrocko_trace(cls, tr, **kwargs):
-        d = dict(
-            codes=tr.nslc_id,
-            tmin=tr.tmin,
-            deltat=tr.deltat,
-            data=num.asarray(tr.get_ydata(), dtype=num.float32))
-        d.update(kwargs)
-        return cls(**d)
 
 
 class Cloneable(object):
@@ -985,7 +934,8 @@ class Source(meta.Location, Cloneable):
     @classmethod
     def provided_components(cls, component_scheme):
         cls = cls.discretized_source_class
-        return cls.provided_components(component_scheme)
+        return meta.component_scheme_to_description[component_scheme]\
+            .provided_components
 
     def pyrocko_event(self, **kwargs):
         lat, lon = self.effective_latlon
@@ -1415,7 +1365,7 @@ class RectangularSource(DCSource):
         optional=True,
         help='Slip on the rectangular source area [m]')
 
-    interpolation = InterpolationMethod.T(
+    interpolation = meta.InterpolationMethod.T(
         optional=True,
         default='nearest_neighbor',
         help='Shear moduli interpolation technique to discretize slip')
@@ -1921,220 +1871,6 @@ class PorePressureLineSource(Source):
             pp=num.ones(n)/n)
 
 
-class StaticTarget(meta.MultiLocation):
-    '''
-    Multilocation spatial target for static offsets
-    '''
-    quantity = meta.QuantityType.T(
-        optional=True,
-        default='displacement',
-        help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
-             'If not given, it is guessed from the channel code.')
-
-    interpolation = InterpolationMethod.T(
-        default='nearest_neighbor',
-        help='interpolation method to use')
-
-    tsnapshot = Timestamp.T(
-        optional=False,
-        default=1,
-        help='time of the desired snapshot, '
-             'by default first snapshot is taken')
-
-    store_id = meta.StringID.T(
-        optional=True,
-        help='ID of Green\'s function store to use for the computation. '
-             'If not given, the processor may use a system default.')
-
-    def base_key(self):
-        return (self.store_id,
-                self.coords5.shape,
-                self.quantity,
-                self.tsnapshot,
-                self.interpolation)
-
-    def post_process(self, engine, source, statics):
-        return StaticResult(result=statics)
-
-
-class SatelliteTarget(StaticTarget):
-    theta = Array.T(
-        shape=(None, 1), dtype=num.float,
-        help='Line-of-sight incident angle for each location in `coords5`.')
-
-    phi = Array.T(
-        shape=(None, 1), dtype=num.float,
-        help='Line-of-sight incident angle for each location in `coords5`.')
-
-    def post_process(self, engine, source, statics):
-        statics['displacement.los'] =\
-            (num.sin(self.theta) * -statics['displacement.d'] +
-             num.cos(self.phi) * statics['displacement.e'] +
-             num.sin(self.phi) * statics['displacement.n'])
-        return StaticResult(result=statics)
-
-
-class Target(meta.Receiver):
-    '''
-    A single channel of a computation request including post-processing params.
-    '''
-
-    quantity = meta.QuantityType.T(
-        optional=True,
-        help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
-             'If not given, it is guessed from the channel code.')
-
-    codes = Tuple.T(
-        4, String.T(), default=('', 'STA', '', 'Z'),
-        help='network, station, location and channel codes to be set on '
-             'the response trace.')
-
-    elevation = Float.T(
-        default=0.0,
-        help='station surface elevation in [m]')
-
-    store_id = meta.StringID.T(
-        optional=True,
-        help='ID of Green\'s function store to use for the computation. '
-             'If not given, the processor may use a system default.')
-
-    sample_rate = Float.T(
-        optional=True,
-        help='sample rate to produce. '
-             'If not given the GF store\'s default sample rate is used.'
-             'GF store specific restrictions may apply.')
-
-    interpolation = InterpolationMethod.T(
-        default='nearest_neighbor',
-        help='interpolation method to use')
-
-    optimization = OptimizationMethod.T(
-        default='enable',
-        optional=True,
-        help='disable/enable optimizations in weight-delay-and-sum operation')
-
-    tmin = Timestamp.T(
-        optional=True,
-        help='time of first sample to request in [s]. '
-             'If not given, it is determined from the Green\'s functions.')
-
-    tmax = Timestamp.T(
-        optional=True,
-        help='time of last sample to request in [s]. '
-             'If not given, it is determined from the Green\'s functions.')
-
-    azimuth = Float.T(
-        optional=True,
-        help='azimuth of sensor component in [deg], clockwise from north. '
-             'If not given, it is guessed from the channel code.')
-
-    dip = Float.T(
-        optional=True,
-        help='dip of sensor component in [deg], '
-             'measured downward from horizontal. '
-             'If not given, it is guessed from the channel code.')
-
-    filter = Filter.T(
-        optional=True,
-        help='frequency response filter.')
-
-    def base_key(self):
-        return (self.store_id, self.sample_rate, self.interpolation,
-                self.optimization,
-                self.tmin, self.tmax,
-                self.elevation, self.depth, self.north_shift, self.east_shift,
-                self.lat, self.lon)
-
-    def effective_quantity(self):
-        if self.quantity is not None:
-            return self.quantity
-
-        # guess from channel code
-        cha = self.codes[-1].upper()
-        if len(cha) == 3:
-            # use most common SEED conventions here, however units have to be
-            # guessed, because they are not uniquely defined by the conventions
-            if cha[-2] in 'HL':  # high gain, low gain seismometer
-                return 'velocity'
-            if cha[-2] == 'N':   # accelerometer
-                return 'acceleration'
-            if cha[-2] == 'D':   # hydrophone, barometer, ...
-                return 'pressure'
-            if cha[-2] == 'A':   # tiltmeter
-                return 'tilt'
-        elif len(cha) == 2:
-            if cha[-2] == 'U':
-                return 'displacement'
-            if cha[-2] == 'V':
-                return 'velocity'
-        elif len(cha) == 1:
-            if cha in 'NEZ':
-                return 'displacement'
-            if cha == 'P':
-                return 'pressure'
-
-        raise BadRequest('cannot guess measurement quantity type from channel '
-                         'code "%s"' % cha)
-
-    def receiver(self, store):
-        rec = meta.Receiver(**dict(meta.Receiver.T.inamevals(self)))
-        return rec
-
-    def component_code(self):
-        cha = self.codes[-1].upper()
-        if cha:
-            return cha[-1]
-        else:
-            return ' '
-
-    def effective_azimuth(self):
-        if self.azimuth is not None:
-            return self.azimuth
-        elif self.component_code() in 'NEZ':
-            return {'N': 0., 'E': 90., 'Z': 0.}[self.component_code()]
-
-        raise BadRequest('cannot determine sensor component azimuth for '
-                         '%s.%s.%s.%s' % self.codes)
-
-    def effective_dip(self):
-        if self.dip is not None:
-            return self.dip
-        elif self.component_code() in 'NEZ':
-            return {'N': 0., 'E': 0., 'Z': -90.}[self.component_code()]
-
-        raise BadRequest('cannot determine sensor component dip')
-
-    def get_sin_cos_factors(self):
-        azi = self.effective_azimuth()
-        dip = self.effective_dip()
-        sa = math.sin(azi*d2r)
-        ca = math.cos(azi*d2r)
-        sd = math.sin(dip*d2r)
-        cd = math.cos(dip*d2r)
-        return sa, ca, sd, cd
-
-    def get_factor(self):
-        return 1.0
-
-    def post_process(self, engine, source, tr):
-        return Result(trace=tr)
-
-
-class Result(Object):
-    n_records_stacked = Int.T(optional=True)
-    t_stack = Float.T(optional=True)
-
-
-class DynamicResult(Result):
-    trace = SeismosizerTrace.T(optional=True)
-    n_shared_stacking = Int.T(optional=True)
-    t_optimize = Float.T(optional=True)
-
-
-class StaticResult(Result):
-    result = Dict.T()
-
-
 class Request(Object):
     '''
     Synthetic seismogram computation request.
@@ -2244,7 +1980,7 @@ class Response(Object):
     '''
 
     request = Request.T()
-    results_list = List.T(List.T(Result.T()))
+    results_list = List.T(List.T(meta.SeismosizerResult.T()))
     stats = ProcessingStats.T()
 
     def pyrocko_traces(self):
@@ -2255,7 +1991,7 @@ class Response(Object):
         traces = []
         for results in self.results_list:
             for result in results:
-                if not isinstance(result, DynamicResult):
+                if not isinstance(result, meta.Result):
                     continue
                 traces.append(result.trace.pyrocko_trace())
 
@@ -2265,7 +2001,7 @@ class Response(Object):
         statics = []
         for results in self.results_list:
             for result in results:
-                if not isinstance(result, StaticResult):
+                if not isinstance(result, meta.StaticResult):
                     continue
                 statics.append(result)
 
@@ -2708,7 +2444,7 @@ class LocalEngine(Engine):
         else:
             deltat = None
 
-        base_seismogram = store_.seismogram2(
+        base_seismogram = store_.seismogram(
             base_source, receiver, components,
             deltat=deltat,
             itmin=itmin, nsamples=nsamples,
@@ -2771,7 +2507,7 @@ class LocalEngine(Engine):
 
         tmin = itmin * deltat + times[0]
 
-        tr = SeismosizerTrace(
+        tr = meta.SeismosizerTrace(
             codes=target.codes,
             data=data[:-amplitudes.size],
             deltat=deltat,
@@ -2935,7 +2671,7 @@ class LocalEngine(Engine):
         n_records_stacked = 0.
         for results in results_list:
             for result in results:
-                if not isinstance(result, DynamicResult):
+                if not isinstance(result, meta.Result):
                     continue
                 shr = float(result.n_shared_stacking)
                 n_records_stacked += float(result.n_records_stacked) /\
@@ -3067,18 +2803,9 @@ __all__ = '''
 SeismosizerError
 BadRequest
 NoSuchStore
-InterpolationMethod
-OptimizationMethod
 STFMode
-Filter
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
-Target
-StaticTarget
-SatelliteTarget
-Result
-StaticResult
 Request
-SeismosizerTrace
 ProcessingStats
 Response
 Engine

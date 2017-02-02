@@ -9,14 +9,12 @@ from scipy.interpolate import interp1d
 
 from pyrocko.guts import Object, SObject, String, StringChoice, \
     StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError, \
-    Timestamp, Tuple
+    Timestamp, Tuple, Dict
 from pyrocko.guts import dump, load  # noqa
-
+from pyrocko import trace
 from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit, moment_tensor
 from pyrocko.config import config
-
-from pyrocko.gf import store_ext  # noqa
 
 guts_prefix = 'pf'
 
@@ -26,6 +24,64 @@ km = 1000.
 vicinity_eps = 1e-5
 
 logger = logging.getLogger('pyrocko.gf.meta')
+
+
+class InterpolationMethod(StringChoice):
+    choices = ['nearest_neighbor', 'multilinear']
+
+
+class SeismosizerTrace(Object):
+
+    codes = Tuple.T(
+        4, String.T(),
+        default=('', 'STA', '', 'Z'),
+        help='network, station, location and channel codes')
+
+    data = Array.T(
+        shape=(None,),
+        dtype=num.float32,
+        serialize_as='base64',
+        serialize_dtype=num.dtype('<f4'),
+        help='numpy array with data samples')
+
+    deltat = Float.T(
+        default=1.0,
+        help='sampling interval [s]')
+
+    tmin = Timestamp.T(
+        default=0.0,
+        help='time of first sample as a system timestamp [s]')
+
+    def pyrocko_trace(self):
+        c = self.codes
+        return trace.Trace(c[0], c[1], c[2], c[3],
+                           ydata=self.data,
+                           deltat=self.deltat,
+                           tmin=self.tmin)
+
+    @classmethod
+    def from_pyrocko_trace(cls, tr, **kwargs):
+        d = dict(
+            codes=tr.nslc_id,
+            tmin=tr.tmin,
+            deltat=tr.deltat,
+            data=num.asarray(tr.get_ydata(), dtype=num.float32))
+        d.update(kwargs)
+        return cls(**d)
+
+class SeismosizerResult(Object):
+    n_records_stacked = Int.T(optional=True)
+    t_stack = Float.T(optional=True)
+
+
+class Result(SeismosizerResult):
+    trace = SeismosizerTrace.T(optional=True)
+    n_shared_stacking = Int.T(optional=True)
+    t_optimize = Float.T(optional=True)
+
+
+class StaticResult(SeismosizerResult):
+    result = Dict.T()
 
 
 class ComponentSchemeDescription(Object):
@@ -680,35 +736,51 @@ class Location(Object):
 
 
 class MultiLocation(Object):
-    coords5 = Array.T(
-        shape=(None, 5), dtype=num.float,
-        help='Array of (lats, lons, east_shifts, north_shifts, elevation)')
+
+    lats = Array.T(
+        optional=True, shape=(None, 1), dtype=num.float,
+        help='Latitudes of targets.')
+    lons = Array.T(
+        optional=True, shape=(None, 1), dtype=num.float,
+        help='Longitude of targets.')
+    north_shifts = Array.T(
+        optional=True, shape=(None, 1), dtype=num.float,
+        help='North shifts of targets.')
+    east_shifts = Array.T(
+        optional=True, shape=(None, 1), dtype=num.float,
+        help='East shifts of targets.')
+    elevation = Array.T(
+        optional=True, shape=(None, 1), dtype=num.float,
+        help='Elevations of targets.')
+
+    def __init__(self, *args, **kwargs):
+        self._coords5 = None
+        Object.__init__(self, *args, **kwargs)
+
+    @property
+    def coords5(self):
+        if self._coords5 is not None:
+            return self._coords5
+        props = [self.lats, self.lons, self.north_shifts, self.east_shifts,
+                 self.elevation]
+        sizes = [p.size for p in props if p is not None]
+        if not sizes:
+            raise AttributeError('Empty StaticTarget')
+        if num.unique(sizes).size != 1:
+            raise AttributeError('Inconsistent coordinates!')
+
+        self._coords5 = num.zeros((sizes[0], 5))
+        for idx, p in enumerate(props):
+            if p is not None:
+                self._coords5[:, idx] = p
+
+        return self._coords5
 
     @property
     def ncoords(self):
-        if self.coords5 is None:
+        if self.coords5.shape[0] is None:
             return 0
-        return self.coords5.shape[0]
-
-    @property
-    def lats(self):
-        return self.coords5[:, 0]
-
-    @property
-    def lons(self):
-        return self.coords5[:, 1]
-
-    @property
-    def north_shifts(self):
-        return self.coords5[:, 2]
-
-    @property
-    def east_shifts(self):
-        return self.coords5[:, 3]
-
-    @property
-    def depths(self):
-        return self.coords5[:, 4]
+        return int(self.coords5.shape[0])
 
 
 class Receiver(Location):
@@ -2566,4 +2638,9 @@ load
 discretized_source_classes
 config_type_classes
 UnavailableScheme
+InterpolationMethod
+SeismosizerTrace
+SeismosizerResult
+Result
+StaticResult
 '''.split()

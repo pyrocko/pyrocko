@@ -400,11 +400,11 @@ class GFTestCase(unittest.TestCase):
 
     def test_sum_statics(self):
 
-        nrecords = 8
+        nrecords = 20
 
         store = gf.BaseStore(self.create(nrecords=nrecords))
         for i in xrange(5):
-            n = random.randint(0, 5)
+            n = random.randint(1, 10)
             indices = num.random.randint(nrecords, size=n).astype(num.uint64)
             weights = num.random.random(n).astype(num.float32)
             shifts = (num.random.random(n)*nrecords).astype(num.float32)
@@ -1022,7 +1022,7 @@ class GFTestCase(unittest.TestCase):
             component_scheme].provided_components
 
         trs1 = []
-        for component, gtr in store.seismogram2(
+        for component, gtr in store.seismogram(
                 dsource, receiver, components).iteritems():
 
             tr = gtr.to_trace('', 'STA', '', component)
@@ -1098,4 +1098,4 @@ for config_type_class in gf.config_type_classes:
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main()
+    unittest.main(defaultTest='GFTestCase.test_sum_statics')

@@ -1731,10 +1731,9 @@ class Store(BaseStore):
             self.open()
 
         out = {}
-        ntargets = multi_location.ncoords
-        nsources = source.times.shape[0]
+        ntargets = multi_location.ntargets
         source_terms = source.get_source_terms(self.config.component_scheme)
-        delays = num.tile(source.times.astype(num.float32), ntargets)
+        delays = source.times.astype(num.float32)
         scheme_desc = meta.component_scheme_to_description[
             self.config.component_scheme]
 
@@ -1754,10 +1753,9 @@ class Store(BaseStore):
             if comp not in components:
                 continue
             weights, irecords = sum_params[icomp]
-            delays_ = num.repeat(delays, weights.size/ntargets/nsources)
             out[comp] = self.sum_statics(
                 irecords,
-                delays_,
+                delays,
                 weights,
                 itsnapshot,
                 ntargets,
@@ -1765,9 +1763,10 @@ class Store(BaseStore):
 
         return out
 
-    def seismogram(self, source, receiver, components, deltat=None,
-                   itmin=None, nsamples=None,
-                   interpolation='nearest_neighbor', optimization='enable'):
+    def seismogram_old(
+            self, source, receiver, components, deltat=None,
+            itmin=None, nsamples=None, interpolation='nearest_neighbor',
+            optimization='enable'):
 
         out = {}
 
@@ -1794,10 +1793,10 @@ class Store(BaseStore):
 
         return out
 
-    def seismogram2(self, source, receiver, components, deltat=None,
-                    itmin=None, nsamples=None,
-                    interpolation='nearest_neighbor',
-                    optimization='enable', nthreads=1):
+    def seismogram(self, source, receiver, components, deltat=None,
+                   itmin=None, nsamples=None,
+                   interpolation='nearest_neighbor',
+                   optimization='enable', nthreads=1):
 
         config = self.config
 

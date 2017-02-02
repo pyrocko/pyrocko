@@ -144,16 +144,14 @@ mantle
         neast = 40
         nnorth = 40
 
-        coords = num.zeros((neast*nnorth, 5))
         N, E = num.meshgrid(num.linspace(-20., 20., nnorth),
                             num.linspace(-20., 20., neast))
-        coords[:, 0] = origin.lat
-        coords[:, 1] = origin.lon
-        coords[:, 2] = N.flatten()
-        coords[:, 3] = E.flatten()
 
         starget = gf.StaticTarget(
-            coords5=coords,
+            lats=num.array([origin.lat] * N.size),
+            lons=num.array([origin.lon] * N.size),
+            north_shifts=N.flatten(),
+            east_shifts=E.flatten(),
             interpolation='nearest_neighbor')
 
         engine = gf.LocalEngine(store_dirs=[store_dir])
