@@ -1,4 +1,3 @@
-
 import math
 import re
 import fnmatch
@@ -15,6 +14,7 @@ from pyrocko import trace
 from pyrocko.guts_array import literal, Array
 from pyrocko import cake, orthodrome, spit, moment_tensor
 from pyrocko.config import config
+
 
 guts_prefix = 'pf'
 
@@ -68,6 +68,7 @@ class SeismosizerTrace(Object):
             data=num.asarray(tr.get_ydata(), dtype=num.float32))
         d.update(kwargs)
         return cls(**d)
+
 
 class SeismosizerResult(Object):
     n_records_stacked = Int.T(optional=True)

@@ -50,7 +50,6 @@ class Benchmark(object):
     def __str__(self, header=True):
         if not self.results:
             return 'No benchmarks ran'
-        tmin = min([r[1] for r in self.results])
         tmax = max([r[1] for r in self.results])
 
         rstr = ['Benchmark results']

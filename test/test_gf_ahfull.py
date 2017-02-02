@@ -1,14 +1,12 @@
-import time
 import sys
-import random
+import random  # noqa
 import math
-from pyrocko import guts
 import unittest
 from tempfile import mkdtemp
 import logging
 import numpy as num
 
-from pyrocko import gf, util, cake
+from pyrocko import gf, util
 from pyrocko.fomosto import ahfullgreen
 
 
@@ -57,11 +55,11 @@ class GFAhfullTestCase(unittest.TestCase):
     def test_create_default(self):
         d = mkdtemp(prefix='gfstore')
         self.tempdirs.append(d)
-        ahfullgreen.init(d, None) 
+        ahfullgreen.init(d, None)
         store = gf.Store(d)
         store.make_ttt()
         ahfullgreen.build(d)
-        
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_ahfull', 'warning')

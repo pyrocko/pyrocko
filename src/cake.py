@@ -2829,6 +2829,10 @@ class DiscontinuityNotFound(Exception):
             self.depth_or_name
 
 
+class LayeredModelError(Exception):
+    pass
+
+
 class LayeredModel(object):
     '''Representation of a layer cake model.
 
