@@ -42,17 +42,16 @@
     \begin{tabular}{ L{.5\textwidth} L{.5\textwidth} }
         {\parskip=0pt \obeylines \VAR{src}} & {\parskip=0pt \obeylines \VAR{sen}}
     \end{tabular}
-    \- set old_name = ''
     \- for name, href, path in img_data
         \begin{center}
             \vspace*{-2.5cm}
             \makebox[\textwidth]{
-                \- if href == '' or old_name == name
+                \- if href == ''
                     \ 
                 \- else
                     \VAR{href}
                 \- endif
-                \- if old_name == name
+                \- if name == ''
                     \ 
                 \- else
                     \phantomsection
@@ -61,7 +60,6 @@
                 \includegraphics[width=\paperwidth]{\VAR{path}}
             }
         \end{center}
-        \- set old_name = name
     \- endfor
 \- endfor
 
@@ -71,9 +69,8 @@
     \section*{Store id: \VAR{str_id}}
     \addcontentsline{toc}{section}{Model configuration for \VAR{str_id}}
     \begin{lstlisting}
-        \VAR{config}
+\VAR{config}
     \end{lstlisting}
-
     \begin{center}
         \vspace*{-2.5cm}
         \makebox[\textwidth]{

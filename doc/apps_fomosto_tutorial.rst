@@ -67,7 +67,7 @@ started without any arguments.
         upgrade       upgrade store format to latest version,
         addref        import citation references to GF store config,
         qc            quality check,
-        report        report for Green's Function databases,
+        report        report for Green's function databases,
 
     To get further help and a list of available options for any subcommand run:
 
@@ -410,10 +410,171 @@ time tables, ``fomosto stats`` to summarize some technical details, and
 ``fomosto check`` which checks the store for *NaN* values and some other
 problems.
 
-Running the report subcommand
------------------------------
+Report subcommand
+-----------------
 
+The report subcommand will create a pdf document containing an artefacts report, displacement seismograms, velocity seismograms (optional), maximum amplitude graphs for seismograms, spectrum graphs, earth model graphs and the contents of the Green's function configuration file.  Each set of seismograms will contain five graphs with increasing amplitude scales.  To view the subcommands of report, it can be ran without any arguments from the command line.
 
+.. highlight:: console
+
+::
+
+    $ fomosto report
+    Create a pdf of displacment and velocity traces, max. amplitude of traces
+    and displacment spectra for Green's function stores.
+
+    Usage: fomosto report <subcommand> <arguments> ... [options]
+
+    Subcommands:
+
+        single          create pdf of a single store
+        double          create pdf of two stores
+        sstandard       create a single store pdf with standard setup
+        dstandard       create a double store pdf with standard setup
+        slow            create a single store pdf, filtering the
+                        traces with a low frequency
+        dlow            create a double store pdf, filtering the
+                        traces with a low frequency
+        shigh           create a single store pdf, filtering the
+                        traces with a low frequency
+        dhigh           create a single store pdf, filtering the
+                        traces with a low frequency
+        slowband        create a single store pdf with a low
+                        frequency band filter
+        dlowband        create a double store pdf with a low
+                        frequency band filter
+        shighband       create a single store pdf with a high
+                        frequency band filter
+        dhighband       create a double store pdf with a high
+                        frequency band filter
+        snone           create a single store pdf with unfiltered traces
+        dnone           create a double store pdf with unfiltered traces
+
+    To get further help and a list of available options for any subcommand run:
+
+        fomosto report <subcommand> --help
+
+Configuration file for Report subcommand
+----------------------------------------
+
+.. highlight :: yaml
+
+Here is a minimal configuration file (to be used with the ``fomosto report single`` command).  If wanting to use the ``fomosto report double`` command, just copy/paste the entire contents below the existing contents, and change only the ``store_dir`` path.  To see a full configuration file, use the ``output`` option on any of the ``fomosto report`` subcommands.
+
+::
+
+    --- !gft.GreensFunctionTest  # this line is a must
+
+    # needs to point to the main directory of the Green's function store
+    store_dir: /home/willey/src/gf_stores/iceland_reg_v2
+
+    # optional: these will base the applied filters on the sampling rate
+    # of the store
+    rel_lowpass_frequency: 0.125
+    rel_highpass_frequency: 0.25
+
+    # optional: these will set the absolute frequencys to when applying filters
+    # if neither are set, then the seismograms will not be filtered
+    # only one option can be used for low/highpass frequency, so if absolute
+    # frequencies are desried, comment/delete the above and uncomment these
+
+    # lowpass_frequency: 0.0014
+    # highpass_frequency: 0.0018
+
+    # a section for the source objects to be used when creating seismograms
+    sources:
+
+      # <name>: <type>, the specific source objects to be used, where the names
+      # have to be unique (see pyrocko for available source objects
+      # :py:class:`pyrocko.gf.seismosizer.Source`)
+      source1: !pf.DCSource
+        depth: 6500.0
+        strike: -90.0
+        dip: 90.0
+        rake: -90.0
+
+    # a section for the sensor array objects to be used when creating seismograms
+    sensors:
+
+      # <name>: !gft.SensorArray, where the name has to be unique
+      sensors1: !gft.SensorArray
+        depth: 0.0
+
+        # these are the codes for the type of sensors (pyrocko.gf.Target objects)
+        codes: ['', STA, '', R]
+
+        # this is the direction [deg] in which the sensor monitors
+        azimuth: 0.0
+
+        # this the dip [deg] of the sensor
+        dip: 0.0
+
+        # minimum/maximum distances [m] for the sensorys to be array at
+        distance_min: 1000.0
+        distance_max: 500000.0
+
+        # the direction [deg] along which the sensors will be arrayed
+        strike: 0.0
+
+        # amount of sensors per array
+        sensor_count: 50
+
+If there are multiple source and sensor array objects in the configuration file, then the command will create seismograms for every combination of source and sensor arry.  Example (partial file)::
+
+    sources:
+      source1: !pf.DCSource
+        depth: 6500.0
+        strike: -90.0
+        dip: 90.0
+        rake: -90.0
+      source2: !pf.DCSource
+        depth: 6500.0
+        strike: 45.0
+        dip: 90.0
+        rake: 180.0
+
+    sensors:
+      sensors1: !gft.SensorArray
+        depth: 0.0
+        codes: ['', STA, '', R]
+        azimuth: 0.0
+        dip: 0.0
+        distance_min: 1000.0
+        distance_max: 500000.0
+        strike: 0.0
+        sensor_count: 50
+      sensors2: !gft.SensorArray
+        depth: 0.0
+        codes: ['', STA, '', Z]
+        azimuth: 0.0
+        dip: 90.0
+        distance_min: 1000.0
+        distance_max: 500000.0
+        strike: 0.0
+        sensor_count: 50
+
+This configuration file will create four sets of seismograms (source1-sensors1, source1-sensor-2, ...), but if you only specific source-sensory array combinations, then use the optional parameter ``trace_configs`` like::
+
+    trace_configs:
+    - [source1, sensors2]
+    - [source2, sensors1]
+
+placed at the bottom of the configuration file.  This will only produce the seismograms for the selected combination.
+
+.. highlight:: console
+
+To try the configuration file, save to your home directory as ``min_config``.  Make sure you have the specified Green's function store accessible.  Then run::
+
+    $ fomosto report single ~/min_config
+
+and you will create a pdf file called ``iceland_reg_v2_0.25-0.5Hz.pdf``.  If you want to see what an output configuration file looks like::
+
+    $ fomosto report single ~/min_config --output=~/min_config_full
+
+A example displacement seismogram.
+
+.. figure:: _static/fomosto_report_displacement1.png
+    :align: center
 
 Creating decimated variants of a Green's function store
 -------------------------------------------------------

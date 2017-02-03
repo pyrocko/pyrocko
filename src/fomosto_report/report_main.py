@@ -117,7 +117,6 @@ class GreensFunctionTest(Object):
                           'filter_order',
                           'plot_velocity', 'plot_everything']
     __notesize = 7.45
-    # __scalelist = [1, 7, 19, 37, 59]
     __scalelist = [1, 5, 9.5, 19, 29]
     __has_phase = True
 
@@ -223,17 +222,18 @@ class GreensFunctionTest(Object):
         if sid not in self.sources:
             return ''
         src = self.sources[sid]
-        exstr = ''
         if isinstance(src, gf.DCSource):
             typ = 'Double Couple'
-            exstr = ', Rake: {0:g}'.format(src.rake)
+            sstr = 'Source Type: {0}, Strike: {1:g}, Dip: {2:g}, Rake: {3:g}' \
+                .format(typ, src.strike, src.dip, src.rake)
         elif isinstance(src, gf.RectangularExplosionSource):
             typ = 'Explosion'
+            sstr = 'Source Type: {0}, Strike: {1:g}, Dip: {2:g}'.format(
+                typ, src.strike, src.dip)
         else:
-            typ = 'Unknown'
-        sstr = 'Source Type: {0}, Strike: {1:g}, Dip: {2:g}'.format(
-            typ, src.strike, src.dip)
-        return sstr + exstr
+            typ = '{0}'.format(type(src)).split('.')[-1].split("'")[0]
+            sstr = 'Source Type: {0}, see config page'.format(typ)
+        return sstr
 
     def getSensorString(self, sid):
         if sid not in self.sensors:
@@ -583,10 +583,12 @@ class GreensFunctionTest(Object):
                 if trcname in tdict:
                     hstr = Template(href).substitute(
                         trc_id=tid, str_id=self.store_id, type='d')
-                    img_data.extend([(self.__getFigureTitle(x), hstr,
-                                      self.__saveTempFigure(x))
-                                     for x in self.__createTraceFigures(
-                                         tid, trcname)])
+                    figs = self.__createTraceFigures(tid, trcname)
+                    fig = figs[0]
+                    img_data.extend([(self.__getFigureTitle(fig), hstr,
+                                      self.__saveTempFigure(fig))])
+                    img_data.extend([('', '', self.__saveTempFigure(x))
+                                     for x in figs[1:]])
 
                 if 'displacement_spectra' in tdict:
                     fig = self.__createMaxAmpFigure(tid, trcname)
@@ -602,10 +604,12 @@ class GreensFunctionTest(Object):
                 if self.plot_velocity and trcname in tdict:
                     hstr = Template(href).substitute(
                         trc_id=tid, str_id=self.store_id, type='v')
-                    img_data.extend([(self.__getFigureTitle(x), hstr,
-                                      self.__saveTempFigure(x))
-                                     for x in self.__createTraceFigures(
-                                         tid, trcname)])
+                    figs = self.__createTraceFigures(tid, trcname)
+                    fig = figs[0]
+                    img_data.extend([(self.__getFigureTitle(fig), hstr,
+                                      self.__saveTempFigure(fig))])
+                    img_data.extend([('', '', self.__saveTempFigure(x))
+                                     for x in figs[1:]])
 
                     if 'velocity_spectra' in tdict:
                         fig = self.__createMaxAmpFigure(tid, trcname)
@@ -861,9 +865,7 @@ class GreensFunctionTest(Object):
                           markersize=3,
                           color=plot.to01(plot.graph_colors[i % 7]))
 
-            # plt.setp(ltext, fontsise=10.)
             lfax.legend(loc='lower right', shadow=False, prop={'size': 10.})
-            # lfax.legend(loc='lower right', shadow=False, fontsize=10.)
 
         xmin = times[0] - diff
         xmax = times[-1] + diff
@@ -1026,7 +1028,7 @@ class GreensFunctionTest(Object):
             ax.xaxis.set_label_coords(0.5, -0.13)
             pos = ax.get_position()
             if i == 0 or i == 4:
-                ax.set_ylabel('Depth')
+                ax.set_ylabel('Depth [km]')
             if i > 1:
                 for j in ax.xaxis.get_ticklabels()[1::2]:
                     j.set_visible(False)
