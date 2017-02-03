@@ -407,8 +407,7 @@ class GFTestCase(unittest.TestCase):
             n = random.randint(1, 10)
             indices = num.random.randint(nrecords, size=n).astype(num.uint64)
             weights = num.random.random(n).astype(num.float32)
-            shifts = (num.random.random(n)*nrecords).astype(num.float32)
-
+            shifts = (num.random.random(n)*nrecords/4).astype(num.float32)
             it = random.randint(0, 5)
 
             dyn = store.sum(

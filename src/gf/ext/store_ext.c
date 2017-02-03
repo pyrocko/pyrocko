@@ -715,8 +715,7 @@ static store_error_t store_sum_static(
                 idelay_floor = (int) floor(delay/deltat);
                 idelay_ceil = (int) ceil(delay/deltat);
 
-
-                if (0.0 == weight)
+                if (weight == 0.)
                     continue;
 
                 if (!inlimits(idelay_floor) || !inlimits(idelay_ceil))

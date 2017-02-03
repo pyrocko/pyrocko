@@ -229,9 +229,20 @@ class SatelliteTarget(StaticTarget):
         shape=(None, 1), dtype=num.float,
         help='Line-of-sight incident angle for each location in `coords5`.')
 
+    _los_factors = None
+
+    def get_los_factors(self):
+        if self._los_factors is None:
+            self._los_factors = num.empty((self.theta.shape[0], 3))
+            self._los_factors[:, 0] = num.sin(self.theta)
+            self._los_factors[:, 1] = num.cos(self.theta) * num.cos(self.phi)
+            self._los_factors[:, 2] = num.cos(self.theta) * num.sin(self.phi)
+        return self._los_factors
+
     def post_process(self, engine, source, statics):
+        los_fac = self.get_los_factors()
         statics['displacement.los'] =\
-            (num.sin(self.theta) * -statics['displacement.d'] +
-             num.cos(self.phi) * statics['displacement.e'] +
-             num.sin(self.phi) * statics['displacement.n'])
+            (los_fac[:, 0] * -statics['displacement.d'] +
+             los_fac[:, 1] * statics['displacement.e'] +
+             los_fac[:, 2] * statics['displacement.n'])
         return meta.StaticResult(result=statics)

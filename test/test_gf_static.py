@@ -41,6 +41,7 @@ class GFStaticTest(unittest.TestCase):
         return self.qseis_store_dir
 
     def get_pscmp_store_dir(self):
+        return '/tmp/gfstoregvXpKr'
         if self.pscmp_store_dir is None:
             self.pscmp_store_dir = self._create_psgrn_pscmp_store()
 
@@ -48,6 +49,7 @@ class GFStaticTest(unittest.TestCase):
         return self.pscmp_store_dir
 
     def setUp(self):
+        return False
         self.cprofile = cProfile.Profile()
         self.cprofile.enable()
         self.addCleanup(
@@ -75,7 +77,7 @@ mantle
  660. 10.79 5.965 4.229 1349. 549.6'''.lstrip()))
 
         store_dir = mkdtemp(prefix='gfstore')
-        self.tempdirs.append(store_dir)
+        # self.tempdirs.append(store_dir)
         store_id = 'psgrn_pscmp_test'
         version = '2008a'
 
@@ -90,11 +92,11 @@ mantle
             sample_rate=1. / c.pscmp_config.snapshots.deltat,
             receiver_depth=0. * km,
             source_depth_min=0. * km,
-            source_depth_max=10. * km,
-            source_depth_delta=0.4 * km,
+            source_depth_max=20. * km,
+            source_depth_delta=0.25 * km,
             distance_min=0. * km,
             distance_max=40. * km,
-            distance_delta=0.4 * km,
+            distance_delta=0.25 * km,
             modelling_code_id='psgrn_pscmp.%s' % version,
             earthmodel_1d=mod,
             tabulated_phases=[])
@@ -180,7 +182,7 @@ mantle
         return store_dir
 
     def test_process_static(self):
-        src_length = 2 * km
+        src_length = 5 * km
         src_width = 5 * km
         ntargets = 1600
         interp = ['nearest_neighbor', 'multilinear']
@@ -188,23 +190,28 @@ mantle
 
         source = gf.RectangularSource(
             lat=0., lon=0.,
-            north_shift=0., east_shift=0., depth=5*km,
+            north_shift=0., east_shift=0., depth=6.5*km,
             width=src_width, length=src_length,
-            dip=0., rake=45.,
+            dip=90., rake=90., strike=90.,
             slip=1.)
 
         phi = num.zeros(ntargets)              # Horizontal from E
         theta = num.ones(ntargets) * num.pi/2  # Vertical from vertical
-        # phi.fill(num.deg2rad(110.))
-        theta.fill(num.deg2rad(60))
+        phi.fill(num.deg2rad(192.))
+        theta.fill(num.deg2rad(90.-23.))
 
         sattarget = gf.SatelliteTarget(
-            north_shifts=(random.rand(ntargets)-.5) * 10. * km,
-            east_shifts=(random.rand(ntargets)-.5) * 10. * km,
+            north_shifts=(random.rand(ntargets)-.5) * 25. * km,
+            east_shifts=(random.rand(ntargets)-.5) * 25. * km,
+            tsnapshot=500,
             interpolation=interpolation,
             phi=phi,
             theta=theta)
 
+        store = gf.Store(store_dir=self.get_pscmp_store_dir())
+        store.open()
+
+        print 'ndsources %d' % source.discretize_basesource(store).m6s.shape[0]
         engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])
 
         def process_target(nprocs):
@@ -222,7 +229,9 @@ mantle
             return process_nearest_neighbor(), process_multilinear()
 
         for np in [1, 2, 4, 6, 12]:
-            process_target(nprocs=np)
+            nn, ml = process_target(nprocs=np)
+
+        self.plot_static_los_result(ml)
         print benchmark
 
     @staticmethod
@@ -231,15 +240,24 @@ mantle
 
         fig, _ = plt.subplots(1, 4)
 
-        E = result.request.targets[0].coords5[:, 2]
-        N = result.request.targets[0].coords5[:, 3]
+        N = result.request.targets[0].coords5[:, 2]
+        E = result.request.targets[0].coords5[:, 3]
         result = result.results_list[0][0].result
 
-        for dspl, ax in zip(list('ned') + ['los'], fig.axes):
-            ax.tricontourf(E, N, result['displacement.%s' % dspl],
-                           50, cmap='seismic')
-            ax.set_title('displacement.%s' % dspl)
+        vranges = [(result['displacement.%s' % c].max(),
+                    result['displacement.%s' % c].min()) for c in list('ned') +
+                   ['los']]
 
+        lmax = num.abs([num.min(vranges), num.max(vranges)]).max()
+        levels = num.linspace(-lmax, lmax, 50)
+
+        for dspl, ax in zip(list('ned') + ['los'], fig.axes):
+            cmap = ax.tricontourf(E, N, result['displacement.%s' % dspl],
+                                  cmap='seismic', levels=levels)
+            ax.set_title('displacement.%s' % dspl)
+            ax.set_aspect('equal')
+
+        fig.colorbar(cmap)
         plt.show()
 
     def test_sum_static(self):
@@ -316,4 +334,4 @@ mantle
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main(defaultTest='GFStaticTest')
+    unittest.main(defaultTest='GFStaticTest.test_process_static')

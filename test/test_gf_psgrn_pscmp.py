@@ -19,6 +19,7 @@ r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
 
+
 def statics(engine, source, starget):
     store = engine.get_store(starget.store_id)
     dsource = source.discretize_basesource(store, starget)
@@ -40,7 +41,6 @@ def statics(engine, source, starget):
         values = store.statics(
             dsource, receiver, starget.components,
             interpolation=starget.interpolation)
-
 
         for icomponent, value in enumerate(values):
             out[i, icomponent] = value * sfactor
@@ -185,7 +185,6 @@ mantle
         num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.001)
         num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.001)
         num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.001)
-
 
         # plotting
 
