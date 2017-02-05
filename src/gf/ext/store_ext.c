@@ -726,20 +726,16 @@ static store_error_t store_sum_static(
                 if (trace.is_zero)
                     continue;
 
-                idx = it + idelay_floor - trace.itmin;
-                if (idx >= trace.nsamples)
-                    idx = trace.nsamples - 1;
-                if (idx < 0)
-                    idx = 0;
+                idx = it - idelay_floor - trace.itmin;
 
-                if (idelay_floor == idelay_ceil || (idx+1) >= trace.nsamples) {
-                    result[t] += fe32toh(trace.data[idx]) * weight;
+                if (idelay_floor == idelay_ceil) {
+                    result[t] += fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * weight;
                 } else {
                     w1 = (idelay_ceil - delay/deltat) * weight;
                     w2 = (delay/deltat - idelay_floor) * weight;
-                    /* printf("w1 %f, w2 %f\n", w1, w2); */
-                    result[t] += fe32toh(trace.data[idx + 1]) * w1
-                                 + fe32toh(trace.data[idx]) * w2;
+
+                    result[t] += fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * w1
+                                 + fe32toh(trace.data[max(0, min(idx-1, trace.nsamples-1))]) * w2;
                 }
             }
         }
