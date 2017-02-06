@@ -264,8 +264,15 @@ static PyObject * w_distance_accurate50m_numpy(PyObject *dummy, PyObject *args) 
         return NULL;
     }
 
-    if (! (good_array(alats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) ||
-           good_array(blats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1))) {
+    if (!good_array(alats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1)) {
+        return NULL;
+    }
+
+    size[0] = PyArray_SIZE((PyArrayObject*) alats_arr);
+
+    if (!(good_array(alons_arr, NPY_FLOAT64, size[0], -1, (npy_intp *) -1) &&
+          good_array(blats_arr, NPY_FLOAT64, size[0], -1, (npy_intp *) -1) &&
+          good_array(blons_arr, NPY_FLOAT64, size[0], -1, (npy_intp *) -1))) {
         return NULL;
     }
 
@@ -273,21 +280,20 @@ static PyObject * w_distance_accurate50m_numpy(PyObject *dummy, PyObject *args) 
     c_alons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) alons_arr);
     c_blats_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blats_arr);
     c_blons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blons_arr);
-    
-    if (PyArray_SIZE(c_alats_arr) + PyArray_SIZE(c_alons_arr) - PyArray_SIZE(c_blats_arr) - PyArray_SIZE(c_blons_arr)) { 
-        PyErr_SetString(PyExc_ValueError, "distance_accurate50m_numpy: dimension mismatch!");
-        return NULL;   
-    }
 
     alats = PyArray_DATA(c_alats_arr);
     alons = PyArray_DATA(c_alons_arr);
     blats = PyArray_DATA(c_blats_arr);
     blons = PyArray_DATA(c_blons_arr);
 
-    size[0] = PyArray_SIZE((PyArrayObject*) alats_arr);
     dists_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
 
     distance_accurate50m_array(alats, alons, blats, blons, size[0], PyArray_DATA(dists_arr));
+
+    Py_DECREF(c_alats_arr);
+    Py_DECREF(c_alons_arr);
+    Py_DECREF(c_blats_arr);
+    Py_DECREF(c_blons_arr);
 
     return (PyObject *) dists_arr;
 }
@@ -300,12 +306,19 @@ static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
 
     (void) dummy;
     if (! PyArg_ParseTuple(args, "OOOO", &alats_arr, &alons_arr, &blats_arr, &blons_arr)) {
-        PyErr_SetString(OrthodromeExtError, "distance_accurate50m_numpy: invalid call!");
+        PyErr_SetString(OrthodromeExtError, "usage: azibazi_numpy(alats, blats, alons, blons) -> (azis, bazis)");
         return NULL;
     }
 
-    if (! (good_array(alats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) ||
-           good_array(blats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1) || good_array(alons_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1))) {
+    if (!good_array(alats_arr, NPY_FLOAT64, -1, -1, (npy_intp *) -1)) {
+        return NULL;
+    }
+
+    size[0] = PyArray_SIZE((PyArrayObject*) alats_arr);
+
+    if (!(good_array(alons_arr, NPY_FLOAT64, size[0], -1, (npy_intp *) -1) &&
+          good_array(blats_arr, NPY_FLOAT64, size[0], -1, (npy_intp *) -1) &&
+          good_array(blons_arr, NPY_FLOAT64, size[0], -1, (npy_intp *) -1))) {
         return NULL;
     }
 
@@ -314,71 +327,70 @@ static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
     c_blats_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blats_arr);
     c_blons_arr = PyArray_GETCONTIGUOUS((PyArrayObject*) blons_arr);
     
-    if (PyArray_SIZE(c_alats_arr) + PyArray_SIZE(c_alons_arr) - PyArray_SIZE(c_blats_arr) - PyArray_SIZE(c_blons_arr)) { 
-        PyErr_SetString(PyExc_ValueError, "distance_accurate50m_numpy: dimension mismatch!");
-        return NULL;   
-    }
-
     alats = PyArray_DATA(c_alats_arr);
     alons = PyArray_DATA(c_alons_arr);
     blats = PyArray_DATA(c_blats_arr);
     blons = PyArray_DATA(c_blons_arr);
 
-    size[0] = PyArray_SIZE((PyArrayObject*) alats_arr);
     azis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
     bazis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
 
     azibazi_array(alats, alons, blats, blons, size[0], PyArray_DATA(azis_arr), PyArray_DATA(azis_arr));
+
+    Py_DECREF(c_alats_arr);
+    Py_DECREF(c_alons_arr);
+    Py_DECREF(c_blats_arr);
+    Py_DECREF(c_blons_arr);
 
     return Py_BuildValue("NN", (PyObject *) azis_arr, (PyObject *) bazis_arr);
 }
 
 static PyMethodDef OrthodromeExtMethods[] = {
     {"distance_accurate50m",  w_distance_accurate50m, METH_VARARGS,
-"Calculate distance between a pair of (alat, alon, blat, blon) points on elliptic earth.\n\n\
-:param alat: Latitude of point 1.\n\
+"Calculate great circle distance between pair of points on ellipsoidal earth.\n\n\
+:param alat: Latitude of point 1\n\
 :type alat: float\n\
-:param alon: Longitude of point 1.\n\
+:param alon: Longitude of point 1\n\
 :type alon: float\n\
-:param alat: Latitude of point 2.\n\
-:type alat: float\n\
-:param alon: Longitude of point 2.\n\
-:type alon: float"
+:param blat: Latitude of point 2\n\
+:type blat: float\n\
+:param blon: Longitude of point 2\n\
+:type blon: float"
 },
 
     {"distance_accurate50m_numpy",  w_distance_accurate50m_numpy, METH_VARARGS,
-"Calculate distance between a arrays of (alat, alon, blat, blon) numpy arrays on elliptic earth.\n\n\
-:param alat: Latitudes\n\
-:type alat: :py:class:numpy.array\n\
-:param alon: Longitudes\n\
-:type alon: :py:class:numpy.array\n\
-:param alat: Latitudes\n\
-:type alat: :py:class:numpy.array\n\
-:param alon: Longitudes\n\
-:type alon: :py:class:numpy.array" },
+"Calculate great circle distance between pairs of points on ellipsoidal earth (array version).\n\n\
+:param alat: Latitudes of points 1\n\
+:type alat: :py:class:`numpy.ndarray`\n\
+:param alon: Longitudes of points 1\n\
+:type alon: :py:class:`numpy.ndarray`\n\
+:param blat: Latitudes of points 2\n\
+:type blat: :py:class:`numpy.ndarray`\n\
+:param blon: Longitudes of points 2\n\
+:type blon: :py:class:`numpy.ndarray`" },
 
     {"azibazi",  w_azibazi, METH_VARARGS,
-"Calculate azimuth and backazimuth for tuple (alat, alon, blat, blon).\n\n\
+"Calculate azimuth and backazimuth directions of great circle path at a pair of points on spherical earth.\n\n\
 :param alat: Latitude of point 1.\n\
 :type alat: float\n\
 :param alon: Longitude of point 1.\n\
 :type alon: float\n\
-:param alat: Latitude of point 2.\n\
-:type alat: float\n\
-:param alon: Longitude of point 2.\n\
-:type alon: float" 
+:param blat: Latitude of point 2.\n\
+:type blat: float\n\
+:param blon: Longitude of point 2.\n\
+:type blon: float"
 },
 
     {"azibazi_numpy",  w_azibazi_numpy, METH_VARARGS,
-"Calculate azimuth and backazimuth for tuple (alats, alons, blats, blons) of numpy arrays.\n\n\
-:param alat: Latitudes\n\
-:type alat: :py:class:numpy.array\n\
-:param alon: Longitudes\n\
-:type alon: :py:class:numpy.array\n\
-:param alat: Latitudes\n\
-:type alat: :py:class:numpy.array\n\
-:param alon: Longitudes\n\
-:type alon: :py:class:numpy.array" },
+"Calculate azimuth and backazimuth directions of great circle path at pairs of points on spherical earth (array version).\n\n\
+:param alat: Latitudes of points 1\n\
+:type alat: :py:class:`numpy.ndarray`\n\
+:param alon: Longitudes of points 1\n\
+:type alon: :py:class:`numpy.ndarray`\n\
+:param blat: Latitudes of points 2\n\
+:type blat: :py:class:`numpy.ndarray`\n\
+:param blon: Longitudes of points 2\n\
+:type blon: :py:class:`numpy.ndarray`" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
