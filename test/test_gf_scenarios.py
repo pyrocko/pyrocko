@@ -116,7 +116,7 @@ class GFScenariosTestCase(unittest.TestCase):
                             east_shift=east_shift,
                             quantity='displacement',
                             interpolation='multilinear',
-                            optimization='enable',
+                            # optimization='disable',
                             store_id=store_id)
 
                         targets.append(target)
@@ -187,7 +187,7 @@ class GFScenariosTestCase(unittest.TestCase):
                     lon=lon,
                     quantity='displacement',
                     interpolation='multilinear',
-                    optimization='disable',
+                    # optimization='disable',
                     store_id=store_id)
 
                 targets.append(target)
@@ -222,7 +222,7 @@ class GFScenariosTestCase(unittest.TestCase):
 
             trs2 = engine.process(base_source, targets).pyrocko_traces()
 
-            trace.snuffle(trs + trs2)
+            # trace.snuffle(trs + trs2)
 
             seis.set_synthetic_reference()
 

@@ -1097,4 +1097,4 @@ for config_type_class in gf.config_type_classes:
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main(defaultTest='GFTestCase.test_sum_statics')
+    unittest.main()
