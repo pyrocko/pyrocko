@@ -162,23 +162,23 @@ class ComponentScheme(StringChoice):
     ================= =========================================================
     \                 Description
     ================= =========================================================
-    ``elastic10``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, MT
+    ``elastic10``     Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores, MT
                       sources only
     ``elastic8``      Elastodynamic for far-field only
-                      :py:class:`pyrocko.gf.meta.ConfigTypeA` and
-                      :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeA` and
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores,
                       MT sources only
-    ``elastic2``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores,
+    ``elastic2``      Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores,
                       purely isotropic sources only
-    ``elastic5``      Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores, SF
+    ``elastic5``      Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores, SF
                       sources only
-    ``elastic18``     Elastodynamic for :py:class:`pyrocko.gf.meta.ConfigTypeC`
+    ``elastic18``     Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeC`
                       stores, MT sources only
-    ``poroelastic10`` Poroelastic for :py:class:`pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`pyrocko.gf.meta.ConfigTypeB` stores
+    ``poroelastic10`` Poroelastic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
+                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores
     ================= =========================================================
     '''
 
@@ -768,7 +768,7 @@ class MultiLocation(Object):
         if not sizes:
             raise AttributeError('Empty StaticTarget')
         if num.unique(sizes).size != 1:
-            raise AttributeError('Inconsistent coordinates!')
+            raise AttributeError('Inconsistent coordinate sizes.')
 
         self._coords5 = num.zeros((sizes[0], 5))
         for idx, p in enumerate(props):
@@ -884,7 +884,7 @@ class DiscretizedSource(Object):
     @property
     def effective_latlons(self):
         '''
-        Property holding the offset-corrected lats and lons of all points.
+        Property holding the offest-corrected lats and lons of all points.
         '''
 
         if self._latlons is None:

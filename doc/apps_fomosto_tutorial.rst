@@ -472,10 +472,13 @@ Retrieve synthetic seismograms from a local store
 
 .. highlight:: python
 
-It is assumed that a :py:class:`pyrocko.gf.store.Store` with store ID
+It is assumed that a :class:`~pyrocko.gf.store.Store` with store ID
 *crust2_dd* has been downloaded in advance. A list of currently available
 stores can be found at http://kinherd.org/gfs.html as well as how to download
 such stores.
+
+Further API documentation for the utilized objects can be found at :class:`~pyrocko.gf.targets.Target`,
+:class:`~pyrocko.gf.seismosizer.LocalEngine` and :class:`~pyrocko.gf.seismosizer.DCSource`.
 
 ::
 
@@ -543,3 +546,89 @@ such stores.
     # Finally, let's scrutinize these traces.
     trace.snuffle(synthetic_traces, markers=markers)
 
+
+
+Retrieve spatial displacement from a local store
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In this example we create a :class:`~pyrocko.gf.RectangularSource` and compute
+the spatial static/geodetic displacement caused by that rupture.
+
+We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget` in this example.
+
+::
+
+    from pyrocko.gf import LocalEngine, StaticTarget, SatelliteTarget,\
+        RectangularSource
+    import numpy as num
+
+
+    km = 1e3
+
+    # Ignite the LocalEngine and point it to fomosto stores stored on a
+    # USB stick, for this example we use a static store with id 'static_store'
+    engine = LocalEngine(store_superdirs=['/media/usb/stores'])
+    store_id = 'static_store'
+
+    # We define an extended source, in this case a rectangular geometry
+    rect_source = RectangularSource(
+        lat=0., lon=0.,
+        north_shift=0., east_shift=0., depth=6.5*km,
+        width=5*km, length=3*km,
+        dip=90., rake=90., strike=90.,
+        slip=1.)
+
+    # We will define 1000 randomly distributed targets.
+    ntargets = 1000
+
+    static_target = StaticTarget(
+        north_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
+        east_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
+        tsnapshot=60,
+        interpolation='multilinear')
+
+    # We initialize the satellite target and set the line of site vectors
+    phi = num.empty(ntargets)    # Horizontal LOS from E
+    theta = num.empty(ntargets)  # Vertical LOS from vertical
+    phi.fill(num.deg2rad(192.))
+    theta.fill(num.deg2rad(90.-23.))
+
+    satellite_target = SatelliteTarget(
+        north_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
+        east_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
+        tsnapshot=60,
+        interpolation='nearest_neighbor',
+        phi=phi,
+        theta=theta)
+
+    # The computation is performed by calling process on the engine
+    result = engine.process(rect_source, [static_target, satellite_target])
+
+
+    # Helper function for plotting the displacement
+    def plot_static_los_result(result, target=0):
+        import matplotlib.pyplot as plt
+        fig, _ = plt.subplots(1, 4)
+
+        N = result.request.targets[target].coords5[:, 2]
+        E = result.request.targets[target].coords5[:, 3]
+        result = result.results_list[0][target].result
+
+        vranges = [(result['displacement.%s' % c].max(),
+                    result['displacement.%s' % c].min()) for c in list('ned') +
+                   ['los']]
+
+        lmax = num.abs([num.min(vranges), num.max(vranges)]).max()
+        levels = num.linspace(-lmax, lmax, 50)
+
+        for dspl, ax in zip(list('ned') + ['los'], fig.axes):
+            cmap = ax.tricontourf(E, N, result['displacement.%s' % dspl],
+                                  cmap='seismic', levels=levels)
+            ax.set_title('displacement.%s' % dspl)
+            ax.set_aspect('equal')
+
+        fig.colorbar(cmap)
+        plt.show()
+
+
+    plot_static_los_result(result)

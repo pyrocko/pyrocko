@@ -183,7 +183,7 @@ mantle
 
     def test_process_static(self):
         src_length = 5 * km
-        src_width = 5 * km
+        src_width = 2 * km
         ntargets = 1600
         interp = ['nearest_neighbor', 'multilinear']
         interpolation = interp[0]
@@ -203,15 +203,11 @@ mantle
         sattarget = gf.SatelliteTarget(
             north_shifts=(random.rand(ntargets)-.5) * 25. * km,
             east_shifts=(random.rand(ntargets)-.5) * 25. * km,
-            tsnapshot=500,
+            tsnapshot=20,
             interpolation=interpolation,
             phi=phi,
             theta=theta)
 
-        store = gf.Store(store_dir=self.get_pscmp_store_dir())
-        store.open()
-
-        print 'ndsources %d' % source.discretize_basesource(store).m6s.shape[0]
         engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])
 
         def process_target(nprocs):
@@ -228,10 +224,10 @@ mantle
 
             return process_nearest_neighbor(), process_multilinear()
 
-        for np in [1, 2, 4, 6, 12]:
+        for np in [1, 2, 4]:
             nn, ml = process_target(nprocs=np)
 
-        self.plot_static_los_result(ml)
+        # self.plot_static_los_result(ml)
         print benchmark
 
     @staticmethod
@@ -320,7 +316,7 @@ mantle
                 'elastic10', interpolation, 0)
 
         benchmark.clear()
-        for nthreads in [1, 2, 4, 6, 12]:
+        for nthreads in [1, 2, 4]:
             for (weights, irecords) in store_ext.make_sum_params(*args):
                 delays_t = num.zeros_like(weights)
                 delays_s = dsource.times.astype(num.float32)
@@ -334,4 +330,4 @@ mantle
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')
-    unittest.main(defaultTest='GFStaticTest.test_process_static')
+    unittest.main(defaultTest='GFStaticTest')
