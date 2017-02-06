@@ -11,12 +11,6 @@ The :mod:`pyrocko.gf.store` Module
     :members:
     :show-inheritance:
 
-The :mod:`pyrocko.gf.meta` Module
-=================================
-
-.. automodule:: pyrocko.gf.meta
-    :members:
-    :show-inheritance:
 
 The :mod:`pyrocko.gf.builder` Module
 ====================================
@@ -32,3 +26,17 @@ The :mod:`pyrocko.gf.seismosizer` Module
     :members:
     :show-inheritance:
 
+The :mod:`pyrocko.gf.targets` Module
+====================================
+
+.. automodule:: pyrocko.gf.targets
+    :members:
+    :show-inheritance:
+
+
+The :mod:`pyrocko.gf.meta` Module
+=================================
+
+.. automodule:: pyrocko.gf.meta
+    :members:
+    :show-inheritance:

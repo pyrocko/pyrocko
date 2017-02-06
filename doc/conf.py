@@ -21,7 +21,7 @@ import sphinx_sleekcat_theme
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-#sys.path.insert(0, os.path.abspath('extensions'))
+# sys.path.insert(0, os.path.abspath('extensions'))
 
 # -- General configuration ----------------------------------------------------
 
@@ -31,8 +31,15 @@ import sphinx_sleekcat_theme
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = ['sphinx.ext.autodoc',
-'sphinx.ext.imgmath', # 'sphinx.ext.jsmath', 
-'sphinx.ext.viewcode']
+    'sphinx.ext.imgmath', # 'sphinx.ext.jsmath', 
+    'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx'
+]
+
+intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
+                                 None),
+                       'scipy': ('https://docs.scipy.org/doc/scipy/reference/',
+                                 None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
