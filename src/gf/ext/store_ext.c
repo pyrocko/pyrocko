@@ -617,8 +617,10 @@ static store_error_t store_sum(
         } else {
             ilo = itmin - idelay_floor - trace.itmin;
             /*ihi = ilo - 1;*/
-            w1 = (idelay_ceil - delay/deltat) * weight;
-            w2 = (delay/deltat - idelay_floor) * weight;
+            w1 = (idelay_ceil - delay/deltat);
+            w2 = 1.0 - w1;
+            w1 *= weight;
+            w2 *= weight;
             /* printf("- w1 %f, w2 %f\n", w1, w2); */
             /*for (i=0; i<nsamples; i++) {
                 ifloor = i + ilo;
@@ -676,8 +678,8 @@ static store_error_t store_sum_static(
     trace_t trace;
     float32_t deltat = store->deltat;
     int idelay_floor, idelay_ceil;
-    int j, t, idx;
-    uint n, nsummands_src;
+    int j, itarget, idx;
+    uint isummand, nsummands_src;
     float w1, w2;
     store_error_t err=SUCCESS;
     (void) nthreads;
@@ -700,17 +702,17 @@ static store_error_t store_sum_static(
         #pragma omp parallel \
             shared (store, irecords, delays, weights, ntargets, nsummands, \
                     result, it, deltat) \
-            private (j, n, delay, weight, idelay_floor, idelay_ceil, idx, trace, w1, w2) \
+            private (j, isummand, delay, weight, idelay_floor, idelay_ceil, idx, trace, w1, w2) \
             reduction (+: err) \
             num_threads (nthreads)
         {
         #pragma omp for schedule (static)
     #endif
-        for (t=0; t<ntargets; t++) {
-            for (n=0; n<nsummands; n++) {
-                j = t*nsummands + n;
+        for (itarget=0; itarget<ntargets; itarget++) {
+            for (isummand=0; isummand<nsummands; isummand++) {
+                j = itarget*nsummands + isummand;
 
-                delay = delays[n / nsummands_src];
+                delay = delays[isummand / nsummands_src];
                 weight = weights[j];
                 idelay_floor = (int) floor(delay/deltat);
                 idelay_ceil = (int) ceil(delay/deltat);
@@ -729,13 +731,13 @@ static store_error_t store_sum_static(
                 idx = it - idelay_floor - trace.itmin;
 
                 if (idelay_floor == idelay_ceil) {
-                    result[t] += fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * weight;
+                    result[itarget] += fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * weight;
                 } else {
-                    w1 = (idelay_ceil - delay/deltat) * weight;
-                    w2 = (delay/deltat - idelay_floor) * weight;
-
-                    result[t] += fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * w1
-                                 + fe32toh(trace.data[max(0, min(idx-1, trace.nsamples-1))]) * w2;
+                    w1 = (idelay_ceil - delay/deltat);
+                    w2 = (1.0-w1);
+                    result[itarget] += (
+                        fe32toh(trace.data[max(0, min(idx, trace.nsamples-1))]) * w1
+                        + fe32toh(trace.data[max(0, min(idx-1, trace.nsamples-1))]) * w2) * weight;
                 }
             }
         }
