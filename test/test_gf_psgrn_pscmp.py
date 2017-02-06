@@ -167,7 +167,7 @@ mantle
         norths2 = num.repeat(norths, len(easts))
         easts2 = num.tile(easts, len(norths))
 
-        engine = gf.LocalEngine(store_superdirs=['/tmp'])
+        engine = gf.LocalEngine(store_dirs=[store_dir])
 
         starget = StaticTarget(
             lat=origin.lat,
