@@ -1,4 +1,5 @@
 #!/bin/python
+# encoding=utf8
 import numpy as num
 import math
 
@@ -24,7 +25,8 @@ class OptimizationMethod(StringChoice):
 
 class Target(meta.Receiver):
     '''
-    A single channel of a computation request including post-processing params.
+    A seismogram computation request for a single component, including
+    its post-processing parmeters.
     '''
 
     quantity = meta.QuantityType.T(
@@ -49,12 +51,13 @@ class Target(meta.Receiver):
     sample_rate = Float.T(
         optional=True,
         help='sample rate to produce. '
-             'If not given the GF store\'s default sample rate is used.'
+             'If not given the GF store\'s default sample rate is used. '
              'GF store specific restrictions may apply.')
 
     interpolation = InterpolationMethod.T(
         default='nearest_neighbor',
-        help='interpolation method to use')
+        help='Interpolation method between Green\'s functions. Supported are'
+             ' ``nearest_neighbor`` and ``multilinear``')
 
     optimization = OptimizationMethod.T(
         default='enable',
@@ -170,23 +173,26 @@ class Target(meta.Receiver):
 
 class StaticTarget(meta.MultiLocation):
     '''
-    Multilocation spatial target for static offsets
+    A computation request for a spatial multi-location target of
+    static/geodetic quantities.
     '''
     quantity = meta.QuantityType.T(
         optional=True,
         default='displacement',
-        help='Measurement quantity type (e.g. "displacement", "pressure", ...)'
-             'If not given, it is guessed from the channel code.')
+        help='Measurement quantity type, for now only `displacement` is'
+             'supported.')
 
     interpolation = InterpolationMethod.T(
         default='nearest_neighbor',
-        help='interpolation method to use')
+        help='Interpolation method between Green\'s functions. Supported are'
+             ' ``nearest_neighbor`` and ``multilinear``')
 
     tsnapshot = Timestamp.T(
-        optional=False,
-        default=1,
-        help='time of the desired snapshot, '
-             'by default first snapshot is taken')
+        optional=True,
+        help='time of the desired snapshot in [s], '
+             'If not given, the first sample is taken. If the desired sample'
+             ' exceeds the length of the Green\'s function store,'
+             ' the last sample is taken.')
 
     store_id = meta.StringID.T(
         optional=True,
@@ -202,9 +208,16 @@ class StaticTarget(meta.MultiLocation):
 
     @property
     def ntargets(self):
+        ''' Number of targets held by instance. '''
         return self.ncoords
 
     def get_targets(self):
+        ''' Discretizes the multilocation target into a list of
+        :class:`Target:`
+
+        :returns: class:`Target`
+        :rtype: list
+        '''
         targets = []
         for i in xrange(self.ntargets):
             targets.append(
@@ -221,28 +234,37 @@ class StaticTarget(meta.MultiLocation):
 
 
 class SatelliteTarget(StaticTarget):
+    '''
+    A computation request for a spatial multi-location target of
+    static/geodetic quantities measured from a satellite instrument.
+    The line of sight angles are provided and projecting
+    post-processing is applied.
+    '''
     theta = Array.T(
         shape=(None, 1), dtype=num.float,
-        help='Line-of-sight incident angle for each location in `coords5`.')
+        help='Horizontal angle towards satellite\'s line of sight in radians.'
+             '\n\n        .. note::\n\n'
+             '            :math:`0` is **east** and'
+             ' :math:`\\frac{\\pi}{2}` is **north**.\n\n')
 
     phi = Array.T(
         shape=(None, 1), dtype=num.float,
-        help='Line-of-sight incident angle for each location in `coords5`.')
+        help='Theta is look vector elevation angle towards satellite from'
+             ' horizon in radians. Matrix of theta towards satellite’s'
+             ' line of sight.'
+             '\n\n        .. note::\n\n'
+             '            :math:`-\\frac{\\pi}{2}` is **down** and'
+             ' :math:`\\frac{\\pi}{2}` is **up**.\n\n')
 
     _los_factors = None
 
     def get_los_factors(self):
+        if (self.theta.size != self.phi.size != self.lats.size):
+            raise AttributeError('LOS angles inconsistent with provided'
+                                 ' coordinate shape.')
         if self._los_factors is None:
             self._los_factors = num.empty((self.theta.shape[0], 3))
             self._los_factors[:, 0] = num.sin(self.theta)
             self._los_factors[:, 1] = num.cos(self.theta) * num.cos(self.phi)
             self._los_factors[:, 2] = num.cos(self.theta) * num.sin(self.phi)
         return self._los_factors
-
-    def post_process(self, engine, source, statics):
-        los_fac = self.get_los_factors()
-        statics['displacement.los'] =\
-            (los_fac[:, 0] * -statics['displacement.d'] +
-             los_fac[:, 1] * statics['displacement.e'] +
-             los_fac[:, 2] * statics['displacement.n'])
-        return meta.StaticResult(result=statics)

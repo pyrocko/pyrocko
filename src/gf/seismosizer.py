@@ -17,7 +17,7 @@ from pyrocko import moment_tensor as mt
 from pyrocko import trace, model, parimap, util
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
-from .targets import Target, StaticTarget
+from .targets import Target, StaticTarget, SatelliteTarget
 import pyrocko.config
 
 pjoin = os.path.join
@@ -1985,7 +1985,8 @@ class Response(Object):
 
     def pyrocko_traces(self):
         '''
-        Return a list of requested :py:class:`trace.Trace` instances.
+        Return a list of requested
+        :class:`~pyrocko.trace.Trace` instances.
         '''
 
         traces = []
@@ -1998,6 +1999,10 @@ class Response(Object):
         return traces
 
     def static_results(self):
+        '''
+        Return a list of requested
+        :class:`~pyrocko.gf.meta.StaticResult` instances.
+        '''
         statics = []
         for results in self.results_list:
             for result in results:
@@ -2011,8 +2016,9 @@ class Response(Object):
         '''
         Generator function to iterate over results of request.
 
-        Yields associated :py:class:`Source`, :py:class:`Target`,
-        :py:class:`trace.Trace` instances in each iteration.
+        Yields associated :py:class:`Source`,
+        :class:`~pyrocko.gf.targets.Target`,
+        :class:`~pyrocko.trace.Trace` instances in each iteration.
         '''
 
         for isource, source in enumerate(self.request.sources):
@@ -2133,12 +2139,31 @@ class ScalarRule(Rule):
         return base_seismogram[self.c].data.copy()
 
 
+class StaticDisplacement(Rule):
+    def required_components(self, target):
+        return tuple(['displacement.%s' % c for c in list('ned')])
+
+    def apply_(self, target, base_statics):
+        if isinstance(target, SatelliteTarget):
+            los_fac = target.get_los_factors()
+            base_statics['displacement.los'] =\
+                (los_fac[:, 0] * -base_statics['displacement.d'] +
+                 los_fac[:, 1] * base_statics['displacement.e'] +
+                 los_fac[:, 2] * base_statics['displacement.n'])
+        return base_statics
+
+
 channel_rules = {
     'displacement': [VectorRule('displacement')],
     'velocity': [VectorRule('displacement', differentiate=1)],
     'pore_pressure': [ScalarRule('pore_pressure')],
     'vertical_tilt': [HorizontalVectorRule('vertical_tilt')],
-    'darcy_velocity': [VectorRule('darcy_velocity')]}
+    'darcy_velocity': [VectorRule('darcy_velocity')],
+}
+
+static_rules = {
+    'displacement': [StaticDisplacement()]
+}
 
 
 class OutOfBoundsContext(Object):
@@ -2157,7 +2182,7 @@ def process_subrequest_dynamic(work, pshared=None):
 
     components = set()
     for target in targets:
-        rule = engine.channel_rule(sources[0], target)
+        rule = engine.get_rule(sources[0], target)
         components.update(rule.required_components(target))
 
     try:
@@ -2213,7 +2238,8 @@ def process_static(work, sources, targets, engine, nthreads=0):
 
         for isource, source in zip(isources, sources):
             for itarget, target in zip(itargets, targets):
-                components = [target.quantity + '.' + s for s in 'ned']
+                components = engine.get_rule(source, target)\
+                    .required_components(target)
 
                 try:
                     base_statics, tcounters = engine.base_statics(
@@ -2391,12 +2417,19 @@ class LocalEngine(Engine):
         for store_id in store_ids:
             self._open_stores.pop(store_id)
 
-    def channel_rule(self, source, target):
+    def get_rule(self, source, target):
         store_ = self.get_store(target.store_id)
         cprovided = source.provided_components(store_.config.component_scheme)
-        quantity = target.effective_quantity()
+
+        if isinstance(target, StaticTarget):
+            quantity = target.quantity
+            available_rules = static_rules
+        elif isinstance(target, Target):
+            quantity = target.effective_quantity()
+            available_rules = channel_rules
+
         try:
-            for rule in channel_rules[quantity]:
+            for rule in available_rules[quantity]:
                 cneeded = rule.required_components(target)
                 if all(c in cprovided for c in cneeded):
                     return rule
@@ -2464,6 +2497,13 @@ class LocalEngine(Engine):
 
         store_ = self.get_store(target.store_id)
 
+        if target.tsnapshot is not None:
+            n_f = store_.config.sample_rate
+            itsnapshot = int(num.floor(target.tsnapshot * n_f))
+            # print target.tsnapshot, n_f, itsnapshot
+        else:
+            itsnapshot = 1
+
         tcounters.append(xtime())
 
         base_source = source.discretize_basesource(store_)
@@ -2473,7 +2513,7 @@ class LocalEngine(Engine):
         base_statics = store_.statics(
             base_source,
             target,
-            target.tsnapshot,
+            itsnapshot,
             components,
             target.interpolation,
             nthreads)
@@ -2485,7 +2525,7 @@ class LocalEngine(Engine):
     def _post_process_seismogram(self, base_seismogram, source, target):
         deltat = base_seismogram.values()[0].deltat
 
-        rule = self.channel_rule(source, target)
+        rule = self.get_rule(source, target)
         data = rule.apply_(target, base_seismogram)
 
         factor = source.get_factor() * target.get_factor()
@@ -2516,6 +2556,9 @@ class LocalEngine(Engine):
         return target.post_process(self, source, tr)
 
     def _post_process_statics(self, base_statics, source, starget):
+        rule = self.get_rule(source, starget)
+        rule.apply_(starget, base_statics)
+
         return starget.post_process(self, source, base_statics)
 
     def process(self, *args, **kwargs):

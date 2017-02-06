@@ -29,6 +29,7 @@ from test_gmtpy import GmtPyTestCase  # noqa
 from test_automap import AutomapTestCase  # noqa
 from test_tectonics import TectonicsTestCase  # noqa
 from test_gf_psgrn_pscmp import GFPsgrnPscmpTestCase  # noqa
+from test_gf_static import GFStaticTest  # noqa
 
 import platform
 import unittest
