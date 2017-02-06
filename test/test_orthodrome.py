@@ -70,50 +70,42 @@ class OrthodromeTestCase(unittest.TestCase):
 
     @benchmark
     def testAziBaziPython(self):
-        from pyrocko.gf.meta import Location
-        ntest = 1000
+        ntest = 10000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-
-        loc1 = Location()
-        loc2 = Location()
         for i in xrange(ntest):
-            loc1.lat, loc1.lon = lats1[i], lons1[i]
-            loc2.lat, loc2.lon = lats2[i], lons2[i]
-            loc1.azibazi_to(loc2)
-
-    @benchmark
-    def testAzimuthArrayPython(self):
-        ntest = 1000
-        locs = self.get_critical_random_locations(ntest)
-        orthodrome.azimuth_numpy(*locs)
-
-    @benchmark
-    def testAzimuthArrayC(self):
-        ntest = 1000
-        locs = self.get_critical_random_locations(ntest)
-        orthodrome_ext.azibazi_numpy(*locs)
+            orthodrome.azibazi(
+                float(lats1[i]), float(lons1[i]),
+                float(lats2[i]), float(lons2[i]))
 
     @benchmark
     def testAziBaziC(self):
-        ntest = 1000
+        ntest = 10000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
         for i in xrange(ntest):
             orthodrome_ext.azibazi(lats1[i], lons1[i], lats2[i], lons2[i])
 
+    @benchmark
+    def testAzimuthArrayPython(self):
+        ntest = 10000
+        locs = self.get_critical_random_locations(ntest)
+        orthodrome.azibazi_numpy(*locs)
+
+    @benchmark
+    def testAzimuthArrayC(self):
+        ntest = 10000
+        locs = self.get_critical_random_locations(ntest)
+        orthodrome_ext.azibazi_numpy(*locs)
+
     def testAziBaziPythonC(self):
-        from pyrocko.gf.meta import Location
         ntest = 100
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
 
-        loc1 = Location()
-        loc2 = Location()
         for i in xrange(ntest):
-            loc1.lat, loc1.lon = lats1[i], lons1[i]
-            loc2.lat, loc2.lon = lats2[i], lons2[i]
-
-            azibazi_py = loc1.azibazi_to(loc2)
+            azibazi_py = orthodrome.azibazi(
+                float(lats1[i]), float(lons1[i]), float(lats2[i]), float(lons2[i]))
             azibazi_c = orthodrome_ext.azibazi(
-                loc1.lat, loc1.lon, loc2.lat, loc2.lon)
+                lats1[i], lons1[i], lats2[i], lons2[i])
+
             num.testing.assert_almost_equal(azibazi_py, azibazi_c)
 
     @benchmark
