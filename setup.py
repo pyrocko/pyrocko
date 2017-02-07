@@ -16,6 +16,7 @@ except ImportError:
 import os
 import time
 import shutil
+import tempfile
 from os.path import join as pjoin
 
 from distutils.core import setup, Extension
@@ -299,38 +300,75 @@ class custom_build_app(build_ext):
         map(shutil.rmtree, want_delete_dir)
 
 
-def xcode_version_str():
-    from subprocess import Popen, PIPE
+def _check_for_openmp():
+    """Check  whether the default compiler supports OpenMP.
+    This routine is adapted from pynbody // yt.
+    Thanks to Nathan Goldbaum and Andrew Pontzen.
+    """
+    import distutils.sysconfig
+    import subprocess
+
+    tmpdir = tempfile.mkdtemp(prefix='pyrocko')
+    compiler = os.environ.get(
+      'CC', distutils.sysconfig.get_config_var('CC')).split()[0]
+
+    # Attempt to compile a test script.
+    # See http://openmp.org/wp/openmp-compilers/
+    tmpfile = pjoin(tmpdir, 'check_openmp.c')
+    with open(tmpfile, 'w') as f:
+        f.write('''
+#include <omp.h>
+#include <stdio.h>
+int main() {
+    #pragma omp parallel
+    printf("Hello from thread %d", omp_get_thread_num());
+}
+''')
+
     try:
-        version = Popen(['xcodebuild', '-version'], stdout=PIPE, shell=False)\
-            .communicate()[0].split()[1]
-    except IndexError:
-        version = None
-    return version
+        with open(os.devnull, 'w') as fnull:
+            exit_code = subprocess.call([compiler, '-fopenmp', tmpfile],
+                                        stdout=fnull, stderr=fnull)
+    except OSError:
+        exit_code = 1
+    finally:
+        shutil.rmtree(tmpdir)
 
-
-def support_omp():
-    import platform
-    from distutils.version import StrictVersion
-    if platform.mac_ver() == ('', ('', '', ''), ''):
+    if exit_code == 0:
+        print ('Continuing your build using OpenMP...')
         return True
-    else:
-        v_string = xcode_version_str()
-        if v_string is None:
-            return False
-        else:
-            v = StrictVersion(v_string)
-            return v < StrictVersion('4.2.0')
+
+    import multiprocessing
+    import platform
+    if multiprocessing.cpu_count() > 1:
+        print('''WARNING
+OpenMP support is not available in your default C compiler, even though
+your machine has more than one core available.
+Some routines in pyrocko are parallelized using OpenMP and these will
+only run on one core with your current configuration.
+''')
+        if platform.uname()[0] == 'Darwin':
+            print('''Since you are running on Mac OS, it's likely that the problem here
+is Apple's Clang, which does not support OpenMP at all. The easiest
+way to get around this is to download the latest version of gcc from
+here: http://hpc.sourceforge.net. After downloading, just point the
+CC environment variable to the real gcc and OpenMP support should
+get enabled automatically. Something like this -
+sudo tar -xzf /path/to/download.tar.gz /
+export CC='/usr/local/bin/gcc'
+python setup.py clean
+python setup.py build
+''')
+    print ('Continuing your build without OpenMP...')
+    return False
 
 
-if support_omp():
+if _check_for_openmp():
     omp_arg = ['-fopenmp']
     omp_lib = ['-lgomp']
-    print('OpenMP found')
 else:
     omp_arg = []
     omp_lib = []
-    print('OpenMP not found')
 
 setup(
     cmdclass={
