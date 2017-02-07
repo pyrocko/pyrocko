@@ -1,0 +1,84 @@
+\documentclass{report}
+\batchmode
+\usepackage[a4paper, landscape, margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{color}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{listings}
+\usepackage[hidelinks]{hyperref}
+
+\newcolumntype{L}[1]{>{\raggedright\let\n\\\arraybackslash\hspace{0pt}}p{#1}}
+
+\begin{document}
+\begin{center}
+    {\Huge Greens's Fucntion Report: \VAR{rpt_id}} \\[1em]
+    {\Large \today}
+\end{center}
+
+\setcounter{secnumdepth}{0}
+\tableofcontents
+
+\- for name, ph_str, arts in artefacts
+\chapter*{Artefact Report: \VAR{name}}
+    \addcontentsline{toc}{chapter}{Artefact Report: \VAR{name}}
+    The artefact report is created by finding the maximum amplitude before and after a certain tabulated phase (after filtering without demeaning) for each trace, and then reports only the maximum value per source/senors array.  The phase search string for this store was: \textbf{\VAR{ph_str}}.
+    \begin{longtable}{@{}l@{\hspace{11em}} c}
+        Trace information & Aretefact maximum-ratio \\ \\
+        \- for ttl, clr, rat in arts
+            \VAR{ttl} & \color{\VAR{clr}}{\VAR{rat}} \\
+        \- endfor
+    \end{longtable}
+\- endfor
+
+\newpage
+\pagestyle{\VAR{headings}}
+\- for ttl, src, sen, img_data in chapters
+    \chapter*{\VAR{ttl}}
+    \addcontentsline{toc}{chapter}{\VAR{ttl}}
+    %%This is the start of the chapter, so add text if wanted here to explain
+    %% the plots or error of plots.  This will be printed once per source-
+    %% sensor setup. Below is the dump of the source and sensor properties.
+    \begin{tabular}{ L{.5\textwidth} L{.5\textwidth} }
+        {\parskip=0pt \obeylines \VAR{src}} & {\parskip=0pt \obeylines \VAR{sen}}
+    \end{tabular}
+    \- for name, href, path in img_data
+        \begin{center}
+            \vspace*{-2.5cm}
+            \makebox[\textwidth]{
+                \- if href == ''
+                    \ 
+                \- else
+                    \VAR{href}
+                \- endif
+                \- if name == ''
+                    \ 
+                \- else
+                    \phantomsection
+                    \addcontentsline{toc}{section}{\VAR{name}}
+                \- endif
+                \includegraphics[width=\paperwidth]{\VAR{path}}
+            }
+        \end{center}
+    \- endfor
+\- endfor
+
+\chapter*{Appendix}
+\addcontentsline{toc}{chapter}{Appendicies:}
+\- for str_id, config, mdl_path in str_info
+    \section*{Store id: \VAR{str_id}}
+    \addcontentsline{toc}{section}{Model configuration for \VAR{str_id}}
+    \begin{lstlisting}
+\VAR{config}
+    \end{lstlisting}
+    \begin{center}
+        \vspace*{-2.5cm}
+        \makebox[\textwidth]{
+            \phantomsection
+            \addcontentsline{toc}{section}{Model configuration graphs for
+                                           \VAR{str_id}}
+            \includegraphics[width=\paperwidth]{\VAR{mdl_path}}
+        }
+    \end{center}
+\- endfor
+\end{document}
