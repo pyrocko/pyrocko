@@ -4,6 +4,7 @@ import datetime
 import calendar
 import re
 import math
+import copy
 
 import numpy as num
 
@@ -1309,4 +1310,16 @@ def load_channel_table(stream):
     return FDSNStationXML(
         source='created from table input',
         created=time.time(),
-        network_list=sorted(networks.values()))
+        network_list=sorted(networks.values(), key=lambda x: x.code))
+
+
+def primitive_merge(sxs):
+    networks = []
+    for sx in sxs:
+        networks.extend(sx.network_list)
+
+    return FDSNStationXML(
+        source='merged from different sources',
+        created=time.time(),
+        network_list=copy.deepcopy(
+            sorted(networks.values(), key=lambda x: x.code)))

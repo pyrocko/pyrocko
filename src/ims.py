@@ -2477,10 +2477,10 @@ def write_string(sections):
     return f.getvalue()
 
 
-def iload_fh(f):
+def iload_fh(f, **kwargs):
     '''Load IMS/GSE2 records from open file handle.'''
     try:
-        r = Reader(f)
+        r = Reader(f, **kwargs)
         for section in r:
             yield section
 
@@ -2488,12 +2488,12 @@ def iload_fh(f):
         raise FileLoadError(e)
 
 
-def iload_string(s):
+def iload_string(s, **kwargs):
     '''Read IMS/GSE2 sections from string.'''
 
     from cStringIO import StringIO
     f = StringIO(s)
-    return iload_fh(f)
+    return iload_fh(f, **kwargs)
 
 
 iload_filename, iload_dirname, iload_glob, iload = util.make_iload_family(

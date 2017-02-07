@@ -3108,13 +3108,13 @@ def MakePileViewerMainClass(base):
                                                 resps.append(but(
                                                     order=4,
                                                     corner=self.lowpass,
-                                                    typ='low'))
+                                                    type='low'))
 
                                             if self.highpass is not None:
                                                 resps.append(but(
                                                     order=4,
                                                     corner=self.highpass,
-                                                    typ='high'))
+                                                    type='high'))
 
                                             resp = multres(resps)
                                             self.tf_cache[key] = \

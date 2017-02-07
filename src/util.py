@@ -1525,44 +1525,44 @@ def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     import glob
     from io_common import FileLoadError
 
-    def iload_filename(filename):
+    def iload_filename(filename, **kwargs):
         try:
             with open(filename, 'r') as f:
-                for cr in iload_fh(f):
+                for cr in iload_fh(f, **kwargs):
                     yield cr
 
         except FileLoadError, e:
             e.set_context('filename', filename)
             raise
 
-    def iload_dirname(dirname):
+    def iload_dirname(dirname, **kwargs):
         for entry in os.listdir(dirname):
             fpath = op.join(dirname, entry)
             if op.isfile(fpath):
-                for cr in iload_filename(fpath):
+                for cr in iload_filename(fpath, **kwargs):
                     yield cr
 
-    def iload_glob(pattern):
+    def iload_glob(pattern, **kwargs):
 
         fns = glob.glob(pattern)
         for fn in fns:
-            for cr in iload_filename(fn):
+            for cr in iload_filename(fn, **kwargs):
                 yield cr
 
-    def iload(source):
+    def iload(source, **kwargs):
         if isinstance(source, basestring):
             if op.isdir(source):
-                return iload_dirname(source)
+                return iload_dirname(source, **kwargs)
             elif op.isfile(source):
-                return iload_filename(source)
+                return iload_filename(source, **kwargs)
             else:
-                return iload_glob(source)
+                return iload_glob(source, **kwargs)
 
         elif hasattr(source, 'read'):
-            return iload_fh(source)
+            return iload_fh(source, **kwargs)
         else:
             return itertools.chain.from_iterable(
-                iload(subsource) for subsource in source)
+                iload(subsource, **kwargs) for subsource in source)
 
     iload_filename.__doc__ = '''
         Read %s information from named file.

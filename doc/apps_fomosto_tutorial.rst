@@ -229,7 +229,7 @@ These are the initial contents of the ``config`` file::
 
 Details about the structures in the ``config`` file are given in the
 documentation of the :py:mod:`pyrocko.gf.meta` module. In this case, e.g. see
-the class :py:mod:`pyrocko.gf.meta.ConfigTypeA`.
+the class :py:class:`pyrocko.gf.meta.ConfigTypeA`.
 
 The initial contents of the QSEIS specific configuration file ``extra/qseis``::
 

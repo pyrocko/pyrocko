@@ -1,5 +1,9 @@
 language: python
 
+env:
+    global:
+        - OMP_NUM_THREADS=4
+
 matrix:
     include:
         - os: linux
@@ -14,7 +18,10 @@ matrix:
 
 addons:
     apt:
-        packages: [ python-dev, python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-matplotlib, python-yaml, python-tk, libyaml-dev, poppler-utils, ghostscript, imagemagick ]
+        packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
+            python-scipy, gfortran, libatlas-dev, libopenblas-dev,
+            python-matplotlib, python-yaml, python-tk, libyaml-dev,
+            poppler-utils, ghostscript, imagemagick, xvfb ]
 
 before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
@@ -23,13 +30,21 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink libyaml; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then xcode-select --install || true ; fi
     - pip install progressbar setuptools flake8 pyyaml coveralls jinja2
     - easy_install pyavl
-    - curl -s http://kinherd.org/fomosto-qseis-2006a.tar.gz | tar zvx
-    - cd fomosto-qseis-2006a; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - git clone https://github.com/pyrocko/fomosto-qseis
+    - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - git clone https://github.com/pyrocko/fomosto-psgrn-pscmp
+    - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/psgrn:`pwd`/src/pscmp; cd ..
+    - git clone https://github.com/pyrocko/fomosto-qssp.git
+    - cd fomosto-qssp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
 
 before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then flake8 src/ apps/ test/ ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then export DISPLAY=:99.0 ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sh -e /etc/init.d/xvfb start ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
 
 install:
     - sudo python setup.py install

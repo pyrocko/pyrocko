@@ -14,6 +14,7 @@ from test_gf import GFTestCase  # noqa
 from test_gf_sources import GFSourcesTestCase  # noqa
 from test_gf_qseis import GFQSeisTestCase  # noqa
 from test_gf_stf import GFSTFTestCase  # noqa
+from test_ahfull import AhfullTestCase  # noqa
 from test_parimap import ParimapTestCase  # noqa
 from test_response import ResponseTestCase  # noqa
 from test_datacube import DataCubeTestCase  # noqa
@@ -28,10 +29,16 @@ from test_gmtpy import GmtPyTestCase  # noqa
 from test_automap import AutomapTestCase  # noqa
 from test_tectonics import TectonicsTestCase  # noqa
 from test_fomosto_report import ReportTestCase  # noqa
+from test_gf_psgrn_pscmp import GFPsgrnPscmpTestCase  # noqa
 
+import platform
 import unittest
 import optparse
 import sys
+
+if platform.mac_ver() == ('', ('', '', ''), ''):
+    from test_gui import GUITest  # noqa
+
 
 if __name__ == '__main__':
     pyrocko.util.setup_logging('test_all', 'warning')
