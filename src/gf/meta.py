@@ -714,8 +714,8 @@ class Location(Object):
                 rlat, rlon = other.effective_latlon
             except AttributeError:
                 rlat, rlon = other.lat, other.lon
-            azi = orthodrome.azimuth_numpy(slat, slon, rlat, rlon)
-            bazi = orthodrome.azimuth_numpy(rlat, rlon, slat, slon)
+
+            azi, bazi = orthodrome.azibazi_numpy(slat, slon, rlat, rlon)
 
         return float(azi), float(bazi)
 

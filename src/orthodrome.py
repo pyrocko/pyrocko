@@ -62,7 +62,16 @@ def wrap(x, mi, ma):
     return x - num.floor((x-mi)/(ma-mi)) * (ma-mi)
 
 
-def cosdelta(a, b):
+def _latlon_pair(args):
+    if len(args) == 2:
+        a, b = args
+        return a.lat, a.lon, b.lat, b.lon
+
+    elif len(args) == 4:
+        return args
+
+
+def cosdelta(*args):
     '''Cosine of the angular distance between two points ``a`` and ``b`` on
     a sphere.
 
@@ -91,11 +100,14 @@ def cosdelta(a, b):
     :return: cosdelta
     :rtype: float
     '''
+
+    alat, alon, blat, blon = _latlon_pair(args)
+
     return min(
         1.0,
-        math.sin(a.lat*d2r) * math.sin(b.lat*d2r) +
-        math.cos(a.lat*d2r) * math.cos(b.lat*d2r) *
-        math.cos(d2r*(b.lon-a.lon)))
+        math.sin(alat*d2r) * math.sin(blat*d2r) +
+        math.cos(alat*d2r) * math.cos(blat*d2r) *
+        math.cos(d2r*(blon-alon)))
 
 
 def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
@@ -130,7 +142,7 @@ def cosdelta_numpy(a_lats, a_lons, b_lats, b_lons):
         num.cos(d2r*(b_lons-a_lons)))
 
 
-def azimuth(a, b):
+def azimuth(*args):
     '''Azimuth calculation
 
     This function (find implementation below) returns azimuth ...
@@ -157,10 +169,14 @@ def azimuth(a, b):
 
     :return: Azimuth in degree
     '''
+
+    alat, alon, blat, blon = _latlon_pair(args)
+
     return r2d*math.atan2(
-        math.cos(a.lat*d2r) * math.cos(b.lat*d2r) *
-        math.sin(d2r*(b.lon-a.lon)),
-        math.sin(d2r*b.lat) - math.sin(d2r*a.lat) * cosdelta(a, b))
+        math.cos(alat*d2r) * math.cos(blat*d2r) *
+        math.sin(d2r*(blon-alon)),
+        math.sin(d2r*blat) - math.sin(d2r*alat) * cosdelta(
+            alat, alon, blat, blon))
 
 
 def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
@@ -195,6 +211,31 @@ def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
         num.sin(d2r*b_lats) - num.sin(d2r*a_lats) * _cosdelta)
 
 
+def azibazi(*args):
+    alat, alon, blat, blon = _latlon_pair(args)
+    if alat == blat and alon == blon:
+        return 0., 180.
+
+    cd = cosdelta(alat, alon, blat, blon)
+    azi = r2d*math.atan2(
+        math.cos(alat*d2r) * math.cos(blat*d2r) *
+        math.sin(d2r*(blon-alon)),
+        math.sin(d2r*blat) - math.sin(d2r*alat) * cd)
+    bazi = r2d*math.atan2(
+        math.cos(blat*d2r) * math.cos(alat*d2r) *
+        math.sin(d2r*(alon-blon)),
+        math.sin(d2r*alat) - math.sin(d2r*blat) * cd)
+
+    return azi, bazi
+
+
+def azibazi_numpy(a_lats, a_lons, b_lats, b_lons):
+    _cosdelta = cosdelta_numpy(a_lats, a_lons, b_lats, b_lons)
+    azis = azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta)
+    bazis = azimuth_numpy(b_lats, b_lons, a_lats, a_lons, _cosdelta)
+    return azis, bazis
+
+
 def azidist_numpy(*args):
     '''Calculation of the azimuth (*track angle*) and the distance from
     locations A towards B on a sphere.
@@ -219,7 +260,7 @@ def azidist_numpy(*args):
     return _azimuths, r2d*num.arccos(_cosdelta)
 
 
-def distance_accurate50m(a, b):
+def distance_accurate50m(*args):
     ''' Accurate distance calculation based on a spheroid of rotation.
 
     Function returns distance in meter between points A and B, coordinates of
@@ -282,9 +323,11 @@ def distance_accurate50m(a, b):
     :rtype: float
     '''
 
-    f = (a.lat + b.lat)*d2r / 2.
-    g = (a.lat - b.lat)*d2r / 2.
-    l = (a.lon - b.lon)*d2r / 2.
+    alat, alon, blat, blon = _latlon_pair(args)
+
+    f = (alat + blat)*d2r / 2.
+    g = (alat - blat)*d2r / 2.
+    l = (alon - blon)*d2r / 2.
 
     s = math.sin(g)**2 * math.cos(l)**2 + math.cos(f)**2 * math.sin(l)**2
     c = math.cos(g)**2 * math.cos(l)**2 + math.sin(f)**2 * math.sin(l)**2
@@ -631,7 +674,7 @@ def ne_to_latlon_alternative_method(lat0, lon0, north_m, east_m):
     return lat, lon
 
 
-def latlon_to_ne(refloc, loc):
+def latlon_to_ne(*args):
     '''Relative cartesian coordinates with respect to a reference location.
 
     For two locations, a reference location A and another location B, given in
@@ -659,8 +702,9 @@ def latlon_to_ne(refloc, loc):
     :rtype: tuple, float
 
     '''
-    azi = azimuth(refloc, loc)
-    dist = distance_accurate50m(refloc, loc)
+
+    azi = azimuth(*args)
+    dist = distance_accurate50m(*args)
     n, e = math.cos(azi*d2r)*dist, math.sin(azi*d2r)*dist
     return n, e
 
