@@ -327,7 +327,9 @@ int main() {
 
     try:
         with open(os.devnull, 'w') as fnull:
-            exit_code = subprocess.call([compiler, '-fopenmp', tmpfile],
+            exit_code = subprocess.call([compiler, '-fopenmp', '-o%s'
+                                         % pjoin(tmpdir, 'check_openmp'),
+                                        tmpfile],
                                         stdout=fnull, stderr=fnull)
     except OSError:
         exit_code = 1
