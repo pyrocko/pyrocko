@@ -952,6 +952,11 @@ class Pile(TracesGroup):
             logger.warn('File already in pile: %s' % file.abspath)
             return
 
+        if file.deltatmin is None:
+            logger.warn('Sampling rate of all traces are zero in file: %s' %
+                        file.abspath)
+            return
+
         subpile = self.dispatch(file)
         subpile.add_file(file)
         if file.abspath is not None:
