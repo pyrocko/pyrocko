@@ -138,8 +138,9 @@ class AutomapTestCase(unittest.TestCase):
             show_plates=True)
 
         m.draw_cities()
-
-        m.save('test.pdf')
+        fname = 'new_zealand.pdf'
+        fpath = self.fpath(fname)
+        m.save(fpath)
 
 
 if __name__ == "__main__":
