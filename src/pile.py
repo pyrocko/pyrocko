@@ -953,7 +953,8 @@ class Pile(TracesGroup):
             return
 
         if file.deltatmin is None:
-            logger.warn('Sampling rate of all traces are zero in file: %s' % file.abspath)
+            logger.warn('Sampling rate of all traces are zero in file: %s' %
+                        file.abspath)
             return
 
         subpile = self.dispatch(file)
