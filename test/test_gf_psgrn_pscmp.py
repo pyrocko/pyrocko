@@ -153,7 +153,6 @@ mantle
             north_shifts=N.flatten(),
             east_shifts=E.flatten(),
             interpolation='nearest_neighbor')
-
         engine = gf.LocalEngine(store_dirs=[store_dir])
 
         r = engine.process(source, starget)

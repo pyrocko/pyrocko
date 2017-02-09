@@ -172,6 +172,7 @@ subpacknames = [
     'pyrocko.fomosto',
     'pyrocko.fdsn',
     'pyrocko.topo',
+    'pyrocko.fomosto_report',
 ]
 
 
@@ -434,5 +435,6 @@ setup(
 
     package_data={
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
-                   'data/colortables/*.cpt', 'data/tectonics/*.txt']},
+                   'data/colortables/*.cpt', 'data/tectonics/*.txt',
+                   'data/fomosto_report/gfreport.tex']},
 )

@@ -8,6 +8,7 @@ import copy
 from optparse import OptionParser
 
 from pyrocko import util, trace, gf, cake, io, gui_util
+from pyrocko.fomosto_report import report_call
 
 pjoin = os.path.join
 
@@ -37,6 +38,7 @@ subcommand_descriptions = {
     'upgrade':       'upgrade store format to latest version',
     'addref':        'import citation references to GF store config',
     'qc':            'quality check',
+    'report':        "report for Green's Function databases",
 }
 
 subcommand_usages = {
@@ -59,7 +61,8 @@ subcommand_usages = {
     'modelview':     'modelview <selection>',
     'upgrade':       'upgrade [store-dir] ...',
     'addref':        'addref [store-dir] ... <filename> ...',
-    'qc':            'qc [store-dir]'
+    'qc':            'qc [store-dir]',
+    'report':        'report <subcomamnd> <arguments>... [options]'
 }
 
 subcommands = subcommand_descriptions.keys()
@@ -89,6 +92,7 @@ Subcommands:
     upgrade       %(upgrade)s
     addref        %(addref)s
     qc            %(qc)s
+    report        %(report)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -1113,6 +1117,9 @@ def command_qc(args):
 
     except gf.StoreError, e:
         die(e)
+
+def command_report(args):
+    report_call.run_program(args)
 
 
 if __name__ == '__main__':
