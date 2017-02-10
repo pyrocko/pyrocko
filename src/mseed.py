@@ -40,7 +40,7 @@ def iload(filename, load_data=True):
             yield tr
 
     except (OSError, mseed_ext.MSeedError), e:
-        raise FileLoadError(str(e))
+        raise FileLoadError(str(e)+' (file: %s)' % filename)
 
     if have_zero_rate_traces:
         logger.warn(
