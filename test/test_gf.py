@@ -1020,49 +1020,52 @@ class GFTestCase(unittest.TestCase):
         components = gf.component_scheme_to_description[
             component_scheme].provided_components
 
-        trs1 = []
-        for component, gtr in store.seismogram(
-                dsource, receiver, components).iteritems():
+        for seismogram in (store.seismogram, store.seismogram_old):
+            for interpolation in ('nearest_neighbor', 'multilinear'):
+                trs1 = []
+                for component, gtr in seismogram(
+                        dsource, receiver, components,
+                        interpolation=interpolation).iteritems():
 
-            tr = gtr.to_trace('', 'STA', '', component)
-            trs1.append(tr)
+                    tr = gtr.to_trace('', 'STA', '', component)
+                    trs1.append(tr)
 
-        trs2 = make_traces_homogeneous(
-            dsource, receiver,
-            store.config.earthmodel_1d.require_homogeneous(),
-            store.config.deltat, '', 'STA', 'a')
+                trs2 = make_traces_homogeneous(
+                    dsource, receiver,
+                    store.config.earthmodel_1d.require_homogeneous(),
+                    store.config.deltat, '', 'STA', 'a')
 
-        tmin = max(tr.tmin for tr in trs1+trs2)
-        tmax = min(tr.tmax for tr in trs1+trs2)
-        for tr in trs1+trs2:
-            tr.chop(tmin, tmax)
+                tmin = max(tr.tmin for tr in trs1+trs2)
+                tmax = min(tr.tmax for tr in trs1+trs2)
+                for tr in trs1+trs2:
+                    tr.chop(tmin, tmax)
 
-        assert tr.data_len() > 2
+                assert tr.data_len() > 2
 
-        trs1.sort(key=lambda tr: tr.channel)
-        trs2.sort(key=lambda tr: tr.channel)
+                trs1.sort(key=lambda tr: tr.channel)
+                trs2.sort(key=lambda tr: tr.channel)
 
-        denom = 0.0
-        for t1, t2 in zip(trs1, trs2):
-            assert t1.channel == t2.channel
-            denom += num.sum(t1.ydata**2) + num.sum(t2.ydata**2)
+                denom = 0.0
+                for t1, t2 in zip(trs1, trs2):
+                    assert t1.channel == t2.channel
+                    denom += num.sum(t1.ydata**2) + num.sum(t2.ydata**2)
 
-        ds = []
-        for t1, t2 in zip(trs1, trs2):
-            ds.append(2.0 * num.sum((t1.ydata - t2.ydata)**2) / denom)
+                ds = []
+                for t1, t2 in zip(trs1, trs2):
+                    ds.append(2.0 * num.sum((t1.ydata - t2.ydata)**2) / denom)
 
-        ds = num.array(ds)
+                ds = num.array(ds)
 
-        if component_scheme == 'elastic8':
-            limit = 1e-2
-        else:
-            limit = 1e-6
+                if component_scheme == 'elastic8':
+                    limit = 1e-2
+                else:
+                    limit = 1e-6
 
-        if not num.all(ds < limit):
-            print ds
-            trace.snuffle(trs1+trs2)
+                if not num.all(ds < limit):
+                    print ds
+                    trace.snuffle(trs1+trs2)
 
-        assert num.all(ds < limit)
+                assert num.all(ds < limit)
 
 
 for config_type_class in gf.config_type_classes:
