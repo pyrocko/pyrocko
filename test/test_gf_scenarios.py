@@ -5,7 +5,7 @@ import time
 import math
 import multiprocessing
 import os.path as op
-from pyrocko import gf, util, model, trace
+from pyrocko import gf, util, model
 from pyrocko import moment_tensor as pmt
 from pyrocko import orthodrome as od
 
@@ -220,7 +220,8 @@ class GFScenariosTestCase(unittest.TestCase):
                     tr.set_codes(channel=transchan[tr.channel])
                     trs.append(tr)
 
-            trs2 = engine.process(base_source, targets).pyrocko_traces()
+            # trs2 = engine.process(base_source, targets).pyrocko_traces()
+            engine.process(base_source, targets).pyrocko_traces()
 
             # trace.snuffle(trs + trs2)
 

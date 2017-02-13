@@ -162,21 +162,25 @@ class ComponentScheme(StringChoice):
     ================= =========================================================
     \                 Description
     ================= =========================================================
-    ``elastic10``     Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores, MT
+    ``elastic10``     Elastodynamic for
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeA` and
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores, MT
                       sources only
     ``elastic8``      Elastodynamic for far-field only
                       :py:class:`~pyrocko.gf.meta.ConfigTypeA` and
                       :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores,
                       MT sources only
-    ``elastic2``      Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
-                      and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores,
-                      purely isotropic sources only
-    ``elastic5``      Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
+    ``elastic2``      Elastodynamic for
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeA` and
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores, purely
+                      isotropic sources only
+    ``elastic5``      Elastodynamic for
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeA`
                       and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores, SF
                       sources only
-    ``elastic18``     Elastodynamic for :py:class:`~pyrocko.gf.meta.ConfigTypeC`
-                      stores, MT sources only
+    ``elastic18``     Elastodynamic for
+                      :py:class:`~pyrocko.gf.meta.ConfigTypeC` stores, MT
+                      sources only
     ``poroelastic10`` Poroelastic for :py:class:`~pyrocko.gf.meta.ConfigTypeA`
                       and :py:class:`~pyrocko.gf.meta.ConfigTypeB` stores
     ================= =========================================================
