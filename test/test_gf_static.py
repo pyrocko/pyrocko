@@ -34,18 +34,15 @@ class GFStaticTest(unittest.TestCase):
             shutil.rmtree(d)
 
     def get_qseis_store_dir(self):
-        # return '/tmp/gfstoreiWM9Su'
         if self.qseis_store_dir is None:
             self.qseis_store_dir = self._create_qseis_store()
 
         return self.qseis_store_dir
 
     def get_pscmp_store_dir(self):
-        return '/tmp/gfstoregvXpKr'
         if self.pscmp_store_dir is None:
             self.pscmp_store_dir = self._create_psgrn_pscmp_store()
 
-        print self.pscmp_store_dir
         return self.pscmp_store_dir
 
     def setUp(self):
@@ -77,7 +74,7 @@ mantle
  660. 10.79 5.965 4.229 1349. 549.6'''.lstrip()))
 
         store_dir = mkdtemp(prefix='gfstore')
-        # self.tempdirs.append(store_dir)
+        self.tempdirs.append(store_dir)
         store_id = 'psgrn_pscmp_test'
         version = '2008a'
 
@@ -131,7 +128,7 @@ mantle
  660. 10.2 5.611 3.918 428.5 172.9
  660. 10.79 5.965 4.229 1349. 549.6'''.lstrip()))
         store_dir = mkdtemp(prefix='gfstore')
-        # self.tempdirs.append(store_dir)
+        self.tempdirs.append(store_dir)
 
         qsconf = qseis.QSeisConfig()
         qsconf.qseis_version = '2006a'
@@ -178,7 +175,6 @@ mantle
         store.close()
 
         qseis.build(store_dir, nworkers=1)
-        print store_dir
         return store_dir
 
     def test_process_static(self):
@@ -228,7 +224,7 @@ mantle
             nn, ml = process_target(nprocs=np)
 
         # self.plot_static_los_result(ml)
-        print benchmark
+        # print benchmark
 
     @staticmethod
     def plot_static_los_result(result):
@@ -323,7 +319,7 @@ mantle
                 pos = 6
                 t, s = sum_target(store.cstore, irecords, delays_t, delays_s,
                                   weights, pos, nthreads)
-                print benchmark.__str__(header=False)
+                # print benchmark.__str__(header=False)
                 num.testing.assert_equal(t, s)
                 benchmark.clear()
 

@@ -11,6 +11,11 @@ d2m = earthradius_equator*math.pi/180.
 m2d = 1./d2m
 
 
+def float_array_broadcast(*args):
+    return num.broadcast_arrays(*[
+        num.asarray(x, dtype=num.float) for x in args])
+
+
 class Loc:
     '''Simple location representation
 
@@ -211,10 +216,16 @@ def azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta=None):
         num.sin(d2r*b_lats) - num.sin(d2r*a_lats) * _cosdelta)
 
 
-def azibazi(*args):
+def azibazi(*args, **kwargs):
     alat, alon, blat, blon = _latlon_pair(args)
     if alat == blat and alon == blon:
         return 0., 180.
+
+    implementation = kwargs.get('implementation', 'c')
+    assert implementation in ('c', 'python')
+    if implementation == 'c':
+        from pyrocko import orthodrome_ext
+        return orthodrome_ext.azibazi(alat, alon, blat, blon)
 
     cd = cosdelta(alat, alon, blat, blon)
     azi = r2d*math.atan2(
@@ -229,7 +240,16 @@ def azibazi(*args):
     return azi, bazi
 
 
-def azibazi_numpy(a_lats, a_lons, b_lats, b_lons):
+def azibazi_numpy(a_lats, a_lons, b_lats, b_lons, implementation='c'):
+
+    a_lats, a_lons, b_lats, b_lons = float_array_broadcast(
+        a_lats, a_lons, b_lats, b_lons)
+
+    assert implementation in ('c', 'python')
+    if implementation == 'c':
+        from pyrocko import orthodrome_ext
+        return orthodrome_ext.azibazi_numpy(a_lats, a_lons, b_lats, b_lons)
+
     _cosdelta = cosdelta_numpy(a_lats, a_lons, b_lats, b_lons)
     azis = azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta)
     bazis = azimuth_numpy(b_lats, b_lons, a_lats, a_lons, _cosdelta)
@@ -260,7 +280,7 @@ def azidist_numpy(*args):
     return _azimuths, r2d*num.arccos(_cosdelta)
 
 
-def distance_accurate50m(*args):
+def distance_accurate50m(*args, **kwargs):
     ''' Accurate distance calculation based on a spheroid of rotation.
 
     Function returns distance in meter between points A and B, coordinates of
@@ -325,6 +345,12 @@ def distance_accurate50m(*args):
 
     alat, alon, blat, blon = _latlon_pair(args)
 
+    implementation = kwargs.get('implementation', 'c')
+    assert implementation in ('c', 'python')
+    if implementation == 'c':
+        from pyrocko import orthodrome_ext
+        return orthodrome_ext.distance_accurate50m(alat, alon, blat, blon)
+
     f = (alat + blat)*d2r / 2.
     g = (alat - blat)*d2r / 2.
     l = (alon - blon)*d2r / 2.
@@ -347,7 +373,9 @@ def distance_accurate50m(*args):
                 earth_oblateness * h2 * math.cos(f)**2 * math.sin(g)**2)
 
 
-def distance_accurate50m_numpy(a_lats, a_lons, b_lats, b_lons):
+def distance_accurate50m_numpy(
+        a_lats, a_lons, b_lats, b_lons, implementation='c'):
+
     ''' Accurate distance calculation based on a spheroid of rotation.
 
     Function returns distance in meter between points ``a`` and ``b``,
@@ -414,6 +442,15 @@ def distance_accurate50m_numpy(a_lats, a_lons, b_lats, b_lons):
     :return: Distances in degrees
     :rtype: :py:class:`numpy.ndarray`, ``(N)``
     '''
+
+    a_lats, a_lons, b_lats, b_lons = float_array_broadcast(
+        a_lats, a_lons, b_lats, b_lons)
+
+    assert implementation in ('c', 'python')
+    if implementation == 'c':
+        from pyrocko import orthodrome_ext
+        return orthodrome_ext.distance_accurate50m_numpy(
+            a_lats, a_lons, b_lats, b_lons)
 
     eq = num.logical_and(a_lats == b_lats, a_lons == b_lons)
     ii_neq = num.where(num.logical_not(eq))[0]
