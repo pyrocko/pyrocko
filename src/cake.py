@@ -2819,6 +2819,20 @@ class Ray(object):
             self.path.__str__(p=self.p))
 
 
+def anything_to_crust2_profile(crust2_profile):
+    from pyrocko import crust2x2
+    if isinstance(crust2_profile, tuple):
+        lat, lon = [float(x) for x in crust2_profile]
+        return crust2x2.get_profile(lat, lon)
+    elif isinstance(crust2_profile, basestring):
+        return crust2x2.get_profile(crust2_profile)
+    elif isinstance(crust2_profile, crust2x2.Crust2Profile):
+        return crust2_profile
+    else:
+        assert False, 'crust2_profile must be (lat, lon) a profile ' \
+            'key or a crust2x2 Profile object)'
+
+
 class DiscontinuityNotFound(Exception):
     def __init__(self, depth_or_name):
         Exception.__init__(self)
@@ -3592,19 +3606,8 @@ class LayeredModel(object):
         return mod_extracted
 
     def replaced_crust(self, crust2_profile=None, crustmod=None):
-        from pyrocko import crust2x2
         if crust2_profile is not None:
-            if isinstance(crust2_profile, tuple):
-                lat, lon = [float(x) for x in crust2_profile]
-                profile = crust2x2.get_profile(lat, lon)
-            elif isinstance(crust2_profile, basestring):
-                profile = crust2x2.get_profile(crust2_profile)
-            elif isinstance(crust2_profile, crust2x2.Crust2Profile):
-                profile = crust2_profile
-            else:
-                assert False, 'crust2_profile must be (lat, lon) a profile ' \
-                    'key or a crust2x2 Profile object)'
-
+            profile = anything_to_crust2_profile(crust2_profile)
             crustmod = LayeredModel.from_scanlines(
                 from_crust2x2_profile(profile))
 
@@ -3822,7 +3825,8 @@ def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
     :param format: format
     :param crust2_profile: ``(lat, lon)`` or
         :py:class:`pyrocko.crust2x2.Crust2Profile` object, merge model with
-        crustal profile
+        crustal profile. If ``fn`` is forced to be ``None`` only the converted
+        CRUST2.0 profile is returned.
     :returns: object of type :py:class:`LayeredModel`
 
     The following formats are currently supported:
@@ -3841,20 +3845,27 @@ def load_model(fn='ak135-f-continental.m', format='nd', crust2_profile=None):
     ``'icb'`` (inner core boundary).
     '''
 
-    if format == 'nd':
-        if not os.path.exists(fn) and fn in builtin_models():
-            fn = builtin_model_filename(fn)
-        reader = read_nd_model(fn)
-    elif format == 'hyposat':
-        reader = read_hyposat_model(fn)
+    if fn is not None:
+        if format == 'nd':
+            if not os.path.exists(fn) and fn in builtin_models():
+                fn = builtin_model_filename(fn)
+            reader = read_nd_model(fn)
+        elif format == 'hyposat':
+            reader = read_hyposat_model(fn)
+        else:
+            assert False, 'unsupported model format'
+
+        mod = LayeredModel.from_scanlines(reader)
+        if crust2_profile is not None:
+            return mod.replaced_crust(crust2_profile)
+
+        return mod
+
     else:
-        assert False, 'unsupported model format'
-
-    mod = LayeredModel.from_scanlines(reader)
-    if crust2_profile is not None:
-        return mod.replaced_crust(crust2_profile)
-
-    return mod
+        assert crust2_profile is not None
+        profile = anything_to_crust2_profile(crust2_profile)
+        return LayeredModel.from_scanlines(
+            from_crust2x2_profile(profile))
 
 
 def castagna_vs_to_vp(vs):
