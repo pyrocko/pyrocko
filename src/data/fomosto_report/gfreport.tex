@@ -65,20 +65,22 @@
 
 \chapter*{Appendix}
 \addcontentsline{toc}{chapter}{Appendicies:}
-\- for str_id, config, mdl_path in str_info
-    \section*{Store id: \VAR{str_id}}
+\- for str_id, config, mdl_path, img_ttl in str_info
+    \section*{Model configuration: \VAR{str_id}}
     \addcontentsline{toc}{section}{Model configuration for \VAR{str_id}}
     \begin{lstlisting}
 \VAR{config}
     \end{lstlisting}
-    \begin{center}
-        \vspace*{-2.5cm}
-        \makebox[\textwidth]{
-            \phantomsection
-            \addcontentsline{toc}{section}{Model configuration graphs for
-                                           \VAR{str_id}}
-            \includegraphics[width=\paperwidth]{\VAR{mdl_path}}
-        }
-    \end{center}
+    \- if mdl_path != ''
+        \begin{center}
+            \vspace*{-2.5cm}
+            \makebox[\textwidth]{
+                \phantomsection
+                \addcontentsline{toc}{section}{Model configuration plots for
+                                               \VAR{img_ttl}}
+                \includegraphics[width=\paperwidth]{\VAR{mdl_path}}
+            }
+        \end{center}
+    \- endif
 \- endfor
 \end{document}

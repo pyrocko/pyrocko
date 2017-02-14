@@ -422,5 +422,5 @@ setup(
     package_data={
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
                    'data/colortables/*.cpt', 'data/tectonics/*.txt',
-                   'data/fomosto_report/gfreport.tex']},
+                   'data/fomosto_report/gfreport.*']},
 )
