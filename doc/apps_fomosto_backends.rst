@@ -81,24 +81,24 @@ The ``psgrn_pscmp`` backend
 
 Code to calculate synthetic stress/strain/tilt/gravitational fields on a
 layered viscoelastic halfspace. It has been written by Rongjiang Wang
- [Wang2003]_, [Wang2005]_, [Wang2006]_.
- It uses ...to be completed ...
+[Wang2003]_, [Wang2005]_, [Wang2006]_. It uses the orthonormal propagator
+method for numerical stability.
 
 Use this code for calculating synthetic static and/or viscoelastic displacement
- fields of tectonic events, magmatic intrusions or fluid migrations. Especially
-useful, if synthetics have to be calculated for many points like for InSAR
- or GPS.
+fields of tectonic events, magmatic intrusions or fluid migrations. Especially
+useful, if synthetics have to be calculated for many points like for InSAR or
+GPS.
 
 The stresses, tilts and geoidal changes can still be computed but are (not yet)
- supported by a fomosto Greens Function store and the respective stacking
- functions.
+supported by a Fomosto Green's function store and the respective stacking
+functions.
 
 The current version of PSGRN/PSCMP is ``2008a`` (at the time of writing,
- 2017-01-25),
-and can be downloaded from https://github.com/pyrocko/fomosto-psgrn-pscmp .
+2017-02-14), and can be downloaded from
+https://github.com/pyrocko/fomosto-psgrn-pscmp .
 
-After downloading and installing, to initialize a Green's function store
-to be built with PSGRN/PSCMP, run::
+After downloading and installing, to initialize a Green's function store to be
+built with PSGRN/PSCMP, run::
 
     $ fomosto init psgrn_pscmp.2008a my_psgrn_pscmp_gfs
 
