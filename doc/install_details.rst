@@ -5,7 +5,7 @@ Pyrocko can be installed on every operating system where its prerequisites are
 available. This document describes how to install Pyrocko on Unix-like
 operating systems, like Linux and Mac OS X.
 
-Concrete listings of the commands needed to install install Pyrocko are given
+Concrete listings of the commands needed to install Pyrocko are given
 in section
 
 * :doc:`install_quick`

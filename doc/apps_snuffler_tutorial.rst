@@ -102,7 +102,7 @@ Of course, you can also restrict it to use only specific files::
     When using shell globbing like this, you may bump into the maximum command
     line length limit. This is because the shell expands the :file:`*` argument
     into lots of filenames and most shells have a limit on how long a command
-    line can be. If that happens, you may the :option:`snuffler --pattern`
+    line can be. If that happens, you may use the :option:`snuffler --pattern`
     command line option to avoid that problem::
     
         snuffler --pattern='.*LHZ.*' testdata

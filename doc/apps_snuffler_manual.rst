@@ -9,7 +9,7 @@ Snuffler is a seismogram browser and workbench.
 * display real-time data streams
 * snappy interface for zooming, panning, scrolling, filtering, rotating and scaling
 * changes to controls give instantaneous visual feedback
-* transparent handling of traces splitted into many files
+* transparent handling of traces split into many files
 * integrated manual picker
 * extendable with user plugins (snufflings)
 * gap-aware continuous waveform processing framework
