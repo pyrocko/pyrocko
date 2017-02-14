@@ -204,6 +204,12 @@ mantle
             phi=phi,
             theta=theta)
 
+        static_target = gf.StaticTarget(
+            north_shifts=(random.rand(ntargets)-.5) * 25. * km,
+            east_shifts=(random.rand(ntargets)-.5) * 25. * km,
+            tsnapshot=20,
+            interpolation=interpolation)
+
         engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])
 
         def process_target(nprocs):
@@ -220,8 +226,13 @@ mantle
 
             return process_nearest_neighbor(), process_multilinear()
 
+        def process_multiple_targets():
+            return engine.process(source, [sattarget, static_target])
+
         for np in [1, 2, 4]:
             nn, ml = process_target(nprocs=np)
+
+        process_multiple_targets()
 
         # self.plot_static_los_result(ml)
         # print benchmark

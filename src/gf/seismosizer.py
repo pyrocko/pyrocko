@@ -2229,12 +2229,12 @@ def process_subrequest_dynamic(work, pshared=None):
     return results, tcounters
 
 
-def process_static(work, sources, targets, engine, nthreads=0):
+def process_static(work, psources, ptargets, engine, nthreads=0):
     for w in work:
         _, _, isources, itargets = w
 
-        sources = [sources[isource] for isource in isources]
-        targets = [targets[itarget] for itarget in itargets]
+        sources = [psources[isource] for isource in isources]
+        targets = [ptargets[itarget] for itarget in itargets]
 
         for isource, source in zip(isources, sources):
             for itarget, target in zip(itargets, targets):
