@@ -670,11 +670,13 @@ class GreensFunctionTest(Object):
                 if trcname in tdict1 and trcname in tdict2:
                     hstr = Template(href).substitute(
                         trc_id=tid, str_id=gft1.store_id, type='d')
-                    img_data.extend(
-                        [(gft1.__getFigureTitle(x), hstr,
-                          gft1.__saveTempFigure(x))
-                         for x in cls.__createComparisonTraceFigures(
-                             gft1, gft2, tid, trcname, together)])
+                    figs = cls.__createComparisonTraceFigures(
+                        gft1, gft2, tid, trcname, together)
+                    fig = figs[0]
+                    img_data.extend([(gft1.__getFigureTitle(fig), hstr,
+                                      gft1.__saveTempFigure(fig))])
+                    img_data.extend([('', '', gft1.__saveTempFigure(x))
+                                     for x in figs[1:]])
 
                 if tstr in tdict1 and tstr in tdict2:
                     fig = gft1.__createComparisonMaxAmpFigure(
@@ -697,11 +699,13 @@ class GreensFunctionTest(Object):
 
                     hstr = Template(href).substitute(
                         trc_id=tid, str_id=gft1.store_id, type='v')
-                    img_data.extend(
-                        [(gft1.__getFigureTitle(x), hstr,
-                          gft1.__saveTempFigure(x))
-                         for x in cls.__createComparisonTraceFigures(
-                             gft1, gft2, tid, trcname, together)])
+                    figs = cls.__createComparisonTraceFigures(
+                        gft1, gft2, tid, trcname, together)
+                    fig = figs[0]
+                    img_data.extend([(gft1.__getFigureTitle(fig), hstr,
+                                      gft1.__saveTempFigure(fig))])
+                    img_data.extend([('', '', gft1.__saveTempFigure(x))
+                                     for x in figs[1:]])
 
                     if tstr in tdict1 and tstr in tdict2:
                         fig = gft1.__createComparisonMaxAmpFigure(
@@ -1023,9 +1027,10 @@ class GreensFunctionTest(Object):
             ax = axs[i]
             if opt in ['vp', 'vs', 'rho']:
                 profile /= 1e3
-            ax.plot(profile, -z)
+            ax.plot(profile, z)
             ax.set_xlabel(opt)
             ax.xaxis.set_label_coords(0.5, -0.13)
+            ax.invert_yaxis()
             pos = ax.get_position()
             if i == 0 or i == 4:
                 ax.set_ylabel('Depth [km]')

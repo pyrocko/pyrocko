@@ -256,16 +256,15 @@ def command_slow(command, args):
     def setup(parser):
         add_source_options(parser)
         add_sensor_options(parser)
-        parser.add_option('--lowpass_rel',
-                          dest='rel_lowpass_frequency',
-                          type=float,
-                          help='''The percentage of the store's sampling'''
-                               ' rate to be used as the lowpass filter.',
-                          default=0.25)
+        add_filter_options(parser)
+        parser.remove_option('--highpass')
+        parser.remove_option('--highpass_rel')
+        parser.set_defaults(rel_lowpass_frequency=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
+    if opts['lowpass_frequency'] is not None:
+        opts['rel_lowpass_frequency'] = None
     st_dir = verify_arguements('slow', 1, args)
-    opts['rel_highpass_frequency'] = None
     out_filename = opts.pop('output')
     gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
@@ -276,16 +275,15 @@ def command_shigh(command, args):
     def setup(parser):
         add_source_options(parser)
         add_sensor_options(parser)
-        parser.add_option('--highpass_rel',
-                          dest='rel_highpass_frequency',
-                          type=float,
-                          help='''The percentage of the store's sampling'''
-                               ' rate to be used as the highpass filter.',
-                          default=0.25)
+        add_filter_options(parser)
+        parser.remove_option('--lowpass')
+        parser.remove_option('--lowpass_rel')
+        parser.set_defaults(rel_highpass_frequency=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
+    if opts['highpass_frequency'] is not None:
+        opts['rel_highpass_frequency'] = None
     st_dir = verify_arguements('shigh', 1, args)
-    opts['rel_lowpass_frequency'] = None
     out_filename = opts.pop('output')
     gft = gftest.runStandardCheck(st_dir, **opts)
     if out_filename is not None:
@@ -373,14 +371,14 @@ def command_dlow(command, args):
     def setup(parser):
         add_source_options(parser)
         add_double_options(parser)
-        parser.add_option('--lowpass_rel',
-                          dest='rel_lowpass_frequency',
-                          type=float,
-                          help='''The percentage of the store's sampling'''
-                               ' rate to be used as the lowpass filter.',
-                          default=0.25)
+        add_filter_options(parser)
+        parser.remove_option('--highpass')
+        parser.remove_option('--highpass_rel')
+        parser.set_defaults(rel_lowpass_frequency=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
+    if opts['lowpass_frequency'] is not None:
+        opts['rel_lowpass_frequency'] = None
     dir1, dir2, smin, smax = verify_arguements('dlow', 4, args)
     opts['rel_highpass_frequency'] = None
     out_filename = opts.pop('output')
@@ -393,14 +391,14 @@ def command_dhigh(command, args):
     def setup(parser):
         add_source_options(parser)
         add_double_options(parser)
-        parser.add_option('--highpass_rel',
-                          dest='rel_highpass_frequency',
-                          type=float,
-                          help='''The percentage of the store's sampling'''
-                               ' rate to be used as the highpass filter.',
-                          default=0.25)
+        add_filter_options(parser)
+        parser.remove_option('--lowpass')
+        parser.remove_option('--lowpass_rel')
+        parser.set_defaults(rel_highpass_frequency=0.25)
 
     parser, opts, args = cl_parse(command, args, setup=setup)
+    if opts['highpass_frequency'] is not None:
+        opts['rel_highpass_frequency'] = None
     dir1, dir2, smin, smax = verify_arguements('dhigh', 4, args)
     opts['rel_lowpass_frequency'] = None
     out_filename = opts.pop('output')

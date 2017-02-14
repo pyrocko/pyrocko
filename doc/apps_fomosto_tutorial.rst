@@ -16,7 +16,7 @@ Green's function traces can then be reused several or many times as required in
 a typical application.
 
 Regarding Green's function creation as an independent step in a use-case's
-processing chain encourages to store these in an application independant form.
+processing chain encourages the storage of these in an application independant form.
 They can then immediatly be reused when new data is to be processed, they can
 be shared between different applications and they can also be passed to other
 researchers, allowing them to focus on their own application rather then
@@ -120,7 +120,7 @@ is created::
 
 The file ``config`` (1) contains general settings and the file ``extra/qseis``
 (2) contains extra settings which are specific to the QSEIS modelling code.
-These files are in the `YAML <http://yaml.org/>`_ format, which is good
+These files are in the `YAML <http://yaml.org/>`_ format, which is a good
 compromise between human and computer readability. The contents of the
 configuration files are disussed in the next section.  The default
 configuration produced by the ``fomosto init`` command can be used without any
@@ -238,7 +238,7 @@ The initial contents of the QSEIS specific configuration file ``extra/qseis``::
     # with the folowing setting, Green's functions will be calculated for (at
     # least) the time region between  'begin' minus 50 seconds to 'end' plus 100
     # seconds, where 'begin' and  'end' are tabulated phases as defined in the
-    # main main configuration
+    # main configuration
 
     time_region: [begin-50, end+100]  # see note below
 
@@ -473,11 +473,10 @@ Here is a minimal configuration file (to be used with the ``fomosto report singl
     rel_lowpass_frequency: 0.125
     rel_highpass_frequency: 0.25
 
-    # optional: these will set the absolute frequencys to when applying filters
+    # optional: these will set the absolute frequencys of the applied filters
     # if neither are set, then the seismograms will not be filtered
     # only one option can be used for low/highpass frequency, so if absolute
-    # frequencies are desried, comment/delete the above and uncomment these
-
+    # frequencies are desried, comment/delete the above and uncomment those below
     # lowpass_frequency: 0.0014
     # highpass_frequency: 0.0018
 
@@ -553,13 +552,13 @@ If there are multiple source and sensor array objects in the configuration file,
         strike: 0.0
         sensor_count: 50
 
-This configuration file will create four sets of seismograms (source1-sensors1, source1-sensor-2, ...), but if you only specific source-sensory array combinations, then use the optional parameter ``trace_configs`` like::
+This configuration file will create four sets of seismograms (source1-sensors1, source1-sensor-2, ...), but if you only specific source-sensor array combinations, then use the optional parameter ``trace_configs`` like::
 
     trace_configs:
     - [source1, sensors2]
     - [source2, sensors1]
 
-placed at the bottom of the configuration file.  This will only produce the seismograms for the selected combination.
+placed at the bottom of the configuration file.  This will only produce the seismograms for the listed combinations.
 
 .. highlight:: console
 
@@ -567,7 +566,7 @@ To try the configuration file, save to your home directory as ``min_config``.  M
 
     $ fomosto report single ~/min_config
 
-and you will create a pdf file called ``iceland_reg_v2_0.25-0.5Hz.pdf``.  If you want to see what an output configuration file looks like::
+and you will create a pdf file called ``iceland_reg_v2_0.25-0.5Hz.pdf`` in your home directory.  If you want to see what an output configuration file looks like::
 
     $ fomosto report single ~/min_config --output=~/min_config_full
 
