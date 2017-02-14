@@ -214,13 +214,16 @@ class CrustDB(object):
     spatial selection, querying, processing and visualising data.
     '''
 
-    def __init__(self, database_file=None):
+    def __init__(self, database_file=None, parent=None):
         self.profiles = []
         self._velocity_matrix_cache = {}
         self.data_matrix = None
         self.name = None
+        self.database_file = database_file
 
-        if database_file:
+        if parent is not None:
+            pass
+        elif database_file is not None:
             self._read(database_file)
         else:
             self._read(path.join(path.dirname(__file__),
@@ -727,7 +730,7 @@ class CrustDB(object):
         :rtype: :class:`CrustDB`
         '''
         r_container = self._emptyCopy()
-
+        logger.info('Selecting location %f, %f (r=%f)...' % (lat, lon, radius))
         for profile in self.profiles:
             if num.sqrt((lat - profile.lat)**2 +
                         (lon - profile.lon)**2) <= radius:
@@ -745,6 +748,7 @@ class CrustDB(object):
         :rtype: :class:`CrustDB`
         '''
         r_container = self._emptyCopy()
+        logger.info('Selecting minimum %d layers...' % nlayers)
 
         for profile in self.profiles:
             if profile.nlayers >= nlayers:
@@ -763,6 +767,7 @@ class CrustDB(object):
         :rtype: :class:`CrustDB`
         '''
         r_container = self._emptyCopy()
+        logger.info('Selecting maximum %d layers...' % nlayers)
 
         for profile in self.profiles:
             if profile.nlayers <= nlayers:
@@ -773,13 +778,14 @@ class CrustDB(object):
     def selectMinDepth(self, depth):
         '''Select profiles describing layers deeper than ``depth``
 
-        :param depth: Minumum depth
+        :param depth: Minumum depth in [m]
         :type depth: float
 
         :return: Selected profiles
         :rtype: :class:`CrustDB`
         '''
         r_container = self._emptyCopy()
+        logger.info('Selecting minimum depth %f m...' % depth)
 
         for profile in self.profiles:
             if profile.d.max() >= depth:
@@ -789,13 +795,14 @@ class CrustDB(object):
     def selectMaxDepth(self, depth):
         '''Select profiles describing layers shallower than ``depth``
 
-        :param depth: Maximum depth
+        :param depth: Maximum depth in [m]
         :type depth: float
 
         :return: Selected profiles
         :rtype: :class:`CrustDB`
         '''
         r_container = self._emptyCopy()
+        logger.info('Selecting maximum depth %f m...' % depth)
 
         for profile in self.profiles:
             if profile.d.max() <= depth:
@@ -809,6 +816,7 @@ class CrustDB(object):
         :rtype: :class:`CrustDB`
         '''
         r_container = self._emptyCopy()
+        logger.info('Selecting profiles providing Vp...')
 
         for profile in self.profiles:
             if not num.all(num.isnan(profile.vp)):
@@ -822,6 +830,7 @@ class CrustDB(object):
         :rtype: :class:`CrustDB`
         '''
         r_container = self._emptyCopy()
+        logger.info('Selecting profiles providing Vs...')
 
         for profile in self.profiles:
             if not num.all(num.isnan(profile.vs)):
@@ -829,7 +838,7 @@ class CrustDB(object):
         return r_container
 
     def _emptyCopy(self):
-        r_container = CrustDB()
+        r_container = CrustDB(parent=self)
         r_container.name = self.name
         return r_container
 
@@ -960,5 +969,5 @@ class CrustDB(object):
                     rec_line += 1
             # Append last profile
             add_record(vp, vs, h, d, lat, lon, meta)
-            logger.info('Loaded %d profiles from Global Crustal Database' %
-                        self.nprofiles)
+            logger.info('Loaded %d profiles from %s' %
+                        (self.nprofiles, database_file))

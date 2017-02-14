@@ -11,17 +11,27 @@ logger = logging.getLogger('test_gf_static.py')
 
 class CrustDBTestCase(unittest.TestCase):
 
-    def tearDown(self):
-        return
-        shutil.rmtree(self.tempdir)
-
-    def test_database(self):
+    def setUp(self):
         self.tmpdir = mkdtemp('pyrocko.crustdb')
-        db = crustdb.CrustDB(
-            '/home/marius/Development/crustshot/data/gsc20130501.txt')
+        self.db = crustdb.CrustDB(
+            database_file='/home/marius/Development/crustshot/data/gsc20130501.txt')
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_map(self):
         tmpmap = pjoin(self.tmpdir, 'map.ps')
-        print tmpmap
-        db.plotMap(tmpmap, show_topo=False)
+        self.db.plotMap(tmpmap, show_topo=False)
+
+    def test_selections(self):
+        polygon = [(25., 30.), (30., 30.), (30, 25.), (25., 25.)]
+        self.db.selectLocation(25., 95., 5.)
+        self.db.selectRegion(25., 30., 20., 45.)
+        self.db.selectPolygon(polygon)
+        self.db.selectVs()
+        self.db.selectVp()
+        self.db.selectMaxDepth(40.)
+        self.db.selectMinDepth(20.)
 
 
 if __name__ == "__main__":
