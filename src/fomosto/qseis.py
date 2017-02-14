@@ -719,7 +719,8 @@ in the directory %s'''.lstrip() % (
 
 
 class QSeisGFBuilder(gf.builder.Builder):
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None):
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
+                 force=False):
 
         self.store = gf.store.Store(store_dir, 'w')
 
@@ -730,7 +731,7 @@ class QSeisGFBuilder(gf.builder.Builder):
             block_size = block_size[1:]
 
         gf.builder.Builder.__init__(
-            self, self.store.config, step, block_size=block_size)
+            self, self.store.config, step, block_size=block_size, force=force)
 
         baseconf = self.store.get_extra('qseis')
 

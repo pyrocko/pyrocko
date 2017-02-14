@@ -18,10 +18,10 @@ class Interrupted(gf.store.StoreError):
 
 
 class DummyGFBuilder(gf.builder.Builder):
-    def __init__(self, store_dir, step, shared):
+    def __init__(self, store_dir, step, shared, force=False):
         self.store = gf.store.Store(store_dir, 'w')
         gf.builder.Builder.__init__(
-            self, self.store.config, step, block_size=(1, 51))
+            self, self.store.config, step, block_size=(1, 51), force=force)
 
     def work_block(self, index):
         (sz, firstx), (sz, lastx), (ns, nx) = \

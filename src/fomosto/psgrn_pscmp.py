@@ -197,7 +197,7 @@ class PsGrnConfigFull(PsGrnConfig):
 #    program "pscmp07a" for discretizing the finite source planes to a 2D grid
 #    of point sources.
 #------------------------------------------------------------------------------
-        %(observation_depth)e  %(sw_source_regime)i
+ %(observation_depth)e  %(sw_source_regime)i
  %(str_distance_grid)s  %(sampling_interval)e
  %(str_depth_grid)s
 #------------------------------------------------------------------------------
@@ -308,6 +308,7 @@ def remove_if_exists(fn, force=False):
 class PsGrnRunner:
 
     def __init__(self, outdir):
+        outdir = os.path.abspath(outdir)
         if not os.path.exists(outdir):
             os.mkdir(outdir)
         self.outdir = outdir
@@ -1090,6 +1091,7 @@ class Interrupted(gf.store.StoreError):
 class PsCmpRunner:
 
     def __init__(self, tmp=None, keep_tmp=False):
+        tmp = os.path.abspath(tmp)
         self.tempdir = mkdtemp(prefix='pscmprun-', dir=tmp)
         self.keep_tmp = keep_tmp
         self.config = None
@@ -1110,7 +1112,6 @@ class PsCmpRunner:
         program = program_bins['pscmp.%s' % config.version]
 
         old_wd = os.getcwd()
-
         os.chdir(self.tempdir)
 
         interrupted = []
@@ -1244,8 +1245,8 @@ in the directory %s'''.lstrip() % (
 class PsGrnCmpGFBuilder(gf.builder.Builder):
     nsteps = 2
 
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None):
-
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
+                 force=False):
         self.store = gf.store.Store(store_dir, 'w')
 
         storeconf = self.store.config
@@ -1274,7 +1275,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             block_size = block_size[1:]
 
         gf.builder.Builder.__init__(
-            self, storeconf, step, block_size=block_size)
+            self, storeconf, step, block_size=block_size, force=force)
 
         baseconf = self.store.get_extra('psgrn_pscmp')
 
@@ -1332,7 +1333,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                 end_distance=fc.distance_max / km)
 
             runner = PsGrnRunner(outdir=self.cg.psgrn_outdir)
-            runner.run(cg)
+            runner.run(cg, force=self.force)
 
         else:
             distances = num.linspace(
@@ -1448,15 +1449,15 @@ def init(store_dir, variant):
     config = gf.meta.ConfigTypeA(
         id=store_id,
         ncomponents=10,
-        sample_rate=0.1,
+        sample_rate=1,
         receiver_depth=0*km,
-        source_depth_min=10*km,
-        source_depth_max=20*km,
-        source_depth_delta=10*km,
-        distance_min=100*km,
-        distance_max=1000*km,
-        distance_delta=10*km,
-        earthmodel_1d=cake.load_model(),
+        source_depth_min=0*km,
+        source_depth_max=15*km,
+        source_depth_delta=.5*km,
+        distance_min=0*km,
+        distance_max=50*km,
+        distance_delta=1*km,
+        earthmodel_1d=cake.load_model(fn=None, crust2_profile=(54., 23.)),
         modelling_code_id='psgrn_pscmp.%s' % variant,
         tabulated_phases=[])    # dummy list
 
