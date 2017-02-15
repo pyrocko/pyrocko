@@ -2579,6 +2579,8 @@ class LocalEngine(Engine):
 
         The request can be given a a :py:class:`Request` object, or such an
         object is created using ``Request(**kwargs)`` for convenience.
+
+        :returns: :py:class:`Response` object
         '''
 
         if len(args) not in (0, 1, 2):
