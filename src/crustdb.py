@@ -13,6 +13,8 @@ from .cake_plot import my_model_plot, xscaled, yscaled
 
 logger = logging.getLogger('pyrocko.crustdb')
 THICKNESS_HALFSPACE = 2
+
+db_url = 'http://kinherd.org/pyrocko_data/gsc20130501.txt'
 km = 1e3
 vel_labels = {
     'vp': '$V_P$',
@@ -42,13 +44,6 @@ class VelocityProfile(Object):
     Single velocity profile representation from the Global Crustal Database
 
     https://earthquake.usgs.gov/data/crust/
-
-    .. note ::
-
-        **Citation:**
-
-        W.D. Mooney, G. Laske and G. Masters, CRUST 5.1: A global crustal model
-        at 5°x5°. J. Geophys. Res., 103, 727-747, 1998.
     '''
     uid = Int.T(
         optional=True,
@@ -226,8 +221,7 @@ class CrustDB(object):
         elif database_file is not None:
             self._read(database_file)
         else:
-            self._read(path.join(path.dirname(__file__),
-                                 'data/gsc20130501.txt'))
+            self._read(self._getRepositoryDatabase())
 
     def __len__(self):
         return len(self.profiles)
@@ -478,7 +472,7 @@ class CrustDB(object):
     def plot(self, drange=(0, 60000.), ddepth=100.,
              ddbin=2000., dvbin=100.,
              vrange=(5500., 8500.), percent=False,
-             show_mode=True, show_mean=True, show_median=True,
+             plot_mode=True, plot_median=True, plot_mean=False,
              show_cbar=True,
              aspect=.02,
              phase='p',
@@ -501,8 +495,8 @@ class CrustDB(object):
         :param drange: Min/Max Tuple of depth range to examine
         :param ddepth: Stepping in depth
         :param vrange: Min/Max Tuple of velocity range to examine
-        :show_mode: Boolean wheather to plot the Mode
-        :show_mean: Boolean wheather to plot the Mean
+        :plot_mode: Boolean wheather to plot the Mode
+        :plot_mean: Boolean wheather to plot the Mean
         '''
         fig, ax = getCanvas(axes)
 
@@ -513,7 +507,7 @@ class CrustDB(object):
 
         vfield, xedg, yedg = self.histogram2d(vrange=vrange, drange=drange,
                                               ddepth=ddepth, dvbin=dvbin,
-                                              ddbin=ddbin)
+                                              ddbin=ddbin, phase=phase)
         vfield /= (ddbin / ddepth)
 
         if percent:
@@ -534,21 +528,21 @@ class CrustDB(object):
             else:
                 cbar.set_label('Number of Profiles')
 
-        if show_mode:
+        if plot_mode:
             sdepth, vel_mode, _ = self.modeVelocity(drange=drange,
                                                     ddepth=ddepth)
             ax.plot(vel_mode[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', label='Mode')
 
-        if show_mean:
+        if plot_mean:
             sdepth, vel_mean, _ = self.meanVelocity(drange=drange,
                                                     ddepth=ddepth)
             ax.plot(vel_mean[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', linestyle='--', label='Mean')
 
-        if show_median:
+        if plot_median:
             sdepth, vel_median, _ = self.medianVelocity(drange=drange,
                                                         ddepth=ddepth)
             ax.plot(vel_median[sdepth < dmax] + ddepth/2,
@@ -573,7 +567,7 @@ class CrustDB(object):
         if self.name is not None:
             ax.set_title('%s for %s' % (ax.get_title(), self.name))
 
-        if show_mode or show_mean:
+        if plot_mode or plot_mean or plot_median:
             leg = ax.legend(loc=1, fancybox=True, fontsize=10)
             leg.get_frame().set_alpha(.6)
 
@@ -868,6 +862,18 @@ class CrustDB(object):
         db = cls()
         CrustDB._read(db, database_file)
         return db
+
+    @staticmethod
+    def _getRepositoryDatabase():
+        from pyrocko import config
+
+        name = path.basename(db_url)
+        data_path = path.join(config.config().crustdb_dir, name)
+        if not path.exists(data_path):
+            from pyrocko import util
+            util.download_file(db_url, data_path, None, None)
+
+        return data_path
 
     def _read(self, database_file):
         '''Reads in the the GSN databasefile and puts it in CrustDB

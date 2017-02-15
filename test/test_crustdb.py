@@ -13,8 +13,7 @@ class CrustDBTestCase(unittest.TestCase):
 
     def setUp(self):
         self.tmpdir = mkdtemp('pyrocko.crustdb')
-        self.db = crustdb.CrustDB(
-            database_file='/home/marius/Development/crustshot/data/gsc20130501.txt')
+        self.db = crustdb.CrustDB()
 
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
@@ -35,5 +34,5 @@ class CrustDBTestCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    util.setup_logging('test_crustdb', 'warning')
+    util.setup_logging('test_crustdb', 'info')
     unittest.main()
