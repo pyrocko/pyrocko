@@ -815,7 +815,7 @@ class PsCmpConfigFull(PsCmpConfig):
         else:
             d['str_coulomb_master_field'] = ''
 
-        d['str_psgrn_outdir'] = "'../../%s'" % self.psgrn_outdir
+        d['str_psgrn_outdir'] = "'%s'" % self.psgrn_outdir
         d['str_pscmp_outdir'] = "'%s'" % './'
 
         d['str_indispl_filenames'] = str_str_vals(self.indispl_filenames)
