@@ -39,6 +39,7 @@ Contents
 
    overview
    install
+   tutorials
    apps
    library
 

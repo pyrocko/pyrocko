@@ -12,6 +12,7 @@ Library Reference
    reference_model
    reference_hamster_pile
    reference_crust2x2
+   reference_crustdb
    reference_cake
    reference_moment_tensor
    reference_beachball
