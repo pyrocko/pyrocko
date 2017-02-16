@@ -1,8 +1,8 @@
-Interpolation
--------------
+Traveltime calculation and raytracing
+=====================================
 
 Travel time table interpolation
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------------
 
 This example demonstrates how to interpolate and query travel time tables.
 

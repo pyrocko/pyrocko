@@ -1,8 +1,8 @@
-Data Set Manipulation
----------------------
+Seismic traces and datasets
+===========================
 
 Load, filter, save
-^^^^^^^^^^^^^^^^^^
+------------------
 
 Read a test file `test.mseed <_static/test.mseed>`_, containing a three component seismogram, apply Butterworth lowpass filter to the seismograms and dump the results to a new file.
 
@@ -17,7 +17,7 @@ Read a test file `test.mseed <_static/test.mseed>`_, containing a three componen
     
     io.save(traces, 'filtered.mseed')
 
-Quickly look at a trace
+Quickly inspect a trace
 -----------------------
 
 To visualize a single trace, use the :py:meth:`pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use the :py:func:`pyrocko.trace.snuffle` function. If you want to see the contents of a pile, the :py:meth:`pyrocko.pile.Pile.snuffle` method is your friend. Alternatively, you could of course save the traces to file and use the standalone Snuffler to look at them.
@@ -183,24 +183,6 @@ An inefficient, non-portable, non-header-preserving, but simple, method to conve
             f.write( '%20f %20g\n' % (tim,val) )
         
         f.close()
-
-Distance between two points
--------------------------------
-
-::
-
-    from pyrocko import orthodrome, model
-
-    e = model.Event(lat=10., lon=20.)
-    s = model.Station(lat=15., lon=120.)
-
-    # one possibility:
-    d = orthodrome.distance_accurate50m(e,s)
-    print 'Distance between e and s is %g km' % (d/1000.)
-
-    # another possibility:
-    s.set_event_relative_data(e)
-    print 'Distance between e and s is %g km' % (s.dist_m/1000.)
 
 Convert a dataset from Mini-SEED to SAC format
 --------------------------------------------------
