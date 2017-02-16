@@ -6,7 +6,7 @@ from tempfile import mkdtemp
 from os.path import join as pjoin
 from pyrocko import crustdb, util
 
-logger = logging.getLogger('test_gf_static.py')
+logger = logging.getLogger('test_crustdb.py')
 
 
 class CrustDBTestCase(unittest.TestCase):
@@ -34,5 +34,5 @@ class CrustDBTestCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    util.setup_logging('test_crustdb', 'info')
+    util.setup_logging('test_crustdb', 'warning')
     unittest.main()
