@@ -5,6 +5,8 @@ The pyrocko framework covers many aspects of seismological data handling and man
 
 Handling seismic data
 ---------------------
+.. toctree::
+	tutorials/dataset.rst
 
 Accessing earthquake catalogs
 -----------------------------
@@ -27,3 +29,10 @@ Calculating Green's function stores
 
 Calculating synthetic seismograms and displacements
 ---------------------------------------------------
+.. toctree::
+	tutorial/forward.rst
+
+Misfit function
+---------------
+..toctree::
+	tutoral/misfit.rst
