@@ -1,5 +1,5 @@
 Data Set Manipulation
---------------------
+---------------------
 
 Load, filter, save
 ^^^^^^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ Create a trace object from scratch
     io.save([t1,t2], 'my_precious_trace_%(channel)s.mseed') # each file one channel
 
 Extracting part of a trace
-----------------------------------
+--------------------------
 
 ::
 
@@ -82,7 +82,7 @@ Extracting part of a trace
     print 'modified:', t
 
 Reorganizing a dataset into hour-files
-----------------------------------------
+--------------------------------------
 
 
 ::
@@ -111,7 +111,7 @@ Reorganizing a dataset into hour-files
 * when applying this procedure to a dataset consisting of arbitrarily separated files, it will automatically connect adjacent traces as needed!
 
 Downsampling a whole dataset
-----------------------------------
+----------------------------
 
 ::
 
@@ -150,7 +150,7 @@ Downsampling a whole dataset
     #   > snuffler downsampled/
 
 Convert SAC to MiniSEED
----------------------------
+-----------------------
 
 A very basic SAC to MiniSEED converter::
 
@@ -168,7 +168,7 @@ A very basic SAC to MiniSEED converter::
 
 
 Convert MiniSEED to ASCII
------------------------------
+-------------------------
 
 An inefficient, non-portable, non-header-preserving, but simple, method to convert some MiniSEED traces to ASCII tables::
 

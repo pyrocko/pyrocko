@@ -82,7 +82,7 @@ Further API documentation for the utilized objects can be found at :class:`~pyro
 
 
 Retrieve surface ground displacement from a local store
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In this example we create a :class:`~pyrocko.gf.RectangularSource` and compute
 the spatial static/geodetic displacement caused by that rupture.
@@ -165,6 +165,6 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 .. figure:: _static/rect_source.png
 	:align: center
 
-Combine severals sources 
-^^^^^^^^^^^^^^^^^^^^^^^^
+Combining severals sources 
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
