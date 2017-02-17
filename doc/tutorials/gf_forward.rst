@@ -1,8 +1,8 @@
-Forward Modeling
-----------------
+Forward Modeling synthetic seismograms and displacements
+========================================================
 
 Retrieve synthetic seismograms from a local store
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------------------------------
 
 .. highlight:: python
 
@@ -81,8 +81,8 @@ Further API documentation for the utilized objects can be found at :class:`~pyro
     trace.snuffle(synthetic_traces, markers=markers)
 
 
-Retrieve surface ground displacement from a local store
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Retrieve spatial surface displacement from a local store
+----------------------------------------------------------
 
 In this example we create a :class:`~pyrocko.gf.RectangularSource` and compute
 the spatial static/geodetic displacement caused by that rupture.
@@ -166,5 +166,4 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 	:align: center
 
 Combining severals sources 
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
+---------------------------
