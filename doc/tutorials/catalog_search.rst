@@ -1,9 +1,9 @@
 Earthquake catalog search
 =========================
 
-pyrocko provides easy catalog access via the :py:module:`pyrocko.catalog`
-module. This example demonstrates how to query the GlobalCMT catalog for events
-which occurred in 2011 in northern Chile.
+pyrocko provides easy catalog access via the :py:class:`pyrocko.catalog`
+module. This example demonstrates how to query the GlobalCMT database for
+events which occurred in 2011 in northern Chile.
 
 ::
 
