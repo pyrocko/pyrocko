@@ -39,6 +39,23 @@ def _getCanvas(axes):
     return axes.figure, axes
 
 
+def xoffset_scale(offset, scale, ax):
+    from matplotlib.ticker import ScalarFormatter, AutoLocator
+
+    class FormatVelocities(ScalarFormatter):
+        @staticmethod
+        def __call__(value, pos):
+            return u'%.1f' % ((value-offset) * scale)
+
+    class OffsetLocator(AutoLocator):
+        def tick_values(self, vmin, vmax):
+            return [v + offset for v in
+                    AutoLocator.tick_values(self, vmin, vmax)]
+
+    ax.get_xaxis().set_major_formatter(FormatVelocities())
+    ax.get_xaxis().set_major_locator(OffsetLocator())
+
+
 class VelocityProfile(Object):
     uid = Int.T(
         optional=True,
@@ -157,7 +174,7 @@ class VelocityProfile(Object):
     def getLayeredModel(self):
         ''' Get a layered model, see :class:`pyrocko.cake.LayeredModel`. '''
         def iterLines():
-            for il, m in enumerate(self.iterLayers):
+            for il, m in enumerate(self.iterLayers()):
                 yield self.d[il], m, ''
 
         return LayeredModel.from_scanlines(iterLines())
@@ -275,12 +292,12 @@ class CrustDB(object):
             names='vp, vs, h, d')
         return self.data_matrix
 
-    def velocityMatrix(self, drange=(0, 60000.), ddepth=100., phase='p'):
+    def velocityMatrix(self, depth_range=(0, 60000.), ddepth=100., phase='p'):
         '''Create a regular sampled velocity matrix
 
-        :param drange: Depth range, ``(dmin, dmax)``,
+        :param depth_range: Depth range, ``(dmin, dmax)``,
             defaults to ``(0, 6000.)``
-        :type drange: tuple
+        :type depth_range: tuple
         :param ddepth: Stepping in [m], defaults to ``100.``
         :type ddepth: float
         :param phase: Phase to calculate ``p`` or ``s``,
@@ -289,7 +306,7 @@ class CrustDB(object):
         :returns: Sample depths, veloctiy matrix
         :rtype: tuple, (sample_depth, :class:`numpy.ndarray`)
         '''
-        dmin, dmax = drange
+        dmin, dmax = depth_range
         uid = '.'.join(map(repr, (dmin, dmax, ddepth, phase)))
         sdepth = num.linspace(dmin, dmax, (dmax - dmin) / ddepth)
         ndepth = sdepth.size
@@ -303,14 +320,15 @@ class CrustDB(object):
 
         return sdepth, self._velocity_matrix_cache[uid]
 
-    def rmsRank(self, ref_profile, drange=(0, 3500.), ddepth=100., phase='p'):
+    def rmsRank(self, ref_profile, depth_range=(0, 3500.), ddepth=100.,
+                phase='p'):
         '''Correlates ``ref_profile`` to each profile in the database
 
         :param ref_profile: Reference profile
         :type ref_profile: :class:`VelocityProfile`
-        :param drange: Depth range in [m], ``(dmin, dmax)``,
+        :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0, 35000.)``
-        :type drange: tuple, optional
+        :type depth_range: tuple, optional
         :param ddepth: Stepping in [m], defaults to ``100.``
         :type ddepth: float
         :param phase: Phase to calculate ``p`` or ``s``, defaults to ``p``
@@ -321,7 +339,8 @@ class CrustDB(object):
         if not isinstance(ref_profile, VelocityProfile):
             raise ValueError('ref_profile is not a VelocityProfile')
 
-        sdepth, vel_matrix = self.velocityMatrix(drange, ddepth, phase=phase)
+        sdepth, vel_matrix = self.velocityMatrix(depth_range, ddepth,
+                                                 phase=phase)
         ref_vel = ref_profile.interpolateProfile(sdepth, phase=phase)
 
         rms = num.empty(self.nprofiles)
@@ -330,18 +349,18 @@ class CrustDB(object):
             rms[p] = num.sqrt(profile**2 - ref_vel**2).sum() / ref_vel.size
         return rms
 
-    def histogram2d(self, drange=(0., 60000.), vrange=(5500., 8500.),
+    def histogram2d(self, depth_range=(0., 60000.), vel_range=None,
                     ddepth=100., dvbin=100., ddbin=2000., phase='p'):
         '''Create a 2D Histogram of all the velocity profiles
 
         Check :func:`numpy.histogram2d` for more information.
 
-        :param drange: Depth range in [m], ``(dmin, dmax)``,
+        :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0., 60000.)``
-        :type drange: tuple
-        :param vrange: Depth range, ``(vmin, vmax)``,
+        :type depth_range: tuple
+        :param vel_range: Depth range, ``(vmin, vmax)``,
             defaults to ``(5500., 8500.)``
-        :type vrange: tuple
+        :type vel_range: tuple
         :param ddepth: Stepping in [km], defaults to ``100.``
         :type ddepth: float
         :param dvbin: Bin size in velocity dimension [m/s], defaults to 100.
@@ -354,25 +373,27 @@ class CrustDB(object):
         :returns: :func:`numpy.histogram2d`
         :rtype: tuple
         '''
-        sdepth, v_vec = self.velocityMatrix(drange, ddepth, phase=phase)
-        v_vec = v_vec.flatten()
+        sdepth, v_mat = self.velocityMatrix(depth_range, ddepth, phase=phase)
         d_vec = num.tile(sdepth, self.nprofiles)
 
         # Velocity and depth bins
-        vbins = int((vrange[1] - vrange[0]) / dvbin)
-        dbins = int((drange[1] - drange[0]) / ddbin)
+        if vel_range is None:
+            vel_range = ((v_mat.min() // 1e2) * 1e2,
+                         (v_mat.max() // 1e2) * 1e2)
+        nvbins = int((vel_range[1] - vel_range[0]) / dvbin)
+        ndbins = int((depth_range[1] - depth_range[0]) / ddbin)
 
-        return num.histogram2d(v_vec, d_vec,
-                               range=(vrange, drange),
-                               bins=(vbins, dbins),
+        return num.histogram2d(v_mat.flatten(), d_vec,
+                               range=(vel_range, depth_range),
+                               bins=[nvbins, ndbins],
                                normed=False)
 
-    def meanVelocity(self, drange=(0., 60000.), ddepth=100., phase='p'):
+    def meanVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
         '''Mean velocity profile plus std variation
 
-        :param drange: Depth range in [m], ``(dmin, dmax)``,
+        :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0., 60000.)``
-        :type drange: tuple
+        :type depth_range: tuple
         :param ddepth: Stepping in [m], defaults to ``100.``
         :type ddepth: float
         :param phase: Phase to calculate ``p`` or ``s``, defaults to ``p``
@@ -380,18 +401,18 @@ class CrustDB(object):
         :returns: depth vector, mean velocities, standard deviations
         :rtype: tuple of :class:`numpy.ndarray`
         '''
-        sdepth, v_mat = self.velocityMatrix(drange, ddepth, phase=phase)
+        sdepth, v_mat = self.velocityMatrix(depth_range, ddepth, phase=phase)
         v_mean = num.ma.mean(v_mat, axis=0)
         v_std = num.ma.std(v_mat, axis=0)
 
         return sdepth, v_mean.flatten(), v_std.flatten()
 
-    def modeVelocity(self, drange=(0., 60000.), ddepth=100., phase='p'):
+    def modeVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
         '''Mode velocity profile plus std variation
 
-        :param drange: Depth range in [m], ``(dmin, dmax)``,
+        :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0., 60000.)``
-        :type drange: tuple
+        :type depth_range: tuple
         :param ddepth: Stepping in [m], defaults to ``100.``
         :type ddepth: float
         :param phase: Phase to calculate ``p`` or ``s``, defaults to ``p``
@@ -401,16 +422,16 @@ class CrustDB(object):
         '''
         import scipy.stats
 
-        sdepth, v_mat = self.velocityMatrix(drange, ddepth)
+        sdepth, v_mat = self.velocityMatrix(depth_range, ddepth)
         v_mode, v_counts = scipy.stats.mstats.mode(v_mat, axis=0)
         return sdepth, v_mode.flatten(), v_counts.flatten()
 
-    def medianVelocity(self, drange=(0., 60000.), ddepth=100., phase='p'):
+    def medianVelocity(self, depth_range=(0., 60000.), ddepth=100., phase='p'):
         '''Median velocity profile plus std variation
 
-        :param drange: Depth range in [m], ``(dmin, dmax)``,
+        :param depth_range: Depth range in [m], ``(dmin, dmax)``,
             defaults to ``(0., 60000.)``
-        :type drange: tuple
+        :type depth_range: tuple
         :param ddepth: Stepping in [m], defaults to ``100.``
         :type ddepth: float
         :param phase: Phase to calculate ``p`` or ``s``, defaults to ``p``
@@ -418,18 +439,18 @@ class CrustDB(object):
         :returns: depth vector, median velocities, standard deviations
         :rtype: tuple of :class:`numpy.ndarray`
         '''
-        sdepth, v_mat = self.velocityMatrix(drange, ddepth, phase=phase)
+        sdepth, v_mat = self.velocityMatrix(depth_range, ddepth, phase=phase)
         v_mean = num.ma.median(v_mat, axis=0)
         v_std = num.ma.std(v_mat, axis=0)
 
         return sdepth, v_mean.flatten(), v_std.flatten()
 
-    def plotHistogram(self, vrange=(5500., 8500.), bins=6*5, phase='vp',
+    def plotHistogram(self, vel_range=None, bins=36, phase='vp',
                       axes=None):
         '''Plot 1D histogram of seismic velocities in the container
 
-        :param vrange: Velocity range, defaults to (5.5, 8.5)
-        :type vrange: tuple, optional
+        :param vel_range: Velocity range, defaults to (5.5, 8.5)
+        :type vel_range: tuple, optional
         :param bins: bins, defaults to 30 (see :func:`numpy.histogram`)
         :type bins: int, optional
         :param phase: Property to plot out of ``['vp', 'vs']``,
@@ -446,7 +467,7 @@ class CrustDB(object):
         data = self._dataMatrix()[phase]
 
         ax.hist(data, weights=self.data_matrix['h'],
-                range=vrange, bins=bins,
+                range=vel_range, bins=bins,
                 color='g', alpha=.5)
         ax.text(.95, .95, '%d Profiles' % self.nprofiles,
                 transform=ax.transAxes, fontsize=10,
@@ -464,9 +485,9 @@ class CrustDB(object):
         if axes is None:
             plt.show()
 
-    def plot(self, drange=(0, 60000.), ddepth=100.,
-             ddbin=2000., dvbin=100.,
-             vrange=(5500., 8500.), percent=False,
+    def plot(self, depth_range=(0, 60000.), ddepth=100., ddbin=2000.,
+             vel_range=None, dvbin=100.,
+             percent=False,
              plot_mode=True, plot_median=True, plot_mean=False,
              show_cbar=True,
              aspect=.02,
@@ -474,10 +495,11 @@ class CrustDB(object):
              axes=None):
         ''' Plot a two 2D Histogram of seismic velocities
 
-        :param drange: Depth range, ``(dmin, dmax)``, defaults to ``(0, 60)``
-        :type drange: tuple
-        :param vrange: Velocity range, ``(vmin, vmax)``
-        :type vrange: tuple
+        :param depth_range: Depth range, ``(dmin, dmax)``,
+            defaults to ``(0, 60)``
+        :type depth_range: tuple
+        :param vel_range: Velocity range, ``(vmin, vmax)``
+        :type vel_range: tuple
         :param ddepth: Stepping in [m], defaults to ``.1``
         :type ddepth: float
         :param dvbin: Bin size in velocity dimension [m/s], defaults to .1
@@ -499,10 +521,12 @@ class CrustDB(object):
 
         ax = fig.gca()
 
-        vmin, vmax = vrange
-        dmin, dmax = drange
+        if vel_range is not None:
+            vmin, vmax = vel_range
+        dmin, dmax = depth_range
 
-        vfield, xedg, yedg = self.histogram2d(vrange=vrange, drange=drange,
+        vfield, vedg, dedg = self.histogram2d(vel_range=vel_range,
+                                              depth_range=depth_range,
                                               ddepth=ddepth, dvbin=dvbin,
                                               ddbin=ddbin, phase=phase)
         vfield /= (ddbin / ddepth)
@@ -510,7 +534,7 @@ class CrustDB(object):
         if percent:
             vfield /= vfield.sum(axis=1)[num.newaxis, :]
 
-        grid_ext = [xedg[0], xedg[-1], yedg[-1], yedg[0]]
+        grid_ext = [vedg[0], vedg[-1], dedg[-1], dedg[0]]
         histogram = ax.imshow(vfield.swapaxes(0, 1),
                               interpolation='nearest',
                               extent=grid_ext, aspect=aspect)
@@ -526,28 +550,27 @@ class CrustDB(object):
                 cbar.set_label('Number of Profiles')
 
         if plot_mode:
-            sdepth, vel_mode, _ = self.modeVelocity(drange=drange,
+            sdepth, vel_mode, _ = self.modeVelocity(depth_range=depth_range,
                                                     ddepth=ddepth)
             ax.plot(vel_mode[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', label='Mode')
 
         if plot_mean:
-            sdepth, vel_mean, _ = self.meanVelocity(drange=drange,
+            sdepth, vel_mean, _ = self.meanVelocity(depth_range=depth_range,
                                                     ddepth=ddepth)
             ax.plot(vel_mean[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', linestyle='--', label='Mean')
 
         if plot_median:
-            sdepth, vel_median, _ = self.medianVelocity(drange=drange,
-                                                        ddepth=ddepth)
+            sdepth, vel_median, _ = self.medianVelocity(
+                                        depth_range=depth_range,
+                                        ddepth=ddepth)
             ax.plot(vel_median[sdepth < dmax] + ddepth/2,
                     sdepth[sdepth < dmax],
                     alpha=.8, color='w', linestyle=':', label='Median')
 
-        ax.xaxis.set_ticks(num.arange(vmin, vrange[1], .5) + dvbin / 2)
-        ax.xaxis.set_ticklabels(num.arange(vmin, vrange[1], .5))
         ax.grid(True, which="both", color="w", linewidth=.8, alpha=.4)
 
         ax.text(.025, .025, '%d Profiles' % self.nprofiles,
@@ -557,9 +580,9 @@ class CrustDB(object):
         ax.set_title('Crustal Velocity Distribution')
         ax.set_xlabel('%s [km/s]' % vel_labels[phase])
         ax.set_ylabel('Depth [km]')
-        xscaled(1./km, ax)
         yscaled(1./km, ax)
-        ax.set_xlim(vrange)
+        xoffset_scale(dvbin/2, 1./km, ax)
+        ax.set_xlim(vel_range)
 
         if self.name is not None:
             ax.set_title('%s for %s' % (ax.get_title(), self.name))
@@ -571,19 +594,19 @@ class CrustDB(object):
         if axes is None:
             plt.show()
 
-    def plotVelocitySurf(self, v_max, d_min=0, d_max=60, figure=None):
-        '''Function triangulates a depth surface at velocity'''
-        m = self._basemap(figure)
+    def plotVelocitySurface(self, v_max, d_min=0., d_max=6000., axes=None):
+        '''Plot a triangulated a depth surface exceeding velocity'''
 
+        fig, ax = _getCanvas(axes)
         d = self.exceedVelocity(v_max, d_min, d_max)
         lons = self.lons()[d > 0]
         lats = self.lats()[d > 0]
         d = d[d > 0]
 
-        m.pcolor(lons, lats, d, latlon=True, tri=True,
-                 shading='faceted', alpha=1)
-        m.colorbar()
-        return self._basemapFinish(m, figure)
+        ax.tricontourf(lats, lons, d)
+
+        if axes is None:
+            plt.show()
 
     def plotMap(self, outfile, **kwargs):
         from . import gmtpy
@@ -623,15 +646,15 @@ class CrustDB(object):
         self.profile_exceed_velocity = num.empty(len(self.profiles))
         self.profile_exceed_velocity[:] = num.nan
 
-        for _p, profile in enumerate(self.profiles):
-            for _i in xrange(len(profile.d)):
-                if profile.d[_i] <= d_min\
-                        or profile.d[_i] >= d_max:
+        for ip, profile in enumerate(self.profiles):
+            for il in xrange(len(profile.d)):
+                if profile.d[il] <= d_min\
+                        or profile.d[il] >= d_max:
                     continue
-                if profile.vp[_i] < v_max:
+                if profile.vp[il] < v_max:
                     continue
                 else:
-                    self.profile_exceed_velocity[_p] = profile.d[_i]
+                    self.profile_exceed_velocity[ip] = profile.d[il]
                     break
         return self.profile_exceed_velocity
 
@@ -884,34 +907,43 @@ class CrustDB(object):
                 'publication_reference': None
             }
             # vp, vs, h, d, lat, lon, meta
-            return [], [], [], [], 0., 0., meta
+            return (num.zeros(128, dtype=num.float32),
+                    num.zeros(128, dtype=num.float32),
+                    num.zeros(128, dtype=num.float32),
+                    num.zeros(128, dtype=num.float32),
+                    0., 0., meta)
 
-        def add_record(vp, vs, h, d, lat, lon, meta):
+        nlayers = []
+
+        def add_record(vp, vs, h, d, lat, lon, meta, nlayer):
+            if nlayer == 0:
+                return
             self.append(VelocityProfile(
-                vp=num.array(vp) * km,
-                vs=num.array(vs) * km,
-                h=num.array(h) * km,
-                d=num.array(d) * km,
+                vp=vp[:nlayer] * km,
+                vs=vs[:nlayer] * km,
+                h=h[:nlayer] * km,
+                d=d[:nlayer] * km,
                 lat=lat, lon=lon,
                 **meta))
+            nlayers.append(nlayer)
 
         vp, vs, h, d, lat, lon, meta = get_empty_record()
-        rec_line = 0
+        ilayer = 0
         with open(database_file, 'r') as database:
-            for line, dbline in enumerate(database.readlines()):
+            for line, dbline in enumerate(database.xreadlines()):
                 if dbline.isspace():
                     if not len(d) == 0:
-                        add_record(vp, vs, h, d, lat, lon, meta)
+                        add_record(vp, vs, h, d, lat, lon, meta, ilayer)
                     if not len(vp) == len(h):
                         raise DatabaseError(
                             'Inconsistent database, check line %d!\n\tDebug: '
                             % line, lat, lon, vp, vs, h, d, meta)
 
                     vp, vs, h, d, lat, lon, meta = get_empty_record()
-                    rec_line = 0
+                    ilayer = 0
                 else:
                     try:
-                        if rec_line == 0:
+                        if ilayer == 0:
                             lat = float(dbline[8:13])
                             if dbline[13] == "S":
                                 lat = -lat
@@ -924,7 +956,7 @@ class CrustDB(object):
                             meta['geographical_location'] =\
                                 dbline[66:72].strip()
                             meta['measurement_method'] = dbline[77]
-                        if rec_line == 1:
+                        if ilayer == 1:
                             lon = float(dbline[7:13])
                             if dbline[13] == "W":
                                 lon = -lon
@@ -934,10 +966,10 @@ class CrustDB(object):
                                 dbline[66:72].strip()
                             meta['geological_province'] = dbline[74:78].strip()
                         try:
-                            vp.append(float(dbline[17:21]))
-                            vs.append(float(dbline[23:27]))
-                            h.append(float(dbline[28:34]))
-                            d.append(float(dbline[35:41]))
+                            vp[ilayer] = dbline[17:21]
+                            vs[ilayer] = dbline[23:27]
+                            h[ilayer] = dbline[28:34]
+                            d[ilayer] = dbline[35:41]
                         except ValueError:
                             pass
                     except ValueError:
@@ -947,9 +979,9 @@ class CrustDB(object):
                         while not database.readlines():
                             pass
                         vp, vs, h, d, lat, lon, meta = get_empty_record()
-                    rec_line += 1
+                    ilayer += 1
             # Append last profile
-            add_record(vp, vs, h, d, lat, lon, meta)
+            add_record(vp, vs, h, d, lat, lon, meta, ilayer)
             logger.info('Loaded %d profiles from %s' %
                         (self.nprofiles, database_file))
 

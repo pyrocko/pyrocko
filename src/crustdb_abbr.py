@@ -441,9 +441,8 @@ PROVINCE_KEY = {
 
 
 def provinceKey(province):
-    for key, value in PROVINCE_KEY.iteritems():
-        if province.strip().lower() == key.lower():
-            return value
+    if province.upper() in PROVINCE_KEY.keys():
+        return PROVINCE_KEY[province.upper()]
     return 'Undefined'
 
 

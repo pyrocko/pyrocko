@@ -34,6 +34,18 @@ class CrustDBTestCase(unittest.TestCase):
         self.db.selectMaxDepth(40.)
         self.db.selectMinDepth(20.)
 
+    def test_ploting(self):
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.gca()
+
+        profile = self.db[10]
+        self.db.plot(axes=ax)
+        self.db.plotHistogram(axes=ax)
+        profile.plot(axes=ax)
+
+        fig.clear()
+
 
 if __name__ == "__main__":
     util.setup_logging('test_crustdb', 'warning')
