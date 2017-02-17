@@ -7,11 +7,11 @@ Reorganizing a dataset into hour-files
 In each iteration we get all data for the current time window as a list of traces. The traces emitted by :py:meth:`pyrocko.pile.Pile.chopper()` 'know' the time window to which they belong; it is stored in the attributes ``trace.wmin`` and ``trace.wmax``.
 note: ``trace.tmin`` (its onset) does not have to be identical to ``trace.wmin``. The directory parts in the output path will be created as neccessary.
 When applying this procedure to a dataset consisting of arbitrarily separated files, it will automatically connect adjacent traces as needed!
-
+The :mod:`time` and :mod:`calender` modules will be used. 
 ::
 
     from pyrocko import pile, io, util
-    import time, calendar
+    import time, calendar 
     
     p = pile.make_pile(['test.mseed'])  # could give directories or thousands of filenames here
     
@@ -76,7 +76,7 @@ Shifting and downsampling a whole dataset with parallel processing
 Example for downsampling all trace files in the input folder to a common sampling rate with :py:meth:`pyrocko.trace.Trace.downsample_to` and shifting them all to a common beginning time with 
 :py:meth:`~pyrocko.trace.Trace.shift`.
 
-The shifted and resampled traces are saved into a output folder. This is done in a simple parallel processing loop.
+The shifted and resampled traces are saved into a output folder. This is done in a simple parallel processing loop with :mod:`multiprocessing` .
 ::
 
     
@@ -103,7 +103,7 @@ The shifted and resampled traces are saved into a output folder. This is done in
             t.downsample_to(mindt)
             io.save(t, '%s/DISPL.%s.%s'%(outfn, t.station, t.channel))
             print 'SAVED'
-        except util.UnavailableDecimation as e:
+        except util.UnavailableDecimation as e:   #exception to keep going if a single trace is broken; keeps the not modified trace
             print e
             print 'skip ', t
        
@@ -125,7 +125,7 @@ The shifted and resampled traces are saved into a output folder. This is done in
 
 Convert a dataset from Mini-SEED to SAC format
 --------------------------------------------------
-Conversion of mseed to SAC.
+Conversion of a mseed file to SAC.
 ::
 
     from pyrocko import pile, io, util, model
