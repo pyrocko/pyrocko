@@ -99,6 +99,12 @@ available at:
 For detailled information regarding each computation code refer to the
 Downloads/Software website of section 2.1 (GFZ): http://www.gfz-potsdam.de/en/section/physics-of-earthquakes-and-volcanoes/services/downloads-software/.
 
+Installation is done for each code inside the uncompressed folder by:
+
+    ./configure
+    make
+    make install
+
 In this example, we will use QSEIS as the modelling code.
 
 To initialize an empty Green's function store to be built with QSEIS 2006a run::
