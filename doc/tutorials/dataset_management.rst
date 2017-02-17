@@ -1,6 +1,7 @@
 Dataset management
 ==================
 
+At the base of pyrockos' dataset is the :class:`pyrocko.pile`.
 
 Reorganizing a dataset into hour-files
 --------------------------------------
@@ -125,7 +126,8 @@ The shifted and resampled traces are saved into a output folder. This is done in
 
 Convert a dataset from Mini-SEED to SAC format
 --------------------------------------------------
-Conversion of a mseed file to SAC.
+Conversion of a mseed file to SAC. See :mod:`pyrocko.io` for supported formats.
+
 ::
 
     from pyrocko import pile, io, util, model

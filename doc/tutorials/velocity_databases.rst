@@ -7,9 +7,9 @@ Crust 2.0
 The `CRUST 2.0 <http://igppweb.ucsd.edu/~gabi/rem.html>`_ is a global 2x2 degree velocity model of the earth's crust. Each individual profile is a 7 layer 1D-model.
 
 
-.. note ::
+.. rubric:: Citation
 
-    Bassin, C., Laske, G. and Masters, G., The Current Limits of Resolution for Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000.
+.. [1] **Bassin, C., Laske, G. and Masters, G., The Current Limits of Resolution for Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000.**
 
 
 Accessing the Crust 2x2 database
@@ -58,10 +58,9 @@ Global Crustal Database
 --------------------------
 The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ gathers empirical 1D velocity models from seismic reflection and refraction profiles. As of 2013 there are 138939 profiles, mainly P and fewer S wave records in the database.
 
-.. note ::
+.. rubric:: Citation
 
-    W.D. Mooney, G. Laske and G. Masters, CRUST 5.1: A global crustal model
-    at 5°x5°. J. Geophys. Res., 103, 727-747, 1998.
+.. [2] **W.D. Mooney, G. Laske and G. Masters, CRUST 5.1: A global crustal model at 5°x5°. J. Geophys. Res., 103, 727-747, 1998.**
 
 ::
 

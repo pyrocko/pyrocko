@@ -40,9 +40,8 @@ intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                                  None),
                        'scipy': ('https://docs.scipy.org/doc/scipy/reference/',
                                  None),
-                       'python': ('https://docs.python.org/2',
-                                  None)                     
-                       }
+                       'python': ('https://docs.python.org/2.7',
+                                  None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

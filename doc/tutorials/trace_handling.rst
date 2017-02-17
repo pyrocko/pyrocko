@@ -1,10 +1,43 @@
-Seismic traces and datasets
-===========================
+Seismic traces
+===============
 
-Load, filter, save
-------------------
+Pyrocko brings everything to seismic waveform data conviniently and reliable. The following examples describe the object and syntax of a basic pyrocko feature.
 
-Read a test file `test.mseed <_static/test.mseed>`_ with :py:meth:`pyrocko.io.load`, containing a three component seismogram, apply Butterworth lowpass filter to the seismograms and dump the results to a new file with :py:meth:`pyrocko.io.save`.
+Supported seismological waveform formats are:
+
+============ =========================== ========= ======== ======
+format       format identifier           load      save     note
+============ =========================== ========= ======== ======
+MiniSEED     mseed                       yes       yes
+SAC          sac                         yes       yes      [#f1]_
+SEG Y rev1   segy                        some
+SEISAN       seisan, seisan.l, seisan.b  yes                [#f2]_
+KAN          kan                         yes                [#f3]_
+YAFF         yaff                        yes       yes      [#f4]_
+ASCII Table  text                                  yes      [#f5]_
+GSE1         gse1                        some
+GSE2         gse2                        some
+DATACUBE     datacube                    yes
+SUDS         suds                        some
+============ =========================== ========= ======== ======
+
+.. rubric:: Notes
+
+.. [#f1] For SAC files, the endianness is guessed. Additional header
+    information is stored in the :class:`~pyrocko.trace.Trace`'s ``meta`` attribute.
+.. [#f2] Seisan waveform files can be in little (``seisan.l``) or big endian
+    (``seisan.b``) format. ``seisan`` currently is an alias for ``seisan.l``.
+.. [#f3] The KAN file format has only been seen once by the author, and support
+    for it may be removed again.
+.. [#f4] YAFF is an in-house, experimental file format, which should not be
+    released into the wild.
+.. [#f5] ASCII tables with two columns (time and amplitude) are output - meta
+    information will be lost.
+
+Load, filter and save
+----------------------
+
+Read a test file :file:`test.mseed <_static/test.mseed>`_ with :meth:`pyrocko.io.load`, containing a three component seismogram, apply Butterworth lowpass filter to the seismograms and dump the results to a new file with :meth:`pyrocko.io.save`.
 
 ::
 
@@ -20,8 +53,8 @@ Read a test file `test.mseed <_static/test.mseed>`_ with :py:meth:`pyrocko.io.lo
 Quickly inspect a trace
 -----------------------
 
-To visualize a single trace from a file, use the :py:meth:`pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use the :py:func:`pyrocko.trace.snuffle` function. If you want to see the contents of a pile, the :py:meth:`pyrocko.pile.Pile.snuffle` method is your friend. Alternatively, you could of course save the traces to file and use the standalone Snuffler to look at them.
-Also take a look at the Snuffler application
+To visualize a single trace from a file, use the :meth:`pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use the :func:`pyrocko.trace.snuffle` function. If you want to see the contents of a pile, the :meth:`~pyrocko.pile.Pile.snuffle` method is your friend. Alternatively, you could of course save the traces to file and use the standalone :doc:`../apps/snuffler` to look at them.
+
 ::
      
     from pyrocko import io, trace, pile
@@ -49,10 +82,11 @@ Also take a look at the Snuffler application
 Create a trace object from scratch
 ----------------------------------
 
-Creates two seismological trace objects with :py:func:`pyrocko.trace.Trace` and fill it with noise (:func:`numpy.random.random` ) and save it with :py:func:`pyrocko.io.save`
+Creates two seismological trace objects with :func:`~pyrocko.trace.Trace` and fill it with noise (:func:`numpy.random.random`) and save it with :func:`~pyrocko.io.save`
 in to a single file with different channels for the two traces and one file with both traces in one channel.
 
 For each traceobject the name of the station is defined, the channel, the sampling rate (0.5s) and the onset of the trace is given with tmin.
+
 ::
 
     from pyrocko import trace, util, io
@@ -66,10 +100,10 @@ For each traceobject the name of the station is defined, the channel, the sampli
     io.save([t1,t2], 'my_precious_traces.mseed')            # all traces in one file
     io.save([t1,t2], 'my_precious_trace_%(channel)s.mseed') # each file one channel
 
-Extracting part of a trace
---------------------------
+Extracting part of a trace (trimming)
+-------------------------------------
 
-:py:func:`pyrocko.io.chop` is used to cut 10s from the beginning and the end of the example trace (`test.mseed <_static/test.mseed>`_).
+Trimming is archived with :func:`pyrocko.io.chop`. Here we cut 10 s from the beginning and the end of the example trace (:file:`test.mseed <_static/test.mseed>`_).
 
 ::
 
@@ -91,7 +125,7 @@ Extracting part of a trace
 
 Shift a trace
 --------------------------
-This shifts a trace to a specified time with :py:meth:`pyrocko.trace.Trace.shift`
+This shifts a trace to a specified time with :meth:`pyrocko.trace.Trace.shift`
 
 ::
 
@@ -111,7 +145,7 @@ This shifts a trace to a specified time with :py:meth:`pyrocko.trace.Trace.shift
 Resampling a trace
 --------------------------
 
-Example for downsampling a trace in a file to a sampling rate with :py:meth:`pyrocko.trace.Trace.downsample_to`.
+Example for downsampling a trace in a file to a sampling rate with :meth:`pyrocko.trace.Trace.downsample_to`.
 
 ::
 
@@ -133,7 +167,9 @@ Example for downsampling a trace in a file to a sampling rate with :py:meth:`pyr
 Convert SAC to MiniSEED
 -----------------------
 
-A very basic SAC to MiniSEED converter::
+A very basic SAC to MiniSEED converter:
+
+::
 
     from pyrocko import io
     import sys
@@ -169,7 +205,7 @@ An inefficient, non-portable, non-header-preserving, but simple, method to conve
 Misfit of one trace against two other traces
 ---------------------------------------------
 
-Three traces will be created. One of these traces will be assumed to be the reference trace (rt) that we want to know the misfit with :py:func:`pyrocko.trace.Trace.misfit` of in comparison to two other traces (tt1 and tt2). The traces rt and tt1 will be provided with the same random y-data. Hence, their misfit will be zero, in the end.
+Three traces will be created. One of these traces will be assumed to be the reference trace (rt) that we want to know the misfit with :func:`pyrocko.trace.Trace.misfit` of in comparison to two other traces (``tt1`` and ``tt2``). The traces ``rt`` and ``tt1`` will be provided with the same random y-data. Hence, their misfit will be zero, in the end.
 
 ::
 
@@ -192,7 +228,7 @@ Three traces will be created. One of these traces will be assumed to be the refe
     # This can be basically any funtion, as long as it contains a function called
     # *evaluate*, which evaluates the frequency response function at a given list
     # of frequencies.
-    # Please refer to the :py:class:`FrequencyResponse` class or its subclasses for
+    # Please refer to the :class:`FrequencyResponse` class or its subclasses for
     # examples.
     # However, we are going to use a butterworth low-pass filter in this example.
     bw_filter = trace.ButterworthResponse(corner=2,
@@ -235,19 +271,20 @@ Restitute to displacement using poles and zeros
 --------------------------------------------------
 
 Often we want to deconvolve instrument responses from seismograms. The method
-:py:meth:`pyrocko.trace.Trace.transfer` implements a convolution with a
+:meth:`pyrocko.trace.Trace.transfer` implements a convolution with a
 transfer function in the frequency domain. This method takes as argument a
 transfer function object which 'knows' how to compute values of the transfer
 function at given frequencies. The trace module provides a few different
 transfer functions, but it is also possible to write a custom transfer
 function. For a transfer function given as poles and zeros, we can use
-instances of the class :py:class:`pyrocko.trace.PoleZeroResponse`. There is
-also a class :py:class:`InverseEvalrespResponse`, which uses the common ``RESP`` files
-through the ``evalresp`` library.
+instances of the class :class:`pyrocko.trace.PoleZeroResponse`. There is
+also a class :class:`pyrocko.trace.InverseEvalrespResponse`, which uses the common ``RESP`` files through the ``evalresp`` library.
 
 Here is a complete example using a SAC pole-zero file
-(`STS2-Generic.polezero.txt <_static/STS2-Generic.polezero.txt>`_) to
-deconvolve the transfer function from an example seismogram::
+(:file:`STS2-Generic.polezero.txt <_static/STS2-Generic.polezero.txt>`_) to
+deconvolve the transfer function from an example seismogram
+
+::
 
     from pyrocko import pz, io, trace
     

@@ -243,7 +243,7 @@ class SatelliteTarget(StaticTarget):
     theta = Array.T(
         shape=(None, 1), dtype=num.float,
         help='Horizontal angle towards satellite\'s line of sight in radians.'
-             '\n\n        .. note::\n\n'
+             '\n\n        .. important::\n\n'
              '            :math:`0` is **east** and'
              ' :math:`\\frac{\\pi}{2}` is **north**.\n\n')
 
@@ -252,7 +252,7 @@ class SatelliteTarget(StaticTarget):
         help='Theta is look vector elevation angle towards satellite from'
              ' horizon in radians. Matrix of theta towards satellite’s'
              ' line of sight.'
-             '\n\n        .. note::\n\n'
+             '\n\n        .. important::\n\n'
              '            :math:`-\\frac{\\pi}{2}` is **down** and'
              ' :math:`\\frac{\\pi}{2}` is **up**.\n\n')
 
