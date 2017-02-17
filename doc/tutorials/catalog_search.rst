@@ -12,8 +12,7 @@ events which occurred in 2011 in northern Chile.
     from pyrocko import model
 
 
-    # time for which the catalog should be queried:
-    tmin = util.str_to_time('2011-01-01 00:00:00')
+    tmin = util.str_to_time('2011-01-01 00:00:00')  # beginning time of query
     tmax = util.str_to_time('2011-12-31 23:59:59')
 
     # create an instance of the global CMT catalog
@@ -65,3 +64,32 @@ Which should print this to your terminal:
       moment: 1.622772319211786e+18
       magnitude: 6.106838394015895
     duration: 5.4
+
+
+
+Search for an event name and print out event information
+---------------------------------------------------------
+
+Search for an event name only in the geofon catalog using
+:py:meth:`~pyrocko.catalog.Geofon`, with a given magnitude and timeframe.
+
+::
+
+    from pyrocko import catalog, util
+
+    tmin = util.ctimegm('2010-01-12 21:50:00')
+    tmax = util.ctimegm('2010-01-13 03:17:00')  # ending time of query
+    mag = 6.                                    # minimum magntiude (open end)
+
+    # download event information from GEOFON web page
+
+    geofon = catalog.Geofon()
+    event_names = geofon.get_event_names(
+        time_range=(tmin, tmax),
+        magmin=mag)
+
+    for event_name in event_names:
+
+        event = geofon.get_event(event_name)
+
+        print event

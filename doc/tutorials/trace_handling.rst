@@ -1,10 +1,10 @@
-Seismic traces
-================
+Seismic traces and datasets
+===========================
 
 Load, filter, save
 ------------------
 
-Read a test file `test.mseed <_static/test.mseed>`_, containing a three component seismogram, apply Butterworth lowpass filter to the seismograms and dump the results to a new file.
+Read a test file `test.mseed <_static/test.mseed>`_ with :py:meth:`pyrocko.io.load`, containing a three component seismogram, apply Butterworth lowpass filter to the seismograms and dump the results to a new file with :py:meth:`pyrocko.io.save`.
 
 ::
 
@@ -17,11 +17,11 @@ Read a test file `test.mseed <_static/test.mseed>`_, containing a three componen
     
     io.save(traces, 'filtered.mseed')
 
-Quickly inspect seismic traces
--------------------------------
+Quickly inspect a trace
+-----------------------
 
-To visualize a single trace, use the :py:meth:`pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use the :py:func:`pyrocko.trace.snuffle` function. If you want to see the contents of a pile, the :py:meth:`pyrocko.pile.Pile.snuffle` method is your friend. Alternatively, you could of course save the traces to file and use the standalone Snuffler to look at them.
-
+To visualize a single trace from a file, use the :py:meth:`pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use the :py:func:`pyrocko.trace.snuffle` function. If you want to see the contents of a pile, the :py:meth:`pyrocko.pile.Pile.snuffle` method is your friend. Alternatively, you could of course save the traces to file and use the standalone Snuffler to look at them.
+Also take a look at the Snuffler application
 ::
      
     from pyrocko import io, trace, pile
@@ -49,6 +49,10 @@ To visualize a single trace, use the :py:meth:`pyrocko.trace.Trace.snuffle` meth
 Create a trace object from scratch
 ----------------------------------
 
+Creates two seismological trace objects with :py:func:`pyrocko.trace.Trace` and fill it with noise (:func:`numpy.random.random` ) and save it with :py:func:`pyrocko.io.save`
+in to a single file with different channels for the two traces and one file with both traces in one channel.
+
+For each traceobject the name of the station is defined, the channel, the sampling rate (0.5s) and the onset of the trace is given with tmin.
 ::
 
     from pyrocko import trace, util, io
@@ -62,25 +66,68 @@ Create a trace object from scratch
     io.save([t1,t2], 'my_precious_traces.mseed')            # all traces in one file
     io.save([t1,t2], 'my_precious_trace_%(channel)s.mseed') # each file one channel
 
-
 Extracting part of a trace
 --------------------------
+
+:py:func:`pyrocko.io.chop` is used to cut 10s from the beginning and the end of the example trace (`test.mseed <_static/test.mseed>`_).
 
 ::
 
     from pyrocko import io
     
     traces = list(io.load('test.mseed'))
-    t = traces[0]
+    t = traces[0]  #the trace is given to t  
     print 'original:', t
     
     # extract a copy of a part of t
-    extracted = t.chop(t.tmin+10, t.tmax-10, inplace=False)
+    extracted = t.chop(t.tmin+10, t.tmax-10, inplace=False) # the operation chop is done on the trace t
     print 'extracted:', extracted
     
     # in-place operation modifies t itself
     t.chop(t.tmin+10, t.tmax-10)
     print 'modified:', t
+    
+    
+
+Shift a trace
+--------------------------
+This shifts a trace to a specified time with :py:meth:`pyrocko.trace.Trace.shift`
+
+::
+
+    from pyrocko import io, util
+    traces = list(io.load('test.mseed'))
+    t = traces[0]  #the trace is given to t  
+    tshift = -1*util.str_to_time('2009-04-06 01:32:42.000')  #shift your onset of traces to this time
+    #tshift = -10  #Alternative: shift your onset of trace by -10s
+    t.shift(tshift)  #shift your trace object t
+    io.save(t, '%s/SHIF.%s.%s'%(outfn, t.station, t.channel)) #save the shifted stations
+    print 'SAVED'
+    
+
+    
+    
+
+Resampling a trace
+--------------------------
+
+Example for downsampling a trace in a file to a sampling rate with :py:meth:`pyrocko.trace.Trace.downsample_to`.
+
+::
+
+    from pyrocko import io, util
+
+
+    traces = list(io.load('test.mseed'))
+    t = traces[0]  #the trace is given to t  
+    mindt=2.  #resampling [s]    
+    t.downsample_to(mindt)
+    io.save(t, '%s/DISPL.%s.%s'%(outfn, t.station, t.channel))
+    print 'SAVED'
+    
+
+    
+    
 
 
 Convert SAC to MiniSEED
@@ -122,7 +169,7 @@ An inefficient, non-portable, non-header-preserving, but simple, method to conve
 Misfit of one trace against two other traces
 ---------------------------------------------
 
-Three traces will be created. One of these traces will be assumed to be the reference trace (rt) that we want to know the misfit of in comparison to two other traces (tt1 and tt2). The traces rt and tt1 will be provided with the same random y-data. Hence, their misfit will be zero, in the end.
+Three traces will be created. One of these traces will be assumed to be the reference trace (rt) that we want to know the misfit with :py:func:`pyrocko.trace.Trace.misfit` of in comparison to two other traces (tt1 and tt2). The traces rt and tt1 will be provided with the same random y-data. Hence, their misfit will be zero, in the end.
 
 ::
 

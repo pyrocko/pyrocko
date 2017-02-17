@@ -39,7 +39,10 @@ extensions = ['sphinx.ext.autodoc',
 intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                                  None),
                        'scipy': ('https://docs.scipy.org/doc/scipy/reference/',
-                                 None)}
+                                 None),
+                       'python': ('https://docs.python.org/2',
+                                  None)                     
+                       }
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
