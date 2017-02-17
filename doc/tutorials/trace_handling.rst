@@ -37,7 +37,7 @@ SUDS         suds                        some
 Load, filter and save
 ----------------------
 
-Read a test file :file:`test.mseed <_static/test.mseed>`_ with :meth:`pyrocko.io.load`, containing a three component seismogram, apply Butterworth lowpass filter to the seismograms and dump the results to a new file with :meth:`pyrocko.io.save`.
+Read a test file :download:`test.mseed <../_static/test.mseed>` with :meth:`pyrocko.io.load`, containing a three component seismogram, apply Butterworth lowpass filter to the seismograms and dump the results to a new file with :meth:`pyrocko.io.save`.
 
 ::
 
@@ -53,7 +53,7 @@ Read a test file :file:`test.mseed <_static/test.mseed>`_ with :meth:`pyrocko.io
 Quickly inspect a trace
 -----------------------
 
-To visualize a single trace from a file, use the :meth:`pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use the :func:`pyrocko.trace.snuffle` function. If you want to see the contents of a pile, the :meth:`~pyrocko.pile.Pile.snuffle` method is your friend. Alternatively, you could of course save the traces to file and use the standalone :doc:`../apps/snuffler` to look at them.
+To visualize a single trace from a file, use the :meth:`pyrocko.trace.Trace.snuffle` method. To look at a list of traces, use the :func:`pyrocko.trace.snuffle` function. If you want to see the contents of a pile, the :meth:`~pyrocko.pile.Pile.snuffle` method is your friend. Alternatively, you could of course save the traces to file and use the standalone :doc:`../apps_snuffler` to look at them.
 
 ::
      
@@ -103,7 +103,7 @@ For each traceobject the name of the station is defined, the channel, the sampli
 Extracting part of a trace (trimming)
 -------------------------------------
 
-Trimming is archived with :func:`pyrocko.io.chop`. Here we cut 10 s from the beginning and the end of the example trace (:file:`test.mseed <_static/test.mseed>`_).
+Trimming is archived with :func:`pyrocko.io.chop`. Here we cut 10 s from the beginning and the end of the example trace (:download:`test.mseed <../_static/test.mseed>`).
 
 ::
 
@@ -280,9 +280,7 @@ function. For a transfer function given as poles and zeros, we can use
 instances of the class :class:`pyrocko.trace.PoleZeroResponse`. There is
 also a class :class:`pyrocko.trace.InverseEvalrespResponse`, which uses the common ``RESP`` files through the ``evalresp`` library.
 
-Here is a complete example using a SAC pole-zero file
-(:file:`STS2-Generic.polezero.txt <_static/STS2-Generic.polezero.txt>`_) to
-deconvolve the transfer function from an example seismogram
+Here is a complete example using a SAC pole-zero file (:download:`STS2-Generic.polezero.txt <../_static/STS2-Generic.polezero.txt>`) to deconvolve the transfer function from an example seismogram
 
 ::
 

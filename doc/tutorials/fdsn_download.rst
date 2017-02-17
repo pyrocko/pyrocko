@@ -1,10 +1,13 @@
-Downloading seismic data
-========================
+Downloading seismic data (FDSN)
+================================
 
-Waveforms and meta data can be retrieved from online FDSN services using
-the :py:class:`pyrocko.fdsn` modules. The following demo explains how to
-download both, waveform, as well as response information. Latter is used to
-deconvolve the transfer function from traces in a second step.
+Waveforms and meta data can be retrieved from online `FDSN services <http://www.fdsn.org>`_ using the :py:class:`pyrocko.fdsn` modules.
+
+
+Seismic data from Geofon
+-------------------------
+
+The following demo explains how to download both, waveform, as well as response information. Latter is used to deconvolve the transfer function from traces in a second step.
 
 ::
 
@@ -55,4 +58,5 @@ deconvolve the transfer function from traces in a second step.
         displacement.append(restituted)
 
     # scrutinize displacement traces
+    # Inspect using the snuffler
     trace.snuffle(displacement)
