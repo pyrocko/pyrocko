@@ -39,7 +39,7 @@ Contents
 
    overview
    install
-   tutorials
+   examples
    apps
    library
 

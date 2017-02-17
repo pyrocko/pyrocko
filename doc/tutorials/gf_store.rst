@@ -1,2 +1,2 @@
-Calculation of Green's function stores
-========================================
+Calculation of Green's function databases
+=========================================
