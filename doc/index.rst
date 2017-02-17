@@ -39,8 +39,8 @@ Contents
 
    overview
    install
-   examples
    apps
+   examples
    library
 
 Indices and tables
