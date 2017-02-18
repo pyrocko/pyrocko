@@ -22,7 +22,7 @@ class CrustDBTestCase(unittest.TestCase):
         gmtpy.have_gmt(), 'GMT not available')
     def test_map(self):
         tmpmap = pjoin(self.tmpdir, 'map.ps')
-        self.db.plotMap(tmpmap, show_topo=False)
+        self.db.plotMap(tmpmap)
 
     def test_selections(self):
         polygon = [(25., 30.), (30., 30.), (30, 25.), (25., 25.)]
