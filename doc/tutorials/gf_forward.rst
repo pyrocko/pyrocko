@@ -1,7 +1,7 @@
 Forward Modeling synthetic seismograms and displacements
 ========================================================
 
-Retrieve synthetic seismograms from a local store
+Calculate synthetic seismograms from a local store
 --------------------------------------------------
 
 .. highlight:: python
@@ -81,7 +81,14 @@ Further API documentation for the utilized objects can be found at :class:`~pyro
     trace.snuffle(synthetic_traces, markers=markers)
 
 
-Retrieve spatial surface displacement from a local store
+.. figure :: ../_static/gf_synthetic.png
+    :align: center
+    :alt: Synthetic seismograms calculated through pyrocko.gf
+
+    Synthetic seismograms calculated through :class:`pyrocko.gf` displayed in :doc:`../apps_snuffler`. The three traces show the east, north and vertical synthetical displacement stimulated by a double-couple source at 155 km distance.
+
+
+Calculate spatial surface displacement from a local store
 ----------------------------------------------------------
 
 In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static/geodetic displacement caused by that rupture.
@@ -92,7 +99,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     :align: center
     :alt: Static displacement from normal fault calculated through pyrocko
 
-    Synthetic surface isplacement from a normal fault in east, north and vertical direction. The displacement in line-of-sight towards a satellite observer is given in the rightmost plot.
+    Synthetic surface displacement from a vertical normal fault in east, north and vertical direction. The displacement in line-of-sight (LOS) towards a satellite observer is shown in the rightmost plot.
 
 ::
 
