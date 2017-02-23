@@ -71,12 +71,6 @@ Further API documentation for the utilized objects can be found at :class:`~pyro
                         nslc_ids=(t.codes,))
         markers.append(m)
 
-    # Processing that data will return a pyrocko.gf.Response object.
-    response = engine.process(source_dc, targets)
-
-    # This will return a list of the requested traces:
-    synthetic_traces = response.pyrocko_traces()
-
     # Finally, let's scrutinize these traces.
     trace.snuffle(synthetic_traces, markers=markers)
 
