@@ -3,6 +3,9 @@ import sys
 import shutil
 import subprocess
 import re
+import StringIO
+import base64
+import datetime
 from collections import OrderedDict
 from tempfile import NamedTemporaryFile, mkdtemp
 from string import Template
@@ -111,7 +114,7 @@ class SensorArray(Target):
 
 class GreensFunctionTest(Object):
 
-    __valid_properties = ['store_dir', 'pdf_dir',
+    __valid_properties = ['store_dir', 'pdf_dir', 'output_format',
                           'lowpass_frequency', 'rel_lowpass_frequency',
                           'highpass_frequency', 'rel_highpass_frequency',
                           'filter_order',
@@ -122,6 +125,7 @@ class GreensFunctionTest(Object):
 
     store_dir = String.T()
     pdf_dir = String.T(default=os.path.expanduser('~'))
+    output_format = String.T(optional=True, default='pdf')
     lowpass_frequency = Float.T(optional=True)
     highpass_frequency = Float.T(optional=True)
     rel_lowpass_frequency = Float.T(optional=True)
@@ -528,28 +532,72 @@ class GreensFunctionTest(Object):
                     tdict['velocity_ratio'] = ratio
                     tdict['velocity_scale'] = max(abs(mina), abs(maxa))
 
-    def __createLatexDoc(self, artefacts, chapters, gft2=None, model=''):
-        temp = ja_latex_env.get_template('gfreport.tex')
-        tex = '{0}/{1}.tex'.format(self.temp_dir, self.pdf_name)
+    def __createOutputDoc(self, artefacts, chapters,
+                          gft2=None, together=False):
+
         str_id = self.store_id
+        is_tex = self.output_format == 'pdf'
+        if is_tex:
+            file_type = 'tex'
+            dir = self.temp_dir
+            fstr_id = self.__formatLatexString(str_id)
+        else:
+            file_type = self.output_format
+            dir = self.pdf_dir
+            fstr_id = str_id
+
+        temp = ja_latex_env.get_template('gfreport.{0}'.format(file_type))
+        out = '{0}/{1}.{2}'.format(dir, self.pdf_name, file_type)
         config = self.store.config.dump()
-        tpath = self.__createVelocityProfile()
-        info = [(self.__formatLatexString(self.store_id), config, tpath)]
+
+        if together:
+            tpath = self.__createVelocityProfile(gft2)
+            if is_tex:
+                img_ttl = r'{0} \& {1}'.format(
+                    fstr_id, gft2.__formatLatexString(gft2.store_id))
+            else:
+                img_ttl = r'{0} & {1}'.format(str_id, gft2.store_id)
+        else:
+            tpath = self.__createVelocityProfile()
+            img_ttl = fstr_id
+
+        info = [(fstr_id, config, tpath, img_ttl)]
+
         if gft2 is not None:
-            str_id = r'{0} \& {1}'.format(str_id, gft2.store_id)
+            if is_tex:
+                fstr_id = self.__formatLatexString(gft2.store_id)
+                str_id = r'{0} \& {1}'.format(str_id, gft2.store_id)
+            else:
+                fstr_id = gft2.store_id
+                str_id = r'{0} & {1}'.format(str_id, gft2.store_id)
+
             config = gft2.store.config.dump()
-            tpath = gft2.__createVelocityProfile()
-            info += [(gft2.__formatLatexString(gft2.store_id), config, tpath)]
-        with open(tex, 'w') as f:
-            f.write(temp.render(
-                rpt_id=self.__formatLatexString(str_id), str_info=info,
-                artefacts=artefacts, chapters=chapters,
-                config=config, headings='headings'))
-        pro_call = ['pdflatex', '-output-directory', self.pdf_dir, tex,
-                    '-interaction', 'nonstop']
-        subprocess.call(pro_call)
-        subprocess.call(pro_call)
-        subprocess.call(pro_call)
+            if together:
+                tpath = ''
+            else:
+                tpath = gft2.__createVelocityProfile()
+
+            info += [(fstr_id, config, tpath, fstr_id)]
+
+        with open(out, 'w') as f:
+            if is_tex:
+                f.write(temp.render(
+                    rpt_id=self.__formatLatexString(str_id), str_info=info,
+                    artefacts=artefacts, chapters=chapters,
+                    config=config, headings='headings'))
+            elif file_type == 'html':
+                f.write(temp.render(
+                    rpt_id=str_id, str_info=info, artefacts=artefacts,
+                    chapters=chapters, config=config,
+                    date=datetime.datetime.now().strftime('%B %d, %Y')))
+
+        if is_tex:
+            pro_call = ['pdflatex', '-output-directory', self.pdf_dir, out,
+                        '-interaction', 'nonstop']
+            subprocess.call(pro_call)
+            subprocess.call(pro_call)
+            subprocess.call(pro_call)
+
         self.cleanup()
         if gft2 is not None:
             gft2.cleanup()
@@ -561,13 +609,12 @@ class GreensFunctionTest(Object):
         pat = re.compile('|'.join(rep.keys()))
         return pat.sub(lambda m: rep[re.escape(m.group(0))], string)
 
-    def createPDF(self, create_latex=True, *trc_ids):
+    def createOutputDoc(self, *trc_ids):
         trcs = self.traces
         if len(trc_ids) == 0:
             trc_ids = trcs.keys()
         artefacts = self.__getArtefactPageInfo(trc_ids)
         chapters = []
-        mdl_path = self.__createVelocityProfile()
         if self.plot_everything:
             for tid in trc_ids:
                 if tid not in trcs:
@@ -620,18 +667,28 @@ class GreensFunctionTest(Object):
                                                          'velocity_spectra')
                         img_data.append((self.__getFigureTitle(fig), '',
                                          self.__saveTempFigure(fig)))
-                src_str = self.__formatLatexString(self.sources[src_id].dump())
-                sen_str = self.__formatLatexString(self.sensors[sen_id].dump())
+                if self.output_format == 'pdf':
+                    src_str = self.__formatLatexString(
+                        self.sources[src_id].dump())
+                    sen_str = self.__formatLatexString(
+                        self.sensors[sen_id].dump())
+                else:
+                    src_str = self.sources[src_id].dump()
+                    sen_str = self.sensors[sen_id].dump()
                 chapters.append([ttl, src_str, sen_str, img_data])
-        if create_latex:
-            self.__createLatexDoc(
+        if self.output_format == 'pdf':
+            self.__createOutputDoc(
                 [[self.__formatLatexString(self.store_id),
                   self.__formatLatexString(self.phase_ratio_string),
-                  artefacts]],
-                chapters, model=mdl_path)
+                  artefacts]], chapters)
+        elif self.output_format == 'html':
+            self.__createOutputDoc(
+                [[self.store_id, self.phase_ratio_string, artefacts]],
+                chapters)
 
     @classmethod
-    def createComparisonPDF(cls, gft1, gft2, *trc_ids, **kwargs):
+    def createComparisonOutputDoc(cls, gft1, gft2,
+                                  *trc_ids, **kwargs):
         # only valid kwargs is 'together'
 
         if 'together' in kwargs:
@@ -719,18 +776,38 @@ class GreensFunctionTest(Object):
                                 gft1, gft2, tid, tstr)
                             img_data.append((gft1.__getFigureTitle(fig), '',
                                              gft1.__saveTempFigure(fig)))
-                src_str = gft1.__formatLatexString(gft1.sources[src_id].dump())
-                sen_str = gft1.__formatLatexString(gft1.sensors[sen_id].dump())
+
+                if gft1.output_format == 'pdf':
+                    src_str = gft1.__formatLatexString(
+                        gft1.sources[src_id].dump())
+                    sen_str = gft1.__formatLatexString(
+                        gft1.sensors[sen_id].dump())
+                else:
+                    src_str = gft1.sources[src_id].dump()
+                    sen_str = gft1.sensors[sen_id].dump()
+
                 chapters.append([ttl, src_str, sen_str, img_data])
-        gft1.__createLatexDoc(
-            [[gft1.__formatLatexString(gft1.store_id),
-              gft1.__formatLatexString(gft1.phase_ratio_string), art1],
-             [gft2.__formatLatexString(gft2.store_id),
-              gft2.__formatLatexString(gft2.phase_ratio_string), art2]],
-            chapters, gft2=gft2)
+
+        if gft1.output_format == 'pdf':
+            gft1.__createOutputDoc(
+                [[gft1.__formatLatexString(gft1.store_id),
+                  gft1.__formatLatexString(gft1.phase_ratio_string), art1],
+                 [gft2.__formatLatexString(gft2.store_id),
+                  gft2.__formatLatexString(gft2.phase_ratio_string), art2]],
+                chapters, gft2=gft2, together=together)
+        elif gft1.output_format == 'html':
+            gft1.__createOutputDoc(
+                [[gft1.store_id, gft1.phase_ratio_string, art1],
+                 [gft2.store_id, gft2.phase_ratio_string, art2]],
+                chapters, gft2=gft2, together=together)
 
     def __getArtefactPageInfo(self, trc_ids, str_id=None):
-        sp = r'\ '*6
+        is_tex = self.output_format == 'pdf'
+        if is_tex:
+            sp = r'\ '*6
+        else:
+            sp = r' '*6
+
         ratio_tol = 0.4
         artefacts = []
         # list of [<trace string>, <ratio text color>, <ratio string>]
@@ -741,8 +818,11 @@ class GreensFunctionTest(Object):
                 continue
             src_id, sen_id = tid.split('|')
             tdict = self.traces[tid]
-            ttl_str = r'\textbf{%s, %s}' % (self.getSourceString(src_id),
-                                            self.getSensorString(sen_id))
+            ttl_str = r'%s, %s' % (self.getSourceString(src_id),
+                                   self.getSensorString(sen_id))
+            if self.output_format == 'pdf':
+                ttl_str = r'\textbr{%s}' % ttl_str
+
             artefacts.append([ttl_str, 'black', ''])
 
             chCode = self.sensors[sen_id].codes[3]
@@ -751,9 +831,11 @@ class GreensFunctionTest(Object):
             ratio = tdict['displacement_ratio']
             color = ('red' if ratio == 0. or ratio > ratio_tol else 'black')
             rat_str = '{0:0.3f}'.format(ratio)
-            ttl = r'\hyperlink{${tid}|${str_id}|${type}}{${title}}'
-            ttl_str = Template(ttl).substitute(tid=tid, str_id=str_id,
-                                               type='d', title=ttl_str)
+            if is_tex:
+                tex = r'\hyperlink{${tid}|${str_id}|${type}}{${title}}'
+                ttl_str = Template(tex).substitute(
+                    tid=tid, str_id=str_id, type='d', title=ttl_str)
+
             artefacts.append([ttl_str, color, rat_str])
 
             if self.plot_velocity and 'velocity_traces' in tdict:
@@ -762,9 +844,11 @@ class GreensFunctionTest(Object):
                 color = ('red' if ratio == 0. or ratio > ratio_tol
                          else 'black')
                 rat_str = '{0:0.3f}'.format(ratio)
-                ttl = r'\hyperlink{${tid}|${str_id}|${type}}{${title}}'
-                ttl_str = Template(ttl).substitute(
-                    tid=tid, str_id=str_id, type='v', title=ttl_str)
+                if is_tex:
+                    tex = r'\hyperlink{${tid}|${str_id}|${type}}{${title}}'
+                    ttl_str = Template(tex).substitute(
+                        tid=tid, str_id=str_id, type='v', title=ttl_str)
+
                 artefacts.append([ttl_str, color, rat_str])
             artefacts.append(['', 'black', ''])
         return artefacts
@@ -1012,23 +1096,46 @@ class GreensFunctionTest(Object):
                        fontsize=(self.__notesize), xycoords='figure fraction')
         self.__drawGrid(btmax)
 
-    def __createVelocityProfile(self):
+    def __getModelProperty(self, prop):
         mod = self.store.config.earthmodel_1d
-        z = mod.profile('z') / 1e3
+        depths = mod.profile('z') / 1e3
+        if '/' in prop:
+            pros = prop.split('/')
+            data = mod.profile(pros[0]) / mod.profile(pros[1])
+        else:
+            data = mod.profile(prop)
+
+        if prop in ['vp', 'vs', 'rho']:
+            data /= 1e3
+
+        return data, depths
+
+    def __createVelocityProfile(self, gft2=None):
         opts = ['vp', 'vs', 'vp/vs', 'rho', 'qp', 'qs', 'qp/qs']
         fig = self.__setupFigure('profile', 4, rows=2)
         axs = fig.axes
         for i, opt in enumerate(opts):
-            if '/' in opt:
-                pros = opt.split('/')
-                profile = mod.profile(pros[0]) / mod.profile(pros[1])
-            else:
-                profile = mod.profile(opt)
             ax = axs[i]
-            if opt in ['vp', 'vs', 'rho']:
-                profile /= 1e3
-            ax.plot(profile, z)
-            ax.set_xlabel(opt)
+            if gft2 is None:
+                data, depths = self.__getModelProperty(opt)
+                ax.plot(data, depths)
+            else:
+                data, depths = self.__getModelProperty(opt)
+                ax.plot(data, depths, linewidth=3,
+                        linestyle='--', alpha=0.8, label=self.store_id,
+                        color=plot.mpl_color('aluminium4'))
+                data, depths = gft2.__getModelProperty(opt)
+                ax.plot(data, depths, linewidth=1,
+                        color=plot.mpl_color('scarletred2'),
+                        label=gft2.store_id)
+
+            if opt in ['vp', 'vs']:
+                ex = ' [km/s]'
+            elif opt == 'rho':
+                ex = ' [kg/m^3]'
+            else:
+                ex = ''
+            ax.set_xlabel(opt + ex)
             ax.xaxis.set_label_coords(0.5, -0.13)
             ax.invert_yaxis()
             pos = ax.get_position()
@@ -1044,9 +1151,16 @@ class GreensFunctionTest(Object):
             else:
                 y = pos.height * 0.975
                 ax.set_position([pos.x0, pos.y0, pos.width, y])
-        ax.annotate('Earth model parameters', xy=(0.5, 0.95),
-                    fontsize=(self.__notesize * 2), xycoords='figure fraction',
-                    ha='center', va='top')
+
+        if gft2 is None:
+            ttl = 'Earth model plots: {0}'.format(self.store_id)
+        else:
+            ttl = 'Earth model plots: {0} & {1}'.format(self.store_id,
+                                                        gft2.store_id)
+            ax.legend(bbox_to_anchor=(1.25, 1.), loc=2)
+
+        ax.annotate(ttl, xy=(0.5, 0.95), fontsize=(self.__notesize * 2),
+                    xycoords='figure fraction', ha='center', va='top')
         return self.__saveTempFigure(fig)
 
     @staticmethod
@@ -1114,12 +1228,19 @@ class GreensFunctionTest(Object):
                                      size=sz, position=(bbx, bby))
 
     def __saveTempFigure(self, fig):
-        fname = NamedTemporaryFile(
-            prefix='gft_', suffix='.pdf', dir=self.temp_dir, delete=False)
-        fname.close()
-        fig.savefig(fname.name, transparent=True)
+        if self.output_format == 'pdf':
+            fname = NamedTemporaryFile(
+                prefix='gft_', suffix='.pdf', dir=self.temp_dir, delete=False)
+            fname.close()
+            fig.savefig(fname.name, transparent=True)
+            out = fname.name
+        elif self.output_format == 'html':
+            imgdata = StringIO.StringIO()
+            fig.savefig(imgdata, format='png')
+            imgdata.seek(0)
+            out = base64.b64encode(imgdata.buf)
         plt.close(fig)
-        return fname.name
+        return out
 
     def __tracesMinMaxs(self, trcs, src_id, sen_id):
         # return the min/max amplitudes before and after the arrival of the
@@ -1245,19 +1366,19 @@ class GreensFunctionTest(Object):
             rel_lowpass_frequency=(1. / 110), rel_highpass_frequency=(1. / 16),
             distance_min=None, distance_max=None, sensor_count=50,
             filter_order=4, pdf_dir=None, plot_velocity=False,
-            plot_everything=True):
+            plot_everything=True, output_format='pdf'):
 
         args = locals()
         del args['cls']
         gft = cls.__createStandardSetups(**args)
-        gft.createPDF()
+        gft.createOutputDoc()
         gft.__printMessage()
         return gft
 
     @classmethod
     def runComparissonStandardCheck(
             cls, store_dir1, store_dir2, distance_min, distance_max,
-            together=True, source_depth=None,
+            together=True, source_depth=None, output_format='pdf',
             lowpass_frequency=None, highpass_frequency=None,
             rel_lowpass_frequency=(1. / 110), rel_highpass_frequency=(1. / 16),
             filter_order=4, pdf_dir=None, plot_velocity=False,
@@ -1272,13 +1393,13 @@ class GreensFunctionTest(Object):
 
         gft2 = cls.__createStandardSetups(store_dir2, **args)
 
-        cls.createComparisonPDF(gft1, gft2, together=together)
+        cls.createComparisonOutputDoc(gft1, gft2, together=together)
         gft1.__printMessage()
         gft2.__printMessage()
         return gft1, gft2
 
     @staticmethod
-    def createPdfFromFile(filename, allowed=1, **kwargs):
+    def createDocumentFromFile(filename, allowed=1, **kwargs):
         with open(filename, 'r') as f:
             fstr = f.read()
         gfts = []
@@ -1315,7 +1436,7 @@ class GreensFunctionTest(Object):
             gft = load(stream=gfts[0])
             gft.__update(**kwargs)
             gft.__applyTypicalProcedures()
-            gft.createPDF()
+            gft.createOutputDoc()
             gft.__printMessage()
             return gft
 
@@ -1328,7 +1449,7 @@ class GreensFunctionTest(Object):
             gft2.__update(**kwargs)
             gft2.__applyTypicalProcedures()
 
-            gft.createComparisonPDF(gft, gft2, **kwargs)
+            gft.createComparisonOutputDoc(gft, gft2, **kwargs)
             gft.__printMessage()
             gft2.__printMessage()
             return gft, gft2

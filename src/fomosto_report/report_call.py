@@ -77,8 +77,11 @@ def add_common_options(parser):
                            ' Must be typed before help option.')
     parser.add_option('--plot_velocity', '-v', action='store_true',
                       help='Plot the velocity traces also.', default=False)
+    parser.add_option('--output-format',
+                      help='The format of the report: pdf or html',
+                      choices=['pdf', 'html'], default='pdf')
     parser.add_option('--pdf_dir', '-p',
-                      help='The directory where the pdf will be saved to.'
+                      help='The directory where the pdf/html will be saved to.'
                            ' Default is the HOME directory.',
                       default=None)
     parser.add_option('--output', '-o',
@@ -234,7 +237,7 @@ def command_single(command, args):
     parser, opts, args = cl_parse(command, args, setup)
     filename = verify_arguements('single', 1, args)
     out_filename = opts.pop('output')
-    gft = gftest.createPdfFromFile(filename, **opts)
+    gft = gftest.createDocumentFromFile(filename, **opts)
     if out_filename is not None:
         return gft, out_filename
 
@@ -349,7 +352,7 @@ def command_double(command, args):
     filename = verify_arguements('double', 1, args)
     verify_options('double', **opts)
     out_filename = opts.pop('output')
-    gfts = gftest.createPdfFromFile(filename, 2, **opts)
+    gfts = gftest.createDocumentFromFile(filename, 2, **opts)
     if out_filename is not None:
         return gfts, out_filename
 
