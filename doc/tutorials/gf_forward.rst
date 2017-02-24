@@ -101,6 +101,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
         RectangularSource
     import numpy as num
 
+    # distance in kilometer
     km = 1e3
 
     # Ignite the LocalEngine and point it to fomosto stores stored on a
@@ -110,22 +111,26 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 
     # We define an extended source, in this case a rectangular geometry
     # Centroid UTM position is defined relatively to geographical lat, lon position
+    # Purely lef-lateral strike-slip fault with an azimuth of 104 
     rect_source = RectangularSource(
         lat=0., lon=0.,
         north_shift=0., east_shift=0., depth=6.5*km,
         width=5*km, length=8*km,
-        dip=70., rake=90., strike=90.,
+        dip=90., rake=0., strike=104.,
         slip=1.)
 
     # We will define 1000 randomly distributed targets.
     ntargets = 1000
 
     # We initialize the satellite target and set the line of sight vectors direction
-    theta = num.empty(ntargets)  # Horizontal LOS from E
-    theta.fill(num.deg2rad(90.-23.))
-
-    phi = num.empty(ntargets)  # Vertical LOS from vertical
-    phi.fill(num.deg2rad(192.))
+    # Postive motion toward the satellite
+    # Example of the Envisat satellite
+    look = 23. # angle between the LOS and the vertical 
+    heading = -76 # angle between the azimuth and the east (anti-clock) 
+    theta = num.empty(ntargets) # Vertical LOS from horizontal
+    theta.fill(num.deg2rad(90.- look)) 
+    phi = num.empty(ntargets)  # Horizontal LOS from E in anti-clokwise rotation
+    phi.fill(num.deg2rad(90-heading))
 
     satellite_target = SatelliteTarget(
         north_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
@@ -148,6 +153,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
         
         components = result.keys()
         fig, _ = plt.subplots(1, len(components))
+        fig.subplots_adjust(wspace=0.5)
 
         vranges = [(result[k].max(),
                     result[k].min()) for k in components]
@@ -167,7 +173,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
             n, e = rect_source.outline(cs='xy').T
             ax.fill(e, n, color=(0.5, 0.5, 0.5), alpha=0.5)
         
-        fig.colorbar(cmap)
+        fig.colorbar(cmap, aspect=5)
         plt.show()
 
     plot_static_los_result(result)
