@@ -50,6 +50,31 @@ Read a test file :download:`test.mseed <../_static/test.mseed>` with :meth:`pyro
     
     io.save(traces, 'filtered.mseed')
 
+Other filtering methods: :meth:`pyrocko.trace.Trace.highpass` and
+:meth:`pyrocko.trace.Trace.bandpass`
+
+
+Quickly inspect a trace's metadata
+----------------------------------
+
+Since the trace object is built on the module :mod:`pyrocko.guts`, to view
+metadata (in YAML format) one just needs to use the builtin python ``print``
+function.
+
+For specific information about a trace, just inspect the corresponding property,
+ie. ``station``.
+
+::
+
+    from pyrocko import io
+
+    traces = io.load('test.mseed')
+    t = traces[0]
+    print t
+
+    print t.station
+
+
 Quickly inspect a trace
 -----------------------
 
@@ -123,7 +148,7 @@ Trimming is archived with :func:`pyrocko.io.chop`. Here we cut 10 s from the beg
     
     
 
-Shift a trace
+Time shift a trace
 --------------------------
 This shifts a trace to a specified time with :meth:`pyrocko.trace.Trace.shift`
 
@@ -202,10 +227,15 @@ An inefficient, non-portable, non-header-preserving, but simple, method to conve
         f.close()
 
 
-Misfit of one trace against two other traces
+Finding the comparative misfits of mulitple traces
 ---------------------------------------------
 
-Three traces will be created. One of these traces will be assumed to be the reference trace (rt) that we want to know the misfit with :func:`pyrocko.trace.Trace.misfit` of in comparison to two other traces (``tt1`` and ``tt2``). The traces ``rt`` and ``tt1`` will be provided with the same random y-data. Hence, their misfit will be zero, in the end.
+Three traces will be created, where one will be the used as a reference trace
+(``rt``).  Using :meth:`pyrocko.trace.Trace.misfit`, we can find the misfits
+of the other two traces (``tt1`` and ``tt2``) in comparision to ``rt``.
+Traces ``rt`` and ``tt1`` will have the same y-data, so the misfit between
+them will be zero.
+
 
 ::
 
@@ -251,7 +281,7 @@ Three traces will be created. One of these traces will be assumed to be the refe
     # re-use:
     setup.dump(filename='my_misfit_setup.txt')
     
-If we wanted to reload our misfit setup, guts provides the iload_all() method for 
+If we wanted to reload our misfit setup, :mod:`pyrocko.guts` provides the ``iload_all()`` method for 
 that purpose:
 
 ::
@@ -261,7 +291,7 @@ that purpose:
     
     setup = load(filename='my_misfit_setup.txt')
     
-    # now, we can change for example only the domain:
+    # now we can change, for example, the domain:
     setup.domain = 'frequency_domain'
     
     print setup

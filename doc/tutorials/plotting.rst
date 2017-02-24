@@ -1,4 +1,4 @@
-Plotting Functions Included with Pyrocko
+Plotting functions
 ========================================
 
 Beachballs (focal mechanisms)
@@ -16,6 +16,9 @@ Classes covered in these examples:
    compensated linear vector diploe source object)
  * :py:class:`pyrocko.gf.seismosizer.DoubleDCSource` (a representation of a
    double double-couple source object).
+
+Beachballs from moment tensors
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This example demonstrates how to create beachballs from (random) moment tensors.  
 
@@ -66,8 +69,47 @@ This example demonstrates how to create beachballs from (random) moment tensors.
     :align: center
     :alt: Beachballs (focal mechanisms) created by moment tensors.
 
-    An artistic display of focal mechanisms drawn by classes :py:class:`pyrocko.beachball` and :py:mod:`pyrocko.moment_tensor`.
+    An artistic display of focal mechanisms drawn by classes
+    :py:class:`pyrocko.beachball` and :py:mod:`pyrocko.moment_tensor`.
 
+
+This exmaple shows how to plot a full, deviatoric and double-couple beachball
+for a moment tensor.
+
+::
+
+    from matplotlib import pyplot as plt
+    from pyrocko import beachball, moment_tensor as pmt, plot
+    
+    fig = plt.figure(figsize=(4., 2.))
+    fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
+    axes = fig.add_subplot(1, 1, 1)
+    axes.set_xlim(0., 4.)
+    axes.set_ylim(0., 2.)
+    axes.set_axis_off()
+    
+    for i, beachball_type in enumerate(['full', 'deviatoric', 'dc']):
+        beachball.plot_beachball_mpl(
+                pmt.as_mt((124654616., 370943136., -6965434.0,
+                           553316224., -307467264., 84703760.0)),
+                axes,
+                beachball_type=beachball_type,
+                size=60.,
+                position=(i+1, 1),
+                color_t=plot.mpl_color('scarletred2'),
+                linewidth=1.0)
+    
+    fig.savefig('beachball-example03.pdf')
+    plt.show()
+
+.. figure :: ../_static/beachball-example03.png
+    :align: center
+    :alt: Beachballs (focal mechanisms) options created from moment tensor
+
+    The three types of beachballs that can be plotted through pyrocko.
+
+Beachballs from source objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 This example shows how to add beachballs of various sizes to the corners of a
 plot by obtaining the moment tensor from four different source object types:
@@ -77,7 +119,8 @@ plot by obtaining the moment tensor from four different source object types:
 :py:class:`pyrocko.gf.seismosizer.DoubleDCSource` (lower right).
 
 Creating the beachball this ways allows for finer control over their location
-based on their size and allows for a round beachball if the axis are not 1:1.
+based on their size (in display units) which allows for a round beachball even
+if the axis are not 1:1.
 
 ::
 
@@ -213,38 +256,3 @@ based on their size and allows for a round beachball if the axis are not 1:1.
     :alt: Beachballs (focal mechanisms) created in corners of graph.
 
     Four different source object types plotted with different beachball sizes.
-
-This exmaple shows how to plot a full, deviatoric and double-couple beachball
-for a moment tensor.
-
-::
-
-    from matplotlib import pyplot as plt
-    from pyrocko import beachball, moment_tensor as pmt, plot
-    
-    fig = plt.figure(figsize=(4., 2.))
-    fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
-    axes = fig.add_subplot(1, 1, 1)
-    axes.set_xlim(0., 4.)
-    axes.set_ylim(0., 2.)
-    axes.set_axis_off()
-    
-    for i, beachball_type in enumerate(['full', 'deviatoric', 'dc']):
-        beachball.plot_beachball_mpl(
-                pmt.as_mt((124654616., 370943136., -6965434.0,
-                           553316224., -307467264., 84703760.0)),
-                axes,
-                beachball_type=beachball_type,
-                size=60.,
-                position=(i+1, 1),
-                color_t=plot.mpl_color('scarletred2'),
-                linewidth=1.0)
-    
-    fig.savefig('beachball-example03.pdf')
-    plt.show()
-
-.. figure :: ../_static/beachball-example03.png
-    :align: center
-    :alt: Beachballs (focal mechanisms) options created from moment tensor
-
-    The three types of beachballs that can be plotted through Pyrocko.
