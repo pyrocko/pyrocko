@@ -115,7 +115,7 @@ def arr(x):
 
 
 def discretize_rect_source(deltas, deltat, strike, dip, length, width,
-                           velocity, stf=None,
+                           anchor, velocity, stf=None,
                            nucleation_x=None, nucleation_y=None,
                            tref=0.0):
 
@@ -169,10 +169,29 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
 
+    if anchor == 'center':
+        anch_north = 0.
+        anch_east = 0.
+        anch_depth = 0.
+    elif anchor == 'top' or anchor == 'bottom':
+        anch_north = num.cos(strike * d2r) *\
+            num.cos(dip * d2r) * width * .5
+        anch_east = num.sin(strike) *\
+            num.cos(dip * d2r) * width * .5
+        anch_depth = num.cos(dip * d2r) * width * .5
+    if anchor == 'bottom':
+        anch_north *= -1.
+        anch_east *= -1.
+        anch_depth *= -1.
+
+    points2[:, 0] += anch_north
+    points2[:, 1] += anch_east
+    points2[:, 2] += anch_depth
+
     return points2, times2, amplitudes2, dl, dw
 
 
-def outline_rect_source(strike, dip, length, width):
+def outline_rect_source(strike, dip, length, width, anchor):
     l = length
     w = width
     points = num.array(
@@ -181,6 +200,21 @@ def outline_rect_source(strike, dip, length, width):
          [0.5*l, 0.5*w, 0.],
          [-0.5*l, 0.5*w, 0.],
          [-0.5*l, -0.5*w, 0.]])
+
+    if anchor == 'center':
+        anch_north = 0.
+        anch_east = 0.
+    elif anchor == 'top' or anchor == 'bottom':
+        anch_north = num.cos(strike * d2r) *\
+            num.cos(dip * d2r) * width * .5
+        anch_east = num.sin(strike * d2r) *\
+            num.cos(dip * d2r) * width * .5
+    if anchor == 'bottom':
+        anch_north *= -1.
+        anch_east *= -1.
+
+    points[:, 0] += anch_north
+    points[:, 1] += anch_east
 
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
@@ -1078,6 +1112,12 @@ class RectangularExplosionSource(ExplosionSource):
         default=0.,
         help='width of rectangular source area [m]')
 
+    anchor = StringChoice.T(
+        choices=['top', 'center', 'bottom'],
+        default='center',
+        optional=True,
+        help='Anchor point for positioning the plane.')
+
     nucleation_x = Float.T(
         optional=True,
         help='horizontal position of rupture nucleation in normalized fault '
@@ -1113,7 +1153,7 @@ class RectangularExplosionSource(ExplosionSource):
 
         points, times, amplitudes, dl, dw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
-            self.strike, self.dip, self.length, self.width,
+            self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
         return meta.DiscretizedExplosionSource(
@@ -1124,6 +1164,27 @@ class RectangularExplosionSource(ExplosionSource):
             east_shifts=self.east_shift + points[:, 1],
             depths=self.depth + points[:, 2],
             m0s=amplitudes)
+
+    def outline(self, cs='xyz'):
+        points = outline_rect_source(self.strike, self.dip, self.length,
+                                     self.width, self.anchor)
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
 
 
 class DCSource(SourceWithMagnitude):
@@ -1347,6 +1408,12 @@ class RectangularSource(DCSource):
         default=0.,
         help='width of rectangular source area [m]')
 
+    anchor = StringChoice.T(
+        choices=['top', 'center', 'bottom'],
+        default='center',
+        optional=True,
+        help='Anchor point for positioning the plane.')
+
     nucleation_x = Float.T(
         optional=True,
         help='horizontal position of rupture nucleation in normalized fault '
@@ -1395,7 +1462,7 @@ class RectangularSource(DCSource):
 
         points, times, amplitudes, dl, dw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
-            self.strike, self.dip, self.length, self.width,
+            self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
         if self.slip is not None:
@@ -1437,7 +1504,7 @@ class RectangularSource(DCSource):
 
     def outline(self, cs='xyz'):
         points = outline_rect_source(self.strike, self.dip, self.length,
-                                     self.width)
+                                     self.width, self.anchor)
 
         points[:, 0] += self.north_shift
         points[:, 1] += self.east_shift
@@ -1470,6 +1537,11 @@ class DoubleDCSource(SourceWithMagnitude):
         default=90.0,
         help='dip angle in [deg], measured downward from horizontal')
 
+    azimuth = Float.T(
+        default=0.0,
+        help='azimuth to second double-couple [deg], '
+             'measured at first, clockwise from north')
+
     rake1 = Float.T(
         default=0.0,
         help='rake angle in [deg], '
@@ -1497,11 +1569,6 @@ class DoubleDCSource(SourceWithMagnitude):
     delta_depth = Float.T(
         default=0.0,
         help='difference in depth (z2-z1) [m]')
-
-    azimuth = Float.T(
-        default=0.0,
-        help='azimuth to second double-couple [deg], '
-             'measured at first, clockwise from north')
 
     distance = Float.T(
         default=0.0,
