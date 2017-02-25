@@ -2337,8 +2337,7 @@ class CosFader(Taper):
     :param xfade: fade in and fade out time in seconds (optional)
     :param xfrac: fade in and fade out as fraction between 0. and 1. (optional)
 
-    Only one of both arguments can be set. The other is supposed to be
-    ``None``.
+    Only one argument can be set. The other should to be ``None``.
     '''
 
     xfade = Float.T(optional=True)

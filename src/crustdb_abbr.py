@@ -4,7 +4,7 @@ File holds the abbreviations for age, region and helper function
 '''
 
 
-AGE_KEY = {
+EONS = {
     'MCz': 'Mesozoic to Cenozoic',
     'Pz': 'Paleozoic',
     'lPt': 'Late Paleozoic',
@@ -14,7 +14,7 @@ AGE_KEY = {
 }
 
 
-PROVINCE_KEY = {
+PROVINCES = {
     'AFRICA-': 'AFRICA - ',
     'AFC-AB': 'AFRICA - Atlantic Border',
     'AFC-AF': 'AFRICA - Afar Depression',
@@ -440,14 +440,17 @@ PROVINCE_KEY = {
 }
 
 
+PROVINCE_KEYS = PROVINCES.keys()
+
+
 def provinceKey(province):
-    if province.upper() in PROVINCE_KEY.keys():
-        return PROVINCE_KEY[province.upper()]
+    if province.upper() in PROVINCE_KEYS:
+        return PROVINCES[province.upper()]
     return 'Undefined'
 
 
 def ageKey(age):
-    for key, value in AGE_KEY.iteritems():
+    for key, value in EONS.iteritems():
         if age.strip().lower() == key.lower():
             return value
     return 'Undefined'

@@ -106,8 +106,8 @@ option if you want to define phases in Cake's syntax.
         A *leg* represents seismic wave propagation without any conversions,
         encountering only super-critical reflections. Legs are denoted by ``P``,
         ``p``, ``S``, or ``s``. The capital letters are used when the take-off of
-        the *leg* is in downward direction, while the lower case letters
-        indicate a take-off in upward direction.
+        the *leg* is in a downward direction, while the lower case letters
+        indicate a take-off in an upward direction.
 
         A *knee* is an interaction with an interface. It can be a mode
         conversion, a reflection, or propagation as a headwave or diffracted

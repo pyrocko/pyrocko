@@ -1,7 +1,7 @@
 Forward Modeling synthetic seismograms and displacements
 ========================================================
 
-Retrieve synthetic seismograms from a local store
+Calculate synthetic seismograms from a local store
 --------------------------------------------------
 
 .. highlight:: python
@@ -71,17 +71,18 @@ Further API documentation for the utilized objects can be found at :class:`~pyro
                         nslc_ids=(t.codes,))
         markers.append(m)
 
-    # Processing that data will return a pyrocko.gf.Response object.
-    response = engine.process(source_dc, targets)
-
-    # This will return a list of the requested traces:
-    synthetic_traces = response.pyrocko_traces()
-
     # Finally, let's scrutinize these traces.
     trace.snuffle(synthetic_traces, markers=markers)
 
 
-Retrieve spatial surface displacement from a local store
+.. figure :: ../_static/gf_synthetic.png
+    :align: center
+    :alt: Synthetic seismograms calculated through pyrocko.gf
+
+    Synthetic seismograms calculated through :class:`pyrocko.gf` displayed in :doc:`../apps_snuffler`. The three traces show the east, north and vertical synthetical displacement stimulated by a double-couple source at 155 km distance.
+
+
+Calculate spatial surface displacement from a local store
 ----------------------------------------------------------
 
 In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static/geodetic displacement caused by that rupture.
@@ -92,7 +93,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     :align: center
     :alt: Static displacement from normal fault calculated through pyrocko
 
-    Synthetic surface isplacement from a normal fault in east, north and vertical direction. The displacement in line-of-sight towards a satellite observer is given in the rightmost plot.
+    Synthetic surface displacement from a vertical strike-slip fault in east, north and vertical direction. Line-of-sight (LOS) as for Envisat satellite (Look Angle: 23., Heading:-76). Positive motion toward the satellite. 
 
 ::
 
@@ -100,6 +101,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
         RectangularSource
     import numpy as num
 
+    # distance in kilometer
     km = 1e3
 
     # Ignite the LocalEngine and point it to fomosto stores stored on a
@@ -109,26 +111,29 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 
     # We define an extended source, in this case a rectangular geometry
     # Centroid UTM position is defined relatively to geographical lat, lon position
+    # Purely lef-lateral strike-slip fault with an azimuth of 104 
     rect_source = RectangularSource(
         lat=0., lon=0.,
         north_shift=0., east_shift=0., depth=6.5*km,
         width=5*km, length=8*km,
-        dip=70., rake=90., strike=90.,
+        dip=90., rake=0., strike=104.,
         slip=1.)
 
     # We will define 1000 randomly distributed targets.
     ntargets = 1000
 
     # We initialize the satellite target and set the line of sight vectors direction
-    theta = num.empty(ntargets)  # Horizontal LOS from E
-    theta.fill(num.deg2rad(90.-23.))
-
-    phi = num.empty(ntargets)  # Vertical LOS from vertical
-    phi.fill(num.deg2rad(192.))
+    # Example of the Envisat satellite
+    look = 23. # angle between the LOS and the vertical 
+    heading = -76 # angle between the azimuth and the east (anti-clock) 
+    theta = num.empty(ntargets) # Vertical LOS from horizontal
+    theta.fill(num.deg2rad(90.- look)) 
+    phi = num.empty(ntargets)  # Horizontal LOS from E in anti-clokwise rotation
+    phi.fill(num.deg2rad(90-heading))
 
     satellite_target = SatelliteTarget(
-        north_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
-        east_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
+        north_shifts=(num.random.rand(ntargets)-.5) * 30. * km,
+        east_shifts=(num.random.rand(ntargets)-.5) * 30. * km,
         tsnapshot=60,
         interpolation='nearest_neighbor',
         phi=phi,
@@ -146,27 +151,29 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
         result = result.results_list[0][target].result
         
         components = result.keys()
-        fig, _ = plt.subplots(1, len(components))
-
+        fig, _ = plt.subplots(int(len(components)/2),int(len(components)/2))
+        
         vranges = [(result[k].max(),
                     result[k].min()) for k in components]
 
-        lmax = num.abs([num.min(vranges), num.max(vranges)]).max()
-        levels = num.linspace(-lmax, lmax, 50)
+        for dspl, ax, vrange in zip(components, fig.axes, vranges):
 
-        for dspl, ax in zip(components, fig.axes):
-            #cmap = ax.imshow(E, N, result['displacement.%s' % dspl],
-            #                      cmap='seismic', levels=levels)
+            lmax = num.abs([num.min(vrange), num.max(vrange)]).max()
+            levels = num.linspace(-lmax, lmax, 50)
+
             cmap = ax.tricontourf(E, N, result[dspl],
                                   cmap='seismic', levels=levels)
-            ax.set_title(dspl)
-            ax.set_aspect('equal')
 
+            ax.set_title(dspl+' [mm]')
+            ax.set_aspect('equal')
         
             n, e = rect_source.outline(cs='xy').T
             ax.fill(e, n, color=(0.5, 0.5, 0.5), alpha=0.5)
         
-        fig.colorbar(cmap)
+            fig.colorbar(cmap, ax=ax, aspect=5)
+        
+        # adjust spacing between subplots
+        fig.tight_layout()
         plt.show()
 
     plot_static_los_result(result)

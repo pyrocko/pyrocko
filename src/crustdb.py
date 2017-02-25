@@ -378,8 +378,8 @@ class CrustDB(object):
 
         # Velocity and depth bins
         if vel_range is None:
-            vel_range = ((num.nanmin(v_mat) // 1e2) * 1e2,
-                         (num.nanmax(v_mat) // 1e2) * 1e2)
+            vel_range = ((v_mat.min() // 1e2) * 1e2,
+                         (v_mat.max() // 1e2) * 1e2)
         nvbins = int((vel_range[1] - vel_range[0]) / dvbin)
         ndbins = int((depth_range[1] - depth_range[0]) / ddbin)
 
@@ -465,10 +465,6 @@ class CrustDB(object):
             raise AttributeError('phase has to be either vp or vs')
 
         data = self._dataMatrix()[phase]
-
-        if vel_range is None:
-            vel_range = ((num.nanmin(data) // 1e2) * 1e2,
-                         (num.nanmax(data) // 1e2) * 1e2)
 
         ax.hist(data, weights=self.data_matrix['h'],
                 range=vel_range, bins=bins,
@@ -592,31 +588,14 @@ class CrustDB(object):
             ax.set_title('%s for %s' % (ax.get_title(), self.name))
 
         if plot_mode or plot_mean or plot_median:
-            leg = ax.legend(loc=1, fancybox=True)
+            leg = ax.legend(loc=1, fancybox=True, prop={'size': 10.})
             leg.get_frame().set_alpha(.6)
 
         if axes is None:
             plt.show()
 
-    def plotVelocitySurface(self, v_max, d_min=0., d_max=6000., axes=None,
-                            **kwargs):
-        """Plot a triangulated a depth surface exceeding velocity
-            using :func:`exceedVelocity`.
-
-        :param v_max: Velocity in [m/s]
-        :type v_max: float
-        :param d_min: minimum depth of the measurement, used to remove outliers
-            , defaults to 0.
-        :type d_min: float, optional
-        :param d_max: minimum depth of the measurement, used to remove outliers
-            , defaults to 6000.
-        :type d_max: float, optional
-        :param **kwargs: Additional kwarg passed to
-            :func:`matplotlib.axes.tricontourf`
-        :type **kwargs: dict
-        :param axes: Axes to plot into, defaults to None
-        :type axes: :class:`matplotlib.Axes`
-        """
+    def plotVelocitySurface(self, v_max, d_min=0., d_max=6000., axes=None):
+        '''Plot a triangulated a depth surface exceeding velocity'''
 
         fig, ax = _getCanvas(axes)
         d = self.exceedVelocity(v_max, d_min, d_max)
@@ -624,18 +603,12 @@ class CrustDB(object):
         lats = self.lats()[d > 0]
         d = d[d > 0]
 
-        ax.tricontourf(lats, lons, d, **kwargs)
+        ax.tricontourf(lats, lons, d)
 
         if axes is None:
             plt.show()
 
-    def plotMap(self, outfile):
-        """Plot a simple map showing profile locations
-            using :class:`pyrocko.gmtpy`
-
-        :param outfile: Export filename
-        :type outfile: str
-        """
+    def plotMap(self, outfile, **kwargs):
         from . import gmtpy
         lats = self.lats()
         lons = self.lons()
@@ -656,19 +629,21 @@ class CrustDB(object):
                  S='c2p', G='black')
         gmt.save(outfile)
 
-    def exceedVelocity(self, v_max, d_min=0., d_max=6000.):
+    def exceedVelocity(self, v_max, d_min=0, d_max=60):
         ''' Returns the last depth ``v_max`` has not been exceeded.
 
         :param v_max: maximal velocity
         :type vmax: float
+        :param dz: depth is sampled in dz steps
+        :type dz: float
         :param d_max: maximum depth
-        :type d_max: float
+        :type d_max: int
         :param d_min: minimum depth
-        :type d_min: float
+        :type d_min: int
         :returns: Lat, Lon, Depth and uid where ``v_max`` is exceeded
         :rtype: list(num.array)
         '''
-        self.profile_exceed_velocity = num.empty(self.nprofiles)
+        self.profile_exceed_velocity = num.empty(len(self.profiles))
         self.profile_exceed_velocity[:] = num.nan
 
         for ip, profile in enumerate(self.profiles):
@@ -944,10 +919,10 @@ class CrustDB(object):
             if nlayer == 0:
                 return
             self.append(VelocityProfile(
-                vp=vp[:nlayer+1] * km,
-                vs=vs[:nlayer+1] * km,
-                h=h[:nlayer+1] * km,
-                d=d[:nlayer+1] * km,
+                vp=vp[:nlayer] * km,
+                vs=vs[:nlayer] * km,
+                h=h[:nlayer] * km,
+                d=d[:nlayer] * km,
                 lat=lat, lon=lon,
                 **meta))
             nlayers.append(nlayer)
