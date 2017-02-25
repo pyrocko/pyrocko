@@ -93,7 +93,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     :align: center
     :alt: Static displacement from normal fault calculated through pyrocko
 
-    Synthetic surface displacement from a vertical normal fault in east, north and vertical direction. The displacement in line-of-sight (LOS) towards a satellite observer is shown in the rightmost plot.
+    Synthetic surface displacement from a vertical strike-slip fault in east, north and vertical direction. Line-of-sight (LOS) as for Envisat satellite (Look Angle: 23., Heading:-76). Positive motion toward the satellite. 
 
 ::
 
@@ -123,7 +123,6 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     ntargets = 1000
 
     # We initialize the satellite target and set the line of sight vectors direction
-    # Postive motion toward the satellite
     # Example of the Envisat satellite
     look = 23. # angle between the LOS and the vertical 
     heading = -76 # angle between the azimuth and the east (anti-clock) 
@@ -133,8 +132,8 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     phi.fill(num.deg2rad(90-heading))
 
     satellite_target = SatelliteTarget(
-        north_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
-        east_shifts=(num.random.rand(ntargets)-.5) * 25. * km,
+        north_shifts=(num.random.rand(ntargets)-.5) * 30. * km,
+        east_shifts=(num.random.rand(ntargets)-.5) * 30. * km,
         tsnapshot=60,
         interpolation='nearest_neighbor',
         phi=phi,
@@ -152,28 +151,29 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
         result = result.results_list[0][target].result
         
         components = result.keys()
-        fig, _ = plt.subplots(1, len(components))
-        fig.subplots_adjust(wspace=0.5)
-
+        fig, _ = plt.subplots(int(len(components)/2),int(len(components)/2))
+        
         vranges = [(result[k].max(),
                     result[k].min()) for k in components]
 
-        lmax = num.abs([num.min(vranges), num.max(vranges)]).max()
-        levels = num.linspace(-lmax, lmax, 50)
+        for dspl, ax, vrange in zip(components, fig.axes, vranges):
 
-        for dspl, ax in zip(components, fig.axes):
-            #cmap = ax.imshow(E, N, result['displacement.%s' % dspl],
-            #                      cmap='seismic', levels=levels)
+            lmax = num.abs([num.min(vrange), num.max(vrange)]).max()
+            levels = num.linspace(-lmax, lmax, 50)
+
             cmap = ax.tricontourf(E, N, result[dspl],
                                   cmap='seismic', levels=levels)
-            ax.set_title(dspl)
-            ax.set_aspect('equal')
 
+            ax.set_title(dspl+' [mm]')
+            ax.set_aspect('equal')
         
             n, e = rect_source.outline(cs='xy').T
             ax.fill(e, n, color=(0.5, 0.5, 0.5), alpha=0.5)
         
-        fig.colorbar(cmap, aspect=5)
+            fig.colorbar(cmap, ax=ax, aspect=5)
+        
+        # adjust spacing between subplots
+        fig.tight_layout()
         plt.show()
 
     plot_static_los_result(result)
