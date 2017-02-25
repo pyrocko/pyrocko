@@ -588,7 +588,7 @@ class CrustDB(object):
             ax.set_title('%s for %s' % (ax.get_title(), self.name))
 
         if plot_mode or plot_mean or plot_median:
-            leg = ax.legend(loc=1, fancybox=True, fontsize=10)
+            leg = ax.legend(loc=1, fancybox=True, prop={'size': 10.})
             leg.get_frame().set_alpha(.6)
 
         if axes is None:
