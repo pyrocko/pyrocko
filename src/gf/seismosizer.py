@@ -176,14 +176,14 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     elif anchor == 'top' or anchor == 'bottom':
         anch_north = num.cos(strike * d2r) *\
             num.cos(dip * d2r) * width * .5
-        anch_east = num.sin(strike) *\
+        anch_east = num.sin(strike * d2r) *\
             num.cos(dip * d2r) * width * .5
-        anch_depth = num.cos(dip * d2r) * width * .5
+        anch_depth = num.sin(dip * d2r) * width * .5
     if anchor == 'bottom':
         anch_north *= -1.
         anch_east *= -1.
         anch_depth *= -1.
-
+    
     points2[:, 0] += anch_north
     points2[:, 1] += anch_east
     points2[:, 2] += anch_depth
