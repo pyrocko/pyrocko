@@ -228,7 +228,7 @@ In this example we compare the synthetic unwappred and wrapped LOS displacements
 
     # We define a grid for the targets.
     left,right,bottom,top=-15*km,15*km,-15*km,15*km
-    ntargets = 1000 
+    ntargets = 50000 
 
     # We initialize the satellite target and set the line of site vectors
     # Case example of the Sentinel-1 satellite: 
