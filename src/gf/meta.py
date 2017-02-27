@@ -71,14 +71,14 @@ class SeismosizerTrace(Object):
 
 
 class SeismosizerResult(Object):
-    n_records_stacked = Int.T(optional=True)
-    t_stack = Float.T(optional=True)
+    n_records_stacked = Int.T(optional=True, default=1)
+    t_stack = Float.T(optional=True, default=0.)
 
 
 class Result(SeismosizerResult):
     trace = SeismosizerTrace.T(optional=True)
-    n_shared_stacking = Int.T(optional=True)
-    t_optimize = Float.T(optional=True)
+    n_shared_stacking = Int.T(optional=True, default=1)
+    t_optimize = Float.T(optional=True, default=0.)
 
 
 class StaticResult(SeismosizerResult):
