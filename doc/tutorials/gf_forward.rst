@@ -87,13 +87,13 @@ Calculate spatial surface displacement from a local store
 
 In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static/geodetic displacement caused by that rupture.
 
-We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget` in this example.
+We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget`.
 
 .. figure:: ../_static/gf_static_displacement.png
     :align: center
     :alt: Static displacement from a strike-slip fault calculated through pyrocko
 
-    Synthetic surface displacement from a vertical strike-slip fault in east, north and vertical direction. Line-of-sight (LOS) as for Envisat satellite (Look Angle: 23., Heading:-76). Positive motion toward the satellite. 
+    Synthetic surface displacement from a vertical strike-slip fault, with a N104W azimuth, in the Line-of-sight (LOS), east, north and vertical directions. LOS as for Envisat satellite (Look Angle: 23., Heading:-76). Positive motion toward the satellite. 
 
 ::
 
@@ -111,7 +111,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 
     # We define an extended source, in this case a rectangular geometry
     # Centroid UTM position is defined relatively to geographical lat, lon position
-    # Purely lef-lateral strike-slip fault with an azimuth of 104 
+    # Purely lef-lateral strike-slip fault with an N104W azimuth.  
     rect_source = RectangularSource(
         lat=0., lon=0.,
         north_shift=0., east_shift=0., depth=6.5*km,
@@ -150,6 +150,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
         E = result.request.targets[target].coords5[:, 3]
         result = result.results_list[0][target].result
         
+        # get the component names
         components = result.keys()
         fig, _ = plt.subplots(int(len(components)/2),int(len(components)/2))
         
@@ -161,13 +162,14 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
             lmax = num.abs([num.min(vrange), num.max(vrange)]).max()
             levels = num.linspace(-lmax, lmax, 50)
 
+            # plot interpolated points in map view with tricontourf 
             cmap = ax.tricontourf(E, N, result[dspl],
                                   cmap='seismic', levels=levels)
 
-            ax.set_title(dspl+' [mm]')
+            ax.set_title(dspl+' [m]')
             ax.set_aspect('equal')
         
-            # We plot the fault
+            # We plot the modeled fault
             n, e = rect_source.outline(cs='xy').T
             ax.fill(e, n, color=(0.5, 0.5, 0.5), alpha=0.5)
         
@@ -183,15 +185,13 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 Calculate forward model of thrust event and display wrapped phase
 -----------------------------------------------------------------
 
-In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static/geodetic displacement caused by that rupture.
-
-We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget` in this example.
+In this example we compare the synthetic unwappred and wrapped LOS displacements caused by a thrust rupture.
 
 .. figure:: ../_static/gf_static_wrapper.png
     :align: center
     :alt: Static displacement from a thrust fault calculated through pyrocko
 
-    Synthetic LOS displacements from a south-dipping thrust fault. LOS as for Sentinel-1 satellite (Look Angle: 36., Heading:-76). Positive motion toward the satellite. 
+    Synthetic LOS displacements from a south-dipping thrust fault. LOS as for Sentinel-1 satellite (Look Angle: 36., Heading:-76). Positive motion toward the satellite. Left: unwrapped phase. Right: Wrapped phase.
 
 ::
 
@@ -207,17 +207,18 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     store_id = 'static_store'
     engine = LocalEngine(store_superdirs=['/media/usb/stores'],default_store_id=store_id)
 
-    # USGS Solution
+    # We want to reproduce the USGS Solution of the event
     d= 10.5; strike=90; dip=40.; l=10; W=10; rake=90; slip=.5
 
-    # We define an extended source, in this case a rectangular geometry
-    # horizontal distance 
-    n=num.cos(num.deg2rad(dip))*W/2
-
-    # We compute the magnitude 
+    # We compute the magnitude of the event
     potency=l*km*W*km*slip
     m0=potency*31.5e9
     mw=(2./3)*num.log10(m0)-6.07
+
+    # We define an extended source, in this case a rectangular geometry
+    # horizontal distance 
+    # The centorid north position depends on its dip angle and its width.
+    n=num.cos(num.deg2rad(dip))*W/2
 
     thrust = RectangularSource(
         north_shift=n*km, east_shift=0.,
@@ -241,8 +242,6 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     theta.fill(num.deg2rad(90.-look))
 
     satellite_target = SatelliteTarget(
-        #north_shifts = mesh[0].flatten() * km,
-        #east_shifts= mesh[1].flatten()* km,
         north_shifts = rnd.uniform(bottom, top, ntargets),
         east_shifts= rnd.uniform(left, right, ntargets),
         tsnapshot=60,
@@ -271,6 +270,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 
         # Plot unwrapped LOS displacements
         ax = fig.axes[0]
+        # We shift the relative LOS displacements
         los = result['displacement.los'] - result['displacement.los'].min()
         losrange = [(los.max(),los.min())] 
         losmax = num.abs([num.min(losrange), num.max(losrange)]).max()
@@ -285,25 +285,17 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
         # We plot the fault projection to the surface   
         n, e = thrust.outline(cs='xy').T
         ax.fill(e, n, color=(0.5, 0.5, 0.5), alpha=0.5)
-        # We underline the tiip of the fault
+        # We underline the tip of the thrust 
         ax.plot(e[:2],n[:2],linewidth=2.,color='black',alpha=0.5)
 
         fig.colorbar(cmap,ax=ax,orientation='vertical',aspect=5, shrink=0.5)
 
-        # Plot wrapped phase 
+        # We plot wrapped phase 
         ax = fig.axes[1]
         # We wrap the phase between 0 and 0.028 mm
         wavelenght = 0.028
         wrapped_los= num.mod(los,wavelenght)
         levels = num.linspace(0,wavelenght, 50)
-
-        # xi = num.linspace(left, right, 100)
-        # yi = num.linspace(bottom, top, 100)
-        # import matplotlib.mlab as mlab
-        # zi = mlab.griddata(E, N, wrapped_los, xi, yi, interp='linear')
-        # #plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
-        # cmap = plt.contourf(xi, yi, zi, levels, cmap='brg',
-        #   norm=plt.Normalize(vmax=abs(zi).max(), vmin=-abs(zi).max()))
 
         # ax.tricontour(E, N, wrapped_los,
         #   map='gist_rainbow', levels=levels, colors='k')
@@ -329,14 +321,12 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     plot_static_los_result(result)
 
 
-
 Combining severals sources 
 ---------------------------
 In this example we combine two rectangular sources and plot the forward model in profile.
 
 .. figure:: ../_static/gf_static_several.png
     :align: center
-    :alt: Static displacement from a flower-structure made of one strike-slip fault and one thrust fault calculated through pyrocko
 
     Synthetic LOS displacements from a flower-structure made of one strike-slip fault and one thrust fault. LOS as for Sentinel-1 satellite (Look Angle: 36., Heading:-76). Positive motion toward the satellite. 
 
@@ -352,6 +342,7 @@ In this example we combine two rectangular sources and plot the forward model in
     # distance in kilometer
     km = 1e3
 
+    # We de fine the calss CombiSource to combine several sources in the engine
     class CombiSource(gf.Source):
         discretized_source_class = gf.DiscretizedMTSource
 
@@ -409,8 +400,8 @@ In this example we combine two rectangular sources and plot the forward model in
         slip=1.)
 
     # The second one is a ramp connecting to the root of the strike-slip fault
-    # ramp north shift (n) and width (w) depend of its dip angle and
-    # strike slip fault width   
+    # ramp north shift (n) and width (w) depend on its dip angle and on
+    # the strike slip fault width   
     n, w = 2/num.tan(num.deg2rad(45)), 2*(2./(num.sin(num.deg2rad(45))))
     thrust = RectangularSource(
         north_shift=n*km, east_shift=0.,
@@ -437,8 +428,8 @@ In this example we combine two rectangular sources and plot the forward model in
         phi=phi,
         theta=theta)
 
+    # We combine the two sources here
     patches = [strikeslip,thrust];
-    # Explain Combi source class here
     sources = CombiSource(subsources=patches)
 
     # The computation is performed by calling process on the engine
@@ -450,18 +441,18 @@ In this example we combine two rectangular sources and plot the forward model in
         import matplotlib.colors as mcolors
         fig, _ = plt.subplots(1,2,figsize=(8,4))
 
-        # strike,l,w,x,y: strike, length, width, x, and y position 
+        # strike,l,w,x0,y0: strike, length, width, x, and y position 
         # of the profile
         strike=num.deg2rad(strike)
-        # change of basis
+        # We define the parallel and perpendicular vectors to the profile
         s=[num.sin(strike),num.cos(strike)]
         n=[num.cos(strike),-num.sin(strike)]
         
-        # define boundaries of the profile 
+        # We define the boundaries of the profile 
         ypmax,ypmin=l/2,-l/2
         xpmax,xpmin=w/2,-w/2
 
-        # corners of the profile
+        # We define the corners of the profile
         xpro,ypro = num.zeros((7)),num.zeros((7))
         xpro[:] = x0-w/2*s[0]-l/2*n[0],x0+w/2*s[0]-l/2*n[0],\
         x0+w/2*s[0]+l/2*n[0],x0-w/2*s[0]+l/2*n[0],x0-w/2*s[0]-l/2*n[0],\
@@ -471,12 +462,12 @@ In this example we combine two rectangular sources and plot the forward model in
         y0+w/2*s[1]+l/2*n[1],y0-w/2*s[1]+l/2*n[1],y0-w/2*s[1]-l/2*n[1],\
         y0-l/2*n[1],y0+l/2*n[1]
 
-        # get forward model from engine
+        # We get the forward model from the engine
         N = result.request.targets[0].coords5[:, 2]
         E = result.request.targets[0].coords5[:, 3]
         result = result.results_list[0][0].result
 
-        # Plot surface displacements in map view
+        # We first plot the surface displacements in map view
         ax = fig.axes[0]
         los = result['displacement.los']
         losrange = [(los.max(),los.min())] 
@@ -486,36 +477,36 @@ In this example we combine two rectangular sources and plot the forward model in
         cmap = ax.tricontourf(E, N, los , 
             cmap='seismic', levels=levels)
 
-        ax.set_title('Map view')
-        ax.set_aspect('equal')
-
         for sourcess in patches:
             fn, fe = sourcess.outline(cs='xy').T
             ax.fill(fe, fn, color=(0.5, 0.5, 0.5), alpha=0.5)
             ax.plot(fe[:2],fn[:2],linewidth=2.,color='black',alpha=0.5)
 
-        # plot profile in map view
+        # We plot the limits of the profile in map view
         ax.plot(xpro[:],ypro[:],color = 'black',lw = 1.)
         # plot colorbar
         fig.colorbar(cmap,ax=ax,orientation='vertical',aspect=5)
+        ax.set_title('Map view')
+        ax.set_aspect('equal')
 
-        # Plot displacements in profile
+        # We plot displacements in profile 
         ax = fig.axes[1]
-        # perpandicular and parallel components in the profile basis
+        # We compute the perpandicular and parallel components in the profile basis
         yp = (E-x0)*n[0]+(N-y0)*n[1]
         xp = (E-x0)*s[0]+(N-y0)*s[1]
         los = result['displacement.los']
 
-        # select data enco;passing the profile
+        # We select data encompassing the profile
         index=num.nonzero((xp>xpmax)|(xp<xpmin)|\
             (yp>ypmax)|(yp<ypmin))
         xpp,ypp,losp=num.delete(xp,index),\
         num.delete(yp,index),num.delete(los,index)
 
+        # We associate the same color scale to the scatter plot
         norm = mcolors.Normalize(vmin=-losmax, vmax=losmax)
-        m = cm.ScalarMappable(cmap='seismic')
+        m = cm.ScalarMappable(norm=norm,cmap='seismic')
         facelos=m.to_rgba(losp)
-        ax.scatter(ypp,losp,s = 0.2, marker='o', color=facelos, label='LOS displacemts')
+        ax.scatter(ypp,losp,s = 0.3, marker='o', color=facelos, label='LOS displacemts')
 
         ax.legend(loc='best')
         ax.set_title('Profile')
