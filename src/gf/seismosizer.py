@@ -183,7 +183,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
         anch_north *= -1.
         anch_east *= -1.
         anch_depth *= -1.
-    
+
     points2[:, 0] += anch_north
     points2[:, 1] += anch_east
     points2[:, 2] += anch_depth
