@@ -19,4 +19,5 @@ The pyrocko framework covers many aspects of seismological data handling and man
     tutorials/gf_store.rst
     tutorials/gf_forward.rst
     tutorials/velocity_databases.rst
+    tutorials/guts.rst
 
