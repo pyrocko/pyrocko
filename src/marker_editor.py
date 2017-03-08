@@ -482,8 +482,8 @@ class MarkerTableModel(qc.QAbstractTableModel):
             else:
                 self.kagan_angles = {}
 
-        istart = self.index(0, 0)
-        istop = self.index(nmarkers-1, len(_header_data)-1)
+        istart = self.index(0, _column_mapping['Dist [km]'])
+        istop = self.index(nmarkers-1, _column_mapping['Kagan Angle [deg]'])
 
         self.emit(qc.SIGNAL('dataChanged(QModelIndex, QModelIndex)'),
                   istart,
