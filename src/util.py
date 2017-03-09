@@ -770,7 +770,10 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
     '''
 
     if isinstance(format, int):
-        format = '%Y-%m-%d %H:%M:%S.'+str(format)+'FRAC'
+        if format > 0:
+            format = '%Y-%m-%d %H:%M:%S.' + '%iFRAC' % format
+        else:
+            format = '%Y-%m-%d %H:%M:%S'
 
     if util_ext is not None:
         t0 = math.floor(t)
