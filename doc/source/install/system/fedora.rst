@@ -4,6 +4,7 @@ Installation on Fedora systems
 * **Fedora** (20)::
 
     sudo yum install make git python python-yaml python-matplotlib numpy scipy PyQt4
+    sudo yum install python-jinja2
     sudo easy_install progressbar
     sudo easy_install pyavl
     cd ~/src/   # or wherever you keep your source packages

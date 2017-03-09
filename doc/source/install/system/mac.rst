@@ -12,6 +12,7 @@ Installation on Mac OS X systems
     sudo port install py27-yaml
     sudo port install py27-pyqt4
     sudo port install py27-setuptools
+    sudo port install py27-jinja2
     sudo easy_install pyavl
     sudo easy_install progressbar
     cd ~/src/   # or wherever you keep your source packages

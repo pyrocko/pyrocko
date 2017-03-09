@@ -23,7 +23,8 @@ The following software packages must be installed before Pyrocko can be installe
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
    * `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
    * `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)
-   * `GMT <http://gmt.soest.hawaii.edu/>`_ (< 5.0, optional, only required for the :py:mod:`automap` module)
+   * `GMT <http://gmt.soest.hawaii.edu/>`_ (optional, only required for the :py:mod:`automap` module)
+   * `Jinja2 <http://jinja.pocoo.org/>`_ (optional, only required for the ``fomosto report`` subcommand)
 
 * Try to use `easy_install <http://pythonhosted.org/setuptools/easy_install.html>`_ or `pip install <http://www.pip-installer.org/en/latest/installing.html>`_ for these:
    * `pyavl <http://pypi.python.org/pypi/pyavl/>`_
