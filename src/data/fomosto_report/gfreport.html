@@ -1,0 +1,100 @@
+<html>
+<body>
+
+<h1 class="title toc-ignore">Green's Function report: \VAR{rpt_id}</h1>
+<p>\VAR{date}</p>
+<hr>
+
+<h2>Table of Contents</h2>
+\- for name, ph_str, arts in artefacts
+    <a href="#artefact report \VAR{name}"><h4>Artefact Report: \VAR{name}</h4></a>
+\- endfor
+\- for ttl, src, sen, img_data in chapters
+    <a href="#trace images-\VAR{ttl}"><h4>\VAR{ttl}</h4></a>
+    \- for name, href, path in img_data
+        \- if name != ''
+            <a href="#\VAR{name}"><p>\VAR{name}</p></a>
+        \- endif
+    \- endfor
+\- endfor
+<a href="#Appendix"><h4>Appendix</h4></a>
+\- for str_id, config, mdl_path, img_ttl in str_info
+    \- if mdl_path != ''
+        <a href="#config plot \VAR{img_ttl}">
+            <p>Model configuration plots for \VAR{img_ttl}</p>
+        </a>
+    \- endif
+    <a href="#config \VAR{str_id}"><p>Model configuration for \VAR{str_id}</p></a>
+\- endfor
+<hr>
+
+\- for name, ph_str, arts in artefacts
+    <div id="artefact report \VAR{name}" class="section level1">
+        <h2>Artefact Report: \VAR{name}</h2>
+        <p>The artefact report is created by finding the maximum amplitude before and after a certain tabulated phase (after filtering without demeaning) for each trace, and then reports only the maximum value per source/senors array.  The phase search string for this store was: <strong>\VAR{ph_str}</strong>.</p>
+        <table>
+            <tr>
+                <th width="850">Trace information</th>
+                <th>Aretefact maximum-ratio</th>
+            </tr>
+            \- for ttl, clr, rat in arts
+                <tr>
+                    \- if rat == ''
+                        <td><strong>\VAR{ttl}</strong></td>
+                    \- else
+                        <td>\VAR{ttl}</td>
+                    \- endif
+                    <td align="center">
+                        <font color="\VAR{clr}">\VAR{rat}</font>
+                    </td>
+                </tr>
+            \- endfor
+        </table>
+    </div>
+    <hr>
+\- endfor
+
+\- for ttl, src, sen, img_data in chapters
+    <div id="trace images-\VAR{ttl}" class="section level1">
+    <h2>\VAR{ttl}</h2>
+    %%This is the start of the chapter, so add text if wanted here to explain
+    %% the plots or error of plots.  This will be printed once per source-
+    %% sensor setup. Below is the dump of the source and sensor properties.
+    <table>
+        <tr>
+            <th width="350", align="left">Source information</th>
+            <th width="350", align="left">Sensor array information</th>
+        </tr>
+        <tr>
+            <td valign="top"><pre><code>\VAR{src}</code></pre></td>
+            <td><pre><code>\VAR{sen}</code></pre></td>
+        </tr>
+    </table>
+
+    \- for name, href, path in img_data
+        <div id="\VAR{name}">
+            <img src="data:image/png;base64,\VAR{path}"/>
+        </div>
+    \- endfor
+    </div>
+    <hr>
+\- endfor
+
+<div id="Appendix" class="section level1">
+<h2>Appendix</h2>
+\- for str_id, config, mdl_path, img_ttl in str_info
+    \- if mdl_path != ''
+        <div id="config plot \VAR{img_ttl}">
+            <img src="data:image/png;base64,\VAR{mdl_path}"/>
+        </div>
+        <hr>
+    \- endif
+    <div id="config \VAR{str_id}">
+        <h3>Model configuration: \VAR{str_id}</h3>
+        <pre><code>\VAR{config}</code></pre>
+    </div>
+    <hr>
+\- endfor
+</div>
+</body>
+</html>

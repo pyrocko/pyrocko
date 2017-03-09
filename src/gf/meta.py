@@ -71,14 +71,14 @@ class SeismosizerTrace(Object):
 
 
 class SeismosizerResult(Object):
-    n_records_stacked = Int.T(optional=True)
-    t_stack = Float.T(optional=True)
+    n_records_stacked = Int.T(optional=True, default=1)
+    t_stack = Float.T(optional=True, default=0.)
 
 
 class Result(SeismosizerResult):
     trace = SeismosizerTrace.T(optional=True)
-    n_shared_stacking = Int.T(optional=True)
-    t_optimize = Float.T(optional=True)
+    n_shared_stacking = Int.T(optional=True, default=1)
+    t_optimize = Float.T(optional=True, default=0.)
 
 
 class StaticResult(SeismosizerResult):
@@ -777,7 +777,7 @@ class MultiLocation(Object):
         self._coords5 = num.zeros((sizes[0], 5))
         for idx, p in enumerate(props):
             if p is not None:
-                self._coords5[:, idx] = p
+                self._coords5[:, idx] = p.flatten()
 
         return self._coords5
 
@@ -786,6 +786,27 @@ class MultiLocation(Object):
         if self.coords5.shape[0] is None:
             return 0
         return int(self.coords5.shape[0])
+
+    def get_latlon(self):
+        ''' Get all coordinates as lat lon
+        :returns: Coordinates in Latitude, Longitude
+        :rtype: :class:`numpy.ndarray`, (N, 2)
+        '''
+        latlons = num.empty((self.ncoords, 2))
+        for i in xrange(self.ncoords):
+            latlons[i, :] = orthodrome.ne_to_latlon(*self.coords5[i, :4])
+        return latlons
+
+    def get_corner_coords(self):
+        '''Returns the corner coordinates of the multi location object
+
+        :returns: In LatLon: lower left, upper left, upper right, lower right
+        :rtype: tuple
+        '''
+        latlon = self.get_latlon()
+        ll = (latlon[:, 0].min(), latlon[:, 1].min())
+        ur = (latlon[:, 0].max(), latlon[:, 1].max())
+        return (ll, (ll[0], ur[1]), ur, (ur[0], ll[1]))
 
 
 class Receiver(Location):
