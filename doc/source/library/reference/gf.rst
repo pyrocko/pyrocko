@@ -5,7 +5,7 @@ The :mod:`pyrocko.gf` Subpackage
     :members:
 
 The :mod:`pyrocko.gf.store` Module
-==================================
+----------------------------------
 
 .. automodule:: pyrocko.gf.store
     :members:
@@ -13,21 +13,21 @@ The :mod:`pyrocko.gf.store` Module
 
 
 The :mod:`pyrocko.gf.builder` Module
-====================================
+------------------------------------
 
 .. automodule:: pyrocko.gf.builder
     :members:
     :show-inheritance:
 
 The :mod:`pyrocko.gf.seismosizer` Module
-========================================
+----------------------------------------
 
 .. automodule:: pyrocko.gf.seismosizer
     :members:
     :show-inheritance:
 
 The :mod:`pyrocko.gf.targets` Module
-====================================
+------------------------------------
 
 .. automodule:: pyrocko.gf.targets
     :members:
@@ -35,7 +35,7 @@ The :mod:`pyrocko.gf.targets` Module
 
 
 The :mod:`pyrocko.gf.meta` Module
-=================================
+---------------------------------
 
 .. automodule:: pyrocko.gf.meta
     :members:

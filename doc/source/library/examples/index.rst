@@ -1,11 +1,11 @@
 Examples
 =========
 
-The pyrocko framework covers many aspects of seismological data handling and management. This section offers tutorials and real-world examples how to utilize the framework.
+The Pyrocko framework covers many aspects of seismological data handling and
+management. This section offers tutorials and real-world examples how to
+utilize the framework.
 
 .. toctree::
-    :caption: Code and usage examples
-    :name: Examples
     :maxdepth: 2
 
     trace_handling.rst

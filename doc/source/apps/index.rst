@@ -1,6 +1,6 @@
 
-Contained applications
-======================
+Applications
+============
 
 Pyrocko contains a few standalone applications for everyday seismological
 practice.

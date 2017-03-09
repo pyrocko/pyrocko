@@ -1,6 +1,6 @@
 
-Library Reference
-=================
+Reference
+=========
 
 .. toctree::
    :maxdepth: 1
@@ -11,8 +11,6 @@ Library Reference
    crust2x2
    crustdb
    evalresp
-   fdsn
-   gf
    gmtpy
    gui_util
    hamster_pile
@@ -31,3 +29,10 @@ Library Reference
    tectonics
    trace
    util
+
+
+.. toctree::
+   :maxdepth: 2
+
+   fdsn
+   gf
