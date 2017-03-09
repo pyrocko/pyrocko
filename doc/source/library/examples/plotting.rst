@@ -73,7 +73,7 @@ This example demonstrates how to create beachballs from (random) moment tensors.
     :py:class:`pyrocko.beachball` and :py:mod:`pyrocko.moment_tensor`.
 
 
-This exmaple shows how to plot a full, deviatoric and double-couple beachball
+This example shows how to plot a full, a deviatoric and a double-couple beachball
 for a moment tensor.
 
 ::
@@ -217,7 +217,6 @@ if the axis are not 1:1.
     beachball.plot_beachball_mpl(source3.pyrocko_moment_tensor(), ax,
                                  beachball_type='full', size=sz,
                                  position=(x0, y0), linewidth=1.)
-
 
     # create source object
     source4 = gf.DoubleDCSource(depth=35e3, strike1=0., dip1=90., rake1=0.,
