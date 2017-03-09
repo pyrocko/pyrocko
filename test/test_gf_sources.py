@@ -154,6 +154,30 @@ class GFSourcesTestCase(unittest.TestCase):
                 cent = dsource.centroid()
                 assert numeq(cent.time + source.get_timeshift(), t, 0.0001)
 
+    def test_rect_source_anchors(self):
+        sources = {}
+        for anchor in ['top', 'center', 'bottom']:
+            sources[anchor] = gf.RectangularSource(
+                width=5 * km,
+                length=20 * km,
+                anchor=anchor,
+                dip=120.,
+                strike=45.,
+                east_shift=0 * km,
+                north_shift=0 * km)
+
+        def plot_sources(sources):
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            ax = fig.gca()
+            colors = ['b', 'r', 'y']
+            for i, src in enumerate(sources.itervalues()):
+                n, e = src.outline(cs='xy').T
+                ax.fill(e, n, color=colors[i], alpha=0.5)
+            plt.show()
+
+        # plot_sources(sources)
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_sources', 'warning')
