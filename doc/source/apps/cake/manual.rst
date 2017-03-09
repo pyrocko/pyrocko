@@ -258,7 +258,7 @@ Ten receiver distances ranging from 100 km to 1000 km and a source depth of 10km
 
     cake plot-rays --crust2loc=45,10 --phases=P,p --sdepth=10 --distances=100:1000:10
 
-.. figure:: _static/cake_plot_example.png
+.. figure:: /static/cake_plot_example.png
     :scale: 80%
 
 The option ``--crust2loc`` refers to the :py:mod:`pyrocko.crust2x2` module and expects latitude and longitude of the source location.
@@ -274,7 +274,7 @@ Receivers may be at any depth. Arbitrary reflection/conversion histories may be 
    cake plot-rays --sdepth=15 --distances=10 --rdepth=4.443 --crust2loc=0,0 \
                   --phase='pP\,pPv3pP\,pPv3pPv3pP\,p'
 
-.. figure:: _static/cake_plot_example_2.png
+.. figure:: /static/cake_plot_example_2.png
     :scale: 80%
 
 To print arrival times and other ray parameters, replace ``plot-rays`` with
@@ -302,7 +302,7 @@ To use classic phase names, use the :option:`--classic` option::
     cake plot-rays --classic=Pdiff,PKP,PKIKP --distances=110:150:5 --degrees
 
 
-.. figure:: _static/cake_plot_example_3.png
+.. figure:: /static/cake_plot_example_3.png
     :scale: 80%
 
 Model plots
@@ -312,7 +312,7 @@ Model plots
 
     cake plot-model --model=prem-no-ocean.m
 
-.. figure:: _static/cake_plot_example_4.png
+.. figure:: /static/cake_plot_example_4.png
     :scale: 80%
 
 Cake phases
@@ -346,7 +346,7 @@ Here's another example to illustrate why cake needs its special phase definition
     > cake plot-rays --phases='P,p,P\,p\' --sdepth=0.5 --rdepth=1.5 --distances=3,5 \
                      --model=waveguide.nd
 
-.. figure:: _static/cake_plot_example_5.png
+.. figure:: /static/cake_plot_example_5.png
     :scale: 80%
 
 

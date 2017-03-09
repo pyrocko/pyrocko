@@ -16,7 +16,7 @@ with Snuffler.  Download the file, then run the command::
 
 A window should open:
 
-.. image:: _static/screenshot1.png
+.. image:: /static/screenshot1.png
     :align: center
 
 Initially, no waveforms are shown. That is perfectly ok.
@@ -27,7 +27,7 @@ in, respectively.
 
 If you zoom in close enough, the trace data will appear:
 
-.. image:: _static/screenshot2.png
+.. image:: /static/screenshot2.png
     :align: center
 
 There are some more commands to navigate. The :kbd:`<space>` key brings you one
@@ -47,7 +47,7 @@ How to get help:
 
 * Press :kbd:`?` or select :guilabel:`Help` from the main menu.
 * Use ``snuffler --help`` to see what command line options are available.
-* There is a :doc:`apps_snuffler_manual`
+* There is a :doc:`manual`
 
 Before continuing, you should make yourself a bit familiar with basic
 navigation in Snuffler.
@@ -63,7 +63,7 @@ get an overview over tens of thousands of files without any problems.
 
 Here's an example of just a few thousand files:
 
-.. image:: _static/screenshot3.png
+.. image:: /static/screenshot3.png
     :align: center
 
 If color is continuous, so is the trace (no gaps). If there is a gap in the
@@ -112,7 +112,7 @@ Of course, you can also restrict it to use only specific files::
     using quotes.
 
 
-.. image:: _static/screenshot4.png
+.. image:: /static/screenshot4.png
     :align: center
 
 Colored rectangles are shown for each file, so we can immediatly see that this
@@ -122,7 +122,7 @@ at 2009-09-19 00:00. Zoom in until the traces appear, filter a bit.
 
 Oh, there's an earthquake spanning the file boundaries!
 
-.. image:: _static/screenshot5.png
+.. image:: /static/screenshot5.png
     :align: center
 
 Notice, that the filtering works seamless across the file boundaries! By
@@ -156,7 +156,7 @@ some small features. Normally the traces are clipped within the color boxes,
 but you may choose to turn off display of the boxes and to disable the
 clipping.
 
-.. image:: _static/screenshot6.png
+.. image:: /static/screenshot6.png
     :align: center
 
 The current scale range on each track is shown when :guilabel:`Show Scale
@@ -181,7 +181,7 @@ Search (builtin)`. A panel opens in the bottom part of the Snuffler window.
 Make sure you have internet access, select a minimum magnitude and hit
 :guilabel:`Run`.
 
-.. image:: _static/screenshot7.png
+.. image:: /static/screenshot7.png
     :align: center
 
 Aha, so this one is coming in from Bali! 
@@ -202,7 +202,7 @@ around its name.
 
 Now select :guilabel:`Sort by Distance` in the main menu.
 
-.. image:: _static/screenshot8.png
+.. image:: /static/screenshot8.png
     :align: center
 
 There's your traces sorted by distance to the event.
@@ -219,7 +219,7 @@ network/station/location/channel ID) or may serve as time (span) markers only.
 The latter can be created by clicking on the time axis rather than on the
 traces. Here are some different normal markers:
 
-.. image:: _static/screenshot9.png
+.. image:: /static/screenshot9.png
     :align: center
 
 A color may be assigned to the selected markers using the number keys :kbd:`0`

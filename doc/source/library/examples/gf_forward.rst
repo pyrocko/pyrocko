@@ -75,11 +75,11 @@ Further API documentation for the utilized objects can be found at :class:`~pyro
     trace.snuffle(synthetic_traces, markers=markers)
 
 
-.. figure :: ../_static/gf_synthetic.png
+.. figure :: /static/gf_synthetic.png
     :align: center
     :alt: Synthetic seismograms calculated through pyrocko.gf
 
-    Synthetic seismograms calculated through :class:`pyrocko.gf` displayed in :doc:`../apps_snuffler`. The three traces show the east, north and vertical synthetical displacement stimulated by a double-couple source at 155 km distance.
+    Synthetic seismograms calculated through :class:`pyrocko.gf` displayed in :doc:`/apps/snuffler/index`. The three traces show the east, north and vertical synthetical displacement stimulated by a double-couple source at 155 km distance.
 
 
 Calculate spatial surface displacement from a local store
@@ -89,7 +89,7 @@ In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` a
 
 We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.gf.targets.StaticTarget` and :class:`~pyrocko.gf.targets.SatelliteTarget`.
 
-.. figure:: ../_static/gf_static_displacement.png
+.. figure:: /static/gf_static_displacement.png
     :align: center
     :alt: Static displacement from a strike-slip fault calculated through pyrocko
 
@@ -187,7 +187,7 @@ Calculate forward model of thrust event and display wrapped phase
 
 In this example we compare the synthetic unwappred and wrapped LOS displacements caused by a thrust rupture.
 
-.. figure:: ../_static/gf_static_wrapper.png
+.. figure:: /static/gf_static_wrapper.png
     :align: center
     :alt: Static displacement from a thrust fault calculated through pyrocko
 
@@ -325,7 +325,7 @@ Combining severals sources
 ---------------------------
 In this example we combine two rectangular sources and plot the forward model in profile.
 
-.. figure:: ../_static/gf_static_several.png
+.. figure:: /static/gf_static_several.png
     :align: center
 
     Synthetic LOS displacements from a flower-structure made of one strike-slip fault and one thrust fault. LOS as for Sentinel-1 satellite (Look Angle: 36., Heading:-76). Positive motion toward the satellite. 

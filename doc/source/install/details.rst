@@ -8,7 +8,7 @@ operating systems, like Linux and Mac OS X.
 Concrete listings of the commands needed to install Pyrocko are given
 in section
 
-* :doc:`install_quick`
+* :doc:`system/index`
 
 Prerequisites
 -------------

@@ -7,5 +7,5 @@ pre-calculated Green's function stores.
 .. toctree::
    :maxdepth: 2
 
-   apps_fomosto_tutorial
-   apps_fomosto_backends
+   tutorial
+   backends

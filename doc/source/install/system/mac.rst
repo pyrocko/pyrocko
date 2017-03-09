@@ -20,5 +20,5 @@ Installation on Mac OS X systems
     sudo python setup.py install --install-scripts=/usr/local/bin
 
 For instructions on how to install Pyrocko on other systems or if the
-installation with the above procedure fails, see :doc:`install_quick` or
-:doc:`install_details`.
+installation with the above procedure fails, see :doc:`index` or
+:doc:`/install/details`.

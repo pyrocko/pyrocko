@@ -14,5 +14,5 @@ Installation under Anaconda2
     python setup.py install
 
 For instructions on how to install Pyrocko on other systems or if the
-installation with the above procedure fails, see :doc:`install_quick` or
-:doc:`install_details`.
+installation with the above procedure fails, see :doc:`index` or
+:doc:`/install/details`.

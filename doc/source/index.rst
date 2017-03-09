@@ -1,5 +1,5 @@
 
-.. image:: _static/pyrocko_shadow.png
+.. image:: /static/pyrocko_shadow.png
     :align: left
 
 Pyrocko Manual
@@ -38,10 +38,9 @@ Contents
    :maxdepth: 2
 
    overview
-   install
-   apps
-   examples
-   library
+   install/index
+   apps/index
+   library/index
 
 Indices and tables
 ------------------

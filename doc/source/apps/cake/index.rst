@@ -8,4 +8,4 @@ models).
 .. toctree::
    :maxdepth: 2
 
-   apps_cake_manual
+   manual

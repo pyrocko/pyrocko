@@ -49,7 +49,7 @@ We can use :mod:`pyrocko.cake` to access the data and handle the velocity model 
     >>> cake_plot.my_model_plot(model)
 
 
-.. image:: ../_static/cake_crust2.png
+.. image:: /static/cake_crust2.png
     :align: center
     :alt: pyrocko.crust2 plotting
 
@@ -74,7 +74,7 @@ The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ gathers
     europe.plot(plot_median=False, plot_mode=False, vrange=(2000, 6000), phase='s')
 
 
-.. image:: ../_static/crustdb_plot.png
+.. image:: /static/crustdb_plot.png
     :align: center
     :alt: pyrocko.crustdb.CrustDB.plot
 
@@ -82,4 +82,4 @@ The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ gathers
 Other selection methods are :func:`~pyrocko.crustdb.CrustDB.selectPolygon` and
 :func:`~pyrocko.crustdb.CrustDB.selectRegion`.
 
-See :doc:`../reference_crustdb` for more information on the API.
+See :doc:`/library/reference/crustdb` for more information on the API.

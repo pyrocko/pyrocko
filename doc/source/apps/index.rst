@@ -13,6 +13,6 @@ practice.
 .. toctree::
    :maxdepth: 2
 
-   apps_snuffler
-   apps_cake
-   apps_fomosto
+   snuffler/index
+   cake/index
+   fomosto/index

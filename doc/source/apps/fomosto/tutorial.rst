@@ -390,7 +390,7 @@ If we are not in the Green's function store's directory, we can equally use::
 The extracted traces are shown in a Snuffler window, labeled as ``<counter>
 (<source-depth>, <distance>) <component>``.
 
-.. figure:: _static/fomosto_view_1.png
+.. figure:: /static/fomosto_view_1.png
     :align: center
 
 It is also possible to directly compare the traces of two (or more) different
@@ -405,7 +405,7 @@ their directory names to the view command::
 
 Rearranging the view in Snuffler a bit, we can quickly spot some differences:
 
-.. figure:: _static/fomosto_view_2.png
+.. figure:: /static/fomosto_view_2.png
     :align: center
 
 Here we can see, that at the closest distance, the QSEIS trace (red) contains a
@@ -578,7 +578,7 @@ and you will create a pdf file called ``iceland_reg_v2_0.25-0.5Hz.pdf`` in your 
 
 A example displacement seismogram.
 
-.. figure:: _static/fomosto_report_displacement1.png
+.. figure:: /static/fomosto_report_displacement1.png
     :align: center
 
 Creating decimated variants of a Green's function store

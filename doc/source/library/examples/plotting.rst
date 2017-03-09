@@ -65,7 +65,7 @@ This example demonstrates how to create beachballs from (random) moment tensors.
 
     plt.show()
 
-.. figure :: ../_static/beachball-example01.png
+.. figure :: /static/beachball-example01.png
     :align: center
     :alt: Beachballs (focal mechanisms) created by moment tensors.
 
@@ -102,7 +102,7 @@ for a moment tensor.
     fig.savefig('beachball-example03.pdf')
     plt.show()
 
-.. figure :: ../_static/beachball-example03.png
+.. figure :: /static/beachball-example03.png
     :align: center
     :alt: Beachballs (focal mechanisms) options created from moment tensor
 
@@ -251,7 +251,7 @@ if the axis are not 1:1.
     fig.savefig('beachball-example02.pdf')
     plt.show()
 
-.. figure :: ../_static/beachball-example02.png
+.. figure :: /static/beachball-example02.png
     :align: center
     :alt: Beachballs (focal mechanisms) created in corners of graph.
 

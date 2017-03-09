@@ -8,7 +8,7 @@ Snufflings can be reloaded at run-time using the menu entry 'Reload Snufflings'
 in the main menu of Snuffler - no need to restart Snuffler when a snuffling is
 modified or added.
 
-Already existing snufflings can be downloaded from the  `snuffling repository <https://github.com/pyrocko/contrib-snufflings >`_
+Already existing snufflings can be downloaded from the  `snuffling repository <https://github.com/pyrocko/contrib-snufflings>`_
 
 Example Snuffling to show earthquake catalog information within Snuffler
 ------------------------------------------------------------------------
