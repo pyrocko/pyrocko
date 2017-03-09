@@ -7,7 +7,9 @@ Waveforms and meta data can be retrieved from online `FDSN services <http://www.
 Seismic data from Geofon
 -------------------------
 
-The following demo explains how to download both, waveform, as well as response information. Latter is used to deconvolve the transfer function from traces in a second step.
+The following demo explains how to download waveform data and instrument
+response information. Latter is used to deconvolve the transfer function from
+the waveform traces in a second step.
 
 ::
 
@@ -17,7 +19,7 @@ The following demo explains how to download both, waveform, as well as response 
     tmin = util.stt('2014-01-01 16:10:00.000')
     tmax = util.stt('2014-01-01 16:39:59.000')
 
-    # select stations by their NSLC id and wildcards (asterik)
+    # select stations by their NSLC id and wildcards (asterisk)
     selection = [
         ('*', 'HMDT', '*', '*', tmin, tmax),    # all available components
         ('GE', 'EIL', '*', '*Z', tmin, tmax),   # all vertical components
@@ -34,8 +36,9 @@ The following demo explains how to download both, waveform, as well as response 
     request_response = ws.station(
         site='geofon', selection=selection, level='response')
 
-    # save the response in yaml format
+    # save the response in YAML and StationXML format
     request_response.dump(filename='responses.yaml')
+    request_response.dump_xml(filename='responses.xml')
 
     # Loop through retrieved waveforms and request meta information
     # for each trace
@@ -57,18 +60,17 @@ The following demo explains how to download both, waveform, as well as response 
 
         displacement.append(restituted)
 
-    # scrutinize displacement traces
-    # Inspect using the snuffler
+    # Inspect waveforms using Snuffler
     trace.snuffle(displacement)
 
 
 StationXML data manipulation
 ----------------------------
 
-To manipulate `StationXML <http://www.fdsn.org/xml/station/>`_ data through Pryocko use the
-:py:mod:`pyrocko.fdsn.station` module.  This exmaple will change the azimuth
-and dip values for channels whose codes are X, Y and Z, and set all channel
-instrument's input units to meters.
+To manipulate `StationXML <http://www.fdsn.org/xml/station/>`_ data through
+Pyrocko use the :py:mod:`pyrocko.fdsn.station` module.  This example will
+change the azimuth and dip values for channels whose codes are X, Y and Z, and
+set all channel instrument's input units to meters.
 
 ::
 
@@ -104,63 +106,3 @@ instrument's input units to meters.
 
     # save as new StationXML file
     sx.dump_xml(filename='changed.xml')
-
-
-Manipulation of downloaded StationXML data
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-A combination of the two sections above, allows one to easily change the azimuth, 
-dip and instrument units of the downloaded data before saving as a
-`StationXML <http://www.fdsn.org/xml/station/>`_ file.
-
-::
-
-    from pyrocko.fdsn import ws
-    from pyrocko import util, io, trace
-
-    tmin = util.stt('2014-01-01 16:10:00.000')
-    tmax = util.stt('2014-01-01 16:39:59.000')
-
-    # select stations by their NSLC id and wildcards (asterik)
-    selection = [
-        ('*', 'HMDT', '*', '*', tmin, tmax),    # all available components
-        ('GE', 'EIL', '*', '*Z', tmin, tmax),   # all vertical components
-    ]
-
-    # setup a waveform data request
-    request_waveform = ws.dataselect(site='geofon', selection=selection)
-
-    # request meta data
-    request_response = ws.station(
-        site='geofon', selection=selection, level='response', format='xml')
-
-    comp_to_azi_dip = {
-        'N': (0., 0.),
-        'E': (90., 0.),
-        'Z': (0., -90.),
-    }
-
-    # step through all the networks within the data file
-    for network in request_response.network_list:
-
-        # step through all the stations per networks
-        for station in network.station_list:
-
-            # step through all the channels per stations
-            for channel in station.channel_list:
-
-                # get the physical orientation of the sensor
-                chcode = channel.code[-1]
-
-                if chcode in comp_to_azi_dip.keys():
-                    azi, dip = comp_to_azi_dip[chcode]
-
-                    # change the azimuth and dip of the channel per channel alpha
-                    # code
-                    channel.azimuth.value = azi
-                    channel.dip.value = dip
-
-                # set the instrument input units to 'M'eters
-                channel.response.instrument_sensitivity.input_units.name = 'M'
-
-    request_response.dump_xml(filename='download_changed.xml')
