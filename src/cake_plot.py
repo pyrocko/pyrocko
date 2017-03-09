@@ -261,6 +261,8 @@ def plot_xp(
     for ipath, path in enumerate(paths):
         color = path_to_color[path]
         p, x, t = path.draft_pxt(path.endgaps(zstart, zstop))
+        # converting ray parameters from s/rad to s/deg
+        p /= r2d
         axes.plot(x, p, linewidth=2, color=color)
         axes.plot(x[:1], p[:1], 'o', color=color)
         axes.plot(x[-1:], p[-1:], 'o', color=color)
