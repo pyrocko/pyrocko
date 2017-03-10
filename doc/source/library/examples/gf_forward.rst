@@ -129,7 +129,7 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
     theta = num.empty(ntargets) # Vertical LOS from horizontal
     theta.fill(num.deg2rad(90.- look)) 
     phi = num.empty(ntargets)  # Horizontal LOS from E in anti-clokwise rotation
-    phi.fill(num.deg2rad(90-heading))
+    phi.fill(num.deg2rad(-90-heading))
 
     satellite_target = SatelliteTarget(
         north_shifts=(num.random.rand(ntargets)-.5) * 30. * km,
@@ -238,7 +238,7 @@ In this example we compare the synthetic unwappred and wrapped LOS displacements
     look=36.
     phi = num.empty(ntargets) # Horizontal LOS from E in anti-clokwise rotation
     theta = num.empty(ntargets)  # Vertical LOS from horizontal
-    phi.fill(num.deg2rad(90-heading))    
+    phi.fill(num.deg2rad(-90-heading))    
     theta.fill(num.deg2rad(90.-look))
 
     satellite_target = SatelliteTarget(
@@ -384,12 +384,13 @@ In this example we combine two rectangular sources and plot the forward model in
     km = 1e3
     # We define a grid for the targets.
     left,right,bottom,top=-10*km,10*km,-10*km,10*km
-    ntargets = 1000 
+    ntargets = 1000
 
     # Ignite the LocalEngine and point it to fomosto stores stored on a
     # USB stick, for this example we use a static store with id 'static_store'
-    store_id = 'static_store'
-    engine = LocalEngine(store_superdirs=['/media/usb/stores'],default_store_id=store_id)
+    store_id = 'tuto'
+    engine = LocalEngine(store_superdirs=['/data1/work/gf_store/'],
+        default_store_id=store_id)
 
     # We define two finite sources
     # The first one is a purely vertical strike-slip fault
@@ -401,7 +402,7 @@ In this example we combine two rectangular sources and plot the forward model in
 
     # The second one is a ramp connecting to the root of the strike-slip fault
     # ramp north shift (n) and width (w) depend on its dip angle and on
-    # the strike slip fault width   
+    # the strike slip fault width
     n, w = 2/num.tan(num.deg2rad(45)), 2*(2./(num.sin(num.deg2rad(45))))
     thrust = RectangularSource(
         north_shift=n*km, east_shift=0.,
@@ -410,14 +411,14 @@ In this example we combine two rectangular sources and plot the forward model in
         slip=0.5)
 
     # We initialize the satellite target and set the line of site vectors
-    # Case example of the Sentinel-1 satellite: 
+    # Case example of the Sentinel-1 satellite:
     # Heading: -166 (anti clokwise rotation from east)
     # Average Look Angle: 36 (from vertical)
     heading=-76
     look=36.
     phi = num.empty(ntargets) # Horizontal LOS from E in anti-clokwise rotation
     theta = num.empty(ntargets)  # Vertical LOS from horizontal
-    phi.fill(num.deg2rad(90-heading))    
+    phi.fill(num.deg2rad(-90-heading))
     theta.fill(num.deg2rad(90.-look))
 
     satellite_target = SatelliteTarget(
@@ -441,14 +442,14 @@ In this example we combine two rectangular sources and plot the forward model in
         import matplotlib.colors as mcolors
         fig, _ = plt.subplots(1,2,figsize=(8,4))
 
-        # strike,l,w,x0,y0: strike, length, width, x, and y position 
+        # strike,l,w,x0,y0: strike, length, width, x, and y position
         # of the profile
         strike=num.deg2rad(strike)
         # We define the parallel and perpendicular vectors to the profile
         s=[num.sin(strike),num.cos(strike)]
         n=[num.cos(strike),-num.sin(strike)]
-        
-        # We define the boundaries of the profile 
+
+        # We define the boundaries of the profile
         ypmax,ypmin=l/2,-l/2
         xpmax,xpmin=w/2,-w/2
 
@@ -457,7 +458,7 @@ In this example we combine two rectangular sources and plot the forward model in
         xpro[:] = x0-w/2*s[0]-l/2*n[0],x0+w/2*s[0]-l/2*n[0],\
         x0+w/2*s[0]+l/2*n[0],x0-w/2*s[0]+l/2*n[0],x0-w/2*s[0]-l/2*n[0],\
         x0-l/2*n[0],x0+l/2*n[0]
-        
+
         ypro[:] = y0-w/2*s[1]-l/2*n[1],y0+w/2*s[1]-l/2*n[1],\
         y0+w/2*s[1]+l/2*n[1],y0-w/2*s[1]+l/2*n[1],y0-w/2*s[1]-l/2*n[1],\
         y0-l/2*n[1],y0+l/2*n[1]
@@ -470,11 +471,11 @@ In this example we combine two rectangular sources and plot the forward model in
         # We first plot the surface displacements in map view
         ax = fig.axes[0]
         los = result['displacement.los']
-        losrange = [(los.max(),los.min())] 
-        losmax = num.abs([num.min(losrange), num.max(losrange)]).max()
-        levels = num.linspace(-losmax, losmax, 50)
+        # losrange = [(los.max(),los.min())]
+        # losmax = num.abs([num.min(losrange), num.max(losrange)]).max()
+        levels = num.linspace(los.min(), los.max(), 50)
 
-        cmap = ax.tricontourf(E, N, los , 
+        cmap = ax.tricontourf(E, N, los ,
             cmap='seismic', levels=levels)
 
         for sourcess in patches:
@@ -489,7 +490,7 @@ In this example we combine two rectangular sources and plot the forward model in
         ax.set_title('Map view')
         ax.set_aspect('equal')
 
-        # We plot displacements in profile 
+        # We plot displacements in profile
         ax = fig.axes[1]
         # We compute the perpandicular and parallel components in the profile basis
         yp = (E-x0)*n[0]+(N-y0)*n[1]
@@ -503,14 +504,14 @@ In this example we combine two rectangular sources and plot the forward model in
         num.delete(yp,index),num.delete(los,index)
 
         # We associate the same color scale to the scatter plot
-        norm = mcolors.Normalize(vmin=-losmax, vmax=losmax)
+        norm = mcolors.Normalize(vmin=los.min(), vmax=los.max())
         m = cm.ScalarMappable(norm=norm,cmap='seismic')
         facelos=m.to_rgba(losp)
         ax.scatter(ypp,losp,s = 0.3, marker='o', color=facelos, label='LOS displacemts')
 
         ax.legend(loc='best')
         ax.set_title('Profile')
-        
+
         plt.show()
 
-    plot_static_los_profile(result,110,15*km,5*km,0,0)
+    plot_static_los_profile(result,110,18*km,5*km,0,0)
