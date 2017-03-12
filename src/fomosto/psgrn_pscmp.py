@@ -685,26 +685,20 @@ class PsCmpSnapshots(Object):
     tmin = Float.T(default=0.0,
                    help='Time [days] after source time to start'
                         ' temporal sample snapshots.')
-    tmax = Float.T(default=0.0,
+    tmax = Float.T(default=1.0,
                    help='Time [days] after source time to end'
-                        ' temporal sample snapshots.')
-    nt = Float.T(default=1.0,
-                 help='Number of time samples.')
+                        ' temporal sample f.')
+    deltatdays = Float.T(default=1.0,
+                 help='Sample period [days].')
 
     @property
     def times(self):
-        return num.linspace(self.tmin, self.tmax, self.nt).tolist()
+        nt = int(num.ceil((self.tmax - self.tmin) / self.deltatdays))
+        return num.linspace(self.tmin, self.tmax, nt).tolist()
 
     @property
     def deltat(self):
-        if self.nt == 1:
-            # only coseismic displacement dummy delta
-            return 1
-        elif self.nt == 2:
-            # steady state in infinity returned dummy delta
-            return 100000.
-        else:
-            return (self.tmax - self.tmin) / (self.nt - 1)
+        return self.deltatdays * 24 * 3600
 
 
 class PsCmpConfig(Object):
@@ -1340,6 +1334,10 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             distances = num.linspace(
                 firstx, firstx + (nx-1)*dx, nx).tolist()
 
+            # fomosto sample rate in s, pscmp takes days
+            deltatdays = 1. / (fc.sample_rate * 24. * 3600.)
+            cc.snapshots = PsCmpSnapshots(
+                tmin=0., tmax=cg.max_time, deltatdays=deltatdays)
             cc.observation = PsCmpProfile(
                 slat=0. - 0.001 * cake.m2d,
                 slon=0.0,
@@ -1450,7 +1448,7 @@ def init(store_dir, variant):
     config = gf.meta.ConfigTypeA(
         id=store_id,
         ncomponents=10,
-        sample_rate=1,
+        sample_rate=1. / (3600. * 24.),
         receiver_depth=0*km,
         source_depth_min=0*km,
         source_depth_max=15*km,
