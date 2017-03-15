@@ -23,7 +23,7 @@ VERSION=v0.3
 if [ ! -d pages/$VERSION ] ; then
     mkdir pages/$VERSION
 fi
-cp -R doc/_build/html/* pages/$VERSION/
+cp -R doc/build/html/* pages/$VERSION/
 cd pages/$VERSION
 
 git add *
