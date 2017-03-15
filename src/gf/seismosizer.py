@@ -117,7 +117,7 @@ def arr(x):
 def discretize_rect_source(deltas, deltat, strike, dip, length, width,
                            anchor, velocity, stf=None,
                            nucleation_x=None, nucleation_y=None,
-                           tref=0.0):
+                           tref=0.0, decimation_factor=1):
 
     if stf is None:
         stf = STF()
@@ -128,8 +128,8 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     l = length
     w = width
 
-    nl = 2 * int(num.ceil(l / mindeltagf)) + 1
-    nw = 2 * int(num.ceil(w / mindeltagf)) + 1
+    nl = int((2./decimation_factor) * num.ceil(l / mindeltagf)) + 1
+    nw = int((2./decimation_factor) * num.ceil(w / mindeltagf)) + 1
 
     n = int(nl*nw)
 
@@ -1437,6 +1437,10 @@ class RectangularSource(DCSource):
         default='nearest_neighbor',
         help='Shear moduli interpolation technique to discretize slip')
 
+    decimation_factor = Int.T(
+        optional=True,
+        default=1)
+
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
@@ -1463,7 +1467,8 @@ class RectangularSource(DCSource):
         points, times, amplitudes, dl, dw = discretize_rect_source(
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width, self.anchor,
-            self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
+            self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
+            decimation_factor=self.decimation_factor)
 
         if self.slip is not None:
             points2 = points.copy()
@@ -2533,7 +2538,6 @@ class LocalEngine(Engine):
             nsamples = None
 
         tcounters.append(xtime())
-
         base_source = self._cached_discretize_basesource(
             source, store_, dsource_cache, target)
 
@@ -2570,13 +2574,15 @@ class LocalEngine(Engine):
             tcounters = [xtime()]
             store_ = self.get_store(target.store_id)
 
+            if hasattr(source, 'decimation_factor'):
+                source.decimation_factor = 4
+
             if target.tsnapshot is not None:
                 n_f = store_.config.sample_rate
                 itsnapshot = int(num.floor(target.tsnapshot * n_f))
                 # print target.tsnapshot, n_f, itsnapshot
             else:
                 itsnapshot = 1
-
             tcounters.append(xtime())
 
             base_source = source.discretize_basesource(store_)
@@ -2710,7 +2716,7 @@ class LocalEngine(Engine):
                         targets=request.targets,
                         dsource_cache={}),
 
-                    nprocs=nprocs):
+                    nprocs=1):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
 
