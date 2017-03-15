@@ -241,14 +241,14 @@ class SatelliteTarget(StaticTarget):
     post-processing is applied.
     '''
     theta = Array.T(
-        shape=(None, 1), dtype=num.float,
+        shape=(None,), dtype=num.float,
         help='Horizontal angle towards satellite\'s line of sight in radians.'
              '\n\n        .. important::\n\n'
              '            :math:`0` is **east** and'
              ' :math:`\\frac{\\pi}{2}` is **north**.\n\n')
 
     phi = Array.T(
-        shape=(None, 1), dtype=num.float,
+        shape=(None,), dtype=num.float,
         help='Theta is look vector elevation angle towards satellite from'
              ' horizon in radians. Matrix of theta towards satellite’s'
              ' line of sight.'

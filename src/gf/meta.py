@@ -743,19 +743,19 @@ class Location(Object):
 class MultiLocation(Object):
 
     lats = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='Latitudes of targets.')
     lons = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='Longitude of targets.')
     north_shifts = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='North shifts of targets.')
     east_shifts = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='East shifts of targets.')
     elevation = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='Elevations of targets.')
 
     def __init__(self, *args, **kwargs):
