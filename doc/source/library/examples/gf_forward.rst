@@ -1,4 +1,4 @@
-Forward Modeling synthetic seismograms and displacements
+Forward modeling synthetic seismograms and displacements
 ========================================================
 
 Calculate synthetic seismograms from a local store
