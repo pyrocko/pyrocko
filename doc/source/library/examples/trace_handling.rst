@@ -328,31 +328,36 @@ Here is a complete example using a SAC pole-zero file
 (:download:`STS2-Generic.polezero.txt </static/STS2-Generic.polezero.txt>`) to
 deconvolve the transfer function from an example seismogram:
 
+:download:`trace_handling_example_pz.py </static/trace_handling_example_pz.py>`
+
 ::
 
     from pyrocko import pz, io, trace
-    
+
     # read poles and zeros from SAC format pole-zero file
     zeros, poles, constant = pz.read_sac_zpk('STS2-Generic.polezero.txt')
-    
-    zeros.append(0.0j)  # one more for displacement
-    
-    # create pole-zero response function object for restitution, so poles and zeros
-    # from the response file are swapped here.
-    rest_sts2 = trace.PoleZeroResponse(poles, zeros, 1./constant)
-    
+
+    # one more zero to convert from velocity->counts to displacement->counts
+    zeros.append(0.0j)
+
+    rest_sts2 = trace.PoleZeroResponse(
+        zeros=zeros,
+        poles=poles,
+        constant=constant)
+
     traces = io.load('test.mseed')
-    out_traces = []
-    for trace in traces:
-        
-        displacement =  trace.transfer(
-            1000.,                       # rise and fall of time domain taper in [s]
-            (0.001, 0.002, 5., 10.),     # frequency domain taper in [Hz]
-            transfer_function=rest_sts2)
-        
+    out_traces = list(traces)
+    for tr in traces:
+
+        displacement = tr.transfer(
+            1000.,                    # rise and fall of time window taper in [s]
+            (0.001, 0.002, 5., 10.),  # frequency domain taper in [Hz]
+            transfer_function=rest_sts2,
+            invert=True)              # to change to (counts->displacement)
+
         # change channel id, so we can distinguish the traces in a trace viewer.
-        displacement.set_codes(channel='D'+trace.channel[-1])
-        
+        displacement.set_codes(channel='D'+tr.channel[-1])
+
         out_traces.append(displacement)
-            
+
     io.save(out_traces, 'displacement.mseed')
