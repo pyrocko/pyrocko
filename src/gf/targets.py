@@ -256,7 +256,9 @@ class SatelliteTarget(StaticTarget):
              '            :math:`-\\frac{\\pi}{2}` is **down** and'
              ' :math:`\\frac{\\pi}{2}` is **up**.\n\n')
 
-    _los_factors = None
+    def __init__(self, *args, **kwargs):
+        StaticTarget.__init__(self, *args, **kwargs)
+        self._los_factors = None
 
     def get_los_factors(self):
         if (self.theta.size != self.phi.size != self.lats.size):
