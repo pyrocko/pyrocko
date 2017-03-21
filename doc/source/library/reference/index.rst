@@ -24,6 +24,7 @@ Reference
    plot
    pz
    rdseed
+   response_plot
    slink
    snuffling
    tectonics
