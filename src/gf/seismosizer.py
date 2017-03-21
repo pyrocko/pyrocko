@@ -205,7 +205,7 @@ def outline_rect_source(strike, dip, length, width, anchor):
         anch_north = 0.
         anch_east = 0.
     elif anchor == 'top' or anchor == 'bottom':
-        anch_north = num.cos(strike * d2r) *\
+        anch_north = -num.cos(strike * d2r) *\
             num.cos(dip * d2r) * width * .5
         anch_east = num.sin(strike * d2r) *\
             num.cos(dip * d2r) * width * .5
