@@ -4,7 +4,6 @@ import unittest
 import logging
 from tempfile import mkdtemp
 import numpy as num
-import os.path as op
 import copy
 
 from pyrocko import util, trace, gf, cake  # noqa
@@ -17,6 +16,7 @@ r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
 slowness_window = (0.0, 0.0, 0.4, 0.5)
+
 
 class GFQSeis2dTestCase(unittest.TestCase):
 
@@ -66,9 +66,9 @@ mantle
 
         # qseis2d
         q2conf = qseis2d.QSeis2dConfig()
-        qss = q2conf.qseis_s_config
-        qsr = q2conf.qseis_r_config
+        q2conf.gf_directory = q2_store_dir
 
+        qss = q2conf.qseis_s_config
         qss.receiver_basement_depth = 35.
         qss.calc_slowness_window = 0
         qss.slowness_window = slowness_window
@@ -87,16 +87,16 @@ mantle
             id='qseis2d_test_q2',
             ncomponents=10,
             sample_rate=0.25,
-            receiver_depth=0.*km,
-            source_depth_min=10*km,
-            source_depth_max=10*km,
-            source_depth_delta=1*km,
-            distance_min=5525*km,
-            distance_max=5535*km,
-            distance_delta=1*km,
+            receiver_depth=0. * km,
+            source_depth_min=10. * km,
+            source_depth_max=10. * km,
+            source_depth_delta=1. * km,
+            distance_min=5528. * km,
+            distance_max=5532. * km,
+            distance_delta=1. * km,
             modelling_code_id='qseis2d',
             earthmodel_1d=mod,
-            earthmodel_receiver_1d = receiver_mod,
+            earthmodel_receiver_1d=receiver_mod,
             tabulated_phases=[
                 gf.meta.TPDef(
                     id='begin',
@@ -128,7 +128,7 @@ mantle
         # qseis
         config_q = copy.deepcopy(config_q2)
         config_q.id = 'qseis2d_test_q'
-        modelling_code_id = 'qseis'
+        config_q.modelling_code_id = 'qseis'
 
         qconf = qseis.QSeisConfig()
 
@@ -167,15 +167,15 @@ mantle
         source = gf.MTSource(
             lat=0.,
             lon=0.,
-            depth=10.*km)
+            depth=10. * km)
 
-        source.m6 = tuple(random.random()*2.-1. for x in xrange(6))
+        source.m6 = tuple(random.random() * 2. - 1. for x in xrange(6))
 
         azi = 0.    # QSeis2d only takes one receiver without azimuth variable
-        dist = 5530.*km
+        dist = 5530. * km
 
-        dnorth = dist * math.cos(azi*d2r)
-        deast = dist * math.sin(azi*d2r)
+        dnorth = dist * math.cos(azi * d2r)
+        deast = dist * math.sin(azi * d2r)
 
         targets = []
         for cha in 'rtz':

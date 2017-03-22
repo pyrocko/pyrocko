@@ -718,20 +718,26 @@ in the directory %s'''.lstrip() % (
 
         fn = self.config.get_output_filename(self.tempdir)
         data = num.loadtxt(fn, skiprows=1, dtype=num.float)
-        traces = []
         nsamples, ntraces = data.shape
         deltat = (data[-1, 0] - data[0, 0]) / (nsamples - 1)
         toffset = data[0, 0]
-        rec = self.config.receiver
-        tmin = rec.tstart + toffset
 
+        tred = self.config.time_reduction
+        rec = self.config.receiver
+        tmin = rec.tstart + toffset + deltat + tred
+
+        traces = []
         for itrace, comp in enumerate(self.config.components):
             # qseis2d gives velocity-integrate to displacement
-            displ = cumtrapz(data[:, itrace + 1], dx=deltat)
+            # integration removes one sample, add it again in front
+            displ = cumtrapz(num.concatenate(
+                (num.zeros(1), data[:, itrace + 1])), dx=deltat)
+
             tr = trace.Trace(
-                '', '0000', '', comp,
+                '', '%04i' % itrace, '', comp,
                 tmin=tmin, deltat=deltat, ydata=displ,
-                meta=dict(distance=rec.distance))
+                meta=dict(distance=rec.distance,
+                          azimuth=0.0))
 
             traces.append(tr)
 
@@ -785,8 +791,6 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                     depth_max='moho')
                     #depth_max=conf_s.receiver_basement_depth*km)
 
-            print conf_r
-
         deltat = 1.0 / self.gf_config.sample_rate
 
         if 'time_window_min' not in shared:
@@ -796,11 +800,13 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             shared['time_window_min'] = float(
                     num.ceil( d['tlenmax'] / self.gf_config.sample_rate) * \
                                              self.gf_config.sample_rate)
+            shared['time_reduction'] = d['tmin_vred']
 
         time_window_min = shared['time_window_min']
 
         conf_s.nsamples = nextpow2(int(round(time_window_min / deltat)) + 1)
         conf_s.time_window = (conf_s.nsamples - 1) * deltat
+        conf_r.time_reduction = shared['time_reduction']
 
         if step == 0:
             if 'slowness_window' not in shared:
@@ -957,6 +963,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                         if self.qseis_baseconf.cut:
                             tmin = self.store.t(self.qseis_baseconf.cut[0], args[:-1])
                             tmax = self.store.t(self.qseis_baseconf.cut[1], args[:-1])
+
                             if None in (tmin, tmax):
                                 continue
 

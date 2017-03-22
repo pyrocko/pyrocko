@@ -688,6 +688,7 @@ in the directory %s'''.lstrip() % (
             ntraces -= 1
             vred = self.config.time_reduction_velocity
             deltat = (data[-1, 0] - data[0, 0])/(nsamples-1)
+
             for itrace, distance, azimuth in zip(
                     xrange(ntraces), distances, azimuths):
 
@@ -696,7 +697,6 @@ in the directory %s'''.lstrip() % (
                     tmin += distance / vred
 
                 tmin += deltat
-
                 tr = trace.Trace(
                     '', '%04i' % itrace, '', comp,
                     tmin=tmin, deltat=deltat, ydata=data[:, itrace+1],
@@ -884,6 +884,7 @@ class QSeisGFBuilder(gf.builder.Builder):
                     if conf.cut:
                         tmin = self.store.t(conf.cut[0], args[:-1])
                         tmax = self.store.t(conf.cut[1], args[:-1])
+
                         if None in (tmin, tmax):
                             continue
 
