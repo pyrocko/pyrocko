@@ -4,6 +4,7 @@ import unittest
 import logging
 from tempfile import mkdtemp
 import numpy as num
+import os
 
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
@@ -15,6 +16,7 @@ r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
 slowness_window = (0.0, 0.0, 0.4, 0.5)
+
 
 class GFQSeis2dTestCase(unittest.TestCase):
 
@@ -62,14 +64,20 @@ mantle
         store_dir = mkdtemp(prefix='gfstore')
         self.tempdirs.append(store_dir)
 
-        qconf = qseis2d.QSeis2dConfigFull()
-        qconf.qseiss_version = '2014'
-        qconf.qseiss_outdir = store_dir + '/' + qseis2d.default_qseiss_outdir
-        print qconf.qseiss_outdir
-        qconf.qseisr_version = '2014'
+        qconf = qseis2d.QSeis2dConfig()
+        qsc = qseis2d.QSeisSConfigFull()
+        qrc = qseis2d.QSeisRConfigFull()
 
-        qconf.calc_slowness_window = 0
-        qconf.slowness_window = slowness_window
+        qsc.qseiss_version = '2014'
+        qrc.qseisr_version = '2014'
+
+        qconf.gf_directory = store_dir + '/' + qseis2d.default_gf_directory
+
+        print qconf.gf_directory
+
+        qsc.receiver_basement_depth = 35.
+        qsc.calc_slowness_window = 0
+        qsc.slowness_window = slowness_window
 
         qconf.time_region = (
             gf.meta.Timing('0'),
@@ -79,18 +87,21 @@ mantle
             gf.meta.Timing('0'),
             gf.meta.Timing('end+100'))
 
-        qconf.sw_flat_earth_transform = 0
+        qsc.sw_flat_earth_transform = 0
+
+        qconf.qseis_s_conf = qsc
+        qconf.qseis_r_conf = qrc
 
         config = gf.meta.ConfigTypeA(
             id='qseis2d_test',
             ncomponents=10,
-            sample_rate=0.25,
+            sample_rate=0.5,
             receiver_depth=0.*km,
             source_depth_min=10*km,
             source_depth_max=10*km,
             source_depth_delta=1*km,
-            distance_min=550*km,
-            distance_max=560*km,
+            distance_min=3550*km,
+            distance_max=3560*km,
             distance_delta=1*km,
             modelling_code_id='qseis2d',
             earthmodel_1d=mod,
@@ -104,6 +115,7 @@ mantle
                     definition='2.5'),
             ])
 
+        qconf.validate()
         config.validate()
         gf.store.Store.create_editables(
             store_dir, config=config, extra={'qseis2d': qconf})
@@ -130,7 +142,7 @@ mantle
         source.m6 = tuple(random.random()*2.-1. for x in xrange(6))
 
         azi = 0.    # QSeis2d only takes one receiver without azimuth variable
-        dist = 553.*km
+        dist = 3553.*km
 
         dnorth = dist * math.cos(azi*d2r)
         deast = dist * math.sin(azi*d2r)
@@ -171,7 +183,7 @@ mantle
         conf.sw_algorithm = 1
         conf.slowness_window = slowness_window
         conf.time_window = 508.
-        conf.nsamples = 128
+        conf.nsamples = 256
         conf.sw_flat_earth_transform = 0
         conf.source_mech = qseis.QSeisSourceMechMT(
             mnn=source.mnn,
@@ -191,22 +203,23 @@ mantle
         # stf of Qseis2d has to be the same
         wavelet_duration = 2 * (1 / config.sample_rate)
 
-        runner2d = qseis2d.QSeisRRunner(tmp=store_dir, keep_tmp=True)
-        conf2d = qseis2d.QSeis2dConfigFull()
-        conf2d.qseiss_outdir = qconf.qseiss_outdir
+        source_depth = source.depth / km
+        runnerR = qseis2d.QSeisRRunner(tmp=store_dir, keep_tmp=True)
+        conf2d = qseis2d.QSeisRConfigFull()
+        conf2d.fk_path = os.path.join(qconf.gf_directory, 'green_%.3fkm.fk' % source_depth)
+        conf2d.info_path = os.path.join(qconf.gf_directory, 'green_%.3fkm.info' % source_depth)
         conf2d.qseisr_version = '2014'
-        conf2d.qseiss_version = '2014'
         conf2d.receiver = qseis2d.QSeisRReceiver(lat=90 - dist * cake.m2d,
                                            lon=0.0,
                                            tstart=0.0,
                                            distance=dist)
         conf2d.source = qseis2d.QSeis2dSource(lat=90,
                                         lon=0.0,
-                                        depth=source.depth/km)
+                                        depth=source_depth)
         conf2d.wavelet_duration = wavelet_duration
-        conf.time_reduction = 0.
+        conf2d.time_reduction = 0.
         conf2d.time_window = 508.
-        conf2d.nsamples = 128
+        conf2d.nsamples = 256
         conf2d.source_mech = qseis2d.QSeisRSourceMechMT(
             mnn=source.mnn,
             mee=source.mee,
@@ -216,23 +229,27 @@ mantle
             med=source.med)
         conf2d.earthmodel_1d = mod
         conf2d.earthmodel_receiver_1d = receiver_mod
-        runner2d.run(conf2d)
+        conf2d.validate()
+        runnerR.run(conf2d)
 
-        trs2 = runner2d.get_traces()
+        trs2 = runnerR.get_traces()
 
         engine = gf.LocalEngine(store_dirs=[store_dir])
         trs3 = engine.process(source, targets).pyrocko_traces()
 
         for tr in trs1:
-            tr.station = 'QS'
+            tr.location = 'QS'
+            print tr.ydata.min(), tr.ydata.max()
 
         for tr in trs2:
-            tr.station = 'QS2'
+            tr.location = 'QS2'
+            print tr.ydata.min(), tr.ydata.max()
 
         for tr in trs3:
-            tr.station = 'GFQ2'
+            tr.location = 'GFQ2'
+            print tr.ydata.min(), tr.ydata.max()
 
-        trace.snuffle(trs1+trs2+trs3)
+        trace.snuffle(trs3+trs2+trs1)
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_qseis', 'warning')

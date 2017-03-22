@@ -37,7 +37,7 @@ qseis2d_components = {
 }
 
 # defaults
-default_gf_directory = 'qsei2d_green'
+default_gf_directory = 'qseis2d_green'
 default_fk_basefilename = 'green'
 default_source_depth = 10.0
 default_time_region = (Timing('-10'), Timing('+890'))
@@ -163,7 +163,7 @@ class QSeisSConfigFull(QSeisSConfig):
     earthmodel_1d = gf.meta.Earthmodel1D.T(optional=True)
 
     @staticmethod
-    def example_S():
+    def example():
         conf = QSeisSConfigFull()
         conf.source_depth = 15.
         conf.receiver_basement_depth = 35.
@@ -172,7 +172,7 @@ class QSeisSConfigFull(QSeisSConfig):
         conf.sw_flat_earth_transform = 1
         return conf
 
-    def string_for_config_S(self):
+    def string_for_config(self):
 
         def aggregate(l):
             return len(l), '\n'.join([''] + [x.string_for_config() for x in l])
@@ -363,7 +363,7 @@ class QSeisRConfigFull(QSeisRConfig):
     earthmodel_receiver_1d = gf.meta.Earthmodel1D.T(optional=True)
 
     @staticmethod
-    def example_R():
+    def example():
         conf = QSeisRConfigFull()
         conf.source = QSeis2dSource(lat=-80.5, lon=90.1)
         conf.receiver_location = QSeisRReceiver(lat=13.4, lon=240.5, depth=0.0)
@@ -379,7 +379,7 @@ class QSeisRConfigFull(QSeisRConfig):
     def get_output_filename(self, rundir):
         return op.join(rundir, self.output_filename)
 
-    def string_for_config_R(self):
+    def string_for_config(self):
 
         def aggregate(l):
             return len(l), '\n'.join([''] + [x.string_for_config() for x in l])
@@ -492,7 +492,7 @@ class QSeis2dConfig(Object):
     Combined config object for QSeisS and QSeisR.
 
     This config object should contain all settings which cannot be derived from
-    the backend-independant Pyrocko GF Store config. Used 
+    the backend-independant Pyrocko GF Store config.
     '''
 
     qseis_s_config = QSeisSConfig.T(default=QSeisSConfig.D())
@@ -525,12 +525,16 @@ class QSeisSRunner:
         self.config = None
 
     def run(self, config):
+
+        if isinstance(config, QSeis2dConfig):
+            config = QSeisSConfig(**config.qseis_s_config)
+
         self.config = config
 
         input_fn = op.join(self.tempdir, 'input')
 
         f = open(input_fn, 'w')
-        input_str = config.string_for_config_S()
+        input_str = config.string_for_config()
 
         logger.debug('===== begin qseisS input =====\n'
                      '%s===== end qseisS input =====' % input_str)
@@ -613,7 +617,7 @@ in the directory %s'''.lstrip() % (
 
 class QSeisRRunner:
     '''
-    Takes QSeis2dConfigFull or QSeisRConfigFull objects, runs the program and
+    Takes QSeis2dConfig or QSeisRConfigFull objects, runs the program and
     reads the output.
     '''
     def __init__(self, tmp=None, keep_tmp=False):
@@ -622,12 +626,15 @@ class QSeisRRunner:
         self.config = None
 
     def run(self, config):
+        if isinstance(config, QSeis2dConfig):
+            config = QSeisRConfigFull(**config.qseis_r_config)
+
         self.config = config
 
         input_fn = op.join(self.tempdir, 'input')
 
         f = open(input_fn, 'w')
-        input_str = config.string_for_config_R()
+        input_str = config.string_for_config()
 
         old_wd = os.getcwd()
         os.chdir(self.tempdir)
@@ -1030,7 +1037,7 @@ def init(store_dir, variant):
         gf.meta.Timing('begin-50'),
         gf.meta.Timing('end+100'))
 
-    qseis2d.sw_flat_earth_transform = 1
+    qseis2d.qseis_s_config.sw_flat_earth_transform = 1
 
     store_id = os.path.basename(os.path.realpath(store_dir))
 
