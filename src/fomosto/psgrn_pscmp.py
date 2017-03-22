@@ -682,12 +682,15 @@ class PsCmpSnapshots(Object):
     '''
     Snapshot time series definition.
     '''
-    tmin = Float.T(default=0.0,
+    tmin = Float.T(
+        default=0.0,
         help='Time [days] after source time to start temporal sample'
              ' snapshots.')
-    tmax = Float.T(default=1.0,
+    tmax = Float.T(
+        default=1.0,
         help='Time [days] after source time to end temporal sample f.')
-    deltatdays = Float.T(default=1.0,
+    deltatdays = Float.T(
+        default=1.0,
         help='Sample period [days].')
 
     @property
