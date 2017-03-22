@@ -105,7 +105,8 @@ def add_seismogram(
         vp, vs, density, qp, qs, x, f, m6,
         quantity, deltat, out_offset,
         out_n, out_e, out_d, stf=None,
-        want_far=True, want_intermediate=True, want_near=True, npad_levelling=40):
+        want_far=True, want_intermediate=True, want_near=True,
+        npad_levelling=40):
 
     ns = [out.size for out in (out_n, out_e, out_d) if out is not None]
 
