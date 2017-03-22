@@ -187,9 +187,9 @@ mantle
         ue_pscmp = ps2du[:, 1]
         ud_pscmp = ps2du[:, 2]
 
-        num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.001)
-        num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.001)
-        num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.001)
+        num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.002)
+        num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.002)
+        num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.002)
 
         # plotting
 
