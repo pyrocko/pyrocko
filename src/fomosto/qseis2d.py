@@ -750,7 +750,8 @@ in the directory %s'''.lstrip() % (
 class QSeis2dGFBuilder(gf.builder.Builder):
     nsteps = 2
 
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None):
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
+                 force=False):
 
         self.store = gf.store.Store(store_dir, 'w')
 

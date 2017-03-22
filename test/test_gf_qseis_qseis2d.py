@@ -125,7 +125,6 @@ mantle
             else:
                 raise
 
-
         # qseis
         config_q = copy.deepcopy(config_q2)
         config_q.id = 'qseis2d_test_q'
