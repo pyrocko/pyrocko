@@ -1,6 +1,6 @@
 
 
-The :mod:`orthodrome` Module
+The :mod:`orthodrome` module
 ============================
 
 .. automodule:: pyrocko.orthodrome

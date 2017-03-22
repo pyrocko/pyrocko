@@ -1,6 +1,6 @@
 
 
-The :mod:`evalresp` Module
+The :mod:`evalresp` module
 ==========================
 
 .. automodule:: pyrocko.evalresp

@@ -1,6 +1,6 @@
 
 
-The :mod:`pile_viewer` Module
+The :mod:`pile_viewer` module
 =============================
 
 .. automodule:: pyrocko.pile_viewer

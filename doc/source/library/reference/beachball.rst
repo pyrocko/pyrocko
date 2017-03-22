@@ -1,6 +1,6 @@
 
 
-The :mod:`beachball` Module
+The :mod:`beachball` module
 ===============================
 
 .. automodule:: pyrocko.beachball

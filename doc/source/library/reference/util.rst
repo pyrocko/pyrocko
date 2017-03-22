@@ -1,6 +1,6 @@
 
 
-The :mod:`util` Module
+The :mod:`util` module
 ======================
 
 .. automodule:: pyrocko.util

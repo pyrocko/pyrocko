@@ -1,6 +1,6 @@
 
 
-The :mod:`io` Module
+The :mod:`io` module
 ====================
 
 .. automodule:: pyrocko.io

@@ -1,6 +1,6 @@
 
 
-The :mod:`pz` Module
+The :mod:`pz` module
 ====================
 
 .. automodule:: pyrocko.pz

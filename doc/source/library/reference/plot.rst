@@ -1,5 +1,5 @@
 
-The :mod:`plot` Module
+The :mod:`plot` module
 ======================
 
 .. automodule:: pyrocko.plot

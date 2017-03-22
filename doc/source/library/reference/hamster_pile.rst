@@ -1,6 +1,6 @@
 
 
-The :mod:`hamster_pile` Module
+The :mod:`hamster_pile` module
 ==============================
 
 .. automodule:: pyrocko.hamster_pile

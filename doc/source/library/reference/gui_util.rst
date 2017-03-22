@@ -1,6 +1,6 @@
 
 
-The :mod:`gui_util` Module
+The :mod:`gui_util` module
 ==========================
 
 .. automodule:: pyrocko.gui_util

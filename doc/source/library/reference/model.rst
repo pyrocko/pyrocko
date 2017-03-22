@@ -1,6 +1,6 @@
 
 
-The :mod:`model` Module
+The :mod:`model` module
 =======================
 
 .. automodule:: pyrocko.model

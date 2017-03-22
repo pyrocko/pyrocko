@@ -1,6 +1,6 @@
 
 
-The :mod:`snuffling` Module
+The :mod:`snuffling` module
 ===========================
 
 .. automodule:: pyrocko.snuffling

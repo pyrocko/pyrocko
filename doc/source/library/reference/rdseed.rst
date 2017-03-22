@@ -1,6 +1,6 @@
 
 
-The :mod:`rdseed` Module
+The :mod:`rdseed` module
 ========================
 
 .. automodule:: pyrocko.rdseed

@@ -1,5 +1,5 @@
 
-The :mod:`pile` Module
+The :mod:`pile` module
 ======================
 
 .. automodule:: pyrocko.pile

@@ -1,6 +1,6 @@
 
 
-The :mod:`slink` Module
+The :mod:`slink` module
 =======================
 
 .. automodule:: pyrocko.slink

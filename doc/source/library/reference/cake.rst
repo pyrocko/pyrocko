@@ -1,6 +1,6 @@
 
 
-The :mod:`cake` Module
+The :mod:`cake` module
 ======================
 
 .. automodule:: pyrocko.cake

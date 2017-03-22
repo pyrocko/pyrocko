@@ -1,6 +1,6 @@
 
 
-The :mod:`catalog` Module
+The :mod:`catalog` module
 =========================
 
 .. automodule:: pyrocko.catalog

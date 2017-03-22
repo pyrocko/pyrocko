@@ -1,6 +1,6 @@
 
 
-The :mod:`gmtpy` Module
+The :mod:`gmtpy` module
 =======================
 
 .. automodule:: pyrocko.gmtpy

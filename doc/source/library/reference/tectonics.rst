@@ -1,6 +1,6 @@
 
 
-The :mod:`tectonics` Module
+The :mod:`tectonics` module
 ===========================
 
 .. automodule:: pyrocko.tectonics

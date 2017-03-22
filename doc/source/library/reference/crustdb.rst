@@ -1,4 +1,4 @@
-The :mod:`crustdb` Module
+The :mod:`crustdb` module
 ==========================
 
 The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ gathers empirical 1D velocity models from seismic reflection and refraction profiles. As of 2013 there are 138939 profiles, mainly P and fewer S wave records in the database.

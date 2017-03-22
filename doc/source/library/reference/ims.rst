@@ -1,6 +1,6 @@
 
 
-The :mod:`ims` Module
+The :mod:`ims` module
 =====================
 
 .. automodule:: pyrocko.ims
