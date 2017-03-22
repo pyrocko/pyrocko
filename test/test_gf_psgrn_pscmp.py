@@ -102,7 +102,7 @@ mantle
             source_depth_max=5. * km,
             source_depth_delta=0.1 * km,
             distance_min=0. * km,
-            distance_max=20. * km,
+            distance_max=40. * km,
             distance_delta=0.1 * km,
             modelling_code_id='psgrn_pscmp.%s' % version,
             earthmodel_1d=mod,

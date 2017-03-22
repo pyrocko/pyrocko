@@ -683,13 +683,12 @@ class PsCmpSnapshots(Object):
     Snapshot time series definition.
     '''
     tmin = Float.T(default=0.0,
-                   help='Time [days] after source time to start'
-                        ' temporal sample snapshots.')
+        help='Time [days] after source time to start temporal sample'
+             ' snapshots.')
     tmax = Float.T(default=1.0,
-                   help='Time [days] after source time to end'
-                        ' temporal sample f.')
+        help='Time [days] after source time to end temporal sample f.')
     deltatdays = Float.T(default=1.0,
-                 help='Sample period [days].')
+        help='Sample period [days].')
 
     @property
     def times(self):
@@ -1309,7 +1308,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
         logger.info(
             'Starting step %i / %i, block %i / %i' %
-            (self.step+1, self.nsteps, iblock+1, self.nblocks))
+            (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         if self.step == 0:
             n_steps_depth = int((fc.source_depth_max - fc.source_depth_min) /
@@ -1332,7 +1331,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
         else:
             distances = num.linspace(
-                firstx, firstx + (nx-1)*dx, nx).tolist()
+                firstx, firstx + (nx - 1) * dx, nx).tolist()
 
             # fomosto sample rate in s, pscmp takes days
             deltatdays = 1. / (fc.sample_rate * 24. * 3600.)
@@ -1372,7 +1371,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                 cc.rectangular_source_patches = []
                 for idx in mt:
                     pmt = PsCmpMomentTensor(
-                        lat=0.+0.001*dx*cake.m2d,
+                        lat=0. + 0.001 * dx * cake.m2d,
                         lon=0.0,
                         depth=float(sz),
                         width=mtsize,
@@ -1428,7 +1427,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
         logger.info(
             'Done with step %i / %i, block %i / %i' % (
-                self.step+1, self.nsteps, iblock+1, self.nblocks))
+                self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
 
 def init(store_dir, variant):
@@ -1449,13 +1448,13 @@ def init(store_dir, variant):
         id=store_id,
         ncomponents=10,
         sample_rate=1. / (3600. * 24.),
-        receiver_depth=0*km,
-        source_depth_min=0*km,
-        source_depth_max=15*km,
-        source_depth_delta=.5*km,
-        distance_min=0*km,
-        distance_max=50*km,
-        distance_delta=1*km,
+        receiver_depth=0. * km,
+        source_depth_min=0. * km,
+        source_depth_max=15. * km,
+        source_depth_delta=.5 * km,
+        distance_min=0. * km,
+        distance_max=50. * km,
+        distance_delta=1. * km,
         earthmodel_1d=cake.load_model(fn=None, crust2_profile=(54., 23.)),
         modelling_code_id='psgrn_pscmp.%s' % variant,
         tabulated_phases=[])    # dummy list
