@@ -72,7 +72,7 @@ def cake_model_to_config(mod):
     srows = []
     for i, row in enumerate(mod.to_scanlines()):
         depth, vp, vs, rho, qp, qs = row
-        row = [depth/k, vp/k, vs/k, rho/k, qp, qs]
+        row = [depth / k, vp / k, vs / k, rho / k, qp, qs]
         srows.append('%i %s' % (i + 1, str_float_vals(row)))
 
     return '\n'.join(srows), len(srows)
@@ -84,7 +84,7 @@ class QSeis2dSource(Object):
     depth = Float.T(default=default_source_depth)
 
     def string_for_config(self):
-        return '%(lat)f %(lon)15f ' % self.__dict__
+        return '%(lat)e %(lon)15e ' % self.__dict__
 
 
 class QSeisRSourceMech(Object):
@@ -483,6 +483,15 @@ class QSeisRConfigFull(QSeisRConfig):
 #------------------------------------------------------------------------------
 %(model_receiver_lines)s
 #-----------------------END OF INPUT PARAMETERS--------------------------------
+#
+#-Requirements to use QSEIS2d: ------------------------------------------------
+# (1) Teleseismic body waves with penetration depth much larger than the
+#     receiver-site basement depth
+# (2) The last layer parameters of the receiver-site structure should be
+#     identical with that of the source-site model at the depth which is
+#     defined as the common basement depth
+# (3) The cutoff frequency should be high enough for separating different
+#     wave types.
 '''  # noqa
         return template % d
 
@@ -520,7 +529,7 @@ class QSeisSRunner:
     Takes QSeis2dConfigFull or QSeisSConfigFull objects, runs the program.
     '''
     def __init__(self, tmp, keep_tmp=False):
-        self.tempdir = mkdtemp(prefix='qseisRrun-', dir=tmp)
+        self.tempdir = mkdtemp(prefix='qseisSrun-', dir=tmp)
         self.keep_tmp = keep_tmp
         self.config = None
 
@@ -783,7 +792,9 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             d = self.store.make_timing_params(
                 baseconf.time_region[0], baseconf.time_region[1])
 
-            shared['time_window_min'] = d['tlenmax']
+            shared['time_window_min'] = float(
+                    num.ceil( d['tlenmax'] / self.gf_config.sample_rate) * \
+                                             self.gf_config.sample_rate)
 
         time_window_min = shared['time_window_min']
 

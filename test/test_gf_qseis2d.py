@@ -57,8 +57,6 @@ mantle
  20. 5.8 3.46 2.6 1264. 600.
  20. 6.5 3.85 2.9 1283. 600.
  35. 6.5 3.85 2.9 1283. 600.
-mantle
- 35. 8.04 4.48 3.58 1449. 600.
 '''.lstrip()))
 
         store_dir = mkdtemp(prefix='gfstore')
@@ -100,8 +98,8 @@ mantle
             source_depth_min=10*km,
             source_depth_max=10*km,
             source_depth_delta=1*km,
-            distance_min=3550*km,
-            distance_max=3560*km,
+            distance_min=5550*km,
+            distance_max=5560*km,
             distance_delta=1*km,
             modelling_code_id='qseis2d',
             earthmodel_1d=mod,
@@ -142,7 +140,7 @@ mantle
         source.m6 = tuple(random.random()*2.-1. for x in xrange(6))
 
         azi = 0.    # QSeis2d only takes one receiver without azimuth variable
-        dist = 3553.*km
+        dist = 5553.*km
 
         dnorth = dist * math.cos(azi*d2r)
         deast = dist * math.sin(azi*d2r)
