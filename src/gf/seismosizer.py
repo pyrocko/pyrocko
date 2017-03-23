@@ -14,7 +14,7 @@ from pyrocko.guts import Object, Float, String, StringChoice, List, \
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
-from pyrocko import trace, model, parimap, util
+from pyrocko import trace, model, util
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
 from .targets import Target, StaticTarget, SatelliteTarget
@@ -2720,7 +2720,6 @@ class LocalEngine(Engine):
         request = kwargs.pop('request', None)
         status_callback = kwargs.pop('status_callback', None)
         nprocs = kwargs.pop('nprocs', 1)
-        use_parimap = kwargs.pop('use_parimap', False)
 
         if request is None:
             request = Request(**kwargs)
@@ -2761,27 +2760,6 @@ class LocalEngine(Engine):
                   if not isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
-        if request.has_dynamic and use_parimap:
-            for ii_results, tcounters_dyn in parimap.parimap(
-                    process_subrequest_dynamic, work_dynamic,
-                    pshared=dict(
-                        engine=self,
-                        sources=request.sources,
-                        targets=request.targets,
-                        dsource_cache={}),
-                    nprocs=1):
-
-                tcounters_dyn_list.append(num.diff(tcounters_dyn))
-
-                for isource, itarget, result in ii_results:
-                    results_list[isource][itarget] = result
-
-                if status_callback:
-                    status_callback(isub, nsub)
-
-                isub += 1
-
-        if request.has_dynamic and not use_parimap:
             for ii_results, tcounters_dyn in process_dynamic(
               work_dynamic, request.sources, request.targets, self,
               nthreads=1):
