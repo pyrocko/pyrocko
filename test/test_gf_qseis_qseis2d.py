@@ -5,6 +5,7 @@ import logging
 from tempfile import mkdtemp
 import numpy as num
 import copy
+import os
 
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
@@ -66,7 +67,7 @@ mantle
 
         # qseis2d
         q2conf = qseis2d.QSeis2dConfig()
-        q2conf.gf_directory = q2_store_dir
+        q2conf.gf_directory = os.path.join(q2_store_dir, 'qseisS_green')
 
         qss = q2conf.qseis_s_config
         qss.receiver_basement_depth = 35.
@@ -177,7 +178,8 @@ mantle
         dnorth = dist * math.cos(azi * d2r)
         deast = dist * math.sin(azi * d2r)
 
-        targets = []
+        targets_q = []
+        targets_q2 = []
         for cha in 'rtz':
             target_q2 = gf.Target(
                 quantity='displacement',
@@ -202,13 +204,26 @@ mantle
             target_q = copy.deepcopy(target_q2)
             target_q.store_id = 'qseis2d_test_q'
             target_q.codes = ('', '0000', 'Q', cha)
-            targets.append(target_q2)
-            targets.append(target_q)
+            targets_q2.append(target_q2)
+            targets_q.append(target_q)
 
+        targets = targets_q + targets_q2
         engine = gf.LocalEngine(store_dirs=[q2_store_dir, q_store_dir])
-        trs = engine.process(source, targets).pyrocko_traces()
+        response = engine.process(source, targets)
 
-        trace.snuffle(trs)
+        qtrcs = []
+        q2trcs = []
+        for s, target, trc in response.iter_results():
+            if target.codes[2] == 'Q':
+                qtrcs.append(trc)
+            else:
+                q2trcs.append(trc)
+
+        for q, q2 in zip(qtrcs, q2trcs):
+            num.testing.assert_allclose(q.ydata, q2.ydata, atol=4e-24)
+
+#        trace.snuffle(qtrcs + q2trcs)
+
 
 if __name__ == '__main__':
     util.setup_logging('test_qseis_qseis2d', 'warning')
