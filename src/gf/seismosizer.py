@@ -205,7 +205,7 @@ def outline_rect_source(strike, dip, length, width, anchor):
         anch_north = 0.
         anch_east = 0.
     elif anchor == 'top' or anchor == 'bottom':
-        anch_north = -num.cos(strike * d2r) *\
+        anch_north = num.cos(strike * d2r) *\
             num.cos(dip * d2r) * width * .5
         anch_east = num.sin(strike * d2r) *\
             num.cos(dip * d2r) * width * .5
@@ -2301,6 +2301,58 @@ def process_subrequest_dynamic(work, pshared=None):
     return results, tcounters
 
 
+def process_dynamic(work, psources, ptargets, engine, nthreads=0):
+    dsource_cache = {}
+
+    for w in work:
+        _, _, isources, itargets = w
+
+        sources = [psources[isource] for isource in isources]
+        targets = [ptargets[itarget] for itarget in itargets]
+
+        components = set()
+        for target in targets:
+            rule = engine.get_rule(sources[0], target)
+            components.update(rule.required_components(target))
+
+        for isource, source in zip(isources, sources):
+            for itarget, target in zip(itargets, targets):
+
+                try:
+                    base_seismogram, tcounters = engine.base_seismogram(
+                        source, target, components, dsource_cache)
+                except meta.OutOfBounds, e:
+                    e.context = OutOfBoundsContext(
+                        source=sources[0],
+                        target=targets[0],
+                        distance=sources[0].distance_to(targets[0]),
+                        components=components)
+                    raise
+
+                n_records_stacked = 0
+                t_optimize = 0.0
+                t_stack = 0.0
+
+                for _, tr in base_seismogram.iteritems():
+                    n_records_stacked += tr.n_records_stacked
+                    t_optimize += tr.t_optimize
+                    t_stack += tr.t_stack
+
+                try:
+                    result = engine._post_process_seismogram(
+                        base_seismogram, source, target)
+                    result.n_records_stacked = n_records_stacked
+                    result.n_shared_stacking = len(sources) *\
+                        len(targets)
+                    result.t_optimize = t_optimize
+                    result.t_stack = t_stack
+                except SeismosizerError, e:
+                    result = e
+
+                tcounters.append(xtime())
+                yield (isource, itarget, result), tcounters
+
+
 def process_static(work, psources, ptargets, engine, nthreads=0):
     for w in work:
         _, _, isources, itargets = w
@@ -2668,6 +2720,7 @@ class LocalEngine(Engine):
         request = kwargs.pop('request', None)
         status_callback = kwargs.pop('status_callback', None)
         nprocs = kwargs.pop('nprocs', 1)
+        use_parimap = kwargs.pop('use_parimap', False)
 
         if request is None:
             request = Request(**kwargs)
@@ -2708,6 +2761,7 @@ class LocalEngine(Engine):
                   if not isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
+        if request.has_dynamic and use_parimap:
             for ii_results, tcounters_dyn in parimap.parimap(
                     process_subrequest_dynamic, work_dynamic,
                     pshared=dict(
@@ -2715,13 +2769,26 @@ class LocalEngine(Engine):
                         sources=request.sources,
                         targets=request.targets,
                         dsource_cache={}),
-
                     nprocs=1):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
 
                 for isource, itarget, result in ii_results:
                     results_list[isource][itarget] = result
+
+                if status_callback:
+                    status_callback(isub, nsub)
+
+                isub += 1
+
+        if request.has_dynamic and not use_parimap:
+            for ii_results, tcounters_dyn in process_dynamic(
+              work_dynamic, request.sources, request.targets, self,
+              nthreads=1):
+
+                tcounters_dyn_list.append(num.diff(tcounters_dyn))
+                isource, itarget, result = ii_results
+                results_list[isource][itarget] = result
 
                 if status_callback:
                     status_callback(isub, nsub)
@@ -2738,14 +2805,10 @@ class LocalEngine(Engine):
                 for (i, k) in enumerate(skeys)]
 
             for ii_results, tcounters_static in process_static(
-              work_static,
-              request.sources,
-              request.targets,
-              self,
+              work_static, request.sources, request.targets, self,
               nthreads=nprocs):
 
                 tcounters_static_list.append(num.diff(tcounters_static))
-
                 isource, itarget, result = ii_results
                 results_list[isource][itarget] = result
 
