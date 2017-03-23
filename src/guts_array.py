@@ -1,8 +1,17 @@
+from __future__ import absolute_import
+from builtins import zip
+from builtins import str as newstr
 from pyrocko import guts
 from pyrocko.guts import TBase, Object, ValidationError
 import numpy as num
-from cStringIO import StringIO
-from base64 import b64decode
+from io import BytesIO
+from base64 import b64decode, b64encode
+
+
+try:
+    unicode
+except NameError:
+    unicode = str
 
 
 class literal(str):
@@ -38,14 +47,15 @@ class Array(Object):
             self.serialize_dtype = serialize_dtype
 
         def regularize_extra(self, val):
-            if isinstance(val, basestring):
+            if isinstance(val, (str, newstr)):
                 ndim = None
                 if self.shape:
                     ndim = len(self.shape)
 
                 if self.serialize_as == 'table':
                     val = num.loadtxt(
-                        StringIO(str(val)), dtype=self.dtype, ndmin=ndim)
+                        BytesIO(val.encode('utf-8')),
+                        dtype=self.dtype, ndmin=ndim)
 
                 elif self.serialize_as == 'base64':
                     data = b64decode(val)
@@ -78,12 +88,12 @@ class Array(Object):
 
         def to_save(self, val):
             if self.serialize_as == 'table':
-                out = StringIO()
+                out = BytesIO()
                 num.savetxt(out, val, fmt='%12.7g')
-                return literal(out.getvalue())
+                return literal(out.getvalue().decode('utf-8'))
             elif self.serialize_as == 'base64':
                 data = val.astype(self.serialize_dtype).tostring()
-                return literal(data.encode('base64'))
+                return literal(b64encode(data).decode('utf-8'))
             elif self.serialize_as == 'list':
                 if self.dtype == num.complex:
                     return [repr(x) for x in val]

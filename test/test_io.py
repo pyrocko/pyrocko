@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import range
 import os
 import unittest
 import numpy as num
@@ -17,7 +19,7 @@ abc = 'abcdefghijklmnopqrstuvwxyz'
 
 
 def rn(n):
-    return ''.join([random.choice(abc) for i in xrange(n)])
+    return ''.join([random.choice(abc) for i in range(n)])
 
 
 class IOTestCase(unittest.TestCase):
@@ -68,7 +70,7 @@ class IOTestCase(unittest.TestCase):
         tempfn = tempfile.mkstemp()[1]
         try:
             list(mseed.iload(tempfn))
-        except FileLoadError, e:
+        except FileLoadError as e:
             pass
 
         assert str(e).find('No SEED data detected') != -1
@@ -86,7 +88,7 @@ class IOTestCase(unittest.TestCase):
         e = None
         try:
             io.save(tr, 'test.mseed')
-        except mseed.CodeTooLong, e:
+        except mseed.CodeTooLong as e:
             pass
 
         assert isinstance(e, mseed.CodeTooLong)

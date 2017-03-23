@@ -93,7 +93,10 @@ class GutsTestCase(unittest.TestCase):
                 and math.isnan(a) and math.isnan(b):
             return
 
-        self.assertEqual(a, b)
+        if isinstance(a, float) and isinstance(b, float):
+            self.assertEqual('%.14g' % a, '%.14g' % b)
+        else:
+            self.assertEqual(a, b)
 
     def testStringChoice(self):
         class X(Object):
@@ -547,30 +550,31 @@ class GutsTestCase(unittest.TestCase):
                 check(a, b)
 
                 # via file
-                f = NTF()
+                f = NTF(mode='w+')
                 xdump(a, filename=f.name, header=header)
                 b = xload(filename=f.name)
                 check(a, b)
                 f.close()
 
                 # via stream
-                f = NTF()
-                xdump(a, stream=f, header=header)
-                f.seek(0)
-                b = xload(stream=f)
-                check(a, b)
-                f.close()
+                for mode in ['w+b', 'w+']:
+                    f = NTF(mode=mode)
+                    xdump(a, stream=f, header=header)
+                    f.seek(0)
+                    b = xload(stream=f)
+                    check(a, b)
+                    f.close()
 
         b1 = A.load(string=a1.dump())
         check1(a1, b1)
 
-        f = NTF()
+        f = NTF(mode='w+')
         a1.dump(filename=f.name)
         b1 = A.load(filename=f.name)
         check1(a1, b1)
         f.close()
 
-        f = NTF()
+        f = NTF(mode='w+')
         a1.dump(stream=f)
         f.seek(0)
         b1 = A.load(stream=f)
@@ -580,13 +584,13 @@ class GutsTestCase(unittest.TestCase):
         b1 = A.load_xml(string=a1.dump_xml())
         check1(a1, b1)
 
-        f = NTF()
+        f = NTF(mode='w+')
         a1.dump_xml(filename=f.name)
         b1 = A.load_xml(filename=f.name)
         check1(a1, b1)
         f.close()
 
-        f = NTF()
+        f = NTF(mode='w+')
         a1.dump_xml(stream=f)
         f.seek(0)
         b1 = A.load_xml(stream=f)

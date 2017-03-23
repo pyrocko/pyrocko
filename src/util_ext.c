@@ -12,7 +12,16 @@
 
 #include "Python.h"
 
-static PyObject *UtilExtError;
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
 
 typedef enum {
     SUCCESS = 0,
@@ -197,7 +206,7 @@ util_error_t tts_c_locale(time_t t, double tfrac, const char *format, char **sou
     return err;
 }
 
-static PyObject* w_stt(PyObject *dummy, PyObject *args) {
+static PyObject* w_stt(PyObject *m, PyObject *args) {
 
     char *s;
     char *format;
@@ -205,21 +214,21 @@ static PyObject* w_stt(PyObject *dummy, PyObject *args) {
     double tfrac;
     util_error_t err;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "ss", &s, &format)) {
-        PyErr_SetString(UtilExtError, "usage stt(s, format)" );
+        PyErr_SetString(st->error, "usage stt(s, format)" );
         return NULL;
     }
     err =  stt_c_locale(s, format, &t, &tfrac);
     if (err != 0) {
-        PyErr_SetString(UtilExtError, util_error_names[err]);
+        PyErr_SetString(st->error, util_error_names[err]);
         return NULL;
     }
     return Py_BuildValue("Ld", (long long int)t, tfrac);
 }
 
-static PyObject* w_tts(PyObject *dummy, PyObject *args) {
+static PyObject* w_tts(PyObject *m, PyObject *args) {
 
     char *s;
     char *format;
@@ -228,16 +237,16 @@ static PyObject* w_tts(PyObject *dummy, PyObject *args) {
     util_error_t err;
     PyObject *val;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "Lds", &t, &tfrac, &format)) {
-        PyErr_SetString(UtilExtError, "usage tts(t, tfrac, format)" );
+        PyErr_SetString(st->error, "usage tts(t, tfrac, format)" );
         return NULL;
     }
 
     err = tts_c_locale(t, tfrac, format, &s);
     if (0 != err) {
-        PyErr_SetString(UtilExtError, util_error_names[err]);
+        PyErr_SetString(st->error, util_error_names[err]);
         return NULL;
     }
 
@@ -247,7 +256,7 @@ static PyObject* w_tts(PyObject *dummy, PyObject *args) {
 }
 
 
-static PyMethodDef UtilExtMethods[] = {
+static PyMethodDef util_ext_methods[] = {
     {"tts",  w_tts, METH_VARARGS,
         "time to string" },
 
@@ -257,18 +266,65 @@ static PyMethodDef UtilExtMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC
-initutil_ext(void)
-{
-    PyObject *m;
 
-    m = Py_InitModule("util_ext", UtilExtMethods);
-    if (m == NULL) return;
+#if PY_MAJOR_VERSION >= 3
 
-    UtilExtError = PyErr_NewException("util_ext.error", NULL, NULL);
-    Py_INCREF(UtilExtError);  /* required, because other code could remove `error`
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(m, "UtilExtError", UtilExtError);
+static int util_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
 }
 
+static int util_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "util_ext",
+        NULL,
+        sizeof(struct module_state),
+        util_ext_methods,
+        NULL,
+        util_ext_traverse,
+        util_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_util_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initutil_ext(void)
+#endif
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("util_ext", util_ext_methods);
+#endif
+
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+    st->error = PyErr_NewException("pyrocko.util_ext.UtilExtError", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+
+    }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "UtilExtError", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
+}
