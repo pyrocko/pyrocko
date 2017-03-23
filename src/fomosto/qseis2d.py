@@ -506,6 +506,7 @@ class QSeis2dConfig(Object):
 
     qseis_s_config = QSeisSConfig.T(default=QSeisSConfig.D())
     qseis_r_config = QSeisRConfig.T(default=QSeisRConfig.D())
+    qseis2d_version = String.T(default='2014')
 
     time_region = Tuple.T(2, Timing.T(), default=default_time_region)
     cut = Tuple.T(2, Timing.T(), optional=True)
