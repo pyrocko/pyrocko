@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 from pyrocko import util
 import unittest
 import time
@@ -17,7 +20,7 @@ class UtilTestCase(unittest.TestCase):
             ta = util.str_to_time('1960-01-01 10:10:10')
             tb = util.str_to_time('2020-01-01 10:10:10')
 
-            for i in xrange(10000):
+            for i in range(10000):
                 t1 = ta + random() * (tb-ta)
                 s = util.time_to_str(t1, format=fmt)
                 t2 = util.str_to_time(s, format=fmt)
@@ -49,17 +52,17 @@ class UtilTestCase(unittest.TestCase):
         assert ok
 
     def benchmark_stt_tts(self):
-        for x in xrange(2):
+        for x in range(2):
             if x == 1:
                 util.util_ext = None
             t = util.str_to_time('1999-03-20 20:10:10')
             tt1 = time.time()
-            for i in xrange(10000):
+            for i in range(10000):
                 s = util.tts(t)
                 util.stt(s)
 
             tt2 = time.time()
-            print tt2 - tt1
+            print(tt2 - tt1)
 
     def test_consistency_merge(self):
         data = [

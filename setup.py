@@ -1,7 +1,13 @@
+from __future__ import absolute_import, division, print_function
+
 import sys
 
-if sys.version_info < (2, 6) or (3, 0) <= sys.version_info:
-    sys.exit('This version of Pyrocko requires Python version >=2.6 and <3.0')
+#if not (sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 4)):
+#    sys.exit('This version of Pyrocko requires Python version ==2.7 or >3.4')
+
+if sys.version_info[:2] != (2, 7):
+    sys.exit('This version of Pyrocko requires Python version ==2.7')
+
 try:
     import numpy
 except ImportError:
@@ -44,9 +50,9 @@ def git_infos():
         raise NotInAGitRepos()
 
     sha1 = q(['git', 'log', '--pretty=oneline', '-n1']).split()[0]
-    sha1 = re.sub('[^0-9a-f]', '', sha1)
+    sha1 = re.sub(br'[^0-9a-f]', '', sha1)
     sstatus = q(['git', 'status'])
-    local_modifications = bool(re.search(r'^#\s+modified:', sstatus,
+    local_modifications = bool(re.search(br'^#\s+modified:', sstatus,
                                          flags=re.M))
     return sha1, local_modifications
 
@@ -131,8 +137,9 @@ def double_install_check():
     dates = sorted([xx[0] for xx in found])
 
     if len(found) > 1:
-        print >>e, 'sys.path configuration is: \n  %s' % '\n  '.join(sys.path)
-        print >>e
+        print(
+            'sys.path configuration is: \n  %s\n' % '\n  '.join(sys.path),
+            file=e)
 
         for (installed_date, p, fpath, long_version) in found:
             oldnew = ''
@@ -146,11 +153,11 @@ def double_install_check():
             if fpath.endswith(initpyc):
                 fpath = fpath[:-len(initpyc)]
 
-            print >>e, 'Pyrocko installation #%i:' % i
-            print >>e, '  date installed: %s%s' % (installed_date, oldnew)
-            print >>e, '  path: %s' % fpath
-            print >>e, '  version: %s' % long_version
-            print >>e
+            print('''Pyrocko installation #%i: % i
+  date installed: %s%s % (installed_date, oldnew)
+  path: %s % fpath
+  version: %s
+''' % (i, installed_date, oldnew, fpath, long_version))
             i += 1
 
     if len(found) > 1:
@@ -223,8 +230,9 @@ proceed? [y/n]' % open(fn, 'r').read())
                   shell=False)
 
         while p.poll() is None:
-            print p.stdout.readline().rstrip()
-        print p.stdout.read()
+            print(p.stdout.readline().rstrip())
+
+        print(p.stdout.read())
 
 
 class custom_build_py(build_py):
@@ -233,11 +241,11 @@ class custom_build_py(build_py):
         build_py.run(self)
         try:
             shutil.copy('extras/pyrocko', '/etc/bash_completion.d/pyrocko')
-            print 'Installing pyrocko bash_completion...'
+            print('Installing pyrocko bash_completion...')
         except IOError as e:
             import errno
             if e.errno in (errno.EACCES, errno.ENOENT):
-                print e
+                print(e)
             else:
                 raise e
 
@@ -338,7 +346,7 @@ int main() {
         shutil.rmtree(tmpdir)
 
     if exit_code == 0:
-        print ('Continuing your build using OpenMP...')
+        print('Continuing your build using OpenMP...')
         return True
 
     import multiprocessing
@@ -362,7 +370,7 @@ export CC='/usr/local/bin/gcc'
 python setup.py clean
 python setup.py build
 ''')
-    print ('Continuing your build without OpenMP...')
+    print('Continuing your build without OpenMP...')
     return False
 
 

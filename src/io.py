@@ -104,7 +104,7 @@ def detect_format(filename):
         f = open(filename, 'r')
         data = f.read(512)
         f.close()
-    except OSError, e:
+    except OSError as e:
         raise FileLoadError(e)
 
     for mod, fmt in [
@@ -138,7 +138,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
 
     try:
         mtime = os.stat(filename)[8]
-    except OSError, e:
+    except OSError as e:
         raise FileLoadError(e)
 
     def subs(tr):

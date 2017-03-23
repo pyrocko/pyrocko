@@ -1,3 +1,7 @@
+from __future__ import division
+from past.builtins import cmp
+from builtins import zip
+from builtins import str
 from struct import unpack
 import os
 import re
@@ -25,8 +29,8 @@ def iload(filename, load_data=True):
             tmin = float(tr[5])/float(mseed_ext.HPTMODULUS)
             tmax = float(tr[6])/float(mseed_ext.HPTMODULUS)
             try:
-                deltat = reuse(float(1.0)/float(tr[7]))
-            except ZeroDivisionError, e:
+                deltat = reuse(1.0/float(tr[7]))
+            except ZeroDivisionError as e:
                 have_zero_rate_traces = True
                 continue
 
@@ -39,7 +43,7 @@ def iload(filename, load_data=True):
         for tr in traces:
             yield tr
 
-    except (OSError, mseed_ext.MSeedError), e:
+    except (OSError, mseed_ext.MSeedError) as e:
         raise FileLoadError(str(e)+' (file: %s)' % filename)
 
     if have_zero_rate_traces:
@@ -90,11 +94,11 @@ def save(traces, filename_template, additional={}, overwrite=True):
         ensuredirs(fn)
         try:
             mseed_ext.store_traces(trtups, fn)
-        except mseed_ext.MSeedError, e:
+        except mseed_ext.MSeedError as e:
             raise FileSaveError(
                 str(e) + ' (while storing traces to file \'%s\')' % fn)
 
-    return fn_tr.keys()
+    return list(fn_tr.keys())
 
 
 tcs = {}

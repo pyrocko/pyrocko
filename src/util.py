@@ -1,5 +1,11 @@
 '''Utility functions for Pyrocko.'''
 
+from __future__ import division
+from past.builtins import zip
+from builtins import str
+from builtins import range
+from builtins import object
+
 import time
 import logging
 import os
@@ -19,7 +25,7 @@ from scipy import signal
 
 
 if platform.system() != 'Darwin':
-    import util_ext
+    from pyrocko import util_ext
 else:
     util_ext = None
 
@@ -69,21 +75,26 @@ class DownloadError(Exception):
 
 
 def download_file(url, fpath, username=None, password=None):
-    import urllib2
+    import urllib.request
+    import urllib.error
+    import urllib.parse
     import base64
 
     logger.info('starting download of %s' % url)
 
     ensuredirs(fpath)
     try:
-        request = urllib2.Request(url)
+        request = urllib.request.Request(url)
         if username and password:
             base64string = base64.b64encode('%s:%s' % (username, password))
             request.add_header("Authorization", "Basic %s" % base64string)
 
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor())
+        opener = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor())
+
         f = opener.open(request)
-    except urllib2.HTTPError, e:
+
+    except urllib.error.HTTPError as e:
         raise DownloadError('cannot download file from url %s: %s' % (url, e))
 
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
@@ -113,7 +124,7 @@ else:
             'platform.')
 
 
-class Stopwatch:
+class Stopwatch(object):
     '''
     Simple stopwatch to measure elapsed wall clock time.
 
@@ -344,7 +355,7 @@ def polylinefit(x, y, n_or_xnodes):
 
     ndata = len(x)
     a = num.zeros((ndata+(n-1), n*2))
-    for i in xrange(n):
+    for i in range(n):
         xmin_block = xnodes[i]
         xmax_block = xnodes[i+1]
         if i == n-1:  # don't loose last point
@@ -400,7 +411,7 @@ def plf_integrate_piecewise(x_edges, x, y):
     return num.diff(y_all[-len(y_edges):])
 
 
-class GlobalVars:
+class GlobalVars(object):
     reuse_store = dict()
     decitab_nmax = 0
     decitab = {}
@@ -463,9 +474,9 @@ def decimate(x, q, n=None, ftype='iir', zi=None, ioff=0):
     y, zf = signal.lfilter(b, a, x, zi=zi_)
 
     if zi is not None:
-        return y[n/2+ioff::q].copy(), zf
+        return y[n//2+ioff::q].copy(), zf
     else:
-        return y[n/2+ioff::q].copy()
+        return y[n//2+ioff::q].copy()
 
 
 class UnavailableDecimation(Exception):
@@ -492,7 +503,7 @@ def lcm(a, b):
     Least common multiple.
     '''
 
-    return a*b/gcd(a, b)
+    return a*b // gcd(a, b)
 
 
 def mk_decitab(nmax=100):
@@ -754,7 +765,7 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     if util_ext is not None:
         try:
             t, tfrac = util_ext.stt(s, format)
-        except util_ext.UtilExtError, e:
+        except util_ext.UtilExtError as e:
             raise TimeStrError(
                 '%s, string=%s, format=%s' % (str(e), s, format))
 
@@ -789,7 +800,7 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
 
     try:
         return calendar.timegm(time.strptime(s, format)) + fracsec
-    except ValueError, e:
+    except ValueError as e:
         raise TimeStrError('%s, string=%s, format=%s' % (str(e), s, format))
 
 
@@ -820,7 +831,7 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
         t0 = math.floor(t)
         try:
             return util_ext.tts(int(t0), t - t0, format)
-        except util_ext.UtilExtError, e:
+        except util_ext.UtilExtError as e:
             raise TimeStrError(
                 '%s, timestamp=%f, format=%s' % (str(e), t, format))
 
@@ -930,7 +941,7 @@ def reuse(x):
     return grs[x]
 
 
-class Anon:
+class Anon(object):
     '''
     Dict-to-object utility.
 
@@ -996,7 +1007,7 @@ def select_files(paths, selector=None, regex=None, show_progress=True):
             if m:
                 infos = Anon(**m.groupdict())
                 logger.debug("   regex '%s' matches." % regex)
-                for k, v in m.groupdict().iteritems():
+                for k, v in m.groupdict().items():
                     logger.debug(
                         "      attribute '%s' has value '%s'" % (k, v))
                 if selector is None or selector(infos):
@@ -1029,7 +1040,7 @@ def base36encode(number, alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
     Convert positive integer to a base36 string.
     '''
 
-    if not isinstance(number, (int, long)):
+    if not isinstance(number, int):
         raise TypeError('number must be an integer')
     if number < 0:
         raise ValueError('number must be positive')
@@ -1166,10 +1177,10 @@ def match_nslc(patterns, nslc):
         match_nslc('*.HAM3.*.BH?', ('GR', 'HAM3', '', 'BHZ'))   # -> True
     '''
 
-    if isinstance(patterns, basestring):
+    if isinstance(patterns, str):
         patterns = [patterns]
 
-    if not isinstance(nslc, basestring):
+    if not isinstance(nslc, str):
         s = '.'.join(nslc)
     else:
         s = nslc
@@ -1288,7 +1299,7 @@ def escapequotes(s):
     return re_escapequotes.sub(r"\\\1", s)
 
 
-class TableWriter:
+class TableWriter(object):
     '''
     Write table of space separated values to a file.
 
@@ -1335,7 +1346,7 @@ class TableWriter:
         self._f.write(' '.join(out).rstrip() + '\n')
 
 
-class TableReader:
+class TableReader(object):
 
     '''
     Read table of space separated values from a file.
@@ -1487,7 +1498,7 @@ def read_leap_seconds(tzfile='/usr/share/zoneinfo/right/UTC'):
 
         # read leap-seconds
         fmt = '>2l'
-        for i in xrange(leapcnt):
+        for i in range(leapcnt):
             tleap, nleap = unpack(fmt, f.read(calcsize(fmt)))
             out.append((tleap-nleap+1, nleap))
 
@@ -1573,7 +1584,7 @@ def gps_utc_offset(t):
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     import itertools
     import glob
-    from io_common import FileLoadError
+    from pyrocko.io_common import FileLoadError
 
     def iload_filename(filename, **kwargs):
         try:
@@ -1581,7 +1592,7 @@ def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
                 for cr in iload_fh(f, **kwargs):
                     yield cr
 
-        except FileLoadError, e:
+        except FileLoadError as e:
             e.set_context('filename', filename)
             raise
 
@@ -1600,7 +1611,7 @@ def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
                 yield cr
 
     def iload(source, **kwargs):
-        if isinstance(source, basestring):
+        if isinstance(source, str):
             if op.isdir(source):
                 return iload_dirname(source, **kwargs)
             elif op.isfile(source):
@@ -1672,7 +1683,7 @@ def mostfrequent(x):
     for e in x:
         c[e] += 1
 
-    return sorted(c.keys(), key=lambda k: c[k])[-1]
+    return sorted(list(c.keys()), key=lambda k: c[k])[-1]
 
 
 def consistency_merge(list_of_tuples,
@@ -1688,7 +1699,7 @@ def consistency_merge(list_of_tuples,
     try:
         consistency_check(list_of_tuples, message)
         return list_of_tuples[0][1:]
-    except Inconsistency, e:
+    except Inconsistency as e:
         if error == 'raise':
             raise
 
