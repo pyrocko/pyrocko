@@ -118,7 +118,7 @@ class OrthodromeTestCase(unittest.TestCase):
             *locs,
             implementation='c')
 
-    def testAziBaziPythonC(self):
+    def testAziBaziArrayPythonC(self):
         ntest = 10000
 
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
@@ -130,7 +130,6 @@ class OrthodromeTestCase(unittest.TestCase):
         azis_py, bazis_py = orthodrome.azibazi_numpy(
             lats1, lons1, lats2, lons2,
             implementation='python')
-
 
         for i in xrange(ntest):
             azi_py, bazi_py = orthodrome.azibazi(
