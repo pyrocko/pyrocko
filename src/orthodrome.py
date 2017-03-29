@@ -253,6 +253,11 @@ def azibazi_numpy(a_lats, a_lons, b_lats, b_lons, implementation='c'):
     _cosdelta = cosdelta_numpy(a_lats, a_lons, b_lats, b_lons)
     azis = azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta)
     bazis = azimuth_numpy(b_lats, b_lons, a_lats, a_lons, _cosdelta)
+
+    eq = num.logical_and(a_lats == b_lats, a_lons == b_lons)
+    ii_eq = num.where(eq)[0]
+    azis[ii_eq] = 0.0
+    bazis[ii_eq] = 180.0
     return azis, bazis
 
 

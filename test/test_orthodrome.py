@@ -118,6 +118,38 @@ class OrthodromeTestCase(unittest.TestCase):
             *locs,
             implementation='c')
 
+    def testAziBaziPythonC(self):
+        ntest = 10000
+
+        lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
+
+        azis_c, bazis_c = orthodrome.azibazi_numpy(
+            lats1, lons1, lats2, lons2,
+            implementation='c')
+
+        azis_py, bazis_py = orthodrome.azibazi_numpy(
+            lats1, lons1, lats2, lons2,
+            implementation='python')
+
+
+        for i in xrange(ntest):
+            azi_py, bazi_py = orthodrome.azibazi(
+                float(lats1[i]), float(lons1[i]),
+                float(lats2[i]), float(lons2[i]),
+                implementation='python')
+
+            azi_c, bazi_c = orthodrome.azibazi(
+                lats1[i], lons1[i], lats2[i], lons2[i],
+                implementation='c')
+
+            num.testing.assert_almost_equal(azi_py, azis_py[i])
+            num.testing.assert_almost_equal(bazi_py, bazis_py[i])
+            num.testing.assert_almost_equal(azi_c, azis_c[i])
+            num.testing.assert_almost_equal(bazi_c, bazis_c[i])
+
+        num.testing.assert_almost_equal(azis_py, azis_c)
+        num.testing.assert_almost_equal(bazis_py, bazis_c)
+
     @benchmark
     def testDistancePython(self):
         ntest = 1000
