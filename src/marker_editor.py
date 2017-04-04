@@ -40,11 +40,15 @@ class BeachballWidget(qg.QWidget):
         self.moment_tensor = moment_tensor
         self.setGeometry(0, 0, 100, 100)
         self.setAttribute(qc.Qt.WA_TranslucentBackground)
+        self.flipy = qg.QMatrix()
+        self.flipy.translate(0, self.height())
+        self.flipy.scale(1, -1)
 
     def paintEvent(self, e):
         center = e.rect().center()
         painter = qg.QPainter(self)
         painter.save()
+        painter.setMatrix(self.flipy)
         try:
             data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
                                 position=(center.x(), center.y()))
