@@ -435,9 +435,15 @@ class SnufflerWindow(qg.QMainWindow):
             panel_parent=self)
 
         self.marker_editor = self.pile_viewer.marker_editor()
+        self.station_editor = self.pile_viewer.station_editor()
+        self.table_panel = qg.QTabWidget()
+        self.table_panel.addTab(self.marker_editor, 'Markers')
+        self.table_panel.addTab(self.station_editor, 'Stations')
+
         self.add_panel(
-            'Markers', self.marker_editor, visible=False,
+            'Tables', self.table_panel, visible=False,
             where=qc.Qt.RightDockWidgetArea)
+
         if stations:
             self.get_view().add_stations(stations)
 
@@ -550,7 +556,7 @@ class SnufflerWindow(qg.QMainWindow):
             dockwidget.raise_()
 
     def toggle_marker_editor(self):
-        self.toggle_panel(self.marker_editor.parent(), None)
+        self.toggle_panel(self.table_panel.parent(), None)
 
     def toggle_main_controls(self):
         self.toggle_panel(self.main_controls.parent(), None)

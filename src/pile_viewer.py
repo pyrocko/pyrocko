@@ -19,6 +19,7 @@ import pyrocko.plot
 import pyrocko.snuffling
 import pyrocko.snufflings
 import pyrocko.marker_editor
+import pyrocko.station_editor
 
 from pyrocko.util import hpfloat, gmtime_x, mystrftime
 
@@ -1220,6 +1221,8 @@ def MakePileViewerMainClass(base):
             ev = self.get_active_event()
             if ev:
                 self.set_origin(ev)
+
+            self.emit(qc.SIGNAL('stationsAdded()'))
 
         def add_event(self, event):
             marker = EventMarker(event)
@@ -3992,6 +3995,12 @@ class PileViewer(qg.QFrame):
             editor.get_marker_model(),
             qc.SIGNAL('dataChanged()'),
             self.update_contents)
+        return editor
+
+    def station_editor(self):
+        editor = pyrocko.station_editor.StationEditor(self)
+        editor.set_viewer(self.get_view())
+
         return editor
 
     def adjust_controls(self):
