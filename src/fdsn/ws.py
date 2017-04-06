@@ -1,3 +1,4 @@
+import re
 import urllib
 import urllib2
 import logging
@@ -20,6 +21,22 @@ g_site_abbr = {
 g_default_site = 'geofon'
 
 g_timeout = 20.
+
+re_realm_from_auth_header = re.compile(r'(realm)\s*[:=]\s*"([^"]*)"?')
+
+
+class CannotGetRealmFromAuthHeader(Exception):
+    pass
+
+
+def get_realm_from_auth_header(headers):
+    realm = dict(re_realm_from_auth_header.findall(
+        headers['WWW-Authenticate'])).get('realm', None)
+
+    if realm is None:
+        raise CannotGetRealmFromAuthHeader('headers=%s' % str(headers))
+
+    return realm
 
 
 def sdatetime(t):
@@ -48,11 +65,13 @@ class InvalidRequest(Exception):
     pass
 
 
-def _request(url, post=False, **kwargs):
+def _request(url, post=False, user=None, passwd=None, **kwargs):
     url_values = urllib.urlencode(kwargs)
     if url_values:
         url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
+
+    opener = None
 
     req = urllib2.Request(url)
     if post:
@@ -61,18 +80,48 @@ def _request(url, post=False, **kwargs):
 
     req.add_header('Accept', '*/*')
 
-    try:
-        resp = urllib2.urlopen(req, timeout=g_timeout)
-        if resp.getcode() == 204:
-            raise EmptyResult(url)
-        return resp
+    itry = 0
+    while True:
+        itry += 1
+        try:
 
-    except urllib2.HTTPError, e:
-        if e.code == 413:
-            raise RequestEntityTooLarge(url)
-        else:
-            logger.error('error content returned by server:\n%s' % e.read())
-            raise e
+            if opener:
+                resp = opener.open(req, timeout=g_timeout)
+            else:
+                resp = urllib2.urlopen(req, timeout=g_timeout)
+
+            if resp.getcode() == 204:
+                raise EmptyResult(url)
+            return resp
+
+        except urllib2.HTTPError, e:
+            if e.code == 413:
+                raise RequestEntityTooLarge(url)
+
+            elif e.code == 401:
+                realm = get_realm_from_auth_header(e.headers)
+                if itry == 1 and user is not None:
+                    auth_handler = urllib2.HTTPDigestAuthHandler()
+                    auth_handler.add_password(
+                        realm=realm,
+                        uri=url,
+                        user=user,
+                        passwd=passwd or '')
+
+                    opener = urllib2.build_opener(auth_handler)
+                    continue
+                else:
+                    logger.error(
+                        'authentication failed for realm "%s" when '
+                        'accessing url "%s"' % (realm, url))
+                    raise e
+
+            else:
+                logger.error(
+                    'error content returned by server:\n%s' % e.read())
+                raise e
+
+        break
 
 
 def fillurl(url, site, service, majorversion, method='query'):
@@ -170,9 +219,15 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
 
 
 def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
+               user=None, passwd=None,
                **kwargs):
 
-    url = fillurl(url, site, 'dataselect', majorversion)
+    if user is not None:
+        method = 'queryauth'
+    else:
+        method = 'query'
+
+    url = fillurl(url, site, 'dataselect', majorversion, method=method)
 
     params = fix_params(kwargs)
 
@@ -195,6 +250,6 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
             l.append(' '.join((network, station, location, channel,
                                sdatetime(tmin), sdatetime(tmax))))
 
-        return _request(url, post='\n'.join(l))
+        return _request(url, user=user, passwd=passwd, post='\n'.join(l))
     else:
-        return _request(url, **params)
+        return _request(url, user=user, passwd=passwd, **params)
