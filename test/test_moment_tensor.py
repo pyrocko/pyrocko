@@ -1,3 +1,5 @@
+from builtins import str
+from builtins import range
 import unittest
 import random
 import math
@@ -114,7 +116,7 @@ class MomentTensorTestCase(unittest.TestCase):
 
     def testKagan(self):
         eps = 0.01
-        for _ in xrange(500):
+        for _ in range(500):
             mt1 = MomentTensor.random_mt(magnitude=-1.0)
             assert 0.0 == kagan_angle(mt1, mt1)
 

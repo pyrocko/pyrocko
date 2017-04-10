@@ -2,11 +2,11 @@ from __future__ import absolute_import, division, print_function
 
 import sys
 
-#if not (sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 4)):
-#    sys.exit('This version of Pyrocko requires Python version ==2.7 or >3.4')
+if not (sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 4)):
+    sys.exit('This version of Pyrocko requires Python version ==2.7 or >3.4')
 
-if sys.version_info[:2] != (2, 7):
-    sys.exit('This version of Pyrocko requires Python version ==2.7')
+#if sys.version_info[:2] != (2, 7):
+#    sys.exit('This version of Pyrocko requires Python version ==2.7')
 
 try:
     import numpy

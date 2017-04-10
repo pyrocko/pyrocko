@@ -1,3 +1,7 @@
+from __future__ import division
+from __future__ import print_function
+from builtins import map
+from builtins import zip
 import random
 import math
 import numpy as num
@@ -157,7 +161,7 @@ def values_to_matrix(values):
 
 
 def moment_to_magnitude(moment):
-    return num.log10(moment*1.0e7)/1.5 - 10.7
+    return num.log10(moment*1.0e7) / 1.5 - 10.7
     # global CMT uses 10.7333333... instead of 10.7, based on [Kanamori 1977]
     # 10.7 comes from [Hanks and Kanamori 1979]
 
@@ -306,8 +310,8 @@ def eigh_check(a):
     return evals, evecs
 
 
-r2d = 180./math.pi
-d2r = 1./r2d
+r2d = 180. / math.pi
+d2r = 1. / r2d
 
 
 def random_mt(x=None, scalar_moment=1.0, magnitude=None):
@@ -482,17 +486,9 @@ class MomentTensor(Object):
         self._m_eigenvals = m_evals
         self._m_eigenvecs = m_evecs
 
-        def cmp_mat(a, b):
-            c = 0
-            for x, y in zip(a.flat, b.flat):
-                c = cmp(abs(x), abs(y))
-                if c != 0:
-                    return c
-
-            return c
-
         self._rotmats = sorted(
-            [rotmat1, MomentTensor._flip_dc * rotmat1], cmp=cmp_mat)
+            [rotmat1, MomentTensor._flip_dc * rotmat1],
+            key=lambda m: num.abs(m.flat).tolist())
 
     @property
     def mnn(self):
@@ -664,7 +660,7 @@ class MomentTensor(Object):
         differs from the standard decomposition based definition of the scalar
         moment for non-double-couple moment tensors.
         '''
-        return num.linalg.norm(self._m_eigenvals)/math.sqrt(2.)
+        return num.linalg.norm(self._m_eigenvals) / math.sqrt(2.)
 
     @property
     def moment(self):
@@ -672,7 +668,7 @@ class MomentTensor(Object):
 
     @moment.setter
     def moment(self, value):
-        self._m *= value/self.moment
+        self._m *= value / self.moment
         self._update()
 
     @property
@@ -681,12 +677,12 @@ class MomentTensor(Object):
 
     @magnitude.setter
     def magnitude(self, value):
-        self._m *= magnitude_to_moment(value)/self.moment
+        self._m *= magnitude_to_moment(value) / self.moment
         self._update()
 
     def __str__(self):
         mexp = pow(10, math.ceil(num.log10(num.max(num.abs(self._m)))))
-        m = self._m/mexp
+        m = self._m / mexp
         s = '''Scalar Moment [Nm]: M0 = %g (Mw = %3.1f)
 Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
                     Mne = %6.3f,  Mnd = %6.3f, Med = %6.3f    [ x %g ]
@@ -854,6 +850,6 @@ def kagan_angle(mt1, mt2):
 if __name__ == '__main__':
 
     import sys
-    v = map(float, sys.argv[1:])
+    v = list(map(float, sys.argv[1:]))
     mt = MomentTensor.from_values(v)
-    print mt
+    print(mt)
