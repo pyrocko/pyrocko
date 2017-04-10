@@ -1,3 +1,7 @@
+from __future__ import division
+from past.builtins import cmp
+from builtins import str
+from builtins import range
 from pyrocko import orthodrome, util, moment_tensor
 import math
 import copy
@@ -11,7 +15,7 @@ logger = logging.getLogger('pyrocko.model')
 
 guts_prefix = 'pf'
 
-d2r = num.pi/180.
+d2r = num.pi / 180.
 
 
 class ChannelsNotOrthogonal(Exception):
@@ -213,7 +217,7 @@ class Event(Object):
                 groups[ia].append(a)
 
         groups = [g for g in groups if g]
-        groups.sort(key=lambda g: sum(e.time for e in g)/len(g))
+        groups.sort(key=lambda g: sum(e.time for e in g) // len(g))
         return groups
 
     @staticmethod
@@ -264,7 +268,7 @@ class Event(Object):
                     d['have_separator'] = True
                     break
 
-        except Exception, e:
+        except Exception as e:
             raise FileParseError(e)
 
         if not d:
@@ -344,7 +348,7 @@ class Event(Object):
             s.append('Name: %s' % self.name)
 
         if self.depth is not None:
-            s.append('Depth [km]: %g' % (self.depth/1000.))
+            s.append('Depth [km]: %g' % (self.depth / 1000.))
 
         if self.magnitude is not None:
             s.append('Magnitude [%s]: %3.1f' % (
@@ -373,7 +377,7 @@ def load_events(filename):
 
 def load_one_event(filename):
     l = Event.load_catalog(filename)
-    return l.next()
+    return next(l)
 
 
 def dump_events(events, filename=None, stream=None):
@@ -572,7 +576,7 @@ class Station(Object):
             return all(x in b for x in a)
 
         out_groups = []
-        for kind, components in cg.iteritems():
+        for kind, components in cg.items():
             for sys in ('ENZ', '12Z', 'XYZ'):
                 if allin(sys, components):
                     out_groups.append(tuple([kind+c for c in sys]))
@@ -586,7 +590,7 @@ class Station(Object):
                 proj.append(self.projection_to_enu(
                     cg, out_channels=out_channels, **kwargs))
 
-            except ChannelsNotOrthogonal, e:
+            except ChannelsNotOrthogonal as e:
                 logger.warn(str(e))
 
         return proj
@@ -692,7 +696,7 @@ def dump_stations(stations, filename):
 def float_or_none(s):
     if s is None:
         return None
-    elif isinstance(s, basestring) and s.lower() == 'nan':
+    elif isinstance(s, str) and s.lower() == 'nan':
         return None
     else:
         return float(s)

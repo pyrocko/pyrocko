@@ -1,7 +1,13 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import zip
+from builtins import range
+from builtins import object
 from pyrocko import model, util
 from pyrocko.moment_tensor import MomentTensor, symmat6
-import urllib2
-import urllib
+import urllib.request, urllib.error, urllib.parse
+import urllib.request, urllib.parse, urllib.error
 import time
 import calendar
 import re
@@ -33,7 +39,7 @@ def getTextR(node):
     return rc
 
 
-class EarthquakeCatalog:
+class EarthquakeCatalog(object):
 
     def get_event(self, name):
         raise Exception('This method should be implemented in derived class.')
@@ -114,7 +120,7 @@ class Geofon(EarthquakeCatalog):
                 'nmax=%i' % nmax]))
 
             logger.debug('Opening URL: %s' % url)
-            page = urllib2.urlopen(url).read()
+            page = urllib.request.urlopen(url).read()
             logger.debug('Received page (%i bytes)' % len(page))
             events = self._parse_events_page(page)
 
@@ -134,7 +140,7 @@ class Geofon(EarthquakeCatalog):
         if name not in self.events:
             url = 'http://geofon.gfz-potsdam.de/eqinfo/event.php?id=%s' % name
             logger.debug('Opening URL: %s' % url)
-            page = urllib2.urlopen(url).read()
+            page = urllib.request.urlopen(url).read()
             logger.debug('Received page (%i bytes)' % len(page))
 
             try:
@@ -168,10 +174,10 @@ class Geofon(EarthquakeCatalog):
     def parse_xml(self, page):
         try:
             return minidom.parseString(page)
-        except ExpatError, e:
+        except ExpatError as e:
             lines = page.splitlines()
             r = max(e.lineno - 1 - 2, 0), min(e.lineno - 1 + 3, len(lines))
-            ilineline = zip(range(r[0]+1, r[1]+1), lines[r[0]:r[1]])
+            ilineline = list(zip(list(range(r[0]+1, r[1]+1)), lines[r[0]:r[1]]))
 
             logger.error(
                 'A problem occured while parsing HTML from GEOFON page '
@@ -186,9 +192,9 @@ class Geofon(EarthquakeCatalog):
     def _parse_events_page(self, page):
         logger.debug('In Geofon._parse_events_page(...)')
         # fix broken &nbsp; tags
-        page = re.sub('&nbsp([^;])', '&nbsp;\\1', page)
-        page = re.sub('border=0', 'border="0"', page)
-        page = re.sub(r'</html>.*', '</html>', page, flags=re.DOTALL)
+        page = re.sub(br'&nbsp([^;])', b'&nbsp;\\1', page)
+        page = re.sub(br'border=0', b'border="0"', page)
+        page = re.sub(br'</html>.*', b'</html>', page, flags=re.DOTALL)
 
         doc = self.parse_xml(page)
 
@@ -201,32 +207,32 @@ class Geofon(EarthquakeCatalog):
                 continue
 
             elinks = tds[0].getElementsByTagName("a")
-            if len(elinks) != 1 or ('href' not in elinks[0].attributes.keys()):
+            if len(elinks) != 1 or not elinks[0].getAttribute('href'):
                 logger.debug('Could not find link to event details page.')
                 continue
 
-            link = elinks[0].attributes['href'].value.encode('ascii')
-            m = re.search(r'\?id=(gfz[0-9]+[a-z]+)$', link)
+            link = elinks[0].getAttribute('href').encode('ascii')
+            m = re.search(br'\?id=(gfz[0-9]+[a-z]+)$', link)
             if not m:
                 logger.debug('Could not find event id.')
                 continue
 
             eid = m.group(1)
-            vals = [getTextR(td).encode('ascii') for td in tds]
+            vals = [getTextR(td) for td in tds]
             tevent = calendar.timegm(
                 time.strptime(vals[0][:19], '%Y-%m-%d %H:%M:%S'))
             mag = float(vals[1])
-            epicenter = parse_location(vals[2]+' '+vals[3])
+            epicenter = parse_location((vals[2]+' '+vals[3]))
             depth = float(vals[4])*1000.
             region = vals[7]
             ev = model.Event(
                 lat=epicenter[0],
                 lon=epicenter[1],
                 time=tevent,
-                name=eid,
+                name=str(eid.decode('ascii')),
                 depth=depth,
                 magnitude=mag,
-                region=region,
+                region=str(region),
                 catalog='GEOFON')
 
             if vals[6] == 'MT':
@@ -243,7 +249,7 @@ class Geofon(EarthquakeCatalog):
         url = 'http://geofon.gfz-potsdam.de/data/alerts/%s/%s/mt.txt' % (
             syear, ev.name)
         logger.debug('Opening URL: %s' % url)
-        page = urllib2.urlopen(url).read()
+        page = urllib.request.urlopen(url).read()
         logger.debug('Received page (%i bytes)' % len(page))
 
         return self._parse_mt_page(page)
@@ -276,8 +282,8 @@ class Geofon(EarthquakeCatalog):
         }
 
         # fix broken tag
-        page = re.sub('align=center', 'align="center"', page)
-        page = re.sub(r'</html>.*', '</html>', page, flags=re.DOTALL)
+        page = re.sub(br'align=center', b'align="center"', page)
+        page = re.sub(br'</html>.*', b'</html>', page, flags=re.DOTALL)
 
         doc = self.parse_xml(page)
 
@@ -289,12 +295,12 @@ class Geofon(EarthquakeCatalog):
                 t = s.split()
                 if t:
                     k = t[-1].rstrip(':').lower()
-                    v = getTextR(tds[1]).encode('ascii')
+                    v = getTextR(tds[1])
                     logger.debug('%s => %s' % (k, v))
-                    if k in wanted_map.keys():
+                    if k in wanted_map:
                         d[k] = wanted_map[k](v)
 
-        d['have_moment_tensor'] = page.find('Moment tensor solution') != -1
+        d['have_moment_tensor'] = page.find(b'Moment tensor solution') != -1
 
         for k in wanted_map:
             if k not in d:
@@ -303,7 +309,7 @@ class Geofon(EarthquakeCatalog):
         return d
 
 
-class Anon:
+class Anon(object):
     pass
 
 
@@ -348,7 +354,8 @@ class GlobalCMT(EarthquakeCatalog):
 
         while True:
             logger.debug('Opening URL: %s' % url)
-            page = urllib2.urlopen(url).read()
+            req = urllib.request.Request(url)
+            page = urllib.request.urlopen(req).read()
             logger.debug('Received page (%i bytes)' % len(page))
 
             events, more = self._parse_events_page(page)
@@ -361,7 +368,7 @@ class GlobalCMT(EarthquakeCatalog):
                     yield ev.name
 
             if more:
-                url = more
+                url = more.decode('ascii')
             else:
                 break
 
@@ -421,66 +428,66 @@ class GlobalCMT(EarthquakeCatalog):
         for line in lines:
             if state == 0:
 
-                m = re.search(r'<a href="([^"]+)">More solutions', line)
+                m = re.search(br'<a href="([^"]+)">More solutions', line)
                 if m:
                     more = m.group(1)
 
-                m = re.search(r'From Quick CMT catalog', line)
+                m = re.search(br'From Quick CMT catalog', line)
                 if m:
                     catalog = 'gCMT-Q'
 
-                m = re.search(r'Event name:\s+(\S+)', line)
+                m = re.search(br'Event name:\s+(\S+)', line)
                 if m:
                     if data:
                         complete(data)
 
                     data = Anon()
-                    data.eventname = m.group(1)
+                    data.eventname = str(m.group(1).decode('ascii'))
                     data.catalog = catalog
 
                 if data:
-                    m = re.search(r'Region name:\s+([^<]+)', line)
+                    m = re.search(br'Region name:\s+([^<]+)', line)
                     if m:
-                        data.region = m.group(1)
+                        data.region = str(m.group(1).decode('ascii'))
 
                     m = re.search(
-                        r'Date \(y/m/d\): (\d\d\d\d)/(\d+)/(\d+)', line)
+                        br'Date \(y/m/d\): (\d\d\d\d)/(\d+)/(\d+)', line)
 
                     if m:
                         data.year, data.month, data.day = (
                             int(m.group(1)), int(m.group(2)), int(m.group(3)))
 
-                    m = re.search(r'Timing and location information', line)
+                    m = re.search(br'Timing and location information', line)
                     if m:
                         state = 1
 
             if state == 1:
                 toks = line.split()
-                if toks and toks[0] == 'CMT':
+                if toks and toks[0] == b'CMT':
                     data.hour, data.minute = [int(x) for x in toks[1:3]]
                     data.seconds, data.lat, data.lon, data.depth_km = [
                         float(x) for x in toks[3:]]
 
-                m = re.search(r'Assumed half duration:\s+(\S+)', line)
+                m = re.search(br'Assumed half duration:\s+(\S+)', line)
                 if m:
                     data.half_duration = float(m.group(1))
 
-                m = re.search(r'Mechanism information', line)
+                m = re.search(br'Mechanism information', line)
                 if m:
                     state = 2
 
             if state == 2:
-                m = re.search(r'Exponent for moment tensor:\s+(\d+)', line)
+                m = re.search(br'Exponent for moment tensor:\s+(\d+)', line)
                 if m:
                     data.exponent = int(m.group(1))
 
                 toks = line.split()
-                if toks and toks[0] == 'CMT':
+                if toks and toks[0] == b'CMT':
                     data.mrr, data.mtt, data.mpp, \
                         data.mrt, data.mrp, data.mtp = [
                             float(x) for x in toks[1:]]
 
-                m = re.search(r'^Eigenvector:', line)
+                m = re.search(br'^Eigenvector:', line)
                 if m:
                     state = 0
 
@@ -553,7 +560,7 @@ class USGS(EarthquakeCatalog):
         url = 'http://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
-        page = urllib2.urlopen(url).read()
+        page = urllib.request.urlopen(url).read()
         logger.debug('Received page (%i bytes)' % len(page))
 
         events = self._parse_events_page(page)
@@ -568,7 +575,7 @@ class USGS(EarthquakeCatalog):
     def _parse_events_page(self, page):
 
         import json
-        doc = json.loads(page)
+        doc = json.loads(page.decode('utf-8'))
 
         events = []
         for feat in doc['features']:
@@ -636,20 +643,20 @@ class NotFound(Exception):
 
 
 def ws_request(url, post=False, **kwargs):
-    url_values = urllib.urlencode(kwargs)
+    url_values = urllib.parse.urlencode(kwargs)
     url = url + '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
-    req = urllib2.Request(url)
+    req = urllib.request.Request(url)
     if post:
         req.add_data(post)
 
     req.add_header('Accept', '*/*')
 
     try:
-        return urllib2.urlopen(req)
+        return urllib.request.urlopen(req)
 
-    except urllib2.HTTPError, e:
+    except urllib.error.HTTPError as e:
         if e.code == 404:
             raise NotFound(url)
         else:
