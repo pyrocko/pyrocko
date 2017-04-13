@@ -19,6 +19,7 @@ class TreeItem(object):
         self.parentItem = parent
         self.itemData = data
         self.childItems = []
+        self.show_details = lambda x: True
 
     def appendChild(self, item):
         self.childItems.append(item)
@@ -53,14 +54,22 @@ class TreeItem(object):
     def setData(self, data):
         self.itemData = data
 
+    def mouseDoubleClickEvent(self, event):
+        self.show_details(self)
+
 
 class TreeModel(qc.QAbstractItemModel):
-    def __init__(self, data=None, parent=None):
+    def __init__(self, parent=None, root_item=None):
         super(TreeModel, self).__init__(parent)
-        self.parents = []
-        self.rootItem = TreeItem(['NSL', 'Lat', 'Lon', 'Name', 'deltat', 'Azi', 'Dip', 'Gain'])
-        if data:
-            self.setupModelData(data, parent=self.rootItem)
+        self.items = {}
+        #self.parents = []
+        self.parents = {}
+        if root_item is not None:
+            self.parents = {'root': root_item}
+            #self.parents = [root_item]
+        #self.rootItem = TreeItem(['NSL', 'Lat', 'Lon', 'Name', 'deltat', 'Azi', 'Dip', 'Gain'])
+        #if data:
+        #    self.setupModelData(data, parent=self.rootItem)
 
     def setData(self, index, value, role):
        if index.isValid() and role == qc.Qt.EditRole:
@@ -158,79 +167,135 @@ class TreeModel(qc.QAbstractItemModel):
 
         return parentItem.childCount()
 
-    def setupModelData(self, stations, deltats=None, parent=None):
-        if parent:
-            self.parents.append(parent)
+    def update_deltats(self, deltats):
+        for nslc_dt, n in deltats.items():
+            nslc, dt = nslc_dt
+            nsl = nslc[:3]
+            parental_key = nslc[:3]
+            #parent = self.parents.get(parental_key, self.parents['root'])
+            parent = self.parents.get(parental_key, None)
+            if parent is None:
+                print nsl
+                ''' NEED to add dummy station here'''
+                continue
 
-        deltats = deltats or {}
+            has_dts = deltats.get(nsl, None)
+            if has_dts:
+                dt = has_dts.get(channel.name, None)
 
-        for sk, station in stations.items():
-            channels = station.get_channels()
-            nsl = station.nsl()
+            #d = [qvar('.'.join(nsl)), qvar(''), qvar(''), qvar(dt),
+            #     qvar(channel.name), qvar(channel.azimuth),
+            #     qvar(channel.dip), qvar(channel.gain), ]
+            d = [qvar('.'.join(nsl)), qvar(''), qvar(''), qvar(dt),
+                 qvar(''), qvar('keeeeep'),
+                 qvar(''), qvar(''), ]
+            #channel_items.append(TreeItem(d, self.parents[-1]))
+            #channel_items.append(TreeItem(d, parent))
+
+            #self.parents[-1].appendChild(channel_item)
+            ##if not parent_isroot:
+            parent.appendChild(d)
+            self.parents[parental_key] = parent.child(
+                #parent.childCount() - 1))
+                parent.childCount() - 1)
+
+
+    def update_stations(self, stations=None):
+        #if parent:
+        #    self.parents.append(parent)
+        print stations
+        for (n, s), station in stations.items():
             nsl_str = '.'.join(station.nsl())
-            row_data = [
-                qvar(nsl_str), qvar(station.lat), qvar(station.lon),
-                qvar(''), qvar(''), qvar(''), qvar(''), qvar('')]
-            columnData = station.nsl()
-            item = TreeItem(row_data, self.parents[-1])
-            self.parents[-1].appendChild(item)
-
-            self.parents.append(self.parents[-1].child(
-                self.parents[-1].childCount() - 1))
-
+            parental_key = nsl_str
+            #parent = self.parents.get(parental_key, self.parents['root'])
+            parent = self.parents.get(parental_key, None)
+            if parent is None:
+                parent = self.parents['root']
+                parent_isroot = True
+            else:
+                parent_isroot = False
             channel_items = []
-            if channels:
-                for channel in channels:
-                    dt = ''
-                    has_dts = deltats.get(nsl, None)
-                    if has_dts:
-                        dt = has_dts.get(channel.name, None)
+            if station is not None:
+                nsl = station.nsl()
+                lat = station.lat
+                lon = station.lon
 
-                    d = [ qvar(nsl_str), qvar(''), qvar(''), qvar(dt),
-                         qvar(channel.name), qvar(channel.azimuth),
-                         qvar(channel.dip), qvar(channel.gain), ]
-                    channel_items.append(TreeItem(d, self.parents[-1]))
+                channels = station.get_channels()
+                if channels:
+                    for channel in channels:
+                        dt = ''
+                        d = [qvar(nsl_str), qvar(''), qvar(''), qvar(dt),
+                             qvar(channel.name), qvar(channel.azimuth),
+                             qvar(channel.dip), qvar(channel.gain), ]
+                        #channel_items.append(TreeItem(d, self.parents[-1]))
+                        channel_items.append(TreeItem(d, parent))
+
+                else:
+                    print 'IMPLEMENT'
+
+                for channel_item in channel_items:
+                    #self.parents[-1].appendChild(channel_item)
+                    ##if not parent_isroot:
+                    parent.appendChild(channel_item)
 
             else:
-                print 'IMPLEMENT'
+                lat = ''
+                lon = ''
 
-            for channel_item in channel_items:
-                self.parents[-1].appendChild(channel_item)
+            row_data = [
+                qvar(nsl_str), qvar(lat), qvar(lon),
+                qvar(''), qvar(''), qvar(''), qvar(''), qvar('')]
+            print row_data
+            item = TreeItem(row_data, parent)
+            if not parent_isroot:
+                parent.appendChild(item)
+
+            #self.parents.append(self.parents[-1].child(
+            self.parents[parental_key] = parent.child(
+                #parent.childCount() - 1))
+                parent.childCount() - 1)
 
             if len(self.parents) > 0:
-                self.parents.pop()
+                self.parents.pop(parental_key)
 
 
 class StationEditor(qg.QFrame):
 
     def __init__(self, *args, **kwargs):
         qg.QFrame.__init__(self, *args, **kwargs)
-        layout = qg.QVBoxLayout()
         self.station_tree_view = qg.QTreeView(self)
         self.station_tree_view.setSortingEnabled(True)
+
+        layout = qg.QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
         layout.addWidget(self.station_tree_view)
+        self.root_item = TreeItem(['NSL', 'Lat', 'Lon', 'Name', 'deltat', 'Azi', 'Dip', 'Gain'])
+
         self.station_tree_view.setSizePolicy(qg.QSizePolicy.Minimum,
                            qg.QSizePolicy.Minimum)
+        self.station_model = TreeModel(self, root_item=self.root_item)
+        #self.station_model.rootItem = self.root_item
+        #self.station_model.setupModelData([], )
 
-    def update_contents(self):
-        stations = self.pile_viewer.stations
-        deltats = defaultdict(dict)
-        for tr in self.pile_viewer.pile.iter_traces(load_data=False):
-            # can change!
-            nslc = tr.nslc_id
-            deltats[nslc[:3]][nslc[-1]] = tr.deltat
+    #def update_contents(self):
+    #    stations = self.pile_viewer.stations
+    #    print stations
+    #    print 'deltats', deltats
+    #    self.station_tree_view.setModel(self.station_model)
 
-        station_model = TreeModel(stations, self)
-        station_model.setupModelData(stations, deltats, self.root_item)
-        self.station_tree_view.setModel(station_model)
+    def on_pile_changed(self):
+        self.station_model.update_deltats(
+            deltats=self.pile_viewer.pile.nslc_id_deltats)
+
+    def on_stations_added(self):
+        self.station_model.update_stations(
+            stations=self.pile_viewer.stations)
 
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
         self.pile_viewer = viewer
         self.connect(viewer, qc.SIGNAL('stationsAdded()'),
-                     self.update_contents)
+                     self.on_stations_added)
         self.connect(viewer, qc.SIGNAL('pile_has_changed_signal()'),
-                     self.update_contents)
-        self.root_item = TreeItem([])
+                     self.on_pile_changed)
