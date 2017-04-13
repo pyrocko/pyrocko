@@ -445,7 +445,9 @@ class TracesGroup(object):
 
     def empty(self):
         self.networks, self.stations, self.locations, self.channels, \
-            self.nslc_ids, self.deltats = [Counter() for x in range(6)]
+            self.nslc_ids, self.deltats, self.nslc_id_deltats = [
+                Counter() for x in range(7)]
+
         self.by_tmin = Sorted([], 'tmin')
         self.by_tmax = Sorted([], 'tmax')
         self.by_tlen = Sorted([], tlen)
@@ -480,6 +482,7 @@ class TracesGroup(object):
                 self.channels.update(c.channels)
                 self.nslc_ids.update(c.nslc_ids)
                 self.deltats.update(c.deltats)
+                self.nslc_id_deltats.update(c.nslc_id_deltats)
 
                 self.by_tmin.insert_many(c.by_tmin)
                 self.by_tmax.insert_many(c.by_tmax)
@@ -493,6 +496,7 @@ class TracesGroup(object):
                 self.channels[c.channel] += 1
                 self.nslc_ids[c.nslc_id] += 1
                 self.deltats[c.deltat] += 1
+                self.nslc_id_deltats[(c.nslc_id, c.deltat)] += 1
 
                 self.by_tmin.insert(c)
                 self.by_tmax.insert(c)
@@ -523,6 +527,7 @@ class TracesGroup(object):
                 self.channels.subtract(c.channels)
                 self.nslc_ids.subtract(c.nslc_ids)
                 self.deltats.subtract(c.deltats)
+                self.nslc_id_deltats.subtract(c.nslc_id_deltats)
 
                 self.by_tmin.remove_many(c.by_tmin)
                 self.by_tmax.remove_many(c.by_tmax)
@@ -536,6 +541,7 @@ class TracesGroup(object):
                 self.channels.subtract1(c.channel)
                 self.nslc_ids.subtract1(c.nslc_id)
                 self.deltats.subtract1(c.deltat)
+                self.nslc_id_deltats.subtract1((c.nslc_id, c.deltat))
 
                 self.by_tmin.remove(c)
                 self.by_tmax.remove(c)
@@ -993,6 +999,9 @@ class Pile(TracesGroup):
             self.subpiles[k] = SubPile(self)
 
         return self.subpiles[k]
+
+    def get_nslc_deltats(self):
+        return self.nslc_deltats.keys()
 
     def get_deltats(self):
         return self.deltats.keys()
