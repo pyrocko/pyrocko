@@ -12,7 +12,7 @@ logger = logging.getLogger('pyrocko.marker_editor')
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
-    'NSLCs','Kagan Angle [deg]', 'MT']
+    'NSLCs', 'Kagan Angle [deg]', 'MT']
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
