@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License along with thi
   marius.isken@gfz-potsdam.de
 
 * Kriegerowski, Marius; 
-  marius@gfz-potsdam.de 
+  marius.kriegerowski@gfz-potsdam.de 
 
 ```
 Helmholtz Centre Potsdam German Research Centre for Geoscienes GFZ
