@@ -2284,7 +2284,7 @@ def process_subrequest_dynamic(work, pshared=None):
     for isource, source in zip(isources, sources):
         for itarget, target in zip(itargets, targets):
             try:
-                result = engine._post_process_seismogram(
+                result = engine._post_process_dynamic(
                     base_seismogram, source, target)
                 result.n_records_stacked = n_records_stacked
                 result.n_shared_stacking = len(sources) * len(targets)
@@ -2339,7 +2339,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
                     t_stack += tr.t_stack
 
                 try:
-                    result = engine._post_process_seismogram(
+                    result = engine._post_process_dynamic(
                         base_seismogram, source, target)
                     result.n_records_stacked = n_records_stacked
                     result.n_shared_stacking = len(sources) *\
@@ -2653,7 +2653,7 @@ class LocalEngine(Engine):
 
             return base_statics, tcounters
 
-    def _post_process_seismogram(self, base_seismogram, source, target):
+    def _post_process_dynamic(self, base_seismogram, source, target):
         deltat = base_seismogram.values()[0].deltat
 
         rule = self.get_rule(source, target)
@@ -2688,7 +2688,12 @@ class LocalEngine(Engine):
 
     def _post_process_statics(self, base_statics, source, starget):
         rule = self.get_rule(source, starget)
-        rule.apply_(starget, base_statics)
+        data = rule.apply_(starget, base_statics)
+
+        factor = source.get_factor()
+        if factor != 1.0:
+            for v in data.values():
+                v *= factor
 
         return starget.post_process(self, source, base_statics)
 
