@@ -2626,9 +2626,6 @@ class LocalEngine(Engine):
             tcounters = [xtime()]
             store_ = self.get_store(target.store_id)
 
-            if hasattr(source, 'decimation_factor'):
-                source.decimation_factor = 4
-
             if target.tsnapshot is not None:
                 n_f = store_.config.sample_rate
                 itsnapshot = int(num.floor(target.tsnapshot * n_f))
