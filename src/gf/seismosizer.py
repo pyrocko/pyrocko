@@ -581,6 +581,14 @@ class STF(Object, Cloneable):
     def base_key(self):
         return (type(self),)
 
+    def update(self, **kwargs):
+        '''
+        Change some of the source time functions parameters.
+        '''
+
+        for (k, v) in kwargs.iteritems():
+            self[k] = v
+
 
 g_unit_pulse = STF()
 
