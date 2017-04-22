@@ -841,7 +841,7 @@ class BaseStore(object):
                 tr.itmin += itoffset
 
             except store_ext.StoreExtError, e:
-                raise StoreError(str(e))
+                raise StoreError(str(e) + ' in store %s' % self.store_dir)
 
         elif implementation == 'alternative':
             tr = self._sum_impl_alternative(irecords, delays, weights,
