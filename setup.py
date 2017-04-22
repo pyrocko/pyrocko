@@ -384,10 +384,10 @@ setup(
 
     name=packname,
     version=version,
-    description='Seismological Processing Unit',
-    author='Sebastian Heimann',
-    author_email='sebastian.heimann@zmaw.de',
-    url='http://emolch.github.com/pyrocko/',
+    description='An open source toolbox and library for seismology.',
+    author='The Pyrocko Developers',
+    author_email='info@pyrocko.org',
+    url='http://pyrocko.org',
     packages=[packname] + subpacknames,
     package_dir={'pyrocko': 'src'},
     ext_package=packname,
@@ -476,5 +476,5 @@ setup(
     package_data={
         packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
                    'data/colortables/*.cpt', 'data/tectonics/*.txt',
-                   'data/fomosto_report/gfreport.tex']},
+                   'data/fomosto_report/gfreport.*']},
 )

@@ -83,7 +83,7 @@ def make_traces(material, source_mech, deltat, norths, easts,
 
 
 class AhfullGFBuilder(gf.builder.Builder):
-    def __init__(self, store_dir, step, shared, block_size=None):
+    def __init__(self, store_dir, step, shared, block_size=None, force=False):
 
         self.store = gf.store.Store(store_dir, 'w')
 
@@ -94,7 +94,7 @@ class AhfullGFBuilder(gf.builder.Builder):
             block_size = block_size[1:]
 
         gf.builder.Builder.__init__(
-            self, self.store.config, step, block_size=block_size)
+            self, self.store.config, step, block_size=block_size, force=force)
 
     def work_block(self, index):
         if len(self.store.config.ns) == 2:

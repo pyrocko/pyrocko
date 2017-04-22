@@ -8,7 +8,6 @@ import copy
 from optparse import OptionParser
 
 from pyrocko import util, trace, gf, cake, io, gui_util
-from pyrocko.fomosto_report import report_call
 
 pjoin = os.path.join
 
@@ -1119,6 +1118,7 @@ def command_qc(args):
         die(e)
 
 def command_report(args):
+    from pyrocko.fomosto_report import report_call
     report_call.run_program(args)
 
 

@@ -542,7 +542,8 @@ qssp has been invoked as "%s"'''.lstrip() % (
 class QSSPGFBuilder(gf.builder.Builder):
     nsteps = 2
 
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None):
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
+                 force=False):
         self.gfmapping = [
             (MomentTensor(m=symmat6(1, 0, 0, 1, 0, 0)),
              {'un': (0, -1), 'ue': (3, -1), 'uz': (5, -1)}),
@@ -566,7 +567,7 @@ class QSSPGFBuilder(gf.builder.Builder):
             block_size = block_size[1:]
 
         gf.builder.Builder.__init__(
-            self, self.store.config, step, block_size=block_size)
+            self, self.store.config, step, block_size=block_size, force=force)
 
         baseconf = self.store.get_extra('qssp')
 

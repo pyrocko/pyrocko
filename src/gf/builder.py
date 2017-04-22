@@ -20,7 +20,7 @@ class Interrupted(store.StoreError):
 class Builder:
     nsteps = 1
 
-    def __init__(self, gf_config, step, block_size=None):
+    def __init__(self, gf_config, step, block_size=None, force=False):
         if block_size is None:
             if len(gf_config.ns) == 3:
                 block_size = (10, 1, 10)
@@ -30,6 +30,7 @@ class Builder:
                 assert False
 
         self.step = step
+        self.force = force
         self.gf_config = gf_config
         self._block_size = int_arr(*block_size)
 
@@ -60,8 +61,8 @@ class Builder:
     @classmethod
     def __work_block(cls, args):
         try:
-            store_dir, step, iblock, shared = args
-            builder = cls(store_dir, step, shared)
+            store_dir, step, iblock, shared, force = args
+            builder = cls(store_dir, step, shared, force=force)
             builder.work_block(iblock)
         except KeyboardInterrupt:
             raise Interrupted()
@@ -76,7 +77,6 @@ class Builder:
     @classmethod
     def build(cls, store_dir, force=False, nworkers=None, continue_=False,
               step=None, iblock=None):
-
         if step is None:
             steps = range(cls.nsteps)
         else:
@@ -106,7 +106,7 @@ class Builder:
 
         shared = {}
         for step in steps:
-            builder = cls(store_dir, step, shared)
+            builder = cls(store_dir, step, shared, force=force)
             if not (0 <= step < builder.nsteps):
                 raise store.StoreError('invalid step: %i' % (step+1))
 
@@ -141,7 +141,7 @@ class Builder:
             try:
                 for x in parimap(
                         cls.__work_block,
-                        [(store_dir, step, i, shared)
+                        [(store_dir, step, i, shared, force)
                          for i in iblocks],
                         nprocs=nworkers, eprintignore=Interrupted):
 

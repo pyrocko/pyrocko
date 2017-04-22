@@ -80,6 +80,8 @@ class PyrockoConfig(ConfigBase):
         default=os.path.join(pyrocko_dir_tmpl, 'tectonics'))
     geonames_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'geonames'))
+    crustdb_dir = PathWithPlaceholders.T(
+        default=os.path.join(pyrocko_dir_tmpl, 'crustdb'))
     leapseconds_path = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'leap-seconds.list'))
     leapseconds_url = String.T(

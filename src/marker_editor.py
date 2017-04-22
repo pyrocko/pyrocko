@@ -12,7 +12,7 @@ logger = logging.getLogger('pyrocko.marker_editor')
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
-    'Kagan Angle [deg]', 'MT']
+    'NSLCs', 'Kagan Angle [deg]', 'MT']
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
@@ -21,7 +21,7 @@ _string_header = (_column_mapping['Time'], _column_mapping['Label'])
 _header_sizes = [70] * len(_header_data)
 _header_sizes[0] = 40
 _header_sizes[1] = 190
-_header_sizes[10] = 20
+_header_sizes[11] = 20
 
 
 class BeachballWidget(qg.QWidget):
@@ -40,11 +40,15 @@ class BeachballWidget(qg.QWidget):
         self.moment_tensor = moment_tensor
         self.setGeometry(0, 0, 100, 100)
         self.setAttribute(qc.Qt.WA_TranslucentBackground)
+        self.flipy = qg.QMatrix()
+        self.flipy.translate(0, self.height())
+        self.flipy.scale(1, -1)
 
     def paintEvent(self, e):
         center = e.rect().center()
         painter = qg.QPainter(self)
         painter.save()
+        painter.setMatrix(self.flipy)
         try:
             data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
                                 position=(center.x(), center.y()))
@@ -139,7 +143,7 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     def lessThan(self, left, right):
         if left.column() == 1:
             return left.data().toDateTime() < right.data().toDateTime()
-        elif left.column() == 3:
+        elif left.column() in [3, 9]:
             return left.data().toString() < right.data().toString()
         else:
             return left.data().toFloat()[0] < right.data().toFloat()[0]
@@ -174,9 +178,9 @@ class MarkerTableView(qg.QTableView):
         show_initially = ['Type', 'Time', 'Magnitude']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
-                            'Kagan Angle [deg]', 'MT']
+                            'NSLCs', 'Kagan Angle [deg]', 'MT']
         self.menu_items = dict(zip(self.menu_labels,
-                                   [0, 1, 2, 3, 4, 5, 7, 8, 9, 10]))
+                                   [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11]))
 
         self.editable_columns = [2, 3, 4, 5, 6, 7]
 
@@ -396,6 +400,12 @@ class MarkerTableModel(qc.QAbstractTableModel):
             elif index.column() == _column_mapping['Kind']:
                 s = marker.kind
 
+            elif index.column() == _column_mapping['NSLCs']:
+                strs = []
+                for nslc_id in marker.get_nslc_ids():
+                    strs.append('.'.join(nslc_id))
+                s = '|'.join(strs)
+
             elif index.column() == _column_mapping['Dist [km]']:
                 if marker in self.distances.keys():
                     s = self.distances[marker]
@@ -482,8 +492,8 @@ class MarkerTableModel(qc.QAbstractTableModel):
             else:
                 self.kagan_angles = {}
 
-        istart = self.index(0, 0)
-        istop = self.index(nmarkers-1, len(_header_data)-1)
+        istart = self.index(0, _column_mapping['Dist [km]'])
+        istop = self.index(nmarkers-1, _column_mapping['Kagan Angle [deg]'])
 
         self.emit(qc.SIGNAL('dataChanged(QModelIndex, QModelIndex)'),
                   istart,

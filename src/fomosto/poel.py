@@ -456,7 +456,8 @@ poel has been invoked as "%s"''' % (
 
 
 class PoelGFBuilder(gf.builder.Builder):
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None):
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
+                 force=False):
 
         if block_size is None:
             block_size = (51, 1, 51)
@@ -464,7 +465,7 @@ class PoelGFBuilder(gf.builder.Builder):
         self.store = gf.store.Store(store_dir, 'w')
 
         gf.builder.Builder.__init__(
-            self, self.store.config, step, block_size=block_size)
+            self, self.store.config, step, block_size=block_size, force=force)
 
         self.poel_config = self.store.get_extra('poel')
 

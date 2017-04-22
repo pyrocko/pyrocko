@@ -103,7 +103,7 @@ mantle
 
         gft = gftest(store_dir, sensor_count=2, pdf_dir=store_dir,
                      plot_velocity=True, rel_lowpass_frequency=(1. / 110),
-                     rel_highpass_frequency=(1. / 16))
+                     rel_highpass_frequency=(1. / 16), output_format='html')
 
         src = gft.createSource('DC', None, 45., 90., 180.)
         sen = gft.createSensors(strike=0., codes=('', 'STA', '', 'Z'),
@@ -113,8 +113,7 @@ mantle
         gft.createVelocityTraces()
         gft.applyFrequencyFilters()
         gft.getPhaseArrivals()
-        gft.createPDF(create_latex=False)
-        gft.cleanup()
+        gft.createOutputDoc()
 
 
 if __name__ == '__main__':

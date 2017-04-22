@@ -10,6 +10,9 @@ from test_moment_tensor import MomentTensorTestCase  # noqa
 from test_trace import TraceTestCase  # noqa
 from test_model import ModelTestCase  # noqa
 from test_util import UtilTestCase  # noqa
+from test_util import UtilTestCase  # noqa
+from test_crust2x2 import Crust2x2TestCase  # noqa
+# from test_crustdb import CrustDBTestCase  # noqa
 from test_gf import GFTestCase  # noqa
 from test_gf_sources import GFSourcesTestCase  # noqa
 from test_gf_qseis import GFQSeisTestCase  # noqa
@@ -31,6 +34,7 @@ from test_tectonics import TectonicsTestCase  # noqa
 from test_fomosto_report import ReportTestCase  # noqa
 from test_gf_psgrn_pscmp import GFPsgrnPscmpTestCase  # noqa
 from test_gf_static import GFStaticTest  # noqa
+from test_response_plot import ResponsePlotTestCase  # noqa
 
 import platform
 import unittest

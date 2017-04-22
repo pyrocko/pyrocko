@@ -83,7 +83,7 @@ def load(filename, format='mseed', getdata=True, substitutions=None):
     first 512 bytes of the file. Only Mini-SEED, SAC, GSE1, and YAFF format are
     detected. When *format* is set to ``'from_extension'``, the filename
     extension is used to decide what format should be assumed. The filename
-    extensions considered are (matching is case insensitiv): ``'.sac'``,
+    extensions considered are (matching is case insensitive): ``'.sac'``,
     ``'.kan'``, ``'.sgy'``, ``'.segy'``, ``'.yaff'``, everything else is
     assumed to be in Mini-SEED format.
 

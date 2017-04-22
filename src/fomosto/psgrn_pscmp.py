@@ -197,7 +197,7 @@ class PsGrnConfigFull(PsGrnConfig):
 #    program "pscmp07a" for discretizing the finite source planes to a 2D grid
 #    of point sources.
 #------------------------------------------------------------------------------
-        %(observation_depth)e  %(sw_source_regime)i
+ %(observation_depth)e  %(sw_source_regime)i
  %(str_distance_grid)s  %(sampling_interval)e
  %(str_depth_grid)s
 #------------------------------------------------------------------------------
@@ -308,6 +308,7 @@ def remove_if_exists(fn, force=False):
 class PsGrnRunner:
 
     def __init__(self, outdir):
+        outdir = os.path.abspath(outdir)
         if not os.path.exists(outdir):
             os.mkdir(outdir)
         self.outdir = outdir
@@ -681,29 +682,25 @@ class PsCmpSnapshots(Object):
     '''
     Snapshot time series definition.
     '''
-    tmin = Float.T(default=0.0,
-                   help='Time [days] after source time to start'
-                        ' temporal sample snapshots.')
-    tmax = Float.T(default=0.0,
-                   help='Time [days] after source time to end'
-                        ' temporal sample snapshots.')
-    nt = Float.T(default=1.0,
-                 help='Number of time samples.')
+    tmin = Float.T(
+        default=0.0,
+        help='Time [days] after source time to start temporal sample'
+             ' snapshots.')
+    tmax = Float.T(
+        default=1.0,
+        help='Time [days] after source time to end temporal sample f.')
+    deltatdays = Float.T(
+        default=1.0,
+        help='Sample period [days].')
 
     @property
     def times(self):
-        return num.linspace(self.tmin, self.tmax, self.nt).tolist()
+        nt = int(num.ceil((self.tmax - self.tmin) / self.deltatdays))
+        return num.linspace(self.tmin, self.tmax, nt).tolist()
 
     @property
     def deltat(self):
-        if self.nt == 1:
-            # only coseismic displacement dummy delta
-            return 1
-        elif self.nt == 2:
-            # steady state in infinity returned dummy delta
-            return 100000.
-        else:
-            return (self.tmax - self.tmin) / (self.nt - 1)
+        return self.deltatdays * 24 * 3600
 
 
 class PsCmpConfig(Object):
@@ -814,7 +811,7 @@ class PsCmpConfigFull(PsCmpConfig):
         else:
             d['str_coulomb_master_field'] = ''
 
-        d['str_psgrn_outdir'] = "'../../%s'" % self.psgrn_outdir
+        d['str_psgrn_outdir'] = "'%s'" % self.psgrn_outdir
         d['str_pscmp_outdir'] = "'%s'" % './'
 
         d['str_indispl_filenames'] = str_str_vals(self.indispl_filenames)
@@ -1090,6 +1087,8 @@ class Interrupted(gf.store.StoreError):
 class PsCmpRunner:
 
     def __init__(self, tmp=None, keep_tmp=False):
+        if tmp is not None:
+            tmp = os.path.abspath(tmp)
         self.tempdir = mkdtemp(prefix='pscmprun-', dir=tmp)
         self.keep_tmp = keep_tmp
         self.config = None
@@ -1110,7 +1109,6 @@ class PsCmpRunner:
         program = program_bins['pscmp.%s' % config.version]
 
         old_wd = os.getcwd()
-
         os.chdir(self.tempdir)
 
         interrupted = []
@@ -1244,8 +1242,8 @@ in the directory %s'''.lstrip() % (
 class PsGrnCmpGFBuilder(gf.builder.Builder):
     nsteps = 2
 
-    def __init__(self, store_dir, step, shared, block_size=None, tmp=None):
-
+    def __init__(self, store_dir, step, shared, block_size=None, tmp=None,
+                 force=False):
         self.store = gf.store.Store(store_dir, 'w')
 
         storeconf = self.store.config
@@ -1274,7 +1272,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
             block_size = block_size[1:]
 
         gf.builder.Builder.__init__(
-            self, storeconf, step, block_size=block_size)
+            self, storeconf, step, block_size=block_size, force=force)
 
         baseconf = self.store.get_extra('psgrn_pscmp')
 
@@ -1313,7 +1311,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
         logger.info(
             'Starting step %i / %i, block %i / %i' %
-            (self.step+1, self.nsteps, iblock+1, self.nblocks))
+            (self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
         if self.step == 0:
             n_steps_depth = int((fc.source_depth_max - fc.source_depth_min) /
@@ -1332,12 +1330,16 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                 end_distance=fc.distance_max / km)
 
             runner = PsGrnRunner(outdir=self.cg.psgrn_outdir)
-            runner.run(cg)
+            runner.run(cg, force=self.force)
 
         else:
             distances = num.linspace(
-                firstx, firstx + (nx-1)*dx, nx).tolist()
+                firstx, firstx + (nx - 1) * dx, nx).tolist()
 
+            # fomosto sample rate in s, pscmp takes days
+            deltatdays = 1. / (fc.sample_rate * 24. * 3600.)
+            cc.snapshots = PsCmpSnapshots(
+                tmin=0., tmax=cg.max_time, deltatdays=deltatdays)
             cc.observation = PsCmpProfile(
                 slat=0. - 0.001 * cake.m2d,
                 slon=0.0,
@@ -1372,7 +1374,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
                 cc.rectangular_source_patches = []
                 for idx in mt:
                     pmt = PsCmpMomentTensor(
-                        lat=0.+0.001*dx*cake.m2d,
+                        lat=0. + 0.001 * dx * cake.m2d,
                         lon=0.0,
                         depth=float(sz),
                         width=mtsize,
@@ -1428,7 +1430,7 @@ class PsGrnCmpGFBuilder(gf.builder.Builder):
 
         logger.info(
             'Done with step %i / %i, block %i / %i' % (
-                self.step+1, self.nsteps, iblock+1, self.nblocks))
+                self.step + 1, self.nsteps, iblock + 1, self.nblocks))
 
 
 def init(store_dir, variant):
@@ -1448,15 +1450,15 @@ def init(store_dir, variant):
     config = gf.meta.ConfigTypeA(
         id=store_id,
         ncomponents=10,
-        sample_rate=0.1,
-        receiver_depth=0*km,
-        source_depth_min=10*km,
-        source_depth_max=20*km,
-        source_depth_delta=10*km,
-        distance_min=100*km,
-        distance_max=1000*km,
-        distance_delta=10*km,
-        earthmodel_1d=cake.load_model(),
+        sample_rate=1. / (3600. * 24.),
+        receiver_depth=0. * km,
+        source_depth_min=0. * km,
+        source_depth_max=15. * km,
+        source_depth_delta=.5 * km,
+        distance_min=0. * km,
+        distance_max=50. * km,
+        distance_delta=1. * km,
+        earthmodel_1d=cake.load_model(fn=None, crust2_profile=(54., 23.)),
         modelling_code_id='psgrn_pscmp.%s' % variant,
         tabulated_phases=[])    # dummy list
 
