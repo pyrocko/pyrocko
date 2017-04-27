@@ -393,6 +393,7 @@ class SnufflerTabs(qg.QTabWidget):
             self.hide_close_button_on_first_tab()
 
         self.tabbar_visibility()
+        self.setFocus()
 
     def removeTab(self, index):
         w = self.widget(index)
@@ -407,6 +408,12 @@ class SnufflerTabs(qg.QTabWidget):
             self.tabBar().hide()
         elif self.count() > 1:
             self.tabBar().show()
+
+    def keyPressEvent(self, event):
+        if event.text() == 'd':
+            self.emit(qc.SIGNAL('tabCloseRequested(int)'), self.currentIndex())
+        else:
+            self.parent().keyPressEvent(event)
 
 
 class SnufflerWindow(qg.QMainWindow):
