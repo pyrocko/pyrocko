@@ -117,7 +117,7 @@ mantle
 
         # build store
         try:
-            psgrn_pscmp.build(store_dir, nworkers=1)
+            psgrn_pscmp.build(store_dir, nworkers=10)
         except psgrn_pscmp.PsCmpError, e:
             if str(e).find('could not start psgrn/pscmp') != -1:
                 logger.warn('psgrn/pscmp not installed; '
@@ -134,14 +134,15 @@ mantle
         TestRF = dict(
             lat=origin.lat,
             lon=origin.lon,
-            depth=2. * km,
+            depth=3.5 * km,
             width=2. * km,
             length=5. * km,
             rake=90., dip=45., strike=45.,
             slip=1.)
 
         source = gf.RectangularSource(**TestRF)
-
+        source.decimation_factor = 8
+        source.depth_sampling_scheme = 'linear'
         neast = 40
         nnorth = 40
 
@@ -154,11 +155,13 @@ mantle
             north_shifts=N.flatten(),
             east_shifts=E.flatten(),
             interpolation='nearest_neighbor')
+
         engine = gf.LocalEngine(store_dirs=[store_dir])
         t0 = time()
         r = engine.process(source, starget)
         t1 = time()
         logger.info('pyrocko stacking time %f' % (t1 - t0))
+
         un_fomosto = r.static_results()[0].result['displacement.n']
         ue_fomosto = r.static_results()[0].result['displacement.e']
         ud_fomosto = r.static_results()[0].result['displacement.d']
@@ -187,8 +190,11 @@ mantle
         ue_pscmp = ps2du[:, 1]
         ud_pscmp = ps2du[:, 2]
 
+        logger.info('testing N')
         num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.002)
+        logger.info('testing E')
         num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.002)
+        logger.info('testing V')
         num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.002)
 
         # plotting
@@ -230,5 +236,5 @@ mantle
 
 
 if __name__ == '__main__':
-    util.setup_logging('test_gf_psgrn_pscmp', 'warning')
+    util.setup_logging('test_gf_psgrn_pscmp', 'info')
     unittest.main()
