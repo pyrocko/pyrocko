@@ -2808,7 +2808,7 @@ class LocalEngine(Engine):
 
         if request.has_dynamic:
             tcumu_dyn = num.sum(num.vstack(tcounters_dyn_list), axis=0)
-            t_dyn = num.sum(tcumu_dyn)
+            t_dyn = float(num.sum(tcumu_dyn))
             perc_dyn = map(float, tcumu_dyn/t_dyn * 100.)
             (s.t_perc_get_store_and_receiver,
              s.t_perc_discretize_source,
