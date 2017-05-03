@@ -1037,8 +1037,7 @@ class SourceWithMagnitude(Source):
 
     @classmethod
     def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(SourceWithMagnitude, cls).keys() + ['moment']
+        cls._keys = super(SourceWithMagnitude, cls).keys() + ['moment']
 
         return cls._keys
 
@@ -1088,13 +1087,6 @@ class ExplosionSource(SourceWithMagnitude):
             moment_tensor=self.pyrocko_moment_tensor(),
             **kwargs)
 
-    @classmethod
-    def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(ExplosionSource, cls).keys()
-
-        return cls._keys
-
 
 class RectangularExplosionSource(ExplosionSource):
     '''
@@ -1143,14 +1135,6 @@ class RectangularExplosionSource(ExplosionSource):
         return Source.base_key(self) + (self.strike, self.dip, self.length,
                                         self.width, self.nucleation_x,
                                         self.nucleation_y, self.velocity)
-
-    @classmethod
-    def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(
-                RectangularExplosionSource, cls).keys()
-
-        return cls._keys
 
     def discretize_basesource(self, store, target=None):
 
@@ -1265,13 +1249,6 @@ class DCSource(SourceWithMagnitude):
 
         d.update(kwargs)
         return super(DCSource, cls).from_pyrocko_event(ev, **d)
-
-    @classmethod
-    def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(DCSource, cls).keys()
-
-        return cls._keys
 
 
 class CLVDSource(Source):
@@ -1529,13 +1506,6 @@ class RectangularSource(DCSource):
 
         return ds
 
-    @classmethod
-    def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(RectangularSource, cls).keys()
-
-        return cls._keys
-
     def outline(self, cs='xyz'):
         points = outline_rect_source(self.strike, self.dip, self.length,
                                      self.width, self.anchor)
@@ -1624,13 +1594,6 @@ class DoubleDCSource(SourceWithMagnitude):
              '(if given, overrides STF from attribute :py:gattr:`Source.stf`)')
 
     discretized_source_class = meta.DiscretizedMTSource
-
-    @classmethod
-    def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(DoubleDCSource, cls).keys()
-
-        return cls._keys
 
     def base_key(self):
         return (
@@ -1797,13 +1760,6 @@ class RingfaultSource(SourceWithMagnitude):
 
     def base_key(self):
         return Source.base_key(self) + (self.strike, self.dip, self.diameter)
-
-    @classmethod
-    def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(RingfaultSource, cls).keys()
-
-        return cls._keys
 
     def get_factor(self):
         return self.sign * self.moment
