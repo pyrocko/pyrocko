@@ -203,7 +203,7 @@ def tts(t):
         return util.tts(t, format='%Y-%m-%d')
 
 
-def load_response_information(filename, format):
+def load_response_information(filename, format, nslc_patterns=None):
     from pyrocko import pz, trace
     from pyrocko.fdsn import resp as fresp
 
@@ -219,6 +219,10 @@ def load_response_information(filename, format):
 
     elif format == 'resp':
         for resp in list(fresp.iload_filename(filename)):
+            if nslc_patterns is not None and not util.match_nslc(
+                    nslc_patterns, resp.codes):
+                continue
+
             units = ''
             if resp.response.instrument_sensitivity:
                 s = resp.response.instrument_sensitivity
@@ -230,6 +234,38 @@ def load_response_information(filename, format):
             labels.append('%s (%s.%s.%s.%s, %s - %s%s)' % (
                 (filename, ) + resp.codes +
                 (tts(resp.start_date), tts(resp.end_date), units)))
+
+    elif format == 'stationxml':
+        from pyrocko.fdsn import station as fs
+
+        sx = fs.load_xml(filename=filename)
+        for network in sx.network_list:
+            for station in network.station_list:
+                for channel in station.channel_list:
+                    nslc = (
+                        network.code,
+                        station.code,
+                        channel.location_code,
+                        channel.code)
+
+                    if nslc_patterns is not None and not util.match_nslc(
+                            nslc_patterns, nslc):
+                        continue
+
+                    units = ''
+                    if channel.response.instrument_sensitivity:
+                        s = channel.response.instrument_sensitivity
+                        if s.input_units and s.output_units:
+                            units = ', %s -> %s' % (
+                                s.input_units.name, s.output_units.name)
+
+                    resps.append(channel.response.get_pyrocko_response(nslc))
+                    labels.append(
+                        '%s (%s.%s.%s.%s, %s - %s%s)' % (
+                            (filename, ) + nslc +
+                            (tts(channel.start_date),
+                             tts(channel.end_date),
+                             units)))
 
     return resps, labels
 
@@ -244,7 +280,7 @@ if __name__ == '__main__':
 
     description = '''Plot instrument responses (transfer functions).'''
 
-    allowed_formats = ['sacpz', 'resp']
+    allowed_formats = ['sacpz', 'resp', 'stationxml']
 
     parser = OptionParser(
         usage=usage,
@@ -285,6 +321,13 @@ if __name__ == '__main__':
         default=100.,
         help='DPI setting for pixel image output, default: %default')
 
+    parser.add_option(
+        '--patterns',
+        dest='nslc_patterns',
+        metavar='NET.STA.LOC.CHA,...',
+        help='show only responses of channels matching any of the given '
+             'patterns')
+
     (options, args) = parser.parse_args(sys.argv[1:])
 
     if len(args) == 0:
@@ -297,7 +340,15 @@ if __name__ == '__main__':
     labels = []
 
     for fn in fns:
-        resps_this, labels_this = load_response_information(fn, options.format)
+
+        if options.nslc_patterns is not None:
+            nslc_patterns = options.nslc_patterns.split(',')
+        else:
+            nslc_patterns = None
+
+        resps_this, labels_this = load_response_information(
+            fn, options.format, nslc_patterns)
+
         resps.extend(resps_this)
         labels.extend(labels_this)
 
