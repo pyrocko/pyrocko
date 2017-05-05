@@ -4,9 +4,14 @@ import logging
 from pyrocko import trace, util
 from struct import unpack
 
-
 logging.basicConfig(level='INFO')
 logger = logging.getLogger('css')
+
+
+'''
+See http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm for file format
+reference.
+'''
 
 use_template = True
 
@@ -14,7 +19,6 @@ storage_types = {
         's4': ('>%ii'),
         'i4': ('<%ii'),
 }
-
 
 template = [
     ('sta', str, (0, 6), 'station code'),
@@ -49,12 +53,22 @@ class CSSWfError(Exception):
             util.stt: 'time'
         }
         kwargs['convert'] = f2str[kwargs['convert']]
-
-        error_str = 'Successfully parsed:\n'
+        error_str = 'Successfully parsed this:\n'
         for k, v in kwargs['d'].items():
             error_str += '%s: %s\n' % (k, v)
-        error_str += 'Error while parsing "{data}" to {convert} (line {iline}, \
-columns {istart} - {istop}, description="{desc}")'.format(**kwargs)
+
+        error_str += '\nFailed to parse the marked section:'
+
+        istart = kwargs['istart']
+        istop = kwargs['istop']
+        npad = 12
+        error_mark = ' ' * npad
+        error_mark += '^' * (istop - istart)
+        error_str += '\n%s\n%s\n' % (kwargs['data'][istart-npad: istop+npad],
+                                     error_mark)
+        error_str += 'Expected {desc} (format: {convert})\n'.format(**kwargs)
+        error_str += \
+            'checkout http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm'
         Exception.__init__(self, error_str)
         self.error_arguments = kwargs
 
@@ -98,7 +112,7 @@ class Wfdisc():
                             d[ident] = convert(line[istart: istop].strip())
                         except:
                             raise CSSWfError(
-                                iline=iline+1, data=line[istart:istop],
+                                iline=iline+1, data=line,
                                 ident=ident, convert=convert,
                                 istart=istart+1, istop=istop+1, desc=desc,
                                 d=d
@@ -133,6 +147,7 @@ class Wfdisc():
                             d['foff'])
                 else:
                     ydata = None
+
             except IOError as e:
                 if e.errno == 2:
                     logger.debug(e)
@@ -140,11 +155,13 @@ class Wfdisc():
                 else:
                     raise e
             dt = 1./d['samprate']
+            if ydata is None:
+                logger.debug('ydata is None in d')
+                continue
             yield trace.Trace(station=d['sta'],
                               channel=d['chan'],
                               deltat=dt,
                               tmin=d['time'],
-                              tmax=d['time'] + dt*d['nsamp'],
                               ydata=ydata)
 
 
