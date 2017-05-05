@@ -13,8 +13,6 @@ See http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm for file format
 reference.
 '''
 
-use_template = True
-
 storage_types = {
         's4': ('>%ii'),
         'i4': ('<%ii'),
@@ -73,13 +71,19 @@ class CSSWfError(Exception):
         self.error_arguments = kwargs
 
 
-class Wfdisc():
-    ''' Wfdisc header file class
+class CSSHeaderFile():
+    '''
+    CSS Header File
 
-    :param fn: filename of wfdisc header file'''
-    def __init__(self, fn):
+    :param filename: filename of css header file
 
-        self.fn = fn
+    Note, that all binary data files to which the underlying header file points
+    to will be loaded at once. It is therefore recommended to split header
+    files for large data sets
+    '''
+    def __init__(self, filename):
+
+        self.fn = filename
         self.data = []
         self.read()
 
@@ -100,8 +104,14 @@ class Wfdisc():
                 return
         return data
 
-    def read(self):
-        ''' read header file'''
+    def read(self, use_template=True):
+        ''' read header file
+
+        :param use_template: If *False*, try to extract information bv
+            splitting the file on whitespaces. Otherwise (default) use the
+            official template.
+            (http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm)
+        '''
         with open(self.fn, 'r') as f:
             lines = f.readlines()
             for iline, line in enumerate(lines):
@@ -167,8 +177,9 @@ class Wfdisc():
 
 def iload(file_name, load_data, **kwargs):
     '''
-    :param load_data: wfdisc filename
+    :param file_name: css header file name
+    :param load_data: whether or not to load binary data
     '''
-    wfdisc = Wfdisc(file_name)
+    wfdisc = CSSHeaderFile(file_name)
     for pyrocko_trace in wfdisc.iter_pyrocko_traces(load_data=load_data):
         yield pyrocko_trace
