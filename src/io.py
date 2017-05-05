@@ -22,6 +22,7 @@ GSE1         gse1                        some
 GSE2         gse2                        some
 DATACUBE     datacube                    yes
 SUDS         suds                        some
+CSS          css                         yes
 ============ =========================== ========= ======== ======
 
 .. rubric:: Notes
