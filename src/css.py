@@ -165,13 +165,11 @@ class CSSHeaderFile():
                 else:
                     raise e
             dt = 1./d['samprate']
-            if ydata is None:
-                logger.debug('ydata is None in d')
-                continue
             yield trace.Trace(station=d['sta'],
                               channel=d['chan'],
                               deltat=dt,
                               tmin=d['time'],
+                              tmax=d['time'] + d['nsamp']/d['samprate'],
                               ydata=ydata)
 
 
