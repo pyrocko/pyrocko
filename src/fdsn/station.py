@@ -646,7 +646,8 @@ class Response(Object):
             input_units = self.instrument_sensitivity.input_units.name
 
             try:
-                conresp = conversion[fake_input_units, input_units]
+                conresp = conversion[
+                    fake_input_units.upper(), input_units.upper()]
 
             except KeyError:
                 raise NoResponseInformation(
