@@ -193,6 +193,7 @@ class CfTransferFunction(StringChoice):
 
     replacements = {
         'ANALOG (RAD/SEC)': 'ANALOG (RADIANS/SECOND)',
+        'ANALOG (HZ)': 'ANALOG (HERTZ)',
     }
 
 

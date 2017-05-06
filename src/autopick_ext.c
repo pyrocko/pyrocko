@@ -127,6 +127,7 @@ static PyObject* autopick_recursive_stalta_wrapper(PyObject *dummy, PyObject *ar
     temp_array = (PyArrayObject*)PyArray_ContiguousFromAny(temp_array_obj, NPY_FLOAT32, 1, 1);
     if (temp_array == NULL) {
         PyErr_SetString(AutoPickError, "cannot create a contiguous float array from temp_data." );
+        Py_DECREF(inout_array);
         return NULL;
     }
     nsamples = PyArray_SIZE(inout_array);
@@ -134,14 +135,20 @@ static PyObject* autopick_recursive_stalta_wrapper(PyObject *dummy, PyObject *ar
 
     if (ntemp != ns+2) {
         PyErr_SetString(AutoPickError, "temp_data must have length of ns+2.");
+        Py_DECREF(temp_array);
+        Py_DECREF(inout_array);
         return NULL;
     }
 
     if (0 != autopick_recursive_stalta(ns, nl, ks, kl, k, nsamples, (float*)PyArray_DATA(inout_array), (float*)PyArray_DATA(temp_array), initialize)) {
         PyErr_SetString(AutoPickError, "running STA/LTA failed.");
+        Py_DECREF(temp_array);
+        Py_DECREF(inout_array);
         return NULL;
     }
 
+    Py_DECREF(temp_array);
+    Py_DECREF(inout_array);
     Py_INCREF(Py_None);
     return Py_None;
 }
