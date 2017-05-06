@@ -2549,14 +2549,11 @@ def MakePileViewerMainClass(base):
             a[0] = umin
             a[-1] = umax
             a[1:-1] = m_projections
-            b = num.zeros(len(a)+1)
-            b[1:] = a
-            offsets = a[1:]-b[1:-1]
-            offsets = num.floor_divide(offsets, 30.)
+            offsets = num.floor_divide(num.diff(a), 30.)
             with num.errstate(invalid='ignore'):
                 offsets = num.divide(offsets, offsets)
             congregated = num.zeros(len(a))
-            congregated[0:-1] = offsets
+            congregated[:-1] = offsets
             congregated[1:] += offsets
             congregated = num.divide(congregated, congregated)
             with num.errstate(invalid='ignore'):

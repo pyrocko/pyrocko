@@ -385,11 +385,15 @@ class SnufflerTabs(qg.QTabWidget):
         self.insertTab(self.count(), widget, name)
         self.setCurrentIndex(self.count()-1)
 
+    def remove_tab(self, widget):
+        self.removeTab(self.indexOf(widget))
+
     def tabInserted(self, index):
         if index == 0:
             self.hide_close_button_on_first_tab()
 
         self.tabbar_visibility()
+        self.setFocus()
 
     def removeTab(self, index):
         w = self.widget(index)
@@ -404,6 +408,12 @@ class SnufflerTabs(qg.QTabWidget):
             self.tabBar().hide()
         elif self.count() > 1:
             self.tabBar().show()
+
+    def keyPressEvent(self, event):
+        if event.text() == 'd':
+            self.emit(qc.SIGNAL('tabCloseRequested(int)'), self.currentIndex())
+        else:
+            self.parent().keyPressEvent(event)
 
 
 class SnufflerWindow(qg.QMainWindow):
@@ -476,6 +486,9 @@ class SnufflerWindow(qg.QMainWindow):
 
     def add_tab(self, name, widget):
         self.tabs.append_tab(widget, name)
+
+    def remove_tab(self, widget):
+        self.tabs.remove_tab(widget)
 
     def add_panel(self, name, panel, visible=False, volatile=False,
                   where=qc.Qt.BottomDockWidgetArea):
