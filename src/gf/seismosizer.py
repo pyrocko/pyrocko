@@ -117,7 +117,8 @@ def arr(x):
 def discretize_rect_source(deltas, deltat, strike, dip, length, width,
                            anchor, velocity, stf=None,
                            nucleation_x=None, nucleation_y=None,
-                           tref=0.0, decimation_factor=1):
+                           tref=0.0, decimation_factor=1,
+                           depth_sampling_scheme='linear'):
 
     if stf is None:
         stf = STF()
@@ -137,7 +138,20 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     dw = w / nw
 
     xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
-    xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
+
+    if depth_sampling_scheme == 'linear':
+        xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
+
+    elif depth_sampling_scheme == 'log':
+        base = 1.021
+        ls = num.logspace(0, 1, nw, base=base) * (1 / base)
+        tmp = num.linspace(0, (w-dw), nw)
+        xw = tmp * ls - (w-dw) * 0.5
+    else:
+        raise TypeError(
+            'depth_sampling_scheme "%s" not available' % depth_sampling_scheme)
+
+    print xw
 
     points = num.empty((n, 3), dtype=num.float)
     points[:, 0] = num.tile(xl, nw)
@@ -187,7 +201,7 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     points2[:, 0] += anch_north
     points2[:, 1] += anch_east
     points2[:, 2] += anch_depth
-
+    print points2
     return points2, times2, amplitudes2, dl, dw
 
 
@@ -1441,6 +1455,13 @@ class RectangularSource(DCSource):
         optional=True,
         default=1)
 
+    depth_sampling_scheme = StringChoice.T(
+        choices=['linear', 'log'],
+        default='linear',
+        optional=True,
+        help='Sampling scheme to influence the discretisation of the plane'
+             ' along dip-direction.')
+
     def base_key(self):
         return DCSource.base_key(self) + (
             self.length,
@@ -1468,7 +1489,8 @@ class RectangularSource(DCSource):
             store.config.deltas, store.config.deltat,
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
-            decimation_factor=self.decimation_factor)
+            decimation_factor=self.decimation_factor,
+            depth_sampling_scheme=self.depth_sampling_scheme)
 
         if self.slip is not None:
             points2 = points.copy()
