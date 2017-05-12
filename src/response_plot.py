@@ -203,13 +203,19 @@ def tts(t):
         return util.tts(t, format='%Y-%m-%d')
 
 
-def load_response_information(filename, format, nslc_patterns=None):
+def load_response_information(
+        filename, format, nslc_patterns=None, fake_input_units=None):
+
     from pyrocko import pz, trace
     from pyrocko.fdsn import resp as fresp
 
     resps = []
     labels = []
     if format == 'sacpz':
+        if fake_input_units is not None:
+            raise Exception(
+                'cannot guess true input units from plain SAC PZ files')
+
         zeros, poles, constant = pz.read_sac_zpk(filename)
         resp = trace.PoleZeroResponse(
             zeros=zeros, poles=poles, constant=constant)
@@ -228,9 +234,12 @@ def load_response_information(filename, format, nslc_patterns=None):
                 s = resp.response.instrument_sensitivity
                 if s.input_units and s.output_units:
                     units = ', %s -> %s' % (
-                        s.input_units.name, s.output_units.name)
+                        fake_input_units or s.input_units.name,
+                        s.output_units.name)
 
-            resps.append(resp.response.get_pyrocko_response(resp.codes))
+            resps.append(resp.response.get_pyrocko_response(
+                resp.codes, fake_input_units=fake_input_units))
+
             labels.append('%s (%s.%s.%s.%s, %s - %s%s)' % (
                 (filename, ) + resp.codes +
                 (tts(resp.start_date), tts(resp.end_date), units)))
@@ -257,9 +266,12 @@ def load_response_information(filename, format, nslc_patterns=None):
                         s = channel.response.instrument_sensitivity
                         if s.input_units and s.output_units:
                             units = ', %s -> %s' % (
-                                s.input_units.name, s.output_units.name)
+                                fake_input_units or s.input_units.name,
+                                s.output_units.name)
 
-                    resps.append(channel.response.get_pyrocko_response(nslc))
+                    resps.append(channel.response.get_pyrocko_response(
+                        nslc, fake_input_units=fake_input_units))
+
                     labels.append(
                         '%s (%s.%s.%s.%s, %s - %s%s)' % (
                             (filename, ) + nslc +
@@ -328,6 +340,14 @@ if __name__ == '__main__':
         help='show only responses of channels matching any of the given '
              'patterns')
 
+    parser.add_option(
+        '--fake-input-units',
+        dest='fake_input_units',
+        choices=['M', 'M/S', 'M/S**2'],
+        metavar='UNITS',
+        help='show converted response for given input units, choices: '
+             '["M", "M/S", "M/S**2"]')
+
     (options, args) = parser.parse_args(sys.argv[1:])
 
     if len(args) == 0:
@@ -347,7 +367,8 @@ if __name__ == '__main__':
             nslc_patterns = None
 
         resps_this, labels_this = load_response_information(
-            fn, options.format, nslc_patterns)
+            fn, options.format, nslc_patterns,
+            fake_input_units=options.fake_input_units)
 
         resps.extend(resps_this)
         labels.extend(labels_this)
