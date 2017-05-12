@@ -145,8 +145,8 @@ mantle
         neast = 40
         nnorth = 40
 
-        N, E = num.meshgrid(num.linspace(-20., 20., nnorth),
-                            num.linspace(-20., 20., neast))
+        N, E = num.meshgrid(num.linspace(-20. * km, 20. * km, nnorth),
+                            num.linspace(-20. * km, 20. * km, neast))
 
         starget = gf.StaticTarget(
             lats=num.array([origin.lat] * N.size),
