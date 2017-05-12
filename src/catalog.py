@@ -733,7 +733,7 @@ class Kinherd(EarthquakeCatalog):
         return self.events[name]
 
 
-class Sachsen(EarthquakeCatalog):
+class Saxony(EarthquakeCatalog):
 
     def __init__(self):
         self._events = None
@@ -785,7 +785,7 @@ class Sachsen(EarthquakeCatalog):
                     magnitude_type='Ml',
                     name=name,
                     region=region,
-                    catalog='Sachsen')
+                    catalog='Saxony')
 
                 events[name] = ev
 
