@@ -1324,4 +1324,4 @@ def primitive_merge(sxs):
         source='merged from different sources',
         created=time.time(),
         network_list=copy.deepcopy(
-            sorted(networks.values(), key=lambda x: x.code)))
+            sorted(networks, key=lambda x: x.code)))
