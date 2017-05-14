@@ -1063,10 +1063,21 @@ class ExplosionSource(SourceWithMagnitude):
     An isotropic explosion point source.
     '''
 
+    volume_change = Float.T(
+        optional=True,
+        help='Volume change of the explosion/implosion or '
+             'the contracting/extending magmatic source. [m^3]')
+
+    interpolation = meta.InterpolationMethod.T(
+        optional=True,
+        default='nearest_neighbor',
+        help='Shear moduli interpolation technique for volume/moment'
+             ' conversion')
+
     discretized_source_class = meta.DiscretizedExplosionSource
 
     def base_key(self):
-        return Source.base_key(self)
+        return Source.base_key(self) + (self.volume_change, )
 
     def get_factor(self):
         return mt.magnitude_to_moment(self.magnitude)
@@ -1074,6 +1085,19 @@ class ExplosionSource(SourceWithMagnitude):
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
+
+        if self.volume_change is not None:
+
+            points = num.atleast_2d(
+                num.array([self.north_shift, self.east_shift, self.depth]))
+
+            shear_moduli = store.config.get_shear_moduli(
+                self.lat, self.lon,
+                points=points,
+                interpolation=self.interpolation)
+
+            self.moment = 3. * shear_moduli * self.volume_change
+
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
@@ -1087,6 +1111,25 @@ class ExplosionSource(SourceWithMagnitude):
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
             **kwargs)
+
+    def get_volume_change(self, store=None):
+        """
+        Assumes incompressibility!
+        """
+        if self.volume_change is None:
+
+            points = num.atleast_2d(
+                num.array([self.north_shift, self.east_shift, self.depth]))
+
+            shear_moduli = store.config.get_shear_moduli(
+                self.lat, self.lon,
+                points=points,
+                interpolation=self.interpolation)
+
+            return float(self.moment / ( 3. * shear_moduli))
+
+        else:
+            return self.volume_change
 
 
 class RectangularExplosionSource(ExplosionSource):
