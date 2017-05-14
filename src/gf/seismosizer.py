@@ -2424,9 +2424,16 @@ class LocalEngine(Engine):
             self.store_superdirs.extend(c.gf_store_superdirs)
             self.store_dirs.extend(c.gf_store_dirs)
 
+        self._check_store_superdirs_type()
         self._id_to_store_dir = {}
         self._open_stores = {}
         self._effective_default_store_id = None
+
+    def _check_store_superdirs_type(self):
+        if not isinstance(self.store_superdirs, list):
+            raise TypeError(
+                'Engine cannot be fired up! Invalid store_superdirs! Have to'
+                ' be of type list! Found: %s' % self.store_superdirs.__class__)
 
     def _get_store_id(self, store_dir):
         store_ = store.Store(store_dir)
