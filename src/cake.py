@@ -84,6 +84,12 @@ class Material(object):
     :param lame: tuple with Lame parameter `lambda` and `shear modulus` [Pa]
     :param qk: bulk attenuation Qk
     :param qmu: shear attenuation Qmu
+    :param eta1: transient viscosity (dashpot of the Kelvin-Voigt body;
+                 <= 0 means infinity value) [Pa*s]
+    :param eta2: steady-state viscosity (dashpot of the Maxwell body;
+                 <= 0 means infinity value) [Pa*s]
+    :param alpha: ratio between the effective and the unrelaxed shear modulus
+                  = mu1/(mu1+mu2) (> 0 and <= 1)
 
     If no velocities and no lame parameters are given, standard crustal values
     of vp = 5800 m/s and vs = 3200 m/s are used.  If no Q values are given,
@@ -102,7 +108,7 @@ class Material(object):
 
     def __init__(
             self, vp=None, vs=None, rho=2600., qp=None, qs=None, poisson=None,
-            lame=None, qk=None, qmu=None):
+            lame=None, qk=None, qmu=None, eta1=None, eta2=None, alpha=None):
 
         parstore_float(locals(), self, 'vp', 'vs', 'rho', 'qp', 'qs')
 
@@ -197,12 +203,27 @@ class Material(object):
                 'Invalid combination of input parameters in material '
                 'definition.')
 
+        if eta1 is None:
+            self.eta1 = 0.
+        else:
+            self.eta1 = eta1
+
+        if eta2 is None:
+            self.eta2 = 0.
+        else:
+            self.eta2 = eta2
+
+        if alpha is None:
+            self.alpha = 1.
+        else:
+            self.alpha = alpha
+
     def astuple(self):
         '''Get independant material properties as a tuple.
 
-        Returns a tuple with ``(vp, vs, rho, qp, qs)``.
+        Returns a tuple with ``(vp, vs, rho, qp, qs, eta1, eta2, alpha)``.
         '''
-        return self.vp, self.vs, self.rho, self.qp, self.qs
+        return self.vp, self.vs, self.rho, self.qp, self.qs, self.eta1, self.eta2, self.alpha
 
     def __eq__(self, other):
         return self.astuple() == other.astuple()
@@ -293,6 +314,9 @@ Density             [g/cm**3] : %12g
 Qp                            : %12g
 Qs = Qmu                      : %12g
 Qk                            : %12g
+transient viscosity  [Pa*s]   : %12g
+steady-state viscosity [Pa*s] : %12g
+alpha                         : %12g
 '''.strip()
 
         return template % (
@@ -308,17 +332,20 @@ Qk                            : %12g
             self.rho/1000.,
             self.qp,
             self.qs,
-            self.qk())
+            self.qk(),
+            self.eta1,
+            self.eta2,
+            self.alpha)
 
     def __str__(self):
-        vp, vs, rho, qp, qs = self.astuple()
-        return '%10g km/s  %10g km/s %10g g/cm^3 %10g %10g' % (
-            vp/1000., vs/1000., rho/1000., qp, qs)
+        vp, vs, rho, qp, qs, eta1, eta2, alpha = self.astuple()
+        return '%10g km/s  %10g km/s %10g g/cm^3 %10g %10g %5g %5g %5g' % (
+            vp/1000., vs/1000., rho/1000., qp, qs, eta1, eta2, alpha)
 
     def __repr__(self):
-        return 'Material(vp=%s, vs=%s, rho=%s, qp=%s, qs=%s)' % \
+        return 'Material(vp=%s, vs=%s, rho=%s, qp=%s, qs=%s, eta1=%s, eta2=%s, alpha=%s)' % \
             tuple(repr(x) for x in (
-                self.vp, self.vs, self.rho, self.qp, self.qs))
+                self.vp, self.vs, self.rho, self.qp, self.qs, self.eta1, self.eta2, self.alpha))
 
 
 class Leg(object):
@@ -3373,7 +3400,7 @@ class LayeredModel(object):
 
     def to_scanlines(self):
         def fmt(z, m):
-            return (z, m.vp, m.vs, m.rho, m.qp, m.qs)
+            return (z, m.vp, m.vs, m.rho, m.qp, m.qs, m.eta1, m.eta2, m.alpha)
 
         last = None
         lines = []
