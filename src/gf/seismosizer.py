@@ -1057,6 +1057,26 @@ class SourceWithMagnitude(Source):
         d.update(kwargs)
         return super(SourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
 
+    def outline(self, cs='xyz'):
+        points = num.atleast_2d(num.zeros([1, 3]))
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
+
 
 class ExplosionSource(SourceWithMagnitude):
     '''
