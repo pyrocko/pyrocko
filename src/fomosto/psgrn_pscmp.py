@@ -70,15 +70,11 @@ def str_str_vals(vals):
 
 
 def cake_model_to_config(mod):
-    # fix elasticity params here !!! todo future include properly into cake ...
-    eta1 = 0.
-    eta2 = 0.
-    alpha = 1.
 
     k = 1000.
     srows = []
     for i, row in enumerate(mod.to_scanlines()):
-        depth, vp, vs, rho, qp, qs = row
+        depth, vp, vs, rho, qp, qs, eta1, eta2, alpha = row
         # replace qs with etas = 0.
         row = [depth / k, vp / k, vs / k, rho, eta1, eta2, alpha]
         srows.append('%i %15s' % (i + 1, str_float_vals(row)))
