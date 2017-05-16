@@ -12,6 +12,7 @@ utilize the framework.
     dataset_management.rst
     fdsn_download.rst
     catalog_search.rst
+    momenttensor.rst
     orthodrome.rst
     plotting.rst
     cake_raytracing.rst
