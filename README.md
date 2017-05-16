@@ -13,13 +13,13 @@ Pyrocko is distributed in the hope that it will be useful, but WITHOUT ANY WARRA
 You should have received a copy of the GNU General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 ## Contact
-* Heimann, Sebastian; 
+* Sebastian Heimann; 
   sebastian.heimann@gfz-potsdam.de
 
-* Isken, Marius; 
+* Marius Isken; 
   marius.isken@gfz-potsdam.de
 
-* Kriegerowski, Marius; 
+* Marius Kriegerowski; 
   marius.kriegerowski@gfz-potsdam.de 
 
 ```
