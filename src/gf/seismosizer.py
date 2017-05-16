@@ -144,13 +144,26 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     points[:, 1] = num.repeat(xw, nl)
     points[:, 2] = 0.0
 
-    if anchor == 'center':
-        anch_y = 0.
-    elif anchor == 'top' or anchor == 'bottom':
+    anch_x = 0.
+    anch_y = 0.
+    if anchor == 'top' or anchor == 'bottom':
+        anch_y = .5 * width
+    elif anchor == 'center_left':
+        anch_x = .5 * length
+    elif anchor == 'center_right':
+        anch_x = -.5 * length
+    elif anchor == 'top_left' or anchor == 'bottom_left':
+        anch_x = .5 * length
+        anch_y = .5 * width
+    elif anchor == 'top_right' or anchor == 'bottom_right':
+        anch_x = -.5 * length
         anch_y = .5 * width
     if anchor == 'bottom':
         anch_y *= -1.
+    if anchor == 'bottom_right' or anchor == 'bottom_left':
+        anch_y *= -1.
 
+    points[:, 0] += anch_x
     points[:, 1] += anch_y
 
     if nucleation_x is not None:
@@ -190,14 +203,26 @@ def outline_rect_source(strike, dip, length, width, anchor):
          [0.5*l, 0.5*w, 0.],
          [-0.5*l, 0.5*w, 0.],
          [-0.5*l, -0.5*w, 0.]])
-
-    if anchor == 'center':
-        anch_y = 0.
-    elif anchor == 'top' or anchor == 'bottom':
+    anch_x = 0.
+    anch_y = 0.
+    if anchor == 'top' or anchor == 'bottom':
+        anch_y = .5 * width
+    elif anchor == 'center_left':
+        anch_x = .5 * length
+    elif anchor == 'center_right':
+        anch_x = -.5 * length
+    elif anchor == 'top_left' or anchor == 'bottom_left':
+        anch_x = .5 * length
+        anch_y = .5 * width
+    elif anchor == 'top_right' or anchor == 'bottom_right':
+        anch_x = -.5 * length
         anch_y = .5 * width
     if anchor == 'bottom':
         anch_y *= -1.
+    if anchor == 'bottom_right' or anchor == 'bottom_left':
+        anch_y *= -1.
 
+    points[:, 0] += anch_x
     points[:, 1] += anch_y
 
     rotmat = num.asarray(
@@ -1097,10 +1122,13 @@ class RectangularExplosionSource(ExplosionSource):
         help='width of rectangular source area [m]')
 
     anchor = StringChoice.T(
-        choices=['top', 'center', 'bottom'],
+        choices=['top', 'top_left', 'top_right', 'center', 'bottom',
+                 'bottom_left', 'bottom_right'],
         default='center',
         optional=True,
-        help='Anchor point for positioning the plane.')
+        help='Anchor point for positioning the plane, can be: top, center or'
+             'bottom and also top_left, top_right,bottom_left,'
+             'bottom_right, center_left and center right')
 
     nucleation_x = Float.T(
         optional=True,
@@ -1393,10 +1421,13 @@ class RectangularSource(DCSource):
         help='width of rectangular source area [m]')
 
     anchor = StringChoice.T(
-        choices=['top', 'center', 'bottom'],
+        choices=['top', 'top_left', 'top_right', 'center', 'bottom',
+                 'bottom_left', 'bottom_right'],
         default='center',
         optional=True,
-        help='Anchor point for positioning the plane.')
+        help='Anchor point for positioning the plane, can be: top, center or'
+             'bottom and also top_left, top_right,bottom_left,'
+             'bottom_right, center_left and center right')
 
     nucleation_x = Float.T(
         optional=True,
