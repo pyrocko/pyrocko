@@ -144,6 +144,15 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     points[:, 1] = num.repeat(xw, nl)
     points[:, 2] = 0.0
 
+    if anchor == 'center':
+        anch_y = 0.
+    elif anchor == 'top' or anchor == 'bottom':
+        anch_y = .5 * width
+    if anchor == 'bottom':
+        anch_y *= -1.
+
+    points[:, 1] += anch_y
+
     if nucleation_x is not None:
         dist_x = num.abs(nucleation_x - points[:, 0])
     else:
@@ -169,25 +178,6 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
 
-    if anchor == 'center':
-        anch_north = 0.
-        anch_east = 0.
-        anch_depth = 0.
-    elif anchor == 'top' or anchor == 'bottom':
-        anch_north = num.cos(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
-        anch_east = num.sin(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
-        anch_depth = num.sin(dip * d2r) * width * .5
-    if anchor == 'bottom':
-        anch_north *= -1.
-        anch_east *= -1.
-        anch_depth *= -1.
-
-    points2[:, 0] += anch_north
-    points2[:, 1] += anch_east
-    points2[:, 2] += anch_depth
-
     return points2, times2, amplitudes2, dl, dw
 
 
@@ -202,19 +192,13 @@ def outline_rect_source(strike, dip, length, width, anchor):
          [-0.5*l, -0.5*w, 0.]])
 
     if anchor == 'center':
-        anch_north = 0.
-        anch_east = 0.
+        anch_y = 0.
     elif anchor == 'top' or anchor == 'bottom':
-        anch_north = num.cos(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
-        anch_east = num.sin(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
+        anch_y = .5 * width
     if anchor == 'bottom':
-        anch_north *= -1.
-        anch_east *= -1.
+        anch_y *= -1.
 
-    points[:, 0] += anch_north
-    points[:, 1] += anch_east
+    points[:, 1] += anch_y
 
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
