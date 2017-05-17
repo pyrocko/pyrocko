@@ -14,6 +14,8 @@ from xml.parsers.expat import ExpatError
 
 logger = logging.getLogger('pyrocko.catalog')
 
+km = 1000.
+
 
 def getText(nodelist):
     rc = ""
@@ -323,7 +325,9 @@ class GlobalCMT(EarthquakeCatalog):
             latmin=-90.,
             latmax=90.,
             lonmin=-180.,
-            lonmax=180.):
+            lonmax=180.,
+            depthmin=0.,
+            depthmax=1000*km):
 
         yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
         yearend, monend, dayend = time.gmtime(time_range[1])[:3]
@@ -340,7 +344,7 @@ class GlobalCMT(EarthquakeCatalog):
                 'lmb=0', 'umb=10',
                 'llat=%g' % latmin, 'ulat=%g' % latmax,
                 'llon=%g' % lonmin, 'ulon=%g' % lonmax,
-                'lhd=0', 'uhd=1000',
+                'lhd=%g' % (depthmin/km), 'uhd=%g' % (depthmax/km),
                 'lts=-9999', 'uts=9999',
                 'lpe1=0', 'upe1=90',
                 'lpe2=0', 'upe2=90',
