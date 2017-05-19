@@ -1193,7 +1193,8 @@ class Trace(object):
 
         :param tmin: begin time of new span
         :param tmax: end time of new span
-        :param fillmethod: 'zeros' or 'repeat'
+        :param fillmethod: ``'zeros'``,  ``'repeat'``, ``'mean'``, or
+            ``'median'``
         '''
 
         nold = self.ydata.size
@@ -1211,9 +1212,18 @@ class Trace(object):
         n = nh - nl + 1
         data = num.zeros(n, dtype=self.ydata.dtype)
         data[-nl:-nl + nold] = self.ydata
-        if fillmethod == 'repeat' and self.ydata.size >= 1:
-            data[:-nl] = self.ydata[0]
-            data[-nl + nold:] = self.ydata[-1]
+        if self.ydata.size >= 1:
+            if fillmethod == 'repeat':
+                data[:-nl] = self.ydata[0]
+                data[-nl + nold:] = self.ydata[-1]
+            elif fillmethod == 'median':
+                v = num.median(self.ydata)
+                data[:-nl] = v
+                data[-nl + nold:] = v
+            elif fillmethod == 'mean':
+                v = num.mean(self.ydata)
+                data[:-nl] = v
+                data[-nl + nold:] = v
 
         self.drop_growbuffer()
         self.ydata = data
