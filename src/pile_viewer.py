@@ -999,7 +999,7 @@ def MakePileViewerMainClass(base):
                 qc.SIGNAL("triggered(bool)"),
                 self.printit)
 
-            self.menuitem_svg = qg.QAction('Save as SVG', self.menu)
+            self.menuitem_svg = qg.QAction('Save as SVG|PNG', self.menu)
             self.menu.addAction(self.menuitem_svg)
             self.connect(
                 self.menuitem_svg,
@@ -2423,23 +2423,31 @@ def MakePileViewerMainClass(base):
 
             fn = qg.QFileDialog.getSaveFileName(
                 self,
-                'Save as SVG',
+                'Save as SVG|PNG',
                 os.path.join(os.environ['HOME'],  'untitled.svg'),
-                'SVG (*.svg)',
+                'SVG|PNG (*.svg *.png)',
                 options=qfiledialog_options)
 
-            generator = qsvg.QSvgGenerator()
-            generator.setFileName(fn)
-            w, h = 842, 595
-            margin = 0.025
-            generator.setSize(qc.QSize(w, h))
-            m = max(w, h)*margin
-            generator.setViewBox(qc.QRectF(-m, -m, w+2*m, h+2*m))
+            if str(fn).endswith('.svg'):
+                w, h = 842, 595
+                margin = 0.025
+                m = max(w, h)*margin
 
-            painter = qg.QPainter()
-            painter.begin(generator)
-            self.drawit(painter, printmode=False, w=w, h=h)
-            painter.end()
+                generator = qsvg.QSvgGenerator()
+                generator.setFileName(fn)
+                generator.setSize(qc.QSize(w, h))
+                generator.setViewBox(qc.QRectF(-m, -m, w+2*m, h+2*m))
+
+                painter = qg.QPainter()
+                painter.begin(generator)
+                self.drawit(painter, printmode=False, w=w, h=h)
+                painter.end()
+
+            elif str(fn).endswith('.png'):
+                pixmap = qg.QPixmap().grabWidget(self)
+                pixmap.save(fn)
+            else:
+                logger.warn('unsupported file type')
 
         def paintEvent(self, paint_ev):
             """Called by QT whenever widget needs to be painted"""
