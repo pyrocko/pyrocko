@@ -6,12 +6,11 @@ For documentation and installation instructions please see
 [http://pyrocko.org/](http://pyrocko.org/).
 
 ## Citation
-
 Recommended citation for Pyrocko
 
-```
-Heimann, S (2017): Pyrocko - An open-source seismology toolbox and library, GFZ Data Services. 
-```
+> Heimann, Sebastian; Kriegerowski, Marius; Isken, Marius; Cesca, Simone; Daout, Simon; Grigoli, Francesco; Juretzek, Carina; Megies, Tobias; Nooshiri, Nima; Steinberg, Andreas; Sudhaus, Henriette; Vasyura-Bathke, Hannes; Willey, Timothy; Dahm, Torsten (2017): Pyrocko - An open-source seismology toolbox and library. V. 0.3. GFZ Data Services. http://doi.org/10.5880/GFZ.2.1.2017.001
+
+[![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2017.001-blue.svg)](http://doi.org/10.5880/GFZ.2.1.2017.001)
 
 ## License 
 GNU General Public License, Version 3, 29 June 2007
