@@ -12,7 +12,7 @@ from test_model import ModelTestCase  # noqa
 from test_util import UtilTestCase  # noqa
 from test_util import UtilTestCase  # noqa
 from test_crust2x2 import Crust2x2TestCase  # noqa
-# from test_crustdb import CrustDBTestCase  # noqa
+from test_crustdb import CrustDBTestCase  # noqa
 from test_gf import GFTestCase  # noqa
 from test_gf_sources import GFSourcesTestCase  # noqa
 from test_gf_qseis import GFQSeisTestCase  # noqa

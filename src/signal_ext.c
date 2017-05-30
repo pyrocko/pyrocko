@@ -9,7 +9,7 @@
 #include <math.h>
 
 static const int64_t NENTRIES = 1001;
-static const int64_t ORDER = 25;
+/*static const int64_t ORDER = 25;*/
 static const int64_t NCOEFFS = 25*2+1;
 
 #define INVALID_INPUT 1

@@ -450,8 +450,7 @@ class GutsTestCase(unittest.TestCase):
             assert a.arr.shape == b.arr.shape
             self.assertTrue(num.all(a.arr == b.arr))
 
-        b_int = load_string
-
+        b_int = load_string  # noqa
 
     def testPO(self):
         class SKU(StringPattern):

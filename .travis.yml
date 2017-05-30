@@ -16,6 +16,10 @@ matrix:
           osx_image: xcode7.3
           language: generic
 
+cache:
+  directories:
+  - $HOME/test/data
+
 addons:
     apt:
         packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
