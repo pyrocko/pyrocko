@@ -2335,7 +2335,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
 
                 try:
                     base_seismogram, tcounters = engine.base_seismogram(
-                        source, target, components, dsource_cache)
+                        source, target, components, dsource_cache, nthreads)
                 except meta.OutOfBounds, e:
                     e.context = OutOfBoundsContext(
                         source=sources[0],
@@ -2589,7 +2589,8 @@ class LocalEngine(Engine):
 
         return cache[source, store]
 
-    def base_seismogram(self, source, target, components, dsource_cache):
+    def base_seismogram(self, source, target, components, dsource_cache,
+                        nthreads):
 
         tcounters = [xtime()]
 
@@ -2620,7 +2621,8 @@ class LocalEngine(Engine):
             deltat=deltat,
             itmin=itmin, nsamples=nsamples,
             interpolation=target.interpolation,
-            optimization=target.optimization)
+            optimization=target.optimization,
+            nthreads=nthreads)
 
         tcounters.append(xtime())
 
@@ -2736,7 +2738,11 @@ class LocalEngine(Engine):
 
         request = kwargs.pop('request', None)
         status_callback = kwargs.pop('status_callback', None)
-        nprocs = kwargs.pop('nprocs', 1)
+
+        nprocs = kwargs.pop('nprocs', None)
+        nthreads = kwargs.pop('nthreads', 1)
+        if nprocs:
+            nthreads = nprocs
 
         if request is None:
             request = Request(**kwargs)
@@ -2779,7 +2785,7 @@ class LocalEngine(Engine):
 
             for ii_results, tcounters_dyn in process_dynamic(
               work_dynamic, request.sources, request.targets, self,
-              nthreads=1):
+              nthreads=nthreads):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
                 isource, itarget, result = ii_results
