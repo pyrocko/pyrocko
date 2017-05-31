@@ -15,8 +15,8 @@ g_site_abbr = {
     'orfeus': 'http://www.orfeus-eu.org',
     'bgr': 'http://eida.bgr.de',
     'geonet': 'http://service.geonet.org.nz',
+    'knmi': 'http://rdsa.knmi.nl',
 }
-
 
 g_default_site = 'geofon'
 
