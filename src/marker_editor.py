@@ -239,7 +239,6 @@ class MarkerTableView(qg.QTableView):
         else:
             self.verticalHeader().hide()
 
-
     def print_menu(self):
         printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
         printer_dialog = qg.QPrintDialog(printer, self)
