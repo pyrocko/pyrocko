@@ -95,7 +95,7 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                 painter.drawLine(qc.QLineF(x1, y2, x2, y2))
                 painter.restore()
 
-        if index.column() == 10:
+        if index.column() == _column_mapping['MT']:
             mt = self.get_mt_from_index(index)
             if mt:
                 key = qc.QString(
@@ -189,12 +189,15 @@ class MarkerTableView(qg.QTableView):
             a = qg.QAction(qc.QString(hd), self.header_menu)
             self.connect(a, qc.SIGNAL('triggered(bool)'), self.toggle_columns)
             a.setCheckable(True)
-            if hd in show_initially:
-                a.setChecked(True)
-            else:
-                a.setChecked(False)
+            a.setChecked(hd in show_initially)
             self.header_menu.addAction(a)
             self.column_actions[hd] = a
+
+        a = qg.QAction('Numbering', self.header_menu)
+        a.setCheckable(True)
+        a.setChecked(False)
+        self.connect(a, qc.SIGNAL('triggered(bool)'), self.toggle_numbering)
+        self.header_menu.addAction(a)
 
         header = self.horizontalHeader()
         header.setContextMenuPolicy(qc.Qt.CustomContextMenu)
@@ -229,6 +232,12 @@ class MarkerTableView(qg.QTableView):
 
     def contextMenuEvent(self, event):
         self.right_click_menu.popup(qg.QCursor.pos())
+
+    def toggle_numbering(self, want):
+        if want:
+            self.verticalHeader().show()
+        else:
+            self.verticalHeader().hide()
 
     def print_menu(self):
         printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
@@ -340,12 +349,16 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
     def headerData(self, col, orientation, role):
         '''Set and format header data.'''
-
         if orientation == qc.Qt.Horizontal:
             if role == qc.Qt.DisplayRole:
                 return qc.QVariant(_header_data[col])
             elif role == qc.Qt.SizeHintRole:
                 return qc.QSize(10, 20)
+
+        elif orientation == qc.Qt.Vertical:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(str(col))
+
         else:
             return qc.QVariant()
 
@@ -400,15 +413,15 @@ class MarkerTableModel(qc.QAbstractTableModel):
             elif index.column() == _column_mapping['Kind']:
                 s = marker.kind
 
+            elif index.column() == _column_mapping['Dist [km]']:
+                if marker in self.distances.keys():
+                    s = self.distances[marker]
+
             elif index.column() == _column_mapping['NSLCs']:
                 strs = []
                 for nslc_id in marker.get_nslc_ids():
                     strs.append('.'.join(nslc_id))
                 s = '|'.join(strs)
-
-            elif index.column() == _column_mapping['Dist [km]']:
-                if marker in self.distances.keys():
-                    s = self.distances[marker]
 
             elif index.column() == _column_mapping['Kagan Angle [deg]']:
                 if marker in self.kagan_angles.keys():

@@ -3858,14 +3858,12 @@ class PileViewer(qg.QFrame):
         if error:
             self.inputline_set_error(error)
 
+        line = line.strip()
+
+        if line != '' and not error and line != self.history[-1]:
+            self.history.append(line)
+
         if clearit:
-            line = line.strip()
-            if line != '':
-                if len(self.history) >= 1:
-                    if line != self.history[-1]:
-                        self.history.append(line)
-                else:
-                    self.history.append(line)
 
             self.inputline.blockSignals(True)
             qpat, qinp = self.viewer.get_quick_filter_patterns()
@@ -3908,7 +3906,8 @@ class PileViewer(qg.QFrame):
         conf = pyrocko.config
         fn_hist = conf.expand(conf.make_conf_path_tmpl('.snuffler_history'))
         if not os.path.exists(fn_hist):
-            open(fn_hist, 'w+').close()
+            with open(fn_hist, 'w+') as f:
+                f.write('\n')
 
         with open(fn_hist, 'r') as f:
             self.history = [l.strip() for l in f.readlines()]
