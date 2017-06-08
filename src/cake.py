@@ -3165,7 +3165,9 @@ class LayeredModel(object):
         Get all possible ray paths for given source and receiver depths for one
         or more phase definitions.
 
-        :param phases: a :py:class:`PhaseDef` object or a list of such objects
+        :param phases: a :py:class:`PhaseDef` object or a list of such objects.
+            Comma-separated strings and lists of such strings are also accepted
+            and are converted to :py:class:`PhaseDef` objects for convenience.
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
         :returns: a list of :py:class:`RayPath` objects
@@ -3306,7 +3308,9 @@ class LayeredModel(object):
         '''Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
-        :param phases: a :py:class:`PhaseDef` object or a list of such objects
+        :param phases: a :py:class:`PhaseDef` object or a list of such objects.
+            Comma-separated strings and lists of such strings are also accepted
+            and are converted to :py:class:`PhaseDef` objects for convenience.
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
         :param refine: bool flag, whether to use bisectioning to improve
