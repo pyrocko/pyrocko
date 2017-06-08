@@ -1049,6 +1049,22 @@ class PhaseDef(object):
         return copy.deepcopy(self)
 
 
+def to_phase_defs(phases):
+    if isinstance(phases, (basestring, PhaseDef)):
+        phases = [phases]
+
+    phases_out = []
+    for phase in phases:
+        if isinstance(phase, basestring):
+            phases_out.extend(PhaseDef(x.strip()) for x in phase.split(','))
+        elif isinstance(phase, PhaseDef):
+            phases_out.append(phase)
+        else:
+            raise PhaseDefParseError('invalid phase definition')
+
+    return phases_out
+
+
 def csswap(x):
     return cmath.sqrt(1.-x**2)
 
@@ -3161,8 +3177,7 @@ class LayeredModel(object):
 
         eps = 1e-7  # num.finfo(float).eps * 1000.
 
-        if isinstance(phases, PhaseDef):
-            phases = [phases]
+        phases = to_phase_defs(phases)
 
         paths = []
         for phase in phases:

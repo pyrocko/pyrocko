@@ -187,6 +187,22 @@ Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
         z, x, t = ray[0].zxt_path_subdivided()
         assert z[0].size == 681
 
+    def test_to_phase_defs(self):
+        pdefs = cake.to_phase_defs(['p,P', cake.PhaseDef('PP')])
+        assert len(pdefs) == 3
+        for pdef in pdefs:
+            assert isinstance(pdef, cake.PhaseDef)
+
+        pdefs = cake.to_phase_defs(cake.PhaseDef('PP'))
+        assert len(pdefs) == 1
+        for pdef in pdefs:
+            assert isinstance(pdef, cake.PhaseDef)
+
+        pdefs = cake.to_phase_defs('P,p')
+        assert len(pdefs) == 2
+        for pdef in pdefs:
+            assert isinstance(pdef, cake.PhaseDef)
+
 
 if __name__ == "__main__":
     util.setup_logging('test_cake', 'warning')
