@@ -615,6 +615,9 @@ def mpl_color(x):
     if x in tango_colors:
         return to01(tango_colors[x])
 
+    if isinstance(x, int):
+        return to01(graph_colors[x % len(graph_colors)])
+
     s = x.split('/')
     if len(s) in (1, 3, 4):
         try:
