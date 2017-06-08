@@ -2,6 +2,7 @@ from pyrocko import util
 import unittest
 import time
 from random import random
+import numpy as num
 
 
 class UtilTestCase(unittest.TestCase):
@@ -94,6 +95,25 @@ class UtilTestCase(unittest.TestCase):
         x_edges = num.array([0., 1., 2., 3.])
         yy = util.plf_integrate_piecewise(x_edges, x, y)
         assert num.all(num.abs(yy - num.array([0.5, 1.0, 0.5])) < 1e-6)
+
+    def test_arange2(self):
+        num.testing.assert_almost_equal(
+            util.arange2(0., 1., 0.1), num.linspace(0., 1., 11))
+
+        with self.assertRaises(util.ArangeError):
+            util.arange2(0., 1.05, 0.1)
+
+        num.testing.assert_almost_equal(
+            util.arange2(0., 1.04, 0.1, error='round'),
+            num.linspace(0., 1., 11))
+
+        num.testing.assert_almost_equal(
+            util.arange2(0., 1.05, 0.1, error='floor'),
+            num.linspace(0., 1., 11))
+
+        num.testing.assert_almost_equal(
+            util.arange2(0., 1.05, 0.1, error='ceil'),
+            num.linspace(0., 1.1, 12))
 
 
 if __name__ == "__main__":
