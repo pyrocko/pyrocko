@@ -599,6 +599,10 @@ class InvalidColorDef(ValueError):
     pass
 
 
+def mpl_graph_color(i):
+    return to01(graph_colors[i % len(graph_colors)])
+
+
 def mpl_color(x):
     '''
     Convert string into color float tuple ranged 0-1 for use with Matplotlib.
@@ -614,9 +618,6 @@ def mpl_color(x):
 
     if x in tango_colors:
         return to01(tango_colors[x])
-
-    if isinstance(x, int):
-        return to01(graph_colors[x % len(graph_colors)])
 
     s = x.split('/')
     if len(s) in (1, 3, 4):
