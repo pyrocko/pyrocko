@@ -148,6 +148,21 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
         else:
             return left.data().toFloat()[0] < right.data().toFloat()[0]
 
+    def headerData(self, col, orientation, role):
+        '''Set and format header data.'''
+        if orientation == qc.Qt.Horizontal:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(_header_data[col])
+            elif role == qc.Qt.SizeHintRole:
+                return qc.QSize(10, 20)
+
+        elif orientation == qc.Qt.Vertical:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(str(col))
+
+        else:
+            return qc.QVariant()
+
 
 class MarkerTableView(qg.QTableView):
     def __init__(self, *args, **kwargs):
@@ -346,21 +361,6 @@ class MarkerTableModel(qc.QAbstractTableModel):
         self.beginRemoveRows(qc.QModelIndex(), i_from, i_to)
         self.endRemoveRows()
         self.marker_table_view.updateGeometries()
-
-    def headerData(self, col, orientation, role):
-        '''Set and format header data.'''
-        if orientation == qc.Qt.Horizontal:
-            if role == qc.Qt.DisplayRole:
-                return qc.QVariant(_header_data[col])
-            elif role == qc.Qt.SizeHintRole:
-                return qc.QSize(10, 20)
-
-        elif orientation == qc.Qt.Vertical:
-            if role == qc.Qt.DisplayRole:
-                return qc.QVariant(str(col))
-
-        else:
-            return qc.QVariant()
 
     def data(self, index, role):
         '''Set data in each of the table's cell.'''
