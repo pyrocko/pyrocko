@@ -258,6 +258,9 @@ class MarkerTableView(qg.QTableView):
         printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
         printer_dialog = qg.QPrintDialog(printer, self)
         if printer_dialog.exec_() == qg.QDialog.Accepted:
+
+            scrollbarpolicy = self.verticalScrollBarPolicy()
+            self.setVerticalScrollBarPolicy(qc.Qt.ScrollBarAlwaysOff)
             rect = printer.pageRect()
             painter = qg.QPainter()
             painter.begin(printer)
@@ -272,6 +275,7 @@ class MarkerTableView(qg.QTableView):
                                    qg.QPainter.TextAntialiasing)
             self.render(painter)
             painter.end()
+            self.setVerticalScrollBarPolicy(scrollbarpolicy)
 
     def double_clicked(self, model_index):
         if model_index.column() in self.editable_columns:
