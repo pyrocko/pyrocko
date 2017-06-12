@@ -191,16 +191,15 @@ int parstack(
 int argmax(double *arrayin, int *arrayout, npy_intp *shape){
     int m, n, im, in, imax, imm;
     double vmax;
-    n = shape[0];
-    m = shape[1];
+    n = shape[1];
+    m = shape[0];
 
-    for (in=0; in<m; in++){
+    for (in=0; in<n; in++){
         imax = 0;
         vmax = DBL_MIN;
-        for (im=0; im<n; im++){
-            imm = im * m;
-            if (arrayin[imm + in] > vmax){
-                vmax = arrayin[imm + in];
+        for (im=0; im<m; im++){
+            if (arrayin[im*n + in] > vmax){
+                vmax = arrayin[im*n + in];
                 imax = im;
             }
         }
