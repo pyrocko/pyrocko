@@ -13,6 +13,7 @@ utilize the framework.
     fdsn_download.rst
     catalog_search.rst
     moment_tensor.rst
+    snuffler_markers.rst
     orthodrome.rst
     plotting.rst
     cake_raytracing.rst

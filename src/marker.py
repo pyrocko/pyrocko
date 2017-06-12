@@ -835,6 +835,9 @@ def save_markers(markers, filename, fdigits=3):
 
 
 def associate_phases_to_events(markers):
+    '''
+    Reassociate phases to events after import from markers file.
+    '''
 
     hash_to_events = {}
     time_to_events = {}
