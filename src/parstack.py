@@ -86,3 +86,10 @@ def parstack_numpy(
         return result, offsetout
     elif method == 1:
         return num.amax(result.reshape((nshifts, nsamp)), axis=1), offsetout
+
+
+def argmax(a):
+    '''Same as numpys' argmax for 2 dimensional arrays along axis 0
+    but more memory efficient and twice as fast.'''
+
+    return parstack_ext.argmax(a)

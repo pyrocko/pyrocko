@@ -10,6 +10,7 @@
     # include <omp.h>
 #endif
 #include <stdio.h>
+#include <float.h>
 
 #define CHUNKSIZE 10
 
@@ -187,6 +188,26 @@ int parstack(
     return SUCCESS;
 }
 
+int argmax(double *arrayin, int *arrayout, npy_intp *shape){
+    int m, n, im, in, imax, imm;
+    double vmax;
+    n = shape[0];
+    m = shape[1];
+
+    for (in=0; in<m; in++){
+        imax = 0;
+        vmax = DBL_MIN;
+        for (im=0; im<n; im++){
+            imm = im * m;
+            if (arrayin[imm + in] > vmax){
+                vmax = arrayin[imm + in];
+                imax = im;
+            }
+        }
+        arrayout[in] = imax;
+    }
+    return SUCCESS;
+}
 
 
 int good_array(PyObject* o, int typenum) {
@@ -353,9 +374,53 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("Ni", result, offsetout);
 }
 
+static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
+    PyObject *arrayin;
+    PyObject *result;
+    double *carrayin;
+    int *cresult;
+    npy_intp *shape, shapeout[1];
+    size_t i;
+    int err;
+
+    (void)dummy; /* silence warning */
+
+    if (!PyArg_ParseTuple(args, "O", &arrayin)) {
+        PyErr_SetString(ParstackError, "usage argmax(array)");
+    }
+
+    if (!good_array(arrayin, NPY_DOUBLE)) return NULL;
+
+    shape = PyArray_SHAPE((PyArrayObject*)arrayin);
+
+    carrayin = PyArray_DATA((PyArrayObject*)arrayin);
+
+    shapeout[0] = shape[1];
+
+    result = PyArray_SimpleNew(1, shapeout, NPY_UINT32);
+    cresult = PyArray_DATA((PyArrayObject*)result);
+
+    for (i=0; i<(size_t)shapeout[0]; i++){
+        cresult[i] = 0;
+    }
+
+    err = argmax(carrayin, cresult, shape);
+
+    if(err != 0){
+        Py_DECREF(cresult);
+        return NULL;
+    }
+
+    return Py_BuildValue("N", (PyArrayObject*) result);
+}
+
+
 static PyMethodDef ParstackMethods[] = {
     {"parstack",  w_parstack, METH_VARARGS,
         "Parallel weight-and-delay stacking" },
+
+    {"argmax", w_argmax, METH_VARARGS,
+        "argmax of 2D numpy array along axis=0" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
