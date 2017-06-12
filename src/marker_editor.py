@@ -148,6 +148,21 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
         else:
             return left.data().toFloat()[0] < right.data().toFloat()[0]
 
+    def headerData(self, col, orientation, role):
+        '''Set and format header data.'''
+        if orientation == qc.Qt.Horizontal:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(_header_data[col])
+            elif role == qc.Qt.SizeHintRole:
+                return qc.QSize(10, 20)
+
+        elif orientation == qc.Qt.Vertical:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(str(col))
+
+        else:
+            return qc.QVariant()
+
 
 class MarkerTableView(qg.QTableView):
     def __init__(self, *args, **kwargs):
@@ -243,6 +258,9 @@ class MarkerTableView(qg.QTableView):
         printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
         printer_dialog = qg.QPrintDialog(printer, self)
         if printer_dialog.exec_() == qg.QDialog.Accepted:
+
+            scrollbarpolicy = self.verticalScrollBarPolicy()
+            self.setVerticalScrollBarPolicy(qc.Qt.ScrollBarAlwaysOff)
             rect = printer.pageRect()
             painter = qg.QPainter()
             painter.begin(printer)
@@ -257,6 +275,7 @@ class MarkerTableView(qg.QTableView):
                                    qg.QPainter.TextAntialiasing)
             self.render(painter)
             painter.end()
+            self.setVerticalScrollBarPolicy(scrollbarpolicy)
 
     def double_clicked(self, model_index):
         if model_index.column() in self.editable_columns:
@@ -346,21 +365,6 @@ class MarkerTableModel(qc.QAbstractTableModel):
         self.beginRemoveRows(qc.QModelIndex(), i_from, i_to)
         self.endRemoveRows()
         self.marker_table_view.updateGeometries()
-
-    def headerData(self, col, orientation, role):
-        '''Set and format header data.'''
-        if orientation == qc.Qt.Horizontal:
-            if role == qc.Qt.DisplayRole:
-                return qc.QVariant(_header_data[col])
-            elif role == qc.Qt.SizeHintRole:
-                return qc.QSize(10, 20)
-
-        elif orientation == qc.Qt.Vertical:
-            if role == qc.Qt.DisplayRole:
-                return qc.QVariant(str(col))
-
-        else:
-            return qc.QVariant()
 
     def data(self, index, role):
         '''Set data in each of the table's cell.'''
