@@ -194,7 +194,7 @@ int parstack(
 }
 
 
-int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny){
+int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparallel){
 
     size_t ix, iy, ix_offset, imax[NBLOCK];
     double vmax[NBLOCK];
@@ -202,7 +202,7 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny){
     Py_BEGIN_ALLOW_THREADS
 
     #if defined(_OPENMP)
-        #pragma omp parallel private(iy, ix_offset, imax, vmax) num_threads(4)
+        #pragma omp parallel private(iy, ix_offset, imax, vmax) num_threads(nparallel)
     #endif
         {
 
@@ -404,18 +404,27 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
     double *carrayin;
     uint32_t *cresult;
     npy_intp *shape, shapeout[1];
-    size_t i;
-    int err;
+    size_t i, ndim;
+    int err, nparallel;
 
     (void)dummy; /* silence warning */
 
-    if (!PyArg_ParseTuple(args, "O", &arrayin)) {
+    if (!PyArg_ParseTuple(args, "Oi", &arrayin, &nparallel)) {
         PyErr_SetString(ParstackError, "usage argmax(array)");
     }
 
     if (!good_array(arrayin, NPY_DOUBLE)) return NULL;
 
     shape = PyArray_SHAPE((PyArrayObject*)arrayin);
+    ndim = PyArray_NDIM((PyArrayObject*)arrayin);
+
+    if (ndim != 2){
+        PyErr_SetString(ParstackError, "array shape is not 2D");
+    }
+
+    if ((size_t)shape[0]*(size_t)shape[1] > UINT32_MAX){
+        PyErr_SetString(ParstackError, "array too large");
+    }
 
     carrayin = PyArray_DATA((PyArrayObject*)arrayin);
 
@@ -428,7 +437,7 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
         cresult[i] = 0;
     }
 
-    err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0]);
+    err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
 
     if(err != 0){
         Py_DECREF(cresult);
