@@ -411,6 +411,7 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
 
     if (!PyArg_ParseTuple(args, "Oi", &arrayin, &nparallel)) {
         PyErr_SetString(ParstackError, "usage argmax(array)");
+        return NULL;
     }
 
     if (!good_array(arrayin, NPY_DOUBLE)) return NULL;
@@ -420,13 +421,15 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
 
     if (ndim != 2){
         PyErr_SetString(ParstackError, "array shape is not 2D");
-    }
-
-    if ((size_t)shape[0]*(size_t)shape[1] > UINT32_MAX){
-        PyErr_SetString(ParstackError, "array too large");
+        return NULL;
     }
 
     carrayin = PyArray_DATA((PyArrayObject*)arrayin);
+
+    if (shape[0] >= UINT32_MAX) {
+        PyErr_SetString(ParstackError, "shape[0] must be smaller than 2^32");
+        return NULL;
+    }
 
     shapeout[0] = shape[1];
 
@@ -440,11 +443,11 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
     err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
 
     if(err != 0){
-        Py_DECREF(cresult);
+        Py_DECREF(result);
         return NULL;
     }
 
-    return Py_BuildValue("N", (PyArrayObject*) result);
+    return Py_BuildValue("N", result);
 }
 
 
