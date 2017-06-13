@@ -137,7 +137,7 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
                     trace.sta_lta_right(
                         swin, lwin,
                         scalingmethod=scalingmethod_map[self.scalingmethod])
-                
+
                 trace.chop(trace.wmin, min(trace.wmax, tmax))
                 trace.set_codes(location='cg')
                 trace.meta = {'tabu': True}
