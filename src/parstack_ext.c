@@ -10,8 +10,10 @@
     # include <omp.h>
 #endif
 #include <stdio.h>
+#include <float.h>
 
 #define CHUNKSIZE 10
+#define NBLOCK 64
 
 static PyObject *ParstackError;
 
@@ -43,6 +45,10 @@ int parstack(
 
 
 int min(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+size_t smin(size_t a, size_t b) {
     return (a < b) ? a : b;
 }
 
@@ -187,6 +193,45 @@ int parstack(
     return SUCCESS;
 }
 
+
+int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparallel){
+
+    size_t ix, iy, ix_offset, imax[NBLOCK];
+    double vmax[NBLOCK];
+
+    Py_BEGIN_ALLOW_THREADS
+
+    #if defined(_OPENMP)
+        #pragma omp parallel private(iy, ix_offset, imax, vmax) num_threads(nparallel)
+    #endif
+        {
+
+    #if defined(_OPENMP)
+        #pragma omp for schedule(dynamic, 1) nowait
+    #endif
+    for (ix=0; ix<nx; ix+=NBLOCK){
+        for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+            imax[ix_offset] = 0;
+            vmax[ix_offset] = DBL_MIN;
+        }
+        for (iy=0; iy<ny; iy++){
+            for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+                if (arrayin[iy*nx + ix + ix_offset] > vmax[ix_offset]){
+                    vmax[ix_offset] = arrayin[iy*nx + ix + ix_offset];
+                    imax[ix_offset] = iy;
+                }
+            }
+        }
+        for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+            arrayout[ix+ix_offset] = (uint32_t)imax[ix_offset];
+        }
+    }
+    }
+
+    Py_END_ALLOW_THREADS
+
+    return SUCCESS;
+}
 
 
 int good_array(PyObject* o, int typenum) {
@@ -353,9 +398,65 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("Ni", result, offsetout);
 }
 
+static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
+    PyObject *arrayin;
+    PyObject *result;
+    double *carrayin;
+    uint32_t *cresult;
+    npy_intp *shape, shapeout[1];
+    size_t i, ndim;
+    int err, nparallel;
+
+    (void)dummy; /* silence warning */
+
+    if (!PyArg_ParseTuple(args, "Oi", &arrayin, &nparallel)) {
+        PyErr_SetString(ParstackError, "usage argmax(array)");
+        return NULL;
+    }
+
+    if (!good_array(arrayin, NPY_DOUBLE)) return NULL;
+
+    shape = PyArray_SHAPE((PyArrayObject*)arrayin);
+    ndim = PyArray_NDIM((PyArrayObject*)arrayin);
+
+    if (ndim != 2){
+        PyErr_SetString(ParstackError, "array shape is not 2D");
+        return NULL;
+    }
+
+    carrayin = PyArray_DATA((PyArrayObject*)arrayin);
+
+    if (shape[0] >= UINT32_MAX) {
+        PyErr_SetString(ParstackError, "shape[0] must be smaller than 2^32");
+        return NULL;
+    }
+
+    shapeout[0] = shape[1];
+
+    result = PyArray_SimpleNew(1, shapeout, NPY_UINT32);
+    cresult = PyArray_DATA((PyArrayObject*)result);
+
+    for (i=0; i<(size_t)shapeout[0]; i++){
+        cresult[i] = 0;
+    }
+
+    err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0], nparallel);
+
+    if(err != 0){
+        Py_DECREF(result);
+        return NULL;
+    }
+
+    return Py_BuildValue("N", result);
+}
+
+
 static PyMethodDef ParstackMethods[] = {
     {"parstack",  w_parstack, METH_VARARGS,
         "Parallel weight-and-delay stacking" },
+
+    {"argmax", w_argmax, METH_VARARGS,
+        "argmax of 2D numpy array along axis=0" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
