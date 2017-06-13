@@ -416,7 +416,7 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
 
     if (!good_array(arrayin, NPY_DOUBLE)) return NULL;
 
-    shape = PyArray_SHAPE((PyArrayObject*)arrayin);
+    shape = PyArray_DIMS((PyArrayObject*)arrayin);
     ndim = PyArray_NDIM((PyArrayObject*)arrayin);
 
     if (ndim != 2){
