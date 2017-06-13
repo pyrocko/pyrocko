@@ -315,6 +315,14 @@ class ParstackTestCase(unittest.TestCase):
         axes.plot(source.east_shift/km, source.north_shift/km, 'o')
         plt.show()
 
+    def test_argmax(self):
+        from pyrocko.parstack import argmax as pargmax
+        import numpy as num
+        a = num.random.random((100, 1000))
+        argmax_numpy = num.argmax(a, axis=0)
+        argmax_parstack = pargmax(a)
+        num.testing.assert_array_equal(argmax_parstack, argmax_numpy)
+
 
 if __name__ == '__main__':
     util.setup_logging('test_parstack', 'warning')
