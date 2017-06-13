@@ -318,9 +318,20 @@ class ParstackTestCase(unittest.TestCase):
     def test_argmax(self):
         from pyrocko.parstack import argmax as pargmax
         import numpy as num
-        a = num.random.random((100, 1000))
-        argmax_numpy = num.argmax(a, axis=0)
-        argmax_parstack = pargmax(a)
+        a = num.random.random((100000, 1000))
+        t0 = time.time()
+        for _ in xrange(10):
+            argmax_numpy = num.argmax(a, axis=0)
+
+        t1 = time.time()
+
+        for _ in xrange(10):
+            argmax_parstack = pargmax(a)
+
+        t2 = time.time()
+
+        print t1 - t0, t2 - t1
+
         num.testing.assert_array_equal(argmax_parstack, argmax_numpy)
 
 

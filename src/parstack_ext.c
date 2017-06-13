@@ -13,6 +13,7 @@
 #include <float.h>
 
 #define CHUNKSIZE 10
+#define NBLOCK 64
 
 static PyObject *ParstackError;
 
@@ -44,6 +45,10 @@ int parstack(
 
 
 int min(int a, int b) {
+    return (a < b) ? a : b;
+}
+
+size_t smin(size_t a, size_t b) {
     return (a < b) ? a : b;
 }
 
@@ -188,23 +193,43 @@ int parstack(
     return SUCCESS;
 }
 
-int argmax(double *arrayin, int *arrayout, npy_intp *shape){
-    int m, n, im, in, imax, imm;
-    double vmax;
-    n = shape[1];
-    m = shape[0];
 
-    for (in=0; in<n; in++){
-        imax = 0;
-        vmax = DBL_MIN;
-        for (im=0; im<m; im++){
-            if (arrayin[im*n + in] > vmax){
-                vmax = arrayin[im*n + in];
-                imax = im;
+int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny){
+
+    size_t ix, iy, ix_offset, imax[NBLOCK];
+    double vmax[NBLOCK];
+
+    Py_BEGIN_ALLOW_THREADS
+
+    #if defined(_OPENMP)
+        #pragma omp parallel private(iy, ix_offset, imax, vmax) num_threads(4)
+    #endif
+        {
+
+    #if defined(_OPENMP)
+        #pragma omp for schedule(dynamic, 1) nowait
+    #endif
+    for (ix=0; ix<nx; ix+=NBLOCK){
+        for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+            imax[ix_offset] = 0;
+            vmax[ix_offset] = DBL_MIN;
+        }
+        for (iy=0; iy<ny; iy++){
+            for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+                if (arrayin[iy*nx + ix + ix_offset] > vmax[ix_offset]){
+                    vmax[ix_offset] = arrayin[iy*nx + ix + ix_offset];
+                    imax[ix_offset] = iy;
+                }
             }
         }
-        arrayout[in] = imax;
+        for (ix_offset=0; ix_offset<smin(NBLOCK, nx-ix); ix_offset++) {
+            arrayout[ix+ix_offset] = (uint32_t)imax[ix_offset];
+        }
     }
+    }
+
+    Py_END_ALLOW_THREADS
+
     return SUCCESS;
 }
 
@@ -377,7 +402,7 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
     PyObject *arrayin;
     PyObject *result;
     double *carrayin;
-    int *cresult;
+    uint32_t *cresult;
     npy_intp *shape, shapeout[1];
     size_t i;
     int err;
@@ -403,7 +428,7 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
         cresult[i] = 0;
     }
 
-    err = argmax(carrayin, cresult, shape);
+    err = argmax(carrayin, cresult, (size_t)shape[1], (size_t)shape[0]);
 
     if(err != 0){
         Py_DECREF(cresult);
