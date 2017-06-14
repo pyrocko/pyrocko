@@ -3,6 +3,7 @@ import tempfile
 import numpy as num
 import urllib2
 import logging
+import socket
 from pyrocko import util, trace, iris_ws
 from pyrocko.fdsn import station as fdsn_station, ws as fdsn_ws
 
@@ -170,7 +171,7 @@ class FDSNStationTestCase(unittest.TestCase):
         for url in to_check:
             try:
                 fdsn_ws._request(url[0])
-            except urllib2.HTTPError as e:
+            except (urllib2.HTTPError, socket.timeout) as e:
                 logger.warn('%s - %s referenced in pyrocko.%s' %
                             (e, url[0], url[1]))
 
