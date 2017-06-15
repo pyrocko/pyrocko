@@ -2017,7 +2017,7 @@ def MakePileViewerMainClass(base):
             elif keytext in ('0', '1', '2', '3', '4', '5'):
                 for marker in self.selected_markers():
                     marker.set_kind(int(keytext))
-                self.emit(qc.SIGNAL('markers_changed'))
+                self.emit_selected_markers()
 
             elif key_event.key() in fkey_map.keys():
                 self.handle_fkeys(key_event.key())
