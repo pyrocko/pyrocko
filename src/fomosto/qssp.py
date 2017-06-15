@@ -459,7 +459,14 @@ class QSSPRunner:
                 proc = Popen(program, stdin=PIPE, stdout=PIPE, stderr=PIPE)
             except OSError:
                 os.chdir(old_wd)
-                raise QSSPError('could not start qssp: "%s"' % program)
+                raise QSSPError(
+                    '''could not start qssp executable: "%s"
+Available fomosto backends and download links to the modelling codes are listed
+on
+
+      http://pyrocko.org/current/apps/fomosto/backends.html
+
+''' % program)
 
             (output_str, error_str) = proc.communicate('input\n')
 

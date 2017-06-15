@@ -612,7 +612,14 @@ class QSeisRunner:
 
             except OSError:
                 os.chdir(old_wd)
-                raise QSeisError('could not start qseis: "%s"' % program)
+                raise QSeisError(
+                    '''could not start qseis executable: "%s"
+Available fomosto backends and download links to the modelling codes are listed
+on
+
+      http://pyrocko.org/current/apps/fomosto/backends.html
+
+''' % program)
 
             (output_str, error_str) = proc.communicate('input\n')
 
