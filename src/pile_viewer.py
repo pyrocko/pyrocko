@@ -769,6 +769,8 @@ def MakePileViewerMainClass(base):
                     lambda tr: None),
                 ('Common Scale per Station',
                     lambda tr: (tr.network, tr.station)),
+                ('Common Scale per Station Location',
+                    lambda tr: (tr.network, tr.station, tr.location)),
                 ('Common Scale per Component',
                     lambda tr: (tr.channel)),
             ]
