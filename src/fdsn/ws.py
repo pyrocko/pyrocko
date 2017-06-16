@@ -167,7 +167,7 @@ def fix_params(d):
 
     for k in params:
         if isinstance(params[k], bool):
-            params[k] = ['FALSE', 'TRUE'][bool(params[k])]
+            params[k] = ['false', 'true'][bool(params[k])]
 
     return params
 
