@@ -228,6 +228,22 @@ class MarkerTableView(qg.QTableView):
         print_action.triggered.connect(self.print_menu)
         self.right_click_menu.addAction(print_action)
 
+    def wheelEvent(self, wheel_event):
+        if wheel_event.modifiers() & qc.Qt.ControlModifier:
+            height = self.rowAt(self.height())
+            ci = self.indexAt(
+                qc.QPoint(self.viewport().rect().x(), height))
+            v = self.verticalHeader()
+            v.setDefaultSectionSize(
+                max(12, v.defaultSectionSize()+wheel_event.delta()/60))
+            self.scrollTo(ci)
+            if v.isVisible():
+                self.toggle_numbering(False)
+                self.toggle_numbering(True)
+
+        else:
+            super(MarkerTableView, self).wheelEvent(wheel_event)
+
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
 
