@@ -1,7 +1,7 @@
 
 import math
 import numpy as num
-from pyrocko import trace, util, plot
+from pyrocko import trace, util, plot, io_common
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
@@ -9,6 +9,10 @@ N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 def color(c):
     c = plot.color(c)
     return tuple(x/255. for x in c)
+
+
+class DataCubeError(io_common.FileLoadError):
+    pass
 
 
 def make_control_point(ipos_block, t_block, tref, deltat):
@@ -94,8 +98,14 @@ def plot_timeline(fns):
     ioff = 0
     for fn in fns:
         with open(fn, 'r') as f:
-            header, _, gps_tags, nsamples, _ = datacube_ext.load(
-                f.fileno(), 1, 0, -1, None)
+            try:
+                header, _, gps_tags, nsamples, _ = datacube_ext.load(
+                    f.fileno(), 1, 0, -1, None)
+
+            except datacube_ext.DataCubeError as e:
+                e = DataCubeError(str(e))
+                e.set_context('filename', fn)
+                raise e
 
         header = dict(header)
         deltat = 1.0 / int(header['S_RATE'])
@@ -169,8 +179,14 @@ def iload(fn, load_data=True, interpolation='sinc'):
                 # must get correct nsamples if interpolation is off
                 loadflag = 1
 
-        header, data_arrays, gps_tags, nsamples, _ = datacube_ext.load(
-            f.fileno(), loadflag, 0, -1, None)
+        try:
+            header, data_arrays, gps_tags, nsamples, _ = datacube_ext.load(
+                f.fileno(), loadflag, 0, -1, None)
+
+        except datacube_ext.DataCubeError as e:
+            e = DataCubeError(str(e))
+            e.set_context('filename', fn)
+            raise e
 
     header = dict(header)
     deltat = 1.0 / int(header['S_RATE'])

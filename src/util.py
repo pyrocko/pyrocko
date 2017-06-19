@@ -1392,6 +1392,10 @@ def gform(number, significant_digits=3):
       |  -0.00ddd  |
       |  -d.dde-xx |
       |  -d.dde-xxx|
+      |         nan|
+
+
+    The formatted string has length ``significant_digits * 2 + 6``.
     '''
 
     no_exp_range = (pow(10., -1),
@@ -1403,6 +1407,8 @@ def gform(number, significant_digits=3):
     else:
         s = '%.*E' % (significant_digits-1, number)
     s = (' '*(-s.find('.')+(significant_digits+1))+s).ljust(width)
+    if s.strip().lower() == 'nan':
+        s = 'nan'.rjust(width)
     return s
 
 

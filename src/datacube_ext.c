@@ -492,6 +492,7 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     int gps_utc_offset_flag;
 
     err = datacube_read(reader, 79);
+
     reader->buf_fill = 0;
     if (reader->ipos_gps == (size_t)(-1)) {
         return SUCCESS;
@@ -748,6 +749,10 @@ datacube_error_t datacube_load(reader_t *reader) {
             err = datacube_read_pps_data_block(reader);
         } else if (blocktype == 10) {
             err = datacube_read_gps_block(reader);
+            if (err == BAD_GPS_BLOCK) {
+                fprintf(stderr, "ignoring a bad gps block\n");
+                err = SUCCESS;
+            }
         } else if (blocktype == 14) {
             /*datacube_read_end_block(reader);*/
             if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {

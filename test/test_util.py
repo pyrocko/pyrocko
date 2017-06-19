@@ -115,6 +115,12 @@ class UtilTestCase(unittest.TestCase):
             util.arange2(0., 1.05, 0.1, error='ceil'),
             num.linspace(0., 1.1, 12))
 
+    def test_gform(self):
+        for i in xrange(-11, 12):
+            v = 1/3. * 10**i
+            print '|%s|' % util.gform(v)
+
+
 
 if __name__ == "__main__":
     util.setup_logging('test_util', 'warning')
