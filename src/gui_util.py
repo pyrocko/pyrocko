@@ -617,3 +617,18 @@ class VTKFrame(qg.QFrame):
 
     def add_actor(self, actor):
         self.renderer.AddActor(actor)
+
+
+class PixmapFrame(qg.QLabel):
+
+    def __init__(self, filename=None, parent=None):
+
+        qg.QLabel.__init__(self, parent)
+        self.setAlignment(qc.Qt.AlignCenter)
+        self.setContentsMargins(0, 0, 0, 0)
+        if filename:
+            self.load_pixmap(filename)
+
+    def load_pixmap(self, filename):
+        self.pixmap = qg.QPixmap(filename)
+        self.setPixmap(self.pixmap)
