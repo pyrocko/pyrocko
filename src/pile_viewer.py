@@ -2090,6 +2090,7 @@ def MakePileViewerMainClass(base):
             self.set_phase_kind(
                 self.selected_markers(),
                 fkey_map[key] + 1)
+            self.emit_selected_markers()
 
         def emit_selected_markers(self):
             _indexes = []
