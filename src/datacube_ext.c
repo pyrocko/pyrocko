@@ -271,14 +271,15 @@ datacube_error_t datacube_read(reader_t *reader, size_t n) {
     return SUCCESS;
 }
 
-datacube_error_t datacube_read_to(reader_t *reader, char sep) {
+datacube_error_t datacube_read_to(reader_t *reader, char sepmin, char *sepfound) {
     datacube_error_t err;
     while (1) {
         err = datacube_read(reader, 1);
         if (err != SUCCESS) {
             return err;
         }
-        if (reader->buf[reader->buf_fill - 1] == sep) {
+        if ((unsigned int)reader->buf[reader->buf_fill - 1] >= (unsigned int)sepmin) {
+            *sepfound = reader->buf[reader->buf_fill - 1];
             break;
         }
     }
@@ -336,13 +337,13 @@ datacube_error_t datacube_read_header_block(reader_t *reader) {
     datacube_error_t err;
     header_item_t *item, *prev;
     char *k, *scopy, *p, *s;
+    char sepfound;
     int i, srate, dfilt;
 
-    err = datacube_read_to(reader, '\x80');
+    err = datacube_read_to(reader, '\x80', &sepfound);
     if (err != SUCCESS) {
         return err;
     }
-
     reader->buf[reader->buf_fill-2] = '\0';
 
     i = 0;
@@ -428,7 +429,7 @@ datacube_error_t datacube_read_header_block(reader_t *reader) {
         }
     }
 
-    datacube_push_back(reader, '\x80');
+    datacube_push_back(reader, sepfound);
 
     reader->buf_fill = 0;
     return SUCCESS;
@@ -712,6 +713,10 @@ datacube_error_t datacube_load(reader_t *reader) {
         return err;
     }
 
+    if (reader->load_data == 3) {
+        return SUCCESS;
+    }
+
     if (reader->load_data != 0 && reader->offset_want > 0) {
         err = datacube_skip_to_offset(reader, reader->offset_want);
         if (err != SUCCESS) {
@@ -940,6 +945,7 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
                     determine time range
     load_data == 1: load all gps tags but don't unpack data samples
     load_data == 2: load everything
+    load_data == 3: load header only
     */
 
     int f;
