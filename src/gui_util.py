@@ -626,9 +626,23 @@ class PixmapFrame(qg.QLabel):
         qg.QLabel.__init__(self, parent)
         self.setAlignment(qc.Qt.AlignCenter)
         self.setContentsMargins(0, 0, 0, 0)
+        self.menu = qg.QMenu(self)
+        action = qg.QAction('Save as', self.menu)
+        action.triggered.connect(self.save_pixmap)
+        self.menu.addAction(action)
+
         if filename:
             self.load_pixmap(filename)
+
+    def contextMenuEvent(self, event):
+        self.menu.popup(qg.QCursor.pos())
 
     def load_pixmap(self, filename):
         self.pixmap = qg.QPixmap(filename)
         self.setPixmap(self.pixmap)
+
+    def save_pixmap(self, filename=None):
+        if not filename:
+            filename = qg.QFileDialog.getSaveFileName(
+                self.parent(), caption='save as')
+        self.pixmap.save(filename)
