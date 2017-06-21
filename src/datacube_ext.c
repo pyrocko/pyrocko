@@ -299,6 +299,7 @@ datacube_error_t datacube_read_blocktype(reader_t *reader, int *blocktype) {
     if (err != SUCCESS) {
         return err;
     }
+
     *blocktype = posint(reader->buf[0]) >> 4;
 
     reader->buf_fill = 0;
@@ -549,6 +550,21 @@ datacube_error_t datacube_read_gps_block(reader_t *reader) {
     return SUCCESS;
 }
 
+datacube_error_t datacube_read_diagnostics_block(reader_t *reader) {
+    char sepfound;
+    datacube_error_t err;
+
+    err = datacube_read_to(reader, '\x80', &sepfound);
+    if (err != SUCCESS) {
+        return err;
+    }
+
+    reader->buf_fill = 0;
+    datacube_push_back(reader, sepfound);
+
+    return SUCCESS;
+}
+
 datacube_error_t datacube_init(reader_t *reader, int f) {
     *reader = ZERO_READER;
     reader->f = f;
@@ -701,6 +717,26 @@ datacube_error_t datacube_load(reader_t *reader) {
     int gps_ti, f_time, gps_on;
     backjump_t backjump;
 
+    /* block types:
+     *
+     * 0x00          skip
+     * 0x30   48   3: 
+     * 0x80  128   8: data block
+     * 0x90  144   9: data block with pps
+     * 0xa0  160  10: gps block
+     * 0xb0       11: delay time block ???
+     * 0xc0  192  12: Event block from 1 byte info, from version 5.0(1C) 2.0(3C) 2 bytes
+     *                        if first byte is 1 should abort (buffer overrun in recorder)
+     * 0xcf       12: diagnostics x byte ??? read while (byte >> 4) < 8
+     * 0xd0  208  13: info block ascii ???
+     * 0xd1       13:  aux channel 
+     *                     read 1 byte -> (byte & 0xf) - 2 is number of bytes to read additionally
+     * 0xe0  224  14: end block
+     * 0xef         : header block (at end???)
+     * 0xf0  240  15: header block
+     *
+     */
+
     err = datacube_read_blocktype(reader, &blocktype);
     if (err != SUCCESS) {
         return err;
@@ -765,13 +801,12 @@ datacube_error_t datacube_load(reader_t *reader) {
             } else {
                 break;
             }
-        } else if (blocktype == 12 || blocktype == 13 || blocktype == 0) {
-
+        } else if (blocktype == 12) {
+            err = datacube_read_diagnostics_block(reader);
         } else {
             fprintf(stderr, "unknown block type %i\n", blocktype);
             return UNKNOWN_BLOCK_TYPE;
         }
-
         if (err == READ_FAILED) {
             if (backjumpallowed && reader->gps_tags.fill < N_GPS_TAGS_WANTED*2) {
                 do_backjump(reader, &backjump);
