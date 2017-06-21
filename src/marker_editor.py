@@ -143,7 +143,7 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     def lessThan(self, left, right):
         if left.column() == 1:
             return left.data().toDateTime() < right.data().toDateTime()
-        elif left.column() in [3, 9]:
+        elif left.column() in [0, 3, 9]:
             return left.data().toString() < right.data().toString()
         else:
             return left.data().toFloat()[0] < right.data().toFloat()[0]
