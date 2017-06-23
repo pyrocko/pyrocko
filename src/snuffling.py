@@ -17,8 +17,8 @@ from PyQt4 import QtGui as qg
 from pyrocko import pile, config
 
 from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
-    WebKitFrame, VTKFrame, Marker, EventMarker, PhaseMarker, load_markers, \
-    save_markers
+    WebKitFrame, VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker, \
+    load_markers, save_markers
 
 
 Marker, load_markers, save_markers  # noqa
@@ -494,6 +494,18 @@ class Snuffling:
         '''
 
         return self.pylab(name=name, get='figure_frame')
+
+    def pixmap_frame(self, filename=None, name=None):
+        '''
+        Create a :py:class:`pyrocko.gui_util.PixmapFrame'.
+
+        :param name: labels the tab
+        :param filename: name of file to be displayed
+        '''
+
+        f = PixmapFrame(filename)
+        self._panel_parent.add_tab(name or "Pixmap", f)
+        return f
 
     def web_frame(self, url=None, name=None):
         '''
