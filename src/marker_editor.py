@@ -95,7 +95,7 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
                 painter.drawLine(qc.QLineF(x1, y2, x2, y2))
                 painter.restore()
 
-        if index.column() == 10:
+        if index.column() == _column_mapping['MT']:
             mt = self.get_mt_from_index(index)
             if mt:
                 key = qc.QString(
@@ -143,10 +143,25 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
     def lessThan(self, left, right):
         if left.column() == 1:
             return left.data().toDateTime() < right.data().toDateTime()
-        elif left.column() in [3, 9]:
+        elif left.column() in [0, 3, 9]:
             return left.data().toString() < right.data().toString()
         else:
             return left.data().toFloat()[0] < right.data().toFloat()[0]
+
+    def headerData(self, col, orientation, role):
+        '''Set and format header data.'''
+        if orientation == qc.Qt.Horizontal:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(_header_data[col])
+            elif role == qc.Qt.SizeHintRole:
+                return qc.QSize(10, 20)
+
+        elif orientation == qc.Qt.Vertical:
+            if role == qc.Qt.DisplayRole:
+                return qc.QVariant(str(col))
+
+        else:
+            return qc.QVariant()
 
 
 class MarkerTableView(qg.QTableView):
@@ -189,12 +204,15 @@ class MarkerTableView(qg.QTableView):
             a = qg.QAction(qc.QString(hd), self.header_menu)
             self.connect(a, qc.SIGNAL('triggered(bool)'), self.toggle_columns)
             a.setCheckable(True)
-            if hd in show_initially:
-                a.setChecked(True)
-            else:
-                a.setChecked(False)
+            a.setChecked(hd in show_initially)
             self.header_menu.addAction(a)
             self.column_actions[hd] = a
+
+        a = qg.QAction('Numbering', self.header_menu)
+        a.setCheckable(True)
+        a.setChecked(False)
+        self.connect(a, qc.SIGNAL('triggered(bool)'), self.toggle_numbering)
+        self.header_menu.addAction(a)
 
         header = self.horizontalHeader()
         header.setContextMenuPolicy(qc.Qt.CustomContextMenu)
@@ -209,6 +227,22 @@ class MarkerTableView(qg.QTableView):
         print_action = qg.QAction('Print Table', self.right_click_menu)
         print_action.triggered.connect(self.print_menu)
         self.right_click_menu.addAction(print_action)
+
+    def wheelEvent(self, wheel_event):
+        if wheel_event.modifiers() & qc.Qt.ControlModifier:
+            height = self.rowAt(self.height())
+            ci = self.indexAt(
+                qc.QPoint(self.viewport().rect().x(), height))
+            v = self.verticalHeader()
+            v.setDefaultSectionSize(
+                max(12, v.defaultSectionSize()+wheel_event.delta()/60))
+            self.scrollTo(ci)
+            if v.isVisible():
+                self.toggle_numbering(False)
+                self.toggle_numbering(True)
+
+        else:
+            super(MarkerTableView, self).wheelEvent(wheel_event)
 
     def set_viewer(self, viewer):
         '''Set a pile_viewer and connect to signals.'''
@@ -230,10 +264,19 @@ class MarkerTableView(qg.QTableView):
     def contextMenuEvent(self, event):
         self.right_click_menu.popup(qg.QCursor.pos())
 
+    def toggle_numbering(self, want):
+        if want:
+            self.verticalHeader().show()
+        else:
+            self.verticalHeader().hide()
+
     def print_menu(self):
         printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
         printer_dialog = qg.QPrintDialog(printer, self)
         if printer_dialog.exec_() == qg.QDialog.Accepted:
+
+            scrollbarpolicy = self.verticalScrollBarPolicy()
+            self.setVerticalScrollBarPolicy(qc.Qt.ScrollBarAlwaysOff)
             rect = printer.pageRect()
             painter = qg.QPainter()
             painter.begin(printer)
@@ -248,6 +291,7 @@ class MarkerTableView(qg.QTableView):
                                    qg.QPainter.TextAntialiasing)
             self.render(painter)
             painter.end()
+            self.setVerticalScrollBarPolicy(scrollbarpolicy)
 
     def double_clicked(self, model_index):
         if model_index.column() in self.editable_columns:
@@ -338,17 +382,6 @@ class MarkerTableModel(qc.QAbstractTableModel):
         self.endRemoveRows()
         self.marker_table_view.updateGeometries()
 
-    def headerData(self, col, orientation, role):
-        '''Set and format header data.'''
-
-        if orientation == qc.Qt.Horizontal:
-            if role == qc.Qt.DisplayRole:
-                return qc.QVariant(_header_data[col])
-            elif role == qc.Qt.SizeHintRole:
-                return qc.QSize(10, 20)
-        else:
-            return qc.QVariant()
-
     def data(self, index, role):
         '''Set data in each of the table's cell.'''
 
@@ -400,15 +433,15 @@ class MarkerTableModel(qc.QAbstractTableModel):
             elif index.column() == _column_mapping['Kind']:
                 s = marker.kind
 
+            elif index.column() == _column_mapping['Dist [km]']:
+                if marker in self.distances.keys():
+                    s = self.distances[marker]
+
             elif index.column() == _column_mapping['NSLCs']:
                 strs = []
                 for nslc_id in marker.get_nslc_ids():
                     strs.append('.'.join(nslc_id))
                 s = '|'.join(strs)
-
-            elif index.column() == _column_mapping['Dist [km]']:
-                if marker in self.distances.keys():
-                    s = self.distances[marker]
 
             elif index.column() == _column_mapping['Kagan Angle [deg]']:
                 if marker in self.kagan_angles.keys():

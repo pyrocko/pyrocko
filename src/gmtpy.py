@@ -93,7 +93,7 @@ def convert_graph(in_filename, out_filename, resolution=75., oversample=2.,
                     tmp_filename,
                     '-resize', '%i%%' % int(round(100.0/oversample)),
                     out_filename])
-            except:
+            except OSError as e:
                 raise GmtPyError(
                     'Cannot start `convert`, is it installed? (%s)' % str(e))
 

@@ -4,7 +4,6 @@ import logging
 from pyrocko import trace, util
 from struct import unpack
 
-logging.basicConfig(level='INFO')
 logger = logging.getLogger('css')
 
 
