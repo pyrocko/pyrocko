@@ -348,7 +348,14 @@ class PsGrnRunner:
 
             except OSError:
                 os.chdir(old_wd)
-                raise PsGrnError('could not start psgrn: "%s"' % program)
+                raise PsGrnError(
+                    '''could not start psgrn executable: "%s"
+Available fomosto backends and download links to the modelling codes are listed
+on
+
+      http://pyrocko.org/current/apps/fomosto/backends.html
+
+''' % program)
 
             (output_str, error_str) = proc.communicate('input\n')
 
@@ -1126,7 +1133,14 @@ class PsCmpRunner:
             except OSError as err:
                 os.chdir(old_wd)
                 logger.error('OS error: {0}'.format(err))
-                raise PsCmpError('could not start pscmp: "%s"' % program)
+                raise PsCmpError(
+                    '''could not start pscmp executable: "%s"
+Available fomosto backends and download links to the modelling codes are listed
+on
+
+      http://pyrocko.org/current/apps/fomosto/backends.html
+
+''' % program)
 
             (output_str, error_str) = proc.communicate('input\n')
 

@@ -832,3 +832,29 @@ def save_markers(markers, filename, fdigits=3):
     '''
 
     return Marker.save_markers(markers, filename, fdigits=fdigits)
+
+
+def associate_phases_to_events(markers):
+    '''
+    Reassociate phases to events after import from markers file.
+    '''
+
+    hash_to_events = {}
+    time_to_events = {}
+    for marker in markers:
+        if isinstance(marker, EventMarker):
+            ev = marker.get_event()
+            hash_to_events[marker.get_event_hash()] = ev
+            time_to_events[ev.time] = ev
+
+    for marker in markers:
+        if isinstance(marker, PhaseMarker):
+            h = marker.get_event_hash()
+            t = marker.get_event_time()
+            if marker.get_event() is None:
+                if h is not None and h in hash_to_events:
+                    marker.set_event(hash_to_events[h])
+                    marker.set_event_hash(None)
+                elif t is not None and t in time_to_events:
+                    marker.set_event(time_to_events[t])
+                    marker.set_event_hash(None)

@@ -275,6 +275,47 @@ def progress_end(label=''):
     sys.stderr.flush()
 
 
+class ArangeError(Exception):
+    pass
+
+
+def arange2(start, stop, step, dtype=num.float, epsilon=1e-6, error='raise'):
+    '''
+    Return evenly spaced numbers over a specified interval.
+
+    Like :py:func:`numpy.arange` but returning floating point numbers by
+    default and with defined behaviour when stepsize is inconsistent with
+    interval bounds. It is considered inconsistent if the difference between
+    the closest multiple of ``step`` and ``stop`` is larger than ``epsilon *
+    step``. Inconsistencies are handled according to the ``error`` parameter.
+    If it is set to ``'raise'`` an exception of type :py:exc:`ArangeError` is
+    raised. If it is set to ``'round'``, ``'floor'``, or ``'ceil'``, ``stop``
+    is silently changed to the closest, the next smaller, or next larger
+    multiple of ``step``, respectively.
+    '''
+
+    assert error in ('raise', 'round', 'floor', 'ceil')
+
+    start = dtype(start)
+    stop = dtype(stop)
+    step = dtype(step)
+
+    rnd = {'floor': math.floor, 'ceil': math.ceil}.get(error, round)
+
+    n = int(rnd((stop - start) / step)) + 1
+    stop_check = start + (n-1) * step
+
+    if error == 'raise' and abs(stop_check - stop) > step * epsilon:
+        raise ArangeError(
+            'inconsistent range specification: start=%g, stop=%g, step=%g'
+            % (start, stop, step))
+
+    x = num.arange(n, dtype=dtype)
+    x *= step
+    x += start
+    return x
+
+
 def polylinefit(x, y, n_or_xnodes):
     '''
     Fit piece-wise linear function to data.
@@ -1351,6 +1392,10 @@ def gform(number, significant_digits=3):
       |  -0.00ddd  |
       |  -d.dde-xx |
       |  -d.dde-xxx|
+      |         nan|
+
+
+    The formatted string has length ``significant_digits * 2 + 6``.
     '''
 
     no_exp_range = (pow(10., -1),
@@ -1362,6 +1407,8 @@ def gform(number, significant_digits=3):
     else:
         s = '%.*E' % (significant_digits-1, number)
     s = (' '*(-s.find('.')+(significant_digits+1))+s).ljust(width)
+    if s.strip().lower() == 'nan':
+        s = 'nan'.rjust(width)
     return s
 
 

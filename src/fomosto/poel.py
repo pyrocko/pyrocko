@@ -365,7 +365,14 @@ class PoelRunner:
             proc = Popen(program, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         except OSError:
             os.chdir(old_wd)
-            raise PoelError('could not start poel: "%s"' % program)
+            raise PoelError(
+                '''could not start poel executable: "%s"
+Available fomosto backends and download links to the modelling codes are listed
+on
+
+      http://pyrocko.org/current/apps/fomosto/backends.html
+
+''' % program)
 
         (poel_output, poel_error) = proc.communicate('input\n')
 

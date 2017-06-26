@@ -599,6 +599,10 @@ class InvalidColorDef(ValueError):
     pass
 
 
+def mpl_graph_color(i):
+    return to01(graph_colors[i % len(graph_colors)])
+
+
 def mpl_color(x):
     '''
     Convert string into color float tuple ranged 0-1 for use with Matplotlib.

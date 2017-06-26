@@ -10,13 +10,27 @@ logger = logging.getLogger('pyrocko.fdsn.ws')
 g_url = '%(site)s/fdsnws/%(service)s/%(majorversion)i/%(method)s'
 
 g_site_abbr = {
-    'geofon': 'http://geofon-open1.gfz-potsdam.de',
+    'geofon': 'https://geofon.gfz-potsdam.de',
     'iris': 'http://service.iris.edu',
     'orfeus': 'http://www.orfeus-eu.org',
     'bgr': 'http://eida.bgr.de',
     'geonet': 'http://service.geonet.org.nz',
+    'knmi': 'http://rdsa.knmi.nl',
+    'ncedc': 'http://service.ncedc.org',
+    'scedc': 'http://scedc.caltech.edu',
+    'usgs': 'http://earthquake.usgs.gov',
+    'bgr': 'http://eida.bgr.de',
+    'koeri': 'http://www.koeri.boun.edu.tr/2/tr',
+    'ethz': 'http://eida.ethz.ch/fdsnws',
+    'icgc': 'http://www.icgc.cat/en/xarxasismica',
+    'ipgp': 'http://centrededonnees.ipgp.fr',
+    'ingv': 'http://webservices.rm.ingv.it',
+    'isc': 'http://www.isc.ac.uk',
+    'lmu': 'http://www.geophysik.uni-muenchen.de/observatory/seismology',
+    'noa': 'http://bbnet.gein.noa.gr',
+    'resif': 'http://portal.resif.fr',
+    'usp': 'http://www.moho.iag.usp.br'
 }
-
 
 g_default_site = 'geofon'
 
@@ -26,6 +40,10 @@ re_realm_from_auth_header = re.compile(r'(realm)\s*[:=]\s*"([^"]*)"?')
 
 
 class CannotGetRealmFromAuthHeader(Exception):
+    pass
+
+
+class CannotGetCredentialsFromAuthRequest(Exception):
     pass
 
 
@@ -99,7 +117,10 @@ def _request(url, post=False, user=None, passwd=None, **kwargs):
                 raise RequestEntityTooLarge(url)
 
             elif e.code == 401:
-                realm = get_realm_from_auth_header(e.headers)
+                headers = getattr(e, 'headers', e.hdrs)
+
+                realm = get_realm_from_auth_header(headers)
+
                 if itry == 1 and user is not None:
                     auth_handler = urllib2.HTTPDigestAuthHandler()
                     auth_handler.add_password(
@@ -146,7 +167,7 @@ def fix_params(d):
 
     for k in params:
         if isinstance(params[k], bool):
-            params[k] = ['FALSE', 'TRUE'][bool(params[k])]
+            params[k] = ['false', 'true'][bool(params[k])]
 
     return params
 
@@ -218,14 +239,33 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
         return _request(url, **params)
 
 
+def get_auth_credentials(
+        token, url=g_url, site=g_default_site, majorversion=1):
+
+    url = fillurl(url, site, 'dataselect', majorversion, method='auth')
+
+    f = _request(url, post=token)
+    s = f.read()
+    try:
+        user, passwd = s.strip().split(':')
+    except ValueError:
+        raise CannotGetCredentialsFromAuthRequest('data="%s"' % s)
+
+    return user, passwd
+
+
 def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
-               user=None, passwd=None,
+               user=None, passwd=None, token=None,
                **kwargs):
 
     if user is not None:
         method = 'queryauth'
     else:
         method = 'query'
+
+    if token is not None:
+        user, passwd = get_auth_credentials(
+            token, url=url, site=site, majorversion=majorversion)
 
     url = fillurl(url, site, 'dataselect', majorversion, method=method)
 

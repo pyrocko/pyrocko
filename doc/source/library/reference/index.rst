@@ -16,6 +16,7 @@ Reference
    hamster_pile
    ims
    io
+   marker
    model
    moment_tensor
    orthodrome

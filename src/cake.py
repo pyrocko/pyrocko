@@ -1049,6 +1049,22 @@ class PhaseDef(object):
         return copy.deepcopy(self)
 
 
+def to_phase_defs(phases):
+    if isinstance(phases, (basestring, PhaseDef)):
+        phases = [phases]
+
+    phases_out = []
+    for phase in phases:
+        if isinstance(phase, basestring):
+            phases_out.extend(PhaseDef(x.strip()) for x in phase.split(','))
+        elif isinstance(phase, PhaseDef):
+            phases_out.append(phase)
+        else:
+            raise PhaseDefParseError('invalid phase definition')
+
+    return phases_out
+
+
 def csswap(x):
     return cmath.sqrt(1.-x**2)
 
@@ -3149,7 +3165,9 @@ class LayeredModel(object):
         Get all possible ray paths for given source and receiver depths for one
         or more phase definitions.
 
-        :param phases: a :py:class:`PhaseDef` object or a list of such objects
+        :param phases: a :py:class:`PhaseDef` object or a list of such objects.
+            Comma-separated strings and lists of such strings are also accepted
+            and are converted to :py:class:`PhaseDef` objects for convenience.
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
         :returns: a list of :py:class:`RayPath` objects
@@ -3161,8 +3179,7 @@ class LayeredModel(object):
 
         eps = 1e-7  # num.finfo(float).eps * 1000.
 
-        if isinstance(phases, PhaseDef):
-            phases = [phases]
+        phases = to_phase_defs(phases)
 
         paths = []
         for phase in phases:
@@ -3291,7 +3308,9 @@ class LayeredModel(object):
         '''Compute rays and traveltimes for given distances.
 
         :param distances: list or array of distances [deg]
-        :param phases: a :py:class:`PhaseDef` object or a list of such objects
+        :param phases: a :py:class:`PhaseDef` object or a list of such objects.
+            Comma-separated strings and lists of such strings are also accepted
+            and are converted to :py:class:`PhaseDef` objects for convenience.
         :param zstart: source depth [m]
         :param zstop: receiver depth [m]
         :param refine: bool flag, whether to use bisectioning to improve
