@@ -174,6 +174,7 @@ subpacknames = [
     'pyrocko.fdsn',
     'pyrocko.topo',
     'pyrocko.fomosto_report',
+    'pyrocko.gnss',
 ]
 
 
