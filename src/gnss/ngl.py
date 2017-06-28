@@ -3,6 +3,7 @@ import csv
 import urlparse
 import urllib2
 import numpy as num
+from datetime import datetime
 
 from os import path
 from ..trace import Trace  # noqa
@@ -19,13 +20,14 @@ class StepEvent(Object):
     station_id = String.T(
         help='Station ID')
     time = DateTimestamp.T(
-        help='Event time')
+        help='Event time in isoformat')
     event = StringChoice.T(
         ['Equipment change', 'Possible earthquake'],
         help='Event type.'
              'Earthquake within 10^(0.5*mag - 0.8) degrees of station')
     USGS_eventid = String.T(
-        default=None)
+        default=None, 
+        optional=True)
 
 
 class GNSSStation(Object):
@@ -46,6 +48,8 @@ class GNSSStation(Object):
     latency = StringChoice.T(
         ['2 Weeks', '24 Hours'],
         help='Solution latency')
+    steps = []
+    nsteps = 0
 
 
 class NGL(object):
@@ -130,6 +134,36 @@ class NGL(object):
                 except ValueError:
                     print logger.error('Could not read line: \'%s\'' % sta)
         self.nstations = len(self.stations)
+
+    @staticmethod
+    def _date_to_dec(date):
+        return datetime.strptime('{}'.format(date),'%y%b%d').strftime('%Y-%m-%d')
+
+    def get_event(self, station_id):
+        events = []
+        with open(self._get_file(self.url_steps), 'r') as ngl_steps:
+            ngl_steps.readline()
+            lines = csv.reader(ngl_steps, delimiter=' ', skipinitialspace=True)
+            for line in lines:
+                if line[0] == station_id:
+                    print self._date_to_dec(line[1])
+                    events.append(
+                    StepEvent(
+                        station_id=line[0], 
+                        time=self._date_to_dec(line[1]),
+                        event='Equipment change', 
+                        ))
+                    # if earthquake
+                    if line[2] == 2: 
+                        events[-1].event='Possible earthquake',
+                        # distance from station to epicenter in km
+                        events[-1].dist=line[4]
+                        # event magnitude
+                        events[-1].mag=line[5]
+                        # USGS event ID
+                        events[-1].USGS_eventid=line[6]
+                    events[-1].regularize()
+        return events
 
     @staticmethod
     def _get_file(url):
