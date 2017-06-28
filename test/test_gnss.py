@@ -23,7 +23,11 @@ class TestNGL(unittest.TestCase):
         sta = self.ngl.get_station(station_id='00NA')
         print sta
 
+    def test_getevent(self):
+        steps = self.ngl.get_event(station_id='00NA')
+        for step in steps:
+            print step
 
 if __name__ == '__main__':
-    util.setup_logging('test_gnss', 'debug')
+    util.setup_logging('test_gnss.test_getevent', 'debug')
     unittest.main()
