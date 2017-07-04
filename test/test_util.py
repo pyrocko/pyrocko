@@ -121,7 +121,6 @@ class UtilTestCase(unittest.TestCase):
             print '|%s|' % util.gform(v)
 
 
-
 if __name__ == "__main__":
     util.setup_logging('test_util', 'warning')
     unittest.main()
