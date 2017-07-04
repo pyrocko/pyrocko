@@ -128,8 +128,8 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     l = length
     w = width
 
-    nl = int((2./decimation_factor) * num.ceil(l / mindeltagf)) + 1
-    nw = int((2./decimation_factor) * num.ceil(w / mindeltagf)) + 1
+    nl = int((1./decimation_factor) * num.ceil(l / mindeltagf)) + 1
+    nw = int((1./decimation_factor) * num.ceil(w / mindeltagf)) + 1
 
     n = int(nl*nw)
 
@@ -2741,7 +2741,7 @@ class LocalEngine(Engine):
 
         nprocs = kwargs.pop('nprocs', None)
         nthreads = kwargs.pop('nthreads', 1)
-        if nprocs:
+        if nprocs is not None:
             nthreads = nprocs
 
         if request is None:
