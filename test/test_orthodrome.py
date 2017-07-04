@@ -288,6 +288,28 @@ class OrthodromeTestCase(unittest.TestCase):
                                 '(maximum error)\n tested lat/lon: %s/%s' %
                                 (lat, lon))
 
+    def test_rotations(self):
+        for lat in num.linspace(-90., 90., 20):
+            for lon in num.linspace(-180., 180., 20):
+                point = num.array([lat, lon], dtype=num.float)
+                xyz = orthodrome.latlon_to_xyz(point)
+                rot = orthodrome.rot_to_00(point[0], point[1])
+                p2 = num.dot(rot, xyz)
+                num.testing.assert_allclose(p2, [1., 0., 0.], atol=1.0e-7)
+
+    def test_rotation2(self):
+        eps = 1.0e-7
+        lats = num.linspace(50., 60., 20)
+        lons = num.linspace(170., 180., 20)
+        lats2 = num.repeat(lats, lons.size)
+        lons2 = num.tile(lons, lats.size)
+        points = num.vstack((lats2, lons2)).T
+        xyz = orthodrome.latlon_to_xyz(points)
+        rot = orthodrome.rot_to_00(lats[0], lons[0])
+        xyz2 = num.dot(rot, xyz.T).T
+        points2 = orthodrome.xyz_to_latlon(xyz2)
+        assert num.all(points2[:, 1] > -eps)
+
 
 def serialgrid(x, y):
     return num.repeat(x, y.size), num.tile(y, x.size)
