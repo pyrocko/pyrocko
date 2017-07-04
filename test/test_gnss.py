@@ -27,6 +27,11 @@ class TestNGLCatalog(unittest.TestCase):
         data = self.ngl.get_displacement('00NA')
         print data
 
+    def test_get_events(self):
+        steps = self.ngl.get_step_events(station_id='00NA')
+        for step in steps:
+            print step
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gnss', 'debug')
