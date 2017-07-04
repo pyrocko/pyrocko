@@ -3,14 +3,17 @@ import csv
 import urlparse
 import urllib2
 import numpy as num
+import time
 from datetime import datetime
 
 from os import path
 from ..trace import Trace  # noqa
-from ..guts import Object, String, Float, Int, DateTimestamp, StringChoice
+from ..guts import (Object, String, Float, Int, DateTimestamp, StringChoice,
+                    Dict)
 
 
 logger = logging.getLogger('pyrocko.gnss.ngl')
+sday = 24 * 60 * 60
 
 
 class StepEvent(Object):
@@ -26,11 +29,11 @@ class StepEvent(Object):
         help='Event type.'
              'Earthquake within 10^(0.5*mag - 0.8) degrees of station')
     USGS_eventid = String.T(
-        default=None, 
+        default=None,
         optional=True)
 
 
-class GNSSStation(Object):
+class NGLStation(Object):
     station_id = String.T(
         help='Station ID')
     lat = Float.T(
@@ -47,12 +50,13 @@ class GNSSStation(Object):
         help='Time of acquisition end')
     latency = StringChoice.T(
         ['2 Weeks', '24 Hours'],
-        help='Solution latency')
-    steps = []
-    nsteps = 0
+        help='Solution processing latency')
+    traces = Dict.T(
+        optional=True,
+        default=None)
 
 
-class NGL(object):
+class NGLCatalog(object):
     url_2w = 'http://geodesy.unr.edu/NGLStationPages/DataHoldings.txt'
     url_24h = ('http://geodesy.unr.edu/NGLStationPages/'
                'DataHoldingsRapid24hr.txt')
@@ -89,7 +93,6 @@ class NGL(object):
         :rtype: Station
         '''
         station = self.get_station(station_id)
-
         path = '{frame}/{station_id}.{frame}.txyz2'.format(
             frame=self.reference_frame,
             station_id=station_id)
@@ -99,11 +102,42 @@ class NGL(object):
         request.add_header('User-Agent', 'Pyrocko-GNSS_Client/0.1')
         data_txt = urllib2.urlopen(request, timeout=4)
 
-        data = num.loadtxt(data_txt, usecols=(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
-        nsolutions = data.shape[0]
+        data = num.loadtxt(data_txt,
+                           usecols=(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+        startdate = data[0, 0]
+        start_year = startdate // 1
+        start_day = int((startdate % 1) * 365.25)
+        starttime = datetime.strptime('%d.%03d-12' % (start_year, start_day),
+                                      '%Y.%j-%H')
+        dates = data[:, 0]
+        gaps = num.round(num.gradient(dates) * 365.25).astype(num.int)
+        idx = num.cumsum(gaps) - 1
 
-        print 'nsolutions ', nsolutions
-        return data
+        traces = {}
+        for it, trace_name in enumerate([
+            'x',
+            'y',
+            'z',
+            'Sigma_x',
+            'Sigma_y',
+            'Sigma_z',
+            'Corr_xy',
+            'Corr_yz',
+            'Corr_xz',
+            'Antenna_Height']):
+
+            ydata = num.full(idx[-1], fill_value=num.nan)
+            ydata = data[:, it+1]
+            traces[trace_name] = Trace(
+                network='NGL',
+                station=station_id,
+                channel=trace_name,
+                ydata=ydata,
+                tmin=time.mktime(starttime.timetuple()),
+                deltat=sday)
+
+        station.traces = traces
+        return station
 
     def _read_station_list(self):
         logger.debug('Initialising NGL database...')
@@ -120,7 +154,7 @@ class NGL(object):
             for sta in stations:
                 try:
                     self.stations.append(
-                        GNSSStation(
+                        NGLStation(
                             station_id=sta[0],
                             lat=float(sta[1]),
                             lon=float(sta[2]),
@@ -131,7 +165,7 @@ class NGL(object):
                             latency='2 Weeks' if sta[0] not in stations_24h
                                     else '24 Hours'))
                     self.stations[-1].regularize()
-                except ValueError:
+                except (TypeError, ValueError):
                     print logger.error('Could not read line: \'%s\'' % sta)
         self.nstations = len(self.stations)
 
@@ -179,3 +213,6 @@ class NGL(object):
             logger.debug('Using cached %s' % filename)
 
         return file
+
+
+__all__ = [NGLCatalog]

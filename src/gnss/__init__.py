@@ -1,1 +1,1 @@
-from ngl import NGL  # noqa
+from ngl import NGLCatalog  # noqa
