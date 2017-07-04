@@ -1222,7 +1222,7 @@ def MakePileViewerMainClass(base):
             if ev:
                 self.set_origin(ev)
 
-            self.emit(qc.SIGNAL('stationsAdded()'))
+            self.emit(qc.SIGNAL('stations_added()'))
 
         def add_event(self, event):
             marker = EventMarker(event)

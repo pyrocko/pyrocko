@@ -441,7 +441,7 @@ class SnufflerWindow(qg.QMainWindow):
         self.table_panel.addTab(self.station_editor, 'Stations')
 
         self.add_panel(
-            'Tables', self.table_panel, visible=False,
+            '', self.table_panel, visible=False,
             where=qc.Qt.RightDockWidgetArea)
 
         if stations:
