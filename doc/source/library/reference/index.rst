@@ -10,6 +10,7 @@ Reference
    catalog
    crust2x2
    crustdb
+   gshhg
    evalresp
    gmtpy
    gui_util
