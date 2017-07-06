@@ -24,9 +24,16 @@ class BBLakes(object):
     tpl = (west, east, south, north)
 
 
+class BBPonds(object):
+    west, east, south, north = (
+        304.229444, 306.335556, -3.228889, -1.1358329999999999)
+
+    tpl = (west, east, south, north)
+
+
 class GSHHGTest(unittest.TestCase):
     def setUp(self):
-        self.gshhg = gshhg.GSHHG.get_intermediate()
+        self.gshhg = gshhg.GSHHG.full()
 
     @unittest.skip('')
     def test_crude(self):
@@ -107,19 +114,19 @@ class GSHHGTest(unittest.TestCase):
             plt.show()
 
     def test_mask_land(self):
-        poly = self.gshhg.get_polygons_within(*BBLakes.tpl)
+        poly = self.gshhg.get_polygons_within(*BBPonds.tpl)
 
         points = num.array(
-                [num.random.uniform(BBLakes.south, BBLakes.north, size=1000),
-                 num.random.uniform(BBLakes.east, BBLakes.west, size=1000)]).T
+                [num.random.uniform(BBPonds.south, BBPonds.north, size=1000),
+                 num.random.uniform(BBPonds.east, BBPonds.west, size=1000)]).T
         pts = self.gshhg.get_land_mask(points)
 
         if plot:
-            import matplotlib.pyplot as plt
             import cartopy.crs as ccrs
+            import matplotlib.pyplot as plt
 
-            points = points[pts]
-            colors = num.ones(points.shape[0]) * pts[pts]
+            points = points
+            colors = num.ones(points.shape[0]) * pts
 
             # colors = num.ones(points.shape[0]) * pts
             ax = plt.axes(projection=ccrs.PlateCarree())
@@ -127,7 +134,7 @@ class GSHHGTest(unittest.TestCase):
 
             self.plot_polygons(poly, ax)
             ax.scatter(points[:, 1], points[:, 0], c=colors, s=.5,
-                       transform=ccrs.Geodetic())
+                       transform=ccrs.Geodetic(), zorder=2)
             plt.show()
 
     @unittest.skip('')
@@ -153,18 +160,43 @@ class GSHHGTest(unittest.TestCase):
         from matplotlib.patches import Polygon
         import numpy as num
         import cartopy.crs as ccrs
+        from pyrocko.plot import mpl_color
 
         args = {
             'edgecolor': 'red',
-            'facecolor': 'none',
-            'alpha': .3
         }
         args.update(kwargs)
 
+        colormap = [
+            mpl_color('aluminium2'),
+            mpl_color('skyblue1'),
+            mpl_color('aluminium4'),
+            mpl_color('skyblue2'),
+            mpl_color('white'),
+            mpl_color('aluminium1')]
+
         map(ax.add_patch, [Polygon(num.fliplr(p.points),
                                    transform=ccrs.Geodetic(),
+                                   facecolor=colormap[p.level_no-1],
                                    **args)
                            for p in polygons])
+
+    def test_pond(self):
+        for poly in self.gshhg.polygons:
+            if poly.is_pond_in_island_in_lake():
+                (w, e, s, n) = poly.get_bounding_box()
+                print (w-1., e+1, s-1., n+1)
+                polys2 = self.gshhg.get_polygons_within(w-1., e+1, s-1., n+1)
+
+                if plot:
+                    import matplotlib.pyplot as plt
+                    import cartopy.crs as ccrs
+
+                    ax = plt.axes(projection=ccrs.PlateCarree())
+                    ax.set_global()
+                    self.plot_polygons(polys2, ax)
+
+                    plt.show()
 
 
 if __name__ == "__main__":

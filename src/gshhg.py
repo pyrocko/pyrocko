@@ -86,6 +86,9 @@ class Polygon(object):
                     .reshape(self.npoints, 2)
 
             self._points = num.fliplr(self._points)
+            if self.level_no in (2, 4):
+                self._points = self._points[::-1, :]
+
             self._points *= micro_deg
         return self._points
 
@@ -175,6 +178,9 @@ class Polygon(object):
         return num.full(points.shape[0],
                         dtype=num.bool,
                         fill_value=False)
+
+    def get_bounding_box(self):
+        return (self.west, self.east, self.south, self.north)
 
     def __lt__(self, polygon):
         return self.level_no < polygon.level_no
@@ -356,32 +362,31 @@ class GSHHG(object):
                p.is_island_in_lake()):
                 mask += p.contains_points(points)
             elif p.is_lake() or p.is_pond_in_island_in_lake():
-                continue
                 water = p.contains_points(points)
                 num.logical_xor(mask, water, out=mask)
         return mask
 
     @classmethod
-    def get_full(cls):
+    def full(cls):
         ''' Return the full-resolution GSHHG database'''
         return cls(cls._get_database('gshhs_f.b'))
 
     @classmethod
-    def get_high(cls):
+    def high(cls):
         ''' Return the high-resolution GSHHG database'''
         return cls(cls._get_database('gshhs_h.b'))
 
     @classmethod
-    def get_intermediate(cls):
+    def intermediate(cls):
         ''' Return the intermediate-resolution GSHHG database'''
         return cls(cls._get_database('gshhs_i.b'))
 
     @classmethod
-    def get_low(cls):
+    def low(cls):
         ''' Return the low-resolution GSHHG database'''
         return cls(cls._get_database('gshhs_l.b'))
 
     @classmethod
-    def get_crude(cls):
+    def crude(cls):
         ''' Return the crude-resolution GSHHG database'''
         return cls(cls._get_database('gshhs_c.b'))
