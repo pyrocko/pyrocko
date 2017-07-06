@@ -109,7 +109,7 @@ def combine(tiles, region=None):
     ny = int(round((ymax - ymin) / dy)) + 1
 
     data = num.zeros((ny, nx), dtype=dtype)
-    data[:, :] = num.nan
+    data[:, :] = 0
 
     for t in tiles:
         for txmin in (t.xmin, t.xmin + 360.):

@@ -138,6 +138,19 @@ def get(dem_name, region):
     return dem(dem_name).get(region)
 
 
+def elevation(lat, lon):
+    '''
+    Get elevation at given point.
+
+    Tries to use SRTMGL3, falls back to ETOPO01 if not available.
+    '''
+
+    for dem in ['SRTMGL3', 'ETOPO1']:
+        r = get(dem, (lon, lat))
+        if r is not None and r != 0:
+            return r
+
+
 def select_dem_names(kind, dmin, dmax, region):
     assert kind in ('land', 'ocean')
     ok = []
