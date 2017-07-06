@@ -88,11 +88,19 @@ class TiledGlobalDataset(object):
         xmin, xmax, ymin, ymax = self.positive_region(region)
         itxmin = int(math.floor((xmin - self.xmin) / self.stx))
         itxmax = int(math.ceil((xmax - self.xmin) / self.stx))
+        if itxmin == itxmax:
+            itxmax += 1
         itymin = int(math.floor((ymin - self.ymin) / self.sty))
         itymax = int(math.ceil((ymax - self.ymin) / self.sty))
+        if itymin == itymax:
+            if itymax != self.ntilesy:
+                itymax += 1
+            else:
+                itymin -= 1
+
         indices = []
-        for ity in range(itymin, itymax):
-            for itx in range(itxmin, itxmax):
+        for ity in xrange(itymin, itymax):
+            for itx in xrange(itxmin, itxmax):
                 indices.append((itx % self.ntilesx, ity))
 
         return indices
@@ -101,6 +109,14 @@ class TiledGlobalDataset(object):
         return None
 
     def get(self, region):
+        if len(region) == 2:
+            x, y = region
+            t = self.get((x, x, y, y))
+            if t is not None:
+                return t.get(x, y)
+            else:
+                return None
+
         indices = self.tile_indices(region)
         tiles = []
         for itx, ity in indices:
