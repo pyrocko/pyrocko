@@ -3,6 +3,8 @@ The :mod:`gshhg` module
 
 The `GSHHG database <https://www.ngdc.noaa.gov/mgg/shorelines/gshhs.html>`_ is a high-resolution geography data set.
 
+We implement functions to test points for land/water and mask land areas, excluding lakes.
+
 .. note ::
 
     Please cite:
