@@ -91,8 +91,9 @@ def iload_fh(f):
             input_unit=d['input unit'],
             output_unit=d['output unit'],
             response=response)
-    except:
-        raise EnhancedSacPzError('cannot get all required information')
+    except KeyError as e:
+        raise EnhancedSacPzError(
+            'cannot get all required information %s' % e.args[0])
 
 
 iload_filename, iload_dirname, iload_glob, iload = util.make_iload_family(

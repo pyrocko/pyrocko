@@ -16,6 +16,7 @@ utilize the framework.
     snuffler_markers.rst
     orthodrome.rst
     plotting.rst
+    automap.rst
     cake_raytracing.rst
     gf_store.rst
     gf_forward.rst

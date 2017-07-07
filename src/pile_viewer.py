@@ -769,6 +769,8 @@ def MakePileViewerMainClass(base):
                     lambda tr: None),
                 ('Common Scale per Station',
                     lambda tr: (tr.network, tr.station)),
+                ('Common Scale per Station Location',
+                    lambda tr: (tr.network, tr.station, tr.location)),
                 ('Common Scale per Component',
                     lambda tr: (tr.channel)),
             ]
@@ -2088,6 +2090,7 @@ def MakePileViewerMainClass(base):
             self.set_phase_kind(
                 self.selected_markers(),
                 fkey_map[key] + 1)
+            self.emit_selected_markers()
 
         def emit_selected_markers(self):
             _indexes = []

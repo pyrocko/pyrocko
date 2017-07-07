@@ -16,6 +16,20 @@ g_site_abbr = {
     'bgr': 'http://eida.bgr.de',
     'geonet': 'http://service.geonet.org.nz',
     'knmi': 'http://rdsa.knmi.nl',
+    'ncedc': 'http://service.ncedc.org',
+    'scedc': 'http://scedc.caltech.edu',
+    'usgs': 'http://earthquake.usgs.gov',
+    'bgr': 'http://eida.bgr.de',
+    'koeri': 'http://www.koeri.boun.edu.tr/2/tr',
+    'ethz': 'http://eida.ethz.ch/fdsnws',
+    'icgc': 'http://www.icgc.cat/en/xarxasismica',
+    'ipgp': 'http://centrededonnees.ipgp.fr',
+    'ingv': 'http://webservices.rm.ingv.it',
+    'isc': 'http://www.isc.ac.uk',
+    'lmu': 'http://www.geophysik.uni-muenchen.de/observatory/seismology',
+    'noa': 'http://bbnet.gein.noa.gr',
+    'resif': 'http://portal.resif.fr',
+    'usp': 'http://www.moho.iag.usp.br'
 }
 
 g_default_site = 'geofon'
@@ -153,7 +167,7 @@ def fix_params(d):
 
     for k in params:
         if isinstance(params[k], bool):
-            params[k] = ['FALSE', 'TRUE'][bool(params[k])]
+            params[k] = ['false', 'true'][bool(params[k])]
 
     return params
 
