@@ -1187,7 +1187,7 @@ def MakePileViewerMainClass(base):
             return self._ssort(tr)
 
         def station_key(self, x):
-            return x.network, x.station, x.location
+            return x.network, x.station
 
         def station_attrib(self, tr, getter, default_getter):
             sk = self.station_key(tr)
