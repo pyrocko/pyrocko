@@ -1112,6 +1112,45 @@ class DiscretizedSource(Object):
         return tuple(float(x) for x in
                      (time, lat, lon, north_shift, east_shift, depth))
 
+    def moments(self):
+        return None
+
+    def plot(self, ax=None, system='cartesian', show=True, colorbar=False):
+        import matplotlib as mpl
+        plt = mpl.pyplot
+        if not ax:
+            from mpl_toolkits.mplot3d import Axes3D  # noqa
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+
+        ms = self.moments()
+        if ms is not None:
+            s = ms/ms.max()
+        else:
+            s = num.ones(len(self.depths))
+
+        if system == 'latlon':
+            x, y = self.effective_latlons
+        elif system == 'cartesian':
+            x, y = self.north_shifts, self.east_shifts
+
+        c = self.times
+        if all(c == 0.):
+            c = 'b'
+            colorize = False
+        else:
+            colorize = True
+
+        mappable = ax.scatter(
+            x, y, self.depths, s=s*40, c=c, vmin=self.times.min(),
+            vmax=self.times.max(), cmap=mpl.cm.YlGnBu)
+
+        if colorize and colorbar:
+            plt.gcf().colorbar(mappable)
+
+        if show:
+            plt.show()
+
 
 class DiscretizedExplosionSource(DiscretizedSource):
     m0s = Array.T(shape=(None,), dtype=num.float)
