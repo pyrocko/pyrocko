@@ -1405,6 +1405,92 @@ class MTSource(Source):
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
 
 
+class MTSourceWithMagnitude(SourceWithMagnitude):
+    '''
+    A moment tensor point source.
+    '''
+
+    discretized_source_class = meta.DiscretizedMTSource
+
+    mnn = Float.T(
+        default=1.,
+        help='north-north component of moment tensor')
+
+    mee = Float.T(
+        default=1.,
+        help='east-east component of moment tensor')
+
+    mdd = Float.T(
+        default=1.,
+        help='down-down component of moment tensor')
+
+    mne = Float.T(
+        default=0.,
+        help='north-east component of moment tensor')
+
+    mnd = Float.T(
+        default=0.,
+        help='north-down component of moment tensor')
+
+    med = Float.T(
+        default=0.,
+        help='east-down component of moment tensor')
+
+    def __init__(self, **kwargs):
+        if 'm6' in kwargs:
+            for (k, v) in zip('mnn mee mdd mne mnd med'.split(),
+                              kwargs.pop('m6')):
+                kwargs[k] = float(v)
+
+        Source.__init__(self, **kwargs)
+
+    @property
+    def m6(self):
+        return num.array(self.m6_astuple)
+
+    @property
+    def m6_astuple(self):
+        return (self.mnn, self.mee, self.mdd, self.mne, self.mnd, self.med)
+
+    @m6.setter
+    def m6(self, value):
+        self.mnn, self.mee, self.mdd, self.mne, self.mnd, self.med = value
+
+    def get_factor(self):
+        return mt.magnitude_to_moment(self.magnitude)
+
+    def base_key(self):
+        return Source.base_key(self) + self.m6_astuple
+
+    def discretize_basesource(self, store, target=None):
+        times, amplitudes = self.effective_stf_pre().discretize_t(
+            store.config.deltat, 0.0)
+        return meta.DiscretizedMTSource(
+            m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis],
+            **self._dparams_base_repeated(times))
+
+    def pyrocko_moment_tensor(self):
+        return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple) * self.moment)
+
+    def pyrocko_event(self, **kwargs):
+        mt = self.pyrocko_moment_tensor()
+        return Source.pyrocko_event(
+            self,
+            moment_tensor=self.pyrocko_moment_tensor(),
+            magnitude=float(mt.moment_magnitude()),
+            **kwargs)
+
+    @classmethod
+    def from_pyrocko_event(cls, ev, **kwargs):
+        d = {}
+        mt = ev.moment_tensor
+        if mt:
+            d.update(m6=map(float, mt.m6()))
+
+        d.update(kwargs)
+        return super(MTSourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
+
+
 class RectangularSource(DCSource):
     '''
     Classical Haskell source model modified for bilateral rupture.
@@ -2972,6 +3058,7 @@ source_classes = [
     DCSource,
     CLVDSource,
     MTSource,
+    MTSourceWithMagnitude,
     RectangularSource,
     DoubleDCSource,
     RingfaultSource,
