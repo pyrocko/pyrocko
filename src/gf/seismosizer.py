@@ -800,7 +800,7 @@ class SmoothRampSTF(STF):
     Based on moment function of double-couple point source proposed by Bruestle
     and Mueller (PEPI, 1983).
 
-    ..seealso:
+    .. seealso ::
         W. Bruestle, G. Mueller (1983), Moment and duration of shallow
         earthquakes from Love-wave modelling for regional distances, PEPI 32,
         312-324.
@@ -812,14 +812,14 @@ class SmoothRampSTF(STF):
     rise_ratio = Float.T(
         default=0.5,
         help='fraction of time compared to duration, '
-            'when the maximum amplitude is reached')
+             'when the maximum amplitude is reached')
 
     anchor = Float.T(
         default=0.0,
         help='anchor point with respect to source.time: ('
-            '-1.0: left -> source duration [0, T] ~ hypocenter time, '
-            '0.0: center -> source duration [-T/2, T/2] ~ centroid time, '
-            '+1.0: right -> source duration [-T, 0] ~ rupture end time)')
+             '-1.0: left -> source duration ``[0, T]`` ~ hypocenter time, '
+             '0.0: center -> source duration ``[-T/2, T/2]`` ~ centroid time, '
+             '+1.0: right -> source duration ``[-T, 0]`` ~ rupture end time)')
 
     def discretize_t(self, deltat, tref):
         tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
