@@ -1,13 +1,4 @@
-# http://pyrocko.org - GPLv3
-#
-# The Pyrocko Developers, 21st Century
-# ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
-from builtins import range, map, zip
-from past.builtins import cmp
-
 from collections import defaultdict
-from functools import cmp_to_key
 import time
 import math
 import os
@@ -17,17 +8,17 @@ import resource
 
 import numpy as num
 
-from pyrocko.guts import (Object, Float, String, StringChoice, List,
-                          Timestamp, Int, SObject, ArgumentError, Dict,
-                          ValidationError)
+from pyrocko.guts import Object, Float, String, StringChoice, List, \
+    Timestamp, Int, SObject, ArgumentError, Dict
+
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
-from pyrocko import trace, util, config, model
+from pyrocko import trace, model, util
+from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
-
-from . import meta, store, ws
 from .targets import Target, StaticTarget, SatelliteTarget
+import pyrocko.config
 
 pjoin = os.path.join
 
@@ -36,30 +27,6 @@ guts_prefix = 'pf'
 d2r = math.pi / 180.
 
 logger = logging.getLogger('pyrocko.gf.seismosizer')
-
-
-def cmp_none_aware(a, b):
-    if isinstance(a, tuple) and isinstance(b, tuple):
-        for xa, xb in zip(a, b):
-            rv = cmp_none_aware(xa, xb)
-            if rv != 0:
-                return rv
-
-        return 0
-
-    anone = a is None
-    bnone = b is None
-
-    if anone and bnone:
-        return 0
-
-    if anone:
-        return -1
-
-    if bnone:
-        return 1
-
-    return cmp(a, b)
 
 
 def xtime():
@@ -87,15 +54,12 @@ class ConversionError(Exception):
 
 
 class NoSuchStore(BadRequest):
-    def __init__(self, store_id=None):
-        BadRequest.__init__(self)
+    def __init__(self, store_id):
+        Exception.__init__(self)
         self.store_id = store_id
 
     def __str__(self):
-        if self.store_id is not None:
-            return 'no GF store with id "%s" found.' % self.store_id
-        else:
-            return 'GF store not found'
+        return 'no GF store with id "%s" found.' % self.store_id
 
 
 def ufloat(s):
@@ -132,18 +96,18 @@ def nonzero(x, eps=1e-15):
     return abs(x) > eps
 
 
-def permudef(ln, j=0):
-    if j < len(ln):
-        k, v = ln[j]
+def permudef(l, j=0):
+    if j < len(l):
+        k, v = l[j]
         for y in v:
-            ln[j] = k, y
-            for s in permudef(ln, j+1):
+            l[j] = k, y
+            for s in permudef(l, j+1):
                 yield s
 
-        ln[j] = k, v
+        l[j] = k, v
         return
     else:
-        yield ln
+        yield l
 
 
 def arr(x):
@@ -161,19 +125,19 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     mindeltagf = num.min(deltas)
     mindeltagf = min(mindeltagf, deltat * velocity)
 
-    ln = length
-    wd = width
+    l = length
+    w = width
 
-    nl = int((2./decimation_factor) * num.ceil(ln / mindeltagf)) + 1
-    nw = int((2./decimation_factor) * num.ceil(wd / mindeltagf)) + 1
+    nl = int((1./decimation_factor) * num.ceil(l / mindeltagf)) + 1
+    nw = int((1./decimation_factor) * num.ceil(w / mindeltagf)) + 1
 
     n = int(nl*nw)
 
-    dl = ln / nl
-    dw = wd / nw
+    dl = l / nl
+    dw = w / nw
 
-    xl = num.linspace(-0.5*(ln-dl), 0.5*(ln-dl), nl)
-    xw = num.linspace(-0.5*(wd-dw), 0.5*(wd-dw), nw)
+    xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
+    xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
 
     points = num.empty((n, 3), dtype=num.float)
     points[:, 0] = num.tile(xl, nw)
@@ -231,14 +195,14 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
 
 
 def outline_rect_source(strike, dip, length, width, anchor):
-    ln = length
-    wd = width
+    l = length
+    w = width
     points = num.array(
-        [[-0.5*ln, -0.5*wd, 0.],
-         [0.5*ln, -0.5*wd, 0.],
-         [0.5*ln, 0.5*wd, 0.],
-         [-0.5*ln, 0.5*wd, 0.],
-         [-0.5*ln, -0.5*wd, 0.]])
+        [[-0.5*l, -0.5*w, 0.],
+         [0.5*l, -0.5*w, 0.],
+         [0.5*l, 0.5*w, 0.],
+         [-0.5*l, 0.5*w, 0.],
+         [-0.5*l, -0.5*w, 0.]])
     anch_x = 0.
     anch_y = 0.
     if anchor == 'top' or anchor == 'bottom':
@@ -282,7 +246,6 @@ class Range(SObject):
       Range(0, 10e3, 1e3)
       Range('0 .. 10k @ 11')
       Range(start=0., stop=10*km, n=11)
-
       Range(0, 10e3, n=11)
       Range(values=[x*1e3 for x in range(11)])
 
@@ -335,7 +298,7 @@ class Range(SObject):
             if len(args) == 3:
                 d['step'] = float(args[2])
 
-        for k, v in kwargs.items():
+        for k, v in kwargs.iteritems():
             if k in d:
                 raise ArgumentError('%s specified more than once' % k)
 
@@ -385,7 +348,7 @@ class Range(SObject):
         if not m:
             try:
                 vals = [ufloat(x) for x in s.split(',')]
-            except Exception:
+            except:
                 raise InvalidGridDef(
                     '"%s" is not a valid range specification' % s)
 
@@ -397,7 +360,7 @@ class Range(SObject):
             stop = ufloat_or_none(d['stop'])
             step = ufloat_or_none(d['step'])
             n = int_or_none(d['n'])
-        except Exception:
+        except:
             raise InvalidGridDef(
                 '"%s" is not a valid range specification' % s)
 
@@ -485,7 +448,7 @@ class Range(SObject):
 
         vals = self.make_relative(base, vals)
 
-        return list(map(float, vals))
+        return map(float, vals)
 
     def make_relative(self, base, vals):
         if self.relative == 'add':
@@ -625,7 +588,7 @@ class STF(Object, Cloneable):
                 num.array([th - tref, tref - tl], dtype=num.float) / deltat)
 
     def base_key(self):
-        return (type(self).__name__,)
+        return (type(self),)
 
 
 g_unit_pulse = STF()
@@ -681,7 +644,7 @@ class BoxcarSTF(STF):
         tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        nt = int(round((tmax - tmin) / deltat)) + 1
+        nt = (tmax - tmin) / deltat + 1
         times = num.linspace(tmin, tmax, nt)
         amplitudes = num.ones_like(times)
         if times.size > 1:
@@ -697,7 +660,7 @@ class BoxcarSTF(STF):
         return sshift(times, amplitudes, -tshift, deltat)
 
     def base_key(self):
-        return (type(self).__name__, self.duration, self.anchor)
+        return (self.duration, self.anchor, type(self))
 
 
 class TriangularSTF(STF):
@@ -773,7 +736,7 @@ class TriangularSTF(STF):
 
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        nt = int(round((tmax - tmin) / deltat)) + 1
+        nt = (tmax - tmin) / deltat + 1
         if nt > 1:
             t_edges = num.linspace(tmin-0.5*deltat, tmax+0.5*deltat, nt + 1)
             t = tmin_stf + self.duration * num.array(
@@ -788,8 +751,7 @@ class TriangularSTF(STF):
         return times, amplitudes
 
     def base_key(self):
-        return (
-            type(self).__name__, self.duration, self.peak_ratio, self.anchor)
+        return (self.duration, self.peak_ratio, self.anchor, type(self))
 
 
 class HalfSinusoidSTF(STF):
@@ -825,7 +787,7 @@ class HalfSinusoidSTF(STF):
         tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        nt = int(round((tmax - tmin) / deltat)) + 1
+        nt = (tmax - tmin) / deltat + 1
         if nt > 1:
             t_edges = num.maximum(tmin_stf, num.minimum(tmax_stf, num.linspace(
                 tmin - 0.5*deltat, tmax + 0.5*deltat, nt + 1)))
@@ -839,61 +801,7 @@ class HalfSinusoidSTF(STF):
         return times, amplitudes
 
     def base_key(self):
-        return (type(self).__name__, self.duration, self.anchor)
-
-
-class SmoothRampSTF(STF):
-    '''Smooth-ramp type source time function for near-field displacement.
-    Based on moment function of double-couple point source proposed by Bruestle
-    and Mueller (PEPI, 1983).
-
-    .. [1] W. Bruestle, G. Mueller (1983), Moment and duration of shallow
-        earthquakes from Love-wave modelling for regional distances, PEPI 32,
-        312-324.
-    '''
-    duration = Float.T(
-        default=0.0,
-        help='duration of the ramp (baseline)')
-
-    rise_ratio = Float.T(
-        default=0.5,
-        help='fraction of time compared to duration, '
-             'when the maximum amplitude is reached')
-
-    anchor = Float.T(
-        default=0.0,
-        help='anchor point with respect to source.time: ('
-             '-1.0: left -> source duration ``[0, T]`` ~ hypocenter time, '
-             '0.0: center -> source duration ``[-T/2, T/2]`` ~ centroid time, '
-             '+1.0: right -> source duration ``[-T, 0]`` ~ rupture end time)')
-
-    def discretize_t(self, deltat, tref):
-        tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
-        tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
-        tmin = round(tmin_stf / deltat) * deltat
-        tmax = round(tmax_stf / deltat) * deltat
-        D = round((tmax - tmin)/deltat) * deltat
-        nt = int(round(D/deltat)) + 1
-        times = num.linspace(tmin, tmax, nt)
-        if nt > 1:
-            rise_time = self.rise_ratio * self.duration
-            amplitudes = num.ones_like(times)
-            tp = tmin + rise_time
-            ii = num.where(times <= tp)
-            t_inc = times[ii]
-            a = num.cos(num.pi * (t_inc - tmin_stf) / rise_time)
-            b = num.cos(3 * num.pi * (t_inc - tmin_stf) / rise_time) - 1.0
-            amplitudes[ii] = (9./16.) * (1 - a + (1./9.)*b)
-
-            amplitudes /= num.sum(amplitudes)
-        else:
-            amplitudes = num.ones(1)
-
-        return times, amplitudes
-
-    def base_key(self):
-        return (type(self).__name__,
-                self.duration, self.rise_ratio, self.anchor)
+        return (self.duration, self.anchor, type(self))
 
 
 class STFMode(StringChoice):
@@ -942,7 +850,7 @@ class Source(meta.Location, Cloneable):
 
         '''
 
-        for (k, v) in kwargs.items():
+        for (k, v) in kwargs.iteritems():
             self[k] = v
 
     def grid(self, **variables):
@@ -977,7 +885,7 @@ class Source(meta.Location, Cloneable):
         is shared.
         '''
         return (self.depth, self.lat, self.north_shift,
-                self.lon, self.east_shift, type(self).__name__) + \
+                self.lon, self.east_shift, type(self)) + \
             self.effective_stf_pre().base_key()
 
     def get_timeshift(self):
@@ -1118,6 +1026,8 @@ class SourceWithMagnitude(Source):
         default=6.0,
         help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
+    _keys = None
+
     def __init__(self, **kwargs):
         if 'moment' in kwargs:
             mom = kwargs.pop('moment')
@@ -1133,6 +1043,13 @@ class SourceWithMagnitude(Source):
     @moment.setter
     def moment(self, value):
         self.magnitude = float(mt.moment_to_magnitude(value))
+
+    @classmethod
+    def keys(cls):
+        if cls._keys is None:
+            cls._keys = super(SourceWithMagnitude, cls).keys() + ['moment']
+
+        return cls._keys
 
     def pyrocko_event(self, **kwargs):
         return Source.pyrocko_event(
@@ -1150,146 +1067,35 @@ class SourceWithMagnitude(Source):
         return super(SourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
 
 
-class DerivedMagnitudeError(ValidationError):
-    pass
-
-
-class SourceWithDerivedMagnitude(Source):
-
-    magnitude = Float.T(
-        optional=True,
-        help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
-
-    interpolation = meta.InterpolationMethod.T(
-        optional=True,
-        default='nearest_neighbor',
-        help='velocity model interpolation technique for magnitude '
-             'conversions')
-
-    class __T(Source.T):
-        def validate_extra(self, val):
-            Source.T.validate_extra(self, val)
-            val.check_conflicts()
-
-    def __init__(self, **kwargs):
-        if 'moment' in kwargs:
-            mom = kwargs.pop('moment')
-            if 'magnitude' not in kwargs:
-                kwargs['magnitude'] = float(mt.moment_to_magnitude(mom))
-
-        Source.__init__(self, **kwargs)
-
-    def check_conflicts(self):
-        '''
-        Check for parameter conflicts.
-
-        To be overloaded in subclasses. Raises :py:exc:`DerivedMagnitudeError`
-        on conflicts.
-        '''
-        pass
-
-    def get_magnitude(self, store=None):
-        return self.magnitude
-
-    def get_moment(self, store=None):
-        return float(mt.magnitude_to_moment(self.get_magnitude(store=store)))
-
-    def pyrocko_moment_tensor(self, store=None):
-        m0 = self.get_moment(store=store)
-        return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
-
-    def pyrocko_event(self, store=None, **kwargs):
-        try:
-            mt = self.pyrocko_moment_tensor(store=store)
-        except DerivedMagnitudeError:
-            mt = None
-
-        return Source.pyrocko_event(
-            self,
-            moment_tensor=mt,
-            **kwargs)
-
-
-class ExplosionSource(SourceWithDerivedMagnitude):
+class ExplosionSource(SourceWithMagnitude):
     '''
     An isotropic explosion point source.
     '''
-
-    volume_change = Float.T(
-        optional=True,
-        help='volume change of the explosion/implosion or '
-             'the contracting/extending magmatic source. [m^3]')
 
     discretized_source_class = meta.DiscretizedExplosionSource
 
     def base_key(self):
         return Source.base_key(self)
 
-    def check_conflicts(self):
-        if self.magnitude is not None and self.volume_change is not None:
-            raise DerivedMagnitudeError(
-                'magnitude and volume_change are both defined')
-
-    def get_magnitude(self, store=None):
-        self.check_conflicts()
-
-        if self.magnitude is not None:
-            return self.magnitude
-
-        elif self.volume_change is not None:
-            moment = self.volume_change * \
-                self.get_moment_to_volume_change_ratio(store)
-
-            return float(mt.moment_to_magnitude(moment))
-
-        else:
-            return float(mt.moment_to_magnitude(1.0))
-
-    def get_volume_change(self, store=None):
-        self.check_conflicts()
-
-        if self.volume_change is not None:
-            return self.volume_change
-
-        elif self.magnitude is not None:
-            moment = float(mt.magnitude_to_moment(self.magnitude))
-            return moment / self.get_moment_to_volume_change_ratio(store)
-
-        else:
-            return 1.0 / self.get_moment_to_volume_change_ratio(store)
-
-    def get_moment_to_volume_change_ratio(self, store):
-        if store is None:
-            raise DerivedMagnitudeError(
-                'need earth model to convert between volume change and '
-                'magnitude')
-
-        points = num.array(
-            [[self.north_shift, self.east_shift, self.depth]], dtype=num.float)
-
-        try:
-            shear_moduli = store.config.get_shear_moduli(
-                self.lat, self.lon,
-                points=points,
-                interpolation=self.interpolation)[0]
-        except meta.OutOfBounds:
-            raise DerivedMagnitudeError(
-                'could not get shear modulus at source position')
-
-        return float(3. * shear_moduli)
-
     def get_factor(self):
-        return 1.0
+        return mt.magnitude_to_moment(self.magnitude)
 
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
-
-        amplitudes *= self.get_moment(store)
-
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
+
+    def pyrocko_moment_tensor(self):
+        m0 = self.moment
+        return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
+
+    def pyrocko_event(self, **kwargs):
+        return SourceWithMagnitude.pyrocko_event(
+            self,
+            moment_tensor=self.pyrocko_moment_tensor(),
+            **kwargs)
 
 
 class RectangularExplosionSource(ExplosionSource):
@@ -1418,7 +1224,7 @@ class DCSource(SourceWithMagnitude):
         return Source.base_key(self) + (self.strike, self.dip, self.rake)
 
     def get_factor(self):
-        return float(mt.magnitude_to_moment(self.magnitude))
+        return mt.magnitude_to_moment(self.magnitude)
 
     def discretize_basesource(self, store, target=None):
         mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake)
@@ -1593,7 +1399,7 @@ class MTSource(Source):
         d = {}
         mt = ev.moment_tensor
         if mt:
-            d.update(m6=tuple(map(float, mt.m6())))
+            d.update(m6=map(float, mt.m6()))
 
         d.update(kwargs)
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
@@ -1808,7 +1614,7 @@ class DoubleDCSource(SourceWithMagnitude):
     def base_key(self):
         return (
             self.depth, self.lat, self.north_shift,
-            self.lon, self.east_shift, type(self).__name__) + \
+            self.lon, self.east_shift, type(self)) + \
             self.effective_stf1_pre().base_key() + \
             self.effective_stf2_pre().base_key() + (
             self.strike1, self.dip1, self.rake1,
@@ -1999,7 +1805,7 @@ class RingfaultSource(SourceWithMagnitude):
              [num.zeros(n), num.zeros(n), num.ones(n)]], (2, 0, 1))
 
         ms = num.zeros((n, 3, 3))
-        for i in range(n):
+        for i in xrange(n):
             mtemp = num.dot(rotmats[i].T, num.dot(m, rotmats[i]))
             ms[i, :, :] = num.dot(rotmat.T, num.dot(mtemp, rotmat))
 
@@ -2227,8 +2033,8 @@ class Request(Object):
         ms = self.subsources_map()
         mt = self.subtargets_map()
         m = {}
-        for (ks, ls) in ms.items():
-            for (kt, lt) in mt.items():
+        for (ks, ls) in ms.iteritems():
+            for (kt, lt) in mt.iteritems():
                 m[ks, kt] = (ls, lt)
 
         return m
@@ -2473,7 +2279,7 @@ def process_subrequest_dynamic(work, pshared=None):
             components,
             pshared['dsource_cache'])
 
-    except meta.OutOfBounds as e:
+    except meta.OutOfBounds, e:
         e.context = OutOfBoundsContext(
             source=sources[0],
             target=targets[0],
@@ -2484,7 +2290,7 @@ def process_subrequest_dynamic(work, pshared=None):
     n_records_stacked = 0
     t_optimize = 0.0
     t_stack = 0.0
-    for _, tr in base_seismogram.items():
+    for _, tr in base_seismogram.iteritems():
         n_records_stacked += tr.n_records_stacked
         t_optimize += tr.t_optimize
         t_stack += tr.t_stack
@@ -2500,7 +2306,7 @@ def process_subrequest_dynamic(work, pshared=None):
                 result.t_optimize = t_optimize
                 result.t_stack = t_stack
 
-            except SeismosizerError as e:
+            except SeismosizerError, e:
                 result = e
 
             results.append((isource, itarget, result))
@@ -2530,7 +2336,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
                 try:
                     base_seismogram, tcounters = engine.base_seismogram(
                         source, target, components, dsource_cache, nthreads)
-                except meta.OutOfBounds as e:
+                except meta.OutOfBounds, e:
                     e.context = OutOfBoundsContext(
                         source=sources[0],
                         target=targets[0],
@@ -2542,7 +2348,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
                 t_optimize = 0.0
                 t_stack = 0.0
 
-                for _, tr in base_seismogram.items():
+                for _, tr in base_seismogram.iteritems():
                     n_records_stacked += tr.n_records_stacked
                     t_optimize += tr.t_optimize
                     t_stack += tr.t_stack
@@ -2555,7 +2361,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
                         len(targets)
                     result.t_optimize = t_optimize
                     result.t_stack = t_stack
-                except SeismosizerError as e:
+                except SeismosizerError, e:
                     result = e
 
                 tcounters.append(xtime())
@@ -2577,7 +2383,7 @@ def process_static(work, psources, ptargets, engine, nthreads=0):
                 try:
                     base_statics, tcounters = engine.base_statics(
                         source, target, components, nthreads)
-                except meta.OutOfBounds as e:
+                except meta.OutOfBounds, e:
                     e.context = OutOfBoundsContext(
                         source=sources[0],
                         target=targets[0],
@@ -2629,20 +2435,13 @@ class LocalEngine(Engine):
                 self.store_dirs.extend(env_store_dirs.split(':'))
 
         if use_config:
-            c = config.config()
+            c = pyrocko.config.config()
             self.store_superdirs.extend(c.gf_store_superdirs)
             self.store_dirs.extend(c.gf_store_dirs)
 
-        self._check_store_dirs_type()
         self._id_to_store_dir = {}
         self._open_stores = {}
         self._effective_default_store_id = None
-
-    def _check_store_dirs_type(self):
-        for sdir in ['store_dirs', 'store_superdirs']:
-            if not isinstance(self.__getattribute__(sdir), list):
-                raise TypeError("{} of {} is not of type list".format(
-                    sdir, self.__class__.__name__))
 
     def _get_store_id(self, store_dir):
         store_ = store.Store(store_dir)
@@ -2658,7 +2457,7 @@ class LocalEngine(Engine):
     def iter_store_dirs(self):
         for d in self.store_superdirs:
             if not os.path.exists(d):
-                logger.warning('store_superdir not available: %s' % d)
+                logger.warn('store_superdir not available: %s' % d)
                 continue
 
             for entry in os.listdir(d):
@@ -2750,7 +2549,7 @@ class LocalEngine(Engine):
         Close and remove ids from cashed stores.
         '''
         store_ids = []
-        for store_id, store_ in self._open_stores.items():
+        for store_id, store_ in self._open_stores.iteritems():
             store_.close()
             store_ids.append(store_id)
 
@@ -2869,7 +2668,7 @@ class LocalEngine(Engine):
             return base_statics, tcounters
 
     def _post_process_dynamic(self, base_seismogram, source, target):
-        deltat = list(base_seismogram.values())[0].deltat
+        deltat = base_seismogram.values()[0].deltat
 
         rule = self.get_rule(source, target)
         data = rule.apply_(target, base_seismogram)
@@ -2878,7 +2677,7 @@ class LocalEngine(Engine):
         if factor != 1.0:
             data = data * factor
 
-        itmin = list(base_seismogram.values())[0].itmin
+        itmin = base_seismogram.values()[0].itmin
 
         stf = source.effective_stf_post()
 
@@ -2963,11 +2762,10 @@ class LocalEngine(Engine):
                             enumerate(request.targets))
 
         m = request.subrequest_map()
-
-        skeys = sorted(m.keys(), key=cmp_to_key(cmp_none_aware))
+        skeys = sorted(m.keys())
         results_list = []
 
-        for i in range(len(request.sources)):
+        for i in xrange(len(request.sources)):
             results_list.append([None] * len(request.targets))
 
         tcounters_dyn_list = []
@@ -3064,9 +2862,10 @@ class LocalEngine(Engine):
                 if not isinstance(result, meta.Result):
                     continue
                 shr = float(result.n_shared_stacking)
-                n_records_stacked += result.n_records_stacked / shr
-                s.t_perc_optimize += result.t_optimize / shr
-                s.t_perc_stack += result.t_stack / shr
+                n_records_stacked += float(result.n_records_stacked) /\
+                    shr
+                s.t_perc_optimize += float(result.t_optimize) / shr
+                s.t_perc_stack += float(result.t_stack) / shr
         s.n_records_stacked = int(n_records_stacked)
         if t_dyn != 0.:
             s.t_perc_optimize /= t_dyn * 100
@@ -3140,19 +2939,19 @@ class SourceGrid(SourceGroup):
     def __len__(self):
         n = 1
         for (k, v) in self.make_coords(self.base):
-            n *= len(list(v))
+            n *= len(v)
 
         return n
 
     def __iter__(self):
         for items in permudef(self.make_coords(self.base)):
-            s = self.base.clone(**{k: v for (k, v) in items})
+            s = self.base.clone(**dict((k, v) for (k, v) in items))
             s.regularize()
             yield s
 
     def ordered_params(self):
         ks = list(self.variables.keys())
-        for k in self.order + list(self.base.keys()):
+        for k in self.order + self.base.keys():
             if k in ks:
                 yield k
                 ks.remove(k)
@@ -3161,7 +2960,7 @@ class SourceGrid(SourceGroup):
                             (ks[0], self.base.__class__.__name__))
 
     def make_coords(self, base):
-        return [(param, self.variables[param].make(base=base[param]))
+        return [(param, self.variables[param].make(self.base))
                 for param in self.ordered_params()]
 
 
@@ -3192,7 +2991,6 @@ __all__ = '''
 SeismosizerError
 BadRequest
 NoSuchStore
-DerivedMagnitudeError
 STFMode
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
 Request
