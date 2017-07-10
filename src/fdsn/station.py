@@ -980,6 +980,58 @@ class FDSNStationXML(Object):
 
         return pstations
 
+    @classmethod
+    def from_pyrocko_stations(cls, pyrocko_stations):
+        ''' Generate :py:class:`FDSNStationXML` from list of
+        :py:class;`pyrocko.model.Station` instances.
+
+        :param pyrocko_stations: list of
+            :py:class;`pyrocko.model.Station` instances.
+        '''
+        from collections import defaultdict
+        network_dict = defaultdict(list)
+        for s in pyrocko_stations:
+            network, station, location = s.nsl()
+            channel_list = []
+            for c in s.channels:
+                channel_list.append(
+                    Channel(
+                        location_code=location,
+                        code=c.name,
+                        latitude=Latitude(value=s.lat),
+                        longitude=Longitude(value=s.lon),
+                        elevation=Distance(value=s.elevation),
+                        depth=Distance(value=s.depth),
+                        azimuth=Azimuth(value=c.azimuth),
+                        dip=Dip(value=c.dip)
+                    )
+                )
+
+            network_dict[network].append(
+                Station(
+                    code=station,
+                    latitude=Latitude(value=s.lat),
+                    longitude=Longitude(value=s.lon),
+                    elevation=Distance(value=s.elevation),
+                    channel_list=channel_list)
+            )
+
+        timestamp = time.time()
+        network_list = []
+        for k, station_list in network_dict.items():
+
+            network_list.append(
+                Network(
+                    code=k, station_list=station_list,
+                    total_number_stations=len(station_list)))
+
+        sxml = FDSNStationXML(
+            source='from pyrocko stations list', created=timestamp,
+            network_list=network_list)
+
+        sxml.validate()
+        return sxml
+
     def iter_network_stations(
             self, net=None, sta=None, time=None, timespan=None):
 
