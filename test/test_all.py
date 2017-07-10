@@ -35,6 +35,7 @@ from test_fomosto_report import ReportTestCase  # noqa
 from test_gf_psgrn_pscmp import GFPsgrnPscmpTestCase  # noqa
 from test_gf_static import GFStaticTest  # noqa
 from test_response_plot import ResponsePlotTestCase  # noqa
+from test_quakeml import QuakeMLTestCase  # noqa
 
 import platform
 import unittest
