@@ -344,12 +344,13 @@ class OrthodromeTestCase(unittest.TestCase):
             points_ip = num.zeros((nip*points.shape[0], 2))
             for ip in range(points.shape[0]) + [0]:
                 n, e = orthodrome.latlon_to_ne_numpy(
-                    points[ip % np, 0], points[ip % np, 1], points[(ip+1) % np, 0], points[(ip+1) % np, 1])
+                    points[ip % np, 0], points[ip % np, 1],
+                    points[(ip+1) % np, 0], points[(ip+1) % np, 1])
 
                 ns = num.arange(nip) * n / nip
                 es = num.arange(nip) * e / nip
                 lats, lons = orthodrome.ne_to_latlon(
-                    points[ip%np, 0], points[ip%np, 1], ns, es)
+                    points[ip % np, 0], points[ip % np, 1], ns, es)
 
                 points_ip[ip*nip:(ip+1)*nip, 0] = lats
                 points_ip[ip*nip:(ip+1)*nip, 1] = lons
@@ -362,36 +363,38 @@ class OrthodromeTestCase(unittest.TestCase):
                     edgecolor=color,
                     alpha=0.5))
 
-            points_xyz = latlon_to_xyz(points_ip)
+            points_xyz = orthodrome.latlon_to_xyz(points_ip.T)
             center_xyz = num.mean(points_xyz, axis=0)
 
             assert num.all(
-                distances3d(points_xyz, center_xyz[num.newaxis, :]) < 1.0)
+                orthodrome.distances3d(
+                    points_xyz, center_xyz[num.newaxis, :]) < 1.0)
 
-            lat, lon = xyz_to_latlon(center_xyz)
-            rot = rot_to_00(lat, lon)
+            lat, lon = orthodrome.xyz_to_latlon(center_xyz)
+            rot = orthodrome.rot_to_00(lat, lon)
 
             points_rot_xyz = num.dot(rot, points_xyz.T).T
-            points_rot_pro = stereographic(points_rot_xyz)
+            points_rot_pro = orthodrome.stereographic(points_rot_xyz)  # noqa
 
-            poly_xyz = latlon_to_xyz(polygon)
+            poly_xyz = orthodrome.latlon_to_xyz(points_ip)
             poly_rot_xyz = num.dot(rot, poly_xyz.T).T
-            groups = spoly_cut([poly_rot_xyz], axis=0)
-            result = num.zeros(points.shape[0], dtype=num.int)
+            groups = orthodrome.spoly_cut([poly_rot_xyz], axis=0)
+            num.zeros(points.shape[0], dtype=num.int)
+
             for group in groups:
                 for poly_rot_group_xyz in group:
 
-                axes.set_xlim(-180., 180.)
-                axes.set_ylim(-90., 90.)
+                    axes.set_xlim(-180., 180.)
+                    axes.set_ylim(-90., 90.)
 
                 plt.show()
 
     def test_point_in_region(self):
         testdata = [
-            ((-20., 180.), (-90., 90., -180., 180.), True),
-            ((-20., 180.), (-90., 90., 170., -170.), True),
-            ((-20., 160.), (-90., 90., 170., -170.), False),
-            ((-20., -160.), (-90., 90., 170., -170.), False),
+            ((-20., 180.), (-180., 180., -90., 90.), True),
+            ((-20., 180.), (170., -170., -90., 90.), True),
+            ((-20., 160.), (170., -170., -90., 90.), False),
+            ((-20., -160.), (170., -170., -90., 90.), False),
         ]
 
         for point, region, in_region in testdata:
