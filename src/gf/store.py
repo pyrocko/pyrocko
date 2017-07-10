@@ -1417,6 +1417,14 @@ class Store(BaseStore):
     stats_keys = BaseStore.stats_keys + ['decimated']
 
     def check(self, show_progress=False):
+        for pdef in self.config.tabulated_phases:
+            phase_id = pdef.id
+            ph = self.get_stored_phase(phase_id)
+            if ph.check_holes():
+                logger.warn(
+                    'travel time table of phase "{}" contains holes'.format(
+                        phase_id))
+
         if show_progress:
             pbar = util.progressbar('checking store', self.config.nrecords)
 
