@@ -31,12 +31,18 @@ class FDSNStationTestCase(unittest.TestCase):
 
             assert ok
 
-            assert len(x.get_pyrocko_stations()) in (3, 4)
+            pstations = x.get_pyrocko_stations()
+            assert len(pstations) in (3, 4)
             for s in x.get_pyrocko_stations():
                 assert len(s.get_channels()) == 3
 
             assert len(x.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
+
+            new = fdsn_station.FDSNStationXML.from_pyrocko_stations(pstations)
+            assert len(new.get_pyrocko_stations()) in (3, 4)
+            for s in new.get_pyrocko_stations():
+                assert len(s.get_channels()) == 3
 
     def test_retrieve(self):
         for site in ['geofon', 'iris']:
