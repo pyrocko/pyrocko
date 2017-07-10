@@ -1,8 +1,8 @@
 Accessing crustal velocity databases
 =====================================
 
-Crust 2.0
----------
+Crust 2.0 Database
+------------------
 
 The `CRUST 2.0 <http://igppweb.ucsd.edu/~gabi/rem.html>`_ is a global 2x2 degree velocity model of the earth's crust. Each individual profile is a 7 layer 1D-model.
 

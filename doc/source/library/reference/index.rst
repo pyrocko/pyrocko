@@ -10,6 +10,7 @@ Reference
    catalog
    crust2x2
    crustdb
+   gshhg
    evalresp
    gmtpy
    gui_util
@@ -29,6 +30,7 @@ Reference
    slink
    snuffling
    tectonics
+   automap
    trace
    util
 

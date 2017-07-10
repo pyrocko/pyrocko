@@ -73,28 +73,6 @@ class TectonicsTestCase(unittest.TestCase):
             'Nazca Plate',
             'Altiplano Plate']
 
-    def test_rotations(self):
-        for lat in num.linspace(-90., 90., 20):
-            for lon in num.linspace(-180., 180., 20):
-                point = num.array([lat, lon], dtype=num.float)
-                xyz = tectonics.latlon_to_xyz(point)
-                rot = tectonics.rot_to_00(point[0], point[1])
-                p2 = num.dot(rot, xyz)
-                assert_allclose(p2, [1., 0., 0.], atol=1.0e-7)
-
-    def test_rotation2(self):
-        eps = 1.0e-7
-        lats = num.linspace(50., 60., 20)
-        lons = num.linspace(170., 180., 20)
-        lats2 = num.repeat(lats, lons.size)
-        lons2 = num.tile(lons, lats.size)
-        points = num.vstack((lats2, lons2)).T
-        xyz = tectonics.latlon_to_xyz(points)
-        rot = tectonics.rot_to_00(lats[0], lons[0])
-        xyz2 = num.dot(rot, xyz.T).T
-        points2 = tectonics.xyz_to_latlon(xyz2)
-        assert num.all(points2[:, 1] > -eps)
-
     def test_velocities(self):
         gsrm = tectonics.GSRM1()
         lats, lons, vnorth, veast, vnorth_err, veast_err, corr = \
