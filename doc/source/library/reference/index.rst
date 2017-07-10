@@ -30,6 +30,7 @@ Reference
    slink
    snuffling
    tectonics
+   automap
    trace
    util
 

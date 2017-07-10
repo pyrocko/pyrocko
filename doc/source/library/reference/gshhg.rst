@@ -5,6 +5,8 @@ The `GSHHG database <https://www.ngdc.noaa.gov/mgg/shorelines/gshhs.html>`_ is a
 
 We implement functions to test points for land/water and mask land areas, excluding lakes.
 
+See tutorial example :doc:`/library/examples/geographical_databases`.
+
 .. note ::
 
     Please cite:
