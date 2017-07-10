@@ -985,7 +985,7 @@ def geodetic_to_ecef(lat, lon, alt):
     :return: ECEF Cartesian coordinates (X, Y, Z) in [m].
     :rtype: tuple, float
 
-    .. seealso:
+    .. seealso ::
         https://en.wikipedia.org/wiki/ECEF
         https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
     '''
@@ -1024,7 +1024,7 @@ def ecef_to_geodetic(X, Y, Z):
         in [deg] and altitude is in [m] (positive for points outside the geoid).
     :rtype: tuple, float
 
-    .. seealso:
+    .. seealso ::
         https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#The_application_of_Ferrari.27s_solution
     '''
     wgs = get_wgs84()
