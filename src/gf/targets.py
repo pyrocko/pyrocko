@@ -215,7 +215,7 @@ class StaticTarget(meta.MultiLocation):
         ''' Discretizes the multilocation target into a list of
         :class:`Target:`
 
-        :returns: class:`Target`
+        :returns: :class:`Target`
         :rtype: list
         '''
         targets = []

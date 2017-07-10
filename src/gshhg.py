@@ -171,7 +171,7 @@ class Polygon(object):
                         points[:, 1] <= self.east],
                        axis=0)
         r = orthodrome.contains_points(self.points, points)
-        logger.debug('%s: points %d' % (self.level, r.sum()))
+        logger.debug('%s: points inside %d' % (self.level, r.sum()))
         return r
         if num.any(cond):
             pass
