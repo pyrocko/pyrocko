@@ -111,8 +111,10 @@ static PyObject* autopick_recursive_stalta_wrapper(PyObject *dummy, PyObject *ar
     PyObject *inout_array_obj, *temp_array_obj;
     PyArrayObject *inout_array = NULL;
     PyArrayObject *temp_array = NULL;
-    int ns, nl, initialize, nsamples, ntemp; 
-    double ks, kl, k; 
+    int ns, nl, initialize, nsamples, ntemp;
+    double ks, kl, k;
+
+    (void) dummy;
 
     if (!PyArg_ParseTuple(args, "iidddOOi", &ns, &nl, &ks, &kl, &k, &inout_array_obj, &temp_array_obj, &initialize)) {
         PyErr_SetString(AutoPickError, "invalid arguments in recursive_stalta(ns, nl, ks, kl, inout_data, temp_data, initialize)" );
