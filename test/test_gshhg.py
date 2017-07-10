@@ -42,7 +42,7 @@ class BBOtherSide(object):
 
 class GSHHGTest(unittest.TestCase):
     def setUp(self):
-        self.gshhg = gshhg.GSHHG.full()
+        self.gshhg = gshhg.GSHHG.intermediate()
 
     def test_polygon_loading_points(self):
         for ipoly in xrange(10):
