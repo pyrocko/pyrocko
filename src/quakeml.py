@@ -1,4 +1,20 @@
-from pyrocko.guts import *
+import logging
+from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
+    Timestamp, Object, List, Union, Bool
+from pyrocko import model
+
+
+logger = logging.getLogger('pyrocko.quakeml')
+
+
+def one_element_or_none(l):
+    if len(l) == 1:
+        return l[0]
+    elif len(l) == 0:
+        return None
+    else:
+        logger.warn('More than one element in list: {}'.format(l))
+        return None
 
 
 class ResourceIdentifier(StringPattern):
@@ -350,7 +366,8 @@ class WaveformStreamID(Object):
     network_code = AnonymousNetworkCode.T(xmlstyle='attribute')
     station_code = AnonymousStationCode.T(xmlstyle='attribute')
     channel_code = AnonymousChannelCode.T(optional=True, xmlstyle='attribute')
-    location_code = AnonymousLocationCode.T(optional=True, xmlstyle='attribute')
+    location_code = AnonymousLocationCode.T(
+        optional=True, xmlstyle='attribute')
 
 
 class Comment(Object):
@@ -360,11 +377,13 @@ class Comment(Object):
 
 
 class MomentTensor(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     data_used_list = List.T(DataUsed.T())
     comment_list = List.T(Comment.T())
     derived_origin_id = ResourceReference.T(xmltagname='derivedOriginID')
-    moment_magnitude_id = ResourceReference.T(optional=True, xmltagname='momentMagnitudeID')
+    moment_magnitude_id = ResourceReference.T(
+        optional=True, xmltagname='momentMagnitudeID')
     scalar_moment = RealQuantity.T(optional=True)
     tensor = Tensor.T(optional=True)
     variance = Float.T(optional=True)
@@ -372,7 +391,8 @@ class MomentTensor(Object):
     double_couple = Float.T(optional=True)
     clvd = Float.T(optional=True)
     iso = Float.T(optional=True)
-    greens_function_id = ResourceReference.T(optional=True, xmltagname='greensFunctionID')
+    greens_function_id = ResourceReference.T(
+        optional=True, xmltagname='greensFunctionID')
     filter_id = ResourceReference.T(optional=True, xmltagname='filterID')
     source_time_function = SourceTimeFunction.T(optional=True)
     method_id = ResourceReference.T(optional=True, xmltagname='methodID')
@@ -382,7 +402,8 @@ class MomentTensor(Object):
 
 
 class Amplitude(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
     generic_amplitude = RealQuantity.T()
     type = Type.T(optional=True)
@@ -403,9 +424,11 @@ class Amplitude(Object):
 
 
 class Magnitude(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
-    station_magnitude_contribution_list = List.T(StationMagnitudeContribution.T())
+    station_magnitude_contribution_list = List.T(
+        StationMagnitudeContribution.T())
     mag = RealQuantity.T()
     type = Type.T(optional=True)
     origin_id = ResourceReference.T(optional=True, xmltagname='originID')
@@ -418,7 +441,8 @@ class Magnitude(Object):
 
 
 class StationMagnitude(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
     origin_id = ResourceReference.T(optional=True, xmltagname='originID')
     mag = RealQuantity.T()
@@ -430,7 +454,8 @@ class StationMagnitude(Object):
 
 
 class Arrival(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
     pick_id = ResourceReference.T(xmltagname='pickID')
     phase = Phase.T()
@@ -445,12 +470,14 @@ class Arrival(Object):
     time_used = Int.T(optional=True)
     horizontal_slowness_weight = Float.T(optional=True)
     backazimuth_weight = Float.T(optional=True)
-    earth_model_id = ResourceReference.T(optional=True, xmltagname='earthModelID')
+    earth_model_id = ResourceReference.T(
+        optional=True, xmltagname='earthModelID')
     creation_info = CreationInfo.T(optional=True)
 
 
 class Pick(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
     time = TimeQuantity.T()
     waveform_id = WaveformStreamID.T(xmltagname='waveformID')
@@ -458,7 +485,8 @@ class Pick(Object):
     method_id = ResourceReference.T(optional=True, xmltagname='methodID')
     horizontal_slowness = RealQuantity.T(optional=True)
     backazimuth = RealQuantity.T(optional=True)
-    slowness_method_id = ResourceReference.T(optional=True, xmltagname='slownessMethodID')
+    slowness_method_id = ResourceReference.T(
+        optional=True, xmltagname='slownessMethodID')
     onset = PickOnset.T(optional=True)
     phase_hint = Phase.T(optional=True)
     polarity = PickPolarity.T(optional=True)
@@ -468,11 +496,13 @@ class Pick(Object):
 
 
 class FocalMechanism(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     waveform_id_list = List.T(WaveformStreamID.T(xmltagname='waveformID'))
     comment_list = List.T(Comment.T())
     moment_tensor_list = List.T(MomentTensor.T())
-    triggering_origin_id = ResourceReference.T(optional=True, xmltagname='triggeringOriginID')
+    triggering_origin_id = ResourceReference.T(
+        optional=True, xmltagname='triggeringOriginID')
     nodal_planes = NodalPlanes.T(optional=True)
     principal_axes = PrincipalAxes.T(optional=True)
     azimuthal_gap = Float.T(optional=True)
@@ -486,7 +516,8 @@ class FocalMechanism(Object):
 
 
 class Origin(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     composite_time_list = List.T(CompositeTime.T())
     comment_list = List.T(Comment.T())
     origin_uncertainty_list = List.T(OriginUncertainty.T())
@@ -498,9 +529,11 @@ class Origin(Object):
     depth_type = OriginDepthType.T(optional=True)
     time_fixed = Bool.T(optional=True)
     epicenter_fixed = Bool.T(optional=True)
-    reference_system_id = ResourceReference.T(optional=True, xmltagname='referenceSystemID')
+    reference_system_id = ResourceReference.T(
+        optional=True, xmltagname='referenceSystemID')
     method_id = ResourceReference.T(optional=True, xmltagname='methodID')
-    earth_model_id = ResourceReference.T(optional=True, xmltagname='earthModelID')
+    earth_model_id = ResourceReference.T(
+        optional=True, xmltagname='earthModelID')
     quality = OriginQuality.T(optional=True)
     type = OriginType.T(optional=True)
     region = Region.T(optional=True)
@@ -508,10 +541,16 @@ class Origin(Object):
     evaluation_status = EvaluationStatus.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
+    def position_values(self):
+        lat = self.latitude.value
+        lon = self.longitude.value
+        depth = self.depth.value
+        return lat, lon, depth
+
 
 class Event(Object):
-    #xmltagname = 'event'
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     description_list = List.T(EventDescription.T())
     comment_list = List.T(Comment.T())
     focal_mechanism_list = List.T(FocalMechanism.T())
@@ -520,18 +559,49 @@ class Event(Object):
     station_magnitude_list = List.T(StationMagnitude.T())
     origin_list = List.T(Origin.T())
     pick_list = List.T(Pick.T())
-    preferred_origin_id = ResourceReference.T(optional=True, xmltagname='preferredOriginID')
-    preferred_magnitude_id = ResourceReference.T(optional=True, xmltagname='preferredMagnitudeID')
-    preferred_focal_mechanism_id = ResourceReference.T(optional=True, xmltagname='preferredFocalMechanismID')
+    preferred_origin_id = ResourceReference.T(
+        optional=True, xmltagname='preferredOriginID')
+    preferred_magnitude_id = ResourceReference.T(
+        optional=True, xmltagname='preferredMagnitudeID')
+    preferred_focal_mechanism_id = ResourceReference.T(
+        optional=True, xmltagname='preferredFocalMechanismID')
     type = EventType.T(optional=True)
     type_certainty = EventTypeCertainty.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
+    def pyrocko_event(self):
+        '''Considers only the *preferred* origin and magnitude'''
+        lat, lon, depth = self.preferred_origin.position_values()
+        otime = self.preferred_origin.time.value
+
+        return model.Event(
+            name=self.public_id, lat=lat, lon=lon, time=otime, depth=depth,
+            magnitude=self.preferred_magnitude.mag.value)
+
+    @property
+    def preferred_origin(self):
+        return one_element_or_none(
+            filter(lambda x: x.public_id == self.preferred_origin_id,
+                   self.origin_list))
+
+    @property
+    def preferred_magnitude(self):
+        return one_element_or_none(
+            filter(lambda x: x.public_id == self.preferred_magnitude_id,
+                   self.magnitude_list))
+
+    @property
+    def preferred_focal_mechanism(self):
+        return one_element_or_none(
+            filter(lambda x: x.public_id == self.preferred_focal_mechanism_id,
+                   self.focal_mechanism_list))
+
 
 class EventParameters(Object):
-    public_id = ResourceReference.T(xmlstyle='attribute', xmltagname='publicID')
+    public_id = ResourceReference.T(
+        xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
-    event_list = List.T(Event.T())
+    event_list = List.T(Event.T(xmltagname='event'))
     description = String.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
@@ -539,3 +609,11 @@ class EventParameters(Object):
 class QuakeML(Object):
     xmltagname = 'quakeml'
     event_parameters = EventParameters.T(optional=True)
+
+    def get_pyrocko_events(self):
+        '''Extract a list of :py:class:`pyrocko.model.Event` instances'''
+        events = []
+        for e in self.event_parameters.event_list:
+            events.append(e.pyrocko_event())
+
+        return events
