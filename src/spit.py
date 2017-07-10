@@ -131,8 +131,14 @@ class Cell(object):
             points = num.transpose(points)
             axes.plot(points[1], points[0], color=(0.1, 0.1, 0.0, 0.1))
 
-    def plot_2d(self, axes, x, dims):
+    def check_holes(self):
+        ''' Check if :py:class:`Cell` or its' children contain NaNs'''
+        if self.children:
+            return any([child.check_holes() for child in self.children])
+        else:
+            return num.any(num.isnan(self.f))
 
+    def plot_2d(self, axes, x, dims):
         idims = num.array(dims)
         self.plot_rects(axes, x, dims)
         coords = [
@@ -153,9 +159,10 @@ class Cell(object):
         fi_r = fi.ravel()
         fi_r[...] = self.interpolate_many(points)
 
+        if num.any(num.isnan(fi)):
+            logger.warn('')
         if any_(num.isfinite(fi)):
             fi = num.ma.masked_invalid(fi)
-
             axes.imshow(
                 fi, origin='lower',
                 extent=[coords[1].min(), coords[1].max(),
@@ -419,6 +426,10 @@ class SPTree(object):
             self.ncells += 1
             cell.children.append(child)
             self._fill(child)
+
+    def check_holes(self):
+        '''Check for NaNs in :py:class:`SPTree`'''
+        return self.root.check_holes()
 
     def plot_2d(self, axes=None, x=None, dims=None):
         assert self.ndim >= 2
