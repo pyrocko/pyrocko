@@ -893,7 +893,6 @@ class QSeisGFBuilder(gf.builder.Builder):
 
             original = signal.signal(signal.SIGINT, signal_handler)
             self.store.lock()
-            duplicate_inserts = 0
             try:
                 for itr, tr in enumerate(rawtraces):
                     if tr.channel not in gfmap:
@@ -915,6 +914,9 @@ class QSeisGFBuilder(gf.builder.Builder):
                         tmax = self.store.t(conf.cut[1], args[:-1])
 
                         if None in (tmin, tmax):
+                            self.warn(
+                                'Failed cutting {} traces. ' +
+                                'Failed to determine time window')
                             continue
 
                         tr.chop(tmin, tmax)
@@ -967,13 +969,10 @@ class QSeisGFBuilder(gf.builder.Builder):
                     try:
                         self.store.put(args, gf_tr)
                     except gf.store.DuplicateInsert:
-                        duplicate_inserts += 1
+                        self.warn('{} insertions_skipped (duplicates)')
 
             finally:
-                if duplicate_inserts:
-                    logger.warn('%i insertions skipped (duplicates)' %
-                                duplicate_inserts)
-
+                self.log_warnings(index+1, logger)
                 self.store.unlock()
                 signal.signal(signal.SIGINT, original)
 
