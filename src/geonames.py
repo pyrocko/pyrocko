@@ -1,3 +1,6 @@
+from future import standard_library
+standard_library.install_aliases()  # noqa
+
 import logging
 import os
 from collections import namedtuple
@@ -44,13 +47,13 @@ base_url = 'http://download.geonames.org/export/dump/'
 
 
 def download_file(fn, dirpath):
-    import urllib2
+    import urllib.request
     url = base_url + '/' + fn
     fpath = op.join(dirpath, fn)
     logger.info('starting download of %s' % url)
 
     util.ensuredirs(fpath)
-    f = urllib2.urlopen(url)
+    f = urllib.request.urlopen(url)
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
     g = open(fpath_tmp, 'wb')
     while True:
@@ -89,11 +92,6 @@ def ascii_str(u):
     return u.encode('ascii', 'replace')
 
 
-geoname_types = (
-    int, unicode, ascii_str, unicode, float, float, str, str, str, str,
-    unicode, unicode, unicode, unicode, int, str, str, str, str)
-
-
 def load(zfn, fn, minpop=1000000, region=None):
     geonames_dir = config.config().geonames_dir
     filepath = op.join(geonames_dir, zfn or fn)
@@ -109,10 +107,10 @@ def load(zfn, fn, minpop=1000000, region=None):
         f = z.open(fn, 'r')
     else:
         z = None
-        f = open(filepath, 'r')
+        f = open(filepath, 'rb')
 
     for line in f:
-        t = line.split('\t')
+        t = line.split(b'\t')
         pop = int(t[14])
         if minpop <= pop:
             lat = float(t[4])
