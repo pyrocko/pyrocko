@@ -237,6 +237,7 @@ class Range(SObject):
       Range(0, 10e3, 1e3)
       Range('0 .. 10k @ 11')
       Range(start=0., stop=10*km, n=11)
+
       Range(0, 10e3, n=11)
       Range(values=[x*1e3 for x in range(11)])
 
@@ -796,12 +797,11 @@ class HalfSinusoidSTF(STF):
 
 
 class SmoothRampSTF(STF):
-    '''Smooth-ramp type source time function.
+    '''Smooth-ramp type source time function for near-field displacement.
     Based on moment function of double-couple point source proposed by Bruestle
     and Mueller (PEPI, 1983).
 
-    .. seealso ::
-        W. Bruestle, G. Mueller (1983), Moment and duration of shallow
+    .. [1] W. Bruestle, G. Mueller (1983), Moment and duration of shallow
         earthquakes from Love-wave modelling for regional distances, PEPI 32,
         312-324.
     '''
