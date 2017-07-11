@@ -252,6 +252,11 @@ class OrthodromeTestCase(unittest.TestCase):
                 d2 = math.sqrt(no**2+ea**2)
                 assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
 
+    def test_wrap(self):
+        assert orthodrome.wrap(11, -10, 10) == -9
+        assert orthodrome.wrap(10, -10, 10) == -10
+        assert orthodrome.wrap(10.001, -10, 10) == -9.999
+
     def OFF_test_local_distances(self):
 
         for reflat, reflon in [
@@ -306,9 +311,9 @@ class OrthodromeTestCase(unittest.TestCase):
 
     def test_geodetic_to_ecef(self):
         orthodrome.geodetic_to_ecef(23., 0., 0.)
-        wgs = orthodrome.get_wgs84()
-        a = wgs.a
-        b = wgs.a * (1. - wgs.f)
+
+        a = orthodrome.earthradius_equator
+        b = orthodrome.earthradius_equator * (1. - orthodrome.earth_oblateness)
 
         points = [
             ((90., 0., 0.), (0., 0., b)),
@@ -455,7 +460,7 @@ def plot_erroneous_ne_to_latlon():
         lon = random.uniform(-180., 180.)
         lat = random.uniform(-90., 90.)
 
-        print gsize/1000.
+        print(gsize/1000.)
 
         lat_grid, lon_grid = orthodrome.ne_to_latlon(
             lat, lon, north_grid, east_grid)
@@ -467,7 +472,7 @@ def plot_erroneous_ne_to_latlon():
         maxerrlon = num.max(num.abs(lon_grid-lon_grid_alt))
         eps = 1.0e-8
         if maxerrlon > eps or maxerrlat > eps:
-            print lat, lon, maxerrlat, maxerrlon
+            print(lat, lon, maxerrlat, maxerrlon)
 
             gmt = gmtpy.GMT(
                 config={
@@ -521,10 +526,10 @@ def plot_erroneous_ne_to_latlon():
             subprocess.call(['xpdf', '-remote', 'ortho', '-reload'])
             time.sleep(2)
         else:
-            print 'ok', gsize, lat, lon
+            print('ok', gsize, lat, lon)
 
 
 if __name__ == "__main__":
     util.setup_logging('test_orthodrome', 'warning')
     unittest.main(exit=False)
-    print benchmark
+    print(benchmark)
