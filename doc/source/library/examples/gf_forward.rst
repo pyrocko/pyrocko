@@ -1,8 +1,8 @@
 Forward modeling synthetic seismograms and displacements
 ========================================================
 
-Calculate synthetic seismograms from a local store
---------------------------------------------------
+Calculate synthetic seismograms from a local GF store
+-----------------------------------------------------
 
 .. highlight:: python
 
@@ -27,8 +27,8 @@ Download :download:`gf_forward_example1.py </static/gf_forward_example1.py>`
     Synthetic seismograms calculated through :class:`pyrocko.gf` displayed in :doc:`/apps/snuffler/index`. The three traces show the east, north and vertical synthetical displacement stimulated by a double-couple source at 155 km distance.
 
 
-Calculate spatial surface displacement from a local store
-----------------------------------------------------------
+Calculate spatial surface displacement from a local GF store
+-------------------------------------------------------------
 
 In this example we create a :class:`~pyrocko.gf.seismosizer.RectangularSource` and compute the spatial static/geodetic displacement caused by that rupture.
 
