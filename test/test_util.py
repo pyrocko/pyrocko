@@ -119,9 +119,9 @@ class UtilTestCase(unittest.TestCase):
             num.linspace(0., 1.1, 12))
 
     def test_gform(self):
-        for i in xrange(-11, 12):
+        for i in range(-11, 12):
             v = 1/3. * 10**i
-            print '|%s|' % util.gform(v)
+            print('|%s|' % util.gform(v))
 
 
 if __name__ == "__main__":
