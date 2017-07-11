@@ -28,6 +28,17 @@
 
 static PyObject *OrthodromeExtError;
 
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+    #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+    #define GETSTATE(m) (&_state)
+    static struct module_state _state;
+#endif
+
 typedef npy_float32 float32_t;
 typedef npy_float64 float64_t;
 
@@ -345,7 +356,7 @@ static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("NN", (PyObject *) azis_arr, (PyObject *) bazis_arr);
 }
 
-static PyMethodDef OrthodromeExtMethods[] = {
+static PyMethodDef orthodrome_ext_methods[] = {
     {"distance_accurate50m",  w_distance_accurate50m, METH_VARARGS,
 "Calculate great circle distance between pair of points on ellipsoidal earth.\n\n\
 :param alat: Latitude of point 1\n\
@@ -395,18 +406,65 @@ static PyMethodDef OrthodromeExtMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+#if PY_MAJOR_VERSION >= 3
+
+static int orthodrome_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+
+static int orthodrome_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "orthodrome_ext",
+        NULL,
+        sizeof(struct module_state),
+        orthodrome_ext_methods,
+        NULL,
+        orthodrome_ext_traverse,
+        orthodrome_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
 PyMODINIT_FUNC
-initorthodrome_ext(void)
+PyInit_util_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initutil_ext(void)
+#endif
+
 {
-    PyObject *m;
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("orthodrome_ext", orthodrome_ext_methods);
+#endif
 
-    m = Py_InitModule("orthodrome_ext", OrthodromeExtMethods);
-    if (m == NULL) return;
-    import_array();
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
 
-    OrthodromeExtError = PyErr_NewException("orthodrome_ext.error", NULL, NULL);
-    Py_INCREF(OrthodromeExtError);  /* required, because other code could remove `error`
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(m, "OrthodromeExtError", OrthodromeExtError);
+    st->error = PyErr_NewException("pyrocko.orthodrome_ext.UtilExtError", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+
+    }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "OrthodromeExtError", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }
