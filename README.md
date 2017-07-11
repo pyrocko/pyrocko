@@ -7,94 +7,94 @@ For documentation and installation instructions please see
 
 # Python 3 Progress
 
-[ ] ``__init__.py``
-[ ] ``ahfullgreen_ext.c``
-[ ] ``ahfullgreen.py``
-[ ] ``automap.py``
-[ ] ``autopick_ext.c``
-[ ] ``autopick.py``
-[ ] ``beachball.py``
-[ ] ``cake_plot.py``
-[ ] ``cake.py``
-[ ] ``catalog.py``
-[ ] ``config.py``
-[ ] ``crust2x2_data.py``
-[ ] ``crust2x2.py``
-[ ] ``crustdb_abbr.py``
-[ ] ``crustdb.py``
-[ ] ``css.py``
-[ ] ``data/``
-[ ] ``datacube_ext.c``
-[ ] ``datacube.py``
-[ ] ``dummy_progressbar.py``
-[ ] ``edl.py``
-[ ] ``evalresp_ext.c``
-[ ] ``evalresp.py``
-[ ] ``eventdata.py``
-[ ] ``fdsn/``
-[ ] ``file.py``
-[ ] ``fomosto/``
-[ ] ``fomosto_report/``
-[ ] ``gcf.py``
-[ ] ``geonames.py``
-[ ] ``gf/``
-[ ] ``gmtpy.py``
-[ ] ``gse1.py``
-[ ] ``gse2_io_wrap.py``
-[ ] ``gshhg.py``
-[ ] ``gui_util.py``
-[ ] ``guts_array.py``
-[ ] ``guts.py``
-[ ] ``hamster_pile.py``
-[ ] ``hudson.py``
-[ ] ``ims_ext.c``
-[ ] ``ims.py``
-[ ] ``info.py``
-[ ] ``io_common.py``
-[ ] ``io.py``
-[ ] ``iris_ws.py``
-[ ] ``kan.py``
-[ ] ``marker_editor.py``
-[ ] ``marker.py``
-[ ] ``model.py``
-[ ] ``moment_tensor.py``
-[ ] ``moment_tensor_viewer.py``
-[ ] ``mseed_ext.c``
-[ ] ``mseed.py``
-[ ] ``orthodrome_ext.c``
-[x] ``orthodrome.py``
-[ ] ``parimap.py``
-[ ] ``parstack_ext.c``
-[ ] ``parstack.py``
-[ ] ``pchain.py``
-[ ] ``pile.py``
-[ ] ``pile_viewer.py``
-[ ] ``plot.py``
-[ ] ``pz.py``
-[ ] ``quakeml.py``
-[ ] ``rdseed.py``
-[ ] ``response_plot.py``
-[ ] ``sac.py``
-[ ] ``seed.py``
-[ ] ``segy.py``
-[ ] ``seisan_response.py``
-[ ] ``seisan_waveform.py``
-[ ] ``serial_hamster.py``
-[ ] ``shadow_pile.py``
-[ ] ``signal_ext.c``
-[ ] ``slink.py``
-[ ] ``snuffler.py``
-[ ] ``snuffling.py``
-[ ] ``snufflings/``
-[ ] ``spit.py``
-[ ] ``suds.py``
-[ ] ``tectonics.py``
-[ ] ``topo/``
-[ ] ``trace.py``
-[x] ``util_ext.c``
-[x] ``util.py``
-[ ] ``weeding.py``
-[ ] ``yaff.py``
+- [ ] ``__init__.py``
+- [ ] ``ahfullgreen_ext.c``
+- [ ] ``ahfullgreen.py``
+- [ ] ``automap.py``
+- [ ] ``autopick_ext.c``
+- [ ] ``autopick.py``
+- [ ] ``beachball.py``
+- [ ] ``cake_plot.py``
+- [ ] ``cake.py``
+- [ ] ``catalog.py``
+- [ ] ``config.py``
+- [ ] ``crust2x2_data.py``
+- [ ] ``crust2x2.py``
+- [ ] ``crustdb_abbr.py``
+- [ ] ``crustdb.py``
+- [ ] ``css.py``
+- [ ] ``data/``
+- [ ] ``datacube_ext.c``
+- [ ] ``datacube.py``
+- [ ] ``dummy_progressbar.py``
+- [ ] ``edl.py``
+- [ ] ``evalresp_ext.c``
+- [ ] ``evalresp.py``
+- [ ] ``eventdata.py``
+- [ ] ``fdsn/``
+- [ ] ``file.py``
+- [ ] ``fomosto/``
+- [ ] ``fomosto_report/``
+- [ ] ``gcf.py``
+- [ ] ``geonames.py``
+- [ ] ``gf/``
+- [ ] ``gmtpy.py``
+- [ ] ``gse1.py``
+- [ ] ``gse2_io_wrap.py``
+- [ ] ``gshhg.py``
+- [ ] ``gui_util.py``
+- [ ] ``guts_array.py``
+- [ ] ``guts.py``
+- [ ] ``hamster_pile.py``
+- [ ] ``hudson.py``
+- [ ] ``ims_ext.c``
+- [ ] ``ims.py``
+- [ ] ``info.py``
+- [ ] ``io_common.py``
+- [ ] ``io.py``
+- [ ] ``iris_ws.py``
+- [ ] ``kan.py``
+- [ ] ``marker_editor.py``
+- [ ] ``marker.py``
+- [ ] ``model.py``
+- [ ] ``moment_tensor.py``
+- [ ] ``moment_tensor_viewer.py``
+- [ ] ``mseed_ext.c``
+- [ ] ``mseed.py``
+- [ ] ``orthodrome_ext.c``
+- [x] ``orthodrome.py``
+- [ ] ``parimap.py``
+- [ ] ``parstack_ext.c``
+- [ ] ``parstack.py``
+- [ ] ``pchain.py``
+- [ ] ``pile.py``
+- [ ] ``pile_viewer.py``
+- [ ] ``plot.py``
+- [ ] ``pz.py``
+- [ ] ``quakeml.py``
+- [ ] ``rdseed.py``
+- [ ] ``response_plot.py``
+- [ ] ``sac.py``
+- [ ] ``seed.py``
+- [ ] ``segy.py``
+- [ ] ``seisan_response.py``
+- [ ] ``seisan_waveform.py``
+- [ ] ``serial_hamster.py``
+- [ ] ``shadow_pile.py``
+- [ ] ``signal_ext.c``
+- [ ] ``slink.py``
+- [ ] ``snuffler.py``
+- [ ] ``snuffling.py``
+- [ ] ``snufflings/``
+- [ ] ``spit.py``
+- [ ] ``suds.py``
+- [ ] ``tectonics.py``
+- [ ] ``topo/``
+- [ ] ``trace.py``
+- [x] ``util_ext.c``
+- [x] ``util.py``
+- [ ] ``weeding.py``
+- [ ] ``yaff.py``
 
 ## Citation
 Recommended citation for Pyrocko
