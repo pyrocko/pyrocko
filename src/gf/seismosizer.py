@@ -1096,10 +1096,8 @@ class ExplosionSource(SourceWithMagnitude):
 
     discretized_source_class = meta.DiscretizedExplosionSource
 
-    def base_key(self):
-        return Source.base_key(self) + (self.volume_change, )
-
     def get_factor(self):
+        self._is_initialized()
         return mt.magnitude_to_moment(self.magnitude)
 
     def discretize_basesource(self, store, target=None):
@@ -1107,7 +1105,6 @@ class ExplosionSource(SourceWithMagnitude):
             store.config.deltat, 0.0)
 
         if self.volume_change is not None:
-
             points = num.atleast_2d(
                 num.array([self.north_shift, self.east_shift, self.depth]))
 
@@ -1117,27 +1114,34 @@ class ExplosionSource(SourceWithMagnitude):
                 interpolation=self.interpolation)
 
             self.moment = 3. * shear_moduli * self.volume_change
+            self._initialized = True
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
 
+    def _is_initialized(self):
+        if self.volume_change is not None\
+         and not hasattr(self, '_initialized'):
+            raise BadRequest('Explosion source with volume_change is not'
+                             ' initilized. Run `discretize_basesource`'
+                             ' to initialize.')
+
     def pyrocko_moment_tensor(self):
+        self._is_initialized()
         m0 = self.moment
         return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
 
     def pyrocko_event(self, **kwargs):
+        self._is_initialized()
         return SourceWithMagnitude.pyrocko_event(
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
             **kwargs)
 
-    def get_volume_change(self, store=None):
-        """
-        Assumes incompressibility!
-        """
+    def get_volume_change(self, store):
+        # Assumes incompressibility!
         if self.volume_change is None:
-
             points = num.atleast_2d(
                 num.array([self.north_shift, self.east_shift, self.depth]))
 
@@ -1145,8 +1149,9 @@ class ExplosionSource(SourceWithMagnitude):
                 self.lat, self.lon,
                 points=points,
                 interpolation=self.interpolation)
+            print points, shear_moduli
 
-            return float(self.moment / ( 3. * shear_moduli))
+            return float(self.moment / (3. * shear_moduli))
 
         else:
             return self.volume_change
