@@ -771,8 +771,15 @@ class QSeisGFBuilder(gf.builder.Builder):
         deltat = 1.0/self.gf_config.sample_rate
 
         if 'time_window_min' not in shared:
-            d = self.store.make_timing_params(
-                conf.time_region[0], conf.time_region[1])
+            try:
+                d = self.store.make_timing_params(
+                    conf.time_region[0], conf.time_region[1])
+            except gf.store.MakeTimingParamsFailed as e:
+                msg = 'Error setting up timing params using phase definitions: '
+                for tr in conf.time_region:
+                    msg += '\n  {}'.format(tr)
+                logger.error(msg)
+                raise e
 
             shared['time_window_min'] = d['tlenmax_vred']
             shared['time_start'] = d['tmin_vred']
