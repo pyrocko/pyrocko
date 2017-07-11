@@ -88,7 +88,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testAziBaziPython(self):
         ntest = 10000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             orthodrome.azibazi(
                 float(lats1[i]), float(lons1[i]),
                 float(lats2[i]), float(lons2[i]),
@@ -98,7 +98,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testAziBaziC(self):
         ntest = 10000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             orthodrome.azibazi(
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='c')
@@ -107,7 +107,7 @@ class OrthodromeTestCase(unittest.TestCase):
         ntest = 100
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
 
-        for i in xrange(ntest):
+        for i in range(ntest):
             azibazi_py = orthodrome.azibazi(
                 float(lats1[i]), float(lons1[i]),
                 float(lats2[i]), float(lons2[i]),
@@ -147,7 +147,7 @@ class OrthodromeTestCase(unittest.TestCase):
             lats1, lons1, lats2, lons2,
             implementation='python')
 
-        for i in xrange(ntest):
+        for i in range(ntest):
             azi_py, bazi_py = orthodrome.azibazi(
                 float(lats1[i]), float(lons1[i]),
                 float(lats2[i]), float(lons2[i]),
@@ -171,7 +171,7 @@ class OrthodromeTestCase(unittest.TestCase):
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
         loc1 = orthodrome.Loc(0., 0.)
         loc2 = orthodrome.Loc(0., 0.)
-        for i in xrange(ntest):
+        for i in range(ntest):
             loc1.lat, loc1.lon = lats1[i], lons1[i]
             loc2.lat, loc2.lon = lats2[i], lons2[i]
             orthodrome.distance_accurate50m(
@@ -182,7 +182,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testDistanceC(self):
         ntest = 1000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             orthodrome.distance_accurate50m(
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='c')
@@ -190,7 +190,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testDistancePythonC(self):
         ntest = 100
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             dist_py = orthodrome.distance_accurate50m(
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='python')
@@ -332,7 +332,7 @@ class OrthodromeTestCase(unittest.TestCase):
 
         coords = num.array([lats, lons, alts]).T
 
-        for ic in xrange(coords.shape[0]):
+        for ic in range(coords.shape[0]):
             xyz = orthodrome.geodetic_to_ecef(*coords[ic, :])
             latlonalt = orthodrome.ecef_to_geodetic(*xyz)
 
@@ -369,7 +369,7 @@ class OrthodromeTestCase(unittest.TestCase):
         axes = plt.gca()
         nip = 100
 
-        for i in xrange(1):
+        for i in range(1):
             np = 3
             points = num.zeros((np, 2))
             points[:, 0] = random_lat(size=3)
