@@ -36,15 +36,15 @@ For documentation and installation instructions please see
 - [ ] ``fomosto/``
 - [ ] ``fomosto_report/``
 - [ ] ``gcf.py``
-- [ ] ``geonames.py``
+- [x] ``geonames.py``
 - [ ] ``gf/``
 - [ ] ``gmtpy.py``
 - [ ] ``gse1.py``
 - [ ] ``gse2_io_wrap.py``
 - [ ] ``gshhg.py``
 - [ ] ``gui_util.py``
-- [ ] ``guts_array.py``
-- [ ] ``guts.py``
+- [x] ``guts_array.py``
+- [x] ``guts.py``
 - [ ] ``hamster_pile.py``
 - [ ] ``hudson.py``
 - [ ] ``ims_ext.c``

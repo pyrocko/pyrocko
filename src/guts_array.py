@@ -35,7 +35,7 @@ restricted_dtype_map = {
     num.dtype('int8'): '<i1'}
 
 restricted_dtype_map_rev = dict(
-    (v, k) for (k, v) in restricted_dtype_map.iteritems())
+    (v, k) for (k, v) in restricted_dtype_map.items())
 
 
 class Array(Object):
@@ -78,10 +78,10 @@ class Array(Object):
                 elif self.serialize_as == 'npy':
                     data = b64decode(val)
                     try:
-                        val = num.load(StringIO(str(data)), allow_pickle=False)
+                        val = num.load(BytesIO(data), allow_pickle=False)
                     except TypeError:
                         # allow_pickle only available in newer NumPy
-                        val = num.load(StringIO(str(data)))
+                        val = num.load(BytesIO(data))
 
             elif isinstance(val, dict):
                 if self.serialize_as == 'base64+meta':
@@ -109,7 +109,7 @@ class Array(Object):
                             % ', '.join(sorted(allowed)))
 
                     data = val['data']
-                    if not isinstance(data, basestring):
+                    if not isinstance(data, str):
                         raise ValidationError(
                             'data must be given as a base64 encoded string')
 
@@ -165,14 +165,14 @@ class Array(Object):
                 else:
                     return val.tolist()
             elif self.serialize_as == 'npy':
-                out = StringIO()
+                out = BytesIO()
                 try:
                     num.save(out, val, allow_pickle=False)
                 except TypeError:
                     # allow_pickle only available in newer NumPy
                     num.save(out, val)
 
-                return literal(out.getvalue().encode('base64'))
+                return literal(b64encode(out.getvalue()).decode('utf-8'))
 
             elif self.serialize_as == 'base64+meta':
                 serialize_dtype = self.serialize_dtype or \
@@ -183,7 +183,7 @@ class Array(Object):
                 return dict(
                     dtype=serialize_dtype,
                     shape=val.shape,
-                    data=literal(data.encode('base64')))
+                    data=literal(b64encode(data).decode('utf-8')))
 
 
 __all__ = ['Array']
