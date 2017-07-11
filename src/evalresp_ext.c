@@ -34,6 +34,8 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
     PyObject      *elem, *out_list;
     npy_intp      array_dims[1] = {0};
 
+    (void) dummy; /* silence warning */
+
     if (!PyArg_ParseTuple(args, "sssssssOssiiiiid",
                             &sta_list,
                             &cha_list,
@@ -63,7 +65,7 @@ evresp_wrapper (PyObject *dummy, PyObject *args)
     }
 
     assert( sizeof(double) == 8 );
-    if (!PyArray_TYPE(freqs_array) == NPY_FLOAT64) {
+    if (PyArray_TYPE(freqs_array) != NPY_FLOAT64) {
         PyErr_SetString(EvalrespError, "Frequencies must be of type double.");
         return NULL;
     }

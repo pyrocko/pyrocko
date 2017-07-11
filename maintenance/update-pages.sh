@@ -11,6 +11,7 @@ if [ ! -d pages ] ; then
     git clone -b gh-pages -n git@github.com:pyrocko/pyrocko.git pages
 fi
 cd pages
+git checkout gh-pages
 git pull origin gh-pages
 cd ..
 cd doc
@@ -18,15 +19,15 @@ make clean
 make html $1
 cd ..
 
-VERSION=v0.3
+VERSION="v0.3"
 
 if [ ! -d pages/$VERSION ] ; then
     mkdir pages/$VERSION
 fi
-cp -R doc/_build/html/* pages/$VERSION/
+cp -R doc/build/html/* pages/$VERSION/
 cd pages/$VERSION
 
-git add *
+git add ./*
 git commit
 git push origin gh-pages
 

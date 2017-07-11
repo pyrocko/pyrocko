@@ -429,6 +429,10 @@ class GFTestCase(unittest.TestCase):
 
         store.close()
 
+    def test_store_dir_type(self):
+        with self.assertRaises(TypeError):
+            gf.LocalEngine(store_dirs='dummy')
+
     def test_pulse(self):
         store_dir = self.get_pulse_store_dir()
 

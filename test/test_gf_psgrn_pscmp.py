@@ -1,4 +1,5 @@
 import math
+from time import time
 import unittest
 import logging
 from tempfile import mkdtemp
@@ -95,7 +96,7 @@ mantle
         config = gf.meta.ConfigTypeA(
             id=store_id,
             ncomponents=10,
-            sample_rate=1. / c.pscmp_config.snapshots.deltat,
+            sample_rate=1. / (3600. * 24.),
             receiver_depth=0. * km,
             source_depth_min=0. * km,
             source_depth_max=5. * km,
@@ -144,8 +145,8 @@ mantle
         neast = 40
         nnorth = 40
 
-        N, E = num.meshgrid(num.linspace(-20., 20., nnorth),
-                            num.linspace(-20., 20., neast))
+        N, E = num.meshgrid(num.linspace(-20. * km, 20. * km, nnorth),
+                            num.linspace(-20. * km, 20. * km, neast))
 
         starget = gf.StaticTarget(
             lats=num.array([origin.lat] * N.size),
@@ -154,8 +155,10 @@ mantle
             east_shifts=E.flatten(),
             interpolation='nearest_neighbor')
         engine = gf.LocalEngine(store_dirs=[store_dir])
-
+        t0 = time()
         r = engine.process(source, starget)
+        t1 = time()
+        logger.info('pyrocko stacking time %f' % (t1 - t0))
         un_fomosto = r.static_results()[0].result['displacement.n']
         ue_fomosto = r.static_results()[0].result['displacement.e']
         ud_fomosto = r.static_results()[0].result['displacement.d']
@@ -173,17 +176,20 @@ mantle
         ccf = psgrn_pscmp.PsCmpConfigFull(**cc.items())
         ccf.psgrn_outdir = os.path.join(store_dir, c.gf_outdir) + '/'
 
+        t2 = time()
         runner = psgrn_pscmp.PsCmpRunner(keep_tmp=False)
         runner.run(ccf)
         ps2du = runner.get_results(component='displ')[0]
+        t3 = time()
+        logger.info('pscmp stacking time %f' % (t3 - t2))
 
         un_pscmp = ps2du[:, 0]
         ue_pscmp = ps2du[:, 1]
         ud_pscmp = ps2du[:, 2]
 
-        num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.001)
-        num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.001)
-        num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.001)
+        num.testing.assert_allclose(un_fomosto, un_pscmp, atol=0.002)
+        num.testing.assert_allclose(ue_fomosto, ue_pscmp, atol=0.002)
+        num.testing.assert_allclose(ud_fomosto, ud_pscmp, atol=0.002)
 
         # plotting
 

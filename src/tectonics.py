@@ -3,103 +3,14 @@ import math
 from collections import defaultdict
 
 import numpy as num
-from matplotlib.path import Path
 
 from pyrocko import util, config
 from pyrocko.guts_array import Array
 from pyrocko.guts import Object, String
-from pyrocko.moment_tensor import euler_to_matrix, d2r, r2d
-from pyrocko.beachball import spoly_cut
 from pyrocko import orthodrome as od
 
 
-def latlon_to_xyz(latlons):
-    if latlons.ndim == 1:
-        return latlon_to_xyz(latlons[num.newaxis, :])[0]
-
-    points = num.zeros((latlons.shape[0], 3))
-    lats = latlons[:, 0]
-    lons = latlons[:, 1]
-    points[:, 0] = num.cos(lats*d2r) * num.cos(lons*d2r)
-    points[:, 1] = num.cos(lats*d2r) * num.sin(lons*d2r)
-    points[:, 2] = num.sin(lats*d2r)
-    return points
-
-
-def xyz_to_latlon(xyz):
-    if xyz.ndim == 1:
-        return xyz_to_latlon(xyz[num.newaxis, :])[0]
-
-    latlons = num.zeros((xyz.shape[0], 2))
-    latlons[:, 0] = num.arctan2(
-        xyz[:, 2], num.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2)) * r2d
-    latlons[:, 1] = num.arctan2(
-        xyz[:, 1], xyz[:, 0]) * r2d
-    return latlons
-
-
-def rot_to_00(lat, lon):
-    rot0 = euler_to_matrix(0., -90.*d2r, 0.).A
-    rot1 = euler_to_matrix(-d2r*lat, 0., -d2r*lon).A
-    return num.dot(rot0.T, num.dot(rot1, rot0)).T
-
-
-def distances3d(a, b):
-    return num.sqrt(num.sum((a-b)**2, axis=a.ndim-1))
-
-
-class Farside(Exception):
-    pass
-
-
 PI = math.pi
-
-
-def circulation(points2):
-    return num.sum(
-        (points2[1:, 0] - points2[:-1, 0])
-        * (points2[1:, 1] + points2[:-1, 1]))
-
-
-def stereographic(points):
-    dists = distances3d(points[1:, :], points[:-1, :])
-    if dists.size > 0:
-        maxdist = num.max(dists)
-        cutoff = maxdist**2 / 2.
-    else:
-        cutoff = 1.0e-5
-
-    points = points.copy()
-    if num.any(points[:, 0] < -1. + cutoff):
-        raise Farside()
-
-    points_out = points[:, 1:].copy()
-    factor = 1.0 / (1.0 + points[:, 0])
-    points_out *= factor[:, num.newaxis]
-
-    return points_out
-
-
-def stereographic_poly(points):
-    dists = distances3d(points[1:, :], points[:-1, :])
-    if dists.size > 0:
-        maxdist = num.max(dists)
-        cutoff = maxdist**2 / 2.
-    else:
-        cutoff = 1.0e-5
-
-    points = points.copy()
-    if num.any(points[:, 0] < -1. + cutoff):
-        raise Farside()
-
-    points_out = points[:, 1:].copy()
-    factor = 1.0 / (1.0 + points[:, 0])
-    points_out *= factor[:, num.newaxis]
-
-    if circulation(points_out) >= 0:
-        raise Farside()
-
-    return points_out
 
 
 class Plate(Object):
@@ -108,60 +19,15 @@ class Plate(Object):
     points = Array.T(dtype=num.float, shape=(None, 2))
 
     def max_interpoint_distance(self):
-        p = latlon_to_xyz(self.points)
+        p = od.latlon_to_xyz(self.points)
         return math.sqrt(num.max(num.sum(
             (p[num.newaxis, :, :] - p[:, num.newaxis, :])**2, axis=2)))
 
     def contains_point(self, point):
-        rot = rot_to_00(point[0], point[1])
-        points_xyz = latlon_to_xyz(self.points)
-        points_rot = num.dot(rot, points_xyz.T).T
-        groups = spoly_cut([points_rot], axis=0)
-        for group in groups:
-            for points_g in group:
-                try:
-                    points2 = stereographic_poly(points_g)
-                    p = Path(points2, closed=True)
-                    if p.contains_point((0., 0.)):
-                        return True
-
-                except Farside:
-                    pass
-
-        return False
+        return od.contains_point(self.points, point)
 
     def contains_points(self, points):
-        points_xyz = latlon_to_xyz(points)
-        center_xyz = num.mean(points_xyz, axis=0)
-
-        assert num.all(
-            distances3d(points_xyz, center_xyz[num.newaxis, :]) < 1.0)
-
-        lat, lon = xyz_to_latlon(center_xyz)
-        rot = rot_to_00(lat, lon)
-
-        points_rot_xyz = num.dot(rot, points_xyz.T).T
-        points_rot_pro = stereographic(points_rot_xyz)
-
-        poly_xyz = latlon_to_xyz(self.points)
-        poly_rot_xyz = num.dot(rot, poly_xyz.T).T
-        groups = spoly_cut([poly_rot_xyz], axis=0)
-        result = num.zeros(points.shape[0], dtype=num.int)
-        for group in groups:
-            for poly_rot_group_xyz in group:
-                try:
-                    poly_rot_group_pro = stereographic_poly(poly_rot_group_xyz)
-                    p = Path(poly_rot_group_pro, closed=True)
-                    if hasattr(p, 'contains_points'):
-                        result += p.contains_points(points_rot_pro)
-                    else:
-                        for i in xrange(result.size):
-                            result[i] += p.contains_point(points_rot_pro[i, :])
-
-                except Farside:
-                    pass
-
-        return result.astype(num.bool)
+        return od.contains_points(self.points, points)
 
 
 class Boundary(Object):
@@ -174,10 +40,10 @@ class Boundary(Object):
     itypes = Array.T(dtype=num.int, shape=(None))
 
     def split_types(self, groups=None):
-        xyz = latlon_to_xyz(self.points)
+        xyz = od.latlon_to_xyz(self.points)
         xyzmid = (xyz[1:] + xyz[:-1, :]) * 0.5
-        cxyz = latlon_to_xyz(self.cpoints)
-        d = distances3d(xyzmid[num.newaxis, :, :], cxyz[:, num.newaxis, :])
+        cxyz = od.latlon_to_xyz(self.cpoints)
+        d = od.distances3d(xyzmid[num.newaxis, :, :], cxyz[:, num.newaxis, :])
         idmin = num.argmin(d, axis=0)
         itypes = self.itypes[idmin]
 

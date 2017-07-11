@@ -1,11 +1,14 @@
 import unittest
 import tempfile
 import numpy as num
+import urllib2
+import logging
 from pyrocko import util, trace, iris_ws
 from pyrocko.fdsn import station as fdsn_station, ws as fdsn_ws
 
 import common
 
+logger = logging.getLogger('pyrocko.test.test_fdsn.py')
 
 stt = util.str_to_time
 
@@ -28,12 +31,18 @@ class FDSNStationTestCase(unittest.TestCase):
 
             assert ok
 
-            assert len(x.get_pyrocko_stations()) in (3, 4)
+            pstations = x.get_pyrocko_stations()
+            assert len(pstations) in (3, 4)
             for s in x.get_pyrocko_stations():
                 assert len(s.get_channels()) == 3
 
             assert len(x.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
+
+            new = fdsn_station.FDSNStationXML.from_pyrocko_stations(pstations)
+            assert len(new.get_pyrocko_stations()) in (3, 4)
+            for s in new.get_pyrocko_stations():
+                assert len(s.get_channels()) == 3
 
     def test_retrieve(self):
         for site in ['geofon', 'iris']:
@@ -140,6 +149,36 @@ class FDSNStationTestCase(unittest.TestCase):
                     print 'ok'
             except:
                 print 'failed: ', nslc
+
+    def test_url_alive(self):
+        '''
+        Test urls which are used as references in pyrocko if they still exist.
+        '''
+        to_check = [
+            ('http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm',
+             'pyrocko.css'),
+            ('http://www.ietf.org/timezones/data/leap-seconds.list',
+             'pyrocko.config'),
+            ('http://stackoverflow.com/questions/2417794/', 'cake_plot'),
+            ('http://igppweb.ucsd.edu/~gabi/rem.html', 'crust2x2_data'),
+            ('http://kinherd.org/pyrocko_data/gsc20130501.txt', 'crustdb'),
+            ('http://download.geonames.org/export/dump/', 'geonames'),
+            ('http://emolch.github.io/gmtpy/', 'gmtpy'),
+            ('http://www.apache.org/licenses/LICENSE-2.0', 'kagan.py'),
+            ('http://www.opengis.net/kml/2.2', 'model'),
+            ('http://maps.google.com/mapfiles/kml/paddle/S.png', 'model'),
+            ('http://de.wikipedia.org/wiki/Orthodrome', 'orthodrome'),
+            ('http://peterbird.name/oldFTP/PB2002', 'tectonics'),
+            ('http://gsrm.unavco.org/model', 'tectonics'),
+            ('http://stackoverflow.com/questions/19332902/', 'util'),
+        ]
+
+        for url in to_check:
+            try:
+                fdsn_ws._request(url[0])
+            except urllib2.HTTPError as e:
+                logger.warn('%s - %s referenced in pyrocko.%s' %
+                            (e, url[0], url[1]))
 
 
 if __name__ == '__main__':

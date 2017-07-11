@@ -841,7 +841,7 @@ class BaseStore(object):
                 tr.itmin += itoffset
 
             except store_ext.StoreExtError, e:
-                raise StoreError(str(e))
+                raise StoreError(str(e) + ' in store %s' % self.store_dir)
 
         elif implementation == 'alternative':
             tr = self._sum_impl_alternative(irecords, delays, weights,
@@ -1747,7 +1747,7 @@ class Store(BaseStore):
             multi_location.coords5,
             self.config.component_scheme,
             interpolation,
-            nthreads)
+            nthreads or 0)
 
         for icomp, comp in enumerate(scheme_desc.provided_components):
             if comp not in components:
@@ -1759,7 +1759,7 @@ class Store(BaseStore):
                 weights,
                 itsnapshot,
                 ntargets,
-                nthreads)
+                nthreads or 0)
 
         return out
 

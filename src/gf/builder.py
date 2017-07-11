@@ -143,7 +143,8 @@ class Builder:
                         cls.__work_block,
                         [(store_dir, step, i, shared, force)
                          for i in iblocks],
-                        nprocs=nworkers, eprintignore=Interrupted):
+                        nprocs=nworkers, eprintignore=(
+                            Interrupted, store.StoreError)):
 
                     store_dir, step, i = x
                     with open(status_fn, 'a') as status:

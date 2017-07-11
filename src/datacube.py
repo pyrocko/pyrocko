@@ -1,7 +1,8 @@
-
+import os
 import math
 import numpy as num
-from pyrocko import trace, util, plot
+from pyrocko import trace, util, plot, io_common
+from pyrocko.guts import Object, Int, String, Timestamp
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
@@ -9,6 +10,10 @@ N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 def color(c):
     c = plot.color(c)
     return tuple(x/255. for x in c)
+
+
+class DataCubeError(io_common.FileLoadError):
+    pass
 
 
 def make_control_point(ipos_block, t_block, tref, deltat):
@@ -35,16 +40,28 @@ def make_control_point(ipos_block, t_block, tref, deltat):
     return ic, tc + ic * deltat + tref
 
 
-def analyse_gps_tags(header, gps_tags, nsamples):
+def analyse_gps_tags(header, gps_tags, offset, nsamples):
 
     ipos, t, fix, nsvs = gps_tags
+
+    n = t.size
+    ok = num.logical_and(
+        abs(t[1:n-1] - t[0:n-2] - 1.0) < 0.1,
+        abs(t[2:n] - t[1:n-1] - 1.0) < 0.1)
+
+    ipos = ipos[1:-1][ok]
+    t = t[1:-1][ok]
+    fix = fix[1:-1][ok]
+    nsvs = nsvs[1:-1][ok]
+
     blocksize = N_GPS_TAGS_WANTED / 2
     deltat = 1.0 / int(header['S_RATE'])
 
     if ipos.size < blocksize:
         tmin = util.str_to_time(header['S_DATE'] + header['S_TIME'],
-                                format='%y/%m/%d%H:%M:%S')
-        tmax = tmin + (nsamples-1) * deltat
+                                format='%y/%m/%d%H:%M:%S') + offset * deltat
+
+        tmax = tmin + (nsamples - 1) * deltat
         icontrol, tcontrol = None, None
         return tmin, tmax, icontrol, tcontrol
 
@@ -69,14 +86,17 @@ def analyse_gps_tags(header, gps_tags, nsamples):
         i2, t2 = control_points[-2]
         i3, t3 = control_points[-1]
         if len(control_points) == 2:
-            tmin = t0 - i0 * deltat
+            tmin = t0 - i0 * deltat - offset * deltat
             tmax = t3 + (nsamples - i3 - 1) * deltat
         else:
-            tmin = t0 + (0 - i0) * (t1 - t0) / (i1 - i0)
-            tmax = t2 + (nsamples - 1 - i2) * (t3 - t2) / (i3 - i2)
+            tmin = t0 + (offset - i0) * (t1 - t0) / (i1 - i0)
+            tmax = t2 + (offset + nsamples - 1 - i2) * (t3 - t2) / (i3 - i2)
 
-        control_points[0:0] = [(0, tmin)]
-        control_points.append((nsamples-1, tmax))
+        if offset < i0:
+            control_points[0:0] = [(offset, tmin)]
+
+        if offset + nsamples - 1 > i3:
+            control_points.append((offset + nsamples - 1, tmax))
 
         icontrol = num.array([x[0] for x in control_points], dtype=num.int64)
         tcontrol = num.array([x[1] for x in control_points], dtype=num.float)
@@ -86,19 +106,174 @@ def analyse_gps_tags(header, gps_tags, nsamples):
 
 def plot_timeline(fns):
     from matplotlib import pyplot as plt
-    from pyrocko import datacube_ext
+
+    fig = plt.figure()
+    axes = fig.gca()
 
     h = 3600.
 
-    joined = [[], [], [], []]
-    ioff = 0
-    for fn in fns:
-        with open(fn, 'r') as f:
+    if isinstance(fns, basestring):
+        ipos, t, fix, nsvs, header, offset, nsamples = \
+            get_extended_timing_context(fns)
+
+    else:
+        ipos, t, fix, nsvs, header, offset, nsamples = \
+            get_timing_context(fns)
+
+    deltat = 1.0 / int(header['S_RATE'])
+
+    tref = num.median(t - ipos * deltat)
+    tref = round(tref / deltat) * deltat
+
+    x = ipos*deltat
+    y = (t - tref) - ipos*deltat
+
+    ifix = num.where(fix != 0)
+    inofix = num.where(fix == 0)
+
+    axes.plot(x[ifix]/h, y[ifix], '+', ms=5, color=color('chameleon3'))
+    axes.plot(x[inofix]/h, y[inofix], 'x', ms=5, color=color('scarletred1'))
+
+    tmin, tmax, icontrol, tcontrol = analyse_gps_tags(
+        header, (ipos, t, fix, nsvs), offset, nsamples)
+
+    tred = tcontrol - icontrol*deltat - tref
+    axes.plot(icontrol*deltat/h, tred, color=color('aluminium6'))
+    axes.plot(icontrol*deltat/h, tred, 'o', ms=5, color=color('aluminium6'))
+
+    ymin = math.floor(tred.min() / deltat) * deltat - 0.1 * deltat
+    ymax = math.ceil(tred.max() / deltat) * deltat + 0.1 * deltat
+
+    # axes.set_ylim(ymin, ymax)
+    if ymax - ymin < 100 * deltat:
+        ygrid = math.floor(tred.min() / deltat) * deltat
+        while ygrid < ymax:
+            axes.axhline(ygrid, color=color('aluminium4'))
+            ygrid += deltat
+
+    xmin = icontrol[0]*deltat/h
+    xmax = icontrol[-1]*deltat/h
+    xsize = xmax - xmin
+    xmin -= xsize * 0.1
+    xmax += xsize * 0.1
+    axes.set_xlim(xmin, xmax)
+
+    axes.set_xlabel('Uncorrected (quartz) time [h]')
+    axes.set_ylabel('Relative time correction [s]')
+
+    plt.show()
+
+
+g_dir_contexts = {}
+
+
+class DirContextEntry(Object):
+    path = String.T()
+    tstart = Timestamp.T()
+    ifile = Int.T()
+
+
+class DirContext(Object):
+    path = String.T()
+    mtime = Timestamp.T()
+    entries = DirContextEntry.T()
+
+    def get_entry(self, fn):
+        path = os.path.abspath(fn)
+        for entry in self.entries:
+            if entry.path == path:
+                return entry
+
+        raise Exception('entry not found')
+
+    def iter_entries(self, fn, step=1):
+        current = self.get_entry(fn)
+        by_ifile = dict(
+            (entry.ifile, entry) for entry in self.entries
+            if entry.tstart == current.tstart)
+
+        icurrent = current.ifile
+        while True:
+            icurrent += step
+            try:
+                yield by_ifile[icurrent]
+
+            except KeyError:
+                break
+
+
+def context(fn):
+    from pyrocko import datacube_ext
+
+    dpath = os.path.dirname(os.path.abspath(fn))
+    mtimes = [os.stat(dpath)[8]]
+
+    dentries = sorted(os.listdir(dpath))
+    for dentry in dentries:
+        fn2 = os.path.join(dpath, dentry)
+        mtimes.append(os.stat(fn2)[8])
+
+    mtime = float(max(mtimes))
+
+    if dpath in g_dir_contexts:
+        dir_context = g_dir_contexts[dpath]
+        if dir_context.mtime == mtime:
+            return dir_context
+
+        del g_dir_contexts[dpath]
+
+    entries = []
+    for dentry in dentries:
+        fn2 = os.path.join(dpath, dentry)
+        with open(fn2, 'r') as f:
+            first512 = f.read(512)
+            f.seek(0)
+            if not detect(first512):
+                continue
+
+            try:
+                header, data_arrays, gps_tags, nsamples, _ = \
+                        datacube_ext.load(f.fileno(), 3, 0, -1, None)
+
+            except datacube_ext.DataCubeError as e:
+                e = DataCubeError(str(e))
+                e.set_context('filename', fn)
+                raise e
+
+        header = dict(header)
+        entries.append(DirContextEntry(
+            path=os.path.abspath(fn2),
+            tstart=util.str_to_time(
+                header['S_DATE'] + ' ' + header['S_TIME'],
+                format='%Y/%m/%d %H:%M:%S'),
+            ifile=int(header['DAT_NO'])))
+
+    dir_context = DirContext(mtime=mtime, path=dpath, entries=entries)
+
+    return dir_context
+
+
+def get_time_infos(fn):
+    from pyrocko import datacube_ext
+
+    with open(fn, 'r') as f:
+        try:
             header, _, gps_tags, nsamples, _ = datacube_ext.load(
                 f.fileno(), 1, 0, -1, None)
 
-        header = dict(header)
-        deltat = 1.0 / int(header['S_RATE'])
+        except datacube_ext.DataCubeError as e:
+            e = DataCubeError(str(e))
+            e.set_context('filename', fn)
+            raise e
+
+    return dict(header), gps_tags, nsamples
+
+
+def get_timing_context(fns):
+    joined = [[], [], [], []]
+    ioff = 0
+    for fn in fns:
+        header, gps_tags, nsamples = get_time_infos(fn)
 
         ipos = gps_tags[0]
         ipos += ioff
@@ -110,45 +285,59 @@ def plot_timeline(fns):
 
     ipos, t, fix, nsvs = [num.concatenate(x) for x in joined]
 
-    tref = num.median(t - ipos * deltat)
-    tref = round(tref / deltat) * deltat
+    nsamples = ioff
+    return ipos, t, fix, nsvs, header, 0, nsamples
 
-    x = ipos*deltat
-    y = (t - tref) - ipos*deltat
 
-    ifix = num.where(fix == 1)
-    inofix = num.where(fix == 0)
+def get_extended_timing_context(fn):
+    c = context(fn)
 
-    plt.plot(x[ifix]/h, y[ifix], '+', ms=5, color=color('chameleon3'))
-    plt.plot(x[inofix]/h, y[inofix], 'x', ms=5, color=color('scarletred1'))
+    header, gps_tags, nsamples_base = get_time_infos(fn)
 
-    tmin, tmax, icontrol, tcontrol = analyse_gps_tags(
-        header, (ipos, t, fix, nsvs), ioff)
+    ioff = 0
+    aggregated = [gps_tags]
 
-    tred = tcontrol - icontrol*deltat - tref
-    plt.plot(icontrol*deltat/h, tred, color=color('aluminium6'))
-    plt.plot(icontrol*deltat/h, tred, 'o', ms=5, color=color('aluminium6'))
+    nsamples_total = nsamples_base
 
-    ymin = math.floor(tred.min() / deltat) * deltat - 0.1 * deltat
-    ymax = math.ceil(tred.max() / deltat) * deltat + 0.1 * deltat
+    if num.sum(gps_tags[2]) == 0:
 
-    plt.ylim(ymin, ymax)
-    ygrid = math.floor(tred.min() / deltat) * deltat
-    while ygrid < ymax:
-        plt.axhline(ygrid, color=color('aluminium4'))
-        ygrid += deltat
+        ioff = nsamples_base
+        for entry in c.iter_entries(fn, 1):
 
-    xmin = icontrol[0]*deltat/h
-    xmax = icontrol[-1]*deltat/h
-    xsize = xmax - xmin
-    xmin -= xsize * 0.1
-    xmax += xsize * 0.1
-    plt.xlim(xmin, xmax)
+            _, gps_tags, nsamples = get_time_infos(entry.path)
 
-    plt.xlabel('Uncorrected (quartz) time [h]')
-    plt.ylabel('Relative time correction [s]')
+            ipos = gps_tags[0]
+            ipos += ioff
 
-    plt.show()
+            aggregated.append(gps_tags)
+            nsamples_total += nsamples
+
+            if num.sum(gps_tags[2]) > 0:
+                break
+
+            ioff += nsamples
+
+        ioff = 0
+        for entry in c.iter_entries(fn, -1):
+
+            _, gps_tags, nsamples = get_time_infos(entry.path)
+
+            ioff -= nsamples
+
+            ipos = gps_tags[0]
+            ipos += ioff
+
+            aggregated[0:0] = [gps_tags]
+
+            nsamples_total += nsamples
+
+            if num.sum(gps_tags[2]) > 0:
+                break
+
+    ipos, t, fix, nsvs = [num.concatenate(x) for x in zip(*aggregated)]
+
+#    return ipos, t, fix, nsvs, header, ioff, nsamples_total
+    return ipos, t, fix, nsvs, header, 0, nsamples_base
 
 
 def iload(fn, load_data=True, interpolation='sinc'):
@@ -169,15 +358,24 @@ def iload(fn, load_data=True, interpolation='sinc'):
                 # must get correct nsamples if interpolation is off
                 loadflag = 1
 
-        header, data_arrays, gps_tags, nsamples, _ = datacube_ext.load(
-            f.fileno(), loadflag, 0, -1, None)
+        try:
+            header, data_arrays, gps_tags, nsamples, _ = datacube_ext.load(
+                f.fileno(), loadflag, 0, -1, None)
+
+        except datacube_ext.DataCubeError as e:
+            e = DataCubeError(str(e))
+            e.set_context('filename', fn)
+            raise e
 
     header = dict(header)
     deltat = 1.0 / int(header['S_RATE'])
     nchannels = int(header['CH_NUM'])
 
+    ipos, t, fix, nsvs, header_, offset_, nsamples_ = \
+        get_extended_timing_context(fn)
+
     tmin, tmax, icontrol, tcontrol = analyse_gps_tags(
-        header, gps_tags, nsamples)
+        header_, (ipos, t, fix, nsvs), offset_, nsamples_)
 
     tmin_ip = round(tmin / deltat) * deltat
     if interpolation != 'off':
@@ -257,4 +455,8 @@ def detect(first512):
 
 if __name__ == '__main__':
     import sys
-    plot_timeline(sys.argv[1:])
+    fns = sys.argv[1:]
+    if len(fns) > 1:
+        plot_timeline(fns)
+    else:
+        plot_timeline(fns[0])

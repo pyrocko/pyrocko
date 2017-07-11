@@ -335,7 +335,7 @@ static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
     azis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
     bazis_arr = (PyArrayObject*) PyArray_EMPTY(1, size, NPY_FLOAT64, 0);
 
-    azibazi_array(alats, alons, blats, blons, size[0], PyArray_DATA(azis_arr), PyArray_DATA(azis_arr));
+    azibazi_array(alats, alons, blats, blons, size[0], PyArray_DATA(azis_arr), PyArray_DATA(bazis_arr));
 
     Py_DECREF(c_alats_arr);
     Py_DECREF(c_alons_arr);

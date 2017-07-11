@@ -1084,8 +1084,8 @@ class Trace(object):
 
         '''
 
-        nshort = tshort/self.deltat
-        nlong = tlong/self.deltat
+        nshort = int(round(tshort/self.deltat))
+        nlong = int(round(tlong/self.deltat))
 
         assert nshort < nlong
         if nlong > len(self.ydata):
@@ -1114,6 +1114,85 @@ class Trace(object):
 
         if scalingmethod == 3:
             self.ydata = num.maximum(self.ydata, 0.)
+
+    def sta_lta_right(self, tshort, tlong, quad=True, scalingmethod=1):
+        '''
+        Run special STA/LTA filter where the short time window is overlapping
+        with the last part of the long time window.
+
+        :param tshort: length of short time window in [s]
+        :param tlong: length of long time window in [s]
+        :param quad: whether to square the data prior to applying the STA/LTA
+            filter
+        :param scalingmethod: integer key to select how output values are
+            scaled / normalized (``1``, ``2``, or ``3``)
+
+        ============= ====================================== ===========
+        Scalingmethod Implementation                         Range
+        ============= ====================================== ===========
+        ``1``         As/Al* Tl/Ts                           [0,1]
+        ``2``         (As/Al - 1) / (Tl/Ts - 1)              [-Ts/Tl,1]
+        ``3``         Like ``2`` but clipping range at zero  [0,1]
+        ============= ====================================== ===========
+
+        With ``scalingmethod=1``, the values produced by this variant of the
+        STA/LTA are equivalent to
+
+        .. math::
+            s_i = \\frac{s}{l} \\frac{\\frac{1}{s}\\sum_{j=i}{i+s-1} f_j}
+                                     {\\frac{1}{l}\\sum_{j=i+s-l}^{i+s-1} f_j}
+
+        where :math:`f_j` are the input samples, :math:`s` are the number of
+        samples in the short time window and :math:`l` are the number of
+        samples in the long time window.
+        '''
+
+        n = self.data_len()
+        tmin = self.tmin
+
+        nshort = max(1, int(round(tshort/self.deltat)))
+        nlong = max(1, int(round(tlong/self.deltat)))
+
+        assert nshort < nlong
+
+        if nlong > len(self.ydata):
+            raise TraceTooShort(
+                'Samples in trace: %s, samples needed: %s'
+                % (len(self.ydata), nlong))
+
+        if quad:
+            sqrdata = self.ydata**2
+        else:
+            sqrdata = self.ydata
+
+        nshift = int(math.floor(0.5 * (nlong - nshort)))
+        if nlong % 2 != 0 and nshort % 2 == 0:
+            nshift += 1
+
+        mavg_short = moving_avg(sqrdata, nshort)[nshift:]
+        mavg_long = moving_avg(sqrdata, nlong)[:sqrdata.size-nshift]
+
+        self.drop_growbuffer()
+
+        if scalingmethod not in (1, 2, 3):
+            raise Exception('Invalid argument to scalingrange argument.')
+
+        if scalingmethod == 1:
+            ydata = mavg_short/mavg_long * float(nshort)/float(nlong)
+        elif scalingmethod in (2, 3):
+            ydata = (mavg_short/mavg_long - 1.) \
+                / ((float(nlong)/float(nshort)) - 1)
+
+        if scalingmethod == 3:
+            ydata = num.maximum(self.ydata, 0.)
+
+        self.set_ydata(ydata)
+
+        self.shift((math.ceil(0.5*nlong) - nshort + 1) * self.deltat)
+
+        self.chop(
+            tmin + (nlong - nshort) * self.deltat,
+            tmin + (n - nshort) * self.deltat)
 
     def peaks(self, threshold, tsearch,
               deadtime=False,
@@ -1193,7 +1272,8 @@ class Trace(object):
 
         :param tmin: begin time of new span
         :param tmax: end time of new span
-        :param fillmethod: 'zeros' or 'repeat'
+        :param fillmethod: ``'zeros'``,  ``'repeat'``, ``'mean'``, or
+            ``'median'``
         '''
 
         nold = self.ydata.size
@@ -1211,9 +1291,18 @@ class Trace(object):
         n = nh - nl + 1
         data = num.zeros(n, dtype=self.ydata.dtype)
         data[-nl:-nl + nold] = self.ydata
-        if fillmethod == 'repeat' and self.ydata.size >= 1:
-            data[:-nl] = self.ydata[0]
-            data[-nl + nold:] = self.ydata[-1]
+        if self.ydata.size >= 1:
+            if fillmethod == 'repeat':
+                data[:-nl] = self.ydata[0]
+                data[-nl + nold:] = self.ydata[-1]
+            elif fillmethod == 'median':
+                v = num.median(self.ydata)
+                data[:-nl] = v
+                data[-nl + nold:] = v
+            elif fillmethod == 'mean':
+                v = num.mean(self.ydata)
+                data[:-nl] = v
+                data[-nl + nold:] = v
 
         self.drop_growbuffer()
         self.ydata = data
@@ -2337,8 +2426,7 @@ class CosFader(Taper):
     :param xfade: fade in and fade out time in seconds (optional)
     :param xfrac: fade in and fade out as fraction between 0. and 1. (optional)
 
-    Only one of both arguments can be set. The other is supposed to be
-    ``None``.
+    Only one argument can be set. The other should to be ``None``.
     '''
 
     xfade = Float.T(optional=True)
