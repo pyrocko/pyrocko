@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import object
+
 import math
 import numpy as num
 
@@ -21,7 +24,7 @@ def float_array_broadcast(*args):
         num.asarray(x, dtype=num.float) for x in args])
 
 
-class Loc:
+class Loc(object):
     '''Simple location representation
 
         :attrib lat: Latitude degree
@@ -1000,9 +1003,9 @@ def geodetic_to_ecef(lat, lon, alt):
         #From_geodetic_to_ECEF_coordinates
     '''
 
-    wgs = get_wgs84()
-    a = wgs.a
-    e2 = 2*wgs.f - wgs.f**2
+    f = earth_oblateness
+    a = earthradius_equator
+    e2 = 2*f - f**2
 
     lat, lon = num.radians(lat), num.radians(lon)
     # Normal (plumb line)
@@ -1032,10 +1035,9 @@ def ecef_to_geodetic(X, Y, Z):
         https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
         #The_application_of_Ferrari.27s_solution
     '''
-    wgs = get_wgs84()
-    a = wgs.a
-    f = wgs.f
-    b = wgs.a * (1. - f)
+    f = earth_oblateness
+    a = earthradius_equator
+    b = a * (1. - f)
     e2 = 2.*f - f**2
 
     # usefull
@@ -1205,7 +1207,7 @@ def contains_points(polygon, points):
                 if hasattr(p, 'contains_points'):
                     result += p.contains_points(points_rot_pro)
                 else:
-                    for i in xrange(result.size):
+                    for i in range(result.size):
                         result[i] += p.contains_point(points_rot_pro[i, :])
 
             except Farside:
