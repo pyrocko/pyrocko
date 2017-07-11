@@ -29,7 +29,7 @@ For documentation and installation instructions please see
 - [ ] ``dummy_progressbar.py``
 - [ ] ``edl.py``
 - [ ] ``evalresp_ext.c``
-- [ ] ``evalresp.py``
+- [x] ``evalresp.py``
 - [ ] ``eventdata.py``
 - [ ] ``fdsn/``
 - [ ] ``file.py``
