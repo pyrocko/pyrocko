@@ -11,6 +11,7 @@ from subprocess import Popen, PIPE
 import os.path as op
 from scipy.integrate import cumtrapz
 
+from pyrocko.moment_tensor import MomentTensor, symmat6
 from pyrocko.guts import Float, Int, Tuple, List, Bool, Object, String
 from pyrocko import trace, util, cake
 from pyrocko import gf
@@ -21,7 +22,6 @@ guts_prefix = 'pf'
 
 Timing = gf.meta.Timing
 
-from pyrocko.moment_tensor import MomentTensor, symmat6
 
 logger = logging.getLogger('fomosto.qseis2d')
 
@@ -790,7 +790,7 @@ class QSeis2dGFBuilder(gf.builder.Builder):
             conf_r.earthmodel_receiver_1d = \
                 storeconf.earthmodel_1d.extract(
                     depth_max='moho')
-                    #depth_max=conf_s.receiver_basement_depth*km)
+            # depth_max=conf_s.receiver_basement_depth*km)
 
         deltat = 1.0 / self.gf_config.sample_rate
 
@@ -799,8 +799,8 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                 baseconf.time_region[0], baseconf.time_region[1])
 
             shared['time_window_min'] = float(
-                    num.ceil( d['tlenmax'] / self.gf_config.sample_rate) * \
-                                             self.gf_config.sample_rate)
+                    num.ceil(d['tlenmax'] / self.gf_config.sample_rate) *
+                    self.gf_config.sample_rate)
             shared['time_reduction'] = d['tmin_vred']
 
         time_window_min = shared['time_window_min']
@@ -902,12 +902,12 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
         else:
             conf_r.receiver = QSeisRReceiver(lat=90 - firstx * cake.m2d,
-                                           lon=180.,
-                                           tstart=0.0,
-                                           distance=firstx)
+                                             lon=180.,
+                                             tstart=0.0,
+                                             distance=firstx)
             conf_r.source = QSeis2dSource(lat=90 - 0.001 * dx * cake.m2d,
-                                        lon=0.0,
-                                        depth=source_depth)
+                                          lon=0.0,
+                                          depth=source_depth)
 
             runner = QSeisRRunner(tmp=self.tmp)
 
@@ -962,8 +962,10 @@ class QSeis2dGFBuilder(gf.builder.Builder):
                             args = (rz, sz, x, ig)
 
                         if self.qseis_baseconf.cut:
-                            tmin = self.store.t(self.qseis_baseconf.cut[0], args[:-1])
-                            tmax = self.store.t(self.qseis_baseconf.cut[1], args[:-1])
+                            tmin = self.store.t(
+                                self.qseis_baseconf.cut[0], args[:-1])
+                            tmax = self.store.t(
+                                self.qseis_baseconf.cut[1], args[:-1])
 
                             if None in (tmin, tmax):
                                 continue
@@ -975,7 +977,8 @@ class QSeis2dGFBuilder(gf.builder.Builder):
 
                         if self.qseis_baseconf.fade:
                             ta, tb, tc, td = [
-                                self.store.t(v, args[:-1]) for v in self.qseis_baseconf.fade]
+                                self.store.t(v, args[:-1])
+                                for v in self.qseis_baseconf.fade]
 
                             if None in (ta, tb, tc, td):
                                 continue
