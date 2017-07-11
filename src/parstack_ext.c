@@ -198,6 +198,7 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
 
     size_t ix, iy, ix_offset, imax[NBLOCK];
     double vmax[NBLOCK];
+	(void) nparallel;
 
     Py_BEGIN_ALLOW_THREADS
 
