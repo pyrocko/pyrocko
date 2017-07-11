@@ -115,14 +115,14 @@ def load(zfn, fn, minpop=1000000, region=None):
         if minpop <= pop:
             lat = float(t[4])
             lon = float(t[5])
-            feature_code = t[7]
+            feature_code = str(t[7].decode('ascii'))
             if not region or (
                     (w <= lon <= e or w <= lon + 360. <= e)
                     and (s <= lat <= n)):
 
                 yield GeoName2(
                     t[1].decode('utf8'),
-                    t[2].decode('utf8').encode('ascii', 'replace'),
+                    str(t[2].decode('utf8').encode('ascii', 'replace').decode('ascii')),
                     lat, lon, pop, feature_code)
 
     f.close()
