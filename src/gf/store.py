@@ -1634,9 +1634,17 @@ class Store(BaseStore):
         '''
 
         data = []
+        errmsg = ''
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
+            if not tmin:
+                errmsg += 'determination of time window failed (begin)'
+            if not tmax:
+                errmsg += 'determination of time window failed (end)'
+            if errmsg:
+                raise MakeTimingParamsFailed(errmsg)
+
             x = self.config.get_surface_distance(args)
             data.append((x, tmin, tmax))
 
