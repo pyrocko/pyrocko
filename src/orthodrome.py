@@ -985,14 +985,14 @@ def geodetic_to_ecef(lat, lon, alt):
     :return: ECEF Cartesian coordinates (X, Y, Z) in [m].
     :rtype: tuple, float
 
-    .. seealso ::
-        https://en.wikipedia.org/wiki/ECEF
-        https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
+    .. [#1] https://en.wikipedia.org/wiki/ECEF
+    .. [#2] https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+        #From_geodetic_to_ECEF_coordinates
     '''
 
     wgs = get_wgs84()
-    a = wgs._a
-    e2 = wgs._e2
+    a = wgs.a
+    e2 = 2*wgs.f - wgs.f**2
 
     lat, lon = num.radians(lat), num.radians(lon)
     # Normal (plumb line)
@@ -1005,13 +1005,6 @@ def geodetic_to_ecef(lat, lon, alt):
     return (X, Y, Z)
 
 
-def cube_root(x):
-    if x >= 0:
-        return pow(x, 1/3.0)
-    else:
-        return -1 * pow(abs(x), 1/3.0)
-
-
 def ecef_to_geodetic(X, Y, Z):
     '''
     Convert Earth-Centered, Earth-Fixed (ECEF) Cartesian coordinates to
@@ -1021,17 +1014,19 @@ def ecef_to_geodetic(X, Y, Z):
     :type X, Y, Z: float
 
     :return: Geodetic coordinates (lat, lon, alt). Latitude and longitude are
-        in [deg] and altitude is in [m] (positive for points outside the geoid).
+        in [deg] and altitude is in [m]
+        (positive for points outside the geoid).
     :rtype: tuple, float
 
     .. seealso ::
-        https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#The_application_of_Ferrari.27s_solution
+        https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+        #The_application_of_Ferrari.27s_solution
     '''
     wgs = get_wgs84()
-    a = wgs._a
-    b = wgs._b
-    f = wgs._f
-    e2 = wgs._e2
+    a = wgs.a
+    f = wgs.f
+    b = wgs.a * (1. - f)
+    e2 = 2.*f - f**2
 
     # usefull
     a2 = a**2
@@ -1044,26 +1039,27 @@ def ecef_to_geodetic(X, Y, Z):
     r = num.sqrt(X2 + Y2)
     r2 = r**2
 
+    e_prime2 = (a2 - b2)/b2
     E2 = a2 - b2
-    F = 54 * b2 * Z2
-    G = r2 + (1-e2)*Z2 - (e2*E2)
+    F = 54. * b2 * Z2
+    G = r2 + (1.-e2)*Z2 - (e2*E2)
     C = (e4 * F * r2) / (G**3)
-    S = cube_root(1 + C + num.sqrt(C**2 + 2*C))
-    P = F / (3 * (S + 1./S + 1)**2 * G**2)
-    Q = num.sqrt(1 + (2*e4*P))
+    S = num.cbrt(1. + C + num.sqrt(C**2 + 2.*C))
+    P = F / (3. * (S + 1./S + 1.)**2 * G**2)
+    Q = num.sqrt(1. + (2.*e4*P))
 
-    dum1 = -(P*e2*r) / (1+Q)
-    dum2 = 0.5 * a2 * (1 + (1./Q))
-    dum3 = (P * (1-e2) * Z2) / (Q * (1+Q))
+    dum1 = -(P*e2*r) / (1.+Q)
+    dum2 = 0.5 * a2 * (1. + 1./Q)
+    dum3 = (P * (1.-e2) * Z2) / (Q * (1.+Q))
     dum4 = 0.5 * P * r2
     r0 = dum1 + num.sqrt(dum2 - dum3 - dum4)
 
     U = num.sqrt((r - e2*r0)**2 + Z2)
-    V = num.sqrt((r - e2*r0)**2 + (1-e2)*Z2)
+    V = num.sqrt((r - e2*r0)**2 + (1.-e2)*Z2)
     Z0 = (b2*Z) / (a*V)
 
-    alt = U * (1 - (b2 / (a*V)))
-    lat = num.arctan((Z + e2*Z0)/r)
+    alt = U * (1. - (b2 / (a*V)))
+    lat = num.arctan((Z + e_prime2 * Z0)/r)
     lon = num.arctan2(Y, X)
 
     return (lat*r2d, lon*r2d, alt)
