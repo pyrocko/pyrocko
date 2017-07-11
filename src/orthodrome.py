@@ -979,9 +979,100 @@ def geographic_midpoint(lats, lons, weights=None):
     return lat/d2r, lon/d2r
 
 
-'''
-Containing points
-'''
+  def geodetic_to_ecef(lat, lon, alt):
+    '''
+    Convert geodetic coordinates to Earth-Centered, Earth-Fixed (ECEF)
+    Cartesian coordinates.
+
+    :param lat: Geodetic latitude in [deg].
+    :param lon: Geodetic longitude in [deg].
+    :param alt: Geodetic altitude (height) in [m] (positive for points outside
+        the geoid).
+    :type lat: float
+    :type lon: float
+    :type alt: float
+
+    :return: ECEF Cartesian coordinates (X, Y, Z) in [m].
+    :rtype: tuple, float
+
+    .. [#1] https://en.wikipedia.org/wiki/ECEF
+    .. [#2] https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+        #From_geodetic_to_ECEF_coordinates
+    '''
+
+    wgs = get_wgs84()
+    a = wgs.a
+    e2 = 2*wgs.f - wgs.f**2
+
+    lat, lon = num.radians(lat), num.radians(lon)
+    # Normal (plumb line)
+    N = a / num.sqrt(1.0 - (e2 * num.sin(lat)**2))
+
+    X = (N+alt) * num.cos(lat) * num.cos(lon)
+    Y = (N+alt) * num.cos(lat) * num.sin(lon)
+    Z = (N*(1.0-e2) + alt) * num.sin(lat)
+
+    return (X, Y, Z)
+
+
+def ecef_to_geodetic(X, Y, Z):
+    '''
+    Convert Earth-Centered, Earth-Fixed (ECEF) Cartesian coordinates to
+    geodetic coordinates (Ferrari's solution).
+
+    :param X, Y, Z: Cartesian coordinates in ECEF system in [m].
+    :type X, Y, Z: float
+
+    :return: Geodetic coordinates (lat, lon, alt). Latitude and longitude are
+        in [deg] and altitude is in [m]
+        (positive for points outside the geoid).
+    :rtype: tuple, float
+
+    .. seealso ::
+        https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+        #The_application_of_Ferrari.27s_solution
+    '''
+    wgs = get_wgs84()
+    a = wgs.a
+    f = wgs.f
+    b = wgs.a * (1. - f)
+    e2 = 2.*f - f**2
+
+    # usefull
+    a2 = a**2
+    b2 = b**2
+    e4 = e2**2
+    X2 = X**2
+    Y2 = Y**2
+    Z2 = Z**2
+
+    r = num.sqrt(X2 + Y2)
+    r2 = r**2
+
+    e_prime2 = (a2 - b2)/b2
+    E2 = a2 - b2
+    F = 54. * b2 * Z2
+    G = r2 + (1.-e2)*Z2 - (e2*E2)
+    C = (e4 * F * r2) / (G**3)
+    S = num.cbrt(1. + C + num.sqrt(C**2 + 2.*C))
+    P = F / (3. * (S + 1./S + 1.)**2 * G**2)
+    Q = num.sqrt(1. + (2.*e4*P))
+
+    dum1 = -(P*e2*r) / (1.+Q)
+    dum2 = 0.5 * a2 * (1. + 1./Q)
+    dum3 = (P * (1.-e2) * Z2) / (Q * (1.+Q))
+    dum4 = 0.5 * P * r2
+    r0 = dum1 + num.sqrt(dum2 - dum3 - dum4)
+
+    U = num.sqrt((r - e2*r0)**2 + Z2)
+    V = num.sqrt((r - e2*r0)**2 + (1.-e2)*Z2)
+    Z0 = (b2*Z) / (a*V)
+
+    alt = U * (1. - (b2 / (a*V)))
+    lat = num.arctan((Z + e_prime2 * Z0)/r)
+    lon = num.arctan2(Y, X)
+
+    return (lat*r2d, lon*r2d, alt)
 
 
 class Farside(Exception):

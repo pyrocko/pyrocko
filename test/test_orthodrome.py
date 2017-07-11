@@ -304,6 +304,35 @@ class OrthodromeTestCase(unittest.TestCase):
                                 '(maximum error)\n tested lat/lon: %s/%s' %
                                 (lat, lon))
 
+    def test_geodetic_to_ecef(self):
+        orthodrome.geodetic_to_ecef(23., 0., 0.)
+        wgs = orthodrome.get_wgs84()
+        a = wgs.a
+        b = wgs.a * (1. - wgs.f)
+
+        points = [
+            ((90., 0., 0.), (0., 0., b)),
+            ((-90., 0., 10.), (0., 0., -b-10.)),
+            ((0., 0., 0.), (a, 0., 0.))]
+
+        for p in points:
+            num.testing.assert_almost_equal(orthodrome.geodetic_to_ecef(*p[0]),
+                                            p[1])
+
+    def test_ecef_to_geodetic(self):
+        ncoords = 5
+        lats = num.random.uniform(-90., 90, size=ncoords)
+        lons = num.random.uniform(-180., 180, size=ncoords)
+        alts = num.random.uniform(0, 10, size=ncoords)
+
+        coords = num.array([lats, lons, alts]).T
+
+        for ic in xrange(coords.shape[0]):
+            xyz = orthodrome.geodetic_to_ecef(*coords[ic, :])
+            latlonalt = orthodrome.ecef_to_geodetic(*xyz)
+
+            num.testing.assert_almost_equal(coords[ic, :], latlonalt)
+
     def test_rotations(self):
         for lat in num.linspace(-90., 90., 20):
             for lon in num.linspace(-180., 180., 20):
