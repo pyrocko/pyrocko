@@ -110,7 +110,7 @@ class NGLCatalog(object):
         starttime = datetime.strptime('%d.%03d-12' % (start_year, start_day),
                                       '%Y.%j-%H')
         dates = data[:, 0]
-        gaps = num.round(num.gradient(dates) * 365.25).astype(num.int)
+        gaps = num.round(num.diff(dates) * 365.25).astype(num.int)
         idx = num.cumsum(gaps) - 1
 
         traces = {}
