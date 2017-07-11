@@ -376,7 +376,7 @@ class OrthodromeTestCase(unittest.TestCase):
             points[:, 1] = num.random.uniform(-180., 180., size=3)
 
             points_ip = num.zeros((nip*points.shape[0], 2))
-            for ip in range(points.shape[0]) + [0]:
+            for ip in range(points.shape[0]):
                 n, e = orthodrome.latlon_to_ne_numpy(
                     points[ip % np, 0], points[ip % np, 1],
                     points[(ip+1) % np, 0], points[(ip+1) % np, 1])

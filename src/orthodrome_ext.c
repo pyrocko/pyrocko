@@ -26,48 +26,46 @@
       __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })  
 
-static PyObject *OrthodromeExtError;
-
 struct module_state {
     PyObject *error;
 };
 
 #if PY_MAJOR_VERSION >= 3
-    #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 #else
-    #define GETSTATE(m) (&_state)
-    static struct module_state _state;
+#define GETSTATE(m) (&_state); (void) m;
+static struct module_state _state;
 #endif
 
 typedef npy_float32 float32_t;
 typedef npy_float64 float64_t;
 
-int good_array(PyObject* o, int typenum, ssize_t size_want, int ndim_want, npy_intp* shape_want) {
+int good_array(PyObject *arr, int typenum, ssize_t size_want, int ndim_want, npy_intp* shape_want) {
     int i;
 
-    if (!PyArray_Check(o)) {
-        PyErr_SetString(OrthodromeExtError, "not a NumPy array" );
+    if (!PyArray_Check(arr)) {
+        PyErr_SetString(PyExc_AttributeError, "not a NumPy array" );
         return 0;
     }
 
-    if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(OrthodromeExtError, "array of unexpected type");
+    if (PyArray_TYPE((PyArrayObject*)arr) != typenum) {
+        PyErr_SetString(PyExc_AttributeError, "array of unexpected type");
         return 0;
     }
 
-    if (size_want != -1 && size_want != PyArray_SIZE((PyArrayObject*)o)) {
-        PyErr_SetString(OrthodromeExtError, "array is of unexpected size");
+    if (size_want != -1 && size_want != PyArray_SIZE((PyArrayObject*)arr)) {
+        PyErr_SetString(PyExc_AttributeError, "array is of unexpected size");
         return 0;
     }
-    if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)o)) {
-        PyErr_SetString(OrthodromeExtError, "array is of unexpected ndim");
+    if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)arr)) {
+        PyErr_SetString(PyExc_AttributeError, "array is of unexpected ndim");
         return 0;
     }
 
     if (ndim_want != -1) {
         for (i=0; i<ndim_want; i++) {
-            if (shape_want[i] != -1 && shape_want[i] != PyArray_DIMS((PyArrayObject*)o)[i]) {
-                PyErr_SetString(OrthodromeExtError, "array is of unexpected shape");
+            if (shape_want[i] != -1 && shape_want[i] != PyArray_DIMS((PyArrayObject*)arr)[i]) {
+                PyErr_SetString(PyExc_AttributeError, "array is of unexpected shape");
                 return 0;
             }
         }
@@ -228,18 +226,18 @@ static void distance_accurate50m_array(float64_t *alats, float64_t *alons, float
 Wrapper shizzle
 */
 
-static PyObject* w_azibazi(PyObject *dummy, PyObject *args){
+static PyObject* w_azibazi(PyObject *m, PyObject *args){
     float64_t alat, alon, blat, blon;
     float64_t azi, bazi;
-    
-    (void) dummy;
+    (void) m;
 
     if (! PyArg_ParseTuple(args, "dddd", &alat, &alon, &blat, &blon)) {
-        PyErr_SetString(OrthodromeExtError, "azibazi: invalid call!");
+        PyErr_SetString(PyExc_ValueError, "azibazi: invalid call!");
         return NULL;
     }
 
     if (! check_latlon_ranges(alat, alon, blat, blon)) {
+        PyErr_SetString(PyExc_ValueError, "Lat Lon ranges are invalid.");
         return NULL;
     };
 
@@ -247,15 +245,16 @@ static PyObject* w_azibazi(PyObject *dummy, PyObject *args){
     return Py_BuildValue("dd", azi, bazi);
 }
 
-static PyObject* w_distance_accurate50m(PyObject *dummy, PyObject *args) {
+static PyObject* w_distance_accurate50m(PyObject *m, PyObject *args) {
     float64_t alat, alon, blat, blon, dist;
+    (void) m;
 
-    (void)dummy;
     if (! PyArg_ParseTuple(args, "dddd", &alat, &alon, &blat, &blon)) {
-        PyErr_SetString(OrthodromeExtError, "distance_accurate50m: invalid call!");
+        PyErr_SetString(PyExc_ValueError, "distance_accurate50m: invalid call!");
         return NULL;
     }
     if (! check_latlon_ranges(alat, alon, blat, blon)) {
+        PyErr_SetString(PyExc_ValueError, "Lat Lon ranges are invalid.");
         return NULL;
     };
 
@@ -263,15 +262,15 @@ static PyObject* w_distance_accurate50m(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("d", dist);
 }
 
-static PyObject * w_distance_accurate50m_numpy(PyObject *dummy, PyObject *args) {
+static PyObject* w_distance_accurate50m_numpy(PyObject *m, PyObject *args) {
     PyObject *alats_arr, *alons_arr, *blats_arr, *blons_arr;
     PyArrayObject *c_alats_arr, *c_alons_arr, *c_blats_arr, *c_blons_arr, *dists_arr;
     float64_t *alats, *alons, *blats, *blons;
     npy_intp size[1];
+    struct module_state *st = GETSTATE(m);
 
-    (void) dummy;
     if (! PyArg_ParseTuple(args, "OOOO", &alats_arr, &alons_arr, &blats_arr, &blons_arr)) {
-        PyErr_SetString(OrthodromeExtError, "distance_accurate50m_numpy: invalid call!");
+        PyErr_SetString(st->error, "distance_accurate50m_numpy: invalid call!");
         return NULL;
     }
 
@@ -309,15 +308,16 @@ static PyObject * w_distance_accurate50m_numpy(PyObject *dummy, PyObject *args) 
     return (PyObject *) dists_arr;
 }
 
-static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
+static PyObject * w_azibazi_numpy(PyObject *m, PyObject *args) {
+    struct module_state *st = GETSTATE(m);
+
     PyObject *alats_arr, *alons_arr, *blats_arr, *blons_arr;
     PyArrayObject *c_alats_arr, *c_alons_arr, *c_blats_arr, *c_blons_arr, *azis_arr, *bazis_arr;
     float64_t *alats, *alons, *blats, *blons;
     npy_intp size[1];
 
-    (void) dummy;
     if (! PyArg_ParseTuple(args, "OOOO", &alats_arr, &alons_arr, &blats_arr, &blons_arr)) {
-        PyErr_SetString(OrthodromeExtError, "usage: azibazi_numpy(alats, blats, alons, blons) -> (azis, bazis)");
+        PyErr_SetString(st->error, "usage: azibazi_numpy(alats, blats, alons, blons) -> (azis, bazis)");
         return NULL;
     }
 
@@ -357,7 +357,7 @@ static PyObject * w_azibazi_numpy(PyObject *dummy, PyObject *args) {
 }
 
 static PyMethodDef orthodrome_ext_methods[] = {
-    {"distance_accurate50m",  w_distance_accurate50m, METH_VARARGS,
+    {"distance_accurate50m", (PyCFunction) w_distance_accurate50m, METH_VARARGS,
 "Calculate great circle distance between pair of points on ellipsoidal earth.\n\n\
 :param alat: Latitude of point 1\n\
 :type alat: float\n\
@@ -369,7 +369,7 @@ static PyMethodDef orthodrome_ext_methods[] = {
 :type blon: float"
 },
 
-    {"distance_accurate50m_numpy",  w_distance_accurate50m_numpy, METH_VARARGS,
+    {"distance_accurate50m_numpy", (PyCFunction) w_distance_accurate50m_numpy, METH_VARARGS,
 "Calculate great circle distance between pairs of points on ellipsoidal earth (array version).\n\n\
 :param alat: Latitudes of points 1\n\
 :type alat: :py:class:`numpy.ndarray`\n\
@@ -378,9 +378,10 @@ static PyMethodDef orthodrome_ext_methods[] = {
 :param blat: Latitudes of points 2\n\
 :type blat: :py:class:`numpy.ndarray`\n\
 :param blon: Longitudes of points 2\n\
-:type blon: :py:class:`numpy.ndarray`" },
+:type blon: :py:class:`numpy.ndarray`"
+},
 
-    {"azibazi",  w_azibazi, METH_VARARGS,
+    {"azibazi", (PyCFunction) w_azibazi, METH_VARARGS,
 "Calculate azimuth and backazimuth directions of great circle path at a pair of points on spherical earth.\n\n\
 :param alat: Latitude of point 1.\n\
 :type alat: float\n\
@@ -392,7 +393,7 @@ static PyMethodDef orthodrome_ext_methods[] = {
 :type blon: float"
 },
 
-    {"azibazi_numpy",  w_azibazi_numpy, METH_VARARGS,
+    {"azibazi_numpy", (PyCFunction) w_azibazi_numpy, METH_VARARGS,
 "Calculate azimuth and backazimuth directions of great circle path at pairs of points on spherical earth (array version).\n\n\
 :param alat: Latitudes of points 1\n\
 :type alat: :py:class:`numpy.ndarray`\n\
@@ -434,13 +435,13 @@ static struct PyModuleDef moduledef = {
 #define INITERROR return NULL
 
 PyMODINIT_FUNC
-PyInit_util_ext(void)
+PyInit_orthodrome_ext(void)
 
 #else
 #define INITERROR return
 
 void
-initutil_ext(void)
+initorthodrome_ext(void)
 #endif
 
 {
@@ -449,16 +450,16 @@ initutil_ext(void)
 #else
     PyObject *module = Py_InitModule("orthodrome_ext", orthodrome_ext_methods);
 #endif
+    import_array();
 
     if (module == NULL)
         INITERROR;
     struct module_state *st = GETSTATE(module);
 
-    st->error = PyErr_NewException("pyrocko.orthodrome_ext.UtilExtError", NULL, NULL);
+    st->error = PyErr_NewException("pyrocko.orthodrome_ext.OrthodromeExtError", NULL, NULL);
     if (st->error == NULL) {
         Py_DECREF(module);
         INITERROR;
-
     }
 
     Py_INCREF(st->error);

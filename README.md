@@ -61,7 +61,7 @@ For documentation and installation instructions please see
 - [ ] ``moment_tensor_viewer.py``
 - [ ] ``mseed_ext.c``
 - [ ] ``mseed.py``
-- [ ] ``orthodrome_ext.c``
+- [x] ``orthodrome_ext.c``
 - [x] ``orthodrome.py``
 - [ ] ``parimap.py``
 - [ ] ``parstack_ext.c``
