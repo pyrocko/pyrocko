@@ -8,14 +8,16 @@ utilize the framework.
 .. toctree::
     :maxdepth: 2
 
-    trace_handling.rst
-    dataset_management.rst
-    fdsn_download.rst
-    catalog_search.rst
-    orthodrome.rst
-    plotting.rst
-    cake_raytracing.rst
-    gf_store.rst
-    gf_forward.rst
-    velocity_databases.rst
-    guts.rst
+    trace_handling
+    dataset_management
+    fdsn_download
+    catalog_search
+    moment_tensor
+    plotting
+    snuffler_markers
+    cake_raytracing
+    gf_forward
+    orthodrome
+    geographical_datasets
+    velocity_databases
+    guts

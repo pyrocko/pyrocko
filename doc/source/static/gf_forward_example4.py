@@ -1,10 +1,10 @@
-from pyrocko.gf import LocalEngine, SatelliteTarget, RectangularSource
 import numpy as num
 from pyrocko import gf
 from pyrocko.guts import List
 
 km = 1e3
 
+day= 24.*3600.
 
 class CombiSource(gf.Source):
     '''Composite source model.'''
@@ -56,12 +56,12 @@ ntargets = 1000
 
 # Ignite the LocalEngine and point it to fomosto stores stored on a
 # USB stick, for this example we use a static store with id 'static_store'
-store_id = 'static_store'
-engine = LocalEngine(store_superdirs=['/media/usb/gf_stores'])
+engine = gf.LocalEngine(store_superdirs=['/media/usb/stores'])
+store_id = 'Abruzzo_Ameri_static_nearfield'
 
 # We define two finite sources
 # The first one is a purely vertical strike-slip fault
-strikeslip = RectangularSource(
+strikeslip = gf.RectangularSource(
     north_shift=0., east_shift=0.,
     depth=6*km, width=4*km, length=10*km,
     dip=90., rake=0., strike=90.,
@@ -71,7 +71,7 @@ strikeslip = RectangularSource(
 # ramp north shift (n) and width (w) depend on its dip angle and on
 # the strike slip fault width
 n, w = 2/num.tan(num.deg2rad(45.)), 2.*(2./(num.sin(num.deg2rad(45.))))
-thrust = RectangularSource(
+thrust = gf.RectangularSource(
     north_shift=n*km, east_shift=0.,
     depth=6*km, width=w*km, length=10*km,
     dip=45., rake=90., strike=90.,
@@ -79,19 +79,19 @@ thrust = RectangularSource(
 
 # We initialize the satellite target and set the line of site vectors
 # Case example of the Sentinel-1 satellite:
-# Heading: -166 (anti clokwise rotation from east)
+# Heading: -166 (anti clockwise rotation from east)
 # Average Look Angle: 36 (from vertical)
 heading = -76
 look = 36.
-phi = num.empty(ntargets)    # Horizontal LOS from E in anti-clokwise rotation
+phi = num.empty(ntargets)    # Horizontal LOS from E in anti-clockwise rotation
 theta = num.empty(ntargets)  # Vertical LOS from horizontal
 phi.fill(num.deg2rad(-90. - heading))
 theta.fill(num.deg2rad(90. - look))
 
-satellite_target = SatelliteTarget(
+satellite_target = gf.SatelliteTarget(
     north_shifts=num.random.uniform(bottom, top, ntargets),
     east_shifts=num.random.uniform(left, right, ntargets),
-    tsnapshot=60,
+    tsnapshot=1.*day,
     interpolation='nearest_neighbor',
     phi=phi,
     theta=theta,
@@ -140,11 +140,10 @@ def plot_static_los_profile(result, strike, l, w, x0, y0):
     # We first plot the surface displacements in map view
     ax = fig.axes[0]
     los = result['displacement.los']
-    # losrange = [(los.max(),los.min())]
-    # losmax = num.abs([num.min(losrange), num.max(losrange)]).max()
     levels = num.linspace(los.min(), los.max(), 50)
 
-    cmap = ax.tricontourf(E, N, los, cmap=plt.get_cmap('seismic'), levels=levels)
+    cmap = ax.tricontourf(E, N, los, cmap=plt.get_cmap('seismic'), 
+                          levels=levels)
 
     for sourcess in patches:
         fn, fe = sourcess.outline(cs='xy').T
@@ -160,7 +159,7 @@ def plot_static_los_profile(result, strike, l, w, x0, y0):
 
     # We plot displacements in profile
     ax = fig.axes[1]
-    # We compute the perpandicular and parallel components in the profile basis
+    # We compute the perpendicular and parallel components in the profile basis
     yp = (E-x0)*n[0]+(N-y0)*n[1]
     xp = (E-x0)*s[0]+(N-y0)*s[1]
     los = result['displacement.los']

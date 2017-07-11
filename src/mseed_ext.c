@@ -32,6 +32,8 @@ mseed_get_traces (PyObject *dummy, PyObject *args)
     char          strbuf[BUFSIZE];
     PyObject      *unpackdata = NULL;
 
+    (void) dummy; /* silence warning */
+
     if (!PyArg_ParseTuple(args, "sO", &filename, &unpackdata)) {
         PyErr_SetString(MSeedError, "usage get_traces(filename, dataflag)" );
         return NULL;
@@ -154,6 +156,8 @@ mseed_store_traces (PyObject *dummy, PyObject *args)
     int           numpytype;
     int           length;
     FILE          *outfile;
+
+    (void) dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "Os", &in_traces, &filename)) {
         PyErr_SetString(MSeedError, "usage store_traces(traces, filename)" );

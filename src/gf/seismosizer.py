@@ -14,7 +14,7 @@ from pyrocko.guts import Object, Float, String, StringChoice, List, \
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
-from pyrocko import trace, model, parimap, util
+from pyrocko import trace, model, util
 from pyrocko.gf import meta, store, ws
 from pyrocko.orthodrome import ne_to_latlon
 from .targets import Target, StaticTarget, SatelliteTarget
@@ -144,6 +144,28 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     points[:, 1] = num.repeat(xw, nl)
     points[:, 2] = 0.0
 
+    anch_x = 0.
+    anch_y = 0.
+    if anchor == 'top' or anchor == 'bottom':
+        anch_y = .5 * width
+    elif anchor == 'center_left':
+        anch_x = .5 * length
+    elif anchor == 'center_right':
+        anch_x = -.5 * length
+    elif anchor == 'top_left' or anchor == 'bottom_left':
+        anch_x = .5 * length
+        anch_y = .5 * width
+    elif anchor == 'top_right' or anchor == 'bottom_right':
+        anch_x = -.5 * length
+        anch_y = .5 * width
+    if anchor == 'bottom':
+        anch_y *= -1.
+    if anchor == 'bottom_right' or anchor == 'bottom_left':
+        anch_y *= -1.
+
+    points[:, 0] += anch_x
+    points[:, 1] += anch_y
+
     if nucleation_x is not None:
         dist_x = num.abs(nucleation_x - points[:, 0])
     else:
@@ -169,25 +191,6 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
 
-    if anchor == 'center':
-        anch_north = 0.
-        anch_east = 0.
-        anch_depth = 0.
-    elif anchor == 'top' or anchor == 'bottom':
-        anch_north = num.cos(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
-        anch_east = num.sin(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
-        anch_depth = num.sin(dip * d2r) * width * .5
-    if anchor == 'bottom':
-        anch_north *= -1.
-        anch_east *= -1.
-        anch_depth *= -1.
-
-    points2[:, 0] += anch_north
-    points2[:, 1] += anch_east
-    points2[:, 2] += anch_depth
-
     return points2, times2, amplitudes2, dl, dw
 
 
@@ -200,21 +203,27 @@ def outline_rect_source(strike, dip, length, width, anchor):
          [0.5*l, 0.5*w, 0.],
          [-0.5*l, 0.5*w, 0.],
          [-0.5*l, -0.5*w, 0.]])
-
-    if anchor == 'center':
-        anch_north = 0.
-        anch_east = 0.
-    elif anchor == 'top' or anchor == 'bottom':
-        anch_north = -num.cos(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
-        anch_east = num.sin(strike * d2r) *\
-            num.cos(dip * d2r) * width * .5
+    anch_x = 0.
+    anch_y = 0.
+    if anchor == 'top' or anchor == 'bottom':
+        anch_y = .5 * width
+    elif anchor == 'center_left':
+        anch_x = .5 * length
+    elif anchor == 'center_right':
+        anch_x = -.5 * length
+    elif anchor == 'top_left' or anchor == 'bottom_left':
+        anch_x = .5 * length
+        anch_y = .5 * width
+    elif anchor == 'top_right' or anchor == 'bottom_right':
+        anch_x = -.5 * length
+        anch_y = .5 * width
     if anchor == 'bottom':
-        anch_north *= -1.
-        anch_east *= -1.
+        anch_y *= -1.
+    if anchor == 'bottom_right' or anchor == 'bottom_left':
+        anch_y *= -1.
 
-    points[:, 0] += anch_north
-    points[:, 1] += anch_east
+    points[:, 0] += anch_x
+    points[:, 1] += anch_y
 
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
@@ -237,6 +246,7 @@ class Range(SObject):
       Range(0, 10e3, 1e3)
       Range('0 .. 10k @ 11')
       Range(start=0., stop=10*km, n=11)
+
       Range(0, 10e3, n=11)
       Range(values=[x*1e3 for x in range(11)])
 
@@ -795,6 +805,59 @@ class HalfSinusoidSTF(STF):
         return (self.duration, self.anchor, type(self))
 
 
+class SmoothRampSTF(STF):
+    '''Smooth-ramp type source time function for near-field displacement.
+    Based on moment function of double-couple point source proposed by Bruestle
+    and Mueller (PEPI, 1983).
+
+    .. [1] W. Bruestle, G. Mueller (1983), Moment and duration of shallow
+        earthquakes from Love-wave modelling for regional distances, PEPI 32,
+        312-324.
+    '''
+    duration = Float.T(
+        default=0.0,
+        help='duration of the ramp (baseline)')
+
+    rise_ratio = Float.T(
+        default=0.5,
+        help='fraction of time compared to duration, '
+             'when the maximum amplitude is reached')
+
+    anchor = Float.T(
+        default=0.0,
+        help='anchor point with respect to source.time: ('
+             '-1.0: left -> source duration ``[0, T]`` ~ hypocenter time, '
+             '0.0: center -> source duration ``[-T/2, T/2]`` ~ centroid time, '
+             '+1.0: right -> source duration ``[-T, 0]`` ~ rupture end time)')
+
+    def discretize_t(self, deltat, tref):
+        tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
+        tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
+        tmin = round(tmin_stf / deltat) * deltat
+        tmax = round(tmax_stf / deltat) * deltat
+        D = round((tmax - tmin)/deltat) * deltat
+        nt = int(D/deltat) + 1
+        times = num.linspace(tmin, tmax, nt)
+        if nt > 1:
+            rise_time = self.rise_ratio * self.duration
+            amplitudes = num.ones_like(times)
+            tp = tmin + rise_time
+            ii = num.where(times <= tp)
+            t_inc = times[ii]
+            a = num.cos(num.pi * (t_inc - tmin_stf) / rise_time)
+            b = num.cos(3 * num.pi * (t_inc - tmin_stf) / rise_time) - 1.0
+            amplitudes[ii] = (9./16.) * (1 - a + (1./9.)*b)
+
+            amplitudes /= num.sum(amplitudes)
+        else:
+            amplitudes = num.ones(1)
+
+        return times, amplitudes
+
+    def base_key(self):
+        return (self.duration, self.rise_ratio, self.anchor, type(self))
+
+
 class STFMode(StringChoice):
     choices = ['pre', 'post']
 
@@ -1113,10 +1176,13 @@ class RectangularExplosionSource(ExplosionSource):
         help='width of rectangular source area [m]')
 
     anchor = StringChoice.T(
-        choices=['top', 'center', 'bottom'],
+        choices=['top', 'top_left', 'top_right', 'center', 'bottom',
+                 'bottom_left', 'bottom_right'],
         default='center',
         optional=True,
-        help='Anchor point for positioning the plane.')
+        help='Anchor point for positioning the plane, can be: top, center or'
+             'bottom and also top_left, top_right,bottom_left,'
+             'bottom_right, center_left and center right')
 
     nucleation_x = Float.T(
         optional=True,
@@ -1409,10 +1475,13 @@ class RectangularSource(DCSource):
         help='width of rectangular source area [m]')
 
     anchor = StringChoice.T(
-        choices=['top', 'center', 'bottom'],
+        choices=['top', 'top_left', 'top_right', 'center', 'bottom',
+                 'bottom_left', 'bottom_right'],
         default='center',
         optional=True,
-        help='Anchor point for positioning the plane.')
+        help='Anchor point for positioning the plane, can be: top, center or'
+             'bottom and also top_left, top_right,bottom_left,'
+             'bottom_right, center_left and center right')
 
     nucleation_x = Float.T(
         optional=True,
@@ -2284,7 +2353,7 @@ def process_subrequest_dynamic(work, pshared=None):
     for isource, source in zip(isources, sources):
         for itarget, target in zip(itargets, targets):
             try:
-                result = engine._post_process_seismogram(
+                result = engine._post_process_dynamic(
                     base_seismogram, source, target)
                 result.n_records_stacked = n_records_stacked
                 result.n_shared_stacking = len(sources) * len(targets)
@@ -2299,6 +2368,58 @@ def process_subrequest_dynamic(work, pshared=None):
     tcounters.append(xtime())
 
     return results, tcounters
+
+
+def process_dynamic(work, psources, ptargets, engine, nthreads=0):
+    dsource_cache = {}
+
+    for w in work:
+        _, _, isources, itargets = w
+
+        sources = [psources[isource] for isource in isources]
+        targets = [ptargets[itarget] for itarget in itargets]
+
+        components = set()
+        for target in targets:
+            rule = engine.get_rule(sources[0], target)
+            components.update(rule.required_components(target))
+
+        for isource, source in zip(isources, sources):
+            for itarget, target in zip(itargets, targets):
+
+                try:
+                    base_seismogram, tcounters = engine.base_seismogram(
+                        source, target, components, dsource_cache, nthreads)
+                except meta.OutOfBounds, e:
+                    e.context = OutOfBoundsContext(
+                        source=sources[0],
+                        target=targets[0],
+                        distance=sources[0].distance_to(targets[0]),
+                        components=components)
+                    raise
+
+                n_records_stacked = 0
+                t_optimize = 0.0
+                t_stack = 0.0
+
+                for _, tr in base_seismogram.iteritems():
+                    n_records_stacked += tr.n_records_stacked
+                    t_optimize += tr.t_optimize
+                    t_stack += tr.t_stack
+
+                try:
+                    result = engine._post_process_dynamic(
+                        base_seismogram, source, target)
+                    result.n_records_stacked = n_records_stacked
+                    result.n_shared_stacking = len(sources) *\
+                        len(targets)
+                    result.t_optimize = t_optimize
+                    result.t_stack = t_stack
+                except SeismosizerError, e:
+                    result = e
+
+                tcounters.append(xtime())
+                yield (isource, itarget, result), tcounters
 
 
 def process_static(work, psources, ptargets, engine, nthreads=0):
@@ -2372,9 +2493,16 @@ class LocalEngine(Engine):
             self.store_superdirs.extend(c.gf_store_superdirs)
             self.store_dirs.extend(c.gf_store_dirs)
 
+        self._check_store_dirs_type()
         self._id_to_store_dir = {}
         self._open_stores = {}
         self._effective_default_store_id = None
+
+    def _check_store_dirs_type(self):
+        for sdir in ['store_dirs', 'store_superdirs']:
+            if not isinstance(self.__getattribute__(sdir), list):
+                raise TypeError("{} of {} is not of type list".format(
+                    sdir, self.__class__.__name__))
 
     def _get_store_id(self, store_dir):
         store_ = store.Store(store_dir)
@@ -2522,7 +2650,8 @@ class LocalEngine(Engine):
 
         return cache[source, store]
 
-    def base_seismogram(self, source, target, components, dsource_cache):
+    def base_seismogram(self, source, target, components, dsource_cache,
+                        nthreads):
 
         tcounters = [xtime()]
 
@@ -2553,7 +2682,8 @@ class LocalEngine(Engine):
             deltat=deltat,
             itmin=itmin, nsamples=nsamples,
             interpolation=target.interpolation,
-            optimization=target.optimization)
+            optimization=target.optimization,
+            nthreads=nthreads)
 
         tcounters.append(xtime())
 
@@ -2573,9 +2703,6 @@ class LocalEngine(Engine):
         else:
             tcounters = [xtime()]
             store_ = self.get_store(target.store_id)
-
-            if hasattr(source, 'decimation_factor'):
-                source.decimation_factor = 4
 
             if target.tsnapshot is not None:
                 n_f = store_.config.sample_rate
@@ -2601,7 +2728,7 @@ class LocalEngine(Engine):
 
             return base_statics, tcounters
 
-    def _post_process_seismogram(self, base_seismogram, source, target):
+    def _post_process_dynamic(self, base_seismogram, source, target):
         deltat = base_seismogram.values()[0].deltat
 
         rule = self.get_rule(source, target)
@@ -2636,7 +2763,12 @@ class LocalEngine(Engine):
 
     def _post_process_statics(self, base_statics, source, starget):
         rule = self.get_rule(source, starget)
-        rule.apply_(starget, base_statics)
+        data = rule.apply_(starget, base_statics)
+
+        factor = source.get_factor()
+        if factor != 1.0:
+            for v in data.values():
+                v *= factor
 
         return starget.post_process(self, source, base_statics)
 
@@ -2667,7 +2799,11 @@ class LocalEngine(Engine):
 
         request = kwargs.pop('request', None)
         status_callback = kwargs.pop('status_callback', None)
-        nprocs = kwargs.pop('nprocs', 1)
+
+        nprocs = kwargs.pop('nprocs', None)
+        nthreads = kwargs.pop('nthreads', 1)
+        if nprocs:
+            nthreads = nprocs
 
         if request is None:
             request = Request(**kwargs)
@@ -2708,20 +2844,13 @@ class LocalEngine(Engine):
                   if not isinstance(target, StaticTarget)])
                 for (i, k) in enumerate(skeys)]
 
-            for ii_results, tcounters_dyn in parimap.parimap(
-                    process_subrequest_dynamic, work_dynamic,
-                    pshared=dict(
-                        engine=self,
-                        sources=request.sources,
-                        targets=request.targets,
-                        dsource_cache={}),
-
-                    nprocs=1):
+            for ii_results, tcounters_dyn in process_dynamic(
+              work_dynamic, request.sources, request.targets, self,
+              nthreads=nthreads):
 
                 tcounters_dyn_list.append(num.diff(tcounters_dyn))
-
-                for isource, itarget, result in ii_results:
-                    results_list[isource][itarget] = result
+                isource, itarget, result = ii_results
+                results_list[isource][itarget] = result
 
                 if status_callback:
                     status_callback(isub, nsub)
@@ -2738,14 +2867,10 @@ class LocalEngine(Engine):
                 for (i, k) in enumerate(skeys)]
 
             for ii_results, tcounters_static in process_static(
-              work_static,
-              request.sources,
-              request.targets,
-              self,
-              nthreads=nprocs):
+              work_static, request.sources, request.targets, self,
+              nthreads=nthreads):
 
                 tcounters_static_list.append(num.diff(tcounters_static))
-
                 isource, itarget, result = ii_results
                 results_list[isource][itarget] = result
 
@@ -2765,7 +2890,7 @@ class LocalEngine(Engine):
 
         if request.has_dynamic:
             tcumu_dyn = num.sum(num.vstack(tcounters_dyn_list), axis=0)
-            t_dyn = num.sum(tcumu_dyn)
+            t_dyn = float(num.sum(tcumu_dyn))
             perc_dyn = map(float, tcumu_dyn/t_dyn * 100.)
             (s.t_perc_get_store_and_receiver,
              s.t_perc_discretize_source,

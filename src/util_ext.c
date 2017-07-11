@@ -101,8 +101,8 @@ util_error_t stt(const char *s, const char *format, time_t *t, double *tfrac) {
     }
 
     if (nexpect != -2) {
-        *rindex(format2, '.') = '\0'; /* cannot fail here */
-        sfrac = rindex(s2, '.');
+        *strchr(format2, '.') = '\0'; /* cannot fail here */
+        sfrac = strchr(s2, '.');
         if (nexpect != 0 && sfrac == NULL) {
             return TIME_FORMAT_ERROR;  /* fractional seconds expected but not found */
         }

@@ -10,12 +10,14 @@ Reference
    catalog
    crust2x2
    crustdb
+   gshhg
    evalresp
    gmtpy
    gui_util
    hamster_pile
    ims
    io
+   marker
    model
    moment_tensor
    orthodrome
@@ -28,6 +30,7 @@ Reference
    slink
    snuffling
    tectonics
+   automap
    trace
    util
 

@@ -399,7 +399,7 @@ class GutsTestCase(unittest.TestCase):
 
         shapes = [(None,), (1,), (10,), (1000,)]
         for shape in shapes:
-            for serialize_as in ('base64', 'table'):
+            for serialize_as in ('base64', 'table', 'npy', 'base64+meta'):
                 class A(Object):
                     xmltagname = 'aroot'
                     arr = Array.T(
@@ -408,14 +408,15 @@ class GutsTestCase(unittest.TestCase):
                         serialize_as=serialize_as,
                         serialize_dtype='>i8')
 
-                n = shape[0] or 1000
+                n = shape[0] or 10
                 a = A(arr=num.arange(n, dtype=num.int))
 
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
 
-                b = load_xml_string(a.dump_xml())
-                self.assertTrue(num.all(a.arr == b.arr))
+                if serialize_as is not 'base64+meta':
+                    b = load_xml_string(a.dump_xml())
+                    self.assertTrue(num.all(a.arr == b.arr))
 
                 if shape[0] is not None:
                     with self.assertRaises(ValidationError):
@@ -438,6 +439,21 @@ class GutsTestCase(unittest.TestCase):
 
                 b = load_xml_string(a.dump_xml())
                 self.assertTrue(num.all(a.arr == b.arr))
+
+    def testArrayNoDtype(self):
+        from pyrocko.guts_array import Array
+        import numpy as num
+
+        class A(Object):
+            arr = Array.T(serialize_as='base64+meta')
+
+        for dtype in (num.int, num.float):
+            a = A(arr=num.zeros((3, 3), dtype=dtype))
+            b = load_string(a.dump())
+            assert a.arr.shape == b.arr.shape
+            self.assertTrue(num.all(a.arr == b.arr))
+
+        b_int = load_string  # noqa
 
     def testPO(self):
         class SKU(StringPattern):

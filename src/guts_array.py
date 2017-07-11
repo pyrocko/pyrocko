@@ -26,6 +26,18 @@ def literal_presenter(dumper, data):
 guts.SafeDumper.add_representer(literal, literal_presenter)
 
 
+restricted_dtype_map = {
+    num.dtype('float64'): '<f8',
+    num.dtype('float32'): '<f4',
+    num.dtype('int64'): '<i8',
+    num.dtype('int32'): '<i4',
+    num.dtype('int16'): '<i2',
+    num.dtype('int8'): '<i1'}
+
+restricted_dtype_map_rev = dict(
+    (v, k) for (k, v) in restricted_dtype_map.iteritems())
+
+
 class Array(Object):
 
     dummy_for = num.ndarray
@@ -42,7 +54,8 @@ class Array(Object):
             TBase.__init__(self, *args, **kwargs)
             self.shape = shape
             self.dtype = dtype
-            assert serialize_as in ('table', 'base64', 'list')
+            assert serialize_as in ('table', 'base64', 'list', 'npy',
+                                    'base64+meta')
             self.serialize_as = serialize_as
             self.serialize_dtype = serialize_dtype
 
@@ -61,13 +74,65 @@ class Array(Object):
                     data = b64decode(val)
                     val = num.fromstring(
                         data, dtype=self.serialize_dtype).astype(self.dtype)
+
+                elif self.serialize_as == 'npy':
+                    data = b64decode(val)
+                    try:
+                        val = num.load(StringIO(str(data)), allow_pickle=False)
+                    except TypeError:
+                        # allow_pickle only available in newer NumPy
+                        val = num.load(StringIO(str(data)))
+
+            elif isinstance(val, dict):
+                if self.serialize_as == 'base64+meta':
+                    if not sorted(val.keys()) == ['data', 'dtype', 'shape']:
+                        raise ValidationError(
+                            'array in format "base64+meta" must have keys '
+                            '"data", "dtype", and "shape"')
+
+                    shape = val['shape']
+                    if not isinstance(shape, list):
+                        raise ValidationError('invalid shape definition')
+
+                    for n in shape:
+                        if not isinstance(n, int):
+                            raise ValidationError('invalid shape definition')
+
+                    serialize_dtype = val['dtype']
+                    allowed = list(restricted_dtype_map_rev.keys())
+                    if self.serialize_dtype is not None:
+                        allowed.append(self.serialize_dtype)
+
+                    if serialize_dtype not in allowed:
+                        raise ValidationError(
+                            'only the following dtypes are allowed: %s'
+                            % ', '.join(sorted(allowed)))
+
+                    data = val['data']
+                    if not isinstance(data, basestring):
+                        raise ValidationError(
+                            'data must be given as a base64 encoded string')
+
+                    data = b64decode(data)
+
+                    dtype = self.dtype or \
+                        restricted_dtype_map_rev[serialize_dtype]
+
+                    val = num.fromstring(
+                        data, dtype=serialize_dtype).astype(dtype)
+
+                    if val.size != num.product(shape):
+                        raise ValidationError('size/shape mismatch')
+
+                    val = val.reshape(shape)
+
             else:
                 val = num.asarray(val, dtype=self.dtype)
 
             return val
 
         def validate_extra(self, val):
-            if self.dtype != val.dtype:
+            if self.dtype is not None and self.dtype != val.dtype:
                 raise ValidationError(
                     'array not of required type: need %s, got %s' % (
                         self.dtype, val.dtype))
@@ -99,6 +164,26 @@ class Array(Object):
                     return [repr(x) for x in val]
                 else:
                     return val.tolist()
+            elif self.serialize_as == 'npy':
+                out = StringIO()
+                try:
+                    num.save(out, val, allow_pickle=False)
+                except TypeError:
+                    # allow_pickle only available in newer NumPy
+                    num.save(out, val)
+
+                return literal(out.getvalue().encode('base64'))
+
+            elif self.serialize_as == 'base64+meta':
+                serialize_dtype = self.serialize_dtype or \
+                    restricted_dtype_map[val.dtype]
+
+                data = val.astype(serialize_dtype).tostring()
+
+                return dict(
+                    dtype=serialize_dtype,
+                    shape=val.shape,
+                    data=literal(data.encode('base64')))
 
 
 __all__ = ['Array']

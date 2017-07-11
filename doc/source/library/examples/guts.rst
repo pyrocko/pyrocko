@@ -1,7 +1,7 @@
-Working with the guts package
-========================================
+Working with the ``guts`` package
+=================================
 
-Introduction to guts
+Introduction to ``guts``
 -------------------------------
 
 Guts is a `Lightweight declarative YAML and XML data binding for Python 
@@ -9,8 +9,8 @@ Guts is a `Lightweight declarative YAML and XML data binding for Python
 and usage tutorial).
 
 
-guts and pyrocko
-------------------
+``guts`` and ``pyrocko``
+------------------------
 
 When building add-on functionality to pyrocko, objects that will be 
 in/ex-ported can use the guts wrapping to conform easily to prycoko standards.  
@@ -22,8 +22,8 @@ and a small utility class :py:class:`pyrocko.fomosto_report.SensoryArray` are
 implemented with guts.  We shall look at 
 :py:class:`pyrocko.fomosto_report.SensoryArray` below.
 
-Implementing guts
-------------------
+Implementing ``guts``
+---------------------
 
 When creating a class that implements :py:mod:`pyrocko.guts`, first determine 
 which attribute are important to the class.  In the case of 
