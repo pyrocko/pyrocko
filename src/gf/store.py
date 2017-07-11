@@ -1634,16 +1634,20 @@ class Store(BaseStore):
         '''
 
         data = []
-        errmsg = ''
+        failed = []
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
             if not tmin:
-                errmsg += 'determination of time window failed (begin)'
+                failed.append(str(begin))
             if not tmax:
-                errmsg += 'determination of time window failed (end)'
-            if errmsg:
-                raise MakeTimingParamsFailed(errmsg)
+                failed.append(str(end))
+
+            if failed:
+                msg = 'determination of time window failed using phase ' +\
+                    'definitions: {}.\n Travel time table contains holes ' +\
+                    'in probed ranges.'
+                raise MakeTimingParamsFailed(msg.format(' and '.join(failed)))
 
             x = self.config.get_surface_distance(args)
             data.append((x, tmin, tmax))
