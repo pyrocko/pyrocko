@@ -2807,7 +2807,7 @@ class LocalEngine(Engine):
 
             for ii_results, tcounters_static in process_static(
               work_static, request.sources, request.targets, self,
-              nthreads=nprocs):
+              nthreads=nthreads):
 
                 tcounters_static_list.append(num.diff(tcounters_static))
                 isource, itarget, result = ii_results

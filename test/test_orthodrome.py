@@ -19,6 +19,22 @@ d2r = 1./r2d
 km = 1000.
 
 
+def random_lat(mi=-90., ma=90., rstate=None, size=None):
+    if rstate is None:
+        rstate = num.random
+    mi_ = 0.5*(math.sin(mi * math.pi/180.)+1.)
+    ma_ = 0.5*(math.sin(ma * math.pi/180.)+1.)
+    return num.arcsin(rstate.uniform(mi_, ma_, size=size)*2.-1.)*180./math.pi
+
+
+def light(color, factor=0.5):
+    return tuple(1-(1-c)*factor for c in color)
+
+
+def dark(color, factor=0.5):
+    return tuple(c*factor for c in color)
+
+
 class OrthodromeTestCase(unittest.TestCase):
 
     def get_critical_random_locations(self, ntest):
@@ -288,6 +304,102 @@ class OrthodromeTestCase(unittest.TestCase):
                                 '(maximum error)\n tested lat/lon: %s/%s' %
                                 (lat, lon))
 
+    def test_rotations(self):
+        for lat in num.linspace(-90., 90., 20):
+            for lon in num.linspace(-180., 180., 20):
+                point = num.array([lat, lon], dtype=num.float)
+                xyz = orthodrome.latlon_to_xyz(point)
+                rot = orthodrome.rot_to_00(point[0], point[1])
+                p2 = num.dot(rot, xyz)
+                num.testing.assert_allclose(p2, [1., 0., 0.], atol=1.0e-7)
+
+    def test_rotation2(self):
+        eps = 1.0e-7
+        lats = num.linspace(50., 60., 20)
+        lons = num.linspace(170., 180., 20)
+        lats2 = num.repeat(lats, lons.size)
+        lons2 = num.tile(lons, lats.size)
+        points = num.vstack((lats2, lons2)).T
+        xyz = orthodrome.latlon_to_xyz(points)
+        rot = orthodrome.rot_to_00(lats[0], lons[0])
+        xyz2 = num.dot(rot, xyz.T).T
+        points2 = orthodrome.xyz_to_latlon(xyz2)
+        assert num.all(points2[:, 1] > -eps)
+
+    def test_point_in_polygon(self):
+        from pyrocko.plot import mpl_graph_color
+
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Polygon
+
+        axes = plt.gca()
+        nip = 100
+
+        for i in xrange(1):
+            np = 3
+            points = num.zeros((np, 2))
+            points[:, 0] = random_lat(size=3)
+            points[:, 1] = num.random.uniform(-180., 180., size=3)
+
+            points_ip = num.zeros((nip*points.shape[0], 2))
+            for ip in range(points.shape[0]) + [0]:
+                n, e = orthodrome.latlon_to_ne_numpy(
+                    points[ip % np, 0], points[ip % np, 1],
+                    points[(ip+1) % np, 0], points[(ip+1) % np, 1])
+
+                ns = num.arange(nip) * n / nip
+                es = num.arange(nip) * e / nip
+                lats, lons = orthodrome.ne_to_latlon(
+                    points[ip % np, 0], points[ip % np, 1], ns, es)
+
+                points_ip[ip*nip:(ip+1)*nip, 0] = lats
+                points_ip[ip*nip:(ip+1)*nip, 1] = lons
+
+            color = mpl_graph_color(i)
+            axes.add_patch(
+                Polygon(
+                    num.fliplr(points_ip),
+                    facecolor=light(color),
+                    edgecolor=color,
+                    alpha=0.5))
+
+            points_xyz = orthodrome.latlon_to_xyz(points_ip.T)
+            center_xyz = num.mean(points_xyz, axis=0)
+
+            assert num.all(
+                orthodrome.distances3d(
+                    points_xyz, center_xyz[num.newaxis, :]) < 1.0)
+
+            lat, lon = orthodrome.xyz_to_latlon(center_xyz)
+            rot = orthodrome.rot_to_00(lat, lon)
+
+            points_rot_xyz = num.dot(rot, points_xyz.T).T
+            points_rot_pro = orthodrome.stereographic(points_rot_xyz)  # noqa
+
+            poly_xyz = orthodrome.latlon_to_xyz(points_ip)
+            poly_rot_xyz = num.dot(rot, poly_xyz.T).T
+            groups = orthodrome.spoly_cut([poly_rot_xyz], axis=0)
+            num.zeros(points.shape[0], dtype=num.int)
+
+            for group in groups:
+                for poly_rot_group_xyz in group:
+
+                    axes.set_xlim(-180., 180.)
+                    axes.set_ylim(-90., 90.)
+
+                plt.show()
+
+    def test_point_in_region(self):
+        testdata = [
+            ((-20., 180.), (-180., 180., -90., 90.), True),
+            ((-20., 180.), (170., -170., -90., 90.), True),
+            ((-20., 160.), (170., -170., -90., 90.), False),
+            ((-20., -160.), (170., -170., -90., 90.), False),
+        ]
+
+        for point, region, in_region in testdata:
+            assert bool(orthodrome.point_in_region(point, region)) == in_region
+
 
 def serialgrid(x, y):
     return num.repeat(x, y.size), num.tile(y, x.size)
@@ -381,17 +493,6 @@ def plot_erroneous_ne_to_latlon():
             time.sleep(2)
         else:
             print 'ok', gsize, lat, lon
-
-    def test_point_in_region(self):
-        testdata = [
-            ((-20., 180.), (-90., 90., -180., 180.), True),
-            ((-20., 180.), (-90., 90., 170., -170.), True),
-            ((-20., 160.), (-90., 90., 170., -170.), False),
-            ((-20., -160.), (-90., 90., 170., -170.), False),
-        ]
-
-        for point, region, in_region in testdata:
-            assert bool(orthodrome.point_in_region(point, region)) == in_region
 
 
 if __name__ == "__main__":

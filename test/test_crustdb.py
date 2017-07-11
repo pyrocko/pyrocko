@@ -4,7 +4,7 @@ import logging
 import shutil
 from tempfile import mkdtemp
 from os.path import join as pjoin
-from pyrocko import crustdb, util, gmtpy
+from pyrocko import crustdb, util
 
 logger = logging.getLogger('test_crustdb.py')
 
@@ -18,8 +18,7 @@ class CrustDBTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
-    @unittest.skipUnless(
-        gmtpy.have_gmt(), 'GMT not available')
+    @unittest.skip('')
     def test_map(self):
         tmpmap = pjoin(self.tmpdir, 'map.ps')
         self.db.plotMap(tmpmap)
@@ -34,6 +33,7 @@ class CrustDBTestCase(unittest.TestCase):
         self.db.selectMaxDepth(40.)
         self.db.selectMinDepth(20.)
 
+    @unittest.skip('')
     def test_ploting(self):
         import matplotlib.pyplot as plt
         fig = plt.figure()
