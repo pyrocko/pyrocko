@@ -7,7 +7,7 @@ class QuakeMLTestCase(unittest.TestCase):
 
     def test_read(self):
 
-        fpath = common.test_data_file('data/test.quakeml')
+        fpath = common.test_data_file('test.quakeml')
         qml = quakeml.QuakeML.load_xml(filename=fpath)
         events = qml.get_pyrocko_events()
         assert len(events) == 1
