@@ -450,7 +450,7 @@ def provinceKey(province):
 
 
 def ageKey(age):
-    for key, value in EONS.iteritems():
+    for key, value in EONS.items():
         if age.strip().lower() == key.lower():
             return value
     return 'Undefined'

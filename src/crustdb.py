@@ -182,7 +182,7 @@ class VelocityProfile(Object):
 
     def iterLayers(self):
         ''' Iterator returns a :class:`pyrocko.cake.Material` for each layer'''
-        for il in xrange(self.nlayers):
+        for il in range(self.nlayers):
             yield Material(vp=self.vp[il],
                            vs=self.vs[il])
 
@@ -213,7 +213,7 @@ class VelocityProfile(Object):
 
     def _csv(self):
         output = ''
-        for d in xrange(len(self.h)):
+        for d in range(len(self.h)):
             output += ('{p.uid}, {p.lat}, {p.lon},'
                        ' {vp}, {vs}, {h}, {d}, {self.reference}').format(
                 p=self,
@@ -345,7 +345,7 @@ class CrustDB(object):
         ref_vel = ref_profile.interpolateProfile(sdepth, phase=phase)
 
         rms = num.empty(self.nprofiles)
-        for p in xrange(self.nprofiles):
+        for p in range(self.nprofiles):
             profile = vel_matrix[p, :]
             rms[p] = num.sqrt(profile**2 - ref_vel**2).sum() / ref_vel.size
         return rms
@@ -648,7 +648,7 @@ class CrustDB(object):
         self.profile_exceed_velocity[:] = num.nan
 
         for ip, profile in enumerate(self.profiles):
-            for il in xrange(len(profile.d)):
+            for il in range(len(profile.d)):
                 if profile.d[il] <= d_min\
                         or profile.d[il] >= d_max:
                     continue
@@ -931,7 +931,7 @@ class CrustDB(object):
         vp, vs, h, d, lat, lon, meta = get_empty_record()
         ilayer = 0
         with open(database_file, 'r') as database:
-            for line, dbline in enumerate(database.xreadlines()):
+            for line, dbline in enumerate(database):
                 if dbline.isspace():
                     if not len(d) == 0:
                         add_record(vp, vs, h, d, lat, lon, meta, ilayer)
@@ -946,7 +946,7 @@ class CrustDB(object):
                     try:
                         if ilayer == 0:
                             lat = float(dbline[8:13])
-                            if dbline[13] == "S":
+                            if dbline[13] == b'S':
                                 lat = -lat
                             # Additional meta data
                             meta['uid'] = int(dbline[0:6])
@@ -959,7 +959,7 @@ class CrustDB(object):
                             meta['measurement_method'] = dbline[77]
                         if ilayer == 1:
                             lon = float(dbline[7:13])
-                            if dbline[13] == "W":
+                            if dbline[13] == b'W':
                                 lon = -lon
                             # Additional meta data
                             meta['geological_age'] = dbline[54:58].strip()

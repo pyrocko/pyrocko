@@ -20,8 +20,8 @@ For documentation and installation instructions please see
 - [ ] ``config.py``
 - [ ] ``crust2x2_data.py``
 - [ ] ``crust2x2.py``
-- [ ] ``crustdb_abbr.py``
-- [ ] ``crustdb.py``
+- [x] ``crustdb_abbr.py``
+- [x] ``crustdb.py``
 - [ ] ``css.py``
 - [ ] ``data/``
 - [ ] ``datacube_ext.c``
