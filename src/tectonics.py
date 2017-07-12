@@ -1,3 +1,7 @@
+from builtins import range
+from builtins import map
+from builtins import str
+
 import os.path as op
 import math
 from collections import defaultdict
@@ -65,7 +69,7 @@ class Boundary(Object):
              [itypes.size]))
 
         results = []
-        for ii in xrange(iswitch.size-1):
+        for ii in range(iswitch.size-1):
             if groups is not None:
                 tt = [self._index_to_type[ityp] for ityp in num.unique(
                     itypes[iswitch[ii]:iswitch[ii+1]])]
@@ -156,14 +160,16 @@ class PeterBird2003(PlatesDataset):
             data = []
             for line in f:
                 t = line.split()
-                s = t[1].lstrip(':')
-                name1, kind, name2 = s[0:2], s[2], s[3:5]
+                s = t[1].lstrip(b':')
+                name1 = str(s[0:2].decode('ascii'))
+                name2 = str(s[3:5].decode('ascii'))
+                kind = s[2]
 
-                alon, alat, blon, blat = map(float, t[2:6])
+                alon, alat, blon, blat = list(map(float, t[2:6]))
                 mlat = (alat + blat) * 0.5
                 dlon = ((blon - alon) + 180.) % 360. - 180.
                 mlon = alon + dlon * 0.5
-                typ = t[14].strip(':*')
+                typ = str(t[14].strip(b':*').decode('ascii'))
 
                 if typ not in type_to_index:
                     ntyp += 1
@@ -187,7 +193,7 @@ class PeterBird2003(PlatesDataset):
         with open(fpath, 'rb') as f:
             data = []
             for line in f:
-                if line.startswith('***'):
+                if line.startswith(b'***'):
                     cpoints, itypes = d2[name1, kind, name2]
                     boundaries.append(Boundary(
                         name1=name1,
@@ -201,11 +207,13 @@ class PeterBird2003(PlatesDataset):
                     boundaries[-1]._index_to_type = index_to_type
 
                     data = []
-                elif line.startswith(' '):
-                    data.append(map(float, line.split(','))[::-1])
+                elif line.startswith(b' '):
+                    data.append(list(map(float, line.split(b',')))[::-1])
                 else:
                     s = line.strip()
-                    name1, kind, name2 = s[0:2], s[2], s[3:5]
+                    name1 = str(s[0:2].decode('ascii'))
+                    name2 = str(s[3:5].decode('ascii'))
+                    kind = s[2]
 
         return boundaries
 
@@ -217,16 +225,16 @@ class PeterBird2003(PlatesDataset):
         with open(fpath, 'rb') as f:
             data = []
             for line in f:
-                if line.startswith('***'):
+                if line.startswith(b'***'):
                     plates.append(Plate(
                         name=name,
                         points=num.array(data, dtype=num.float)))
 
                     data = []
-                elif line.startswith(' '):
-                    data.append(map(float, line.split(','))[::-1])
+                elif line.startswith(b' '):
+                    data.append(list(map(float, line.split(b',')))[::-1])
                 else:
-                    name = line.strip()
+                    name = str(line.strip().decode('ascii'))
 
         return plates
 
@@ -302,10 +310,10 @@ class GSRM1(StrainRateDataset):
         data = []
         with open(fpath, 'rb') as f:
             for line in f:
-                if line.strip().startswith('#'):
+                if line.strip().startswith(b'#'):
                     continue
                 t = line.split()
-                data.append(map(float, t))
+                data.append(list(map(float, t)))
 
         arr = num.array(data, dtype=num.float)
 

@@ -45,6 +45,7 @@ class TectonicsTestCase(unittest.TestCase):
                     types.append(typ)
 
                 assert types == [['OSR'], ['CTF', 'CRB']]
+            boundary.split_types()
 
     def test_plates(self):
         bird = tectonics.PeterBird2003()
