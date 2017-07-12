@@ -743,32 +743,27 @@ class Location(Object):
 class MultiLocation(Object):
 
     lats = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='Latitudes of targets.')
     lons = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='Longitude of targets.')
     north_shifts = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='North shifts of targets.')
     east_shifts = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='East shifts of targets.')
     elevation = Array.T(
-        optional=True, shape=(None, 1), dtype=num.float,
+        optional=True, shape=(None,), dtype=num.float,
         help='Elevations of targets.')
 
     def __init__(self, *args, **kwargs):
-        Object.__init__(self, *args, **kwargs)
         self._coords5 = None
+        Object.__init__(self, *args, **kwargs)
 
     @property
     def coords5(self):
-        ''' Coordinates as a matrix
-        :returns: Matrix of coordinates (lat, lon, northing, easting,
-            elevation)
-        :rtype: :class:`numpy.ndarray`, (N, 5)
-        '''
         if self._coords5 is not None:
             return self._coords5
         props = [self.lats, self.lons, self.north_shifts, self.east_shifts,
@@ -782,13 +777,12 @@ class MultiLocation(Object):
         self._coords5 = num.zeros((sizes[0], 5))
         for idx, p in enumerate(props):
             if p is not None:
-                self._coords5[:, idx] = p
+                self._coords5[:, idx] = p.flatten()
 
         return self._coords5
 
     @property
     def ncoords(self):
-        ''' Number of coordinates '''
         if self.coords5.shape[0] is None:
             return 0
         return int(self.coords5.shape[0])
@@ -800,7 +794,7 @@ class MultiLocation(Object):
         '''
         latlons = num.empty((self.ncoords, 2))
         for i in xrange(self.ncoords):
-            latlons[:, i] = orthodrome.ne_to_latlon(*self.coords5[:4, i])
+            latlons[i, :] = orthodrome.ne_to_latlon(*self.coords5[i, :4])
         return latlons
 
     def get_corner_coords(self):
@@ -812,7 +806,7 @@ class MultiLocation(Object):
         latlon = self.get_latlon()
         ll = (latlon[:, 0].min(), latlon[:, 1].min())
         ur = (latlon[:, 0].max(), latlon[:, 1].max())
-        return (ll, (ll[0], ur[1]), ur, (ll[1], ur[1]))
+        return (ll, (ll[0], ur[1]), ur, (ur[0], ll[1]))
 
 
 class Receiver(Location):

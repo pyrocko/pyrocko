@@ -695,6 +695,46 @@ class TraceTestCase(unittest.TestCase):
         t2 = pickle.loads(s)
         assert numeq(t1.ydata, t2.ydata, 0.0)
 
+    def test_sta_lta_right(self):
+
+        n = 100
+        y = num.zeros(n)
+        y[:] = 0.00001
+
+        y[50:52] = num.linspace(0., 1., 2)
+        y[52:] = 1.0
+
+        tr = trace.Trace(
+            '', 'X', '', '',
+            ydata=y, deltat=1.0)
+
+        for itlong in xrange(1, 20):
+            for itshort in xrange(1, itlong):
+
+                tlong = float(itlong)
+                tshort = float(itshort)
+
+                stalta = tr.copy()
+                stalta.sta_lta_right(tshort, tlong)
+                stalta.set_codes(location='stalta')
+
+                ydata = num.zeros(n)
+
+                s = int(round(tshort / tr.deltat))
+                l = int(round(tlong / tr.deltat))
+
+                for i in xrange(l-s, n-s):
+                    ydata[i] = (1.0 / s * num.sum(y[i:i+s])) / (
+                        1.0 / l * num.sum(y[i+s-l:i+s])) * float(s)/float(l)
+
+                stalta_ref = trace.Trace(
+                    '', 'X', 'ref', '',
+                    ydata=ydata, deltat=1.0)
+
+                stalta_ref.chop(float(l-s), float(n-s))
+
+                assert numeq(stalta.ydata, stalta_ref.ydata, 1e-3)
+
 
 if __name__ == "__main__":
     util.setup_logging('test_trace', 'warning')

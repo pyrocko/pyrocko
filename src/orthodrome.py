@@ -1,6 +1,11 @@
 import math
 import numpy as num
+
+from pyrocko.moment_tensor import euler_to_matrix
+from pyrocko.beachball import spoly_cut
 from pyrocko.config import config
+
+from matplotlib.path import Path
 
 d2r = math.pi/180.
 r2d = 1./d2r
@@ -253,6 +258,11 @@ def azibazi_numpy(a_lats, a_lons, b_lats, b_lons, implementation='c'):
     _cosdelta = cosdelta_numpy(a_lats, a_lons, b_lats, b_lons)
     azis = azimuth_numpy(a_lats, a_lons, b_lats, b_lons, _cosdelta)
     bazis = azimuth_numpy(b_lats, b_lons, a_lats, a_lons, _cosdelta)
+
+    eq = num.logical_and(a_lats == b_lats, a_lons == b_lons)
+    ii_eq = num.where(eq)[0]
+    azis[ii_eq] = 0.0
+    bazis[ii_eq] = 180.0
     return azis, bazis
 
 
@@ -969,7 +979,7 @@ def geographic_midpoint(lats, lons, weights=None):
     return lat/d2r, lon/d2r
 
 
-def geodetic_to_ecef(lat, lon, alt):
+  def geodetic_to_ecef(lat, lon, alt):
     '''
     Convert geodetic coordinates to Earth-Centered, Earth-Fixed (ECEF)
     Cartesian coordinates.
@@ -985,14 +995,14 @@ def geodetic_to_ecef(lat, lon, alt):
     :return: ECEF Cartesian coordinates (X, Y, Z) in [m].
     :rtype: tuple, float
 
-    .. seealso ::
-        https://en.wikipedia.org/wiki/ECEF
-        https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#From_geodetic_to_ECEF_coordinates
+    .. [#1] https://en.wikipedia.org/wiki/ECEF
+    .. [#2] https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+        #From_geodetic_to_ECEF_coordinates
     '''
 
     wgs = get_wgs84()
-    a = wgs._a
-    e2 = wgs._e2
+    a = wgs.a
+    e2 = 2*wgs.f - wgs.f**2
 
     lat, lon = num.radians(lat), num.radians(lon)
     # Normal (plumb line)
@@ -1005,13 +1015,6 @@ def geodetic_to_ecef(lat, lon, alt):
     return (X, Y, Z)
 
 
-def cube_root(x):
-    if x >= 0:
-        return pow(x, 1/3.0)
-    else:
-        return -1 * pow(abs(x), 1/3.0)
-
-
 def ecef_to_geodetic(X, Y, Z):
     '''
     Convert Earth-Centered, Earth-Fixed (ECEF) Cartesian coordinates to
@@ -1021,17 +1024,19 @@ def ecef_to_geodetic(X, Y, Z):
     :type X, Y, Z: float
 
     :return: Geodetic coordinates (lat, lon, alt). Latitude and longitude are
-        in [deg] and altitude is in [m] (positive for points outside the geoid).
+        in [deg] and altitude is in [m]
+        (positive for points outside the geoid).
     :rtype: tuple, float
 
     .. seealso ::
-        https://en.wikipedia.org/wiki/Geographic_coordinate_conversion#The_application_of_Ferrari.27s_solution
+        https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
+        #The_application_of_Ferrari.27s_solution
     '''
     wgs = get_wgs84()
-    a = wgs._a
-    b = wgs._b
-    f = wgs._f
-    e2 = wgs._e2
+    a = wgs.a
+    f = wgs.f
+    b = wgs.a * (1. - f)
+    e2 = 2.*f - f**2
 
     # usefull
     a2 = a**2
@@ -1044,26 +1049,166 @@ def ecef_to_geodetic(X, Y, Z):
     r = num.sqrt(X2 + Y2)
     r2 = r**2
 
+    e_prime2 = (a2 - b2)/b2
     E2 = a2 - b2
-    F = 54 * b2 * Z2
-    G = r2 + (1-e2)*Z2 - (e2*E2)
+    F = 54. * b2 * Z2
+    G = r2 + (1.-e2)*Z2 - (e2*E2)
     C = (e4 * F * r2) / (G**3)
-    S = cube_root(1 + C + num.sqrt(C**2 + 2*C))
-    P = F / (3 * (S + 1./S + 1)**2 * G**2)
-    Q = num.sqrt(1 + (2*e4*P))
+    S = num.cbrt(1. + C + num.sqrt(C**2 + 2.*C))
+    P = F / (3. * (S + 1./S + 1.)**2 * G**2)
+    Q = num.sqrt(1. + (2.*e4*P))
 
-    dum1 = -(P*e2*r) / (1+Q)
-    dum2 = 0.5 * a2 * (1 + (1./Q))
-    dum3 = (P * (1-e2) * Z2) / (Q * (1+Q))
+    dum1 = -(P*e2*r) / (1.+Q)
+    dum2 = 0.5 * a2 * (1. + 1./Q)
+    dum3 = (P * (1.-e2) * Z2) / (Q * (1.+Q))
     dum4 = 0.5 * P * r2
     r0 = dum1 + num.sqrt(dum2 - dum3 - dum4)
 
     U = num.sqrt((r - e2*r0)**2 + Z2)
-    V = num.sqrt((r - e2*r0)**2 + (1-e2)*Z2)
+    V = num.sqrt((r - e2*r0)**2 + (1.-e2)*Z2)
     Z0 = (b2*Z) / (a*V)
 
-    alt = U * (1 - (b2 / (a*V)))
-    lat = num.arctan((Z + e2*Z0)/r)
+    alt = U * (1. - (b2 / (a*V)))
+    lat = num.arctan((Z + e_prime2 * Z0)/r)
     lon = num.arctan2(Y, X)
 
     return (lat*r2d, lon*r2d, alt)
+
+
+class Farside(Exception):
+    pass
+
+
+def latlon_to_xyz(latlons):
+    if latlons.ndim == 1:
+        return latlon_to_xyz(latlons[num.newaxis, :])[0]
+
+    points = num.zeros((latlons.shape[0], 3))
+    lats = latlons[:, 0]
+    lons = latlons[:, 1]
+    points[:, 0] = num.cos(lats*d2r) * num.cos(lons*d2r)
+    points[:, 1] = num.cos(lats*d2r) * num.sin(lons*d2r)
+    points[:, 2] = num.sin(lats*d2r)
+    return points
+
+
+def xyz_to_latlon(xyz):
+    if xyz.ndim == 1:
+        return xyz_to_latlon(xyz[num.newaxis, :])[0]
+
+    latlons = num.zeros((xyz.shape[0], 2))
+    latlons[:, 0] = num.arctan2(
+        xyz[:, 2], num.sqrt(xyz[:, 0]**2 + xyz[:, 1]**2)) * r2d
+    latlons[:, 1] = num.arctan2(
+        xyz[:, 1], xyz[:, 0]) * r2d
+    return latlons
+
+
+def rot_to_00(lat, lon):
+    rot0 = euler_to_matrix(0., -90.*d2r, 0.).A
+    rot1 = euler_to_matrix(-d2r*lat, 0., -d2r*lon).A
+    return num.dot(rot0.T, num.dot(rot1, rot0)).T
+
+
+def distances3d(a, b):
+    return num.sqrt(num.sum((a-b)**2, axis=a.ndim-1))
+
+
+def circulation(points2):
+    return num.sum(
+        (points2[1:, 0] - points2[:-1, 0])
+        * (points2[1:, 1] + points2[:-1, 1]))
+
+
+def stereographic(points):
+    dists = distances3d(points[1:, :], points[:-1, :])
+    if dists.size > 0:
+        maxdist = num.max(dists)
+        cutoff = maxdist**2 / 2.
+    else:
+        cutoff = 1.0e-5
+
+    points = points.copy()
+    if num.any(points[:, 0] < -1. + cutoff):
+        raise Farside()
+
+    points_out = points[:, 1:].copy()
+    factor = 1.0 / (1.0 + points[:, 0])
+    points_out *= factor[:, num.newaxis]
+
+    return points_out
+
+
+def stereographic_poly(points):
+    dists = distances3d(points[1:, :], points[:-1, :])
+    if dists.size > 0:
+        maxdist = num.max(dists)
+        cutoff = maxdist**2 / 2.
+    else:
+        cutoff = 1.0e-5
+
+    points = points.copy()
+    if num.any(points[:, 0] < -1. + cutoff):
+        raise Farside()
+
+    points_out = points[:, 1:].copy()
+    factor = 1.0 / (1.0 + points[:, 0])
+    points_out *= factor[:, num.newaxis]
+
+    if circulation(points_out) >= 0:
+        raise Farside()
+
+    return points_out
+
+
+def contains_point(polygon, point):
+    rot = rot_to_00(point[0], point[1])
+    points_xyz = latlon_to_xyz(polygon)
+    points_rot = num.dot(rot, points_xyz.T).T
+    groups = spoly_cut([points_rot], axis=0)
+    for group in groups:
+        for points_g in group:
+            try:
+                points2 = stereographic_poly(points_g)
+                p = Path(points2, closed=True)
+                if p.contains_point((0., 0.)):
+                    return True
+
+            except Farside:
+                pass
+
+    return False
+
+
+def contains_points(polygon, points):
+    points_xyz = latlon_to_xyz(points)
+    center_xyz = num.mean(points_xyz, axis=0)
+
+    assert num.all(
+        distances3d(points_xyz, center_xyz[num.newaxis, :]) < 1.0)
+
+    lat, lon = xyz_to_latlon(center_xyz)
+    rot = rot_to_00(lat, lon)
+
+    points_rot_xyz = num.dot(rot, points_xyz.T).T
+    points_rot_pro = stereographic(points_rot_xyz)
+
+    poly_xyz = latlon_to_xyz(polygon)
+    poly_rot_xyz = num.dot(rot, poly_xyz.T).T
+    groups = spoly_cut([poly_rot_xyz], axis=0)
+    result = num.zeros(points.shape[0], dtype=num.int)
+    for group in groups:
+        for poly_rot_group_xyz in group:
+            try:
+                poly_rot_group_pro = stereographic_poly(poly_rot_group_xyz)
+                p = Path(poly_rot_group_pro, closed=True)
+                if hasattr(p, 'contains_points'):
+                    result += p.contains_points(points_rot_pro)
+                else:
+                    for i in xrange(result.size):
+                        result[i] += p.contains_point(points_rot_pro[i, :])
+
+            except Farside:
+                pass
+
+    return result.astype(num.bool)

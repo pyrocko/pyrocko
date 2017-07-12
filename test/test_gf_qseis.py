@@ -5,10 +5,14 @@ import logging
 from tempfile import mkdtemp
 import numpy as num
 
+from common import Benchmark
+from multiprocessing import cpu_count
+
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis, ahfullgreen
 
 logger = logging.getLogger('test_gf_qseis')
+benchmark = Benchmark()
 
 km = 1000.
 
@@ -185,7 +189,18 @@ mantle
             tr.highpass(4, 0.01)
 
         engine = gf.LocalEngine(store_dirs=[store_dir])
-        trs2 = engine.process(source, targets).pyrocko_traces()
+
+        def process_wrap(nthreads=0):
+            @benchmark.labeled('pyrocko.gf.process (nthreads-%d)' % nthreads)
+            def process(nthreads):
+                return engine.process(source, targets, nthreads=nthreads)\
+                    .pyrocko_traces()
+            return process(nthreads)
+
+        for nthreads in xrange(1, cpu_count()+1):
+            trs2 = process_wrap(nthreads)
+        # print benchmark
+
         for tr in trs2:
             tr.snap(interpolate=True)
             tr.lowpass(4, 0.05)

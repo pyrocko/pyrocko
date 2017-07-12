@@ -22,6 +22,8 @@ import pyrocko.marker_editor
 
 from pyrocko.util import hpfloat, gmtime_x, mystrftime
 
+from pyrocko.marker import associate_phases_to_events
+
 from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker,\
     PhaseMarker, make_QPolygonF, draw_label, Label, Progressbars
 
@@ -767,6 +769,8 @@ def MakePileViewerMainClass(base):
                     lambda tr: None),
                 ('Common Scale per Station',
                     lambda tr: (tr.network, tr.station)),
+                ('Common Scale per Station Location',
+                    lambda tr: (tr.network, tr.station, tr.location)),
                 ('Common Scale per Component',
                     lambda tr: (tr.channel)),
             ]
@@ -999,7 +1003,7 @@ def MakePileViewerMainClass(base):
                 qc.SIGNAL("triggered(bool)"),
                 self.printit)
 
-            self.menuitem_svg = qg.QAction('Save as SVG', self.menu)
+            self.menuitem_svg = qg.QAction('Save as SVG|PNG', self.menu)
             self.menu.addAction(self.menuitem_svg)
             self.connect(
                 self.menuitem_svg,
@@ -1671,26 +1675,7 @@ def MakePileViewerMainClass(base):
                 self.associate_phases_to_events()
 
         def associate_phases_to_events(self):
-
-            hash_to_events = {}
-            time_to_events = {}
-            for marker in self.markers:
-                if isinstance(marker, EventMarker):
-                    ev = marker.get_event()
-                    hash_to_events[marker.get_event_hash()] = ev
-                    time_to_events[ev.time] = ev
-
-            for marker in self.markers:
-                if isinstance(marker, PhaseMarker):
-                    h = marker.get_event_hash()
-                    t = marker.get_event_time()
-                    if marker.get_event() is None:
-                        if h is not None and h in hash_to_events:
-                            marker.set_event(hash_to_events[h])
-                            marker.set_event_hash(None)
-                        elif t is not None and t in time_to_events:
-                            marker.set_event(time_to_events[t])
-                            marker.set_event_hash(None)
+            associate_phases_to_events(self.markers)
 
         def add_marker(self, marker):
             self.markers.append(marker)
@@ -2034,7 +2019,7 @@ def MakePileViewerMainClass(base):
             elif keytext in ('0', '1', '2', '3', '4', '5'):
                 for marker in self.selected_markers():
                     marker.set_kind(int(keytext))
-                self.emit(qc.SIGNAL('markers_changed'))
+                self.emit_selected_markers()
 
             elif key_event.key() in fkey_map.keys():
                 self.handle_fkeys(key_event.key())
@@ -2105,6 +2090,7 @@ def MakePileViewerMainClass(base):
             self.set_phase_kind(
                 self.selected_markers(),
                 fkey_map[key] + 1)
+            self.emit_selected_markers()
 
         def emit_selected_markers(self):
             _indexes = []
@@ -2423,23 +2409,31 @@ def MakePileViewerMainClass(base):
 
             fn = qg.QFileDialog.getSaveFileName(
                 self,
-                'Save as SVG',
+                'Save as SVG|PNG',
                 os.path.join(os.environ['HOME'],  'untitled.svg'),
-                'SVG (*.svg)',
+                'SVG|PNG (*.svg *.png)',
                 options=qfiledialog_options)
 
-            generator = qsvg.QSvgGenerator()
-            generator.setFileName(fn)
-            w, h = 842, 595
-            margin = 0.025
-            generator.setSize(qc.QSize(w, h))
-            m = max(w, h)*margin
-            generator.setViewBox(qc.QRectF(-m, -m, w+2*m, h+2*m))
+            if str(fn).endswith('.svg'):
+                w, h = 842, 595
+                margin = 0.025
+                m = max(w, h)*margin
 
-            painter = qg.QPainter()
-            painter.begin(generator)
-            self.drawit(painter, printmode=False, w=w, h=h)
-            painter.end()
+                generator = qsvg.QSvgGenerator()
+                generator.setFileName(fn)
+                generator.setSize(qc.QSize(w, h))
+                generator.setViewBox(qc.QRectF(-m, -m, w+2*m, h+2*m))
+
+                painter = qg.QPainter()
+                painter.begin(generator)
+                self.drawit(painter, printmode=False, w=w, h=h)
+                painter.end()
+
+            elif str(fn).endswith('.png'):
+                pixmap = qg.QPixmap().grabWidget(self)
+                pixmap.save(fn)
+            else:
+                logger.warn('unsupported file type')
 
         def paintEvent(self, paint_ev):
             """Called by QT whenever widget needs to be painted"""
@@ -2549,14 +2543,11 @@ def MakePileViewerMainClass(base):
             a[0] = umin
             a[-1] = umax
             a[1:-1] = m_projections
-            b = num.zeros(len(a)+1)
-            b[1:] = a
-            offsets = a[1:]-b[1:-1]
-            offsets = num.floor_divide(offsets, 30.)
+            offsets = num.floor_divide(num.diff(a), 30.)
             with num.errstate(invalid='ignore'):
                 offsets = num.divide(offsets, offsets)
             congregated = num.zeros(len(a))
-            congregated[0:-1] = offsets
+            congregated[:-1] = offsets
             congregated[1:] += offsets
             congregated = num.divide(congregated, congregated)
             with num.errstate(invalid='ignore'):
@@ -3853,14 +3844,12 @@ class PileViewer(qg.QFrame):
         if error:
             self.inputline_set_error(error)
 
+        line = line.strip()
+
+        if line != '' and not error and line != self.history[-1]:
+            self.history.append(line)
+
         if clearit:
-            line = line.strip()
-            if line != '':
-                if len(self.history) >= 1:
-                    if line != self.history[-1]:
-                        self.history.append(line)
-                else:
-                    self.history.append(line)
 
             self.inputline.blockSignals(True)
             qpat, qinp = self.viewer.get_quick_filter_patterns()
@@ -3903,7 +3892,8 @@ class PileViewer(qg.QFrame):
         conf = pyrocko.config
         fn_hist = conf.expand(conf.make_conf_path_tmpl('.snuffler_history'))
         if not os.path.exists(fn_hist):
-            open(fn_hist, 'w+').close()
+            with open(fn_hist, 'w+') as f:
+                f.write('\n')
 
         with open(fn_hist, 'r') as f:
             self.history = [l.strip() for l in f.readlines()]

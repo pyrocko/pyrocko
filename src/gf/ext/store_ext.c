@@ -981,7 +981,7 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
     npy_intp n;
     int ng_;
 
-    (void)dummy; /* silence warning */
+    (void) dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OsOOOOi", &capsule, &mapping_scheme_name,
                           &mins_arr, &maxs_arr, &deltas_arr, &ns_arr,
@@ -1058,7 +1058,7 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     int i;
     store_error_t err;
 
-    (void)dummy; /* silence warning */
+    (void) dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord_, &itmin_, &nsamples_)) {
         PyErr_SetString(StoreExtError, "usage: store_get(cstore, irecord, itmin, nsamples)");

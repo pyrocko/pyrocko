@@ -68,7 +68,7 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
         self.add_parameter(Param(
             'Lowpass [Hz]', 'lowpass', None, 0.001, 100., high_is_none=True))
         self.add_parameter(Param(
-            'Short Window [s]', 'swin', 30., 1, 2*h))
+            'Short Window [s]', 'swin', 30., 0.01, 2*h))
         self.add_parameter(Param(
             'Ratio',  'ratio', 3., 1.1, 20.))
         self.add_parameter(Param(
@@ -80,6 +80,8 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
             'Show trigger level traces', 'show_level_traces', False))
         self.add_parameter(Switch(
             'Apply to full dataset', 'apply_to_all', False))
+        self.add_parameter(Choice(
+            'Variant', 'variant', 'centered', ['centered', 'right']))
         self.add_parameter(Choice(
             'Scaling/Normalization method', 'scalingmethod', '[0-1]',
             scalingmethods))
@@ -93,7 +95,7 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
 
         swin, ratio = self.swin, self.ratio
         lwin = swin * ratio
-        tpad = lwin/2.
+        tpad = lwin
 
         pile = self.get_pile()
         tmin, tmax = pile.get_tmin() + tpad, pile.get_tmax() - tpad
@@ -127,9 +129,15 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
                 if self.highpass is not None:
                     trace.highpass(4, self.highpass, nyquist_exception=True)
 
-                trace.sta_lta_centered(
-                    swin, lwin,
-                    scalingmethod=scalingmethod_map[self.scalingmethod])
+                if self.variant == 'centered':
+                    trace.sta_lta_centered(
+                        swin, lwin,
+                        scalingmethod=scalingmethod_map[self.scalingmethod])
+                elif self.variant == 'right':
+                    trace.sta_lta_right(
+                        swin, lwin,
+                        scalingmethod=scalingmethod_map[self.scalingmethod])
+
                 trace.chop(trace.wmin, min(trace.wmax, tmax))
                 trace.set_codes(location='cg')
                 trace.meta = {'tabu': True}

@@ -24,6 +24,7 @@ import pyrocko.pile_viewer
 import pyrocko.model
 import pyrocko.config
 import pyrocko.io
+from pyrocko.fdsn import station as fdsn_station
 
 import pyrocko.slink
 import pyrocko.serial_hamster
@@ -385,11 +386,15 @@ class SnufflerTabs(qg.QTabWidget):
         self.insertTab(self.count(), widget, name)
         self.setCurrentIndex(self.count()-1)
 
+    def remove_tab(self, widget):
+        self.removeTab(self.indexOf(widget))
+
     def tabInserted(self, index):
         if index == 0:
             self.hide_close_button_on_first_tab()
 
         self.tabbar_visibility()
+        self.setFocus()
 
     def removeTab(self, index):
         w = self.widget(index)
@@ -404,6 +409,12 @@ class SnufflerTabs(qg.QTabWidget):
             self.tabBar().hide()
         elif self.count() > 1:
             self.tabBar().show()
+
+    def keyPressEvent(self, event):
+        if event.text() == 'd':
+            self.emit(qc.SIGNAL('tabCloseRequested(int)'), self.currentIndex())
+        else:
+            self.parent().keyPressEvent(event)
 
 
 class SnufflerWindow(qg.QMainWindow):
@@ -476,6 +487,9 @@ class SnufflerWindow(qg.QMainWindow):
 
     def add_tab(self, name, widget):
         self.tabs.append_tab(widget, name)
+
+    def remove_tab(self, widget):
+        self.tabs.remove_tab(widget)
 
     def add_panel(self, name, panel, visible=False, volatile=False,
                   where=qc.Qt.BottomDockWidgetArea):
@@ -805,6 +819,14 @@ def snuffler_from_commandline(args=sys.argv):
         help='read station information from file STATIONS')
 
     parser.add_option(
+        '--stationxml',
+        dest='stationxml_fns',
+        action='append',
+        default=[],
+        metavar='STATIONSXML',
+        help='read station information from XML file STATIONSXML')
+
+    parser.add_option(
         '--event', '--events',
         dest='event_fns',
         action='append',
@@ -890,6 +912,11 @@ def snuffler_from_commandline(args=sys.argv):
     stations = []
     for stations_fn in options.station_fns:
         stations.extend(pyrocko.model.load_stations(stations_fn))
+
+    for stationxml_fn in options.stationxml_fns:
+        stations.extend(
+            fdsn_station.load_xml(
+                filename=stationxml_fn).get_pyrocko_stations())
 
     events = []
     for event_fn in options.event_fns:

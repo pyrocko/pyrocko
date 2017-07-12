@@ -34,6 +34,9 @@ from test_tectonics import TectonicsTestCase  # noqa
 from test_fomosto_report import ReportTestCase  # noqa
 from test_gf_psgrn_pscmp import GFPsgrnPscmpTestCase  # noqa
 from test_gf_static import GFStaticTest  # noqa
+from test_response_plot import ResponsePlotTestCase  # noqa
+from test_quakeml import QuakeMLTestCase  # noqa
+from test_gshhg import GSHHGTest  # noqa
 
 import platform
 import unittest
