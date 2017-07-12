@@ -1,4 +1,5 @@
 import unittest
+import platform
 from PyQt4.QtTest import QTest
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QStyleOptionSlider, QStyle
@@ -11,6 +12,11 @@ from pyrocko import gui_util, util, model
 from pyrocko import config
 
 
+def trusted_platform():
+    return platform.mac_ver() == ('', ('', '', ''), '')
+
+
+@unittest.skipif(not trusted_platform())
 class GUITest(unittest.TestCase):
 
     @classmethod
