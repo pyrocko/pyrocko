@@ -69,7 +69,7 @@ For documentation and installation instructions please see
 - [ ] ``pchain.py``
 - [ ] ``pile.py``
 - [ ] ``pile_viewer.py``
-- [ ] ``plot.py``
+- [x] ``plot.py``
 - [ ] ``pz.py``
 - [ ] ``quakeml.py``
 - [ ] ``rdseed.py``

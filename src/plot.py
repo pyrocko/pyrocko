@@ -1,3 +1,5 @@
+# python 2/3
+
 '''
 Utility functions and defintions for a common plot style throughout Pyrocko.
 
@@ -41,6 +43,8 @@ in the Pyrocko source directory)::
 
 '''
 
+from builtins import str as newstr
+
 import math
 import random
 
@@ -58,7 +62,7 @@ _doc_units = "``'points'``, ``'inch'``, or ``'cm'``"
 
 
 def apply_units(x, units):
-    if isinstance(units, basestring):
+    if isinstance(units, (str, newstr)):
         units = units_dict[units]
 
     if isinstance(x, (int, float)):
@@ -121,7 +125,7 @@ def color(x=None):
         else:
             return (0, 0, 0)
 
-    elif isinstance(x, basestring):
+    elif isinstance(x, (str, newstr)):
         if x in tango_colors:
             return tango_colors[x]
 
@@ -220,7 +224,7 @@ def papersize(paper, orientation='landscape', units='point'):
 papersize.__doc__ %= (_doc_papersizes, _doc_units)
 
 
-class AutoScaler:
+class AutoScaler(object):
 
     '''
     Tunable 1D autoscaling based on data range.
@@ -622,7 +626,7 @@ def mpl_color(x):
     s = x.split('/')
     if len(s) in (1, 3, 4):
         try:
-            vals = map(float, s)
+            vals = list(map(float, s))
             if all(0. <= v <= 1. for v in vals):
                 return vals
 
