@@ -59,8 +59,8 @@ For documentation and installation instructions please see
 - [ ] ``model.py``
 - [ ] ``moment_tensor.py``
 - [ ] ``moment_tensor_viewer.py``
-- [ ] ``mseed_ext.c``
-- [ ] ``mseed.py``
+- [x] ``mseed_ext.c``
+- [x] ``mseed.py``
 - [x] ``orthodrome_ext.c``
 - [x] ``orthodrome.py``
 - [ ] ``parimap.py``
