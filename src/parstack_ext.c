@@ -15,7 +15,18 @@
 #define CHUNKSIZE 10
 #define NBLOCK 64
 
-static PyObject *ParstackError;
+
+
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
 
 
 int parstack_config(
@@ -236,25 +247,26 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
 
 
 int good_array(PyObject* o, int typenum) {
+    struct module_state *st = GETSTATE(o);
     if (!PyArray_Check(o)) {
-        PyErr_SetString(ParstackError, "not a NumPy array" );
+        PyErr_SetString(st->error, "not a NumPy array" );
         return 0;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(ParstackError, "array of unexpected type");
+        PyErr_SetString(st->error, "array of unexpected type");
         return 0;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(ParstackError, "array is not contiguous or not well behaved");
+        PyErr_SetString(st->error, "array is not contiguous or not well behaved");
         return 0;
     }
 
     return 1;
 }
 
-static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
+static PyObject* w_parstack(PyObject *module, PyObject *args) {
 
     PyObject *arrays, *offsets, *shifts, *weights, *arr;
     PyObject *result;
@@ -271,16 +283,15 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
     size_t i;
     int err;
 
-    (void)dummy; /* silence warning */
-
     carrays = NULL;
     clengths = NULL;
+    struct module_state *st = GETSTATE(module);
 
     if (!PyArg_ParseTuple(args, "OOOOiiiOi", &arrays, &offsets, &shifts,
                           &weights, &method, &lengthout_arg, &offsetout, &result, &nparallel)) {
 
         PyErr_SetString(
-            ParstackError,
+            st->error,
             "usage parstack(arrays, offsets, shifts, weights, method, lengthout, offsetout, result, nparallel)" );
 
         return NULL;
@@ -303,29 +314,29 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
     nweights /= narrays;
 
     if (nshifts != nweights) {
-        PyErr_SetString(ParstackError, "weights.size != shifts.size" );
+        PyErr_SetString(st->error, "weights.size != shifts.size" );
         return NULL;
     }
 
     if (!PyList_Check(arrays)) {
-        PyErr_SetString(ParstackError, "arg #1 must be a list of NumPy arrays.");
+        PyErr_SetString(st->error, "arg #1 must be a list of NumPy arrays.");
         return NULL;
     }
 
     if ((size_t)PyList_Size(arrays) != narrays) {
-        PyErr_SetString(ParstackError, "len(offsets) != len(arrays)");
+        PyErr_SetString(st->error, "len(offsets) != len(arrays)");
         return NULL;
     }
 
     carrays = (double**)calloc(narrays, sizeof(double*));
     if (carrays == NULL) {
-        PyErr_SetString(ParstackError, "alloc failed");
+        PyErr_SetString(st->error, "alloc failed");
         return NULL;
     }
 
     clengths = (size_t*)calloc(narrays, sizeof(size_t));
     if (clengths == NULL) {
-        PyErr_SetString(ParstackError, "alloc failed");
+        PyErr_SetString(st->error, "alloc failed");
         free(carrays);
         return NULL;
     }
@@ -345,7 +356,7 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
                               cweights, method, &lengthout, &offsetout);
 
         if (err != 0) {
-            PyErr_SetString(ParstackError, "parstack_config() failed");
+            PyErr_SetString(st->error, "parstack_config() failed");
             free(carrays);
             free(clengths);
             return NULL;
@@ -387,7 +398,7 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
                    cweights, method, lengthout, offsetout, cresult, nparallel);
 
     if (err != 0) {
-        PyErr_SetString(ParstackError, "parstack() failed");
+        PyErr_SetString(st->error, "parstack() failed");
         free(carrays);
         free(clengths);
         Py_DECREF(result);
@@ -399,7 +410,7 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("Ni", result, offsetout);
 }
 
-static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
+static PyObject* w_argmax(PyObject *module, PyObject *args) {
     PyObject *arrayin;
     PyObject *result;
     double *carrayin;
@@ -407,11 +418,10 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
     npy_intp *shape, shapeout[1];
     size_t i, ndim;
     int err, nparallel;
-
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(module);
 
     if (!PyArg_ParseTuple(args, "Oi", &arrayin, &nparallel)) {
-        PyErr_SetString(ParstackError, "usage argmax(array)");
+        PyErr_SetString(st->error, "usage argmax(array)");
         return NULL;
     }
 
@@ -421,14 +431,14 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
     ndim = PyArray_NDIM((PyArrayObject*)arrayin);
 
     if (ndim != 2){
-        PyErr_SetString(ParstackError, "array shape is not 2D");
+        PyErr_SetString(st->error, "array shape is not 2D");
         return NULL;
     }
 
     carrayin = PyArray_DATA((PyArrayObject*)arrayin);
 
     if (shape[0] >= UINT32_MAX) {
-        PyErr_SetString(ParstackError, "shape[0] must be smaller than 2^32");
+        PyErr_SetString(st->error, "shape[0] must be smaller than 2^32");
         return NULL;
     }
 
@@ -462,17 +472,64 @@ static PyMethodDef ParstackMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC initparstack_ext(void) {
-    PyObject *m;
 
-    m = Py_InitModule("parstack_ext", ParstackMethods);
-    if (m == NULL) return;
-    import_array();
+#if PY_MAJOR_VERSION >= 3
 
-    ParstackError = PyErr_NewException("parstack_ext.error", NULL, NULL);
-    Py_INCREF(ParstackError);  /* required, because other code could remove `error` 
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(m, "ParstackError", ParstackError);
+static int parstack_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
 }
 
+static int parstack_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "parstack_ext",
+        NULL,
+        sizeof(struct module_state),
+        ParstackMethods,
+        NULL,
+        parstack_ext_traverse,
+        parstack_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_parstack_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initparstack_ext(void)
+#endif
+{
+    #if PY_MAJOR_VERSION >= 3
+        PyObject *module = PyModule_Create(&moduledef);
+    #else
+        PyObject *module = Py_InitModule("parstack_ext", ParstackMethods);
+    #endif
+    import_array();
+
+    if (module == NULL)
+        INITERROR;
+
+    struct module_state *st = GETSTATE(module);
+    st->error = PyErr_NewException("pyrocko.parstack_ext.ParstackError", NULL, NULL);
+    if (st->error == NULL){
+        Py_DECREF(module);
+        INITERROR;
+
+    }
+
+    #if PY_MAJOR_VERSION >= 3
+        return module;
+    #endif
+}
