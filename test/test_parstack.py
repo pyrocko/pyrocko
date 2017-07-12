@@ -1,13 +1,15 @@
-
+from builtins import zip
 import random
 import unittest
 import multiprocessing
 import time
 from collections import defaultdict
 import numpy as num
+
 from pyrocko import util, trace, autopick
 
 from pyrocko.parstack import parstack
+from pyrocko.parstack import argmax as pargmax
 
 
 def numeq(a, b, eps):
@@ -75,7 +77,8 @@ class ParstackTestCase(unittest.TestCase):
                         impl=impl)
 
                     assert o1 == o2
-                    assert numeq(r1, r2, 1e-9)
+                    num.testing.assert_almost_equal(
+                        r1, r2, decimal=9)
 
                     n = r1.shape[1]
                     for k in range(n):
@@ -87,7 +90,8 @@ class ParstackTestCase(unittest.TestCase):
                             impl=impl)
 
                         assert o3 == o1-k
-                        assert numeq(r1[:, :n-k], r3[:, k:], 1e-9)
+                        num.testing.assert_almost_equal(
+                            r1[:, :n-k], r3[:, k:], decimal=9)
 
                     for k in range(n):
                         r3, o3 = parstack(
@@ -98,7 +102,8 @@ class ParstackTestCase(unittest.TestCase):
                             impl=impl)
 
                         assert o3 == o1+k
-                        assert numeq(r1[:, k:], r3[:, :n-k], 1e-9)
+                        num.testing.assert_almost_equal(
+                            r1[:, k:], r3[:, :n-k], decimal=9)
 
                     for k in range(n):
                         r3, o3 = parstack(
@@ -109,7 +114,9 @@ class ParstackTestCase(unittest.TestCase):
                             impl=impl)
 
                         assert o3 == o1
-                        assert numeq(r1[:, :n-k], r3[:, :], 1e-9)
+                        num.testing.assert_almost_equal(
+                            r1[:, :n-k], r3[:, :], decimal=9)
+                        #assert numeq(r1[:, :n-k], r3[:, :], 1e-9)
 
     def test_parstack_cumulative(self):
         for i in range(10):
@@ -140,7 +147,8 @@ class ParstackTestCase(unittest.TestCase):
                             nparallel=nparallel,
                             impl='openmp')
 
-                        assert numeq(result, result1*(k+2), 1e-9)
+                        num.testing.assert_almost_equal(
+                            result, result1*(k+2.), decimal=9)
 
     def benchmark(self):
 
@@ -316,15 +324,13 @@ class ParstackTestCase(unittest.TestCase):
         plt.show()
 
     def test_argmax(self):
-        from pyrocko.parstack import argmax as pargmax
-        import numpy as num
         a = num.random.random((100, 1000))
-
         argmax_numpy = num.argmax(a, axis=0)
         nparallel = 4
         argmax_parstack = pargmax(a, nparallel)
 
-        num.testing.assert_array_equal(argmax_parstack, argmax_numpy)
+        num.testing.assert_almost_equal(argmax_parstack.astype(num.int64), argmax_numpy)
+        #assert all(argmax_parstack==argmax_numpy)
 
 
 if __name__ == '__main__':

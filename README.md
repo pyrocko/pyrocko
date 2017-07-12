@@ -88,7 +88,7 @@ For documentation and installation instructions please see
 - [ ] ``snufflings/``
 - [ ] ``spit.py``
 - [ ] ``suds.py``
-- [ ] ``tectonics.py``
+- [x] ``tectonics.py``
 - [ ] ``topo/``
 - [ ] ``trace.py``
 - [x] ``util_ext.c``

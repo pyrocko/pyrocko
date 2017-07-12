@@ -11,3 +11,4 @@ tags
 test/data
 scratch
 *.sublime-*
+htmlcov
