@@ -1,5 +1,6 @@
+from builtins import range
 import numpy as num
-import parstack_ext
+from . import parstack_ext
 
 
 def parstack(arrays, offsets, shifts, weights, method,
