@@ -416,7 +416,7 @@ setup(
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
     install_requires=[
         'numpy>=1.6.0', 'scipy', 'pyyaml',
-        'progressbar', 'matplotlib', 'pyavl'],
+        'matplotlib', 'progressbar2'],
 
     extras_require={
         'gui_scripts': ['PyQt4'],
