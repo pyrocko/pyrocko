@@ -1,10 +1,12 @@
 build
+dist
 pyrocko.egg-info
 evalresp-3.3.0
 libmseed
 *.pyc
 *~
 *.swp
+*.so
 doc/_build
 src/info.py
 pages
@@ -13,4 +15,3 @@ test/data
 scratch
 *.sublime-*
 htmlcov
-.pipyrc
