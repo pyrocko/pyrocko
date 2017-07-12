@@ -1,3 +1,5 @@
+# python 2/3
+
 '''Classical seismic ray theory for layered earth models (*layer cake* models).
 
 This module can be used to e.g. calculate arrival times, ray paths, reflection
@@ -37,13 +39,18 @@ The main classes defined in this module are:
      :py:class:`Discontinuity`.
 '''
 
+from __future__ import absolute_import
+from functools import reduce
+from future import standard_library
+standard_library.install_aliases()  # noqa
+from builtins import range, zip, str as newstr
 
 import os
 import copy
 import math
 import cmath
 import operator
-import StringIO
+from io import StringIO
 import glob
 from pyrocko import util, config
 from scipy.optimize import bisect, brentq
@@ -731,7 +738,7 @@ class PhaseDef(object):
             defs[x+'n'] = [x+'v_(moho)'+x.lower()]
 
         # depth phases
-        for k in defs.keys():
+        for k in list(defs.keys()):
             if k not in 'ps':
                 for x in 'ps':
                     defs[x+k] = [x + defs[k][0]]
@@ -911,7 +918,7 @@ class PhaseDef(object):
                         depthmin = depthlim
                     state = 0
 
-            except (ValueError, InvalidKneeDef), e:
+            except (ValueError, InvalidKneeDef) as e:
                 raise PhaseDefParseError(definition, ic, e)
 
             if state != 0 or need_leg:
@@ -1050,12 +1057,12 @@ class PhaseDef(object):
 
 
 def to_phase_defs(phases):
-    if isinstance(phases, (basestring, PhaseDef)):
+    if isinstance(phases, (str, newstr, PhaseDef)):
         phases = [phases]
 
     phases_out = []
     for phase in phases:
-        if isinstance(phase, basestring):
+        if isinstance(phase, (str, newstr)):
             phases_out.extend(PhaseDef(x.strip()) for x in phase.split(','))
         elif isinstance(phase, PhaseDef):
             phases_out.append(phase)
@@ -1417,11 +1424,11 @@ class Layer(object):
             def sep(eta):
                 return num.sqrt(num.maximum(eta**2 - p**2, 0.0))
 
-            x = (cpe(eta2)-cpe(eta1))/(1-b)
-            t = (sep(eta2)-sep(eta1))/(1-b)
+            x = (cpe(eta2)-cpe(eta1))/(1.0-b)
+            t = (sep(eta2)-sep(eta1))/(1.0-b)
         else:
             lr = math.log(r2/r1)
-            sap = num.sqrt(1/a**2 - p**2)
+            sap = num.sqrt(1.0/a**2 - p**2)
             x = p/sap * lr
             t = 1./(a**2 * sap)
 
@@ -1446,7 +1453,7 @@ class Layer(object):
         '''Get turning depth for given ray parameter and propagation mode.'''
 
         a, b = self.potint_coefs(mode)
-        r = num.exp(num.log(a*p)/(1-b))
+        r = num.exp(num.log(a*p)/(1.0-b))
         return earthradius-r
 
     def propagate(self, p, mode, direction):
@@ -2424,7 +2431,7 @@ class RayPath(object):
             zin, zout = s.z_in(), s.z_out()
             if type(s) is HeadwaveStraight:
                 z = zin
-                for i in xrange(n):
+                for i in range(n):
                     xs = float(i)/(n-1) * xstretch
                     ts = s.x2t_headwave(xs)
                     zxt.append((filled(z, xstretch.size), sx+xs, st+ts))
@@ -2438,7 +2445,7 @@ class RayPath(object):
                 else:  # ray turns in layer
                     zturn = s.zturn(p)
                     back = []
-                    for i in xrange(n):
+                    for i in range(n):
                         z = zin + (zturn - zin) * num.sin(
                             float(i)/(n-1)*math.pi/2.0) * 0.999
 
@@ -2477,7 +2484,7 @@ class RayPath(object):
         tmax = t[:, -1] - dtr
         zstart, zstop = endgaps[:2]
         zs, xs, ts = [], [], []
-        for i in xrange(nout):
+        for i in range(nout):
             t_ = t[i]
             indices = num.where(num.logical_and(0. <= t_, t_ <= tmax[i]))[0]
             n = indices.size + 2
@@ -2840,7 +2847,7 @@ def anything_to_crust2_profile(crust2_profile):
     if isinstance(crust2_profile, tuple):
         lat, lon = [float(x) for x in crust2_profile]
         return crust2x2.get_profile(lat, lon)
-    elif isinstance(crust2_profile, basestring):
+    elif isinstance(crust2_profile, (str, newstr)):
         return crust2x2.get_profile(crust2_profile)
     elif isinstance(crust2_profile, crust2x2.Crust2Profile):
         return crust2_profile
@@ -3102,7 +3109,7 @@ class LayeredModel(object):
                     direction = next_knee.out_direction()
                     mode = next_knee.out_mode
                     next_knee = next_or_none(knees)
-                    leg = legs.next()
+                    leg = next(legs)
 
                 else:  # implicit reflection/transmission
                     direction = current.propagate(p, mode, direction)
@@ -3281,11 +3288,11 @@ class LayeredModel(object):
                         for (pl, ph) in zip(pedges[:-1], pedges[1:]):
                             recurse(pl, ph)
 
-                        for path, ps in phase_paths.iteritems():
+                        for path, ps in phase_paths.items():
                             path.set_prange(
                                 min(ps), max(ps), pmax/(self._np-1))
 
-                        phase_paths = phase_paths.keys()
+                        phase_paths = list(phase_paths.keys())
 
                     except ZeroDivisionError:
                         phase_paths = []
@@ -3294,7 +3301,7 @@ class LayeredModel(object):
 
             paths.extend(phase_paths)
 
-        paths.sort(key=lambda x: x.pmin)
+        paths.sort(key=lambda x: x.pmin())
         return paths
 
     def arrivals(
@@ -3474,7 +3481,7 @@ class LayeredModel(object):
 
         data = num.array(data, dtype=num.float)
         data_means = num.mean(data, axis=0)
-        nmax = len(layers)/2
+        nmax = len(layers) // 2
         accept = False
 
         zcut_best = []
@@ -3484,11 +3491,11 @@ class LayeredModel(object):
             if n == 2:
                 zcuts = [
                     [ztop, ztop + i*zdelta, zbot]
-                    for i in xrange(1, ncutintervals)]
+                    for i in range(1, ncutintervals)]
             elif n == 3:
                 zcuts = []
-                for j in xrange(1, ncutintervals):
-                    for i in xrange(j+1, ncutintervals):
+                for j in range(1, ncutintervals):
+                    for i in range(j+1, ncutintervals):
                         zcuts.append(
                             [ztop, ztop + j*zdelta, ztop + i*zdelta, zbot])
             else:
@@ -3595,10 +3602,10 @@ class LayeredModel(object):
         Interpolates a :py:class:`GradientLayer` at ``depth_min`` and/or
         ``depth_max``.'''
 
-        if isinstance(depth_min, basestring):
+        if isinstance(depth_min, (str, newstr)):
             depth_min = self.discontinuity(depth_min).z
 
-        if isinstance(depth_max, basestring):
+        if isinstance(depth_max, (str, newstr)):
             depth_max = self.discontinuity(depth_max).z
 
         mod_extracted = LayeredModel()
@@ -3951,7 +3958,7 @@ def filled(v, *args, **kwargs):
 
 def next_or_none(i):
     try:
-        return i.next()
+        return next(i)
     except StopIteration:
         return None
 
@@ -4013,6 +4020,6 @@ def float_or_none(x):
 
 
 def parstore_float(thelocals, obj, *args):
-    for k, v in thelocals.iteritems():
+    for k, v in thelocals.items():
         if k != 'self' and (not args or k in args):
             setattr(obj, k, float_or_none(v))
