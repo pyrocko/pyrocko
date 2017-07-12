@@ -208,6 +208,12 @@ Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
             assert isinstance(pdef, cake.PhaseDef)
 
 
+    def test_model_io(self):
+        mod = cake.load_model()
+        s = cake.write_nd_model_str(mod)
+        assert isinstance(s, str)
+
+
 if __name__ == "__main__":
     util.setup_logging('test_cake', 'warning')
     unittest.main()

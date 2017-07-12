@@ -50,7 +50,11 @@ import copy
 import math
 import cmath
 import operator
-from io import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 import glob
 from pyrocko import util, config
 from scipy.optimize import bisect, brentq
@@ -3729,7 +3733,7 @@ def read_nd_model(fn):
 
 
 def read_nd_model_str(s):
-    f = StringIO.StringIO(s)
+    f = StringIO(s)
     for x in read_nd_model_fh(f):
         yield x
     f.close()
@@ -3823,7 +3827,7 @@ def write_nd_model_fh(mod, fh):
 
 
 def write_nd_model_str(mod):
-    f = StringIO.StringIO()
+    f = StringIO()
     write_nd_model_fh(mod, f)
     return f.getvalue()
 
