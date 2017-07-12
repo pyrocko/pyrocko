@@ -51,6 +51,21 @@ class GFSTFTestCase(unittest.TestCase):
         if plot:
             plt.show()
 
+    def test_stf_bell_shaped(self, plot=False):
+        from matplotlib import pyplot as plt
+
+        for duration in [0., 1., 2., 3.]:
+            tref = 10.02
+            stf = gf.BellShapedSTF(duration=duration, anchor=0.)
+            t, a = stf.discretize_t(deltat=0.1, tref=tref)
+            assert numeq(stf.centroid_time(tref), tref, 1e-5)
+            if plot:
+                plt.plot(t, a)
+                plt.plot(t, a, 'o')
+
+        if plot:
+            plt.show()
+
     def test_stf_half_sinusoid(self, plot=False):
         from matplotlib import pyplot as plt
 
@@ -70,6 +85,7 @@ class GFSTFTestCase(unittest.TestCase):
         deltat = 1e-4
         for stf in [
                 gf.HalfSinusoidSTF(duration=2.0),
+                gf.BellShapedSTF(duration=2.0),
                 gf.TriangularSTF(duration=2.0, peak_ratio=0.),
                 gf.TriangularSTF(duration=2.0, peak_ratio=1.),
                 gf.TriangularSTF(duration=2.0, peak_ratio=0.5),
