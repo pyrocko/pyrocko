@@ -2,7 +2,6 @@
 
 #include "Python.h"
 #include "numpy/arrayobject.h"
-
 struct module_state {
     PyObject *error;
 };
@@ -10,14 +9,14 @@ struct module_state {
 #if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 #else
-#define GETSTATE(m) (&_state)
+#define GETSTATE(m) (&_state); (void) m;
 static struct module_state _state;
 #endif
 
-#include<math.h>
+#include <math.h>
 
 #ifndef max
-	#define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
+   #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #endif
 
 
@@ -164,7 +163,7 @@ static PyObject* autopick_recursive_stalta_wrapper(PyObject *module, PyObject *a
 }
 
 static PyMethodDef AutoPickMethods[] = {
-    {"recursive_stalta",  autopick_recursive_stalta_wrapper, METH_VARARGS, 
+    {"recursive_stalta",  (PyCFunction) autopick_recursive_stalta_wrapper, METH_VARARGS,
         "Recursive STA/LTA picker." },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -209,27 +208,28 @@ void
 initautopick_ext(void)
 #endif
 {
-    #if PY_MAJOR_VERSION >= 3
-        PyObject *module = PyModule_Create(&moduledef);
-    #else
-        PyObject *module = Py_InitModule("autopick_ext", AutoPickMethods);
-    #endif
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("autopick_ext", AutoPickMethods);
+#endif
+    import_array();
     if (module == NULL)
         INITERROR;
-    import_array();
 
     struct module_state *st = GETSTATE(module);
-    st->error = PyErr_NewException("autopick_ext.error", NULL, NULL);
-
+    st->error = PyErr_NewException("pyrocko.autopick_ext.AutopickExtError", NULL, NULL);
     if (st->error == NULL) {
         Py_DECREF(module);
         INITERROR;
 
     }
 
-    Py_INCREF(st->error);  /* required, because other code could remove `error` 
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(module, "AutoPickError", st->error);
-}
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "AutopickExtError", st->error);
 
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
+
+}
