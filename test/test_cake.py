@@ -1,3 +1,7 @@
+# python 2/3
+
+from builtins import range
+
 import unittest
 import numpy as num
 
@@ -75,7 +79,7 @@ class CakeTestCase(unittest.TestCase):
         zmax = layers[mod.nlayers-1].zbot
         zmins = num.random.uniform(zmin, zmax, nz)
         zmaxs = num.random.uniform(zmin, zmax, nz)
-        for i in xrange(nz):
+        for i in range(nz):
             zmin = min(zmins[i], zmaxs[i])
             zmax = max(zmins[i], zmaxs[i])
             new_mod = mod.extract(zmin, zmax)
@@ -98,7 +102,7 @@ class CakeTestCase(unittest.TestCase):
         nz = 100
         mod = cake.load_model()
         layers = list(mod.elements())
-        for i in xrange(nz):
+        for i in range(nz):
             i = num.random.randint(0, len(layers)-3)
             i2 = num.random.randint(i+2, len(layers)-1)
             z1 = layers[i].zbot
@@ -163,7 +167,7 @@ Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
         rays = mod.arrivals(
             phases=[phase], distances=[5000*km*cake.m2d], zstart=500.)
 
-	assert str(rays[0]).split() == '''10.669 s/deg    5000 km  601.9 s  \
+        assert str(rays[0]).split() == '''10.669 s/deg    5000 km  601.9 s  \
 33.8   33.8  17%  12% P<(cmb)(moho)pP<(cmb)(moho)p (P^0P)            \
 0_1_2_3_(4-5)_(6-7)_8_(7-6)_(5-4)_3_2_1_0|\
 0_1_2_3_(4-5)_(6-7)_8_(7-6)_(5-4)_3_2_1_0'''.split()

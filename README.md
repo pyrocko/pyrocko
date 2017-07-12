@@ -15,7 +15,7 @@ For documentation and installation instructions please see
 - [ ] ``autopick.py``
 - [x] ``beachball.py``
 - [ ] ``cake_plot.py``
-- [ ] ``cake.py``
+- [x] ``cake.py``
 - [x] ``catalog.py``
 - [ ] ``config.py``
 - [ ] ``crust2x2_data.py``
