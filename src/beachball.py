@@ -1,3 +1,6 @@
+# python 2/3
+
+from builtins import zip, map, range
 from pyrocko import moment_tensor as mtm
 from math import pi as PI
 import numpy as num
@@ -79,7 +82,7 @@ def spoly_cut(l_points, axis=0, nonsimple=True):
                                                       points[iup, :])
         phiup = num.arctan2(pup[:, (axis+2) % 3], pup[:, (axis+1) % 3])
 
-        for i in xrange(len(iup)):
+        for i in range(len(iup)):
             crossings.append((phiup[i], ipath, iup[i], 1, pup[i], [1, -1]))
 
         # get downward crossing points
@@ -91,13 +94,13 @@ def spoly_cut(l_points, axis=0, nonsimple=True):
             points[idown, :] - points[idown+1, :])
         phidown = num.arctan2(pdown[:, (axis+2) % 3], pdown[:, (axis+1) % 3])
 
-        for i in xrange(idown.size):
+        for i in range(idown.size):
             crossings.append(
                 (phidown[i], ipath, idown[i], -1, pdown[i], [1, -1]))
 
         icuts = num.sort(num.concatenate((iup, idown)))
 
-        for i in xrange(icuts.size-1):
+        for i in range(icuts.size-1):
             snippets[ipath, icuts[i]] = (
                 ipath, icuts[i+1], points[icuts[i]+1:icuts[i+1]+1])
 
@@ -113,7 +116,7 @@ def spoly_cut(l_points, axis=0, nonsimple=True):
     crossings.sort()
 
     # assemble new sub-polygons
-    current = snippets.pop(snippets.keys()[0])
+    current = snippets.pop(list(snippets.keys())[0])
     outs = [[]]
     while True:
         outs[-1].append(current[2])
@@ -124,7 +127,7 @@ def spoly_cut(l_points, axis=0, nonsimple=True):
         else:
             if not snippets:
                 break
-            current = snippets.pop(snippets.keys()[0])
+            current = snippets.pop(list(snippets.keys())[0])
             outs.append([])
             continue
 
@@ -164,7 +167,7 @@ def spoly_cut(l_points, axis=0, nonsimple=True):
             if not snippets:
                 break
 
-            current = snippets.pop(snippets.keys()[0])
+            current = snippets.pop(list(snippets.keys())[0])
             outs.append([])
 
     # separate hemispheres, force polygons closed, remove duplicate points
@@ -670,7 +673,7 @@ if __name__ == '__main__':
     import sys
     import matplotlib.pyplot as plt
 
-    vals = map(float, sys.argv[1:])
+    vals = list(map(float, sys.argv[1:]))
 
     fig = plt.figure()
     axes = fig.add_subplot(1, 1, 1, aspect=1.)

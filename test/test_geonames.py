@@ -1,3 +1,5 @@
+# python 2/3
+
 import unittest
 from pyrocko import geonames, util
 

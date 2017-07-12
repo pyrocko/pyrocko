@@ -13,10 +13,10 @@ For documentation and installation instructions please see
 - [ ] ``automap.py``
 - [ ] ``autopick_ext.c``
 - [ ] ``autopick.py``
-- [ ] ``beachball.py``
+- [x] ``beachball.py``
 - [ ] ``cake_plot.py``
 - [ ] ``cake.py``
-- [ ] ``catalog.py``
+- [x] ``catalog.py``
 - [ ] ``config.py``
 - [ ] ``crust2x2_data.py``
 - [ ] ``crust2x2.py``

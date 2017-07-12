@@ -1,7 +1,13 @@
+# python 2/3
+
+from __future__ import print_function
+from future import standard_library
+standard_library.install_aliases()  # noqa
+from builtins import range
 import unittest
 import math
 import numpy as num
-from cStringIO import StringIO as StringIO
+from io import BytesIO
 
 from pyrocko import util, moment_tensor as mtm, beachball
 
@@ -58,7 +64,7 @@ class BeachballTestCase(unittest.TestCase):
 
             plot(mt, axes, **plotargs)
 
-            f = StringIO()
+            f = BytesIO()
             fig.savefig(f, format='png')
             f.seek(0)
             imgs.append(image.imread(f, format='png'))
@@ -71,8 +77,8 @@ class BeachballTestCase(unittest.TestCase):
         d[:, :, 3] = 1.
         dsum = num.sum(d[:, :, :3])
         if dsum > 1600 or show:
-            print dsum
-            print mt
+            print(dsum)
+            print(mt)
             fig = plt.figure()
             axes1 = fig.add_subplot(1, 3, 1, aspect=1.)
             axes2 = fig.add_subplot(1, 3, 2, aspect=1.)
@@ -224,7 +230,8 @@ class BeachballTestCase(unittest.TestCase):
                     mop_beach.ploBB(kwargs, ax=axes3)
 
                 except:
-                    print 'mopad failed (maybe patched mopad version is needed'
+                    print(
+                        'mopad failed (maybe patched mopad version is needed')
 
             fig.canvas.draw()
 
