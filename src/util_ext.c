@@ -318,7 +318,12 @@ initutil_ext(void)
     if (st->error == NULL) {
         Py_DECREF(module);
         INITERROR;
+
     }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "UtilExtError", st->error);
+
 #if PY_MAJOR_VERSION >= 3
     return module;
 #endif
