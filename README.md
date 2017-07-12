@@ -14,7 +14,7 @@ For documentation and installation instructions please see
 - [ ] ``autopick_ext.c``
 - [ ] ``autopick.py``
 - [x] ``beachball.py``
-- [ ] ``cake_plot.py``
+- [x] ``cake_plot.py``
 - [x] ``cake.py``
 - [x] ``catalog.py``
 - [ ] ``config.py``
@@ -51,7 +51,7 @@ For documentation and installation instructions please see
 - [ ] ``ims.py``
 - [ ] ``info.py``
 - [ ] ``io_common.py``
-- [ ] ``io.py``
+- [x] ``io.py``
 - [ ] ``iris_ws.py``
 - [ ] ``kan.py``
 - [ ] ``marker_editor.py``

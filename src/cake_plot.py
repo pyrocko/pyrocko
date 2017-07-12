@@ -1,3 +1,5 @@
+from builtins import range
+
 import math
 import numpy as num
 from pyrocko import cake
@@ -138,8 +140,8 @@ def to01(c):
 
 colors = [to01(tango_colors[x+i]) for i in '321' for x in
           'scarletred chameleon skyblue chocolate orange plum'.split()]
-shades = [light(to01(tango_colors['chocolate1']), i*0.1) for i in xrange(1, 9)]
-shades2 = [light(to01(tango_colors['orange1']), i*0.1) for i in xrange(1, 9)]
+shades = [light(to01(tango_colors['chocolate1']), i*0.1) for i in range(1, 9)]
+shades2 = [light(to01(tango_colors['orange1']), i*0.1) for i in range(1, 9)]
 
 
 def plot_xt(
