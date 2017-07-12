@@ -1,4 +1,3 @@
-
 #define NPY_NO_DEPRECATED_API 7
 
 
@@ -15,8 +14,6 @@
 #define CHUNKSIZE 10
 #define NBLOCK 64
 
-
-
 struct module_state {
     PyObject *error;
 };
@@ -24,10 +21,9 @@ struct module_state {
 #if PY_MAJOR_VERSION >= 3
 #define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
 #else
-#define GETSTATE(m) (&_state)
+#define GETSTATE(m) (&_state); (void) m;
 static struct module_state _state;
 #endif
-
 
 int parstack_config(
         size_t narrays,
@@ -377,7 +373,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
             free(clengths);
             return NULL;
         }
-        Py_INCREF(result); 
+        Py_INCREF(result);
     } else {
         result = PyArray_SimpleNew(1, array_dims, NPY_FLOAT64);
         cresult = PyArray_DATA((PyArrayObject*)result);
@@ -407,6 +403,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
 
     free(carrays);
     free(clengths);
+    //return Py_BuildValue("Ni", (PyObject *)result, offsetout);
     return Py_BuildValue("Ni", result, offsetout);
 }
 
@@ -444,7 +441,8 @@ static PyObject* w_argmax(PyObject *module, PyObject *args) {
 
     shapeout[0] = shape[1];
 
-    result = PyArray_SimpleNew(1, shapeout, NPY_UINT32);
+    //result = PyArray_SimpleNew(1, shapeout, NPY_UINT32);
+    result = PyArray_SimpleNew(1, shapeout, NPY_INT);
     cresult = PyArray_DATA((PyArrayObject*)result);
 
     for (i=0; i<(size_t)shapeout[0]; i++){
@@ -458,15 +456,16 @@ static PyObject* w_argmax(PyObject *module, PyObject *args) {
         return NULL;
     }
 
-    return Py_BuildValue("N", result);
+    return Py_BuildValue("N", (PyObject *)result);
+    //return (PyObject *)result;
 }
 
 
 static PyMethodDef ParstackMethods[] = {
-    {"parstack",  w_parstack, METH_VARARGS,
+    {"parstack",  (PyCFunction) w_parstack, METH_VARARGS,
         "Parallel weight-and-delay stacking" },
 
-    {"argmax", w_argmax, METH_VARARGS,
+    {"argmax", (PyCFunction) w_argmax, METH_VARARGS,
         "argmax of 2D numpy array along axis=0" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -510,26 +509,29 @@ PyInit_parstack_ext(void)
 void
 initparstack_ext(void)
 #endif
+
 {
-    #if PY_MAJOR_VERSION >= 3
-        PyObject *module = PyModule_Create(&moduledef);
-    #else
-        PyObject *module = Py_InitModule("parstack_ext", ParstackMethods);
-    #endif
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("parstack_ext", ParstackMethods);
+#endif
     import_array();
 
     if (module == NULL)
         INITERROR;
-
     struct module_state *st = GETSTATE(module);
-    st->error = PyErr_NewException("pyrocko.parstack_ext.ParstackError", NULL, NULL);
+
+    st->error = PyErr_NewException("pyrocko.parstack_ext.ParstackExtError", NULL, NULL);
     if (st->error == NULL){
         Py_DECREF(module);
         INITERROR;
-
     }
 
-    #if PY_MAJOR_VERSION >= 3
-        return module;
-    #endif
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "ParstackExtError", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }
