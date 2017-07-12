@@ -462,9 +462,6 @@ initorthodrome_ext(void)
         INITERROR;
     }
 
-    Py_INCREF(st->error);
-    PyModule_AddObject(module, "OrthodromeExtError", st->error);
-
 #if PY_MAJOR_VERSION >= 3
     return module;
 #endif
