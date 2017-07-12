@@ -1,13 +1,13 @@
 '''File IO module for SICK traces format.'''
 
 import os
-
-from pyrocko.file import File, numtype2type, NoDataAvailable, \
-    size_record_header, FileError
-from pyrocko import trace
-from pyrocko.util import ensuredirs
 from struct import unpack
-from pyrocko.io_common import FileLoadError, FileSaveError
+
+from .file import File, numtype2type, NoDataAvailable, \
+    size_record_header, FileError
+from . import trace
+from .util import ensuredirs
+from .io_common import FileLoadError, FileSaveError
 
 record_formats = {
 
@@ -76,12 +76,12 @@ class TracesFileIO(File):
 
 def iload(filename, load_data=True):
     try:
-        f = open(filename, 'r')
+        f = open(filename, 'rb')
         tf = TracesFileIO(f)
         for tr in tf.load(load_data=load_data):
             yield tr
 
-    except (OSError, FileError), e:
+    except (OSError, FileError) as e:
         raise FileLoadError(e)
 
     finally:
@@ -112,7 +112,7 @@ def save(traces, filename_template, additional={}, max_open_files=10,
 
                 ensuredirs(fn)
 
-            open_files[fn] = open(fn, 'wa'[fn in fns])
+            open_files[fn] = open(fn, 'wab'[fn in fns])
             fns.add(fn)
 
         tf = TracesFileIO(open_files[fn])

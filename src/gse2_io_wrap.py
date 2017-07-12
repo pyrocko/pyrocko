@@ -1,3 +1,6 @@
+from builtins import range
+from builtins import chr
+
 import os
 import random
 from pyrocko.util import ensuredirs
@@ -34,14 +37,14 @@ def iload(filename, load_data=True):
                     tr = sec.pyrocko_trace(checksum_error='warn')
                     yield tr
 
-    except (OSError, ims.DeserializeError), e:
+    except (OSError, ims.DeserializeError) as e:
         fle = FileLoadError(e)
         fle.set_context('filename', filename)
         raise fle
 
 
 def randomid():
-    return ''.join(chr(random.randint(97, 122)) for _ in xrange(20))
+    return ''.join(chr(random.randint(97, 122)) for _ in range(20))
 
 
 def save(traces, filename_template, additional={}, max_open_files=10,

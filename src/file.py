@@ -1,4 +1,3 @@
-
 # The container format:
 # * A file consists of records.
 # * A record consists of a record header a record payload, and possibly
@@ -7,9 +6,11 @@
 #   payload size, a hash, and a record type.
 # * A record payload consists of a sequence of record entries.
 # * A record entry consists of a key, a type, and a value.
+from __future__ import absolute_import
+from builtins import range
 
 from struct import unpack, pack
-from cStringIO import StringIO
+from io import StringIO
 import numpy as num
 try:
     from hashlib import sha1
@@ -21,7 +22,7 @@ try:
 except:
     SEEK_CUR = 1
 
-from pyrocko import util
+from . import util
 
 size_record_header = 64
 no_hash = '\0' * 20
@@ -37,7 +38,7 @@ numtypes = {
     '@f8': (num.float64, '>f8'),
 }
 
-numtype2type = dict([(v[0], k) for (k, v) in numtypes.iteritems()])
+numtype2type = dict([(v[0], k) for (k, v) in numtypes.items()])
 
 
 def packer(fmt):
@@ -94,7 +95,7 @@ castings = {
 def pack_value(type, value):
     try:
         return castings[type][0](value)
-    except Exception, e:
+    except Exception as e:
         raise FileError(
             'Packing value failed (type=%s, value=%s, error=%s).' %
             (type, str(value)[:500], e))
@@ -103,7 +104,7 @@ def pack_value(type, value):
 def unpack_value(type, value):
     try:
         return castings[type][1](value)
-    except Exception, e:
+    except Exception as e:
         raise FileError(
             'Unpacking value failed (type=%s, error=%s).' % (type, e))
 
@@ -124,7 +125,7 @@ class MissingRecordValue(Exception):
     pass
 
 
-class Record:
+class Record(object):
     def __init__(
             self, parent, mode, size_record, size_payload, hash, type, format,
             do_hash):
@@ -175,7 +176,7 @@ class Record:
         assert not self._closed
         assert self.mode == 'w'
 
-        self._out.write(data)
+        self._out.write(bytes(data))
         if self._hasher:
             self._hasher.update(data)
 
@@ -246,11 +247,11 @@ class Record:
             sum += size + 8
             sizes.append(size)
 
-        n = len(sizes)/3
+        n = len(sizes) // 3
         keys = []
-        keys = [self.read(sizes[j]) for j in xrange(n)]
-        types = [self.read(sizes[j]) for j in xrange(n, 2*n)]
-        for key, type, j in zip(keys, types, xrange(2*n, 3*n)):
+        keys = [self.read(sizes[j]) for j in range(n)]
+        types = [self.read(sizes[j]) for j in range(n, 2*n)]
+        for key, type, j in zip(keys, types, range(2*n, 3*n)):
             yield key, type, sizes[j]
 
     def unpack(self, exclude=None):
@@ -297,7 +298,7 @@ class Record:
             self.write(x)
 
 
-class File:
+class File(object):
 
     def __init__(
             self, f,

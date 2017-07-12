@@ -1,11 +1,15 @@
+from __future__ import division
+from __future__ import absolute_import
+
 import sys
 import struct
 import re
-from StringIO import StringIO
-from collections import namedtuple
 import numpy as num
-from pyrocko.io_common import FileLoadError
-from pyrocko import util, trace
+
+from io import StringIO
+from collections import namedtuple
+from .io_common import FileLoadError
+from . import util, trace
 
 guralp_zero = util.str_to_time('1989-11-17 00:00:00')
 
@@ -126,7 +130,7 @@ def read_header(f, endianness='>'):
             tfod = None
 
         if tfod is not None:
-            toff = (compression >> 4) / tfod
+            toff = (compression >> 4) // tfod
             compression = compression & 0b1111
             time += toff
 
@@ -233,7 +237,7 @@ if __name__ == '__main__':
     all_traces = []
     for fn in sys.argv[1:]:
         if detect(open(fn).read(512)):
-            print fn
+            print(fn)
             all_traces.extend(iload(fn))
 
     trace.snuffle(all_traces)

@@ -71,9 +71,8 @@ class IOTestCase(unittest.TestCase):
         try:
             list(mseed.iload(tempfn))
         except FileLoadError as e:
-            pass
+            assert str(e).find('No SEED data detected') != -1
 
-        assert str(e).find('No SEED data detected') != -1
         os.remove(tempfn)
 
     def testReadSac(self):
@@ -89,9 +88,7 @@ class IOTestCase(unittest.TestCase):
         try:
             io.save(tr, 'test.mseed')
         except mseed.CodeTooLong as e:
-            pass
-
-        assert isinstance(e, mseed.CodeTooLong)
+            assert isinstance(e, mseed.CodeTooLong)
 
     def testMSeedDetect(self):
         fpath = common.test_data_file('test2.mseed')

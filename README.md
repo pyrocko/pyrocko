@@ -50,7 +50,7 @@ For documentation and installation instructions please see
 - [ ] ``ims_ext.c``
 - [ ] ``ims.py``
 - [ ] ``info.py``
-- [ ] ``io_common.py``
+- [x] ``io_common.py``
 - [x] ``io.py``
 - [ ] ``iris_ws.py``
 - [ ] ``kan.py``
@@ -70,7 +70,7 @@ For documentation and installation instructions please see
 - [ ] ``pile.py``
 - [ ] ``pile_viewer.py``
 - [x] ``plot.py``
-- [ ] ``pz.py``
+- [x] ``pz.py``
 - [ ] ``quakeml.py``
 - [ ] ``rdseed.py``
 - [ ] ``response_plot.py``

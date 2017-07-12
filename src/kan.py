@@ -1,7 +1,7 @@
 import os
 import numpy as num
-from pyrocko import util, trace
-from pyrocko.io_common import FileLoadError
+from . import util, trace
+from .io_common import FileLoadError
 
 
 class KanError(Exception):
@@ -100,5 +100,5 @@ def iload(filename, load_data):
         tr = kanf.to_trace()
         yield tr
 
-    except (OSError, KanError), e:
+    except (OSError, KanError) as e:
         raise FileLoadError(e)

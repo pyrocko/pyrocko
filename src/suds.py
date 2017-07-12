@@ -1,12 +1,13 @@
+from __future__ import print_function
+
 import sys
 import struct
 import logging
-from collections import namedtuple, defaultdict
-from pyrocko.io_common import FileLoadError
-
 import numpy as num
+from collections import namedtuple, defaultdict
 
-from pyrocko import util, trace, model
+from .io_common import FileLoadError
+from . import util, trace, model
 
 
 suds_tzero = util.str_to_time('1970-01-01 00:00:00')
@@ -173,7 +174,7 @@ max_struct_type = max(struct_names.keys())
 
 
 struct_classes = {}
-for struct_id, struct_name in struct_names.iteritems():
+for struct_id, struct_name in struct_names.items():
     g = globals()
     if struct_id > 0:
         class_name = 'Suds' + struct_name.capitalize()
@@ -256,7 +257,7 @@ def load_stations(filename):
         gathered[nsl].append(s)
 
     stations_out = []
-    for nsl, group in gathered.iteritems():
+    for nsl, group in gathered.items():
         meta = [
             ('.'.join(s.nsl()) + '.' + s.get_channels()[0].name,
              s.lat, s.lon, s.elevation)
@@ -296,6 +297,6 @@ if __name__ == '__main__':
     stations = load_stations(sys.argv[1])
 
     for station in stations:
-        print station
+        print(station)
 
     trace.snuffle(trs, stations=stations)

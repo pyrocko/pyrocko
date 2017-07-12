@@ -1,10 +1,10 @@
 import sys
 import calendar
 import numpy as num
-from pyrocko.util import unpack_fixed
+from .util import unpack_fixed
 
-from pyrocko import util, trace
-from pyrocko.io_common import FileLoadError
+from . import util, trace
+from .io_common import FileLoadError
 
 
 class SeisanFileError(Exception):
@@ -32,7 +32,7 @@ def read_file_header(f, npad=4):
             header_infos.append((net_name, nchannels, util.time_to_str(tmin)))
 
             if nchannels > 30:
-                nlines += (nchannels - 31)/3 + 1
+                nlines += (nchannels - 31)//3 + 1
 
         if iline >= 2:
             for j in range(3):
@@ -120,7 +120,7 @@ def iload(filename, load_data=True, subformat='l4'):
         try:
             read_file_header(f, npad=npad)
 
-        except util.UnpackError, e:
+        except util.UnpackError as e:
             raise SeisanFileError(
                 'Error loading header from file %s: %s' % (filename, str(e)))
 
@@ -146,7 +146,7 @@ def iload(filename, load_data=True, subformat='l4'):
 
                     yield t
 
-                except util.UnpackError, e:
+                except util.UnpackError as e:
                     raise SeisanFileError(
                         'Error loading trace %i from file %s: %s' % (
                             itrace, filename, str(e)))
@@ -156,7 +156,7 @@ def iload(filename, load_data=True, subformat='l4'):
         except EOF:
             pass
 
-    except (OSError, SeisanFileError), e:
+    except (OSError, SeisanFileError) as e:
         raise FileLoadError(e)
 
     finally:
@@ -166,4 +166,4 @@ def iload(filename, load_data=True, subformat='l4'):
 if __name__ == '__main__':
     fn = sys.argv[1]
     for tr in iload(fn):
-        print tr
+        print(tr)

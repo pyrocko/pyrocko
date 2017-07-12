@@ -1,9 +1,11 @@
+from builtins import range
+
 import numpy as num
 import struct
 import calendar
 
-from pyrocko import trace
-from pyrocko.io_common import FileLoadError
+from . import trace
+from .io_common import FileLoadError
 
 
 def ibm2ieee(ibm):
@@ -16,21 +18,21 @@ def ibm2ieee(ibm):
     sign = ibm >> 31 & 0x01
     exponent = ibm >> 24 & 0x7f
     mantissa = (ibm & 0x00ffffff) / float(pow(2, 24))
-    print 'x', sign, exponent - 64, mantissa
+    print('x', sign, exponent - 64, mantissa)
     return (1 - 2 * sign) * mantissa * float(pow(16, exponent - 64))
 
 
 def unpack_ibm_f4(data):
-
     ibm = num.fromstring(data, dtype='>u4').astype(num.int32)
     sign = (ibm >> 31) & 0x01
     exponent = (ibm >> 24) & 0x7f
+    print((exponent-64).min())
     mantissa = (ibm & 0x00ffffff) / float(pow(2, 24))
     xxx = (1 - 2 * sign) * mantissa * (16 ** (exponent - 64)).astype(num.float)
-    # for i in xrange(len(data)/4):
+    # for i in range(len(data)/4):
     #    yyy = ibm2ieee(struct.unpack('>L', data[i*4:(i+1)*4])[0])
-    #    print 'y', sign[i], exponent[i] - 64, mantissa[i]
-    #    print xxx[i], yyy
+    #    print('y', sign[i], exponent[i] - 64, mantissa[i])
+    #    print(xxx[i], yyy)
     #    if xxx[i] != yyy:
     #        sys.exit()
     #    print
@@ -91,12 +93,12 @@ def iload(filename, load_data, endianness='>'):
             raise SEGYError('unsupported sample data format %i: %s' % (
                 format, formats[format][2]))
 
-        for ihead in xrange(nextended_headers):
+        for ihead in range(nextended_headers):
             f.read(nbthx)
 
         atend = False
         while not atend:
-            for itrace in xrange((ntraces+nauxtraces)):
+            for itrace in range((ntraces+nauxtraces)):
                 trace_header = f.read(nbtrh)
                 if len(trace_header) == 0:
                     atend = True
@@ -192,5 +194,5 @@ def iload(filename, load_data, endianness='>'):
 
         f.close()
 
-    except (OSError, SEGYError), e:
+    except (OSError, SEGYError) as e:
         raise FileLoadError(e)

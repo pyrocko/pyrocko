@@ -357,6 +357,7 @@ initmseed_ext(void)
 
     Py_INCREF(st->error);
     PyModule_AddObject(module, "MSeedError", st->error);
+    PyModule_AddObject(module, "HPTMODULUS", PyLong_FromLong(HPTMODULUS));
 
 #if PY_MAJOR_VERSION >= 3
     return module;

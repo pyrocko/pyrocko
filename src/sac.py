@@ -1,16 +1,17 @@
 '''SAC IO library for Python'''
+from builtins import range
 
 import struct
 import logging
 import math
+import numpy as num
+
 from calendar import timegm
 from time import gmtime
 
-import numpy as num
-
-from pyrocko import trace
-from pyrocko.util import reuse
-from pyrocko.io_common import FileLoadError
+from . import trace
+from .util import reuse
+from .io_common import FileLoadError
 
 logger = logging.getLogger('pyrocko.pile')
 
@@ -31,7 +32,7 @@ def nonetoempty(s):
         return s.strip()
 
 
-class SacFile:
+class SacFile(object):
     nbytes_header = 632
     header_num_format = {'little': '<70f40i', 'big': '>70f40i'}
 
@@ -71,7 +72,9 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         'leven': 1, 'lpspol': 0, 'lovrok': 1, 'lcalda': 1, 'unused17': 0}
 
     t_lookup = dict(zip(header_keys, header_types))
-    u_lookup = dict([(k, undefined_value[t_lookup[k]]) for k in header_keys])
+    u_lookup = dict()
+    for k in header_keys:
+        u_lookup[k] = undefined_value[t_lookup[k]]
 
     def ndatablocks(self):
         '''Get number of data blocks for this file's type.'''
@@ -148,7 +151,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             self.clear()
             trace = kwargs['from_trace']
             if trace.meta:
-                for (k, v) in trace.meta.iteritems():
+                for (k, v) in trace.meta.items():
                     if k in SacFile.header_keys:
                         setattr(self, k, v)
 
@@ -246,7 +249,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             strings = filedata[nbn:nbh]
             hv.append(strings[:8].rstrip())
             hv.append(strings[8:24].rstrip())
-            for i in xrange(len(strings[24:])/8):
+            for i in range(len(strings[24:])//8):
                 hv.append(strings[24+i*8:24+(i+1)*8].rstrip())
 
             self.header_vals = hv
@@ -268,7 +271,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             try:
                 self.check()
                 break
-            except SacError, e:
+            except SacError as e:
                 if isex == len(sexes)-1:
                     raise e
 
@@ -395,7 +398,7 @@ def iload(filename, load_data=True):
         tr = sacf.to_trace()
         yield tr
 
-    except (OSError, SacError), e:
+    except (OSError, SacError) as e:
         raise FileLoadError(e)
 
 
