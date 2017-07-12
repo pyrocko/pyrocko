@@ -1,5 +1,5 @@
 #define _XOPEN_SOURCE 600
-#define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
