@@ -10,12 +10,13 @@ from optparse import OptionParser
 from pyrocko import util, trace, gf, cake, io, gui_util
 
 pjoin = os.path.join
-
 logger = logging.getLogger('main')
+km = 1e3
 
 
 def d2u(d):
     return dict((k.replace('-', '_'), v) for (k, v) in d.iteritems())
+
 
 subcommand_descriptions = {
     'init':          'create a new empty GF store',
@@ -749,8 +750,6 @@ def phasedef_or_horvel(x):
 def mkp(s):
     return [phasedef_or_horvel(ps) for ps in s.split(',')]
 
-km = 1000.
-
 
 def command_ttt(args):
     def setup(parser):
@@ -1117,19 +1116,19 @@ def command_qc(args):
     except gf.StoreError, e:
         die(e)
 
+
 def command_report(args):
     from pyrocko.fomosto_report import report_call
     report_call.run_program(args)
 
 
-if __name__ == '__main__':
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
 
-    usage_sub = 'fomosto %s [options]'
-    if len(sys.argv) < 2:
+    if len(args) < 1:
         sys.exit('Usage: %s' % usage)
 
-    args = list(sys.argv)
-    args.pop(0)
     command = args.pop(0)
 
     if command in subcommands:
@@ -1145,3 +1144,7 @@ if __name__ == '__main__':
 
     else:
         sys.exit('fomosto: error: no such subcommand: %s' % command)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

@@ -62,7 +62,11 @@ def nice_seconds_floor(s):
 
     return s
 
-if __name__ == '__main__':
+
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
     parser = OptionParser(
         usage=usage,
         description=description,
@@ -241,7 +245,7 @@ if __name__ == '__main__':
              'int64, float32, float64. The output file format must support '
              'the given type.')
 
-    (options, args) = parser.parse_args(sys.argv[1:])
+    (options, args) = parser.parse_args(args)
 
     if len(args) == 0:
         parser.print_help()
@@ -440,3 +444,7 @@ if __name__ == '__main__':
 
     if abort:
         die('interrupted.')
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

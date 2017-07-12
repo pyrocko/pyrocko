@@ -577,7 +577,11 @@ def print_arrivals(
             space)) + tuple(
                 x.ljust(17) for x in (ray.path.phase.definition(), su)))
 
-if __name__ == '__main__':
+
+def main(args=None):
+
+    if args is None:
+        args = sys.argv[1:]
 
     subcommand_descriptions = {
         'print':          'get information on model/phase/material properties',
@@ -617,10 +621,10 @@ To get further help and a list of available options for any subcommand run:
 '''.strip() % d2u(subcommand_descriptions)
 
     usage_sub = 'cake %s [options]'
-    if len(sys.argv) < 2:
+    if len(args) < 1:
         sys.exit('Usage: %s' % usage)
 
-    command = sys.argv[1]
+    command = args[0]
     descr = subcommand_descriptions.get(command, None)
     subusage = usage_sub % command
 
@@ -752,3 +756,7 @@ To get further help and a list of available options for any subcommand run:
 
     else:
         sys.exit('cake: no such subcommand: %s' % command)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

@@ -7,7 +7,7 @@ from pyrocko import automap, util, model
 from optparse import OptionParser
 
 km = 1000.
-logger = logging.getLogger('main')
+logger = logging.getLogger('automap')
 
 program_name = 'automap'
 
@@ -18,7 +18,11 @@ usage: %s [options] [--] <lat> <lon> <radius_km> <output.(pdf|png)>
 
 description = '''Create a simple map with topography.'''
 
-if __name__ == '__main__':
+
+def main(args=None):
+    if args is None:
+        args = sys.argv[1:]
+
     parser = OptionParser(
         usage=usage,
         description=description)
@@ -129,7 +133,7 @@ if __name__ == '__main__':
         default=False,
         help='print debugging information to stderr')
 
-    (options, args) = parser.parse_args(sys.argv[1:])
+    (options, args) = parser.parse_args(args)
 
     if options.debug:
         util.setup_logging(program_name, 'debug')
@@ -208,3 +212,7 @@ if __name__ == '__main__':
             *map.jxyr)
 
     map.save(args[3])
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

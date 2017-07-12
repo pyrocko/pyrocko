@@ -1,12 +1,19 @@
 from __future__ import absolute_import, division, print_function
 
 import sys
+import os
+import time
+import shutil
+import tempfile
+from os.path import join as pjoin
+
+from setuptools import setup, Extension, Command
+from setuptools.command.build_py import build_py
+from setuptools.command.build_ext import build_ext
+from setuptools.command.install import install
 
 if not (sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 4)):
-    sys.exit('This version of Pyrocko requires Python version ==2.7 or >3.4')
-
-#if sys.version_info[:2] != (2, 7):
-#    sys.exit('This version of Pyrocko requires Python version ==2.7')
+    sys.exit('This version of Pyrocko requires Python version == 2.7 or >3.4')
 
 try:
     import numpy
@@ -18,18 +25,6 @@ except ImportError:
         @classmethod
         def get_include(self):
             return ''
-
-import os
-import time
-import shutil
-import tempfile
-from os.path import join as pjoin
-
-from distutils.core import setup, Extension
-from distutils.cmd import Command
-from distutils.command.build_py import build_py
-from distutils.command.build_ext import build_ext
-from distutils.command.install import install
 
 
 class NotInAGitRepos(Exception):
@@ -169,19 +164,6 @@ def double_install_check():
         if found[0][0] != dates[-1]:
             print >>e, 'WARNING: Not using newest installed version.'
         print >>e
-
-
-packname = 'pyrocko'
-version = '0.3'
-
-subpacknames = [
-    'pyrocko.snufflings',
-    'pyrocko.gf',
-    'pyrocko.fomosto',
-    'pyrocko.fdsn',
-    'pyrocko.topo',
-    'pyrocko.fomosto_report',
-]
 
 
 class double_install_check_cls(Command):
@@ -381,10 +363,24 @@ else:
     omp_arg = []
     omp_lib = []
 
+
+packname = 'pyrocko'
+version = time.strftime('%y.%m')
+
+subpacknames = [
+    'pyrocko.snufflings',
+    'pyrocko.gf',
+    'pyrocko.fomosto',
+    'pyrocko.fdsn',
+    'pyrocko.topo',
+    'pyrocko.fomosto_report',
+    'pyrocko.apps'
+]
+
 setup(
     cmdclass={
         'build_py': custom_build_py,
-        'py2app': custom_build_app,
+        # 'py2app': custom_build_app,
         'build_ext': custom_build_ext,
         'double_install_check': double_install_check_cls,
         'prereqs': Prereqs
@@ -392,10 +388,40 @@ setup(
 
     name=packname,
     version=version,
-    description='An open source toolbox and library for seismology.',
+    description='A versatile seismology toolkit for Python.',
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
     url='http://pyrocko.org',
+    license='GPLv3',
+    classifiers=[
+        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+        'Development Status :: 5 - Production/Stable',
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Science/Research',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: C',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Operating System :: POSIX',
+        'Operating System :: MacOS',
+        'Topic :: Scientific/Engineering',
+        'Topic :: Scientific/Engineering :: Physics',
+        'Topic :: Scientific/Engineering :: Visualization',
+        'Topic :: Scientific/Engineering :: Information Analysis',
+        'Topic :: Software Development :: Libraries :: Application Frameworks',
+        ],
+    keywords=[
+        'seismology, waveform analysis, earthquake modelling, geophysics,'
+        ' geophysical inversion'],
+    python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
+    install_requires=[
+        'numpy>=1.6.0', 'scipy', 'pyyaml',
+        'progressbar', 'matplotlib', 'pyavl'],
+
+    extras_require={
+        'gui_scripts': ['PyQt4'],
+    },
+
     packages=[packname] + subpacknames,
     package_dir={'pyrocko': 'src'},
     ext_package=packname,
@@ -473,16 +499,27 @@ setup(
     ],
 
     scripts=[
-        'apps/snuffler',
-        'apps/hamster',
-        'apps/cake',
-        'apps/fomosto',
-        'apps/jackseis',
-        'apps/gmtpy-epstopdf',
-        'apps/automap'],
+        'src/apps/gmtpy-epstopdf',
+    ],
+
+    entry_points={
+        'console_scripts':
+            ['fomosto = pyrocko.apps.fomosto:main',
+             'cake = pyrocko.apps.cake:main',
+             'automap = pyrocko.apps.automap:main',
+             'hamster = pyrocko.apps.hamster:main',
+             'jackseis = pyrocko.apps.jackseis:main'],
+        'gui_scripts':
+            ['snuffler = pyrocko.apps.snuffler:main']
+    },
 
     package_data={
-        packname: ['data/*.png', 'data/*.html', 'data/earthmodels/*.nd',
-                   'data/colortables/*.cpt', 'data/tectonics/*.txt',
+        packname: ['data/*.png',
+                   'data/*.html',
+                   'data/earthmodels/*.nd',
+                   'data/colortables/*.cpt',
+                   'data/tectonics/*.txt',
                    'data/fomosto_report/gfreport.*']},
+
+    test_suite='test.get_test_suite'
 )
