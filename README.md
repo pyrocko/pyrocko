@@ -28,7 +28,7 @@ For documentation and installation instructions please see
 - [ ] ``datacube.py``
 - [ ] ``dummy_progressbar.py``
 - [ ] ``edl.py``
-- [ ] ``evalresp_ext.c``
+- [x] ``evalresp_ext.c``
 - [x] ``evalresp.py``
 - [ ] ``eventdata.py``
 - [ ] ``fdsn/``
