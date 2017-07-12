@@ -1,5 +1,6 @@
 #!/bin/python
-# -*- coding: utf-8 -*-
+from builtins import range
+
 import numpy as num
 import matplotlib.pyplot as plt
 import copy

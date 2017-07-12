@@ -429,13 +429,13 @@ setup(
         Extension(
             'util_ext',
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'util_ext.c')]),
+            sources=[pjoin('src', 'ext', 'util_ext.c')]),
 
         Extension(
             'signal_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'signal_ext.c')]),
+            sources=[pjoin('src', 'ext', 'signal_ext.c')]),
 
         Extension(
             'mseed_ext',
@@ -443,7 +443,7 @@ setup(
             library_dirs=['libmseed'],
             libraries=['mseed'],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'mseed_ext.c')]),
+            sources=[pjoin('src', 'ext', 'mseed_ext.c')]),
 
         Extension(
             'evalresp_ext',
@@ -451,25 +451,25 @@ setup(
             library_dirs=['evalresp-3.3.0/lib'],
             libraries=['evresp'],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'evalresp_ext.c')]),
+            sources=[pjoin('src', 'ext', 'evalresp_ext.c')]),
 
         Extension(
             'ims_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ims_ext.c')]),
+            sources=[pjoin('src', 'ext', 'ims_ext.c')]),
 
         Extension(
             'datacube_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'datacube_ext.c')]),
+            sources=[pjoin('src', 'ext', 'datacube_ext.c')]),
 
         Extension(
             'autopick_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'autopick_ext.c')]),
+            sources=[pjoin('src', 'ext', 'autopick_ext.c')]),
 
         Extension(
             'gf.store_ext',
@@ -483,19 +483,19 @@ setup(
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'] + omp_arg,
             extra_link_args=[] + omp_lib,
-            sources=[pjoin('src', 'parstack_ext.c')]),
+            sources=[pjoin('src', 'ext', 'parstack_ext.c')]),
 
         Extension(
             'ahfullgreen_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ahfullgreen_ext.c')]),
+            sources=[pjoin('src', 'ext', 'ahfullgreen_ext.c')]),
 
         Extension(
             'orthodrome_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'orthodrome_ext.c')]),
+            sources=[pjoin('src', 'ext', 'orthodrome_ext.c')]),
     ],
 
     scripts=[

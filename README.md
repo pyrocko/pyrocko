@@ -7,7 +7,7 @@ For documentation and installation instructions please see
 
 # Python 3 Progress
 
-- [ ] ``__init__.py``
+- [x] ``__init__.py``
 - [ ] ``ahfullgreen_ext.c``
 - [ ] ``ahfullgreen.py``
 - [ ] ``automap.py``
