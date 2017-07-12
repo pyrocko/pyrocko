@@ -1,3 +1,7 @@
+from past.builtins import cmp
+from future import standard_library
+standard_library.install_aliases()
+from builtins import range
 
 import os
 import logging
@@ -8,7 +12,7 @@ import re
 import sys
 import operator
 import math
-import cPickle as pickle
+import pickle
 
 import avl
 
@@ -18,7 +22,7 @@ from pyrocko.trace import degapper
 
 
 def sl(s):
-    return map(str, sorted(list(s)))
+    return [str(x) for x in sorted(s)]
 
 
 class Counter(dict):
@@ -27,11 +31,11 @@ class Counter(dict):
         return 0
 
     def update(self, other):
-        for k, v in other.iteritems():
+        for k, v in other.items():
             self[k] += v
 
     def subtract(self, other):
-        for k, v in other.iteritems():
+        for k, v in other.items():
             self[k] -= v
             if self[k] <= 0:
                 del self[k]
@@ -48,7 +52,7 @@ logger = logging.getLogger('pyrocko.pile')
 
 def avl_remove_exact(avltree, element):
     ilo, ihi = avltree.span(element)
-    for i in xrange(ilo, ihi):
+    for i in range(ilo, ihi):
         if avltree[i] is element:
             avltree.remove_at(i)
             return
@@ -71,7 +75,7 @@ def cmpfunc(key):
     return lambda a, b: cmp(key(a), key(b))
 
 
-class Dummy:
+class Dummy(object):
     pass
 
 
@@ -84,7 +88,7 @@ class Sorted(object):
         self._key = key
         self._cmp = cmpfunc(key)
         if isinstance(key, str):
-            class Dummy:
+            class Dummy(object):
                 def __init__(self, k):
                     setattr(self, key, k)
             self._dummy = Dummy
@@ -226,7 +230,7 @@ class TracesFileCache(object):
         f.close()
 
         # weed out files which no longer exist
-        for fn in cache.keys():
+        for fn in list(cache.keys()):
             if not os.path.isfile(fn):
                 del cache[fn]
 
@@ -289,7 +293,7 @@ def loader(
         filenames, fileformat, cache, filename_attributes,
         show_progress=True, update_progress=None):
 
-    class Progress:
+    class Progress(object):
         def __init__(self, label, n):
             self._label = label
             self._n = n
@@ -356,7 +360,7 @@ def loader(
 
             to_load.append((mustload, mtime, abspath, substitutions, tfile))
 
-        except (OSError, FilenameAttributeError), xerror:
+        except (OSError, FilenameAttributeError) as xerror:
             failures.append(abspath)
             logger.warn(xerror)
 
@@ -396,7 +400,7 @@ def loader(
                 if count_all:
                     iload += 1
 
-            except (io.FileLoadError, OSError), xerror:
+            except (io.FileLoadError, OSError) as xerror:
                 failures.append(abspath)
                 logger.warn(xerror)
             else:
@@ -579,7 +583,7 @@ class TracesGroup(object):
             t = self.by_tlen.max()
             self.tlenmax = t.tmax - t.tmin
             self.mtime = self.by_mtime.max().mtime
-            deltats = self.deltats.keys()
+            deltats = list(self.deltats.keys())
             self.deltatmin = min(deltats)
             self.deltatmax = max(deltats)
         else:
@@ -977,7 +981,7 @@ class Pile(TracesGroup):
 
             subpile_files[subpile].append(file)
 
-        for subpile, files in subpile_files.iteritems():
+        for subpile, files in subpile_files.items():
             subpile.remove_files(files)
             for file in files:
                 if file.abspath is not None:
@@ -995,7 +999,7 @@ class Pile(TracesGroup):
         return self.subpiles[k]
 
     def get_deltats(self):
-        return self.deltats.keys()
+        return list(self.deltats.keys())
 
     def chop(
             self, tmin, tmax,

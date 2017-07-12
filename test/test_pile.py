@@ -1,3 +1,4 @@
+from builtins import range
 from pyrocko import trace, pile, io, config, util
 
 import unittest
@@ -18,7 +19,7 @@ def makeManyFiles(nfiles, nsamples, networks, stations, channels, tmin):
     datadir = tempfile.mkdtemp()
     traces = []
     deltat = 1.0
-    for i in xrange(nfiles):
+    for i in range(nfiles):
         ctmin = tmin+i*nsamples*deltat  # random.randint(1,int(time.time()))
 
         data = num.ones(nsamples)
@@ -47,10 +48,10 @@ class PileTestCase(unittest.TestCase):
         abc = 'abcdefghijklmnopqrstuvwxyz'
 
         def rn(n):
-            return ''.join([random.choice(abc) for i in xrange(n)])
+            return ''.join([random.choice(abc) for i in range(n)])
 
-        stations = [rn(4) for i in xrange(10)]
-        channels = [rn(3) for i in xrange(3)]
+        stations = [rn(4) for i in range(10)]
+        channels = [rn(3) for i in range(3)]
         networks = ['xx']
 
         tmin = 1234567890
