@@ -16,7 +16,7 @@ def trusted_platform():
     return platform.mac_ver() == ('', ('', '', ''), '')
 
 
-@unittest.skipif(not trusted_platform())
+@unittest.skipIf(not trusted_platform(), 'GUI tests skipped on MacOS')
 class GUITest(unittest.TestCase):
 
     @classmethod

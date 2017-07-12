@@ -207,7 +207,6 @@ Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
         for pdef in pdefs:
             assert isinstance(pdef, cake.PhaseDef)
 
-
     def test_model_io(self):
         mod = cake.load_model()
         s = cake.write_nd_model_str(mod)
