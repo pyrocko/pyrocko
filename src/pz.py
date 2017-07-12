@@ -1,9 +1,9 @@
+from __future__ import absolute_import
 import math
-from cStringIO import StringIO
-
 import numpy as num
+from io import StringIO
 
-from pyrocko import trace
+from . import trace
 
 d2r = math.pi/180.
 
@@ -168,7 +168,7 @@ def plot_amplitudes_zpk(
         nf=100,
         fnorm=None):
 
-    import gmtpy
+    from . import gmtpy
 
     p = gmtpy.LogLogPlot(width=30*gmtpy.cm, yexp=0)
     for i, (zeros, poles, constant) in enumerate(zpks):
@@ -184,7 +184,7 @@ def plot_amplitudes_zpk(
 
 def plot_phases_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100):
 
-    import gmtpy
+    from . import gmtpy
 
     p = gmtpy.LogLinPlot(width=30*gmtpy.cm)
     for i, (zeros, poles, constant) in enumerate(zpks):
