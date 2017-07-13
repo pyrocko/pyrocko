@@ -47,7 +47,7 @@ For documentation and installation instructions please see
 - [x] ``guts.py``
 - [ ] ``hamster_pile.py``
 - [x] ``hudson.py``
-- [ ] ``ims_ext.c``
+- [x] ``ims_ext.c``
 - [ ] ``ims.py``
 - [ ] ``info.py``
 - [x] ``io_common.py``
