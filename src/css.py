@@ -1,10 +1,11 @@
+from __future__ import absolute_import
 import os
 import numpy as num
 import logging
-from pyrocko import trace, util
 from struct import unpack
+from . import trace, util
 
-logger = logging.getLogger('css')
+logger = logging.getLogger('pyrocko.css')
 
 
 '''
@@ -70,7 +71,7 @@ class CSSWfError(Exception):
         self.error_arguments = kwargs
 
 
-class CSSHeaderFile():
+class CSSHeaderFile(object):
     '''
     CSS Header File
 
@@ -120,12 +121,10 @@ class CSSHeaderFile():
                         try:
                             d[ident] = convert(line[istart: istop].strip())
                         except:
-                            raise CSSWfError(
-                                iline=iline+1, data=line,
-                                ident=ident, convert=convert,
-                                istart=istart+1, istop=istop+1, desc=desc,
-                                d=d
-                            )
+                            raise CSSWfError(iline=iline+1, data=line,
+                                             ident=ident, convert=convert,
+                                             istart=istart+1, istop=istop+1,
+                                             desc=desc, d=d)
                 else:
                     d = {}
                     split = line.split()
@@ -142,7 +141,9 @@ class CSSHeaderFile():
                 if os.path.isfile(fn):
                     self.data.append(d)
                 else:
-                    logger.info('no such file: %s' % fn)
+                    logger.error(
+                        'no such file: %s (see header file: %s, line %s)' % (
+                            fn, self.fn, iline+1))
 
     def iter_pyrocko_traces(self, load_data=True):
         for idata, d in enumerate(self.data):

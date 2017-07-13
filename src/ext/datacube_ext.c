@@ -3,8 +3,6 @@
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
-static PyObject *DataCubeError;
-
 static const size_t BUFMAX = 10000000;
 static const size_t READ_BUFFER_SIZE = 4096;
 static const size_t BOOKMARK_INTERVAL = 1024*1024;
@@ -15,19 +13,30 @@ static const size_t N_GPS_TAGS_WANTED = 200;
 #define posint(x) ((((int)(x) % 256) + 256) % 256)
 #define isnull(x) ((x) == NULL)
 
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state); (void) m;
+static struct module_state _state;
+#endif
+
 int good_array(PyObject* o, int typenum) {
     if (!PyArray_Check(o)) {
-        PyErr_SetString(DataCubeError, "not a NumPy array" );
+        PyErr_SetString(PyExc_AttributeError, "not a NumPy array" );
         return 0;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(DataCubeError, "array of unexpected type");
+        PyErr_SetString(PyExc_ValueError, "array of unexpected type");
         return 0;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(DataCubeError, "array is not contiguous or not behaved");
+        PyErr_SetString(PyExc_ValueError, "array is not contiguous or not behaved");
         return 0;
     }
 
@@ -741,6 +750,7 @@ datacube_error_t datacube_load(reader_t *reader) {
     if (err != SUCCESS) {
         return err;
     }
+    printf("Blocktype %d\n", blocktype);
     if (blocktype != 15) {
         return HEADER_BLOCK_NOT_FOUND;
     }
@@ -974,7 +984,7 @@ int pyarray_to_bookmarks(reader_t *reader, PyObject *barr) {
     return 0;
 }
 
-static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
+static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
     /*
     load_data == 0: only load enough gps tags at beginning and end of file to
                     determine time range
@@ -991,18 +1001,18 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
     size_t nsamples_total;
     ssize_t offset_want, nsamples_want;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);    
 
     if (!PyArg_ParseTuple(args, "iinnO", &f, &load_data,
                           &offset_want, &nsamples_want, &barr)) {
-        PyErr_SetString(DataCubeError,
+        PyErr_SetString(st->error,
             "usage load(f, load_data, offset_want, nsamples_want)");
         return NULL;
     }
 
     err = datacube_init(&reader, f);
     if (err != SUCCESS) {
-        PyErr_SetString(DataCubeError, datacube_error_names[err]);
+        PyErr_SetString(st->error, datacube_error_names[err]);
         return NULL;
     }
     reader.load_data = load_data;
@@ -1012,14 +1022,15 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
     if (barr != Py_None) {
         err = pyarray_to_bookmarks(&reader, barr);
         if (err != SUCCESS) {
-            PyErr_SetString(DataCubeError, "bookmarks corrupted");
+            PyErr_SetString(st->error, "bookmarks corrupted");
             return NULL;
         }
     }
 
     err = datacube_load(&reader);
+    printf("%d\n", err);
     if (err != SUCCESS) {
-        PyErr_SetString(DataCubeError, datacube_error_names[err]);
+        PyErr_SetString(st->error, datacube_error_names[err]);
         return NULL;
     }
 
@@ -1032,7 +1043,7 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
     datacube_deinit(&reader);
 
     if (isnull(hlist) || isnull(alist) || isnull(gtup) || isnull(barr)) {
-        PyErr_SetString(DataCubeError, "could not build python objects");
+        PyErr_SetString(st->error, "could not build python objects");
         return NULL;
     }
 
@@ -1040,25 +1051,73 @@ static PyObject* w_datacube_load(PyObject *dummy, PyObject *args) {
                          (unsigned long long)nsamples_total, barr);
 }
 
-static PyMethodDef DataCubeMethods[] = {
+static PyMethodDef datacube_ext_methods[] = {
     {"load",  w_datacube_load, METH_VARARGS,
         "load raw datacube file" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC
-initdatacube_ext(void)
-{
-    PyObject *m;
 
-    m = Py_InitModule("datacube_ext", DataCubeMethods);
-    if (m == NULL) return;
+#if PY_MAJOR_VERSION >= 3
+
+static int datacube_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+
+static int datacube_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "datacube_ext",
+        NULL,
+        sizeof(struct module_state),
+        datacube_ext_methods,
+        NULL,
+        datacube_ext_traverse,
+        datacube_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_datacube_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initdatacube_ext(void)
+#endif
+
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("datacube_ext", datacube_ext_methods);
+#endif
     import_array();
 
-    DataCubeError = PyErr_NewException("datacube_ext.error", NULL, NULL);
-    Py_INCREF(DataCubeError);  /* required, because other code could remove `error`
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(m, "DataCubeError", DataCubeError);
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+    st->error = PyErr_NewException("pyrocko.datacube_ext.DataCubeError", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+    }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "DataCubeError", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }

@@ -10,9 +10,9 @@ For documentation and installation instructions please see
 - [x] ``__init__.py``
 - [ ] ``ahfullgreen_ext.c``
 - [ ] ``ahfullgreen.py``
-- [ ] ``automap.py``
-- [ ] ``autopick_ext.c``
-- [ ] ``autopick.py``
+- [x] ``automap.py``
+- [x] ``autopick_ext.c``
+- [x] ``autopick.py``
 - [x] ``beachball.py``
 - [x] ``cake_plot.py``
 - [x] ``cake.py``
@@ -22,11 +22,11 @@ For documentation and installation instructions please see
 - [ ] ``crust2x2.py``
 - [x] ``crustdb_abbr.py``
 - [x] ``crustdb.py``
-- [ ] ``css.py``
+- [x] ``css.py``
 - [ ] ``data/``
-- [ ] ``datacube_ext.c``
+- [x] ``datacube_ext.c``
 - [ ] ``datacube.py``
-- [ ] ``dummy_progressbar.py``
+- [x] ``dummy_progressbar.py``
 - [ ] ``edl.py``
 - [x] ``evalresp_ext.c``
 - [x] ``evalresp.py``
@@ -56,7 +56,7 @@ For documentation and installation instructions please see
 - [ ] ``kan.py``
 - [ ] ``marker_editor.py``
 - [ ] ``marker.py``
-- [ ] ``model.py``
+- [x] ``model.py``
 - [ ] ``moment_tensor.py``
 - [ ] ``moment_tensor_viewer.py``
 - [x] ``mseed_ext.c``
@@ -64,8 +64,8 @@ For documentation and installation instructions please see
 - [x] ``orthodrome_ext.c``
 - [x] ``orthodrome.py``
 - [ ] ``parimap.py``
-- [ ] ``parstack_ext.c``
-- [ ] ``parstack.py``
+- [x] ``parstack_ext.c``
+- [x] ``parstack.py``
 - [ ] ``pchain.py``
 - [ ] ``pile.py``
 - [ ] ``pile_viewer.py``
@@ -81,7 +81,7 @@ For documentation and installation instructions please see
 - [ ] ``seisan_waveform.py``
 - [ ] ``serial_hamster.py``
 - [ ] ``shadow_pile.py``
-- [ ] ``signal_ext.c``
+- [x] ``signal_ext.c``
 - [ ] ``slink.py``
 - [ ] ``snuffler.py``
 - [ ] ``snuffling.py``

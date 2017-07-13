@@ -37,7 +37,7 @@ def make_control_point(ipos_block, t_block, tref, deltat):
     iok = num.where(num.logical_and(q25 <= tred2, tred2 <= q75))[0]
     slope, offset = num.polyfit(ipos_block[iok], tred[iok], 1)
 
-    ic = ipos_block[ipos_block.size/2]
+    ic = ipos_block[ipos_block.size//2]
     tc = offset + slope * ic
 
     return ic, tc + ic * deltat + tref
@@ -57,7 +57,7 @@ def analyse_gps_tags(header, gps_tags, offset, nsamples):
     fix = fix[1:-1][ok]
     nsvs = nsvs[1:-1][ok]
 
-    blocksize = N_GPS_TAGS_WANTED / 2
+    blocksize = N_GPS_TAGS_WANTED // 2
     deltat = 1.0 / int(header['S_RATE'])
 
     if ipos.size < blocksize:
@@ -228,7 +228,7 @@ def context(fn):
     entries = []
     for dentry in dentries:
         fn2 = os.path.join(dpath, dentry)
-        with open(fn2, 'r') as f:
+        with open(fn2, 'rb') as f:
             first512 = f.read(512)
             f.seek(0)
             if not detect(first512):
@@ -259,7 +259,7 @@ def context(fn):
 def get_time_infos(fn):
     from pyrocko import datacube_ext
 
-    with open(fn, 'r') as f:
+    with open(fn, 'rb') as f:
         try:
             header, _, gps_tags, nsamples, _ = datacube_ext.load(
                 f.fileno(), 1, 0, -1, None)
@@ -424,38 +424,34 @@ def iload(fn, load_data=True, interpolation='sinc'):
 
 
 header_keys = {
-    str: 'GIPP_V DEV_NO E_NAME GPS_PO S_TIME S_DATE DAT_NO'.split(),
-    int: '''P_AMPL CH_NUM S_RATE D_FILT C_MODE A_CHOP F_TIME GPS_TI GPS_OF
+    str: b'GIPP_V DEV_NO E_NAME GPS_PO S_TIME S_DATE DAT_NO'.split(),
+    int: b'''P_AMPL CH_NUM S_RATE D_FILT C_MODE A_CHOP F_TIME GPS_TI GPS_OF
             A_FILT A_PHAS GPS_ON ACQ_ON V_TCXO D_VOLT E_VOLT'''.split()}
 
 all_header_keys = header_keys[str] + header_keys[int]
 
 
 def detect(first512):
-    try:
-        s = first512.decode('ascii')
-    except UnicodeDecodeError:
-        return False
+    s = first512
 
     if len(s) < 512:
         return False
 
-    if ord(s[0]) >> 4 != 15:
+    if ord(s[0:1]) >> 4 != 15:
         return False
 
-    n = s.find(chr(128))
+    n = s.find(b'\x80')
     if n == -1:
         n = len(s)
 
     s = s[1:n]
-    s = s.replace(chr(240), '')
-    s = s.replace(';', ' ')
-    s = s.replace('=', ' ')
-    kvs = s.split(' ')
+    s = s.replace(b'\xf0', b'')
+    s = s.replace(b';', b' ')
+    s = s.replace(b'=', b' ')
+    kvs = s.split(b' ')
 
-    if len([x for x in all_header_keys if x in kvs]) == 0:
+    if len([k for k in all_header_keys if k in kvs]) == 0:
         return False
-
     return True
 
 

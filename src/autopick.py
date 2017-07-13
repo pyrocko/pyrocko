@@ -1,4 +1,6 @@
-from pyrocko import autopick_ext
+from __future__ import absolute_import
+
+from . import autopick_ext
 import numpy as num
 
 
