@@ -243,19 +243,18 @@ int argmax(double *arrayin, uint32_t *arrayout, size_t nx, size_t ny, int nparal
 
 
 int good_array(PyObject* o, int typenum) {
-    struct module_state *st = GETSTATE(o);
     if (!PyArray_Check(o)) {
-        PyErr_SetString(st->error, "not a NumPy array" );
+        PyErr_SetString(PyExc_ValueError, "not a NumPy array" );
         return 0;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(st->error, "array of unexpected type");
+        PyErr_SetString(PyExc_ValueError, "array of unexpected type");
         return 0;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(st->error, "array is not contiguous or not well behaved");
+        PyErr_SetString(PyExc_ValueError, "array is not contiguous or not well behaved");
         return 0;
     }
 
@@ -403,8 +402,7 @@ static PyObject* w_parstack(PyObject *module, PyObject *args) {
 
     free(carrays);
     free(clengths);
-    //return Py_BuildValue("Ni", (PyObject *)result, offsetout);
-    return Py_BuildValue("Ni", result, offsetout);
+    return Py_BuildValue("Ni", (PyObject *)result, offsetout);
 }
 
 static PyObject* w_argmax(PyObject *module, PyObject *args) {
@@ -441,8 +439,7 @@ static PyObject* w_argmax(PyObject *module, PyObject *args) {
 
     shapeout[0] = shape[1];
 
-    //result = PyArray_SimpleNew(1, shapeout, NPY_UINT32);
-    result = PyArray_SimpleNew(1, shapeout, NPY_INT);
+    result = PyArray_SimpleNew(1, shapeout, NPY_UINT32);
     cresult = PyArray_DATA((PyArrayObject*)result);
 
     for (i=0; i<(size_t)shapeout[0]; i++){
@@ -457,7 +454,6 @@ static PyObject* w_argmax(PyObject *module, PyObject *args) {
     }
 
     return Py_BuildValue("N", (PyObject *)result);
-    //return (PyObject *)result;
 }
 
 
