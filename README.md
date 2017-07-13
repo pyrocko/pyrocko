@@ -63,7 +63,7 @@ For documentation and installation instructions please see
 - [x] ``mseed.py``
 - [x] ``orthodrome_ext.c``
 - [x] ``orthodrome.py``
-- [ ] ``parimap.py``
+- [x] ``parimap.py``
 - [x] ``parstack_ext.c``
 - [x] ``parstack.py``
 - [ ] ``pchain.py``

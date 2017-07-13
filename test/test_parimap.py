@@ -1,3 +1,5 @@
+from builtins import range
+from builtins import map
 
 import random
 import time
@@ -15,13 +17,14 @@ class Crash(Exception):
 
 
 def imapemulation(function, *iterables):
-    iterables = map(iter, iterables)
+    iterables = list(map(iter, iterables))
     while True:
         args = [next(it) for it in iterables]
         if function is None:
             yield tuple(args)
         else:
             yield function(*args)
+    return
 
 
 class ParimapTestCase(unittest.TestCase):
@@ -49,31 +52,32 @@ class ParimapTestCase(unittest.TestCase):
                 return x+y
 
             I1 = parimap(
-                work, xrange(nx), xrange(ny),
+                work, range(nx), range(ny),
                 nprocs=nprocs, eprintignore=Crash)
 
-            I2 = imapemulation(work, xrange(nx), xrange(ny))
+            I2 = imapemulation(work, range(nx), range(ny))
 
             while True:
-                e1, e2 = None, None
-                r1, r2 = None, None
+
+                exc1, exc2 = None, None
+                res1, res2 = None, None
                 end1, end2 = None, None
                 try:
-                    r1 = I1.next()
+                    res1 = next(I1)
                 except StopIteration:
                     end1 = True
-                except Crash, e1:
-                    pass
+                except Crash as e1:
+                    exc1 = e1
 
                 try:
-                    r2 = I2.next()
+                    res2 = next(I2)
                 except StopIteration:
                     end2 = True
-                except Crash, e2:
-                    pass
+                except Crash as e2:
+                    exc2 = e2
 
-                assert r1 == r2, str((r1, r2))
-                assert type(e1) == type(e2)
+                assert res1 == res2, str((res1, res2))
+                assert type(exc1) == type(exc2)
                 assert end1 == end2
 
                 if end1 or end2:
@@ -83,33 +87,32 @@ class ParimapTestCase(unittest.TestCase):
 
         def work(x):
             assert os.path.exists(fn)
-            f = open(fn, 'a+')
-            while True:
-                try:
-                    fcntl.lockf(f, fcntl.LOCK_EX)
-                    break
-                except IOError, e:
-                    if e.errno == errno.ENOLCK:
-                        time.sleep(0.01)
-                        pass
-                    else:
-                        raise
+            with open(fn, 'a+') as f:
+                while True:
+                    try:
+                        fcntl.lockf(f, fcntl.LOCK_EX)
+                        break
+                    except IOError as e:
+                        if e.errno == errno.ENOLCK:
+                            time.sleep(0.01)
+                            pass
+                        else:
+                            raise
 
-            f.seek(0)
-            assert '' == f.read()
-            f.write('%s' % x)
-            f.flush()
-            # time.sleep(0.01)
-            f.seek(0)
-            f.truncate(0)
-            fcntl.lockf(f, fcntl.LOCK_UN)
-            f.close()
+                f.seek(0)
+                assert '' == f.read()
+                f.write('%s' % x)
+                f.flush()
+                # time.sleep(0.01)
+                f.seek(0)
+                f.truncate(0)
+                fcntl.lockf(f, fcntl.LOCK_UN)
 
         fos, fn = tempfile.mkstemp()  # (dir='/try/with/nfs/mounted/dir')
         f = open(fn, 'w')
         f.close()
 
-        for x in parimap(work, xrange(100), nprocs=10, eprintignore=()):
+        for x in parimap(work, range(100), nprocs=10, eprintignore=()):
             pass
 
         os.close(fos)

@@ -1,4 +1,6 @@
-import Queue
+from builtins import map
+
+import queue
 import multiprocessing
 import traceback
 import errno
@@ -14,14 +16,14 @@ def worker(q_in, q_out, function, eprintignore, pshared):
         if i is None:
             break
 
-        r, e = None, None
+        res, exception = None, None
         try:
-            r = function(*args, **kwargs)
-        except Exception, e:
+            res = function(*args, **kwargs)
+        except Exception as e:
             if eprintignore is not None and not isinstance(e, eprintignore):
                 traceback.print_exc()
-
-        q_out.put((i, r, e))
+            exception = e
+        q_out.put((i, res, exception))
 
 
 def parimap(function, *iterables, **kwargs):
@@ -36,7 +38,7 @@ def parimap(function, *iterables, **kwargs):
         eprintignore = None
 
     if nprocs == 1:
-        iterables = map(iter, iterables)
+        iterables = list(map(iter, iterables))
         kwargs = {}
         if pshared is not None:
             kwargs['pshared'] = pshared
@@ -61,10 +63,10 @@ def parimap(function, *iterables, **kwargs):
     iout = 0
     all_written = False
     error_ahead = False
-    iterables = map(iter, iterables)
+    iterables = list(map(iter, iterables))
     while True:
         if nrun < nprocs and not all_written and not error_ahead:
-            args = tuple(it.next() for it in iterables)
+            args = tuple(next(it) for it in iterables)
             if len(args) == len(iterables):
                 if len(procs) < nrun + 1:
                     p = multiprocessing.Process(
@@ -91,13 +93,13 @@ def parimap(function, *iterables, **kwargs):
                         try:
                             results.append(q_out.get())
                             break
-                        except IOError, e:
+                        except IOError as e:
                             if e.errno != errno.EINTR:
                                 raise
 
                 nrun -= 1
 
-        except Queue.Empty:
+        except queue.Empty:
             pass
 
         if results:
