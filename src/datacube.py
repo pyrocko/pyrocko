@@ -1,3 +1,5 @@
+# python 2/3
+
 from __future__ import absolute_import
 from builtins import str
 
@@ -230,10 +232,10 @@ def context(fn):
         fn2 = os.path.join(dpath, dentry)
         with open(fn2, 'rb') as f:
             first512 = f.read(512)
-            f.seek(0)
             if not detect(first512):
                 continue
 
+        with open(fn2, 'rb') as f:
             try:
                 header, data_arrays, gps_tags, nsamples, _ = \
                         datacube_ext.load(f.fileno(), 3, 0, -1, None)
@@ -351,7 +353,7 @@ def iload(fn, load_data=True, interpolation='sinc'):
         raise NotImplemented(
             'no such interpolation method: %s' % interpolation)
 
-    with open(fn, 'r') as f:
+    with open(fn, 'rb') as f:
         if load_data:
             loadflag = 2
         else:

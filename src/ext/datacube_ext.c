@@ -750,7 +750,6 @@ datacube_error_t datacube_load(reader_t *reader) {
     if (err != SUCCESS) {
         return err;
     }
-    printf("Blocktype %d\n", blocktype);
     if (blocktype != 15) {
         return HEADER_BLOCK_NOT_FOUND;
     }
@@ -1028,7 +1027,6 @@ static PyObject* w_datacube_load(PyObject *m, PyObject *args) {
     }
 
     err = datacube_load(&reader);
-    printf("%d\n", err);
     if (err != SUCCESS) {
         PyErr_SetString(st->error, datacube_error_names[err]);
         return NULL;

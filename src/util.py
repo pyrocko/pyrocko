@@ -75,26 +75,28 @@ class DownloadError(Exception):
 
 
 def download_file(url, fpath, username=None, password=None):
-    import urllib.request
-    import urllib.error
-    import urllib.parse
+    try:
+        from urllib.request import Request, HTTPCookieProcessor, build_opener
+        from urllib.error import HTTPError
+    except ImportError:
+        from urllib2 import Request, HTTPCookieProcessor, build_opener
+        from urllib2 import HTTPError
+
     import base64
 
     logger.info('starting download of %s' % url)
-
     ensuredirs(fpath)
     try:
-        request = urllib.request.Request(url)
+        req = Request(url)
         if username and password:
             base64string = base64.b64encode('%s:%s' % (username, password))
-            request.add_header("Authorization", "Basic %s" % base64string)
+            req.add_header("Authorization", "Basic %s" % base64string)
 
-        opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor())
+        opener = build_opener(HTTPCookieProcessor())
 
-        f = opener.open(request)
+        f = opener.open(req)
 
-    except urllib.error.HTTPError as e:
+    except HTTPError as e:
         raise DownloadError('cannot download file from url %s: %s' % (url, e))
 
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
