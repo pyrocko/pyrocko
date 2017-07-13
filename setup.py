@@ -12,9 +12,6 @@ from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
-if not (sys.version_info[:2] == (2, 7) or sys.version_info >= (3, 4)):
-    sys.exit('This version of Pyrocko requires Python version == 2.7 or >3.4')
-
 try:
     import numpy
 except ImportError:
@@ -50,6 +47,19 @@ def git_infos():
     local_modifications = bool(re.search(br'^#\s+modified:', sstatus,
                                          flags=re.M))
     return sha1, local_modifications
+
+
+def bash_completions_dir():
+    from subprocess import Popen, PIPE
+
+    def q(c):
+        return Popen(c, stdout=PIPE).communicate()[0]
+
+    try:
+        d = q(['pkg-config', 'bash-completion', '--variable=completionsdir'])
+        return d.strip().decode('utf-8')
+    except:
+        return None
 
 
 def make_info_module(packname, version):
@@ -95,7 +105,7 @@ def make_prerequisites():
                  '"sh prerequisites/prerequisites.sh"')
 
 
-def double_install_check():
+def check_multiple_install():
     found = []
     seen = set()
     orig_sys_path = sys.path
@@ -148,25 +158,25 @@ def double_install_check():
             if fpath.endswith(initpyc):
                 fpath = fpath[:-len(initpyc)]
 
-            print('''Pyrocko installation #%i: % i
-  date installed: %s%s % (installed_date, oldnew)
-  path: %s % fpath
+            print('''Pyrocko installation #%i:
+  date installed: %s%s
+  path: %s
   version: %s
-''' % (i, installed_date, oldnew, fpath, long_version))
+''' % (i, installed_date, oldnew, fpath, long_version), file=e)
             i += 1
 
     if len(found) > 1:
-        print >>e, \
-            'Installation #1 is used with default sys.path configuration.'
-        print >>e
-        print >>e, 'WARNING: Multiple installations of Pyrocko are present '\
-            'on this system.'
+        print(
+            '''Installation #1 is used with default sys.path configuration.
+
+WARNING: Multiple installations of Pyrocko are present on this system.''',
+            file=e)
         if found[0][0] != dates[-1]:
-            print >>e, 'WARNING: Not using newest installed version.'
-        print >>e
+            print('WARNING: Not using newest installed version.', file=e)
 
 
-class double_install_check_cls(Command):
+class CheckMultipleInstall(Command):
+    description = '''check for multiple installations of Pyrocko'''
     user_options = []
 
     def initialize_options(self):
@@ -176,14 +186,28 @@ class double_install_check_cls(Command):
         pass
 
     def run(self):
-        double_install_check()
+        check_multiple_install()
 
 
-install.sub_commands.append(['double_install_check', None])
+class CustomInstallCommand(install):
+    def run(self):
+        install.run(self)
+        check_multiple_install()
+        bd_dir = bash_completions_dir()
+        if bd_dir:
+            try:
+                shutil.copy('extras/pyrocko', bd_dir)
+                print('Installing pyrocko bash_completion to "%s"' % bd_dir)
+            except IOError as e:
+                import errno
+                if e.errno in (errno.EACCES, errno.ENOENT):
+                    print(e)
+                else:
+                    raise e
 
 
-class Prereqs(Command):
-    description = '''Install prerequisites'''
+class InstallPrerequisits(Command):
+    description = '''install prerequisites with system package manager'''
     user_options = [
         ('force-yes', None, 'Do not ask for confirmation to install')]
 
@@ -217,28 +241,19 @@ proceed? [y/n]' % open(fn, 'r').read())
         print(p.stdout.read())
 
 
-class custom_build_py(build_py):
+class CustomBuildPyCommand(build_py):
     def run(self):
         make_info_module(packname, version)
         build_py.run(self)
-        try:
-            shutil.copy('extras/pyrocko', '/etc/bash_completion.d/pyrocko')
-            print('Installing pyrocko bash_completion...')
-        except IOError as e:
-            import errno
-            if e.errno in (errno.EACCES, errno.ENOENT):
-                print(e)
-            else:
-                raise e
 
 
-class custom_build_ext(build_ext):
+class CustomBuildExtCommand(build_ext):
     def run(self):
         make_prerequisites()
         build_ext.run(self)
 
 
-class custom_build_app(build_ext):
+class CustomBuildAppCommand(build_ext):
     def run(self):
         self.make_app()
 
@@ -365,7 +380,7 @@ else:
 
 
 packname = 'pyrocko'
-version = time.strftime('%y.%m')
+version = time.strftime('2017.7')
 
 subpacknames = [
     'pyrocko.snufflings',
@@ -379,11 +394,12 @@ subpacknames = [
 
 setup(
     cmdclass={
-        'build_py': custom_build_py,
-        # 'py2app': custom_build_app,
-        'build_ext': custom_build_ext,
-        'double_install_check': double_install_check_cls,
-        'prereqs': Prereqs
+        'install': CustomInstallCommand,
+        'build_py': CustomBuildPyCommand,
+        # 'py2app': CustomBuildAppCommand,
+        'build_ext': CustomBuildExtCommand,
+        'check_multiple_install': CheckMultipleInstall,
+        'install_prerequisites': InstallPrerequisits,
     },
 
     name=packname,
@@ -414,9 +430,7 @@ setup(
         'seismology, waveform analysis, earthquake modelling, geophysics,'
         ' geophysical inversion'],
     python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4',
-    install_requires=[
-        'numpy>=1.6.0', 'scipy', 'pyyaml',
-        'matplotlib', 'progressbar2'],
+    install_requires=[],
 
     extras_require={
         'gui_scripts': ['PyQt4'],

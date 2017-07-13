@@ -11,8 +11,8 @@ For documentation and installation instructions please see
 - [ ] ``ahfullgreen_ext.c``
 - [ ] ``ahfullgreen.py``
 - [x] ``automap.py``
-- [ ] ``autopick_ext.c``
-- [ ] ``autopick.py``
+- [x] ``autopick_ext.c``
+- [x] ``autopick.py``
 - [x] ``beachball.py``
 - [x] ``cake_plot.py``
 - [x] ``cake.py``
@@ -22,7 +22,7 @@ For documentation and installation instructions please see
 - [ ] ``crust2x2.py``
 - [x] ``crustdb_abbr.py``
 - [x] ``crustdb.py``
-- [ ] ``css.py``
+- [x] ``css.py``
 - [ ] ``data/``
 - [x] ``datacube_ext.c``
 - [ ] ``datacube.py``
