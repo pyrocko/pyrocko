@@ -1,5 +1,7 @@
 #!/bin/python
+from __future__ import absolute_import
 from builtins import range
+from builtins import map
 
 import numpy as num
 import matplotlib.pyplot as plt
