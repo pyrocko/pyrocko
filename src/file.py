@@ -12,7 +12,7 @@ from builtins import range
 from builtins import str
 
 from struct import unpack, pack
-from io import StringIO
+from io import BytesIO
 import numpy as num
 try:
     from hashlib import sha1
@@ -61,7 +61,7 @@ def array_packer(fmt):
 
 
 def encoding_packer(enc):
-    return ((lambda x: x.encode(enc)), (lambda x: x.decode(enc)))
+    return ((lambda x: x.encode(enc)), (lambda x: str(x.decode(enc))))
 
 
 def noop(x):
@@ -69,7 +69,11 @@ def noop(x):
 
 
 def time_to_str_ns(x):
-    return util.time_to_str(x, format=9)
+    return util.time_to_str(x, format=9).encode('utf-8')
+
+
+def str_to_time(x):
+    return util.str_to_time(str(x.decode('utf8')))
 
 
 castings = {
@@ -81,8 +85,8 @@ castings = {
     'u8': packer('Q'),
     'f4': packer('f'),
     'f8': packer('d'),
-    'string': (noop, noop),
-    'time_string': (time_to_str_ns, util.str_to_time),
+    'string': encoding_packer('utf-8'),
+    'time_string': (time_to_str_ns, str_to_time),
     '@i2': array_packer('@i2'),
     '@i4': array_packer('@i4'),
     '@i8': array_packer('@i8'),
@@ -140,7 +144,7 @@ class Record(object):
         if mode == 'w':
             self.size_payload = 0
             self.hash = None
-            self._out = StringIO()
+            self._out = BytesIO()
         else:
             self.size_remaining = self.size_record - size_record_header
             self.size_padding = self.size_record - size_record_header - \
@@ -233,7 +237,7 @@ class Record(object):
 
             self._f.write(self._out.getvalue())
             self._out.close()
-            self._f.write('\0' * self.size_padding)
+            self._f.write(b'\0' * self.size_padding)
 
         self._closed = True
         self._parent = None
@@ -250,8 +254,8 @@ class Record(object):
 
         n = len(sizes) // 3
         keys = []
-        keys = [self.read(sizes[j]) for j in range(n)]
-        types = [self.read(sizes[j]) for j in range(n, 2*n)]
+        keys = [str(self.read(sizes[j]).decode('ascii')) for j in range(n)]
+        types = [str(self.read(sizes[j]).decode('ascii')) for j in range(n, 2*n)]
         for key, type, j in zip(keys, types, range(2*n, 3*n)):
             yield key, type, sizes[j]
 
@@ -288,8 +292,8 @@ class Record(object):
                 if isinstance(type, tuple):
                     type = self._parent.get_type(key, d[key])
 
-                keys.append(key)
-                types.append(type)
+                keys.append(key.encode('ascii'))
+                types.append(type.encode('ascii'))
                 values.append(pack_value(type, d[key]))
 
         sizes = [len(x) for x in keys+types+values]
@@ -328,6 +332,10 @@ class File(object):
         label, version, size_record, size_payload, hash, type = unpack(
             '>4s4sQQ20s20s', data)
 
+        label = str(label.decode('ascii'))
+        version = str(version.decode('ascii'))
+        type = str(type.rstrip().decode('ascii'))
+
         if label != self._file_type_label:
             raise FileError('record file type label missing.')
 
@@ -346,12 +354,12 @@ class File(object):
             hash = no_hash
         data = pack(
             '>4s4sQQ20s20s',
-            self._file_type_label,
-            self._file_version,
+            self._file_type_label.encode('ascii'),
+            self._file_version.encode('ascii'),
             size_record,
             size_payload,
             hash,
-            type.ljust(20)[:20])
+            type.encode('ascii').ljust(20)[:20])
 
         self._f.write(data)
 

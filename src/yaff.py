@@ -112,7 +112,7 @@ def save(traces, filename_template, additional={}, max_open_files=10,
 
                 ensuredirs(fn)
 
-            open_files[fn] = open(fn, 'wab'[fn in fns])
+            open_files[fn] = open(fn, ['wb', 'ab'][fn in fns])
             fns.add(fn)
 
         tf = TracesFileIO(open_files[fn])
@@ -132,7 +132,7 @@ def detect(first512):
     label, version, size_record, size_payload, hash, type = unpack(
         '>4s4sQQ20s20s', first512[:size_record_header])
 
-    if label == 'YAFF' and version == '0000' and type.strip() == 'trace':
+    if label == b'YAFF' and version == b'0000' and type.strip() == b'trace':
         return True
 
     return False

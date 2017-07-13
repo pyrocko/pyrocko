@@ -255,12 +255,12 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             self.header_vals = hv
             for k, v in zip(SacFile.header_keys, self.header_vals):
                 vn = self.val_or_none(k, v)
-                if isinstance(vn, str):
-                    ipos = vn.find('\x00')
+                if isinstance(vn, bytes):
+                    ipos = vn.find(b'\x00')
                     if ipos != -1:
                         vn = vn[:ipos]
 
-                    self.__dict__[k] = vn.rstrip()
+                    self.__dict__[k] = str(vn.rstrip().decode('latin-1'))
                 else:
                     self.__dict__[k] = vn
 
