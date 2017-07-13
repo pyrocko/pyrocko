@@ -56,7 +56,7 @@ For documentation and installation instructions please see
 - [ ] ``kan.py``
 - [ ] ``marker_editor.py``
 - [ ] ``marker.py``
-- [ ] ``model.py``
+- [x] ``model.py``
 - [ ] ``moment_tensor.py``
 - [ ] ``moment_tensor_viewer.py``
 - [x] ``mseed_ext.c``

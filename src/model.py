@@ -1,15 +1,17 @@
+from __future__ import absolute_import
 from __future__ import division
+
 from past.builtins import cmp
 from builtins import str
 from builtins import range
-from pyrocko import orthodrome, util, moment_tensor
 import math
 import copy
 import logging
 import numpy as num
 
-from pyrocko.orthodrome import wrap
-from pyrocko.guts import Object, Float, String, Timestamp, List
+from . import orthodrome, util, moment_tensor
+from .orthodrome import wrap
+from .guts import Object, Float, String, Timestamp, List
 
 logger = logging.getLogger('pyrocko.model')
 
