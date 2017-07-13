@@ -17,9 +17,9 @@ For documentation and installation instructions please see
 - [x] ``cake_plot.py``
 - [x] ``cake.py``
 - [x] ``catalog.py``
-- [ ] ``config.py``
-- [ ] ``crust2x2_data.py``
-- [ ] ``crust2x2.py``
+- [x] ``config.py``
+- [x] ``crust2x2_data.py``
+- [x] ``crust2x2.py``
 - [x] ``crustdb_abbr.py``
 - [x] ``crustdb.py``
 - [x] ``css.py``

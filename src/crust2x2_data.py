@@ -24,11 +24,11 @@ def split80(s):
 
 
 def encode(s):
-    return split80(binascii.b2a_base64(bz2.compress(s)))
+    return split80(binascii.b2a_base64(bz2.compress(s.encode('latin-1'))))
 
 
 def decode(s):
-    return bz2.decompress(binascii.a2b_base64(s)).lstrip()
+    return bz2.decompress(binascii.a2b_base64(s)).decode().lstrip()
 
 
 readme = '''

@@ -61,17 +61,21 @@ LBELOWCRUST    below crust
 Contents
 --------
 '''
+from __future__ import absolute_import
+from __future__ import division
+
+from builtins import range
 
 import os
 import copy
 import math
-from StringIO import StringIO
+from io import StringIO
 
 import numpy as num
 
 
 LICE, LWATER, LSOFTSED, LHARDSED, LUPPERCRUST, LMIDDLECRUST, \
-    LLOWERCRUST, LBELOWCRUST = range(8)
+    LLOWERCRUST, LBELOWCRUST = list(range(8))
 
 
 class Crust2Profile(object):
@@ -271,8 +275,7 @@ class Crust2(object):
             path_keys = os.path.join(self._directory, Crust2.fn_keys)
             f = open(path_keys, 'r')
         else:
-            from pyrocko.crust2x2_data import decode, type2_key, type2, \
-                elevation
+            from .crust2x2_data import decode, type2_key, type2, elevation
 
             f = StringIO(decode(type2_key))
 
