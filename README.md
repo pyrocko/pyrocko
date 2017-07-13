@@ -46,7 +46,7 @@ For documentation and installation instructions please see
 - [x] ``guts_array.py``
 - [x] ``guts.py``
 - [ ] ``hamster_pile.py``
-- [ ] ``hudson.py``
+- [x] ``hudson.py``
 - [ ] ``ims_ext.c``
 - [ ] ``ims.py``
 - [ ] ``info.py``
@@ -64,8 +64,8 @@ For documentation and installation instructions please see
 - [x] ``orthodrome_ext.c``
 - [x] ``orthodrome.py``
 - [ ] ``parimap.py``
-- [ ] ``parstack_ext.c``
-- [ ] ``parstack.py``
+- [x] ``parstack_ext.c``
+- [x] ``parstack.py``
 - [ ] ``pchain.py``
 - [ ] ``pile.py``
 - [ ] ``pile_viewer.py``
