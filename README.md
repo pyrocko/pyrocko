@@ -26,7 +26,7 @@ For documentation and installation instructions please see
 - [ ] ``data/``
 - [x] ``datacube_ext.c``
 - [ ] ``datacube.py``
-- [ ] ``dummy_progressbar.py``
+- [x] ``dummy_progressbar.py``
 - [ ] ``edl.py``
 - [x] ``evalresp_ext.c``
 - [x] ``evalresp.py``
