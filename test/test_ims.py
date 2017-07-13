@@ -11,6 +11,7 @@ def filled_int32(n, v):
     return values
 
 
+@unittest.skip('Skipping IMSTestCase')
 class IMSTestCase(unittest.TestCase):
 
     def test_cm6(self):

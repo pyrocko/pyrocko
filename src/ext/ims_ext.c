@@ -3,7 +3,16 @@
 #include "Python.h"
 #include "numpy/arrayobject.h"
 
-static PyObject *IMSError;
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state); (void) m;
+static struct module_state _state;
+#endif
 
 static char translate[128] = {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
@@ -21,31 +30,31 @@ static int MODULUS = 100000000;
 PyArrayObject *get_good_array(PyObject *array) {
 
     if (!PyArray_Check(array)) {
-        PyErr_SetString(IMSError, "Data must be given as NumPy array." );
+        PyErr_SetString(PyExc_AttributeError, "Data must be given as NumPy array." );
         return NULL;
     }
     if (PyArray_ISBYTESWAPPED((PyArrayObject*)array)) {
-        PyErr_SetString(IMSError, "Data must be given in machine byte-order.");
+        PyErr_SetString(PyExc_AttributeError, "Data must be given in machine byte-order.");
         return NULL;
     }
     if (PyArray_TYPE((PyArrayObject*)array) != NPY_INT32) {
-        PyErr_SetString(IMSError, "Data must be 32-bit integers.");
+        PyErr_SetString(PyExc_AttributeError, "Data must be 32-bit integers.");
         return NULL;
     }
     return PyArray_GETCONTIGUOUS((PyArrayObject*)array);
 }
 
-static PyObject* ims_checksum(PyObject *dummy, PyObject *args) {
-
+static PyObject* ims_checksum(PyObject *m, PyObject *args) {
+    printf("test1\n");
     int checksum, length, i;
     PyObject *array = NULL;
     PyArrayObject *carray = NULL;
     int *data;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "O", &array )) {
-        PyErr_SetString(IMSError, "usage checksum(array)" );
+        PyErr_SetString(st->error, "usage checksum(array)" );
         return NULL;
     }
 
@@ -67,7 +76,8 @@ static PyObject* ims_checksum(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("i", abs(checksum));
 }
 
-static PyObject* ims_decode_cm6(PyObject *dummy, PyObject *args) {
+static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
+    printf("test2\n");
     char *in_data;
     int *out_data = NULL;
     int *out_data_new = NULL;
@@ -79,10 +89,10 @@ static PyObject* ims_decode_cm6(PyObject *dummy, PyObject *args) {
     PyObject      *array = NULL;
     npy_intp      array_dims[1] = {0};
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "si", &in_data, &bufsize)) {
-        PyErr_SetString(IMSError, "invalid arguments in decode_cm6(data, sizehint)" );
+        PyErr_SetString(st->error, "invalid arguments in decode_cm6(data, sizehint)" );
         return NULL;
     }
 
@@ -90,7 +100,7 @@ static PyObject* ims_decode_cm6(PyObject *dummy, PyObject *args) {
 
     out_data = (int*)malloc(bufsize*sizeof(int));
     if (out_data == NULL) {
-        PyErr_SetString(IMSError, "cannot allocate memory" );
+        PyErr_SetString(st->error, "cannot allocate memory" );
         return NULL;
     }
 
@@ -112,7 +122,7 @@ static PyObject* ims_decode_cm6(PyObject *dummy, PyObject *args) {
                     out_data_new = (int*)realloc(out_data, sizeof(int) * bufsize);
                     if (out_data_new == NULL) {
                         free(out_data);
-                        PyErr_SetString(IMSError, "cannot allocate memory" );
+                        PyErr_SetString(st->error, "cannot allocate memory" );
                         return NULL;
                     }
                     out_data = out_data_new;
@@ -136,7 +146,8 @@ static PyObject* ims_decode_cm6(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("N", array);
 }
 
-static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
+static PyObject* ims_encode_cm6(PyObject *m, PyObject *args) {
+    printf("test3\n");
     PyObject *array = NULL;
     PyObject *string = NULL;
     PyArrayObject *contiguous_array = NULL;
@@ -149,7 +160,7 @@ static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
     char temp;
     char rtranslate[64];
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     for (i=0; i<128; i++) {
         if (translate[i] != -1) {
@@ -158,7 +169,7 @@ static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
     }
 
     if (!PyArg_ParseTuple(args, "O", &array)) {
-        PyErr_SetString(IMSError, "invalid arguments in encode_cm6(data)");
+        PyErr_SetString(st->error, "invalid arguments in encode_cm6(data)");
         return NULL;
     }
 
@@ -171,14 +182,14 @@ static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
     in_data = PyArray_DATA(contiguous_array);
 
     if (nsamples >= SIZE_MAX / 7) {
-        PyErr_SetString(IMSError, "too many samples.");
+        PyErr_SetString(st->error, "too many samples.");
         Py_DECREF(contiguous_array);
         return NULL;
     }
     bufsize = nsamples * 7;
     out_data = (char*)malloc(bufsize);
     if (out_data == NULL) {
-        PyErr_SetString(IMSError, "cannot allocate memory");
+        PyErr_SetString(st->error, "cannot allocate memory");
         Py_DECREF(contiguous_array);
         return NULL;
     }
@@ -204,7 +215,7 @@ static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
 
             if (iout >= bufsize) {
                 free(out_data);
-                PyErr_SetString(IMSError,
+                PyErr_SetString(st->error,
                     "some assumption of the programmer was wrong...");
                 Py_DECREF(contiguous_array);
                 return NULL;
@@ -224,7 +235,7 @@ static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
     free(out_data);
 
     if (string == NULL) {
-        PyErr_SetString(IMSError, "cannot create output string");
+        PyErr_SetString(st->error, "cannot create output string");
         Py_DECREF(contiguous_array);
         return NULL;
     }
@@ -233,7 +244,7 @@ static PyObject* ims_encode_cm6(PyObject *dummy, PyObject *args) {
     return Py_BuildValue("N", string);
 }
 
-static PyMethodDef IMSMethods[] = {
+static PyMethodDef ims_ext_methods[] = {
     {"decode_cm6",  ims_decode_cm6, METH_VARARGS,
         "Decode CM6 encoded IMS/GSE data." },
 
@@ -246,18 +257,66 @@ static PyMethodDef IMSMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC
-initims_ext(void)
-{
-    PyObject *m;
 
-    m = Py_InitModule("ims_ext", IMSMethods);
-    if (m == NULL) return;
+#if PY_MAJOR_VERSION >= 3
+
+static int ims_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+
+static int ims_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "ims_ext",
+        NULL,
+        sizeof(struct module_state),
+        ims_ext_methods,
+        NULL,
+        ims_ext_traverse,
+        ims_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_ims_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initims_ext(void)
+#endif
+
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("ims_ext", ims_ext_methods);
+#endif
     import_array();
 
-    IMSError = PyErr_NewException("ims_ext.error", NULL, NULL);
-    Py_INCREF(IMSError);  /* required, because other code could remove `error`
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(m, "IMSError", IMSError);
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+    st->error = PyErr_NewException("pyrocko.ims_ext.IMSError", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+    }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "IMSError", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }
