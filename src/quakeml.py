@@ -581,20 +581,20 @@ class Event(Object):
     @property
     def preferred_origin(self):
         return one_element_or_none(
-            filter(lambda x: x.public_id == self.preferred_origin_id,
-                   self.origin_list))
+            [x for x in self.origin_list
+             if x.public_id == self.preferred_origin_id])
 
     @property
     def preferred_magnitude(self):
         return one_element_or_none(
-            filter(lambda x: x.public_id == self.preferred_magnitude_id,
-                   self.magnitude_list))
+            [x for x in self.magnitude_list
+             if x.public_id == self.preferred_magnitude_id])
 
     @property
     def preferred_focal_mechanism(self):
         return one_element_or_none(
-            filter(lambda x: x.public_id == self.preferred_focal_mechanism_id,
-                   self.focal_mechanism_list))
+            [x for x in self.focal_mechanism_list
+             if x.public_id == self.preferred_focal_mechanism_id])
 
 
 class EventParameters(Object):

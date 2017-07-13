@@ -71,7 +71,7 @@ For documentation and installation instructions please see
 - [ ] ``pile_viewer.py``
 - [x] ``plot.py``
 - [x] ``pz.py``
-- [ ] ``quakeml.py``
+- [x] ``quakeml.py``
 - [ ] ``rdseed.py``
 - [ ] ``response_plot.py``
 - [ ] ``sac.py``
