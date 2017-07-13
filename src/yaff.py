@@ -1,5 +1,5 @@
 '''File IO module for SICK traces format.'''
-
+from __future__ import division
 import os
 from struct import unpack
 

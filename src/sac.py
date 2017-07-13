@@ -72,6 +72,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         'leven': 1, 'lpspol': 0, 'lovrok': 1, 'lcalda': 1, 'unused17': 0}
 
     t_lookup = dict(zip(header_keys, header_types))
+
     u_lookup = dict()
     for k in header_keys:
         u_lookup[k] = undefined_value[t_lookup[k]]
@@ -225,12 +226,11 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
         nbh = SacFile.nbytes_header
 
         # read in all data
-        f = open(filename, 'rb')
-        if load_data:
-            filedata = f.read()
-        else:
-            filedata = f.read(nbh)
-        f.close()
+        with open(filename, 'rb') as f:
+            if load_data:
+                filedata = f.read()
+            else:
+                filedata = f.read(nbh)
 
         if len(filedata) < nbh:
             raise SacError('File too short to be a SAC file: %s' % filename)
@@ -322,7 +322,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 numerical_values.append(vv)
 
         header_data = struct.pack(format, *numerical_values)
-        header_data += ''.join(string_values)
+        header_data += bytes(''.join(string_values).encode('ascii'))
 
         # check that enough data is available
         nblocks = self.ndatablocks()
@@ -338,11 +338,10 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                     % (len(fdata), self.npts))
 
         # dump data to file
-        f = open(filename, 'wb')
-        f.write(header_data)
-        for fdata in self.data:
-            f.write(fdata.astype(num.float32).tostring())
-        f.close()
+        with open(filename, 'wb') as f:
+            f.write(header_data)
+            for fdata in self.data:
+                f.write(fdata.astype(num.float32).tostring())
 
     def __str__(self):
         str = ''

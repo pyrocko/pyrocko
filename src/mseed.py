@@ -1,7 +1,7 @@
 from __future__ import division
-from past.builtins import cmp
 from builtins import zip
 from builtins import str
+
 from struct import unpack
 import os
 import re
@@ -87,7 +87,7 @@ def save(traces, filename_template, additional={}, overwrite=True):
 
     for fn, traces_thisfile in fn_tr.items():
         trtups = []
-        traces_thisfile.sort(lambda a, b: cmp(a.full_id, b.full_id))
+        traces_thisfile.sort(key=lambda a: a.full_id)
         for tr in traces_thisfile:
             trtups.append(as_tuple(tr))
 
@@ -119,7 +119,7 @@ def detect(first512):
         return False
 
     type_code = rec[6]
-    if type_code in 'DRQM':
+    if type_code in b'DRQM':
         bads = []
         for sex in '<>':
             bad = False
@@ -137,11 +137,11 @@ def detect(first512):
             return False
 
     else:
-        if type_code not in 'VAST':
+        if type_code not in b'VAST':
             return False
 
         continuation_code = rec[7]
-        if continuation_code != ' ':
+        if continuation_code != b' ':
             return False
 
         blockette_type = rec[8:8+3]

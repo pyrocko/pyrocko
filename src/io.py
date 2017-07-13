@@ -38,6 +38,7 @@ CSS          css                         yes
 .. [#f5] ASCII tables with two columns (time and amplitude) are output - meta
     information will be lost.
 '''
+from __future__ import division
 
 import os
 import logging
@@ -101,11 +102,12 @@ load.__doc__ %= allowed_formats('load', 'doc')
 
 def detect_format(filename):
     try:
-        f = open(filename, 'r')
+        f = open(filename, 'rb')
         data = f.read(512)
-        f.close()
     except OSError as e:
         raise FileLoadError(e)
+    finally:
+        f.close()
 
     for mod, fmt in [
             (yaff, 'yaff'),

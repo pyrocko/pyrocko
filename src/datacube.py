@@ -1,8 +1,11 @@
+from __future__ import absolute_import
+from builtins import str
+
 import os
 import math
 import numpy as num
-from pyrocko import trace, util, plot, io_common
-from pyrocko.guts import Object, Int, String, Timestamp
+from . import trace, util, plot, io_common
+from .guts import Object, Int, String, Timestamp
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 
@@ -429,8 +432,11 @@ all_header_keys = header_keys[str] + header_keys[int]
 
 
 def detect(first512):
+    try:
+        s = first512.decode('ascii')
+    except UnicodeDecodeError:
+        return False
 
-    s = first512
     if len(s) < 512:
         return False
 

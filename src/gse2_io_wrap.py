@@ -1,3 +1,4 @@
+from __future__ import division
 from builtins import range
 from builtins import chr
 
@@ -10,13 +11,13 @@ from pyrocko.io_common import FileLoadError, FileSaveError
 def detect(first512):
     lines = first512.lstrip().splitlines()
     if len(lines) >= 2:
-        if lines[0].startswith('WID2 '):
+        if lines[0].startswith(b'WID2 '):
             return True
 
-        if lines[0].startswith('BEGIN GSE2'):
+        if lines[0].startswith(b'BEGIN GSE2'):
             return True
 
-        if lines[0].startswith('DATA_TYPE WAVEFORM GSE2'):
+        if lines[0].startswith(b'DATA_TYPE WAVEFORM GSE2'):
             return True
 
     return False
@@ -71,7 +72,7 @@ def save(traces, filename_template, additional={}, max_open_files=10,
 
                 ensuredirs(fn)
 
-            open_files[fn] = open(fn, 'wa'[fn in fns])
+            open_files[fn] = open(fn, 'wab'[fn in fns])
             writer = ims.Writer(open_files[fn])
             writer.write(
                 ims.MessageHeader(
@@ -94,7 +95,7 @@ def save(traces, filename_template, additional={}, max_open_files=10,
 
     for fn in fns:
         if fn not in open_files:
-            open_files[fn] = open(fn, 'a')
+            open_files[fn] = open(fn, 'ab')
 
         writer = ims.Writer(open_files[fn])
         writer.write(ims.Stop())

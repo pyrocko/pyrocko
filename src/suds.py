@@ -1,3 +1,4 @@
+from __future__ import division
 from __future__ import print_function
 
 import sys
@@ -40,10 +41,10 @@ class SudsStatident(SudsStructBase, namedtuple(
 
     def nslc(self):
         return (
-            self.network.rstrip('\0 '),
-            self.st_name.rstrip('\0 '),
+            self.network.rstrip(b'\0 '),
+            self.st_name.rstrip(b'\0 '),
             '',
-            self.component.rstrip('\0 '))
+            self.component.rstrip(b'\0 '))
 
     __slots__ = ()
     fmt = '<4s5sch'
@@ -109,13 +110,13 @@ class SudsDescriptrace(SudsStructBase, namedtuple(
             arr = None
         else:
             tmax = None
-            if self.datatype == 'l':
+            if self.datatype == b'l':
                 arr = num.fromstring(data, dtype=num.int32)
-            elif self.datatype == 'i':
+            elif self.datatype == b'i':
                 arr = num.fromstring(data, dtype=num.int16)
-            elif self.datatype == 'f':
+            elif self.datatype == b'f':
                 arr = num.fromstring(data, dtype=num.float32)
-            elif self.datatype == 'd':
+            elif self.datatype == b'd':
                 arr = num.fromstring(data, dtype=num.float64)
             else:
                 raise SudsError(
@@ -125,10 +126,10 @@ class SudsDescriptrace(SudsStructBase, namedtuple(
                 raise SudsError('found and reported number of samples differ')
 
         return trace.Trace(
-            self.dt_name.network.rstrip('\0 '),
-            self.dt_name.st_name.rstrip('\0 '),
+            self.dt_name.network.rstrip(b'\0 '),
+            self.dt_name.st_name.rstrip(b'\0 '),
             '',
-            self.dt_name.component.rstrip('\0 '),
+            self.dt_name.component.rstrip(b'\0 '),
             ydata=arr,
             deltat=deltat,
             tmin=tmin,
@@ -242,6 +243,9 @@ def _iload(filename, load_data=True, want=('traces', 'stations')):
     except (OSError, SudsError) as e:
         raise FileLoadError(e)
 
+    finally:
+        f.close()
+
 
 def iload(filename, load_data=True):
     for tr in _iload(filename, load_data=load_data, want=('traces',)):
@@ -279,8 +283,8 @@ def detect(first512):
         return False
 
     tag = SudsStructtag.unpack(s)
-    if tag.sync != 'S' \
-            or tag.machine != '6' \
+    if tag.sync != b'S' \
+            or tag.machine != b'6' \
             or tag.struct_type < 0 \
             or tag.struct_type > max_struct_type:
 

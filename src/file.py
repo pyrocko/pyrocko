@@ -7,7 +7,9 @@
 # * A record payload consists of a sequence of record entries.
 # * A record entry consists of a key, a type, and a value.
 from __future__ import absolute_import
+from __future__ import division
 from builtins import range
+from builtins import str
 
 from struct import unpack, pack
 from io import StringIO
@@ -175,8 +177,7 @@ class Record(object):
     def write(self, data):
         assert not self._closed
         assert self.mode == 'w'
-
-        self._out.write(bytes(data))
+        self._out.write(data)
         if self._hasher:
             self._hasher.update(data)
 
