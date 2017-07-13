@@ -15,21 +15,30 @@ static const int64_t NCOEFFS = 25*2+1;
 #define INVALID_INPUT 1
 #define SUCCESS 0
 
-static PyObject *Error;
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state); (void) m;
+static struct module_state _state;
+#endif
 
 static int good_array(const PyObject* o, int typenum) {
     if (!PyArray_Check(o)) {
-        PyErr_SetString(Error, "not a NumPy array" );
+        PyErr_SetString(PyExc_AttributeError, "not a NumPy array" );
         return 0;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(Error, "array of unexpected type");
+        PyErr_SetString(PyExc_ValueError, "array of unexpected type");
         return 0;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(Error, "array is not contiguous or not behaved");
+        PyErr_SetString(PyExc_ValueError, "array is not contiguous or not behaved");
         return 0;
     }
 
@@ -160,7 +169,7 @@ static int antidrift(
     return SUCCESS;
 }
 
-static PyObject* w_antidrift(PyObject *dummy, PyObject *args) {
+static PyObject* w_antidrift(PyObject *m, PyObject *args) {
     int err;
 
     int64_t n_control;
@@ -175,7 +184,7 @@ static PyObject* w_antidrift(PyObject *dummy, PyObject *args) {
     PyObject *arr_indices_control, *arr_t_control, *arr_samples_in;
     PyObject *arr_samples_out;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);    
 
     if (!PyArg_ParseTuple(args, "OOOddO",
                 &arr_indices_control,
@@ -185,7 +194,7 @@ static PyObject* w_antidrift(PyObject *dummy, PyObject *args) {
                 &deltat_out,
                 &arr_samples_out)) {
 
-        PyErr_SetString(Error,
+        PyErr_SetString(st->error,
             "usage antidrift(indices_control, t_control, samples_in, "
             "tmin_out, deltat_out, samples_out)");
         return NULL;
@@ -202,7 +211,7 @@ static PyObject* w_antidrift(PyObject *dummy, PyObject *args) {
     indices_control = (int64_t*)PyArray_DATA((PyArrayObject*)arr_indices_control);
 
     if (n_control != PyArray_SIZE((PyArrayObject*)arr_t_control)) {
-        PyErr_SetString(Error,
+        PyErr_SetString(st->error,
             "sizes of indices_control and t_control differ");
         return NULL;
     }
@@ -219,7 +228,7 @@ static PyObject* w_antidrift(PyObject *dummy, PyObject *args) {
             n_out, tmin_out, deltat_out, samples_out);
 
     if (err != 0) {
-        PyErr_SetString(Error, "antidrift failed.");
+        PyErr_SetString(st->error, "antidrift failed.");
         return NULL;
     }
 
@@ -227,25 +236,72 @@ static PyObject* w_antidrift(PyObject *dummy, PyObject *args) {
     return Py_None;
 }
 
-static PyMethodDef Methods[] = {
+static PyMethodDef signal_ext_methods[] = {
     {"antidrift",  w_antidrift, METH_VARARGS,
         "correct time drift using sinc interpolation" },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC
-initsignal_ext(void)
-{
-    PyObject *m;
+#if PY_MAJOR_VERSION >= 3
 
-    m = Py_InitModule("signal_ext", Methods);
-    if (m == NULL) return;
+static int signal_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
+}
+
+static int signal_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "signal_ext",
+        NULL,
+        sizeof(struct module_state),
+        signal_ext_methods,
+        NULL,
+        signal_ext_traverse,
+        signal_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_signal_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initsignal_ext(void)
+#endif
+
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("signal_ext", signal_ext_methods);
+#endif
     import_array();
 
-    Error = PyErr_NewException("signal_ext.error", NULL, NULL);
-    Py_INCREF(Error);  /* required, because other code could remove `error` 
-                               from the module, what would create a dangling
-                               pointer. */
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
 
+    st->error = PyErr_NewException("pyrocko.signal_ext.Error", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+    }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "Error", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
 }

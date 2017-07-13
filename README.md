@@ -24,7 +24,7 @@ For documentation and installation instructions please see
 - [x] ``crustdb.py``
 - [ ] ``css.py``
 - [ ] ``data/``
-- [ ] ``datacube_ext.c``
+- [x] ``datacube_ext.c``
 - [ ] ``datacube.py``
 - [ ] ``dummy_progressbar.py``
 - [ ] ``edl.py``
@@ -81,7 +81,7 @@ For documentation and installation instructions please see
 - [ ] ``seisan_waveform.py``
 - [ ] ``serial_hamster.py``
 - [ ] ``shadow_pile.py``
-- [ ] ``signal_ext.c``
+- [x] ``signal_ext.c``
 - [ ] ``slink.py``
 - [ ] ``snuffler.py``
 - [ ] ``snuffling.py``

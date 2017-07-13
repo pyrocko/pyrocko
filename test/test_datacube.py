@@ -1,3 +1,4 @@
+from builtins import range
 import time
 import unittest
 
@@ -95,12 +96,12 @@ class DataCubeTestCase(unittest.TestCase):
 
                 f.close()
                 t1 = time.time()
-                print '%s: %10.3f' % (mode[loadflag], t1 - t0)
+                print('%s: %10.3f' % (mode[loadflag], t1 - t0))
 
             t0 = time.time()
             trs = io.load(fpath, format='datacube')
             t1 = time.time()
-            print 'with interpolation: %10.3f' % (t1 - t0)
+            print('with interpolation: %10.3f' % (t1 - t0))
             del trs
 
 
