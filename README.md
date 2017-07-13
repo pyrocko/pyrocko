@@ -10,7 +10,7 @@ For documentation and installation instructions please see
 - [x] ``__init__.py``
 - [ ] ``ahfullgreen_ext.c``
 - [ ] ``ahfullgreen.py``
-- [ ] ``automap.py``
+- [x] ``automap.py``
 - [ ] ``autopick_ext.c``
 - [ ] ``autopick.py``
 - [x] ``beachball.py``

@@ -1,18 +1,25 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+
+from builtins import str
+from builtins import zip
+from builtins import map
+from builtins import range
 
 import math
 import random
 import logging
 
-from cStringIO import StringIO
+from io import StringIO
 
 import numpy as num
 
-from pyrocko.guts import Object, Float, Bool, Int, Tuple, String, List
-from pyrocko.guts import Unicode, Dict
-from pyrocko.guts_array import Array
-from pyrocko import orthodrome as od
-from pyrocko import gmtpy, topo
+from .guts import Object, Float, Bool, Int, Tuple, String, List
+from .guts import Unicode, Dict
+from .guts_array import Array
+from . import orthodrome as od
+from . import gmtpy, topo
 
 points_in_region = od.points_in_region
 
@@ -105,7 +112,7 @@ class FloatTile(Object):
 
 class City(Object):
     def __init__(self, name, lat, lon, population=None, asciiname=None):
-        name = unicode(name)
+        name = str(name)
         lat = float(lat)
         lon = float(lon)
         if asciiname is None:
@@ -389,7 +396,7 @@ class Map(Object):
                 OBLIQUE_ANNOTATION='6')
 
         gmtconf.update(
-            (k.upper(), v) for (k, v) in self.gmt_config.iteritems())
+            (k.upper(), v) for (k, v) in self.gmt_config.items())
 
         gmt = gmtpy.GMT(config=gmtconf, version=self._gmtversion)
 
@@ -739,7 +746,7 @@ class Map(Object):
             n = len(self._labels)
 
             lons, lats, texts, sx, sy, colors, fonts, font_sizes, styles = \
-                zip(*self._labels)
+                list(zip(*self._labels))
 
             font_sizes = [
                 (font_size or label_font_size) for font_size in font_sizes]
@@ -754,7 +761,7 @@ class Map(Object):
             dxs = num.zeros(n)
             dys = num.zeros(n)
 
-            for i in xrange(n):
+            for i in range(n):
                 dx, dy = gmtpy.text_box(
                     texts[i],
                     font=fonts[i],
@@ -778,15 +785,15 @@ class Map(Object):
                 (xs, ys - sy - dys, xs + sx + dxs, ys),
                 (xs - sx - dxs, ys, xs, ys + sy + dys)]
 
-            for i in xrange(n):
-                for ianch in xrange(4):
+            for i in range(n):
+                for ianch in range(4):
                     anchors_ok[ianch][i] &= no_points_in_rect(
                         xs, ys, *[xxx[i] for xxx in arects[ianch]])
 
             anchor_choices = []
             anchor_take = []
-            for i in xrange(n):
-                choices = [ianch for ianch in xrange(4)
+            for i in range(n):
+                choices = [ianch for ianch in range(4)
                            if anchors_ok[ianch][i]]
                 anchor_choices.append(choices)
                 if choices:
@@ -796,8 +803,8 @@ class Map(Object):
 
             def cost(anchor_take):
                 noverlaps = 0
-                for i in xrange(n):
-                    for j in xrange(n):
+                for i in range(n):
+                    for j in range(n):
                         if i != j:
                             i_take = anchor_take[i]
                             j_take = anchor_take[j]
@@ -813,7 +820,7 @@ class Map(Object):
             cur_cost = cost(anchor_take)
             imax = 30
             while cur_cost != 0 and imax > 0:
-                for i in xrange(n):
+                for i in range(n):
                     for t in anchor_choices[i]:
                         anchor_take_new = list(anchor_take)
                         anchor_take_new[i] = t
@@ -825,7 +832,7 @@ class Map(Object):
                 imax -= 1
 
             while cur_cost != 0:
-                for i in xrange(n):
+                for i in range(n):
                     anchor_take_new = list(anchor_take)
                     anchor_take_new[i] = None
                     new_cost = cost(anchor_take_new)
@@ -836,7 +843,7 @@ class Map(Object):
 
             anchor_strs = ['BL', 'TR', 'TL', 'BR']
 
-            for i in xrange(n):
+            for i in range(n):
                 ianchor = anchor_take[i]
                 color = colors[i]
                 if color is None:
@@ -894,7 +901,7 @@ class Map(Object):
 
                 locs_ok = num.ones(xs.size, dtype=num.bool)
 
-                for iloc in xrange(xs.size):
+                for iloc in range(xs.size):
                     rcandi = [xxx[iloc] for xxx in rects]
 
                     locs_ok[iloc] = True
@@ -1117,7 +1124,7 @@ class Map(Object):
                                 candi_fixed[boundary.name1] += neast*nnorth
 
             candi_fixed = [name for name in sorted(
-                candi_fixed.keys(), key=lambda name: -candi_fixed[name])]
+                list(candi_fixed.keys()), key=lambda name: -candi_fixed[name])]
 
             candi_fixed.append(None)
 
@@ -1143,7 +1150,7 @@ class Map(Object):
                     S='e0.2p/0.95/10',
                     *self.jxyr)
 
-                for _ in xrange(len(lons) / 50 + 1):
+                for _ in range(len(lons) / 50 + 1):
                     ii = random.randint(0, len(lons)-1)
                     v = math.sqrt(vnorth[ii]**2 + veast[ii]**2)
                     self.add_label(
@@ -1234,7 +1241,7 @@ def read_cpt(filename):
                     color_nan = tuple(map(float, toks[1:4]))
 
                 else:
-                    values = map(float, line.split())
+                    values = list(map(float, line.split()))
                     vmin = values[0]
                     color_min = tuple(values[1:4])
                     vmax = values[4]
@@ -1311,7 +1318,7 @@ if __name__ == '__main__':
 
         n = int(sys.argv[1])
 
-    for i in xrange(n):
+    for i in range(n):
         m = Map(
             lat=rand(-60., 60.),
             lon=rand(-180., 180.),
@@ -1328,5 +1335,5 @@ if __name__ == '__main__':
             show_plates=True)
 
         m.draw_cities()
-        print m
+        print(m)
         m.save('map_%02i.pdf' % i)
