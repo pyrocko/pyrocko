@@ -160,6 +160,15 @@ class IOTestCase(unittest.TestCase):
 
         assert i == 1
 
+    def testReadGcf(self):
+        fpath = common.test_data_file('test.gcf')
+
+        i = 0
+        for tr in io.load(fpath, format='gcf'):
+            i += 1
+
+        assert i == 1    
+
 
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')

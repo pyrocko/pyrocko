@@ -1,6 +1,8 @@
 from __future__ import division
 from __future__ import absolute_import
 
+from builtins import str
+
 import sys
 import struct
 import re
@@ -171,7 +173,7 @@ def read_status(f, h):
 def iload(filename, load_data=True):
     traces = {}
 
-    f = open(filename, 'r')
+    f = open(filename, 'rb')
     try:
         while True:
             h = read_header(f)
