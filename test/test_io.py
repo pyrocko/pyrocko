@@ -118,10 +118,12 @@ class IOTestCase(unittest.TestCase):
         assert len(stations) == 91
 
     def testReadCSS(self):
-        fpath = common.test_data_file('data/test_css.wfdisc')
+        wfpath = common.test_data_file('test_css1.w') # noqa
+        fpath = common.test_data_file('test_css.wfdisc')
         i = 0
         for tr in io.load(fpath, format='css'):
             i += 1
+
         assert i == 1
 
 if __name__ == "__main__":
