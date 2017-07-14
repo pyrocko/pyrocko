@@ -23,7 +23,7 @@ cache:
 addons:
     apt:
         packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
-            python-scipy, gfortran, libatlas-dev, libopenblas-dev, python-future,
+            python-scipy, gfortran, libatlas-dev, libopenblas-dev,
             python-matplotlib, python-yaml, python-tk, libyaml-dev,
             poppler-utils, ghostscript, imagemagick, xvfb ]
 
@@ -33,7 +33,7 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/python; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew unlink libyaml; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml; fi
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib future; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then xcode-select --install || true ; fi
     - pip install progressbar setuptools flake8 pyyaml coveralls jinja2
     - easy_install pyavl
