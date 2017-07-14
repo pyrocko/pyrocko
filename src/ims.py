@@ -1,5 +1,10 @@
 '''Module to read and write GSE2.0, GSE2.1, and IMS1.0 files.'''
 
+from __future__ import print_function
+from __future__ import absolute_import
+
+from builtins import range, object
+
 import sys
 import re
 import logging
@@ -380,7 +385,7 @@ class E(object):
 
         self.end = end
 
-        if isinstance(fmt, basestring):
+        if isinstance(fmt, str):
             t = fmt[0]
             if t in 'ef':
                 self.parse = float_or_none
@@ -530,7 +535,7 @@ class Block(Object):
         obj = cls(*args, **kwargs)
         try:
             obj.validate()
-        except ValidationError, e:
+        except ValidationError as e:
             raise DeserializeError(str(e))
 
         return obj
@@ -540,7 +545,7 @@ class Block(Object):
         obj = cls(*args, **kwargs)
         try:
             obj.regularize()
-        except ValidationError, e:
+        except ValidationError as e:
             raise DeserializeError(str(e))
 
         return obj
@@ -570,7 +575,7 @@ class FreeFormatLine(Block):
 
         values_weeded = []
         for x, v in zip(format, values):
-            if isinstance(x, basestring):
+            if isinstance(x, str):
                 if v.upper() != x:
                     raise DeserializeError(
                         'expected keyword: %s, found %s' % (x, v.upper()))
@@ -597,7 +602,7 @@ class FreeFormatLine(Block):
         props = self.T.properties
         out = []
         for x in self.format(version_dialect):
-            if isinstance(x, basestring):
+            if isinstance(x, str):
                 out.append(x)
             else:
                 if isinstance(x, tuple):
@@ -1717,7 +1722,7 @@ class WID2Section(Section):
                 depth=depth),
             dat2=DAT2(
                 raw_data=[raw_data[i*80:(i+1)*80]
-                          for i in xrange((len(raw_data)-1)/80 + 1)]),
+                          for i in range((len(raw_data)-1)//80 + 1)]),
             chk2=CHK2(
                 checksum=ims_ext.checksum(ydata)))
 
@@ -2359,6 +2364,7 @@ class Reader(object):
             self._current_fpos = self._f.tell()
             self._current_lpos = self._readline_count + 1
             l = self._f.readline()
+            print(l)
             self._readline_count += 1
             if not l:
                 self._current_line = None
@@ -2420,7 +2426,7 @@ class Reader(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         try:
             while True:
                 line = self.readline()
@@ -2445,7 +2451,7 @@ class Reader(object):
                 if not self._in_garbage and not ignore:
                     raise DeserializeError('unexpected line')
 
-        except DeserializeError, e:
+        except DeserializeError as e:
             e.set_context(
                 self._current_lpos,
                 self._current_line,
@@ -2468,8 +2474,8 @@ class Writer(object):
 
 
 def write_string(sections):
-    from cStringIO import StringIO
-    f = StringIO()
+    from io import BytesIO
+    f = BytesIO()
     w = Writer(f)
     for section in sections:
         w.write(section)
@@ -2484,15 +2490,15 @@ def iload_fh(f, **kwargs):
         for section in r:
             yield section
 
-    except DeserializeError, e:
+    except DeserializeError as e:
         raise FileLoadError(e)
 
 
 def iload_string(s, **kwargs):
     '''Read IMS/GSE2 sections from string.'''
 
-    from cStringIO import StringIO
-    f = StringIO(s)
+    from io import BytesIO
+    f = BytesIO(s)
     return iload_fh(f, **kwargs)
 
 
@@ -2507,15 +2513,15 @@ def dump_fh(sections, f):
         for section in sections:
             w.write(section)
 
-    except SerializeError, e:
+    except SerializeError as e:
         raise FileSaveError(e)
 
 
 def dump_string(sections):
     '''Write IMS/GSE2 sections to string.'''
 
-    from cStringIO import StringIO
-    f = StringIO()
+    from io import BytesIO
+    f = BytesIO()
     dump_fh(sections, f)
     return f.getvalue()
 
@@ -2582,7 +2588,7 @@ if __name__ == '__main__':
 
             for sec in r:
                 if not w:
-                    print sec
+                    print(sec)
 
                 else:
                     w.write(sec)

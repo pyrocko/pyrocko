@@ -11,7 +11,6 @@ def filled_int32(n, v):
     return values
 
 
-@unittest.skip('Skipping IMSTestCase')
 class IMSTestCase(unittest.TestCase):
 
     def test_cm6(self):
@@ -44,10 +43,14 @@ class IMSTestCase(unittest.TestCase):
 
         fpaths = []
         for fn in fns:
+            print 'aa'
             fpath = common.test_data_file(fn)
+            print 'zz'
             fpaths.append(fpath)
 
+        print 'abc'
         for sec in ims.iload(fpaths):
+            print 'yy'
             if isinstance(sec, ims.WID2Section):
                 sec.pyrocko_trace()
 
