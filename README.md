@@ -81,7 +81,7 @@ For documentation and installation instructions please see
 - [ ] ``shadow_pile.py``
 - [x] ``signal_ext.c``
 - [ ] ``slink.py``
-- [ ] ``snuffler.py``
+- [x] ``snuffler.py (wip)``
 - [x] ``snuffling.py``
 - [x] ``snufflings/``
 - [ ] ``spit.py``

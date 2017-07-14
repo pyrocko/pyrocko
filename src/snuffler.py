@@ -1,5 +1,9 @@
 '''Effective seismological trace viewer.'''
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+
 import os
 import sys
 import signal
@@ -9,26 +13,25 @@ import re
 import gc
 import tempfile
 import shutil
-import urlparse
+import urllib.parse  # noqa
 import zlib
 import struct
-import cPickle as pickle
+import pickle
 
 from os.path import join as pjoin
 from optparse import OptionParser
 
-import pyrocko.pile
-import pyrocko.trace
-import pyrocko.util
-import pyrocko.pile_viewer
-import pyrocko.model
-import pyrocko.config
-import pyrocko.io
-from pyrocko.fdsn import station as fdsn_station
-
 import pyrocko.slink
 import pyrocko.serial_hamster
 import pyrocko.edl
+
+from pyrocko import pile            # noqa
+from pyrocko import util            # noqa
+from pyrocko import pile_viewer     # noqa
+from pyrocko import model           # noqa
+from pyrocko import config          # noqa
+from pyrocko import io              # noqa
+from pyrocko.fdsn import station as fdsn_station
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
@@ -62,7 +65,7 @@ class AcquisitionThread(qc.QThread):
             except (
                     pyrocko.edl.ReadError,
                     pyrocko.serial_hamster.SerialHamsterError,
-                    pyrocko.slink.SlowSlinkError), e:
+                    pyrocko.slink.SlowSlinkError) as e:
 
                 logger.error(str(e))
                 logger.error('Acquistion terminated, restart in 5 s')
@@ -172,7 +175,7 @@ def setup_acquisition_sources(args):
                 if '_' not in msl.group(5):
                     try:
                         streams = sl.query_streams()
-                    except pyrocko.slink.SlowSlinkError, e:
+                    except pyrocko.slink.SlowSlinkError as e:
                         logger.fatal(str(e))
                         sys.exit(1)
 
@@ -195,7 +198,7 @@ def setup_acquisition_sources(args):
             try:
                 d = {}
                 if mus.group(3):
-                    d = dict(urlparse.parse_qsl(mus.group(3)))
+                    d = dict(urlparse.parse_qsl(mus.group(3)))  # noqa
 
                 deltat = 1.0/float(d.get('rate', '50'))
                 channels = [(int(c), c) for c in d.get('channels', '01234567')]
@@ -497,8 +500,7 @@ class SnufflerWindow(qg.QMainWindow):
         if not self.dockwidgets:
             self.dockwidgets = []
 
-        dws = filter(lambda x: self.dockWidgetArea(x) == where,
-                     self.dockwidgets)
+        dws = [x for x in self.dockwidgets if self.dockWidgetArea(x) == where]
 
         dockwidget = qg.QDockWidget(name, self)
         self.dockwidgets.append(dockwidget)
