@@ -108,7 +108,7 @@ class Download(Snuffling):
 
                 all_traces.extend(traces)
 
-            except io.FileLoadError, e:
+            except io.FileLoadError as e:
                 logger.warning('File load error, %s' % e)
 
         if all_traces:
