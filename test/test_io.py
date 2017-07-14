@@ -146,12 +146,19 @@ class IOTestCase(unittest.TestCase):
 
     def testReadSeisan(self):
         fpath = common.test_data_file('test.seisan_waveform')
-
         i = 0
         for tr in io.load(fpath, format='seisan'):
             i += 1
 
         assert i == 39
+
+    def testReadKan(self):
+        fpath = common.test_data_file('01.kan')
+        i = 0
+        for tr in io.load(fpath, format='kan'):
+            i += 1
+
+        assert i == 1
 
 
 if __name__ == "__main__":

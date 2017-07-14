@@ -53,7 +53,7 @@ For documentation and installation instructions please see
 - [x] ``io_common.py``
 - [x] ``io.py``
 - [ ] ``iris_ws.py``
-- [ ] ``kan.py``
+- [x] ``kan.py``
 - [ ] ``marker_editor.py``
 - [ ] ``marker.py``
 - [x] ``model.py``

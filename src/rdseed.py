@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from builtins import filter
+from builtins import str
+
 import os
 import sys
 import subprocess
@@ -7,10 +11,9 @@ import time
 import re
 import logging
 
-from pyrocko import trace, pile, model, eventdata, util
+from . import trace, pile, model, eventdata, util
 
 pjoin = os.path.join
-
 logger = logging.getLogger('pyrocko.rdseed')
 
 
@@ -31,62 +34,60 @@ def read_station_header_file(fn):
         else:
             return ''
 
-    fi = open(fn, 'r')
+    with open(fn, 'r') as fi:
 
-    stations = []
-    atsec, station, channel = None, None, None
+        stations = []
+        atsec, station, channel = None, None, None
 
-    for line in fi:
-        toks = line.split()
-        ltoks = line.lower().split()
-        if m(2, 'station', 'header'):
-            atsec = 'station'
-            station = {'channels': []}
-            stations.append(station)
-            continue
+        for line in fi:
+            toks = line.split()
+            ltoks = line.lower().split()
+            if m(2, 'station', 'header'):
+                atsec = 'station'
+                station = {'channels': []}
+                stations.append(station)
+                continue
 
-        if m(2, 'station') and m(5, 'channel'):
-            atsec = 'channel'
-            channel = {}
-            station['channels'].append(channel)
-            continue
+            if m(2, 'station') and m(5, 'channel'):
+                atsec = 'channel'
+                channel = {}
+                station['channels'].append(channel)
+                continue
 
-        if atsec == 'station':
-            if m(1, 'station', 'code:'):
-                station['station'] = s(3)
+            if atsec == 'station':
+                if m(1, 'station', 'code:'):
+                    station['station'] = s(3)
 
-            elif m(1, 'network', 'code:'):
-                station['network'] = s(3)
+                elif m(1, 'network', 'code:'):
+                    station['network'] = s(3)
 
-            elif m(1, 'name:'):
-                station['name'] = ' '.join(toks[2:])
+                elif m(1, 'name:'):
+                    station['name'] = ' '.join(toks[2:])
 
-        if atsec == 'channel':
-            if m(1, 'channel:'):
-                channel['channel'] = s(2)
+            if atsec == 'channel':
+                if m(1, 'channel:'):
+                    channel['channel'] = s(2)
 
-            elif m(1, 'location:'):
-                channel['location'] = s(2)
+                elif m(1, 'location:'):
+                    channel['location'] = s(2)
 
-            elif m(1, 'latitude:'):
-                station['lat'] = f(2)
+                elif m(1, 'latitude:'):
+                    station['lat'] = f(2)
 
-            elif m(1, 'longitude:'):
-                station['lon'] = f(2)
+                elif m(1, 'longitude:'):
+                    station['lon'] = f(2)
 
-            elif m(1, 'elevation:'):
-                station['elevation'] = f(2)
+                elif m(1, 'elevation:'):
+                    station['elevation'] = f(2)
 
-            elif m(1, 'local', 'depth:'):
-                channel['depth'] = f(3)
+                elif m(1, 'local', 'depth:'):
+                    channel['depth'] = f(3)
 
-            elif m(1, 'azimuth:'):
-                channel['azimuth'] = f(2)
+                elif m(1, 'azimuth:'):
+                    channel['azimuth'] = f(2)
 
-            elif m(1, 'dip:'):
-                channel['dip'] = f(2)
-
-    fi.close()
+                elif m(1, 'dip:'):
+                    channel['dip'] = f(2)
 
     nsl_stations = {}
     for station in stations:
@@ -111,7 +112,7 @@ def read_station_header_file(fn):
                 azimuth=channel['azimuth'],
                 dip=channel['dip']))
 
-    return nsl_stations.values()
+    return list(nsl_stations.values())
 
 
 def cmp_version(a, b):
@@ -167,7 +168,7 @@ def dumb_parser(data):
     return rows
 
 
-class Programs:
+class Programs(object):
     rdseed = 'rdseed'
     checked = False
 
@@ -183,7 +184,7 @@ class Programs:
 
                 (out, err) = rdseed_proc.communicate()
 
-            except OSError, e:
+            except OSError as e:
                 if e.errno == 2:
                     reason = "Could not find executable: '%s'." \
                         % Programs.rdseed
@@ -195,7 +196,7 @@ class Programs:
 
             ms = [re.search(
                 r'Release (\d+(\.\d+(\.\d+)?)?)', s) for s in (err, out)]
-            ms = filter(bool, ms)
+            ms = list(filter(bool, ms))
             if not ms:
                 logger.error('Cannot determine rdseed version number.')
             else:
@@ -332,7 +333,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
             fout.close()
             logging.info(strerr(err))
 
-        except OSError, e:
+        except OSError as e:
             if e.errno == 2:
                 reason = "Could not find executable: '%s'." % Programs.rdseed
             else:
@@ -346,26 +347,25 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         if not os.path.isfile(rdseed_event_file):
             return []
 
-        f = open(rdseed_event_file, 'r')
-        events = []
-        for line in f:
-            toks = line.split(', ')
-            if len(toks) == 9:
-                datetime = toks[1].split('.')[0]
-                format = '%Y/%m/%d %H:%M:%S'
-                secs = calendar.timegm(time.strptime(datetime, format))
-                e = model.Event(
-                    lat=float(toks[2]),
-                    lon=float(toks[3]),
-                    depth=float(toks[4])*1000.,
-                    magnitude=float(toks[8]),
-                    time=secs)
+        with open(rdseed_event_file, 'r') as f:
+            events = []
+            for line in f:
+                toks = line.split(', ')
+                if len(toks) == 9:
+                    datetime = toks[1].split('.')[0]
+                    format = '%Y/%m/%d %H:%M:%S'
+                    secs = calendar.timegm(time.strptime(datetime, format))
+                    e = model.Event(
+                        lat=float(toks[2]),
+                        lon=float(toks[3]),
+                        depth=float(toks[4])*1000.,
+                        magnitude=float(toks[8]),
+                        time=secs)
 
-                events.append(e)
-            else:
-                raise Exception('Event description in unrecognized format')
+                    events.append(e)
+                else:
+                    raise Exception('Event description in unrecognized format')
 
-        f.close()
         return events
 
     def _get_stations_from_file(self):
