@@ -125,6 +125,7 @@ class CSSHeaderFile(object):
                                              ident=ident, convert=convert,
                                              istart=istart+1, istop=istop+1,
                                              desc=desc, d=d)
+
                 else:
                     d = {}
                     split = line.split()
@@ -137,13 +138,17 @@ class CSSHeaderFile(object):
                     d['dir'] = template[-6][1](split[-6])
                     d['dfile'] = template[-5][1](split[-5])
 
-                fn = os.path.join(d['dir'], d['dfile'])
+                fn = os.path.join(self.superdir, d['dir'], d['dfile'])
                 if os.path.isfile(fn):
                     self.data.append(d)
                 else:
                     logger.error(
                         'no such file: %s (see header file: %s, line %s)' % (
                             fn, self.fn, iline+1))
+
+    @property
+    def superdir(self):
+        return self.fn.rsplit('/', 1)[0]
 
     def iter_pyrocko_traces(self, load_data=True):
         for idata, d in enumerate(self.data):
@@ -152,7 +157,7 @@ class CSSHeaderFile(object):
             try:
                 if load_data:
                     ydata = self.read_wf_file(
-                            fn, d['nsamp'],
+                            os.path.join(self.superdir, fn), d['nsamp'],
                             storage_types[d['datatype']],
                             d['foff'])
                 else:
