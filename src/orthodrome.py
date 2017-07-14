@@ -979,7 +979,7 @@ def geographic_midpoint(lats, lons, weights=None):
     return lat/d2r, lon/d2r
 
 
-  def geodetic_to_ecef(lat, lon, alt):
+def geodetic_to_ecef(lat, lon, alt):
     '''
     Convert geodetic coordinates to Earth-Centered, Earth-Fixed (ECEF)
     Cartesian coordinates.
