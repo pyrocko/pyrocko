@@ -154,8 +154,8 @@ class Marker(object):
 
                     except MarkerParseError:
                         logger.warn(
-                            'Invalid marker definition in line %i of file "%s"' %
-                            (iline+1, fn))
+                            'Invalid marker definition in line %i of file "%s"'
+                            % (iline+1, fn))
 
                 f.close()
 

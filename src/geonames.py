@@ -1,5 +1,4 @@
-# python 2/3
-
+from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()  # noqa
 
@@ -10,8 +9,8 @@ import os.path as op
 
 import numpy as num
 
-from pyrocko import util, config
-from pyrocko import orthodrome as od
+from . import util, config
+from . import orthodrome as od
 
 logger = logging.getLogger('pyrocko.geonames')
 
@@ -124,7 +123,8 @@ def load(zfn, fn, minpop=1000000, region=None):
 
                 yield GeoName2(
                     t[1].decode('utf8'),
-                    str(t[2].decode('utf8').encode('ascii', 'replace').decode('ascii')),
+                    str(t[2].decode('utf8').encode('ascii', 'replace')
+                        .decode('ascii')),
                     lat, lon, pop, feature_code)
 
     f.close()

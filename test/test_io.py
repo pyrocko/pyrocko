@@ -167,7 +167,7 @@ class IOTestCase(unittest.TestCase):
         for tr in io.load(fpath, format='gcf'):
             i += 1
 
-        assert i == 1    
+        assert i == 1
 
 
 if __name__ == "__main__":

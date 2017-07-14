@@ -1,7 +1,5 @@
-from future import standard_library
-standard_library.install_aliases()
-from builtins import object
-from pyrocko import trace, util, model
+from __future__ import absolute_import
+from . import trace, util, model
 
 import logging
 import copy

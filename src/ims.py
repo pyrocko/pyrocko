@@ -1,8 +1,5 @@
 '''Module to read and write GSE2.0, GSE2.1, and IMS1.0 files.'''
-
-from __future__ import print_function
-from __future__ import absolute_import
-
+from __future__ import print_function, absolute_import
 from builtins import range, object
 
 import sys
@@ -590,7 +587,6 @@ class FreeFormatLine(Block):
                     v = parse(v)
 
                 values_weeded.append((x, v))
-
 
         values_weeded.sort()
         return [str(xv[1].decode('ascii')) for xv in values_weeded]
