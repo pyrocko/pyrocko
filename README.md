@@ -77,8 +77,8 @@ For documentation and installation instructions please see
 - [ ] ``sac.py``
 - [ ] ``seed.py``
 - [ ] ``segy.py``
-- [ ] ``seisan_response.py``
-- [ ] ``seisan_waveform.py``
+- [x] ``seisan_response.py``
+- [x] ``seisan_waveform.py``
 - [ ] ``serial_hamster.py``
 - [ ] ``shadow_pile.py``
 - [x] ``signal_ext.c``
@@ -94,7 +94,7 @@ For documentation and installation instructions please see
 - [x] ``util_ext.c``
 - [x] ``util.py``
 - [ ] ``weeding.py``
-- [ ] ``yaff.py``
+- [x] ``yaff.py``
 
 ## Citation
 Recommended citation for Pyrocko

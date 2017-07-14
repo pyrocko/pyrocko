@@ -45,7 +45,6 @@ PyArrayObject *get_good_array(PyObject *array) {
 }
 
 static PyObject* ims_checksum(PyObject *m, PyObject *args) {
-    printf("test1\n");
     int checksum, length, i;
     PyObject *array = NULL;
     PyArrayObject *carray = NULL;
@@ -77,7 +76,6 @@ static PyObject* ims_checksum(PyObject *m, PyObject *args) {
 }
 
 static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
-    printf("test2\n");
     char *in_data;
     int *out_data = NULL;
     int *out_data_new = NULL;
@@ -147,7 +145,6 @@ static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
 }
 
 static PyObject* ims_encode_cm6(PyObject *m, PyObject *args) {
-    printf("test3\n");
     PyObject *array = NULL;
     PyObject *string = NULL;
     PyArrayObject *contiguous_array = NULL;

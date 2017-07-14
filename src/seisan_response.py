@@ -1,8 +1,14 @@
+from __future__ import absolute_import
+from builtins import str
+from builtins import range
+from builtins import zip
+
 import calendar
 import logging
-from pyrocko import util, trace
 import numpy as num
 from scipy import signal
+
+from . import util, trace
 
 unpack_fixed = util.unpack_fixed
 
@@ -15,15 +21,17 @@ class SeisanResponseFileError(Exception):
     pass
 
 
-class SeisanResponseFile:
+class SeisanResponseFile(object):
 
     def __init__(self):
         pass
 
     def read(self, filename):
 
-        f = open(filename, 'r')
+        f = open(filename, 'rb')
         line = f.readline()
+        line = str(line.decode('ascii'))
+
         station, component, century, deltayear, doy, month, day, hr, mi, sec \
             = unpack_fixed(
                 'a5,a4,@1,i2,x1,i3,x1,i2,x1,i2,x1,i2,x1,i2,x1,f6',
@@ -42,6 +50,8 @@ class SeisanResponseFile:
                     'p': 'poles-and-zeros'}[s.lower()])
 
         line = f.readline()
+        line = str(line.decode('ascii'))
+
         comment = line.strip()
         tmin = calendar.timegm(
             (century+deltayear, 1, doy, hr, mi, int(sec))) + sec-int(sec)
@@ -49,6 +59,8 @@ class SeisanResponseFile:
         if filetype == 'gains-and-filters':
 
             line = f.readline()
+            line = str(line.decode('ascii'))
+
             period, damping, sensor_sensitivity, amplifier_gain, \
                 digitizer_gain, gain_1hz, filter1_corner, filter1_order, \
                 filter2_corner, filter2_order = unpack_fixed(
@@ -62,6 +74,8 @@ class SeisanResponseFile:
                 filter2_order]
 
             line = f.readline()
+            line = str(line.decode('ascii'))
+
             filter_defs.extend(
                 unpack_fixed('f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', line))
 
@@ -75,6 +89,8 @@ class SeisanResponseFile:
             for iy in range(3):
                 for ix in range(3):
                     line = f.readline()
+                    line = str(line.decode('ascii'))
+
                     data[ix].extend(unpack_fixed(
                         'f8,f8,f8,f8,f8,f8,f8,f8,f8,f8', line))
 

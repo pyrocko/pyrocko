@@ -26,6 +26,12 @@ def rn(n):
 
 class IOTestCase(unittest.TestCase):
 
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp(prefix='pyrocko')
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
     def testWriteRead(self):
         now = time.time()
         n = 10
@@ -43,13 +49,11 @@ class IOTestCase(unittest.TestCase):
 
             for i in range(3)]
 
-        tempdir = tempfile.mkdtemp()
-
         for format in ('mseed', 'sac', 'yaff', 'gse2'):
             fns = io.save(
                 traces1,
                 pjoin(
-                    tempdir,
+                    self.tmpdir,
                     '%(network)s_%(station)s_%(location)s_%(channel)s'),
                 format=format)
 
@@ -66,7 +70,21 @@ class IOTestCase(unittest.TestCase):
             for fn in fns:
                 os.remove(fn)
 
-        shutil.rmtree(tempdir)
+    def testWriteText(self):
+        networks = [rn(2) for i in range(5)]
+        deltat = 0.1
+        tr = trace.Trace(
+            rc(networks), rn(4), rn(2), rn(3),
+            tmin=time.time()+deltat,
+            deltat=deltat,
+            ydata=num.arange(100, dtype=num.int32),
+            mtime=time.time())
+        io.save(
+            tr,
+            pjoin(
+                self.tmpdir,
+                '%(network)s_%(station)s_%(location)s_%(channel)s'),
+            format='text')
 
     def testReadEmpty(self):
         tempfn = tempfile.mkstemp()[1]
@@ -118,13 +136,23 @@ class IOTestCase(unittest.TestCase):
         assert len(stations) == 91
 
     def testReadCSS(self):
-        wfpath = common.test_data_file('test_css1.w') # noqa
+        wfpath = common.test_data_file('test_css1.w')  # noqa
         fpath = common.test_data_file('test_css.wfdisc')
         i = 0
         for tr in io.load(fpath, format='css'):
             i += 1
 
         assert i == 1
+
+    def testReadSeisan(self):
+        fpath = common.test_data_file('test.seisan_waveform')
+
+        i = 0
+        for tr in io.load(fpath, format='seisan'):
+            i += 1
+
+        assert i == 39
+
 
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')
