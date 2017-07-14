@@ -1,3 +1,4 @@
+from __future__ import print_function
 from pyrocko.snuffling import Snuffling
 from pyrocko import trace
 
@@ -40,8 +41,8 @@ class MinMaxSnuffling(Snuffling):
 
         for nslc in sorted(mima.keys()):
             p2p = mima[nslc][1] - mima[nslc][0]
-            print '%s.%s.%s.%s: %12.5g %12.5g %12.5g' % (
-                nslc + mima[nslc] + (p2p,))
+            print('%s.%s.%s.%s: %12.5g %12.5g %12.5g' % (
+                nslc + mima[nslc] + (p2p,)))
 
 
 def __snufflings__():
