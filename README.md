@@ -83,7 +83,7 @@ For documentation and installation instructions please see
 - [ ] ``slink.py``
 - [ ] ``snuffler.py``
 - [ ] ``snuffling.py``
-- [ ] ``snufflings/``
+- [x] ``snufflings/``
 - [ ] ``spit.py``
 - [x] ``suds.py``
 - [x] ``tectonics.py``
