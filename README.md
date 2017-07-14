@@ -23,7 +23,6 @@ For documentation and installation instructions please see
 - [x] ``crustdb_abbr.py``
 - [x] ``crustdb.py``
 - [x] ``css.py``
-- [ ] ``data/``
 - [x] ``datacube_ext.c``
 - [x] ``datacube.py``
 - [x] ``dummy_progressbar.py``
@@ -32,15 +31,15 @@ For documentation and installation instructions please see
 - [x] ``evalresp.py``
 - [ ] ``eventdata.py``
 - [x] ``fdsn/``
-- [ ] ``file.py``
+- [x] ``file.py``
 - [ ] ``fomosto/``
 - [ ] ``fomosto_report/``
-- [ ] ``gcf.py``
+- [x] ``gcf.py``
 - [x] ``geonames.py``
 - [ ] ``gf/``
 - [ ] ``gmtpy.py``
-- [ ] ``gse1.py``
-- [ ] ``gse2_io_wrap.py``
+- [x] ``gse1.py``
+- [x] ``gse2_io_wrap.py``
 - [x] ``gshhg.py``
 - [ ] ``gui_util.py``
 - [x] ``guts_array.py``
@@ -75,7 +74,7 @@ For documentation and installation instructions please see
 - [ ] ``response_plot.py``
 - [x] ``sac.py``
 - [ ] ``seed.py``
-- [ ] ``segy.py``
+- [x] ``segy.py``
 - [x] ``seisan_response.py``
 - [x] ``seisan_waveform.py``
 - [ ] ``serial_hamster.py``
@@ -86,7 +85,7 @@ For documentation and installation instructions please see
 - [ ] ``snuffling.py``
 - [ ] ``snufflings/``
 - [ ] ``spit.py``
-- [ ] ``suds.py``
+- [x] ``suds.py``
 - [x] ``tectonics.py``
 - [ ] ``topo/``
 - [x] ``trace.py``
