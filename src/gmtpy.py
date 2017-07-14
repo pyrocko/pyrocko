@@ -3,13 +3,17 @@
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
 
+from __future__ import print_function
+from builtins import zip
 import subprocess
-from cStringIO import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 import re
 import os
 import sys
 import shutil
-from itertools import izip
 from os.path import join as pjoin
 import tempfile
 import random
@@ -1230,15 +1234,15 @@ def diff_defaults(v1, v2):
     d2 = gmt_default_config(v2)
     for k in d1:
         if k not in d2:
-            print '%s not in %s' % (k, v2)
+            print('%s not in %s' % (k, v2))
         else:
             if d1[k] != d2[k]:
-                print '%s %s = %s' % (v1, k, d1[k])
-                print '%s %s = %s' % (v2, k, d2[k])
+                print('%s %s = %s' % (v1, k, d1[k]))
+                print('%s %s = %s' % (v2, k, d2[k]))
 
     for k in d2:
         if k not in d1:
-            print '%s not in %s' % (k, v1)
+            print('%s not in %s' % (k, v1))
 
 # diff_defaults('4.5.2', '4.5.3')
 
@@ -1290,7 +1294,7 @@ def setup_gmt_installations():
             _gmt_installations.update(detect_gmt_installations())
 
         # store defaults as dicts into the gmt installations dicts
-        for version, installation in _gmt_installations.iteritems():
+        for version, installation in _gmt_installations.items():
             installation['defaults'] = gmt_default_config(version)
             installation['version'] = version
 
@@ -1628,7 +1632,7 @@ def doublegrid(x, y, z):
     return x2, y2, z2
 
 
-class Guru:
+class Guru(object):
     '''Abstract base class providing template interpolation, accessible as
     attributes.
 
@@ -1702,7 +1706,7 @@ def nice_value(x):
     return sign * 0.1 * exp
 
 
-class AutoScaler:
+class AutoScaler(object):
     '''Tunable 1D autoscaling based on data range.
 
     Instances of this class may be used to determine nice minima, maxima and
@@ -2202,7 +2206,7 @@ class ScaleGuru(Guru):
         return params
 
 
-class GumSpring:
+class GumSpring(object):
 
     '''Sizing policy implementing a minimal size, plus a desire to grow.'''
 
@@ -3049,7 +3053,7 @@ def text_box(
     return dx, dy
 
 
-class TableLiner:
+class TableLiner(object):
     '''Utility class to turn tables into lines.'''
 
     def __init__(self, in_columns=None, in_rows=None):
@@ -3058,7 +3062,7 @@ class TableLiner:
 
     def __iter__(self):
         if self.in_columns is not None:
-            for row in izip(*self.in_columns):
+            for row in zip(*self.in_columns):
                 yield ' '.join([str(x) for x in row])+'\n'
 
         if self.in_rows is not None:
@@ -3066,7 +3070,7 @@ class TableLiner:
                 yield ' '.join([str(x) for x in row])+'\n'
 
 
-class LineStreamChopper:
+class LineStreamChopper(object):
     '''File-like object to buffer data.'''
 
     def __init__(self, liner):
@@ -3102,7 +3106,7 @@ class LineStreamChopper:
 
         self.chopsize = size
         try:
-            return self.chop_iterator.next()
+            return next(self.chop_iterator)
         except StopIteration:
             return ''
 
@@ -3120,10 +3124,10 @@ font_tab = {
     1: 'Helvetica-Bold',
 }
 
-font_tab_rev = dict((v, k) for (k, v) in font_tab.iteritems())
+font_tab_rev = dict((v, k) for (k, v) in font_tab.items())
 
 
-class GMT:
+class GMT(object):
     '''A thin wrapper to GMT command execution.
 
     A dict ``config`` may be given to override some of the default GMT
@@ -3244,7 +3248,7 @@ class GMT:
         f = open(config_filename, 'w')
         f.write('#\n# GMT %s Defaults file\n' % self.installation['version'])
 
-        for k, v in config.iteritems():
+        for k, v in config.items():
             f.write('%s = %s\n' % (k, v))
         f.close()
 
@@ -3765,7 +3769,7 @@ def simpleconf_to_ax(conf, axname):
     return Ax(**c)
 
 
-class DensityPlotDef:
+class DensityPlotDef(object):
     def __init__(self, data, cpt='ocean', tension=0.7, size=(640, 480),
                  contour=False, method='surface', zscaler=None, **extra):
         self.data = data
@@ -3778,7 +3782,7 @@ class DensityPlotDef:
         self.extra = extra
 
 
-class TextDef:
+class TextDef(object):
     def __init__(
             self,
             data,
@@ -3796,7 +3800,7 @@ class TextDef:
         self.color = color
 
 
-class Simple:
+class Simple(object):
     def __init__(self, gmtconfig=None, gmtversion='newest', **simple_config):
         self.data = []
         self.symbols = []
