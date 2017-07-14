@@ -41,7 +41,7 @@ For documentation and installation instructions please see
 - [ ] ``gmtpy.py``
 - [ ] ``gse1.py``
 - [ ] ``gse2_io_wrap.py``
-- [ ] ``gshhg.py``
+- [x] ``gshhg.py``
 - [ ] ``gui_util.py``
 - [x] ``guts_array.py``
 - [x] ``guts.py``
