@@ -8,8 +8,8 @@ For documentation and installation instructions please see
 # Python 3 Progress
 
 - [x] ``__init__.py``
-- [ ] ``ahfullgreen_ext.c``
-- [ ] ``ahfullgreen.py``
+- [x] ``ahfullgreen_ext.c``
+- [x] ``ahfullgreen.py``
 - [x] ``automap.py``
 - [x] ``autopick_ext.c``
 - [x] ``autopick.py``
