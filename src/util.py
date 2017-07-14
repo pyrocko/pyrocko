@@ -2,7 +2,6 @@
 
 from __future__ import division
 from past.builtins import zip
-from builtins import str
 from builtins import range
 from builtins import object
 
@@ -1590,7 +1589,7 @@ def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
 
     def iload_filename(filename, **kwargs):
         try:
-            with open(filename, 'r') as f:
+            with open(filename, 'rb') as f:
                 for cr in iload_fh(f, **kwargs):
                     yield cr
 
