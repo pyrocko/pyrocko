@@ -1,13 +1,15 @@
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # noqa
+
 from builtins import str
 from builtins import zip
 from builtins import range
 from builtins import object
 from pyrocko import model, util
 from pyrocko.moment_tensor import MomentTensor, symmat6
-import urllib.request, urllib.error, urllib.parse
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.error
+import urllib.parse
 import time
 import calendar
 import re
@@ -179,7 +181,8 @@ class Geofon(EarthquakeCatalog):
         except ExpatError as e:
             lines = page.splitlines()
             r = max(e.lineno - 1 - 2, 0), min(e.lineno - 1 + 3, len(lines))
-            ilineline = list(zip(list(range(r[0]+1, r[1]+1)), lines[r[0]:r[1]]))
+            ilineline = list(zip(range(r[0]+1, r[1]+1),
+                                 lines[r[0]:r[1]]))
 
             logger.error(
                 'A problem occured while parsing HTML from GEOFON page '

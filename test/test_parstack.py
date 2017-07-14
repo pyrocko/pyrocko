@@ -116,7 +116,7 @@ class ParstackTestCase(unittest.TestCase):
                         assert o3 == o1
                         num.testing.assert_almost_equal(
                             r1[:, :n-k], r3[:, :], decimal=9)
-                        #assert numeq(r1[:, :n-k], r3[:, :], 1e-9)
+                        # assert numeq(r1[:, :n-k], r3[:, :], 1e-9)
 
     def test_parstack_cumulative(self):
         for i in range(10):
@@ -329,8 +329,8 @@ class ParstackTestCase(unittest.TestCase):
         nparallel = 4
         argmax_parstack = pargmax(a, nparallel)
 
-        num.testing.assert_almost_equal(argmax_parstack.astype(num.int64), argmax_numpy)
-        #assert all(argmax_parstack==argmax_numpy)
+        num.testing.assert_almost_equal(
+            argmax_parstack.astype(num.int64), argmax_numpy)
 
 
 if __name__ == '__main__':
