@@ -1,3 +1,6 @@
+from builtins import object
+from builtins import str
+
 import calendar
 import math
 import time
@@ -136,41 +139,42 @@ class Marker(object):
             :py:class:`PhaseMarker` objects
         '''
         markers = []
-        f = open(fn, 'r')
-        line = f.readline()
-        if not line.startswith('# Snuffler Markers File Version'):
-            f.seek(0)
-            for iline, line in enumerate(f):
-                sline = line.strip()
-                if not sline or sline.startswith('#'):
-                    continue
-                try:
-                    m = Marker.from_string(sline)
-                    markers.append(m)
+        with open(fn, 'r') as f:
+            line = f.readline()
+            if not line.startswith('# Snuffler Markers File Version'):
+                f.seek(0)
+                for iline, line in enumerate(f):
+                    line = str(line.decode('ascii'))
+                    sline = line.strip()
+                    if not sline or sline.startswith('#'):
+                        continue
+                    try:
+                        m = Marker.from_string(sline)
+                        markers.append(m)
 
-                except MarkerParseError:
-                    logger.warn(
-                        'Invalid marker definition in line %i of file "%s"' %
-                        (iline+1, fn))
+                    except MarkerParseError:
+                        logger.warn(
+                            'Invalid marker definition in line %i of file "%s"' %
+                            (iline+1, fn))
 
-            f.close()
+                f.close()
 
-        elif line.startswith('# Snuffler Markers File Version 0.2'):
-            reader = TableReader(f)
-            while not reader.eof:
-                row = reader.readrow()
-                if not row:
-                    continue
-                if row[0] == 'event:':
-                    marker = EventMarker.from_attributes(row)
-                elif row[0] == 'phase:':
-                    marker = PhaseMarker.from_attributes(row)
-                else:
-                    marker = Marker.from_attributes(row)
+            elif line.startswith('# Snuffler Markers File Version 0.2'):
+                reader = TableReader(f)
+                while not reader.eof:
+                    row = reader.readrow()
+                    if not row:
+                        continue
+                    if row[0] == 'event:':
+                        marker = EventMarker.from_attributes(row)
+                    elif row[0] == 'phase:':
+                        marker = PhaseMarker.from_attributes(row)
+                    else:
+                        marker = Marker.from_attributes(row)
 
-                markers.append(marker)
-        else:
-            logger.warn('Unsupported Markers File Version')
+                    markers.append(marker)
+            else:
+                logger.warn('Unsupported Markers File Version')
 
         return markers
 
