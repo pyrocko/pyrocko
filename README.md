@@ -53,7 +53,7 @@ For documentation and installation instructions please see
 - [x] ``iris_ws.py``
 - [x] ``kan.py``
 - [ ] ``marker_editor.py``
-- [ ] ``marker.py``
+- [x] ``marker.py``
 - [x] ``model.py``
 - [x] ``moment_tensor.py``
 - [ ] ``moment_tensor_viewer.py``
