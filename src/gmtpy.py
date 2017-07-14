@@ -7,9 +7,9 @@ from __future__ import print_function
 from builtins import zip
 import subprocess
 try:
-    from StringIO import StringIO
+    from StringIO import StringIO as BytesIO
 except ImportError:
-    from io import StringIO
+    from io import BytesIO
 import re
 import os
 import sys
@@ -292,18 +292,16 @@ _gmt_installations = {}
 # ... or let GmtPy autodetect GMT via $PATH and $GMTHOME
 
 
-def cmp_version(a, b):
-    ai = [int(x) for x in a.split('.')]
-    bi = [int(x) for x in b.split('.')]
-    return cmp(ai, bi)
+def key_version(a):
+    return [int(x) for x in a.split('.')]
 
 
 def newest_installed_gmt_version():
-    return sorted(_gmt_installations.keys(), cmp=cmp_version)[-1]
+    return sorted(_gmt_installations.keys(), key=key_version)[-1]
 
 
 def all_installed_gmt_versions():
-    return sorted(_gmt_installations.keys(), cmp=cmp_version)
+    return sorted(_gmt_installations.keys(), key=key_version)
 
 
 # To have consistent defaults, they are hardcoded here and should not be
@@ -1175,8 +1173,8 @@ def detect_gmt_installations():
         errmesses.append(('GMT', str(e)))
 
     try:
-        version = subprocess.check_output(['gmt', '--version']).strip()
-        gmtbin = subprocess.check_output(['gmt', '--show-bindir']).strip()
+        version = str(subprocess.check_output(['gmt', '--version']).strip().decode('utf-8'))
+        gmtbin = str(subprocess.check_output(['gmt', '--show-bindir']).strip().decode('utf-8'))
         installations[version] = {
             'bin': gmtbin}
 
@@ -1195,13 +1193,12 @@ def detect_gmt_installations():
 
 def appropriate_defaults_version(version):
 
-    avails = sorted(_gmt_defaults_by_version.keys(), cmp=cmp_version)
+    avails = sorted(_gmt_defaults_by_version.keys(), key=key_version)
     for iavail, avail in enumerate(avails):
-        c = cmp_version(version, avail)
-        if c == 0:
+        if key_version(version) == key_version(avail):
             return version
 
-        elif c == -1:
+        elif key_version(version) < key_version(avail):
             return avails[max(0, iavail-1)]
 
     return avails[-1]
@@ -1484,7 +1481,7 @@ def loadgrd(filename):
     from scipy.io import netcdf
 
     nc = netcdf.netcdf_file(filename, 'r')
-    vkeys = nc.variables.keys()
+    vkeys = list(nc.variables.keys())
     kx = 'x'
     ky = 'y'
     if 'lon' in vkeys:
@@ -3080,7 +3077,7 @@ class LineStreamChopper(object):
         self.closed = False
 
     def _chopiter(self):
-        buf = StringIO()
+        buf = BytesIO()
         for line in self.liner:
             buf.write(line)
             buflen = buf.tell()
@@ -3089,7 +3086,7 @@ class LineStreamChopper(object):
                 while buf.tell() <= buflen-self.chopsize:
                     yield buf.read(self.chopsize)
 
-                newbuf = StringIO()
+                newbuf = BytesIO()
                 newbuf.write(buf.read())
                 buf.close()
                 buf = newbuf
@@ -3181,7 +3178,7 @@ class GMT(object):
             self.gmt_config.update(config)
 
         if config_papersize:
-            if not isinstance(config_papersize, basestring):
+            if not isinstance(config_papersize, str):
                 config_papersize = 'Custom_%ix%i' % (
                     int(config_papersize[0]), int(config_papersize[1]))
 
@@ -3198,7 +3195,7 @@ class GMT(object):
             self.load_unfinished(kontinue)
             self.needstart = False
         else:
-            self.output = StringIO()
+            self.output = BytesIO()
             self.needstart = True
 
         self.finished = False
@@ -3309,7 +3306,7 @@ class GMT(object):
             in_stream = open(in_filename, 'r')
 
         if in_string is not None:
-            in_stream = StringIO(in_string)
+            in_stream = BytesIO(in_string)
 
         if in_columns is not None or in_rows is not None:
             in_stream = LineStreamChopper(TableLiner(in_columns=in_columns,
@@ -3498,7 +3495,7 @@ class GMT(object):
         out.close()
 
     def load_unfinished(self, filename):
-        self.output = StringIO()
+        self.output = BytesIO()
         self.finished = False
         inp = open(filename, 'r')
         self.output.write(inp.read())
