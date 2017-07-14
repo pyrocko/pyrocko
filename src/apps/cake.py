@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-
+from builtins import range
+from builtins import str
 import sys
 import re
 import numpy as num
@@ -305,7 +306,7 @@ as in --phases.''')
                     p = process_color(p, phase_colors)
                     phases.extend(cake.PhaseDef.classic(p))
 
-        except (cake.PhaseDefParseError, cake.UnknownClassicPhase), e:
+        except (cake.PhaseDefParseError, cake.UnknownClassicPhase) as e:
             parser.error(e)
 
         if not phases and 'phases' in required:
@@ -362,7 +363,8 @@ as in --phases.''')
                 distances = num.linspace(*map(float, ssn))
             else:
                 distances = num.array(
-                    map(float, options.sdist.split(',')), dtype=num.float)
+                    list(map(
+                        float, options.sdist.split(',')), dtype=num.float))
 
             if not as_degrees:
                 distances *= r2d * cake.km / cake.earthradius
@@ -430,7 +432,7 @@ as in --phases.''')
         if md:
             try:
                 d['material'] = cake.Material(**md)
-            except cake.InvalidArguments, e:
+            except cake.InvalidArguments as e:
                 parser.error(str(e))
 
     for k in d.keys():
@@ -447,7 +449,7 @@ as in --phases.''')
                     / cake.earthradius * r2d
 
             elif k == 'phases':
-                d['phases'] = map(cake.PhaseDef, 'Pp')
+                d['phases'] = list(map(cake.PhaseDef, 'Pp'))
 
             else:
                 parser.error('missing %s' % k)
@@ -461,12 +463,12 @@ def my_simplify_model(mod, accuracy):
 
 
 def d2u(d):
-    return dict((k.replace('-', '_'), v) for (k, v) in d.iteritems())
+    return dict((k.replace('-', '_'), v) for (k, v) in d.items())
 
 
 def mini_fmt(v, d=5, try_fmts='fe'):
     for fmt in try_fmts:
-        for i in xrange(d, -1, -1):
+        for i in range(d, -1, -1):
             s = ('%%%i.%i%s' % (d, i, fmt)) % v
             if len(s) <= d and (v == 0.0 or float(s) != 0.0):
                 return s
@@ -496,8 +498,8 @@ def print_scatter(model, p=0.0, interface=None):
         discontinuities = model.discontinuities()
 
     for discontinuity in discontinuities:
-        print '%s (%g km)' % (discontinuity, discontinuity.z/cake.km)
-        print
+        print('%s (%g km)' % (discontinuity, discontinuity.z/cake.km))
+        print()
         cols = []
         for in_direction in (cake.DOWN, cake.UP):
             for in_mode in (cake.P, cake.S):
@@ -534,10 +536,10 @@ def print_scatter(model, p=0.0, interface=None):
                 cols.append((line1, line2, line3, line4, line5))
 
         for cols in zip(*cols):
-            print '  ' + '   '.join(cols)
+            print('  ' + '   '.join(cols))
 
-        print
-        print
+        print()
+        print()
 
 
 def print_arrivals(
@@ -555,9 +557,9 @@ def print_arrivals(
     hline = ' '.join(x.ljust(s) for (x, s) in zip(headers, space))
     uline = ' '.join(('%s' % x).ljust(s) for (x, s) in zip(units, space))
 
-    print hline
-    print uline
-    print '-' * len(hline)
+    print(hline)
+    print(uline)
+    print('-' * len(hline))
 
     for ray in model.arrivals(
             distances=distances, phases=phases, zstart=zstart, zstop=zstop):
@@ -571,11 +573,11 @@ def print_arrivals(
 
         su = '(%s)' % ray.path.used_phase(p=ray.p, eps=1.0).used_repr()
 
-        print ' '.join(tuple(mini_fmt(x, s).rjust(s) for (x, s) in zip(
+        print(' '.join(tuple(mini_fmt(x, s).rjust(s) for (x, s) in zip(
             (slow, sd, ray.t, ray.takeoff_angle(), ray.incidence_angle(),
              100*ray.efficiency(), 100*ray.spreading()*ray.surface_sphere()),
             space)) + tuple(
-                x.ljust(17) for x in (ray.path.phase.definition(), su)))
+                x.ljust(17) for x in (ray.path.phase.definition(), su))))
 
 
 def main(args=None):
@@ -635,19 +637,19 @@ To get further help and a list of available options for any subcommand run:
 
         if 'model' in c:
             if c.output_format == 'textual':
-                print c.model
-                print
+                print(c.model)
+                print()
             elif c.output_format == 'nd':
                 cake.write_nd_model_fh(c.model, sys.stdout)
 
         if 'phases' in c:
             for phase in c.phases:
-                print phase
-            print
+                print(phase)
+            print()
 
         if 'material' in c:
-            print c.material.describe()
-            print
+            print(c.material.describe())
+            print()
 
     elif command == 'arrivals':
         c = optparse(
@@ -666,7 +668,7 @@ To get further help and a list of available options for any subcommand run:
 
         mod = c.model
         for path in mod.gather_paths(**c.getn('phases', 'zstart', 'zstop')):
-            print path.describe(path.endgaps(c.zstart, c.zstop), c.as_degrees)
+            print(path.describe(path.endgaps(c.zstart, c.zstop), c.as_degrees))
 
     elif command in ('plot-xt', 'plot-xp', 'plot-rays', 'plot'):
         if command in ('plot-xt', 'plot'):
@@ -727,13 +729,13 @@ To get further help and a list of available options for any subcommand run:
     elif command in ('list-models',):
         c = optparse((), (), usage=subusage, descr=descr)
         for x in cake.builtin_models():
-            print x
+            print(x)
 
     elif command in ('list-phase-map',):
         c = optparse((), (), usage=subusage, descr=descr)
         defs = cake.PhaseDef.classic_definitions()
         for k in sorted(defs.keys()):
-            print '%-15s: %s' % (k, ', '.join(defs[k]))
+            print('%-15s: %s' % (k, ', '.join(defs[k])))
 
     elif command in ('scatter',):
         c = optparse(

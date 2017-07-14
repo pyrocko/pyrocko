@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import zip
+
 from pyrocko.snuffling import Param, Snuffling, Switch, Choice
 from pyrocko.gui_util import Marker
 
@@ -158,7 +161,7 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
 
                 for t, a in zip(tpeaks, apeaks):
                     mark = Marker([], t, t)
-                    print mark, a
+                    print(mark, a)
                     markers.append(mark)
 
                 if show_level_traces:

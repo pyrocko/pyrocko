@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from builtins import range
 
 import sys
 import re
@@ -190,7 +192,7 @@ def command_init(args):
 
         try:
             source = gf.Store(source_dir)
-        except gf.StoreError, e:
+        except gf.StoreError as e:
             die(e)
 
         config = copy.deepcopy(source.config)
@@ -199,7 +201,7 @@ def command_init(args):
         try:
             config_filenames = gf.store.Store.create_editables(
                 dest_dir, config=config)
-        except gf.StoreError, e:
+        except gf.StoreError as e:
             die(e)
 
         logger.info(
@@ -218,7 +220,7 @@ def command_init(args):
         module, variant = fomo_wrapper_module(modelling_code_id)
         try:
             config_filenames = module.init(store_dir, variant)
-        except gf.StoreError, e:
+        except gf.StoreError as e:
             die(e)
 
         logger.info('(1) configure settings in files:\n  %s'
@@ -298,7 +300,7 @@ def command_build(args):
             step=step,
             iblock=iblock)
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
 
@@ -311,11 +313,11 @@ def command_stats(args):
         store = gf.Store(store_dir)
         s = store.stats()
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
     for k in store.stats_keys:
-        print '%s: %s' % (k, s[k])
+        print('%s: %s' % (k, s[k]))
 
 
 def command_check(args):
@@ -329,7 +331,7 @@ def command_check(args):
         if problems:
             die('problems detected with gf store: %s' % store_dir)
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
 
@@ -372,7 +374,7 @@ def command_decimate(args):
         store.make_decimated(decimate, config=config, force=options.force,
                              show_progress=True)
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
 
@@ -392,7 +394,7 @@ def command_redeploy(args):
 
     try:
         source = gf.Store(source_store_dir)
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
     try:
@@ -403,7 +405,7 @@ def command_redeploy(args):
     try:
         dest = gf.Store(dest_store_dir, 'w')
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
     show_progress = True
@@ -416,10 +418,10 @@ def command_redeploy(args):
             tr = source.get(args, interpolation='off')
             dest.put(args, tr)
 
-        except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate), e:
+        except (gf.meta.OutOfBounds, gf.store.NotAllowedToInterpolate) as e:
             logger.debug('skipping %s, (%s)' % (sindex(args), e))
 
-        except gf.store.StoreError, e:
+        except gf.store.StoreError as e:
             logger.warn('cannot insert %s, (%s)' % (sindex(args), e))
 
         if show_progress:
@@ -448,7 +450,7 @@ def command_view(args):
     if options.extract:
         try:
             gdef = gf.meta.parse_grid_spec(options.extract)
-        except gf.meta.GridSpecError, e:
+        except gf.meta.GridSpecError as e:
             die(e)
 
     store_dirs = get_store_dirs(args)
@@ -508,7 +510,7 @@ def command_view(args):
 
                 ii += 1
 
-    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds), e:
+    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
         die(e)
 
     trace.snuffle(traces, markers=markers)
@@ -535,7 +537,7 @@ def command_extract(args):
 
     try:
         gdef = gf.meta.parse_grid_spec(sdef)
-    except gf.meta.GridSpecError, e:
+    except gf.meta.GridSpecError as e:
         die(e)
 
     store_dir = get_store_dir(args)
@@ -568,7 +570,7 @@ def command_extract(args):
                     format=options.format,
                     additional=additional)
 
-    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds), e:
+    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
         die(e)
 
 
@@ -618,7 +620,7 @@ def command_import(args):
             source_depth, distance = [float(x) for x in args]
             traces = db.get_traces_pyrocko(distance, source_depth)
             ig_to_trace = dict((tr.meta['ig']-1, tr) for tr in traces)
-            for ig in xrange(db.ng):
+            for ig in range(db.ng):
                 if ig in ig_to_trace:
                     tr = ig_to_trace[ig]
                     gf_tr = gf.store.GFTrace(
@@ -639,7 +641,7 @@ def command_import(args):
 
         dest.close()
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
 
@@ -705,12 +707,12 @@ def command_export(args):
     for i, (z, x) in enumerate(config.iter_nodes(level=-1)):
 
         data_out = []
-        for ig in xrange(config.ncomponents):
+        for ig in range(config.ncomponents):
             try:
                 tr = source.get((z, x, ig), interpolation='off')
                 data_out.append((tr.t, tr.data * config.factor))
 
-            except gf.store.StoreError, e:
+            except gf.store.StoreError as e:
                 logger.warn('cannot get %s, (%s)' % (sindex((z, x, ig)), e))
                 data_out.append(None)
 
@@ -764,7 +766,7 @@ def command_ttt(args):
         store = gf.Store(store_dir)
         store.make_ttt(force=options.force)
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
 
@@ -801,7 +803,7 @@ def command_tttview(args):
             phase.plot_2d(axes)
             axes.set_title(phase_id)
             np += 1
-        except gf.StoreError, e:
+        except gf.StoreError as e:
             die(e)
 
     axes = plt.subplot(2, 1, 2)
@@ -857,7 +859,7 @@ def command_tttextract(args):
 
     try:
         gdef = gf.meta.parse_grid_spec(sdef)
-    except gf.meta.GridSpecError, e:
+    except gf.meta.GridSpecError as e:
         die(e)
 
     store_dir = get_store_dir(args)
@@ -884,9 +886,9 @@ def command_tttextract(args):
                     f.write(' '.join(s))
                     f.write('\n')
             else:
-                print ' '.join(s)
+                print(' '.join(s))
 
-    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds), e:
+    except (gf.meta.GridSpecError, gf.StoreError, gf.meta.OutOfBounds) as e:
         die(e)
 
 
@@ -934,7 +936,7 @@ def command_download(args):
 
     try:
         ws.download_gf_store(site=site, store_id=store_id, force=options.force)
-    except ws.DownloadError, e:
+    except ws.DownloadError as e:
         die(str(e))
 
 
@@ -997,7 +999,7 @@ def command_modelview(args):
 
                 yscaled(1./km, ax)
 
-        except gf.StoreError, e:
+        except gf.StoreError as e:
             die(e)
 
     for p, ax in axes.items():
@@ -1045,12 +1047,12 @@ def command_upgrade(args):
             store = gf.Store(store_dir)
             nup = store.upgrade()
             if nup == 0:
-                print '%s: already up-to-date.' % store_dir
+                print('%s: already up-to-date.' % store_dir)
             else:
-                print '%s: %i file%s upgraded.' % (
-                    store_dir, nup, ['s', ''][nup == 1])
+                print('%s: %i file%s upgraded.' % (
+                    store_dir, nup, ['s', ''][nup == 1]))
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
 
@@ -1093,7 +1095,7 @@ def command_addref(args):
 
             store.save_config(make_backup=True)
 
-        except gf.StoreError, e:
+        except gf.StoreError as e:
             die(e)
 
 
@@ -1106,14 +1108,14 @@ def command_qc(args):
         store = gf.Store(store_dir)
         s = store.stats()
         if s['empty'] != 0:
-            print 'has empty records'
+            print('has empty records')
 
         for aname in ['author', 'author_email', 'description', 'references']:
 
             if not getattr(store.config, aname):
-                print '%s empty' % aname
+                print('%s empty' % aname)
 
-    except gf.StoreError, e:
+    except gf.StoreError as e:
         die(e)
 
 

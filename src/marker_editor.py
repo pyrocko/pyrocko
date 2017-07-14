@@ -1,11 +1,17 @@
-import numpy as num
+from builtins import zip
+from builtins import str
+from builtins import range
+
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.beachball import mt2beachball, BeachballError
-from pyrocko import orthodrome, moment_tensor
+from pyrocko.moment_tensor import kagan_angle
 from pyrocko.plot import tango_colors
+from pyrocko import orthodrome
+
+import numpy as num
 import logging
 
 logger = logging.getLogger('pyrocko.marker_editor')
@@ -98,8 +104,7 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
         if index.column() == _column_mapping['MT']:
             mt = self.get_mt_from_index(index)
             if mt:
-                key = qc.QString(
-                    ''.join(map(lambda x: str(round(x, 1)), mt.m6())))
+                key = qc.QString(''.join([str(round(x, 1)) for x in mt.m6()]))
                 pixmap = qg.QPixmap()
                 found = self.bbcache.find(key, pixmap)
                 if found:
@@ -194,8 +199,8 @@ class MarkerTableView(qg.QTableView):
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
                             'NSLCs', 'Kagan Angle [deg]', 'MT']
-        self.menu_items = dict(zip(self.menu_labels,
-                                   [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11]))
+        self.menu_items = dict(zip(
+            self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11]))
 
         self.editable_columns = [2, 3, 4, 5, 6, 7]
 
@@ -235,7 +240,7 @@ class MarkerTableView(qg.QTableView):
                 qc.QPoint(self.viewport().rect().x(), height))
             v = self.verticalHeader()
             v.setDefaultSectionSize(
-                max(12, v.defaultSectionSize()+wheel_event.delta()/60))
+                max(12, v.defaultSectionSize()+wheel_event.delta()//60))
             self.scrollTo(ci)
             if v.isVisible():
                 self.toggle_numbering(False)
@@ -434,7 +439,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                 s = marker.kind
 
             elif index.column() == _column_mapping['Dist [km]']:
-                if marker in self.distances.keys():
+                if marker in self.distances:
                     s = self.distances[marker]
 
             elif index.column() == _column_mapping['NSLCs']:
@@ -444,7 +449,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                 s = '|'.join(strs)
 
             elif index.column() == _column_mapping['Kagan Angle [deg]']:
-                if marker in self.kagan_angles.keys():
+                if marker in self.kagan_angles:
                     s = round(self.kagan_angles[marker], 1)
 
             elif index.column() == _column_mapping['MT']:
@@ -500,7 +505,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
         if want_distances:
             lats = num.zeros(nevents)
             lons = num.zeros(nevents)
-            for i in xrange(nevents):
+            for i in range(nevents):
                 lats[i] = events[i].lat
                 lons[i] = events[i].lon
 
@@ -511,16 +516,16 @@ class MarkerTableModel(qc.QAbstractTableModel):
             dists = orthodrome.distance_accurate50m_numpy(
                 lats, lons, olats, olons)
             dists /= 1000.
-            dists = map(lambda x: round(x, 1), dists)
-            self.distances = dict(zip(emarkers, dists))
+
+            dists = [round(x, 1) for x in dists]
+            self.distances = dict(list(zip(emarkers, dists)))
 
         if want_angles:
             if oevent.moment_tensor:
                 for em in emarkers:
                     e = em.get_event()
                     if e.moment_tensor:
-                        a = moment_tensor.kagan_angle(
-                            oevent.moment_tensor, e.moment_tensor)
+                        a = kagan_angle(oevent.moment_tensor, e.moment_tensor)
                         self.kagan_angles[em] = a
             else:
                 self.kagan_angles = {}

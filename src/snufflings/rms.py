@@ -67,7 +67,7 @@ class RootMeanSquareSnuffling(Snuffling):
 
         # add the newly created traces to the viewer
         if rms_by_nslc.values():
-            self.add_traces(rms_by_nslc.values())
+            self.add_traces(list(rms_by_nslc.values()))
 
 
 def __snufflings__():
