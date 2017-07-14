@@ -119,9 +119,35 @@ class UtilTestCase(unittest.TestCase):
             num.linspace(0., 1.1, 12))
 
     def test_gform(self):
+        s = ''
         for i in range(-11, 12):
             v = 1/3. * 10**i
-            print('|%s|' % util.gform(v))
+            s += '|%s|\n' % util.gform(v)
+
+        self.assertEqual(s.strip(), '''
+|   3.33E-12 |
+|   3.33E-11 |
+|   3.33E-10 |
+|   3.33E-09 |
+|   3.33E-08 |
+|   3.33E-07 |
+|   3.33E-06 |
+|   3.33E-05 |
+|   3.33E-04 |
+|   3.33E-03 |
+|   3.33E-02 |
+|   0.333    |
+|   3.33     |
+|  33.3      |
+| 333.       |
+|   3.33E+03 |
+|   3.33E+04 |
+|   3.33E+05 |
+|   3.33E+06 |
+|   3.33E+07 |
+|   3.33E+08 |
+|   3.33E+09 |
+|   3.33E+10 |'''.strip())
 
 
 if __name__ == "__main__":
