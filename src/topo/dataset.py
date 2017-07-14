@@ -1,11 +1,14 @@
+from __future__ import absolute_import, division
+from builtins import range
+
 import math
 import logging
 import os.path as op
 
 import numpy as num
 
-from pyrocko import util
-from pyrocko.topo import tile
+from . import tile
+from .. import util
 
 logger = logging.getLogger('pyrocko.topo.dataset')
 
@@ -31,8 +34,8 @@ class TiledGlobalDataset(object):
         self.stx = (self.ntx - 1) * self.dx
         self.sty = (self.nty - 1) * self.dy
 
-        self.ntilesx = (self.nx - 1) / (self.ntx - 1)
-        self.ntilesy = (self.ny - 1) / (self.nty - 1)
+        self.ntilesx = (self.nx - 1) // (self.ntx - 1)
+        self.ntilesy = (self.ny - 1) // (self.nty - 1)
 
         self.name = name
         self.dtype = dtype
@@ -99,8 +102,8 @@ class TiledGlobalDataset(object):
                 itymin -= 1
 
         indices = []
-        for ity in xrange(itymin, itymax):
-            for itx in xrange(itxmin, itxmax):
+        for ity in range(itymin, itymax):
+            for itx in range(itxmin, itxmax):
                 indices.append((itx % self.ntilesx, ity))
 
         return indices
@@ -146,8 +149,8 @@ class DecimatedTiledGlobalDataset(TiledGlobalDataset):
         assert (base.nx - 1) % ndeci == 0
         assert (base.ny - 1) % ndeci == 0
 
-        nx = (base.nx - 1) / ndeci + 1
-        ny = (base.ny - 1) / ndeci + 1
+        nx = (base.nx - 1) // ndeci + 1
+        ny = (base.ny - 1) // ndeci + 1
 
         if ntx is None:
             ntx = base.ntx
@@ -169,7 +172,7 @@ class DecimatedTiledGlobalDataset(TiledGlobalDataset):
         self.ndeci = ndeci
 
     def make_tile(self, itx, ity, fpath):
-        nh = self.ndeci / 2
+        nh = self.ndeci // 2
         xmin = self.xmin + itx*self.stx - self.base.dx * nh
         xmax = self.xmin + (itx+1)*self.stx + self.base.dx * nh
         ymin = self.ymin + ity*self.sty - self.base.dy * nh
@@ -217,6 +220,6 @@ class DecimatedTiledGlobalDataset(TiledGlobalDataset):
             self.dx, self.dx, data)
 
     def make_all_missing(self):
-        for ity in xrange(self.ntilesy):
-            for itx in xrange(self.ntilesx):
+        for ity in range(self.ntilesy):
+            for itx in range(self.ntilesx):
                 self.make_if_needed(itx, ity)

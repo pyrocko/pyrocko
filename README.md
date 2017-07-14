@@ -87,7 +87,7 @@ For documentation and installation instructions please see
 - [ ] ``spit.py``
 - [x] ``suds.py``
 - [x] ``tectonics.py``
-- [ ] ``topo/``
+- [x] ``topo/``
 - [x] ``trace.py``
 - [x] ``util_ext.c``
 - [x] ``util.py``

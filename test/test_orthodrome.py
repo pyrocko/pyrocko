@@ -14,6 +14,10 @@ config = pyrocko.config.config()
 logger = logging.getLogger('OrthodromeTest')
 benchmark = Benchmark()
 
+earth_oblateness = 1./298.257223563
+earthradius_equator = 6378.14 * 1000.
+earthradius = config().earthradius
+
 r2d = 180./math.pi
 d2r = 1./r2d
 km = 1000.

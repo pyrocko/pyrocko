@@ -1,11 +1,13 @@
+from __future__ import absolute_import
+
 
 import os
 import re
 import math
 import os.path as op
 
-from pyrocko import config, util
-from pyrocko.topo import srtmgl3, etopo1, dataset, tile
+from . import srtmgl3, etopo1, dataset, tile
+from .. import config, util
 
 positive_region = tile.positive_region
 

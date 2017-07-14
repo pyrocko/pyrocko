@@ -1,8 +1,10 @@
+from __future__ import absolute_import, division
+
 import math
 import numpy as num
 import scipy.signal
 
-from pyrocko.orthodrome import positive_region
+from ..orthodrome import positive_region
 
 
 class OutOfBounds(Exception):

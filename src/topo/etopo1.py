@@ -1,9 +1,12 @@
+from __future__ import absolute_import
+from builtins import range
+
 import zipfile
 import os.path as op
 
 import numpy as num
 
-from pyrocko.topo import tile, dataset
+from . import tile, dataset
 
 citation = '''
 Amante, C. and B.W. Eakins, 2009. ETOPO1 1 Arc-Minute Global Relief Model:
@@ -51,8 +54,8 @@ class ETOPO1(dataset.TiledGlobalDataset):
         assert data.size == self.nx * self.ny
         data = data.reshape((self.ny, self.nx))[::-1]
 
-        for ity in xrange(self.ntilesy):
-            for itx in xrange(self.ntilesx):
+        for ity in range(self.ntilesy):
+            for itx in range(self.ntilesx):
                 tiledata = data[ity*(self.nty-1):(ity+1)*(self.nty-1)+1,
                                 itx*(self.ntx-1):(itx+1)*(self.ntx-1)+1]
 

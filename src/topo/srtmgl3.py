@@ -1,8 +1,12 @@
+from __future__ import absolute_import
 
+import re
 import zipfile
 import os.path as op
-import urllib2
-import re
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
 
 import numpy as num
 
@@ -75,7 +79,7 @@ class SRTMGL3(dataset.TiledGlobalDataset):
 
             else:
                 url = self.raw_data_url + '/'
-                f = urllib2.urlopen(url)
+                f = urlopen(url)
                 data = f.read()
                 available = re.findall(
                     r'([NS]\d\d[EW]\d\d\d)\.SRTMGL3\.hgt', data)

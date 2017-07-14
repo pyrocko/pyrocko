@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import subprocess
 import calendar
 import time
@@ -7,7 +9,7 @@ import logging
 
 import numpy as num
 
-from pyrocko import trace
+from . import trace
 
 logger = logging.getLogger('pyrocko.slink')
 
@@ -20,7 +22,7 @@ class SlowSlinkError(Exception):
     pass
 
 
-class SlowSlink:
+class SlowSlink(object):
     def __init__(self, host='geofon.gfz-potsdam.de', port=18000):
         self.host = host
         self.port = port
@@ -32,7 +34,7 @@ class SlowSlink:
         logger.debug('Running %s' % ' '.join(cmd))
         try:
             slink = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        except OSError, e:
+        except OSError as e:
             raise SlowSlinkError('Could not start "slinktool": %s' % str(e))
 
         (a, b) = slink.communicate()
@@ -73,7 +75,7 @@ class SlowSlink:
                 preexec_fn=preexec,
                 close_fds=True)
 
-        except OSError, e:
+        except OSError as e:
             raise SlowSlinkError('Could not start "slinktool": %s' % str(e))
 
         logger.debug('Started.')

@@ -88,8 +88,9 @@ def download_file(url, fpath, username=None, password=None):
     try:
         req = Request(url)
         if username and password:
-            base64string = base64.b64encode('%s:%s' % (username, password))
-            req.add_header("Authorization", "Basic %s" % base64string)
+            cred = '%s:%s' % (username, password)
+            base64string = base64.b64encode(cred.encode('ascii'))
+            req.add_header(b"Authorization", b"Basic %s" % base64string)
 
         opener = build_opener(HTTPCookieProcessor())
 
