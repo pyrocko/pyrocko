@@ -67,6 +67,13 @@ class PileTestCase(unittest.TestCase):
         assert set(p.stations) == set(stations)
         assert set(p.channels) == set(channels)
 
+        ntr = 0
+        for tr in p.iter_traces():
+            ntr += 1
+            assert tr.data_len() == nsamples
+
+        assert ntr == nfiles
+
         toff = 0
         while toff < nfiles*nsamples:
 
@@ -86,11 +93,11 @@ class PileTestCase(unittest.TestCase):
             toff += nsamples
 
         s = 0
-        for traces in p.chopper(tmin=None, tmax=p.tmax+1., tinc=122.):
+        for traces in p.chopper(tmin=None, tmax=p.tmax+1., tinc=122., degap=False):
             for tr in traces:
                 s += num.sum(tr.ydata)
 
-        assert s == nfiles*nsamples
+        assert int(round(s)) == nfiles*nsamples
 
         for fn in filenames:
             os.utime(fn, None)

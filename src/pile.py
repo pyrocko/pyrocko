@@ -225,7 +225,7 @@ class TracesFileCache(object):
 
     def _load_dircache(self, cachefilename):
 
-        f = open(cachefilename, 'r')
+        f = open(cachefilename, 'rb')
         cache = pickle.load(f)
         f.close()
 
@@ -1047,7 +1047,7 @@ class Pile(TracesGroup):
             self, chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
             tpad):
 
-        chopped.sort(lambda a, b: cmp(a.full_id, b.full_id))
+        chopped.sort(key=lambda a: a.full_id)
         if degap:
             chopped = degapper(chopped, maxgap=maxgap, maxlap=maxlap)
 
