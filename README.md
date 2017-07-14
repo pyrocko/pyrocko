@@ -66,7 +66,7 @@ For documentation and installation instructions please see
 - [x] ``parimap.py``
 - [x] ``parstack_ext.c``
 - [x] ``parstack.py``
-- [ ] ``pchain.py``
+- [x] ``pchain.py``
 - [ ] ``pile.py``
 - [ ] ``pile_viewer.py``
 - [x] ``plot.py``
