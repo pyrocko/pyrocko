@@ -3,6 +3,7 @@
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
 
+from __future__ import print_function
 import subprocess
 from cStringIO import StringIO
 import re
@@ -1230,15 +1231,15 @@ def diff_defaults(v1, v2):
     d2 = gmt_default_config(v2)
     for k in d1:
         if k not in d2:
-            print '%s not in %s' % (k, v2)
+            print('%s not in %s' % (k, v2))
         else:
             if d1[k] != d2[k]:
-                print '%s %s = %s' % (v1, k, d1[k])
-                print '%s %s = %s' % (v2, k, d2[k])
+                print('%s %s = %s' % (v1, k, d1[k]))
+                print('%s %s = %s' % (v2, k, d2[k]))
 
     for k in d2:
         if k not in d1:
-            print '%s not in %s' % (k, v1)
+            print('%s not in %s' % (k, v1))
 
 # diff_defaults('4.5.2', '4.5.3')
 
