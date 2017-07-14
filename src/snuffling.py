@@ -38,7 +38,7 @@ class MyFrame(qg.QFrame):
         self.emit(qc.SIGNAL('widgetVisibilityChanged(bool)'), False)
 
 
-class Param:
+class Param(object):
     '''
     Definition of an adjustable floating point parameter for the
     snuffling. The snuffling may display controls for user input for
@@ -79,7 +79,7 @@ class Param:
         self._control = None
 
 
-class Switch:
+class Switch(object):
     '''
     Definition of a boolean switch for the snuffling. The snuffling
     may display a checkbox for such a switch.
@@ -95,7 +95,7 @@ class Switch:
         self.default = default
 
 
-class Choice:
+class Choice(object):
     '''
     Definition of a string choice for the snuffling. The snuffling
     may display a menu for such a choice.
@@ -113,7 +113,7 @@ class Choice:
         self.choices = choices
 
 
-class Snuffling:
+class Snuffling(object):
     '''Base class for user snufflings.
 
     Snufflings are plugins for snuffler (and other applications using the
@@ -704,7 +704,7 @@ class Snuffling:
     def set_settings(self, settings):
         params = self.get_parameters()
         dparams = dict([(param.ident, param) for param in params])
-        for k, v in settings.iteritems():
+        for k, v in settings.items():
             if k in dparams:
                 self._set_parameter_value(k, v)
                 if k in self._param_controls:
@@ -809,7 +809,7 @@ class Snuffling:
         '''
 
         v = self.get_viewer()
-        stations = v.stations.values()
+        stations = list(v.stations.values())
         return stations
 
     def get_markers(self):
@@ -1190,7 +1190,7 @@ class Snuffling:
                     def f():
                         try:
                             method()
-                        except SnufflingError, e:
+                        except SnufflingError as e:
                             if not isinstance(e, SnufflingCallFailed):
                                 # those have logged within error()
                                 logger.error('%s: %s' % (self._name, e))
@@ -1442,7 +1442,7 @@ class Snuffling:
 
         if self._filename:
             import cgi
-            import urllib
+            import urllib.parse
             code = open(self._filename, 'r').read()
 
             doc_src = qg.QLabel(
@@ -1455,7 +1455,7 @@ class Snuffling:
 <pre style="white-space: pre-wrap"><code>%s
 </code></pre></p></body></html>'''
                 % (
-                    urllib.quote(self._filename),
+                    urllib.parse.quote(self._filename),
                     cgi.escape(self._filename),
                     cgi.escape(code)))
 
@@ -1546,7 +1546,7 @@ class Snuffling:
         try:
             self.call()
             return 0
-        except SnufflingError, e:
+        except SnufflingError as e:
             if not isinstance(e, SnufflingCallFailed):
                 # those have logged within error()
                 logger.error('%s: %s' % (self._name, e))
@@ -1635,7 +1635,7 @@ class InvalidSnufflingFilename(Exception):
     pass
 
 
-class SnufflingModule:
+class SnufflingModule(object):
     '''
     Utility class to load/reload snufflings from a file.
 

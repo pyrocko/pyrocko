@@ -82,7 +82,7 @@ For documentation and installation instructions please see
 - [x] ``signal_ext.c``
 - [ ] ``slink.py``
 - [ ] ``snuffler.py``
-- [ ] ``snuffling.py``
+- [x] ``snuffling.py``
 - [x] ``snufflings/``
 - [ ] ``spit.py``
 - [x] ``suds.py``
