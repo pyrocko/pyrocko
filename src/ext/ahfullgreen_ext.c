@@ -36,27 +36,35 @@ const char* ahfullgreen_error_names[] = {
     "BAD_ARRAY",
 };
 
-static PyObject *Error;
+struct module_state {
+    PyObject *error;
+};
 
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state); (void) m;
+static struct module_state _state;
+#endif
 
 int good_array(PyObject* o, int typenum, ssize_t size_want) {
     if (!PyArray_Check(o)) {
-        PyErr_SetString(Error, "not a NumPy array" );
+        PyErr_SetString(PyExc_AttributeError, "not a NumPy array" );
         return 0;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum) {
-        PyErr_SetString(Error, "array of unexpected type");
+        PyErr_SetString(PyExc_AttributeError, "array of unexpected type");
         return 0;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(Error, "array is not contiguous or not well behaved");
+        PyErr_SetString(PyExc_AttributeError, "array is not contiguous or not well behaved");
         return 0;
     }
 
     if (size_want != -1 && size_want != PyArray_SIZE((PyArrayObject*)o)) {
-        PyErr_SetString(Error, "array is of wrong size");
+        PyErr_SetString(PyExc_ValueError, "array is of wrong size");
         return 0;
     }
 
@@ -68,7 +76,7 @@ static ahfullgreen_error_t numpy_or_none_to_c_double(
 
     if (o == Py_None) {
         if (size_want > 0) {
-            PyErr_SetString(Error, "array is of wrong size");
+            PyErr_SetString(PyExc_AttributeError, "array is of wrong size");
             return BAD_ARRAY;
         }
         *arr = NULL;
@@ -87,7 +95,7 @@ static ahfullgreen_error_t numpy_or_none_to_c_complex(
 
     if (o == Py_None) {
         if (size_want > 0) {
-            PyErr_SetString(Error, "array is of wrong size");
+            PyErr_SetString(PyExc_AttributeError, "array is of wrong size");
             return BAD_ARRAY;
         }
         *arr = NULL;
@@ -260,7 +268,7 @@ static ahfullgreen_error_t add_seismogram(
     return SUCCESS;
 }
 
-static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
+static PyObject* w_add_seismogram(PyObject *m, PyObject *args) {
     double vp, vs, density, qp, qs;
     double *x;
     double *f;
@@ -290,7 +298,7 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
     ahfullgreen_error_t err;
     size_t dummy_size;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "dddddOOOiddOOOiii",
             &vp, &vs, &density, &qp, &qs, &x_arr, &f_arr, &m6_arr,
@@ -298,7 +306,7 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
             &out_x_arr, &out_y_arr, &out_z_arr, &want_far, &want_intermediate,
             &want_near)) {
 
-        PyErr_SetString(Error,
+        PyErr_SetString(st->error,
             "usage: add_seismogram(vp, vs, density, qp, qs, x, f, m6, "
             "out_quantity, out_delta, out_offset, "
             "out_x, out_y, out_z, want_far, want_intermediate, want_near)");
@@ -316,7 +324,7 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
         (!(out_y_size == 0 || out_y_size == out_size)) ||
         (!(out_z_size == 0 || out_z_size == out_size))) {
 
-        PyErr_SetString(Error, "differing output array sizes");
+        PyErr_SetString(st->error, "differing output array sizes");
         return NULL;
     }
 
@@ -330,33 +338,79 @@ static PyObject* w_add_seismogram(PyObject *dummy, PyObject *args) {
         out_x, out_y, out_z, want_far, want_intermediate, want_near);
 
     if (err != SUCCESS) {
-        PyErr_SetString(Error, ahfullgreen_error_names[err]);
+        PyErr_SetString(st->error, ahfullgreen_error_names[err]);
         return NULL;
     }
 
     return Py_BuildValue("");
 }
 
-static PyMethodDef StoreExtMethods[] = {
+static PyMethodDef ahfullgreen_ext_methods[] = {
     {"add_seismogram", w_add_seismogram, METH_VARARGS,
         "Add seismogram to array." },
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC
-initahfullgreen_ext(void)
-{
-    PyObject *m;
+#if PY_MAJOR_VERSION >= 3
 
-    m = Py_InitModule("ahfullgreen_ext", StoreExtMethods);
-    if (m == NULL) return;
-    import_array();
-
-    Error = PyErr_NewException("pyrocko.ahfullgreen_ext.Error", NULL, NULL);
-    Py_INCREF(Error);  /* required, because other code could remove `error`
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(m, "Error", Error);
+static int ahfullgreen_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
 }
 
+static int ahfullgreen_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "ahfullgreen_ext",
+        NULL,
+        sizeof(struct module_state),
+        ahfullgreen_ext_methods,
+        NULL,
+        ahfullgreen_ext_traverse,
+        ahfullgreen_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_ahfullgreen_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initahfullgreen_ext(void)
+#endif
+
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("ahfullgreen_ext", ahfullgreen_ext_methods);
+#endif
+    import_array();
+
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+    st->error = PyErr_NewException("pyrocko.ahfullgreen_ext.Error", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+    }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "Error", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
+}

@@ -12,26 +12,26 @@ import signal
 
 from pyrocko import moment_tensor_viewer as mtv
 
-from PyQt4.QtCore import *  # noqa
-from PyQt4.QtGui import *  # noqa
+from PyQt4 import QtCore, QtGui
 
 
-class Momo(QApplication):
+class Momo(QtCore.QApplication):
 
     def __init__(self, *args):
-        apply(QApplication.__init__, (self,) + args)
+        apply(QtCore.QApplication.__init__, (self,) + args)
 
         viewer = mtv.BeachballView()
         editor = mtv.MomentTensorEditor()
 
-        self.win = QMainWindow()
+        self.win = QtGui.QMainWindow()
         self.win.setWindowTitle('Momo - Moment Tensor Calculator')
         self.win.setCentralWidget(viewer)
 
-        dockwin = QDockWidget('Moment Tensor')
+        dockwin = QtGui.QDockWidget('Moment Tensor')
         dockwin.setWidget(editor)
-        self.win.addDockWidget(Qt.BottomDockWidgetArea, dockwin)
-        self.connect(editor, SIGNAL("moment_tensor_changed(PyQt_PyObject)"),
+        self.win.addDockWidget(QtCore.Qt.BottomDockWidgetArea, dockwin)
+        self.connect(editor,
+                     QtCore.SIGNAL("moment_tensor_changed(PyQt_PyObject)"),
                      viewer.set_moment_tensor)
         self.win.show()
 
@@ -39,7 +39,7 @@ class Momo(QApplication):
         sb.clearMessage()
         sb.showMessage('Welcome to Momo!')
 
-        self.connect(self, SIGNAL("lastWindowClosed()"), self.myquit)
+        self.connect(self, QtCore.SIGNAL("lastWindowClosed()"), self.myquit)
         signal.signal(signal.SIGINT, self.myquit)
 
     def myquit(self, *args):
@@ -47,11 +47,11 @@ class Momo(QApplication):
 
 
 def main(args):
-
     app = Momo(args)
     app.exec_()
 
     sys.exit()
+
 
 if __name__ == "__main__":
     main(sys.argv)

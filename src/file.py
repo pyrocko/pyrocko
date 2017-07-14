@@ -254,8 +254,10 @@ class Record(object):
 
         n = len(sizes) // 3
         keys = []
-        keys = [str(self.read(sizes[j]).decode('ascii')) for j in range(n)]
-        types = [str(self.read(sizes[j]).decode('ascii')) for j in range(n, 2*n)]
+        keys = [str(self.read(sizes[j]).decode('ascii'))
+                for j in range(n)]
+        types = [str(self.read(sizes[j]).decode('ascii'))
+                 for j in range(n, 2*n)]
         for key, type, j in zip(keys, types, range(2*n, 3*n)):
             yield key, type, sizes[j]
 

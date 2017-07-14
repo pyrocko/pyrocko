@@ -1,8 +1,8 @@
 # python 2/3
-
 from __future__ import print_function
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # noqa
+
 from builtins import range
 from pyrocko import trace, util, model, pile
 import unittest
@@ -741,6 +741,15 @@ class TraceTestCase(unittest.TestCase):
                 stalta_ref.chop(float(l-s), float(n-s))
 
                 assert numeq(stalta.ydata, stalta_ref.ydata, 1e-3)
+
+    def test_trace_equal(self):
+        ydata = num.arange(10)
+        tr1 = trace.Trace(ydata=ydata)
+        tr2 = trace.Trace(ydata=ydata)
+
+        tr_set = set([tr1, tr2])
+
+        assert len(tr_set), 2
 
 
 if __name__ == "__main__":

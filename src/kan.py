@@ -39,12 +39,11 @@ class KanFile:
         nbh = KanFile.nbytes_header
 
         # read in all data
-        f = open(filename, 'rb')
-        if load_data:
-            filedata = f.read()
-        else:
-            filedata = f.read(nbh)
-        f.close()
+        with open(filename, 'rb') as f:
+            if load_data:
+                filedata = f.read()
+            else:
+                filedata = f.read(nbh)
 
         if len(filedata) < nbh:
             raise KanError('File too short to be a KAN file.')
@@ -62,8 +61,8 @@ class KanFile:
         assert datatype == 2
         assert offset == 0.0
 
-        date = filedata[393:405].strip()
-        tim = filedata[405:415].strip()
+        date = str(filedata[393:405].decode('ascii')).strip()
+        tim = str(filedata[405:415].decode('ascii')).strip()
         microseconds = int(filedata[415:423])
         ref_time = util.ctimegm('%s %s' % (date, tim)) + microseconds/1.0e6
 

@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from builtins import str
 
 import sys
 import struct
@@ -41,10 +42,10 @@ class SudsStatident(SudsStructBase, namedtuple(
 
     def nslc(self):
         return (
-            self.network.rstrip(b'\0 '),
-            self.st_name.rstrip(b'\0 '),
+            str(self.network.rstrip(b'\0 ').decode('ascii')),
+            str(self.st_name.rstrip(b'\0 ').decode('ascii')),
             '',
-            self.component.rstrip(b'\0 '))
+            str(self.component.rstrip(b'\0 ').decode('ascii')))
 
     __slots__ = ()
     fmt = '<4s5sch'

@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from builtins import zip
+
 import math
 import numpy as num
 from pyrocko import trace

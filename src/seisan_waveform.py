@@ -1,5 +1,8 @@
 from __future__ import division
 from __future__ import absolute_import
+from __future__ import print_function
+from builtins import str
+from builtins import range
 
 import sys
 import calendar
@@ -22,6 +25,7 @@ def read_file_header(f, npad=4):
     while iline < nlines:
         f.read(npad)
         d = f.read(80)
+        d = str(d.decode('ascii'))
         f.read(npad)
 
         if iline == 0:
@@ -32,7 +36,8 @@ def read_file_header(f, npad=4):
 
             year = 1900 + ear
             tmin = calendar.timegm((year, mon, day, hr, min, secs))
-            header_infos.append((net_name, nchannels, util.time_to_str(tmin)))
+            header_infos.append(
+                (net_name, nchannels, util.time_to_str(tmin)))
 
             if nchannels > 30:
                 nlines += (nchannels - 31)//3 + 1
@@ -46,10 +51,10 @@ def read_file_header(f, npad=4):
 
                     sta = sta1 + sta2
                     cha = cha1 + cha2
-                    header_infos.append((sta, cha, toffset, tlen))
+                    header_infos.append(
+                        (sta, cha, toffset, tlen))
 
         iline += 1
-
     return header_infos
 
 
@@ -63,6 +68,7 @@ def read_channel_header(f, npad=4):
         raise EOF()
 
     d = f.read(1040)
+    d = str(d.decode('ascii'))
     f.read(npad)
 
     sta, cha1, loc1, cha2, ear, loc2, doy, net1, mon, net2, day, hr, min, \
@@ -81,7 +87,8 @@ def read_channel_header(f, npad=4):
     tmin = calendar.timegm((1900+ear, mon, day, hr, min, secs))
     deltat = 1./rate
 
-    return (net, sta, loc, cha, tmin, tflag, deltat, nsamples, sample_bytes,
+    return (net, sta, loc, cha,
+            tmin, tflag, deltat, nsamples, sample_bytes,
             lat, lon, elevation, gain)
 
 
@@ -119,51 +126,50 @@ def iload(filename, load_data=True, subformat='l4'):
         else:
             endianness = '<'
 
-        f = open(filename, 'r')
-        try:
-            read_file_header(f, npad=npad)
+        with open(filename, 'rb') as f:
+            try:
+                read_file_header(f, npad=npad)
 
-        except util.UnpackError as e:
-            raise SeisanFileError(
-                'Error loading header from file %s: %s' % (filename, str(e)))
+            except util.UnpackError as e:
+                raise SeisanFileError(
+                    'Error loading header from file %s: %s'
+                    % (filename, str(e)))
 
-        try:
-            itrace = 0
-            while True:
-                try:
-                    (net, sta, loc, cha, tmin, tflag, deltat, nsamples,
-                     sample_bytes, lat, lon, elevation, gain) \
-                        = read_channel_header(f, npad=npad)
+            try:
+                itrace = 0
+                while True:
+                    try:
+                        (net, sta, loc, cha, tmin, tflag, deltat, nsamples,
+                         sample_bytes, lat, lon, elevation, gain) \
+                            = read_channel_header(f, npad=npad)
 
-                    data = read_channel_data(
-                        f, endianness, sample_bytes, nsamples, gain, load_data,
-                        npad=npad)
+                        data = read_channel_data(
+                            f, endianness, sample_bytes, nsamples,
+                            gain, load_data,
+                            npad=npad)
 
-                    tmax = None
-                    if data is None:
-                        tmax = tmin + (nsamples-1)*deltat
+                        tmax = None
+                        if data is None:
+                            tmax = tmin + (nsamples-1)*deltat
 
-                    t = trace.Trace(
-                        net, sta, loc, cha, tmin=tmin, tmax=tmax,
-                        deltat=deltat, ydata=data)
+                        t = trace.Trace(
+                            net, sta, loc, cha, tmin=tmin, tmax=tmax,
+                            deltat=deltat, ydata=data)
 
-                    yield t
+                        yield t
 
-                except util.UnpackError as e:
-                    raise SeisanFileError(
-                        'Error loading trace %i from file %s: %s' % (
-                            itrace, filename, str(e)))
+                    except util.UnpackError as e:
+                        raise SeisanFileError(
+                            'Error loading trace %i from file %s: %s' % (
+                                itrace, filename, str(e)))
 
-                itrace += 1
+                    itrace += 1
 
-        except EOF:
-            pass
+            except EOF:
+                pass
 
     except (OSError, SeisanFileError) as e:
         raise FileLoadError(e)
-
-    finally:
-        f.close()
 
 
 if __name__ == '__main__':

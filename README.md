@@ -8,8 +8,8 @@ For documentation and installation instructions please see
 # Python 3 Progress
 
 - [x] ``__init__.py``
-- [ ] ``ahfullgreen_ext.c``
-- [ ] ``ahfullgreen.py``
+- [x] ``ahfullgreen_ext.c``
+- [x] ``ahfullgreen.py``
 - [x] ``automap.py``
 - [x] ``autopick_ext.c``
 - [x] ``autopick.py``
@@ -41,7 +41,7 @@ For documentation and installation instructions please see
 - [ ] ``gmtpy.py``
 - [ ] ``gse1.py``
 - [ ] ``gse2_io_wrap.py``
-- [ ] ``gshhg.py``
+- [x] ``gshhg.py``
 - [ ] ``gui_util.py``
 - [x] ``guts_array.py``
 - [x] ``guts.py``
@@ -53,7 +53,7 @@ For documentation and installation instructions please see
 - [x] ``io_common.py``
 - [x] ``io.py``
 - [ ] ``iris_ws.py``
-- [ ] ``kan.py``
+- [x] ``kan.py``
 - [ ] ``marker_editor.py``
 - [ ] ``marker.py``
 - [x] ``model.py``
@@ -66,7 +66,7 @@ For documentation and installation instructions please see
 - [x] ``parimap.py``
 - [x] ``parstack_ext.c``
 - [x] ``parstack.py``
-- [ ] ``pchain.py``
+- [x] ``pchain.py``
 - [ ] ``pile.py``
 - [ ] ``pile_viewer.py``
 - [x] ``plot.py``
@@ -77,8 +77,8 @@ For documentation and installation instructions please see
 - [ ] ``sac.py``
 - [ ] ``seed.py``
 - [ ] ``segy.py``
-- [ ] ``seisan_response.py``
-- [ ] ``seisan_waveform.py``
+- [x] ``seisan_response.py``
+- [x] ``seisan_waveform.py``
 - [ ] ``serial_hamster.py``
 - [ ] ``shadow_pile.py``
 - [x] ``signal_ext.c``
@@ -90,11 +90,11 @@ For documentation and installation instructions please see
 - [ ] ``suds.py``
 - [x] ``tectonics.py``
 - [ ] ``topo/``
-- [ ] ``trace.py``
+- [x] ``trace.py``
 - [x] ``util_ext.c``
 - [x] ``util.py``
 - [ ] ``weeding.py``
-- [ ] ``yaff.py``
+- [x] ``yaff.py``
 
 ## Citation
 Recommended citation for Pyrocko
