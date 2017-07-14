@@ -90,7 +90,7 @@ For documentation and installation instructions please see
 - [ ] ``suds.py``
 - [x] ``tectonics.py``
 - [ ] ``topo/``
-- [ ] ``trace.py``
+- [x] ``trace.py``
 - [x] ``util_ext.c``
 - [x] ``util.py``
 - [ ] ``weeding.py``

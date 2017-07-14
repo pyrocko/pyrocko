@@ -1,6 +1,6 @@
 from past.builtins import cmp
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # noqa
 from builtins import range
 
 import os
@@ -274,10 +274,9 @@ class TracesFileCache(object):
             cache_copy[fn] = trf
 
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
-        f = open(tmpfn, 'w')
+        with open(tmpfn, 'wb') as f:
+            pickle.dump(cache_copy, f)
 
-        pickle.dump(cache_copy, f)
-        f.close()
         os.rename(tmpfn, cachefilename)
 
 
