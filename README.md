@@ -49,10 +49,9 @@ For documentation and installation instructions please see
 - [x] ``hudson.py``
 - [x] ``ims_ext.c``
 - [x] ``ims.py``
-- [ ] ``info.py``
 - [x] ``io_common.py``
 - [x] ``io.py``
-- [ ] ``iris_ws.py``
+- [x] ``iris_ws.py``
 - [x] ``kan.py``
 - [ ] ``marker_editor.py``
 - [ ] ``marker.py``
