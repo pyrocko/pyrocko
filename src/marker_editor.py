@@ -2,14 +2,16 @@ from builtins import zip
 from builtins import str
 from builtins import range
 
-import numpy as num
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from pyrocko.gui_util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.beachball import mt2beachball, BeachballError
-from pyrocko import orthodrome, moment_tensor
+from pyrocko.moment_tensor import kagan_angle
 from pyrocko.plot import tango_colors
+from pyrocko import orthodrome
+
+import numpy as num
 import logging
 
 logger = logging.getLogger('pyrocko.marker_editor')
@@ -197,8 +199,8 @@ class MarkerTableView(qg.QTableView):
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
                             'NSLCs', 'Kagan Angle [deg]', 'MT']
-        self.menu_items = dict(zip(self.menu_labels,
-                                   [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11]))
+        self.menu_items = dict(zip(
+            self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11]))
 
         self.editable_columns = [2, 3, 4, 5, 6, 7]
 
@@ -523,8 +525,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                 for em in emarkers:
                     e = em.get_event()
                     if e.moment_tensor:
-                        a = moment_tensor.kagan_angle(
-                            oevent.moment_tensor, e.moment_tensor)
+                        a = kagan_angle(oevent.moment_tensor, e.moment_tensor)
                         self.kagan_angles[em] = a
             else:
                 self.kagan_angles = {}
