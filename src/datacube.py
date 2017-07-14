@@ -213,7 +213,7 @@ def context(fn):
     dpath = os.path.dirname(os.path.abspath(fn))
     mtimes = [os.stat(dpath)[8]]
 
-    dentries = sorted(os.listdir(dpath))
+    dentries = sorted([f for f in os.listdir(dpath) if os.path.isfile(f)])
     for dentry in dentries:
         fn2 = os.path.join(dpath, dentry)
         mtimes.append(os.stat(fn2)[8])
