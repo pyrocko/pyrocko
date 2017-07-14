@@ -112,9 +112,10 @@ class CSSHeaderFile(object):
             official template.
             (http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm)
         '''
-        with open(self.fn, 'r') as f:
+        with open(self.fn, 'rb') as f:
             lines = f.readlines()
             for iline, line in enumerate(lines):
+                line = str(line.decode('ascii'))
                 if use_template:
                     d = {}
                     for (ident, convert, (istart, istop), desc) in template:
