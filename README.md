@@ -48,7 +48,7 @@ For documentation and installation instructions please see
 - [ ] ``hamster_pile.py``
 - [x] ``hudson.py``
 - [x] ``ims_ext.c``
-- [ ] ``ims.py``
+- [x] ``ims.py``
 - [ ] ``info.py``
 - [x] ``io_common.py``
 - [x] ``io.py``
