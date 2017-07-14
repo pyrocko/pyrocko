@@ -1,9 +1,12 @@
+from future import standard_library
+standard_library.install_aliases()
+from builtins import object
 from pyrocko import trace, util, model
 
 import logging
 import copy
 import numpy as num
-import cPickle as pickle
+import pickle
 
 logger = logging.getLogger('pyrocko.eventdata')
 
@@ -21,7 +24,7 @@ class FileNotFound(Exception):
         return 'File not found: %s' % self.s
 
 
-class Problems:
+class Problems(object):
     def __init__(self):
         self._problems = {}
 
@@ -43,7 +46,7 @@ class Problems:
 
     def mapped(self, mapping=lambda nslct: nslct[:3]):
         p = {}
-        for kind, problem in self._problems.iteritems():
+        for kind, problem in self._problems.items():
             nsl = set()
             for nslct in problem:
                 nsl.add(mapping(nslct))
@@ -52,7 +55,7 @@ class Problems:
         return p
 
 
-class EventDataAccess:
+class EventDataAccess(object):
     '''Abstract base class for event data access (see rdseed.py)'''
 
     def __init__(self, events=None, stations=None, datapile=None):
@@ -161,7 +164,7 @@ class EventDataAccess:
         # figure out what items to remove
         to_delete = []
         for ((h1, h2), (l1, l2)) in redundant_channel_priorities:
-            for nsl, nslcs in by_nsl.iteritems():
+            for nsl, nslcs in by_nsl.items():
                 channels = [nslc[3] for nslc in nslcs]
                 if h1 in channels and \
                         h2 in channels and \
@@ -228,7 +231,7 @@ class EventDataAccess:
                     continue
                 traces.append(tr)
 
-            traces.sort(lambda a, b: cmp(a.full_id, b.full_id))
+            traces.sort(lambda x: x.full_id)
 
             # mainly to get rid if overlaps and duplicates
             traces = trace.degapper(traces)
@@ -250,7 +253,7 @@ class EventDataAccess:
                             tr.downsample_to(
                                 deltat, snap=True, allow_upsample_max=5)
 
-                        except util.UnavailableDecimation, e:
+                        except util.UnavailableDecimation as e:
                             self.problems().add(
                                 'cannot_downsample', tr.full_id)
                             logger.warn(
@@ -260,7 +263,7 @@ class EventDataAccess:
 
                     try:
                         trans = self.get_restitution(tr, allowed_methods)
-                    except NoRestitution, e:
+                    except NoRestitution as e:
                         self.problems().add('no_response', tr.full_id)
                         logger.warn(
                             'Cannot restitute trace %s.%s.%s.%s: %s' %
@@ -286,7 +289,7 @@ class EventDataAccess:
                                     transfer_function=trans,
                                     cut_off_fading=crop)
 
-                            except Exception, e:
+                            except Exception as e:
                                 if isinstance(e, trace.TraceTooShort):
                                     raise
 
@@ -316,7 +319,7 @@ class EventDataAccess:
                                 tr.nslc_id)
                             continue
 
-                    except trace.TraceTooShort, e:
+                    except trace.TraceTooShort as e:
                         self.problems().add('gappy', tr.full_id)
                         logger.warn('%s' % e)
                         continue

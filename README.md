@@ -29,7 +29,7 @@ For documentation and installation instructions please see
 - [ ] ``edl.py``
 - [x] ``evalresp_ext.c``
 - [x] ``evalresp.py``
-- [ ] ``eventdata.py``
+- [x] ``eventdata.py``
 - [x] ``fdsn/``
 - [x] ``file.py``
 - [ ] ``fomosto/``
