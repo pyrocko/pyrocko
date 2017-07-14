@@ -1,10 +1,18 @@
-import urllib
-import urllib2
+from __future__ import absolute_import
+from builtins import str
+
 import logging
 import re
-from pyrocko import util, model, pz
-
 from xml.parsers.expat import ParserCreate
+try:
+    from urllib2 import Request, HTTPError, urlopen
+except ImportError:
+    from urllib.request import Request, urlopen
+    from urllib.error import HTTPError
+from urllib import parse
+
+from . import util, model, pz
+
 
 logger = logging.getLogger('pyrocko.iris_ws')
 
@@ -39,7 +47,7 @@ class Element(object):
 
     def __str__(self):
         return '%s:\n ' % self.name + '\n '.join(
-            '%s : %s' % (k, v) for (k, v) in self.attrs.iteritems())
+            '%s : %s' % (k, v) for (k, v) in self.attrs.items())
 
 
 class XMLZipHandler(object):
@@ -116,20 +124,20 @@ class NotFound(Exception):
 
 
 def ws_request(url, post=False, **kwargs):
-    url_values = urllib.urlencode(kwargs)
+    url_values = parse.urlencode(kwargs)
     url = url + '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
-    req = urllib2.Request(url)
+    req = Request(url)
     if post:
         req.add_data(post)
 
     req.add_header('Accept', '*/*')
 
     try:
-        return urllib2.urlopen(req)
+        return urlopen(req)
 
-    except urllib2.HTTPError, e:
+    except HTTPError as e:
         if e.code == 404:
             raise NotFound(url)
         else:
@@ -249,7 +257,7 @@ def ws_resp(
     return ws_request(base_url + '/resp/1/query', **d)
 
 
-class ChannelInfo:
+class ChannelInfo(object):
     def __init__(
             self, network, station, location, channel, start, end, azimuth,
             dip, elevation, depth, latitude, longitude, sample, input, output,
@@ -368,7 +376,7 @@ def grok_station_xml(data, tmin, tmax):
 
         stations[nsl].add_channel(model.Channel(nslc[-1], azi, dip))
 
-    return stations.values()
+    return list(stations.values())
 
 
 def grok_virtualnet_xml(data):

@@ -1,10 +1,12 @@
+from __future__ import absolute_import
+from __future__ import print_function
 
 import time
 from collections import defaultdict
 
-from pyrocko import trace, util, pz, io_common
-from pyrocko.fdsn import station as fs
-from pyrocko.guts import Object, Tuple, String, Timestamp, Float
+from . import station as fs
+from .. import trace, util, pz, io_common
+from ..guts import Object, Tuple, String, Timestamp, Float
 
 
 class EnhancedSacPzError(io_common.FileLoadError):
@@ -131,7 +133,7 @@ def make_stationxml(responses, inconsistencies='warn'):
             response=make_stationxml_response(
                 cr.response, cr.input_unit, cr.output_unit)))
 
-    for (net, sta), v in sorted(station_coords.iteritems()):
+    for (net, sta), v in sorted(station_coords.items()):
         lat, lon, elevation = util.consistency_merge(
             v,
             message='channel lat/lon/elevation values differ',
@@ -167,4 +169,4 @@ if __name__ == '__main__':
         sys.exit('usage: python -m pyrocko.station.enhanced_sacpz <sacpz> ...')
 
     sxml = make_stationxml(iload(sys.argv[1:]))
-    print sxml.dump_xml()
+    print(sxml.dump_xml())

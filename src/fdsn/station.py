@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from builtins import str
+
 import time
 import logging
 import datetime
@@ -8,11 +12,12 @@ import copy
 
 import numpy as num
 
-from pyrocko.guts import StringChoice, StringPattern, UnicodePattern, String,\
-    Unicode, Int, Float, List, Object, Timestamp, ValidationError, TBase
-from pyrocko.guts import load_xml  # noqa
+from ..guts import (StringChoice, StringPattern, UnicodePattern, String,
+                    Unicode, Int, Float, List, Object, Timestamp,
+                    ValidationError, TBase)
+from ..guts import load_xml  # noqa
 
-from pyrocko import trace, model, util
+from .. import trace, model, util
 
 guts_prefix = 'pf'
 
@@ -83,7 +88,7 @@ class DummyAwareOptionalTimestamp(Object):
                 tt = val.timetuple()
                 val = float(calendar.timegm(tt))
 
-            elif isinstance(val, str) or isinstance(val, unicode):
+            elif isinstance(val, str):
                 val = val.strip()
 
                 val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
@@ -1123,9 +1128,9 @@ class FDSNStationXML(Object):
 
             groups[k][bic].append(channel)
 
-        for nsl, bic_to_channels in groups.iteritems():
+        for nsl, bic_to_channels in groups.items():
             bad_bics = []
-            for bic, channels in bic_to_channels.iteritems():
+            for bic, channels in bic_to_channels.items():
                 sample_rates = []
                 for channel in channels:
                     sample_rates.append(channel.sample_rate.value)
@@ -1155,10 +1160,10 @@ class FDSNStationXML(Object):
 
         nslcs = {}
         for nsl, bic_to_channels in self.get_channel_groups(
-                time=time, timespan=timespan).iteritems():
+                time=time, timespan=timespan).items():
 
             useful_bics = []
-            for bic, channels in bic_to_channels.iteritems():
+            for bic, channels in bic_to_channels.items():
                 rate = channels[0].sample_rate.value
 
                 if target_sample_rate is not None and \

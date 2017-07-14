@@ -1,9 +1,13 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from builtins import str
+
 import time
 import re
 import logging
 
-from pyrocko import util, guts, io_common
-from pyrocko.fdsn import station as fs
+from .. import util, guts, io_common
+from . import station as fs
 
 logger = logging.getLogger('pyrocko.fdsn.resp')
 
@@ -27,7 +31,7 @@ def ppolezero(s):
 
 
 def pcfu(s):
-    v = map(float, s.split())
+    v = list(map(float, s.split()))
     return fs.FloatWithUnit(
         value=float(v[-2]),
         plus_error=float(v[-1]) or None,
@@ -35,7 +39,7 @@ def pcfu(s):
 
 
 def pnc(s):
-    v = map(float, s.split())
+    v = list(map(float, s.split()))
     return fs.NumeratorCoefficient(i=int(v[0]), value=float(v[1]))
 
 
@@ -88,8 +92,8 @@ def pblock_053(content):
         normalization_frequency=fs.Frequency(
             value=float(get1(content, '08'))),
 
-        zero_list=map(ppolezero, getn(content, '10-13')),
-        pole_list=map(ppolezero, getn(content, '15-18')))
+        zero_list=list(map(ppolezero, getn(content, '10-13'))),
+        pole_list=list(map(ppolezero, getn(content, '15-18'))))
 
     for i, x in enumerate(pzs.zero_list):
         x.number = i
@@ -111,8 +115,8 @@ def pblock_043(content):
         normalization_frequency=fs.Frequency(
             value=float(get1(content, '09'))),
 
-        zero_list=map(ppolezero, getn(content, '11-14')),
-        pole_list=map(ppolezero, getn(content, '16-19')))
+        zero_list=list(map(ppolezero, getn(content, '11-14'))),
+        pole_list=list(map(ppolezero, getn(content, '16-19'))))
 
     for i, x in enumerate(pzs.zero_list):
         x.number = i
@@ -150,8 +154,8 @@ def pblock_054(content):
         cf_transfer_function_type=pcftype(get1(content, '03')),
         input_units=fs.Units(name=punit(get1(content, '05'))),
         output_units=fs.Units(name=punit(get1(content, '06'))),
-        numerator_list=map(pcfu, getn(content, '08-09')),
-        denominator_list=map(pcfu, getn(content, '11-12')))
+        numerator_list=list(map(pcfu, getn(content, '08-09'))),
+        denominator_list=list(map(pcfu, getn(content, '11-12'))))
 
     return stage_number, cfs
 
@@ -163,8 +167,8 @@ def pblock_044(content):
         cf_transfer_function_type=pcftype(get1(content, '05')),
         input_units=fs.Units(name=punit(get1(content, '06'))),
         output_units=fs.Units(name=punit(get1(content, '07'))),
-        numerator_list=map(pcfu, getn(content, '09-10')),
-        denominator_list=map(pcfu, getn(content, '12-13')))
+        numerator_list=list(map(pcfu, getn(content, '09-10'))),
+        denominator_list=list(map(pcfu, getn(content, '12-13'))))
 
     return stage_number, cfs
 
@@ -203,7 +207,7 @@ def pblock_061(content):
         input_units=fs.Units(name=punit(get1(content, '06'))),
         output_units=fs.Units(name=punit(get1(content, '07'))),
         symmetry=psymmetry(get1(content, '05')),
-        numerator_coefficient_list=map(pnc, getn(content, '09')))
+        numerator_coefficient_list=list(map(pnc, getn(content, '09'))))
 
     return stage_number, fir
 
@@ -216,7 +220,7 @@ def pblock_041(content):
         input_units=fs.Units(name=punit(get1(content, '06'))),
         output_units=fs.Units(name=punit(get1(content, '07'))),
         symmetry=psymmetry(get1(content, '05')),
-        numerator_coefficient_list=map(pnc, getn(content, '09')))
+        numerator_coefficient_list=list(map(pnc, getn(content, '09'))))
 
     return stage_number, fir
 
@@ -417,7 +421,7 @@ def iload_fh(f):
         try:
             tmin = pdate(get1(cc, '22'))
             tmax = pdate(get1(cc, '23'))
-        except util.TimeStrError, e:
+        except util.TimeStrError as e:
             raise RespError('invalid date in RESP information. (%s)' % str(e))
 
         stage_elements = {}
@@ -552,4 +556,4 @@ if __name__ == '__main__':
 
     sxml = make_stationxml(stations, iload(sys.argv[2:]))
 
-    print sxml.dump_xml()
+    print(sxml.dump_xml())

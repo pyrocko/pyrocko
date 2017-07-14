@@ -31,7 +31,7 @@ For documentation and installation instructions please see
 - [x] ``evalresp_ext.c``
 - [x] ``evalresp.py``
 - [ ] ``eventdata.py``
-- [ ] ``fdsn/``
+- [x] ``fdsn/``
 - [ ] ``file.py``
 - [ ] ``fomosto/``
 - [ ] ``fomosto_report/``
@@ -57,7 +57,7 @@ For documentation and installation instructions please see
 - [ ] ``marker_editor.py``
 - [ ] ``marker.py``
 - [x] ``model.py``
-- [ ] ``moment_tensor.py``
+- [x] ``moment_tensor.py``
 - [ ] ``moment_tensor_viewer.py``
 - [x] ``mseed_ext.c``
 - [x] ``mseed.py``
@@ -74,7 +74,7 @@ For documentation and installation instructions please see
 - [x] ``quakeml.py``
 - [ ] ``rdseed.py``
 - [ ] ``response_plot.py``
-- [ ] ``sac.py``
+- [x] ``sac.py``
 - [ ] ``seed.py``
 - [ ] ``segy.py``
 - [x] ``seisan_response.py``

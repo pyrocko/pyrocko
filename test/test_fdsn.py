@@ -1,7 +1,13 @@
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()  # noqa
+
 import unittest
 import tempfile
 import numpy as num
-import urllib2
+import urllib
 import logging
 from pyrocko import util, trace, iris_ws
 from pyrocko.fdsn import station as fdsn_station, ws as fdsn_ws
@@ -71,7 +77,7 @@ class FDSNStationTestCase(unittest.TestCase):
             level='channel', format='text', matchtimeseries=True)
 
         for nslc in sx.nslc_code_list:
-            print nslc
+            print(nslc)
             net, sta, loc, cha = nslc
             sxr = fdsn_ws.station(
                 site='iris',
@@ -130,7 +136,7 @@ class FDSNStationTestCase(unittest.TestCase):
 
                 mdp = num.mean(pha_dif[f < 0.5*fmax])
 
-                print mda, mdp
+                print(mda, mdp)
 
                 if mda > 0.03 or mdp > 0.04:
                     lab.gcf().add_subplot(2, 1, 1)
@@ -146,9 +152,9 @@ class FDSNStationTestCase(unittest.TestCase):
                     lab.show()
 
                 else:
-                    print 'ok'
+                    print('ok')
             except:
-                print 'failed: ', nslc
+                print('failed: ', nslc)
 
     def test_url_alive(self):
         '''
@@ -176,7 +182,7 @@ class FDSNStationTestCase(unittest.TestCase):
         for url in to_check:
             try:
                 fdsn_ws._request(url[0])
-            except urllib2.HTTPError as e:
+            except urllib.error.HTTPError as e:
                 logger.warn('%s - %s referenced in pyrocko.%s' %
                             (e, url[0], url[1]))
 

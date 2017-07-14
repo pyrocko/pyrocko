@@ -1,9 +1,20 @@
+from __future__ import absolute_import
+from builtins import str
+
 import re
-import urllib
-import urllib2
 import logging
 
-from pyrocko import util
+try:
+    from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,
+                         HTTPError, urlopen)
+except ImportError:
+    from urllib.request import (Request, build_opener, HTTPDigestAuthHandler,
+                                urlopen)
+    from urllib.error import HTTPError
+
+from urllib import parse
+
+from .. import util
 
 logger = logging.getLogger('pyrocko.fdsn.ws')
 
@@ -84,14 +95,14 @@ class InvalidRequest(Exception):
 
 
 def _request(url, post=False, user=None, passwd=None, **kwargs):
-    url_values = urllib.urlencode(kwargs)
+    url_values = parse.urlencode(kwargs)
     if url_values:
         url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
     opener = None
 
-    req = urllib2.Request(url)
+    req = Request(url)
     if post:
         logger.debug('POST data: \n%s' % post)
         req.add_data(post)
@@ -106,13 +117,13 @@ def _request(url, post=False, user=None, passwd=None, **kwargs):
             if opener:
                 resp = opener.open(req, timeout=g_timeout)
             else:
-                resp = urllib2.urlopen(req, timeout=g_timeout)
+                resp = urlopen(req, timeout=g_timeout)
 
             if resp.getcode() == 204:
                 raise EmptyResult(url)
             return resp
 
-        except urllib2.HTTPError, e:
+        except HTTPError as e:
             if e.code == 413:
                 raise RequestEntityTooLarge(url)
 
@@ -122,14 +133,14 @@ def _request(url, post=False, user=None, passwd=None, **kwargs):
                 realm = get_realm_from_auth_header(headers)
 
                 if itry == 1 and user is not None:
-                    auth_handler = urllib2.HTTPDigestAuthHandler()
+                    auth_handler = HTTPDigestAuthHandler()
                     auth_handler.add_password(
                         realm=realm,
                         uri=url,
                         user=user,
                         passwd=passwd or '')
 
-                    opener = urllib2.build_opener(auth_handler)
+                    opener = build_opener(auth_handler)
                     continue
                 else:
                     logger.error(
@@ -186,8 +197,7 @@ def make_data_selection(stations, tmin, tmax,
                 if channel.name in group:
                     gchannels.append(channel)
             if gchannels:
-                gchannels.sort(lambda a, b: cmp(group.index(a.name),
-                                                group.index(b.name)))
+                gchannels.sort(key=lambda a: group.index(a.name))
                 wanted.append(gchannels[0])
 
         if wanted:
@@ -207,7 +217,7 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
 
     if selection:
         l = []
-        for k, v in params.iteritems():
+        for k, v in params.items():
             l.append('%s=%s' % (k, v))
 
         for (network, station, location, channel, tmin, tmax) in selection:
@@ -280,7 +290,7 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
         if 'longestonly' not in params:
             params['longestonly'] = 'FALSE'
 
-        for k, v in params.iteritems():
+        for k, v in params.items():
             l.append('%s=%s' % (k, v))
 
         for (network, station, location, channel, tmin, tmax) in selection:
