@@ -88,8 +88,11 @@ static PyObject* ims_decode_cm6(PyObject *m, PyObject *args) {
     npy_intp      array_dims[1] = {0};
 
     struct module_state *st = GETSTATE(m);
-
+#if PY_MAJOR_VERSION >= 3
+    if (!PyArg_ParseTuple(args, "yi", &in_data, &bufsize)) {
+#else
     if (!PyArg_ParseTuple(args, "si", &in_data, &bufsize)) {
+#endif
         PyErr_SetString(st->error, "invalid arguments in decode_cm6(data, sizehint)" );
         return NULL;
     }
@@ -228,7 +231,7 @@ static PyObject* ims_encode_cm6(PyObject *m, PyObject *args) {
         }
     }
 
-    string = PyString_FromStringAndSize(out_data, iout);
+    string = PyBytes_FromStringAndSize(out_data, iout);
     free(out_data);
 
     if (string == NULL) {

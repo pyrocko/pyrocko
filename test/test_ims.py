@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import unittest
 
 from pyrocko import ims, util
@@ -43,14 +45,10 @@ class IMSTestCase(unittest.TestCase):
 
         fpaths = []
         for fn in fns:
-            print 'aa'
             fpath = common.test_data_file(fn)
-            print 'zz'
             fpaths.append(fpath)
 
-        print 'abc'
         for sec in ims.iload(fpaths):
-            print 'yy'
             if isinstance(sec, ims.WID2Section):
                 sec.pyrocko_trace()
 
@@ -60,14 +58,14 @@ class IMSTestCase(unittest.TestCase):
                 sec.pyrocko_trace()
 
     def test_ref_example1(self):
-        s = '''DATA_TYPE WAVEFORM GSE2.1:CM6'''
+        s = b'''DATA_TYPE WAVEFORM GSE2.1:CM6'''
         version_dialect = ['GSE2.1', None]
         d = ims.DataType.deserialize(s, version_dialect)
         s2 = d.serialize(version_dialect)
         assert s == s2
 
     def test_ref_example2(self):
-        s = '''
+        s = b'''
 BEGIN GSE2.1
 MSG_TYPE DATA
 MSG_ID 1040 GSE_IDC
@@ -80,7 +78,7 @@ STOP
         assert s.strip() == s2.strip()
 
     def test_ref_example3(self):
-        s = '''
+        s = b'''
 BEGIN GSE2.1
 MSG_TYPE DATA
 MSG_ID 1243 GSE_IDC
@@ -101,7 +99,7 @@ STOP
         assert s.strip() == s2.strip(), (s, s2)
 
     def test_ref_example4(self):
-        s = '''
+        s = b'''
 BEGIN GSE2.1
 MSG_TYPE DATA
 MSG_ID 1040 GSE_IDC
@@ -114,7 +112,7 @@ STOP
         assert s.strip() == s2.strip()
 
     def test_ref_example5(self):
-        s = '''
+        s = b'''
 DATA_TYPE WAVEFORM GSE2.1:CM6
 OUT2 1996/10/15 09:56:00.000 KAF   shz           60.000
 STA2 IDC_SEIS   62.11270   26.30621 WGS-84       0.195 0.014
@@ -125,7 +123,7 @@ STA2 IDC_SEIS   62.11270   26.30621 WGS-84       0.195 0.014
         assert s.strip() == s2.strip()
 
     def test_ref_example6(self):
-        s = '''
+        s = b'''
 DATA_TYPE CHANNEL GSE2.1
 Net       Sta  Chan Aux   Latitude Longitude  Coord Sys       Elev   Depth   Hang  Vang Sample Rate Inst      On Date    Off Date
 IDC_SEIS  ARA0  she       69.53490   25.50580 WGS-84       0.403 0.010   90.0  90.0   40.000000 GS-13   1987/09/30
@@ -151,7 +149,7 @@ IDC_SEIS  ARC4  shn       69.52930   25.51170 WGS-84       0.377 0.010    0.0  9
         assert s.strip() == s2.strip()
 
     def test_ref_example7(self):
-        s = '''
+        s = b'''
 DATA_TYPE NETWORK GSE2.1
 Net       Description
 IDC_SEIS  International Data Centre Seismic Network
@@ -161,7 +159,7 @@ IDC_HYDR  International Data Centre Hydroacoustic Network
         assert s.strip() == s2.strip()
 
     def test_ref_example8(self):
-        s = '''
+        s = b'''
 DATA_TYPE STATION GSE2.1
 Net       Sta   Type  Latitude  Longitude Coord Sys     Elev   On Date   Off Date
 IDC_SEIS  ARCES hfa   69.53490   25.50580 WGS-84       0.403 1987/09/30
@@ -188,7 +186,7 @@ IDC_SEIS  ARD2  1C    69.54520   25.53080 WGS-84       0.366 1987/09/30
         assert s.strip() == s2.strip()
 
     def test_ref_example9(self):
-        s = '''
+        s = b'''
 DATA_TYPE BEAM GSE2.1
 Bgroup   Sta  Chan Aux  Wgt     Delay
 FIG1     FIA0  shz        1
@@ -222,13 +220,13 @@ FIIB.Lgb     FIG2     inc n  -1.0 0.250 Lg         2.00   4.00  3 y BP 1997/01/0
         s2 = ims.write_string(ims.iload_string(s))
         for a, b in zip(s.strip().splitlines(), s2.strip().splitlines()):
             if a != b:
-                print a
-                print b
+                print(a)
+                print(b)
 
         assert s.strip() == s2.strip()
 
     def test_ref_example10(self):
-        s = '''
+        s = b'''
 DATA_TYPE RESPONSE GSE2.1
 CAL2 MIAR  BHZ      CMG-3N  4.11000000e+00  16.000    40.00000 1992/09/23 20:00
  (USNSN station at Mount Ida, Arkansas, USA)
@@ -274,15 +272,15 @@ FIR2  5   1.00e+00    2    0.379 C   32          QDP380/900616 stage 3,4,5
         s2 = ims.write_string(ims.iload_string(s))
         for a, b in zip(s.strip().splitlines(), s2.strip().splitlines()):
             if a != b:
-                print a
-                print b
-                print
+                print(a)
+                print(b)
+                print()
 
         assert s.strip() == s2.strip()
 
     def test_ref_example11(self):
 
-        s = '''
+        s = b'''
 DATA_TYPE OUTAGE GSE2.1
 Report period from 1994/12/24 00:00:00.000 to 1994/12/25 12:00:00.000
 NET       Sta  Chan Aux      Start Date Time          End Date Time        Duration Comment

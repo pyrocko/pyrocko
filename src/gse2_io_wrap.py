@@ -28,7 +28,7 @@ def iload(filename, load_data=True):
     from pyrocko import ims
 
     try:
-        with open(filename, 'r') as f:
+        with open(filename, 'rb') as f:
 
             r = ims.Reader(f, load_data=load_data, version='GSE2.0',
                            dialect=None)
@@ -72,7 +72,7 @@ def save(traces, filename_template, additional={}, max_open_files=10,
 
                 ensuredirs(fn)
 
-            open_files[fn] = open(fn, 'wab'[fn in fns])
+            open_files[fn] = open(fn, ['wb', 'ab'][fn in fns])
             writer = ims.Writer(open_files[fn])
             writer.write(
                 ims.MessageHeader(

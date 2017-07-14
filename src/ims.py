@@ -54,7 +54,7 @@ class DeserializeError(Exception):
         if self._line_number is not None:
             l.append('line number: %i' % self._line_number)
         if self._line is not None:
-            l.append('line content:\n%s' % (self._line or
+            l.append('line content:\n%s' % (self._line.decode('ascii') or
                                             '*** line is empty ***'))
 
         if self._position is not None:
@@ -105,7 +105,7 @@ def float_to_string(fmt):
     assert ef in 'ef'
     l, d = map(int, fmt[1:].split('.'))
     pfmts = ['%%%i.%i%s' % (l, dsub, ef) for dsub in range(d, -1, -1)]
-    blank = ' ' * l
+    blank = b' ' * l
 
     def func(v):
         if v is None:
@@ -114,7 +114,7 @@ def float_to_string(fmt):
         for pfmt in pfmts:
             s = pfmt % v
             if len(s) == l:
-                return s
+                return s.encode('ascii')
 
         raise SerializeError('format="%s", value=%s' % (pfmt, repr(v)))
 
@@ -125,7 +125,7 @@ def int_to_string(fmt):
     assert fmt[0] == 'i'
     pfmt = '%'+fmt[1:]+'i'
     l = int(fmt[1:])
-    blank = ' ' * l
+    blank = b' ' * l
 
     def func(v):
         if v is None:
@@ -133,7 +133,7 @@ def int_to_string(fmt):
 
         s = pfmt % v
         if len(s) == l:
-            return s
+            return s.encode('ascii')
         else:
             raise SerializeError('format="%s", value=%s' % (pfmt, repr(v)))
 
@@ -144,12 +144,12 @@ def deserialize_string(fmt):
     if fmt.endswith('?'):
         def func(s):
             if s.strip():
-                return s.rstrip()
+                return str(s.rstrip().decode('ascii'))
             else:
                 return None
     else:
         def func(s):
-            return s.rstrip()
+            return str(s.rstrip().decode('ascii'))
 
     return func
 
@@ -167,9 +167,10 @@ def serialize_string(fmt):
 
     def func(v):
         if v is None:
-            v = ''
+            v = b''
+        else:
+            v = v.encode('ascii')
 
-        v = str(v)
         s = v.ljust(l)
         if more_ok or len(s) == l:
             return s
@@ -228,9 +229,9 @@ def x_scaled(fmt, factor):
 def x_int_angle():
     def string(v):
         if v is None:
-            return '   '
+            return b'   '
         else:
-            return '%3i' % (int(round(v)) % 360)
+            return b'%3i' % (int(round(v)) % 360)
 
     return float_or_none, string
 
@@ -242,11 +243,11 @@ x_int_angle.help_type = 'int [0, 360]'
 def x_substitute(value):
     def func():
         def parse(s):
-            assert s == ''
+            assert s == b''
             return value
 
         def string(s):
-            return ''
+            return b''
 
         return parse, string
 
@@ -270,6 +271,7 @@ def fillup_zeros(s, fmt):
 
 def x_date_time(fmt='%Y/%m/%d %H:%M:%S.3FRAC'):
     def parse(s):
+        s = str(s.decode('ascii'))
         try:
             s = fillup_zeros(s, fmt)
             return util.str_to_time(s, format=fmt)
@@ -286,7 +288,7 @@ def x_date_time(fmt='%Y/%m/%d %H:%M:%S.3FRAC'):
             raise DeserializeError('expected date, value="%s"' % s)
 
     def string(s):
-        return util.time_to_str(s, format=fmt)
+        return util.time_to_str(s, format=fmt).encode('ascii')
 
     return parse, string
 
@@ -329,15 +331,15 @@ x_date_time_2frac.help_type = 'YYYY/MM/DD HH:MM:SS.FF'
 
 def x_yesno():
     def parse(s):
-        if s == 'y':
+        if s == b'y':
             return True
-        elif s == 'n':
+        elif s == b'n':
             return False
         else:
             raise DeserializeError('"y" on "n" expected')
 
     def string(b):
-        return 'ny'[int(b)]
+        return [b'n', b'y'][int(b)]
 
     return parse, string
 
@@ -359,7 +361,7 @@ def optional(x_func):
 
         def string_optional(s):
             if s is None:
-                return ' ' * x_func.width
+                return b' ' * x_func.width
             else:
                 return string(s)
 
@@ -419,7 +421,7 @@ def end_section(line, extra=None):
         return True
 
     ul = line.upper()
-    return ul.startswith('DATA_TYPE') or ul.startswith('STOP') or \
+    return ul.startswith(b'DATA_TYPE') or ul.startswith(b'STOP') or \
         (extra is not None and ul.startswith(extra))
 
 
@@ -436,11 +438,12 @@ class Section(Object):
     def read(cls, reader):
         datatype = DataType.read(reader)
         reader.pushback()
-        return Section.handlers[datatype.type.upper()].read(reader)
+        return Section.handlers[
+            datatype.type.upper().encode('ascii')].read(reader)
 
     def write_datatype(self, writer):
         datatype = DataType(
-            type=self.keyword,
+            type=self.keyword.decode('ascii'),
             format=writer.version_dialect[0])
         datatype.write(writer)
 
@@ -449,8 +452,9 @@ class Section(Object):
 
         header = reader.readline()
         if not header.upper().startswith(expected_header.upper()):
-            raise DeserializeError('invalid table header line, expected:\n'
-                                   '%s' % expected_header)
+            raise DeserializeError(
+                'invalid table header line, expected:\n'
+                '%s\nfound: %s ' % (expected_header, header))
 
         while True:
             line = reader.readline()
@@ -503,11 +507,11 @@ class Block(Object):
         i = 0
         slist = []
         for (position, s) in out:
-            slist.append(' ' * (position - i))
+            slist.append(b' ' * (position - i))
             slist.append(s)
             i = position + len(s)
 
-        return ''.join(slist)
+        return b''.join(slist)
 
     @classmethod
     def deserialize_values(cls, line, version_dialect):
@@ -575,7 +579,7 @@ class FreeFormatLine(Block):
 
         values_weeded = []
         for x, v in zip(format, values):
-            if isinstance(x, str):
+            if isinstance(x, bytes):
                 if v.upper() != x:
                     raise DeserializeError(
                         'expected keyword: %s, found %s' % (x, v.upper()))
@@ -587,8 +591,9 @@ class FreeFormatLine(Block):
 
                 values_weeded.append((x, v))
 
+
         values_weeded.sort()
-        return [xv[1] for xv in values_weeded]
+        return [str(xv[1].decode('ascii')) for xv in values_weeded]
 
     @classmethod
     def deserialize(cls, line, version_dialect):
@@ -602,8 +607,8 @@ class FreeFormatLine(Block):
         props = self.T.properties
         out = []
         for x in self.format(version_dialect):
-            if isinstance(x, str):
-                out.append(x)
+            if isinstance(x, bytes):
+                out.append(x.decode('ascii'))
             else:
                 if isinstance(x, tuple):
                     x, (_, string) = x
@@ -616,7 +621,7 @@ class FreeFormatLine(Block):
 
                 out.append(props[x-1].to_save(v))
 
-        return ' '.join(out)
+        return ' '.join(out).encode('ascii')
 
 
 class DataType(Block):
@@ -629,16 +634,16 @@ class DataType(Block):
 
     @classmethod
     def deserialize(cls, line, version_dialect):
-        pat = r'DATA_TYPE +([^ :]+)(:([^ :]+))? +([^ :]+)(:([^ :]+))?'
+        pat = br'DATA_TYPE +([^ :]+)(:([^ :]+))? +([^ :]+)(:([^ :]+))?'
         m = re.match(pat, line)
         if not m:
             raise DeserializeError('invalid DATA_TYPE line')
 
         return cls.validated(
-            type=m.group(1),
-            subtype=m.group(3),
-            format=m.group(4),
-            subformat=m.group(6))
+            type=str((m.group(1) or b'').decode('ascii')),
+            subtype=str((m.group(3) or b'').decode('ascii')),
+            format=str((m.group(4) or b'').decode('ascii')),
+            subformat=str((m.group(6) or b'').decode('ascii')))
 
     def serialize(self, version_dialect):
         s = self.type
@@ -649,7 +654,7 @@ class DataType(Block):
         if self.subformat:
             f += ':' + self.subformat
 
-        return 'DATA_TYPE %s %s' % (s, f)
+        return b'DATA_TYPE %s %s' % (s.encode('ascii'), f.encode('ascii'))
 
     @classmethod
     def read(cls, reader):
@@ -667,7 +672,7 @@ class DataType(Block):
 class FTPFile(FreeFormatLine):
     '''Representation of an FTP_FILE line.'''
 
-    _format = ['FTP_FILE', 1, 2, 3, 4]
+    _format = [b'FTP_FILE', 1, 2, 3, 4]
 
     net_address = String.T()
     login_mode = StringChoice.T(choices=('USER', 'GUEST'), ignore_case=True)
@@ -684,7 +689,7 @@ class WID2(Block):
     '''Representation of a WID2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('WID2'), dummy=True),
+        E(1, 4, x_fixed(b'WID2'), dummy=True),
         E(6, 28, x_date_time),
         E(30, 34, 'a5'),
         E(36, 38, 'a3'),
@@ -729,7 +734,7 @@ class OUT2(Block):
     '''Representation of an OUT2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('OUT2'), dummy=True),
+        E(1, 4, x_fixed(b'OUT2'), dummy=True),
         E(6, 28, x_date_time),
         E(30, 34, 'a5'),
         E(36, 38, 'a3'),
@@ -750,7 +755,7 @@ class DLY2(Block):
     '''Representation of a DLY2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('DLY2'), dummy=True),
+        E(1, 4, x_fixed(b'DLY2'), dummy=True),
         E(6, 28, x_date_time),
         E(30, 34, 'a5'),
         E(36, 38, 'a3'),
@@ -771,7 +776,7 @@ class DAT2(Block):
     '''Representation of a DAT2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('DAT2'), dummy=True)
+        E(1, 4, x_fixed(b'DAT2'), dummy=True)
     ]
 
     raw_data = List.T(String.T())
@@ -782,7 +787,7 @@ class DAT2(Block):
         dat2 = cls.deserialize(line, reader.version_dialect)
         while True:
             line = reader.readline()
-            if line.upper().startswith('CHK2 '):
+            if line.upper().startswith(b'CHK2 '):
                 reader.pushback()
                 break
             else:
@@ -801,7 +806,7 @@ class STA2(Block):
     '''Representation of a STA2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('STA2'), dummy=True),
+        E(1, 4, x_fixed(b'STA2'), dummy=True),
         E(6, 14, 'a9'),
         E(16, 24, 'f9.5'),
         E(26, 35, 'f10.5'),
@@ -825,7 +830,7 @@ class CHK2(Block):
     '''Representation of a CHK2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('CHK2'), dummy=True),
+        E(1, 4, x_fixed(b'CHK2'), dummy=True),
         E(6, 13, 'i8')
     ]
 
@@ -836,7 +841,7 @@ class EID2(Block):
     '''Representation of an EID2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('EID2'), dummy=True),
+        E(1, 4, x_fixed(b'EID2'), dummy=True),
         E(6, 13, 'a8'),
         E(15, 23, 'a9'),
     ]
@@ -849,7 +854,7 @@ class BEA2(Block):
     '''Representation of a BEA2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('BEA2'), dummy=True),
+        E(1, 4, x_fixed(b'BEA2'), dummy=True),
         E(6, 17, 'a12'),
         E(19, 23, 'f5.1'),
         E(25, 29, 'f5.1')]
@@ -1075,9 +1080,9 @@ class OutageReportPeriod(Block):
     '''Representation of a the report period of an OUTAGE section.'''
 
     _format = [
-        E(1, 18, x_fixed('Report period from'), dummy=True),
+        E(1, 18, x_fixed(b'Report period from'), dummy=True),
         E(20, 42, x_date_time),
-        E(44, 45, x_fixed('to'), dummy=True),
+        E(44, 45, x_fixed(b'to'), dummy=True),
         E(47, 69, x_date_time)]
 
     tmin = Timestamp.T()
@@ -1113,7 +1118,7 @@ class CAL2(Block):
 
     _format = {
         None: [
-            E(1, 4, x_fixed('CAL2'), dummy=True),
+            E(1, 4, x_fixed(b'CAL2'), dummy=True),
             E(6, 10, 'a5'),
             E(12, 14, 'a3'),
             E(16, 19, 'a4'),
@@ -1124,7 +1129,7 @@ class CAL2(Block):
             E(64, 79, x_date_time_no_seconds),
             E(81, 96, optional(x_date_time_no_seconds))],
         'GSE2.0': [
-            E(1, 4, x_fixed('CAL2'), dummy=True),
+            E(1, 4, x_fixed(b'CAL2'), dummy=True),
             E(6, 10, 'a5'),
             E(12, 14, 'a3'),
             E(16, 19, 'a4'),
@@ -1159,7 +1164,7 @@ class CAL2(Block):
         while True:
             line = reader.readline()
             # make sure all comments are read
-            if line is None or not line.startswith(' '):
+            if line is None or not line.startswith(b' '):
                 reader.pushback()
                 break
 
@@ -1172,7 +1177,7 @@ class CAL2(Block):
         s = self.serialize(writer.version_dialect)
         writer.writeline(s)
         for c in self.comments:
-            writer.writeline(' (%s)' % c)
+            writer.writeline(b' (%s)' % c)
 
 
 class Units(StringChoice):
@@ -1198,7 +1203,7 @@ class Stage(Block):
 
         while True:
             line = reader.readline()
-            if line is None or not line.startswith(' '):
+            if line is None or not line.startswith(b' '):
                 reader.pushback()
                 break
 
@@ -1213,7 +1218,7 @@ class Stage(Block):
         writer.writeline(line)
         self.write_datalines(writer)
         for c in self.comments:
-            writer.writeline(' (%s)' % c)
+            writer.writeline(b' (%s)' % c)
 
     def write_datalines(self, writer):
         pass
@@ -1235,7 +1240,7 @@ class PAZ2(Stage):
 
     _format = {
         None: [
-            E(1, 4, x_fixed('PAZ2'), dummy=True),
+            E(1, 4, x_fixed(b'PAZ2'), dummy=True),
             E(6, 7, 'i2'),
             E(9, 9, 'a1'),
             E(11, 25, 'e15.8'),
@@ -1245,7 +1250,7 @@ class PAZ2(Stage):
             E(45, 47, 'i3'),
             E(49, None, 'a25+')],
         ('IMS1.0', 'USA_DMC'): [
-            E(1, 4, x_fixed('PAZ2'), dummy=True),
+            E(1, 4, x_fixed(b'PAZ2'), dummy=True),
             E(6, 7, 'i2'),
             E(9, 9, 'a1'),
             E(11, 25, 'e15.8'),
@@ -1306,7 +1311,7 @@ class FAP2(Stage):
     '''Representation of a FAP2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('FAP2'), dummy=True),
+        E(1, 4, x_fixed(b'FAP2'), dummy=True),
         E(6, 7, 'i2'),
         E(9, 9, 'a1'),
         E(11, 14, 'i4'),
@@ -1359,7 +1364,7 @@ class GEN2(Stage):
     '''Representation of a GEN2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('GEN2'), dummy=True),
+        E(1, 4, x_fixed(b'GEN2'), dummy=True),
         E(6, 7, 'i2'),
         E(9, 9, 'a1'),
         E(11, 25, x_scaled('e15.8', nm_per_s)),
@@ -1399,7 +1404,7 @@ class DIG2(Stage):
     '''Representation of a DIG2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('DIG2'), dummy=True),
+        E(1, 4, x_fixed(b'DIG2'), dummy=True),
         E(6, 7, 'i2'),
         E(9, 23, 'e15.8'),
         E(25, 35, 'f11.5'),
@@ -1443,7 +1448,7 @@ class FIR2(Stage):
     '''Representation of a FIR2 line.'''
 
     _format = [
-        E(1, 4, x_fixed('FIR2'), dummy=True),
+        E(1, 4, x_fixed(b'FIR2'), dummy=True),
         E(6, 7, 'i2'),
         E(9, 18, 'e10.2'),
         E(20, 23, 'i4'),
@@ -1479,7 +1484,7 @@ class FIR2(Stage):
 class Begin(FreeFormatLine):
     '''Representation of a BEGIN line.'''
 
-    _format = ['BEGIN', 1]
+    _format = [b'BEGIN', 1]
     version = String.T(optional=True)
 
     @classmethod
@@ -1500,14 +1505,14 @@ class MessageType(StringChoice):
 
 
 class MsgType(FreeFormatLine):
-    _format = ['MSG_TYPE', 1]
+    _format = [b'MSG_TYPE', 1]
     type = MessageType.T()
 
 
 class MsgID(FreeFormatLine):
     '''Representation of a MSG_ID line.'''
 
-    _format = ['MSG_ID', 1, 2]
+    _format = [b'MSG_ID', 1, 2]
     msg_id_string = String.T()
     msg_id_source = String.T(optional=True)
 
@@ -1530,8 +1535,8 @@ class RefID(FreeFormatLine):
     '''Representation of a REF_ID line.'''
 
     _format = {
-        None: ['REF_ID', 1, 2, 'PART', 3, 'OF', 4],
-        'GSE2.0': ['REF_ID', 1]}
+        None: [b'REF_ID', 1, 2, 'PART', 3, 'OF', 4],
+        'GSE2.0': [b'REF_ID', 1]}
 
     msg_id_string = String.T()
     msg_id_source = String.T(optional=True)
@@ -1547,13 +1552,13 @@ class RefID(FreeFormatLine):
             if i is not None and n is not None:
                 out.extend(['PART', str(i), 'OF', str(n)])
 
-        return ' '.join(out)
+        return ' '.join(out).encode('ascii')
 
 
 class LogSection(Section):
     '''Representation of a DATA_TYPE LOG section.'''
 
-    keyword = 'LOG'
+    keyword = b'LOG'
     lines = List.T(String.T())
 
     @classmethod
@@ -1574,8 +1579,8 @@ class LogSection(Section):
         self.write_datatype(writer)
         for line in self.lines:
             ul = line.upper()
-            if ul.startswith('DATA_TYPE') or ul.startswith('STOP'):
-                line = ' ' + line
+            if ul.startswith(b'DATA_TYPE') or ul.startswith(b'STOP'):
+                line = b' ' + line
 
             writer.writeline(line)
 
@@ -1583,13 +1588,13 @@ class LogSection(Section):
 class ErrorLogSection(LogSection):
     '''Representation of a DATA_TYPE ERROR_LOG section.'''
 
-    keyword = 'ERROR_LOG'
+    keyword = b'ERROR_LOG'
 
 
 class FTPLogSection(Section):
     '''Representation of a DATA_TYPE FTP_LOG section.'''
 
-    keyword = 'FTP_LOG'
+    keyword = b'FTP_LOG'
     ftp_file = FTPFile.T()
 
     @classmethod
@@ -1616,19 +1621,19 @@ class WID2Section(Section):
     @classmethod
     def read(cls, reader):
         blocks = dict(eid2s=[])
-        expect = [('WID2 ', WID2, 1)]
+        expect = [(b'WID2 ', WID2, 1)]
 
         if reader.version_dialect[0] == 'GSE2.0':
             # should not be there in GSE2.0, but BGR puts it there
-            expect.append(('STA2 ', STA2, 0))
+            expect.append((b'STA2 ', STA2, 0))
         else:
-            expect.append(('STA2 ', STA2, 1))
+            expect.append((b'STA2 ', STA2, 1))
 
         expect.extend([
-            ('EID2 ', EID2, 0),
-            ('BEA2 ', BEA2, 0),
-            ('DAT2', DAT2, 1),
-            ('CHK2 ', CHK2, 1)])
+            (b'EID2 ', EID2, 0),
+            (b'BEA2 ', BEA2, 0),
+            (b'DAT2', DAT2, 1),
+            (b'CHK2 ', CHK2, 1)])
 
         for k, handler, required in expect:
             line = reader.readline()
@@ -1639,10 +1644,10 @@ class WID2Section(Section):
 
             if line.upper().startswith(k):
                 block = handler.read(reader)
-                if k == 'EID2 ':
+                if k == b'EID2 ':
                     blocks['eid2s'].append(block)
                 else:
-                    blocks[k.lower().rstrip()] = block
+                    blocks[str(k.lower().rstrip().decode('ascii'))] = block
             else:
                 if required:
                     raise DeserializeError('expected %s block' % k)
@@ -1680,7 +1685,7 @@ class WID2Section(Section):
         cha = self.wid2.channel
 
         if raw_data:
-            ydata = ims_ext.decode_cm6(''.join(raw_data), nsamples)
+            ydata = ims_ext.decode_cm6(b''.join(raw_data), nsamples)
             if checksum_error != 'ignore':
                 if ims_ext.checksum(ydata) != self.chk2.checksum:
                     mess = 'computed checksum value differs from stored value'
@@ -1738,7 +1743,7 @@ class OUT2Section(Section):
         out2 = OUT2.read(reader)
         line = reader.readline()
         reader.pushback()
-        if line.startswith('STA2'):
+        if line.startswith(b'STA2'):
             # the spec sais STA2 is mandatory but in practice, it is not
             # always there...
             sta2 = STA2.read(reader)
@@ -1777,7 +1782,7 @@ class WaveformSection(Section):
     this type just serves as a dummy to read/write the DATA_TYPE WAVEFORM
     header.'''
 
-    keyword = 'WAVEFORM'
+    keyword = b'WAVEFORM'
 
     datatype = DataType.T()
 
@@ -1819,9 +1824,9 @@ class TableSection(Section):
 class NetworkSection(TableSection):
     '''Representation of a DATA_TYPE NETWORK section.'''
 
-    keyword = 'NETWORK'
+    keyword = b'NETWORK'
     table_setup = dict(
-        header='Net       Description',
+        header=b'Net       Description',
         attribute='networks',
         cls=Network)
 
@@ -1831,15 +1836,15 @@ class NetworkSection(TableSection):
 class StationSection(TableSection):
     '''Representation of a DATA_TYPE STATION section.'''
 
-    keyword = 'STATION'
+    keyword = b'STATION'
     table_setup = dict(
         header={
             None: (
-                'Net       Sta   Type  Latitude  Longitude Coord '
-                'Sys     Elev   On Date   Off Date'),
+                b'Net       Sta   Type  Latitude  Longitude Coord '
+                b'Sys     Elev   On Date   Off Date'),
             'GSE2.0': (
-                'Sta   Type  Latitude  Longitude    Elev   On Date   '
-                'Off Date')},
+                b'Sta   Type  Latitude  Longitude    Elev   On Date   '
+                b'Off Date')},
         attribute='stations',
         cls=Station)
 
@@ -1849,17 +1854,17 @@ class StationSection(TableSection):
 class ChannelSection(TableSection):
     '''Representation of a DATA_TYPE CHANNEL section.'''
 
-    keyword = 'CHANNEL'
+    keyword = b'CHANNEL'
     table_setup = dict(
         header={
             None: (
-                'Net       Sta  Chan Aux   Latitude Longitude  Coord Sys'
-                '       Elev   Depth   Hang  Vang Sample Rate Inst      '
-                'On Date    Off Date'),
+                b'Net       Sta  Chan Aux   Latitude Longitude  Coord Sys'
+                b'       Elev   Depth   Hang  Vang Sample Rate Inst      '
+                b'On Date    Off Date'),
             'GSE2.0': (
-                'Sta  Chan Aux   Latitude  Longitude    '
-                'Elev  Depth   Hang  Vang Sample_Rate Inst       '
-                'On Date   Off Date')},
+                b'Sta  Chan Aux   Latitude  Longitude    '
+                b'Elev  Depth   Hang  Vang Sample_Rate Inst       '
+                b'On Date   Off Date')},
         attribute='channels',
         cls=Channel)
 
@@ -1869,11 +1874,11 @@ class ChannelSection(TableSection):
 class BeamSection(Section):
     '''Representation of a DATA_TYPE BEAM section.'''
 
-    keyword = 'BEAM'
-    beam_group_header = 'Bgroup   Sta  Chan Aux  Wgt     Delay'
-    beam_parameters_header = 'BeamID       Bgroup Btype R  Azim  Slow '\
-                             'Phase       Flo    Fhi  O Z F    '\
-                             'On Date    Off Date'
+    keyword = b'BEAM'
+    beam_group_header = b'Bgroup   Sta  Chan Aux  Wgt     Delay'
+    beam_parameters_header = b'BeamID       Bgroup Btype R  Azim  Slow '\
+                             b'Phase       Flo    Fhi  O Z F    '\
+                             b'On Date    Off Date'
     group = List.T(BeamGroup.T())
     parameters = List.T(BeamParameters.T())
 
@@ -1882,7 +1887,7 @@ class BeamSection(Section):
         DataType.read(reader)
 
         def end(line):
-            return line.upper().startswith('BEAMID')
+            return line.upper().startswith(b'BEAMID')
 
         group = list(cls.read_table(reader, cls.beam_group_header, BeamGroup,
                                     end))
@@ -1895,7 +1900,7 @@ class BeamSection(Section):
     def write(self, writer):
         self.write_datatype(writer)
         self.write_table(writer, self.beam_group_header, self.group)
-        writer.writeline('')
+        writer.writeline(b'')
         self.write_table(writer, self.beam_parameters_header, self.parameters)
 
 
@@ -1910,16 +1915,16 @@ class CAL2Section(Section):
         cal2 = CAL2.read(reader)
         stages = []
         handlers = {
-            'PAZ2': PAZ2,
-            'FAP2': FAP2,
-            'GEN2': GEN2,
-            'DIG2': DIG2,
-            'FIR2': FIR2}
+            b'PAZ2': PAZ2,
+            b'FAP2': FAP2,
+            b'GEN2': GEN2,
+            b'DIG2': DIG2,
+            b'FIR2': FIR2}
 
         while True:
             line = reader.readline()
             reader.pushback()
-            if end_section(line, 'CAL2'):
+            if end_section(line, b'CAL2'):
                 break
 
             k = line[:4].upper()
@@ -1943,7 +1948,7 @@ class ResponseSection(Section):
     this type just serves as a dummy to read/write the DATA_TYPE RESPONSE
     header.'''
 
-    keyword = 'RESPONSE'
+    keyword = b'RESPONSE'
 
     datatype = DataType.T()
 
@@ -1959,9 +1964,9 @@ class ResponseSection(Section):
 class OutageSection(Section):
     '''Representation of a DATA_TYPE OUTAGE section.'''
 
-    keyword = 'OUTAGE'
-    outages_header = 'NET       Sta  Chan Aux      Start Date Time'\
-                     '          End Date Time        Duration Comment'
+    keyword = b'OUTAGE'
+    outages_header = b'NET       Sta  Chan Aux      Start Date Time'\
+                     b'          End Date Time        Duration Comment'
     report_period = OutageReportPeriod.T()
     outages = List.T(Outage.T())
 
@@ -2138,11 +2143,11 @@ class OriginSection(TableSection):
     table_setup = dict(
         header={
             None: (
-                '   Date       Time        Err   RMS Latitude Longitude  '
-                'Smaj  Smin  Az Depth   Err Ndef Nsta Gap  mdist  Mdist '
-                'Qual   Author      OrigID')},
+                b'   Date       Time        Err   RMS Latitude Longitude  '
+                b'Smaj  Smin  Az Depth   Err Ndef Nsta Gap  mdist  Mdist '
+                b'Qual   Author      OrigID')},
         attribute='origins',
-        end=lambda line: end_section(line, 'EVENT'),
+        end=lambda line: end_section(line, b'EVENT'),
         cls=Origin)
 
     origins = List.T(Origin.T())
@@ -2150,7 +2155,7 @@ class OriginSection(TableSection):
 
 class EventTitle(Block):
     _format = [
-        E(1, 5, x_fixed('Event'), dummy=True),
+        E(1, 5, x_fixed(b'Event'), dummy=True),
         E(7, 14, 'a8'),
         E(16, 80, 'a65')]
 
@@ -2180,7 +2185,7 @@ class EventSection(Section):
 class EventsSection(Section):
     '''Representation of a DATA_TYPE EVENT section.'''
 
-    keyword = 'EVENT'
+    keyword = b'EVENT'
 
     bulletin_title = BulletinTitle.T()
     event_sections = List.T(EventSection.T())
@@ -2196,7 +2201,7 @@ class EventsSection(Section):
             if end_section(line):
                 break
 
-            if line.upper().startswith('EVENT'):
+            if line.upper().startswith(b'EVENT'):
                 event_sections.append(EventSection.read(reader))
 
         return cls(
@@ -2214,7 +2219,7 @@ class EventsSection(Section):
 class BulletinSection(EventsSection):
     '''Representation of a DATA_TYPE BULLETIN section.'''
 
-    keyword = 'BULLETIN'
+    keyword = b'BULLETIN'
 
 
 for sec in (
@@ -2238,10 +2243,10 @@ class MessageHeader(Section):
     @classmethod
     def read(cls, reader):
         handlers = {
-            'BEGIN': Begin,
-            'MSG_TYPE': MsgType,
-            'MSG_ID': MsgID,
-            'REF_ID': RefID}
+            b'BEGIN': Begin,
+            b'MSG_TYPE': MsgType,
+            b'MSG_ID': MsgID,
+            b'REF_ID': RefID}
 
         blocks = {}
         while True:
@@ -2257,10 +2262,10 @@ class MessageHeader(Section):
                 break
 
         return MessageHeader(
-            type=blocks['MSG_TYPE'].type,
-            version=blocks['BEGIN'].version,
-            msg_id=blocks.get('MSG_ID', None),
-            ref_id=blocks.get('REF_ID', None))
+            type=blocks[b'MSG_TYPE'].type,
+            version=blocks[b'BEGIN'].version,
+            msg_id=blocks.get(b'MSG_ID', None),
+            ref_id=blocks.get(b'REF_ID', None))
 
     def write(self, writer):
         Begin(version=self.version).write(writer)
@@ -2290,7 +2295,7 @@ def string_ff_date_time(t):
 class TimeStamp(FreeFormatLine):
     '''Representation of a TIME_STAMP line.'''
 
-    _format = ['TIME_STAMP', 1]
+    _format = [b'TIME_STAMP', 1]
 
     value = Timestamp.T()
 
@@ -2300,13 +2305,13 @@ class TimeStamp(FreeFormatLine):
         return cls(value=parse_ff_date_time(s))
 
     def serialize(self, line, version_dialect):
-        return 'TIME_STAMP %s' % string_ff_date_time(self.value)
+        return b'TIME_STAMP %s' % string_ff_date_time(self.value)
 
 
 class Stop(FreeFormatLine):
     '''Representation of a STOP line.'''
 
-    _format = ['STOP']
+    _format = [b'STOP']
 
     dummy = String.T(optional=True)
 
@@ -2314,13 +2319,13 @@ class Stop(FreeFormatLine):
 class XW01(FreeFormatLine):
     '''Representation of a XW01 line (which is a relict from GSE1).'''
 
-    _format = ['XW01']
+    _format = [b'XW01']
 
     dummy = String.T(optional=True)
 
 
-re_comment = re.compile(r'^(%(.+)\s*| \((#?)(.+)\)\s*)$')
-re_comment_usa_dmc = re.compile(r'^(%(.+)\s*| ?\((#?)(.+)\)\s*)$')
+re_comment = re.compile(br'^(%(.+)\s*| \((#?)(.+)\)\s*)$')
+re_comment_usa_dmc = re.compile(br'^(%(.+)\s*| ?\((#?)(.+)\)\s*)$')
 
 
 class Reader(object):
@@ -2333,16 +2338,16 @@ class Reader(object):
         self._readline_count = 0
         self._pushed_back = False
         self._handlers = {
-            'DATA_TYPE ': Section,
-            'WID2 ': WID2Section,
-            'OUT2 ': OUT2Section,
-            'DLY2 ': DLY2Section,
-            'CAL2 ': CAL2Section,
-            'BEGIN': MessageHeader,
-            'STOP': Stop,
-            'XW01': XW01,   # for compatibility with BGR dialect
-            'HANG:': None,  # for compatibility with CNDC
-            'VANG:': None,
+            b'DATA_TYPE ': Section,
+            b'WID2 ': WID2Section,
+            b'OUT2 ': OUT2Section,
+            b'DLY2 ': DLY2Section,
+            b'CAL2 ': CAL2Section,
+            b'BEGIN': MessageHeader,
+            b'STOP': Stop,
+            b'XW01': XW01,   # for compatibility with BGR dialect
+            b'HANG:': None,  # for compatibility with CNDC
+            b'VANG:': None,
         }
         self._comment_lines = []
         self._time_stamps = []
@@ -2364,20 +2369,19 @@ class Reader(object):
             self._current_fpos = self._f.tell()
             self._current_lpos = self._readline_count + 1
             l = self._f.readline()
-            print(l)
             self._readline_count += 1
             if not l:
                 self._current_line = None
                 return None
 
-            lines = [l.rstrip('\n\r')]
-            while lines[-1].endswith('\\'):
+            lines = [l.rstrip(b'\n\r')]
+            while lines[-1].endswith(b'\\'):
                 lines[-1] = lines[-1][:-1]
                 l = self._f.readline()
                 self._readline_count += 1
-                lines.append(l.rstrip('\n\r'))
+                lines.append(l.rstrip(b'\n\r'))
 
-            self._current_line = ''.join(lines)
+            self._current_line = b''.join(lines)
 
             if self.version_dialect[1] == 'USA_DMC':
                 m_comment = re_comment_usa_dmc.match(self._current_line)
@@ -2389,7 +2393,7 @@ class Reader(object):
 
             elif m_comment:
                 comment_type = None
-                if m_comment.group(3) == '#':
+                if m_comment.group(3) == b'#':
                     comment_type = 'ISF'
                 elif m_comment.group(4) is not None:
                     comment_type = 'IMS'
@@ -2399,7 +2403,7 @@ class Reader(object):
                 self._comment_lines.append(
                     (self._current_lpos, comment_type, comment))
 
-            elif self._current_line[:10].upper() == 'TIME_STAMP':
+            elif self._current_line[:10].upper() == b'TIME_STAMP':
                 self._time_stamps.append(
                     TimeStamp.deserialize(
                         self._current_line, self.version_dialect))
@@ -2470,7 +2474,7 @@ class Writer(object):
 
     def writeline(self, line):
         self._f.write(line.rstrip())
-        self._f.write('\n')
+        self._f.write(b'\n')
 
 
 def write_string(sections):
@@ -2495,7 +2499,7 @@ def iload_fh(f, **kwargs):
 
 
 def iload_string(s, **kwargs):
-    '''Read IMS/GSE2 sections from string.'''
+    '''Read IMS/GSE2 sections from bytes string.'''
 
     from io import BytesIO
     f = BytesIO(s)
@@ -2575,7 +2579,7 @@ if __name__ == '__main__':
     (options, args) = parser.parse_args(sys.argv[1:])
 
     for fn in args:
-        with open(fn, 'r') as f:
+        with open(fn, 'rb') as f:
 
             r = Reader(f, load_data=options.load_data,
                        version=options.version, dialect=options.dialect)

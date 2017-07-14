@@ -124,8 +124,8 @@ def iload(filename, load_data=True):
 def detect(first512):
     lines = first512.splitlines()
     if len(lines) >= 5 and \
-            lines[0].startswith('XW01') and lines[2].startswith('WID1') and \
-            lines[4].startswith('DAT1'):
+            lines[0].startswith(b'XW01') and lines[2].startswith(b'WID1') and \
+            lines[4].startswith(b'DAT1'):
                 return True
 
     return False
