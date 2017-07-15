@@ -3,7 +3,9 @@
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
 
+
 from __future__ import print_function
+from __future__ import absolute_import
 from builtins import zip
 import subprocess
 try:
@@ -22,9 +24,10 @@ import math
 import numpy as num
 import copy
 from select import select
+from scipy.io import netcdf
 
-find_bb = re.compile(r'%%BoundingBox:((\s+[-0-9]+){4})')
-find_hiresbb = re.compile(r'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
+find_bb = re.compile(br'%%BoundingBox:((\s+[-0-9]+){4})')
+find_hiresbb = re.compile(br'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
 
 
 def have_gmt():
@@ -138,16 +141,16 @@ def replace_bbox(bbox, *args):
 
     def repl(m):
         if m.group(1):
-            return '%%HiResBoundingBox: ' + ' '.join(
-                '%.3f' % float(x) for x in bbox)
+            return b'%%HiResBoundingBox: ' + b' '.join(
+                b'%.3f' % float(x) for x in bbox)
         else:
-            return '%%%%BoundingBox: %i %i %i %i' % (
+            return b'%%%%BoundingBox: %i %i %i %i' % (
                     int(math.floor(bbox[0])),
                     int(math.floor(bbox[1])),
                     int(math.ceil(bbox[2])),
                     int(math.ceil(bbox[3])))
 
-    pat = re.compile(r'%%(HiRes)?BoundingBox:((\s+[0-9.]+){4})')
+    pat = re.compile(br'%%(HiRes)?BoundingBox:((\s+[0-9.]+){4})')
     if len(args) == 1:
         s = args[0]
         return pat.sub(repl, s)
@@ -1173,8 +1176,10 @@ def detect_gmt_installations():
         errmesses.append(('GMT', str(e)))
 
     try:
-        version = str(subprocess.check_output(['gmt', '--version']).strip().decode('utf-8'))
-        gmtbin = str(subprocess.check_output(['gmt', '--show-bindir']).strip().decode('utf-8'))
+        version = str(subprocess.check_output(
+            ['gmt', '--version']).strip().decode('utf-8'))
+        gmtbin = str(subprocess.check_output(
+            ['gmt', '--show-bindir']).strip().decode('utf-8'))
         installations[version] = {
             'bin': gmtbin}
 
@@ -1424,8 +1429,6 @@ def gmtdefaults_as_text(version='newest'):
 def savegrd(x, y, z, filename, title=None, naming='xy'):
     '''Write COARDS compliant netcdf (grd) file.'''
 
-    from scipy.io import netcdf
-
     assert y.size, x.size == z.shape
     ny, nx = z.shape
     nc = netcdf.netcdf_file(filename, 'w')
@@ -1477,8 +1480,6 @@ def to_array(var):
 
 def loadgrd(filename):
     '''Read COARDS compliant netcdf (grd) file.'''
-
-    from scipy.io import netcdf
 
     nc = netcdf.netcdf_file(filename, 'r')
     vkeys = list(nc.variables.keys())
@@ -1637,6 +1638,9 @@ class Guru(object):
     method, which is called to get a dict to do ordinary
     ``"%(key)x"``-substitutions. The deriving class must also provide a dict
     with the templates.'''
+
+    def __init__(self):
+        self.templates = {}
 
     def fill(self, templates, **kwargs):
         params = self.get_params(**kwargs)
@@ -2050,7 +2054,15 @@ class ScaleGuru(Guru):
     '''
 
     def __init__(self, data_tuples=None, axes=None, aspect=None,
-                 percent_interval=None):
+                 percent_interval=None, copy_from=None):
+
+        Guru.__init__(self)
+
+        if copy_from:
+            self.templates = copy.deepcopy(copy_from.templates)
+            self.axes = copy.deepcopy(copy_from.axes)
+            self.data_ranges = copy.deepcopy(copy_from.data_ranges)
+            self.aspect = copy_from.aspect
 
         if percent_interval is not None:
             from scipy.stats import scoreatpercentile as scap
@@ -2151,6 +2163,9 @@ class ScaleGuru(Guru):
 
         self.data_ranges = data_ranges
         self.aspect = aspect
+
+    def copy(self):
+        return ScaleGuru(copy_from=self)
 
     def get_params(self, ax_projection=False):
 
@@ -2275,6 +2290,8 @@ class Widget(Guru):
     def __init__(self, horizontal=None, vertical=None, parent=None):
 
         '''Create new widget.'''
+
+        Guru.__init__(self)
 
         self.templates = dict(
             X='-Xa%(xoffset)gp',
@@ -3042,7 +3059,7 @@ def text_box(
 
     dx, dy = None, None
     for line in stderr.splitlines():
-        if line.startswith('%%HiResBoundingBox:'):
+        if line.startswith(b'%%HiResBoundingBox:'):
             l, b, r, t = [float(x) for x in line.split()[-4:]]
             dx, dy = r-l, t-b
             break
@@ -3060,11 +3077,11 @@ class TableLiner(object):
     def __iter__(self):
         if self.in_columns is not None:
             for row in zip(*self.in_columns):
-                yield ' '.join([str(x) for x in row])+'\n'
+                yield (' '.join([str(x) for x in row])+'\n').encode('ascii')
 
         if self.in_rows is not None:
             for row in self.in_rows:
-                yield ' '.join([str(x) for x in row])+'\n'
+                yield (' '.join([str(x) for x in row])+'\n').encode('ascii')
 
 
 class LineStreamChopper(object):
@@ -3242,11 +3259,13 @@ class GMT(object):
             return self.gmt_config['LABEL_FONT']
 
     def gen_gmt_config_file(self, config_filename, config):
-        f = open(config_filename, 'w')
-        f.write('#\n# GMT %s Defaults file\n' % self.installation['version'])
+        f = open(config_filename, 'wb')
+        f.write(
+            ('#\n# GMT %s Defaults file\n'
+             % self.installation['version']).encode('ascii'))
 
         for k, v in config.items():
-            f.write('%s = %s\n' % (k, v))
+            f.write(('%s = %s\n' % (k, v)).encode('ascii'))
         f.close()
 
     def __del__(self):
@@ -3300,10 +3319,10 @@ class GMT(object):
         out_mustclose = False
         if out_filename is not None:
             out_mustclose = True
-            out_stream = open(out_filename, 'w')
+            out_stream = open(out_filename, 'wb')
 
         if in_filename is not None:
-            in_stream = open(in_filename, 'r')
+            in_stream = open(in_filename, 'rb')
 
         if in_string is not None:
             in_stream = BytesIO(in_string)
@@ -3486,18 +3505,18 @@ class GMT(object):
         '''Create and open a file in the private temp directory.'''
 
         fn = self.tempfilename(name)
-        f = open(fn, 'w')
+        f = open(fn, 'wb')
         return f, fn
 
     def save_unfinished(self, filename):
-        out = open(filename, 'w')
+        out = open(filename, 'wb')
         out.write(self.output.getvalue())
         out.close()
 
     def load_unfinished(self, filename):
         self.output = BytesIO()
         self.finished = False
-        inp = open(filename, 'r')
+        inp = open(filename, 'rb')
         self.output.write(inp.read())
         inp.close()
 
@@ -3535,7 +3554,7 @@ class GMT(object):
 
         if filename:
             tempfn = pjoin(self.tempdir, 'incomplete')
-            out = open(tempfn, 'w')
+            out = open(tempfn, 'wb')
         else:
             out = sys.stdout
 
@@ -3918,11 +3937,11 @@ class Simple(object):
 
     def setup_scaling_extra(self, scaler, conf):
 
-        scaler_x = copy.deepcopy(scaler)
+        scaler_x = scaler.copy()
         scaler_x.data_ranges[1] = (0., 1.)
         scaler_x.axes[1].mode = 'off'
 
-        scaler_y = copy.deepcopy(scaler)
+        scaler_y = scaler.copy()
         scaler_y.data_ranges[0] = (0., 1.)
         scaler_y.axes[0].mode = 'off'
 

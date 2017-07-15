@@ -92,7 +92,7 @@ class GmtPyTestCase(unittest.TestCase):
                 fpath = self.fpath(fname)
                 gmt.save(fpath, resolution=resolution, oversample=oversample)
 
-                self.compare_with_ref(fname, 0.02)
+                self.compare_with_ref(fname, 0.03)
 
                 img = image.imread(fpath, format='png')
                 self.assertEqual(img.shape, (
