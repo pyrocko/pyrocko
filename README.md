@@ -37,7 +37,7 @@ For documentation and installation instructions please see
 - [x] ``gcf.py``
 - [x] ``geonames.py``
 - [ ] ``gf/``
-- [ ] ``gmtpy.py``
+- [x] ``gmtpy.py``
 - [x] ``gse1.py``
 - [x] ``gse2_io_wrap.py``
 - [x] ``gshhg.py``
@@ -65,7 +65,7 @@ For documentation and installation instructions please see
 - [x] ``parstack_ext.c``
 - [x] ``parstack.py``
 - [x] ``pchain.py``
-- [ ] ``pile.py``
+- [x] ``pile.py``
 - [ ] ``pile_viewer.py``
 - [x] ``plot.py``
 - [x] ``pz.py``
