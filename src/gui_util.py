@@ -1,3 +1,4 @@
+import sys
 import math
 import time
 import numpy as num
@@ -10,6 +11,10 @@ from pyrocko.marker import load_markers, save_markers  # noqa
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
+
+if sys.version_info > (3,):
+    buffer = memoryview
+
 
 logger = logging.getLogger('pyrocko.gui_util')
 
@@ -29,7 +34,7 @@ def make_QPolygonF(xdata, ydata):
     return qpoints
 
 
-class Label:
+class Label(object):
     def __init__(
             self, p, x, y, label_str,
             label_bg=None,
@@ -371,7 +376,7 @@ class LinValControl(ValControl):
         return int(round((value-self.mi)/(self.ma-self.mi) * 10000.))
 
 
-class Progressbar:
+class Progressbar(object):
     def __init__(self, parent, name, can_abort=True):
         self.parent = parent
         self.name = name
@@ -464,7 +469,7 @@ def to01(c):
 
 
 def beautify_axes(axes):
-    axes.set_color_cycle(map(to01, plot.graph_colors))
+    axes.set_color_cycle(list(map(to01, plot.graph_colors)))
 
     xa = axes.get_xaxis()
     ya = axes.get_yaxis()

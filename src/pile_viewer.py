@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from builtins import range
+
 import os
 import time
 import calendar
@@ -36,6 +40,9 @@ from PyQt4 import QtSvg as qsvg
 import scipy.stats as sstats
 import platform
 
+if not hasattr(qc, 'QString'):
+    qc.QString = str
+
 if platform.mac_ver() != ('', ('', '', ''), ''):
     qfiledialog_options = qg.QFileDialog.DontUseNativeDialog
     macosx = True
@@ -55,11 +62,11 @@ def retrend(x, y_detrended, slope, offset):
     return x * slope + y_detrended + offset
 
 
-class Global:
+class Global(object):
     appOnDemand = None
 
 
-class NSLC:
+class NSLC(object):
     def __init__(self, n, s, l=None, c=None):
         self.network = n
         self.station = s
@@ -87,7 +94,7 @@ def m_float_or_none(x):
 
 def make_chunks(items):
     """Split a list of integers into sublists of consecutive elements."""
-    return [map(operator.itemgetter(1), g) for k, g in groupby(
+    return [list(map(operator.itemgetter(1), g)) for k, g in groupby(
         enumerate(items), (lambda i, x: i-x))]
 
 
@@ -122,7 +129,7 @@ def num_to_html(num):
 gap_lap_tolerance = 5.
 
 
-class Timer:
+class Timer(object):
     def __init__(self):
         self._start = None
         self._stop = None
@@ -137,14 +144,14 @@ class Timer:
         a = self._start
         b = self._stop
         if a is not None and b is not None:
-            return tuple([b[i] - a[i] for i in xrange(5)])
+            return tuple([b[i] - a[i] for i in range(5)])
         else:
             return tuple([0.] * 5)
 
     def __sub__(self, other):
         a = self.get()
         b = other.get()
-        return tuple([a[i] - b[i] for i in xrange(5)])
+        return tuple([a[i] - b[i] for i in range(5)])
 
 
 class Integrator(pyrocko.shadow_pile.ShadowPile):
@@ -174,9 +181,9 @@ for color in 'orange skyblue butter chameleon chocolate plum ' \
             *(pyrocko.plot.tango_colors[color+'1'] + (box_alpha,)))),
     ))
 
-sday = 60*60*24       # \
-smonth = 60*60*24*30  # | only used as approx. intervals...
-syear = 60*60*24*365  # /
+sday = 60*60*24.       # \
+smonth = 60*60*24*30.  # | only used as approx. intervals...
+syear = 60*60*24*365.  # /
 
 acceptable_tincs = num.array([
     1, 2, 5, 10, 20, 30, 60, 60*5, 60*10, 60*20, 60*30, 60*60, 60*60*3,
@@ -657,7 +664,7 @@ def sort_actions(menu):
         menu.removeAction(action)
     actions.sort(key=lambda x: str(x.text()))
 
-    help_action = filter(lambda a: a.text() == "Snuffler Controls", actions)
+    help_action = [a for a in actions if a.text() == 'Snuffler Controls']
     if help_action:
         actions.insert(0, actions.pop(actions.index(help_action[0])))
     for action in actions:
@@ -848,37 +855,37 @@ def MakePileViewerMainClass(base):
             menudef = [
                 ('Subsort by Network, Station, Location, Channel',
                     (lambda tr: self.ssort(tr) + tr.nslc_id,     # gathering
-                     lambda a, b: cmp(a, b),                     # sorting
+                     lambda a: a,                                # sorting
                      lambda tr: tr.location)),                   # coloring
                 ('Subsort by Network, Station, Channel, Location',
                     (lambda tr: self.ssort(tr) + (
                         tr.network, tr.station, tr.channel, tr.location),
-                     lambda a, b: cmp(a, b),
+                     lambda a: a,
                      lambda tr: tr.channel)),
                 ('Subsort by Station, Network, Channel, Location',
                     (lambda tr: self.ssort(tr) + (
                         tr.station, tr.network, tr.channel, tr.location),
-                     lambda a, b: cmp(a, b),
+                     lambda a: a,
                      lambda tr: tr.channel)),
                 ('Subsort by Location, Network, Station, Channel',
                     (lambda tr: self.ssort(tr) + (
                         tr.location, tr.network, tr.station, tr.channel),
-                     lambda a, b: cmp(a, b),
+                     lambda a: a,
                      lambda tr: tr.channel)),
                 ('Subsort by Channel, Network, Station, Location',
                     (lambda tr: self.ssort(tr) + (
                         tr.channel, tr.network, tr.station, tr.location),
-                     lambda a, b: cmp(a, b),
+                     lambda a: a,
                      lambda tr: (tr.network, tr.station, tr.location))),
                 ('Subsort by Network, Station, Channel (Grouped by Location)',
                     (lambda tr: self.ssort(tr) + (
                         tr.network, tr.station, tr.channel),
-                     lambda a, b: cmp(a, b),
+                     lambda a: a,
                      lambda tr: tr.location)),
                 ('Subsort by Station, Network, Channel (Grouped by Location)',
                     (lambda tr: self.ssort(tr) + (
                         tr.station, tr.network, tr.channel),
-                     lambda a, b: cmp(a, b),
+                     lambda a: a,
                      lambda tr: tr.location)),
             ]
 
@@ -1337,7 +1344,7 @@ def MakePileViewerMainClass(base):
             for mod in self.iter_snuffling_modules():
                 try:
                     mod.load_if_needed()
-                except pyrocko.snuffling.BrokenSnufflingModule, e:
+                except pyrocko.snuffling.BrokenSnufflingModule as e:
                     logger.warn('Snuffling module "%s" is broken' % e)
 
             # load the default snufflings on first run
@@ -1482,7 +1489,7 @@ def MakePileViewerMainClass(base):
             fns = qg.QFileDialog.getOpenFileNames(
                 self, caption, options=qfiledialog_options)
 
-            stations = map(lambda x: pyrocko.model.load_stations(str(x)), fns)
+            stations = [pyrocko.model.load_stations(str(x)) for x in fns]
             for stat in stations:
                 self.add_stations(stat)
 
@@ -1522,8 +1529,8 @@ def MakePileViewerMainClass(base):
                     return tr.nslc_id
 
             if order is None:
-                def order(a, b):
-                    return cmp(a, b)
+                def order(a):
+                    return a
 
             if color is None:
                 def color(tr):
@@ -1549,7 +1556,7 @@ def MakePileViewerMainClass(base):
                 key_at_top = self.track_keys[l]
                 n = h-l
 
-            self.track_keys = sorted(keys, cmp=order)
+            self.track_keys = sorted(keys, key=order)
 
             if key_at_top is not None:
                 try:
@@ -2021,7 +2028,7 @@ def MakePileViewerMainClass(base):
                     marker.set_kind(int(keytext))
                 self.emit_selected_markers()
 
-            elif key_event.key() in fkey_map.keys():
+            elif key_event.key() in fkey_map:
                 self.handle_fkeys(key_event.key())
 
             elif key_event.key() == qc.Qt.Key_Escape:
@@ -2179,7 +2186,7 @@ def MakePileViewerMainClass(base):
 
         def wheelEvent(self, wheel_event):
             self.wheel_pos += wheel_event.delta()
-            n = self.wheel_pos / 120
+            n = self.wheel_pos // 120
             self.wheel_pos = self.wheel_pos % 120
             if n == 0:
                 return
@@ -2527,7 +2534,7 @@ def MakePileViewerMainClass(base):
                         traces_by_style[itrack, istyle] = []
                     traces_by_style[itrack, istyle].append(tr)
 
-            for (itrack, istyle), traces in traces_by_style.iteritems():
+            for (itrack, istyle), traces in traces_by_style.items():
                 drawbox(itrack, istyle, traces)
 
         def tobedrawn(self, markers, uminmax):
@@ -2535,7 +2542,7 @@ def MakePileViewerMainClass(base):
             first indicates which markers should be labeled.
             second indicates which markers should be drawn."""
             times = [m.tmin for m in markers]
-            m_projections = num.array(map(self.time_projection, times))
+            m_projections = num.array(list(map(self.time_projection, times)))
             m_projections = num.floor(m_projections)
             u, indx = num.unique(m_projections, return_index=True)
             a = num.zeros(len(m_projections)+2)
@@ -2557,14 +2564,11 @@ def MakePileViewerMainClass(base):
 
         def draw_visible_markers(self, markers, p, vcenter_projection):
             """Draw non-overlapping ``markers``."""
-            markers = filter(
-                lambda x: (
-                    x.get_tmin() < self.tmax
-                    and self.tmin < x.get_tmax()),
-                self.markers)
+            markers = [x for x in self.markers if (
+                x.get_tmin() < self.tmax and self.tmin < x.get_tmax())]
 
-            markers = filter(
-                lambda x: x.kind in self.visible_marker_kinds, markers)
+            markers = [
+                x for x in markers if x.kind in self.visible_marker_kinds]
 
             if len(markers) > 500:
                 i_labels, i_markers = self.tobedrawn(
@@ -2754,7 +2758,7 @@ def MakePileViewerMainClass(base):
                     # y axes, zero lines
 
                     trace_projections = {}
-                    for itrack in track_projections.keys():
+                    for itrack in list(track_projections.keys()):
                         if itrack not in track_scaling_keys:
                             continue
                         uoff = 0
@@ -2986,7 +2990,7 @@ def MakePileViewerMainClass(base):
 
             tsee = tmax-tmin
             min_deltat_wo_decimate = tsee/nmax
-            min_deltat_w_decimate = min_deltat_wo_decimate / 32
+            min_deltat_w_decimate = min_deltat_wo_decimate / 32.
 
             min_deltat_allow = min_deltat_wo_decimate
             if self.lowpass is not None:
@@ -3627,7 +3631,7 @@ def MakePileViewerMainClass(base):
 
                             def hook(data_ranges):
                                 for k in pyrocko.util.match_nslcs(
-                                        pattern, data_ranges.keys()):
+                                        pattern, list(data_ranges.keys())):
 
                                     upd(data_ranges, k, vmin, vmax)
 
@@ -3674,7 +3678,7 @@ def MakePileViewerMainClass(base):
                         raise PileViewerMainException(
                             'No such command: %s' % command)
 
-                except PileViewerMainException, e:
+                except PileViewerMainException as e:
                     error = str(e)
                     hideit = False
 
@@ -3710,7 +3714,7 @@ class PileViewer(qg.QFrame):
             panel_parent=None,
             *args):
 
-        apply(qg.QFrame.__init__, (self,) + args)
+        qg.QFrame.__init__(self, *args)
 
         if use_opengl:
             self.viewer = GLPileViewerMain(
