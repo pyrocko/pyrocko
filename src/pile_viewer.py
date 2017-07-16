@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from builtins import range
 
+import sys
 import os
 import time
 import calendar
@@ -40,7 +41,7 @@ from PyQt4 import QtSvg as qsvg
 import scipy.stats as sstats
 import platform
 
-if not hasattr(qc, 'QString'):
+if sys.version_info[0] >= 3:
     qc.QString = str
 
 if platform.mac_ver() != ('', ('', '', ''), ''):
@@ -95,7 +96,7 @@ def m_float_or_none(x):
 def make_chunks(items):
     """Split a list of integers into sublists of consecutive elements."""
     return [list(map(operator.itemgetter(1), g)) for k, g in groupby(
-        enumerate(items), (lambda i, x: i-x))]
+        enumerate(items), (lambda x: x[1]-x[0]))]
 
 
 class deg_float(float):
@@ -2983,6 +2984,9 @@ def MakePileViewerMainClass(base):
 
         def prepare_cutout2(
                 self, tmin, tmax, trace_selector=None, degap=True, nmax=6000):
+
+            if self.pile.is_empty():
+                return []
 
             nmax = self.visible_length
 

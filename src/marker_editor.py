@@ -1,6 +1,7 @@
 from builtins import zip
-from builtins import str
 from builtins import range
+
+import sys
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
@@ -13,6 +14,41 @@ from pyrocko import orthodrome
 
 import numpy as num
 import logging
+
+def noop(x=None):
+    return x
+
+if sys.version_info[0] >= 3:
+    qc.QString = str
+    qc.QVariant = noop
+
+    def toDateTime(val):
+        return val
+
+    def isDateTime(val):
+        return isinstance(val, qc.QDateTime)
+
+    def toFloat(val):
+        try:
+            return float(val), True
+        except ValueError:
+            return 0.0, False
+
+    def toString(val):
+        return str(val)
+
+else:
+    def toDateTime(val):
+        return val.toDateTime()
+
+    def isDateTime(val):
+        return val.type() == qc.QVariant.DateTime
+
+    def toFloat(val):
+        return val.toFloat()
+
+    def toString(val):
+        return val.toString()
 
 logger = logging.getLogger('pyrocko.marker_editor')
 
@@ -122,11 +158,11 @@ class MarkerItemDelegate(qg.QStyledItemDelegate):
             qg.QStyledItemDelegate.paint(self, painter, option, index)
 
     def displayText(self, value, locale):
-        if (value.type() == qc.QVariant.DateTime):
-            return value.toDateTime().toUTC().toString(
+        if isDateTime(value):
+            return toDateTime(value).toUTC().toString(
                 'yyyy-MM-dd HH:mm:ss.zzz')
         else:
-            return value.toString()
+            return toString(value)
 
     def get_mt_from_index(self, index):
         tv = self.parent()
@@ -147,11 +183,11 @@ class MarkerSortFilterProxyModel(qg.QSortFilterProxyModel):
 
     def lessThan(self, left, right):
         if left.column() == 1:
-            return left.data().toDateTime() < right.data().toDateTime()
+            return toDateTime(left.data()) < toDateTime(right.data())
         elif left.column() in [0, 3, 9]:
-            return left.data().toString() < right.data().toString()
+            return toString(left.data()) < toString(right.data())
         else:
-            return left.data().toFloat()[0] < right.data().toFloat()[0]
+            return toFloat(left.data())[0] < toFloat(right.data())[0]
 
     def headerData(self, col, orientation, role):
         '''Set and format header data.'''
@@ -288,10 +324,10 @@ class MarkerTableView(qg.QTableView):
             xscale = rect.width() / (self.width()*1.1)
             yscale = rect.height() / (self.height() * 1.1)
             scale = min(xscale, yscale)
-            painter.translate(rect.x() + rect.width()/2,
-                              rect.y() + rect.height()/2)
+            painter.translate(rect.x() + rect.width()/2.,
+                              rect.y() + rect.height()/2.)
             painter.scale(scale, scale)
-            painter.translate(-self.width()/2, -self.height()/2)
+            painter.translate(-self.width()/2., -self.height()/2.)
             painter.setRenderHints(qg.QPainter.HighQualityAntialiasing |
                                    qg.QPainter.TextAntialiasing)
             self.render(painter)
@@ -553,7 +589,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                     return False
                 else:
                     if index.column() == _column_mapping['M']:
-                        valuef, valid = value.toFloat()
+                        valuef, valid = toFloat(value)
                         if valid:
                             e = marker.get_event()
                             if e.moment_tensor is None:
@@ -566,7 +602,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                                       _column_mapping['Lat'],
                                       _column_mapping['Depth [km]']]:
                     if isinstance(marker, EventMarker):
-                        valuef, valid = value.toFloat()
+                        valuef, valid = toFloat(value)
                         if valid:
                             if index.column() == _column_mapping['Lat']:
                                 marker.get_event().lat = valuef
@@ -578,7 +614,7 @@ class MarkerTableModel(qc.QAbstractTableModel):
                             return self.done()
 
             if index.column() == _column_mapping['Label']:
-                values = str(value.toString())
+                values = str(toString(value))
                 if values != '':
                     if isinstance(marker, EventMarker):
                         marker.get_event().set_name(values)
