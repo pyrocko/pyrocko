@@ -71,7 +71,7 @@ For documentation and installation instructions please see
 - [x] ``pz.py``
 - [x] ``quakeml.py``
 - [ ] ``rdseed.py``
-- [ ] ``response_plot.py``
+- [x] ``response_plot.py``
 - [x] ``sac.py``
 - [ ] ``seed.py``
 - [x] ``segy.py``
