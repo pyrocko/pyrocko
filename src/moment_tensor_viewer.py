@@ -14,7 +14,6 @@ class BeachballView(qg.QWidget):
     def __init__(self, *args):
         qg.QWidget.__init__(self, *args)
         mt = mtm.MomentTensor(m=mtm.symmat6(1., -1., 2., 0., -2., 1.))
-        print mt
         self._mt = mt
         self.set_moment_tensor(mt)
 

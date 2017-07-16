@@ -15,10 +15,10 @@ from pyrocko import moment_tensor_viewer as mtv
 from PyQt4 import QtCore, QtGui
 
 
-class Momo(QtCore.QApplication):
+class Momo(QtGui.QApplication):
 
     def __init__(self, *args):
-        apply(QtCore.QApplication.__init__, (self,) + args)
+        QtGui.QApplication.__init__(self, *args)
 
         viewer = mtv.BeachballView()
         editor = mtv.MomentTensorEditor()

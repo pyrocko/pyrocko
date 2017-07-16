@@ -56,7 +56,7 @@ For documentation and installation instructions please see
 - [x] ``marker.py``
 - [x] ``model.py``
 - [x] ``moment_tensor.py``
-- [ ] ``moment_tensor_viewer.py``
+- [x] ``moment_tensor_viewer.py``
 - [x] ``mseed_ext.c``
 - [x] ``mseed.py``
 - [x] ``orthodrome_ext.c``
