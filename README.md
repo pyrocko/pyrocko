@@ -91,7 +91,7 @@ For documentation and installation instructions please see
 - [x] ``trace.py``
 - [x] ``util_ext.c``
 - [x] ``util.py``
-- [ ] ``weeding.py``
+- [x] ``weeding.py``
 - [x] ``yaff.py``
 
 ## Citation
