@@ -44,7 +44,7 @@ For documentation and installation instructions please see
 - [x] ``gui_util.py``
 - [x] ``guts_array.py``
 - [x] ``guts.py``
-- [ ] ``hamster_pile.py``
+- [x] ``hamster_pile.py`` *not tested*
 - [x] ``hudson.py``
 - [x] ``ims_ext.c``
 - [x] ``ims.py``
