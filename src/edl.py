@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import struct
 import collections
 import time
@@ -14,9 +16,9 @@ def hexdump(chars, sep=' ', width=16):
         line = chars[:width]
         chars = chars[width:]
         line = line.ljust(width, '\000')
-        print "%s%s%s" % (
+        print("%s%s%s" % (
             sep.join("%02x" % ord(c) for c in line),
-            sep, quotechars(line))
+            sep, quotechars(line)))
 
 
 def quotechars(chars):
@@ -221,7 +223,7 @@ convert_functions = {
     'hex_int': hex_int}
 
 
-class GPSFormat_:
+class GPSFormat_(object):
     def __init__(self, name, fmt):
 
         nn = 0
@@ -292,7 +294,7 @@ def unpack_values(ncomps, bytes_per_sample, data):
         raise ReadError('unimplemented bytes_per_sample setting')
 
 
-class TimeEstimator:
+class TimeEstimator(object):
     def __init__(self, nlookback):
         self._nlookback = nlookback
         self._queue = []
@@ -328,7 +330,7 @@ class TimeEstimator:
 
         terrors = ts - tpredicts
         mterror = num.median(terrors)
-        print mterror / deltat, '+-', num.std(terrors) / deltat
+        print(mterror / deltat, '+-', num.std(terrors) / deltat)
 
         if num.abs(mterror) > 0.75*deltat and \
                 len(self._queue) == self._nlookback:
@@ -348,7 +350,7 @@ class TimeEstimator:
         return len(self._queue)
 
 
-class GPSRecord:
+class GPSRecord(object):
     def __init__(self, al, pv, st, tm):
         self._al = al
         self._pv = pv
@@ -395,7 +397,7 @@ def stime_none_aware(t):
         return util.time_to_str(t)
 
 
-class Record:
+class Record(object):
     def __init__(self, mod, mde, dat, sum, values):
         self._mod = mod
         self._mde = mde
@@ -499,7 +501,7 @@ Time system: %s (estimated)   %s (measured)
             self._measured_system_time)])
 
 
-class Reader:
+class Reader(object):
 
     def __init__(self, port=0, timeout=2., baudrate=115200, lookback=30):
         if isinstance(port, int):
@@ -587,7 +589,7 @@ class Reader:
         deltat = 1./mod.sample_rate * mod.ncomps
         r = Record(mod, mde, dat, sum, values)
         approx_system_time = self._time_estimator_system.insert(
-            deltat, values.size/mod.ncomps, measured_system_time)
+            deltat, values.size//mod.ncomps, measured_system_time)
 
         try:
             gpstime = r.gps.time
@@ -595,7 +597,7 @@ class Reader:
             gpstime = None
 
         approx_gps_time = self._time_estimator_gps.insert(
-            deltat, values.size/mod.ncomps, gpstime)
+            deltat, values.size//mod.ncomps, gpstime)
 
         r.set_approx_times(
             approx_system_time, approx_gps_time, measured_system_time)
@@ -613,7 +615,7 @@ class Reader:
         self._time_estimator_gps.reset()
 
 
-class EDLHamster:
+class EDLHamster(object):
     def __init__(self, *args, **kwargs):
         self.reader = Reader(*args, **kwargs)
 

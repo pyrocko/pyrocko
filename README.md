@@ -26,7 +26,7 @@ For documentation and installation instructions please see
 - [x] ``datacube_ext.c``
 - [x] ``datacube.py``
 - [x] ``dummy_progressbar.py``
-- [ ] ``edl.py``
+- [x] ``edl.py`` *partial, not tested*
 - [x] ``evalresp_ext.c``
 - [x] ``evalresp.py``
 - [x] ``eventdata.py``

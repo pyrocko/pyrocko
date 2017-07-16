@@ -88,7 +88,7 @@ def m_float_or_none(x):
 def make_chunks(items):
     """Split a list of integers into sublists of consecutive elements."""
     return [map(operator.itemgetter(1), g) for k, g in groupby(
-        enumerate(items), lambda (i, x):i-x)]
+        enumerate(items), (lambda i, x: i-x))]
 
 
 class deg_float(float):
