@@ -1,3 +1,5 @@
+from __future__ import division
+from builtins import range
 import struct
 import logging
 import numpy as num
@@ -15,7 +17,7 @@ class OutOfBounds(Exception):
     pass
 
 
-class Cell:
+class Cell(object):
     def __init__(self, tree, index, f=None):
         self.tree = tree
         self.index = index
@@ -136,7 +138,7 @@ class Cell:
         npoints = coords[0].size * coords[1].size
         g = num.meshgrid(*coords[::-1])[::-1]
         points = num.empty((npoints, self.tree.ndim), dtype=num.float)
-        for idim in xrange(self.tree.ndim):
+        for idim in range(self.tree.ndim):
             try:
                 idimout = dims.index(idim)
                 points[:, idim] = g[idimout].ravel()
@@ -165,7 +167,7 @@ class Cell:
 
         npoints = coords.size
         points = num.empty((npoints, self.tree.ndim), dtype=num.float)
-        for idim in xrange(self.tree.ndim):
+        for idim in range(self.tree.ndim):
             if idim == dim:
                 points[:, idim] = coords
             else:
@@ -194,7 +196,7 @@ def bread(f, fmt):
     return struct.unpack(fmt, s)
 
 
-class SPTree:
+class SPTree(object):
 
     def __init__(self, f=None, ftol=None, xbounds=None, xtols=None,
                  filename=None, addargs=()):
@@ -285,9 +287,9 @@ class SPTree:
         return self.ncells
 
     def dump(self, filename):
-        with open(filename, 'w') as file:
+        with open(filename, 'wb') as file:
             version = 1
-            file.write('SPITREE ')
+            file.write(b'SPITREE ')
             file.write(struct.pack(
                 '<QQQd', version, self.ndim, self.ncells, self.ftol))
             self.xbounds.astype('<f8').tofile(file)
@@ -295,10 +297,10 @@ class SPTree:
             self.root.dump(file)
 
     def _load(self, filename):
-        with open(filename, 'r') as file:
+        with open(filename, 'rb') as file:
             marker, version, self.ndim, self.ncells, self.ftol = bread(
                 file, '<8sQQQd')
-            assert marker == 'SPITREE '
+            assert marker == b'SPITREE '
             assert version == 1
             self.xbounds = num.fromfile(
                 file, dtype='<f8', count=self.ndim*2).reshape(self.ndim, 2)
@@ -306,7 +308,7 @@ class SPTree:
                 file, dtype='<f8', count=self.ndim)
 
             path = []
-            for icell in xrange(self.ncells):
+            for icell in range(self.ncells):
                 index = num.fromfile(
                     file, dtype='<i4', count=self.ndim)
                 f = num.fromfile(

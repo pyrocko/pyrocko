@@ -84,7 +84,7 @@ For documentation and installation instructions please see
 - [x] ``snuffler.py (wip)``
 - [x] ``snuffling.py``
 - [x] ``snufflings/``
-- [ ] ``spit.py``
+- [x] ``spit.py``
 - [x] ``suds.py``
 - [x] ``tectonics.py``
 - [x] ``topo/``
