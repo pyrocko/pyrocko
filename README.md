@@ -41,7 +41,7 @@ For documentation and installation instructions please see
 - [x] ``gse1.py``
 - [x] ``gse2_io_wrap.py``
 - [x] ``gshhg.py``
-- [ ] ``gui_util.py``
+- [x] ``gui_util.py``
 - [x] ``guts_array.py``
 - [x] ``guts.py``
 - [ ] ``hamster_pile.py``
@@ -52,7 +52,7 @@ For documentation and installation instructions please see
 - [x] ``io.py``
 - [x] ``iris_ws.py``
 - [x] ``kan.py``
-- [ ] ``marker_editor.py``
+- [x] ``marker_editor.py``
 - [x] ``marker.py``
 - [x] ``model.py``
 - [x] ``moment_tensor.py``
@@ -66,7 +66,7 @@ For documentation and installation instructions please see
 - [x] ``parstack.py``
 - [x] ``pchain.py``
 - [x] ``pile.py``
-- [ ] ``pile_viewer.py``
+- [x] ``pile_viewer.py``
 - [x] ``plot.py``
 - [x] ``pz.py``
 - [x] ``quakeml.py``
