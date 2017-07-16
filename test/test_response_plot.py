@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unittest
 import tempfile
 import shutil
@@ -67,6 +68,7 @@ class ResponsePlotTestCase(unittest.TestCase):
             resps, labels = response_plot.load_response_information(
                 fpath_resp, format)
             labels = [lab[len(fpath_resp)+1:] or 'dummy' for lab in labels]
+
             response_plot.plot(
                 responses=resps, labels=labels, filename=fpath_png, dpi=50)
             self.compare_with_ref(fname, 0.01)

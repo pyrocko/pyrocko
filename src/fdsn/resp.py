@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 from __future__ import print_function
-from builtins import str
 
 import time
 import re
@@ -44,56 +43,56 @@ def pnc(s):
 
 
 def punit(s):
-    return s.split()[0]
+    return str(s.split()[0].decode('ascii'))
 
 
 def psymmetry(s):
     return {
-        'A': 'NONE',
-        'B': 'ODD',
-        'C': 'EVEN'}[s.upper()]
+        b'A': 'NONE',
+        b'B': 'ODD',
+        b'C': 'EVEN'}[s.upper()]
 
 
 def ptftype(s):
-    if s.startswith('A'):
+    if s.startswith(b'A'):
         return 'LAPLACE (RADIANS/SECOND)'
-    elif s.startswith('B'):
+    elif s.startswith(b'B'):
         return 'LAPLACE (HERTZ)'
-    elif s.startswith('D'):
+    elif s.startswith(b'D'):
         return 'DIGITAL (Z-TRANSFORM)'
     else:
         raise RespError('unknown pz transfer function type')
 
 
 def pcftype(s):
-    if s.startswith('A'):
+    if s.startswith(b'A'):
         return 'ANALOG (RADIANS/SECOND)'
-    elif s.startswith('B'):
+    elif s.startswith(b'B'):
         return 'ANALOG (HERTZ)'
-    elif s.startswith('D'):
+    elif s.startswith(b'D'):
         return 'DIGITAL'
     else:
         raise RespError('unknown cf transfer function type')
 
 
 def pblock_060(content):
-    stage_number = int(get1(content, '04'))
+    stage_number = int(get1(content, b'04'))
     return stage_number, None
 
 
 def pblock_053(content):
-    stage_number = int(get1(content, '04'))
+    stage_number = int(get1(content, b'04'))
 
     pzs = fs.PolesZeros(
-        pz_transfer_function_type=ptftype(get1(content, '03')),
-        input_units=fs.Units(name=punit(get1(content, '05'))),
-        output_units=fs.Units(name=punit(get1(content, '06'))),
-        normalization_factor=float(get1(content, '07')),
+        pz_transfer_function_type=ptftype(get1(content, b'03')),
+        input_units=fs.Units(name=punit(get1(content, b'05'))),
+        output_units=fs.Units(name=punit(get1(content, b'06'))),
+        normalization_factor=float(get1(content, b'07')),
         normalization_frequency=fs.Frequency(
-            value=float(get1(content, '08'))),
+            value=float(get1(content, b'08'))),
 
-        zero_list=list(map(ppolezero, getn(content, '10-13'))),
-        pole_list=list(map(ppolezero, getn(content, '15-18'))))
+        zero_list=list(map(ppolezero, getn(content, b'10-13'))),
+        pole_list=list(map(ppolezero, getn(content, b'15-18'))))
 
     for i, x in enumerate(pzs.zero_list):
         x.number = i
@@ -108,15 +107,15 @@ def pblock_043(content):
     stage_number = -1
 
     pzs = fs.PolesZeros(
-        pz_transfer_function_type=ptftype(get1(content, '05')),
-        input_units=fs.Units(name=punit(get1(content, '06'))),
-        output_units=fs.Units(name=punit(get1(content, '07'))),
-        normalization_factor=float(get1(content, '08')),
+        pz_transfer_function_type=ptftype(get1(content, b'05')),
+        input_units=fs.Units(name=punit(get1(content, b'06'))),
+        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        normalization_factor=float(get1(content, b'08')),
         normalization_frequency=fs.Frequency(
-            value=float(get1(content, '09'))),
+            value=float(get1(content, b'09'))),
 
-        zero_list=list(map(ppolezero, getn(content, '11-14'))),
-        pole_list=list(map(ppolezero, getn(content, '16-19'))))
+        zero_list=list(map(ppolezero, getn(content, b'11-14'))),
+        pole_list=list(map(ppolezero, getn(content, b'16-19'))))
 
     for i, x in enumerate(pzs.zero_list):
         x.number = i
@@ -128,11 +127,11 @@ def pblock_043(content):
 
 
 def pblock_058(content):
-    stage_number = int(get1(content, '03'))
+    stage_number = int(get1(content, b'03'))
 
     gain = fs.Gain(
-        value=float(get1(content, '04')),
-        frequency=float(get1(content, '05').split()[0]))
+        value=float(get1(content, b'04')),
+        frequency=float(get1(content, b'05').split()[0]))
 
     return stage_number, gain
 
@@ -141,21 +140,21 @@ def pblock_048(content):
     stage_number = -1
 
     gain = fs.Gain(
-        value=float(get1(content, '05')),
-        frequency=float(get1(content, '06').split()[0]))
+        value=float(get1(content, b'05')),
+        frequency=float(get1(content, b'06').split()[0]))
 
     return stage_number, gain
 
 
 def pblock_054(content):
-    stage_number = int(get1(content, '04'))
+    stage_number = int(get1(content, b'04'))
 
     cfs = fs.Coefficients(
-        cf_transfer_function_type=pcftype(get1(content, '03')),
-        input_units=fs.Units(name=punit(get1(content, '05'))),
-        output_units=fs.Units(name=punit(get1(content, '06'))),
-        numerator_list=list(map(pcfu, getn(content, '08-09'))),
-        denominator_list=list(map(pcfu, getn(content, '11-12'))))
+        cf_transfer_function_type=pcftype(get1(content, b'03')),
+        input_units=fs.Units(name=punit(get1(content, b'05'))),
+        output_units=fs.Units(name=punit(get1(content, b'06'))),
+        numerator_list=list(map(pcfu, getn(content, b'08-09'))),
+        denominator_list=list(map(pcfu, getn(content, b'11-12'))))
 
     return stage_number, cfs
 
@@ -164,24 +163,24 @@ def pblock_044(content):
     stage_number = -1
 
     cfs = fs.Coefficients(
-        cf_transfer_function_type=pcftype(get1(content, '05')),
-        input_units=fs.Units(name=punit(get1(content, '06'))),
-        output_units=fs.Units(name=punit(get1(content, '07'))),
-        numerator_list=list(map(pcfu, getn(content, '09-10'))),
-        denominator_list=list(map(pcfu, getn(content, '12-13'))))
+        cf_transfer_function_type=pcftype(get1(content, b'05')),
+        input_units=fs.Units(name=punit(get1(content, b'06'))),
+        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        numerator_list=list(map(pcfu, getn(content, b'09-10'))),
+        denominator_list=list(map(pcfu, getn(content, b'12-13'))))
 
     return stage_number, cfs
 
 
 def pblock_057(content):
-    stage_number = int(get1(content, '03'))
+    stage_number = int(get1(content, b'03'))
 
     deci = fs.Decimation(
-        input_sample_rate=fs.Frequency(value=float(get1(content, '04'))),
-        factor=int(get1(content, '05')),
-        offset=int(get1(content, '06')),
-        delay=fs.FloatWithUnit(value=float(get1(content, '07'))),
-        correction=fs.FloatWithUnit(value=float(get1(content, '08'))))
+        input_sample_rate=fs.Frequency(value=float(get1(content, b'04'))),
+        factor=int(get1(content, b'05')),
+        offset=int(get1(content, b'06')),
+        delay=fs.FloatWithUnit(value=float(get1(content, b'07'))),
+        correction=fs.FloatWithUnit(value=float(get1(content, b'08'))))
 
     return stage_number, deci
 
@@ -190,24 +189,24 @@ def pblock_047(content):
     stage_number = -1
 
     deci = fs.Decimation(
-        input_sample_rate=fs.Frequency(value=float(get1(content, '05'))),
-        factor=int(get1(content, '06')),
-        offset=int(get1(content, '07')),
-        delay=fs.FloatWithUnit(value=float(get1(content, '08'))),
-        correction=fs.FloatWithUnit(value=float(get1(content, '09'))))
+        input_sample_rate=fs.Frequency(value=float(get1(content, b'05'))),
+        factor=int(get1(content, b'06')),
+        offset=int(get1(content, b'07')),
+        delay=fs.FloatWithUnit(value=float(get1(content, b'08'))),
+        correction=fs.FloatWithUnit(value=float(get1(content, b'09'))))
 
     return stage_number, deci
 
 
 def pblock_061(content):
-    stage_number = int(get1(content, '03'))
+    stage_number = int(get1(content, b'03'))
 
     fir = fs.FIR(
-        name=get1(content, '04', optional=True),
-        input_units=fs.Units(name=punit(get1(content, '06'))),
-        output_units=fs.Units(name=punit(get1(content, '07'))),
-        symmetry=psymmetry(get1(content, '05')),
-        numerator_coefficient_list=list(map(pnc, getn(content, '09'))))
+        name=get1(content, b'04', optional=True),
+        input_units=fs.Units(name=punit(get1(content, b'06'))),
+        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        symmetry=psymmetry(get1(content, b'05')),
+        numerator_coefficient_list=list(map(pnc, getn(content, b'09'))))
 
     return stage_number, fir
 
@@ -216,63 +215,63 @@ def pblock_041(content):
     stage_number = -1
 
     fir = fs.FIR(
-        name=get1(content, '04', optional=True),
-        input_units=fs.Units(name=punit(get1(content, '06'))),
-        output_units=fs.Units(name=punit(get1(content, '07'))),
-        symmetry=psymmetry(get1(content, '05')),
-        numerator_coefficient_list=list(map(pnc, getn(content, '09'))))
+        name=get1(content, b'04', optional=True),
+        input_units=fs.Units(name=punit(get1(content, b'06'))),
+        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        symmetry=psymmetry(get1(content, b'05')),
+        numerator_coefficient_list=list(map(pnc, getn(content, b'09'))))
 
     return stage_number, fir
 
 
 bdefs = {
-    '050': {
+    b'050': {
         'name': 'Station Identifier Blockette',
     },
-    '052': {
+    b'052': {
         'name': 'Channel Identifier Blockette',
     },
-    '060': {
+    b'060': {
         'name': 'Response Reference Information',
         'parse': pblock_060,
     },
-    '053': {
+    b'053': {
         'name': 'Response (Poles & Zeros) Blockette',
         'parse': pblock_053,
     },
-    '043': {
+    b'043': {
         'name': 'Response (Poles & Zeros) Dictionary Blockette',
         'parse': pblock_043,
     },
-    '054': {
+    b'054': {
         'name': 'Response (Coefficients) Blockette',
         'parse': pblock_054,
     },
-    '044': {
+    b'044': {
         'name': 'Response (Coefficients) Dictionary Blockette',
         'parse': pblock_044,
     },
-    '057': {
+    b'057': {
         'name': 'Decimation Blockette',
         'parse': pblock_057,
     },
-    '047': {
+    b'047': {
         'name': 'Decimation Dictionary Blockette',
         'parse': pblock_047,
     },
-    '058': {
+    b'058': {
         'name': 'Channel Sensitivity/Gain Blockette',
         'parse': pblock_058,
     },
-    '048': {
+    b'048': {
         'name': 'Channel Sensitivity/Gain Dictionary Blockette',
         'parse': pblock_048,
     },
-    '061': {
+    b'061': {
         'name': 'FIR Response Blockette',
         'parse': pblock_061,
     },
-    '041': {
+    b'041': {
         'name': 'FIR Dictionary Blockette',
         'parse': pblock_041,
     },
@@ -281,9 +280,9 @@ bdefs = {
 
 def parse1(f):
     for line in f:
-        line = line.rstrip('\r\n')
+        line = line.rstrip(b'\r\n')
         m = re.match(
-            r'\s*(#(.+)|B(\d\d\d)F(\d\d(-\d\d)?)\s+(([^:]+):\s*)?(.*))', line)
+            br'\s*(#(.+)|B(\d\d\d)F(\d\d(-\d\d)?)\s+(([^:]+):\s*)?(.*))', line)
         if m:
             if m.group(2):
                 pass
@@ -300,7 +299,7 @@ def parse2(f):
     current_b = None
     content = []
     for block, field, key, value in parse1(f):
-        if current_b != block or field == '03':
+        if current_b != block or field == b'03':
             if current_b is not None:
                 yield current_b, content
 
@@ -316,13 +315,13 @@ def parse2(f):
 def parse3(f):
     state = [None, None, []]
     for block, content in parse2(f):
-        if block == '050' and state[0] and state[1]:
+        if block == b'050' and state[0] and state[1]:
             yield state
             state = [None, None, []]
 
-        if block == '050':
+        if block == b'050':
             state[0] = content
-        elif block == '052':
+        elif block == b'052':
             state[1] = content
         else:
             state[2].append((block, content))
@@ -354,22 +353,23 @@ def getn(content, field):
 
 def pdate(s):
     if len(s) < 17:
-        s += '0000,001,00:00:00'[len(s):]
+        s += b'0000,001,00:00:00'[len(s):]
 
-    if s.startswith('2599') or s.startswith('2999'):
+    if s.startswith(b'2599') or s.startswith(b'2999'):
         return None
-    elif s.lower().startswith('no'):
+    elif s.lower().startswith(b'no'):
         return None
     else:
-        t = s.split(',')
-        if len(t) > 2 and t[1] == '000':
-            s = ','.join([t[0], '001'] + t[2:])
+        t = s.split(b',')
+        if len(t) > 2 and t[1] == b'000':
+            s = b','.join([t[0], b'001'] + t[2:])
 
-        return util.str_to_time(s, format='%Y,%j,%H:%M:%S.OPTFRAC')
+        return util.str_to_time(
+            str(s.decode('ascii')), format='%Y,%j,%H:%M:%S.OPTFRAC')
 
 
 def ploc(s):
-    if s == '??':
+    if s == b'??':
         return ''
     else:
         return s
@@ -413,14 +413,14 @@ def iload_fh(f):
 
     for sc, cc, rcs in parse3(f):
         nslc = (
-            get1(sc, '16'),
-            get1(sc, '03'),
-            ploc(get1(cc, '03', '')),
-            get1(cc, '04'))
+            get1(sc, b'16'),
+            get1(sc, b'03'),
+            ploc(get1(cc, b'03', '')),
+            get1(cc, b'04'))
 
         try:
-            tmin = pdate(get1(cc, '22'))
-            tmax = pdate(get1(cc, '23'))
+            tmin = pdate(get1(cc, b'22'))
+            tmax = pdate(get1(cc, b'23'))
         except util.TimeStrError as e:
             raise RespError('invalid date in RESP information. (%s)' % str(e))
 

@@ -25,6 +25,8 @@ Example
     Example response plot
 '''
 
+from builtins import range
+
 import numpy as num
 
 from pyrocko import util
@@ -149,7 +151,7 @@ def plot(
     if styles is None:
         styles = [
             dict(color=to01(graph_colors[i % len(graph_colors)]))
-            for i in xrange(len(responses))]
+            for i in range(len(responses))]
     else:
         assert len(styles) == len(responses)
 
