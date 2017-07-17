@@ -4,6 +4,7 @@ from __future__ import division
 from builtins import zip
 from builtins import map
 from builtins import range
+from builtins import str as newstr
 
 import time
 import math
@@ -2822,8 +2823,8 @@ class MultiplyResponse(FrequencyResponse):
 
 
 def asarray_1d(x, dtype):
-    if isinstance(x, (list, tuple)) and x and isinstance(x[0], basestring):
-        return num.asarray(map(dtype, x), dtype=dtype)
+    if isinstance(x, (list, tuple)) and x and isinstance(x[0], (str, newstr)):
+        return num.asarray(list(map(dtype, x)), dtype=dtype)
     else:
         a = num.asarray(x, dtype=dtype)
         if not a.ndim == 1:

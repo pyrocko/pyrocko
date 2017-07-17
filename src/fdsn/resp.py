@@ -372,7 +372,11 @@ def ploc(s):
     if s == b'??':
         return ''
     else:
-        return s
+        return str(s.decode('ascii'))
+
+
+def pcode(s):
+    return str(s.decode('ascii'))
 
 
 def gett(l, t):
@@ -413,10 +417,10 @@ def iload_fh(f):
 
     for sc, cc, rcs in parse3(f):
         nslc = (
-            get1(sc, b'16'),
-            get1(sc, b'03'),
-            ploc(get1(cc, b'03', '')),
-            get1(cc, b'04'))
+            pcode(get1(sc, b'16')),
+            pcode(get1(sc, b'03')),
+            ploc(get1(cc, b'03', b'')),
+            pcode(get1(cc, b'04')))
 
         try:
             tmin = pdate(get1(cc, b'22'))
@@ -531,8 +535,8 @@ def make_stationxml(pyrocko_stations, channel_responses):
 
             stations[net, sta].channel_list.append(channel)
         else:
-            logger.warn('no station information for %s.%s.%s' %
-                        (net, sta, loc))
+            logger.warning('no station information for %s.%s.%s' %
+                           (net, sta, loc))
 
     for station in stations.values():
         station.channel_list.sort(key=lambda c: (c.location_code, c.code))

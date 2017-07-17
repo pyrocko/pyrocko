@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 import unittest
 import numpy as num
 from pyrocko import util, evalresp, pz, trace, guts
@@ -73,6 +75,7 @@ class ResponseTestCase(unittest.TestCase):
 
         sx_resp = resp.make_stationxml(
             stations, resp.iload_filename(resp_fpath))
+
         pr_sx_resp = sx_resp.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
         pr_evresp = trace.Evalresp(
