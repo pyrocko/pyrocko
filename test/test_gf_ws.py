@@ -15,6 +15,7 @@ logger = logging.getLogger('test_gf_ws.py')
 class GFWSTestCase(unittest.TestCase):
 
     def test_local_server(self):
+
         class ServerThread(threading.Thread):
             def __init__(self):
                 threading.Thread.__init__(self)
@@ -27,21 +28,23 @@ class GFWSTestCase(unittest.TestCase):
 
         store_id = 'test_store'
 
-        t_ws = ServerThread()
-        t_ws.start()
-
         if os.path.exists(store_id):
             shutil.rmtree(store_id)
 
-        ws.download_gf_store(site='localhost', store_id=store_id)
-        t_ws.s.close()
-        t_ws.join()
+        t_ws = ServerThread()
+        t_ws.start()
 
-        gfstore = store.Store(store_id)
-        gfstore.check()
+        try:
+            ws.download_gf_store(site='localhost', store_id=store_id)
+            gfstore = store.Store(store_id)
+            gfstore.check()
 
-        # cleanup
-        shutil.rmtree(store_id)
+            # cleanup
+            shutil.rmtree(store_id)
+        finally:
+            t_ws.s.close()
+            t_ws.join()
+
 
 
 if __name__ == '__main__':

@@ -1,10 +1,13 @@
+from future import standard_library
+standard_library.install_aliases()
 
 import os
 import time
 import shutil
-import urllib
-import urllib2
-import httplib
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
+import http.client
+
 import logging
 import re
 
@@ -49,12 +52,12 @@ class InvalidRequest(Exception):
 
 
 def _request(url, post=False, **kwargs):
-    url_values = urllib.urlencode(kwargs)
+    url_values = urllib.parse.urlencode(kwargs)
     if url_values:
         url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
-    req = urllib2.Request(url)
+    req = urllib.request.Request(url)
     if post:
         logger.debug('POST data: \n%s' % post)
         req.add_data(post)
@@ -62,12 +65,12 @@ def _request(url, post=False, **kwargs):
     req.add_header('Accept', '*/*')
 
     try:
-        resp = urllib2.urlopen(req)
+        resp = urllib.request.urlopen(req)
         if resp.getcode() == 204:
             raise EmptyResult(url)
         return resp
 
-    except urllib2.HTTPError, e:
+    except urllib2.HTTPError as e:
         if e.code == 413:
             raise RequestEntityTooLarge(url)
         else:
@@ -113,7 +116,7 @@ def rget(url, path, force=False, method='download', stats=None,
     if not url.endswith('/'):
         url = url + '/'
 
-    resp = urllib2.urlopen(url)
+    resp = urllib.request.urlopen(url)
     data = resp.read()
     resp.close()
 
@@ -142,11 +145,11 @@ def rget(url, path, force=False, method='download', stats=None,
                 status_callback=status_callback)
 
         else:
-            req = urllib2.Request(url + x)
+            req = urllib.request.Request(url + x)
             if method == 'calcsize':
                 req.get_method = lambda: 'HEAD'
 
-            resp = urllib2.urlopen(req)
+            resp = urllib.request.urlopen(req)
             sexpected = int(resp.headers['content-length'])
 
             if method == 'download':
@@ -194,8 +197,8 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
     def status_callback(i, n):
         tnow = time.time()
         if (tnow - tlast[0]) > 5 or i == n:
-            print '%s / %s [%.1f%%]' % (
-                util.human_bytesize(i), util.human_bytesize(n), i*100.0/n)
+            print('%s / %s [%.1f%%]' % (
+                util.human_bytesize(i), util.human_bytesize(n), i*100.0/n))
 
             tlast[0] = tnow
 
@@ -203,7 +206,7 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
 
     try:
         if store_id is None:
-            print static(url=stores_url+'/', format='text').read()
+            print(static(url=stores_url+'/', format='text').read())
 
         else:
             store_url = ujoin(stores_url, store_id)
@@ -215,7 +218,8 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
                 store_url, store_id, force=force, stats=[0, stotal],
                 status_callback=status_callback, entries_wanted=wanted)
 
-    except (urllib2.URLError, urllib2.HTTPError, httplib.HTTPException), e:
+    except (urllib.error.URLError, urllib.error.HTTPError,
+            httplib.HTTPException) as e:
         raise DownloadError('download failed. Original error was: %s, %s' % (
             type(e).__name__, e))
 
@@ -227,5 +231,5 @@ def seismosizer(url=g_url, site=g_default_site, majorversion=1,
 
     from pyrocko.gf import meta
 
-    return meta.load(stream=_request(url, post=urllib.urlencode(
+    return meta.load(stream=_request(url, post=urllib.parse.urlencode(
         {'request': request.dump()})))
