@@ -1,11 +1,14 @@
+from __future__ import absolute_import, division
+from builtins import range
+
 import os
 import signal
 import errno
 from os.path import join as pjoin
 import numpy as num
 
-from pyrocko.gf import store
-from pyrocko.parimap import parimap
+from . import store
+from ..parimap import parimap
 
 
 def int_arr(*args):
@@ -17,7 +20,7 @@ class Interrupted(store.StoreError):
         return 'Interrupted.'
 
 
-class Builder:
+class Builder(object):
     nsteps = 1
 
     def __init__(self, gf_config, step, block_size=None, force=False):
@@ -40,7 +43,7 @@ class Builder:
 
     @property
     def block_dims(self):
-        return (self.gf_config.ns-1) / self._block_size + 1
+        return (self.gf_config.ns-1) // self._block_size + 1
 
     def all_block_indices(self):
         return num.arange(self.nblocks)
@@ -66,7 +69,7 @@ class Builder:
             builder.work_block(iblock)
         except KeyboardInterrupt:
             raise Interrupted()
-        except IOError, e:
+        except IOError as e:
             if e.errno == errno.EINTR:
                 raise Interrupted()
             else:
@@ -78,7 +81,7 @@ class Builder:
     def build(cls, store_dir, force=False, nworkers=None, continue_=False,
               step=None, iblock=None):
         if step is None:
-            steps = range(cls.nsteps)
+            steps = list(range(cls.nsteps))
         else:
             steps = [step]
 
@@ -131,7 +134,7 @@ class Builder:
 
                     c.append('--block=%i' % (i+1))
 
-                    print ' '.join(c)
+                    print(' '.join(c))
 
                 return
 

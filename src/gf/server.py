@@ -1,4 +1,3 @@
-
 """
 Simple async HTTP server
 
@@ -10,22 +9,28 @@ which is based on this one:
 
     http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/259148
 """
+from __future__ import absolute_import
+from future import standard_library
+standard_library.install_aliases()  # noqa
+from builtins import range, basestring
 
 import asynchat
 import asyncore
 import socket
-from SimpleHTTPServer import SimpleHTTPRequestHandler as SHRH
+from http.server import SimpleHTTPRequestHandler as SHRH
 import sys
 import cgi
-from cStringIO import StringIO
+from io import StringIO
 import os
 import traceback
 import posixpath
-import urllib
+import urllib.request
+import urllib.parse
+import urllib.error
 import re
 from collections import deque
 
-from pyrocko import gf
+from .. import gf
 
 __version__ = '1.0'
 
@@ -33,7 +38,7 @@ __version__ = '1.0'
 def popall(self):
     # Preallocate the list to save memory resizing.
     r = len(self)*[None]
-    for i in xrange(len(r)):
+    for i in range(len(r)):
         r[i] = self.popleft()
     return r
 
@@ -52,7 +57,7 @@ class writewrapper(object):
             if len(data) % BS:
                 xtra = len(data) % BS + BS
             buf = self.d
-            for i in xrange(0, len(data)-xtra, BS):
+            for i in range(0, len(data)-xtra, BS):
                 buf.append(data[i:i+BS])
             if xtra:
                 buf.append(data[-xtra:])
@@ -68,7 +73,7 @@ class ParseHeaders(dict):
         for line in lines:
             k, v = line.split(":", 1)
             self._ci_dict[k.lower()] = self[k] = v.strip()
-        self.headers = self.keys()
+        self.headers = list(self.keys())
 
     def getheader(self, key, default=""):
         return self._ci_dict.get(key.lower(), default)
@@ -276,7 +281,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
                 else:
                     O.appendleft(a[num_sent:])
 
-        except socket.error, why:
+        except socket.error as why:
             if isinstance(why, basestring):
                 self.log_error(why)
             elif isinstance(why, tuple) and isinstance(why[-1], basestring):
@@ -329,7 +334,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 
         list.sort(key=lambda a: a.lower())
         f = StringIO()
-        displaypath = cgi.escape(urllib.unquote(self.path))
+        displaypath = cgi.escape(urllib.parse.unquote(self.path))
         f.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
         f.write("<html>\n<title>Directory listing for %s</title>\n"
                 % displaypath)
@@ -346,7 +351,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
                 displayname = name + "@"
                 # Note: a link to a directory displays with @ and links with /
             f.write('<li><a href="%s">%s</a>\n'
-                    % (urllib.quote(linkname), cgi.escape(displayname)))
+                    % (urllib.parse.quote(linkname), cgi.escape(displayname)))
         f.write("</ul>\n<hr>\n</body>\n</html>\n")
         length = f.tell()
         f.seek(0)
@@ -433,9 +438,9 @@ class SeismosizerHandler(RequestHandler):
     def translate_path(self, path):
         path = path.split('?', 1)[0]
         path = path.split('#', 1)[0]
-        path = posixpath.normpath(urllib.unquote(path))
+        path = posixpath.normpath(urllib.parse.unquote(path))
         words = path.split('/')
-        words = filter(None, words)
+        words = [_f for _f in words if _f]
 
         path = '/'
         if words[:3] == self.stores_path.split('/')[1:-1] and len(words) > 3:
@@ -532,7 +537,7 @@ class SeismosizerHandler(RequestHandler):
         request = gf.load(string=self.body['request'][0])
         try:
             resp = self.server.engine.process(request=request)
-        except (gf.BadRequest, gf.StoreError), e:
+        except (gf.BadRequest, gf.StoreError) as e:
             self.send_error(400, str(e))
             return
 

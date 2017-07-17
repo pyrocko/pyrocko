@@ -123,6 +123,14 @@ class IOTestCase(unittest.TestCase):
 
         assert i == 24
 
+    def testReadGSE1(self):
+        fpath = common.test_data_file('test1.gse1')
+        i = 0
+        for tr in io.load(fpath, format='detect'):
+            i += 1
+
+        assert i == 19
+
     def testReadSUDS(self):
         fpath = common.test_data_file('test.suds')
         i = 0
