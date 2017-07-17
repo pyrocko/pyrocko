@@ -1,7 +1,11 @@
+from __future__ import absolute_import, division
+from builtins import map
+
 import sys
 import numpy as num
-from pyrocko.io_common import FileLoadError
-from pyrocko import util, trace
+
+from . import util, trace
+from .io_common import FileLoadError
 
 
 class GSE1LoadError(FileLoadError):
@@ -92,33 +96,33 @@ def skip_dat1_chk1(f, data_format, diff_flag, nsamples):
 
 
 def iload(filename, load_data=True):
-    f = open(filename, 'r')
-    read_xw01(f)
-    try:
-        while True:
-            h = read_wid1(f)
-            (tmin, nsamples, sta, chid, cha, sample_rate, _, data_format,
-                diff_flag, gain) = h[:10]
+    with open(filename, 'r') as f:
+        read_xw01(f)
+        try:
+            while True:
+                h = read_wid1(f)
+                (tmin, nsamples, sta, chid, cha, sample_rate, _, data_format,
+                    diff_flag, gain) = h[:10]
 
-            deltat = 1.0/sample_rate
-            if load_data:
-                ydata, checksum = read_dat1_chk1(
-                    f, data_format, diff_flag, nsamples)
-                tmax = None
-            else:
-                skip_dat1_chk1(f, data_format, diff_flag, nsamples)
-                ydata = None
-                tmax = tmin + (nsamples-1)*deltat
+                deltat = 1.0/sample_rate
+                if load_data:
+                    ydata, checksum = read_dat1_chk1(
+                        f, data_format, diff_flag, nsamples)
+                    tmax = None
+                else:
+                    skip_dat1_chk1(f, data_format, diff_flag, nsamples)
+                    ydata = None
+                    tmax = tmin + (nsamples-1)*deltat
 
-            yield trace.Trace(
-                '', sta, '', cha,
-                tmin=tmin,
-                tmax=tmax,
-                deltat=deltat,
-                ydata=ydata)
+                yield trace.Trace(
+                    '', sta, '', cha,
+                    tmin=tmin,
+                    tmax=tmax,
+                    deltat=deltat,
+                    ydata=ydata)
 
-    except EOF:
-        pass
+        except EOF:
+            pass
 
 
 def detect(first512):
