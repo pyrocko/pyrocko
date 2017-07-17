@@ -425,7 +425,7 @@ class Snuffling(object):
         :param message: specifying the warning
         '''
 
-        logger.warn('%s: %s' % (self._name, message))
+        logger.warning('%s: %s' % (self._name, message))
         self.show_message('warning', message)
 
     def fail(self, message):
@@ -787,7 +787,7 @@ class Snuffling(object):
                         % '.'.join(skey)
 
                     if missing == 'warn':
-                        logger.warn(s)
+                        logger.warning(s)
                     elif missing == 'raise':
                         raise MissingStationInformation(s)
                     elif missing == 'ignore':
@@ -1688,7 +1688,7 @@ class SnufflingModule(object):
                 sys.path[0:1] = []
 
         elif self._mtime != mtime:
-            logger.warn('Reloading snuffling module %s' % filename)
+            logger.warning('Reloading snuffling module %s' % filename)
             settings = self.remove_snufflings()
             sys.path[0:0] = [self._path]
             try:

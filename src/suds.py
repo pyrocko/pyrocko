@@ -233,8 +233,10 @@ def _iload(filename, load_data=True, want=('traces', 'stations')):
                         f.seek(tag.data_length, 1)
 
             else:
-                logger.warn('skipping unsupported SUDS struct type %s (%s)' % (
-                    tag.struct_type, struct_names.get(tag.struct_type, '?')))
+                logger.warning(
+                    'skipping unsupported SUDS struct type %s (%s)' % (
+                        tag.struct_type,
+                        struct_names.get(tag.struct_type, '?')))
 
                 f.seek(tag.struct_length, 1)
 

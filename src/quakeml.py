@@ -13,7 +13,7 @@ def one_element_or_none(l):
     elif len(l) == 0:
         return None
     else:
-        logger.warn('More than one element in list: {}'.format(l))
+        logger.warning('More than one element in list: {}'.format(l))
         return None
 
 

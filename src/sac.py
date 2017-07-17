@@ -300,7 +300,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                     dtype=num.float))
 
             if len(filedata) > nbh+nblocks*nbb:
-                logger.warn(
+                logger.warning(
                     'Unused data (%i bytes) at end of SAC file: %s (npts=%i)'
                     % (len(filedata) - nbh+nblocks*nbb, filename, self.npts))
 

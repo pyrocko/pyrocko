@@ -245,7 +245,7 @@ class Blockette(object):
             pos += length
 
         if pos != len(data):
-            logger.warn('Blockette of incorrect length found')
+            logger.warning('Blockette of incorrect length found')
 
     def __str__(self):
         s = []

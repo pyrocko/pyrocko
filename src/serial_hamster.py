@@ -157,9 +157,9 @@ class SerialHamster:
             try:
                 val = float(tok)
             except:
-                logger.warn('Got something unexpected on serial line. ' +
-                            'Current line: "%s". ' % line +
-                            'Could not convert string to float: "%s"' % tok)
+                logger.warning('Got something unexpected on serial line. ' +
+                               'Current line: "%s". ' % line +
+                               'Could not convert string to float: "%s"' % tok)
                 continue
 
             self.values[0].append(val)
@@ -397,7 +397,7 @@ class USBHB628Hamster(SerialHamster):
         if self.first_initiated is not None:
             ts = self.first_initiated + self.fixed_deltat * self.ntaken
             if t - ts > self.fixed_deltat*10:
-                logger.warn(
+                logger.warning(
                     'lagging more than ten samples on serial line %s - '
                     'resetting' % self.port)
 
@@ -414,7 +414,7 @@ class USBHB628Hamster(SerialHamster):
             t = time.time()
 
         if t - ts > self.fixed_deltat:
-            logger.warn(
+            logger.warning(
                 'lagging more than one sample on serial line %s' % self.port)
 
         # get the sample

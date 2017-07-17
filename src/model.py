@@ -592,7 +592,7 @@ class Station(Object):
                     cg, out_channels=out_channels, **kwargs))
 
             except ChannelsNotOrthogonal as e:
-                logger.warn(str(e))
+                logger.warning(str(e))
 
         return proj
 
@@ -738,8 +738,8 @@ def load_stations(filename):
             station.add_channel(channel)
 
         else:
-            logger.warn('skipping invalid station/channel definition '
-                        '(line: %i, file: %s' % (iline + 1, filename))
+            logger.warning('skipping invalid station/channel definition '
+                           '(line: %i, file: %s' % (iline + 1, filename))
 
     f.close()
     return stations

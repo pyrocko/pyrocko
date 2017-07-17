@@ -152,7 +152,7 @@ class Marker(object):
                         markers.append(m)
 
                     except MarkerParseError:
-                        logger.warn(
+                        logger.warning(
                             'Invalid marker definition in line %i of file "%s"'
                             % (iline+1, fn))
 
@@ -173,7 +173,7 @@ class Marker(object):
 
                     markers.append(marker)
             else:
-                logger.warn('Unsupported Markers File Version')
+                logger.warning('Unsupported Markers File Version')
 
         return markers
 

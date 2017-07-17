@@ -1706,6 +1706,6 @@ def consistency_merge(list_of_tuples,
             raise
 
         elif error == 'warn':
-            logger.warn(str(e))
+            logger.warning(str(e))
 
         return tuple([merge(x) for x in zip(*list_of_tuples)[1:]])

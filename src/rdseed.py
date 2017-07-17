@@ -205,7 +205,7 @@ class Programs(object):
                 if cmp_version('4.7.5', version) == 1 \
                         or cmp_version(version, '5.1') == 1:
 
-                    logger.warn(
+                    logger.warning(
                         'Module pyrocko.rdseed has not been tested with '
                         'version %s of rdseed.' % version)
 
