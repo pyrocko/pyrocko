@@ -26,10 +26,6 @@ Marker, load_markers, save_markers  # noqa
 logger = logging.getLogger('pyrocko.snuffling')
 
 
-def _str_traceback():
-    return '%s' % (traceback.format_exc(sys.exc_info()[2]))
-
-
 class MyFrame(qg.QFrame):
     def showEvent(self, ev):
         self.emit(qc.SIGNAL('widgetVisibilityChanged(bool)'), True)
@@ -1685,7 +1681,7 @@ class SnufflingModule(object):
                     self.add_snuffling(snuffling)
 
             except:
-                logger.error(_str_traceback())
+                logger.error(traceback.format_exc())
                 raise BrokenSnufflingModule(filename)
 
             finally:
@@ -1711,7 +1707,7 @@ class SnufflingModule(object):
                         snuf.set_settings(sett)
 
             except:
-                logger.error(_str_traceback())
+                logger.error(traceback.format_exc())
                 raise BrokenSnufflingModule(filename)
 
             finally:
