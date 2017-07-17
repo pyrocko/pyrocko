@@ -1,3 +1,7 @@
+from __future__ import absolute_import, division
+from builtins import str as new_str
+from builtins import range, map, zip
+
 import math
 import re
 import fnmatch
@@ -6,14 +10,15 @@ import logging
 import numpy as num
 from scipy.interpolate import interp1d
 
-from pyrocko.guts import Object, SObject, String, StringChoice, \
-    StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError, \
-    Timestamp, Tuple, Dict
-from pyrocko.guts import dump, load  # noqa
-from pyrocko import trace
-from pyrocko.guts_array import literal, Array
-from pyrocko import cake, orthodrome, spit, moment_tensor
-from pyrocko.config import config
+from ..guts import (Object, SObject, String, StringChoice,
+                    StringPattern, Unicode, Float, Bool, Int, TBase, List,
+                    ValidationError, Timestamp, Tuple, Dict)
+from ..guts import dump, load  # noqa
+from ..guts_array import literal, Array
+
+from .. import trace
+from .. import cake, orthodrome, spit, moment_tensor
+from ..config import config
 
 
 guts_prefix = 'pf'
@@ -288,7 +293,7 @@ class Reference(Object):
 
         references = []
 
-        for id_, entry in bib_data.entries.iteritems():
+        for id_, entry in bib_data.entries.items():
             d = {}
             avail = entry.fields.keys()
             for prop in cls.T.properties:
@@ -300,7 +305,7 @@ class Reference(Object):
             if 'author' in entry.persons:
                 d['authors'] = []
                 for person in entry.persons['author']:
-                    d['authors'].append(unicode(person))
+                    d['authors'].append(new_str(person))
 
             c = Reference(id=id_, type=entry.type, **d)
             references.append(c)
@@ -793,7 +798,7 @@ class MultiLocation(Object):
         :rtype: :class:`numpy.ndarray`, (N, 2)
         '''
         latlons = num.empty((self.ncoords, 2))
-        for i in xrange(self.ncoords):
+        for i in range(self.ncoords):
             latlons[i, :] = orthodrome.ne_to_latlon(*self.coords5[i, :4])
         return latlons
 
@@ -1183,7 +1188,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
     def split(self):
         from pyrocko.gf.seismosizer import ExplosionSource
         sources = []
-        for i in xrange(self.nelements):
+        for i in range(self.nelements):
             lat, lon, north_shift, east_shift = self.element_coords(i)
             sources.append(ExplosionSource(
                 time=float(self.times[i]),
@@ -1394,7 +1399,7 @@ class DiscretizedMTSource(DiscretizedSource):
     def split(self):
         from pyrocko.gf.seismosizer import MTSource
         sources = []
-        for i in xrange(self.nelements):
+        for i in range(self.nelements):
             lat, lon, north_shift, east_shift = self.element_coords(i)
             sources.append(MTSource(
                 time=float(self.times[i]),
@@ -1410,7 +1415,7 @@ class DiscretizedMTSource(DiscretizedSource):
     def moments(self):
         n = self.nelements
         moments = num.zeros(n)
-        for i in xrange(n):
+        for i in range(n):
             m = moment_tensor.symmat6(*self.m6s[i])
             m_evals = num.linalg.eigh(m)[0]
 
@@ -1702,7 +1707,7 @@ class Config(Object):
             weights *= self.factor
 
             args = self.make_indexing_args(source, receiver, icomponents)
-            delays_expanded = num.tile(delays, icomponents.size/delays.size)
+            delays_expanded = num.tile(delays, icomponents.size//delays.size)
             out.append((comp, args, delays_expanded, weights))
 
         return out
@@ -1857,8 +1862,8 @@ class ConfigTypeA(Config):
 
         def vicinities_function(a, b, ig):
 
-            xa = (a-amin) / da
-            xb = (b-bmin) / db
+            xa = (a - amin) / da
+            xb = (b - bmin) / db
 
             xa_fl = num.floor(xa)
             xa_ce = num.ceil(xa)
@@ -1909,8 +1914,8 @@ class ConfigTypeA(Config):
         nc = icomponents.size
         dists = source.distances_to(receiver)
         n = dists.size
-        return (num.tile(source.depths, nc/n),
-                num.tile(dists, nc/n),
+        return (num.tile(source.depths, nc//n),
+                num.tile(dists, nc//n),
                 icomponents)
 
     def make_indexing_args1(self, source, receiver):
@@ -2044,9 +2049,9 @@ class ConfigTypeB(Config):
 
         def vicinities_function(a, b, c, ig):
 
-            xa = (a-amin) / da
-            xb = (b-bmin) / db
-            xc = (c-cmin) / dc
+            xa = (a - amin) / da
+            xb = (b - bmin) / db
+            xc = (c - cmin) / dc
 
             xa_fl = num.floor(xa)
             xa_ce = num.ceil(xa)
@@ -2120,8 +2125,8 @@ class ConfigTypeB(Config):
         receiver_depths = num.empty(nc)
         receiver_depths.fill(receiver.depth)
         return (receiver_depths,
-                num.tile(source.depths, nc/n),
-                num.tile(dists, nc/n),
+                num.tile(source.depths, nc//n),
+                num.tile(dists, nc//n),
                 icomponents)
 
     def make_indexing_args1(self, source, receiver):
@@ -2395,9 +2400,9 @@ class ConfigTypeC(Config):
         ireceivers.fill(self.lookup_ireceiver(receiver))
 
         return (ireceivers,
-                num.tile(source_depths, nc/n),
-                num.tile(source_east_shifts, nc/n),
-                num.tile(source_north_shifts, nc/n),
+                num.tile(source_depths, nc//n),
+                num.tile(source_east_shifts, nc//n),
+                num.tile(source_north_shifts, nc//n),
                 icomponents)
 
     def make_indexing_args1(self, source, receiver):

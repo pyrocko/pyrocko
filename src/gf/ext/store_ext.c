@@ -41,6 +41,17 @@
   #define le64toh(x) OSSwapLittleToHostInt64(x)
 #endif
 
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state); (void) m;
+static struct module_state _state;
+#endif
+
 typedef npy_float32 gf_dtype;
 typedef npy_float32 float32_t;
 typedef npy_float64 float64_t;
@@ -316,33 +327,33 @@ int good_array(PyObject* o, int typenum_want, npy_intp size_want, int ndim_want,
     int i;
 
     if (!PyArray_Check(o)) {
-        PyErr_SetString(StoreExtError, "not a NumPy array" );
+        PyErr_SetString(PyExc_AttributeError, "not a NumPy array" );
         return 0;
     }
 
     if (PyArray_TYPE((PyArrayObject*)o) != typenum_want) {
-        PyErr_SetString(StoreExtError, "array of unexpected type");
+        PyErr_SetString(PyExc_AttributeError, "array of unexpected type");
         return 0;
     }
 
     if (!PyArray_ISCARRAY((PyArrayObject*)o)) {
-        PyErr_SetString(StoreExtError, "array is not contiguous or not well behaved");
+        PyErr_SetString(PyExc_AttributeError, "array is not contiguous or not well behaved");
         return 0;
     }
 
     if (size_want != -1 && size_want != PyArray_SIZE((PyArrayObject*)o)) {
-        PyErr_SetString(StoreExtError, "array is of unexpected size");
+        PyErr_SetString(PyExc_AttributeError, "array is of unexpected size");
         return 0;
     }
     if (ndim_want != -1 && ndim_want != PyArray_NDIM((PyArrayObject*)o)) {
-        PyErr_SetString(StoreExtError, "array is of unexpected ndim");
+        PyErr_SetString(PyExc_AttributeError, "array is of unexpected ndim");
         return 0;
     }
 
     if (ndim_want != -1 && shape_want != NULL) {
         for (i=0; i<ndim_want; i++) {
             if (shape_want[i] != -1 && shape_want[i] != PyArray_DIMS((PyArrayObject*)o)[i]) {
-                PyErr_SetString(StoreExtError, "array is of unexpected shape");
+                PyErr_SetString(PyExc_AttributeError, "array is of unexpected shape");
                 return 0;
             }
         }
@@ -910,27 +921,27 @@ static void w_store_delete(void *store) {
 }
 #endif
 
-static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
+static PyObject* w_store_init(PyObject *m, PyObject *args) {
     int f_index, f_data;
     store_t *store;
     store_error_t err;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "ii", &f_index, &f_data)) {
-        PyErr_SetString(StoreExtError, "usage store_init(f_index, f_data)" );
+        PyErr_SetString(st->error, "usage store_init(f_index, f_data)" );
         return NULL;
     }
 
     store = (store_t*) calloc(1, sizeof(store_t));
     if (store == NULL) {
-        PyErr_SetString(StoreExtError, "memory allocation failed.");
+        PyErr_SetString(st->error, "memory allocation failed.");
         return NULL;
     }
 
     err = store_init(f_index, f_data, store);
     if (SUCCESS != err) {
-        PyErr_SetString(StoreExtError, store_error_names[err]);
+        PyErr_SetString(st->error, store_error_names[err]);
         store_deinit(store);
         free(store);
         return NULL;
@@ -946,15 +957,16 @@ static PyObject* w_store_init(PyObject *dummy, PyObject *args) {
 }
 
 static store_t* get_store_from_capsule(PyObject *capsule) {
-
     store_t *store;
+    struct module_state *st = GETSTATE(capsule);
+
 
 #ifdef HAVE_CAPSULE
     if (!PyCapsule_IsValid(capsule, NULL)) {
 #else
     if (!PyCObject_Check(capsule)) {
 #endif
-        PyErr_SetString(StoreExtError, "store_sum: invalid cstore argument");
+        PyErr_SetString(st->error, "store_sum: invalid cstore argument");
         return NULL;
     }
 
@@ -968,7 +980,7 @@ static store_t* get_store_from_capsule(PyObject *capsule) {
 }
 
 
-static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
+static PyObject* w_store_mapping_init(PyObject *m, PyObject *args) {
     PyObject *capsule;
     char *mapping_scheme_name;
     PyObject *mins_arr, *maxs_arr, *deltas_arr, *ns_arr;
@@ -981,13 +993,13 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
     npy_intp n;
     int ng_;
 
-    (void) dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "OsOOOOi", &capsule, &mapping_scheme_name,
                           &mins_arr, &maxs_arr, &deltas_arr, &ns_arr,
                           &ng_)) {
         PyErr_SetString(
-            StoreExtError,
+            st->error,
             "usage store_mapping_init(cstore, mapping_name, mins, maxs, deltas, ns, ng)");
         return NULL;
     }
@@ -998,7 +1010,7 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
 
     mscheme = get_mapping_scheme(mapping_scheme_name);
     if (mscheme == NULL) {
-        PyErr_SetString(StoreExtError, "store_mapping_init: invalid mapping scheme name");
+        PyErr_SetString(st->error, "store_mapping_init: invalid mapping scheme name");
         return NULL;
     }
     n = mscheme->ndims_continuous;
@@ -1009,14 +1021,14 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
     if (!good_array(ns_arr, NPY_UINT64, n, 1, NULL)) return NULL;
 
     if (!inposlimits(ng_)) {
-        PyErr_SetString(StoreExtError, "store_mapping_init: invalid ng argument");
+        PyErr_SetString(st->error, "store_mapping_init: invalid ng argument");
         return NULL;
     }
     ng = ng_;
 
     mapping = (mapping_t*)calloc(1, sizeof(mapping_t));
     if (store == NULL) {
-        PyErr_SetString(StoreExtError, "memory allocation failed.");
+        PyErr_SetString(st->error, "memory allocation failed.");
         return NULL;
     }
 
@@ -1027,7 +1039,7 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
 
     err = store_mapping_init(store, mscheme, mins, maxs, deltas, ns, ng, mapping);
     if (SUCCESS != err) {
-        PyErr_SetString(StoreExtError, store_error_names[err]);
+        PyErr_SetString(st->error, store_error_names[err]);
         store_mapping_deinit(mapping);
         free(mapping);
         return NULL;
@@ -1044,7 +1056,7 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
 }
 
 
-static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
+static PyObject* w_store_get(PyObject *m, PyObject *args) {
     PyObject *capsule;
     store_t *store;
     gf_dtype *adata;
@@ -1058,10 +1070,10 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     int i;
     store_error_t err;
 
-    (void) dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord_, &itmin_, &nsamples_)) {
-        PyErr_SetString(StoreExtError, "usage: store_get(cstore, irecord, itmin, nsamples)");
+        PyErr_SetString(st->error, "usage: store_get(cstore, irecord, itmin, nsamples)");
         return NULL;
     }
 
@@ -1072,20 +1084,20 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     irecord = irecord_;
 
     if (!inlimits(itmin_)) {
-        PyErr_SetString(StoreExtError, "invalid itmin argument");
+        PyErr_SetString(st->error, "invalid itmin argument");
         return NULL;
     }
     itmin = itmin_;
 
     if (!(inposlimits(nsamples_) || -1 == nsamples_)) {
-        PyErr_SetString(StoreExtError, "invalid nsamples argument");
+        PyErr_SetString(st->error, "invalid nsamples argument");
         return NULL;
     }
     nsamples = nsamples_;
 
     err = store_get(store, irecord, &trace);
     if (SUCCESS != err) {
-        PyErr_SetString(StoreExtError, store_error_names[err]);
+        PyErr_SetString(st->error, store_error_names[err]);
         return NULL;
     }
 
@@ -1642,7 +1654,7 @@ static store_error_t make_sum_params(
     return SUCCESS;
 }
 
-static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
+static PyObject* w_store_sum(PyObject *m, PyObject *args) {
     PyObject *capsule, *irecords_arr, *delays_arr, *weights_arr;
     store_t *store;
     trace_t result;
@@ -1656,11 +1668,11 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     int32_t itmin, nsamples;
     store_error_t err;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "OOOOii", &capsule, &irecords_arr, &delays_arr,
                           &weights_arr, &itmin_, &nsamples_)) {
-        PyErr_SetString(StoreExtError,
+        PyErr_SetString(st->error,
             "usage: store_sum(cstore, irecords, delays, weights, itmin, nsamples)");
 
         return NULL;
@@ -1672,7 +1684,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     if (!good_array(irecords_arr, NPY_UINT64, -1, 1, NULL)) return NULL;
     n_ = PyArray_SIZE((PyArrayObject*)irecords_arr);
     if (!inposlimits(n_)) {
-        PyErr_SetString(StoreExtError,
+        PyErr_SetString(st->error,
             "store_sum: invalid number of entries in arrays");
         return NULL;
     }
@@ -1683,13 +1695,13 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     n = n_;
 
     if (!inlimits(itmin_)) {
-        PyErr_SetString(StoreExtError, "store_sum: invalid itmin argument");
+        PyErr_SetString(st->error, "store_sum: invalid itmin argument");
         return NULL;
     }
     itmin = itmin_;
 
     if (!(inposlimits(nsamples_) || -1 == nsamples_)) {
-        PyErr_SetString(StoreExtError, "store_sum: invalid nsamples argument");
+        PyErr_SetString(st->error, "store_sum: invalid nsamples argument");
         return NULL;
     }
     nsamples = nsamples_;
@@ -1701,7 +1713,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
     if (nsamples == -1) {
         err = store_sum_extent(store, irecords, delays, n, &nsamples, &itmin);
         if (SUCCESS != err) {
-            PyErr_SetString(StoreExtError, store_error_names[err]);
+            PyErr_SetString(st->error, store_error_names[err]);
             return NULL;
         }
     }
@@ -1715,7 +1727,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
 
     err = store_sum(store, irecords, delays, weights, n, &result);
     if (SUCCESS != err) {
-        PyErr_SetString(StoreExtError, store_error_names[err]);
+        PyErr_SetString(st->error, store_error_names[err]);
         return NULL;
     }
 
@@ -1723,7 +1735,7 @@ static PyObject* w_store_sum(PyObject *dummy, PyObject *args) {
                          result.is_zero, result.begin_value, result.end_value);
 }
 
-static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
+static PyObject* w_store_sum_static(PyObject *m, PyObject *args) {
     PyObject *capsule;
     PyArrayObject *irecords_arr, *delays_arr, *weights_arr, *result_arr;
     store_t *store;
@@ -1735,11 +1747,11 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
     size_t nsummands, nsources;
     store_error_t err;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(args, "OOOOiii", &capsule, &irecords_arr, &delays_arr,
                                      &weights_arr, &it, &ntargets, &nthreads)) {
-        PyErr_SetString(StoreExtError,
+        PyErr_SetString(st->error,
             "usage: store_sum_static(cstore, irecords, delays, weights, it, ntargets, nthreads)");
 
         return NULL;
@@ -1751,24 +1763,24 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
     nsources = PyArray_SIZE((PyArrayObject*)delays_arr);
 
     if (store == NULL) {
-        PyErr_SetString(StoreExtError, "store_sum_static: invalid store");
+        PyErr_SetString(st->error, "store_sum_static: invalid store");
         return NULL;
     }
     if (!good_array((PyObject*)irecords_arr, NPY_UINT64, nsummands * ntargets, 1, NULL)) {
-            /*PyErr_SetString(StoreExtError, "store_sum_static: unhealthy irecords array");*/
+            /*PyErr_SetString(st->error, "store_sum_static: unhealthy irecords array");*/
             return NULL;
     }
     if (!good_array((PyObject*)delays_arr, NPY_FLOAT32, -1, 1, NULL) ||
         nsummands % nsources != 0) {
-        PyErr_SetString(StoreExtError, "store_sum_static: unhealthy delays array");
+        PyErr_SetString(st->error, "store_sum_static: unhealthy delays array");
         return NULL;
     }
     if (!good_array((PyObject*)weights_arr, NPY_FLOAT32, nsummands * ntargets, 1, NULL)) {
-        /*PyErr_SetString(StoreExtError, "store_sum_static: unhealthy weights array");*/
+        /*PyErr_SetString(st->error, "store_sum_static: unhealthy weights array");*/
         return NULL;
     }
     if (!inlimits(it)) {
-        PyErr_SetString(StoreExtError, "store_sum_static: invalid it argument");
+        PyErr_SetString(st->error, "store_sum_static: invalid it argument");
         return NULL;
     }
 
@@ -1782,14 +1794,14 @@ static PyObject* w_store_sum_static(PyObject *dummy, PyObject *args) {
     
     err = store_sum_static(store, irecords, delays, weights, it, ntargets, nsummands, nsources, nthreads, result);
     if (SUCCESS != err) {
-        PyErr_SetString(StoreExtError, store_error_names[err]);
+        PyErr_SetString(st->error, store_error_names[err]);
         return NULL;
     }
     return (PyObject*) result_arr;
 }
 
 
-static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
+static PyObject* w_make_sum_params(PyObject *m, PyObject *args) {
     PyObject *capsule, *source_coords_arr, *receiver_coords_arr, *ms_arr;
     float64_t *source_coords, *receiver_coords, *ms;
     npy_intp shape_want_coords[2] = {-1, 5};
@@ -1809,13 +1821,13 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
     store_error_t err;
     store_t *store;
 
-    (void)dummy; /* silence warning */
+    struct module_state *st = GETSTATE(m);
 
     if (!PyArg_ParseTuple(
             args, "OOOOssI", &capsule, &source_coords_arr, &ms_arr,
             &receiver_coords_arr, &component_scheme_name, 
             &interpolation_scheme_name, &nthreads)) {
-        PyErr_SetString(StoreExtError,
+        PyErr_SetString(st->error,
             "usage: make_sum_params(cstore, source_coords, moment_tensors, receiver_coords, component_scheme, interpolation_name, nthreads)");
         return NULL;
     }
@@ -1825,19 +1837,19 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
 
     mscheme = store->mapping_scheme;
     if (mscheme == NULL) {
-        PyErr_SetString(StoreExtError, "w_make_sum_params: no mapping scheme set on store");
+        PyErr_SetString(st->error, "w_make_sum_params: no mapping scheme set on store");
         return NULL;
     }
 
     cscheme = get_component_scheme(component_scheme_name);
     if (cscheme == NULL) {
-        PyErr_SetString(StoreExtError, "w_make_sum_params: invalid component scheme name");
+        PyErr_SetString(st->error, "w_make_sum_params: invalid component scheme name");
         return NULL;
     }
 
     interpolation = get_interpolation_scheme_id(interpolation_scheme_name);
     if (interpolation == UNDEFINED_INTERPOLATION_SCHEME) {
-        PyErr_SetString(StoreExtError, "w_make_sum_params: invalid interpolation scheme name");
+        PyErr_SetString(st->error, "w_make_sum_params: invalid interpolation scheme name");
         return NULL;
     }
 
@@ -1899,14 +1911,14 @@ static PyObject* w_make_sum_params(PyObject *dummy, PyObject *args) {
 
     if (SUCCESS != err) {
         Py_DECREF(out_list);
-        PyErr_SetString(StoreExtError, store_error_names[err]);
+        PyErr_SetString(st->error, store_error_names[err]);
         return NULL;
     }
 
     return out_list;
 }
 
-static PyMethodDef StoreExtMethods[] = {
+static PyMethodDef store_ext_methods[] = {
     {"store_init",  w_store_init, METH_VARARGS,
         "Initialize store struct." },
 
@@ -1928,19 +1940,65 @@ static PyMethodDef StoreExtMethods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-PyMODINIT_FUNC
-initstore_ext(void)
-{
-    PyObject *m;
+#if PY_MAJOR_VERSION >= 3
 
-    m = Py_InitModule("store_ext", StoreExtMethods);
-    if (m == NULL) return;
-    import_array();
-
-    StoreExtError = PyErr_NewException("store_ext.error", NULL, NULL);
-    Py_INCREF(StoreExtError);  /* required, because other code could remove `error`
-                               from the module, what would create a dangling
-                               pointer. */
-    PyModule_AddObject(m, "StoreExtError", StoreExtError);
+static int store_ext_traverse(PyObject *m, visitproc visit, void *arg) {
+    Py_VISIT(GETSTATE(m)->error);
+    return 0;
 }
 
+static int store_ext_clear(PyObject *m) {
+    Py_CLEAR(GETSTATE(m)->error);
+    return 0;
+}
+
+
+static struct PyModuleDef moduledef = {
+        PyModuleDef_HEAD_INIT,
+        "store_ext",
+        NULL,
+        sizeof(struct module_state),
+        store_ext_methods,
+        NULL,
+        store_ext_traverse,
+        store_ext_clear,
+        NULL
+};
+
+#define INITERROR return NULL
+
+PyMODINIT_FUNC
+PyInit_store_ext(void)
+
+#else
+#define INITERROR return
+
+void
+initstore_ext(void)
+#endif
+
+{
+#if PY_MAJOR_VERSION >= 3
+    PyObject *module = PyModule_Create(&moduledef);
+#else
+    PyObject *module = Py_InitModule("store_ext", store_ext_methods);
+#endif
+    import_array();
+
+    if (module == NULL)
+        INITERROR;
+    struct module_state *st = GETSTATE(module);
+
+    st->error = PyErr_NewException("pyrocko.store_ext.StoreExtError", NULL, NULL);
+    if (st->error == NULL) {
+        Py_DECREF(module);
+        INITERROR;
+    }
+
+    Py_INCREF(st->error);
+    PyModule_AddObject(module, "StoreExtError", st->error);
+
+#if PY_MAJOR_VERSION >= 3
+    return module;
+#endif
+}
