@@ -1153,7 +1153,7 @@ class Map(Object):
                     S='e0.2p/0.95/10',
                     *self.jxyr)
 
-                for _ in range(len(lons) / 50 + 1):
+                for _ in range(len(lons) // 50 + 1):
                     ii = random.randint(0, len(lons)-1)
                     v = math.sqrt(vnorth[ii]**2 + veast[ii]**2)
                     self.add_label(
