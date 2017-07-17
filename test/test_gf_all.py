@@ -1,13 +1,15 @@
 import pyrocko.util
-
-from test_gf import GFTestCase  # noqa
-from test_gf_sources import GFSourcesTestCase  # noqa
-from test_gf_qseis import GFQSeisTestCase  # noqa
-from test_gf_stf import GFSTFTestCase  # noqa
-
 import unittest
 import optparse
 import sys
+
+from os import path
+
+
+def get_gf_test_suite():
+    return unittest.defaultTestLoader.discover(path.dirname(__file__),
+                                               pattern='test_gf_*.py')
+
 
 if __name__ == '__main__':
     pyrocko.util.setup_logging('test_all', 'warning')
@@ -22,4 +24,5 @@ if __name__ == '__main__':
         unittest.main(testRunner=runner)
         f.close()
     else:
-        unittest.main()
+        suite = get_gf_test_suite()
+        unittest.TextTestRunner(verbosity=2).run(suite)
