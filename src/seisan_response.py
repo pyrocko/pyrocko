@@ -102,7 +102,7 @@ class SeisanResponseFile(object):
         f.close()
 
         if num.all(num.abs(response_table[2]) <= num.pi):
-            logger.warn(
+            logger.warning(
                 'assuming tabulated phases are given in radians instead of '
                 'degrees')
 
@@ -225,7 +225,7 @@ class SeisanResponseFile(object):
             if num.any(num.abs(atrans_gaf-atrans_tab)
                        / num.abs(atrans_gaf+atrans_tab) > 1./100.):
 
-                logger.warn(
+                logger.warning(
                     'inconsistent amplitudes in tabulated response '
                     '(in file "%s") (max |a-b|/|a+b| is %g' % (
                         filename,
@@ -236,7 +236,7 @@ class SeisanResponseFile(object):
                 if num.any(num.abs(trans_gaf-trans_tab)
                            > abs(trans_gaf+trans_tab)/100.):
 
-                    logger.warn(
+                    logger.warning(
                         'inconsistent phase values in tabulated response '
                         '(in file "%s"' % filename)
 

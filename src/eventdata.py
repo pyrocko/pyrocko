@@ -118,7 +118,7 @@ class EventDataAccess(object):
 
         for nslc in nslc_ids:
             if nslc[:3] not in stations:
-                logger.warn(
+                logger.warning(
                     'No station description for trace %s.%s.%s.%s' % nslc)
                 continue
 
@@ -126,7 +126,7 @@ class EventDataAccess(object):
             try:
                 sta.add_channel(self._get_channel_description_from_file(nslc))
             except FileNotFound:
-                logger.warn(
+                logger.warning(
                     'No channel description for trace %s.%s.%s.%s' % nslc)
 
     def _get_channel_description_from_file(self, nslc):
@@ -209,7 +209,7 @@ class EventDataAccess(object):
             for tr in xtraces:
                 nsl = tr.network, tr.station, tr.location
                 if nsl not in stations:
-                    logger.warn(
+                    logger.warning(
                         'No station description for trace %s.%s.%s.%s' %
                         tr.nslc_id)
                     continue
@@ -254,7 +254,7 @@ class EventDataAccess(object):
                         except util.UnavailableDecimation as e:
                             self.problems().add(
                                 'cannot_downsample', tr.full_id)
-                            logger.warn(
+                            logger.warning(
                                 'Cannot downsample %s.%s.%s.%s: %s' %
                                 (tr.nslc_id + (e,)))
                             continue
@@ -263,7 +263,7 @@ class EventDataAccess(object):
                         trans = self.get_restitution(tr, allowed_methods)
                     except NoRestitution as e:
                         self.problems().add('no_response', tr.full_id)
-                        logger.warn(
+                        logger.warning(
                             'Cannot restitute trace %s.%s.%s.%s: %s' %
                             (tr.nslc_id + (e,)))
 
@@ -291,7 +291,7 @@ class EventDataAccess(object):
                                 if isinstance(e, trace.TraceTooShort):
                                     raise
 
-                                logger.warn(
+                                logger.warning(
                                     'An error while applying transfer '
                                     'function to trace %s.%s.%s.%s.' %
                                     tr.nslc_id)
@@ -304,7 +304,7 @@ class EventDataAccess(object):
 
                             self.problems().add(
                                 'unrealistic_amplitude', tr.full_id)
-                            logger.warn(
+                            logger.warning(
                                 'Trace %s.%s.%s.%s has too large '
                                 'displacement: %g' % (tr.nslc_id + (amax,)))
 
@@ -312,14 +312,14 @@ class EventDataAccess(object):
 
                         if not num.all(num.isfinite(displacement.get_ydata())):
                             self.problems().add('has_nan_or_inf', tr.full_id)
-                            logger.warn(
+                            logger.warning(
                                 'Trace %s.%s.%s.%s has NaNs or Infs' %
                                 tr.nslc_id)
                             continue
 
                     except trace.TraceTooShort as e:
                         self.problems().add('gappy', tr.full_id)
-                        logger.warn('%s' % e)
+                        logger.warning('%s' % e)
                         continue
 
                     displacements.append(displacement)

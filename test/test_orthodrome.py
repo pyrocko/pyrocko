@@ -8,15 +8,14 @@ import logging
 from pyrocko import orthodrome, util
 from pyrocko import orthodrome_ext
 from common import Benchmark
-import pyrocko.config
+from pyrocko import config
 
-config = pyrocko.config.config()
 logger = logging.getLogger('OrthodromeTest')
 benchmark = Benchmark()
 
 earth_oblateness = 1./298.257223563
 earthradius_equator = 6378.14 * 1000.
-earthradius = config().earthradius
+earthradius = config.config().earthradius
 
 r2d = 180./math.pi
 d2r = 1./r2d
@@ -252,7 +251,7 @@ class OrthodromeTestCase(unittest.TestCase):
 
                 cd = orthodrome.cosdelta(a, b)
                 assert cd <= 1.0
-                d = num.arccos(cd)*config.earthradius
+                d = num.arccos(cd)*earthradius
                 d2 = math.sqrt(no**2+ea**2)
                 assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
 
@@ -460,7 +459,7 @@ def plot_erroneous_ne_to_latlon():
         north_grid = north_grid.flatten()
         east_grid = east_grid.flatten()
 
-        lat_delta = gsize/config.earthradius*r2d*2.
+        lat_delta = gsize/earthradius*r2d*2.
         lon = random.uniform(-180., 180.)
         lat = random.uniform(-90., 90.)
 
@@ -489,7 +488,7 @@ def plot_erroneous_ne_to_latlon():
 
             lon_delta = lat_delta/math.cos(lat*d2r)
 
-            delta = lat_delta/360.*config.earthradius*2.*math.pi
+            delta = lat_delta/360.*earthradius*2.*math.pi
             scale_km = gmtpy.nice_value(delta/10.)/1000.
 
             west = lon - 0.5*lon_delta

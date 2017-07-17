@@ -1346,7 +1346,7 @@ def MakePileViewerMainClass(base):
                 try:
                     mod.load_if_needed()
                 except pyrocko.snuffling.BrokenSnufflingModule as e:
-                    logger.warn('Snuffling module "%s" is broken' % e)
+                    logger.warning('Snuffling module "%s" is broken' % e)
 
             # load the default snufflings on first run
             if self.default_snufflings is None:
@@ -2441,7 +2441,7 @@ def MakePileViewerMainClass(base):
                 pixmap = qg.QPixmap().grabWidget(self)
                 pixmap.save(fn)
             else:
-                logger.warn('unsupported file type')
+                logger.warning('unsupported file type')
 
         def paintEvent(self, paint_ev):
             """Called by QT whenever widget needs to be painted"""

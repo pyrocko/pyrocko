@@ -318,7 +318,7 @@ def loader(
             return abort
 
     if not filenames:
-        logger.warn('No files to load from')
+        logger.warning('No files to load from')
         return
 
     regex = None
@@ -361,7 +361,7 @@ def loader(
 
         except (OSError, FilenameAttributeError) as xerror:
             failures.append(abspath)
-            logger.warn(xerror)
+            logger.warning(xerror)
 
         abort = progress.update(i+1)
         if abort:
@@ -401,7 +401,7 @@ def loader(
 
             except (io.FileLoadError, OSError) as xerror:
                 failures.append(abspath)
-                logger.warn(xerror)
+                logger.warning(xerror)
             else:
                 yield tfile
 
@@ -412,7 +412,7 @@ def loader(
         progress.update(nload)
 
     if failures:
-        logger.warn(
+        logger.warning(
             'The following file%s caused problems and will be ignored:\n' %
             util.plural_s(len(failures)) + '\n'.join(failures))
 
@@ -952,12 +952,12 @@ class Pile(TracesGroup):
 
     def add_file(self, file):
         if file.abspath is not None and file.abspath in self.abspaths:
-            logger.warn('File already in pile: %s' % file.abspath)
+            logger.warning('File already in pile: %s' % file.abspath)
             return
 
         if file.deltatmin is None:
-            logger.warn('Sampling rate of all traces are zero in file: %s' %
-                        file.abspath)
+            logger.warning('Sampling rate of all traces are zero in file: %s' %
+                           file.abspath)
             return
 
         subpile = self.dispatch(file)

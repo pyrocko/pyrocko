@@ -4,6 +4,7 @@ from __future__ import division
 from builtins import zip
 from builtins import map
 from builtins import range
+from builtins import str as newstr
 
 import time
 import math
@@ -629,7 +630,7 @@ class Trace(object):
         deltat2 = self.deltat * float(ntrans)/float(ntrans2)
         ndata2 = int(round(ndata*self.deltat/deltat2))
         if abs(fntrans2 - ntrans2) > 1e-7:
-            logger.warn(
+            logger.warning(
                 'resample: requested deltat %g could not be matched exactly: '
                 '%g' % (deltat, deltat2))
 
@@ -653,7 +654,7 @@ class Trace(object):
             return
 
         if abs(self.deltat - deltat) * tyear/deltat < deltat:
-            logger.warn(
+            logger.warning(
                 'resample_simple: less than one sample would have to be '
                 'inserted/deleted per year. Doing nothing.')
             return
@@ -753,7 +754,7 @@ class Trace(object):
                       'frequency (%g Hz). (Trace %s)' \
                 % (intro, frequency, 0.5/self.deltat, self.name())
             if warn:
-                logger.warn(message)
+                logger.warning(message)
             if raise_exception:
                 raise AboveNyquist(message)
 
@@ -777,7 +778,7 @@ class Trace(object):
             order, [corner*2.0*self.deltat], btype='low')
 
         if len(a) != order+1 or len(b) != order+1:
-            logger.warn(
+            logger.warning(
                 'Erroneous filter coefficients returned by '
                 'scipy.signal.butter(). You may need to downsample the '
                 'signal before filtering.')
@@ -809,7 +810,7 @@ class Trace(object):
 
         data = self.ydata.astype(num.float64)
         if len(a) != order+1 or len(b) != order+1:
-            logger.warn(
+            logger.warning(
                 'Erroneous filter coefficients returned by '
                 'scipy.signal.butter(). You may need to downsample the '
                 'signal before filtering.')
@@ -1831,8 +1832,8 @@ def degapper(
             dist = (b.tmin-(a.tmin+(a.data_len()-1)*a.deltat))/a.deltat
             idist = int(round(dist))
             if abs(dist - idist) > 0.05 and idist <= maxgap:
-                # logger.warn('Cannot degap traces with displaced sampling '
-                #             '(%s, %s, %s, %s)' % a.nslc_id)
+                # logger.warning('Cannot degap traces with displaced sampling '
+                #                '(%s, %s, %s, %s)' % a.nslc_id)
                 pass
             else:
                 if 1 < idist <= maxgap:
@@ -1930,7 +1931,7 @@ def rotate(traces, azimuth, in_channels, out_channels):
                     ac = a.chop(tmin, tmax, inplace=False, include_last=True)
                     bc = b.chop(tmin, tmax, inplace=False, include_last=True)
                     if abs(ac.tmin - bc.tmin) > ac.deltat*0.01:
-                        logger.warn(
+                        logger.warning(
                             'Cannot rotate traces with displaced sampling '
                             '(%s, %s, %s, %s)' % a.nslc_id)
                         continue
@@ -2161,7 +2162,7 @@ def _project2(traces, matrix, in_channels, out_channels):
             ac = a.chop(tmin, tmax, inplace=False, include_last=True)
             bc = b.chop(tmin, tmax, inplace=False, include_last=True)
             if abs(ac.tmin - bc.tmin) > ac.deltat*0.01:
-                logger.warn(
+                logger.warning(
                     'Cannot project traces with displaced sampling '
                     '(%s, %s, %s, %s)' % a.nslc_id)
                 continue
@@ -2209,7 +2210,7 @@ def _project3(traces, matrix, in_channels, out_channels):
                 if (abs(ac.tmin - bc.tmin) > ac.deltat*0.01
                         or abs(bc.tmin - cc.tmin) > bc.deltat*0.01):
 
-                    logger.warn(
+                    logger.warning(
                         'Cannot project traces with displaced sampling '
                         '(%s, %s, %s, %s)' % a.nslc_id)
                     continue
@@ -2822,8 +2823,8 @@ class MultiplyResponse(FrequencyResponse):
 
 
 def asarray_1d(x, dtype):
-    if isinstance(x, (list, tuple)) and x and isinstance(x[0], basestring):
-        return num.asarray(map(dtype, x), dtype=dtype)
+    if isinstance(x, (list, tuple)) and x and isinstance(x[0], (str, newstr)):
+        return num.asarray(list(map(dtype, x)), dtype=dtype)
     else:
         a = num.asarray(x, dtype=dtype)
         if not a.ndim == 1:
@@ -3101,7 +3102,7 @@ def hilbert(x, N=None):
     if N <= 0:
         raise ValueError("N must be positive.")
     if num.iscomplexobj(x):
-        logger.warn('imaginary part of x ignored.')
+        logger.warning('imaginary part of x ignored.')
         x = num.real(x)
     Xf = num.fft.fft(x, N, axis=0)
     h = num.zeros(N)

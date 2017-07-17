@@ -46,7 +46,7 @@ def iload(filename, load_data=True):
         raise FileLoadError(str(e)+' (file: %s)' % filename)
 
     if have_zero_rate_traces:
-        logger.warn(
+        logger.warning(
             'Ignoring traces with sampling rate of zero in file %s '
             '(maybe LOG traces)' % filename)
 

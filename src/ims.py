@@ -1688,7 +1688,7 @@ class WID2Section(Section):
                     if checksum_error == 'raise':
                         raise DeserializeError(mess)
                     elif checksum_error == 'warn':
-                        logger.warn(mess)
+                        logger.warning(mess)
 
             tmax = None
         else:
