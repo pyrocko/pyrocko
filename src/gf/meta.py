@@ -207,7 +207,7 @@ class Earthmodel1D(Object):
 
     class __T(TBase):
         def regularize_extra(self, val):
-            if isinstance(val, basestring):
+            if isinstance(val, str):
                 val = cake.LayeredModel.from_scanlines(
                     cake.read_nd_model_str(val))
 

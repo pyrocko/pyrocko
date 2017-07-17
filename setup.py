@@ -488,7 +488,8 @@ setup(
         Extension(
             'gf.store_ext',
             include_dirs=[numpy.get_include()],
-            extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'] + omp_arg,
+            extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra',
+                                '-fno-strict-aliasing'] + omp_arg,
             extra_link_args=[] + omp_lib,
             sources=[pjoin('src', 'gf', 'ext', 'store_ext.c')]),
 

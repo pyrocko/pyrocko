@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from builtins import range, zip
+
 import numpy as num
 import logging
 import os
@@ -12,10 +15,9 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
-from pyrocko.guts import Object, Float, String, Bool, Tuple, Int, List
-from pyrocko import trace, util, cake
-from pyrocko import gf
-from pyrocko.moment_tensor import MomentTensor, symmat6
+from .. import trace, util, cake, gf
+from ..guts import Object, Float, String, Bool, Tuple, Int, List
+from ..moment_tensor import MomentTensor, symmat6
 
 guts_prefix = 'pf'
 
@@ -408,7 +410,7 @@ class QSSPConfigFull(QSSPConfig):
 #---------------------------------end of all inputs-----------------------------------------
 '''  # noqa
 
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class QSSPError(gf.store.StoreError):
@@ -433,14 +435,12 @@ class QSSPRunner:
 
         input_fn = pjoin(self.tempdir, 'input')
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
+            logger.debug('===== begin qssp input =====\n'
+                         '%s===== end qssp input =====' % input_str)
+            f.write(input_str)
 
-        logger.debug('===== begin qssp input =====\n'
-                     '%s===== end qssp input =====' % input_str)
-
-        f.write(input_str)
-        f.close()
         program = program_bins['qssp.%s' % config.qssp_version]
 
         old_wd = os.getcwd()
@@ -468,7 +468,7 @@ on
 
 ''' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -476,8 +476,8 @@ on
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.debug('===== begin qssp output =====\n'
-                     '%s===== end qssp output =====' % output_str)
+        logger.debug(b'===== begin qssp output =====\n'
+                     b'%s===== end qssp output =====' % output_str)
 
         errmess = []
         if proc.returncode != 0:
@@ -489,12 +489,12 @@ on
                 'qssp emitted something via stderr: \n\n%s' % error_str)
 
             # errmess.append('qssp emitted something via stderr')
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in qssp output")
 
         if errmess:
             os.chdir(old_wd)
-            raise QSSPError('''
+            raise QSSPError(b'''
 ===== begin qssp input =====
 %s===== end qssp input =====
 ===== begin qssp output =====
@@ -524,7 +524,7 @@ qssp has been invoked as "%s"'''.lstrip() % (
             ntraces -= 1
             deltat = (data[-1, 0] - data[0, 0])/(nsamples-1)
             toffset = data[0, 0]
-            for itrace in xrange(ntraces):
+            for itrace in range(ntraces):
                 rec = self.config.receivers[itrace]
                 tmin = rec.tstart + toffset
                 tr = trace.Trace(

@@ -5,7 +5,7 @@ from pyrocko import gf
 km = 1e3
 
 
-class GFSourceTypes(unittest.UnitTest):
+class GFSourceTypes(unittest.TestCase):
 
     def test_rectangular_source(self):
         # WIP

@@ -118,7 +118,7 @@ mantle
         # build store
         try:
             psgrn_pscmp.build(store_dir, nworkers=1)
-        except psgrn_pscmp.PsCmpError, e:
+        except psgrn_pscmp.PsCmpError as e:
             if str(e).find('could not start psgrn/pscmp') != -1:
                 logger.warn('psgrn/pscmp not installed; '
                             'skipping test_pyrocko_gf_vs_pscmp')

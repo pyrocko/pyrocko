@@ -1,4 +1,6 @@
-# coding=utf-8
+from __future__ import absolute_import, division
+from builtins import range, zip
+
 import logging
 import os
 from os.path import join as pjoin

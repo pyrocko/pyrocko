@@ -87,8 +87,6 @@ typedef npy_float64 float64_t;
       __typeof__ (b) _b = (b); \
      _a < _b ? _a : _b; })
 
-static PyObject *StoreExtError;
-
 typedef enum {
     SUCCESS = 0,
     INVALID_RECORD,
@@ -958,15 +956,13 @@ static PyObject* w_store_init(PyObject *m, PyObject *args) {
 
 static store_t* get_store_from_capsule(PyObject *capsule) {
     store_t *store;
-    struct module_state *st = GETSTATE(capsule);
-
 
 #ifdef HAVE_CAPSULE
     if (!PyCapsule_IsValid(capsule, NULL)) {
 #else
     if (!PyCObject_Check(capsule)) {
 #endif
-        PyErr_SetString(st->error, "store_sum: invalid cstore argument");
+        PyErr_SetString(PyExc_ValueError, "store_sum: invalid cstore argument");
         return NULL;
     }
 

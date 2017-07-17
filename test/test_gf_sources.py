@@ -87,13 +87,16 @@ class GFSourcesTestCase(unittest.TestCase):
                             strike=r(-100, 100, n=21),
                             depth=r('0k .. 100k : 10k'),
                             moment=r(1, 2, 1))
+        print(sgrid, len(sgrid))
 
         sgrid = guts.load_string(sgrid.dump())
         n = len(sgrid)
         i = 0
+        print(sgrid, len(sgrid))
         for source in sgrid:
             i += 1
 
+        print(i, len(sgrid))
         assert i == n
 
     def dummy_store(self):

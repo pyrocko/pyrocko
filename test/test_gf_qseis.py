@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range
+
 import random
 import math
 import unittest
@@ -112,7 +115,7 @@ mantle
 
         try:
             qseis.build(store_dir, nworkers=1)
-        except qseis.QSeisError, e:
+        except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
                 logger.warn('qseis not installed; '
                             'skipping test_pyrocko_gf_vs_qseis')
@@ -125,7 +128,7 @@ mantle
             lon=0.,
             depth=10.*km)
 
-        source.m6 = tuple(random.random()*2.-1. for x in xrange(6))
+        source.m6 = tuple(random.random()*2.-1. for x in range(6))
 
         azi = random.random()*365.
         dist = 553.*km
@@ -197,7 +200,7 @@ mantle
                     .pyrocko_traces()
             return process(nthreads)
 
-        for nthreads in xrange(1, cpu_count()+1):
+        for nthreads in range(1, cpu_count()+1):
             trs2 = process_wrap(nthreads)
         # print benchmark
 
@@ -297,7 +300,7 @@ mantle
 
         try:
             qseis.build(store_dir_qseis, nworkers=1)
-        except qseis.QSeisError, e:
+        except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
                 logger.warn('qseis not installed; '
                             'skipping test_pyrocko_gf_vs_qseis')
@@ -351,9 +354,9 @@ mantle
             lon=0.,
             depth=sdepth)
 
-        source.m6 = tuple(rand(-1., 1.) for x in xrange(6))
+        source.m6 = tuple(rand(-1., 1.) for x in range(6))
 
-        for ii in xrange(5):
+        for ii in range(5):
             azi = random.random()*365.
             dist = rand(config.distance_min, config.distance_max)
             dist = round(dist / config.distance_delta) * config.distance_delta
