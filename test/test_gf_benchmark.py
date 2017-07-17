@@ -1,3 +1,6 @@
+from __future__ import print_function, division
+from builtins import range, zip
+
 import unittest
 import numpy as num
 import cProfile
@@ -72,7 +75,7 @@ class GFBenchmarkTest(unittest.TestCase):
                 lat=random.random()*10.,
                 lon=random.random()*10.,
                 north_shift=0.1,
-                east_shift=0.1) for x in xrange(ntargets)]
+                east_shift=0.1) for x in range(ntargets)]
 
             dsource = source.discretize_basesource(store, targets[0])
             source_coords_arr = dsource.coords5()
@@ -122,23 +125,23 @@ class GFBenchmarkTest(unittest.TestCase):
                             assert interpolation == 'multilinear'
                             irecords, ip_weights =\
                                 store.config.vicinities(*args)
-                            neach = irecords.size / args[0].size
+                            neach = irecords.size // args[0].size
                             weights = num.repeat(weights, neach) * ip_weights
                             delays = num.repeat(delays, neach)
 
                         weights_c[i].append(weights)
                         irecords_c[i].append(irecords)
-                for c in xrange(len(weights_c)):
+                for c in range(len(weights_c)):
                     weights_c[c] = num.concatenate([w for w in weights_c[c]])
                     irecords_c[c] = num.concatenate([ir for
                                                      ir in irecords_c[c]])
 
-                return zip(weights_c, irecords_c)
+                return list(zip(weights_c, irecords_c))
 
             rc = sum_c()
             rp = sum_python()
 
-            print benchmark.__str__(header=False)
+            print(benchmark.__str__(header=False))
             benchmark.clear()
 
             # Comparing the results
@@ -157,16 +160,16 @@ class GFBenchmarkTest(unittest.TestCase):
 
                     num.testing.assert_almost_equal(r_c, r_p.flatten())
                 if False:
-                    print 'irecord_c: {0:>7}, {1:>7}'.format(
-                        rc[i][1].min(), rc[i][1].max())
-                    print 'irecord_p: {0:>7}, {1:>7}'.format(
-                        rp[i][1].min(), rp[i][1].max())
+                    print('irecord_c: {0:>7}, {1:>7}'.format(
+                        rc[i][1].min(), rc[i][1].max()))
+                    print('irecord_p: {0:>7}, {1:>7}'.format(
+                        rp[i][1].min(), rp[i][1].max()))
 
                 if False:
-                    print 'weights_c: {0:>7}, {1:>7}'.format(
-                        rc[i][0].min(), rc[i][0].max())
-                    print 'weights_p: {0:>7}, {1:>7}'.format(
-                        rp[i][0].min(), rp[i][0].max())
+                    print('weights_c: {0:>7}, {1:>7}'.format(
+                        rc[i][0].min(), rc[i][0].max()))
+                    print('weights_p: {0:>7}, {1:>7}'.format(
+                        rp[i][0].min(), rp[i][0].max()))
 
         '''
         Testing loop

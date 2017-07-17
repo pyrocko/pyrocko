@@ -292,7 +292,7 @@ class PsGrnConfigFull(PsGrnConfig):
 %(model_lines)s
 #=======================end of input===========================================
 '''  # noqa
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class PsGrnError(gf.store.StoreError):
@@ -307,7 +307,7 @@ def remove_if_exists(fn, force=False):
             raise gf.CannotCreate('file %s already exists' % fn)
 
 
-class PsGrnRunner:
+class PsGrnRunner(object):
 
     def __init__(self, outdir):
         outdir = os.path.abspath(outdir)
@@ -323,14 +323,11 @@ class PsGrnRunner:
 
         remove_if_exists(input_fn, force=force)
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
-
-        logger.debug('===== begin psgrn input =====\n'
-                     '%s===== end psgrn input =====' % input_str)
-
-        f.write(input_str)
-        f.close()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
+            logger.debug(b'===== begin psgrn input =====\n'
+                         b'%s===== end psgrn input =====' % input_str)
+            f.write(input_str)
         program = program_bins['psgrn.%s' % config.version]
 
         old_wd = os.getcwd()
@@ -359,7 +356,7 @@ on
 
 ''' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -367,8 +364,8 @@ on
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.debug('===== begin psgrn output =====\n'
-                     '%s===== end psgrn output =====' % output_str)
+        logger.debug(b'===== begin psgrn output =====\n'
+                     b'%s===== end psgrn output =====' % output_str)
 
         errmess = []
         if proc.returncode != 0:
@@ -378,12 +375,12 @@ on
         if error_str:
             errmess.append('psgrn emitted something via stderr')
 
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in psgrn output")
 
         if errmess:
             os.chdir(old_wd)
-            raise PsGrnError('''
+            raise PsGrnError(b'''
 ===== begin psgrn input =====
 %s===== end psgrn input =====
 ===== begin psgrn output =====
@@ -546,7 +543,7 @@ class PsCmpRectangularSource(gf.Location, gf.seismosizer.Cloneable):
           rake: 0.0
 
         '''
-        for (k, v) in kwargs.iteritems():
+        for (k, v) in kwargs.items():
             self[k] = v
 
     @property
@@ -607,7 +604,7 @@ class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
         rf = -0.25
 
         cmpd = []
-        for comp, mt in MTIso.iteritems():
+        for comp, mt in MTIso.items():
             params = copy.deepcopy(mt)
 
             if comp != self.idx:
@@ -860,7 +857,7 @@ class PsCmpConfigFull(PsCmpConfig):
 #
 # References:
 #
-# (1) Wang, R., F. Lorenzo-Martín and F. Roth (2003), Computation of deformation
+# (1) Wang, R., F. Lorenzo-Martin and F. Roth (2003), Computation of deformation
 #     induced by earthquakes in a multi-layered elastic crust - FORTRAN programs
 #     EDGRN/EDCMP, Computer and Geosciences, 29(2), 195-207.
 # (2) Wang, R., F. Lorenzo-Martin and F. Roth (2006), PSGRN/PSCMP - a new code for
@@ -1071,7 +1068,7 @@ class PsCmpConfigFull(PsCmpConfig):
 %(patches_str)s
 #================================end of input===================================
 '''  # noqa
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class PsGrnPsCmpConfig(Object):
@@ -1093,7 +1090,7 @@ class Interrupted(gf.store.StoreError):
         return 'Interrupted.'
 
 
-class PsCmpRunner:
+class PsCmpRunner(object):
 
     def __init__(self, tmp=None, keep_tmp=False):
         if tmp is not None:
@@ -1107,14 +1104,14 @@ class PsCmpRunner:
 
         input_fn = pjoin(self.tempdir, 'input')
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
 
-        logger.debug('===== begin pscmp input =====\n'
-                     '%s===== end pscmp input =====' % input_str)
+            logger.debug(b'===== begin pscmp input =====\n'
+                         b'%s===== end pscmp input =====' % input_str)
 
-        f.write(input_str)
-        f.close()
+            f.write(input_str)
+
         program = program_bins['pscmp.%s' % config.version]
 
         old_wd = os.getcwd()
@@ -1144,7 +1141,7 @@ on
 
 ''' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -1152,8 +1149,8 @@ on
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.debug('===== begin pscmp output =====\n'
-                     '%s===== end pscmp output =====' % output_str)
+        logger.debug(b'===== begin pscmp output =====\n'
+                     b'%s===== end pscmp output =====' % output_str)
 
         errmess = []
         if proc.returncode != 0:
@@ -1163,14 +1160,14 @@ on
         if error_str:
             errmess.append('pscmp emitted something via stderr')
 
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in pscmp output")
 
         if errmess:
             self.keep_tmp = True
 
             os.chdir(old_wd)
-            raise PsCmpError('''
+            raise PsCmpError(b'''
 ===== begin pscmp input =====
 %s===== end pscmp input =====
 ===== begin pscmp output =====
