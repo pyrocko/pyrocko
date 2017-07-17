@@ -10,11 +10,13 @@ class TopoTestCase(unittest.TestCase):
         tiles = srtm.available_tilenames()
 
         srtm.download_tile(list(tiles)[-1])
+        srtm.get_tile(0, 0)
 
-    @unittest.skip('')
     def test_etopo(self):
         etopo = topo.etopo1
         etopo.download()
+        etopo.make_tiles()
+        etopo.get_tile(0, 0)
 
 
 if __name__ == '__main__':
