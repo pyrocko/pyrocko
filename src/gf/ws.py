@@ -1,5 +1,6 @@
 from future import standard_library
 standard_library.install_aliases()
+from builtins import str
 
 import os
 import time
@@ -219,7 +220,7 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
                 status_callback=status_callback, entries_wanted=wanted)
 
     except (urllib.error.URLError, urllib.error.HTTPError,
-            httplib.HTTPException) as e:
+            http.client.HTTPException) as e:
         raise DownloadError('download failed. Original error was: %s, %s' % (
             type(e).__name__, e))
 
