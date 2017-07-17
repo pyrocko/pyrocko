@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import sys
 import calendar
 import logging
@@ -15,7 +17,7 @@ class UnknownBlocketteType(Exception):
     pass
 
 
-class Field:
+class Field(object):
     def __init__(self, name, v=None):
         self.name = name
         self.repeats = False
@@ -96,7 +98,7 @@ class VTime(V):
         return util.gmctime(value)
 
 
-class Repeat:
+class Repeat(object):
     def __init__(self, repetitions_key, fields):
         self.repetitions_key = repetitions_key
         self.fields = fields
@@ -104,7 +106,7 @@ class Repeat:
             field.repeats = True
 
 
-class Definition:
+class Definition(object):
     def __init__(self, btype, name, control_header, fields):
         self.btype = btype
         self.name = name
@@ -191,7 +193,7 @@ def ident(string):
     return string.lower().replace(' ', '_')
 
 
-class BlocketteContent:
+class BlocketteContent(object):
     def set(self, k, v):
         setattr(self, k, v)
 
@@ -202,7 +204,7 @@ class BlocketteContent:
         getattr(self, k).append(v)
 
 
-class Blockette:
+class Blockette(object):
 
     def __init__(self, btype):
         self.btype = btype
@@ -261,7 +263,7 @@ class Blockette:
         return '\n'.join(s)
 
 
-class DatalessSeedReader:
+class DatalessSeedReader(object):
 
     def __init__(self):
         pass
@@ -282,8 +284,8 @@ class DatalessSeedReader:
 
         volumeheader = Blockette(blockette_type)
         volumeheader.unpack(data[8:8+blockette_length])
-        print volumeheader
-        print '---'
+        print(volumeheader)
+        print('---')
 
         self.logical_record_length = volumeheader.content.logical_record_length
         data += f.read(self.logical_record_length-256)
@@ -317,11 +319,11 @@ class DatalessSeedReader:
             try:
                 x = Blockette(blockette_type)
                 x.unpack(data[pos:pos+blockette_length])
-                print x
-                print '---'
+                print(x)
+                print('---')
 
-            except UnknownBlocketteType, e:
-                print 'unknown blockette type found: %s' % e
+            except UnknownBlocketteType as e:
+                print('unknown blockette type found: %s' % e)
 
             pos += blockette_length
 

@@ -73,7 +73,7 @@ For documentation and installation instructions please see
 - [ ] ``rdseed.py``
 - [x] ``response_plot.py``
 - [x] ``sac.py``
-- [ ] ``seed.py``
+- [x] ``seed.py``
 - [x] ``segy.py``
 - [x] ``seisan_response.py``
 - [x] ``seisan_waveform.py``

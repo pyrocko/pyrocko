@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from builtins import str
+from builtins import str as newstr
 from builtins import zip
 from builtins import map
 from builtins import range
@@ -112,7 +112,7 @@ class FloatTile(Object):
 
 class City(Object):
     def __init__(self, name, lat, lon, population=None, asciiname=None):
-        name = str(name)
+        name = newstr(name)
         lat = float(lat)
         lon = float(lon)
         if asciiname is None:
