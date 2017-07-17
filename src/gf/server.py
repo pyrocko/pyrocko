@@ -12,7 +12,8 @@ which is based on this one:
 from __future__ import absolute_import
 from future import standard_library
 standard_library.install_aliases()  # noqa
-from builtins import range, basestring
+from builtins import range
+from builtins import str as newstr
 
 import asynchat
 import asyncore
@@ -282,9 +283,9 @@ class RequestHandler(asynchat.async_chat, SHRH):
                     O.appendleft(a[num_sent:])
 
         except socket.error as why:
-            if isinstance(why, basestring):
+            if isinstance(why, newstr):
                 self.log_error(why)
-            elif isinstance(why, tuple) and isinstance(why[-1], basestring):
+            elif isinstance(why, tuple) and isinstance(why[-1], newstr):
                 self.log_error(why[-1])
             else:
                 self.log_error(str(why))

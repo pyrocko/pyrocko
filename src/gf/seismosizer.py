@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division
 from builtins import range, map, zip
-
 from collections import defaultdict
 import time
 import math
@@ -3002,13 +3001,13 @@ class SourceGrid(SourceGroup):
     def __len__(self):
         n = 1
         for (k, v) in self.make_coords(self.base):
-            n *= len(v)
-
+            n *= len(list(v))
+        print(n)
         return n
 
     def __iter__(self):
         for items in permudef(self.make_coords(self.base)):
-            s = self.base.clone(**dict((k, v) for (k, v) in items))
+            s = self.base.clone(**{k: v for (k, v) in items})
             s.regularize()
             yield s
 

@@ -1,3 +1,5 @@
+from __future__ import absolute_import, division
+from builtins import zip, range
 
 import errno
 import time
@@ -13,9 +15,9 @@ import re
 import numpy as num
 from scipy import signal
 
-from pyrocko import util, spit
-from pyrocko.gf import meta
-from pyrocko.gf import store_ext
+from . import meta
+from . import store_ext
+from .. import util, spit
 
 logger = logging.getLogger('pyrocko.gf.store')
 
@@ -173,13 +175,16 @@ class GFValue(object):
         self.t_optimize = 0.
 
 
+Zero = GFTrace(is_zero=True, itmin=0)
+
+
 def make_same_span(tracesdict):
 
     traces = tracesdict.values()
 
     nonzero = [tr for tr in traces if not tr.is_zero]
     if not nonzero:
-        return dict((k, Zero) for k in tracesdict.keys())
+        return {k: Zero for k in tracesdict.keys()}
 
     deltat = nonzero[0].deltat
 
@@ -187,7 +192,7 @@ def make_same_span(tracesdict):
     itmax = max(tr.itmin+tr.data.size for tr in nonzero) - 1
 
     out = {}
-    for k, tr in tracesdict.iteritems():
+    for k, tr in tracesdict.items():
         n = itmax - itmin + 1
         if tr.itmin != itmin or tr.data.size != n:
             data = num.zeros(n, dtype=gf_dtype)
@@ -203,9 +208,6 @@ def make_same_span(tracesdict):
         out[k] = tr
 
     return out
-
-
-Zero = GFTrace(is_zero=True, itmin=0)
 
 
 class StoreError(Exception):
@@ -291,7 +293,7 @@ class BaseStore(object):
             records.tofile(f)
 
         with open(data_fn, 'wb') as f:
-            f.write('\0' * 32)
+            f.write(b'\0' * 32)
 
     def __init__(self, store_dir, mode='r', use_memmap=True):
         assert mode in 'rw'
@@ -326,7 +328,7 @@ class BaseStore(object):
         try:
             self.cstore = store_ext.store_init(
                 self._f_index.fileno(), self._f_data.fileno())
-        except store_ext.StoreExtError, e:
+        except store_ext.StoreExtError as e:
             raise StoreError(str(e))
 
         while True:
@@ -334,7 +336,7 @@ class BaseStore(object):
                 dataheader = self._f_index.read(gf_store_header_fmt_size)
                 break
 
-            except IOError, e:
+            except IOError as e:
                 # occasionally got this one on an NFS volume
                 if e.errno == errno.EBUSY:
                     time.sleep(0.01)
@@ -360,7 +362,7 @@ class BaseStore(object):
                 fcntl.lockf(self._f_index, fcntl.LOCK_EX)
                 break
 
-            except IOError, e:
+            except IOError as e:
                 if e.errno == errno.ENOLCK:
                     time.sleep(0.01)
                 else:
@@ -442,7 +444,7 @@ class BaseStore(object):
             try:
                 return GFTrace(*store_ext.store_get(
                     self.cstore, int(irecord), int(itmin), int(nsamples)))
-            except store_ext.StoreExtError, e:
+            except store_ext.StoreExtError as e:
                 raise StoreError(str(e))
 
         else:
@@ -485,14 +487,14 @@ class BaseStore(object):
             itmax_data = itmin_data + nsamples_data - 1
 
             # put begin and end to multiples of new sampling rate
-            itmin_ext = (max(itmin, itmin_data)/decimate) * decimate
-            itmax_ext = -((-min(itmax, itmax_data))/decimate) * decimate
+            itmin_ext = (max(itmin, itmin_data)//decimate) * decimate
+            itmax_ext = -((-min(itmax, itmax_data))//decimate) * decimate
             nsamples_ext = itmax_ext - itmin_ext + 1
 
             # add some padding for the aa filter
             order = 30
-            itmin_ext_pad = itmin_ext - order/2
-            itmax_ext_pad = itmax_ext + order/2
+            itmin_ext_pad = itmin_ext - order//2
+            itmax_ext_pad = itmax_ext + order//2
             nsamples_ext_pad = itmax_ext_pad - itmin_ext_pad + 1
 
             itmin_overlap = max(itmin_data, itmin_ext_pad)
@@ -617,7 +619,7 @@ class BaseStore(object):
         if nsamples == 0:
             return GFTrace(out, itmin, deltat)
 
-        for ii in xrange(len(irecords)):
+        for ii in range(len(irecords)):
             irecord = irecords[ii]
             delay = delays[ii]
             weight = weights[ii]
@@ -840,7 +842,7 @@ class BaseStore(object):
 
                 tr.itmin += itoffset
 
-            except store_ext.StoreExtError, e:
+            except store_ext.StoreExtError as e:
                 raise StoreError(str(e) + ' in store %s' % self.store_dir)
 
         elif implementation == 'alternative':
@@ -1098,7 +1100,7 @@ class Store(BaseStore):
             remake_dir(dpath, force)
 
         if extra:
-            for k, v in extra.iteritems():
+            for k, v in extra.items():
                 check_string_id(k)
                 fn = os.path.join(store_dir, 'extra', k)
                 remove_if_exists(fn, force)
@@ -1322,7 +1324,7 @@ class Store(BaseStore):
         else:
             assert interpolation == 'multilinear'
             irecords, ip_weights = store.config.vicinities(*args)
-            neach = irecords.size / args[0].size
+            neach = irecords.size // args[0].size
             weights = num.repeat(weights, neach) * ip_weights
             delays = num.repeat(delays, neach)
 
@@ -1840,7 +1842,7 @@ class Store(BaseStore):
             if comp in components:
                 weights, irecords = params[icomp]
 
-                neach = irecords.size / source.times.size
+                neach = irecords.size // source.times.size
                 delays = num.repeat(source.times, neach)
 
                 tr = store._sum(
