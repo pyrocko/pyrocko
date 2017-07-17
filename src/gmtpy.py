@@ -141,14 +141,14 @@ def replace_bbox(bbox, *args):
 
     def repl(m):
         if m.group(1):
-            return b'%%HiResBoundingBox: ' + b' '.join(
-                b'%.3f' % float(x) for x in bbox)
+            return ('%%HiResBoundingBox: ' + ' '.join(
+                '%.3f' % float(x) for x in bbox)).encode('ascii')
         else:
-            return b'%%%%BoundingBox: %i %i %i %i' % (
+            return ('%%%%BoundingBox: %i %i %i %i' % (
                     int(math.floor(bbox[0])),
                     int(math.floor(bbox[1])),
                     int(math.ceil(bbox[2])),
-                    int(math.ceil(bbox[3])))
+                    int(math.ceil(bbox[3])))).encode('ascii')
 
     pat = re.compile(br'%%(HiRes)?BoundingBox:((\s+[0-9.]+){4})')
     if len(args) == 1:
@@ -1116,15 +1116,15 @@ def get_gmt_version(gmtdefaultsbinary, gmthomedir=None):
         env=environ)
 
     (stdout, stderr) = p.communicate()
-    m = re.search(r'(\d+(\.\d+)*)', stderr) \
-        or re.search(r'# GMT (\d+(\.\d+)*)', stdout)
+    m = re.search(br'(\d+(\.\d+)*)', stderr) \
+        or re.search(br'# GMT (\d+(\.\d+)*)', stdout)
 
     if not m:
         raise GMTInstallationProblem(
             "Can't extract version number from output of %s"
             % gmtdefaultsbinary)
 
-    return m.group(1)
+    return str(m.group(1).decode('ascii'))
 
 
 def detect_gmt_installations():
@@ -1141,27 +1141,27 @@ def detect_gmt_installations():
 
         (stdout, stderr) = p.communicate()
 
-        m = re.search(r'Version\s+(\d+(\.\d+)*)', stderr, re.M)
+        m = re.search(br'Version\s+(\d+(\.\d+)*)', stderr, re.M)
         if not m:
             raise GMTInstallationProblem(
                 "Can't version number from output of GMT")
 
-        version = m.group(1)
+        version = str(m.group(1).decode('ascii'))
         if version[0] != '5':
 
-            m = re.search(r'^\s+executables\s+(.+)$', stderr, re.M)
+            m = re.search(br'^\s+executables\s+(.+)$', stderr, re.M)
             if not m:
                 raise GMTInstallationProblem(
                     "Can't extract executables dir from output of GMT")
 
-            gmtbin = m.group(1)
+            gmtbin = str(m.group(1).decode('ascii'))
 
-            m = re.search(r'^\s+shared data\s+(.+)$', stderr, re.M)
+            m = re.search(br'^\s+shared data\s+(.+)$', stderr, re.M)
             if not m:
                 raise GMTInstallationProblem(
                     "Can't extract shared dir from output of GMT")
 
-            gmtshare = m.group(1)
+            gmtshare = str(m.group(1).decode('ascii'))
             if not gmtshare.endswith('/share'):
                 raise GMTInstallationProblem(
                     "Can't determine GMTHOME from output of GMT")
@@ -1177,9 +1177,9 @@ def detect_gmt_installations():
 
     try:
         version = str(subprocess.check_output(
-            ['gmt', '--version']).strip().decode('utf-8'))
+            ['gmt', '--version']).strip().decode('ascii'))
         gmtbin = str(subprocess.check_output(
-            ['gmt', '--show-bindir']).strip().decode('utf-8'))
+            ['gmt', '--show-bindir']).strip().decode('ascii'))
         installations[version] = {
             'bin': gmtbin}
 
@@ -1197,7 +1197,6 @@ def detect_gmt_installations():
 
 
 def appropriate_defaults_version(version):
-
     avails = sorted(_gmt_defaults_by_version.keys(), key=key_version)
     for iavail, avail in enumerate(avails):
         if key_version(version) == key_version(avail):

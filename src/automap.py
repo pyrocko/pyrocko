@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from builtins import str
+from builtins import str as newstr
 from builtins import zip
 from builtins import map
 from builtins import range
@@ -11,7 +11,10 @@ import math
 import random
 import logging
 
-from io import StringIO
+try:
+    from StringIO import StringIO as BytesIO
+except ImportError:
+    from io import BytesIO
 
 import numpy as num
 
@@ -112,7 +115,7 @@ class FloatTile(Object):
 
 class City(Object):
     def __init__(self, name, lat, lon, population=None, asciiname=None):
-        name = str(name)
+        name = newstr(name)
         lat = float(lat)
         lon = float(lon)
         if asciiname is None:
@@ -699,7 +702,7 @@ class Map(Object):
             j, _, _, r = self.jxyr
             gmt = self.gmt
 
-        f = StringIO()
+        f = BytesIO()
         gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f, D='p')
         f.seek(0)
         data = num.loadtxt(f, ndmin=2)

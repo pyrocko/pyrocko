@@ -170,48 +170,49 @@ def read_status(f, h):
 def iload(filename, load_data=True):
     traces = {}
 
-    f = open(filename, 'rb')
-    try:
-        while True:
-            h = read_header(f)
-            if h.block_type == 'data_block':
-                deltat = 1.0 / h.sample_rate
-                if load_data:
-                    samples = read_data(f, h)
-                    tmax = None
+    with open(filename, 'rb') as f:
+        try:
+            while True:
+                h = read_header(f)
+                if h.block_type == 'data_block':
+                    deltat = 1.0 / h.sample_rate
+                    if load_data:
+                        samples = read_data(f, h)
+                        tmax = None
+                    else:
+                        f.seek(1024 - 16, 1)
+                        samples = None
+                        tmax = h.time + (
+                            h.nrecords * h.compression - 1) * deltat
+
+                    nslc = ('', h.system_id, '', h.stream_id)
+
+                    if nslc in traces:
+                        tr = traces[nslc]
+                        if abs((tr.tmax + tr.deltat) - h.time) < deltat*0.0001:
+                            if samples is not None:
+                                tr.append(samples)
+                            else:
+                                tr.tmax = tmax
+
+                        else:
+                            del traces[nslc]
+                            yield tr
+
+                    if nslc not in traces:
+                        traces[nslc] = trace.Trace(
+                            *nslc,
+                            tmin=h.time,
+                            deltat=deltat,
+                            ydata=samples,
+                            tmax=tmax)
+
                 else:
                     f.seek(1024 - 16, 1)
-                    samples = None
-                    tmax = h.time + (h.nrecords * h.compression - 1) * deltat
 
-                nslc = ('', h.system_id, '', h.stream_id)
-
-                if nslc in traces:
-                    tr = traces[nslc]
-                    if abs((tr.tmax + tr.deltat) - h.time) < deltat*0.0001:
-                        if samples is not None:
-                            tr.append(samples)
-                        else:
-                            tr.tmax = tmax
-
-                    else:
-                        del traces[nslc]
-                        yield tr
-
-                if nslc not in traces:
-                    traces[nslc] = trace.Trace(
-                        *nslc,
-                        tmin=h.time,
-                        deltat=deltat,
-                        ydata=samples,
-                        tmax=tmax)
-
-            else:
-                f.seek(1024 - 16, 1)
-
-    except EOF:
-        for tr in traces.values():
-            yield tr
+        except EOF:
+            for tr in traces.values():
+                yield tr
 
 
 def detect(first512):
@@ -235,7 +236,7 @@ if __name__ == '__main__':
 
     all_traces = []
     for fn in sys.argv[1:]:
-        if detect(open(fn).read(512)):
+        if detect(open(fn, 'rb').read(512)):
             print(fn)
             all_traces.extend(iload(fn))
 

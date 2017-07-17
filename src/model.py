@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 
 from past.builtins import cmp
-from builtins import str
 from builtins import range
 import math
 import copy

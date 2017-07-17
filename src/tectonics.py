@@ -1,6 +1,5 @@
 from builtins import range
 from builtins import map
-from builtins import str
 
 import os.path as op
 import math

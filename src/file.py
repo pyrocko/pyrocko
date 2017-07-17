@@ -9,7 +9,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from builtins import range
-from builtins import str
 
 from struct import unpack, pack
 from io import BytesIO

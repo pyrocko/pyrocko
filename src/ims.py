@@ -228,7 +228,7 @@ def x_int_angle():
         if v is None:
             return b'   '
         else:
-            return b'%3i' % (int(round(v)) % 360)
+            return ('%3i' % (int(round(v)) % 360)).encode('ascii')
 
     return float_or_none, string
 
@@ -650,7 +650,7 @@ class DataType(Block):
         if self.subformat:
             f += ':' + self.subformat
 
-        return b'DATA_TYPE %s %s' % (s.encode('ascii'), f.encode('ascii'))
+        return ('DATA_TYPE %s %s' % (s, f)).encode('ascii')
 
     @classmethod
     def read(cls, reader):
@@ -1173,7 +1173,7 @@ class CAL2(Block):
         s = self.serialize(writer.version_dialect)
         writer.writeline(s)
         for c in self.comments:
-            writer.writeline(b' (%s)' % c)
+            writer.writeline((' (%s)' % c).encode('ascii'))
 
 
 class Units(StringChoice):
@@ -1214,7 +1214,7 @@ class Stage(Block):
         writer.writeline(line)
         self.write_datalines(writer)
         for c in self.comments:
-            writer.writeline(b' (%s)' % c)
+            writer.writeline((' (%s)' % c).encode('ascii'))
 
     def write_datalines(self, writer):
         pass
@@ -2301,7 +2301,8 @@ class TimeStamp(FreeFormatLine):
         return cls(value=parse_ff_date_time(s))
 
     def serialize(self, line, version_dialect):
-        return b'TIME_STAMP %s' % string_ff_date_time(self.value)
+        return (
+            'TIME_STAMP %s' % string_ff_date_time(self.value)).encode('ascii')
 
 
 class Stop(FreeFormatLine):
