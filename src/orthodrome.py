@@ -19,6 +19,13 @@ d2m = earthradius_equator*math.pi/180.
 m2d = 1./d2m
 
 
+try:
+    cbrt = num.cbrt
+except AttributeError:
+    def cbrt(x):
+        return x**(1./3.)
+
+
 def float_array_broadcast(*args):
     return num.broadcast_arrays(*[
         num.asarray(x, dtype=num.float) for x in args])
@@ -1056,7 +1063,7 @@ def ecef_to_geodetic(X, Y, Z):
     F = 54. * b2 * Z2
     G = r2 + (1.-e2)*Z2 - (e2*E2)
     C = (e4 * F * r2) / (G**3)
-    S = num.cbrt(1. + C + num.sqrt(C**2 + 2.*C))
+    S = cbrt(1. + C + num.sqrt(C**2 + 2.*C))
     P = F / (3. * (S + 1./S + 1.)**2 * G**2)
     Q = num.sqrt(1. + (2.*e4*P))
 
