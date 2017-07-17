@@ -87,17 +87,35 @@ class GFSourcesTestCase(unittest.TestCase):
                             strike=r(-100, 100, n=21),
                             depth=r('0k .. 100k : 10k'),
                             moment=r(1, 2, 1))
-        print(sgrid, len(sgrid))
 
         sgrid = guts.load_string(sgrid.dump())
+
         n = len(sgrid)
         i = 0
-        print(sgrid, len(sgrid))
         for source in sgrid:
             i += 1
 
-        print(i, len(sgrid))
         assert i == n
+
+    def test_sgrid2(self):
+        expect = [10., 12., 14., 16., 18., 20.]
+        source = gf.DCSource()
+        sgrid = source.grid(dip=gf.Range(10, 20, 2))
+        dips = []
+        for source in sgrid:
+            dips.append(source.dip)
+
+        num.testing.assert_array_almost_equal(
+            dips, expect)
+
+        source = gf.DCSource(dip=10)
+        sgrid = source.grid(dip=gf.Range(1, 2, 0.2, relative='mult'))
+        dips = []
+        for source in sgrid:
+            dips.append(source.dip)
+
+        num.testing.assert_array_almost_equal(
+            dips, expect)
 
     def dummy_store(self):
         if self._dummy_store is None:

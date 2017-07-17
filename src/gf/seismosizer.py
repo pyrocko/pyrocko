@@ -450,7 +450,7 @@ class Range(SObject):
 
         vals = self.make_relative(base, vals)
 
-        return map(float, vals)
+        return list(map(float, vals))
 
     def make_relative(self, base, vals):
         if self.relative == 'add':
@@ -3002,7 +3002,7 @@ class SourceGrid(SourceGroup):
         n = 1
         for (k, v) in self.make_coords(self.base):
             n *= len(list(v))
-        print(n)
+
         return n
 
     def __iter__(self):
@@ -3022,7 +3022,7 @@ class SourceGrid(SourceGroup):
                             (ks[0], self.base.__class__.__name__))
 
     def make_coords(self, base):
-        return [(param, self.variables[param].make(self.base))
+        return [(param, self.variables[param].make(base=base[param]))
                 for param in self.ordered_params()]
 
 
