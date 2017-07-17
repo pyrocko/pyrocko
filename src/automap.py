@@ -11,7 +11,10 @@ import math
 import random
 import logging
 
-from io import StringIO
+try:
+    from StringIO import StringIO as BytesIO
+except ImportError:
+    from io import BytesIO
 
 import numpy as num
 
@@ -699,7 +702,7 @@ class Map(Object):
             j, _, _, r = self.jxyr
             gmt = self.gmt
 
-        f = StringIO()
+        f = BytesIO()
         gmt.mapproject(j, r, in_columns=(lons, lats), out_stream=f, D='p')
         f.seek(0)
         data = num.loadtxt(f, ndmin=2)
