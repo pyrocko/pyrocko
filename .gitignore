@@ -3,7 +3,8 @@ dist
 pyrocko.egg-info
 evalresp-3.3.0
 libmseed
-*.pyc
+__pycache__
+*.py[cod]
 *~
 *.swp
 *.so
