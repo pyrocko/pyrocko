@@ -1,3 +1,6 @@
+from __future__ import absolute_import, division
+from builtins import range, map, zip
+
 from collections import defaultdict
 import time
 import math
@@ -8,17 +11,16 @@ import resource
 
 import numpy as num
 
-from pyrocko.guts import Object, Float, String, StringChoice, List, \
-    Timestamp, Int, SObject, ArgumentError, Dict
+from ..guts import (Object, Float, String, StringChoice, List,
+                    Timestamp, Int, SObject, ArgumentError, Dict)
+from ..guts_array import Array
 
-from pyrocko.guts_array import Array
+from .. import moment_tensor as mt
+from .. import trace, model, util, config
+from ..orthodrome import ne_to_latlon
 
-from pyrocko import moment_tensor as mt
-from pyrocko import trace, model, util
-from pyrocko.gf import meta, store, ws
-from pyrocko.orthodrome import ne_to_latlon
+from . import meta, store, ws
 from .targets import Target, StaticTarget, SatelliteTarget
-import pyrocko.config
 
 pjoin = os.path.join
 
@@ -299,7 +301,7 @@ class Range(SObject):
             if len(args) == 3:
                 d['step'] = float(args[2])
 
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             if k in d:
                 raise ArgumentError('%s specified more than once' % k)
 
@@ -788,7 +790,7 @@ class HalfSinusoidSTF(STF):
         tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        nt = (tmax - tmin) / deltat + 1
+        nt = (tmax - tmin) // deltat + 1
         if nt > 1:
             t_edges = num.maximum(tmin_stf, num.minimum(tmax_stf, num.linspace(
                 tmin - 0.5*deltat, tmax + 0.5*deltat, nt + 1)))
@@ -904,7 +906,7 @@ class Source(meta.Location, Cloneable):
 
         '''
 
-        for (k, v) in kwargs.iteritems():
+        for (k, v) in kwargs.items():
             self[k] = v
 
     def grid(self, **variables):
@@ -1101,7 +1103,8 @@ class SourceWithMagnitude(Source):
     @classmethod
     def keys(cls):
         if cls._keys is None:
-            cls._keys = super(SourceWithMagnitude, cls).keys() + ['moment']
+            cls._keys = list(super(SourceWithMagnitude, cls).keys())\
+                + ['moment']
 
         return cls._keys
 
@@ -1453,7 +1456,7 @@ class MTSource(Source):
         d = {}
         mt = ev.moment_tensor
         if mt:
-            d.update(m6=map(float, mt.m6()))
+            d.update(m6=tuple(map(float, mt.m6())))
 
         d.update(kwargs)
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
@@ -1859,7 +1862,7 @@ class RingfaultSource(SourceWithMagnitude):
              [num.zeros(n), num.zeros(n), num.ones(n)]], (2, 0, 1))
 
         ms = num.zeros((n, 3, 3))
-        for i in xrange(n):
+        for i in range(n):
             mtemp = num.dot(rotmats[i].T, num.dot(m, rotmats[i]))
             ms[i, :, :] = num.dot(rotmat.T, num.dot(mtemp, rotmat))
 
@@ -2087,8 +2090,8 @@ class Request(Object):
         ms = self.subsources_map()
         mt = self.subtargets_map()
         m = {}
-        for (ks, ls) in ms.iteritems():
-            for (kt, lt) in mt.iteritems():
+        for (ks, ls) in ms.items():
+            for (kt, lt) in mt.items():
                 m[ks, kt] = (ls, lt)
 
         return m
@@ -2333,7 +2336,7 @@ def process_subrequest_dynamic(work, pshared=None):
             components,
             pshared['dsource_cache'])
 
-    except meta.OutOfBounds, e:
+    except meta.OutOfBounds as e:
         e.context = OutOfBoundsContext(
             source=sources[0],
             target=targets[0],
@@ -2344,7 +2347,7 @@ def process_subrequest_dynamic(work, pshared=None):
     n_records_stacked = 0
     t_optimize = 0.0
     t_stack = 0.0
-    for _, tr in base_seismogram.iteritems():
+    for _, tr in base_seismogram.items():
         n_records_stacked += tr.n_records_stacked
         t_optimize += tr.t_optimize
         t_stack += tr.t_stack
@@ -2360,7 +2363,7 @@ def process_subrequest_dynamic(work, pshared=None):
                 result.t_optimize = t_optimize
                 result.t_stack = t_stack
 
-            except SeismosizerError, e:
+            except SeismosizerError as e:
                 result = e
 
             results.append((isource, itarget, result))
@@ -2390,7 +2393,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
                 try:
                     base_seismogram, tcounters = engine.base_seismogram(
                         source, target, components, dsource_cache, nthreads)
-                except meta.OutOfBounds, e:
+                except meta.OutOfBounds as e:
                     e.context = OutOfBoundsContext(
                         source=sources[0],
                         target=targets[0],
@@ -2402,7 +2405,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
                 t_optimize = 0.0
                 t_stack = 0.0
 
-                for _, tr in base_seismogram.iteritems():
+                for _, tr in base_seismogram.items():
                     n_records_stacked += tr.n_records_stacked
                     t_optimize += tr.t_optimize
                     t_stack += tr.t_stack
@@ -2415,7 +2418,7 @@ def process_dynamic(work, psources, ptargets, engine, nthreads=0):
                         len(targets)
                     result.t_optimize = t_optimize
                     result.t_stack = t_stack
-                except SeismosizerError, e:
+                except SeismosizerError as e:
                     result = e
 
                 tcounters.append(xtime())
@@ -2437,7 +2440,7 @@ def process_static(work, psources, ptargets, engine, nthreads=0):
                 try:
                     base_statics, tcounters = engine.base_statics(
                         source, target, components, nthreads)
-                except meta.OutOfBounds, e:
+                except meta.OutOfBounds as e:
                     e.context = OutOfBoundsContext(
                         source=sources[0],
                         target=targets[0],
@@ -2489,7 +2492,7 @@ class LocalEngine(Engine):
                 self.store_dirs.extend(env_store_dirs.split(':'))
 
         if use_config:
-            c = pyrocko.config.config()
+            c = config.config()
             self.store_superdirs.extend(c.gf_store_superdirs)
             self.store_dirs.extend(c.gf_store_dirs)
 
@@ -2610,7 +2613,7 @@ class LocalEngine(Engine):
         Close and remove ids from cashed stores.
         '''
         store_ids = []
-        for store_id, store_ in self._open_stores.iteritems():
+        for store_id, store_ in self._open_stores.items():
             store_.close()
             store_ids.append(store_id)
 
@@ -2729,7 +2732,7 @@ class LocalEngine(Engine):
             return base_statics, tcounters
 
     def _post_process_dynamic(self, base_seismogram, source, target):
-        deltat = base_seismogram.values()[0].deltat
+        deltat = list(base_seismogram.values())[0].deltat
 
         rule = self.get_rule(source, target)
         data = rule.apply_(target, base_seismogram)
@@ -2738,7 +2741,7 @@ class LocalEngine(Engine):
         if factor != 1.0:
             data = data * factor
 
-        itmin = base_seismogram.values()[0].itmin
+        itmin = list(base_seismogram.values())[0].itmin
 
         stf = source.effective_stf_post()
 
@@ -2826,7 +2829,7 @@ class LocalEngine(Engine):
         skeys = sorted(m.keys())
         results_list = []
 
-        for i in xrange(len(request.sources)):
+        for i in range(len(request.sources)):
             results_list.append([None] * len(request.targets))
 
         tcounters_dyn_list = []
@@ -2923,10 +2926,9 @@ class LocalEngine(Engine):
                 if not isinstance(result, meta.Result):
                     continue
                 shr = float(result.n_shared_stacking)
-                n_records_stacked += float(result.n_records_stacked) /\
-                    shr
-                s.t_perc_optimize += float(result.t_optimize) / shr
-                s.t_perc_stack += float(result.t_stack) / shr
+                n_records_stacked += result.n_records_stacked / shr
+                s.t_perc_optimize += result.t_optimize / shr
+                s.t_perc_stack += result.t_stack / shr
         s.n_records_stacked = int(n_records_stacked)
         if t_dyn != 0.:
             s.t_perc_optimize /= t_dyn * 100
@@ -3012,7 +3014,7 @@ class SourceGrid(SourceGroup):
 
     def ordered_params(self):
         ks = list(self.variables.keys())
-        for k in self.order + self.base.keys():
+        for k in self.order + list(self.base.keys()):
             if k in ks:
                 yield k
                 ks.remove(k)
