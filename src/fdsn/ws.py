@@ -3,7 +3,7 @@ from builtins import str
 
 import re
 import logging
-
+from urllib import parse
 try:
     from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,
                          HTTPError, urlopen)
@@ -11,8 +11,6 @@ except ImportError:
     from urllib.request import (Request, build_opener, HTTPDigestAuthHandler,
                                 urlopen)
     from urllib.error import HTTPError
-
-from urllib import parse
 
 from .. import util
 

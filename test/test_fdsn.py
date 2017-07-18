@@ -1,6 +1,4 @@
-from __future__ import division
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import absolute_import, division, print_function
 from future import standard_library
 standard_library.install_aliases()  # noqa
 
@@ -59,6 +57,16 @@ class FDSNStationTestCase(unittest.TestCase):
 
             assert len(fsx.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
+
+    def test_dataselect(self):
+        tmin = stt('2010-01-15 10:00:00')
+        tmax = stt('2010-01-15 10:01:00')
+        for site in ['geofon', 'iris']:
+            fdsn_ws.dataselect(site=site,
+                               network='GE',
+                               station='EIL',
+                               starttime=tmin,
+                               endtime=tmax)
 
     def test_read_big(self):
         for site in ['iris']:

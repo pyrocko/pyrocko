@@ -1,12 +1,12 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+from builtins import map
 
 import time
 import re
 import logging
 
-from .. import util, guts, io_common
 from . import station as fs
+from .. import util, guts, io_common
 
 logger = logging.getLogger('pyrocko.fdsn.resp')
 
