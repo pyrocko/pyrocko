@@ -1,3 +1,5 @@
+from __future__ import division
+
 import unittest
 import logging
 from tempfile import mkdtemp
@@ -93,7 +95,7 @@ mantle
 
         try:
             qseis.build(store_dir, nworkers=1)
-        except qseis.QSeisError, e:
+        except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
                 logger.warn('qseis not installed; '
                             'skipping test_pyrocko_gf_vs_qseis')

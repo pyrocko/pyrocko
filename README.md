@@ -33,7 +33,7 @@ For documentation and installation instructions please see
 - [x] ``fdsn/``
 - [x] ``file.py``
 - [ ] ``fomosto/``
-- [ ] ``fomosto_report/``
+- [x] ``fomosto_report/``
 - [x] ``gcf.py``
 - [x] ``geonames.py``
 - [ ] ``gf/``

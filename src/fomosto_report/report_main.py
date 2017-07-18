@@ -1,9 +1,14 @@
+from __future__ import absolute_import, print_function, division
+from builtins import range, map
+from future import standard_library
+standard_library.install_aliases()  # noqa
+
 import os
 import sys
 import shutil
 import subprocess
 import re
-import StringIO
+import io
 import base64
 import datetime
 from collections import OrderedDict
@@ -14,10 +19,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm, transforms
 
-from pyrocko import gf, trace, cake, util, plot, beachball
-from pyrocko.guts import load, Object, String, List, Float, Int, Bool, Dict
-from pyrocko.gf import Source, Target
-from pyrocko.gf.meta import OutOfBounds
+from .. import gf, trace, cake, util, plot, beachball
+from ..guts import load, Object, String, List, Float, Int, Bool, Dict
+from ..gf import Source, Target
+from ..gf.meta import OutOfBounds
 
 from jinja2 import Environment, PackageLoader
 
@@ -213,7 +218,7 @@ class GreensFunctionTest(Object):
 
     def __printMessage(self):
         if self.message is not None:
-            print self.message
+            print(self.message)
 
     def cleanup(self):
         shutil.rmtree(self.temp_dir)
@@ -605,7 +610,7 @@ class GreensFunctionTest(Object):
     @staticmethod
     def __formatLatexString(string):
         rep = {'_': r'\_', r'\n': r'\\', '|': r'\textbar '}
-        rep = dict((re.escape(k), v) for k, v in rep.iteritems())
+        rep = {re.escape(k): v for k, v in rep.items()}
         pat = re.compile('|'.join(rep.keys()))
         return pat.sub(lambda m: rep[re.escape(m.group(0))], string)
 
@@ -690,7 +695,6 @@ class GreensFunctionTest(Object):
     def createComparisonOutputDoc(cls, gft1, gft2,
                                   *trc_ids, **kwargs):
         # only valid kwargs is 'together'
-
         if 'together' in kwargs:
             together = kwargs['together']
         else:
@@ -1144,7 +1148,7 @@ class GreensFunctionTest(Object):
             if i > 1:
                 for j in ax.xaxis.get_ticklabels()[1::2]:
                     j.set_visible(False)
-            if (i / 4) == 0:
+            if (i // 4) == 0:
                 y = pos.y0 * 1.025
                 ax.set_position([pos.x0, y, pos.width,
                                  pos.height - (y - pos.y0)])
@@ -1235,10 +1239,10 @@ class GreensFunctionTest(Object):
             fig.savefig(fname.name, transparent=True)
             out = fname.name
         elif self.output_format == 'html':
-            imgdata = StringIO.StringIO()
+            imgdata = io.BytesIO()
             fig.savefig(imgdata, format='png')
             imgdata.seek(0)
-            out = base64.b64encode(imgdata.buf)
+            out = base64.b64encode(imgdata.read())
         plt.close(fig)
         return out
 
@@ -1296,9 +1300,9 @@ class GreensFunctionTest(Object):
         maxa = max([x[1] for x in after])
         minb = min([x[0] for x in before])
         maxb = max([x[1] for x in before])
-        ratios = map(lambda b, a: 0. if a[0] == a[1] == 0. else
-                     max(abs(b[0]), abs(b[1])) / max(abs(a[0]), abs(a[1])),
-                     before, after)
+        ratios = list(map(lambda b, a: 0. if a[0] == a[1] == 0. else
+                          max(abs(b[0]), abs(b[1]))/max(abs(a[0]), abs(a[1])),
+                          before, after))
 
         return mina, maxa, minb, maxb, max(ratios)
 
@@ -1389,7 +1393,8 @@ class GreensFunctionTest(Object):
         args['change_dists'] = False
         gft1 = cls.__createStandardSetups(store_dir1, **args)
         if 'source_depth' not in args or args['source_depth'] is None:
-            args['source_depth'] = gft1.sources[gft1.sources.keys()[0]].depth
+            args['source_depth'] = gft1.sources[list(gft1.sources.keys())[0]]\
+                .depth
 
         gft2 = cls.__createStandardSetups(store_dir2, **args)
 
