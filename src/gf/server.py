@@ -173,7 +173,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
         for f in self.opened:
             if not f.closed:
                 f.close()
-        super(RequestHandler, self).handle_close()
+        asynchat.async_chat.handle_close(self)
 
     def handle_data(self):
         """Class to override"""
