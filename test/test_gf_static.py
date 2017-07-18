@@ -301,9 +301,9 @@ mantle
 
             @benchmark.labeled('sum-timeseries-np%d' % nthreads)
             def sum_timeseries():
-                nsummands = weights.size / ntargets
+                nsummands = weights.size // ntargets
                 res = num.zeros(ntargets)
-                for t in xrange(ntargets):
+                for t in range(ntargets):
                     sl = slice(t*nsummands, (t+1) * nsummands)
                     r = store_ext.store_sum(
                         cstore, irecords[sl], delays_t[sl],
