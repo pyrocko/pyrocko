@@ -56,11 +56,11 @@ install:
     - sudo python setup.py install
 
 script:
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test; fi
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko setup.py test; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python test/test_all.py ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
 
 after_success:
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; coveralls; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coveralls; fi
 
 notifications:
     email: false
