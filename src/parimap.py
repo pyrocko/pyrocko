@@ -44,8 +44,11 @@ def parimap(function, *iterables, **kwargs):
             kwargs['pshared'] = pshared
 
         while True:
-            args = [next(it) for it in iterables]
-            yield function(*args, **kwargs)
+            try:
+                args = [next(it) for it in iterables]
+                yield function(*args, **kwargs)
+            except StopIteration:
+                return
 
         return
 
@@ -105,18 +108,18 @@ def parimap(function, *iterables, **kwargs):
         if results:
             results.sort()
             # check for error ahead to prevent further enqueuing
-            if any(e for (_, _, e) in results):
+            if any(exc for (_, _, exc) in results):
                 error_ahead = True
 
             while results:
-                (i, r, e) = results[0]
+                (i, r, exc) = results[0]
                 if i == iout:
                     results.pop(0)
-                    if e:
+                    if exc is not None:
                         if not all_written:
                             [q_in.put((None, None)) for p in procs]
                             q_in.close()
-                        raise e
+                        raise exc
                     else:
                         yield r
 
@@ -128,3 +131,4 @@ def parimap(function, *iterables, **kwargs):
             break
 
     [p.join() for p in procs]
+    return
