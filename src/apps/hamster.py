@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import absolute_import, division
 
 import os
 import sys
@@ -112,7 +113,7 @@ necessary.
             pile.fixate_all()
             sys.exit()
 
-        except serial_hamster.SerialHamsterError, e:
+        except serial_hamster.SerialHamsterError as e:
 
             pile.fixate_all()
             hamster.stop()

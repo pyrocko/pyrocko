@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import absolute_import, division
 
 import sys
 import re
@@ -10,7 +11,7 @@ from optparse import OptionParser
 
 import numpy as num
 
-from pyrocko import util, config, pile, model, io, trace
+from .. import util, config, pile, model, io, trace
 
 pjoin = os.path.join
 
@@ -434,7 +435,7 @@ def main(args=None):
                                 wmax_month=tts(twmax, format='%m'),
                                 wmax_day=tts(twmax, format='%d'),
                                 wmax=tts(twmax, format='%Y-%m-%d_%H-%M-%S')))
-                except io.FileSaveError, e:
+                except io.FileSaveError as e:
                     die(str(e))
 
         if abort:
