@@ -125,6 +125,7 @@ mantle
             if str(e).find('could not start qseis2d') != -1:
                 logger.warn('qseis2d not installed; '
                             'skipping test_pyrocko_qseis_vs_qseis2d')
+                logger.warn(e)
                 return
             else:
                 raise
@@ -132,9 +133,10 @@ mantle
         # qseis
         config_q = copy.deepcopy(config_q2)
         config_q.id = 'qseis2d_test_q'
-        # config_q.modelling_code_id = 'qseis2008'
+        config_q.modelling_code_id = 'qseis.2006a'
 
         qconf = qseis.QSeisConfig()
+        qconf.qseis_version = '2006a'
 
         qconf.slowness_window = slowness_window
 

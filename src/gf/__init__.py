@@ -18,9 +18,10 @@ All classes defined in the :mod:`pyrocko.gf.*` submodules are imported into the
 import gf`` or ``from pyrocko.gf import *`` for convenience.
 
 '''
+from __future__ import absolute_import
 
-from pyrocko.gf.meta import *  # noqa
-from pyrocko.gf.store import *  # noqa
-from pyrocko.gf.builder import *  # noqa
-from pyrocko.gf.seismosizer import *  # noqa
-from pyrocko.gf.targets import *  # noqa
+from .meta import *  # noqa
+from .store import *  # noqa
+from .builder import *  # noqa
+from .seismosizer import *  # noqa
+from .targets import *  # noqa

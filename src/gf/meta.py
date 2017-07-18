@@ -16,8 +16,7 @@ from ..guts import (Object, SObject, String, StringChoice,
 from ..guts import dump, load  # noqa
 from ..guts_array import literal, Array
 
-from .. import trace
-from .. import cake, orthodrome, spit, moment_tensor
+from .. import cake, orthodrome, spit, moment_tensor, trace
 from ..config import config
 
 
