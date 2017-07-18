@@ -1107,8 +1107,8 @@ class PsCmpRunner(object):
         with open(input_fn, 'wb') as f:
             input_str = config.string_for_config()
 
-            logger.debug(b'===== begin pscmp input =====\n'
-                         b'%s===== end pscmp input =====' % input_str)
+            logger.debug('===== begin pscmp input =====\n'
+                         '%s===== end pscmp input =====' % input_str.decode())
 
             f.write(input_str)
 
@@ -1149,8 +1149,8 @@ on
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.debug(b'===== begin pscmp output =====\n'
-                     b'%s===== end pscmp output =====' % output_str)
+        logger.debug('===== begin pscmp output =====\n'
+                     '%s===== end pscmp output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
