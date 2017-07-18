@@ -77,7 +77,7 @@ For documentation and installation instructions please see
 - [x] ``segy.py``
 - [x] ``seisan_response.py``
 - [x] ``seisan_waveform.py``
-- [ ] ``serial_hamster.py``
+- [x] ``serial_hamster.py``
 - [ ] ``shadow_pile.py``
 - [x] ``signal_ext.c``
 - [ ] ``slink.py``
