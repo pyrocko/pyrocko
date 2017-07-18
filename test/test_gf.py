@@ -1,3 +1,7 @@
+from __future__ import print_function
+from __future__ import absolute_import
+from builtins import range, next
+
 import time
 import sys
 import random
@@ -8,9 +12,12 @@ from tempfile import mkdtemp
 import logging
 import numpy as num
 from common import Benchmark
+import shutil
 
 from pyrocko import gf, util, cake, ahfullgreen, trace
 from pyrocko.fomosto import ahfullgreen as fomosto_ahfullgreen
+
+assert_ae = num.testing.assert_almost_equal
 
 
 logger = logging.getLogger('test_gf.py')
@@ -58,7 +65,7 @@ def make_traces_homogeneous(
     outz = num.zeros(ns)
 
     traces = []
-    for ielement in xrange(dsource.nelements):
+    for ielement in range(dsource.nelements):
         x = (norths[ielement], easts[ielement], ddepths[ielement])
 
         if isinstance(dsource, gf.DiscretizedMTSource):
@@ -126,12 +133,11 @@ class GFTestCase(unittest.TestCase):
         self.regional_ttt_store_dir = None
         self.benchmark_store_dir = None
         self._dummy_store = None
+        self.__shutil_module = shutil
 
     def __del__(self):
-        import shutil
-
         for d in self.tempdirs:
-            shutil.rmtree(d)
+            self.__shutil_module.rmtree(d)
 
     def create(self, deltat=1.0, nrecords=10):
         d = mkdtemp(prefix='gfstore')
@@ -297,8 +303,8 @@ class GFTestCase(unittest.TestCase):
         num.random.seed(0)
 
         store = gf.BaseStore(self.create(nrecords=nrecords))
-        for deci in (1, 2, 3, 4):
-            for i in range(nrecords):
+        for i in range(nrecords):
+            for deci in (1, 2, 3, 4):
                 tr = store.get(i, decimate=deci)
                 itmin, itmax = store.get_span(i, decimate=deci)
                 self.assertEqual(tr.itmin, itmin)
@@ -318,9 +324,9 @@ class GFTestCase(unittest.TestCase):
                 trb = store.get(i, decimate=deci, implementation='python')
                 self.assertEqual(tra.itmin, trb.itmin)
                 self.assertEqual(tra.data.size, trb.data.size)
-                self.assertTrue(numeq(tra.data, trb.data, 0.001))
-                self.assertTrue(numeq(tra.begin_value, trb.begin_value, 0.001))
-                self.assertTrue(numeq(tra.end_value, trb.end_value, 0.001))
+                assert_ae(tra.data, trb.data)
+                assert_ae(tra.begin_value, trb.begin_value)
+                assert_ae(tra.end_value, trb.end_value)
 
                 tr = tra
 
@@ -403,7 +409,7 @@ class GFTestCase(unittest.TestCase):
         nrecords = 20
 
         store = gf.BaseStore(self.create(nrecords=nrecords))
-        for i in xrange(5):
+        for i in range(5):
             n = random.randint(1, 10)
             indices = num.random.randint(nrecords, size=n).astype(num.uint64)
             weights = num.random.random(n).astype(num.float32)
@@ -579,9 +585,9 @@ class GFTestCase(unittest.TestCase):
                     sdepths = num.repeat(store.config.coords[0],
                                          store.config.ncomponents)
                     t = time.time()
-                    for repeat in xrange(nrepeats):
+                    for repeat in range(nrepeats):
                         for sdepth in sdepths:
-                            for icomp in xrange(1):
+                            for icomp in range(1):
                                 store.get(
                                     (sdepth, distance, icomp),
                                     implementation=implementation)
@@ -594,7 +600,7 @@ class GFTestCase(unittest.TestCase):
                     nread = nrepeats * store.config.ns[0]
                     smmap = implementation
                     label = 'nrepeats %i, impl %s' % (nrepeats, smmap)
-                    print label, num.mean(nread/t1)
+                    print(label, num.mean(nread/t1))
 
                     lab.plot(d, nread/t1, label=label)
 
@@ -625,7 +631,7 @@ class GFTestCase(unittest.TestCase):
 
                         t = time.time()
 
-                        for repeat in xrange(nrepeats):
+                        for repeat in range(nrepeats):
                             store.sum(args, delays, weights,
                                       implementation=implementation)
 
@@ -640,7 +646,7 @@ class GFTestCase(unittest.TestCase):
                             * store.config.ncomponents
                         label = 'nrepeats %i, weight %g, impl %s' % (
                             nrepeats, weight, implementation)
-                        print label, num.mean(nread/t1)
+                        print(label, num.mean(nread/t1))
 
                         lab.plot(d, nread/t1, label=label)
 
@@ -680,9 +686,9 @@ class GFTestCase(unittest.TestCase):
         resps = [engine.process(sources, targets) for targets in targetss]
 
         iters = [resp.iter_results() for resp in resps]
-        for i in xrange(len(sources) * len(targetss[0])):
-            s1, t1, tr1 = iters[0].next()
-            s2, t2, tr2 = iters[1].next()
+        for i in range(len(sources) * len(targetss[0])):
+            s1, t1, tr1 = next(iters[0])
+            s2, t2, tr2 = next(iters[1])
             self.assertEqual(tr1.data_len(), tr2.data_len())
             self.assertEqual(tr1.tmin, tr2.tmin)
             self.assertTrue(numeq(tr1.ydata, tr2.ydata, 0.0001))
@@ -737,10 +743,10 @@ class GFTestCase(unittest.TestCase):
             store.t('P', (10*km,))
 
         with self.assertRaises(gf.OutOfBounds):
-            print store.t('P', (10*km, 5000*km))
+            print(store.t('P', (10*km, 5000*km)))
 
         with self.assertRaises(gf.OutOfBounds):
-            print store.t('P', (30*km, 1500*km))
+            print(store.t('P', (30*km, 1500*km)))
 
     def test_timing_new_syntax(self):
         store_dir = self.get_regional_ttt_store_dir()
@@ -794,7 +800,7 @@ class GFTestCase(unittest.TestCase):
                 lat=random.random()*10.,
                 lon=random.random()*10.,
                 north_shift=0.1,
-                east_shift=0.1) for x in xrange(ntargets)]
+                east_shift=0.1) for x in range(ntargets)]
 
             dsource = source.discretize_basesource(store, targets[0])
             source_coords_arr = dsource.coords5()
@@ -845,18 +851,18 @@ class GFTestCase(unittest.TestCase):
                             assert interpolation == 'multilinear'
                             irecords, ip_weights =\
                                 store.config.vicinities(*args)
-                            neach = irecords.size / args[0].size
+                            neach = irecords.size // args[0].size
                             weights = num.repeat(weights, neach) * ip_weights
                             delays = num.repeat(delays, neach)
 
                         weights_c[i].append(weights)
                         irecords_c[i].append(irecords)
-                for c in xrange(len(weights_c)):
+                for c in range(len(weights_c)):
                     weights_c[c] = num.concatenate([w for w in weights_c[c]])
                     irecords_c[c] = num.concatenate([ir for
                                                      ir in irecords_c[c]])
 
-                return zip(weights_c, irecords_c)
+                return list(zip(weights_c, irecords_c))
 
             rc = make_param_c()
             rp = make_param_python()
@@ -1029,7 +1035,7 @@ class GFTestCase(unittest.TestCase):
                 trs1 = []
                 for component, gtr in seismogram(
                         dsource, receiver, components,
-                        interpolation=interpolation).iteritems():
+                        interpolation=interpolation).items():
 
                     tr = gtr.to_trace('', 'STA', '', component)
                     trs1.append(tr)
@@ -1066,7 +1072,7 @@ class GFTestCase(unittest.TestCase):
                     limit = 1e-6
 
                 if not num.all(ds < limit):
-                    print ds
+                    print(ds)
                     trace.snuffle(trs1+trs2)
 
                 assert num.all(ds < limit)

@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division
 from builtins import range, map, zip
 from collections import defaultdict
+from functools import cmp_to_key
 import time
 import math
 import os
@@ -28,6 +29,28 @@ guts_prefix = 'pf'
 d2r = math.pi / 180.
 
 logger = logging.getLogger('pyrocko.gf.seismosizer')
+
+
+def cmp_none_aware(a, b):
+    if isinstance(a, tuple) and isinstance(b, tuple):
+        for xa, xb in zip(a, b):
+            rv = cmp_none_aware(xa, xb)
+            if rv == 0:
+                break
+
+    anone = a is None
+    bnone = b is None
+
+    if anone and bnone:
+        return 0
+
+    if anone:
+        return -1
+
+    if bnone:
+        return 1
+
+    return cmp(a, b)
 
 
 def xtime():
@@ -2825,7 +2848,8 @@ class LocalEngine(Engine):
                             enumerate(request.targets))
 
         m = request.subrequest_map()
-        skeys = sorted(m.keys())
+
+        skeys = sorted(m.keys(), key=cmp_to_key(cmp_none_aware))
         results_list = []
 
         for i in range(len(request.sources)):

@@ -1,4 +1,4 @@
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from builtins import zip, range
 
 import errno
@@ -113,6 +113,8 @@ class GFTrace(object):
             data = num.asarray(data, dtype=gf_dtype)
         else:
             data = num.array([], dtype=gf_dtype)
+            begin_value = 0.0
+            end_value = 0.0
 
         self.data = data
         self.itmin = itmin
@@ -473,7 +475,8 @@ class BaseStore(object):
             return None
 
         elif ipos == 1:
-            return GFTrace(is_zero=True, itmin=itmin)
+            itmin_ext = (max(itmin, itmin_data)//decimate) * decimate
+            return GFTrace(is_zero=True, itmin=itmin_ext//decimate)
 
         if decimate == 1:
             ilo = max(itmin, itmin_data) - itmin_data
@@ -523,7 +526,7 @@ class BaseStore(object):
                 if itmax_ext >= itmax_data:
                     data_deci[-1] = end_value
 
-            return GFTrace(data_deci, itmin_ext/decimate,
+            return GFTrace(data_deci, itmin_ext//decimate,
                            self._deltat*decimate,
                            begin_value=begin_value, end_value=end_value)
 
@@ -545,7 +548,10 @@ class BaseStore(object):
         if decimate == 1:
             return itmin, itmax
         else:
-            return itmin/decimate, -((-itmax)/decimate)
+            if nsamples == 0:
+                return itmin//decimate, itmin//decimate - 1
+            else:
+                return itmin//decimate, -((-itmax)//decimate)
 
     def _put(self, irecord, trace):
         '''
