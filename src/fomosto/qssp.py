@@ -476,8 +476,8 @@ on
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.debug(b'===== begin qssp output =====\n'
-                     b'%s===== end qssp output =====' % output_str)
+        logger.debug('===== begin qssp output =====\n'
+                     '%s===== end qssp output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -486,7 +486,8 @@ on
         if error_str:
 
             logger.warn(
-                'qssp emitted something via stderr: \n\n%s' % error_str)
+                'qssp emitted something via stderr: \n\n%s'
+                % error_str.decode())
 
             # errmess.append('qssp emitted something via stderr')
         if output_str.lower().find(b'error') != -1:
@@ -494,7 +495,7 @@ on
 
         if errmess:
             os.chdir(old_wd)
-            raise QSSPError(b'''
+            raise QSSPError('''
 ===== begin qssp input =====
 %s===== end qssp input =====
 ===== begin qssp output =====
@@ -503,9 +504,9 @@ on
 %s===== end qssp error =====
 %s
 qssp has been invoked as "%s"'''.lstrip() % (
-                input_str,
-                output_str,
-                error_str,
+                input_str.decode(),
+                output_str.decode(),
+                error_str.decode(),
                 '\n'.join(errmess),
                 program))
 

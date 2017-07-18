@@ -1,3 +1,6 @@
+from __future__ import absolute_import, division
+from builtins import zip, range
+
 import time
 import logging
 import weakref
@@ -14,7 +17,7 @@ class QueueIsEmpty(Exception):
     pass
 
 
-class Queue:
+class Queue(object):
     def __init__(self, nmax):
         self.nmax = nmax
         self.queue = []
@@ -35,9 +38,9 @@ class Queue:
         n = len(self.queue)
         s = sorted(self.queue)
         if n % 2 != 0:
-            return s[n/2]
+            return s[n//2]
         else:
-            return (s[n/2-1]+s[n/2])/2.0
+            return (s[n//2-1]+s[n//2])/2.0
 
     def add(self, w):
         self.queue = [v+w for v in self.queue]
@@ -56,7 +59,7 @@ class SerialHamsterError(Exception):
     pass
 
 
-class SerialHamster:
+class SerialHamster(object):
 
     def __init__(
             self, port=0, baudrate=9600, timeout=5, buffersize=128,

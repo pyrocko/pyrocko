@@ -1,10 +1,12 @@
+from __future__ import absolute_import
+
 import os
 import sys
 from optparse import OptionParser, OptionGroup
 from collections import OrderedDict
 
-from pyrocko.fomosto_report import GreensFunctionTest as gftest
-from pyrocko.fomosto_report import FilterFrequencyError as gft_ffe
+from .report_main import GreensFunctionTest as gftest
+from .report_main import FilterFrequencyError as gft_ffe
 
 spstr = '\n' + ' '*20
 subcmds_desc = OrderedDict([
@@ -66,7 +68,7 @@ def dict_to_string(dic):
     st = 4
     st2 = 20
     s = ''
-    for k, v in dic.iteritems():
+    for k, v in dic.items():
         s += '\n{0}{1}{2}{3}'.format(' '*st, k, ' '*(st2 - st - len(k)), v)
     return s
 

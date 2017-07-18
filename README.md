@@ -33,7 +33,7 @@ For documentation and installation instructions please see
 - [x] ``fdsn/``
 - [x] ``file.py``
 - [ ] ``fomosto/``
-- [ ] ``fomosto_report/``
+- [x] ``fomosto_report/``
 - [x] ``gcf.py``
 - [x] ``geonames.py``
 - [ ] ``gf/``
@@ -77,7 +77,7 @@ For documentation and installation instructions please see
 - [x] ``segy.py``
 - [x] ``seisan_response.py``
 - [x] ``seisan_waveform.py``
-- [ ] ``serial_hamster.py``
+- [x] ``serial_hamster.py``
 - [ ] ``shadow_pile.py``
 - [x] ``signal_ext.c``
 - [ ] ``slink.py``

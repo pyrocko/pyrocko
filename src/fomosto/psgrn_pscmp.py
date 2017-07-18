@@ -325,8 +325,8 @@ class PsGrnRunner(object):
 
         with open(input_fn, 'wb') as f:
             input_str = config.string_for_config()
-            logger.debug(b'===== begin psgrn input =====\n'
-                         b'%s===== end psgrn input =====' % input_str)
+            logger.debug('===== begin psgrn input =====\n'
+                         '%s===== end psgrn input =====' % input_str.decode())
             f.write(input_str)
         program = program_bins['psgrn.%s' % config.version]
 
@@ -364,8 +364,8 @@ on
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.debug(b'===== begin psgrn output =====\n'
-                     b'%s===== end psgrn output =====' % output_str)
+        logger.debug('===== begin psgrn output =====\n'
+                     '%s===== end psgrn output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -380,7 +380,7 @@ on
 
         if errmess:
             os.chdir(old_wd)
-            raise PsGrnError(b'''
+            raise PsGrnError('''
 ===== begin psgrn input =====
 %s===== end psgrn input =====
 ===== begin psgrn output =====
@@ -390,8 +390,8 @@ on
 %s
 psgrn has been invoked as "%s"
 in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.outdir))
+                input_str.decode(), output_str.decode(), error_str.decode(),
+                '\n'.join(errmess), program, self.outdir))
 
         self.psgrn_output = output_str
         self.psgrn_error = error_str

@@ -72,10 +72,19 @@ typedef npy_float64 float64_t;
   #define xe32toh be32toh
 #endif
 
-#define fe32toh(x) \
+/*#define fe32toh_void(x) \
    ({ int32_t _i; \
       _i = xe32toh(*((int32_t*)&(x))); \
-      *((gf_dtype*)&_i); })
+      *((gf_dtype*)&_i); })*/
+
+gf_dtype fe32toh(const gf_dtype x) {
+    int32_t x1, x2;
+    gf_dtype r;
+    memcpy(&x1, &x, 4);
+    x2 = xe32toh(x1);
+    memcpy(&r, &x2, 4);
+    return r;
+}
 
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \

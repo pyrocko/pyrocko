@@ -82,6 +82,10 @@ class DataCubeTestCase(unittest.TestCase):
 
         # trace.snuffle(trs['off'] + trs['sinc'])
 
+    def test_timing_context(self):
+        fpath = common.test_data_file('test2.cube')
+        datacube.get_extended_timing_context(fpath)
+
     def benchmark_load(self):
         mode = {
             0: 'get time range',

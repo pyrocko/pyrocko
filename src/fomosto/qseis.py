@@ -592,7 +592,7 @@ class QSeisRunner(object):
         with open(input_fn, 'wb') as f:
             input_str = config.string_for_config()
             logger.debug('===== begin qseis input =====\n'
-                         '%s===== end qseis input =====' % input_str)
+                         '%s===== end qseis input =====' % input_str.decode())
             f.write(input_str)
 
         program = program_bins['qseis.%s' % config.qseis_version]
@@ -631,8 +631,8 @@ on
         if interrupted:
             raise KeyboardInterrupt()
 
-        logger.debug(b'===== begin qseis output =====\n'
-                     b'%s===== end qseis output =====' % output_str)
+        logger.debug('===== begin qseis output =====\n'
+                     '%s===== end qseis output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -641,7 +641,8 @@ on
 
         if error_str:
             logger.warn(
-                'qseis emitted something via stderr:\n\n%s' % error_str)
+                'qseis emitted something via stderr:\n\n%s'
+                % error_str.decode())
 
             # errmess.append('qseis emitted something via stderr')
 
@@ -652,7 +653,7 @@ on
             self.keep_tmp = True
 
             os.chdir(old_wd)
-            raise QSeisError(b'''
+            raise QSeisError('''
 ===== begin qseis input =====
 %s===== end qseis input =====
 ===== begin qseis output =====
@@ -662,8 +663,8 @@ on
 %s
 qseis has been invoked as "%s"
 in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.tempdir))
+                input_str.decode(), output_str.decode(), error_str.decode(),
+                '\n'.join(errmess), program, self.tempdir))
 
         self.qseis_output = output_str
         self.qseis_error = error_str
