@@ -7,11 +7,20 @@ For documentation and installation instructions please see
 
 # Python 3 Progress
 
+## TODO
+
+- [ ] Move I/O to dedicated folder
+- [ ] Finish and Tag
+- [ ] Build new docs (together w deplog mechanism?)
+- [ ] Deployment mechanisms
+  - [ ] PIP
+  - [ ] Anaconda
+
+## Modules
+
 - [x] ``__init__.py``
-- [x] ``ahfullgreen_ext.c``
 - [x] ``ahfullgreen.py``
 - [x] ``automap.py``
-- [x] ``autopick_ext.c``
 - [x] ``autopick.py``
 - [x] ``beachball.py``
 - [x] ``cake_plot.py``
@@ -23,27 +32,50 @@ For documentation and installation instructions please see
 - [x] ``crustdb_abbr.py``
 - [x] ``crustdb.py``
 - [x] ``css.py``
-- [x] ``datacube_ext.c``
 - [x] ``datacube.py``
 - [x] ``dummy_progressbar.py``
 - [x] ``edl.py`` *partial, not tested*
 - [x] ``evalresp_ext.c``
 - [x] ``evalresp.py``
 - [x] ``eventdata.py``
+- [x] ``ext/``
+  - [x] ``ahfullgreen_ext.c``
+  - [x] ``autopick_ext.c``
+  - [x] ``datacube_ext.c``
+  - [x] ``ims_ext.c``
+  - [x] ``mseed_ext.c``
+  - [x] ``orthodrome_ext.c``
+  - [x] ``parstack_ext.c``
+  - [x] ``signal_ext.c``
+  - [x] ``util_ext.c``
 - [x] ``fdsn/``
+  - [x] ``__init__.py``
+  - [x] ``enhanced_sacpz.py``
+  - [x] ``resp.py``
+  - [x] ``station.py``
+  - [x] ``ws.py``
 - [x] ``file.py``
-  - [ ] ``fomosto/``
-  - [ ] ``ahfullgreen.py``
-  - [ ] ``dummy.py``
-  - [ ] ``poel.py`` *not tested*
-  - [ ] ``psgrn_pscmp.py``
-  - [ ] ``qseis2d.py``
-  - [ ] ``qseis.py``
-  - [ ] ``qssp.py``
+- [x] ``fomosto/``
+  - [x] ``__init__.py``
+  - [x] ``ahfullgreen.py``
+  - [x] ``dummy.py`` *not tested*
+  - [x] ``poel.py`` *not tested*
+  - [x] ``psgrn_pscmp.py``
+  - [x] ``qseis2d.py``
+  - [x] ``qseis.py``
+  - [x] ``qssp.py``
 - [x] ``fomosto_report/``
 - [x] ``gcf.py``
 - [x] ``geonames.py``
 - [ ] ``gf/``
+  - [x] ``__init__.py``
+  - [x] ``builder.py``
+  - [x] ``meta.py``
+  - [x] ``seismosizer.py``
+  - [ ] ``server.py``
+  - [x] ``store.py``
+  - [x] ``targets.py``
+  - [ ] ``ws.py``
 - [x] ``gmtpy.py``
 - [x] ``gse1.py``
 - [x] ``gse2_io_wrap.py``
@@ -53,7 +85,6 @@ For documentation and installation instructions please see
 - [x] ``guts.py``
 - [x] ``hamster_pile.py`` *not tested*
 - [x] ``hudson.py``
-- [x] ``ims_ext.c``
 - [x] ``ims.py``
 - [x] ``io_common.py``
 - [x] ``io.py``
@@ -64,12 +95,9 @@ For documentation and installation instructions please see
 - [x] ``model.py``
 - [x] ``moment_tensor.py``
 - [x] ``moment_tensor_viewer.py``
-- [x] ``mseed_ext.c``
 - [x] ``mseed.py``
-- [x] ``orthodrome_ext.c``
 - [x] ``orthodrome.py``
 - [x] ``parimap.py``
-- [x] ``parstack_ext.c``
 - [x] ``parstack.py``
 - [x] ``pchain.py``
 - [x] ``pile.py``
@@ -85,8 +113,7 @@ For documentation and installation instructions please see
 - [x] ``seisan_response.py``
 - [x] ``seisan_waveform.py``
 - [x] ``serial_hamster.py``
-- [ ] ``shadow_pile.py``
-- [x] ``signal_ext.c``
+- [x] ``shadow_pile.py``
 - [ ] ``slink.py``
 - [x] ``snuffler.py`` *WIP*
 - [x] ``snuffling.py``
@@ -95,8 +122,12 @@ For documentation and installation instructions please see
 - [x] ``suds.py``
 - [x] ``tectonics.py``
 - [x] ``topo/``
+  - [x] ``__init__.py``
+  - [x] ``dataset.py``
+  - [x] ``etopo1.py``
+  - [x] ``srtmgl3.py``
+  - [x] ``tile.py``
 - [x] ``trace.py``
-- [x] ``util_ext.c``
 - [x] ``util.py``
 - [x] ``weeding.py``
 - [x] ``yaff.py``
