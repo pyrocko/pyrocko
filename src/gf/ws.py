@@ -1,12 +1,12 @@
 from future import standard_library
-standard_library.install_aliases()
-from builtins import str
+standard_library.install_aliases()  # noqa
 
 import os
 import time
 import shutil
-import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.parse
+import urllib.error
 import http.client
 
 import logging
@@ -71,7 +71,7 @@ def _request(url, post=False, **kwargs):
             raise EmptyResult(url)
         return resp
 
-    except urllib2.HTTPError as e:
+    except urllib.error.HTTPError as e:
         if e.code == 413:
             raise RequestEntityTooLarge(url)
         else:
