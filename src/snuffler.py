@@ -1,7 +1,7 @@
 '''Effective seismological trace viewer.'''
-
+from __future__ import absolute_import
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # noqa
 
 import os
 import sys
@@ -20,17 +20,17 @@ import pickle
 from os.path import join as pjoin
 from optparse import OptionParser
 
-import pyrocko.slink
-import pyrocko.serial_hamster
-import pyrocko.edl
+from . import slink
+from . import serial_hamster
+from . import edl
 
-from pyrocko import pile            # noqa
-from pyrocko import util            # noqa
-from pyrocko import pile_viewer     # noqa
-from pyrocko import model           # noqa
-from pyrocko import config          # noqa
-from pyrocko import io              # noqa
-from pyrocko.fdsn import station as fdsn_station
+from . import pile            # noqa
+from . import util            # noqa
+from . import pile_viewer     # noqa
+from . import model           # noqa
+from . import config          # noqa
+from . import io              # noqa
+from .fdsn import station as fdsn_station
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
@@ -62,9 +62,9 @@ class AcquisitionThread(qc.QThread):
                 break
 
             except (
-                    pyrocko.edl.ReadError,
-                    pyrocko.serial_hamster.SerialHamsterError,
-                    pyrocko.slink.SlowSlinkError) as e:
+                    edl.ReadError,
+                    serial_hamster.SerialHamsterError,
+                    slink.SlowSlinkError) as e:
 
                 logger.error(str(e))
                 logger.error('Acquistion terminated, restart in 5 s')
@@ -94,10 +94,10 @@ class AcquisitionThread(qc.QThread):
 
 
 class SlinkAcquisition(
-        pyrocko.slink.SlowSlink, AcquisitionThread):
+        slink.SlowSlink, AcquisitionThread):
 
     def __init__(self, *args, **kwargs):
-        pyrocko.slink.SlowSlink.__init__(self, *args, **kwargs)
+        slink.SlowSlink.__init__(self, *args, **kwargs)
         AcquisitionThread.__init__(self)
 
     def got_trace(self, tr):
@@ -105,10 +105,10 @@ class SlinkAcquisition(
 
 
 class CamAcquisition(
-        pyrocko.serial_hamster.CamSerialHamster, AcquisitionThread):
+        serial_hamster.CamSerialHamster, AcquisitionThread):
 
     def __init__(self, *args, **kwargs):
-        pyrocko.serial_hamster.CamSerialHamster.__init__(self, *args, **kwargs)
+        serial_hamster.CamSerialHamster.__init__(self, *args, **kwargs)
         AcquisitionThread.__init__(self, post_process_sleep=0.1)
 
     def got_trace(self, tr):
@@ -116,10 +116,10 @@ class CamAcquisition(
 
 
 class USBHB628Acquisition(
-        pyrocko.serial_hamster.USBHB628Hamster, AcquisitionThread):
+        serial_hamster.USBHB628Hamster, AcquisitionThread):
 
     def __init__(self, deltat=0.02, *args, **kwargs):
-        pyrocko.serial_hamster.USBHB628Hamster.__init__(
+        serial_hamster.USBHB628Hamster.__init__(
             self, deltat=deltat, *args, **kwargs)
         AcquisitionThread.__init__(self)
 
@@ -128,10 +128,10 @@ class USBHB628Acquisition(
 
 
 class SchoolSeismometerAcquisition(
-        pyrocko.serial_hamster.SerialHamster, AcquisitionThread):
+        serial_hamster.SerialHamster, AcquisitionThread):
 
     def __init__(self, *args, **kwargs):
-        pyrocko.serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
+        serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
         AcquisitionThread.__init__(self, post_process_sleep=0.01)
 
     def got_trace(self, tr):
@@ -139,10 +139,10 @@ class SchoolSeismometerAcquisition(
 
 
 class EDLAcquisition(
-        pyrocko.edl.EDLHamster, AcquisitionThread):
+        edl.EDLHamster, AcquisitionThread):
 
     def __init__(self, *args, **kwargs):
-        pyrocko.edl.EDLHamster.__init__(self, *args, **kwargs)
+        edl.EDLHamster.__init__(self, *args, **kwargs)
         AcquisitionThread.__init__(self)
 
     def got_trace(self, tr):
@@ -174,12 +174,12 @@ def setup_acquisition_sources(args):
                 if '_' not in msl.group(5):
                     try:
                         streams = sl.query_streams()
-                    except pyrocko.slink.SlowSlinkError as e:
+                    except slink.SlowSlinkError as e:
                         logger.fatal(str(e))
                         sys.exit(1)
 
                     streams = list(set(
-                        pyrocko.util.match_nslcs(stream_patterns, streams)))
+                        util.match_nslcs(stream_patterns, streams)))
 
                     for stream in streams:
                         sl.add_stream(*stream)
@@ -230,11 +230,11 @@ def setup_acquisition_sources(args):
     return sources
 
 
-class PollInjector(qc.QObject, pyrocko.pile.Injector):
+class PollInjector(qc.QObject, pile.Injector):
 
     def __init__(self, *args, **kwargs):
         qc.QObject.__init__(self)
-        pyrocko.pile.Injector.__init__(self, *args, **kwargs)
+        pile.Injector.__init__(self, *args, **kwargs)
         self._sources = []
         self.startTimer(1000.)
 
@@ -432,7 +432,7 @@ class SnufflerWindow(qg.QMainWindow):
 
         self.setWindowTitle("Snuffler")
 
-        self.pile_viewer = pyrocko.pile_viewer.PileViewer(
+        self.pile_viewer = pile_viewer.PileViewer(
             pile, ntracks_shown_max=ntracks, use_opengl=opengl,
             panel_parent=self)
 
@@ -685,7 +685,7 @@ app = None
 def snuffle(pile=None, **kwargs):
     '''View pile in a snuffler window.
 
-    :param pile: :py:class:`pyrocko.pile.Pile` object to be visualized
+    :param pile: :py:class:`pile.Pile` object to be visualized
     :param stations: list of `pyrocko.model.Station` objects or ``None``
     :param events: list of `pyrocko.model.Event` objects or ``None``
     :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
@@ -711,7 +711,7 @@ def snuffle(pile=None, **kwargs):
     '''
 
     if pile is None:
-        pile = pyrocko.pile.make_pile()
+        pile = pile.make_pile()
 
     global app
     if app is None:
@@ -801,9 +801,9 @@ def snuffler_from_commandline(args=sys.argv):
         '--format',
         dest='format',
         default='detect',
-        choices=pyrocko.io.allowed_formats('load'),
+        choices=io.allowed_formats('load'),
         help='assume input files are of given FORMAT. Choices: %s'
-             % pyrocko.io.allowed_formats('load', 'cli_help', 'detect'))
+             % io.allowed_formats('load', 'cli_help', 'detect'))
 
     parser.add_option(
         '--pattern',
@@ -853,7 +853,7 @@ def snuffler_from_commandline(args=sys.argv):
     parser.add_option(
         '--cache',
         dest='cache_dir',
-        default=pyrocko.config.config().cache_dir,
+        default=config.config().cache_dir,
         metavar='DIR',
         help='use directory DIR to cache trace metadata '
              '(default=\'%default\')')
@@ -905,14 +905,14 @@ def snuffler_from_commandline(args=sys.argv):
     options, args = parser.parse_args(list(args[1:]))
 
     if options.debug:
-        pyrocko.util.setup_logging('snuffler', 'debug')
+        util.setup_logging('snuffler', 'debug')
     else:
-        pyrocko.util.setup_logging('snuffler', 'warning')
+        util.setup_logging('snuffler', 'warning')
 
-    pile = pyrocko.pile.Pile()
+    this_pile = pile.Pile()
     stations = []
     for stations_fn in options.station_fns:
-        stations.extend(pyrocko.model.load_stations(stations_fn))
+        stations.extend(model.load_stations(stations_fn))
 
     for stationxml_fn in options.stationxml_fns:
         stations.extend(
@@ -921,14 +921,14 @@ def snuffler_from_commandline(args=sys.argv):
 
     events = []
     for event_fn in options.event_fns:
-        events.extend(pyrocko.model.Event.load_catalog(event_fn))
+        events.extend(model.Event.load_catalog(event_fn))
 
     markers = []
     for marker_fn in options.marker_fns:
-        markers.extend(pyrocko.pile_viewer.Marker.load_markers(marker_fn))
+        markers.extend(pile_viewer.Marker.load_markers(marker_fn))
 
     return snuffle(
-        pile,
+        this_pile,
         stations=stations,
         events=events,
         markers=markers,

@@ -2398,7 +2398,8 @@ class Reader(object):
                 comment = m_comment.group(2) or m_comment.group(4)
 
                 self._comment_lines.append(
-                    (self._current_lpos, comment_type, str(comment.decode('ascii'))))
+                    (self._current_lpos, comment_type,
+                     str(comment.decode('ascii'))))
 
             elif self._current_line[:10].upper() == b'TIME_STAMP':
                 self._time_stamps.append(

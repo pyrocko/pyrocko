@@ -93,7 +93,8 @@ class PileTestCase(unittest.TestCase):
             toff += nsamples
 
         s = 0
-        for traces in p.chopper(tmin=None, tmax=p.tmax+1., tinc=122., degap=False):
+        for traces in p.chopper(tmin=None, tmax=p.tmax+1., tinc=122.,
+                                degap=False):
             for tr in traces:
                 s += num.sum(tr.ydata)
 

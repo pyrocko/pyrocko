@@ -1,22 +1,24 @@
-from builtins import zip
-from builtins import range
+from __future__ import absolute_import
+from builtins import zip, range
 
 import sys
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
-from pyrocko.gui_util import EventMarker, PhaseMarker, make_QPolygonF
-from pyrocko.beachball import mt2beachball, BeachballError
-from pyrocko.moment_tensor import kagan_angle
-from pyrocko.plot import tango_colors
-from pyrocko import orthodrome
+from .gui_util import EventMarker, PhaseMarker, make_QPolygonF
+from .beachball import mt2beachball, BeachballError
+from .moment_tensor import kagan_angle
+from .plot import tango_colors
+from . import orthodrome
 
 import numpy as num
 import logging
 
+
 def noop(x=None):
     return x
+
 
 if sys.version_info[0] >= 3:
     qc.QString = str
