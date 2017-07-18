@@ -1,7 +1,10 @@
+from __future__ import absolute_import, division
+from builtins import range
+
 import math
 import logging
 
-from pyrocko import pile, util, io
+from . import pile, util, io
 
 logger = logging.getLogger('pyrocko.shadow_pile')
 
@@ -10,7 +13,7 @@ class NoBasePileSet(Exception):
     pass
 
 
-class ShadowBlock:
+class ShadowBlock(object):
     def __init__(self):
         self.mtime = None
         self.files = []
@@ -73,7 +76,7 @@ class ShadowPile(pile.Pile):
         imax = int(math.floor(tmax / self._tinc)+1)
 
         todo = []
-        for i in xrange(imin, imax):
+        for i in range(imin, imax):
             wmin = i * self._tinc
             wmax = (i+1) * self._tinc
             mtime = util.gmctime(self._base.get_newest_mtime(wmin, wmax))
