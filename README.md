@@ -32,7 +32,14 @@ For documentation and installation instructions please see
 - [x] ``eventdata.py``
 - [x] ``fdsn/``
 - [x] ``file.py``
-- [ ] ``fomosto/``
+  - [ ] ``fomosto/``
+  - [ ]``ahfullgreen.py``
+  - [ ]``dummy.py``
+  - [ ]``poel.py`` *not tested*
+  - [ ]``psgrn_pscmp.py``
+  - [ ]``qseis2d.py``
+  - [ ]``qseis.py``
+  - [ ]``qssp.py``
 - [x] ``fomosto_report/``
 - [x] ``gcf.py``
 - [x] ``geonames.py``
@@ -81,7 +88,7 @@ For documentation and installation instructions please see
 - [ ] ``shadow_pile.py``
 - [x] ``signal_ext.c``
 - [ ] ``slink.py``
-- [x] ``snuffler.py (wip)``
+- [x] ``snuffler.py`` *WIP*
 - [x] ``snuffling.py``
 - [x] ``snufflings/``
 - [x] ``spit.py``
