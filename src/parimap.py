@@ -69,7 +69,10 @@ def parimap(function, *iterables, **kwargs):
     iterables = list(map(iter, iterables))
     while True:
         if nrun < nprocs and not all_written and not error_ahead:
-            args = tuple(next(it) for it in iterables)
+            try:
+                args = tuple(next(it) for it in iterables)
+            except StopIteration:
+                return
             if len(args) == len(iterables):
                 if len(procs) < nrun + 1:
                     p = multiprocessing.Process(
