@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range, zip
+
 import random
 import math
 import unittest
@@ -15,7 +18,7 @@ logger = logging.getLogger('test_qseis2d_qseis')
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
-km = 1000.
+km = 1e3
 slowness_window = (0.0, 0.0, 0.4, 0.5)
 
 
@@ -118,7 +121,7 @@ mantle
         # build store
         try:
             qseis2d.build(q2_store_dir, nworkers=1)
-        except qseis2d.QSeis2dError, e:
+        except qseis2d.QSeis2dError as e:
             if str(e).find('could not start qseis2d') != -1:
                 logger.warn('qseis2d not installed; '
                             'skipping test_pyrocko_qseis_vs_qseis2d')
@@ -129,7 +132,7 @@ mantle
         # qseis
         config_q = copy.deepcopy(config_q2)
         config_q.id = 'qseis2d_test_q'
-        config_q.modelling_code_id = 'qseis'
+        # config_q.modelling_code_id = 'qseis2008'
 
         qconf = qseis.QSeisConfig()
 
@@ -156,10 +159,11 @@ mantle
         # build store
         try:
             qseis.build(q_store_dir, nworkers=1)
-        except qseis.QSeisError, e:
+        except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
                 logger.warn('qseis not installed; '
                             'skipping test_pyrocko_qseis_vs_qseis2d')
+                logger.warn(e)
                 return
             else:
                 raise
@@ -170,7 +174,7 @@ mantle
             lon=0.,
             depth=10. * km)
 
-        source.m6 = tuple(random.random() * 2. - 1. for x in xrange(6))
+        source.m6 = tuple(random.random() * 2. - 1. for x in range(6))
 
         azi = 0.    # QSeis2d only takes one receiver without azimuth variable
         dist = 5530. * km

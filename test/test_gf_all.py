@@ -25,4 +25,4 @@ if __name__ == '__main__':
         f.close()
     else:
         suite = get_gf_test_suite()
-        unittest.TextTestRunner(verbosity=2).run(suite)
+        unittest.TextTestRunner(verbosity=1).run(suite)
