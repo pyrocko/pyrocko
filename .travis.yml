@@ -35,7 +35,7 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install gcc libyaml; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then xcode-select --install || true ; fi
-    - pip install progressbar setuptools flake8 pyyaml coveralls jinja2 future
+    - pip install progressbar setuptools flake8 pyyaml coveralls coverage jinja2 future coverage
     - easy_install pyavl
     - git clone https://github.com/pyrocko/fomosto-qseis
     - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
@@ -53,14 +53,14 @@ before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
 
 install:
-    - python setup.py install
+    - sudo python setup.py install
 
 script:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test; fi
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko setup.py test; fi
 
 after_success:
-    - coveralls
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; coveralls; fi
 
 notifications:
     email: false
