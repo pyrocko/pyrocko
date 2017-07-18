@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import, division
+from builtins import zip, range
 
 import logging
 import os
@@ -9,9 +11,9 @@ from os.path import join as pjoin
 
 import numpy as num
 
-from pyrocko.guts import Object, Float, Int, List, String
-from pyrocko.guts_array import Array
-from pyrocko import trace, util, gf
+from ..guts import Object, Float, Int, List, String
+from ..guts_array import Array
+from .. import trace, util, gf
 
 guts_prefix = 'pf'
 
@@ -333,7 +335,7 @@ class PoelError(Exception):
     pass
 
 
-class PoelRunner:
+class PoelRunner(object):
 
     def __init__(self, tmp=None):
 
@@ -421,7 +423,7 @@ poel has been invoked as "%s"''' % (
                 dx = (xmax-xmin)/(nx-1)
             else:
                 dx = 1.0
-            distances = [xmin + ix*dx for ix in xrange(nx)]
+            distances = [xmin + ix*dx for ix in range(nx)]
         else:
             distances = self.config.distances
 
@@ -432,7 +434,7 @@ poel has been invoked as "%s"''' % (
                 drz = (rzmax-rzmin)/(nrz-1)
             else:
                 drz = 1.0
-            rdepths = [rzmin + irz*drz for irz in xrange(nrz)]
+            rdepths = [rzmin + irz*drz for irz in range(nrz)]
         else:
             rdepths = self.config.depths
 
@@ -446,9 +448,9 @@ poel has been invoked as "%s"''' % (
             ntraces -= 1
             tmin = data[0, 0]
             deltat = (data[-1, 0] - data[0, 0])/(nsamples-1)
-            for itrace in xrange(ntraces):
+            for itrace in range(ntraces):
                 x = distances[itrace % len(distances)]
-                rz = rdepths[itrace / len(distances)]
+                rz = rdepths[itrace // len(distances)]
                 tr = trace.Trace(
                     '', '%i' % itrace, 'c', comp,
                     tmin=tmin, deltat=deltat, ydata=data[:, itrace+1],

@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, division
 from builtins import range, zip
 
 import numpy as num
@@ -422,7 +422,7 @@ class Interrupted(gf.store.StoreError):
         return 'Interrupted.'
 
 
-class QSSPRunner:
+class QSSPRunner(object):
 
     def __init__(self, tmp=None, keep_tmp=False):
 

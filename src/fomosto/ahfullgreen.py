@@ -1,13 +1,15 @@
+from __future__ import absolute_import, division
+from builtins import zip
+
 import numpy as num
 import logging
 import os
 import math
 import signal
 
-from pyrocko import trace, cake
-from pyrocko import gf
-from pyrocko.ahfullgreen import add_seismogram, Impulse
-from pyrocko.moment_tensor import MomentTensor, symmat6
+from .. import trace, cake, gf
+from ..ahfullgreen import add_seismogram, Impulse
+from ..moment_tensor import MomentTensor, symmat6
 
 km = 1000.
 
