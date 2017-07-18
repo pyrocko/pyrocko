@@ -33,13 +33,13 @@ For documentation and installation instructions please see
 - [x] ``fdsn/``
 - [x] ``file.py``
   - [ ] ``fomosto/``
-  - [ ]``ahfullgreen.py``
-  - [ ]``dummy.py``
-  - [ ]``poel.py`` *not tested*
-  - [ ]``psgrn_pscmp.py``
-  - [ ]``qseis2d.py``
-  - [ ]``qseis.py``
-  - [ ]``qssp.py``
+  - [ ] ``ahfullgreen.py``
+  - [ ] ``dummy.py``
+  - [ ] ``poel.py`` *not tested*
+  - [ ] ``psgrn_pscmp.py``
+  - [ ] ``qseis2d.py``
+  - [ ] ``qseis.py``
+  - [ ] ``qssp.py``
 - [x] ``fomosto_report/``
 - [x] ``gcf.py``
 - [x] ``geonames.py``

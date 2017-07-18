@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division
 from builtins import range, map, zip
+from past.builtins import cmp
 from collections import defaultdict
 from functools import cmp_to_key
 import time
@@ -35,8 +36,10 @@ def cmp_none_aware(a, b):
     if isinstance(a, tuple) and isinstance(b, tuple):
         for xa, xb in zip(a, b):
             rv = cmp_none_aware(xa, xb)
-            if rv == 0:
-                break
+            if rv != 0:
+                return rv
+
+        return 0
 
     anone = a is None
     bnone = b is None
@@ -613,7 +616,7 @@ class STF(Object, Cloneable):
                 num.array([th - tref, tref - tl], dtype=num.float) / deltat)
 
     def base_key(self):
-        return (type(self),)
+        return (type(self).__name__,)
 
 
 g_unit_pulse = STF()
@@ -685,7 +688,7 @@ class BoxcarSTF(STF):
         return sshift(times, amplitudes, -tshift, deltat)
 
     def base_key(self):
-        return (self.duration, self.anchor, type(self))
+        return (type(self).__name__, self.duration, self.anchor)
 
 
 class TriangularSTF(STF):
@@ -776,7 +779,8 @@ class TriangularSTF(STF):
         return times, amplitudes
 
     def base_key(self):
-        return (self.duration, self.peak_ratio, self.anchor, type(self))
+        return (
+            type(self).__name__, self.duration, self.peak_ratio, self.anchor)
 
 
 class HalfSinusoidSTF(STF):
@@ -826,7 +830,7 @@ class HalfSinusoidSTF(STF):
         return times, amplitudes
 
     def base_key(self):
-        return (self.duration, self.anchor, type(self))
+        return (type(self).__name__, self.duration, self.anchor)
 
 
 class SmoothRampSTF(STF):
@@ -879,7 +883,8 @@ class SmoothRampSTF(STF):
         return times, amplitudes
 
     def base_key(self):
-        return (self.duration, self.rise_ratio, self.anchor, type(self))
+        return (type(self).__name__,
+                self.duration, self.rise_ratio, self.anchor)
 
 
 class STFMode(StringChoice):
@@ -963,7 +968,7 @@ class Source(meta.Location, Cloneable):
         is shared.
         '''
         return (self.depth, self.lat, self.north_shift,
-                self.lon, self.east_shift, type(self)) + \
+                self.lon, self.east_shift, type(self).__name__) + \
             self.effective_stf_pre().base_key()
 
     def get_timeshift(self):
@@ -1693,7 +1698,7 @@ class DoubleDCSource(SourceWithMagnitude):
     def base_key(self):
         return (
             self.depth, self.lat, self.north_shift,
-            self.lon, self.east_shift, type(self)) + \
+            self.lon, self.east_shift, type(self).__name__) + \
             self.effective_stf1_pre().base_key() + \
             self.effective_stf2_pre().base_key() + (
             self.strike1, self.dip1, self.rake1,
@@ -2543,7 +2548,7 @@ class LocalEngine(Engine):
     def iter_store_dirs(self):
         for d in self.store_superdirs:
             if not os.path.exists(d):
-                logger.warn('store_superdir not available: %s' % d)
+                logger.warning('store_superdir not available: %s' % d)
                 continue
 
             for entry in os.listdir(d):
