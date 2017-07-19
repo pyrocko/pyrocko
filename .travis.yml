@@ -55,7 +55,7 @@ before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
 
 install:
-    - python setup.py install
+    - pip install .
 
 script:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test ; fi
@@ -63,6 +63,18 @@ script:
 
 after_success:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coveralls; fi
+
+
+deploy:
+    provider: pypi
+    user: pyrocko
+    password: 
+      secure: crUt0q8F1oSgG5nzfpjd8bmBtHpVWXZE/qYVRlniux4X7tkO6GnW1rZpE2iBJxjEd3ADmgGZwFKj5215HHOZlcxFVQ/w8BnpI9WCkEaph0kA1I+aIrZg+fzpyEcskQ5Nzg1YQIcN/5wVEwmSZtK55gZyFccZMjqZQTkMJiJHZUGT1SyMYlFtoZ508lXtRxhC1EqhBSUa67KIaZoyA1BTgNEFzRNHCqquyb0dalbaiMfpl3UVxzPkik+L9yIUUc/xKC5NRWwAJY6xT7Qf+lvTC1MTSaNva0TG4PpZ5Zfr/N9HuJXXNTToRAd39tSSypt6TeIvOKA7caD6QNWzioQwA86mjskR1GgRTYo1yEAJApBbHtRWvZvp0noSTYcRtb4XDWc5J1L0vxRsvmPmrSUNLmYDrPz++G2HO+ZrJhjuCme8d6RRMpj5/k2TAnpx0PnjoLLnb9QLoe/U26CbmCQDTLSiXcC0g6jo3Wxyx37truWuG2M2Sh1vmV2qnJVi12FkOg6vJhtvIMvLU1M1kPCiAVcIGO9x4IU+tU/vV5LoNuuqEZT+fRJBtqbMH3LpRMRsMrB/ZRCJ2XnJIsRvkd6ibWYQkmk2L37R8OnNc7y7mI9N4iR158KPmcSL5Ft7LtV+J+42uAgWSolHlpvksBp3ZzIOMfofSRysr7vWmtqCK2U=
+    on:
+      branch: master
+      tags: true
+    distributions: "sdist bdist_wheel"
+    server: https://test.pypi.org/legacy/
 
 notifications:
     email: false
