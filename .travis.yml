@@ -55,7 +55,7 @@ before_script:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sleep 3 ; fi
 
 install:
-    - sudo python setup.py install
+    - python setup.py install
 
 script:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test ; fi
