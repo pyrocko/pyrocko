@@ -398,8 +398,8 @@ class OrthodromeTestCase(unittest.TestCase):
                 points_ip[ip*nip:(ip+1)*nip, 0] = lats
                 points_ip[ip*nip:(ip+1)*nip, 1] = lons
 
-            color = mpl_graph_color(i)
             if plot:
+                color = mpl_graph_color(i)
                 axes.add_patch(
                     Polygon(
                         num.fliplr(points_ip),

@@ -44,7 +44,7 @@ before_install:
     - git clone https://github.com/pyrocko/fomosto-qseis
     - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-qseis2d
-    - cd fomosto-qseis2d; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+    - cd fomosto-qseis2d; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/r:`pwd`/src/s; cd ..
     - git clone https://github.com/pyrocko/fomosto-psgrn-pscmp
     - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/psgrn:`pwd`/src/pscmp; cd ..
     - git clone https://github.com/pyrocko/fomosto-qssp.git
