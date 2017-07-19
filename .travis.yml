@@ -38,7 +38,7 @@ before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pip install matplotlib; fi
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then xcode-select --install || true ; fi
     - pip install --upgrade pip setuptools wheel
-    - pip install --only-binary=numpy,scipy
+    - pip install --only-binary=numpy,scipy scipy numpy
     - pip install progressbar setuptools flake8 pyyaml coveralls coverage jinja2 future coverage
     - easy_install pyavl
     - git clone https://github.com/pyrocko/fomosto-qseis
