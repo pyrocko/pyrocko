@@ -12,7 +12,7 @@ from pyrocko.gmtpy import cm, inch, golden_ratio
 
 import common
 
-noshow = False
+plot = False
 
 
 @unittest.skipUnless(
@@ -48,7 +48,7 @@ class GmtPyTestCase(unittest.TestCase):
         self.assertEqual(img.shape, img_ref.shape)
         d = num.abs(img - img_ref)
         merr = num.mean(d)
-        if (merr > tolerance or show) and not noshow:
+        if (merr > tolerance or show) and plot:
             fig = plt.figure()
             axes1 = fig.add_subplot(1, 3, 1, aspect=1.)
             axes2 = fig.add_subplot(1, 3, 2, aspect=1.)
@@ -291,5 +291,6 @@ class GmtPyTestCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    plot = True
     util.setup_logging('test_gmtpy', 'warning')
     unittest.main()

@@ -21,6 +21,8 @@ r2d = 180./math.pi
 d2r = 1./r2d
 km = 1000.
 
+plot = False
+
 
 def random_lat(mi=-90., ma=90., rstate=None, size=None):
     if rstate is None:
@@ -298,7 +300,8 @@ class OrthodromeTestCase(unittest.TestCase):
                 clat, clon = orthodrome.geographic_midpoint(dlats, dlons)
                 d = orthodrome.distance_accurate50m_numpy(
                     clat, clon, lat, lon)[0]
-                if False:
+
+                if plot:
                     import matplotlib.pyplot as plt
                     fig = plt.figure()
                     ax = fig.add_subplot(111)
@@ -307,6 +310,7 @@ class OrthodromeTestCase(unittest.TestCase):
                         lat, lon, clat, clon)
                     ax.plot(c_n, c_e, 'ro')
                     plt.show()
+
                 self.assertTrue(d < distance_error_max, 'Distance %s > %s' %
                                 (d, distance_error_max) +
                                 '(maximum error)\n tested lat/lon: %s/%s' %
@@ -364,12 +368,14 @@ class OrthodromeTestCase(unittest.TestCase):
         assert num.all(points2[:, 1] > -eps)
 
     def test_point_in_polygon(self):
-        from pyrocko.plot import mpl_graph_color
+        if plot:
+            from pyrocko.plot import mpl_graph_color
 
-        import matplotlib.pyplot as plt
-        from matplotlib.patches import Polygon
+            import matplotlib.pyplot as plt
+            from matplotlib.patches import Polygon
 
-        axes = plt.gca()
+            axes = plt.gca()
+
         nip = 100
 
         for i in range(1):
@@ -393,12 +399,13 @@ class OrthodromeTestCase(unittest.TestCase):
                 points_ip[ip*nip:(ip+1)*nip, 1] = lons
 
             color = mpl_graph_color(i)
-            axes.add_patch(
-                Polygon(
-                    num.fliplr(points_ip),
-                    facecolor=light(color),
-                    edgecolor=color,
-                    alpha=0.5))
+            if plot:
+                axes.add_patch(
+                    Polygon(
+                        num.fliplr(points_ip),
+                        facecolor=light(color),
+                        edgecolor=color,
+                        alpha=0.5))
 
             points_xyz = orthodrome.latlon_to_xyz(points_ip.T)
             center_xyz = num.mean(points_xyz, axis=0)
@@ -418,13 +425,14 @@ class OrthodromeTestCase(unittest.TestCase):
             groups = orthodrome.spoly_cut([poly_rot_xyz], axis=0)
             num.zeros(points.shape[0], dtype=num.int)
 
-            for group in groups:
-                for poly_rot_group_xyz in group:
+            if plot:
+                for group in groups:
+                    for poly_rot_group_xyz in group:
 
-                    axes.set_xlim(-180., 180.)
-                    axes.set_ylim(-90., 90.)
+                        axes.set_xlim(-180., 180.)
+                        axes.set_ylim(-90., 90.)
 
-                plt.show()
+                    plt.show()
 
     def test_point_in_region(self):
         testdata = [
@@ -533,6 +541,7 @@ def plot_erroneous_ne_to_latlon():
 
 
 if __name__ == "__main__":
+    plot = True
     util.setup_logging('test_orthodrome', 'warning')
     unittest.main(exit=False)
     print(benchmark)

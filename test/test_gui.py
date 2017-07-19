@@ -1,8 +1,11 @@
 import unittest
 import platform
-from PyQt4.QtTest import QTest
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QStyleOptionSlider, QStyle
+try:
+    from PyQt4.QtTest import QTest
+    from PyQt4.QtCore import Qt
+    from PyQt4.QtGui import QStyleOptionSlider, QStyle
+except ImportError:
+    pass
 import common
 
 from pyrocko.snuffler import Snuffler, SnufflerWindow
@@ -12,11 +15,15 @@ from pyrocko import gui_util, util, model
 from pyrocko import config
 
 
-def trusted_platform():
+def qt_available():
+    try:
+        from PyQt4 import QtCore  # noqa
+    except ImportError:
+        return False
     return platform.mac_ver() == ('', ('', '', ''), '')
 
 
-@unittest.skipIf(not trusted_platform(), 'GUI tests skipped on MacOS')
+@unittest.skipIf(not qt_available(), 'GUI tests skipped on MacOS')
 class GUITest(unittest.TestCase):
 
     @classmethod
