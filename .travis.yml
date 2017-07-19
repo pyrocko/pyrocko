@@ -1,5 +1,10 @@
 language: python
 
+cache:
+    pip: true
+    directories:
+      - $TRAVIS_BUILD_DIR/pyrocko/test/data
+
 env:
     global:
         - OMP_NUM_THREADS=2
@@ -9,19 +14,17 @@ matrix:
         - os: linux
           sudo: required
           python: 2.7
-          cache: 
-            - pip
-            directories:
-              - $TRAVIS_BUILD_DIR/pyrocko/test/data
           virtualenv:
               system_site_packages: true
         - os: osx
           osx_image: xcode7.3
           language: generic
+    allow_failures:
+        - os: osx
 
 addons:
     apt:
-        packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
+      packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
             python-scipy, gfortran, libatlas-dev, libopenblas-dev,
             python-matplotlib, python-yaml, python-tk, libyaml-dev,
             poppler-utils, ghostscript, imagemagick, xvfb ]
