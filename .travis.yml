@@ -9,16 +9,15 @@ matrix:
         - os: linux
           sudo: required
           python: 2.7
-          cache: pip
+          cache: 
+            - pip
+            directories:
+              - $TRAVIS_BUILD_DIR/pyrocko/test/data
           virtualenv:
               system_site_packages: true
         - os: osx
           osx_image: xcode7.3
           language: generic
-
-cache:
-  directories:
-  - $HOME/test/data
 
 addons:
     apt:
@@ -56,8 +55,8 @@ install:
     - sudo python setup.py install
 
 script:
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python test/test_all.py ; fi
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko setup.py test ; fi
 
 after_success:
     - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coveralls; fi
