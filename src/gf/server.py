@@ -20,8 +20,10 @@ import asyncore
 import socket
 from http.server import SimpleHTTPRequestHandler as SHRH
 import sys
+import html
 import cgi
-from io import StringIO
+from io import BytesIO
+import io
 import os
 import traceback
 import posixpath
@@ -34,6 +36,13 @@ from collections import deque
 from .. import gf
 
 __version__ = '1.0'
+
+
+def enc(s):
+    try:
+        return s.encode('utf-8')
+    except:
+        return s
 
 
 def popall(self):
@@ -64,30 +73,10 @@ class writewrapper(object):
                 buf.append(data[-xtra:])
 
 
-class ParseHeaders(dict):
-    '''Replacement for the deprecated mimetools.Message class
-        Works like a dictionary with case-insensitive keys'''
-
-    def __init__(self, infile, *args):
-        self._ci_dict = {}
-        lines = infile.readlines()
-        for line in lines:
-            k, v = line.split(":", 1)
-            self._ci_dict[k.lower()] = self[k] = v.strip()
-        self.headers = list(self.keys())
-
-    def getheader(self, key, default=""):
-        return self._ci_dict.get(key.lower(), default)
-
-    def get(self, key, default=""):
-        return self._ci_dict.get(key.lower(), default)
-
-
 class RequestHandler(asynchat.async_chat, SHRH):
 
     server_version = 'Seismosizer/'+__version__
     protocol_version = "HTTP/1.1"
-    MessageClass = ParseHeaders
     blocksize = 4096
 
     # In enabling the use of buffer objects by setting use_buffer to True,
@@ -100,10 +89,11 @@ class RequestHandler(asynchat.async_chat, SHRH):
         self.client_address = addr
         self.connection = conn
         self.server = server
+        self.opened = []
         # set the terminator : when it is received, this means that the
         # http request is complete ; control will be passed to
         # self.found_terminator
-        self.set_terminator('\r\n\r\n')
+        self.set_terminator(b'\r\n\r\n')
         self.incoming = deque()
         self.outgoing = deque()
         self.rfile = None
@@ -138,7 +128,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 
     def handle_post_data(self):
         """Called when a POST request body has been read"""
-        self.rfile = StringIO(''.join(popall(self.incoming)))
+        self.rfile = BytesIO(b''.join(popall(self.incoming)))
         self.rfile.seek(0)
         self.do_POST()
 
@@ -179,6 +169,12 @@ class RequestHandler(asynchat.async_chat, SHRH):
         # self.handle_post_body()
         self.handle_data()
 
+    def handle_close(self):
+        for f in self.opened:
+            if not f.closed:
+                f.close()
+        asynchat.async_chat.handle_close(self)
+
     def handle_data(self):
         """Class to override"""
 
@@ -189,9 +185,10 @@ class RequestHandler(asynchat.async_chat, SHRH):
             # file handle open for longer than is really desired, but it does
             # make it able to handle files of unlimited size.
             try:
-                size = os.fstat(f.fileno())[6]
-            except AttributeError:
+                size = sys.getsizeof(f)
+            except (AttributeError, io.UnsupportedOperation):
                 size = len(f.getvalue())
+
             self.update_b(size)
             self.log_request(self.code, size)
             self.outgoing.append(f)
@@ -204,7 +201,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
     def handle_request_line(self):
         """Called when the http request line and headers have been received"""
         # prepare attributes needed in parse_request()
-        self.rfile = StringIO(''.join(popall(self.incoming)))
+        self.rfile = BytesIO(b''.join(popall(self.incoming)))
         self.rfile.seek(0)
         self.raw_requestline = self.rfile.readline()
         self.parse_request()
@@ -220,12 +217,6 @@ class RequestHandler(asynchat.async_chat, SHRH):
         else:
             self.send_error(501, "Unsupported method (%s)" % self.command)
 
-    def end_headers(self):
-        """Send the blank line ending the MIME headers, send the buffered
-        response and headers on the connection"""
-        if self.request_version != 'HTTP/0.9':
-            self.outgoing.append("\r\n")
-
     def handle_error(self):
         traceback.print_exc(sys.stderr)
         self.close()
@@ -237,6 +228,8 @@ class RequestHandler(asynchat.async_chat, SHRH):
         O = self.outgoing
         while len(O):
             a = O.popleft()
+
+            a = enc(a)
             # handle end of request disconnection
             if a is None:
                 # Some clients have issues with keep-alive connections, or
@@ -254,7 +247,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
             # handle file objects
             elif hasattr(a, 'read'):
                 _a, a = a, a.read(self.blocksize)
-                if not a:
+                if not len(a):
                     _a.close()
                     del _a
                     continue
@@ -303,7 +296,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
         if self.request_version != 'HTTP/0.9':
             self.wfile.write("%s %d %s\r\n" %
                              (self.protocol_version, code, message))
-            # print (self.protocol_version, code, message)
+
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
 
@@ -334,13 +327,14 @@ class RequestHandler(asynchat.async_chat, SHRH):
             return None
 
         list.sort(key=lambda a: a.lower())
-        f = StringIO()
-        displaypath = cgi.escape(urllib.parse.unquote(self.path))
-        f.write('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-        f.write("<html>\n<title>Directory listing for %s</title>\n"
-                % displaypath)
-        f.write("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
-        f.write("<hr>\n<ul>\n")
+        f = BytesIO()
+        displaypath = html.escape(urllib.parse.unquote(self.path))
+        f.write(enc('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">'))
+        f.write(enc("<html>\n<title>Directory listing for %s</title>\n"
+                % displaypath))
+        f.write(
+            enc("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath))
+        f.write(enc("<hr>\n<ul>\n"))
         for name in list:
             fullname = os.path.join(path, name)
             displayname = linkname = name
@@ -351,9 +345,10 @@ class RequestHandler(asynchat.async_chat, SHRH):
             if os.path.islink(fullname):
                 displayname = name + "@"
                 # Note: a link to a directory displays with @ and links with /
-            f.write('<li><a href="%s">%s</a>\n'
-                    % (urllib.parse.quote(linkname), cgi.escape(displayname)))
-        f.write("</ul>\n<hr>\n</body>\n</html>\n")
+            f.write(enc('<li><a href="%s">%s</a>\n' %
+                        (urllib.parse.quote(linkname),
+                         html.escape(displayname))))
+        f.write(enc("</ul>\n<hr>\n</body>\n</html>\n"))
         length = f.tell()
         f.seek(0)
         self.send_response(200)
@@ -398,10 +393,10 @@ class RequestHandler(asynchat.async_chat, SHRH):
             # newline translations, making the actual size of the content
             # transmitted *less* than the content-length!
             f = open(path, 'rb')
+            self.opened.append(f)
         except IOError:
             self.send_error(404, "File not found")
             return None
-
         self.send_response(200)
         self.send_header("Content-type", ctype)
         fs = os.fstat(f.fileno())
@@ -526,7 +521,7 @@ class SeismosizerHandler(RequestHandler):
         title = "Green's function stores listing"
         s = templates[format].render(stores=stores, title=title).encode('utf8')
         length = len(s)
-        f = StringIO(s)
+        f = BytesIO(s)
         self.send_response(200)
         self.send_header("Content-type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(length))
@@ -542,7 +537,7 @@ class SeismosizerHandler(RequestHandler):
             self.send_error(400, str(e))
             return
 
-        f = StringIO()
+        f = BytesIO()
         resp.dump(stream=f)
         length = f.tell()
 

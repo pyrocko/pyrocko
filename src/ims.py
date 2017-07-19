@@ -1575,10 +1575,10 @@ class LogSection(Section):
         self.write_datatype(writer)
         for line in self.lines:
             ul = line.upper()
-            if ul.startswith(b'DATA_TYPE') or ul.startswith(b'STOP'):
-                line = b' ' + line
+            if ul.startswith('DATA_TYPE') or ul.startswith('STOP'):
+                line = ' ' + line
 
-            writer.writeline(line)
+            writer.writeline(str.encode(line))
 
 
 class ErrorLogSection(LogSection):

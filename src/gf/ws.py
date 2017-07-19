@@ -1,11 +1,12 @@
 from future import standard_library
-standard_library.install_aliases()
+standard_library.install_aliases()  # noqa
 
 import os
 import time
 import shutil
-import urllib.request, urllib.parse, urllib.error
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.parse
+import urllib.error
 import http.client
 
 import logging
@@ -70,7 +71,7 @@ def _request(url, post=False, **kwargs):
             raise EmptyResult(url)
         return resp
 
-    except urllib2.HTTPError as e:
+    except urllib.error.HTTPError as e:
         if e.code == 413:
             raise RequestEntityTooLarge(url)
         else:
@@ -120,7 +121,7 @@ def rget(url, path, force=False, method='download', stats=None,
     data = resp.read()
     resp.close()
 
-    l = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', data)
+    l = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', data.decode())
     l = sorted(set(x for x in l if x.rstrip('/') not in ('.', '..')))
     if entries_wanted is not None:
         l = [x for x in l if x.rstrip('/') in entries_wanted]
@@ -153,7 +154,7 @@ def rget(url, path, force=False, method='download', stats=None,
             sexpected = int(resp.headers['content-length'])
 
             if method == 'download':
-                out = open(os.path.join(path, x), 'w')
+                out = open(os.path.join(path, x), 'wb')
                 sreceived = 0
                 while True:
                     data = resp.read(1024*4)
@@ -219,7 +220,7 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
                 status_callback=status_callback, entries_wanted=wanted)
 
     except (urllib.error.URLError, urllib.error.HTTPError,
-            httplib.HTTPException) as e:
+            http.client.HTTPException) as e:
         raise DownloadError('download failed. Original error was: %s, %s' % (
             type(e).__name__, e))
 

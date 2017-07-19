@@ -3697,24 +3697,22 @@ def read_hyposat_model(fn):
     ``'CONR'`` -> ``'conrad'``
     '''
 
-    f = open(fn, 'r')
-    translate = {'MOHO': 'moho', 'CONR': 'conrad'}
-    lname = None
-    for iline, line in enumerate(f):
-        if iline == 0:
-            continue
+    with open(fn, 'r') as f:
+        translate = {'MOHO': 'moho', 'CONR': 'conrad'}
+        lname = None
+        for iline, line in enumerate(f):
+            if iline == 0:
+                continue
 
-        z, vp, vs, name = util.unpack_fixed('f10, f10, f10, a4', line)
-        if not name:
-            name = None
-        material = Material(vp*1000., vs*1000.)
+            z, vp, vs, name = util.unpack_fixed('f10, f10, f10, a4', line)
+            if not name:
+                name = None
+            material = Material(vp*1000., vs*1000.)
 
-        tname = translate.get(lname, lname)
-        yield z*1000., material, tname
+            tname = translate.get(lname, lname)
+            yield z*1000., material, tname
 
-        lname = name
-
-    f.close()
+            lname = name
 
 
 def read_nd_model(fn):
@@ -3725,11 +3723,9 @@ def read_nd_model(fn):
     Interface names are translated as follows: ``'mantle'`` -> ``'moho'``,
     ``'outer-core'`` -> ``'cmb'``, ``'inner-core'`` -> ``'icb'``.
     '''
-
-    f = open(fn, 'r')
-    for x in read_nd_model_fh(f):
-        yield x
-    f.close()
+    with open(fn, 'r') as f:
+        for x in read_nd_model_fh(f):
+            yield x
 
 
 def read_nd_model_str(s):
@@ -3833,9 +3829,8 @@ def write_nd_model_str(mod):
 
 
 def write_nd_model(mod, fn):
-    f = open(fn, 'w')
-    write_nd_model_fh(mod, f)
-    f.close()
+    with open(fn, 'w') as f:
+        write_nd_model_fh(mod, f)
 
 
 def builtin_models():

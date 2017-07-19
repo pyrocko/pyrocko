@@ -17,7 +17,7 @@ km = 1e3
 
 
 def d2u(d):
-    return dict((k.replace('-', '_'), v) for (k, v) in d.iteritems())
+    return dict((k.replace('-', '_'), v) for (k, v) in d.items())
 
 
 subcommand_descriptions = {
@@ -124,7 +124,7 @@ def cl_parse(command, args, setup=None, details=None):
     usage = subcommand_usages[command]
     descr = subcommand_descriptions[command]
 
-    if isinstance(usage, basestring):
+    if isinstance(usage, str):
         usage = [usage]
 
     susage = '%s %s' % (program_name, usage[0])

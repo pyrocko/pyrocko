@@ -1,3 +1,6 @@
+from __future__ import print_function
+from builtins import range
+
 import unittest
 import logging
 import random
@@ -55,7 +58,7 @@ class GFScenariosTestCase(unittest.TestCase):
         nsources = 10
         nstations = 10
 
-        print 'cache source channels par wallclock seismograms_per_second'
+        print('cache source channels par wallclock seismograms_per_second')
         nprocs_max = multiprocessing.cpu_count()
 
         for sourcetype, channels in [
@@ -69,7 +72,7 @@ class GFScenariosTestCase(unittest.TestCase):
                     continue
 
                 sources = []
-                for isource in xrange(nsources):
+                for isource in range(nsources):
                     m = pmt.MomentTensor.random_dc()
                     strike, dip, rake = map(float, m.both_strike_dip_rake()[0])
 
@@ -102,7 +105,7 @@ class GFScenariosTestCase(unittest.TestCase):
                     sources.append(source)
 
                 targets = []
-                for istation in xrange(nstations):
+                for istation in range(nstations):
                     dist = rand(40.*km, 900*km)
                     azi = rand(-180., 180.)
 
@@ -133,9 +136,9 @@ class GFScenariosTestCase(unittest.TestCase):
                     if temperature == 'hot':
                         if nprocs == 1:
                             sps_ref = sps
-                        print '%-5s %-6s %-8s %3i %9.3f %12.1f %12.1f' % (
+                        print('%-5s %-6s %-8s %3i %9.3f %12.1f %12.1f' % (
                             temperature, sourcetype, channels, nprocs, t1-t0,
-                            sps, sps/sps_ref)
+                            sps, sps/sps_ref))
 
                     del resp
 
@@ -165,7 +168,7 @@ class GFScenariosTestCase(unittest.TestCase):
         nstations = 20
         stations = []
         targets = []
-        for istation in xrange(nstations):
+        for istation in range(nstations):
             dist = rand(40.*km, 900*km)
             azi = rand(-180., 180.)
             north_shift = dist * math.cos(azi*d2r)
@@ -229,7 +232,7 @@ class GFScenariosTestCase(unittest.TestCase):
 
             for sourcetype in ['point', 'rect']:
                 sources = []
-                for isource in xrange(nsources):
+                for isource in range(nsources):
                     m = pmt.MomentTensor.random_dc()
                     strike, dip, rake = map(float, m.both_strike_dip_rake()[0])
 
@@ -284,10 +287,10 @@ class GFScenariosTestCase(unittest.TestCase):
                     if temperature == 'hot':
                         dur_kiwi = t1 - t0
 
-                print 'pyrocko %-5s %5.2fs  %5.1fx' % (
-                    sourcetype, dur_pyrocko, 1.0)
-                print 'kiwi    %-5s %5.2fs  %5.1fx' % (
-                    sourcetype, dur_kiwi, dur_pyrocko/dur_kiwi)
+                print('pyrocko %-5s %5.2fs  %5.1fx' % (
+                    sourcetype, dur_pyrocko, 1.0))
+                print('kiwi    %-5s %5.2fs  %5.1fx' % (
+                    sourcetype, dur_kiwi, dur_pyrocko/dur_kiwi))
 
         finally:
             seis.close()

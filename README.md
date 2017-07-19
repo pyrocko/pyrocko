@@ -72,10 +72,10 @@ For documentation and installation instructions please see
   - [x] ``builder.py``
   - [x] ``meta.py``
   - [x] ``seismosizer.py``
-  - [ ] ``server.py``
+  - [x] ``server.py``
   - [x] ``store.py``
   - [x] ``targets.py``
-  - [ ] ``ws.py``
+  - [x] ``ws.py``
 - [x] ``gmtpy.py``
 - [x] ``gse1.py``
 - [x] ``gse2_io_wrap.py``

@@ -66,7 +66,7 @@ class GUITest(unittest.TestCase):
         for iaction, action in enumerate(qmenu.actions()):
             if action.text() == action_name:
                 QTest.keyClick(qmenu, Qt.Key_Enter)
-                for i in xrange(iaction):
+                for i in range(iaction):
                     QTest.keyClick(qmenu, Qt.Key_Up)
                 qmenu.close()
                 break

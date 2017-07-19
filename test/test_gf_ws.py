@@ -46,7 +46,6 @@ class GFWSTestCase(unittest.TestCase):
             t_ws.join()
 
 
-
 if __name__ == '__main__':
     util.setup_logging('test_gf_ws', 'warning')
     unittest.main()
