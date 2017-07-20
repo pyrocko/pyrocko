@@ -1,11 +1,15 @@
 import unittest
 import numpy as num
-from pyrocko import topo
-from pyrocko import util
+from pyrocko import topo, util, config
+
+
+def srtm_credentials():
+    return config.config().earthdata_credentials
 
 
 class TopoTestCase(unittest.TestCase):
 
+    @unittest.skipIf(srtm_credentials, 'No Earthdata credentials in config.')
     def test_srtm(self):
         srtm = topo.srtmgl3
         tiles = srtm.available_tilenames()
@@ -13,6 +17,7 @@ class TopoTestCase(unittest.TestCase):
         srtm.download_tile(list(tiles)[-1])
         srtm.get_tile(0, 0)
 
+    @unittest.skip('etopo not downloaded.')
     def test_etopo(self):
         topo.etopo1.make_tiles()
 
