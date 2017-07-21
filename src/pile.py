@@ -1441,7 +1441,7 @@ class Injector(trace.States):
                 self._fixate(buf, complete=False)
 
     def fixate_all(self):
-        for state in self._states.values():
+        for state in list(self._states.values()):
             self._fixate(state[-1])
 
         self._states = {}
