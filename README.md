@@ -114,7 +114,7 @@ For documentation and installation instructions please see
 - [x] ``seisan_waveform.py``
 - [x] ``serial_hamster.py``
 - [x] ``shadow_pile.py``
-- [ ] ``slink.py``
+- [x] ``slink.py``
 - [x] ``snuffler.py`` *WIP*
 - [x] ``snuffling.py``
 - [x] ``snufflings/``
