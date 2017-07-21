@@ -1,5 +1,4 @@
 '''Utility functions for Pyrocko.'''
-
 from __future__ import division
 from past.builtins import zip
 from builtins import range
@@ -103,14 +102,13 @@ def download_file(url, fpath, username=None, password=None):
         raise DownloadError('cannot download file from url %s: %s' % (url, e))
 
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
-    g = open(fpath_tmp, 'wb')
-    while True:
-        data = f.read(1024)
-        if not data:
-            break
-        g.write(data)
+    with open(fpath_tmp, 'wb') as g:
+        while True:
+            data = f.read(1024)
+            if not data:
+                break
+            g.write(data)
 
-    g.close()
     f.close()
 
     os.rename(fpath_tmp, fpath)

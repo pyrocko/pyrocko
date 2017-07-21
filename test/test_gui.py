@@ -23,7 +23,7 @@ def qt_available():
     return platform.mac_ver() == ('', ('', '', ''), '')
 
 
-@unittest.skipIf(not qt_available(), 'GUI tests skipped on MacOS')
+@unittest.skipIf(not qt_available(), 'GUI tests skipped, Qt not available.')
 class GUITest(unittest.TestCase):
 
     @classmethod

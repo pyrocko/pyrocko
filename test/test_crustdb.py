@@ -18,7 +18,7 @@ class CrustDBTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
-    @unittest.skip('')
+    @unittest.skip('Plotting not tested atm.')
     def test_map(self):
         tmpmap = pjoin(self.tmpdir, 'map.ps')
         self.db.plotMap(tmpmap)
@@ -33,7 +33,7 @@ class CrustDBTestCase(unittest.TestCase):
         self.db.selectMaxDepth(40.)
         self.db.selectMinDepth(20.)
 
-    @unittest.skip('')
+    @unittest.skip('Plotting not tested atm.')
     def test_ploting(self):
         import matplotlib.pyplot as plt
         fig = plt.figure()
