@@ -105,7 +105,7 @@ For documentation and installation instructions please see
 - [x] ``plot.py``
 - [x] ``pz.py``
 - [x] ``quakeml.py``
-- [ ] ``rdseed.py``
+- [x] ``rdseed.py``
 - [x] ``response_plot.py``
 - [x] ``sac.py``
 - [x] ``seed.py``
