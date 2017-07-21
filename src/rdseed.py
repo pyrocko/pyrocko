@@ -196,7 +196,8 @@ class Programs(object):
                 sys.exit(1)
 
             ms = [re.search(
-                r'Release (\d+(\.\d+(\.\d+)?)?)', s) for s in (err, out)]
+                r'Release (\d+(\.\d+(\.\d+)?)?)', s.decode())
+                  for s in (err, out)]
             ms = list(filter(bool, ms))
             if not ms:
                 logger.error('Cannot determine rdseed version number.')
@@ -276,7 +277,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         output_dir = self.tempdir
 
         def strerr(s):
-            return '\n'.join(['rdseed: '+line for line in s.splitlines()])
+            return '\n'.join(['rdseed: '+line.decode()
+                              for line in s.splitlines()])
         try:
 
             # seismograms:
@@ -329,9 +331,8 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 stderr=subprocess.PIPE)
 
             (out, err) = rdseed_proc.communicate()
-            fout = open(self.station_headers_file, 'w')
-            fout.write(out)
-            fout.close()
+            with open(self.station_headers_file, 'w') as fout:
+                fout.write(out.decode())
             logging.info(strerr(err))
 
         except OSError as e:
