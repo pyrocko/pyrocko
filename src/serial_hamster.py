@@ -7,6 +7,11 @@ import weakref
 import math
 import numpy as num
 from scipy import stats
+import threading
+try:
+    import Queue as queue
+except ImportError:
+    import queue
 
 from pyrocko import trace, util
 
@@ -444,3 +449,68 @@ class USBHB628Hamster(SerialHamster):
             self._flush_buffer()
 
         return True
+
+
+class AcquisitionThread(threading.Thread):
+    def __init__(self, post_process_sleep=0.0):
+        threading.Thread.__init__(self)
+        self.queue = queue.Queue()
+        self.post_process_sleep = post_process_sleep
+        self._sun_is_shining = True
+
+    def run(self):
+        while True:
+            try:
+                self.acquisition_start()
+                while self._sun_is_shining:
+                    t0 = time.time()
+                    self.process()
+                    t1 = time.time()
+                    if self.post_process_sleep != 0.0:
+                        time.sleep(max(0, self.post_process_sleep-(t1-t0)))
+
+                self.acquisition_stop()
+                break
+
+            except SerialHamsterError as e:
+
+                logger.error(str(e))
+                logger.error('Acquistion terminated, restart in 5 s')
+                self.acquisition_stop()
+                time.sleep(5)
+                if not self._sun_is_shining:
+                    break
+
+    def stop(self):
+        self._sun_is_shining = False
+
+        logger.debug("Waiting for thread to terminate...")
+        self.wait()
+        logger.debug("Thread has terminated.")
+
+    def got_trace(self, tr):
+        self.queue.put(tr)
+
+    def poll(self):
+        items = []
+        try:
+            while True:
+                items.append(self.queue.get_nowait())
+
+        except queue.Empty:
+            pass
+
+        return items
+
+
+class Acquisition(
+        SerialHamster, AcquisitionThread):
+
+    def __init__(self, *args, **kwargs):
+        SerialHamster.__init__(self, *args, **kwargs)
+        AcquisitionThread.__init__(self, post_process_sleep=0.001)
+
+    def got_trace(self, tr):
+        logger.debug('acquisition got trace rate %g Hz, duration %g s' % (
+            1.0/tr.deltat, tr.tmax - tr.tmin))
+        AcquisitionThread.got_trace(self, tr)
