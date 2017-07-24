@@ -103,7 +103,7 @@ def download_file(url, fpath, username=None, password=None):
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
     with open(fpath_tmp, 'wb') as g:
         while True:
-            data = f.fp.read(1024)
+            data = f.read(1024)
             if not data:
                 break
             g.write(data)
@@ -1529,11 +1529,11 @@ def parse_leap_seconds_list(fn):
         raise LeapSecondsOutdated('no leap seconds file found')
 
     try:
-        with open(fn, 'r') as f:
+        with open(fn, 'rb') as f:
             for line in f:
-                if line.startswith('#@'):
+                if line.startswith(b'#@'):
                     texpires = int(line.split()[1]) + t0
-                elif line.startswith('#'):
+                elif line.startswith(b'#'):
                     pass
                 else:
                     toks = line.split()
