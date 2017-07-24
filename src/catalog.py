@@ -1,14 +1,20 @@
-from future import standard_library
-standard_library.install_aliases()  # noqa
+from __future__ import absolute_import, division
 
 from builtins import zip
 from builtins import range
 from builtins import object
 from pyrocko import model, util
 from pyrocko.moment_tensor import MomentTensor, symmat6
-import urllib.request
-import urllib.error
-import urllib.parse
+
+try:
+    from urllib.request import Request, urlopen
+    from urllib.error import HTTPError
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib2 import Request, urlopen
+    from urllib2 import HTTPError
+    from urllib import urlencode
+
 import time
 import calendar
 import re
@@ -123,7 +129,7 @@ class Geofon(EarthquakeCatalog):
                 'nmax=%i' % nmax]))
 
             logger.debug('Opening URL: %s' % url)
-            page = urllib.request.urlopen(url).read()
+            page = urlopen(url).read()
             logger.debug('Received page (%i bytes)' % len(page))
             events = self._parse_events_page(page)
 
@@ -143,7 +149,7 @@ class Geofon(EarthquakeCatalog):
         if name not in self.events:
             url = 'http://geofon.gfz-potsdam.de/eqinfo/event.php?id=%s' % name
             logger.debug('Opening URL: %s' % url)
-            page = urllib.request.urlopen(url).read()
+            page = urlopen(url).read()
             logger.debug('Received page (%i bytes)' % len(page))
 
             try:
@@ -253,7 +259,7 @@ class Geofon(EarthquakeCatalog):
         url = 'http://geofon.gfz-potsdam.de/data/alerts/%s/%s/mt.txt' % (
             syear, ev.name)
         logger.debug('Opening URL: %s' % url)
-        page = urllib.request.urlopen(url).read()
+        page = urlopen(url).read()
         logger.debug('Received page (%i bytes)' % len(page))
 
         return self._parse_mt_page(page)
@@ -360,8 +366,8 @@ class GlobalCMT(EarthquakeCatalog):
 
         while True:
             logger.debug('Opening URL: %s' % url)
-            req = urllib.request.Request(url)
-            page = urllib.request.urlopen(req).read()
+            req = Request(url)
+            page = urlopen(req).read()
             logger.debug('Received page (%i bytes)' % len(page))
 
             events, more = self._parse_events_page(page)
@@ -566,7 +572,7 @@ class USGS(EarthquakeCatalog):
         url = 'https://earthquake.usgs.gov/fdsnws/event/1/query?' + '&'.join(p)
 
         logger.debug('Opening URL: %s' % url)
-        page = urllib.request.urlopen(url).read()
+        page = urlopen(url).read()
         logger.debug('Received page (%i bytes)' % len(page))
 
         events = self._parse_events_page(page)
@@ -649,20 +655,20 @@ class NotFound(Exception):
 
 
 def ws_request(url, post=False, **kwargs):
-    url_values = urllib.parse.urlencode(kwargs)
+    url_values = urlencode(kwargs)
     url = url + '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
-    req = urllib.request.Request(url)
+    req = Request(url)
     if post:
         req.add_data(post)
 
     req.add_header('Accept', '*/*')
 
     try:
-        return urllib.request.urlopen(req)
+        return urlopen(req)
 
-    except urllib.error.HTTPError as e:
+    except HTTPError as e:
         if e.code == 404:
             raise NotFound(url)
         else:

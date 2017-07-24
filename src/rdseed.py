@@ -193,7 +193,7 @@ class Programs(object):
                     reason = str(e)
 
                 logging.fatal('Failed to run rdseed program. %s' % reason)
-                sys.exit(1)
+                return False
 
             ms = [re.search(
                 r'Release (\d+(\.\d+(\.\d+)?)?)', s.decode())
@@ -211,6 +211,7 @@ class Programs(object):
                         'version %s of rdseed.' % version)
 
             Programs.checked = True
+            return False
 
 
 class SeedVolumeNotFound(Exception):
