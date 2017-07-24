@@ -95,16 +95,15 @@ def download_file(url, fpath, username=None, password=None):
                 'Authorization', 'Basic %s' % base64string)
 
         opener = build_opener(HTTPCookieProcessor())
-
         f = opener.open(req)
 
     except HTTPError as e:
         raise DownloadError('cannot download file from url %s: %s' % (url, e))
 
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
-    with open(fpath_tmp, 'w') as g:
+    with open(fpath_tmp, 'wb') as g:
         while True:
-            data = f.read(1024)
+            data = f.fp.read(1024)
             if not data:
                 break
             g.write(data)

@@ -12,7 +12,6 @@ env:
 matrix:
     include:
         - os: linux
-          sudo: required
           python: 2.7
           virtualenv:
               system_site_packages: true
