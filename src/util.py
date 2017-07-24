@@ -17,7 +17,6 @@ import shlex
 import optparse
 import os.path as op
 import platform
-import shutil
 
 import numpy as num
 from scipy import signal
@@ -103,8 +102,12 @@ def download_file(url, fpath, username=None, password=None):
         raise DownloadError('cannot download file from url %s: %s' % (url, e))
 
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
-    with open(fpath_tmp, 'wb') as g:
-            shutil.copyfileobj(f, g, 1024)
+    with open(fpath_tmp, 'w') as g:
+        while True:
+            data = f.read(1024)
+            if not data:
+                break
+            g.write(data)
 
     f.close()
 
