@@ -5,10 +5,12 @@
 For documentation and installation instructions please see 
 [http://pyrocko.org/](http://pyrocko.org/).
 
-# Python 3 Progress
+# Python 3 Support
 
 ## TODO
 
+- [ ] Include PyAVL
+- [ ] Travis Py2/3 tests
 - [ ] Move I/O to dedicated folder
 - [ ] Finish and Tag
 - [ ] Build new docs (together w deplog mechanism?)
@@ -16,7 +18,7 @@ For documentation and installation instructions please see
   - [ ] PIP
   - [ ] Anaconda
 
-## Modules
+## Module Progress
 
 - [x] ``__init__.py``
 - [x] ``ahfullgreen.py``

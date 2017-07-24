@@ -27,7 +27,8 @@ addons:
       packages: [ python-qt4, python-qt4-gl, python-qt4-dev, python-dev,
             gfortran, libatlas-dev, libopenblas-dev,
             python-yaml, python-tk, libyaml-dev,
-            poppler-utils, ghostscript, imagemagick, xvfb ]
+            poppler-utils, ghostscript, imagemagick, xvfb,
+            libssl1.0.0 ]
 
 before_install:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi

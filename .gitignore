@@ -17,3 +17,4 @@ scratch
 *.sublime-*
 htmlcov
 .coverage
+.cache
