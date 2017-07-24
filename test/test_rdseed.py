@@ -4,6 +4,7 @@ import unittest
 import common
 
 
+@unittest.skipIf(rdseed.Programs.check(), 'rdseed executeable not found.')
 class RDSeedTestCase(unittest.TestCase):
 
     def test_read(self):
@@ -14,6 +15,6 @@ class RDSeedTestCase(unittest.TestCase):
         assert(dseed.get_pile().is_empty())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     util.setup_logging('test_rdseed', 'warning')
     unittest.main()
