@@ -42,9 +42,6 @@ class GFWSTestCase(unittest.TestCase):
                     '', 8080, server.SeismosizerHandler, self.engine)
                 asyncore.loop(timeout=.2)
 
-        if os.path.exists(self.store_id):
-            shutil.rmtree(self.store_id)
-
         t_ws = ServerThread()
         t_ws.start()
 
@@ -52,7 +49,7 @@ class GFWSTestCase(unittest.TestCase):
             ws.download_gf_store(site='localhost', store_id=self.store_id)
             gfstore = store.Store(self.store_id)
             gfstore.check()
-
+            print(gfstore.config)
             # cleanup
         finally:
             shutil.rmtree(self.store_id)
