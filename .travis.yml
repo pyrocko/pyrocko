@@ -40,7 +40,6 @@ before_install:
     - pip install --upgrade pip setuptools wheel
     - pip install --only-binary=numpy,scipy,matplotlib scipy numpy matplotlib
     - pip install progressbar setuptools flake8 pyyaml coveralls coverage jinja2 future coverage
-    - easy_install pyavl
     - git clone https://github.com/pyrocko/fomosto-qseis
     - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
     - git clone https://github.com/pyrocko/fomosto-qseis2d
