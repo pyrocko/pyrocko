@@ -1533,7 +1533,7 @@ def parse_leap_seconds_list(fn):
             for line in f:
                 if line.startswith(b'#@'):
                     texpires = int(line.split()[1]) + t0
-                elif line.startswith(b'#'):
+                elif line.startswith(b'#') or len(line) < 5:
                     pass
                 else:
                     toks = line.split()
@@ -1559,15 +1559,14 @@ def read_leap_seconds2():
         return parse_leap_seconds_list(fn)
 
     except LeapSecondsOutdated:
-        download_file(url, fn)
-        # try:
-        #     logger.info('updating leap seconds list...')
-        #     download_file(url, fn)
+        try:
+            logger.info('updating leap seconds list...')
+            download_file(url, fn)
 
-        # except Exception as e:
-        #     raise LeapSecondsError(
-        #         'cannot download leap seconds list from %s to %s (%s)'
-        #         % (url, fn, e))
+        except Exception as e:
+            raise LeapSecondsError(
+                'cannot download leap seconds list from %s to %s (%s)'
+                % (url, fn, e))
 
         return parse_leap_seconds_list(fn)
 
