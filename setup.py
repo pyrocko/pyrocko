@@ -510,6 +510,15 @@ setup(
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'ext', 'orthodrome_ext.c')]),
+
+        Extension(
+            "avl",
+            sources=[pjoin('src', 'ext', 'pyavl-1.12', 'avl.c'),
+                     pjoin('src', 'ext', 'pyavl-1.12', 'avlmodule.c')],
+            define_macros=[('HAVE_AVL_VERIFY', None),
+                           ('AVL_FOR_PYTHON', None)],
+            extra_compile_args=['-Wno-parentheses', '-Wno-uninitialized'],
+            extra_link_args=[] if sys.platform != 'sunos5' else ['-Wl,-x']),
     ],
 
     scripts=[

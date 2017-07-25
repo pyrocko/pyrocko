@@ -11,6 +11,7 @@ It is not a complete list, in the sense that many others have influenced the dev
 * Simon Daout
 * Francesco Grigoli
 * Carina Juretzek
+* Richard McGraw
 * Tobias Megies
 * Nima Nooshiri
 * Andreas Steinberg

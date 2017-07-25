@@ -1,6 +1,9 @@
+from __future__ import absolute_import, division
+
 from past.builtins import cmp
 from future import standard_library
 standard_library.install_aliases()  # noqa
+
 from builtins import range
 
 import os
@@ -14,11 +17,11 @@ import operator
 import math
 import pickle
 
-import avl
 
-from pyrocko import trace, io, util
-from pyrocko import config
-from pyrocko.trace import degapper
+from . import avl
+from . import trace, io, util
+from . import config
+from .trace import degapper
 
 
 def sl(s):
