@@ -3,6 +3,7 @@ from pyrocko import util
 import unittest
 import common
 
+
 @unittest.skipIf(not rdseed.Programs.check(), 'rdseed executeable not found.')
 class RDSeedTestCase(unittest.TestCase):
 
