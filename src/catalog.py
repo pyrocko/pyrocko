@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division
 
 try:
-    from urllib.request import Request, urlopen
+    from urllib.request import Request
     from urllib.error import HTTPError
     from urllib.parse import urlencode
+    from future.moves.urllib.request import urlopen
 except ImportError:
     from urllib2 import Request, urlopen
     from urllib2 import HTTPError

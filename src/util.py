@@ -1559,14 +1559,15 @@ def read_leap_seconds2():
         return parse_leap_seconds_list(fn)
 
     except LeapSecondsOutdated:
-        try:
-            logger.info('updating leap seconds list...')
-            download_file(url, fn)
+        download_file(url, fn)
+        # try:
+        #     logger.info('updating leap seconds list...')
+        #     download_file(url, fn)
 
-        except Exception as e:
-            raise LeapSecondsError(
-                'cannot download leap seconds list from %s to %s (%s)'
-                % (url, fn, e))
+        # except Exception as e:
+        #     raise LeapSecondsError(
+        #         'cannot download leap seconds list from %s to %s (%s)'
+        #         % (url, fn, e))
 
         return parse_leap_seconds_list(fn)
 
