@@ -205,6 +205,7 @@ class GUITest(unittest.TestCase):
         self.add_one_pick()
         QTest.keyPress(self.pile_viewer, 'A')
         QTest.keyPress(self.pile_viewer, 'e')
+        QTest.keyPress(self.pile_viewer, 'R')
         event = model.Event()
         markers = pv.viewer.get_markers()
         self.assertEqual(len(markers), 1)
