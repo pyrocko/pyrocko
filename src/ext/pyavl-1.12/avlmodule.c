@@ -41,6 +41,18 @@
 
 static PyObject *avlErrorObject;
 
+
+struct module_state {
+    PyObject *error;
+};
+
+#if PY_MAJOR_VERSION >= 3
+#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
+#else
+#define GETSTATE(m) (&_state)
+static struct module_state _state;
+#endif
+
 /* 
  * Tree Proxy
  */
@@ -249,6 +261,9 @@ Py_LOCAL(PyObject *) avl_tree_ins(avl_tree_Object * self, PyObject * args)
 	PyObject *arg1, *arg2 = NULL;
 	avl_code_t rv;
 
+	struct module_state *st = GETSTATE(self);
+
+
 	if (!PyArg_ParseTuple(args, "O|O:insert", &arg1, &arg2))
 		return NULL;
 
@@ -282,7 +297,7 @@ Py_LOCAL(PyObject *) avl_tree_ins(avl_tree_Object * self, PyObject * args)
 	}
 
 	if (rv < 0) {
-		PyErr_SetString(avlErrorObject, "Sorry, couldn't insert item");
+		PyErr_SetString(st->error, "Sorry, couldn't insert item");
 		return NULL;
 	}
 	Py_INCREF(Py_None);
@@ -296,9 +311,11 @@ Py_LOCAL(PyObject *) avl_tree_append(avl_tree_Object * self,
 									 PyObject * val)
 {
 	int rv;
+	struct module_state *st = GETSTATE(self);
+
 	rv = avl_ins_index((void *) val, avl_size(self->tree) + 1, self->tree);
 	if (rv < 0) {
-		PyErr_SetString(avlErrorObject, "Sorry, couldn't append item");
+		PyErr_SetString(st->error, "Sorry, couldn't append item");
 		return NULL;
 	}
 	Py_INCREF(Py_None);
@@ -421,9 +438,12 @@ Py_LOCAL(int)
 	PyObject *iter;
 	int err = 0;
 
+	struct module_state *st = GETSTATE(self);
+
+
 	if ((iter = PyObject_GetIter(list)) == NULL) {
 		PyErr_Clear();
-		PyErr_SetString(avlErrorObject, "Couldn't get list iterator !");
+		PyErr_SetString(st->error, "Couldn't get list iterator !");
 		err = 1;
 	}
 
@@ -437,7 +457,7 @@ Py_LOCAL(int)
 			Py_DECREF(val);		/* PyIter_Next returns a new reference */
 			if (rc < 0) {
 				if (self->compare_err == 0)
-					PyErr_SetString(avlErrorObject,
+					PyErr_SetString(st->error,
 									"Couldn't insert item retrieved from list !");
 #       if 0==1
 				avl_empty(self->tree);
@@ -572,6 +592,8 @@ PyDoc_STRVAR(avl_tree_getiter__doc__,
 Py_LOCAL(PyObject *) avl_do_getiter(avl_tree_Object * tree_arg,
 									avl_ini_t ini)
 {
+	struct module_state *st = GETSTATE(tree_arg);
+
 	avl_iter_Object *iter_object =
 		PyObject_New(avl_iter_Object, &avl_iter_Type);
 
@@ -581,7 +603,7 @@ Py_LOCAL(PyObject *) avl_do_getiter(avl_tree_Object * tree_arg,
 	/* no comparison attempted */
 	if (iter_object->iter == NULL) {
 		PyObject_Del(iter_object);
-		PyErr_SetString(avlErrorObject,
+		PyErr_SetString(st->error,
 						"Sorry, couldn't create avl_iterator !");
 		return NULL;
 	}
@@ -609,6 +631,8 @@ PyDoc_STRVAR(avl_tree_pickle_dump__doc__,
 Py_LOCAL(PyObject *) avl_tree_pickle_dump(avl_tree_Object * self,
 										  PyObject * pickler_object)
 {
+	struct module_state *st = GETSTATE(self);
+
 	if (!PyObject_HasAttrString(pickler_object, "dump")) {
 		PyErr_SetString(PyExc_AttributeError,
 						"Couln't pickle avl_tree: missing 'dump' attr");
@@ -627,7 +651,7 @@ Py_LOCAL(PyObject *) avl_tree_pickle_dump(avl_tree_Object * self,
 		}
 		iter = avl_iterator_new(self->tree, AVL_ITERATOR_INI_PRE);
 		if (iter == NULL) {
-			PyErr_SetString(avlErrorObject,
+			PyErr_SetString(st->error,
 							"Sorry, couldn't allocate native iterator");
 			goto finally;
 		}
@@ -852,6 +876,8 @@ Py_LOCAL(PyObject *) avl_tree_concat(avl_tree_Object * self,
 									 PyObject * tree_object)
 {
 
+    struct module_state *st = GETSTATE(self);
+
 	if (!is_avl_tree_Object(tree_object)) {
 		PyErr_SetString(PyExc_TypeError,
 						"Bad argument type to avl_tree_concat: expected avl_tree object");
@@ -885,7 +911,7 @@ Py_LOCAL(PyObject *) avl_tree_concat(avl_tree_Object * self,
 	  clear:
 		PyObject_DEL(rv);
 	  abort:
-		PyErr_SetString(avlErrorObject, "Sorry, concatenation aborted");
+		PyErr_SetString(st->error, "Sorry, concatenation aborted");
 	}
 	return NULL;
 }
@@ -918,6 +944,7 @@ Py_LOCAL(PyObject *) avl_tree_slice(avl_tree_Object * self, Py_ssize_t lo,
 {
 	avl_tree_Object *rv;
 	avl_size_t len;
+    struct module_state *st = GETSTATE(self);
 
 	rv = PyObject_NEW(avl_tree_Object, &avl_tree_Type);
 	if (rv == NULL)
@@ -943,7 +970,7 @@ Py_LOCAL(PyObject *) avl_tree_slice(avl_tree_Object * self, Py_ssize_t lo,
 					  (avl_size_t) (hi + 1), (void *) rv);
 
 	if (rv->tree == NULL) {
-		PyErr_SetString(avlErrorObject, "Couldn't build slice");
+		PyErr_SetString(st->error, "Couldn't build slice");
 		PyObject_DEL(rv);
 		return NULL;
 	}
@@ -1111,6 +1138,8 @@ Py_LOCAL(PyObject *) avl_iter_cur(avl_iter_Object * iter_obj,
 								  PyObject * unused)
 {
 	void *p;
+    struct module_state *st = GETSTATE(iter_obj);
+
 
 	if ((p = avl_iterator_cur(iter_obj->iter)) != NULL) {
 		PyObject *obj = objectAt(p);
@@ -1119,7 +1148,7 @@ Py_LOCAL(PyObject *) avl_iter_cur(avl_iter_Object * iter_obj,
 		return obj;
 	}
 
-	PyErr_SetString(avlErrorObject,
+	PyErr_SetString(st->error,
 					"avl_iterator currently out-of-bounds");
 	return NULL;
 }
@@ -1134,6 +1163,7 @@ Py_LOCAL(PyObject *) avl_iter_rem(avl_iter_Object * iter_object,
 								  PyObject * unused)
 {
 	void *p;
+    struct module_state *st = GETSTATE(iter_object);
 
 	if ((p = avl_iterator_cur(iter_object->iter)) != NULL) {
 		PyObject *obj = objectAt(p);
@@ -1145,7 +1175,7 @@ Py_LOCAL(PyObject *) avl_iter_rem(avl_iter_Object * iter_object,
 		return Py_None;
 	}
 
-	PyErr_SetString(avlErrorObject,
+	PyErr_SetString(st->error,
 					"avl_iterator currently out-of-bounds");
 	return NULL;
 }
@@ -1551,17 +1581,6 @@ PyDoc_STRVAR(avl_module_doc,
 			 "(that can act like a sequence and an ordered container) "
 			 "with AVL trees");
 
-struct module_state {
-    PyObject *error;
-};
-
-#if PY_MAJOR_VERSION >= 3
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
-
 
 #if PY_MAJOR_VERSION >= 3
 
@@ -1631,9 +1650,12 @@ initavl(void)
         INITERROR;
     }
 
+	Py_INCREF(st->error);
+    PyModule_AddObject(m, "Error", st->error);
+
 	/* Add some symbolic constants to the module */
-	d = PyModule_GetDict(m);
-	PyDict_SetItemString(d, "Error", st->error);
+	/*	d = PyModule_GetDict(m); */
+	/*	PyDict_SetItemString(d, "Error", st->error); */
 
 #if PY_MAJOR_VERSION >= 3
     return m;
