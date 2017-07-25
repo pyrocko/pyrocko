@@ -32,25 +32,24 @@ class GFWSTestCase(unittest.TestCase):
     def test_local_server(self):
 
         class ServerThread(threading.Thread):
-            def __init__(self):
+            def __init__(self, store_dir):
                 threading.Thread.__init__(self)
                 self.engine = LocalEngine(
-                    store_superdirs=[tempfile.gettempdir()])
+                    store_dirs=[store_dir])
 
             def run(self):
                 self.s = server.Server(
                     '', 8080, server.SeismosizerHandler, self.engine)
                 asyncore.loop(timeout=.2)
 
-        t_ws = ServerThread()
+        t_ws = ServerThread(self.store_dir)
         t_ws.start()
 
         try:
             ws.download_gf_store(site='localhost', store_id=self.store_id)
             gfstore = store.Store(self.store_id)
             gfstore.check()
-            print(gfstore.config)
-            # cleanup
+
         finally:
             shutil.rmtree(self.store_id)
             t_ws.s.close()
