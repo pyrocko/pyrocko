@@ -103,7 +103,7 @@ def download_file(url, fpath, username=None, password=None):
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
     with open(fpath_tmp, 'wb') as g:
         while True:
-            data = f.read(1024)
+            data = f.fp.read(1024)
             if not data:
                 break
             g.write(data)
