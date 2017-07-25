@@ -74,14 +74,17 @@ class DownloadError(Exception):
 
 def download_file(url, fpath, username=None, password=None):
     try:
-        from urllib.request import Request, HTTPCookieProcessor, build_opener
+        from urllib.request import (Request, HTTPCookieProcessor, build_opener,
+                                    urlcleanup)
         from urllib.error import HTTPError
     except ImportError:
         from urllib2 import Request, HTTPCookieProcessor, build_opener
         from urllib2 import HTTPError
+        from urllib import urlcleanup
 
     import base64
 
+    urlcleanup()
     logger.info('starting download of %s' % url)
     ensuredirs(fpath)
     try:
