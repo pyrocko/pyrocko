@@ -13,48 +13,48 @@ containers or sequential lists.  For example one can take slices of trees
 with the usual syntax.  Unlike collectionsmodule.c, avlmodule.c contains
 only bindings to the underlying implementation."""
 
-_author="Richard McGraw"
-_authoremail="dasnar at fastmail dot fm"
-_maintainer=_author
-_maintaineremail=_authoremail
+_author = "Richard McGraw"
+_authoremail = "dasnar at fastmail dot fm"
+_maintainer = _author
+_maintaineremail = _authoremail
 
 link_args = []
 if sys.platform != 'sunos5':
-	link_args.append("-Wl,-x") # -x flag not available on Solaris
+    link_args.append("-Wl,-x")  # -x flag not available on Solaris
 
-# from Distutils doc: 
+# from Distutils doc:
 # patch distutils if it can't cope with "classifiers" or
 # "download_url" keywords
 if sys.version < '2.2.3':
-	from distutils.dist import DistributionMetadata
-	DistributionMetadata.classifiers = None
-	DistributionMetadata.download_url = None
-	
-ext_avl = Extension( 
-	"avl",
-	sources = ["avl.c", "avlmodule.c"],
-	define_macros =	[('HAVE_AVL_VERIFY', None),	('AVL_FOR_PYTHON', None)],
-	extra_compile_args = ["-Wno-parentheses", "-Wno-uninitialized"],
-	extra_link_args = link_args
-	)
+    from distutils.dist import DistributionMetadata
+    DistributionMetadata.classifiers = None
+    DistributionMetadata.download_url = None
+
+ext_avl = Extension(
+    "avl",
+    sources=["avl.c", "avlmodule.c"],
+    define_macros=[('HAVE_AVL_VERIFY', None), ('AVL_FOR_PYTHON', None)],
+    extra_compile_args=["-Wno-parentheses", "-Wno-uninitialized"],
+    extra_link_args=link_args
+    )
 
 setup(
-	name = "pyavl",
-	version = __VERSION__,
-	description = "avl-tree type for Python (C-written extension module)",
-	url = "http://dasnar.sdf-eu.org/miscres.html",
-	download_url = "http://sourceforge.net/projects/pyavl/",
-	author = _author,
-	author_email = _authoremail,
-	maintainer = _maintainer,
-	license = "None, public domain",
-	ext_modules = [ext_avl],
-	classifiers = [
-		'Intended Audience :: Developers',
-		'License :: Public Domain',
-		'Programming Language :: C',
-		'Programming Language :: Python',
-		'Topic :: Software Development :: Libraries :: Python Modules'
-		],
-	long_description = laius
-	)
+    name="pyavl",
+    version=__VERSION__,
+    description="avl-tree type for Python (C-written extension module)",
+    url="http://dasnar.sdf-eu.org/miscres.html",
+    download_url="http://sourceforge.net/projects/pyavl/",
+    author=_author,
+    author_email=_authoremail,
+    maintainer=_maintainer,
+    license="None, public domain",
+    ext_modules=[ext_avl],
+    classifiers=[
+        'Intended Audience :: Developers',
+        'License :: Public Domain',
+        'Programming Language :: C',
+        'Programming Language :: Python',
+        'Topic :: Software Development :: Libraries :: Python Modules'
+        ],
+    long_description=laius
+    )
