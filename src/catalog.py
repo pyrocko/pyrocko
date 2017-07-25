@@ -1,11 +1,5 @@
 from __future__ import absolute_import, division
 
-from builtins import zip
-from builtins import range
-from builtins import object
-from pyrocko import model, util
-from pyrocko.moment_tensor import MomentTensor, symmat6
-
 try:
     from urllib.request import Request, urlopen
     from urllib.error import HTTPError
@@ -14,6 +8,13 @@ except ImportError:
     from urllib2 import Request, urlopen
     from urllib2 import HTTPError
     from urllib import urlencode
+
+from builtins import zip
+from builtins import range
+from builtins import object
+from pyrocko import model, util
+from pyrocko.moment_tensor import MomentTensor, symmat6
+
 
 import time
 import calendar
