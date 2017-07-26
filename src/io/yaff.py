@@ -1,13 +1,13 @@
 '''File IO module for SICK traces format.'''
-from __future__ import division
+from __future__ import division, absolute_import
 import os
 from struct import unpack
 
-from .file import File, numtype2type, NoDataAvailable, \
-    size_record_header, FileError
-from . import trace
-from .util import ensuredirs
 from .io_common import FileLoadError, FileSaveError
+from ..file import File, numtype2type, NoDataAvailable, \
+    size_record_header, FileError
+from .. import trace
+from ..util import ensuredirs
 
 record_formats = {
 

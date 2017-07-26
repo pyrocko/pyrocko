@@ -2,8 +2,6 @@
 '''
 File holds the abbreviations for age, region and helper function
 '''
-
-
 EONS = {
     'MCz': 'Mesozoic to Cenozoic',
     'Pz': 'Paleozoic',

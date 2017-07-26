@@ -1120,7 +1120,7 @@ def command_qc(args):
 
 
 def command_report(args):
-    from pyrocko.fomosto_report import report_call
+    from pyrocko.fomosto.report import report_call
     report_call.run_program(args)
 
 

@@ -1,4 +1,5 @@
 '''SAC IO library for Python'''
+from __future__ import absolute_import
 from builtins import range
 
 import struct
@@ -9,9 +10,9 @@ import numpy as num
 from calendar import timegm
 from time import gmtime
 
-from . import trace
-from .util import reuse
 from .io_common import FileLoadError
+from .. import trace
+from ..util import reuse
 
 logger = logging.getLogger('pyrocko.pile')
 

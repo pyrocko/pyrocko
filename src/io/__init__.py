@@ -42,8 +42,9 @@ from __future__ import division, absolute_import
 
 import os
 import logging
-from . import mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf
-from . import datacube, suds, css, gse2_io_wrap, util, trace
+from . import (mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf,
+               datacube, suds, css, gse2_io_wrap)
+from .. import util, trace
 from .io_common import FileLoadError, FileSaveError
 
 import numpy as num

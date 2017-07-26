@@ -9,8 +9,8 @@ import os.path as op
 
 import numpy as num
 
-from . import util, config
-from . import orthodrome as od
+from .. import util, config
+from .. import orthodrome as od
 
 logger = logging.getLogger('pyrocko.geonames')
 

@@ -1,11 +1,12 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from builtins import range
 from builtins import chr
 
 import os
 import random
-from pyrocko.util import ensuredirs
-from pyrocko.io_common import FileLoadError, FileSaveError
+
+from .io_common import FileLoadError, FileSaveError
+from ..util import ensuredirs
 
 
 def detect(first512):

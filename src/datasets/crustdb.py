@@ -8,11 +8,13 @@ import matplotlib.pyplot as plt
 import copy
 import logging
 from os import path
-from .guts import Object, String, Float, Int
-from .guts_array import Array
+
 from .crustdb_abbr import ageKey, provinceKey, referenceKey, pubYear  # noqa
-from .cake import LayeredModel, Material
-from .cake_plot import my_model_plot, xscaled, yscaled
+
+from ..guts import Object, String, Float, Int
+from ..guts_array import Array
+from ..cake import LayeredModel, Material
+from ..cake_plot import my_model_plot, xscaled, yscaled
 
 logger = logging.getLogger('pyrocko.crustdb')
 THICKNESS_HALFSPACE = 2

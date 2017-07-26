@@ -8,7 +8,7 @@ import numpy as num
 from io import StringIO
 from collections import namedtuple
 from .io_common import FileLoadError
-from . import util, trace
+from .. import util, trace
 
 guralp_zero = util.str_to_time('1989-11-17 00:00:00')
 

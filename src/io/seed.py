@@ -4,7 +4,7 @@ import sys
 import calendar
 import logging
 
-from . import util
+from .. import util
 
 logger = logging.getLogger('pyrocko.seed')
 

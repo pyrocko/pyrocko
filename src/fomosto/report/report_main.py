@@ -19,10 +19,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm, transforms
 
-from .. import gf, trace, cake, util, plot, beachball
-from ..guts import load, Object, String, List, Float, Int, Bool, Dict
-from ..gf import Source, Target
-from ..gf.meta import OutOfBounds
+from pyrocko import gf, trace, cake, util, plot, beachball
+from pyrocko.guts import load, Object, String, List, Float, Int, Bool, Dict
+from pyrocko.gf import Source, Target
+from pyrocko.gf.meta import OutOfBounds
 
 from jinja2 import Environment, PackageLoader
 

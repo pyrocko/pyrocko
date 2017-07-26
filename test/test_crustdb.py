@@ -4,7 +4,8 @@ import logging
 import shutil
 from tempfile import mkdtemp
 from os.path import join as pjoin
-from pyrocko import crustdb, util
+from pyrocko.datasets import crustdb
+from pyrocko import util
 
 logger = logging.getLogger('test_crustdb.py')
 

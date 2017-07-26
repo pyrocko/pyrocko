@@ -1,12 +1,11 @@
 # python 2/3
-
 from __future__ import absolute_import
 
 import os
 import math
 import numpy as num
-from . import trace, util, plot, io_common
-from .guts import Object, Int, String, Timestamp
+from .. import trace, util, plot, io_common
+from ..guts import Object, Int, String, Timestamp
 
 N_GPS_TAGS_WANTED = 200  # must match definition in datacube_ext.c
 

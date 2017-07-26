@@ -9,9 +9,13 @@ For documentation and installation instructions please see
 
 ## TODO
 
-- [ ] Include PyAVL
+- [x] Include PyAVL
 - [ ] Travis Py2/3 tests
-- [ ] Move I/O to dedicated folder
+- [ ] Create dedicated folders
+  - [x] io
+  - [ ] gui
+  - [x] datasets
+  - [ ] models
 - [ ] Finish and Tag
 - [ ] Build new docs (together w deplog mechanism?)
 - [ ] Deployment mechanisms

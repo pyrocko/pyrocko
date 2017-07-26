@@ -386,10 +386,12 @@ subpacknames = [
     'pyrocko.snufflings',
     'pyrocko.gf',
     'pyrocko.fomosto',
+    'pyrocko.fomosto.report',
     'pyrocko.fdsn',
     'pyrocko.topo',
-    'pyrocko.fomosto_report',
-    'pyrocko.apps'
+    'pyrocko.apps',
+    'pyrocko.io',
+    'pyrocko.datasets'
 ]
 
 setup(

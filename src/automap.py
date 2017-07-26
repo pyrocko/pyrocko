@@ -1041,7 +1041,7 @@ class Map(Object):
         self._cities_minpop = minpop
 
     def draw_plates(self):
-        from pyrocko import tectonics
+        from pyrocko.datasets import tectonics
 
         neast = 20
         nnorth = max(1, int(round(num.round(self._hreg/self._wreg * neast))))

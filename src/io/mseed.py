@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from builtins import zip
 
 from struct import unpack
@@ -6,9 +6,9 @@ import os
 import re
 import logging
 
-from . import trace
-from .util import reuse, ensuredirs
 from .io_common import FileLoadError, FileSaveError
+from .. import trace
+from ..util import reuse, ensuredirs
 
 logger = logging.getLogger('pyrocko.mseed')
 

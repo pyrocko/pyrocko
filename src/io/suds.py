@@ -1,6 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
 
 import sys
 import struct
@@ -9,7 +7,7 @@ import numpy as num
 from collections import namedtuple, defaultdict
 
 from .io_common import FileLoadError
-from . import util, trace, model
+from .. import util, trace, model
 
 
 suds_tzero = util.str_to_time('1970-01-01 00:00:00')

@@ -1,10 +1,9 @@
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import division, absolute_import
 
 import os
 import numpy as num
-from . import util, trace
-from .io_common import FileLoadError
+from .. import util, trace
+from ..io_common import FileLoadError
 
 
 class KanError(Exception):

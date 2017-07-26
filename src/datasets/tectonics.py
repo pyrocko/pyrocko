@@ -9,10 +9,10 @@ from collections import defaultdict
 
 import numpy as num
 
-from . import util, config
-from . import orthodrome as od
-from .guts_array import Array
-from .guts import Object, String
+from .. import util, config
+from .. import orthodrome as od
+from ..guts_array import Array
+from ..guts import Object, String
 
 
 PI = math.pi

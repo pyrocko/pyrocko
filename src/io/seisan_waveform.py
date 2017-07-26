@@ -1,15 +1,13 @@
-from __future__ import division
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import division, absolute_import, print_function
 from builtins import range
 
 import sys
 import calendar
 import numpy as num
-from .util import unpack_fixed
 
-from . import util, trace
 from .io_common import FileLoadError
+from ..util import unpack_fixed
+from .. import util, trace
 
 
 class SeisanFileError(Exception):

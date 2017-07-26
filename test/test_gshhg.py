@@ -3,7 +3,8 @@ from builtins import range
 import unittest
 import numpy as num
 
-from pyrocko import gshhg, util
+from pyrocko.datasets import gshhg
+from pyrocko import util
 
 plot = False
 

@@ -1,13 +1,12 @@
-from __future__ import division
-from __future__ import absolute_import
+from __future__ import division, absolute_import
 from builtins import range
 
 import numpy as num
 import struct
 import calendar
 
-from . import trace
 from .io_common import FileLoadError
+from .. import trace
 
 
 def ibm2ieee(ibm):

@@ -4,8 +4,8 @@ from builtins import map
 import sys
 import numpy as num
 
-from . import util, trace
-from .io_common import FileLoadError
+from .. import util, trace
+from ..io_common import FileLoadError
 
 
 class GSE1LoadError(FileLoadError):
