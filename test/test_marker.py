@@ -2,7 +2,10 @@ import unittest
 import tempfile
 
 from pyrocko import util, model
-from pyrocko.gui import marker
+try:
+    from pyrocko.gui import marker
+except ImportError:
+    pass
 
 
 def qt_available():

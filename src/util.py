@@ -92,7 +92,7 @@ def download_file(url, fpath, username=None, password=None):
     logger.info('starting download of %s' % url)
     ensuredirs(fpath)
     try:
-        req = Request(url.encode('ascii').decode('ascii'))
+        req = Request(url)
         if username and password:
             cred = '%s:%s' % (username, password)
             base64string = base64.b64encode(
