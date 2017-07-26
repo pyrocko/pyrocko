@@ -105,6 +105,15 @@ def make_prerequisites():
                  '"sh prerequisites/prerequisites.sh"')
 
 
+def get_readme():
+    try:
+        with open(os.path.join(os.path.basename(__file__),
+                  'README.md')) as readme:
+            return readme.read()
+    except:
+        return 'Failed to get long description'
+
+
 def check_multiple_install():
     found = []
     seen = set()
@@ -408,6 +417,7 @@ setup(
     name=packname,
     version=version,
     description='A versatile seismology toolkit for Python.',
+    long_description=get_readme(),
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
     url='http://pyrocko.org',
