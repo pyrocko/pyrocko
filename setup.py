@@ -457,7 +457,7 @@ setup(
             library_dirs=['libmseed'],
             libraries=['mseed'],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'mseed_ext.c')]),
+            sources=[pjoin('src', 'io', 'ext', 'mseed_ext.c')]),
 
         Extension(
             'evalresp_ext',
@@ -471,13 +471,13 @@ setup(
             'ims_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'ims_ext.c')]),
+            sources=[pjoin('src', 'io', 'ext', 'ims_ext.c')]),
 
         Extension(
             'datacube_ext',
             include_dirs=[numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'datacube_ext.c')]),
+            sources=[pjoin('src', 'io', 'ext', 'datacube_ext.c')]),
 
         Extension(
             'autopick_ext',
