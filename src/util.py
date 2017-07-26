@@ -1533,8 +1533,7 @@ def parse_leap_seconds_list(fn):
 
     try:
         with open(fn, 'rb') as f:
-            for l in f:
-                print(l)
+            print(f.read())
 
         with open(fn, 'rb') as f:
             for line in f:
