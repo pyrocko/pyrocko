@@ -11,8 +11,8 @@ import errno
 from os.path import join as pjoin
 import numpy as num
 
+from pyrocko.parimap import parimap
 from . import store
-from ..parimap import parimap
 
 
 def int_arr(*args):

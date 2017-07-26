@@ -9,9 +9,9 @@ import sys
 import calendar
 import numpy as num
 
+from pyrocko import util, trace
+from pyrocko.util import unpack_fixed
 from .io_common import FileLoadError
-from ..util import unpack_fixed
-from .. import util, trace
 
 
 class SeisanFileError(Exception):

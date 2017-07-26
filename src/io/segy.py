@@ -9,8 +9,8 @@ import numpy as num
 import struct
 import calendar
 
+from pyrocko import trace
 from .io_common import FileLoadError
-from .. import trace
 
 
 def ibm2ieee(ibm):

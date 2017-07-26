@@ -12,7 +12,7 @@ import logging
 
 from . import util
 from .io_common import FileLoadError, FileSaveError
-from .guts import (
+from pyrocko.guts import (
     Object, String, StringChoice, Timestamp, Int, Float, List, Bool, Complex,
     ValidationError)
 

@@ -10,9 +10,9 @@ import os
 import re
 import logging
 
+from pyrocko import trace
+from pyrocko.util import reuse, ensuredirs
 from .io_common import FileLoadError, FileSaveError
-from .. import trace
-from ..util import reuse, ensuredirs
 
 logger = logging.getLogger('pyrocko.mseed')
 

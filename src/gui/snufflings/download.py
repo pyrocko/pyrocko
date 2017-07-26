@@ -2,13 +2,15 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+from __future__ import absolute_import
 import os
 import logging
 
+from pyrocko.gui.gui_util import EventMarker
+
+from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice
 from pyrocko import util, io, model
 from pyrocko.fdsn import ws as fdsn_ws
-from pyrocko.gui_util import EventMarker
-from pyrocko.snuffling import Param, Snuffling, Switch, Choice
 pjoin = os.path.join
 
 logger = logging.getLogger('pyrocko.snufflings.iris_data')

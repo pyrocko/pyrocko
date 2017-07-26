@@ -15,12 +15,12 @@ import copy
 
 import numpy as num
 
-from ..guts import (StringChoice, StringPattern, UnicodePattern, String,
-                    Unicode, Int, Float, List, Object, Timestamp,
-                    ValidationError, TBase)
-from ..guts import load_xml  # noqa
+from pyrocko.guts import (StringChoice, StringPattern, UnicodePattern, String,
+                          Unicode, Int, Float, List, Object, Timestamp,
+                          ValidationError, TBase)
+from pyrocko.guts import load_xml  # noqa
 
-from .. import trace, model, util
+from pyrocko import trace, model, util
 
 guts_prefix = 'pf'
 

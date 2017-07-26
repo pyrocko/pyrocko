@@ -10,7 +10,7 @@ import os
 import random
 
 from .io_common import FileLoadError, FileSaveError
-from ..util import ensuredirs
+from pyrocko.util import ensuredirs
 
 
 def detect(first512):
@@ -30,7 +30,7 @@ def detect(first512):
 
 def iload(filename, load_data=True):
 
-    from pyrocko import ims
+    from . import ims
 
     try:
         with open(filename, 'rb') as f:
@@ -56,7 +56,8 @@ def randomid():
 def save(traces, filename_template, additional={}, max_open_files=10,
          overwrite=True):
 
-    from pyrocko import ims, info
+    from pyrocko import info
+    from . import ims
 
     fns = set()
     open_files = {}

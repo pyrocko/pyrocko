@@ -4,9 +4,10 @@ try:
     from PyQt4.QtTest import QTest
     from PyQt4.QtCore import Qt
     from PyQt4.QtGui import QStyleOptionSlider, QStyle
-    from pyrocko.snuffler import Snuffler, SnufflerWindow
-    from pyrocko import pile_viewer as pyrocko_pile_viewer
-    from pyrocko import gui_util, util, model
+    from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
+    from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
+    from pyrocko.gui import gui_util
+    from pyrocko import util, model
 except ImportError:
     pass
 import common

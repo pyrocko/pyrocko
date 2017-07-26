@@ -8,8 +8,9 @@ import time
 from collections import defaultdict
 
 from . import station as fs
-from .. import trace, util, pz, io_common
-from ..guts import Object, Tuple, String, Timestamp, Float
+from pyrocko import trace, util, pz
+from pyrocko.io import io_common
+from pyrocko.guts import Object, Tuple, String, Timestamp, Float
 
 
 class EnhancedSacPzError(io_common.FileLoadError):

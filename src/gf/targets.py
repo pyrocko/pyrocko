@@ -9,8 +9,8 @@ import numpy as num
 import math
 
 from . import meta
-from ..guts import Timestamp, Tuple, String, Float, Object, StringChoice
-from ..guts_array import Array
+from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
+from pyrocko.guts_array import Array
 
 d2r = num.pi / 180.
 

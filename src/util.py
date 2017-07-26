@@ -1594,7 +1594,7 @@ def gps_utc_offset(t):
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     import itertools
     import glob
-    from pyrocko.io_common import FileLoadError
+    from pyrocko.io.io_common import FileLoadError
 
     def iload_filename(filename, **kwargs):
         try:

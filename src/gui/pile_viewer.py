@@ -24,11 +24,11 @@ import pyrocko.shadow_pile
 import pyrocko.trace
 import pyrocko.util
 import pyrocko.plot
-import pyrocko.snuffling
-import pyrocko.snufflings
-import pyrocko.marker_editor
+import pyrocko.gui.snuffling
+import pyrocko.gui.snufflings
+import pyrocko.gui.marker_editor
 
-from .util import hpfloat, gmtime_x, mystrftime
+from pyrocko.util import hpfloat, gmtime_x, mystrftime
 
 from .marker import associate_phases_to_events
 
@@ -1339,7 +1339,7 @@ def MakePileViewerMainClass(base):
 
                     if (directory, name) not in self.snuffling_modules:
                         self.snuffling_modules[directory, name] = \
-                            pyrocko.snuffling.SnufflingModule(
+                            pyrocko.gui.snuffling.SnufflingModule(
                                 directory, name, self)
 
                     yield self.snuffling_modules[directory, name]
@@ -1349,12 +1349,13 @@ def MakePileViewerMainClass(base):
             for mod in self.iter_snuffling_modules():
                 try:
                     mod.load_if_needed()
-                except pyrocko.snuffling.BrokenSnufflingModule as e:
+                except pyrocko.gui.snuffling.BrokenSnufflingModule as e:
                     logger.warning('Snuffling module "%s" is broken' % e)
 
             # load the default snufflings on first run
             if self.default_snufflings is None:
-                self.default_snufflings = pyrocko.snufflings.__snufflings__()
+                self.default_snufflings = pyrocko.gui\
+                    .snufflings.__snufflings__()
                 for snuffling in self.default_snufflings:
                     self.add_snuffling(snuffling)
 
@@ -3998,7 +3999,7 @@ class PileViewer(qg.QFrame):
         return frame
 
     def marker_editor(self):
-        editor = pyrocko.marker_editor.MarkerEditor(self)
+        editor = pyrocko.gui.marker_editor.MarkerEditor(self)
         editor.set_viewer(self.get_view())
         self.connect(
             editor.get_marker_model(),

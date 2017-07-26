@@ -10,7 +10,8 @@ import re
 import logging
 
 from . import station as fs
-from .. import util, guts, io_common
+from pyrocko import util, guts
+from pyrocko.io import io_common
 
 logger = logging.getLogger('pyrocko.fdsn.resp')
 

@@ -2,11 +2,11 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 from builtins import zip
 
-from pyrocko.snuffling import Param, Snuffling, Switch, Choice
-from pyrocko.gui_util import Marker
+from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice
+from pyrocko.gui.gui_util import Marker
 
 h = 3600.
 

@@ -21,7 +21,7 @@ from scipy import signal
 
 from . import meta
 from . import store_ext
-from .. import util, spit
+from pyrocko import util, spit
 
 logger = logging.getLogger('pyrocko.gf.store')
 

@@ -7,11 +7,11 @@ from __future__ import division, absolute_import
 import os
 from struct import unpack
 
+from pyrocko.file import (File, numtype2type, NoDataAvailable,
+                          size_record_header, FileError)
+from pyrocko import trace
+from pyrocko.util import ensuredirs
 from .io_common import FileLoadError, FileSaveError
-from ..file import File, numtype2type, NoDataAvailable, \
-    size_record_header, FileError
-from .. import trace
-from ..util import ensuredirs
 
 record_formats = {
 

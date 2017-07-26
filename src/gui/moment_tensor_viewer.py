@@ -10,8 +10,8 @@ from PyQt4 import QtGui as qg
 from .gui_util import make_QPolygonF, LinValControl
 from .pile_viewer import Projection
 
-from . import beachball, moment_tensor as mtm
-from . import plot
+from pyrocko import beachball, moment_tensor as mtm
+from pyrocko import plot
 
 
 class BeachballView(qg.QWidget):

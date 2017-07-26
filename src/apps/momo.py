@@ -1,11 +1,11 @@
+#!/usr/bin/env python
 # http://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-#!/usr/bin/env python
 
-'''Moment tensor calculator.'''
-
+# Moment tensor calculator
+#
 # Copyright (c) 2010, Sebastian Heimann <sebastian.heimann@zmaw.de>
 #
 # This file is part of pyrocko. For licensing information please see the file

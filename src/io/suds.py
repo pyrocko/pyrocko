@@ -10,8 +10,8 @@ import logging
 import numpy as num
 from collections import namedtuple, defaultdict
 
+from pyrocko import util, trace, model
 from .io_common import FileLoadError
-from .. import util, trace, model
 
 
 suds_tzero = util.str_to_time('1970-01-01 00:00:00')

@@ -13,8 +13,8 @@ import logging
 
 import numpy as num
 
-from . import util, plot, model, trace
-from .util import TableWriter, TableReader, gmtime_x, mystrftime
+from pyrocko import util, plot, model, trace
+from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
 
 
 logger = logging.getLogger('pyrocko.marker')
@@ -355,7 +355,7 @@ class Marker(object):
 
         from PyQt4 import QtCore as qc
         from PyQt4 import QtGui as qg
-        from pyrocko import gui_util
+        from . import gui_util
 
         if self.selected or self.alerted or not self.nslc_ids:
 
@@ -411,7 +411,7 @@ class Marker(object):
 
         from PyQt4 import QtCore as qc
         from PyQt4 import QtGui as qg
-        from pyrocko import gui_util
+        from . import gui_util
 
         if self.nslc_ids and not self.match_nslc(tr.nslc_id):
             return
@@ -585,7 +585,7 @@ class EventMarker(Marker):
 
     def draw_label(self, p, time_projection, y_projection):
         from PyQt4 import QtGui as qg
-        from pyrocko import gui_util
+        from . import gui_util
 
         u = time_projection(self.tmin)
         v0, v1 = y_projection.get_out_range()

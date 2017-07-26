@@ -10,10 +10,10 @@ import time
 import numpy as num
 import logging
 
-from . import plot
 from .marker import Marker, PhaseMarker, EventMarker  # noqa
 from .marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
 from .marker import load_markers, save_markers  # noqa
+from pyrocko import plot
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg

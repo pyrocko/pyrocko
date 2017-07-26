@@ -2,7 +2,8 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from pyrocko.snuffling import Snuffling, Param, Switch
+from __future__ import absolute_import
+from ..snuffling import Snuffling, Param, Switch
 import numpy as num
 from matplotlib import cm
 

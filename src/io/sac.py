@@ -14,9 +14,9 @@ import numpy as num
 from calendar import timegm
 from time import gmtime
 
+from pyrocko import trace
+from pyrocko.util import reuse
 from .io_common import FileLoadError
-from .. import trace
-from ..util import reuse
 
 logger = logging.getLogger('pyrocko.pile')
 

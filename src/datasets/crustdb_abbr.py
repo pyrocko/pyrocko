@@ -2,10 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-#!/bin/python
-'''
-File holds the abbreviations for age, region and helper function
-'''
+
+# File holds the abbreviations for age, region and helper function
+
 EONS = {
     'MCz': 'Mesozoic to Cenozoic',
     'Pz': 'Paleozoic',

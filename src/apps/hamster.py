@@ -1,8 +1,8 @@
+#!/usr/bin/env python
 # http://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-#!/usr/bin/env python
 from __future__ import absolute_import, division
 
 import os

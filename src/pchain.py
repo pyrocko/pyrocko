@@ -3,6 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 
+
 class Stage(object):
     def __init__(self, f):
         self._f = f

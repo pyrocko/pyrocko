@@ -8,8 +8,8 @@ from builtins import map
 import sys
 import numpy as num
 
-from .. import util, trace
-from ..io_common import FileLoadError
+from .io_common import FileLoadError
+from pyrocko import util, trace
 
 
 class GSE1LoadError(FileLoadError):

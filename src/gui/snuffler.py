@@ -24,17 +24,18 @@ import pickle
 from os.path import join as pjoin
 from optparse import OptionParser
 
-from . import slink
-from . import serial_hamster
-from . import edl
+from pyrocko import slink
+from pyrocko import serial_hamster
+from pyrocko import edl
 
-from . import pile            # noqa
-from . import util            # noqa
+from pyrocko import pile            # noqa
+from pyrocko import util            # noqa
+from pyrocko import model           # noqa
+from pyrocko import config          # noqa
+from pyrocko import io              # noqa
+from pyrocko.fdsn import station as fdsn_station
+
 from . import pile_viewer     # noqa
-from . import model           # noqa
-from . import config          # noqa
-from . import io              # noqa
-from .fdsn import station as fdsn_station
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg

@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-#!/usr/bin/env python
 from __future__ import absolute_import, print_function
 
 from builtins import str as newstr
@@ -991,7 +990,7 @@ class Map(Object):
             (lon, lat, text, color, font, font_size, style))
 
     def cities_in_region(self):
-        from pyrocko import geonames
+        from pyrocko.datasets import geonames
         cities = geonames.get_cities_region(region=self.wesn, minpop=0)
         cities.extend(self.custom_cities)
         cities.sort(key=lambda x: x.population)

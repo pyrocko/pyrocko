@@ -17,13 +17,13 @@ import resource
 
 import numpy as num
 
-from ..guts import (Object, Float, String, StringChoice, List,
-                    Timestamp, Int, SObject, ArgumentError, Dict)
-from ..guts_array import Array
+from pyrocko.guts import (Object, Float, String, StringChoice, List,
+                          Timestamp, Int, SObject, ArgumentError, Dict)
+from pyrocko.guts_array import Array
 
-from .. import moment_tensor as mt
-from .. import trace, model, util, config
-from ..orthodrome import ne_to_latlon
+from pyrocko import moment_tensor as mt
+from pyrocko import trace, model, util, config
+from pyrocko.orthodrome import ne_to_latlon
 
 from . import meta, store, ws
 from .targets import Target, StaticTarget, SatelliteTarget

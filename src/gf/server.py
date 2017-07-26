@@ -37,7 +37,7 @@ import urllib.error
 import re
 from collections import deque
 
-from .. import gf
+from pyrocko import gf
 
 __version__ = '1.0'
 

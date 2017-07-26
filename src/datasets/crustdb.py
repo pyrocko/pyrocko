@@ -2,7 +2,6 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-#!/bin/python
 from __future__ import absolute_import
 from builtins import range
 from builtins import map
@@ -13,12 +12,12 @@ import copy
 import logging
 from os import path
 
-from .crustdb_abbr import ageKey, provinceKey, referenceKey, pubYear  # noqa
+from pyrocko.guts import Object, String, Float, Int
+from pyrocko.guts_array import Array
+from pyrocko.cake import LayeredModel, Material
+from pyrocko.cake_plot import my_model_plot, xscaled, yscaled
 
-from ..guts import Object, String, Float, Int
-from ..guts_array import Array
-from ..cake import LayeredModel, Material
-from ..cake_plot import my_model_plot, xscaled, yscaled
+from .crustdb_abbr import ageKey, provinceKey, referenceKey, pubYear  # noqa
 
 logger = logging.getLogger('pyrocko.crustdb')
 THICKNESS_HALFSPACE = 2

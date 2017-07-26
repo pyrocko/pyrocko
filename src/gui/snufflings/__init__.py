@@ -2,8 +2,9 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from pyrocko.snufflings import minmax, rms, stalta, geofon, ampspec, \
-    catalogs, download
+from __future__ import absolute_import
+from . import (minmax, rms, stalta, geofon, ampspec,
+               catalogs, download)
 modules = [minmax, rms, download, stalta, geofon, ampspec, catalogs]
 
 

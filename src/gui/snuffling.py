@@ -19,11 +19,11 @@ import tempfile
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
-from . import pile, config
+from pyrocko import pile, config
 
-from .gui_util import ValControl, LinValControl, FigureFrame, \
-    WebKitFrame, VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker, \
-    load_markers, save_markers
+from .gui_util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
+                       VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
+                       load_markers, save_markers)
 
 if sys.version_info >= (3, 0):
     from importlib import reload

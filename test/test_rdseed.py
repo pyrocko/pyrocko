@@ -1,7 +1,8 @@
-from pyrocko import rdseed
-from pyrocko import util
 import unittest
 import common
+
+from pyrocko import util
+from pyrocko.io import rdseed
 
 
 @unittest.skipIf(not rdseed.Programs.check(), 'rdseed executeable not found.')

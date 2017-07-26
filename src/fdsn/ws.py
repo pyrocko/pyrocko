@@ -16,7 +16,7 @@ except ImportError:
                                 urlopen)
     from urllib.error import HTTPError
 
-from .. import util
+from pyrocko import util
 
 logger = logging.getLogger('pyrocko.fdsn.ws')
 

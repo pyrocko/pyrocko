@@ -1,7 +1,8 @@
 import unittest
 import tempfile
 
-from pyrocko import marker, util, model
+from pyrocko import util, model
+from pyrocko.gui import marker
 
 
 class MarkerTestCase(unittest.TestCase):

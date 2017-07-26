@@ -12,8 +12,7 @@ import numpy as num
 
 from os import path
 
-from .. import config
-from .. import orthodrome
+from pyrocko import config, orthodrome
 
 logger = logging.getLogger('pyrocko.gshhg')
 config = config.config()

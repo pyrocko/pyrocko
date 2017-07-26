@@ -383,7 +383,6 @@ packname = 'pyrocko'
 version = time.strftime('2017.7')
 
 subpacknames = [
-    'pyrocko.snufflings',
     'pyrocko.gf',
     'pyrocko.fomosto',
     'pyrocko.fomosto.report',
@@ -391,7 +390,9 @@ subpacknames = [
     'pyrocko.topo',
     'pyrocko.apps',
     'pyrocko.io',
-    'pyrocko.datasets'
+    'pyrocko.gui',
+    'pyrocko.gui.snufflings',
+    'pyrocko.datasets',
 ]
 
 setup(

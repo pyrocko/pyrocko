@@ -11,7 +11,7 @@ import signal
 
 import numpy as num
 
-from .. import trace, gf
+from pyrocko import trace, gf
 
 guts_prefix = 'pf'
 

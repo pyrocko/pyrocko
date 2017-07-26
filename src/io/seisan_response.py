@@ -11,7 +11,7 @@ import logging
 import numpy as num
 from scipy import signal
 
-from . import util, trace
+from pyrocko import util, trace
 
 unpack_fixed = util.unpack_fixed
 
