@@ -7,7 +7,7 @@ import os
 import numpy as num
 import logging
 from struct import unpack
-from .. import trace, util
+from pyrocko import trace, util
 
 logger = logging.getLogger('pyrocko.css')
 

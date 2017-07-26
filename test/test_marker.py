@@ -5,6 +5,15 @@ from pyrocko import util, model
 from pyrocko.gui import marker
 
 
+def qt_available():
+    try:
+        from PyQt4 import QtCore  # noqa
+    except ImportError:
+        return False
+    return True
+
+
+@unittest.skipIf(not qt_available(), 'GUI tests skipped, Qt not available.')
 class MarkerTestCase(unittest.TestCase):
 
     def test_writeread(self):

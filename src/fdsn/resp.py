@@ -9,9 +9,9 @@ import time
 import re
 import logging
 
-from . import station as fs
 from pyrocko import util, guts
 from pyrocko.io import io_common
+from . import station as fs
 
 logger = logging.getLogger('pyrocko.fdsn.resp')
 

@@ -16,7 +16,7 @@ import time
 import re
 import logging
 
-from .. import trace, pile, model, eventdata, util
+from pyrocko import trace, pile, model, eventdata, util
 
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.rdseed')
