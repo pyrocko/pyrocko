@@ -38,13 +38,13 @@ CSS          css                         yes
 .. [#f5] ASCII tables with two columns (time and amplitude) are output - meta
     information will be lost.
 '''
-from __future__ import division
+from __future__ import division, absolute_import
 
 import os
 import logging
-from pyrocko import mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf
-from pyrocko import datacube, suds, css, gse2_io_wrap, util, trace
-from pyrocko.io_common import FileLoadError, FileSaveError
+from . import mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf
+from . import datacube, suds, css, gse2_io_wrap, util, trace
+from .io_common import FileLoadError, FileSaveError
 
 import numpy as num
 

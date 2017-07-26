@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from builtins import range
 from builtins import map
 
@@ -7,10 +9,10 @@ from collections import defaultdict
 
 import numpy as num
 
-from pyrocko import util, config
-from pyrocko.guts_array import Array
-from pyrocko.guts import Object, String
-from pyrocko import orthodrome as od
+from . import util, config
+from . import orthodrome as od
+from .guts_array import Array
+from .guts import Object, String
 
 
 PI = math.pi

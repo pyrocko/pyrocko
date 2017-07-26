@@ -1,5 +1,5 @@
 '''This module provides basic signal processing for seismic traces.'''
-from __future__ import division
+from __future__ import division, absolute_import
 
 from builtins import zip
 from builtins import map
@@ -14,11 +14,11 @@ import logging
 import numpy as num
 from scipy import signal
 
-from pyrocko import util, evalresp, model, orthodrome, pchain
-from pyrocko.util import reuse, hpfloat, UnavailableDecimation
-from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List, \
+from . import util, evalresp, model, orthodrome, pchain
+from .util import reuse, hpfloat, UnavailableDecimation
+from .guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice
-from pyrocko.guts_array import Array
+from .guts_array import Array
 
 
 UnavailableDecimation  # noqa

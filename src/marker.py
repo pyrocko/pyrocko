@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from builtins import object
 
 import calendar
@@ -8,8 +9,8 @@ import logging
 
 import numpy as num
 
-from pyrocko import util, plot, model, trace
-from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
+from . import util, plot, model, trace
+from .util import TableWriter, TableReader, gmtime_x, mystrftime
 
 
 logger = logging.getLogger('pyrocko.marker')

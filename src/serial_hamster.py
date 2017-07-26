@@ -8,7 +8,7 @@ import math
 import numpy as num
 from scipy import stats
 
-from pyrocko import trace, util
+from . import trace, util
 
 logger = logging.getLogger('pyrocko.serial_hamster')
 

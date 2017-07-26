@@ -1,7 +1,10 @@
-from pyrocko import pile, io
+from __future__ import absolute_import
+
 import os
 import logging
-from pyrocko import trace as tracemod
+
+from . import pile, io
+from . import trace as tracemod
 
 logger = logging.getLogger('pyrocko.hamster_pile')
 

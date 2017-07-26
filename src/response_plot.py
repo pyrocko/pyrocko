@@ -24,12 +24,12 @@ Example
 
     Example response plot
 '''
-
+from __future__ import absolute_import
 from builtins import range
 
 import numpy as num
 
-from pyrocko import util
+from . import util
 
 
 def draw(

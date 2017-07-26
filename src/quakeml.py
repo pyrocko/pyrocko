@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+
 import logging
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
     Timestamp, Object, List, Union, Bool
-from pyrocko import model
+from . import model
 
 
 logger = logging.getLogger('pyrocko.quakeml')

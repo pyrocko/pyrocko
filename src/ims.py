@@ -6,9 +6,9 @@ import sys
 import re
 import logging
 
-from pyrocko import util
-from pyrocko.io_common import FileLoadError, FileSaveError
-from pyrocko.guts import (
+from . import util
+from .io_common import FileLoadError, FileSaveError
+from .guts import (
     Object, String, StringChoice, Timestamp, Int, Float, List, Bool, Complex,
     ValidationError)
 

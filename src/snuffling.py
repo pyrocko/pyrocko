@@ -4,6 +4,7 @@ Snuffling infrastructure
 This module provides the base class :py:class:`Snuffling` for user-defined
 snufflings and some utilities for their handling.
 '''
+from __future__ import absolute_import
 
 import os
 import sys
@@ -14,9 +15,9 @@ import tempfile
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
-from pyrocko import pile, config
+from . import pile, config
 
-from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
+from .gui_util import ValControl, LinValControl, FigureFrame, \
     WebKitFrame, VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker, \
     load_markers, save_markers
 

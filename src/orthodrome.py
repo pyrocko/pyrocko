@@ -1,12 +1,12 @@
-from __future__ import division
+from __future__ import division, absolute_import
 from builtins import object
 
 import math
 import numpy as num
 
-from pyrocko.moment_tensor import euler_to_matrix
-from pyrocko.beachball import spoly_cut
-from pyrocko.config import config
+from .moment_tensor import euler_to_matrix
+from .beachball import spoly_cut
+from .config import config
 
 from matplotlib.path import Path
 

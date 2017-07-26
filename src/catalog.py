@@ -13,8 +13,9 @@ except ImportError:
 from builtins import zip
 from builtins import range
 from builtins import object
-from pyrocko import model, util
-from pyrocko.moment_tensor import MomentTensor, symmat6
+
+from . import model, util
+from .moment_tensor import MomentTensor, symmat6
 
 
 import time

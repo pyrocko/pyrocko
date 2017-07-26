@@ -1,13 +1,15 @@
+from __future__ import absolute_import
+
 import sys
 import math
 import time
 import numpy as num
 import logging
 
-from pyrocko import plot
-from pyrocko.marker import Marker, PhaseMarker, EventMarker  # noqa
-from pyrocko.marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
-from pyrocko.marker import load_markers, save_markers  # noqa
+from . import plot
+from .marker import Marker, PhaseMarker, EventMarker  # noqa
+from .marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
+from .marker import load_markers, save_markers  # noqa
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg

@@ -56,9 +56,10 @@ except ImportError:
     from io import StringIO
 
 import glob
-from pyrocko import util, config
-from scipy.optimize import bisect, brentq
 import numpy as num
+from scipy.optimize import bisect, brentq
+
+from . import util, config
 
 ZEPS = 0.01
 P = 1

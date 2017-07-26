@@ -3,8 +3,8 @@ from builtins import zip
 
 import math
 import numpy as num
-from pyrocko import trace
-from pyrocko import ahfullgreen_ext as ext
+from . import trace
+from . import ahfullgreen_ext as ext
 
 
 class AhfullgreenError(Exception):

@@ -1,13 +1,15 @@
 # python 2/3
+from __future__ import absolute_import
 
 from builtins import zip, map, range
-from pyrocko import moment_tensor as mtm
 from math import pi as PI
 import numpy as num
 
 from matplotlib.collections import PathCollection
 from matplotlib.path import Path
 from matplotlib.transforms import Transform
+
+from . import moment_tensor as mtm
 
 NA = num.newaxis
 

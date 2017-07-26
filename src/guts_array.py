@@ -1,11 +1,13 @@
 from __future__ import absolute_import
 from builtins import zip
 from builtins import str as newstr
-from pyrocko import guts
-from pyrocko.guts import TBase, Object, ValidationError
+
 import numpy as num
 from io import BytesIO
 from base64 import b64decode, b64encode
+
+from . import guts
+from .guts import TBase, Object, ValidationError
 
 
 try:

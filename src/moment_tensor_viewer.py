@@ -1,12 +1,13 @@
+from __future__ import absolute_import
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
-from pyrocko.gui_util import make_QPolygonF, LinValControl
-from pyrocko.pile_viewer import Projection
+from .gui_util import make_QPolygonF, LinValControl
+from .pile_viewer import Projection
 
-from pyrocko import beachball, moment_tensor as mtm
-from pyrocko import plot
+from . import beachball, moment_tensor as mtm
+from . import plot
 
 
 class BeachballView(qg.QWidget):

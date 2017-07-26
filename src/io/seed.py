@@ -1,10 +1,10 @@
-from __future__ import print_function
+from __future__ import print_function, absolute_import
 
 import sys
 import calendar
 import logging
 
-from pyrocko import util
+from . import util
 
 logger = logging.getLogger('pyrocko.seed')
 

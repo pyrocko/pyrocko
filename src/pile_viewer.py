@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 from builtins import range
 
 import sys
@@ -25,12 +24,13 @@ import pyrocko.snuffling
 import pyrocko.snufflings
 import pyrocko.marker_editor
 
-from pyrocko.util import hpfloat, gmtime_x, mystrftime
+from .util import hpfloat, gmtime_x, mystrftime
 
-from pyrocko.marker import associate_phases_to_events
+from .marker import associate_phases_to_events
 
-from pyrocko.gui_util import ValControl, LinValControl, Marker, EventMarker,\
-    PhaseMarker, make_QPolygonF, draw_label, Label, Progressbars
+from .gui_util import (ValControl, LinValControl, Marker, EventMarker,
+                       PhaseMarker, make_QPolygonF, draw_label, Label,
+                       Progressbars)
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
