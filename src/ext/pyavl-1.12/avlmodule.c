@@ -1,6 +1,4 @@
-
 /* pyavl -- File "avlmodule.c" */
-
 /* AVL tree objects for Python : bindings;
  * avl routines are in "avl.c"
  */
@@ -45,13 +43,6 @@ static PyObject *avlErrorObject;
 struct module_state {
     PyObject *error;
 };
-
-#if PY_MAJOR_VERSION >= 3
-#define GETSTATE(m) ((struct module_state*)PyModule_GetState(m))
-#else
-#define GETSTATE(m) (&_state)
-static struct module_state _state;
-#endif
 
 /* 
  * Tree Proxy
@@ -966,14 +957,15 @@ Py_LOCAL(PyObject *) avl_tree_slice(avl_tree_Object * self, Py_ssize_t lo,
 	return (PyObject *) rv;
 }
 
-Py_LOCAL(int) avl_tree_contains(avl_tree_Object * self, PyObject * val)
+Py_LOCAL(int) avl_tree_contains(PyObject *self, PyObject * val)
 {
 	void *res;
-	self->compare_err = 0;
-	res = avl_find((const void *) val, self->tree);
+	avl_tree_Object *t = (avl_tree_Object *) self;
+	t->compare_err = 0;
+	res = avl_find((const void *) val, t->tree);
 
 	if (res == NULL) {
-		if (self->compare_err)
+		if (t->compare_err)
 			PyErr_Clear();
 		return 0;
 	}
@@ -1008,30 +1000,30 @@ Py_LOCAL(PyObject *) avl_tree_concat_inplace_seq(PyObject * self,
 }
 
 #if PY_MAJOR_VERSION >= 3
-	static PySequenceMethods avl_tree_as_sequence = {
-		(lenfunc) avl_tree_size, /* PySequenceMethods.sq_length */
-		(binaryfunc) avl_tree_concat, /* PySequenceMethods.sq_concat */
-		(ssizeargfunc) avl_tree_repeat, /* PySequenceMethods.sq_repeat */
-		(ssizeargfunc) avl_tree_get, /* PySequenceMethods.sq_item */
-		(ssizeobjargproc) NULL,/* PySequenceMethods.sq_ass_item */
-		(objobjproc) avl_tree_contains, /* PySequenceMethods.sq_contains */
-		(binaryfunc) avl_tree_concat_inplace_seq, /* PySequenceMethods.sq_inplace_concat */
-		(ssizeargfunc) NULL /* PySequenceMethods.sq_inplace_repeat */
-	};
+static PySequenceMethods avl_tree_as_sequence = {
+	(lenfunc) avl_tree_size, /* sq_length */
+	(binaryfunc) avl_tree_concat, /* sq_concat */
+	(ssizeargfunc) avl_tree_repeat, /* sq_repeat */
+	(ssizeargfunc) avl_tree_get, /* sq_item */
+	(ssizeobjargproc) 0, /* sq_ass_item */
+	(objobjproc) avl_tree_contains, /* sq_contains */
+	(binaryfunc) avl_tree_concat_inplace_seq, /* sq_inplace_concat */
+	(ssizeargfunc) 0, /* sq_inplace_repeat */
+};
 #else
-	static PySequenceMethods avl_tree_as_sequence = {
-		(lenfunc) avl_tree_size,	/*sq_length */
-		(binaryfunc) avl_tree_concat,	/*sq_concat */
-		(ssizeargfunc) avl_tree_repeat,	/*sq_repeat */
-		(ssizeargfunc) avl_tree_get,	/*sq_item_ */
-		(ssizessizeargfunc) avl_tree_slice,	/*sq_slice */
-		(ssizeobjargproc) NULL,		/*sq_ass_item_ */
-		(ssizessizeobjargproc) NULL,	/*sq_ass_slice */
-		(objobjproc) avl_tree_contains,	/*sq_contains */
-		/* Added in release 2.0 */
-		(binaryfunc) avl_tree_concat_inplace_seq,	/*sq_inplace_concat */
-		(ssizeargfunc) NULL			/*sq_inplace_repeat */
-	};
+static PySequenceMethods avl_tree_as_sequence = {
+	(lenfunc) avl_tree_size,	/* sq_length */
+	(binaryfunc) avl_tree_concat,	/* sq_concat */
+	(ssizeargfunc) avl_tree_repeat,	/* sq_repeat */
+	(ssizeargfunc) avl_tree_get,	/* sq_item_ */
+	(ssizessizeargfunc) avl_tree_slice,	/* sq_slice */
+	(ssizeobjargproc) NULL,		/* sq_ass_item_ */
+	(ssizessizeobjargproc) NULL,	/* sq_ass_slice */
+	(objobjproc) avl_tree_contains,	/* sq_contains */
+	/* Added in release 2.0 */
+	(binaryfunc) avl_tree_concat_inplace_seq,	/* sq_inplace_concat */
+	(ssizeargfunc) NULL			/* sq_inplace_repeat */
+};
 #endif
 
 static PyObject * avl_tree_mp_subscript(avl_tree_Object* self, PyObject* item) {
@@ -1049,15 +1041,12 @@ static PyObject * avl_tree_mp_subscript(avl_tree_Object* self, PyObject* item) {
         Py_ssize_t len;
         Py_ssize_t start, stop, step, slicelength;
         len = avl_tree_size(self);
-        if (PySlice_GetIndicesEx(item, 
+        if (PySlice_GetIndicesEx((PySliceObject*) item, 
                                  len, &start, &stop, 
                                  &step, &slicelength) < 0)
             return NULL;
 
-        if (slicelength <= 0) {
-            return PyTuple_New(0);
-        }
-        else if (step == 1) {
+		if (step == 1) {
             /*NOTE: reuse your sq_slice method here. */
             return avl_tree_slice(self, start, stop);
         }
@@ -1583,6 +1572,7 @@ PyDoc_STRVAR(avl_module_doc,
 
 #if PY_MAJOR_VERSION >= 3
 
+/*
 static int avl_traverse(PyObject *m, visitproc visit, void *arg) {
     Py_VISIT(GETSTATE(m)->error);
     return 0;
@@ -1592,6 +1582,7 @@ static int avl_clear(PyObject *m) {
     Py_CLEAR(GETSTATE(m)->error);
     return 0;
 }
+*/
 
 static struct PyModuleDef moduledef = {
         PyModuleDef_HEAD_INIT,
@@ -1600,8 +1591,8 @@ static struct PyModuleDef moduledef = {
         sizeof(struct module_state),
         avl_methods,
         NULL,
-        avl_traverse,
-        avl_clear,
+        NULL,  /*avl_traverse,*/
+        NULL,  /*avl_clear,*/
         NULL
 };
 
@@ -1617,7 +1608,8 @@ void
 initavl(void)
 #endif
 {
-	PyObject *m, *d;
+	PyObject *m;
+	/*PyObject *d;*/
 
 	avl_default_conf.alloc = PyMem_Malloc;
 	avl_default_conf.dealloc = PyMem_Free;

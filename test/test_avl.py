@@ -18,14 +18,10 @@ from pyrocko import avl
 
 
 def verify_empty(tree):
-    if isinstance(tree, tuple) and len(tree) == 0:
-        return True
     return tree.verify() == 1 and len(tree) == 0
 
 
 def verify_len(tree, size):
-    if isinstance(tree, tuple) and len(tree) == size:
-        return True
     return tree.verify() == 1 and len(tree) == size
 
 
@@ -439,7 +435,7 @@ class Test_avl_sequence(unittest.TestCase):
     def geti(self, t, i):
         return t[i]
 
-    @unittest.skip('Deactivated, please check!')
+    @unittest.skip('Deactivated, check!')
     def testseq_basic(self):
         t = avl.new()
         for step, modulo in [(491, 2000), (313, 10000)]:
@@ -552,7 +548,7 @@ class Test_avl_sequence(unittest.TestCase):
     def testseq_sliceempty(self):
         t = random_int_tree(0, 500, size=1000)
         lim = len(t)
-        # print(len(t), type(t[2]), type(t[2:3]), type(t[5:1]), len(t[5:1]))
+        print(len(t), type(t[2]), type(t[2:3]), type(t[5:1]), len(t[5:1]))
         for i in range(100):
             a = random.randint(0, lim)
             b = random.randint(0, a)
