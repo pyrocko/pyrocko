@@ -60,7 +60,7 @@ install:
 
 script:
     - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test ; fi
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko setup.py test ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all ; fi
     # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_response_plot.py; fi
 
 after_success:
