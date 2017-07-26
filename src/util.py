@@ -1533,9 +1533,6 @@ def parse_leap_seconds_list(fn):
 
     try:
         with open(fn, 'rb') as f:
-            print(f.read())
-
-        with open(fn, 'rb') as f:
             for line in f:
                 if line.startswith(b'#@'):
                     texpires = int(line.split()[1]) + t0
