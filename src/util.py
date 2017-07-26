@@ -74,8 +74,8 @@ class DownloadError(Exception):
 
 def download_file(url, fpath, username=None, password=None):
     try:
-        from urllib.request import (Request, HTTPCookieProcessor, build_opener,
-                                    urlcleanup)
+        from future.moves.urllib.request import\
+            (Request, HTTPCookieProcessor, build_opener, urlcleanup)
         from urllib.error import HTTPError
     except ImportError:
         from urllib2 import Request, HTTPCookieProcessor, build_opener
@@ -1532,6 +1532,10 @@ def parse_leap_seconds_list(fn):
         raise LeapSecondsOutdated('no leap seconds file found')
 
     try:
+        with open(fn, 'rb') as f:
+            for l in f:
+                print(l)
+
         with open(fn, 'rb') as f:
             for line in f:
                 if line.startswith(b'#@'):

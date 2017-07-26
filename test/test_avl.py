@@ -548,7 +548,6 @@ class Test_avl_sequence(unittest.TestCase):
     def testseq_sliceempty(self):
         t = random_int_tree(0, 500, size=1000)
         lim = len(t)
-        print(len(t), type(t[2]), type(t[2:3]), type(t[5:1]), len(t[5:1]))
         for i in range(100):
             a = random.randint(0, lim)
             b = random.randint(0, a)
