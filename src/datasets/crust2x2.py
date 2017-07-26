@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''Interface to use CRUST2.0 model by Laske, Masters and Reif.
 
 All functions defined in this module return SI units (m, m/s, kg/m^3).

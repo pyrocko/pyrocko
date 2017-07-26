@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from pyrocko.snuffling import Snuffling, Param, Switch
 import numpy as num
 from matplotlib import cm

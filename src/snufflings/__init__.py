@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from pyrocko.snufflings import minmax, rms, stalta, geofon, ampspec, \
     catalogs, download
 modules = [minmax, rms, download, stalta, geofon, ampspec, catalogs]

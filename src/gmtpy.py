@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''A Python interface to GMT.'''
 
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)

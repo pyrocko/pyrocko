@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''Compressed datafiles for the CRUST2.0 model by Laske, Masters and Reif.
 
 Reference

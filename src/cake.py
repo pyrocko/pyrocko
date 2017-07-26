@@ -1,4 +1,7 @@
-# python 2/3
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 
 '''Classical seismic ray theory for layered earth models (*layer cake* models).
 

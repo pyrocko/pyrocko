@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''Utility functions for Pyrocko.'''
 from __future__ import division
 from past.builtins import zip
