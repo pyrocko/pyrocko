@@ -20,6 +20,9 @@ from pyrocko.gui_util import ValControl, LinValControl, FigureFrame, \
     WebKitFrame, VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker, \
     load_markers, save_markers
 
+if sys.version_info >= (3, 0):
+    from importlib import reload
+
 
 Marker, load_markers, save_markers  # noqa
 
