@@ -422,8 +422,6 @@ subpacknames = [
     'pyrocko.datasets',
 ]
 
-print(get_build_include('libmseed'))
-
 setup(
     cmdclass={
         'install': CustomInstallCommand,
@@ -487,8 +485,8 @@ setup(
         Extension(
             'mseed_ext',
             include_dirs=[get_python_inc(), numpy.get_include(),
-                          get_build_include('libmseed')],
-            library_dirs=[get_build_include('libmseed')],
+                          get_build_include('libmseed/')],
+            library_dirs=[get_build_include('libmseed/')],
             libraries=['mseed'],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'io', 'ext', 'mseed_ext.c')]),
@@ -496,8 +494,8 @@ setup(
         Extension(
             'evalresp_ext',
             include_dirs=[get_python_inc(), numpy.get_include(),
-                          get_build_include('evalresp-3.3.0/include')],
-            library_dirs=[get_build_include('evalresp-3.3.0/lib')],
+                          get_build_include('evalresp-3.3.0/include/')],
+            library_dirs=[get_build_include('evalresp-3.3.0/lib/')],
             libraries=['evresp'],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'ext', 'evalresp_ext.c')]),

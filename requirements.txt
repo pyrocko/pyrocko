@@ -4,3 +4,4 @@ scipy
 pyyaml
 matplotlib
 progressbar2
+future
