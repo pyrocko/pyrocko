@@ -11,7 +11,7 @@ import numpy as num
 from pyrocko import util, moment_tensor
 from pyrocko.guts import Object, Float, String, Timestamp
 
-logger = logging.getLogger('pyrocko.model')
+logger = logging.getLogger('pyrocko.models.event')
 
 guts_prefix = 'pf'
 
