@@ -1658,7 +1658,8 @@ def snuffle(traces, **kwargs):
     :param opengl: bool, whether to use opengl (default: ``False``)
     '''
 
-    from pyrocko import pile, snuffler
+    from pyrocko import pile
+    from pyrocko.gui import snuffler
     p = pile.Pile()
     if traces:
         trf = pile.MemTracesFile(None, traces)

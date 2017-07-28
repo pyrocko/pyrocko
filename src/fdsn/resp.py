@@ -554,14 +554,14 @@ def make_stationxml(pyrocko_stations, channel_responses):
 
 if __name__ == '__main__':
     import sys
-    from pyrocko.models import station
+    from pyrocko.models.station import load_stations
 
     util.setup_logging(__name__)
 
     if len(sys.argv) < 2:
         sys.exit('usage: python -m pyrocko.fdsn.resp <stations> <resp> ...')
 
-    stations = station.load_stations(sys.argv[1])
+    stations = load_stations(sys.argv[1])
 
     sxml = make_stationxml(stations, iload(sys.argv[2:]))
 

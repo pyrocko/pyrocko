@@ -336,7 +336,6 @@ class TraceTestCase(unittest.TestCase):
         assert numeq(ap, [1., 1., 1., 1.], 0.0001)
 
     def testCorrelate(self):
-
         for la, lb, mode, res in [
                 ([0, 1, .5, 0, 0],    [0, 0, 0, 1, 0],    'same', 0.3),
                 ([0, 1, .5, 0, 0, 0], [0, 1, 0],          'valid', 0.1),
@@ -354,13 +353,11 @@ class TraceTestCase(unittest.TestCase):
 
                     assert numeq(c.max(), [res, 1.], 0.0001)
 
-        ya = num.array([1,2,3])
-        yb = num.array([1,2,3])
+        ya = num.array([1, 2, 3])
+        yb = num.array([1, 2, 3])
         a = trace.Trace(tmin=10., deltat=0.1, ydata=ya)
         b = trace.Trace(tmin=0., deltat=0.1, ydata=yb)
-        c = trace.correlate(a, b)#, mode=mode)
-        print(c)
-        c.snuffle()
+        c = trace.correlate(a, b)  # , mode=mode)
 
     def testCorrelateNormalization(self):
 

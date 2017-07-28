@@ -5,23 +5,17 @@
 from __future__ import absolute_import, division
 
 from past.builtins import cmp
-from builtins import range
-import math
-import copy
 import logging
 import numpy as num
 
-from pyrocko import orthodrome, util, moment_tensor
-from pyrocko.orthodrome import wrap
-from pyrocko.guts import Object, Float, String, Timestamp, List
+from pyrocko import util, moment_tensor
+from pyrocko.guts import Object, Float, String, Timestamp
 
 logger = logging.getLogger('pyrocko.model')
 
 guts_prefix = 'pf'
 
 d2r = num.pi / 180.
-
-
 
 
 class FileParseError(Exception):
@@ -328,6 +322,8 @@ def dump_events(events, filename=None, stream=None):
     :param filename: name of file as str
     '''
     Event.dump_catalog(events, filename=filename, stream=stream)
+
+
 def load_kps_event_list(filename):
     elist = []
     f = open(filename, 'r')
@@ -367,5 +363,3 @@ def load_gfz_event_list(filename):
 
     f.close()
     return elist
-
-

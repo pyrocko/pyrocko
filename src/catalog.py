@@ -18,7 +18,7 @@ from builtins import zip
 from builtins import range
 from builtins import object
 
-from . import util, models
+from pyrocko import util, models
 from .moment_tensor import MomentTensor, symmat6
 
 
@@ -802,7 +802,7 @@ class Saxony(EarthquakeCatalog):
 
                 slat, slon = sloc.split(';')
 
-                ev = event.Event(
+                ev = models.event.Event(
                     time=time,
                     lat=float(slat),
                     lon=float(slon),
