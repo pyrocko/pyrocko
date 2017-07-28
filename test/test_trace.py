@@ -4,7 +4,7 @@ from future import standard_library
 standard_library.install_aliases()  # noqa
 
 from builtins import range
-from pyrocko import trace, util, model, pile
+from pyrocko import trace, util, models, pile
 import unittest
 import math
 import time
@@ -155,7 +155,7 @@ class TraceTestCase(unittest.TestCase):
             [[cazi, sazi, 0], [-sazi, cazi, 0], [0, 0, -1]], dtype=num.float)
 
         def C(x):
-            return model.Channel(x)
+            return models.Channel(x)
 
         rotated = trace.project(
             [n, e, d],
@@ -353,6 +353,14 @@ class TraceTestCase(unittest.TestCase):
                     c = trace.correlate(a, b, mode=mode)
 
                     assert numeq(c.max(), [res, 1.], 0.0001)
+
+        ya = num.array([1,2,3])
+        yb = num.array([1,2,3])
+        a = trace.Trace(tmin=10., deltat=0.1, ydata=ya)
+        b = trace.Trace(tmin=0., deltat=0.1, ydata=yb)
+        c = trace.correlate(a, b)#, mode=mode)
+        print(c)
+        c.snuffle()
 
     def testCorrelateNormalization(self):
 

@@ -8,7 +8,8 @@ import numpy as num
 import urllib
 import logging
 from pyrocko import util, trace, iris_ws
-from pyrocko.fdsn import station as fdsn_station, ws as fdsn_ws
+from pyrocko.models import fdsn_station
+from pyrocko.fdsn import ws as fdsn_ws
 
 import common
 

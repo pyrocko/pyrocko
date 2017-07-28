@@ -18,7 +18,7 @@ import logging
 import numpy as num
 from scipy import signal
 
-from . import util, evalresp, model, orthodrome, pchain
+from . import util, evalresp, orthodrome, pchain, models
 from .util import reuse, hpfloat, UnavailableDecimation
 from .guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice
@@ -2045,7 +2045,7 @@ def _decompose(a):
 def _channels_to_names(channels):
     names = []
     for ch in channels:
-        if isinstance(ch, model.Channel):
+        if isinstance(ch, models.Channel):
             names.append(ch.name)
         else:
             names.append(ch)

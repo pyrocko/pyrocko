@@ -14,7 +14,7 @@ except ImportError:
     from urllib.error import HTTPError
 from urllib import parse
 
-from . import util, model, pz
+from . import util, pz, models
 
 
 logger = logging.getLogger('pyrocko.iris_ws')
@@ -374,10 +374,10 @@ def grok_station_xml(data, tmin, tmax):
 
         nsl = nslc[:3]
         if nsl not in stations:
-            stations[nsl] = model.Station(
+            stations[nsl] = models.Station(
                 nsl[0], nsl[1], nsl[2], lat, lon, ele, dep)
 
-        stations[nsl].add_channel(model.Channel(nslc[-1], azi, dip))
+        stations[nsl].add_channel(station.Channel(nslc[-1], azi, dip))
 
     return list(stations.values())
 

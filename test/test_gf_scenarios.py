@@ -8,7 +8,7 @@ import time
 import math
 import multiprocessing
 import os.path as op
-from pyrocko import gf, util, model
+from pyrocko import gf, util, models
 from pyrocko import moment_tensor as pmt
 from pyrocko import orthodrome as od
 
@@ -175,7 +175,7 @@ class GFScenariosTestCase(unittest.TestCase):
             east_shift = dist * math.sin(azi*d2r)
             lat, lon = od.ne_to_latlon(0., 0., north_shift, east_shift)
             sta = 'S%02i' % istation
-            station = model.Station(
+            station = models.Station(
                 '', sta, '',
                 lat=lat,
                 lon=lon)

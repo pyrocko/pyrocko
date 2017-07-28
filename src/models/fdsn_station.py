@@ -20,7 +20,8 @@ from pyrocko.guts import (StringChoice, StringPattern, UnicodePattern, String,
                           ValidationError, TBase)
 from pyrocko.guts import load_xml  # noqa
 
-from pyrocko import trace, model, util
+from pyrocko import trace, util
+from . import station, event
 
 guts_prefix = 'pf'
 
@@ -894,9 +895,9 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
             message='channel orientation values differ:',
             error=inconsistencies)
 
-        pchannels.append(model.Channel(code, azimuth=azimuth, dip=dip))
+        pchannels.append(station.Channel(code, azimuth=azimuth, dip=dip))
 
-    return model.Station(
+    return station.Station(
         *nsl,
         lat=mlat,
         lon=mlon,
@@ -979,7 +980,7 @@ class FDSNStationXML(Object):
                                 channels,
                                 inconsistencies=inconsistencies))
                 else:
-                    pstations.append(model.Station(
+                    pstations.append(station.Station(
                         network.code, station.code, '*',
                         lat=station.latitude.value,
                         lon=station.longitude.value,

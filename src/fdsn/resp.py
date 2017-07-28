@@ -11,7 +11,7 @@ import logging
 
 from pyrocko import util, guts
 from pyrocko.io import io_common
-from . import station as fs
+from pyrocko.models import fdsn_station as fs
 
 logger = logging.getLogger('pyrocko.fdsn.resp')
 
@@ -554,14 +554,14 @@ def make_stationxml(pyrocko_stations, channel_responses):
 
 if __name__ == '__main__':
     import sys
-    from pyrocko import model
+    from pyrocko.models import station
 
     util.setup_logging(__name__)
 
     if len(sys.argv) < 2:
         sys.exit('usage: python -m pyrocko.fdsn.resp <stations> <resp> ...')
 
-    stations = model.load_stations(sys.argv[1])
+    stations = station.load_stations(sys.argv[1])
 
     sxml = make_stationxml(stations, iload(sys.argv[2:]))
 

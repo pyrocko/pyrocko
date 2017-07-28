@@ -416,6 +416,7 @@ subpacknames = [
     'pyrocko.topo',
     'pyrocko.apps',
     'pyrocko.io',
+    'pyrocko.models',
     'pyrocko.gui',
     'pyrocko.gui.snufflings',
     'pyrocko.datasets',

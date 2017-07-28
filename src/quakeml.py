@@ -7,7 +7,7 @@ from __future__ import absolute_import
 import logging
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
     Timestamp, Object, List, Union, Bool
-from . import model
+from pyrocko.models import event
 
 
 logger = logging.getLogger('pyrocko.quakeml')
@@ -580,7 +580,7 @@ class Event(Object):
         lat, lon, depth = self.preferred_origin.position_values()
         otime = self.preferred_origin.time.value
 
-        return model.Event(
+        return event.Event(
             name=self.public_id, lat=lat, lon=lon, time=otime, depth=depth,
             magnitude=self.preferred_magnitude.mag.value)
 

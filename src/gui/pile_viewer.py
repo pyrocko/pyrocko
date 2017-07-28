@@ -18,7 +18,7 @@ import copy
 from itertools import groupby
 
 import numpy as num
-import pyrocko.model
+import pyrocko.models
 import pyrocko.pile
 import pyrocko.shadow_pile
 import pyrocko.trace
@@ -1495,7 +1495,7 @@ def MakePileViewerMainClass(base):
             fns = qg.QFileDialog.getOpenFileNames(
                 self, caption, options=qfiledialog_options)
 
-            stations = [pyrocko.model.load_stations(str(x)) for x in fns]
+            stations = [pyrocko.models.load_stations(str(x)) for x in fns]
             for stat in stations:
                 self.add_stations(stat)
 
@@ -1671,7 +1671,7 @@ def MakePileViewerMainClass(base):
             fn = qg.QFileDialog.getOpenFileName(
                 self, caption, options=qfiledialog_options)
             if fn:
-                self.add_events(pyrocko.model.Event.load_catalog(fn))
+                self.add_events(pyrocko.models.Event.load_catalog(fn))
 
                 self.associate_phases_to_events()
 

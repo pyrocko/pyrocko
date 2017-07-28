@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from . import trace, util, model
+from . import trace, util, models
 
 import logging
 import copy
@@ -134,7 +134,7 @@ class EventDataAccess(object):
                     'No channel description for trace %s.%s.%s.%s' % nslc)
 
     def _get_channel_description_from_file(self, nslc):
-        return model.Channel(nslc[3], None, None, 1.)
+        return models.Channel(nslc[3], None, None, 1.)
 
     def iter_traces(self, group_selector=None, trace_selector=None):
 

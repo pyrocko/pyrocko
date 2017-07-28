@@ -22,9 +22,10 @@ from pyrocko.guts import (Object, Float, String, StringChoice, List,
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
-from pyrocko import trace, model, util, config
+from pyrocko import trace, util, config
 from pyrocko.orthodrome import ne_to_latlon
 
+from .. import models
 from . import meta, store, ws
 from .targets import Target, StaticTarget, SatelliteTarget
 
@@ -1074,7 +1075,7 @@ class Source(meta.Location, Cloneable):
         if self.stf:
             duration = self.stf.effective_duration
 
-        return model.Event(
+        return models.Event(
             lat=lat,
             lon=lon,
             time=self.time,
