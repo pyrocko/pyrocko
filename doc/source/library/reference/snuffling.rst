@@ -3,7 +3,7 @@
 The :mod:`snuffling` module
 ===========================
 
-.. automodule:: pyrocko.snuffling
+.. automodule:: pyrocko.gui.snuffling
     :members:
 
 

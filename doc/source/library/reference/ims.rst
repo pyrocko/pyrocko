@@ -1,8 +1,6 @@
-
-
 The :mod:`ims` module
 =====================
 
-.. automodule:: pyrocko.ims
+.. automodule:: pyrocko.io.ims
     :members:
     :show-inheritance:
