@@ -15,7 +15,7 @@ from pyrocko import orthodrome, util, moment_tensor
 from pyrocko.orthodrome import wrap
 from pyrocko.guts import Object, Float, String, Timestamp, List
 
-logger = logging.getLogger('pyrocko.model')
+logger = logging.getLogger('pyrocko.models.event')
 
 guts_prefix = 'pf'
 

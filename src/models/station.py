@@ -12,10 +12,10 @@ import logging
 import numpy as num
 
 from pyrocko import orthodrome, util, moment_tensor
-from pyrocko.orthodrome import wrap
-from pyrocko.guts import Object, Float, String, Timestamp, List
+from .orthodrome import wrap
+from .guts import Object, Float, String, Timestamp, List
 
-logger = logging.getLogger('pyrocko.model')
+logger = logging.getLogger('pyrocko.models.station')
 
 guts_prefix = 'pf'
 

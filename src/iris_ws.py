@@ -377,7 +377,7 @@ def grok_station_xml(data, tmin, tmax):
             stations[nsl] = models.Station(
                 nsl[0], nsl[1], nsl[2], lat, lon, ele, dep)
 
-        stations[nsl].add_channel(station.Channel(nslc[-1], azi, dip))
+        stations[nsl].add_channel(models.Channel(nslc[-1], azi, dip))
 
     return list(stations.values())
 

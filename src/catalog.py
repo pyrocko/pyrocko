@@ -802,7 +802,7 @@ class Saxony(EarthquakeCatalog):
 
                 slat, slon = sloc.split(';')
 
-                ev = event.Event(
+                ev = models.Event(
                     time=time,
                     lat=float(slat),
                     lon=float(slon),
