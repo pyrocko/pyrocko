@@ -1,5 +1,6 @@
 import unittest
-from pyrocko import quakeml, util
+from pyrocko.models import quakeml
+from pyrocko import util
 import common
 
 

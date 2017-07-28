@@ -12,8 +12,8 @@ import logging
 import numpy as num
 
 from pyrocko import orthodrome, util, moment_tensor
-from .orthodrome import wrap
-from .guts import Object, Float, String, Timestamp, List
+from pyrocko.orthodrome import wrap
+from pyrocko.guts import Object, Float, String, Timestamp, List
 
 logger = logging.getLogger('pyrocko.models.station')
 
