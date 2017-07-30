@@ -12,6 +12,9 @@ from .. import util, trace
 from .io_common import FileLoadError, FileSaveError
 
 import numpy as num
+from pyrocko.util import parse_md
+
+__doc__ = parse_md(__file__)
 
 logger = logging.getLogger('pyrocko.io')
 

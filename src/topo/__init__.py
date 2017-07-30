@@ -12,6 +12,10 @@ import os.path as op
 from . import srtmgl3, etopo1, dataset, tile
 from .. import config, util
 
+from pyrocko.util import parse_md
+
+__doc__ = parse_md(__file__)
+
 positive_region = tile.positive_region
 
 earthradius = 6371000.0
