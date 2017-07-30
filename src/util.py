@@ -1719,20 +1719,19 @@ def consistency_merge(list_of_tuples,
         return tuple([merge(x) for x in zip(*list_of_tuples)[1:]])
 
 
-def get_long_description(f):
+def parse_md(f):
+    import inspect
     try:
         with open(op.join(
                 op.dirname(op.abspath(f)),
                   'README.md'), 'r') as readme:
-            return readme.read()
+            mdstr = readme.read()
     except IOError as e:
         return 'Failed to get long description. %s' % e
 
-
-def parse_md(initstr):
-    import inspect
+    # Convert modules and classes
     pattern = re.compile(r'`pyrocko[\.\w+]+`')
-    for i, p in enumerate(re.finditer(pattern, initstr)):
+    for i, p in enumerate(re.finditer(pattern, mdstr)):
         a = p.group()
         substr = False
         try:
@@ -1750,6 +1749,9 @@ def parse_md(initstr):
         if substr:
             a = a.rstrip('`')
             x = substr + a
-            initstr = re.sub(a, x, initstr, count=1)
+            mdstr = re.sub(a, x, mdstr, count=1)
 
-    return initstr
+    mdstr = re.sub(r'^# .*\n?', '', mdstr)
+    mdstr = mdstr.replace('#', '')
+
+    return mdstr
