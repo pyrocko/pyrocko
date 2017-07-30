@@ -120,10 +120,12 @@ def get_long_description():
 
 def get_readme_paths():
     paths = []
+
     for (path, dirnames, filenames) in os.walk(
-         op.dirname(op.join(op.dirname(op.abspath(__file__)), 'src'))):
-            paths.extend(
-                [op.join(path, fn) for fn in filenames if fn == 'README.md'])
+            op.join(op.dirname(__file__), 'src')):
+        paths.extend(
+            [op.join(path.split('/', 1)[1], fn) for fn in filenames if
+             fn == 'README.md'])
     return paths
 
 
