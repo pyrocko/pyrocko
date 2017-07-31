@@ -499,7 +499,9 @@ setup(
                           get_build_include('evalresp-3.3.0/include/')],
             library_dirs=[get_build_include('evalresp-3.3.0/lib/')],
             libraries=['evresp'],
-            extra_compile_args=['-Wextra'],
+            extra_compile_args=[
+                '-Wextra',
+                '-I%s' % get_build_include('evalresp-3.3.0/include')],
             sources=[pjoin('src', 'ext', 'evalresp_ext.c')]),
 
         Extension(
