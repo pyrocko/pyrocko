@@ -59,15 +59,15 @@ class ResponseTestCase(unittest.TestCase):
 
     def test_conversions(self):
 
-        from pyrocko import models
+        from pyrocko import model
         from pyrocko.fdsn import resp, enhanced_sacpz
-        from pyrocko.models import fdsn_station as station
+        from pyrocko.model import fdsn_station as station
 
         t = util.str_to_time('2014-01-01 00:00:00')
         codes = 'GE', 'EIL', '', 'BHZ'
 
         resp_fpath = common.test_data_file('test1.resp')
-        stations = [models.Station(
+        stations = [model.Station(
             *codes[:3],
             lat=29.669901,
             lon=34.951199,

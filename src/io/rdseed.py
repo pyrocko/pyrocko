@@ -16,7 +16,7 @@ import time
 import re
 import logging
 
-from pyrocko import trace, pile, models, eventdata, util
+from pyrocko import trace, pile, model, eventdata, util
 
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.rdseed')
@@ -102,7 +102,7 @@ def read_station_header_file(fn):
 
             nsl = station['network'], station['station'], channel['location']
             if nsl not in nsl_stations:
-                nsl_stations[nsl] = models.Station(
+                nsl_stations[nsl] = model.Station(
                     network=station['network'],
                     station=station['station'],
                     location=channel['location'],
@@ -112,7 +112,7 @@ def read_station_header_file(fn):
                     depth=cs('depth', None),
                     name=station['name'])
 
-            nsl_stations[nsl].add_channel(models.Channel(
+            nsl_stations[nsl].add_channel(model.Channel(
                 channel['channel'],
                 azimuth=channel['azimuth'],
                 dip=channel['dip']))
@@ -362,7 +362,7 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                     datetime = toks[1].split('.')[0]
                     format = '%Y/%m/%d %H:%M:%S'
                     secs = calendar.timegm(time.strptime(datetime, format))
-                    e = models.Event(
+                    e = model.Event(
                         lat=float(toks[2]),
                         lon=float(toks[3]),
                         depth=float(toks[4])*1000.,

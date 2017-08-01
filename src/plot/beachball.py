@@ -13,7 +13,7 @@ from matplotlib.collections import PathCollection
 from matplotlib.path import Path
 from matplotlib.transforms import Transform
 
-from . import moment_tensor as mtm
+from pyrocko import moment_tensor as mtm
 
 NA = num.newaxis
 

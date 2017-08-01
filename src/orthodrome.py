@@ -9,8 +9,8 @@ import math
 import numpy as num
 
 from .moment_tensor import euler_to_matrix
-from .beachball import spoly_cut
 from .config import config
+from .plot.beachball import spoly_cut
 
 from matplotlib.path import Path
 

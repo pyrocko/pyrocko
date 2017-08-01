@@ -11,7 +11,7 @@ from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
 from .gui_util import EventMarker, PhaseMarker, make_QPolygonF
-from pyrocko.beachball import mt2beachball, BeachballError
+from pyrocko.plot.beachball import mt2beachball, BeachballError
 from pyrocko.moment_tensor import kagan_angle
 from pyrocko.plot import tango_colors
 from pyrocko import orthodrome

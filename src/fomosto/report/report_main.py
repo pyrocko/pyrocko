@@ -23,7 +23,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import cm, transforms
 
-from pyrocko import gf, trace, cake, util, plot, beachball
+from pyrocko import gf, trace, cake, util, plot
+from pyrocko.plot import beachball
 from pyrocko.guts import load, Object, String, List, Float, Int, Bool, Dict
 from pyrocko.gf import Source, Target
 from pyrocko.gf.meta import OutOfBounds

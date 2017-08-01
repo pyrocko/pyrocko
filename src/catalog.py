@@ -18,7 +18,7 @@ from builtins import zip
 from builtins import range
 from builtins import object
 
-from pyrocko import util, models
+from pyrocko import util, model
 from .moment_tensor import MomentTensor, symmat6
 
 
@@ -162,7 +162,7 @@ class Geofon(EarthquakeCatalog):
             try:
                 d = self._parse_event_page(page)
 
-                ev = models.Event(
+                ev = model.Event(
                     lat=d['epicenter'][0],
                     lon=d['epicenter'][1],
                     time=d['time'],
@@ -242,7 +242,7 @@ class Geofon(EarthquakeCatalog):
             epicenter = parse_location((vals[2]+' '+vals[3]))
             depth = float(vals[4])*1000.
             region = vals[7]
-            ev = models.Event(
+            ev = model.Event(
                 lat=epicenter[0],
                 lon=epicenter[1],
                 time=tevent,
@@ -423,7 +423,7 @@ class GlobalCMT(EarthquakeCatalog):
 
                 m *= 10.0**(data.exponent-7)
                 mt = MomentTensor(m_up_south_east=m)
-                ev = models.Event(
+                ev = model.Event(
                     lat=data.lat,
                     lon=data.lon,
                     time=t,
@@ -618,7 +618,7 @@ class USGS(EarthquakeCatalog):
             name = 'USGS-%s-' % catalog + util.time_to_str(
                 t, format='%Y-%m-%d_%H-%M-%S.3FRAC')
 
-            ev = models.Event(
+            ev = model.Event(
                 lat=lat,
                 lon=lon,
                 time=t,
@@ -710,7 +710,7 @@ class Kinherd(EarthquakeCatalog):
                 rake=params['slip_rake'],
                 scalar_moment=params['moment'])
 
-            event = models.Event(
+            event = model.Event(
                 time=tref + params['time'],
                 lat=params['latitude'],
                 lon=params['longitude'],
@@ -802,7 +802,7 @@ class Saxony(EarthquakeCatalog):
 
                 slat, slon = sloc.split(';')
 
-                ev = models.event.Event(
+                ev = model.event.Event(
                     time=time,
                     lat=float(slat),
                     lon=float(slon),

@@ -8,3 +8,7 @@
 from __future__ import absolute_import
 from .station import *  # noqa
 from .event import *  # noqa
+
+from pyrocko.util import parse_md
+
+__doc__ = parse_md(__file__)

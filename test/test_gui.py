@@ -7,7 +7,7 @@ try:
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import gui_util
-    from pyrocko import util, models
+    from pyrocko import util, model
 except ImportError:
     pass
 import common
@@ -207,7 +207,7 @@ class GUITest(unittest.TestCase):
         QTest.keyPress(self.pile_viewer, 'A')
         QTest.keyPress(self.pile_viewer, 'e')
         QTest.keyPress(self.pile_viewer, 'R')
-        event = models.Event()
+        event = model.Event()
         markers = pv.viewer.get_markers()
         self.assertEqual(len(markers), 1)
         markers[0]._event = event

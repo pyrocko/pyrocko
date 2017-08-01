@@ -1333,8 +1333,8 @@ class Pile(TracesGroup):
     def snuffle(self, **kwargs):
         '''Visualize it.
 
-        :param stations: list of `pyrocko.models.Station` objects or ``None``
-        :param events: list of `pyrocko.models.Event` objects or ``None``
+        :param stations: list of `pyrocko.model.Station` objects or ``None``
+        :param events: list of `pyrocko.model.Event` objects or ``None``
         :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
         :param ntracks: float, number of tracks to be shown initially
             (default: 12)

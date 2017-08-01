@@ -13,9 +13,13 @@ For documentation and installation instructions please see
 - [ ] Travis Py2/3 tests
 - [ ] Create dedicated folders
   - [x] io
-  - [ ] gui
+  - [x] gui
   - [x] datasets
-  - [ ] models
+  - [x] model
+  - [ ] plots
+
+Move `quakeml`, `station_xml` into `io`?
+
 - [ ] Finish and Tag
 - [ ] Build new docs (together w deplog mechanism?)
 - [ ] Deployment mechanisms
