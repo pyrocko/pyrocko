@@ -7,7 +7,8 @@ import unittest
 import numpy as num
 
 import common
-from pyrocko import util, io, datacube_ext, datacube
+from pyrocko import util, io, datacube_ext
+from pyrocko.io import datacube
 
 
 class DataCubeTestCase(unittest.TestCase):

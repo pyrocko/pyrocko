@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import zip, range
 
@@ -13,7 +17,7 @@ try:
 except ImportError:
     import queue
 
-from pyrocko import trace, util
+from . import trace, util
 
 logger = logging.getLogger('pyrocko.serial_hamster')
 

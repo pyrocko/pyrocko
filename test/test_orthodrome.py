@@ -32,6 +32,14 @@ def random_lat(mi=-90., ma=90., rstate=None, size=None):
     return num.arcsin(rstate.uniform(mi_, ma_, size=size)*2.-1.)*180./math.pi
 
 
+def random_lon(mi=-180., ma=180., rstate=None, size=None):
+    if rstate is None:
+        rstate = num.random
+    mi_ = 0.5*(math.sin(mi * math.pi/180.)+1.)
+    ma_ = 0.5*(math.sin(ma * math.pi/180.)+1.)
+    return num.arcsin(rstate.uniform(mi_, ma_, size=size)*2.-1.)*180./math.pi
+
+
 def light(color, factor=0.5):
     return tuple(1-(1-c)*factor for c in color)
 
@@ -382,7 +390,7 @@ class OrthodromeTestCase(unittest.TestCase):
             np = 3
             points = num.zeros((np, 2))
             points[:, 0] = random_lat(size=3)
-            points[:, 1] = num.random.uniform(-180., 180., size=3)
+            points[:, 1] = random_lon(size=3)
 
             points_ip = num.zeros((nip*points.shape[0], 2))
             for ip in range(points.shape[0]):
@@ -541,7 +549,7 @@ def plot_erroneous_ne_to_latlon():
 
 
 if __name__ == "__main__":
-    plot = True
+    plot = False
     util.setup_logging('test_orthodrome', 'warning')
     unittest.main(exit=False)
     print(benchmark)

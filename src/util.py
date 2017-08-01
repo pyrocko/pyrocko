@@ -1,5 +1,8 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''Utility functions for Pyrocko.'''
-
 from __future__ import division
 from past.builtins import zip
 from builtins import range
@@ -75,14 +78,17 @@ class DownloadError(Exception):
 
 def download_file(url, fpath, username=None, password=None):
     try:
-        from urllib.request import Request, HTTPCookieProcessor, build_opener
+        from future.moves.urllib.request import\
+            (Request, HTTPCookieProcessor, build_opener, urlcleanup)
         from urllib.error import HTTPError
     except ImportError:
         from urllib2 import Request, HTTPCookieProcessor, build_opener
         from urllib2 import HTTPError
+        from urllib import urlcleanup
 
     import base64
 
+    urlcleanup()
     logger.info('starting download of %s' % url)
     ensuredirs(fpath)
     try:
@@ -96,21 +102,19 @@ def download_file(url, fpath, username=None, password=None):
                 'Authorization', 'Basic %s' % base64string)
 
         opener = build_opener(HTTPCookieProcessor())
-
         f = opener.open(req)
 
     except HTTPError as e:
         raise DownloadError('cannot download file from url %s: %s' % (url, e))
 
     fpath_tmp = fpath + '.%i.temp' % os.getpid()
-    g = open(fpath_tmp, 'wb')
-    while True:
-        data = f.read(1024)
-        if not data:
-            break
-        g.write(data)
+    with open(fpath_tmp, 'wb') as g:
+        while True:
+            data = f.fp.read(1024)
+            if not data:
+                break
+            g.write(data)
 
-    g.close()
     f.close()
 
     os.rename(fpath_tmp, fpath)
@@ -1532,11 +1536,11 @@ def parse_leap_seconds_list(fn):
         raise LeapSecondsOutdated('no leap seconds file found')
 
     try:
-        with open(fn, 'r') as f:
+        with open(fn, 'rb') as f:
             for line in f:
-                if line.startswith('#@'):
+                if line.startswith(b'#@'):
                     texpires = int(line.split()[1]) + t0
-                elif line.startswith('#'):
+                elif line.startswith(b'#') or len(line) < 5:
                     pass
                 else:
                     toks = line.split()
@@ -1566,9 +1570,10 @@ def read_leap_seconds2():
             logger.info('updating leap seconds list...')
             download_file(url, fn)
 
-        except Exception:
+        except Exception as e:
             raise LeapSecondsError(
-                'cannot download leap seconds list from %s to %s' % (url, fn))
+                'cannot download leap seconds list from %s to %s (%s)'
+                % (url, fn, e))
 
         return parse_leap_seconds_list(fn)
 
@@ -1589,7 +1594,7 @@ def gps_utc_offset(t):
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     import itertools
     import glob
-    from pyrocko.io_common import FileLoadError
+    from pyrocko.io.io_common import FileLoadError
 
     def iload_filename(filename, **kwargs):
         try:
@@ -1712,3 +1717,41 @@ def consistency_merge(list_of_tuples,
             logger.warning(str(e))
 
         return tuple([merge(x) for x in zip(*list_of_tuples)[1:]])
+
+
+def parse_md(f):
+    import inspect
+    try:
+        with open(op.join(
+                op.dirname(op.abspath(f)),
+                  'README.md'), 'r') as readme:
+            mdstr = readme.read()
+    except IOError as e:
+        return 'Failed to get long description. %s' % e
+
+    # Convert modules and classes
+    pattern = re.compile(r'`pyrocko[\.\w+]+`')
+    for i, p in enumerate(re.finditer(pattern, mdstr)):
+        a = p.group()
+        substr = False
+        try:
+            imported = __import__(a.strip('`'))
+            if inspect.isclass(imported):
+                substr = ':py:class:'
+            elif inspect.ismodule(imported):
+                substr = ':py:mod:'
+            else:
+                substr = False
+        except ImportError as e:    # noqa
+            substr = False
+            continue
+
+        if substr:
+            a = a.rstrip('`')
+            x = substr + a
+            mdstr = re.sub(a, x, mdstr, count=1)
+
+    mdstr = re.sub(r'^# .*\n?', '', mdstr)
+    mdstr = mdstr.replace('#', '')
+
+    return mdstr

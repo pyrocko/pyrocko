@@ -151,5 +151,5 @@ class UtilTestCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    util.setup_logging('test_util', 'warning')
+    util.setup_logging('test_util', 'debug')
     unittest.main()

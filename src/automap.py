@@ -1,6 +1,8 @@
-#!/usr/bin/env python
-from __future__ import absolute_import
-from __future__ import print_function
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, print_function
 
 from builtins import str as newstr
 from builtins import zip
@@ -988,7 +990,7 @@ class Map(Object):
             (lon, lat, text, color, font, font_size, style))
 
     def cities_in_region(self):
-        from pyrocko import geonames
+        from pyrocko.datasets import geonames
         cities = geonames.get_cities_region(region=self.wesn, minpop=0)
         cities.extend(self.custom_cities)
         cities.sort(key=lambda x: x.population)
@@ -1042,7 +1044,7 @@ class Map(Object):
         self._cities_minpop = minpop
 
     def draw_plates(self):
-        from pyrocko import tectonics
+        from pyrocko.datasets import tectonics
 
         neast = 20
         nnorth = max(1, int(round(num.round(self._hreg/self._wreg * neast))))

@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import range, map, zip
 from past.builtins import cmp
@@ -13,14 +17,15 @@ import resource
 
 import numpy as num
 
-from ..guts import (Object, Float, String, StringChoice, List,
-                    Timestamp, Int, SObject, ArgumentError, Dict)
-from ..guts_array import Array
+from pyrocko.guts import (Object, Float, String, StringChoice, List,
+                          Timestamp, Int, SObject, ArgumentError, Dict)
+from pyrocko.guts_array import Array
 
-from .. import moment_tensor as mt
-from .. import trace, model, util, config
-from ..orthodrome import ne_to_latlon
+from pyrocko import moment_tensor as mt
+from pyrocko import trace, util, config
+from pyrocko.orthodrome import ne_to_latlon
 
+from .. import models
 from . import meta, store, ws
 from .targets import Target, StaticTarget, SatelliteTarget
 
@@ -1073,7 +1078,7 @@ class Source(meta.Location, Cloneable):
         if self.stf:
             duration = self.stf.effective_duration
 
-        return model.Event(
+        return models.Event(
             lat=lat,
             lon=lon,
             time=self.time,

@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from builtins import range
 from builtins import str
 import sys

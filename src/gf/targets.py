@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import range
 
@@ -5,8 +9,8 @@ import numpy as num
 import math
 
 from . import meta
-from ..guts import Timestamp, Tuple, String, Float, Object, StringChoice
-from ..guts_array import Array
+from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
+from pyrocko.guts_array import Array
 
 d2r = num.pi / 180.
 

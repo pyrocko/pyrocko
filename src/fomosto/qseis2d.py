@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import range, map
 
@@ -14,9 +18,9 @@ from subprocess import Popen, PIPE
 import os.path as op
 from scipy.integrate import cumtrapz
 
-from ..moment_tensor import MomentTensor, symmat6
-from ..guts import Float, Int, Tuple, List, Bool, Object, String
-from .. import trace, util, cake, gf
+from pyrocko.moment_tensor import MomentTensor, symmat6
+from pyrocko.guts import Float, Int, Tuple, List, Bool, Object, String
+from pyrocko import trace, util, cake, gf
 
 km = 1e3
 

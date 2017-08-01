@@ -1,12 +1,16 @@
-from __future__ import division
-from __future__ import print_function
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import division, print_function, absolute_import
 from builtins import map
 from builtins import zip
+
 import random
 import math
 import numpy as num
 
-from pyrocko.guts import Object, Float
+from .guts import Object, Float
 
 guts_prefix = 'pf'
 

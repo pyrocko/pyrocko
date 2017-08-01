@@ -5,18 +5,24 @@
 For documentation and installation instructions please see 
 [http://pyrocko.org/](http://pyrocko.org/).
 
-# Python 3 Progress
+# Python 3 Support
 
 ## TODO
 
-- [ ] Move I/O to dedicated folder
+- [x] Include PyAVL
+- [ ] Travis Py2/3 tests
+- [ ] Create dedicated folders
+  - [x] io
+  - [ ] gui
+  - [x] datasets
+  - [ ] models
 - [ ] Finish and Tag
 - [ ] Build new docs (together w deplog mechanism?)
 - [ ] Deployment mechanisms
   - [ ] PIP
   - [ ] Anaconda
 
-## Modules
+## Module Progress
 
 - [x] ``__init__.py``
 - [x] ``ahfullgreen.py``
@@ -105,7 +111,7 @@ For documentation and installation instructions please see
 - [x] ``plot.py``
 - [x] ``pz.py``
 - [x] ``quakeml.py``
-- [ ] ``rdseed.py``
+- [x] ``rdseed.py``
 - [x] ``response_plot.py``
 - [x] ``sac.py``
 - [x] ``seed.py``
@@ -114,7 +120,7 @@ For documentation and installation instructions please see
 - [x] ``seisan_waveform.py``
 - [x] ``serial_hamster.py``
 - [x] ``shadow_pile.py``
-- [ ] ``slink.py``
+- [x] ``slink.py``
 - [x] ``snuffler.py`` *WIP*
 - [x] ``snuffling.py``
 - [x] ``snufflings/``

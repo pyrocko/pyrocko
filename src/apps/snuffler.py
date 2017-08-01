@@ -1,5 +1,9 @@
 #!/usr/bin/env python
-from pyrocko import snuffler
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from pyrocko.gui import snuffler
 
 
 def main():

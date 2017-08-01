@@ -1,0 +1,4 @@
+recursive-include prerequisites *
+recursive-include extras *
+recursive-include src *.md
+include *.md *.tar.gz *.cfg

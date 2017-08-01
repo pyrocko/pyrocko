@@ -1,11 +1,14 @@
-
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import
 import os
 import os.path as op
 from copy import deepcopy
 
-from pyrocko import util
-from pyrocko.guts import Object, Float, String, load, dump, List, Dict, \
-    TBase, Tuple
+from . import util
+from .guts import Object, Float, String, load, dump, List, Dict, TBase, Tuple
 
 guts_prefix = 'pf'
 

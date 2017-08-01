@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 
 import os
@@ -7,6 +11,10 @@ import os.path as op
 
 from . import srtmgl3, etopo1, dataset, tile
 from .. import config, util
+
+from pyrocko.util import parse_md
+
+__doc__ = parse_md(__file__)
 
 positive_region = tile.positive_region
 

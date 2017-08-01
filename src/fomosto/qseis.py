@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import range, zip
 
@@ -13,10 +17,10 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
-from .. import gf
-from .. import trace, util, cake
-from ..moment_tensor import MomentTensor, symmat6
-from ..guts import Float, Int, Tuple, List, Complex, Bool, Object, String
+from pyrocko import gf
+from pyrocko import trace, util, cake
+from pyrocko.moment_tensor import MomentTensor, symmat6
+from pyrocko.guts import Float, Int, Tuple, List, Complex, Bool, Object, String
 
 km = 1e3
 

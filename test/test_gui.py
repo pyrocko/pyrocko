@@ -4,9 +4,10 @@ try:
     from PyQt4.QtTest import QTest
     from PyQt4.QtCore import Qt
     from PyQt4.QtGui import QStyleOptionSlider, QStyle
-    from pyrocko.snuffler import Snuffler, SnufflerWindow
-    from pyrocko import pile_viewer as pyrocko_pile_viewer
-    from pyrocko import gui_util, util, model
+    from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
+    from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
+    from pyrocko.gui import gui_util
+    from pyrocko import util, models
 except ImportError:
     pass
 import common
@@ -23,7 +24,7 @@ def qt_available():
     return platform.mac_ver() == ('', ('', '', ''), '')
 
 
-@unittest.skipIf(not qt_available(), 'GUI tests skipped on MacOS')
+@unittest.skipIf(not qt_available(), 'GUI tests skipped, Qt not available.')
 class GUITest(unittest.TestCase):
 
     @classmethod
@@ -205,7 +206,8 @@ class GUITest(unittest.TestCase):
         self.add_one_pick()
         QTest.keyPress(self.pile_viewer, 'A')
         QTest.keyPress(self.pile_viewer, 'e')
-        event = model.Event()
+        QTest.keyPress(self.pile_viewer, 'R')
+        event = models.Event()
         markers = pv.viewer.get_markers()
         self.assertEqual(len(markers), 1)
         markers[0]._event = event

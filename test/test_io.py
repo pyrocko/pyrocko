@@ -12,8 +12,9 @@ from random import choice as rc
 from os.path import join as pjoin
 import shutil
 
+from pyrocko import io
 from pyrocko.io import FileLoadError
-from pyrocko import mseed, trace, util, io, suds
+from pyrocko.io import mseed, trace, util, suds
 
 import common
 

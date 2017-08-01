@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import zip
 
@@ -7,9 +11,9 @@ import os
 import math
 import signal
 
-from .. import trace, cake, gf
-from ..ahfullgreen import add_seismogram, Impulse
-from ..moment_tensor import MomentTensor, symmat6
+from pyrocko import trace, cake, gf
+from pyrocko.ahfullgreen import add_seismogram, Impulse
+from pyrocko.moment_tensor import MomentTensor, symmat6
 
 km = 1000.
 

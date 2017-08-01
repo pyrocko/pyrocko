@@ -1,11 +1,14 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''A Python interface to GMT.'''
 
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
 
 
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import print_function, absolute_import
 from builtins import zip
 import subprocess
 try:

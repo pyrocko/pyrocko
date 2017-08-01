@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 from builtins import str
 
@@ -12,7 +16,7 @@ except ImportError:
                                 urlopen)
     from urllib.error import HTTPError
 
-from .. import util
+from pyrocko import util
 
 logger = logging.getLogger('pyrocko.fdsn.ws')
 
@@ -228,11 +232,11 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
         params = dict(post='\n'.join(l))
 
     if parsed:
-        from pyrocko.fdsn import station
+        from pyrocko.models import fdsn_station
         format = params.get('format', 'xml')
         if format == 'text':
             if params.get('level', 'station') == 'channel':
-                return station.load_channel_table(
+                return fdsn_station.load_channel_table(
                     stream=_request(url, **params))
             else:
                 raise InvalidRequest('if format="text" shall be parsed, '
@@ -240,7 +244,7 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
 
         elif format == 'xml':
             assert params.get('format', 'xml') == 'xml'
-            return station.load_xml(stream=_request(url, **params))
+            return fdsn_station.load_xml(stream=_request(url, **params))
         else:
             raise InvalidRequest('format must be "xml" or "text"')
     else:

@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division
 from builtins import zip, range
@@ -11,9 +15,9 @@ from os.path import join as pjoin
 
 import numpy as num
 
-from ..guts import Object, Float, Int, List, String
-from ..guts_array import Array
-from .. import trace, util, gf
+from pyrocko.guts import Object, Float, Int, List, String
+from pyrocko.guts_array import Array
+from pyrocko import trace, util, gf
 
 guts_prefix = 'pf'
 

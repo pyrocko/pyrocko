@@ -4,7 +4,7 @@ from future import standard_library
 standard_library.install_aliases()  # noqa
 
 from builtins import range
-from pyrocko import trace, util, model, pile
+from pyrocko import trace, util, models, pile
 import unittest
 import math
 import time
@@ -155,7 +155,7 @@ class TraceTestCase(unittest.TestCase):
             [[cazi, sazi, 0], [-sazi, cazi, 0], [0, 0, -1]], dtype=num.float)
 
         def C(x):
-            return model.Channel(x)
+            return models.Channel(x)
 
         rotated = trace.project(
             [n, e, d],
@@ -336,7 +336,6 @@ class TraceTestCase(unittest.TestCase):
         assert numeq(ap, [1., 1., 1., 1.], 0.0001)
 
     def testCorrelate(self):
-
         for la, lb, mode, res in [
                 ([0, 1, .5, 0, 0],    [0, 0, 0, 1, 0],    'same', 0.3),
                 ([0, 1, .5, 0, 0, 0], [0, 1, 0],          'valid', 0.1),

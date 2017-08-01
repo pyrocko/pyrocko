@@ -1,10 +1,11 @@
-from __future__ import absolute_import
-from __future__ import print_function
+from __future__ import absolute_import, print_function
 import unittest
 
-from pyrocko import ims, util
 import common
 import numpy as num
+
+from pyrocko import util
+from pyrocko.io import ims
 
 
 def filled_int32(n, v):

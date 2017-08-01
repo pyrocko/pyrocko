@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import range
 
@@ -7,8 +11,8 @@ import errno
 from os.path import join as pjoin
 import numpy as num
 
+from pyrocko.parimap import parimap
 from . import store
-from ..parimap import parimap
 
 
 def int_arr(*args):

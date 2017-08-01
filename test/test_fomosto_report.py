@@ -6,7 +6,7 @@ from tempfile import mkdtemp
 
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
-from pyrocko.fomosto_report import GreensFunctionTest as gftest
+from pyrocko.fomosto.report import GreensFunctionTest as gftest
 
 logger = logging.getLogger('test_fomosto_report')
 

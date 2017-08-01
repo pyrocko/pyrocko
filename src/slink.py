@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
 import subprocess
@@ -40,6 +44,7 @@ class SlowSlink(object):
         (a, b) = slink.communicate()
         streams = []
         for line in a.splitlines():
+            line = line.decode()
             toks = line.split()
             if len(toks) == 9:
                 net, sta, loc, cha = toks[0], toks[1], '', toks[2]
@@ -74,7 +79,6 @@ class SlowSlink(object):
                 stdout=subprocess.PIPE,
                 preexec_fn=preexec,
                 close_fds=True)
-
         except OSError as e:
             raise SlowSlinkError('Could not start "slinktool": %s' % str(e))
 
@@ -105,7 +109,7 @@ class SlowSlink(object):
 
     def process(self):
         try:
-            line = self.slink.stdout.readline()
+            line = self.slink.stdout.readline().decode()
 
             if not line:
                 return False
@@ -148,7 +152,8 @@ class SlowSlink(object):
 
             return True
 
-        except:
+        except Exception as e:
+            logger.debug(e)
             return False
 
     def got_trace(self, tr):

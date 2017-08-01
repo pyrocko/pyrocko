@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 """
 Simple async HTTP server
 
@@ -33,7 +37,7 @@ import urllib.error
 import re
 from collections import deque
 
-from .. import gf
+from pyrocko import gf
 
 __version__ = '1.0'
 

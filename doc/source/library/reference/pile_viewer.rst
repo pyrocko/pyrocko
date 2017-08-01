@@ -1,9 +1,7 @@
-
-
 The :mod:`pile_viewer` module
 =============================
 
-.. automodule:: pyrocko.pile_viewer
+.. automodule:: pyrocko.gui.pile_viewer
     :members:
     :undoc-members:
 

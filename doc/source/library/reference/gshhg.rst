@@ -5,7 +5,7 @@ The `GSHHG database <https://www.ngdc.noaa.gov/mgg/shorelines/gshhs.html>`_ is a
 
 We implement functions to test points for land/water and mask land areas, excluding lakes.
 
-See tutorial example :doc:`/library/examples/geographical_databases`.
+See tutorial example :doc:`/library/examples/geographical_datasets`.
 
 .. note ::
 
@@ -13,8 +13,8 @@ See tutorial example :doc:`/library/examples/geographical_databases`.
 
     **Wessel, P., and W. H. F. Smith, A Global Self-consistent, Hierarchical, High-resolution Shoreline Database, J. Geophys. Res., 101, #B4, pp. 8741-8743, 1996.**
 
-.. autoclass:: pyrocko.gshhg.GSHHG
+.. autoclass:: pyrocko.datasets.gshhg.GSHHG
    :members:
 
-.. autoclass:: pyrocko.gshhg.Polygon
+.. autoclass:: pyrocko.datasets.gshhg.Polygon
    :members:

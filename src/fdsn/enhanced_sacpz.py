@@ -1,11 +1,16 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, print_function
 
 import time
 from collections import defaultdict
 
-from . import station as fs
-from .. import trace, util, pz, io_common
-from ..guts import Object, Tuple, String, Timestamp, Float
+from pyrocko.models import fdsn_station as fs
+from pyrocko import trace, util, pz
+from pyrocko.io import io_common
+from pyrocko.guts import Object, Tuple, String, Timestamp, Float
 
 
 class EnhancedSacPzError(io_common.FileLoadError):

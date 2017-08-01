@@ -1,4 +1,7 @@
-# python 2/3
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 
 '''Classical seismic ray theory for layered earth models (*layer cake* models).
 
@@ -56,9 +59,10 @@ except ImportError:
     from io import StringIO
 
 import glob
-from pyrocko import util, config
-from scipy.optimize import bisect, brentq
 import numpy as num
+from scipy.optimize import bisect, brentq
+
+from . import util, config
 
 ZEPS = 0.01
 P = 1

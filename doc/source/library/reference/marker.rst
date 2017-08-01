@@ -3,7 +3,7 @@
 The :mod:`marker` module
 ========================
 
-.. automodule:: pyrocko.marker
+.. automodule:: pyrocko.gui.marker
     :members:
 
 

@@ -1,7 +1,5 @@
-
-
 The :mod:`gui_util` module
 ==========================
 
-.. automodule:: pyrocko.gui_util
+.. automodule:: pyrocko.gui.gui_util
     :members:

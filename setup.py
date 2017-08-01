@@ -7,11 +7,14 @@ import shutil
 import tempfile
 from os.path import join as pjoin
 
+from distutils.sysconfig import get_python_inc
 from setuptools import setup, Extension, Command
 from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
+
+op = os.path
 try:
     import numpy
 except ImportError:
@@ -38,7 +41,7 @@ def git_infos():
     def q(c):
         return Popen(c, stdout=PIPE).communicate()[0]
 
-    if not os.path.exists('.git'):
+    if not op.exists('.git'):
         raise NotInAGitRepos()
 
     sha1 = q(['git', 'log', '--pretty=oneline', '-n1']).split()[0]
@@ -105,14 +108,39 @@ def make_prerequisites():
                  '"sh prerequisites/prerequisites.sh"')
 
 
+def get_long_description():
+    try:
+        with open(op.join(
+                  op.dirname(op.abspath(__file__)),
+                  'README.md'), 'r') as readme:
+            return readme.read()
+    except:
+        return 'Failed to get long description'
+
+
+def get_readme_paths():
+    paths = []
+
+    for (path, dirnames, filenames) in os.walk(
+            op.join(op.dirname(__file__), 'src')):
+        paths.extend(
+            [op.join(path.split('/', 1)[1], fn) for fn in filenames if
+             fn == 'README.md'])
+    return paths
+
+
+def get_build_include(lib_name):
+    return op.join(op.dirname(op.abspath(__file__)), lib_name)
+
+
 def check_multiple_install():
     found = []
     seen = set()
     orig_sys_path = sys.path
     for p in sys.path:
 
-        ap = os.path.abspath(p)
-        if ap == os.path.abspath('.'):
+        ap = op.abspath(p)
+        if ap == op.abspath('.'):
             continue
 
         if ap in seen:
@@ -383,13 +411,17 @@ packname = 'pyrocko'
 version = time.strftime('2017.7')
 
 subpacknames = [
-    'pyrocko.snufflings',
     'pyrocko.gf',
     'pyrocko.fomosto',
+    'pyrocko.fomosto.report',
     'pyrocko.fdsn',
     'pyrocko.topo',
-    'pyrocko.fomosto_report',
-    'pyrocko.apps'
+    'pyrocko.apps',
+    'pyrocko.io',
+    'pyrocko.models',
+    'pyrocko.gui',
+    'pyrocko.gui.snufflings',
+    'pyrocko.datasets',
 ]
 
 setup(
@@ -405,6 +437,7 @@ setup(
     name=packname,
     version=version,
     description='A versatile seismology toolkit for Python.',
+    long_description=get_long_description(),
     author='The Pyrocko Developers',
     author_email='info@pyrocko.org',
     url='http://pyrocko.org',
@@ -447,69 +480,83 @@ setup(
 
         Extension(
             'signal_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'ext', 'signal_ext.c')]),
 
         Extension(
             'mseed_ext',
-            include_dirs=[numpy.get_include(), 'libmseed'],
-            library_dirs=['libmseed'],
+            include_dirs=[get_python_inc(), numpy.get_include(),
+                          get_build_include('libmseed/')],
+            library_dirs=[get_build_include('libmseed/')],
             libraries=['mseed'],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'mseed_ext.c')]),
+            sources=[pjoin('src', 'io', 'ext', 'mseed_ext.c')]),
 
         Extension(
             'evalresp_ext',
-            include_dirs=[numpy.get_include(), 'evalresp-3.3.0/include'],
-            library_dirs=['evalresp-3.3.0/lib'],
+            include_dirs=[get_python_inc(), numpy.get_include(),
+                          get_build_include('evalresp-3.3.0/include/')],
+            library_dirs=[get_build_include('evalresp-3.3.0/lib/')],
             libraries=['evresp'],
-            extra_compile_args=['-Wextra'],
+            extra_compile_args=[
+                '-Wextra',
+                '-I%s' % get_build_include('evalresp-3.3.0/include')],
             sources=[pjoin('src', 'ext', 'evalresp_ext.c')]),
 
         Extension(
             'ims_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'ims_ext.c')]),
+            sources=[pjoin('src', 'io', 'ext', 'ims_ext.c')]),
 
         Extension(
             'datacube_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'datacube_ext.c')]),
+            sources=[pjoin('src', 'io', 'ext', 'datacube_ext.c')]),
 
         Extension(
             'autopick_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'ext', 'autopick_ext.c')]),
 
         Extension(
             'gf.store_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'] + omp_arg,
             extra_link_args=[] + omp_lib,
             sources=[pjoin('src', 'gf', 'ext', 'store_ext.c')]),
 
         Extension(
             'parstack_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'] + omp_arg,
             extra_link_args=[] + omp_lib,
             sources=[pjoin('src', 'ext', 'parstack_ext.c')]),
 
         Extension(
             'ahfullgreen_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'ext', 'ahfullgreen_ext.c')]),
 
         Extension(
             'orthodrome_ext',
-            include_dirs=[numpy.get_include()],
+            include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
             sources=[pjoin('src', 'ext', 'orthodrome_ext.c')]),
+
+        Extension(
+            "avl",
+            sources=[pjoin('src', 'ext', 'pyavl-1.12', 'avl.c'),
+                     pjoin('src', 'ext', 'pyavl-1.12', 'avlmodule.c')],
+            define_macros=[('HAVE_AVL_VERIFY', None),
+                           ('AVL_FOR_PYTHON', None)],
+            include_dirs=[get_python_inc()],
+            extra_compile_args=['-Wno-parentheses', '-Wno-uninitialized'],
+            extra_link_args=[] if sys.platform != 'sunos5' else ['-Wl,-x']),
     ],
 
     scripts=[
@@ -533,7 +580,7 @@ setup(
                    'data/earthmodels/*.nd',
                    'data/colortables/*.cpt',
                    'data/tectonics/*.txt',
-                   'data/fomosto_report/gfreport.*']},
+                   'data/fomosto_report/gfreport.*'] + get_readme_paths()},
 
     test_suite='test.get_test_suite'
 )

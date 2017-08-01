@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import range
 
@@ -7,7 +11,7 @@ import signal
 
 import numpy as num
 
-from .. import trace, gf
+from pyrocko import trace, gf
 
 guts_prefix = 'pf'
 

@@ -1,9 +1,7 @@
-
-
 The :mod:`rdseed` module
 ========================
 
-.. automodule:: pyrocko.rdseed
+.. automodule:: pyrocko.io.rdseed
     :members:
     :undoc-members:
 

@@ -1,6 +1,13 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+
 from past.builtins import cmp
 from future import standard_library
 standard_library.install_aliases()  # noqa
+
 from builtins import range
 
 import os
@@ -14,11 +21,11 @@ import operator
 import math
 import pickle
 
-import avl
 
-from pyrocko import trace, io, util
-from pyrocko import config
-from pyrocko.trace import degapper
+from . import avl
+from . import trace, io, util
+from . import config
+from .trace import degapper
 
 
 def sl(s):
@@ -1326,8 +1333,8 @@ class Pile(TracesGroup):
     def snuffle(self, **kwargs):
         '''Visualize it.
 
-        :param stations: list of `pyrocko.model.Station` objects or ``None``
-        :param events: list of `pyrocko.model.Event` objects or ``None``
+        :param stations: list of `pyrocko.models.Station` objects or ``None``
+        :param events: list of `pyrocko.models.Event` objects or ``None``
         :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
         :param ntracks: float, number of tracks to be shown initially
             (default: 12)
@@ -1441,7 +1448,7 @@ class Injector(trace.States):
                 self._fixate(buf, complete=False)
 
     def fixate_all(self):
-        for state in self._states.values():
+        for state in list(self._states.values()):
             self._fixate(state[-1])
 
         self._states = {}

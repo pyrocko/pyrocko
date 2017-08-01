@@ -1,5 +1,9 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''This module provides basic signal processing for seismic traces.'''
-from __future__ import division
+from __future__ import division, absolute_import
 
 from builtins import zip
 from builtins import map
@@ -14,11 +18,11 @@ import logging
 import numpy as num
 from scipy import signal
 
-from pyrocko import util, evalresp, model, orthodrome, pchain
-from pyrocko.util import reuse, hpfloat, UnavailableDecimation
-from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List, \
+from . import util, evalresp, orthodrome, pchain, models
+from .util import reuse, hpfloat, UnavailableDecimation
+from .guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice
-from pyrocko.guts_array import Array
+from .guts_array import Array
 
 
 UnavailableDecimation  # noqa
@@ -1625,7 +1629,7 @@ class Trace(object):
         Show trace in a snuffler window.
 
         :param stations: list of `pyrocko.model.Station` objects or ``None``
-        :param events: list of `pyrocko.model.Event` objects or ``None``
+        :param events: list of `pyrocko.models.Event` objects or ``None``
         :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
         :param ntracks: float, number of tracks to be shown initially (default:
             12)
@@ -1644,7 +1648,7 @@ def snuffle(traces, **kwargs):
     Show traces in a snuffler window.
 
     :param stations: list of `pyrocko.model.Station` objects or ``None``
-    :param events: list of `pyrocko.model.Event` objects or ``None``
+    :param events: list of `pyrocko.models.Event` objects or ``None``
     :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
     :param ntracks: float, number of tracks to be shown initially (default: 12)
     :param follow: time interval (in seconds) for real time follow mode or
@@ -1654,7 +1658,8 @@ def snuffle(traces, **kwargs):
     :param opengl: bool, whether to use opengl (default: ``False``)
     '''
 
-    from pyrocko import pile, snuffler
+    from pyrocko import pile
+    from pyrocko.gui import snuffler
     p = pile.Pile()
     if traces:
         trf = pile.MemTracesFile(None, traces)
@@ -2041,7 +2046,7 @@ def _decompose(a):
 def _channels_to_names(channels):
     names = []
     for ch in channels:
-        if isinstance(ch, model.Channel):
+        if isinstance(ch, models.Channel):
             names.append(ch.name)
         else:
             names.append(ch)

@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import zip, range
 
@@ -17,7 +21,7 @@ from scipy import signal
 
 from . import meta
 from . import store_ext
-from .. import util, spit
+from pyrocko import util, spit
 
 logger = logging.getLogger('pyrocko.gf.store')
 

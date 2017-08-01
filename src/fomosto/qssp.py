@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import range, zip
 
@@ -15,9 +19,9 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
-from .. import trace, util, cake, gf
-from ..guts import Object, Float, String, Bool, Tuple, Int, List
-from ..moment_tensor import MomentTensor, symmat6
+from pyrocko import trace, util, cake, gf
+from pyrocko.guts import Object, Float, String, Bool, Tuple, Int, List
+from pyrocko.moment_tensor import MomentTensor, symmat6
 
 guts_prefix = 'pf'
 

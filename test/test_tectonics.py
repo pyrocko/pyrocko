@@ -2,7 +2,8 @@ import unittest
 import numpy as num
 from numpy.testing import assert_allclose
 
-from pyrocko import tectonics, util
+from pyrocko.datasets import tectonics
+from pyrocko import util
 
 
 class TectonicsTestCase(unittest.TestCase):

@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 from builtins import str as new_str
 from builtins import range, map, zip
@@ -10,14 +14,14 @@ import logging
 import numpy as num
 from scipy.interpolate import interp1d
 
-from ..guts import (Object, SObject, String, StringChoice,
-                    StringPattern, Unicode, Float, Bool, Int, TBase, List,
-                    ValidationError, Timestamp, Tuple, Dict)
-from ..guts import dump, load  # noqa
-from ..guts_array import literal, Array
+from pyrocko.guts import (Object, SObject, String, StringChoice,
+                          StringPattern, Unicode, Float, Bool, Int, TBase,
+                          List, ValidationError, Timestamp, Tuple, Dict)
+from pyrocko.guts import dump, load  # noqa
+from pyrocko.guts_array import literal, Array
 
-from .. import cake, orthodrome, spit, moment_tensor, trace
-from ..config import config
+from pyrocko import cake, orthodrome, spit, moment_tensor, trace
+from pyrocko.config import config
 
 
 guts_prefix = 'pf'

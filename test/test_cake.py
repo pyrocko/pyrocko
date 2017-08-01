@@ -4,6 +4,7 @@ from builtins import range
 
 import unittest
 import numpy as num
+from io import BytesIO
 
 from pyrocko import cake, util
 
@@ -211,6 +212,12 @@ Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
         mod = cake.load_model()
         s = cake.write_nd_model_str(mod)
         assert isinstance(s, str)
+
+    def test_dump(self):
+        f = BytesIO()
+        mod = cake.load_model()
+        mod.profile('vp').dump(f)
+        f.close()
 
 
 if __name__ == "__main__":

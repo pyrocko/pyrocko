@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 from __future__ import print_function
 from builtins import range
 
@@ -1120,7 +1124,7 @@ def command_qc(args):
 
 
 def command_report(args):
-    from pyrocko.fomosto_report import report_call
+    from pyrocko.fomosto.report import report_call
     report_call.run_program(args)
 
 
