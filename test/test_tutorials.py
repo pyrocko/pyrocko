@@ -26,6 +26,9 @@ to_test = {
     'gshhg_example': None,
     'tectonics_example': None,
     'test_response_plot': None,
+    'cake_raytracing': ['sptree_p', 'sptree_P'],
+    'catalog_search_globalcmt': ['northern_chile_events.txt'],
+    'catalog_search_geofon': None,
 }
 
 
