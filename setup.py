@@ -421,8 +421,8 @@ subpacknames = [
     'pyrocko.plot',
     'pyrocko.gui',
     'pyrocko.gui.snufflings',
-    'pyrocko.datasets',
-    'pyrocko.datasets.topo',
+    'pyrocko.dataset',
+    'pyrocko.dataset.topo',
     'pyrocko.streaming',
 ]
 
