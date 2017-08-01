@@ -414,7 +414,7 @@ subpacknames = [
     'pyrocko.gf',
     'pyrocko.fomosto',
     'pyrocko.fomosto.report',
-    'pyrocko.fdsn',
+    'pyrocko.client',
     'pyrocko.apps',
     'pyrocko.io',
     'pyrocko.model',
