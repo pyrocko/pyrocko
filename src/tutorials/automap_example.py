@@ -1,5 +1,9 @@
 from pyrocko import model
 from pyrocko.plot.automap import Map
+from pyrocko.tutorials import get_tutorial_data
+
+# Download example data
+get_tutorial_data('stations_deadsea.pf')
 
 # Generate the basic map
 m = Map(

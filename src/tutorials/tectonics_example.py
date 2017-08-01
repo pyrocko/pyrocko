@@ -1,4 +1,4 @@
-from pyrocko.tectonics import PeterBird2003
+from pyrocko.datasets.tectonics import PeterBird2003
 
 poi_lat = 12.4
 poi_lon = 133.5

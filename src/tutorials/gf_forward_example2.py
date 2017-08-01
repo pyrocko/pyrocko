@@ -3,14 +3,16 @@ import numpy as num
 
 # distance in kilometer
 km = 1e3
+
 # many seconds make a day
 day = 24.*3600.
 
-# Ignite the LocalEngine and point it to your fomosto store, e.g. stored on a
-# USB stick, which for example has the id 'Abruzzo_Ameri_static_nearfield'
-# (download at http://kinherd.org:8080/gfws/static/stores/)
-engine = gf.LocalEngine(store_superdirs=['/media/usb/stores'])
+# Download a Greens Functions store, programmatically.
 store_id = 'Abruzzo_Ameri_static_nearfield'
+gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+
+# Setup the LocalEngine and point it to the fomosto store you just downloaded.
+engine = gf.LocalEngine(store_superdirs=['.'])
 
 # We define an extended source, in this case a rectangular geometry
 # Centroid UTM position is defined relatively to geographical lat, lon position
