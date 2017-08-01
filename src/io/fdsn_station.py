@@ -20,12 +20,12 @@ from pyrocko.guts import (StringChoice, StringPattern, UnicodePattern, String,
                           ValidationError, TBase)
 from pyrocko.guts import load_xml  # noqa
 
-import pyrocko.models
+import pyrocko.model
 from pyrocko import trace, util
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('pyrocko.fdsn.station')
+logger = logging.getLogger('pyrocko.io.fdsn_station')
 
 conversion = {
     ('M', 'M'): None,
