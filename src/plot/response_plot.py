@@ -33,7 +33,7 @@ from builtins import range
 
 import numpy as num
 
-from . import util
+from pyrocko import util
 
 
 def draw(
