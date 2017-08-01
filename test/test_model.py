@@ -3,7 +3,7 @@ import math
 import tempfile
 import shutil
 
-from pyrocko import models, util, trace, orthodrome, guts, moment_tensor
+from pyrocko import model, util, trace, orthodrome, guts, moment_tensor
 import numpy as num
 from os.path import join as pjoin
 
@@ -28,11 +28,11 @@ class ModelTestCase(unittest.TestCase):
     def testIOEventOld(self):
         tempdir = tempfile.mkdtemp()
         fn = pjoin(tempdir, 'event.txt')
-        e1 = models.Event(
+        e1 = model.Event(
             10., 20., 1234567890., 'bubu', region='taka tuka land',
             magnitude=5.1, magnitude_type='Mw')
         e1.olddump(fn)
-        e2 = models.Event(load=fn)
+        e2 = model.Event(load=fn)
         assert e1.region == e2.region
         assert e1.name == e2.name
         assert e1.lat == e2.lat
@@ -46,7 +46,7 @@ class ModelTestCase(unittest.TestCase):
     def testIOEvent(self):
         tempdir = tempfile.mkdtemp()
         fn = pjoin(tempdir, 'event.txt')
-        e1 = models.Event(
+        e1 = model.Event(
             10., 20., 1234567890., 'bubu', region='taka tuka land',
             moment_tensor=moment_tensor.MomentTensor(strike=45., dip=90),
             magnitude=5.1, magnitude_type='Mw')
@@ -64,15 +64,15 @@ class ModelTestCase(unittest.TestCase):
 
     def testMissingComponents(self):
 
-        ne = models.Channel('NE', azimuth=45., dip=0.)
-        se = models.Channel('SE', azimuth=135., dip=0.)
+        ne = model.Channel('NE', azimuth=45., dip=0.)
+        se = model.Channel('SE', azimuth=135., dip=0.)
 
-        station = models.Station('', 'STA', '', 0., 0., 0., channels=[ne, se])
+        station = model.Station('', 'STA', '', 0., 0., 0., channels=[ne, se])
 
         mat = station.projection_to_enu(('NE', 'SE', 'Z'), ('E', 'N', 'U'))[0]
         assertOrtho(mat[:, 0], mat[:, 1], mat[:, 2])
 
-        n = models.Channel('D', azimuth=0., dip=90.)
+        n = model.Channel('D', azimuth=0., dip=90.)
         station.set_channels([n])
         mat = station.projection_to_enu(('N', 'E', 'D'), ('E', 'N', 'U'))[0]
         assertOrtho(mat[:, 0], mat[:, 1], mat[:, 2])
@@ -81,27 +81,27 @@ class ModelTestCase(unittest.TestCase):
         tempdir = tempfile.mkdtemp()
         fn = pjoin(tempdir, 'stations.txt')
 
-        ne = models.Channel('NE', azimuth=45., dip=0.)
-        se = models.Channel('SE', azimuth=135., dip=0.)
+        ne = model.Channel('NE', azimuth=45., dip=0.)
+        se = model.Channel('SE', azimuth=135., dip=0.)
         stations = [
-            models.Station('', sta, '', 0., 0., 0., channels=[ne, se])
+            model.Station('', sta, '', 0., 0., 0., channels=[ne, se])
             for sta in ['STA1', 'STA2']]
 
-        models.dump_stations(stations, fn)
-        stations = models.load_stations(fn)
+        model.dump_stations(stations, fn)
+        stations = model.load_stations(fn)
 
         shutil.rmtree(tempdir)
 
     def testProjections(self):
         km = 1000.
 
-        ev = models.Event(lat=-10, lon=150., depth=0.0)
+        ev = model.Event(lat=-10, lon=150., depth=0.0)
 
         for azi in num.linspace(0., 360., 37):
             lat, lon = orthodrome.ne_to_latlon(
                 ev.lat, ev.lon, 10.*km * math.cos(azi), 10.*km * math.sin(azi))
 
-            sta = models.Station(lat=lat, lon=lon)
+            sta = model.Station(lat=lat, lon=lon)
             sta.set_event_relative_data(ev)
             sta.set_channels_by_name('BHZ', 'BHE', 'BHN')
 

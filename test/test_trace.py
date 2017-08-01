@@ -4,7 +4,7 @@ from future import standard_library
 standard_library.install_aliases()  # noqa
 
 from builtins import range
-from pyrocko import trace, util, models, pile
+from pyrocko import trace, util, model, pile
 import unittest
 import math
 import time
@@ -155,7 +155,7 @@ class TraceTestCase(unittest.TestCase):
             [[cazi, sazi, 0], [-sazi, cazi, 0], [0, 0, -1]], dtype=num.float)
 
         def C(x):
-            return models.Channel(x)
+            return model.Channel(x)
 
         rotated = trace.project(
             [n, e, d],

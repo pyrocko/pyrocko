@@ -10,7 +10,7 @@ import logging
 import numpy as num
 from collections import namedtuple, defaultdict
 
-from pyrocko import util, trace, models
+from pyrocko import util, trace, model
 from .io_common import FileLoadError
 
 
@@ -72,7 +72,7 @@ class SudsStationcomp(SudsStructBase, namedtuple(
 
     def to_station(self):
         net, sta, loc, cha = self.sc_name.nslc()
-        station = models.Station(
+        station = model.Station(
             network=net,
             station=sta,
             location=loc,
@@ -81,7 +81,7 @@ class SudsStationcomp(SudsStructBase, namedtuple(
             elevation=self.elev)
 
         station.add_channel(
-            models.Channel(
+            model.Channel(
                 name=cha,
                 azimuth=self.azim,
                 dip=self.incid - 90.))

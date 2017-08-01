@@ -410,7 +410,6 @@ class GutsTestCase(unittest.TestCase):
 
                 n = shape[0] or 10
                 a = A(arr=num.arange(n, dtype=num.int))
-
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
 

@@ -2,8 +2,10 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 from __future__ import absolute_import
-from .snuffler import Snuffler  # noqa
+from .plot import *  # noqa
+
 from pyrocko.util import parse_md
 
 __doc__ = parse_md(__file__)

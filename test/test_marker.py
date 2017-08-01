@@ -1,7 +1,7 @@
 import unittest
 import tempfile
 
-from pyrocko import util, models
+from pyrocko import util, model
 try:
     from pyrocko.gui import marker
 except ImportError:
@@ -22,7 +22,7 @@ class MarkerTestCase(unittest.TestCase):
     def test_writeread(self):
         nslc_ids = [('', 'STA', '', '*')]
 
-        event = models.Event(lat=111., lon=111., depth=111., time=111.)
+        event = model.Event(lat=111., lon=111., depth=111., time=111.)
 
         _marker = marker.Marker(nslc_ids=nslc_ids, tmin=1., tmax=10.)
         emarker = marker.EventMarker(event=event)

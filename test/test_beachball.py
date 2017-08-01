@@ -9,7 +9,8 @@ import math
 import numpy as num
 from io import BytesIO
 
-from pyrocko import util, moment_tensor as mtm, beachball
+from pyrocko import util, moment_tensor as mtm
+from pyrocko.plot import beachball
 
 from random import random, choice
 

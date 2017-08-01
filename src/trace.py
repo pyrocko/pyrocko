@@ -18,7 +18,7 @@ import logging
 import numpy as num
 from scipy import signal
 
-from . import util, evalresp, orthodrome, pchain, models
+from . import util, evalresp, orthodrome, pchain, model
 from .util import reuse, hpfloat, UnavailableDecimation
 from .guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice
@@ -1629,7 +1629,7 @@ class Trace(object):
         Show trace in a snuffler window.
 
         :param stations: list of `pyrocko.model.Station` objects or ``None``
-        :param events: list of `pyrocko.models.Event` objects or ``None``
+        :param events: list of `pyrocko.model.Event` objects or ``None``
         :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
         :param ntracks: float, number of tracks to be shown initially (default:
             12)
@@ -1648,7 +1648,7 @@ def snuffle(traces, **kwargs):
     Show traces in a snuffler window.
 
     :param stations: list of `pyrocko.model.Station` objects or ``None``
-    :param events: list of `pyrocko.models.Event` objects or ``None``
+    :param events: list of `pyrocko.model.Event` objects or ``None``
     :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
     :param ntracks: float, number of tracks to be shown initially (default: 12)
     :param follow: time interval (in seconds) for real time follow mode or
@@ -2046,7 +2046,7 @@ def _decompose(a):
 def _channels_to_names(channels):
     names = []
     for ch in channels:
-        if isinstance(ch, models.Channel):
+        if isinstance(ch, model.Channel):
             names.append(ch.name)
         else:
             names.append(ch)

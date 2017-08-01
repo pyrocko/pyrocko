@@ -232,7 +232,7 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
         params = dict(post='\n'.join(l))
 
     if parsed:
-        from pyrocko.models import fdsn_station
+        from pyrocko.model import fdsn_station
         format = params.get('format', 'xml')
         if format == 'text':
             if params.get('level', 'station') == 'channel':

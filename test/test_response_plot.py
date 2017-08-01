@@ -6,7 +6,8 @@ import os
 import numpy as num
 from matplotlib import image, pyplot as plt
 
-from pyrocko import response_plot, util
+from pyrocko import util
+from pyrocko.plot import response_plot
 import common
 
 noshow = True

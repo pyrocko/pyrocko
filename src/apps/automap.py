@@ -6,7 +6,8 @@
 
 import sys
 import logging
-from pyrocko import automap, util, model
+from pyrocko import util, model
+from pyrocko.plot import automap
 
 from optparse import OptionParser
 
