@@ -24,9 +24,9 @@ import pickle
 from os.path import join as pjoin
 from optparse import OptionParser
 
-from pyrocko import slink
-from pyrocko import serial_hamster
-from pyrocko import edl
+from pyrocko.streaming import serial_hamster
+from pyrocko.streaming import slink
+from pyrocko.streaming import edl
 
 from pyrocko import pile            # noqa
 from pyrocko import util            # noqa
