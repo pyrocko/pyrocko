@@ -4,7 +4,8 @@ from pyrocko.guts import List
 
 km = 1e3
 
-day= 24.*3600.
+day = 24.*3600.
+
 
 class CombiSource(gf.Source):
     '''Composite source model.'''
@@ -142,7 +143,7 @@ def plot_static_los_profile(result, strike, l, w, x0, y0):
     los = result['displacement.los']
     levels = num.linspace(los.min(), los.max(), 50)
 
-    cmap = ax.tricontourf(E, N, los, cmap=plt.get_cmap('seismic'), 
+    cmap = ax.tricontourf(E, N, los, cmap=plt.get_cmap('seismic'),
                           levels=levels)
 
     for sourcess in patches:

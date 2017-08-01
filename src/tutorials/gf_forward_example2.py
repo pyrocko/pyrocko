@@ -4,7 +4,7 @@ import numpy as num
 # distance in kilometer
 km = 1e3
 # many seconds make a day
-day= 24.*3600.
+day = 24.*3600.
 
 # Ignite the LocalEngine and point it to your fomosto store, e.g. stored on a
 # USB stick, which for example has the id 'Abruzzo_Ameri_static_nearfield'
@@ -30,7 +30,7 @@ obs_size = 20.*km
 ntargets = ngrid**2
 # make regular line vector
 norths = num.linspace(-obs_size, obs_size, ngrid)
-easts  = num.linspace(-obs_size, obs_size, ngrid)
+easts = num.linspace(-obs_size, obs_size, ngrid)
 # make regular grid
 norths2d = num.repeat(norths, len(easts))
 easts2d = num.tile(easts, len(norths))
@@ -61,8 +61,8 @@ def plot_static_los_result(result, target=0):
     '''Helper function for plotting the displacement'''
 
     import matplotlib.pyplot as plt
-   
-    # get target coordinates and displacements from results 
+
+    # get target coordinates and displacements from results
     N = result.request.targets[target].coords5[:, 2]
     E = result.request.targets[target].coords5[:, 3]
     synth_disp = result.results_list[0][target].result
@@ -77,11 +77,11 @@ def plot_static_los_result(result, target=0):
     for comp, ax, vrange in zip(components, fig.axes, vranges):
 
         lmax = num.abs([num.min(vrange), num.max(vrange)]).max()
-        # plot displacements at targets as colored points 
-        cmap = ax.scatter(E, N, c=synth_disp[comp], s = 10., marker = 's', 
+        # plot displacements at targets as colored points
+        cmap = ax.scatter(E, N, c=synth_disp[comp], s=10., marker='s',
                           edgecolor='face', cmap='seismic',
-                          vmin= -1.5*lmax, vmax=1.5*lmax)
-        
+                          vmin=-1.5*lmax, vmax=1.5*lmax)
+
         ax.set_title(comp+' [m]')
         ax.set_aspect('equal')
         ax.set_xlim(-obs_size, obs_size)

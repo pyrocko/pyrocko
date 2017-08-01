@@ -4,7 +4,7 @@ import numpy as num
 # distance in kilometer
 km = 1e3
 # many seconds make a day
-day= 24.*3600.
+day = 24.*3600.
 
 # Ignite the LocalEngine and point it to your fomosto store, e.g. stored on a
 # USB stick, which for example has the id 'Abruzzo_Ameri_static_nearfield'
@@ -36,7 +36,7 @@ obs_size = 20.*km
 ntargets = ngrid**2
 # make regular line vector
 norths = num.linspace(-obs_size, obs_size, ngrid)
-easts  = num.linspace(-obs_size, obs_size, ngrid)
+easts = num.linspace(-obs_size, obs_size, ngrid)
 # make regular grid
 norths2d = num.repeat(norths, len(easts))
 easts2d = num.tile(easts, len(norths))
@@ -74,10 +74,10 @@ def plot_static_los_result(result, target=0):
     N = result.request.targets[target].coords5[:, 2]
     E = result.request.targets[target].coords5[:, 3]
     synth_disp = result.results_list[0][target].result
-    
-    # we get the fault projection to the surface for plotting 
+
+    # we get the fault projection to the surface for plotting
     n, e = thrust.outline(cs='xy').T
-    
+
     fig, _ = plt.subplots(1, 2, figsize=(8, 4))
     fig.suptitle(
         "fault: dep={:0.2f}, l={}, w={:0.2f},str={},"
@@ -96,10 +96,10 @@ def plot_static_los_result(result, target=0):
 
     cmap = ax.scatter(
         E, N, c=los,
-        s = 10., marker = 's', 
+        s=10., marker='s',
         edgecolor='face',
-        cmap=plt.get_cmap('seismic'), 
-        vmin= -1.*losmax, vmax=1.*losmax)
+        cmap=plt.get_cmap('seismic'),
+        vmin=-1.*losmax, vmax=1.*losmax)
 
     ax.set_title('line-of-sight displacement [m]')
     ax.set_aspect('equal')
@@ -119,8 +119,8 @@ def plot_static_los_result(result, target=0):
     insar_phase = -num.mod(los, c_lambda/2.)/(c_lambda/2.)*2.*num.pi - num.pi
 
     cmap = ax.scatter(
-        E, N, c= insar_phase,
-        s = 10., marker = 's', 
+        E, N, c=insar_phase,
+        s=10., marker='s',
         edgecolor='face',
         cmap=plt.get_cmap('gist_rainbow'))
 
@@ -128,7 +128,7 @@ def plot_static_los_result(result, target=0):
     ax.set_ylim(-obs_size, obs_size)
     ax.set_title('simulated interferogram')
     ax.set_aspect('equal')
-    
+
     # plot fault outline
     ax.fill(e, n, color=(0.5, 0.5, 0.5), alpha=0.5)
     # We outline the top edge of the fault with a thick line

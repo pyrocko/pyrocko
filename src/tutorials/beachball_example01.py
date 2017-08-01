@@ -2,8 +2,10 @@ import random
 import logging
 import sys
 from matplotlib import pyplot as plt
-from pyrocko import beachball, moment_tensor as pmt
+from pyrocko import moment_tensor as pmt
 from pyrocko import util
+from pyrocko.plot import beachball
+
 
 logger = logging.getLogger(sys.argv[0])
 
@@ -13,7 +15,7 @@ fig = plt.figure(figsize=(10., 4.))
 fig.subplots_adjust(left=0., right=1., bottom=0., top=1.)
 axes = fig.add_subplot(1, 1, 1)
 
-for i in xrange(200):
+for i in range(200):
 
     # create random moment tensor
     mt = pmt.MomentTensor.random_mt()
@@ -29,7 +31,7 @@ for i in xrange(200):
             alpha=random.random(),
             linewidth=1.0)
 
-    except beachball.BeachballError, e:
+    except beachball.BeachballError as e:
         logger.error('%s for MT:\n%s' % (e, mt))
 
 axes.set_xlim(0., 10.)

@@ -423,6 +423,7 @@ subpacknames = [
     'pyrocko.gui.snufflings',
     'pyrocko.datasets',
     'pyrocko.datasets.topo',
+    'pyrocko.tutorials',
 ]
 
 setup(
