@@ -19,6 +19,8 @@ for traces in p.chopper_grouped(tmin=tmin, tinc=tinc, gather=lambda tr: tr.nslc_
     for tr in traces:
         dirhz = '%ihz' % int(round(1./tr.deltat))
         io.save(
-            [tr], output_path, 
+            [tr], output_path,
             format='sac',
             additional={'dirhz': dirhz},
+            stations=stations
+        )
