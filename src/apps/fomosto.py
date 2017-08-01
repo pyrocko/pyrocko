@@ -13,7 +13,8 @@ import logging
 import copy
 from optparse import OptionParser
 
-from pyrocko import util, trace, gf, cake, io, gui_util
+from pyrocko import util, trace, gf, cake, io
+from pyrocko.gui import gui_util
 
 pjoin = os.path.join
 logger = logging.getLogger('main')
