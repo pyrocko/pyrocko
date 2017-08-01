@@ -14,7 +14,7 @@ from scipy import stats
 
 from . import trace, util
 
-logger = logging.getLogger('pyrocko.serial_hamster')
+logger = logging.getLogger('pyrocko.streaming.serial_hamster')
 
 
 class QueueIsEmpty(Exception):

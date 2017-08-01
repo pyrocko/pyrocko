@@ -414,16 +414,17 @@ subpacknames = [
     'pyrocko.gf',
     'pyrocko.fomosto',
     'pyrocko.fomosto.report',
-    'pyrocko.fdsn',
+    'pyrocko.client',
     'pyrocko.apps',
     'pyrocko.io',
     'pyrocko.model',
     'pyrocko.plot',
     'pyrocko.gui',
     'pyrocko.gui.snufflings',
-    'pyrocko.datasets',
-    'pyrocko.datasets.topo',
     'pyrocko.tutorials',
+    'pyrocko.dataset',
+    'pyrocko.dataset.topo',
+    'pyrocko.streaming',
 ]
 
 setup(

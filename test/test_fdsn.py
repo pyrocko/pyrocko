@@ -7,9 +7,9 @@ import tempfile
 import numpy as num
 import urllib
 import logging
-from pyrocko import util, trace, iris_ws
+from pyrocko import util, trace
 from pyrocko.io import fdsn_station
-from pyrocko.fdsn import ws as fdsn_ws
+from pyrocko.client import fdsn, iris
 
 import common
 
@@ -51,10 +51,10 @@ class FDSNStationTestCase(unittest.TestCase):
 
     def test_retrieve(self):
         for site in ['geofon', 'iris']:
-            fsx = fdsn_ws.station(site=site,
-                                  network='GE',
-                                  station='EIL',
-                                  level='channel')
+            fsx = fdsn.station(site=site,
+                               network='GE',
+                               station='EIL',
+                               level='channel')
 
             assert len(fsx.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
@@ -63,11 +63,11 @@ class FDSNStationTestCase(unittest.TestCase):
         tmin = stt('2010-01-15 10:00:00')
         tmax = stt('2010-01-15 10:01:00')
         for site in ['geofon', 'iris']:
-            fdsn_ws.dataselect(site=site,
-                               network='GE',
-                               station='EIL',
-                               starttime=tmin,
-                               endtime=tmax)
+            fdsn.dataselect(site=site,
+                            network='GE',
+                            station='EIL',
+                            starttime=tmin,
+                            endtime=tmax)
 
     def test_read_big(self):
         for site in ['iris']:
@@ -77,7 +77,7 @@ class FDSNStationTestCase(unittest.TestCase):
     def OFF_test_response(self):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
-        sx = fdsn_ws.station(
+        sx = fdsn.station(
             site='iris',
             network='II',
             channel='?HZ',
@@ -88,7 +88,7 @@ class FDSNStationTestCase(unittest.TestCase):
         for nslc in sx.nslc_code_list:
             print(nslc)
             net, sta, loc, cha = nslc
-            sxr = fdsn_ws.station(
+            sxr = fdsn.station(
                 site='iris',
                 network=net,
                 station=sta,
@@ -98,7 +98,7 @@ class FDSNStationTestCase(unittest.TestCase):
                 endafter=tmax,
                 level='response', matchtimeseries=True)
 
-            fi = iris_ws.ws_resp(
+            fi = iris.ws_resp(
                 network=net,
                 station=sta,
                 location=loc,
@@ -190,7 +190,7 @@ class FDSNStationTestCase(unittest.TestCase):
 
         for url in to_check:
             try:
-                fdsn_ws._request(url[0])
+                fdsn._request(url[0])
             except urllib.error.HTTPError as e:
                 logger.warn('%s - %s referenced in pyrocko.%s' %
                             (e, url[0], url[1]))

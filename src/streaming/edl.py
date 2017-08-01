@@ -13,7 +13,7 @@ import numpy as num
 
 from . import trace, util
 
-logger = logging.getLogger('pyrocko.edl')
+logger = logging.getLogger('pyrocko.streaming.edl')
 
 
 def hexdump(chars, sep=' ', width=16):

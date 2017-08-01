@@ -15,7 +15,7 @@ import numpy as num
 
 from . import trace
 
-logger = logging.getLogger('pyrocko.slink')
+logger = logging.getLogger('pyrocko.streaming.slink')
 
 
 def preexec():

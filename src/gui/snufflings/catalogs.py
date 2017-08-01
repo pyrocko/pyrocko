@@ -6,7 +6,7 @@ from __future__ import absolute_import
 from ..snuffling import Snuffling, Param, Choice
 from ..gui_util import EventMarker
 
-from pyrocko import catalog
+from pyrocko.client import catalog
 
 
 class CatalogSearch(Snuffling):
@@ -57,7 +57,9 @@ class CatalogSearch(Snuffling):
             'USGS/NEIC PDE': catalog.USGS('pde'),
             'USGS/NEIC US': catalog.USGS('us'),
             'Global-CMT': catalog.GlobalCMT(),
-            'Kinherd': catalog.Kinherd(), }
+            'Kinherd': catalog.Kinherd(),
+            'Saxony (Uni-Leipzig)': catalog.Saxony(),
+            }
 
         catkeys = sorted(self.catalogs.keys())
         self.set_name('Catalog Search')

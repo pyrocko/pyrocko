@@ -6,11 +6,10 @@ from __future__ import absolute_import
 from pyrocko.gui.snuffling import Snuffling
 from pyrocko.gui.gui_util import EventMarker
 
-from pyrocko import catalog
+from pyrocko.client import catalog
 
 
 class GeofonEvents(Snuffling):
-
     '''
     Get events from GEOFON catalog.
     '''

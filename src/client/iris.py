@@ -14,7 +14,7 @@ except ImportError:
     from urllib.error import HTTPError
 from urllib import parse
 
-from . import util, pz, model
+from pyrocko import util, pz, model
 
 
 logger = logging.getLogger('pyrocko.iris_ws')
