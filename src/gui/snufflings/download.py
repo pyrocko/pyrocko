@@ -9,7 +9,7 @@ import logging
 from pyrocko.gui.gui_util import EventMarker
 
 from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice
-from pyrocko import util, io, models
+from pyrocko import util, io, model
 from pyrocko.fdsn import ws as fdsn_ws
 pjoin = os.path.join
 
@@ -156,7 +156,7 @@ class Download(Snuffling):
 
         all_traces, stations = self.current_stuff
         io.save(all_traces, data_fn)
-        models.station.dump_stations(stations, stations_fn)
+        model.station.dump_stations(stations, stations_fn)
 
 
 def __snufflings__():

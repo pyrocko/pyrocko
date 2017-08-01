@@ -10,11 +10,9 @@ import math
 import os.path as op
 
 from . import srtmgl3, etopo1, dataset, tile
-from .. import config, util
+from pyrocko import config, util
 
-from pyrocko.util import parse_md
-
-__doc__ = parse_md(__file__)
+__doc__ = util.parse_md(__file__)
 
 positive_region = tile.positive_region
 

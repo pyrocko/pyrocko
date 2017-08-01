@@ -12,7 +12,7 @@ import os.path as op
 import numpy as num
 
 from . import tile
-from .. import util
+from pyrocko import util
 
 logger = logging.getLogger('pyrocko.topo.dataset')
 

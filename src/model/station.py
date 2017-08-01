@@ -14,7 +14,7 @@ from pyrocko import orthodrome
 from pyrocko.orthodrome import wrap
 from pyrocko.guts import Object, Float, String, List
 
-logger = logging.getLogger('pyrocko.models.station')
+logger = logging.getLogger('pyrocko.model.station')
 
 guts_prefix = 'pf'
 

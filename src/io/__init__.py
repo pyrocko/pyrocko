@@ -18,6 +18,8 @@ __doc__ = parse_md(__file__)
 
 __doc__ = util.parse_md(__file__)
 
+__doc__ = util.parse_md(__file__)
+
 logger = logging.getLogger('pyrocko.io')
 
 

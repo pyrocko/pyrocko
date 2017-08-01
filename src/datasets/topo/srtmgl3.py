@@ -15,7 +15,7 @@ except ImportError:
 import numpy as num
 
 from pyrocko import util, config
-from pyrocko.topo import tile, dataset
+from . import tile, dataset
 
 citation = '''
 Farr, T. G., and M. Kobrick, 2000, Shuttle Radar Topography Mission produces a

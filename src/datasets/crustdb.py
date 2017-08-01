@@ -14,8 +14,9 @@ from os import path
 
 from pyrocko.guts import Object, String, Float, Int
 from pyrocko.guts_array import Array
+
 from pyrocko.cake import LayeredModel, Material
-from pyrocko.cake_plot import my_model_plot, xscaled, yscaled
+from pyrocko.plot.cake_plot import my_model_plot, xscaled, yscaled
 
 from .crustdb_abbr import ageKey, provinceKey, referenceKey, pubYear  # noqa
 
@@ -617,7 +618,7 @@ class CrustDB(object):
             plt.show()
 
     def plotMap(self, outfile, **kwargs):
-        from . import gmtpy
+        from pyrocko.plot import gmtpy
         lats = self.lats()
         lons = self.lons()
         s, n, w, e = (lats.min(), lats.max(), lons.min(), lons.max())

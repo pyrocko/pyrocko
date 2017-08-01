@@ -415,7 +415,6 @@ subpacknames = [
     'pyrocko.fomosto',
     'pyrocko.fomosto.report',
     'pyrocko.fdsn',
-    'pyrocko.topo',
     'pyrocko.apps',
     'pyrocko.io',
     'pyrocko.model',
@@ -423,6 +422,7 @@ subpacknames = [
     'pyrocko.gui',
     'pyrocko.gui.snufflings',
     'pyrocko.datasets',
+    'pyrocko.datasets.topo',
 ]
 
 setup(

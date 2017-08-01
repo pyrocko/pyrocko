@@ -10,7 +10,7 @@ from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
 from . import event
 
 
-logger = logging.getLogger('pyrocko.models.quakeml')
+logger = logging.getLogger('pyrocko.model.quakeml')
 
 
 def one_element_or_none(l):

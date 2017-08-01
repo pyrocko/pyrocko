@@ -7,8 +7,9 @@ import numpy as num
 from numpy.testing import assert_allclose
 from matplotlib import image, pyplot as plt
 
-from pyrocko import util, gmtpy
-from pyrocko.gmtpy import cm, inch, golden_ratio
+from pyrocko import util
+from pyrocko.plot import gmtpy
+from pyrocko.plot.gmtpy import cm, inch, golden_ratio
 
 import common
 

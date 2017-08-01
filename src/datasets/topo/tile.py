@@ -8,7 +8,7 @@ import math
 import numpy as num
 import scipy.signal
 
-from ..orthodrome import positive_region
+from pyrocko.orthodrome import positive_region
 
 
 class OutOfBounds(Exception):

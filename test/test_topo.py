@@ -1,6 +1,7 @@
 import unittest
 import numpy as num
-from pyrocko import topo, util, config
+from pyrocko import util, config
+from pyrocko.datasets import topo
 
 
 def srtm_credentials():

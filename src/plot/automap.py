@@ -20,11 +20,12 @@ except ImportError:
 
 import numpy as num
 
-from .guts import Object, Float, Bool, Int, Tuple, String, List
-from .guts import Unicode, Dict
-from .guts_array import Array
-from . import orthodrome as od
-from . import gmtpy, topo
+from pyrocko.guts import (Object, Float, Bool, Int, Tuple, String, List,
+                          Unicode, Dict)
+from pyrocko.guts_array import Array
+from pyrocko.datasets import topo
+from pyrocko import orthodrome as od
+from . import gmtpy
 
 points_in_region = od.points_in_region
 

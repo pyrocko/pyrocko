@@ -20,7 +20,7 @@ from pyrocko.guts import (StringChoice, StringPattern, UnicodePattern, String,
                           ValidationError, TBase)
 from pyrocko.guts import load_xml  # noqa
 
-import pyrocko.models
+import pyrocko.model
 from pyrocko import trace, util
 
 guts_prefix = 'pf'
@@ -896,9 +896,9 @@ def pyrocko_station_from_channels(nsl, channels, inconsistencies='warn'):
             error=inconsistencies)
 
         pchannels.append(
-            pyrocko.models.Channel(code, azimuth=azimuth, dip=dip))
+            pyrocko.model.Channel(code, azimuth=azimuth, dip=dip))
 
-    return pyrocko.models.Station(
+    return pyrocko.model.Station(
         *nsl,
         lat=mlat,
         lon=mlon,

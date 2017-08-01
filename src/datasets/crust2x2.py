@@ -413,7 +413,7 @@ def plot(func, filename, **kwargs):
     latss, lonss = num.meshgrid(lats, lons)
     thickness = vecfunc(latss, lonss)
 
-    from pyrocko import gmtpy
+    from pyrocko.plot import gmtpy
     cm = gmtpy.cm
     marg = (1.5*cm, 2.5*cm, 1.5*cm, 1.5*cm)
     p = gmtpy.Simple(
