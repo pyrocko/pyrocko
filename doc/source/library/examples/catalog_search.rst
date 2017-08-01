@@ -12,7 +12,7 @@ This example demonstrates how to query the `GlobalCMT
 <http://www.globalcmt.org/>`_ [#f1]_ database for events which occurred in 2011
 in northern Chile.
 
- .. literalinclude :: /../../src/tutorials/catalog_search_globalcmt.py
+.. literalinclude :: /../../src/tutorials/catalog_search_globalcmt.py
     :language: python
 
 Download :download:`catalog_search_globalcmt.py </../../src/tutorials/catalog_search_globalcmt.py>`
@@ -58,7 +58,7 @@ Search for an event name only in the `Geofon <http://geofon.gfz-potsdam.de>`_
 catalog [#f2]_ using :meth:`~pyrocko.catalog.Geofon`, with a given magnitude
 range and timeframe.
 
- .. literalinclude :: /../../src/tutorials/catalog_search_geofon.py
+.. literalinclude :: /../../src/tutorials/catalog_search_geofon.py
     :language: python
 
 Download :download:`catalog_search_geofon.py </../../src/tutorials/catalog_search_geofon.py>`

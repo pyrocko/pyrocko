@@ -14,3 +14,5 @@ Classes covered in this example:
 
 .. literalinclude :: /../../src/tutorials/cake_ray_tracing.py
     :language: python
+
+ Download :download:`cake_ray_tracing.py </../../src/tutorials/cake_ray_tracing.py>`
