@@ -67,7 +67,7 @@ for phase_def in phase_defs:
     interpolated_tts[phase_def.id] = sptree
 
     # Dump the sptree for later reuse:
-    sptree.dump(filename='sptree_%s.yaml' % phase_def.id)
+    sptree.dump(filename='sptree_%s.yaml' % phase_def.id.split(':')[1])
 
 # Define a :py:class:`pyrocko.gf.meta.Timing` instance.
 timing = meta.Timing('first(p|P)')
