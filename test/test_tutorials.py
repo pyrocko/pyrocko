@@ -29,6 +29,17 @@ to_test = {
     'cake_raytracing': ['sptree_p', 'sptree_P'],
     'catalog_search_globalcmt': ['northern_chile_events.txt'],
     'catalog_search_geofon': None,
+    'make_hour_files': ['test.mseed', 'test_hourfiles'],
+    'convert_mseed_sac': None,
+    'make_hour_files': None,
+    'fdsn_request_geofon': ['traces.mseed', 'responses.xml', 'responses.yaml'],
+    'fdsn_stationxml_modify': ['changed.xml'],
+    'guts_usage': ['sensorarray1'],
+    'orthodrome_example1': None,
+    'orthodrome_example2': None,
+    'orthodrome_example3': None,
+    'orthodrome_example4': None,
+    'orthodrome_example5': None,
 }
 
 
