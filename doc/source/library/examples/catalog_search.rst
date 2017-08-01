@@ -12,31 +12,10 @@ This example demonstrates how to query the `GlobalCMT
 <http://www.globalcmt.org/>`_ [#f1]_ database for events which occurred in 2011
 in northern Chile.
 
-::
+ .. literalinclude :: /../../src/tutorials/catalog_search_globalcmt.py
+    :language: python
 
-    from pyrocko import catalog, util, model
-
-    tmin = util.str_to_time('2011-01-01 00:00:00')  # beginning time of query
-    tmax = util.str_to_time('2011-12-31 23:59:59')
-
-    # create an instance of the global CMT catalog
-    global_cmt_catalog = catalog.GlobalCMT()
-
-    # query the catalog
-    events = global_cmt_catalog.get_events(
-        time_range=(tmin, tmax),
-        magmin=2.,
-        latmin=-35.,
-        latmax=-20.,
-        lonmin=-76.,
-        lonmax=-65.)
-
-    print 'Downloaded %s events' % len(events)
-    print 'The last one is:'
-    print events[-1]
-
-    # dump events to catalog
-    model.dump_events(events, 'northern_chile_events.txt')
+Download :download:`catalog_search_globalcmt.py </../../src/tutorials/catalog_search_globalcmt.py>`
 
 
 We expect to see the following output:
@@ -79,24 +58,10 @@ Search for an event name only in the `Geofon <http://geofon.gfz-potsdam.de>`_
 catalog [#f2]_ using :meth:`~pyrocko.catalog.Geofon`, with a given magnitude
 range and timeframe.
 
-::
+ .. literalinclude :: /../../src/tutorials/catalog_search_geofon.py
+    :language: python
 
-    from pyrocko import catalog, util
-
-    tmin = util.ctimegm('2010-01-12 21:50:00')
-    tmax = util.ctimegm('2010-01-13 03:17:00')  # ending time of query
-    mag = 6.                                    # minimum magntiude (open end)
-
-    # download event information from GEOFON web page
-
-    geofon = catalog.Geofon()
-    event_names = geofon.get_event_names(
-        time_range=(tmin, tmax),
-        magmin=mag)
-
-    for event_name in event_names:
-        event = geofon.get_event(event_name)
-        print event
+Download :download:`catalog_search_geofon.py </../../src/tutorials/catalog_search_geofon.py>`
 
 
 We expect to see the following output (in YAML format):
