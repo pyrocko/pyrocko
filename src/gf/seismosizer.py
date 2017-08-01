@@ -82,12 +82,15 @@ class ConversionError(Exception):
 
 
 class NoSuchStore(BadRequest):
-    def __init__(self, store_id):
-        Exception.__init__(self)
+    def __init__(self, store_id=None):
+        BadRequest.__init__(self)
         self.store_id = store_id
 
     def __str__(self):
-        return 'no GF store with id "%s" found.' % self.store_id
+        if self.store_id is not None:
+            return 'no GF store with id "%s" found.' % self.store_id
+        else:
+            return 'GF store not found'
 
 
 def ufloat(s):
