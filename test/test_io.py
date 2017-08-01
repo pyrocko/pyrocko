@@ -191,8 +191,6 @@ class IOTestCase(unittest.TestCase):
         assert e.time == util.stt("1999-04-02 17:05:10.500")
 
 
-
-
 if __name__ == "__main__":
     util.setup_logging('test_io', 'warning')
     unittest.main()
