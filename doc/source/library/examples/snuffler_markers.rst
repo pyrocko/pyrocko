@@ -21,7 +21,7 @@ The following example shows how to read a Pyrocko marker file, how to
 reassociate any contained phases and events, and how to access the attached
 event information, which may be shared between different markers.
 
-Download :download:`markers_example1.py </static/markers_example1.py>`
+Download :download:`markers_example1.py </../../src/tutorials/markers_example1.py>`
 
-.. literalinclude :: /static/markers_example1.py
+.. literalinclude :: /../../src/tutorials/markers_example1.py
     :language: python

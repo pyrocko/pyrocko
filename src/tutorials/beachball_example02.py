@@ -1,5 +1,7 @@
 from matplotlib import transforms, pyplot as plt
-from pyrocko import beachball, gf
+from pyrocko import gf
+from pyrocko.plot import beachball
+
 
 # create source object
 source1 = gf.DCSource(depth=35e3, strike=0., dip=90., rake=0.)

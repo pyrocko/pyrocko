@@ -1,5 +1,5 @@
 
-from pyrocko import response_plot
+from pyrocko.plot import response_plot
 
 resps, labels = response_plot.load_response_information(
     'test_response.resp', 'resp')

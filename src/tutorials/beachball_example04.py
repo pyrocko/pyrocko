@@ -1,6 +1,7 @@
 import numpy as num
 from matplotlib import pyplot as plt
-from pyrocko import moment_tensor as pmt, beachball, cake, orthodrome
+from pyrocko import moment_tensor as pmt, cake, orthodrome
+from pyrocko.plot import beachball
 
 km = 1000.
 

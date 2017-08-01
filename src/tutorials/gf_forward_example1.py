@@ -1,6 +1,6 @@
 from pyrocko.gf import LocalEngine, Target, DCSource
 from pyrocko import trace
-from pyrocko.gui_util import PhaseMarker
+from pyrocko.gui.gui_util import PhaseMarker
 
 # We need a pyrocko.gf.Engine object which provides us with the traces
 # extracted from the store. In this case we are going to use a local

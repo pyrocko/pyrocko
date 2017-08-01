@@ -1,5 +1,9 @@
 from pyrocko import model
-from pyrocko.automap import Map
+from pyrocko.plot.automap import Map
+from pyrocko.tutorials import get_tutorial_data
+
+# Download example data
+get_tutorial_data('stations_deadsea.pf')
 
 # Generate the basic map
 m = Map(
@@ -32,7 +36,7 @@ labels = ['.'.join(s.nsl()) for s in stations]
 m.gmt.psxy(in_columns=(lons, lats), S='t20p', G='black', *m.jxyr)
 
 # Station labels
-for i in xrange(len(stations)):
+for i in range(len(stations)):
     m.add_label(lats[i], lons[i], labels[i])
 
 # Draw a beachball

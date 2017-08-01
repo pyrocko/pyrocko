@@ -1,4 +1,9 @@
 from pyrocko import pz, io, trace
+from pyrocko.tutorials import get_tutorial_data
+
+# Download example data
+get_tutorial_data('STS2-Generic.polezero.txt')
+get_tutorial_data('test.mseed')
 
 # read poles and zeros from SAC format pole-zero file
 zeros, poles, constant = pz.read_sac_zpk('STS2-Generic.polezero.txt')
