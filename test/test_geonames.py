@@ -1,7 +1,7 @@
 # python 2/3
 
 import unittest
-from pyrocko.datasets import geonames
+from pyrocko.dataset import geonames
 from pyrocko import util
 
 
