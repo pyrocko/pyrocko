@@ -8,7 +8,7 @@ km = 1e3
 day = 24.*3600.
 
 # Download a Greens Functions store, programmatically.
-store_id = 'Abruzzo_Ameri_static_nearfield'
+store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
 gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
 # Setup the LocalEngine and point it to the fomosto store you just downloaded.
