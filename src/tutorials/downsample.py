@@ -1,12 +1,14 @@
 from pyrocko import pile, io, util
-import time, calendar
+import time
+import calendar
 
 # when pile.make_pile() is called without any arguments, the command line
-# parameters given to the script are searched for waveform files and directories
+# parameters given to the script are searched for waveform files and
+# directories
 p = pile.make_pile()
 
 # get timestamp for full hour before first data sample in all selected traces
-tmin = calendar.timegm( time.gmtime(p.tmin)[:4] + ( 0, 0 ) )
+tmin = calendar.timegm(time.gmtime(p.tmin)[:4] + (0, 0))
 
 tinc = 3600.
 tpad = 10.
@@ -16,7 +18,7 @@ target_deltat = 0.1
 # overlap
 for traces in p.chopper(tmin=tmin, tinc=tinc, tpad=tpad):
 
-    if traces: # the list could be empty due to gaps
+    if traces:  # the list could be empty due to gaps
         for tr in traces:
             tr.downsample_to(target_deltat, snap=True, demean=False)
 

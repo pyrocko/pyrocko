@@ -1,7 +1,8 @@
-from pyrocko.guts import load, Object, Float, Int, String
+from pyrocko.guts import Object, Float, Int, String
 from pyrocko.gf import Target
 
 guts_prefix = 'gft'
+
 
 class SensorArray(Target):
 

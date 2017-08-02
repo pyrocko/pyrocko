@@ -1,3 +1,4 @@
+from guts import load
 from guts_sensor_array import SensorArray
 
 
@@ -63,4 +64,3 @@ strike: 0.0
 sensor_count: 50
 name: Sensory array 3
 '''
-

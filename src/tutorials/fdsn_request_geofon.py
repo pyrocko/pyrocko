@@ -33,8 +33,9 @@ for tr in traces:
     polezero_response = request_response.get_pyrocko_response(
         nslc=tr.nslc_id,
         timespan=(tr.tmin, tr.tmax),
-        fake_input_units='M')       # (Required for consistent responses
-                                    # throughout entire data set)
+        fake_input_units='M')
+    # *fake_input_units*: required for consistent responses throughout entire
+    # data set
 
     # deconvolve transfer function
     restituted = tr.transfer(

@@ -1,4 +1,5 @@
-from pyrocko import catalog, util, model
+from pyrocko import util, model
+from pyrocko.client import catalog
 
 tmin = util.str_to_time('2011-01-01 00:00:00')  # beginning time of query
 tmax = util.str_to_time('2011-12-31 23:59:59')
@@ -21,4 +22,3 @@ print(events[-1])
 
 # dump events to catalog
 model.dump_events(events, 'northern_chile_events.txt')
-

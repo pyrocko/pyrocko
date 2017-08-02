@@ -1,22 +1,20 @@
 from pyrocko import gf
 import numpy as num
 
-# distance in kilometer
-km = 1e3
-
-# many seconds make a day
-day = 24.*3600.
-
 # Download a Greens Functions store, programmatically.
 store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
 gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
 # Setup the LocalEngine and point it to the fomosto store you just downloaded.
+# *store_superdirs* is a list of directories where to look for GF Stores.
 engine = gf.LocalEngine(store_superdirs=['.'])
 
 # We define an extended source, in this case a rectangular geometry
 # Centroid UTM position is defined relatively to geographical lat, lon position
 # Purely lef-lateral strike-slip fault with an N104W azimuth.
+
+km = 1e3  # for convenience
+
 rect_source = gf.RectangularSource(
     lat=0., lon=0.,
     north_shift=0., east_shift=0., depth=6.5*km,
@@ -27,12 +25,15 @@ rect_source = gf.RectangularSource(
 # We will define a grid of targets
 # number in east and north directions, and total
 ngrid = 80
+
 # extension from origin in all directions
 obs_size = 20.*km
 ntargets = ngrid**2
+
 # make regular line vector
 norths = num.linspace(-obs_size, obs_size, ngrid)
 easts = num.linspace(-obs_size, obs_size, ngrid)
+
 # make regular grid
 norths2d = num.repeat(norths, len(easts))
 easts2d = num.tile(easts, len(norths))
@@ -49,7 +50,7 @@ phi.fill(num.deg2rad(-90-heading))
 satellite_target = gf.SatelliteTarget(
     north_shifts=norths2d,
     east_shifts=easts2d,
-    tsnapshot=1.*day,
+    tsnapshot=24. * 3600.,  # one day
     interpolation='nearest_neighbor',
     phi=phi,
     theta=theta,
@@ -79,6 +80,7 @@ def plot_static_los_result(result, target=0):
     for comp, ax, vrange in zip(components, fig.axes, vranges):
 
         lmax = num.abs([num.min(vrange), num.max(vrange)]).max()
+
         # plot displacements at targets as colored points
         cmap = ax.scatter(E, N, c=synth_disp[comp], s=10., marker='s',
                           edgecolor='face', cmap='seismic',

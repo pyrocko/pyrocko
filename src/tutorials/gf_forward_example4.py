@@ -2,10 +2,6 @@ import numpy as num
 from pyrocko import gf
 from pyrocko.guts import List
 
-km = 1e3
-
-day = 24.*3600.
-
 
 class CombiSource(gf.Source):
     '''Composite source model.'''
@@ -15,6 +11,7 @@ class CombiSource(gf.Source):
     subsources = List.T(gf.Source.T())
 
     def __init__(self, subsources=[], **kwargs):
+
         if subsources:
 
             lats = num.array(
@@ -38,7 +35,6 @@ class CombiSource(gf.Source):
         return 1.0
 
     def discretize_basesource(self, store, target=None):
-
         dsources = []
         t0 = self.subsources[0].time
         for sf in self.subsources:
@@ -49,16 +45,21 @@ class CombiSource(gf.Source):
 
         return gf.DiscretizedMTSource.combine(dsources)
 
-# distance in kilometer
-km = 1e3
+
+# Download a Greens Functions store, programmatically.
+store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
+gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+
+km = 1e3   # distance in kilometer
+
 # We define a grid for the targets.
 left, right, bottom, top = -10*km, 10*km, -10*km, 10*km
 ntargets = 1000
 
 # Ignite the LocalEngine and point it to fomosto stores stored on a
 # USB stick, for this example we use a static store with id 'static_store'
-engine = gf.LocalEngine(store_superdirs=['/media/usb/stores'])
-store_id = 'Abruzzo_Ameri_static_nearfield'
+engine = gf.LocalEngine(store_superdirs=['.'])
+store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
 
 # We define two finite sources
 # The first one is a purely vertical strike-slip fault
@@ -92,7 +93,7 @@ theta.fill(num.deg2rad(90. - look))
 satellite_target = gf.SatelliteTarget(
     north_shifts=num.random.uniform(bottom, top, ntargets),
     east_shifts=num.random.uniform(left, right, ntargets),
-    tsnapshot=1.*day,
+    tsnapshot=24.*3600.,
     interpolation='nearest_neighbor',
     phi=phi,
     theta=theta,
