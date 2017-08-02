@@ -20,7 +20,7 @@ from pyrocko.plot.cake_plot import my_model_plot, xscaled, yscaled
 
 from .crustdb_abbr import ageKey, provinceKey, referenceKey, pubYear  # noqa
 
-logger = logging.getLogger('pyrocko.crustdb')
+logger = logging.getLogger('pyrocko.dataset.crustdb')
 THICKNESS_HALFSPACE = 2
 
 db_url = 'http://kinherd.org/pyrocko_data/gsc20130501.txt'
@@ -993,6 +993,3 @@ class CrustDB(object):
             add_record(vp, vs, h, d, lat, lon, meta, ilayer)
             logger.info('Loaded %d profiles from %s' %
                         (self.nprofiles, database_file))
-
-
-__all__ = ['CrustDB', 'VelocityProfile']

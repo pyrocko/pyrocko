@@ -221,8 +221,7 @@ def _clip(x, mi, ma):
 
 
 class Crust2(object):
-    '''
-    Access CRUST2.0 model.
+    '''Access CRUST2.0 model.
 
         :param directory: Directory with the data files which contain the
             CRUST2.0 model data. If this is set to ``None``, builtin CRUST2.0
