@@ -1,4 +1,4 @@
-from guts import load
+from pyrocko.guts import load
 from guts_sensor_array import SensorArray
 
 
@@ -45,7 +45,7 @@ name: Sensor array 2
 sa1.dump(filename='sensorarray1')
 
 # import object definition from file
-sa3 = load('sensorarray1')
+sa3 = load(filename='sensorarray1')
 sa3.name = 'Sensor array 3'
 print(sa3)
 '''

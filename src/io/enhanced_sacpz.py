@@ -7,9 +7,9 @@ from __future__ import absolute_import, print_function
 import time
 from collections import defaultdict
 
-from pyrocko.model import fdsn_station as fs
 from pyrocko import trace, util, pz
 from pyrocko.io import io_common
+from pyrocko.io import fdsn_station as fs
 from pyrocko.guts import Object, Tuple, String, Timestamp, Float
 
 

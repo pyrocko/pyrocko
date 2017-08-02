@@ -60,7 +60,7 @@ class ResponseTestCase(unittest.TestCase):
     def test_conversions(self):
 
         from pyrocko import model
-        from pyrocko.fdsn import resp, enhanced_sacpz
+        from pyrocko.io import resp, enhanced_sacpz
         from pyrocko.io import fdsn_station as station
 
         t = util.str_to_time('2014-01-01 00:00:00')
