@@ -10,10 +10,10 @@ from pyrocko.gui.gui_util import EventMarker
 
 from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice
 from pyrocko import util, io, model
-from pyrocko.fdsn import ws as fdsn_ws
+from pyrocko.client import fdsn
 pjoin = os.path.join
 
-logger = logging.getLogger('pyrocko.snufflings.iris_data')
+logger = logging.getLogger('pyrocko.gui.snufflings.iris_data')
 logger.setLevel(logging.INFO)
 
 
@@ -71,14 +71,14 @@ class Download(Snuffling):
             if site == 'iris':
                 kwargs['matchtimeseries'] = True
 
-            sx = fdsn_ws.station(
+            sx = fdsn.station(
                 site=site, latitude=lat, longitude=lon,
                 minradius=self.minradius, maxradius=self.maxradius,
                 startbefore=tmin, endafter=tmax, channel=self.channel_pattern,
                 format='text', level='channel', includerestricted=False,
                 **kwargs)
 
-        except fdsn_ws.EmptyResult:
+        except fdsn.EmptyResult:
             self.fail('No stations matching given criteria.')
 
         stations = sx.get_pyrocko_stations()
@@ -89,7 +89,7 @@ class Download(Snuffling):
         fns = []
         for net in networks:
             nstations = [s for s in stations if s.network == net]
-            selection = fdsn_ws.make_data_selection(nstations, tmin, tmax)
+            selection = fdsn.make_data_selection(nstations, tmin, tmax)
             if selection:
                 for x in selection:
                     logger.info(
@@ -97,14 +97,14 @@ class Download(Snuffling):
                         % (tuple(x[:4]) + (t2s(x[4]), t2s(x[5]))))
 
                 try:
-                    d = fdsn_ws.dataselect(site=site, selection=selection)
+                    d = fdsn.dataselect(site=site, selection=selection)
                     fn = pjoin(dir, 'data-%s.mseed' % net)
                     f = open(fn, 'w')
                     f.write(d.read())
                     f.close()
                     fns.append(fn)
 
-                except fdsn_ws.EmptyResult:
+                except fdsn.EmptyResult:
                     pass
 
         all_traces = []
