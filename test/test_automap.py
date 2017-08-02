@@ -6,8 +6,8 @@ import unittest
 import numpy as num
 from matplotlib import image, pyplot as plt
 
-from pyrocko import util, gmtpy
-from pyrocko import automap
+from pyrocko import util
+from pyrocko.plot import automap, gmtpy
 
 import common
 

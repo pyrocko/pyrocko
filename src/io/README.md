@@ -4,6 +4,8 @@ Input and output of seismic traces.
 
 This module provides a simple unified interface to load and save traces to a few different file formats.  The data model used for the `pyrocko.trace.Trace` objects in Pyrocko is most closely matched by the Mini-SEED file format.  However, a difference is, that Mini-SEED limits the length of the network, station, location, and channel codes to 2, 5, 2, and 3 characters, respectively.
 
+## Seismic Waveform IO
+
 ============ =========================== ========= ======== ======
 format       format identifier           load      save     note
 ============ =========================== ========= ======== ======
@@ -20,6 +22,11 @@ DATACUBE     datacube                    yes
 SUDS         suds                        some
 CSS          css                         yes
 ============ =========================== ========= ======== ======
+
+## Metadata IO
+
+* `pyrocko.io.quakeml` parses QuakeML (https://quake.ethz.ch/quakeml/) into a pyrocko data model.
+* `pyrocko.io.fdsn_station` represents a FDSN station model.
 
 .. rubric:: Notes
 

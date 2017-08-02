@@ -11,7 +11,8 @@ import signal
 import logging
 import time
 
-from pyrocko import serial_hamster, hamster_pile, util
+from pyrocko import hamster_pile, util
+from pyrocko.streaming import serial_hamster
 from optparse import OptionParser
 pjoin = os.path.join
 

@@ -50,10 +50,10 @@ file with :meth:`pyrocko.io.save`.
     from pyrocko import io
 
     traces = io.load('test.mseed')
-   
+
     for tr in traces:
         tr.lowpass(4, 0.02)   # 4th order, 0.02 Hz
-    
+
     io.save(traces, 'filtered.mseed')
 
 Other filtering methods are :meth:`pyrocko.trace.Trace.highpass` and
@@ -75,7 +75,7 @@ Alternatively, you could of course save the traces to file and use the
 standalone :doc:`/apps/snuffler/index` to look at them.
 
 ::
-     
+
     from pyrocko import io, trace, pile
 
     traces = io.load('test.mseed')
@@ -88,7 +88,7 @@ standalone :doc:`/apps/snuffler/index` to look at them.
         new = tr.copy()
         new.whiten()
         # to allow the viewer to distinguish the traces
-        new.set_location('whitened') 
+        new.set_location('whitened')
         new_traces.append(new)
 
     trace.snuffle(traces + new_traces)
@@ -134,20 +134,20 @@ cut 10 s from the beginning and the end of the example trace
 ::
 
     from pyrocko import io
-    
+
     traces = io.load('test.mseed')
     tr = traces[0]  # reference first trace as tr
-    print 'original:', tr
-    
+    print('original:', tr)
+
     # extract a copy of a part of tr
     tr_extracted = tr.chop(tr.tmin+10.0, tr.tmax-10.0, inplace=False)
-    print 'extracted:', tr_extracted
-    
+    print('extracted:', tr_extracted)
+
     # in-place operation modifies tr itself
     tr.chop(tr.tmin+10.0, tr.tmax-10.0)
-    print 'modified:', tr
-    
-    
+    print('modified:', tr)
+
+
 
 Time shifting a trace
 ---------------------
@@ -164,12 +164,12 @@ to a given absolute onset time with :meth:`pyrocko.trace.Trace.shift`.
 
     # shift by 10 seconds backward in time
     tr.shift(-10.0)
-    print tr
+    print(tr)
 
     # shift to a new absolute onset time
     tmin_new = util.str_to_time('2009-04-06 01:32:42.000')
     tr.shift(tmin_new - tr.tmin)
-    print tr
+    print(tr)
 
 
 Resampling a trace
@@ -228,15 +228,15 @@ An inefficient, non-portable, non-header-preserving, but simple, method to
 convert some MiniSEED traces to ASCII tables::
 
     from pyrocko import io
-    
+
     traces = io.load('test.mseed')
-    
+
     for it, t in enumerate(traces):
         f = open('test-%i.txt' % it, 'w')
-        
+
         for tim, val in zip(t.get_xdata(), t.get_ydata()):
             f.write( '%20f %20g\n' % (tim,val) )
-        
+
         f.close()
 
 
@@ -255,18 +255,18 @@ them will be zero.
     from pyrocko import trace
     from math import sqrt
     import numpy as num
-    
-    # Let's create three traces: One trace as the reference (rt) and two as test 
+
+    # Let's create three traces: One trace as the reference (rt) and two as test
     # traces (tt1 and tt2):
     ydata1 = num.random.random(1000)
     ydata2 = num.random.random(1000)
     rt = trace.Trace(station='REF', ydata=ydata1)
     candidate1 = trace.Trace(station='TT1', ydata=ydata1)
     candidate2 = trace.Trace(station='TT2', ydata=ydata2)
-    
+
     # Define a fader to apply before fft.
     taper = trace.CosFader(xfade=5.0)
-    
+
     # Define a frequency response to apply before performing the inverse fft.
     # This can be basically any funtion, as long as it contains a function called
     # *evaluate*, which evaluates the frequency response function at a given list
@@ -277,37 +277,37 @@ them will be zero.
     bw_filter = trace.ButterworthResponse(corner=2.0,
                                           order=4,
                                           type='low')
-    
+
     # Combine all information in one misfit setup:
     setup = trace.MisfitSetup(description='An Example Setup',
                               norm=2,
                               taper=taper,
                               filter=bw_filter,
                               domain='time_domain')
-    
+
     # Calculate misfits of each candidate against the reference trace:
     for candidate in [candidate1, candidate2]:
         misfit = rt.misfit(candidate=candidate, setup=setup)
-        print 'misfit: %s, normalization: %s' % misfit
-    
+        print('misfit: %s, normalization: %s' % misfit)
+
     # Finally, dump the misfit setup that has been used as a yaml file for later
     # re-use:
     setup.dump(filename='my_misfit_setup.txt')
-    
+
 If we wanted to reload our misfit setup, :mod:`pyrocko.guts` provides the
 ``iload_all()`` method for that purpose:
 
 ::
 
     from pyrocko.guts import load
-    from pyrocko.trace import MisfitSetup 
-    
+    from pyrocko.trace import MisfitSetup
+
     setup = load(filename='my_misfit_setup.txt')
-    
+
     # now we can change, for example, the domain:
     setup.domain = 'frequency_domain'
-    
-    print setup
+
+    print(setup)
 
 
 Restitute to displacement using poles and zeros
@@ -328,36 +328,8 @@ Here is a complete example using a SAC pole-zero file
 (:download:`STS2-Generic.polezero.txt </static/STS2-Generic.polezero.txt>`) to
 deconvolve the transfer function from an example seismogram:
 
-:download:`trace_handling_example_pz.py </static/trace_handling_example_pz.py>`
+Download :download:`trace_handling_example_pz.py </../../src/tutorials/trace_handling_example_pz.py>`
 
-::
 
-    from pyrocko import pz, io, trace
-
-    # read poles and zeros from SAC format pole-zero file
-    zeros, poles, constant = pz.read_sac_zpk('STS2-Generic.polezero.txt')
-
-    # one more zero to convert from velocity->counts to displacement->counts
-    zeros.append(0.0j)
-
-    rest_sts2 = trace.PoleZeroResponse(
-        zeros=zeros,
-        poles=poles,
-        constant=constant)
-
-    traces = io.load('test.mseed')
-    out_traces = list(traces)
-    for tr in traces:
-
-        displacement = tr.transfer(
-            1000.,                    # rise and fall of time window taper in [s]
-            (0.001, 0.002, 5., 10.),  # frequency domain taper in [Hz]
-            transfer_function=rest_sts2,
-            invert=True)              # to change to (counts->displacement)
-
-        # change channel id, so we can distinguish the traces in a trace viewer.
-        displacement.set_codes(channel='D'+tr.channel[-1])
-
-        out_traces.append(displacement)
-
-    io.save(out_traces, 'displacement.mseed')
+.. literalinclude :: /../../src/tutorials/trace_handling_example_pz.py
+    :language: python

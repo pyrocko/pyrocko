@@ -270,7 +270,7 @@ filters: %s
 
     def plot_amplitudes(self, filename_pdf, type='displacement'):
 
-        import gmtpy
+        from pyrocko.plot import gmtpy
 
         p = gmtpy.LogLogPlot()
         f = self.sampled_response.frequencies()
@@ -285,7 +285,7 @@ filters: %s
 
     def plot_phases(self, filename_pdf, type='displacement'):
 
-        import gmtpy
+        from pyrocko.plot import gmtpy
 
         p = gmtpy.LogLinPlot()
         f = self.sampled_response.frequencies()

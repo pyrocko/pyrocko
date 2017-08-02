@@ -24,16 +24,16 @@ import pickle
 from os.path import join as pjoin
 from optparse import OptionParser
 
-from pyrocko import slink
-from pyrocko import serial_hamster
-from pyrocko import edl
+from pyrocko.streaming import serial_hamster
+from pyrocko.streaming import slink
+from pyrocko.streaming import edl
 
 from pyrocko import pile            # noqa
 from pyrocko import util            # noqa
-from pyrocko import models           # noqa
+from pyrocko import model           # noqa
 from pyrocko import config          # noqa
 from pyrocko import io              # noqa
-from pyrocko.models import fdsn_station
+from pyrocko.model import fdsn_station
 
 from . import pile_viewer     # noqa
 
@@ -917,7 +917,7 @@ def snuffler_from_commandline(args=sys.argv):
     this_pile = pile.Pile()
     stations = []
     for stations_fn in options.station_fns:
-        stations.extend(models.station.load_stations(stations_fn))
+        stations.extend(model.station.load_stations(stations_fn))
 
     for stationxml_fn in options.stationxml_fns:
         stations.extend(
@@ -926,7 +926,7 @@ def snuffler_from_commandline(args=sys.argv):
 
     events = []
     for event_fn in options.event_fns:
-        events.extend(models.event.Event.load_catalog(event_fn))
+        events.extend(model.event.Event.load_catalog(event_fn))
 
     markers = []
     for marker_fn in options.marker_fns:

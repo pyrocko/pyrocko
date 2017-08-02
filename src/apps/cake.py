@@ -9,7 +9,7 @@ import sys
 import re
 import numpy as num
 from pyrocko import cake, util, orthodrome
-from pyrocko import cake_plot as plot
+from pyrocko.plot import cake_plot as plot
 from optparse import OptionParser, OptionGroup
 
 r2d = cake.r2d

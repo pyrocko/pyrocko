@@ -10,7 +10,7 @@ try:
 except ImportError:
     from io import BytesIO
 
-from . import trace
+from pyrocko import trace
 
 d2r = math.pi/180.
 
@@ -176,7 +176,7 @@ def plot_amplitudes_zpk(
         nf=100,
         fnorm=None):
 
-    from . import gmtpy
+    from pyrocko.plot import gmtpy
 
     p = gmtpy.LogLogPlot(width=30*gmtpy.cm, yexp=0)
     for i, (zeros, poles, constant) in enumerate(zpks):
@@ -192,7 +192,7 @@ def plot_amplitudes_zpk(
 
 def plot_phases_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100):
 
-    from . import gmtpy
+    from pyrocko.plot import gmtpy
 
     p = gmtpy.LogLinPlot(width=30*gmtpy.cm)
     for i, (zeros, poles, constant) in enumerate(zpks):

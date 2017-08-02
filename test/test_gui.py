@@ -8,8 +8,10 @@ try:
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import gui_util
     from pyrocko import util, model
-except ImportError:
-    pass
+except ImportError as e:
+    import traceback
+    traceback.print_exc()
+
 import common
 
 from pyrocko.pile import make_pile

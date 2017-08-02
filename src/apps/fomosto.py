@@ -13,7 +13,8 @@ import logging
 import copy
 from optparse import OptionParser
 
-from pyrocko import util, trace, gf, cake, io, gui_util
+from pyrocko import util, trace, gf, cake, io
+from pyrocko.gui import gui_util
 
 pjoin = os.path.join
 logger = logging.getLogger('main')
@@ -777,7 +778,7 @@ def command_ttt(args):
 def command_tttview(args):
     import numpy as num
     import matplotlib.pyplot as plt
-    from pyrocko.cake_plot import mpl_init, labelspace, xscaled, yscaled
+    from pyrocko.plot.cake_plot import mpl_init, labelspace, xscaled, yscaled
     mpl_init()
 
     def setup(parser):
@@ -948,7 +949,7 @@ def command_modelview(args):
 
     import matplotlib.pyplot as plt
     import numpy as num
-    from pyrocko.cake_plot import mpl_init, labelspace, xscaled, yscaled
+    from pyrocko.plot.cake_plot import mpl_init, labelspace, xscaled, yscaled
     mpl_init()
 
     neat_labels = {

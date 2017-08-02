@@ -33,7 +33,7 @@ from builtins import range
 
 import numpy as num
 
-from . import util
+from pyrocko import util
 
 
 def draw(
@@ -213,7 +213,7 @@ def load_response_information(
         filename, format, nslc_patterns=None, fake_input_units=None):
 
     from pyrocko import pz, trace
-    from pyrocko.fdsn import resp as fresp
+    from pyrocko.io import resp as fresp
 
     resps = []
     labels = []

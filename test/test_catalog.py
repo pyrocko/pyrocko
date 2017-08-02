@@ -1,4 +1,5 @@
-from pyrocko import catalog, util
+from pyrocko import util
+from pyrocko.client import catalog
 import unittest
 
 

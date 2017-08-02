@@ -4,7 +4,7 @@ import numpy as num  # noqa
 import logging
 import shutil
 from tempfile import mkdtemp
-from pyrocko.datasets import crust2x2
+from pyrocko.dataset import crust2x2
 from pyrocko import util
 
 logger = logging.getLogger('test_crust2x2.py')

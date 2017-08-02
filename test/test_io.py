@@ -14,7 +14,7 @@ import shutil
 
 from pyrocko import io
 from pyrocko.io import FileLoadError
-from pyrocko.io import mseed, trace, util, suds
+from pyrocko.io import mseed, trace, util, suds, quakeml
 
 import common
 
@@ -177,6 +177,18 @@ class IOTestCase(unittest.TestCase):
             i += 1
 
         assert i == 1
+
+    def testReadQuakeML(self):
+
+        fpath = common.test_data_file('test.quakeml')
+        qml = quakeml.QuakeML.load_xml(filename=fpath)
+        events = qml.get_pyrocko_events()
+        assert len(events) == 1
+        e = events[0]
+        assert e.lon == -116.9945
+        assert e.lat == 33.986
+        assert e.depth == 17300
+        assert e.time == util.stt("1999-04-02 17:05:10.500")
 
 
 if __name__ == "__main__":

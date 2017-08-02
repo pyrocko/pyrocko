@@ -20,11 +20,12 @@ except ImportError:
 
 import numpy as num
 
-from .guts import Object, Float, Bool, Int, Tuple, String, List
-from .guts import Unicode, Dict
-from .guts_array import Array
-from . import orthodrome as od
-from . import gmtpy, topo
+from pyrocko.guts import (Object, Float, Bool, Int, Tuple, String, List,
+                          Unicode, Dict)
+from pyrocko.guts_array import Array
+from pyrocko.dataset import topo
+from pyrocko import orthodrome as od
+from . import gmtpy
 
 points_in_region = od.points_in_region
 
@@ -990,7 +991,7 @@ class Map(Object):
             (lon, lat, text, color, font, font_size, style))
 
     def cities_in_region(self):
-        from pyrocko.datasets import geonames
+        from pyrocko.dataset import geonames
         cities = geonames.get_cities_region(region=self.wesn, minpop=0)
         cities.extend(self.custom_cities)
         cities.sort(key=lambda x: x.population)
@@ -1044,7 +1045,7 @@ class Map(Object):
         self._cities_minpop = minpop
 
     def draw_plates(self):
-        from pyrocko.datasets import tectonics
+        from pyrocko.dataset import tectonics
 
         neast = 20
         nnorth = max(1, int(round(num.round(self._hreg/self._wreg * neast))))

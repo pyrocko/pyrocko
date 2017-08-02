@@ -15,6 +15,7 @@ matrix:
       python: 2.7
       virtualenv:
           system_site_packages: true
+      dist: precise
 #        - os: osx
 #          osx_image: xcode7.3
 #          language: generic
@@ -60,7 +61,7 @@ install:
 
 script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then travis_wait coverage run --source=pyrocko test/test_all.py ; fi
   # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_response_plot.py; fi
 
 after_success:

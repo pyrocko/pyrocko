@@ -61,7 +61,7 @@ class ResponseTestCase(unittest.TestCase):
 
         from pyrocko import model
         from pyrocko.fdsn import resp, enhanced_sacpz
-        from pyrocko.model import fdsn_station as station
+        from pyrocko.io import fdsn_station as station
 
         t = util.str_to_time('2014-01-01 00:00:00')
         codes = 'GE', 'EIL', '', 'BHZ'

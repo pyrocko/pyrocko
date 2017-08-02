@@ -6,15 +6,13 @@ from __future__ import division, absolute_import
 
 import os
 import logging
+from pyrocko import util, trace
+
 from . import (mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf,
                datacube, suds, css, gse2_io_wrap)
-from .. import util, trace
 from .io_common import FileLoadError, FileSaveError
 
 import numpy as num
-from pyrocko.util import parse_md
-
-__doc__ = parse_md(__file__)
 
 __doc__ = util.parse_md(__file__)
 

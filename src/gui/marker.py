@@ -13,7 +13,7 @@ import logging
 
 import numpy as num
 
-from pyrocko import util, plot, models, trace
+from pyrocko import util, plot, model, trace
 from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
 
 
@@ -523,7 +523,7 @@ class Marker(object):
             self.convert_to_marker()
 
         self.__class__ = EventMarker
-        self._event = models.Event(lat, lon, self.tmin, name='Event')
+        self._event = model.Event(lat, lon, self.tmin, name='Event')
         self._event_hash = self._event.get_hash()
         self._active = False
         self.tmax = self.tmin
@@ -534,11 +534,11 @@ class EventMarker(Marker):
     """
     An EventMarker is a GUI element representing a seismological event
 
-    :param event: A :py:class:`pyrocko.models.Event` object containing meta
+    :param event: A :py:class:`pyrocko.model.Event` object containing meta
         information of a seismological event
     :param kind: (optional) integer to distinguish groups of markers
     :param event_hash:  (optional) hash code of event (see:
-        :py:meth:`pyrocko.models.Event.get_hash`)
+        :py:meth:`pyrocko.model.Event.get_hash`)
     """
     def __init__(self, event, kind=0, event_hash=None):
         Marker.__init__(self, [], event.time, event.time, kind)
@@ -595,7 +595,7 @@ class EventMarker(Marker):
             outline=self._active)
 
     def get_event(self):
-        '''Return an instance of the :py:class:`pyrocko.models.Event` associated
+        '''Return an instance of the :py:class:`pyrocko.model.Event` associated
         to this :py:class:`EventMarker`'''
         return self._event
 
@@ -643,7 +643,7 @@ class EventMarker(Marker):
             str_to_float_or_none(x) for x in vals[5:9]]
         catalog, name, region = [
             str_to_str_or_none(x) for x in vals[9:]]
-        e = models.Event(
+        e = model.Event(
             lat, lon, tmin, name, depth, magnitude, region, catalog=catalog)
         marker = EventMarker(
             e, kind, event_hash=str_to_str_or_none(vals[4]))
@@ -660,10 +660,10 @@ class PhaseMarker(Marker):
     :param tmax: end time
     :param kind: (optional) integer to distinguish groups of markers
         (color-coded)
-    :param event: a :py:class:`pyrocko.models.Event` object containing meta
+    :param event: a :py:class:`pyrocko.model.Event` object containing meta
         information of a seismological event
     :param event_hash: (optional) hash code of event (see:
-        :py:meth:`pyrocko.models.Event.get_hash`)
+        :py:meth:`pyrocko.model.Event.get_hash`)
     :param event_time: (optional) time of the associated event
     :param phasename: (optional) name of the phase associated with the marker
     :param polarity: (optional) polarity of arriving phase
@@ -715,7 +715,7 @@ class PhaseMarker(Marker):
         return ''.join(t)
 
     def get_event(self):
-        '''Return an instance of the :py:class:`pyrocko.models.Event` associated
+        '''Return an instance of the :py:class:`pyrocko.model.Event` associated
         to this :py:class:`EventMarker`'''
         return self._event
 

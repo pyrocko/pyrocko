@@ -2,7 +2,7 @@ import unittest
 import numpy as num
 from numpy.testing import assert_allclose
 
-from pyrocko.datasets import tectonics
+from pyrocko.dataset import tectonics
 from pyrocko import util
 
 
