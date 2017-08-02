@@ -1,14 +1,19 @@
-from pyrocko.gf import LocalEngine, Target, DCSource
+from pyrocko.gf import LocalEngine, Target, DCSource, ws
 from pyrocko import trace
 from pyrocko.gui.gui_util import PhaseMarker
+
+# The store we are going extract data from:
+store_id = 'crust2_dd'
+
+# First, download a Greens Functions store. If you already have one that you
+# would like to use, you can skip this step and point the *store_superdirs* in
+# the next step to that directory.
+ws.download_gf_store(site='kinherd', store_id=store_id)
 
 # We need a pyrocko.gf.Engine object which provides us with the traces
 # extracted from the store. In this case we are going to use a local
 # engine since we are going to query a local store.
-engine = LocalEngine(store_superdirs=['/media/usb/gf_stores'])
-
-# The store we are going extract data from:
-store_id = 'crust2_dd'
+engine = LocalEngine(store_superdirs=['.'])
 
 # Define a list of pyrocko.gf.Target objects, representing the recording
 # devices. In this case one station with a three component sensor will

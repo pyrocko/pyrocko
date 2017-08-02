@@ -69,6 +69,16 @@ class FDSNStationTestCase(unittest.TestCase):
                             starttime=tmin,
                             endtime=tmax)
 
+    def test_dataselection(self):
+        tmin = stt('2010-01-15 10:00:00')
+        tmax = stt('2010-01-15 10:01:00')
+        selection = [
+            ('GE', 'EIL', '*', 'SHZ', tmin, tmax),
+        ]
+
+        fdsn.dataselect(site='geofon', selection=selection)
+        fdsn.station(site='geofon', selection=selection, level='response')
+
     def test_read_big(self):
         for site in ['iris']:
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
