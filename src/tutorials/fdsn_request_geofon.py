@@ -14,7 +14,7 @@ selection = [
 request_waveform = fdsn.dataselect(site='geofon', selection=selection)
 
 # write the incoming data stream to 'traces.mseed'
-with open('traces.mseed', 'w') as file:
+with open('traces.mseed', 'wb') as file:
     file.write(request_waveform.read())
 
 # request meta data
