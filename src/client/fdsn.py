@@ -229,7 +229,8 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
             l.append(' '.join((network, station, location, channel,
                                sdatetime(tmin), sdatetime(tmax))))
 
-        params = dict(post='\n'.join(l))
+        post = '\n'.join(l)
+        params = dict(post=post.encode())
 
     if parsed:
         from pyrocko.io import fdsn_station
