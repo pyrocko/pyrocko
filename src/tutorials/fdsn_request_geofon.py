@@ -1,4 +1,4 @@
-from pyrocko.fdsn import ws
+from pyrocko.client import fdsn
 from pyrocko import util, io, trace
 
 tmin = util.stt('2014-01-01 16:10:00.000')
@@ -11,14 +11,14 @@ selection = [
 ]
 
 # setup a waveform data request
-request_waveform = ws.dataselect(site='geofon', selection=selection)
+request_waveform = fdsn.dataselect(site='geofon', selection=selection)
 
 # write the incoming data stream to 'traces.mseed'
 with open('traces.mseed', 'w') as file:
     file.write(request_waveform.read())
 
 # request meta data
-request_response = ws.station(
+request_response = fdsn.station(
     site='geofon', selection=selection, level='response')
 
 # save the response in YAML and StationXML format
