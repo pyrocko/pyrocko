@@ -13,7 +13,7 @@ import logging
 
 import numpy as num
 
-from . import trace
+from pyrocko import trace
 
 logger = logging.getLogger('pyrocko.streaming.slink')
 

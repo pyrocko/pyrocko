@@ -11,7 +11,7 @@ import logging
 import calendar
 import numpy as num
 
-from . import trace, util
+from pyrocko import trace, util
 
 logger = logging.getLogger('pyrocko.streaming.edl')
 

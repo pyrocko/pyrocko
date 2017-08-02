@@ -12,7 +12,7 @@ import math
 import numpy as num
 from scipy import stats
 
-from . import trace, util
+from pyrocko import trace, util
 
 logger = logging.getLogger('pyrocko.streaming.serial_hamster')
 

@@ -4,8 +4,9 @@ import tempfile
 from pyrocko import util, model
 try:
     from pyrocko.gui import marker
-except ImportError:
-    pass
+except ImportError as e:
+    import traceback
+    traceback.print_exc()
 
 
 def qt_available():
