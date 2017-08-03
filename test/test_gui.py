@@ -206,9 +206,10 @@ class GUITest(unittest.TestCase):
 
         # create an event marker and activate it
         self.add_one_pick()
-        QTest.keyPress(self.pile_viewer, 'A')
-        QTest.keyPress(self.pile_viewer, 'e')
-        QTest.keyPress(self.pile_viewer, 'R')
+
+        for key in 'mAeR':
+            QTest.keyPress(self.pile_viewer, key)
+
         event = model.Event()
         markers = pv.viewer.get_markers()
         self.assertEqual(len(markers), 1)
