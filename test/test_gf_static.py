@@ -18,6 +18,10 @@ d2r = 1.0 / r2d
 km = 1000.
 
 
+@unittest.skipUnless(
+    qseis.have_backend(), 'backend qseis not available')
+@unittest.skipUnless(
+    psgrn_pscmp.have_backend(), 'backend psgrn_pscmp not available')
 class GFStaticTest(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):

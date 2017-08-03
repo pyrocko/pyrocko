@@ -28,6 +28,19 @@ program_bins = {
     'poel': 'poel',
 }
 
+
+def have_backend():
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+
+        except OSError:
+            return False
+
+    return True
+
+
 poel_components = 'uz ur ezz err ett ezr tlt pp dvz dvr'.split()
 
 

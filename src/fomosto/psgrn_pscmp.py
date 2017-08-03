@@ -40,6 +40,18 @@ guts_prefix = 'pf'
 logger = logging.getLogger('psgrn_pscmp')
 
 
+def have_backend():
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+
+        except OSError:
+            return False
+
+    return True
+
+
 def nextpow2(i):
     return 2 ** int(math.ceil(math.log(i) / math.log(2.)))
 

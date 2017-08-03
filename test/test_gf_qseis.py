@@ -33,6 +33,8 @@ def g(trs, cha):
             return tr
 
 
+@unittest.skipUnless(
+    qseis.have_backend(), 'backend qseis not available')
 class GFQSeisTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):

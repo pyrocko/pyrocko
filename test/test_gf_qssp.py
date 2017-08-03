@@ -5,6 +5,8 @@ from pyrocko import util, gf
 from pyrocko.fomosto import qssp
 
 
+@unittest.skipUnless(
+    qssp.have_backend(), 'backend qssp not available')
 class QSSPTestCase(unittest.TestCase):
 
     def setUp(self):

@@ -36,6 +36,21 @@ program_bins = {
     'qseis.2006a': 'fomosto_qseis2006a',
 }
 
+
+def have_backend():
+    have_any = False
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+            have_any = True
+
+        except OSError:
+            pass
+
+    return have_any
+
+
 qseis_components = 'r t z v'.split()
 qseis_greenf_names = ('ex', 'ss', 'ds', 'cl', 'fz', 'fh')
 

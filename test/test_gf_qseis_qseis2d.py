@@ -22,6 +22,10 @@ km = 1e3
 slowness_window = (0.0, 0.0, 0.4, 0.5)
 
 
+@unittest.skipUnless(
+    qseis2d.have_backend(), 'backend qseis2d not available')
+@unittest.skipUnless(
+    qseis.have_backend(), 'backend qseis not available')
 class GFQSeis2dTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):

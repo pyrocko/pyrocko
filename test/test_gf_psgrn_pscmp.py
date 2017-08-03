@@ -49,6 +49,8 @@ def statics(engine, source, starget):
     return out
 
 
+@unittest.skipUnless(
+    psgrn_pscmp.have_backend(), 'backend psgrn_pscmp not available')
 class GFPsgrnPscmpTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
