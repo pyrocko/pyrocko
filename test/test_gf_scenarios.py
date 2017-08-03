@@ -44,16 +44,23 @@ def to_kiwi_source(source):
         rise_time=source.stf.duration)
 
 
-class GFScenariosTestCase(unittest.TestCase):
+def have_store(store_id):
+    engine = gf.get_engine()
+    try:
+        engine.get_store(store_id)
+        return True
+    except gf.NoSuchStore:
+        return False
 
+
+class GFScenariosTestCase(unittest.TestCase):
+    store_id = 'crust2_mf'
+
+    @unittest.skipUnless(
+            have_store(store_id),
+            'GF Store "%s" is not available' % store_id)
     def test_regional(self):
         engine = gf.get_engine()
-        store_id = 'crust2_mf'
-        try:
-            engine.get_store(store_id)
-        except gf.NoSuchStore:
-            logger.warn('GF Store %s not available - skipping test' % store_id)
-            return
 
         nsources = 10
         nstations = 10
