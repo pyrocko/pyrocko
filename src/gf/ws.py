@@ -191,7 +191,7 @@ def rget(url, path, force=False, method='download', stats=None,
 
 
 def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
-                      store_id=None, force=False):
+                      store_id=None, force=False, quiet=False):
 
     url = fillurl(url, site, 'static', majorversion)
 
@@ -199,13 +199,17 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
 
     tlast = [time.time()]
 
-    def status_callback(i, n):
-        tnow = time.time()
-        if (tnow - tlast[0]) > 5 or i == n:
-            print('%s / %s [%.1f%%]' % (
-                util.human_bytesize(i), util.human_bytesize(n), i*100.0/n))
+    if not quiet:
+        def status_callback(i, n):
+            tnow = time.time()
+            if (tnow - tlast[0]) > 5 or i == n:
+                print('%s / %s [%.1f%%]' % (
+                    util.human_bytesize(i), util.human_bytesize(n), i*100.0/n))
 
-            tlast[0] = tnow
+                tlast[0] = tnow
+    else:
+        def status_callback(i, n):
+            pass
 
     wanted = ['config', 'extra', 'index', 'phases', 'traces']
 
