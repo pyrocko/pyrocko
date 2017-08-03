@@ -1,8 +1,11 @@
-import sys
 from pyrocko.io import fdsn_station as fs
+from pyrocko.tutorials import get_tutorial_data
 
-# load the StationXML data file passed
-sx = fs.load_xml(filename=sys.argv[1])
+# Download example StationXML file
+get_tutorial_data('responses.xml')
+
+# load the StationXML downloaded data file
+sx = fs.load_xml('responses.xml')
 
 comp_to_azi_dip = {
     'X': (0., 0.),
