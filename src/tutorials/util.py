@@ -1,9 +1,12 @@
+import future
+import urllib
 import os
 from pyrocko import util
+import logging
+from pyrocko.gf.ws import rget
 
 
-def test_data_file_no_download(fn):
-    return os.path.join(os.path.split(__file__)[0], fn)
+logger = logging.getLogger('pyrocko.tutorials.util')
 
 
 def get_tutorial_data(filename):
@@ -13,10 +16,14 @@ def get_tutorial_data(filename):
 
     :param filename: Name of the required file
     '''
-    fpath = test_data_file_no_download(filename)
-    if not os.path.exists(fpath):
-        url = 'http://kinherd.org/pyrocko_tutorial_data/' + filename
+    if not os.path.exists(filename):
+        url = 'http://data.pyrocko.org/examples/' + filename
         print('Download %s' % url)
-        util.download_file(url, fpath)
+        try:
+            rget(url, filename)
+        except urllib.error.HTTPError as e:
+            logger.debug(e)
+            util.download_file(url, filename)
+        print('Finished Download')
 
-    return fpath
+    return filename

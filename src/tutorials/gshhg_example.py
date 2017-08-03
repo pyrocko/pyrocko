@@ -1,5 +1,5 @@
 import numpy as num
-from pyrocko.datasets.gshhg import GSHHG
+from pyrocko.dataset.gshhg import GSHHG
 
 gshhg = GSHHG.intermediate()
 # gshhg = GSHHG.full()
