@@ -55,6 +55,7 @@ def have_store(store_id):
 
 class GFScenariosTestCase(unittest.TestCase):
     store_id = 'crust2_mf'
+    store_id2 = 'chile_70km_crust'
 
     @unittest.skipUnless(
             have_store(store_id),
@@ -149,9 +150,12 @@ class GFScenariosTestCase(unittest.TestCase):
 
                     del resp
 
+    @unittest.skipUnless(
+            have_store(store_id2),
+            'GF Store "%s" is not available' % store_id2)
     def test_against_kiwi(self):
         engine = gf.get_engine()
-        store_id = 'chile_70km_crust'
+        store_id = store_id2
         try:
             store = engine.get_store(store_id)
         except gf.NoSuchStore:
