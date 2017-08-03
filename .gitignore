@@ -18,3 +18,4 @@ scratch
 htmlcov
 .coverage
 .cache
+doc/source/library/reference/modules/

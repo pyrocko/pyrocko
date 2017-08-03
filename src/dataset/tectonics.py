@@ -329,3 +329,9 @@ class GSRM1(StrainRateDataset):
 
         lons, lats, veast, vnorth, veast_err, vnorth_err, corr = arr.T
         return lats, lons, vnorth, veast, vnorth_err, veast_err, corr
+
+
+__all__ = '''
+GSRM1
+PeterBird2003
+Plate'''.split()

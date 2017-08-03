@@ -4,8 +4,8 @@ The pyrocko software package comes with several clients for requesting online ea
 
 ## Waveform Access
 
-* `pyrocko.client.iris` gives access to waveform from IRIS (http://service.iris.edu/).
-* `pyrocko.client.fdsn` is a general client for providing an FDSN web service implementation (http://www.fdsn.org/).
+* `pyrocko.client.iris` Gives access to waveform data from the IRIS archive (http://service.iris.edu/).
+* `pyrocko.client.fdsn` Is a client for FDSN web services (http://www.fdsn.org/).
 
 ## Earthquake Catalogs
 

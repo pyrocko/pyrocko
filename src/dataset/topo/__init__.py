@@ -9,8 +9,10 @@ import re
 import math
 import os.path as op
 
-from . import srtmgl3, etopo1, dataset, tile
 from pyrocko import config, util
+from .srtmgl3 import SRTMGL3
+from .etopo1 import ETOPO1
+from . import dataset, tile
 
 __doc__ = util.parse_md(__file__)
 
@@ -25,7 +27,7 @@ m2d = 1./d2m
 
 topo_data_dir = config.config().topo_dir
 
-srtmgl3 = srtmgl3.SRTMGL3(
+srtmgl3 = SRTMGL3(
     name='SRTMGL3',
     data_dir=op.join(topo_data_dir, 'SRTMGL3'))
 
@@ -49,7 +51,7 @@ srtmgl3_d8 = dataset.DecimatedTiledGlobalDataset(
     nty=1001,
     data_dir=op.join(topo_data_dir, 'SRTMGL3_D8'))
 
-etopo1 = etopo1.ETOPO1(
+etopo1 = ETOPO1(
     name='ETOPO1',
     data_dir=op.join(topo_data_dir, 'ETOPO1'))
 

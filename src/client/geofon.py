@@ -66,7 +66,7 @@ def parse_km(s):
 
 
 class Geofon(EarthquakeCatalog):
-
+    '''Access the Geofon earthquake catalog '''
     def __init__(self):
         self.events = {}
 

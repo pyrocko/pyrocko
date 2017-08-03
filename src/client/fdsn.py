@@ -107,7 +107,7 @@ def _request(url, post=False, user=None, passwd=None, **kwargs):
     req = Request(url)
     if post:
         logger.debug('POST data: \n%s' % post)
-        req.add_data(post)
+        req.data = post
 
     req.add_header('Accept', '*/*')
 
@@ -229,7 +229,8 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
             l.append(' '.join((network, station, location, channel,
                                sdatetime(tmin), sdatetime(tmax))))
 
-        params = dict(post='\n'.join(l))
+        post = '\n'.join(l)
+        params = dict(post=post.encode())
 
     if parsed:
         from pyrocko.io import fdsn_station
@@ -302,6 +303,7 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
             l.append(' '.join((network, station, location, channel,
                                sdatetime(tmin), sdatetime(tmax))))
 
-        return _request(url, user=user, passwd=passwd, post='\n'.join(l))
+        post = '\n'.join(l)
+        return _request(url, user=user, passwd=passwd, post=post.encode())
     else:
         return _request(url, user=user, passwd=passwd, **params)

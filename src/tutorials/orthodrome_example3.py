@@ -5,7 +5,7 @@ orthodrome.azibazi(49.1, 20.5, 45.4, 22.3)
 
 # >>> (161.05973376168285, -17.617746351508035)  # Azimuth and backazimuth
 
-import numpy as num
+import numpy as num  # noqa
 
 ncoords = 1000
 # First set of coordinates

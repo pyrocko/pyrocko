@@ -33,7 +33,7 @@ from pyrocko import util            # noqa
 from pyrocko import model           # noqa
 from pyrocko import config          # noqa
 from pyrocko import io              # noqa
-from pyrocko.model import fdsn_station
+from pyrocko.io import fdsn_station
 
 from . import pile_viewer     # noqa
 
