@@ -1,5 +1,5 @@
 import sys
-from pyrocko.fdsn import station as fs
+from pyrocko.io import fdsn_station as fs
 
 # load the StationXML data file passed
 sx = fs.load_xml(filename=sys.argv[1])
