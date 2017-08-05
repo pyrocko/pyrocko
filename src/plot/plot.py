@@ -469,9 +469,14 @@ def mpl_init(fontsize=10):
     matplotlib.rc('figure', facecolor='white')
 
     try:
-        matplotlib.rc('axes', color_cycle=[to01(x) for x in graph_colors])
+        from cycler import cycler
+        matplotlib.rc(
+            'axes', prop_cycle=cycler(color=[to01(x) for x in graph_colors]))
     except KeyError:
-        pass
+        try:
+            matplotlib.rc('axes', color_cycle=[to01(x) for x in graph_colors])
+        except KeyError:
+            pass
 
     from matplotlib import pyplot as plt
     return plt
