@@ -246,10 +246,10 @@ class Geofon(EarthquakeCatalog):
     def _parse_mt_page(self, page):
         d = {}
         for k in 'Scale', 'Mrr', 'Mtt', 'Mpp', 'Mrt', 'Mrp', 'Mtp':
-            r = k+r'\s*=?\s*(\S+)'
+            r = k.encode('ascii')+br'\s*=?\s*(\S+)'
             m = re.search(r, page)
             if m:
-                s = m.group(1).replace('10**', '1e')
+                s = m.group(1).replace(b'10**', b'1e')
                 d[k.lower()] = float(s)
 
         m = symmat6(*(d[x] for x in 'mrr mtt mpp mrt mrp mtp'.split()))

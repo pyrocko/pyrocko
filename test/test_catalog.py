@@ -1,5 +1,6 @@
 from pyrocko import util
 from pyrocko.client import catalog
+from pyrocko import moment_tensor
 import unittest
 
 
@@ -38,6 +39,16 @@ class CatalogTestCase(unittest.TestCase):
         cat.flush()
         ev = cat.get_event(ident)
         is_the_haiti_event(ev)
+
+    def testGeofonMT(self):
+        cat = catalog.Geofon()
+        tmin = util.ctimegm('2014-01-01 00:00:00')
+        tmax = util.ctimegm('2017-01-01 00:00:00')
+        events = cat.get_events((tmin, tmax), magmin=8)
+        self.assertEqual(len(events), 2)
+        mt1, mt2 = [ev.moment_tensor for ev in events]
+        angle = moment_tensor.kagan_angle(mt1, mt2)
+        self.assertEqual(round(angle - 7.7, 1), 0.0)
 
     def testGlobalCMT(self):
 
