@@ -27,7 +27,6 @@ class GFSourcesTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         for d in cls.tempdirs:
-            print(d)
             shutil.rmtree(d)
 
     if sys.version_info < (2, 7):
