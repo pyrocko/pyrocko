@@ -196,7 +196,7 @@ class Programs(object):
                 else:
                     reason = str(e)
 
-                logging.fatal('Failed to run rdseed program. %s' % reason)
+                logging.debug('Failed to run rdseed program. %s' % reason)
                 return False
 
             ms = [re.search(
