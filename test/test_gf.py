@@ -571,7 +571,7 @@ class GFTestCase(unittest.TestCase):
             amax = max(num.max(num.abs(tr.ydata)) for tr in trs)
             perc = num.max(num.abs(trs[0].ydata - trs[1].ydata) / amax) * 100.
             if perc > 0.1:
-                logger.warn(
+                logger.warning(
                     'test_stf_pre_post: max difference of %.1f %%' % perc)
 
     def benchmark_get(self):
