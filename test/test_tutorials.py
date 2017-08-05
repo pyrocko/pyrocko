@@ -8,8 +8,9 @@ import unittest
 import os
 from pyrocko import util
 import pyrocko.tutorials as tutorials
+from matplotlib import pyplot as plt
 
-matplotlib.use('PS')
+plt.switch_backend('Agg')
 
 to_test = [
     'automap_example',
