@@ -109,6 +109,8 @@ class PulseConfig(guts.Object):
 
 class GFTestCase(unittest.TestCase):
 
+    tempdirs = []
+
     if sys.version_info < (2, 7):
         from contextlib import contextmanager
 
@@ -128,16 +130,15 @@ class GFTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
         self.pulse_store_dir = None
         self.regional_ttt_store_dir = None
         self.benchmark_store_dir = None
         self._dummy_store = None
-        self.__shutil_module = shutil
 
-    def __del__(self):
-        for d in self.tempdirs:
-            self.__shutil_module.rmtree(d)
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
+            shutil.rmtree(d)
 
     def create(self, deltat=1.0, nrecords=10):
         d = mkdtemp(prefix='gfstore')

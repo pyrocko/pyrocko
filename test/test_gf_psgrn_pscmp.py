@@ -5,6 +5,7 @@ import logging
 from tempfile import mkdtemp
 import numpy as num
 import os
+import shutil
 
 from pyrocko import orthodrome as ortd
 from pyrocko import util, gf, cake  # noqa
@@ -53,14 +54,14 @@ def statics(engine, source, starget):
     psgrn_pscmp.have_backend(), 'backend psgrn_pscmp not available')
 class GFPsgrnPscmpTestCase(unittest.TestCase):
 
+    tempdirs = []
+
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_fomosto_vs_psgrn_pscmp(self):

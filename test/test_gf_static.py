@@ -3,6 +3,7 @@ import numpy as num
 import cProfile
 import math
 import logging
+import shutil
 
 from tempfile import mkdtemp
 from common import Benchmark
@@ -23,18 +24,17 @@ km = 1000.
 @unittest.skipUnless(
     psgrn_pscmp.have_backend(), 'backend psgrn_pscmp not available')
 class GFStaticTest(unittest.TestCase):
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
-        self.tempdirs = []
         self._dummy_store = None
         self.qseis_store_dir = None
         self.pscmp_store_dir = None
         unittest.TestCase.__init__(self, *args, **kwargs)
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def get_qseis_store_dir(self):
