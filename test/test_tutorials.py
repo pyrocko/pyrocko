@@ -1,5 +1,6 @@
 # python 2/3
 import matplotlib
+matplotlib.use('Agg')
 from distutils.dir_util import copy_tree
 import tempfile
 import sys
@@ -44,38 +45,48 @@ to_test = [
 ]
 
 
-class TestCases(unittest.TestCase):
-    def setUp(self):
-        self.cwd = os.getcwd()
-        self.tmpdir = tempfile.mkdtemp('pyrocko.tutorials')
-        sys.path.append(self.tmpdir)
-        p = tutorials.__path__[0]
-        copy_tree(p, self.tmpdir)
-        self.dn = open(os.devnull, 'w')
-        sys.stdout = self.dn
-        os.chdir(self.tmpdir)
+def tutorial_run_dir():
+    return os.path.join(os.path.split(__file__)[0], 'tutorial_run_dir')
 
-    def tearDown(self):
-        self.dn.close()
+
+class TestCases(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cwd = os.getcwd()
+        cls.run_dir = tutorial_run_dir()
+        util.ensuredir(cls.run_dir)
+        cls.dn = open(os.devnull, 'w')
+        sys.stdout = cls.dn
+        os.chdir(cls.run_dir)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dn.close()
         sys.stdout = sys.__stdout__
-        shutil.rmtree(self.tmpdir)
-        os.chdir(self.cwd)
+        os.chdir(cls.cwd)
 
 
 def make_test_function(m):
     def test(self):
         try:
-            __import__(m)
+            __import__('pyrocko.tutorials.' + m)
+
+        except tutorials.util.DownloadError:
+            raise unittest.SkipTest('could not download required data file')
+
         except Exception as e:
             self.fail(e)
+
     return test
+
+
+for m in to_test:
+    test_function = make_test_function(m)
+    setattr(TestCases, 'test_tutorials_{0}'.format(m), test_function)
 
 
 if __name__ == '__main__':
     util.setup_logging('test_tutorials', 'warning')
-
-    for m in to_test:
-        test_function = make_test_function(m)
-        setattr(TestCases, 'test_{0}'.format(m), test_function)
 
     unittest.main()
