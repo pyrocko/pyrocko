@@ -49,6 +49,7 @@ class FDSNStationTestCase(unittest.TestCase):
             for s in new.get_pyrocko_stations():
                 assert len(s.get_channels()) == 3
 
+    @common.require_internet
     def test_retrieve(self):
         for site in ['geofon', 'iris']:
             fsx = fdsn.station(site=site,
@@ -59,6 +60,7 @@ class FDSNStationTestCase(unittest.TestCase):
             assert len(fsx.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
 
+    @common.require_internet
     def test_dataselect(self):
         tmin = stt('2010-01-15 10:00:00')
         tmax = stt('2010-01-15 10:01:00')
@@ -69,6 +71,7 @@ class FDSNStationTestCase(unittest.TestCase):
                             starttime=tmin,
                             endtime=tmax)
 
+    @common.require_internet
     def test_dataselection(self):
         tmin = stt('2010-01-15 10:00:00')
         tmax = stt('2010-01-15 10:01:00')
@@ -84,6 +87,7 @@ class FDSNStationTestCase(unittest.TestCase):
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
             fdsn_station.load_xml(filename=fpath)
 
+    @common.require_internet
     def OFF_test_response(self):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
@@ -175,6 +179,8 @@ class FDSNStationTestCase(unittest.TestCase):
             except:
                 print('failed: ', nslc)
 
+
+    @common.require_internet
     def test_url_alive(self):
         '''
         Test urls which are used as references in pyrocko if they still exist.
