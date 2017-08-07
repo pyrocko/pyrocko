@@ -24,8 +24,11 @@ PI = math.pi
 
 class Plate(Object):
 
-    name = String.T()
-    points = Array.T(dtype=num.float, shape=(None, 2))
+    name = String.T(
+        help='Name of the tectonic plate.')
+    points = Array.T(
+        dtype=num.float, shape=(None, 2),
+        help='Points on the plate.')
 
     def max_interpoint_distance(self):
         p = od.latlon_to_xyz(self.points)
@@ -105,6 +108,7 @@ class PlatesDataset(Dataset):
 
 
 class PeterBird2003(PlatesDataset):
+    '''An updated digital model of plate boundaries.'''
     __citation = '''
     Bird, Peter. "An updated digital model of plate boundaries." Geochemistry,
     Geophysics, Geosystems 4.3 (2003).
@@ -249,6 +253,8 @@ class StrainRateDataset(Dataset):
 
 
 class GSRM1(StrainRateDataset):
+    '''Global Strain Rate Map. An integrated global model of present-day
+    plate motions and plate boundary deformation'''
     __citation = '''Kreemer, C., W.E. Holt, and A.J. Haines, "An integrated
     global model of present-day plate motions and plate boundary deformation",
     Geophys. J. Int., 154, 8-34, 2003.'''

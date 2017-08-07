@@ -1720,38 +1720,18 @@ def consistency_merge(list_of_tuples,
 
 
 def parse_md(f):
-    import inspect
     try:
         with open(op.join(
                 op.dirname(op.abspath(f)),
                   'README.md'), 'r') as readme:
             mdstr = readme.read()
     except IOError as e:
-        return 'Failed to get long description. %s' % e
+        return 'Failed to get README.md: %s' % e
 
-    # Convert modules and classes
-    pattern = re.compile(r'`pyrocko[\.\w+]+`')
-    for i, p in enumerate(re.finditer(pattern, mdstr)):
-        a = p.group()
-        substr = False
-        try:
-            imported = __import__(a.strip('`'))
-            if inspect.isclass(imported):
-                substr = ':py:class:'
-            elif inspect.ismodule(imported):
-                substr = ':py:mod:'
-            else:
-                substr = False
-        except ImportError as e:    # noqa
-            substr = False
-            continue
-
-        if substr:
-            a = a.rstrip('`')
-            x = substr + a
-            mdstr = re.sub(a, x, mdstr, count=1)
-
+    # Remve the title
     mdstr = re.sub(r'^# .*\n?', '', mdstr)
-    mdstr = mdstr.replace('#', '')
-
+    # Append sphinx reference to `pyrocko.` modules
+    mdstr = re.sub(r'`pyrocko\.(.*)`', r':py:mod:`pyrocko.\1`', mdstr)
+    # Convert Subsections to toc-less rubrics
+    mdstr = re.sub(r'## (.*)\n', r'.. rubric:: \1\n', mdstr)
     return mdstr

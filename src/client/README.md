@@ -9,10 +9,10 @@ The pyrocko software package comes with several clients for requesting online ea
 
 ## Earthquake Catalogs
 
-* `pyrocko.client.geofon` Access the Geofon earthquake catalog (http://geofon.gfz-potsdam.de/)
-* `pyrocko.client.usgs` Query the USGS earthquake catalog (https://earthquake.usgs.gov/)
-* `pyrocko.client.globalcmt` Get earhquake events from the Global CMT catalog (http://www.globalcmt.org/)
-* `pyrocko.client.kinherd` Kinherd's earthquake catalog at (http://kinherd.org/quakes/)
-* `pyrocko.client.saxony` Regional Catalog of Saxony, Germany from the University of Leipzig (http://home.uni-leipzig.de/collm/auswertung_temp.html)
+* `pyrocko.client.catalog.Geofon` Access the Geofon earthquake catalog (http://geofon.gfz-potsdam.de/)
+* `pyrocko.client.catalog.GlobalCMT` Query the USGS earthquake catalog (https://earthquake.usgs.gov/)
+* `pyrocko.client.catalog.USGS` Get earhquake events from the Global CMT catalog (http://www.globalcmt.org/)
+* `pyrocko.client.catalog.Kinherd` Kinherd's earthquake catalog at (http://kinherd.org/quakes/)
+* `pyrocko.client.catalog.Saxony` Regional Catalog of Saxony, Germany from the University of Leipzig (http://home.uni-leipzig.de/collm/auswertung_temp.html)
 
 (Also accessible through `pyrocko.client.catalog`)

@@ -1005,10 +1005,10 @@ static PySequenceMethods avl_tree_as_sequence = {
 	(binaryfunc) avl_tree_concat, /* sq_concat */
 	(ssizeargfunc) avl_tree_repeat, /* sq_repeat */
 	(ssizeargfunc) avl_tree_get, /* sq_item */
-	(ssizeobjargproc) 0, /* sq_ass_item */
+	(ssizeobjargproc) NULL, /* sq_ass_item */
 	(objobjproc) avl_tree_contains, /* sq_contains */
 	(binaryfunc) avl_tree_concat_inplace_seq, /* sq_inplace_concat */
-	(ssizeargfunc) 0, /* sq_inplace_repeat */
+	(ssizeargfunc) NULL, /* sq_inplace_repeat */
 };
 #else
 static PySequenceMethods avl_tree_as_sequence = {

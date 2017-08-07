@@ -5,7 +5,7 @@
 from __future__ import absolute_import
 import numpy as num
 
-from . import moment_tensor as pmt
+from pyrocko import moment_tensor as pmt
 
 
 def project(mt):

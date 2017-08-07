@@ -1,10 +1,5 @@
-
-
-The :mod:`snuffling` module
+``pyrocko.gui.snuffling``
 ===========================
 
 .. automodule:: pyrocko.gui.snuffling
     :members:
-
-
-

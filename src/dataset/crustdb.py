@@ -2,6 +2,8 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+'''Access to the USGS Global Crustal Database.
+Simple queries and statistical analysis'''
 from __future__ import absolute_import
 from builtins import range
 from builtins import map

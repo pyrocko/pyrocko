@@ -7,5 +7,5 @@
 * `pyrocko.plot.response_plot` Shows station's response's.
 
 ## GMTPy
-With support for GMT5 pyrocko's gmtpy exposes GMT's neat mapping functions to Python 2/3
-* `pyrocko.plot.gmtpy`
+
+`pyrocko.plot.gmtpy` With support for GMT5 pyrocko's gmtpy exposes GMT's neat mapping functions to Python 2/3.

@@ -996,12 +996,12 @@ def geographic_midpoint(lats, lons, weights=None):
 def geodetic_to_ecef(lat, lon, alt):
     '''
     Convert geodetic coordinates to Earth-Centered, Earth-Fixed (ECEF)
-    Cartesian coordinates.
+    Cartesian coordinates. [#1]_ [#2]_
 
     :param lat: Geodetic latitude in [deg].
     :param lon: Geodetic longitude in [deg].
     :param alt: Geodetic altitude (height) in [m] (positive for points outside
-        the geoid).
+       the geoid).
     :type lat: float
     :type lon: float
     :type alt: float
@@ -1011,7 +1011,7 @@ def geodetic_to_ecef(lat, lon, alt):
 
     .. [#1] https://en.wikipedia.org/wiki/ECEF
     .. [#2] https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
-        #From_geodetic_to_ECEF_coordinates
+       #From_geodetic_to_ECEF_coordinates
     '''
 
     f = earth_oblateness
