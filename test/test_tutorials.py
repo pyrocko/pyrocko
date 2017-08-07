@@ -49,7 +49,7 @@ def tutorial_run_dir():
     return os.path.join(os.path.split(__file__)[0], 'tutorial_run_dir')
 
 
-class TestCases(unittest.TestCase):
+class TutorialsTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -83,7 +83,7 @@ def make_test_function(m):
 
 for m in to_test:
     test_function = make_test_function(m)
-    setattr(TestCases, 'test_tutorials_{0}'.format(m), test_function)
+    setattr(TutorialsTestCase, 'test_tutorials_{0}'.format(m), test_function)
 
 
 if __name__ == '__main__':
