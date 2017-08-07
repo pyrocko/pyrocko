@@ -19,12 +19,17 @@ class Crash(Exception):
 def imapemulation(function, *iterables):
     iterables = list(map(iter, iterables))
     while True:
-        args = [next(it) for it in iterables]
+        args = []
+        for it in iterables:
+            try:
+                args.append(next(it))
+            except StopIteration:
+                return
+
         if function is None:
             yield tuple(args)
         else:
             yield function(*args)
-    return
 
 
 class ParimapTestCase(unittest.TestCase):

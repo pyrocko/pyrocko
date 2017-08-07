@@ -99,7 +99,7 @@ necessary.
 
     while True:
         try:
-            hamster = serial_hamster.SerialHamster(
+            hamster = serial_hamster.Acquisition(
                 port=options.port,
                 baudrate=int(options.baudrate),
                 timeout=float(options.timeout),

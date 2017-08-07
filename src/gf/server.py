@@ -36,8 +36,11 @@ import urllib.parse
 import urllib.error
 import re
 from collections import deque
+import logging
 
 from pyrocko import gf
+
+logger = logging.getLogger('pyrocko.gf.server')
 
 __version__ = '1.0'
 
@@ -304,14 +307,23 @@ class RequestHandler(asynchat.async_chat, SHRH):
         self.send_header('Server', self.version_string())
         self.send_header('Date', self.date_time_string())
 
+    def log(self, message):
+        self.log_info(message)
+
+    def log_info(self, message, type='info'):
+        {
+            'debug': logger.debug,
+            'info': logger.info,
+            'warning': logger.warning,
+            'error': logger.error}.get(type, logger.info)(str(message))
+
     def log_message(self, format, *args):
-        sys.stderr.write("%s - - [%s] %s \"%s\" \"%s\"\n" %
-                         (self.address_string(),
-                          self.log_date_time_string(),
-                          format % args,
-                          self.headers.get('referer', ''),
-                          self.headers.get('user-agent', '')
-                          ))
+        self.log_info("%s - - [%s] %s \"%s\" \"%s\"\n" % (
+            self.address_string(),
+            self.log_date_time_string(),
+            format % args,
+            self.headers.get('referer', ''),
+            self.headers.get('user-agent', '')))
 
     def listdir(self, path):
         return os.listdir(path)
@@ -568,6 +580,7 @@ class SeismosizerHandler(RequestHandler):
 
 class Server(asyncore.dispatcher):
     def __init__(self, ip, port, handler, engine):
+        asyncore.dispatcher.__init__(self)
         self.ip = ip
         self.port = port
         self.handler = handler
@@ -599,6 +612,16 @@ class Server(asyncore.dispatcher):
             return
 
         self.handler(conn, addr, self)
+
+    def log(self, message):
+        self.log_info(message)
+
+    def log_info(self, message, type='info'):
+        {
+            'debug': logger.debug,
+            'info': logger.info,
+            'warning': logger.warning,
+            'error': logger.error}.get(type, 'info')(str(message))
 
 
 def run(ip, port, engine):

@@ -526,11 +526,18 @@ class FigureFrame(qg.QFrame):
             labelcolor=tohex(fgcolor))
 
         try:
-            matplotlib.rc('axes', color_cycle=[
-                to01(x) for x in plot.graph_colors])
+            from cycler import cycler
+            matplotlib.rc(
+                'axes', prop_cycle=cycler(
+                    color=[to01(x) for x in plot.graph_colors]))
 
-        except KeyError:
-            pass
+        except (ImportError, KeyError):
+            try:
+                matplotlib.rc('axes', color_cycle=[
+                    to01(x) for x in plot.graph_colors])
+
+            except KeyError:
+                pass
 
         try:
             matplotlib.rc('axes', labelsize=fontsize)

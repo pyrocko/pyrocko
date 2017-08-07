@@ -1,7 +1,12 @@
+import unittest
 import os
 import time
 from pyrocko import util
 import functools
+import logging
+import socket
+
+logger = logging.getLogger('test.common')
 
 benchmark_results = []
 
@@ -13,11 +18,28 @@ def test_data_file_no_download(fn):
 def test_data_file(fn):
     fpath = test_data_file_no_download(fn)
     if not os.path.exists(fpath):
+        if not have_internet():
+            raise unittest.SkipTest(
+                'need internet access to download data file')
+
         url = 'http://kinherd.org/pyrocko_test_data/' + fn
-        print('Download %s' % url)
+        logger.info('downloading %s' % url)
         util.download_file(url, fpath)
 
     return fpath
+
+
+def have_internet():
+    try:
+        return 0 < len([
+            (s.connect(('8.8.8.8', 80)), s.close())
+            for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]])
+
+    except OSError:
+        return False
+
+
+require_internet = unittest.skipUnless(have_internet(), 'need internet access')
 
 
 class Benchmark(object):

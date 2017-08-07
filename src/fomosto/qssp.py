@@ -33,6 +33,21 @@ program_bins = {
     'qssp.2010': 'fomosto_qssp2010',
 }
 
+
+def have_backend():
+    have_any = False
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+            have_any = True
+
+        except OSError:
+            pass
+
+    return have_any
+
+
 qssp_components = {
     1: 'ae an az gr sd te tn ue un uz ve vn vz'.split(),
     2: 'ar at ap gr sd tt tp ur ut up vr vt vp'.split(),

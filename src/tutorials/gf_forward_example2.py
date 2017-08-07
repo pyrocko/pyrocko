@@ -1,9 +1,11 @@
+import os.path
 from pyrocko import gf
 import numpy as num
 
 # Download a Greens Functions store, programmatically.
 store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
-gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+if not os.path.exists(store_id):
+    gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
 # Setup the LocalEngine and point it to the fomosto store you just downloaded.
 # *store_superdirs* is a list of directories where to look for GF Stores.
@@ -97,5 +99,6 @@ def plot_static_los_result(result, target=0):
         fig.colorbar(cmap, ax=ax, aspect=5)
 
     plt.show()
+
 
 plot_static_los_result(result)

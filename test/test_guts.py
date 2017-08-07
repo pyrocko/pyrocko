@@ -413,7 +413,7 @@ class GutsTestCase(unittest.TestCase):
                 b = load_string(a.dump())
                 self.assertTrue(num.all(a.arr == b.arr))
 
-                if serialize_as is not 'base64+meta':
+                if serialize_as != 'base64+meta':
                     b = load_xml_string(a.dump_xml())
                     self.assertTrue(num.all(a.arr == b.arr))
 

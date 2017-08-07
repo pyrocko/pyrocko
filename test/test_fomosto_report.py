@@ -3,6 +3,7 @@ from __future__ import division
 import unittest
 import logging
 from tempfile import mkdtemp
+import shutil
 
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
@@ -14,15 +15,14 @@ km = 1e3
 
 
 class ReportTestCase(unittest.TestCase):
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_pyrocko_report_with_gf_and_qseis(self):

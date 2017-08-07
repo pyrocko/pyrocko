@@ -6,6 +6,7 @@ import numpy as num
 import cProfile
 import math
 import logging
+import shutil
 
 from tempfile import mkdtemp
 from common import Benchmark
@@ -22,15 +23,15 @@ km = 1000.
 
 class GFBenchmarkTest(unittest.TestCase):
 
+    tempdirs = []
+
     def __init__(self, *args, **kwargs):
-        self.tempdirs = []
         self._dummy_store = None
         unittest.TestCase.__init__(self, *args, **kwargs)
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def dummy_store(self):

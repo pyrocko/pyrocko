@@ -1994,7 +1994,7 @@ initstore_ext(void)
         INITERROR;
     struct module_state *st = GETSTATE(module);
 
-    st->error = PyErr_NewException("pyrocko.store_ext.StoreExtError", NULL, NULL);
+    st->error = PyErr_NewException("pyrocko.gf.store_ext.StoreExtError", NULL, NULL);
     if (st->error == NULL) {
         Py_DECREF(module);
         INITERROR;

@@ -46,7 +46,11 @@ class GFWSTestCase(unittest.TestCase):
         t_ws.start()
 
         try:
-            ws.download_gf_store(site='localhost', store_id=self.store_id)
+            ws.download_gf_store(
+                site='localhost',
+                store_id=self.store_id,
+                quiet=True)
+
             gfstore = store.Store(self.store_id)
             gfstore.check()
 

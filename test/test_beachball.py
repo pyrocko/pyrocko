@@ -38,10 +38,9 @@ def fuzz_angle(mi, ma):
 class BeachballTestCase(unittest.TestCase):
 
     def compare_beachball(self, mt, show=False, **kwargs):
-        import matplotlib
-        matplotlib.use('Agg')
         from matplotlib import pyplot as plt
         from matplotlib import image
+        plt.switch_backend('Agg')
 
         plotargs = dict(
             size=1.0,

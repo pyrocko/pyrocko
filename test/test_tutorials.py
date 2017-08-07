@@ -1,70 +1,92 @@
 # python 2/3
 import matplotlib
-matplotlib.use('PS')
+matplotlib.use('Agg')
+from distutils.dir_util import copy_tree
+import tempfile
+import sys
+import shutil
+import unittest
+import os
+from pyrocko import util
+import pyrocko.tutorials as tutorials
+from matplotlib import pyplot as plt
 
-import unittest # noqa
-import logging # noqa
-import os # noqa
-from pyrocko import util # noqa
+plt.switch_backend('Agg')
 
-logger = logging.getLogger('test_tutorials')
-
-
-to_test = {
-    'automap_example': ['stations_deadsea.pf'],
-    'markers_example1': ['my_markers.pf'],
-    'trace_handling_example_pz':
-    ['displacement.mseed', 'STS2-Generic.polezero.txt', 'test.mseed'],
-    'beachball_example01': ['beachball-example03.pdf'],
-    'beachball_example02': ['beachball-example02.pdf'],
-    'beachball_example03': ['beachball-example03.pdf'],
-    'beachball_example04': ['beachball-example04.png'],
-    'gf_forward_example1': None,
-    'gf_forward_example2': None,
-    'gf_forward_example3': None,
-    'gf_forward_example4': None,
-    'gshhg_example': None,
-    'tectonics_example': None,
-    'test_response_plot': None,
-    'cake_raytracing': ['sptree_p', 'sptree_P'],
-    'catalog_search_globalcmt': ['northern_chile_events.txt'],
-    'catalog_search_geofon': None,
-    'make_hour_files': ['test.mseed', 'test_hourfiles'],
-    'convert_mseed_sac': None,
-    'make_hour_files': None,
-    'fdsn_request_geofon': ['traces.mseed', 'responses.xml', 'responses.yaml'],
-    'fdsn_stationxml_modify': ['changed.xml'],
-    'guts_usage': ['sensorarray1'],
-    'orthodrome_example1': None,
-    'orthodrome_example2': None,
-    'orthodrome_example3': None,
-    'orthodrome_example4': None,
-    'orthodrome_example5': None,
-}
-
-
-def cleanup(fns):
-    if fns:
-        for fn in fns:
-            try:
-                os.remove(fn)
-            except OSError:
-                pass
+to_test = [
+    'automap_example',
+    'markers_example1',
+    'trace_handling_example_pz',
+    'beachball_example01',
+    'beachball_example02',
+    'beachball_example03',
+    'beachball_example04',
+    # 'gf_forward_example1',  # Takes long...
+    'gf_forward_example2',
+    'gf_forward_example3',
+    'gf_forward_example4',
+    'gshhg_example',
+    'tectonics_example',
+    'test_response_plot',
+    'cake_raytracing',
+    'catalog_search_globalcmt',
+    'catalog_search_geofon',
+    'make_hour_files',
+    'convert_mseed_sac',
+    'make_hour_files',
+    'fdsn_request_geofon',
+    'fdsn_stationxml_modify',
+    'guts_usage',
+    'orthodrome_example1',
+    'orthodrome_example2',
+    'orthodrome_example3',
+    'orthodrome_example4',
+    'orthodrome_example5',
+]
 
 
-class TutorialTestCase(unittest.TestCase):
+def tutorial_run_dir():
+    return os.path.join(os.path.split(__file__)[0], 'tutorial_run_dir')
 
-    def test_all(self):
-        for m, to_be_removed in to_test.items():
-            try:
-                module = __import__('pyrocko.tutorials.' + m)
-                module()
-            except Exception as e:
-                logger.exception('%s - %s' % (m, e))
-            finally:
-                cleanup(to_be_removed)
+
+class TutorialsTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cwd = os.getcwd()
+        cls.run_dir = tutorial_run_dir()
+        util.ensuredir(cls.run_dir)
+        cls.dn = open(os.devnull, 'w')
+        sys.stdout = cls.dn
+        os.chdir(cls.run_dir)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.dn.close()
+        sys.stdout = sys.__stdout__
+        os.chdir(cls.cwd)
+
+
+def make_test_function(m):
+    def test(self):
+        try:
+            __import__('pyrocko.tutorials.' + m)
+
+        except tutorials.util.DownloadError:
+            raise unittest.SkipTest('could not download required data file')
+
+        except Exception as e:
+            self.fail(e)
+
+    return test
+
+
+for m in to_test:
+    test_function = make_test_function(m)
+    setattr(TutorialsTestCase, 'test_tutorials_{0}'.format(m), test_function)
 
 
 if __name__ == '__main__':
     util.setup_logging('test_tutorials', 'warning')
+
     unittest.main()

@@ -1,4 +1,11 @@
 from pyrocko import pile, io, util, model
+from pyrocko.tutorials.util import get_tutorial_data
+
+
+# Download example data
+get_tutorial_data('data_conversion')
+
+
 
 input_path = 'data_conversion/mseed'
 output_path = 'data_conversion/sac/' \

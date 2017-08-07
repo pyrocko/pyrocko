@@ -1,10 +1,12 @@
+import os.path
 import numpy as num
 import matplotlib.pyplot as plt
 from pyrocko import gf
 
 # Download a Greens Functions store, programmatically.
 store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
-gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+if not os.path.exists(store_id):
+    gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
 # Ignite the LocalEngine and point it to your fomosto store, e.g. stored on a
 # USB stick, which for example has the id 'Abruzzo_Ameri_static_nearfield'

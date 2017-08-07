@@ -2,6 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
 from builtins import map
 
 import queue
@@ -48,11 +49,14 @@ def parimap(function, *iterables, **kwargs):
             kwargs['pshared'] = pshared
 
         while True:
-            try:
-                args = [next(it) for it in iterables]
-                yield function(*args, **kwargs)
-            except StopIteration:
-                return
+            args = []
+            for it in iterables:
+                try:
+                    args.append(next(it))
+                except StopIteration:
+                    return
+
+            yield function(*args, **kwargs)
 
         return
 
@@ -73,10 +77,13 @@ def parimap(function, *iterables, **kwargs):
     iterables = list(map(iter, iterables))
     while True:
         if nrun < nprocs and not all_written and not error_ahead:
-            try:
-                args = tuple(next(it) for it in iterables)
-            except StopIteration:
-                return
+            args = []
+            for it in iterables:
+                try:
+                    args.append(next(it))
+                except StopIteration:
+                    pass
+
             if len(args) == len(iterables):
                 if len(procs) < nrun + 1:
                     p = multiprocessing.Process(

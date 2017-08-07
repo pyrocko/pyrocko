@@ -115,7 +115,7 @@ class Array(Object):
                             % ', '.join(sorted(allowed)))
 
                     data = val['data']
-                    if not isinstance(data, str):
+                    if not isinstance(data, (str, newstr)):
                         raise ValidationError(
                             'data must be given as a base64 encoded string')
 
@@ -138,6 +138,9 @@ class Array(Object):
             return val
 
         def validate_extra(self, val):
+            if not isinstance(val, num.ndarray):
+                raise ValidationError(
+                    'object is not of type numpy.ndarray: %s' % type(val))
             if self.dtype is not None and self.dtype != val.dtype:
                 raise ValidationError(
                     'array not of required type: need %s, got %s' % (

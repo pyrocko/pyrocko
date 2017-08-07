@@ -86,12 +86,15 @@ class ConversionError(Exception):
 
 
 class NoSuchStore(BadRequest):
-    def __init__(self, store_id):
-        Exception.__init__(self)
+    def __init__(self, store_id=None):
+        BadRequest.__init__(self)
         self.store_id = store_id
 
     def __str__(self):
-        return 'no GF store with id "%s" found.' % self.store_id
+        if self.store_id is not None:
+            return 'no GF store with id "%s" found.' % self.store_id
+        else:
+            return 'GF store not found'
 
 
 def ufloat(s):
@@ -677,7 +680,7 @@ class BoxcarSTF(STF):
         tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        nt = (tmax - tmin) / deltat + 1
+        nt = int(round((tmax - tmin) / deltat)) + 1
         times = num.linspace(tmin, tmax, nt)
         amplitudes = num.ones_like(times)
         if times.size > 1:
@@ -769,7 +772,7 @@ class TriangularSTF(STF):
 
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        nt = (tmax - tmin) / deltat + 1
+        nt = int(round((tmax - tmin) / deltat)) + 1
         if nt > 1:
             t_edges = num.linspace(tmin-0.5*deltat, tmax+0.5*deltat, nt + 1)
             t = tmin_stf + self.duration * num.array(
@@ -821,7 +824,7 @@ class HalfSinusoidSTF(STF):
         tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
-        nt = (tmax - tmin) // deltat + 1
+        nt = int(round((tmax - tmin) / deltat)) + 1
         if nt > 1:
             t_edges = num.maximum(tmin_stf, num.minimum(tmax_stf, num.linspace(
                 tmin - 0.5*deltat, tmax + 0.5*deltat, nt + 1)))
@@ -869,7 +872,7 @@ class SmoothRampSTF(STF):
         tmin = round(tmin_stf / deltat) * deltat
         tmax = round(tmax_stf / deltat) * deltat
         D = round((tmax - tmin)/deltat) * deltat
-        nt = int(D/deltat) + 1
+        nt = int(round(D/deltat)) + 1
         times = num.linspace(tmin, tmax, nt)
         if nt > 1:
             rise_time = self.rise_ratio * self.duration

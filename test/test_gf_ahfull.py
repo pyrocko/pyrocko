@@ -4,6 +4,8 @@ import math
 import unittest
 from tempfile import mkdtemp
 import logging
+import shutil
+
 import numpy as num
 
 from pyrocko import gf, util
@@ -25,6 +27,7 @@ def numeq(a, b, eps):
 
 class GFAhfullTestCase(unittest.TestCase):
 
+    tempdirs = []
     if sys.version_info < (2, 7):
         from contextlib import contextmanager
 
@@ -44,12 +47,10 @@ class GFAhfullTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_create_default(self):

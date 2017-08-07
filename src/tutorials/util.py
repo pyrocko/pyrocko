@@ -1,22 +1,45 @@
+import urllib
 import os
 from pyrocko import util
+import logging
+from pyrocko.gf.ws import rget
 
 
-def test_data_file_no_download(fn):
-    return os.path.join(os.path.split(__file__)[0], fn)
+logger = logging.getLogger('pyrocko.tutorials.util')
 
 
-def get_tutorial_data(filename):
-    '''Download data needed in tutorials.
+class DownloadError(Exception):
+    pass
 
-    Data is hosted at kinherd.org
 
-    :param filename: Name of the required file
+def get_tutorial_data(filename, url=None):
     '''
-    fpath = test_data_file_no_download(filename)
-    if not os.path.exists(fpath):
-        url = 'http://kinherd.org/pyrocko_tutorial_data/' + filename
-        print('Download %s' % url)
-        util.download_file(url, fpath)
+    Download example data file needed in tutorials.
 
-    return fpath
+    The file is downloaded to given ``filename``. If there already exists a
+    file with that name, nothing is done.
+
+    :param filename: name of the required file
+    :param url: if not ``None`` get file from given URL otherwise fetch it from
+        http://data.pyrocko.org/examples/<filename>.
+    :returns: ``filename``
+    '''
+
+    if not os.path.exists(filename):
+        url = 'http://data.pyrocko.org/examples/' + filename
+        logger.info('Download %s' % url)
+        try:
+            try:
+                rget(url, filename)
+            except urllib.error.HTTPError as e:
+                logger.debug(e)
+                util.download_file(url, filename)
+
+            logger.info('Finished Download')
+
+        except Exception:
+            raise DownloadError('could not download file from %s to %s' % (
+                url, filename))
+
+
+    return filename

@@ -6,6 +6,8 @@ import math
 import unittest
 import logging
 from tempfile import mkdtemp
+import shutil
+
 import numpy as num
 
 from common import Benchmark
@@ -33,16 +35,18 @@ def g(trs, cha):
             return tr
 
 
+@unittest.skipUnless(
+    qseis.have_backend(), 'backend qseis not available')
 class GFQSeisTestCase(unittest.TestCase):
+
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_pyrocko_gf_vs_qseis(self):

@@ -55,13 +55,6 @@ class AhfullTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
-
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
-            shutil.rmtree(d)
 
     def make_test_ahfull_kiwi_data(self):
         trs_all = []

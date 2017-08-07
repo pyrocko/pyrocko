@@ -116,8 +116,8 @@ class SensorArray(Target):
                             self.sensor_count)
         self.__validate_args_target(kwargs)
         self.sensors = [
-            Target(north_shift=np.cos(np.radians(self.strike)) * dist,
-                   east_shift=np.sin(np.radians(self.strike)) * dist,
+            Target(north_shift=float(np.cos(np.radians(self.strike)) * dist),
+                   east_shift=float(np.sin(np.radians(self.strike)) * dist),
                    **kwargs)
             for dist in dists]
 

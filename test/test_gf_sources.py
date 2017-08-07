@@ -3,6 +3,7 @@ import math
 import unittest
 import numpy as num
 from tempfile import mkdtemp
+import shutil
 
 from pyrocko import gf, util, guts
 
@@ -17,16 +18,15 @@ def numeq(a, b, eps):
 
 
 class GFSourcesTestCase(unittest.TestCase):
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
         self._dummy_store = None
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     if sys.version_info < (2, 7):

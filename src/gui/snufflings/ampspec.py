@@ -118,14 +118,14 @@ class AmpSpec(Snuffling):
         handles, labels = p.get_legend_handles_labels()
         leg_dict = dict(zip(labels, handles))
         if num_traces > 1:
-            p.legend(leg_dict.values(), leg_dict.keys(),
+            p.legend(list(leg_dict.values()), list(leg_dict.keys()),
                      loc=2,
                      borderaxespad=0.,
                      bbox_to_anchor=((1.05, 1.)))
             fig.subplots_adjust(right=0.8,
                                 left=0.1)
         else:
-            p.set_title(leg_dict.keys()[0], fontsize=16)
+            p.set_title(list(leg_dict.keys())[0], fontsize=16)
             fig.subplots_adjust(right=0.9,
                                 left=0.1)
         fig.canvas.draw()

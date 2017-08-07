@@ -3,12 +3,12 @@ from pyrocko import trace
 from pyrocko.gui.gui_util import PhaseMarker
 
 # The store we are going extract data from:
-store_id = 'crust2_dd'
+store_id = 'iceland_reg_v2'
 
 # First, download a Greens Functions store. If you already have one that you
 # would like to use, you can skip this step and point the *store_superdirs* in
 # the next step to that directory.
-ws.download_gf_store(site='kinherd', store_id=store_id)
+#ws.download_gf_store(site='kinherd', store_id=store_id)
 
 # We need a pyrocko.gf.Engine object which provides us with the traces
 # extracted from the store. In this case we are going to use a local
@@ -51,7 +51,7 @@ markers = []
 for t in targets:
     dist = t.distance_to(source_dc)
     depth = source_dc.depth
-    arrival_time = store.t('any_P', (depth, dist))
+    arrival_time = store.t('begin', (depth, dist))
     m = PhaseMarker(tmin=arrival_time,
                     tmax=arrival_time,
                     phasename='P',
