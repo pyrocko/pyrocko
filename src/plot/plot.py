@@ -472,7 +472,7 @@ def mpl_init(fontsize=10):
         from cycler import cycler
         matplotlib.rc(
             'axes', prop_cycle=cycler(color=[to01(x) for x in graph_colors]))
-    except KeyError:
+    except (ImportError, KeyError):
         try:
             matplotlib.rc('axes', color_cycle=[to01(x) for x in graph_colors])
         except KeyError:

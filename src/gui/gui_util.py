@@ -531,7 +531,7 @@ class FigureFrame(qg.QFrame):
                 'axes', prop_cycle=cycler(
                     color=[to01(x) for x in plot.graph_colors]))
 
-        except KeyError:
+        except (ImportError, KeyError):
             try:
                 matplotlib.rc('axes', color_cycle=[
                     to01(x) for x in plot.graph_colors])
