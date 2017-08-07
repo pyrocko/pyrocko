@@ -128,7 +128,7 @@ class GFScenariosTestCase(unittest.TestCase):
                             quantity='displacement',
                             interpolation='multilinear',
                             # optimization='disable',
-                            store_id=store_id)
+                            store_id=GFScenariosTestCase.store_id)
 
                         targets.append(target)
 
@@ -155,7 +155,7 @@ class GFScenariosTestCase(unittest.TestCase):
             'GF Store "%s" is not available' % store_id2)
     def test_against_kiwi(self):
         engine = gf.get_engine()
-        store_id = store_id2
+        store_id = GFScenariosTestCase.store_id2
         try:
             store = engine.get_store(store_id)
         except gf.NoSuchStore:
