@@ -1,3 +1,4 @@
+import os.path
 import numpy as num
 from pyrocko import gf
 from pyrocko.guts import List
@@ -48,7 +49,8 @@ class CombiSource(gf.Source):
 
 # Download a Greens Functions store, programmatically.
 store_id = 'gf_abruzzo_nearfield_vmod_Ameri'
-gf.ws.download_gf_store(site='kinherd', store_id=store_id)
+if not os.path.exists(store_id):
+    gf.ws.download_gf_store(site='kinherd', store_id=store_id)
 
 km = 1e3   # distance in kilometer
 
@@ -185,5 +187,6 @@ def plot_static_los_profile(result, strike, l, w, x0, y0):
     ax.set_title('Profile')
 
     plt.show()
+
 
 plot_static_los_profile(result, 110., 18*km, 5*km, 0., 0.)
