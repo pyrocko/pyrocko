@@ -1,8 +1,8 @@
 from pyrocko.io import fdsn_station as fs
-from pyrocko.tutorials import get_tutorial_data
+from pyrocko.example import get_example_data
 
 # Download example StationXML file
-get_tutorial_data('responses.xml')
+get_example_data('responses.xml')
 
 # load the StationXML downloaded data file
 sx = fs.load_xml(filename='responses.xml')

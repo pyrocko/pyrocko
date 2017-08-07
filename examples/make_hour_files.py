@@ -1,7 +1,13 @@
-from pyrocko import pile, io, util
 import time
 import calendar
+from pyrocko import (pile, io, util)
+from pyrocko.example import get_example_data
 
+
+# Download test file
+get_example_data('test.mseed')
+
+# Could give directories or thousands of filenames here:
 p = pile.make_pile(['test.mseed'])
 
 # get timestamp for full hour before first data sample in all selected traces

@@ -1,6 +1,9 @@
 from pyrocko import io, trace, evalresp_ext
 import os
+from pyrocko.example import get_example_data
 
+# Get online data
+get_example_data('1989.072.evt.mseed')
 
 traces = io.load('1989.072.evt.mseed')
 out_traces = []

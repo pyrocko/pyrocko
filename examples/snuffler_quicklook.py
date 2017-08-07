@@ -1,4 +1,7 @@
 from pyrocko import io, trace, pile
+from pyrocko.example import get_example_data
+
+get_example_data('test.mseed')
 
 traces = io.load('test.mseed')
 traces[0].snuffle()  # look at a single trace

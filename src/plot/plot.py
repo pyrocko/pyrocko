@@ -11,7 +11,8 @@ Functions with name prefix ``mpl_`` are Matplotlib specific. All others should
 be toolkit-agnostic.
 
 The following skeleton can be used to produce nice PDF figures, with absolute
-sizes derived from paper and font sizes (file :file:`examples/plot_skeleton.py`
+sizes derived from paper and font sizes
+(file :file:`/../../examples/plot_skeleton.py`
 in the Pyrocko source directory)::
 
     from matplotlib import pyplot as plt

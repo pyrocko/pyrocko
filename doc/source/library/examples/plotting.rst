@@ -19,11 +19,11 @@ Topographic map of Dead Sea basin
 This example demonstrates how to create a map of the Dead Sea area with largest
 cities, topography and gives a hint on how to access genuine GMT methods.
 
-Download :download:`automap_example.py </../../src/tutorials/automap_example.py>`
+Download :download:`automap_example.py </../../examples/automap_example.py>`
 
 Station file used in the example: :download:`stations_deadsea.pf </static/stations_deadsea.pf>`
 
-.. literalinclude :: /../../src/tutorials/automap_example.py
+.. literalinclude :: /../../examples/automap_example.py
     :language: python
 
 .. figure :: /static/automap_deadsea.jpg
@@ -56,9 +56,9 @@ Beachballs from moment tensors
 
 This example demonstrates how to create beachballs from (random) moment tensors.  
 
-Download :download:`beachball_example01.py </../../src/tutorials/beachball_example01.py>`
+Download :download:`beachball_example01.py </../../examples/beachball_example01.py>`
 
-.. literalinclude :: /../../src/tutorials/beachball_example01.py
+.. literalinclude :: /../../examples/beachball_example01.py
     :language: python
 
 .. figure :: /static/beachball-example01.png
@@ -72,9 +72,9 @@ Download :download:`beachball_example01.py </../../src/tutorials/beachball_examp
 This example shows how to plot a full, a deviatoric and a double-couple beachball
 for a moment tensor.
 
-Download :download:`beachball_example03.py </../../src/tutorials/beachball_example03.py>`
+Download :download:`beachball_example03.py </../../examples/beachball_example03.py>`
 
-.. literalinclude :: /../../src/tutorials/beachball_example03.py
+.. literalinclude :: /../../examples/beachball_example03.py
     :language: python
 
 .. figure :: /static/beachball-example03.png
@@ -97,9 +97,9 @@ Creating the beachball this ways allows for finer control over their location
 based on their size (in display units) which allows for a round beachball even
 if the axis are not 1:1.
 
-Download :download:`beachball_example02.py </../../src/tutorials/beachball_example02.py>`
+Download :download:`beachball_example02.py </../../examples/beachball_example02.py>`
 
-.. literalinclude :: /../../src/tutorials/beachball_example02.py
+.. literalinclude :: /../../examples/beachball_example02.py
     :language: python
 
 
@@ -124,9 +124,9 @@ The take-off angles needed can be computed with some help of the
 :py:mod:`pyrocko.cake` module. Azimuth and distance computations are done with
 functions from :py:mod:`pyrocko.orthodrome`.
 
-Download :download:`beachball_example04.py </../../src/tutorials/beachball_example04.py>`
+Download :download:`beachball_example04.py </../../examples/beachball_example04.py>`
 
-.. literalinclude :: /../../src/tutorials/beachball_example04.py
+.. literalinclude :: /../../examples/beachball_example04.py
     :language: python
 
 .. figure :: /static/beachball-example04.png

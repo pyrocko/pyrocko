@@ -1,9 +1,9 @@
 from pyrocko import pile, io, util, model
-from pyrocko.tutorials.util import get_tutorial_data
+from pyrocko.example.util import get_example_data
 
 
 # Download example data
-get_tutorial_data('data_conversion')
+get_example_data('data_conversion')
 
 
 

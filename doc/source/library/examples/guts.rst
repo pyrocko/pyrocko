@@ -33,9 +33,9 @@ create the class and attributes, where the attributes are defined as guts
 types (good practice is to define a ``guts_prefix`` to the module, as it helps 
 with in/ex-porting).
 
-Download :download:`guts_sensor_array.py </../../src/tutorials/guts_sensor_array.py>`
+Download :download:`guts_sensor_array.py </../../examples/guts_sensor_array.py>`
 
-.. literalinclude :: /../../src/tutorials/guts_sensor_array.py
+.. literalinclude :: /../../examples/guts_sensor_array.py
     :language: python
 
 
@@ -54,9 +54,9 @@ Usage examples
 Now that a class has been defined (and imported) we can see how to use it.
 
 
-Download :download:`guts_usage.py </../../src/tutorials/guts_usage.py>`
+Download :download:`guts_usage.py </../../examples/guts_usage.py>`
 
-.. literalinclude :: /../../src/tutorials/guts_usage.py
+.. literalinclude :: /../../examples/guts_usage.py
     :language: python
 
 

@@ -12,10 +12,10 @@ response information. Latter is used to deconvolve the transfer function from
 the waveform traces in a second step.
 
 
- .. literalinclude :: /../../src/tutorials/fdsn_request_geofon.py
+ .. literalinclude :: /../../examples/fdsn_request_geofon.py
     :language: python
 
-Download :download:`fdsn_request_geofon.py </../../src/tutorials/fdsn_request_geofon.py>`
+Download :download:`fdsn_request_geofon.py </../../examples/fdsn_request_geofon.py>`
 
 
 StationXML data manipulation
@@ -27,7 +27,7 @@ change the azimuth and dip values for channels whose codes are X, Y and Z, and
 set all channel instrument's input units to meters.
 
 
- .. literalinclude :: /../../src/tutorials/fdsn_stationxml_modify.py
+ .. literalinclude :: /../../examples/fdsn_stationxml_modify.py
     :language: python
 
-Download :download:`fdsn_stationxml_modify.py </../../src/tutorials/fdsn_stationxml_modify.py>`
+Download :download:`fdsn_stationxml_modify.py </../../examples/fdsn_stationxml_modify.py>`

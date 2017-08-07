@@ -8,12 +8,14 @@ in Bode plot style using Matplotlib.
 
 Example
 
-* :download:`test_response_plot.py </static/test_response_plot.py>`
-* :download:`test_response.resp </static/test_response.resp>`
+* :download:`test_response_plot.py </../../examples/test_response_plot.py>`
 
 ::
 
     from pyrocko import response_plot
+    from pyrocko.example import get_example_data
+
+    get_example_data('test_response.resp')
 
     resps, labels = response_plot.load_response_information(
         'test_response.resp', 'resp')

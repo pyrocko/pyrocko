@@ -21,9 +21,9 @@ Moment Tensor construction is shown by using the moment components
 and conversion to strike, dip and rake.
 
 
-Download :download:`moment_tensor_example1.py </../../src/tutorials/moment_tensor_example1.py>`
+Download :download:`moment_tensor_example1.py </../../examples/moment_tensor_example1.py>`
 
-.. literalinclude :: /../../src/tutorials/moment_tensor_example1.py
+.. literalinclude :: /../../examples/moment_tensor_example1.py
     :language: python
 
 
@@ -33,7 +33,7 @@ Strike, dip and rake to Moment Tensor
 Conversion from strike, dip and rake to the Moment Tensor. Afterwards
 we normalize the Moment Tensor. 
 
-Download :download:`moment_tensor_example2.py </../../src/tutorials/moment_tensor_example2.py>`
+Download :download:`moment_tensor_example2.py </../../examples/moment_tensor_example2.py>`
 
-.. literalinclude :: /../../src/tutorials/moment_tensor_example2.py
+.. literalinclude :: /../../examples/moment_tensor_example2.py
     :language: python

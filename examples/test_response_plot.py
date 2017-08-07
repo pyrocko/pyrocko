@@ -1,8 +1,8 @@
 from pyrocko.plot import response_plot
-from pyrocko.tutorials import get_tutorial_data
+from pyrocko.example import get_example_data
 
 # download example data
-get_tutorial_data('test_response.resp')
+get_example_data('test_response.resp')
 
 # read data
 resps, labels = response_plot.load_response_information(

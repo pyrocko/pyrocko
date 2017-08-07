@@ -1,4 +1,7 @@
 from pyrocko import io
+from pyrocko.example import get_example_data
+
+get_example_data('test.mseed')
 
 traces = io.load('test.mseed')
 t = traces[0]

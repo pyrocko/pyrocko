@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from pyrocko import io
 import sys
 

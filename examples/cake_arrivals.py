@@ -1,9 +1,9 @@
 '''
 Calculate P-phase arrivals.
 '''
-
 from pyrocko import cake
 import numpy as num
+
 km = 1000.
 
 # Load builtin 'prem-no-ocean' model (medium resolution)

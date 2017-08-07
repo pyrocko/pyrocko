@@ -1,9 +1,9 @@
 from pyrocko import util
 from pyrocko.gui import marker as pm
-from pyrocko.tutorials import get_tutorial_data
+from pyrocko.example import get_example_data
 
 # Download example markers
-get_tutorial_data('my_markers.pf')
+get_example_data('my_markers.pf')
 
 markers = pm.load_markers('my_markers.pf')
 pm.associate_phases_to_events(markers)

@@ -1,4 +1,3 @@
-
 from pyrocko import trace, util, io
 import numpy as num
 

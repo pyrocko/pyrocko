@@ -1,15 +1,13 @@
 # python 2/3
 import matplotlib
-matplotlib.use('Agg')
-from distutils.dir_util import copy_tree
-import tempfile
+matplotlib.use('Agg')  # noqa
 import sys
-import shutil
 import unittest
 import os
 from pyrocko import util
-import pyrocko.tutorials as tutorials
+from pyrocko import example
 from matplotlib import pyplot as plt
+
 
 plt.switch_backend('Agg')
 
@@ -70,9 +68,9 @@ class TutorialsTestCase(unittest.TestCase):
 def make_test_function(m):
     def test(self):
         try:
-            __import__('pyrocko.tutorials.' + m)
+            __import__('.examples.' + m)
 
-        except tutorials.util.DownloadError:
+        except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')
 
         except Exception as e:

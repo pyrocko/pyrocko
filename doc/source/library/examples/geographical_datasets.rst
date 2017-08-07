@@ -10,10 +10,10 @@ The `GSHHG database <https://www.ngdc.noaa.gov/mgg/shorelines/gshhs.html>`_ is a
 Classes covered in this example:
  * :py:class:`pyrocko.datasets.gshhg.GSHHG`
 
- .. literalinclude :: /../../src/tutorials/gshhg_example.py
+ .. literalinclude :: /../../examples/gshhg_example.py
     :language: python
 
-Download :download:`gshhg_example.py </../../src/tutorials/gshhg_example.py>`
+Download :download:`gshhg_example.py </../../examples/gshhg_example.py>`
 
 .. rubric:: Footnotes
 
@@ -28,10 +28,10 @@ Tectonic Plates and Boundaries (PB2003)
 Classes covered in this example:
  * :py:class:`pyrocko.datasets.tectonics.PeterBird2003`
 
- .. literalinclude :: /../../src/tutorials/tectonics_example.py
+ .. literalinclude :: /../../examples/tectonics_example.py
     :language: python
 
-Download :download:`tectonics_example.py </../../src/tutorials/tectonics_example.py>`
+Download :download:`tectonics_example.py </../../examples/tectonics_example.py>`
 
 .. rubric:: Footnotes
 

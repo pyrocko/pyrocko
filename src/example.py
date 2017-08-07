@@ -12,7 +12,7 @@ class DownloadError(Exception):
     pass
 
 
-def get_tutorial_data(filename, url=None):
+def get_example_data(filename, url=None):
     '''
     Download example data file needed in tutorials.
 
@@ -40,6 +40,5 @@ def get_tutorial_data(filename, url=None):
         except Exception:
             raise DownloadError('could not download file from %s to %s' % (
                 url, filename))
-
 
     return filename

@@ -1,5 +1,5 @@
-Dataset management
-==================
+Dataset management - The ``pile``
+==================================
 
 At the base of Pyrocko's waveform dataset handling is the
 :class:`~pyrocko.pile.Pile` class. It organizes and caches the meta-data of
@@ -16,10 +16,10 @@ When applying this procedure to a dataset consisting of arbitrarily separated fi
 The :mod:`time` and :mod:`calendar` modules will be used.
 
 
-.. literalinclude :: /../../src/tutorials/make_hour_files.py
+.. literalinclude :: /../../examples/make_hour_files.py
     :language: python
 
-Download :download:`catalog_search_globalcmt.py </../../src/tutorials/make_hour_files.py>`
+Download :download:`catalog_search_globalcmt.py </../../examples/make_hour_files.py>`
 
 
 Downsampling a whole dataset
@@ -27,10 +27,10 @@ Downsampling a whole dataset
 
 Example for downsampling all trace files in the input folder to a common sampling rate with :py:meth:`pyrocko.trace.Trace.downsample_to`.
 
-.. literalinclude :: /../../src/tutorials/downsample.py
+.. literalinclude :: /../../examples/pile_downsample.py
     :language: python
 
-Download :download:`downsample.py </../../src/tutorials/downsample.py>`
+Download :download:`pile_downsample.py </../../examples/pile_downsample.py>`
 
 
 Converting a dataset from Mini-SEED to SAC format
@@ -38,7 +38,7 @@ Converting a dataset from Mini-SEED to SAC format
 
 Conversion of a mseed file to SAC. See :mod:`pyrocko.io` for supported formats.
 
-.. literalinclude :: /../../src/tutorials/convert_mseed_sac.py
+.. literalinclude :: /../../examples/convert_mseed_sac.py
     :language: python
 
-Download :download:`convert_mseed_sac.py </../../src/tutorials/convert_mseed_sac.py>`
+Download :download:`convert_mseed_sac.py </../../examples/convert_mseed_sac.py>`

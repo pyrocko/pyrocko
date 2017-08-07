@@ -1,13 +1,8 @@
+from pyrocko import pile, io, util
 import time
 import calendar
-from pyrocko import (pile, io, util)
-from pyrocko.tutorials import get_tutorial_data
+''' Chope a pile of waveform traces into segments '''
 
-
-# Download test file
-get_tutorial_data('test.mseed')
-
-# Could give directories or thousands of filenames here:
 p = pile.make_pile(['test.mseed'])
 
 # get timestamp for full hour before first data sample in all selected traces
