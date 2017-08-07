@@ -18,4 +18,4 @@ scratch
 htmlcov
 .coverage
 .cache
-doc/source/library/reference/modules/
+test/example_run_dir

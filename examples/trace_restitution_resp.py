@@ -1,5 +1,6 @@
-from pyrocko import io, trace, evalresp_ext
 import os
+
+from pyrocko import io, trace, evalresp_ext
 from pyrocko.example import get_example_data
 
 # Get online data

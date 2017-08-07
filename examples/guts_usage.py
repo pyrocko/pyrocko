@@ -1,5 +1,5 @@
 from pyrocko.guts import load
-from .guts_sensor_array import SensorArray
+from guts_sensor_array import SensorArray
 
 
 sa1 = SensorArray(distance_min=1e3, distance_max=100e3, strike=0.)

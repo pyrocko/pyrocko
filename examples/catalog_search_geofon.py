@@ -1,7 +1,6 @@
 from pyrocko import util
 from pyrocko.client import catalog
 
-
 tmin = util.ctimegm('2010-01-12 21:50:00')
 tmax = util.ctimegm('2010-01-13 03:17:00')  # ending time of query
 mag = 6.                                    # minimum magntiude (open end)

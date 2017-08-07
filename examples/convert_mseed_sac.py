@@ -1,7 +1,6 @@
 from pyrocko import pile, io, util, model
 from pyrocko.example.util import get_example_data
 
-
 # Download example data
 get_example_data('data_conversion')
 

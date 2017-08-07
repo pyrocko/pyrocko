@@ -4,12 +4,16 @@ matplotlib.use('Agg')  # noqa
 import sys
 import unittest
 import os
+import imp
+
 from pyrocko import util
 from pyrocko import example
 from matplotlib import pyplot as plt
 
 
 plt.switch_backend('Agg')
+op = os.path
+
 
 to_test = [
     'automap_example',
@@ -44,10 +48,10 @@ to_test = [
 
 
 def tutorial_run_dir():
-    return os.path.join(os.path.split(__file__)[0], 'tutorial_run_dir')
+    return op.join(op.split(__file__)[0], 'example_run_dir')
 
 
-class TutorialsTestCase(unittest.TestCase):
+class ExamplesTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -66,9 +70,12 @@ class TutorialsTestCase(unittest.TestCase):
 
 
 def make_test_function(m):
+    fn = op.join(op.dirname(op.abspath(__file__)),
+                 'examples', m + '.py')
+    print fn
     def test(self):
         try:
-            __import__('.examples.' + m)
+            imp.load_source(m, fn)
 
         except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')
@@ -81,7 +88,7 @@ def make_test_function(m):
 
 for m in to_test:
     test_function = make_test_function(m)
-    setattr(TutorialsTestCase, 'test_tutorials_{0}'.format(m), test_function)
+    setattr(ExamplesTestCase, 'test_example_{0}'.format(m), test_function)
 
 
 if __name__ == '__main__':
