@@ -902,7 +902,6 @@ Py_LOCAL(PyObject *) avl_tree_repeat(avl_tree_Object * self, Py_ssize_t n)
 /* Return new reference to a[i] */
 Py_LOCAL(PyObject *) avl_tree_get(avl_tree_Object * self, Py_ssize_t idx)
 {
-	/* The interpreter passes idx after incrementation by len(self) */
     if (idx < 0) {
         idx += avl_tree_size(self);
     }
