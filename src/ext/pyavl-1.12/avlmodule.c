@@ -903,6 +903,10 @@ Py_LOCAL(PyObject *) avl_tree_repeat(avl_tree_Object * self, Py_ssize_t n)
 Py_LOCAL(PyObject *) avl_tree_get(avl_tree_Object * self, Py_ssize_t idx)
 {
 	/* The interpreter passes idx after incrementation by len(self) */
+    if (idx < 0) {
+        idx += avl_tree_size(self);
+    }
+
 	void *rv = avl_find_index((avl_size_t) (idx + 1), self->tree);
 	if (rv == NULL) {
 		PyErr_SetString(PyExc_IndexError, "avl_tree index out of range");

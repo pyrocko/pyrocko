@@ -432,16 +432,17 @@ class Test_avl_sequence(unittest.TestCase):
     def geti(self, t, i):
         return t[i]
 
-    @unittest.skip('Deactivated, check!')
     def testseq_basic(self):
         t = avl.new()
         for step, modulo in [(491, 2000), (313, 10000)]:
             for i in gen_ints_perm(step, modulo):
                 t.insert(i)
+
             for i in gen_ints(0, modulo):
                 self.assertTrue(t.index(i) == i)
                 self.assertTrue(t[i] == i)
                 self.assertTrue(t[-i-1] == t[modulo-i-1])
+
             for i in gen_ints(-100, 0):
                 self.assertTrue(t.index(i) == -1)
             for i in gen_ints(modulo, modulo+100):
@@ -676,10 +677,5 @@ def suite():
     return suite
 
 
-def main():
-    random.seed()
-    unittest.TextTestRunner(verbosity=2).run(suite())
-
-
 if __name__ == '__main__':
-    main()
+    unittest.main()
