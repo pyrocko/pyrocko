@@ -1,9 +1,13 @@
+import os
+
 from pyrocko.gf import LocalEngine, Target, DCSource, ws
 from pyrocko import trace
 from pyrocko.gui.gui_util import PhaseMarker
 
 # The store we are going extract data from:
 store_id = 'iceland_reg_v2'
+if not os.path.exists(store_id):
+    ws.download_gf_store(site='kinherd', store_id=store_id)
 
 # First, download a Greens Functions store. If you already have one that you
 # would like to use, you can skip this step and point the *store_superdirs* in
