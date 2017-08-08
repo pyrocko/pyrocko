@@ -1131,13 +1131,19 @@ class Pile(TracesGroup):
             objects for every extracted time window
         '''
         if tmin is None:
-            tmin = self.tmin+tpad
+            if self.tmin is None:
+                logger.warning('Pile\'s tmin is not set - pile may be empty.')
+                return
+            tmin = self.tmin + tpad
 
         if tmax is None:
-            tmax = self.tmax-tpad
+            if self.tmax is None:
+                logger.warning('Pile\'s tmax is not set - pile may be empty.')
+                return
+            tmax = self.tmax - tpad
 
         if tinc is None:
-            tinc = tmax-tmin
+            tinc = tmax - tmin
 
         if not self.is_relevant(tmin-tpad, tmax+tpad, group_selector):
             return
@@ -1345,7 +1351,7 @@ class Pile(TracesGroup):
         :param opengl: bool, whether to use opengl (default: ``False``)
         '''
 
-        from pyrocko.snuffler import snuffle
+        from pyrocko.gui.snuffler import snuffle
         snuffle(self, **kwargs)
 
 

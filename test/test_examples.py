@@ -5,50 +5,30 @@ import sys
 import unittest
 import os
 import imp
+import glob
+import traceback
 
 from pyrocko import util
 from pyrocko import example
 from matplotlib import pyplot as plt
 
+from pyrocko.gui import snuffler
 
 plt.switch_backend('Agg')
 op = os.path
 
+test_dir = op.dirname(op.abspath(__file__))
 
-to_test = [
-    'automap_example',
-    'markers_example1',
-    'trace_handling_example_pz',
-    'beachball_example01',
-    'beachball_example02',
-    'beachball_example03',
-    'beachball_example04',
-    # 'gf_forward_example1',  # Takes long...
-    'gf_forward_example2',
-    'gf_forward_example3',
-    'gf_forward_example4',
-    'gshhg_example',
-    'tectonics_example',
-    'test_response_plot',
-    'cake_raytracing',
-    'catalog_search_globalcmt',
-    'catalog_search_geofon',
-    'make_hour_files',
-    'convert_mseed_sac',
-    'make_hour_files',
-    'fdsn_request_geofon',
-    'fdsn_stationxml_modify',
-    'guts_usage',
-    'orthodrome_example1',
-    'orthodrome_example2',
-    'orthodrome_example3',
-    'orthodrome_example4',
-    'orthodrome_example5',
-]
+
+def snuffle_dummy(*args, **kwargs):
+    pass
+
+
+snuffler.snuffle = snuffle_dummy
 
 
 def tutorial_run_dir():
-    return op.join(op.split(__file__)[0], 'example_run_dir')
+    return op.join(test_dir, 'example_run_dir')
 
 
 class ExamplesTestCase(unittest.TestCase):
@@ -69,29 +49,29 @@ class ExamplesTestCase(unittest.TestCase):
         os.chdir(cls.cwd)
 
 
-def make_test_function(m):
-    fn = op.join(op.dirname(op.abspath(__file__)),
-                 'examples', m + '.py')
-    print fn
+example_files = glob.glob(op.join(test_dir, 'examples/*.py'))
+
+
+def make_test_function(test_name, fn):
     def test(self):
         try:
-            imp.load_source(m, fn)
+            imp.load_source(test_name, fn)
 
         except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')
 
         except Exception as e:
-            self.fail(e)
+            self.fail(traceback.format_exc(e))
 
     return test
 
 
-for m in to_test:
-    test_function = make_test_function(m)
-    setattr(ExamplesTestCase, 'test_example_{0}'.format(m), test_function)
+for fn in example_files:
+    test_name = op.splitext(op.split(fn)[-1])[0]
+    test_function = make_test_function(test_name, fn)
+    setattr(ExamplesTestCase, 'test_example_' + test_name, test_function)
 
 
 if __name__ == '__main__':
     util.setup_logging('test_tutorials', 'warning')
-
     unittest.main()

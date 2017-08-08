@@ -26,8 +26,14 @@ class GFWSTestCase(unittest.TestCase):
 
         ahfullgreen.build(self.store_dir)
 
+        self.dl_dir = tempfile.mkdtemp(prefix='pyrocko_dl')
+        self.cwd = os.getcwd()
+        os.chdir(self.dl_dir)
+
     def tearDown(self):
+        os.chdir(self.cwd)
         shutil.rmtree(self.store_dir)
+        shutil.rmtree(self.dl_dir)
 
     def test_local_server(self):
 
@@ -57,7 +63,7 @@ class GFWSTestCase(unittest.TestCase):
         finally:
             shutil.rmtree(self.store_id)
             t_ws.s.close()
-            t_ws.join()
+            t_ws.join(1.)
 
 
 if __name__ == '__main__':

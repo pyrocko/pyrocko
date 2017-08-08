@@ -1,10 +1,8 @@
 from pyrocko import pile, io, util, model
-from pyrocko.example.util import get_example_data
+from pyrocko.example import get_example_data
 
 # Download example data
 get_example_data('data_conversion')
-
-
 
 input_path = 'data_conversion/mseed'
 output_path = 'data_conversion/sac/' \

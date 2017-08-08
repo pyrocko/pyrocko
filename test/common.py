@@ -42,6 +42,17 @@ def have_internet():
 require_internet = unittest.skipUnless(have_internet(), 'need internet access')
 
 
+def have_gui():
+    try:
+        from PyQt4 import QtCore  # noqa
+        return True
+    except ImportError:
+        return False
+
+
+require_gui = unittest.skipUnless(have_gui(), 'no gui support configured')
+
+
 class Benchmark(object):
     def __init__(self, prefix=None):
         self.prefix = prefix or ''
