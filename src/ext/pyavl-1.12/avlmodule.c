@@ -957,7 +957,7 @@ Py_LOCAL(PyObject *) avl_tree_slice(avl_tree_Object * self, Py_ssize_t lo,
 	return (PyObject *) rv;
 }
 
-Py_LOCAL(int) avl_tree_contains(PyObject *self, PyObject * val)
+Py_LOCAL(int) avl_tree_contains(PyObject *self, PyObject *val)
 {
 	void *res;
 	avl_tree_Object *t = (avl_tree_Object *) self;
@@ -1005,7 +1005,9 @@ static PySequenceMethods avl_tree_as_sequence = {
 	(binaryfunc) avl_tree_concat, /* sq_concat */
 	(ssizeargfunc) avl_tree_repeat, /* sq_repeat */
 	(ssizeargfunc) avl_tree_get, /* sq_item */
+    (void *) NULL, /* was_sq_slice */
 	(ssizeobjargproc) NULL, /* sq_ass_item */
+    (void *) NULL, /* was_sq_ass_slice */
 	(objobjproc) avl_tree_contains, /* sq_contains */
 	(binaryfunc) avl_tree_concat_inplace_seq, /* sq_inplace_concat */
 	(ssizeargfunc) NULL, /* sq_inplace_repeat */
@@ -1026,6 +1028,12 @@ static PySequenceMethods avl_tree_as_sequence = {
 };
 #endif
 
+#if PY_MAJOR_VERSION >= 3
+#define GetIndicesExType PyObject*
+#else
+#define GetIndicesExType PySliceObject*
+#endif
+
 static PyObject * avl_tree_mp_subscript(avl_tree_Object* self, PyObject* item) {
 
 
@@ -1041,7 +1049,7 @@ static PyObject * avl_tree_mp_subscript(avl_tree_Object* self, PyObject* item) {
         Py_ssize_t len;
         Py_ssize_t start, stop, step, slicelength;
         len = avl_tree_size(self);
-        if (PySlice_GetIndicesEx((PySliceObject*) item, 
+        if (PySlice_GetIndicesEx((GetIndicesExType) item, 
                                  len, &start, &stop, 
                                  &step, &slicelength) < 0)
             return NULL;
