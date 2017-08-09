@@ -3,6 +3,7 @@
 from builtins import range
 import time
 import unittest
+from collections import defaultdict
 
 import numpy as num
 
@@ -110,6 +111,24 @@ class DataCubeTestCase(unittest.TestCase):
             t1 = time.time()
             print('with interpolation: %10.3f' % (t1 - t0))
             del trs
+
+    def test_leapsecond(self):
+        fns = map(common.test_data_file, ['leapsecond_dec.cube',
+                                          'leapsecond_jan.cube'])
+
+        trs = defaultdict(list)
+        for fn in fns:
+            for tr in datacube.iload(fn):
+                trs[tr.channel].append(tr)
+
+        for cha in trs.keys():
+            tra, trb, trc = trs[cha]
+            assert abs(
+                tra.tmax - (util.stt('2017-01-01 00:00:01') - tra.deltat)) \
+                < tra.deltat * 0.001
+            assert abs(
+                trb.tmin - util.stt('2017-01-01 00:00:00')) \
+                < trb.deltat * 0.001
 
 
 if __name__ == "__main__":

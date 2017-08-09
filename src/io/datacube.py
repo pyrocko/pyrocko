@@ -235,6 +235,9 @@ def context(fn):
     entries = []
     for dentry in dentries:
         fn2 = os.path.join(dpath, dentry)
+        if not os.path.isfile(fn2):
+            continue
+
         with open(fn2, 'rb') as f:
             first512 = f.read(512)
             if not detect(first512):
@@ -397,6 +400,10 @@ def iload(fn, load_data=True, interpolation='sinc'):
     # to prevent problems with rounding errors:
     tmax_ip = tmin_ip + (nsamples_ip-1) * deltat
 
+    leaps = num.array(
+        [x[0] + util.gps_utc_offset(x[0]) for x in util.read_leap_seconds2()],
+        dtype=num.float)
+
     for i in range(nchannels):
         if load_data:
             arr = data_arrays[i]
@@ -419,15 +426,30 @@ def iload(fn, load_data=True, interpolation='sinc'):
             tr_tmin = tmin_ip
             tr_tmax = tmax_ip
 
-        toff = util.gps_utc_offset(tmin_ip)
-        tr_tmin -= toff
-        if tr_tmax is not None:
-            tr_tmax -= toff
-
         tr = trace.Trace('', header['DEV_NO'], '', 'p%i' % i, deltat=deltat,
                          ydata=ydata, tmin=tr_tmin, tmax=tr_tmax, meta=header)
 
-        yield tr
+        bleaps = num.logical_and(tmin_ip <= leaps, leaps < tmax_ip)
+
+        if num.any(bleaps):
+            assert num.sum(bleaps) == 1
+            tcut = leaps[bleaps][0]
+
+            for tmin_cut, tmax_cut in [
+                    (tr.tmin, tcut), (tcut, tr.tmax+tr.deltat)]:
+
+                try:
+                    tr_cut = tr.chop(tmin_cut, tmax_cut, inplace=False)
+                    tr_cut.shift(
+                        util.utc_gps_offset(0.5*(tr_cut.tmin+tr_cut.tmax)))
+                    yield tr_cut
+
+                except trace.NoData:
+                    pass
+
+        else:
+            tr.shift(util.utc_gps_offset(0.5*(tr.tmin+tr.tmax)))
+            yield tr
 
 
 header_keys = {
