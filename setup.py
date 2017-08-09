@@ -270,8 +270,70 @@ proceed? [y/n]' % open(fn, 'r').read())
 
 
 class CustomBuildPyCommand(build_py):
+
+    def make_compat_modules(self):
+        mapping = [
+            ('pyrocko', 'css', ['pyrocko.io.css']),
+            ('pyrocko', 'datacube', ['pyrocko.io.datacube']),
+            ('pyrocko.fdsn', '__init__', []),
+            ('pyrocko.fdsn', 'enhanced_sacpz', ['pyrocko.io.enhanced_sacpz']),
+            ('pyrocko.fdsn', 'station', ['pyrocko.io.fdsn_station']),
+            ('pyrocko', 'gcf', ['pyrocko.io.gcf']),
+            ('pyrocko', 'gse1', ['pyrocko.io.gse1']),
+            ('pyrocko', 'gse2_io_wrap', ['pyrocko.io.gse2_io_wrap']),
+            ('pyrocko', 'ims', ['pyrocko.io.ims']),
+            ('pyrocko', 'io_common', ['pyrocko.io.io_common']),
+            ('pyrocko', 'kan', ['pyrocko.io.kan']),
+            ('pyrocko', 'mseed', ['pyrocko.io.mseed']),
+            ('pyrocko', 'rdseed', ['pyrocko.io.rdseed']),
+            ('pyrocko.fdsn', 'resp', ['pyrocko.io.resp']),
+            ('pyrocko', 'sacio', ['pyrocko.io.sac']),
+            ('pyrocko', 'segy', ['pyrocko.io.segy']),
+            ('pyrocko', 'seisan_response', ['pyrocko.io.seisan_response']),
+            ('pyrocko', 'seisan_waveform', ['pyrocko.io.seisan_waveform']),
+            ('pyrocko', 'suds', ['pyrocko.io.suds']),
+            ('pyrocko', 'yaff', ['pyrocko.io.yaff']),
+            ('pyrocko.fdsn', 'ws', ['pyrocko.client.fdsn']),
+            ('pyrocko', 'catalog', ['pyrocko.client.catalog']),
+            ('pyrocko', 'iris_ws', ['pyrocko.client.iris']),
+            ('pyrocko', 'crust2x2', ['pyrocko.dataset.crust2x2']),
+            ('pyrocko', 'crustdb', ['pyrocko.dataset.crustdb']),
+            ('pyrocko', 'geonames', ['pyrocko.dataset.geonames']),
+            ('pyrocko', 'tectonics', ['pyrocko.dataset.tectonics']),
+            ('pyrocko', 'topo', ['pyrocko.dataset.topo']),
+            ('pyrocko', 'automap', ['pyrocko.plot.automap']),
+            ('pyrocko', 'beachball', ['pyrocko.plot.beachball']),
+            ('pyrocko', 'cake_plot', ['pyrocko.plot.cake_plot']),
+            ('pyrocko', 'gmtpy', ['pyrocko.plot.gmtpy']),
+            ('pyrocko', 'hudson', ['pyrocko.plot.hudson']),
+            ('pyrocko', 'response_plot', ['pyrocko.plot.response_plot']),
+        ]
+
+        for (package, compat_module, import_modules) in mapping:
+            print(package, compat_module, import_modules)
+            module_code = '''
+import sys
+import pyrocko
+if pyrocko.grumpy:
+    sys.stderr.write('using renamed pyrocko module: %s.%s\\n')
+    sys.stderr.write('           -> should now use: %s\\n\\n')
+
+''' % (package, compat_module, ', '.join(import_modules)) + ''.join(
+                ['from %s import *\n' % module for module in import_modules])
+
+            outfile = self.get_module_outfile(
+                self.build_lib, package.split('.'), compat_module)
+
+            print(outfile)
+
+            dir = os.path.dirname(outfile)
+            self.mkpath(dir)
+            with open(outfile, 'w') as f:
+                f.write(module_code)
+
     def run(self):
         make_info_module(packname, version)
+        self.make_compat_modules()
         build_py.run(self)
 
 
