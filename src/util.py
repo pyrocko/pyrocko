@@ -1557,17 +1557,35 @@ def read_leap_seconds2():
         return parse_leap_seconds_list(fn)
 
 
-def gps_utc_offset(t):
+def gps_utc_offset(t_utc):
+    '''Time offset t_gps - t_utc for a given t_utc.'''
     ls = read_leap_seconds2()
     i = 0
-    if t < ls[0][0]:
-        return ls[0][1] - 9
+    if t_utc < ls[0][0]:
+        return ls[0][1] - 1 - 9
+
     while i < len(ls) - 1:
-        if ls[i][0] <= t and t < ls[i+1][0]:
+        if ls[i][0] <= t_utc and t_utc < ls[i+1][0]:
             return ls[i][1] - 9
         i += 1
 
     return ls[-1][1] - 9
+
+
+def utc_gps_offset(t_gps):
+    '''Time offset t_utc - t_gps for a given t_gps.'''
+    ls = read_leap_seconds2()
+
+    if t_gps < ls[0][0] + ls[0][1] - 9:
+        return - (ls[0][1] - 1 - 9)
+
+    i = 0
+    while i < len(ls) - 1:
+        if ls[i][0] + ls[i][1] - 9 <= t_gps and t_gps < ls[i+1][0] + ls[i+1][1] - 9:
+            return - (ls[i][1] - 9)
+        i += 1
+
+    return - (ls[-1][1] - 9)
 
 
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
