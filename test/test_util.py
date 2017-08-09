@@ -84,6 +84,33 @@ class UtilTestCase(unittest.TestCase):
             if t in from_sys:
                 assert from_sys[t] == n
 
+    def test_gps_utc_offset(self):
+        for t_utc_0 in [x[0] for x in util.read_leap_seconds2()]:
+            t_utc_0 = float(t_utc_0)
+            ts_utc = num.linspace(
+                t_utc_0 - 2.0, t_utc_0 + 2.0, 17)
+
+            for t_utc in ts_utc:
+                t_gps = t_utc + util.gps_utc_offset(t_utc)
+                t_utc2 = t_gps + util.utc_gps_offset(t_gps)
+
+                self.assertEqual(util.tts(t_utc), util.tts(t_utc2))
+
+            ts_gps = num.linspace(
+                ts_utc[0] + util.gps_utc_offset(ts_utc[0]),
+                ts_utc[-1] + util.gps_utc_offset(ts_utc[-1]), 17 + 4)
+
+            t_utc_wrapped = []
+            for t_gps in ts_gps:
+                t_utc = t_gps + util.utc_gps_offset(t_gps)
+                t_utc_wrapped.append(t_utc - t_utc_0)
+
+            num.testing.assert_almost_equal(
+                t_utc_wrapped,
+                num.concatenate((
+                    num.linspace(-2.0, 0.75, 12),
+                    num.linspace(0.0, 2.0, 9))))
+
     def test_plf_integration(self):
         import numpy as num
 
