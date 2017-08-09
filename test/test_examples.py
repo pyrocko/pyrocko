@@ -4,7 +4,6 @@ matplotlib.use('Agg')  # noqa
 import sys
 import unittest
 import os
-import imp
 import glob
 import traceback
 
@@ -55,7 +54,11 @@ example_files = glob.glob(op.join(test_dir, 'examples/*.py'))
 def make_test_function(test_name, fn):
     def test(self):
         try:
+            import imp
             imp.load_source(test_name, fn)
+        except ImportError:
+            import importlib.machinery
+            importlib.machinery.SourceFileLoader(test_dir, fn)
 
         except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')
