@@ -942,6 +942,11 @@ def MakePileViewerMainClass(base):
             self.menuitem_degap.setChecked(True)
             self.menu.addAction(self.menuitem_degap)
 
+            self.menuitem_demean = qg.QAction('Demean', self.menu)
+            self.menuitem_demean.setCheckable(True)
+            self.menuitem_demean.setChecked(True)
+            self.menu.addAction(self.menuitem_demean)
+
             self.menuitem_fft_filtering = qg.QAction(
                 'FFT Filtering', self.menu)
             self.menuitem_fft_filtering.setCheckable(True)
@@ -2677,7 +2682,8 @@ def MakePileViewerMainClass(base):
                 processed_traces = self.prepare_cutout2(
                     self.tmin, self.tmax,
                     trace_selector=self.trace_selector,
-                    degap=self.menuitem_degap.isChecked())
+                    degap=self.menuitem_degap.isChecked(),
+                    demean=self.menuitem_demean.isChecked())
 
                 color_lookup = dict(
                     [(k, i) for (i, k) in enumerate(self.color_keys)])
@@ -2978,7 +2984,8 @@ def MakePileViewerMainClass(base):
             self.update()
 
         def prepare_cutout2(
-                self, tmin, tmax, trace_selector=None, degap=True, nmax=6000):
+                self, tmin, tmax, trace_selector=None, degap=True,
+                demean=True, nmax=6000):
 
             nmax = self.visible_length
 
@@ -3012,7 +3019,7 @@ def MakePileViewerMainClass(base):
 
             # state vector to decide if cached traces can be used
             vec = (
-                tmin, tmax, trace_selector, degap, self.lowpass,
+                tmin, tmax, trace_selector, degap, demean, self.lowpass,
                 self.highpass, fft_filtering, lphp,
                 min_deltat_allow, self.rotate, self.shown_tracks_range,
                 ads, self.pile.get_update_count())
@@ -3064,6 +3071,10 @@ def MakePileViewerMainClass(base):
                             accessor_id=id(self),
                             snap=(math.floor, math.ceil),
                             include_last=True):
+
+                        if demean:
+                            for tr in traces:
+                                tr.ydata -= num.mean(tr.ydata)
 
                         traces = self.pre_process_hooks(traces)
 
