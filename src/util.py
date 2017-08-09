@@ -157,13 +157,18 @@ def _download(url, fpath, username=None, password=None,
     if recursive:
         if op.exists(fpath) and not force:
             raise PathExists('path "%s" already exists' % fpath)
-        files = parse_directory_tree(url)
-        for fn in files:
-            frx, fsize = download_file(urljoin(url, fn),
-                                       op.join(fpath, fn),
-                                       download=True)
 
-            bytes_rx += frx
+        files = parse_directory_tree(url)
+
+        for fn in files:
+            file_url = urljoin(url, fn)
+            if method == 'download':
+                _, fsize = download_file(file_url,
+                                         op.join(fpath, fn),
+                                         download=True)
+            elif method == 'calcsize':
+                fsize = get_content_length(file_url)
+
             bytes_total += fsize
 
     else:
