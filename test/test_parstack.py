@@ -5,6 +5,7 @@ import multiprocessing
 import time
 from collections import defaultdict
 import numpy as num
+import common
 
 from pyrocko import util, trace, autopick
 
@@ -183,6 +184,7 @@ class ParstackTestCase(unittest.TestCase):
                 score = nsamples * narrays * nshifts * nrepeats / t / 1e9
                 print('%s, %i, %i, %g' % (impl, nparallel, nsamples, score))
 
+    @common.require_gui
     def off_test_synthetic(self):
 
         from pyrocko import gf

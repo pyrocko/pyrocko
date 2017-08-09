@@ -1,6 +1,7 @@
 import unittest
-import platform
-try:
+import common
+
+if common.have_gui():  # noqa
     from PyQt4.QtTest import QTest
     from PyQt4.QtCore import Qt
     from PyQt4.QtGui import QStyleOptionSlider, QStyle
@@ -8,25 +9,16 @@ try:
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import gui_util
     from pyrocko import util, model
-except ImportError as e:
+
     import traceback
     traceback.print_exc()
 
-import common
 
 from pyrocko.pile import make_pile
 from pyrocko import config
 
 
-def qt_available():
-    try:
-        from PyQt4 import QtCore  # noqa
-    except ImportError:
-        return False
-    return platform.mac_ver() == ('', ('', '', ''), '')
-
-
-@unittest.skipIf(not qt_available(), 'GUI tests skipped, Qt not available.')
+@common.require_gui
 class GUITest(unittest.TestCase):
 
     @classmethod

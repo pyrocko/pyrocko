@@ -5,7 +5,7 @@ import logging
 from pyrocko.gf.ws import rget
 
 
-logger = logging.getLogger('pyrocko.tutorials.util')
+logger = logging.getLogger('pyrocko.example')
 
 
 class DownloadError(Exception):
@@ -27,7 +27,7 @@ def get_example_data(filename, url=None):
 
     if not os.path.exists(filename):
         url = 'http://data.pyrocko.org/examples/' + filename
-        logger.info('Download %s' % url)
+        logger.info('Downloading %s...' % url)
         try:
             try:
                 rget(url, filename)
@@ -35,7 +35,7 @@ def get_example_data(filename, url=None):
                 logger.debug(e)
                 util.download_file(url, filename)
 
-            logger.info('Finished Download')
+            logger.info('Download finished!')
 
         except Exception:
             raise DownloadError('could not download file from %s to %s' % (

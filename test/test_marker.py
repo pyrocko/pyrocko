@@ -1,23 +1,14 @@
 import unittest
 import tempfile
+import common
 
 from pyrocko import util, model
-try:
+
+if common.have_gui():
     from pyrocko.gui import marker
-except ImportError as e:
-    import traceback
-    traceback.print_exc()
 
 
-def qt_available():
-    try:
-        from PyQt4 import QtCore  # noqa
-    except ImportError:
-        return False
-    return True
-
-
-@unittest.skipIf(not qt_available(), 'GUI tests skipped, Qt not available.')
+@common.require_gui
 class MarkerTestCase(unittest.TestCase):
 
     def test_writeread(self):

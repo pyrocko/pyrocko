@@ -5,16 +5,12 @@
 from future import standard_library
 standard_library.install_aliases()  # noqa
 
-import os
 import time
-import shutil
 import urllib.request
 import urllib.parse
 import urllib.error
-import http.client
 
 import logging
-import re
 
 from pyrocko import util
 
@@ -115,79 +111,13 @@ class Incomplete(DownloadError):
 def rget(url, path, force=False, method='download', stats=None,
          status_callback=None, entries_wanted=None):
 
-    if stats is None:
-        stats = [0, None]  # bytes received, bytes expected
-
-    if not url.endswith('/'):
-        url = url + '/'
-
-    resp = urllib.request.urlopen(url)
-    data = resp.read()
-    resp.close()
-
-    l = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', data.decode())
-    l = sorted(set(x for x in l if x.rstrip('/') not in ('.', '..')))
-    if entries_wanted is not None:
-        l = [x for x in l if x.rstrip('/') in entries_wanted]
-
-    if method == 'download':
-        if os.path.exists(path):
-            if not force:
-                raise PathExists('path "%s" already exists' % path)
-            else:
-                shutil.rmtree(path)
-
-        os.mkdir(path)
-
-    for x in l:
-        if x.endswith('/'):
-            rget(
-                url + x,
-                os.path.join(path, x),
-                force=force,
-                method=method,
-                stats=stats,
-                status_callback=status_callback)
-
-        else:
-            req = urllib.request.Request(url + x)
-            if method == 'calcsize':
-                req.get_method = lambda: 'HEAD'
-
-            resp = urllib.request.urlopen(req)
-            sexpected = int(resp.headers['content-length'])
-
-            if method == 'download':
-                out = open(os.path.join(path, x), 'wb')
-                sreceived = 0
-                while True:
-                    data = resp.read(1024*4)
-                    if not data:
-                        break
-
-                    sreceived += len(data)
-                    stats[0] += len(data)
-                    if status_callback and stats[1] is not None:
-                        status_callback(stats[0], stats[1])
-
-                    out.write(data)
-
-                if sreceived != sexpected:
-                    raise Incomplete(
-                        'unexpected end of file while downloading %s' % (
-                            url + x))
-
-                out.close()
-
-            else:
-                stats[0] += sexpected
-
-            resp.close()
-
-    if status_callback and stats[0] == stats[1]:
-        status_callback(stats[0], stats[1])
-
-    return stats[0]
+    return util._download(
+        url, path,
+        force=force,
+        method=method,
+        status_callback=status_callback,
+        entries_wanted=entries_wanted,
+        recursive=True)
 
 
 def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
@@ -211,7 +141,7 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
         def status_callback(i, n):
             pass
 
-    wanted = ['config', 'extra', 'index', 'phases', 'traces']
+    wanted = ['config', 'extra/', 'index', 'phases/', 'traces/']
 
     try:
         if store_id is None:
@@ -227,8 +157,7 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
                 store_url, store_id, force=force, stats=[0, stotal],
                 status_callback=status_callback, entries_wanted=wanted)
 
-    except (urllib.error.URLError, urllib.error.HTTPError,
-            http.client.HTTPException) as e:
+    except Exception as e:
         raise DownloadError('download failed. Original error was: %s, %s' % (
             type(e).__name__, e))
 

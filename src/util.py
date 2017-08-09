@@ -76,50 +76,111 @@ class DownloadError(Exception):
     pass
 
 
+class PathExists(DownloadError):
+    pass
+
+
+def _download(url, fpath, username=None, password=None,
+              force=False, method='download', stats=None,
+              status_callback=None, entries_wanted=None,
+              recursive=False):
+    import requests
+    urljoin = requests.compat.urljoin
+
+    cred = None if username is None else (username, password)
+
+    bytes_rx = 0
+    bytes_total = 0
+
+    if recursive and not url.endswith('/'):
+        url += '/'
+
+    def parse_directory_tree(url, subdir=''):
+        url = urljoin(url, subdir)
+        r = requests.get(url, auth=cred)
+        entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
+
+        files = sorted(set(subdir + fn for fn in entries
+                           if not fn.endswith('/')))
+        dirs = sorted(set(subdir + dn for dn in entries
+                          if dn.endswith('/')
+                          and dn not in ('./', '../')))
+
+        for dn in dirs:
+            files.extend(parse_directory_tree(
+                url, subdir=dn))
+
+        if entries_wanted is not None:
+            files = [fn for fn in files
+                     if (fn in wanted for wanted in entries_wanted)]
+
+        return files
+
+    def get_content_length(url):
+        r = requests.head(url, auth=cred)
+        content_length = r.headers.get('content-length', None)
+        if content_length is None:
+            logger.warning('Could not get Header:Content-Length for %s' % url)
+            content_length = 0.
+        return int(content_length)
+
+    def download_file(url, fn, download=True):
+        logger.info('starting download of %s...' % url)
+
+        ensuredirs(fn)
+        r = requests.get(url, auth=cred)
+        fsize = get_content_length(url)
+        frx = 0
+
+        fn_tmp = fn + '.%i.temp' % os.getpid()
+        with open(fn_tmp, 'wb') as f:
+            for d in r.iter_content(chunk_size=1024):
+                frx += len(d)
+                f.write(d)
+
+                if callable(status_callback):
+                    status_callback(frx, fsize)
+
+        os.rename(fn_tmp, fn)
+
+        if frx != fsize:
+            raise DownloadError('unexpected EOF while downloading %s'
+                                % url)
+
+        logger.info('finished download of %s' % url)
+
+        return frx, fsize
+
+    # if url.endswith('/') and not recursive:
+        # raise DownloadError('%s appears to be a directory' % url)
+
+    if recursive:
+        if op.exists(fpath) and not force:
+            raise PathExists('path "%s" already exists' % fpath)
+
+        files = parse_directory_tree(url)
+
+        for fn in files:
+            file_url = urljoin(url, fn)
+            if method == 'download':
+                _, fsize = download_file(file_url,
+                                         op.join(fpath, fn),
+                                         download=True)
+            elif method == 'calcsize':
+                fsize = get_content_length(file_url)
+
+            bytes_total += fsize
+
+    else:
+        bytes_rx, bytes_total = download_file(url, fpath)
+        if callable(status_callback):
+            status_callback(bytes_rx, bytes_total)
+
+    return bytes_total
+
+
 def download_file(url, fpath, username=None, password=None):
-    try:
-        from future.moves.urllib.request import\
-            (Request, HTTPCookieProcessor, build_opener, urlcleanup)
-        from urllib.error import HTTPError
-    except ImportError:
-        from urllib2 import Request, HTTPCookieProcessor, build_opener
-        from urllib2 import HTTPError
-        from urllib import urlcleanup
-
-    import base64
-
-    urlcleanup()
-    logger.info('starting download of %s' % url)
-    ensuredirs(fpath)
-    try:
-        req = Request(url)
-        if username and password:
-            cred = '%s:%s' % (username, password)
-            base64string = base64.b64encode(
-                cred.encode('ascii')).decode('ascii')
-
-            req.add_header(
-                'Authorization', 'Basic %s' % base64string)
-
-        opener = build_opener(HTTPCookieProcessor())
-        f = opener.open(req)
-
-    except HTTPError as e:
-        raise DownloadError('cannot download file from url %s: %s' % (url, e))
-
-    fpath_tmp = fpath + '.%i.temp' % os.getpid()
-    with open(fpath_tmp, 'wb') as g:
-        while True:
-            data = f.fp.read(1024)
-            if not data:
-                break
-            g.write(data)
-
-    f.close()
-
-    os.rename(fpath_tmp, fpath)
-
-    logger.info('finished download of %s' % url)
+    return _download(url, fpath, username, password)
 
 
 if hasattr(num, 'float128'):

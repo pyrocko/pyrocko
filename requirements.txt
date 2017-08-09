@@ -5,3 +5,4 @@ pyyaml
 matplotlib
 progressbar2
 future
+requests
