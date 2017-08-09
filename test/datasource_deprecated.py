@@ -34,6 +34,7 @@ def produce(deltat, duration):
         if t > duration:
             break
 
+
 util.setup_logging('producer', 'debug')
 
 produce(0.0025, 20.)

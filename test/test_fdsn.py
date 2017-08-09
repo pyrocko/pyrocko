@@ -179,7 +179,6 @@ class FDSNStationTestCase(unittest.TestCase):
             except:
                 print('failed: ', nslc)
 
-
     @common.require_internet
     def test_url_alive(self):
         '''

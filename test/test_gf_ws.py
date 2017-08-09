@@ -31,7 +31,6 @@ class GFWSTestCase(unittest.TestCase):
         cls.dl_dir = tempfile.mkdtemp(prefix='pyrocko')
         os.chdir(cls.dl_dir)
 
-
     @classmethod
     def tearDownClass(cls):
         os.chdir(cls.cwd)
