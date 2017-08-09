@@ -7,12 +7,12 @@ from builtins import next
 from builtins import zip
 from past.builtins import cmp
 
-import sys
+import sys  # noqa
 import unittest
 import random
 import string
 import pickle
-from io import StringIO, BytesIO
+from io import BytesIO
 
 from pyrocko import avl
 
@@ -263,8 +263,8 @@ class Test_avl_iter(unittest.TestCase):
         j = self.t.iter(1)
         for k in gen_ints(1, self.n+1):
             self.assertTrue(j.prev()+k == self.n
-                         and j.index()+k == self.n
-                         and j.cur()+k == self.n)
+                            and j.index()+k == self.n
+                            and j.cur()+k == self.n)
         self.assertRaises(StopIteration, j.prev)
         self.assertRaises(avl.Error, j.cur)
         self.assertTrue(j.index() == -1)

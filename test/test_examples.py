@@ -19,13 +19,6 @@ op = os.path
 test_dir = op.dirname(op.abspath(__file__))
 
 
-def snuffle_dummy(*args, **kwargs):
-    pass
-
-
-snuffler.snuffle = snuffle_dummy
-
-
 def tutorial_run_dir():
     return op.join(test_dir, 'example_run_dir')
 
@@ -41,11 +34,20 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = cls.dn
         os.chdir(cls.run_dir)
 
+        cls.snuffle_orig = snuffler.snuffle
+
+        def snuffle_dummy(*args, **kwargs):
+            pass
+
+        snuffler.snuffle = snuffle_dummy
+
     @classmethod
     def tearDownClass(cls):
         cls.dn.close()
         sys.stdout = sys.__stdout__
         os.chdir(cls.cwd)
+
+        snuffler.snuffle = cls.snuffle_orig
 
 
 example_files = glob.glob(op.join(test_dir, 'examples/*.py'))
