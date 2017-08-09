@@ -1,3 +1,3 @@
 # Pyrocko Data repository
 
-Data that ships with `pyrocko` goes in here.
+Data that ships with `pyrocko` is living in here.
