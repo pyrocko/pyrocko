@@ -40,13 +40,17 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then xcode-select --install || true ; fi
   - pip install --upgrade pip setuptools wheel
   - pip install --only-binary=numpy,scipy,matplotlib scipy numpy matplotlib
-  - pip install progressbar setuptools flake8 pyyaml coveralls coverage jinja2 future coverage
+  - pip install progressbar setuptools flake8 pyyaml coveralls coverage jinja2 future coverage nose
+
   - git clone https://github.com/pyrocko/fomosto-qseis
   - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
+
   - git clone https://github.com/pyrocko/fomosto-qseis2d
   - cd fomosto-qseis2d; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/r:`pwd`/src/s; cd ..
+
   - git clone https://github.com/pyrocko/fomosto-psgrn-pscmp
   - cd fomosto-psgrn-pscmp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src/psgrn:`pwd`/src/pscmp; cd ..
+
   - git clone https://github.com/pyrocko/fomosto-qssp.git
   - cd fomosto-qssp; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..
 
@@ -60,9 +64,7 @@ install:
   - pip install .
 
 script:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python setup.py test ; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then travis_wait coverage run --source=pyrocko test/run.py ; fi
-  # - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_response_plot.py; fi
+  - travis_wait nosetests run --with-coverage --cover-package=pyrocko test/
 
 after_success:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coveralls; fi

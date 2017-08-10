@@ -2,7 +2,7 @@ from pyrocko import util
 from pyrocko.client import catalog
 from pyrocko import moment_tensor
 import unittest
-import common
+from . import common
 
 
 def near(a, b, eps):

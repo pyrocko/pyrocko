@@ -11,7 +11,7 @@ from pyrocko import util
 from pyrocko.plot import gmtpy
 from pyrocko.plot.gmtpy import cm, inch, golden_ratio
 
-import common
+from . import common
 
 plot = False
 

@@ -1,6 +1,6 @@
 import unittest
 import tempfile
-import common
+from . import common
 
 from pyrocko import util, model
 

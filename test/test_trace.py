@@ -8,11 +8,10 @@ from pyrocko import trace, util, model, pile
 import unittest
 import math
 import time
-import os
 import numpy as num
 import pickle as pickle
 
-import common
+from . import common
 
 sometime = 1234567890.
 d2r = num.pi/180.

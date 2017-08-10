@@ -1,5 +1,4 @@
 # python 2/3
-
 from __future__ import division
 from __future__ import print_function
 from builtins import zip
@@ -17,7 +16,7 @@ import numpy as num
 from pyrocko import util, ahfullgreen, trace, io
 from pyrocko.guts import Object, Float, Tuple, List, load
 
-import common
+from . import common
 
 guts_prefix = 'test_ahfull'
 

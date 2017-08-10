@@ -1,8 +1,6 @@
-import urllib
 import os
 from pyrocko import util
 import logging
-from pyrocko.gf.ws import rget
 
 
 logger = logging.getLogger('pyrocko.example')
@@ -27,18 +25,6 @@ def get_example_data(filename, url=None):
 
     if not os.path.exists(filename):
         url = 'http://data.pyrocko.org/examples/' + filename
-        logger.info('Downloading %s...' % url)
-        try:
-            try:
-                rget(url, filename)
-            except urllib.error.HTTPError as e:
-                logger.debug(e)
-                util.download_file(url, filename)
-
-            logger.info('Download finished!')
-
-        except Exception:
-            raise DownloadError('could not download file from %s to %s' % (
-                url, filename))
+        util.download_file(url, os.path.join(os.getcwd(), filename))
 
     return filename

@@ -6,3 +6,4 @@ matplotlib
 progressbar2
 future
 requests
+nose

@@ -5,7 +5,7 @@ import multiprocessing
 import time
 from collections import defaultdict
 import numpy as num
-import common
+from . import common
 
 from pyrocko import util, trace, autopick
 
@@ -186,7 +186,7 @@ class ParstackTestCase(unittest.TestCase):
 
     @unittest.skip('needs manual inspection')
     @common.require_gui
-    def off_test_synthetic(self):
+    def _off_test_synthetic(self):
 
         from pyrocko import gf
 
