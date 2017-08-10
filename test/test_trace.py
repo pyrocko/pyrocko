@@ -12,6 +12,8 @@ import os
 import numpy as num
 import pickle as pickle
 
+import common
+
 sometime = 1234567890.
 d2r = num.pi/180.
 
@@ -547,9 +549,9 @@ class TraceTestCase(unittest.TestCase):
             L1-Norm
             time- and frequency-domain
         """
-        test_file = os.path.join(
-            os.path.dirname(__file__),
-            '../examples/1989.072.evt.mseed')
+
+        test_file = common.test_data_file('1989.072.evt.mseed')
+
         p = pile.make_pile(test_file, show_progress=False)
         rt = p.all()[0]
         tt = rt.copy()
