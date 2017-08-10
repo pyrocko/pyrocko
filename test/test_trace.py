@@ -8,7 +8,6 @@ from pyrocko import trace, util, model, pile
 import unittest
 import math
 import time
-import os
 import numpy as num
 import pickle as pickle
 

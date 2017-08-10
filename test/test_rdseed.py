@@ -21,6 +21,7 @@ class RDSeedTestCase(unittest.TestCase):
         assert(isinstance(dseed.get_pyrocko_response(tr, target='dis'),
                           trace.Evalresp))
 
+
 if __name__ == '__main__':
     util.setup_logging('test_rdseed', 'warning')
     unittest.main()
