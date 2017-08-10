@@ -175,11 +175,14 @@ def dumb_parser(data):
 
 class Programs(object):
     rdseed = 'rdseed'
-    checked = False
+    avail = None
 
     @staticmethod
     def check():
-        if not Programs.checked:
+        if Programs.avail is not None:
+            return Programs.avail
+
+        else:
             try:
                 rdseed_proc = subprocess.Popen(
                     [Programs.rdseed],
@@ -197,7 +200,8 @@ class Programs(object):
                     reason = str(e)
 
                 logging.debug('Failed to run rdseed program. %s' % reason)
-                return False
+                Programs.avail = False
+                return Programs.avail
 
             ms = [re.search(
                 r'Release (\d+(\.\d+(\.\d+)?)?)', s.decode())
@@ -214,8 +218,8 @@ class Programs(object):
                         'Module pyrocko.rdseed has not been tested with '
                         'version %s of rdseed.' % version)
 
-            Programs.checked = True
-            return False
+            Programs.avail = True
+            return Programs.avail
 
 
 class SeedVolumeNotFound(Exception):
