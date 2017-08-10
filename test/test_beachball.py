@@ -163,7 +163,7 @@ class BeachballTestCase(unittest.TestCase):
 
             self.compare_beachball(mt)
 
-    def off_test_plotstyle(self):
+    def _off_test_plotstyle(self):
 
         # contour and contourf do not support transform
         mt = mtm.MomentTensor.random_mt()

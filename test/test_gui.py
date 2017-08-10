@@ -1,5 +1,5 @@
 import unittest
-import common
+from . import common
 
 if common.have_gui():  # noqa
     from PyQt4.QtTest import QTest

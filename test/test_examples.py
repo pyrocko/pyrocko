@@ -19,6 +19,11 @@ op = os.path
 test_dir = op.dirname(op.abspath(__file__))
 
 
+skip_examples = [
+    'examples/trace_restitution_dseed.py'
+]
+
+
 def tutorial_run_dir():
     return op.join(test_dir, 'example_run_dir')
 
@@ -50,7 +55,8 @@ class ExamplesTestCase(unittest.TestCase):
         snuffler.snuffle = cls.snuffle_orig
 
 
-example_files = glob.glob(op.join(test_dir, 'examples/*.py'))
+example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples/*.py'))
+                 if fn not in skip_examples]
 
 
 def _make_test_function(test_name, fn):

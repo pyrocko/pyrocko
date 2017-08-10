@@ -1,5 +1,4 @@
 # python 2/3
-
 from __future__ import division
 from __future__ import print_function
 from builtins import zip
@@ -17,7 +16,7 @@ import numpy as num
 from pyrocko import util, ahfullgreen, trace, io
 from pyrocko.guts import Object, Float, Tuple, List, load
 
-import common
+from . import common
 
 guts_prefix = 'test_ahfull'
 
@@ -56,7 +55,7 @@ class AhfullTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
 
-    def make_test_ahfull_kiwi_data(self):
+    def _make_test_ahfull_kiwi_data(self):
         trs_all = []
         setups = []
         for i in range(100):

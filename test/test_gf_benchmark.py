@@ -62,7 +62,7 @@ class GFBenchmarkTest(unittest.TestCase):
         self.addCleanup(
             lambda: self.cprofile.dump_stats('/tmp/make_sum_params.cprof'))
 
-    def test_sum_benchmark(self):
+    def _test_sum_benchmark(self):
         from pyrocko.gf import store_ext
         benchmark.show_factor = True
 

@@ -16,7 +16,7 @@ from pyrocko import io
 from pyrocko.io import FileLoadError
 from pyrocko.io import mseed, trace, util, suds, quakeml
 
-import common
+from . import common
 
 abc = 'abcdefghijklmnopqrstuvwxyz'
 

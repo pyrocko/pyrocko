@@ -1,5 +1,5 @@
 import unittest
-import common
+from . import common
 
 from pyrocko import util, trace
 from pyrocko.io import rdseed

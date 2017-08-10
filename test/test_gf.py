@@ -6,16 +6,17 @@ import time
 import sys
 import random
 import math
-from pyrocko import guts
 import unittest
-from tempfile import mkdtemp
 import logging
 import numpy as num
-from common import Benchmark
 import shutil
+from tempfile import mkdtemp
 
+from pyrocko import guts
 from pyrocko import gf, util, cake, ahfullgreen, trace
 from pyrocko.fomosto import ahfullgreen as fomosto_ahfullgreen
+
+from .common import Benchmark
 
 assert_ae = num.testing.assert_almost_equal
 
@@ -33,7 +34,7 @@ def numeq(a, b, eps):
             num.abs(num.asarray(a) - num.asarray(b)) < eps))
 
 
-def make_traces_homogeneous(
+def _make_traces_homogeneous(
         dsource, receiver, material, deltat, net, sta, loc):
 
     comps = ['displacement.n', 'displacement.e', 'displacement.d']
@@ -128,12 +129,12 @@ class GFTestCase(unittest.TestCase):
         def assertIsNone(self, value):
             assert value is None, 'expected None but got %s' % value
 
-    def __init__(self, *args, **kwargs):
-        unittest.TestCase.__init__(self, *args, **kwargs)
-        self.pulse_store_dir = None
-        self.regional_ttt_store_dir = None
-        self.benchmark_store_dir = None
-        self._dummy_store = None
+    @classmethod
+    def setUpClass(cls):
+        cls.pulse_store_dir = None
+        cls.regional_ttt_store_dir = None
+        cls.benchmark_store_dir = None
+        cls._dummy_store = None
 
     @classmethod
     def tearDownClass(cls):
@@ -312,6 +313,20 @@ class GFTestCase(unittest.TestCase):
                 self.assertEqual(tr.data.size, itmax-itmin + 1)
 
         store.close()
+
+    def test_get_shear_moduli(self):
+        store_dir = self.get_regional_ttt_store_dir()
+        store = gf.Store(store_dir)
+
+        sample_points = num.empty((20, 3))
+        sample_points[:, 2] = num.linspace(
+            0, store.config.coords[0].max(), 20)
+
+        for interp in ('nearest_neighbor', 'multilinear'):
+            store.config.get_shear_moduli(
+                lat=0., lon=0.,
+                points=sample_points,
+                interpolation=interp)
 
     def test_partial_get(self):
         nrecords = 8
@@ -1041,7 +1056,7 @@ class GFTestCase(unittest.TestCase):
                     tr = gtr.to_trace('', 'STA', '', component)
                     trs1.append(tr)
 
-                trs2 = make_traces_homogeneous(
+                trs2 = _make_traces_homogeneous(
                     dsource, receiver,
                     store.config.earthmodel_1d.require_homogeneous(),
                     store.config.deltat, '', 'STA', 'a')
