@@ -1,7 +1,7 @@
 from __future__ import absolute_import, print_function
 import unittest
 
-import common
+from . import common
 import numpy as num
 
 from pyrocko import util

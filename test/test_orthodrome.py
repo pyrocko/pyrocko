@@ -75,10 +75,6 @@ class OrthodromeTestCase(unittest.TestCase):
         return lats1, lons1, lats2, lons2
 
     def testRaisesValueError(self):
-        '''
-        Assert that orthodrome_ext implementations raise a ValueError when
-        working on undefined lats/lons.
-        '''
         for lat1, lon1, lat2, lon2 in [
                 (91., 0., 0., 0.),
                 (0., 181., 0., 0.),
@@ -270,7 +266,8 @@ class OrthodromeTestCase(unittest.TestCase):
         assert orthodrome.wrap(10, -10, 10) == -10
         assert orthodrome.wrap(10.001, -10, 10) == -9.999
 
-    def OFF_test_local_distances(self):
+    @unittest.skip('needs inspection')
+    def test_local_distances(self):
 
         for reflat, reflon in [
                 (0.0, 0.0),

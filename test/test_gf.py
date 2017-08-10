@@ -11,7 +11,7 @@ import unittest
 from tempfile import mkdtemp
 import logging
 import numpy as num
-from common import Benchmark
+from .common import Benchmark
 import shutil
 
 from pyrocko import gf, util, cake, ahfullgreen, trace

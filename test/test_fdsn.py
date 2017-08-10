@@ -11,7 +11,7 @@ from pyrocko import util, trace
 from pyrocko.io import fdsn_station
 from pyrocko.client import fdsn, iris
 
-import common
+from . import common
 
 logger = logging.getLogger('pyrocko.test.test_fdsn.py')
 
@@ -87,8 +87,9 @@ class FDSNStationTestCase(unittest.TestCase):
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
             fdsn_station.load_xml(filename=fpath)
 
+    @unittest.skip('needs manual inspection')
     @common.require_internet
-    def OFF_test_response(self):
+    def test_response(self):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
         sx = fdsn.station(

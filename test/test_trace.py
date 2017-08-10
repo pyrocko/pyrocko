@@ -504,9 +504,6 @@ class TraceTestCase(unittest.TestCase):
             % (t1.deltat, t2.deltat))
 
     def testLxnorm(self):
-        """
-        expected results calculated by hand.
-        """
         yref = num.array([0., 1.5, 2.3, 0., -1.])
         ytest = num.array([-1., 0.3, -0.3, 1., 0.2])
         m, n = trace.Lx_norm(ytest, yref, norm=1)
@@ -540,16 +537,6 @@ class TraceTestCase(unittest.TestCase):
             self.assertEqual(m, 0., 'misfit\'s m of equal traces is != 0')
 
     def testMisfitOfSameTracesDtDifferentShifted(self):
-        """
-        Tests:
-            Different length
-            Different delta t
-            Shifted
-            L2-Norm
-            L1-Norm
-            time- and frequency-domain
-        """
-
         test_file = common.test_data_file('1989.072.evt.mseed')
 
         p = pile.make_pile(test_file, show_progress=False)

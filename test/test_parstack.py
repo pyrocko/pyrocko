@@ -184,6 +184,7 @@ class ParstackTestCase(unittest.TestCase):
                 score = nsamples * narrays * nshifts * nrepeats / t / 1e9
                 print('%s, %i, %i, %g' % (impl, nparallel, nsamples, score))
 
+    @unittest.skip('needs manual inspection')
     @common.require_gui
     def off_test_synthetic(self):
 

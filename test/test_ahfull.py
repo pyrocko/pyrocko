@@ -56,7 +56,7 @@ class AhfullTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
 
-    def make_test_ahfull_kiwi_data(self):
+    def _make_test_ahfull_kiwi_data(self):
         trs_all = []
         setups = []
         for i in range(100):

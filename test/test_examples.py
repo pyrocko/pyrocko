@@ -1,6 +1,4 @@
 # python 2/3
-import matplotlib
-matplotlib.use('Agg')  # noqa
 import sys
 import unittest
 import os
@@ -9,11 +7,9 @@ import traceback
 
 from pyrocko import util
 from pyrocko import example
-from matplotlib import pyplot as plt
 
 from pyrocko.gui import snuffler
 
-plt.switch_backend('Agg')
 op = os.path
 
 test_dir = op.dirname(op.abspath(__file__))
@@ -53,7 +49,7 @@ class ExamplesTestCase(unittest.TestCase):
 example_files = glob.glob(op.join(test_dir, 'examples/*.py'))
 
 
-def make_test_function(test_name, fn):
+def _make_test_function(test_name, fn):
     def test(self):
         try:
             import imp
@@ -73,10 +69,12 @@ def make_test_function(test_name, fn):
 
 for fn in example_files:
     test_name = op.splitext(op.split(fn)[-1])[0]
-    test_function = make_test_function(test_name, fn)
+    test_function = _make_test_function(test_name, fn)
     setattr(ExamplesTestCase, 'test_example_' + test_name, test_function)
 
 
 if __name__ == '__main__':
+    import matplotlib
+    matplotlib.use('Agg')  # noqa
     util.setup_logging('test_tutorials', 'warning')
     unittest.main()
