@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 '''Utility functions for Pyrocko.'''
-from __future__ import division
+from __future__ import division, print_function
 from past.builtins import zip
 from builtins import range
 from builtins import object
@@ -155,8 +155,8 @@ def _download(url, fpath, username=None, password=None,
         os.rename(fn_tmp, fn)
 
         if frx != fsize:
-            raise DownloadError('unexpected EOF while downloading %s'
-                                % url)
+            logger.warn('content-length from http header (%i) does not match '
+                        'downloaded size (%i)' % (fsize, frx))
 
         logger.info('finished download of %s' % url)
 
