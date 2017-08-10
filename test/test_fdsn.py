@@ -182,9 +182,8 @@ class FDSNStationTestCase(unittest.TestCase):
 
     @common.require_internet
     def test_url_alive(self):
-        '''
-        Test urls which are used as references in pyrocko if they still exist.
-        '''
+        # Test urls which are used as references in pyrocko if they still
+        # exist.
         to_check = [
             ('http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm',
              'pyrocko.css'),

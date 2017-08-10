@@ -151,9 +151,9 @@ class GUITest(unittest.TestCase):
             self.assertTrue(isinstance(m, gui_util.EventMarker))
 
     def test_click_non_dialogs(self):
-        '''Click through many menu option combinations that do not require
-        further interaction. Activate options in pairs of two.
-        '''
+        # Click through many menu option combinations that do not require
+        # further interaction. Activate options in pairs of two.
+
         pv = self.pile_viewer
 
         non_dialog_actions = [
