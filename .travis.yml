@@ -56,8 +56,8 @@ install:
     - sudo python setup.py install
 
 script:
-    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python test/test_all.py ; fi
-    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/test_all.py ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then python test/run.py ; fi
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then coverage run --source=pyrocko test/run.py ; fi
 
 after_success:
     - coveralls
