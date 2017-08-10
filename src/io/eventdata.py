@@ -3,14 +3,14 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from . import trace, util, model
+from pyrocko import trace, util, model
 
 import logging
 import copy
 import numpy as num
 import pickle
 
-logger = logging.getLogger('pyrocko.eventdata')
+logger = logging.getLogger('pyrocko.io.eventdata')
 
 
 class NoRestitution(Exception):
@@ -77,31 +77,43 @@ class EventDataAccess(object):
     def get_pile(self):
         return self._pile
 
-    def get_events(self):
+    def get_pyrocko_events(self):
+        '''Extract :py:class:`model.Event` instances from the volume'''
+
         if not self._events:
             self._events = self._get_events_from_file()
         return self._events
 
-    def get_event(self, i):
-        return self.get_events()[i]
+    def get_pyrocko_event(self, i):
+        return self.get_pyrocko_events()[i]
 
-    def get_station(self, tr, relative_event=None):
+    def get_pyrocko_station(self, tr, relative_event=None):
+        '''Get the underlying :py:class:`trace.Channel`
+        for a :py:class:`trace.Trace`
+
+        :param tr: :py:class:`trace.Trace` instance'''
+
         self._update_stations()
         s = copy.deepcopy(self._stations[tr.nslc_id[:3]])
         if relative_event is not None:
             s.set_event_relative_data(relative_event)
         return s
 
-    def get_channel(self, tr):
+    def get_pyrocko_channel(self, tr):
+        '''Get the underlying :py:class:`trace.Channel` information
+        for a :py:class:`trace.Trace`
+
+        :param tr: :py:class:`trace.Trace` instance'''
         sta = self.get_station(tr)
         return sta.get_channel(tr.channel)
 
-    def get_stations(self, relative_event=None):
+    def get_pyrocko_stations(self):
+        '''Exctract a list of :py:class:`model.Station` instances.'''
+        return list(self._get_stations().values())
 
+    def _get_stations(self, relative_event=None):
         self._update_stations()
-
         stations = copy.deepcopy(self._stations)
-
         if relative_event is not None:
             for s in stations.values():
                 s.set_event_relative_data(relative_event)
@@ -196,7 +208,7 @@ class EventDataAccess(object):
             preprocess=None,
             progress='Processing traces'):
 
-        stations = self.get_stations(relative_event=relative_event)
+        stations = self._get_stations(relative_event=relative_event)
         if out_stations is not None:
             out_stations.clear()
         else:
@@ -263,13 +275,13 @@ class EventDataAccess(object):
                                 (tr.nslc_id + (e,)))
                             continue
 
-                    try:
-                        trans = self.get_restitution(tr, allowed_methods)
-                    except NoRestitution as e:
+                    if 'evalresp' in allowed_methods:
+                        trans = self.get_pyrocko_response(tr, target='dis')
+                    else:
                         self.problems().add('no_response', tr.full_id)
                         logger.warning(
                             'Cannot restitute trace %s.%s.%s.%s: %s' %
-                            (tr.nslc_id + (e,)))
+                            (tr.nslc_id))
 
                         continue
 
