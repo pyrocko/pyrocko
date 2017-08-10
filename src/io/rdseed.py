@@ -15,11 +15,13 @@ import calendar
 import time
 import re
 import logging
+import shutil
 
-from pyrocko import trace, pile, model, eventdata, util
+from pyrocko import trace, pile, model, util
+from pyrocko.io import eventdata
 
 pjoin = os.path.join
-logger = logging.getLogger('pyrocko.rdseed')
+logger = logging.getLogger('pyrocko.io.rdseed')
 
 
 def read_station_header_file(fn):
@@ -232,12 +234,11 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
 
         '''Create new SEED Volume access object.
 
-        In:
-            seedvolume -- filename of seed volume
-            datapile -- if not None, this should be a pyrocko.pile.Pile object
-                with data traces which are then used instead of the data
-                provided by the SEED volume. (This is useful for dataless SEED
-                volumes.)
+        :param seedvolume: filename of seed volume
+        :param datapile: if not ``None``, this should be a
+            :py:class:`pile.Pile` object with data traces which are then used
+            instead of the data provided by the SEED volume.
+            (This is useful for dataless SEED volumes.)
         '''
 
         eventdata.EventDataAccess.__init__(self, datapile=datapile)
@@ -255,7 +256,6 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         self._unpack()
 
     def __del__(self):
-        import shutil
         if self.tempdir:
             shutil.rmtree(self.tempdir)
 
@@ -267,19 +267,23 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
 
         return self._pile
 
-    def get_restitution(self, tr, allowed_methods):
-        if 'evalresp' in allowed_methods:
-            respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
-            if not os.path.exists(respfile):
-                raise eventdata.NoRestitution(
-                    'no response information available for trace %s.%s.%s.%s'
-                    % tr.nslc_id)
-
-            trans = trace.InverseEvalresp(respfile, tr)
-            return trans
-        else:
+    def get_resp_file(self, tr):
+        respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
+        if not os.path.exists(respfile):
             raise eventdata.NoRestitution(
-                'no allowed restitution method available')
+                'no response information available for trace %s.%s.%s.%s'
+                % tr.nslc_id)
+
+        return respfile
+
+    def get_pyrocko_response(self, tr, target):
+        '''Extract the frequency response as :py:class:`trace.EvalResp`
+        instance for *tr*.
+
+        :param tr: :py:class:`trace.Trace` instance
+        '''
+        respfile = self.get_resp_file(tr)
+        return trace.Evalresp(respfile, tr, target)
 
     def _unpack(self):
         input_fn = self.seedvolume
