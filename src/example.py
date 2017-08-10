@@ -25,6 +25,6 @@ def get_example_data(filename, url=None):
 
     if not os.path.exists(filename):
         url = 'http://data.pyrocko.org/examples/' + filename
-        util.download_file(url, os.path.join(os.get_cwd(), filename))
+        util.download_file(url, filename)
 
     return filename
