@@ -5,10 +5,15 @@ import os
 import glob
 import traceback
 
+from . import common
+
+common.matplotlib_use_agg()
+
 from pyrocko import util
 from pyrocko import example
 
 from pyrocko.gui import snuffler
+
 
 op = os.path
 
@@ -51,7 +56,7 @@ class ExamplesTestCase(unittest.TestCase):
         snuffler.snuffle = cls.snuffle_orig
 
 
-example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples/*.py'))
+example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
                  if fn not in skip_examples]
 
 
@@ -70,6 +75,8 @@ def _make_test_function(test_name, fn):
         except Exception as e:
             self.fail(traceback.format_exc(e))
 
+    f.__name__ = 'test_example_' + test_name
+
     return f
 
 
@@ -80,7 +87,5 @@ for fn in example_files:
 
 
 if __name__ == '__main__':
-    import matplotlib
-    matplotlib.use('Agg')  # noqa
     util.setup_logging('test_tutorials', 'warning')
     unittest.main()

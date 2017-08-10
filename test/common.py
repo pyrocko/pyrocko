@@ -10,6 +10,16 @@ logger = logging.getLogger('test.common')
 
 benchmark_results = []
 
+g_matplotlib_inited = False
+
+
+def matplotlib_use_agg():
+    global g_matplotlib_inited
+    if not g_matplotlib_inited:
+        import matplotlib
+        matplotlib.use('Agg')  # noqa
+        g_matplotlib_inited = True
+
 
 def test_data_file_no_download(fn):
     return os.path.join(os.path.split(__file__)[0], 'data', fn)
