@@ -7,7 +7,7 @@ import traceback
 
 from . import common
 
-common.matplotlib_use_agg()
+common.matplotlib_use_agg()  # noqa
 
 from pyrocko import util
 from pyrocko import example
@@ -56,12 +56,13 @@ class ExamplesTestCase(unittest.TestCase):
         snuffler.snuffle = cls.snuffle_orig
 
 
-example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
-                 if fn not in skip_examples]
+example_files = glob.glob(op.join(test_dir, 'examples', '*.py'))
 
 
 def _make_test_function(test_name, fn):
-    def f(self):
+    def f(self=None):
+        if self is None:
+            return
         try:
             import imp
             imp.load_source(test_name, fn)
@@ -82,6 +83,9 @@ def _make_test_function(test_name, fn):
 
 for fn in example_files:
     test_name = op.splitext(op.split(fn)[-1])[0]
+    if test_name in skip_examples:
+        continue
+
     test_function = _make_test_function(test_name, fn)
     setattr(ExamplesTestCase, 'test_example_' + test_name, test_function)
 
