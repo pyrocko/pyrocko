@@ -1846,6 +1846,73 @@ class ConfigTypeA(Config):
                     except ValueError:
                         raise OutOfBounds()
 
+        def vicinity_function(a, b, ig):
+            ias = indi12((a - amin) / da, na)
+            ibs = indi12((b - bmin) / db, nb)
+
+            if not (0 <= ig < ng):
+                raise OutOfBounds()
+
+            indis = []
+            weights = []
+            for ia, va in ias:
+                iia = ia*nb*ng
+                for ib, vb in ibs:
+                    indis.append(iia + ib*ng + ig)
+                    weights.append(va*vb)
+
+            return num.array(indis), num.array(weights)
+
+        def vicinities_function(a, b, ig):
+
+            xa = (a - amin) / da
+            xb = (b - bmin) / db
+
+            xa_fl = num.floor(xa)
+            xa_ce = num.ceil(xa)
+            xb_fl = num.floor(xb)
+            xb_ce = num.ceil(xb)
+            va_fl = 1.0 - (xa - xa_fl)
+            va_ce = (1.0 - (xa_ce - xa)) * (xa_ce - xa_fl)
+            vb_fl = 1.0 - (xb - xb_fl)
+            vb_ce = (1.0 - (xb_ce - xb)) * (xb_ce - xb_fl)
+
+            ia_fl = xa_fl.astype(num.int)
+            ia_ce = xa_ce.astype(num.int)
+            ib_fl = xb_fl.astype(num.int)
+            ib_ce = xb_ce.astype(num.int)
+
+            if num.any(ia_fl < 0) or num.any(ia_fl >= na):
+                raise OutOfBounds()
+
+            if num.any(ia_ce < 0) or num.any(ia_ce >= na):
+                raise OutOfBounds()
+
+            if num.any(ib_fl < 0) or num.any(ib_fl >= nb):
+                raise OutOfBounds()
+
+            if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
+                raise OutOfBounds()
+
+            irecords = num.empty(a.size*4, dtype=num.int)
+            irecords[0::4] = ia_fl*nb*ng + ib_fl*ng + ig
+            irecords[1::4] = ia_ce*nb*ng + ib_fl*ng + ig
+            irecords[2::4] = ia_fl*nb*ng + ib_ce*ng + ig
+            irecords[3::4] = ia_ce*nb*ng + ib_ce*ng + ig
+
+            weights = num.empty(a.size*4, dtype=num.float)
+            weights[0::4] = va_fl * vb_fl
+            weights[1::4] = va_ce * vb_fl
+            weights[2::4] = va_fl * vb_ce
+            weights[3::4] = va_ce * vb_ce
+
+            return irecords, weights
+
+        self._index_function = index_function
+        self._indices_function = indices_function
+        self._vicinity_function = vicinity_function
+        self._vicinities_function = vicinities_function
+
     def make_indexing_args(self, source, receiver, icomponents):
         nc = icomponents.size
         dists = source.distances_to(receiver)
@@ -1962,6 +2029,97 @@ class ConfigTypeB(Config):
                                              (na, nb, nc, ng))
             except ValueError:
                 raise OutOfBounds()
+
+        def vicinity_function(a, b, c, ig):
+            ias = indi12((a - amin) / da, na)
+            ibs = indi12((b - bmin) / db, nb)
+            ics = indi12((c - cmin) / dc, nc)
+
+            if not (0 <= ig < ng):
+                raise OutOfBounds()
+
+            indis = []
+            weights = []
+            for ia, va in ias:
+                iia = ia*nb*nc*ng
+                for ib, vb in ibs:
+                    iib = ib*nc*ng
+                    for ic, vc in ics:
+                        indis.append(iia + iib + ic*ng + ig)
+                        weights.append(va*vb*vc)
+
+            return num.array(indis), num.array(weights)
+
+        def vicinities_function(a, b, c, ig):
+
+            xa = (a - amin) / da
+            xb = (b - bmin) / db
+            xc = (c - cmin) / dc
+
+            xa_fl = num.floor(xa)
+            xa_ce = num.ceil(xa)
+            xb_fl = num.floor(xb)
+            xb_ce = num.ceil(xb)
+            xc_fl = num.floor(xc)
+            xc_ce = num.ceil(xc)
+            va_fl = 1.0 - (xa - xa_fl)
+            va_ce = (1.0 - (xa_ce - xa)) * (xa_ce - xa_fl)
+            vb_fl = 1.0 - (xb - xb_fl)
+            vb_ce = (1.0 - (xb_ce - xb)) * (xb_ce - xb_fl)
+            vc_fl = 1.0 - (xc - xc_fl)
+            vc_ce = (1.0 - (xc_ce - xc)) * (xc_ce - xc_fl)
+
+            ia_fl = xa_fl.astype(num.int)
+            ia_ce = xa_ce.astype(num.int)
+            ib_fl = xb_fl.astype(num.int)
+            ib_ce = xb_ce.astype(num.int)
+            ic_fl = xc_fl.astype(num.int)
+            ic_ce = xc_ce.astype(num.int)
+
+            if num.any(ia_fl < 0) or num.any(ia_fl >= na):
+                raise OutOfBounds()
+
+            if num.any(ia_ce < 0) or num.any(ia_ce >= na):
+                raise OutOfBounds()
+
+            if num.any(ib_fl < 0) or num.any(ib_fl >= nb):
+                raise OutOfBounds()
+
+            if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
+                raise OutOfBounds()
+
+            if num.any(ic_fl < 0) or num.any(ic_fl >= nc):
+                raise OutOfBounds()
+
+            if num.any(ic_ce < 0) or num.any(ic_ce >= nc):
+                raise OutOfBounds()
+
+            irecords = num.empty(a.size*8, dtype=num.int)
+            irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig
+            irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + ig
+            irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + ig
+            irecords[3::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + ig
+            irecords[4::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + ig
+            irecords[5::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + ig
+            irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + ig
+            irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + ig
+
+            weights = num.empty(a.size*8, dtype=num.float)
+            weights[0::8] = va_fl * vb_fl * vc_fl
+            weights[1::8] = va_ce * vb_fl * vc_fl
+            weights[2::8] = va_fl * vb_ce * vc_fl
+            weights[3::8] = va_ce * vb_ce * vc_fl
+            weights[4::8] = va_fl * vb_fl * vc_ce
+            weights[5::8] = va_ce * vb_fl * vc_ce
+            weights[6::8] = va_fl * vb_ce * vc_ce
+            weights[7::8] = va_ce * vb_ce * vc_ce
+
+            return irecords, weights
+
+        self._index_function = index_function
+        self._indices_function = indices_function
+        self._vicinity_function = vicinity_function
+        self._vicinities_function = vicinities_function
 
     def make_indexing_args(self, source, receiver, icomponents):
         nc = icomponents.size
@@ -2113,6 +2271,103 @@ class ConfigTypeC(Config):
                                              (nr, na, nb, nc, ng))
             except ValueError:
                 raise OutOfBounds()
+
+        def vicinity_function(ir, a, b, c, ig):
+            ias = indi12((a - amin) / da, na)
+            ibs = indi12((b - bmin) / db, nb)
+            ics = indi12((c - cmin) / dc, nc)
+
+            if not (0 <= ir < nr):
+                raise OutOfBounds()
+
+            if not (0 <= ig < ng):
+                raise OutOfBounds()
+
+            indis = []
+            weights = []
+            iir = ir*na*nb*nc*ng
+            for ia, va in ias:
+                iia = ia*nb*nc*ng
+                for ib, vb in ibs:
+                    iib = ib*nc*ng
+                    for ic, vc in ics:
+                        indis.append(iir + iia + iib + ic*ng + ig)
+                        weights.append(va*vb*vc)
+
+            return num.array(indis), num.array(weights)
+
+        def vicinities_function(ir, a, b, c, ig):
+
+            xa = (a-amin) / da
+            xb = (b-bmin) / db
+            xc = (c-cmin) / dc
+
+            xa_fl = num.floor(xa)
+            xa_ce = num.ceil(xa)
+            xb_fl = num.floor(xb)
+            xb_ce = num.ceil(xb)
+            xc_fl = num.floor(xc)
+            xc_ce = num.ceil(xc)
+            va_fl = 1.0 - (xa - xa_fl)
+            va_ce = (1.0 - (xa_ce - xa)) * (xa_ce - xa_fl)
+            vb_fl = 1.0 - (xb - xb_fl)
+            vb_ce = (1.0 - (xb_ce - xb)) * (xb_ce - xb_fl)
+            vc_fl = 1.0 - (xc - xc_fl)
+            vc_ce = (1.0 - (xc_ce - xc)) * (xc_ce - xc_fl)
+
+            ia_fl = xa_fl.astype(num.int)
+            ia_ce = xa_ce.astype(num.int)
+            ib_fl = xb_fl.astype(num.int)
+            ib_ce = xb_ce.astype(num.int)
+            ic_fl = xc_fl.astype(num.int)
+            ic_ce = xc_ce.astype(num.int)
+
+            if num.any(ia_fl < 0) or num.any(ia_fl >= na):
+                raise OutOfBounds()
+
+            if num.any(ia_ce < 0) or num.any(ia_ce >= na):
+                raise OutOfBounds()
+
+            if num.any(ib_fl < 0) or num.any(ib_fl >= nb):
+                raise OutOfBounds()
+
+            if num.any(ib_ce < 0) or num.any(ib_ce >= nb):
+                raise OutOfBounds()
+
+            if num.any(ic_fl < 0) or num.any(ic_fl >= nc):
+                raise OutOfBounds()
+
+            if num.any(ic_ce < 0) or num.any(ic_ce >= nc):
+                raise OutOfBounds()
+
+            irig = ir*na*nb*nc*ng + ig
+
+            irecords = num.empty(a.size*8, dtype=num.int)
+            irecords[0::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
+            irecords[1::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_fl*ng + irig
+            irecords[2::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
+            irecords[3::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_fl*ng + irig
+            irecords[4::8] = ia_fl*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
+            irecords[5::8] = ia_ce*nb*nc*ng + ib_fl*nc*ng + ic_ce*ng + irig
+            irecords[6::8] = ia_fl*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
+            irecords[7::8] = ia_ce*nb*nc*ng + ib_ce*nc*ng + ic_ce*ng + irig
+
+            weights = num.empty(a.size*8, dtype=num.float)
+            weights[0::8] = va_fl * vb_fl * vc_fl
+            weights[1::8] = va_ce * vb_fl * vc_fl
+            weights[2::8] = va_fl * vb_ce * vc_fl
+            weights[3::8] = va_ce * vb_ce * vc_fl
+            weights[4::8] = va_fl * vb_fl * vc_ce
+            weights[5::8] = va_ce * vb_fl * vc_ce
+            weights[6::8] = va_fl * vb_ce * vc_ce
+            weights[7::8] = va_ce * vb_ce * vc_ce
+
+            return irecords, weights
+
+        self._index_function = index_function
+        self._indices_function = indices_function
+        self._vicinity_function = vicinity_function
+        self._vicinities_function = vicinities_function
 
     def lookup_ireceiver(self, receiver):
         k = (receiver.lat, receiver.lon,
