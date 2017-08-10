@@ -2,7 +2,7 @@ from pyrocko import pile, io, util, model
 from pyrocko.example import get_example_data
 
 # Download example data
-get_example_data('data_conversion')
+get_example_data('data_conversion', recursive=True)
 
 input_path = 'data_conversion/mseed'
 output_path = 'data_conversion/sac/' \

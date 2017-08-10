@@ -28,6 +28,8 @@ from . import config
 from .trace import degapper
 
 
+show_progress_force_off = False
+
 def sl(s):
     return [str(x) for x in sorted(s)]
 
@@ -298,6 +300,9 @@ def get_cache(cachedir):
 def loader(
         filenames, fileformat, cache, filename_attributes,
         show_progress=True, update_progress=None):
+
+    if show_progress_force_off:
+        show_progress = False
 
     class Progress(object):
         def __init__(self, label, n):
@@ -1374,6 +1379,10 @@ def make_pile(
         created as neccessary.
     :param show_progress: show progress bar and other progress information
     '''
+
+    if show_progress_force_off:
+        show_progress = False
+
     if isinstance(paths, str):
         paths = [paths]
 

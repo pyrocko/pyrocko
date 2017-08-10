@@ -22,8 +22,8 @@ request_response = fdsn.station(
     site='geofon', selection=selection, level='response')
 
 # save the response in YAML and StationXML format
-request_response.dump(filename='responses.yaml')
-request_response.dump_xml(filename='responses.xml')
+request_response.dump(filename='responses_geofon.yaml')
+request_response.dump_xml(filename='responses_geofon.xml')
 
 # Loop through retrieved waveforms and request meta information
 # for each trace

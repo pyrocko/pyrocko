@@ -10,7 +10,7 @@ class DownloadError(Exception):
     pass
 
 
-def get_example_data(filename, url=None):
+def get_example_data(filename, url=None, recursive=False):
     '''
     Download example data file needed in tutorials.
 
@@ -25,6 +25,9 @@ def get_example_data(filename, url=None):
 
     if not os.path.exists(filename):
         url = 'http://data.pyrocko.org/examples/' + filename
-        util.download_file(url, filename)
+        if recursive:
+            util.download_dir(url, filename)
+        else:
+            util.download_file(url, filename)
 
     return filename

@@ -101,8 +101,7 @@ def _download(url, fpath, username=None, password=None,
         url += '/'
 
     def parse_directory_tree(url, subdir=''):
-        url = urljoin(url, subdir)
-        r = requests.get(url, auth=cred)
+        r = requests.get(urljoin(url, subdir), auth=cred)
         r.raise_for_status()
 
         entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
@@ -192,6 +191,10 @@ def _download(url, fpath, username=None, password=None,
 
 def download_file(url, fpath, username=None, password=None):
     return _download(url, fpath, username, password, recursive=False)
+
+
+def download_dir(url, fpath, username=None, password=None):
+    return _download(url, fpath, username, password, recursive=True)
 
 
 if hasattr(num, 'float128'):

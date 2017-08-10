@@ -7,10 +7,9 @@ import traceback
 
 from . import common
 
-common.matplotlib_use_agg()
-
 from pyrocko import util
 from pyrocko import example
+from pyrocko import pile
 
 from pyrocko.gui import snuffler
 
@@ -47,6 +46,9 @@ class ExamplesTestCase(unittest.TestCase):
 
         snuffler.snuffle = snuffle_dummy
 
+        cls.show_progress_force_off_orig = pile.show_progress_force_off
+        pile.show_progress_force_off = True
+
     @classmethod
     def tearDownClass(cls):
         cls.dn.close()
@@ -54,13 +56,14 @@ class ExamplesTestCase(unittest.TestCase):
         os.chdir(cls.cwd)
 
         snuffler.snuffle = cls.snuffle_orig
+        pile.show_progress_force_off = cls.show_progress_force_off_orig
 
 
 example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
                  if fn not in skip_examples]
 
 
-def _make_test_function(test_name, fn):
+def _make_function(test_name, fn):
     def f(self):
         try:
             import imp
@@ -80,12 +83,15 @@ def _make_test_function(test_name, fn):
     return f
 
 
-for fn in example_files:
+for fn in sorted(example_files):
     test_name = op.splitext(op.split(fn)[-1])[0]
-    test_function = _make_test_function(test_name, fn)
-    setattr(ExamplesTestCase, 'test_example_' + test_name, test_function)
+    setattr(
+        ExamplesTestCase,
+        'test_example_' + test_name,
+        _make_function(test_name, fn))
 
 
 if __name__ == '__main__':
     util.setup_logging('test_tutorials', 'warning')
+    common.matplotlib_use_agg()
     unittest.main()
