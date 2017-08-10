@@ -92,12 +92,19 @@ def _download(url, fpath, username=None, password=None,
     bytes_rx = 0
     bytes_total = 0
 
+    if not recursive and url.endswith('/'):
+        raise DownloadError(
+            'URL: %s appears to be a directory'
+            ' but recurvise download is False' % url)
+
     if recursive and not url.endswith('/'):
         url += '/'
 
     def parse_directory_tree(url, subdir=''):
         url = urljoin(url, subdir)
         r = requests.get(url, auth=cred)
+        r.raise_for_status()
+
         entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
 
         files = sorted(set(subdir + fn for fn in entries
@@ -118,6 +125,8 @@ def _download(url, fpath, username=None, password=None,
 
     def get_content_length(url):
         r = requests.head(url, auth=cred)
+        r.raise_for_status()
+
         content_length = r.headers.get('content-length', None)
         if content_length is None:
             logger.warning('Could not get Header:Content-Length for %s' % url)
@@ -129,6 +138,8 @@ def _download(url, fpath, username=None, password=None,
 
         ensuredirs(fn)
         r = requests.get(url, auth=cred)
+        r.raise_for_status()
+
         fsize = get_content_length(url)
         frx = 0
 
@@ -180,7 +191,7 @@ def _download(url, fpath, username=None, password=None,
 
 
 def download_file(url, fpath, username=None, password=None):
-    return _download(url, fpath, username, password)
+    return _download(url, fpath, username, password, recursive=False)
 
 
 if hasattr(num, 'float128'):

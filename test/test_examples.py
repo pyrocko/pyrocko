@@ -53,8 +53,12 @@ class ExamplesTestCase(unittest.TestCase):
 example_files = glob.glob(op.join(test_dir, 'examples/*.py'))
 
 
-def make_test_function(test_name, fn):
-    def test(self):
+def _make_test_function(test_name, fn):
+
+    def test(self=None):
+        if self is None:
+            return
+
         try:
             import imp
             imp.load_source(test_name, fn)
@@ -73,7 +77,7 @@ def make_test_function(test_name, fn):
 
 for fn in example_files:
     test_name = op.splitext(op.split(fn)[-1])[0]
-    test_function = make_test_function(test_name, fn)
+    test_function = _make_test_function(test_name, fn)
     setattr(ExamplesTestCase, 'test_example_' + test_name, test_function)
 
 

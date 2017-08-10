@@ -187,9 +187,9 @@ Convert SAC to MiniSEED
 
 A very basic SAC to MiniSEED converter:
 
-Download :download:`convert_sac_mseed.py </../../examples/convert_sac_mseed.py>`
+Download :download:`convert_sac_mseed </../../examples/convert_sac_mseed>`
 
-.. literalinclude :: /../../examples/convert_sac_mseed.py
+.. literalinclude :: /../../examples/convert_sac_mseed
     :language: python
 
 
