@@ -22,7 +22,7 @@ def test_data_file(fn):
             raise unittest.SkipTest(
                 'need internet access to download data file')
 
-        url = 'http://kinherd.org/pyrocko_test_data/' + fn
+        url = 'http://data.pyrocko.org/testing/' + fn
         logger.info('downloading %s' % url)
         util.download_file(url, fpath)
 
