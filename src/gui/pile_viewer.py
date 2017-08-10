@@ -1648,45 +1648,49 @@ def MakePileViewerMainClass(base):
             min_deltat = self.content_deltat_range()[0]
             return min(9, max(1, int(-math.floor(math.log10(min_deltat)))+2))
 
-        def write_markers(self):
+        def write_markers(self, fn=None):
             caption = "Choose a file name to write markers"
-            fn = qg.QFileDialog.getSaveFileName(
-                self, caption, options=qfiledialog_options)
+            if not fn:
+                fn = qg.QFileDialog.getSaveFileName(
+                    self, caption, options=qfiledialog_options)
             if fn:
                 Marker.save_markers(
                     self.markers, fn,
                     fdigits=self.time_fractional_digits())
 
-        def write_selected_markers(self):
+        def write_selected_markers(self, fn=None):
             caption = "Choose a file name to write selected markers"
-            fn = qg.QFileDialog.getSaveFileName(
-                self, caption, options=qfiledialog_options)
+            if not fn:
+                fn = qg.QFileDialog.getSaveFileName(
+                    self, caption, options=qfiledialog_options)
             if fn:
                 Marker.save_markers(
                     self.selected_markers(), fn,
                     fdigits=self.time_fractional_digits())
 
-        def read_events(self):
+        def read_events(self, fn=None):
             '''
             Open QFileDialog to open, read and add
             :py:class:`pyrocko.model.Event` instances and their marker
             representation to the pile viewer.
             '''
             caption = "Selet one or more files to open"
-            fn = qg.QFileDialog.getOpenFileName(
-                self, caption, options=qfiledialog_options)
+            if not fn:
+                fn = qg.QFileDialog.getOpenFileName(
+                    self, caption, options=qfiledialog_options)
             if fn:
                 self.add_events(pyrocko.model.Event.load_catalog(fn))
 
                 self.associate_phases_to_events()
 
-        def read_markers(self):
+        def read_markers(self, fn=None):
             '''
             Open QFileDialog to open, read and add markers to the pile viewer.
             '''
             caption = "Selet one or more files to open"
-            fn = qg.QFileDialog.getOpenFileName(
-                self, caption, options=qfiledialog_options)
+            if not fn:
+                fn = qg.QFileDialog.getOpenFileName(
+                    self, caption, options=qfiledialog_options)
             if fn:
                 self.add_markers(Marker.load_markers(fn))
 
@@ -2423,14 +2427,15 @@ def MakePileViewerMainClass(base):
 
             painter.end()
 
-        def savesvg(self):
+        def savesvg(self, fn=None):
 
-            fn = qg.QFileDialog.getSaveFileName(
-                self,
-                'Save as SVG|PNG',
-                os.path.join(os.environ['HOME'],  'untitled.svg'),
-                'SVG|PNG (*.svg *.png)',
-                options=qfiledialog_options)
+            if not fn:
+                fn = qg.QFileDialog.getSaveFileName(
+                    self,
+                    'Save as SVG|PNG',
+                    os.path.join(os.environ['HOME'],  'untitled.svg'),
+                    'SVG|PNG (*.svg *.png)',
+                    options=qfiledialog_options)
 
             if str(fn).endswith('.svg'):
                 w, h = 842, 595
