@@ -33,7 +33,7 @@ from pyrocko import util            # noqa
 from pyrocko import model           # noqa
 from pyrocko import config          # noqa
 from pyrocko import io              # noqa
-from pyrocko.io import fdsn_station
+from pyrocko.io import stationxml
 
 from . import pile_viewer     # noqa
 
@@ -921,7 +921,7 @@ def snuffler_from_commandline(args=sys.argv):
 
     for stationxml_fn in options.stationxml_fns:
         stations.extend(
-            fdsn_station.load_xml(
+            stationxml.load_xml(
                 filename=stationxml_fn).get_pyrocko_stations())
 
     events = []

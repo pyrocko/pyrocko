@@ -26,7 +26,7 @@ CSS          css                         yes
 ## Metadata IO
 
 * `pyrocko.io.quakeml` parses QuakeML (https://quake.ethz.ch/quakeml/) into a pyrocko data model.
-* `pyrocko.io.fdsn_station` represents a FDSN station model.
+* `pyrocko.io.stationxml` represents a FDSN stationXML model.
 
 .. rubric:: Notes
 

@@ -8,7 +8,7 @@ import numpy as num
 import urllib
 import logging
 from pyrocko import util, trace
-from pyrocko.io import fdsn_station
+from pyrocko.io import stationxml
 from pyrocko.client import fdsn, iris
 
 from . import common
@@ -24,7 +24,7 @@ class FDSNStationTestCase(unittest.TestCase):
         ok = False
         for fn in ['geeil.iris.xml', 'geeil.geofon.xml']:
             fpath = common.test_data_file(fn)
-            x = fdsn_station.load_xml(filename=fpath)
+            x = stationxml.load_xml(filename=fpath)
             for network in x.network_list:
                 assert network.code == 'GE'
                 for station in network.station_list:
@@ -44,7 +44,7 @@ class FDSNStationTestCase(unittest.TestCase):
             assert len(x.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
 
-            new = fdsn_station.FDSNStationXML.from_pyrocko_stations(pstations)
+            new = stationxml.FDSNStationXML.from_pyrocko_stations(pstations)
             assert len(new.get_pyrocko_stations()) in (3, 4)
             for s in new.get_pyrocko_stations():
                 assert len(s.get_channels()) == 3
@@ -85,7 +85,7 @@ class FDSNStationTestCase(unittest.TestCase):
     def test_read_big(self):
         for site in ['iris']:
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
-            fdsn_station.load_xml(filename=fpath)
+            stationxml.load_xml(filename=fpath)
 
     @unittest.skip('needs manual inspection')
     @common.require_internet

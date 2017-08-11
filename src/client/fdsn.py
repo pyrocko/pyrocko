@@ -233,11 +233,11 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
         params = dict(post=post.encode())
 
     if parsed:
-        from pyrocko.io import fdsn_station
+        from pyrocko.io import stationxml
         format = params.get('format', 'xml')
         if format == 'text':
             if params.get('level', 'station') == 'channel':
-                return fdsn_station.load_channel_table(
+                return stationxml.load_channel_table(
                     stream=_request(url, **params))
             else:
                 raise InvalidRequest('if format="text" shall be parsed, '
@@ -245,7 +245,7 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
 
         elif format == 'xml':
             assert params.get('format', 'xml') == 'xml'
-            return fdsn_station.load_xml(stream=_request(url, **params))
+            return stationxml.load_xml(stream=_request(url, **params))
         else:
             raise InvalidRequest('format must be "xml" or "text"')
     else:
