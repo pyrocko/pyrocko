@@ -1,5 +1,8 @@
 import unittest
-from . import common
+try:
+    from . import common
+except:
+    import common
 import numpy as num
 import tempfile
 import os
@@ -12,9 +15,6 @@ if common.have_gui():  # noqa
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import gui_util
     from pyrocko import util, model
-
-    import traceback
-    traceback.print_exc()
 
 
 from pyrocko.pile import make_pile
