@@ -2142,7 +2142,8 @@ def MakePileViewerMainClass(base):
 
         def about(self):
             fn = pyrocko.util.data_file('snuffler.png')
-            txt = open(pyrocko.util.data_file('snuffler_about.html')).read()
+            with open(pyrocko.util.data_file('snuffler_about.html')) as f:
+                txt = f.read()
             label = qg.QLabel(txt % {'logo': fn})
             label.setAlignment(qc.Qt.AlignVCenter | qc.Qt.AlignHCenter)
             self.show_doc('About', [label], target='tab')
@@ -2156,11 +2157,13 @@ def MakePileViewerMainClass(base):
                     s.setHeight(self.widget().sizeHint().height())
                     return s
 
-            hcheat = qg.QLabel(open(pyrocko.util.data_file(
-                'snuffler_help.html')).read())
+            with open(pyrocko.util.data_file(
+                    'snuffler_help.html')) as f:
+                hcheat = qg.QLabel(f.read())
 
-            hepilog = qg.QLabel(open(pyrocko.util.data_file(
-                'snuffler_help_epilog.html')).read())
+            with open(pyrocko.util.data_file(
+                    'snuffler_help_epilog.html')) as f:
+                hepilog = qg.QLabel(f.read())
 
             for h in [hcheat, hepilog]:
                 h.setAlignment(qc.Qt.AlignTop | qc.Qt.AlignHCenter)
