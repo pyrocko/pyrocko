@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 from pyrocko import util
 from pyrocko.client import catalog
 from pyrocko import moment_tensor

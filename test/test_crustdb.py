@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import unittest
 import numpy as num  # noqa
 import logging
