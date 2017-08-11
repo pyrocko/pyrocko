@@ -17,7 +17,7 @@ from pyrocko.guts import (
     ValidationError)
 
 
-logger = logging.getLogger('pyrocko.ims')
+logger = logging.getLogger('pyrocko.io.ims')
 
 km = 1000.
 nm_per_s = 1.0e-9

@@ -25,7 +25,7 @@ from pyrocko.moment_tensor import MomentTensor, symmat6
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('fomosto.qssp')
+logger = logging.getLogger('pyrocko.fomosto.qssp')
 
 # how to call the programs
 program_bins = {

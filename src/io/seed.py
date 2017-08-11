@@ -10,7 +10,7 @@ import logging
 
 from pyrocko import util
 
-logger = logging.getLogger('pyrocko.seed')
+logger = logging.getLogger('pyrocko.io.seed')
 
 
 class NotABlockette(Exception):

@@ -23,7 +23,7 @@ from .base_catalog import EarthquakeCatalog, NotFound
 from xml.dom import minidom
 from xml.parsers.expat import ExpatError
 
-logger = logging.getLogger('pyrocko.catalog.geofon')
+logger = logging.getLogger('pyrocko.client.geofon')
 
 km = 1000.
 

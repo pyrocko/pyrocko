@@ -14,7 +14,7 @@ from pyrocko import trace
 from pyrocko.util import reuse, ensuredirs
 from .io_common import FileLoadError, FileSaveError
 
-logger = logging.getLogger('pyrocko.mseed')
+logger = logging.getLogger('pyrocko.io.mseed')
 
 
 class CodeTooLong(FileSaveError):

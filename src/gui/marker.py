@@ -17,7 +17,7 @@ from pyrocko import util, plot, model, trace
 from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
 
 
-logger = logging.getLogger('pyrocko.marker')
+logger = logging.getLogger('pyrocko.gui.marker')
 
 
 def str_to_float_or_none(s):

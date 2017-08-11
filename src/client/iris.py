@@ -17,7 +17,7 @@ from urllib import parse
 from pyrocko import util, pz, model
 
 
-logger = logging.getLogger('pyrocko.iris_ws')
+logger = logging.getLogger('pyrocko.client.iris')
 
 base_url = 'http://service.iris.edu/irisws'
 

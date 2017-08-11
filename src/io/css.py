@@ -9,7 +9,7 @@ import logging
 from struct import unpack
 from pyrocko import trace, util
 
-logger = logging.getLogger('pyrocko.css')
+logger = logging.getLogger('pyrocko.io.css')
 
 
 '''

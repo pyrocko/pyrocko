@@ -41,7 +41,7 @@ from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 from PyQt4 import QtNetwork as qn
 
-logger = logging.getLogger('pyrocko.snuffler')
+logger = logging.getLogger('pyrocko.gui.snuffler')
 
 
 class AcquisitionThread(qc.QThread):

@@ -15,7 +15,7 @@ from pyrocko import trace, gf
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('fomosto.dummy')
+logger = logging.getLogger('pyrocko.fomosto.dummy')
 
 
 class Interrupted(gf.store.StoreError):

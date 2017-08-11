@@ -18,7 +18,7 @@ from pyrocko import trace
 from pyrocko.util import reuse
 from .io_common import FileLoadError
 
-logger = logging.getLogger('pyrocko.pile')
+logger = logging.getLogger('pyrocko.io.sac')
 
 
 def fixdoublefloat(x):

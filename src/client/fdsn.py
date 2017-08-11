@@ -18,7 +18,7 @@ except ImportError:
 
 from pyrocko import util
 
-logger = logging.getLogger('pyrocko.fdsn.ws')
+logger = logging.getLogger('pyrocko.client.fdsn')
 
 g_url = '%(site)s/fdsnws/%(service)s/%(majorversion)i/%(method)s'
 

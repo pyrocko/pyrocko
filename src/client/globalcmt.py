@@ -23,7 +23,7 @@ from .base_catalog import EarthquakeCatalog
 import numpy as num
 
 
-logger = logging.getLogger('pyrocko.catalog.globalcmt')
+logger = logging.getLogger('pyrocko.client.globalcmt')
 
 km = 1000.
 

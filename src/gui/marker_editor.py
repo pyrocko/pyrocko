@@ -56,7 +56,7 @@ else:
     def toString(val):
         return val.toString()
 
-logger = logging.getLogger('pyrocko.marker_editor')
+logger = logging.getLogger('pyrocko.gui.marker_editor')
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',

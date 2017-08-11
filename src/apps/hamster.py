@@ -16,7 +16,7 @@ from pyrocko.streaming import serial_hamster
 from optparse import OptionParser
 pjoin = os.path.join
 
-logger = logging.getLogger('hamster')
+logger = logging.getLogger('pyrocko.apps.hamster')
 
 
 def main(args=None):

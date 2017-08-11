@@ -14,7 +14,7 @@ import numpy as num
 from . import tile
 from pyrocko import util
 
-logger = logging.getLogger('pyrocko.topo.dataset')
+logger = logging.getLogger('pyrocko.dataset.topo.dataset')
 
 
 class TiledGlobalDataset(object):

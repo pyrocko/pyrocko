@@ -31,7 +31,7 @@ if sys.version_info >= (3, 0):
 
 Marker, load_markers, save_markers  # noqa
 
-logger = logging.getLogger('pyrocko.snuffling')
+logger = logging.getLogger('pyrocko.gui.snuffling')
 
 
 class MyFrame(qg.QFrame):

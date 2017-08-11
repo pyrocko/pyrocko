@@ -54,7 +54,7 @@ if platform.mac_ver() != ('', ('', '', ''), ''):
 else:
     qfiledialog_options = qg.QFileDialog.DontUseSheet
     macosx = False
-logger = logging.getLogger('pyrocko.pile_viewer')
+logger = logging.getLogger('pyrocko.gui.pile_viewer')
 
 
 def detrend(x, y):

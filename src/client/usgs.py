@@ -15,7 +15,7 @@ import logging
 from pyrocko import util, model
 from .base_catalog import EarthquakeCatalog
 
-logger = logging.getLogger('pyrocko.catalog.usgs')
+logger = logging.getLogger('pyrocko.client.usgs')
 
 km = 1000.
 
