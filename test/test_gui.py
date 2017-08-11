@@ -14,7 +14,7 @@ if common.have_gui():  # noqa
     from PyQt4.QtGui import QStyleOptionSlider, QStyle
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
-    from pyrocko.gui import gui_util
+    from pyrocko.gui import util as gui_util
     from pyrocko import util, model
 
 

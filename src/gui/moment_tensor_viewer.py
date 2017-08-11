@@ -7,7 +7,7 @@ from __future__ import absolute_import
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 
-from .gui_util import make_QPolygonF, LinValControl
+from .util import make_QPolygonF, LinValControl
 from .pile_viewer import Projection
 
 from pyrocko import beachball, moment_tensor as mtm

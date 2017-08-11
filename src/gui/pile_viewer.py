@@ -32,7 +32,7 @@ from pyrocko.util import hpfloat, gmtime_x, mystrftime
 
 from .marker import associate_phases_to_events
 
-from .gui_util import (ValControl, LinValControl, Marker, EventMarker,
+from .util import (ValControl, LinValControl, Marker, EventMarker,
                        PhaseMarker, make_QPolygonF, draw_label, Label,
                        Progressbars)
 
@@ -3863,7 +3863,7 @@ class PileViewer(qg.QFrame):
 
     def inputline_set_error(self, string):
         self.inputline_error_str = string
-        self.inputline.setPalette(pyrocko.gui.gui_util.get_err_palette())
+        self.inputline.setPalette(pyrocko.gui.util.get_err_palette())
         self.inputline.selectAll()
         self.inputline_error.setText(string)
         self.input_area.show()

@@ -22,7 +22,7 @@ if sys.version_info > (3,):
     buffer = memoryview
 
 
-logger = logging.getLogger('pyrocko.gui.gui_util')
+logger = logging.getLogger('pyrocko.gui.util')
 
 
 def make_QPolygonF(xdata, ydata):
