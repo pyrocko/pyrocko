@@ -52,20 +52,35 @@ class GUITest(unittest.TestCase):
 
     def setUp(self):
         '''
-        reset GUI to initial state
+        reset GUI
         '''
         for k, v in self.main_control_defaults.items():
             getattr(self.pile_viewer, k).set_value(v)
 
+        self.initial_trange = self.pile_viewer.viewer.get_time_range()
+        self.pile_viewer.viewer.set_tracks_range(
+            [0, self.pile_viewer.viewer.ntracks_shown_max])
+        self.tempfiles = []
+
     def tearDown(self):
         self.clear_all_markers()
+        for tempfn in self.tempfiles:
+            os.remove(tempfn)
 
-    # def test_inputline(self):
-    #     pv = self.pile_viewer
-    #     il = pv.inputline
-    #     QTest.keyPress(pv, ':')
-    #     il.setText('ASDF')
-    #     QTest.keyPress(pv, )
+        self.pile_viewer.viewer.set_time_range(*self.initial_trange)
+
+    def get_tempfile(self):
+        tempfn = tempfile.mkstemp()[1]
+        self.tempfiles.append(tempfn)
+        return tempfn
+
+    def write_to_input_line(self, text):
+        '''emulate writing to inputline and press return'''
+        pv = self.pile_viewer
+        il = pv.inputline
+        QTest.keyPress(pv, ':')
+        QTest.keyClicks(il, text)
+        QTest.keyPress(il, Qt.Key_Return)
 
     def clear_all_markers(self):
         pv = self.pile_viewer
@@ -104,15 +119,6 @@ class GUITest(unittest.TestCase):
         QTest.mouseMove(slider, pos=position.topLeft())
         QTest.mouseRelease(slider, Qt.LeftButton)
 
-    def test_save_image(self):
-        tempfn_svg = tempfile.mkstemp()[1] + '.svg'
-        self.pile_viewer.viewer.savesvg(fn=tempfn_svg)
-        os.remove(tempfn_svg)
-
-        tempfn_png = tempfile.mkstemp()[1] + '.png'
-        self.pile_viewer.viewer.savesvg(fn=tempfn_png)
-        os.remove(tempfn_png)
-
     def add_one_pick(self):
         '''Add a single pick to pile_viewer'''
         pv = self.pile_viewer
@@ -132,6 +138,94 @@ class GUITest(unittest.TestCase):
         self.drag_slider(self.pile_viewer.lowpass_control.slider)
         self.drag_slider(self.pile_viewer.gain_control.slider)
         self.drag_slider(self.pile_viewer.rot_control.slider)
+
+    def test_inputline(self):
+        initrange = self.pile_viewer.viewer.shown_tracks_range
+
+        self.write_to_input_line('hide W.X.Y.Z')
+        self.write_to_input_line('unhide W.X.Y.Z')
+        self.pile_viewer.update()
+
+        self.write_to_input_line('hide *')
+        self.pile_viewer.update()
+
+        assert(self.pile_viewer.viewer.shown_tracks_range == (0, 1))
+        self.write_to_input_line('unhide')
+
+        assert(self.pile_viewer.viewer.shown_tracks_range == initrange)
+
+        self.write_to_input_line('markers')
+        self.write_to_input_line('markers 4')
+        self.write_to_input_line('markers all')
+
+        # should error
+        self.write_to_input_line('scaling 1000.')
+        self.write_to_input_line('scaling -1000. 1000.')
+
+        gotos = ['2015-01-01 00:00:00',
+                 '2015-01-01 00:00',
+                 '2015-01-01 00',
+                 '2015-01-01',
+                 '2015-01',
+                 '2015']
+
+        for gt in gotos:
+            self.write_to_input_line('goto %s' % gt)
+
+        # test some false input
+        self.write_to_input_line('asdf')
+        QTest.keyPress(self.pile_viewer.inputline, Qt.Key_Escape)
+
+    def test_drawing_optimization(self):
+        n = 505
+        lats = num.random.uniform(-90., 90., n)
+        lons = num.random.uniform(-180., 180., n)
+        events = []
+        for i, (lat, lon) in enumerate(zip(lats, lons)):
+            events.append(
+                model.Event(time=i, lat=lat, lon=lon, name='XXXX%s' % i))
+
+        self.pile_viewer.viewer.add_event(events[-1])
+        assert len(self.pile_viewer.viewer.markers) == 1
+        self.pile_viewer.viewer.add_events(events)
+        assert len(self.pile_viewer.viewer.markers) == n + 1
+
+        self.pile_viewer.viewer.set_time_range(-500., 5000)
+        self.pile_viewer.viewer.set_time_range(0., None)
+        self.pile_viewer.viewer.set_time_range(None, 0.)
+
+    def test_follow(self):
+        self.pile_viewer.viewer.follow(10.)
+        self.pile_viewer.viewer.unfollow()
+
+    def test_save_image(self):
+        tempfn_svg = self.get_tempfile() + '.svg'
+        self.pile_viewer.viewer.savesvg(fn=tempfn_svg)
+
+        tempfn_png = self.get_tempfile() + '.png'
+        self.pile_viewer.viewer.savesvg(fn=tempfn_png)
+
+    def test_read_events(self):
+        event = model.Event()
+        tempfn = self.get_tempfile()
+        model.event.dump_events([event], tempfn)
+        self.pile_viewer.viewer.read_events(tempfn)
+
+    def test_add_remove_stations(self):
+        n = 10
+        lats = num.random.uniform(-90., 90., n)
+        lons = num.random.uniform(-180., 180., n)
+        stations = [
+            model.station.Station(network=str(i), station=str(i),
+                                  lat=lat, lon=lon) for i, (lat, lon) in
+            enumerate(zip(lats, lons))
+        ]
+        tempfn = self.get_tempfile()
+        model.station.dump_stations(stations, tempfn)
+        self.pile_viewer.viewer.open_stations(fns=[tempfn])
+        last = stations[-1]
+        self.assertTrue(self.pile_viewer.viewer.has_station(last))
+        self.pile_viewer.viewer.get_station((last.network, last.station))
 
     def test_markers(self):
         self.add_one_pick()
@@ -160,8 +254,9 @@ class GUITest(unittest.TestCase):
                 if want:
                     self.assertEqual(m.get_phasename(), want)
 
-    def test_load(self):
+    def test_load_waveforms(self):
         self.pile_viewer.viewer.load('data', regex='\w*.mseed')
+        self.assertFalse(self.pile_viewer.viewer.get_pile().is_empty())
 
     def test_add_traces(self):
         trs = []
@@ -178,30 +273,32 @@ class GUITest(unittest.TestCase):
         self.add_one_pick()
 
         # select all markers
-        QTest.keyPress(pv, 'a', Qt.ShiftModifier)
+        QTest.keyPress(pv, 'a', Qt.ShiftModifier, 100)
 
         # convert to EventMarker
         QTest.keyPress(pv, 'e')
 
+        QTest.keyPress(pv, 'd')
+
         for m in pv.viewer.get_markers():
             self.assertTrue(isinstance(m, gui_util.EventMarker))
 
-        QTest.keyPress(pv, 'd')
-
-    def test_load_save(self):
+    def test_load_save_markers(self):
         nmarkers = 505
-        # times = num.random.uniform(-10., 10, nmarkers) # Fails
         times = num.arange(nmarkers)
         markers = [gui_util.Marker(tmin=t, tmax=t,
                                    nslc_ids=[('*', '*', '*', '*'), ])
                    for t in times]
 
-        tempfn = tempfile.mkstemp()[1]
+        tempfn = self.get_tempfile()
+        tempfn_selected = self.get_tempfile()
 
         self.pile_viewer.viewer.add_markers(markers)
         self.pile_viewer.viewer.write_selected_markers(
-            fn=tempfn)
+            fn=tempfn_selected)
         self.pile_viewer.viewer.write_markers(fn=tempfn)
+
+        self.pile_viewer.viewer.read_markers(fn=tempfn_selected)
         self.pile_viewer.viewer.read_markers(fn=tempfn)
 
         for k in 'pnPN':
@@ -210,9 +307,14 @@ class GUITest(unittest.TestCase):
         self.pile_viewer.viewer.go_to_time(-20., 20)
         self.pile_viewer.update()
         self.pile_viewer.viewer.update()
-        self.pile_viewer.viewer.remove_markers(markers)
-
-        os.remove(tempfn)
+        assert(len(self.pile_viewer.viewer.markers) != 0)
+        assert(len(self.pile_viewer.viewer.markers) == nmarkers * 2)
+        len_before = len(self.pile_viewer.viewer.markers)
+        self.pile_viewer.viewer.remove_marker(
+            self.pile_viewer.viewer.markers[0])
+        assert(len(self.pile_viewer.viewer.markers) == len_before-1)
+        self.pile_viewer.viewer.remove_markers(self.pile_viewer.viewer.markers)
+        assert(len(self.pile_viewer.viewer.markers) == 0)
 
     def test_click_non_dialogs(self):
         # Click through many menu option combinations that do not require
@@ -243,6 +345,7 @@ class GUITest(unittest.TestCase):
             'Subsort by Channel, Network, Station, Location',
             'Subsort by Network, Station, Channel (Grouped by Location)',
             'Subsort by Station, Network, Channel (Grouped by Location)',
+            'Test',
         ]
 
         options = [
@@ -259,13 +362,14 @@ class GUITest(unittest.TestCase):
             'Allow Degapping',
             'FFT Filtering',
             'Bandpass is Lowpass + Highpass',
-            'Watch Files'
+            'Watch Files',
         ]
 
         # create an event marker and activate it
         self.add_one_pick()
 
-        keys = 'mAhefrRh+-fgc?'
+        keys = list('mAhefrRh+-fgc?')
+        keys.extend([Qt.Key_PageUp, Qt.Key_PageDown])
 
         def fire_key(x):
             QTest.keyPress(self.pile_viewer, key)
@@ -278,6 +382,9 @@ class GUITest(unittest.TestCase):
         markers = pv.viewer.get_markers()
         self.assertEqual(len(markers), 1)
         markers[0]._event = event
+
+        pv.viewer.set_active_event(event)
+        pv.viewer.set_event_marker_as_origin()
 
         right_click_menu = self.pile_viewer.viewer.menu
         for action_name in non_dialog_actions:
