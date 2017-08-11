@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from __future__ import print_function
+from __future__ import division, print_function, absolute_import
 import time
 import random
 import sys
@@ -11,7 +11,7 @@ from pyrocko import util
 # sampling rates, which may hang for some time, or produce samples at an
 # inaccurate timing
 
-logger = logging.getLogger('producer')
+logger = logging.getLogger('pyrocko.test.datasource')
 
 
 def produce(deltat, duration):

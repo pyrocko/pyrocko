@@ -29,7 +29,7 @@ guts_prefix = 'pf'
 Timing = gf.meta.Timing
 
 
-logger = logging.getLogger('fomosto.qseis2d')
+logger = logging.getLogger('pyrocko.fomosto.qseis2d')
 
 # how to call the programs
 program_bins = {

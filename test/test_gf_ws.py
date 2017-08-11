@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import unittest
 import shutil
 import os
@@ -11,7 +12,7 @@ from pyrocko import util
 from pyrocko.fomosto import ahfullgreen
 
 op = os.path
-logger = logging.getLogger('test_gf_ws.py')
+logger = logging.getLogger('pyrocko.test.test_gf_ws')
 
 
 class GFWSTestCase(unittest.TestCase):

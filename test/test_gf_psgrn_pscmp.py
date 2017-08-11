@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import division, print_function, absolute_import
 import math
 from time import time
 import unittest
@@ -13,7 +13,7 @@ from pyrocko import util, gf, cake  # noqa
 from pyrocko.fomosto import psgrn_pscmp
 from .common import Benchmark
 
-logger = logging.getLogger('test_gf_psgrn_pscmp')
+logger = logging.getLogger('pyrocko.test.test_gf_psgrn_pscmp')
 benchmark = Benchmark()
 
 km = 1000.

@@ -4,7 +4,6 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
 
-from past.builtins import cmp
 from future import standard_library
 standard_library.install_aliases()  # noqa
 
@@ -29,6 +28,11 @@ from .trace import degapper
 
 
 show_progress_force_off = False
+
+
+def cmp(a, b):
+    return int(a > b) - int(a < b)
+
 
 def sl(s):
     return [str(x) for x in sorted(s)]

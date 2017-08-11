@@ -15,7 +15,7 @@ from pyrocko import util, trace
 
 unpack_fixed = util.unpack_fixed
 
-logger = logging.getLogger('pyrocko.seisan_response')
+logger = logging.getLogger('pyrocko.io.seisan_response')
 
 d2r = num.pi/180.
 

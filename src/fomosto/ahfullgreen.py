@@ -19,7 +19,7 @@ km = 1000.
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('fomosto.ahfullgreen')
+logger = logging.getLogger('pyrocko.fomosto.ahfullgreen')
 
 # how to call the programs
 program_bins = {

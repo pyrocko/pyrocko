@@ -1,4 +1,5 @@
 # python 2/3
+from __future__ import division, print_function, absolute_import
 
 import unittest
 from pyrocko.dataset import geonames

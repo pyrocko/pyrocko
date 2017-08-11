@@ -12,7 +12,7 @@ from pyrocko.plot import automap
 from optparse import OptionParser
 
 km = 1000.
-logger = logging.getLogger('automap')
+logger = logging.getLogger('pyrocko.apps.automap')
 
 program_name = 'automap'
 

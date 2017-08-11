@@ -1,6 +1,5 @@
 # python 2/3
-from __future__ import division
-from __future__ import print_function
+from __future__ import division, print_function, absolute_import
 from builtins import zip
 from builtins import range
 import random
@@ -20,7 +19,7 @@ from . import common
 
 guts_prefix = 'test_ahfull'
 
-logger = logging.getLogger('test_gf_ahfull')
+logger = logging.getLogger('pyrocko.test.test_ahfull')
 
 km = 1000.
 

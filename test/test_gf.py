@@ -1,5 +1,4 @@
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import division, print_function, absolute_import
 from builtins import range, next
 
 import time
@@ -21,7 +20,7 @@ from .common import Benchmark
 assert_ae = num.testing.assert_almost_equal
 
 
-logger = logging.getLogger('test_gf.py')
+logger = logging.getLogger('pyrocko.test.test_gf')
 benchmark = Benchmark()
 
 r2d = 180. / math.pi

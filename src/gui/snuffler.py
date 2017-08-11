@@ -33,7 +33,7 @@ from pyrocko import util            # noqa
 from pyrocko import model           # noqa
 from pyrocko import config          # noqa
 from pyrocko import io              # noqa
-from pyrocko.io import fdsn_station
+from pyrocko.io import stationxml
 
 from . import pile_viewer     # noqa
 
@@ -41,7 +41,7 @@ from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
 from PyQt4 import QtNetwork as qn
 
-logger = logging.getLogger('pyrocko.snuffler')
+logger = logging.getLogger('pyrocko.gui.snuffler')
 
 
 class AcquisitionThread(qc.QThread):
@@ -693,7 +693,7 @@ def snuffle(pile=None, **kwargs):
     :param pile: :py:class:`pile.Pile` object to be visualized
     :param stations: list of `pyrocko.model.Station` objects or ``None``
     :param events: list of `pyrocko.model.Event` objects or ``None``
-    :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+    :param markers: list of `pyrocko.gui.util.Marker` objects or ``None``
     :param ntracks: float, number of tracks to be shown initially (default: 12)
     :param follow: time interval (in seconds) for real time follow mode or
         ``None``
@@ -921,7 +921,7 @@ def snuffler_from_commandline(args=sys.argv):
 
     for stationxml_fn in options.stationxml_fns:
         stations.extend(
-            fdsn_station.load_xml(
+            stationxml.load_xml(
                 filename=stationxml_fn).get_pyrocko_stations())
 
     events = []

@@ -19,7 +19,7 @@ from .. import util, config, pile, model, io, trace
 
 pjoin = os.path.join
 
-logger = logging.getLogger('main')
+logger = logging.getLogger('pyrocko.apps.jackseis')
 
 program_name = 'jackseis'
 

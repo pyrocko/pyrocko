@@ -17,7 +17,7 @@ from pyrocko import util, trace, gf, cake, io
 from pyrocko.gui import gui_util
 
 pjoin = os.path.join
-logger = logging.getLogger('main')
+logger = logging.getLogger('pyrocko.apps.fomosto')
 km = 1e3
 
 

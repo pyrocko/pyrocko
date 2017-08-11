@@ -1,5 +1,4 @@
-from __future__ import absolute_import
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 from builtins import range
 
 import random
@@ -17,7 +16,7 @@ from multiprocessing import cpu_count
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis, ahfullgreen
 
-logger = logging.getLogger('test_gf_qseis')
+logger = logging.getLogger('pyrocko.test.test_gf_qseis')
 benchmark = Benchmark()
 
 km = 1000.

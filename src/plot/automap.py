@@ -29,7 +29,7 @@ from . import gmtpy
 
 points_in_region = od.points_in_region
 
-logger = logging.getLogger('pyrocko.automap')
+logger = logging.getLogger('pyrocko.plot.automap')
 
 earthradius = 6371000.0
 r2d = 180./math.pi

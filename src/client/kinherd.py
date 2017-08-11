@@ -20,7 +20,7 @@ from pyrocko import util, model
 from pyrocko.moment_tensor import MomentTensor
 from .base_catalog import EarthquakeCatalog, NotFound
 
-logger = logging.getLogger('pyrocko.catalog')
+logger = logging.getLogger('pyrocko.client.kinherd')
 
 km = 1000.
 

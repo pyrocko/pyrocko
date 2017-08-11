@@ -16,7 +16,7 @@ import numpy as num
 from pyrocko import util, config
 from pyrocko import orthodrome as od
 
-logger = logging.getLogger('pyrocko.geonames')
+logger = logging.getLogger('pyrocko.dataset.geonames')
 
 GeoName = namedtuple('GeoName', '''
 geonameid

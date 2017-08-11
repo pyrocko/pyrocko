@@ -10,7 +10,7 @@ from .kinherd import ws_request
 
 import logging
 
-logger = logging.getLogger('pyrocko.catalog.saxony')
+logger = logging.getLogger('pyrocko.client.saxony')
 
 km = 1000.
 

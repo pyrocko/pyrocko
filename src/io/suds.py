@@ -16,7 +16,7 @@ from .io_common import FileLoadError
 
 suds_tzero = util.str_to_time('1970-01-01 00:00:00')
 
-logger = logging.getLogger('pyrocko.suds')
+logger = logging.getLogger('pyrocko.io.suds')
 
 
 class SudsError(Exception):

@@ -21,7 +21,7 @@ from PyQt4 import QtGui as qg
 
 from pyrocko import pile, config
 
-from .gui_util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
+from .util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
                        VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
                        load_markers, save_markers)
 
@@ -31,7 +31,7 @@ if sys.version_info >= (3, 0):
 
 Marker, load_markers, save_markers  # noqa
 
-logger = logging.getLogger('pyrocko.snuffling')
+logger = logging.getLogger('pyrocko.gui.snuffling')
 
 
 class MyFrame(qg.QFrame):
@@ -492,7 +492,7 @@ class Snuffling(object):
 
     def figure_frame(self, name=None):
         '''
-        Create a :py:class:`pyrocko.gui_util.FigureFrame`.
+        Create a :py:class:`pyrocko.gui.util.FigureFrame`.
 
         :param name: labels the tab figure frame
         '''
@@ -501,7 +501,7 @@ class Snuffling(object):
 
     def pixmap_frame(self, filename=None, name=None):
         '''
-        Create a :py:class:`pyrocko.gui_util.PixmapFrame`.
+        Create a :py:class:`pyrocko.gui.util.PixmapFrame`.
 
         :param name: labels the tab
         :param filename: name of file to be displayed
@@ -530,7 +530,7 @@ class Snuffling(object):
 
     def vtk_frame(self, name=None, actors=None):
         '''
-        Create a :py:class:`pyrocko.gui_util.VTKFrame` to render interactive 3D
+        Create a :py:class:`pyrocko.gui.util.VTKFrame` to render interactive 3D
         graphics.
 
         :param actors: list of VTKActors
@@ -1513,7 +1513,7 @@ class Snuffling(object):
         '''
         Add some markers to the display.
 
-        Takes a list of objects of type :py:class:`pyrocko.gui_util.Marker` and
+        Takes a list of objects of type :py:class:`pyrocko.gui.util.Marker` and
         adds these to the viewer.
         '''
 

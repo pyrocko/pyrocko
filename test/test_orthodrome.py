@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import division, print_function, absolute_import
 import unittest
 import math
 import random
@@ -11,7 +11,7 @@ from pyrocko import orthodrome_ext
 from .common import Benchmark
 from pyrocko import config
 
-logger = logging.getLogger('OrthodromeTest')
+logger = logging.getLogger('pyrocko.test.test_orthodrome')
 benchmark = Benchmark()
 
 earth_oblateness = 1./298.257223563

@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 from builtins import range
 import unittest
 import numpy as num  # noqa
@@ -7,7 +8,7 @@ from tempfile import mkdtemp
 from pyrocko.dataset import crust2x2
 from pyrocko import util
 
-logger = logging.getLogger('test_crust2x2.py')
+logger = logging.getLogger('pyrocko.test.test_crust2x2')
 
 
 class Crust2x2TestCase(unittest.TestCase):

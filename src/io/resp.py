@@ -11,9 +11,9 @@ import logging
 
 from pyrocko import util, guts
 from pyrocko.io import io_common
-from pyrocko.io import fdsn_station as fs
+from pyrocko.io import stationxml as sxml
 
-logger = logging.getLogger('pyrocko.fdsn.resp')
+logger = logging.getLogger('pyrocko.io.resp')
 
 
 class RespError(io_common.FileLoadError):
@@ -22,13 +22,13 @@ class RespError(io_common.FileLoadError):
 
 def ppolezero(s):
     v = s.split()
-    return fs.PoleZero(
+    return sxml.PoleZero(
         number=int(v[0]),
-        real=fs.FloatNoUnit(
+        real=sxml.FloatNoUnit(
             value=float(v[1]),
             plus_error=float(v[3]) or None,
             minus_error=float(v[3]) or None),
-        imaginary=fs.FloatNoUnit(
+        imaginary=sxml.FloatNoUnit(
             value=float(v[2]),
             plus_error=float(v[4]) or None,
             minus_error=float(v[4]) or None))
@@ -36,7 +36,7 @@ def ppolezero(s):
 
 def pcfu(s):
     v = list(map(float, s.split()))
-    return fs.FloatWithUnit(
+    return sxml.FloatWithUnit(
         value=float(v[-2]),
         plus_error=float(v[-1]) or None,
         minus_error=float(v[-1]) or None)
@@ -44,7 +44,7 @@ def pcfu(s):
 
 def pnc(s):
     v = list(map(float, s.split()))
-    return fs.NumeratorCoefficient(i=int(v[0]), value=float(v[1]))
+    return sxml.NumeratorCoefficient(i=int(v[0]), value=float(v[1]))
 
 
 def punit(s):
@@ -88,12 +88,12 @@ def pblock_060(content):
 def pblock_053(content):
     stage_number = int(get1(content, b'04'))
 
-    pzs = fs.PolesZeros(
+    pzs = sxml.PolesZeros(
         pz_transfer_function_type=ptftype(get1(content, b'03')),
-        input_units=fs.Units(name=punit(get1(content, b'05'))),
-        output_units=fs.Units(name=punit(get1(content, b'06'))),
+        input_units=sxml.Units(name=punit(get1(content, b'05'))),
+        output_units=sxml.Units(name=punit(get1(content, b'06'))),
         normalization_factor=float(get1(content, b'07')),
-        normalization_frequency=fs.Frequency(
+        normalization_frequency=sxml.Frequency(
             value=float(get1(content, b'08'))),
 
         zero_list=list(map(ppolezero, getn(content, b'10-13'))),
@@ -111,12 +111,12 @@ def pblock_053(content):
 def pblock_043(content):
     stage_number = -1
 
-    pzs = fs.PolesZeros(
+    pzs = sxml.PolesZeros(
         pz_transfer_function_type=ptftype(get1(content, b'05')),
-        input_units=fs.Units(name=punit(get1(content, b'06'))),
-        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        input_units=sxml.Units(name=punit(get1(content, b'06'))),
+        output_units=sxml.Units(name=punit(get1(content, b'07'))),
         normalization_factor=float(get1(content, b'08')),
-        normalization_frequency=fs.Frequency(
+        normalization_frequency=sxml.Frequency(
             value=float(get1(content, b'09'))),
 
         zero_list=list(map(ppolezero, getn(content, b'11-14'))),
@@ -134,7 +134,7 @@ def pblock_043(content):
 def pblock_058(content):
     stage_number = int(get1(content, b'03'))
 
-    gain = fs.Gain(
+    gain = sxml.Gain(
         value=float(get1(content, b'04')),
         frequency=float(get1(content, b'05').split()[0]))
 
@@ -144,7 +144,7 @@ def pblock_058(content):
 def pblock_048(content):
     stage_number = -1
 
-    gain = fs.Gain(
+    gain = sxml.Gain(
         value=float(get1(content, b'05')),
         frequency=float(get1(content, b'06').split()[0]))
 
@@ -154,10 +154,10 @@ def pblock_048(content):
 def pblock_054(content):
     stage_number = int(get1(content, b'04'))
 
-    cfs = fs.Coefficients(
+    cfs = sxml.Coefficients(
         cf_transfer_function_type=pcftype(get1(content, b'03')),
-        input_units=fs.Units(name=punit(get1(content, b'05'))),
-        output_units=fs.Units(name=punit(get1(content, b'06'))),
+        input_units=sxml.Units(name=punit(get1(content, b'05'))),
+        output_units=sxml.Units(name=punit(get1(content, b'06'))),
         numerator_list=list(map(pcfu, getn(content, b'08-09'))),
         denominator_list=list(map(pcfu, getn(content, b'11-12'))))
 
@@ -167,10 +167,10 @@ def pblock_054(content):
 def pblock_044(content):
     stage_number = -1
 
-    cfs = fs.Coefficients(
+    cfs = sxml.Coefficients(
         cf_transfer_function_type=pcftype(get1(content, b'05')),
-        input_units=fs.Units(name=punit(get1(content, b'06'))),
-        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        input_units=sxml.Units(name=punit(get1(content, b'06'))),
+        output_units=sxml.Units(name=punit(get1(content, b'07'))),
         numerator_list=list(map(pcfu, getn(content, b'09-10'))),
         denominator_list=list(map(pcfu, getn(content, b'12-13'))))
 
@@ -180,12 +180,12 @@ def pblock_044(content):
 def pblock_057(content):
     stage_number = int(get1(content, b'03'))
 
-    deci = fs.Decimation(
-        input_sample_rate=fs.Frequency(value=float(get1(content, b'04'))),
+    deci = sxml.Decimation(
+        input_sample_rate=sxml.Frequency(value=float(get1(content, b'04'))),
         factor=int(get1(content, b'05')),
         offset=int(get1(content, b'06')),
-        delay=fs.FloatWithUnit(value=float(get1(content, b'07'))),
-        correction=fs.FloatWithUnit(value=float(get1(content, b'08'))))
+        delay=sxml.FloatWithUnit(value=float(get1(content, b'07'))),
+        correction=sxml.FloatWithUnit(value=float(get1(content, b'08'))))
 
     return stage_number, deci
 
@@ -193,12 +193,12 @@ def pblock_057(content):
 def pblock_047(content):
     stage_number = -1
 
-    deci = fs.Decimation(
-        input_sample_rate=fs.Frequency(value=float(get1(content, b'05'))),
+    deci = sxml.Decimation(
+        input_sample_rate=sxml.Frequency(value=float(get1(content, b'05'))),
         factor=int(get1(content, b'06')),
         offset=int(get1(content, b'07')),
-        delay=fs.FloatWithUnit(value=float(get1(content, b'08'))),
-        correction=fs.FloatWithUnit(value=float(get1(content, b'09'))))
+        delay=sxml.FloatWithUnit(value=float(get1(content, b'08'))),
+        correction=sxml.FloatWithUnit(value=float(get1(content, b'09'))))
 
     return stage_number, deci
 
@@ -206,10 +206,10 @@ def pblock_047(content):
 def pblock_061(content):
     stage_number = int(get1(content, b'03'))
 
-    fir = fs.FIR(
+    fir = sxml.FIR(
         name=get1(content, b'04', optional=True),
-        input_units=fs.Units(name=punit(get1(content, b'06'))),
-        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        input_units=sxml.Units(name=punit(get1(content, b'06'))),
+        output_units=sxml.Units(name=punit(get1(content, b'07'))),
         symmetry=psymmetry(get1(content, b'05')),
         numerator_coefficient_list=list(map(pnc, getn(content, b'09'))))
 
@@ -219,10 +219,10 @@ def pblock_061(content):
 def pblock_041(content):
     stage_number = -1
 
-    fir = fs.FIR(
+    fir = sxml.FIR(
         name=get1(content, b'04', optional=True),
-        input_units=fs.Units(name=punit(get1(content, b'06'))),
-        output_units=fs.Units(name=punit(get1(content, b'07'))),
+        input_units=sxml.Units(name=punit(get1(content, b'06'))),
+        output_units=sxml.Units(name=punit(get1(content, b'07'))),
         symmetry=psymmetry(get1(content, b'05')),
         numerator_coefficient_list=list(map(pnc, getn(content, b'09'))))
 
@@ -414,7 +414,7 @@ class ChannelResponse(guts.Object):
     codes = guts.Tuple.T(4, guts.String.T(default=''))
     start_date = guts.Timestamp.T()
     end_date = guts.Timestamp.T()
-    response = fs.Response.T()
+    response = sxml.Response.T()
 
 
 def iload_fh(f):
@@ -459,21 +459,21 @@ def iload_fh(f):
         for istage in istages:
             elements = stage_elements[istage]
             if istage == 0:
-                totalgain = gett1(elements, fs.Gain)
+                totalgain = gett1(elements, sxml.Gain)
             else:
-                stage = fs.ResponseStage(
+                stage = sxml.ResponseStage(
                     number=istage,
-                    poles_zeros_list=gett(elements, fs.PolesZeros),
-                    coefficients_list=gett(elements, fs.Coefficients),
-                    fir=gett1o(elements, fs.FIR),
-                    decimation=gett1o(elements, fs.Decimation),
-                    stage_gain=gett1o(elements, fs.Gain))
+                    poles_zeros_list=gett(elements, sxml.PolesZeros),
+                    coefficients_list=gett(elements, sxml.Coefficients),
+                    fir=gett1o(elements, sxml.FIR),
+                    decimation=gett1o(elements, sxml.Decimation),
+                    stage_gain=gett1o(elements, sxml.Gain))
 
                 stages.append(stage)
 
         if totalgain and stages:
-            resp = fs.Response(
-                instrument_sensitivity=fs.Sensitivity(
+            resp = sxml.Response(
+                instrument_sensitivity=sxml.Sensitivity(
                     value=totalgain.value,
                     frequency=totalgain.frequency,
                     input_units=stages[0].input_units,
@@ -512,14 +512,14 @@ def make_stationxml(pyrocko_stations, channel_responses):
     for (net, sta, loc) in sorted(pstations.keys()):
         pstation = pstations[net, sta, loc]
         if net not in networks:
-            networks[net] = fs.Network(code=net)
+            networks[net] = sxml.Network(code=net)
 
         if (net, sta) not in stations:
-            stations[net, sta] = fs.Station(
+            stations[net, sta] = sxml.Station(
                 code=sta,
-                latitude=fs.Latitude(pstation.lat),
-                longitude=fs.Longitude(pstation.lon),
-                elevation=fs.Distance(pstation.elevation))
+                latitude=sxml.Latitude(pstation.lat),
+                longitude=sxml.Longitude(pstation.lon),
+                elevation=sxml.Distance(pstation.elevation))
 
             networks[net].station_list.append(stations[net, sta])
 
@@ -527,15 +527,15 @@ def make_stationxml(pyrocko_stations, channel_responses):
         net, sta, loc, cha = cr.codes
         if (net, sta, loc) in pstations:
             pstation = pstations[net, sta, loc]
-            channel = fs.Channel(
+            channel = sxml.Channel(
                 code=cha,
                 location_code=loc,
                 start_date=cr.start_date,
                 end_date=cr.end_date,
-                latitude=fs.Latitude(pstation.lat),
-                longitude=fs.Longitude(pstation.lon),
-                elevation=fs.Distance(pstation.elevation),
-                depth=fs.Distance(pstation.depth),
+                latitude=sxml.Latitude(pstation.lat),
+                longitude=sxml.Longitude(pstation.lon),
+                elevation=sxml.Distance(pstation.elevation),
+                depth=sxml.Distance(pstation.depth),
                 response=cr.response)
 
             stations[net, sta].channel_list.append(channel)
@@ -546,7 +546,7 @@ def make_stationxml(pyrocko_stations, channel_responses):
     for station in stations.values():
         station.channel_list.sort(key=lambda c: (c.location_code, c.code))
 
-    return fs.FDSNStationXML(
+    return sxml.FDSNStationXML(
         source='Converted from Pyrocko stations file and RESP information',
         created=time.time(),
         network_list=[networks[net_] for net_ in sorted(networks.keys())])

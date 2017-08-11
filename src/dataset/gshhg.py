@@ -14,7 +14,7 @@ from os import path
 
 from pyrocko import config, orthodrome
 
-logger = logging.getLogger('pyrocko.gshhg')
+logger = logging.getLogger('pyrocko.dataset.gshhg')
 config = config.config()
 
 km = 1e3

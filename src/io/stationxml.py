@@ -25,7 +25,7 @@ from pyrocko import trace, util
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('pyrocko.io.fdsn_station')
+logger = logging.getLogger('pyrocko.io.stationxml')
 
 conversion = {
     ('M', 'M'): None,

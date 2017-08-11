@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import division, print_function, absolute_import
 
 import unittest
 import numpy as num
@@ -61,7 +61,7 @@ class ResponseTestCase(unittest.TestCase):
 
         from pyrocko import model
         from pyrocko.io import resp, enhanced_sacpz
-        from pyrocko.io import fdsn_station as station
+        from pyrocko.io import stationxml
 
         t = util.str_to_time('2014-01-01 00:00:00')
         codes = 'GE', 'EIL', '', 'BHZ'
@@ -94,12 +94,12 @@ class ResponseTestCase(unittest.TestCase):
             pr_sacpz.poles.append(0.0j)
 
         sxml_geofon_fpath = common.test_data_file('test1.stationxml')
-        sx_geofon = station.load_xml(filename=sxml_geofon_fpath)
+        sx_geofon = stationxml.load_xml(filename=sxml_geofon_fpath)
         pr_sx_geofon = sx_geofon.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
 
         sxml_iris_fpath = common.test_data_file('test2.stationxml')
-        sx_iris = station.load_xml(filename=sxml_iris_fpath)
+        sx_iris = stationxml.load_xml(filename=sxml_iris_fpath)
         pr_sx_iris = sx_iris.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
 

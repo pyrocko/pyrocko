@@ -13,7 +13,7 @@ from pyrocko import util, io, model
 from pyrocko.client import fdsn
 pjoin = os.path.join
 
-logger = logging.getLogger('pyrocko.gui.snufflings.iris_data')
+logger = logging.getLogger('pyrocko.gui.snufflings.download')
 logger.setLevel(logging.INFO)
 
 

@@ -37,7 +37,7 @@ psgrn_components = 'ep ss ds cl'.split()
 km = 1000.
 
 guts_prefix = 'pf'
-logger = logging.getLogger('psgrn_pscmp')
+logger = logging.getLogger('pyrocko.fomosto.psgrn_pscmp')
 
 
 def have_backend():

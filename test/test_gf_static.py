@@ -1,4 +1,4 @@
-from __future__ import absolute_import
+from __future__ import division, print_function, absolute_import
 import unittest
 import numpy as num
 import cProfile
@@ -12,7 +12,7 @@ from pyrocko import gf, util, cake
 from pyrocko.fomosto import qseis, psgrn_pscmp
 
 random = num.random
-logger = logging.getLogger('test_gf_static.py')
+logger = logging.getLogger('pyrocko.test.test_gf_static')
 benchmark = Benchmark()
 
 r2d = 180. / math.pi

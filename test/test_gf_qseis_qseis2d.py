@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 from builtins import range, zip
 
 import random
@@ -15,7 +15,7 @@ from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
 from pyrocko.fomosto import qseis2d
 
-logger = logging.getLogger('test_qseis2d_qseis')
+logger = logging.getLogger('pyrocko.test.test_qseis_qseis2d')
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d

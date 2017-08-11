@@ -21,7 +21,7 @@ from pyrocko import trace, util, gf
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('fomosto.poel')
+logger = logging.getLogger('pyrocko.fomosto.poel')
 
 # how to call the programs
 program_bins = {

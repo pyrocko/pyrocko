@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function, absolute_import
 
 import unittest
 import logging
@@ -9,7 +9,7 @@ from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
 from pyrocko.fomosto.report import GreensFunctionTest as gftest
 
-logger = logging.getLogger('test_fomosto_report')
+logger = logging.getLogger('pyrocko.test.test_fomosto_report')
 
 km = 1e3
 

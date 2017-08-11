@@ -9,7 +9,7 @@ from collections import defaultdict
 
 from pyrocko import trace, util, pz
 from pyrocko.io import io_common
-from pyrocko.io import fdsn_station as fs
+from pyrocko.io import stationxml as sxml
 from pyrocko.guts import Object, Tuple, String, Timestamp, Float
 
 
@@ -48,7 +48,7 @@ class EnhancedSacPzResponse(Object):
 
 
 def make_stationxml_response(presponse, input_unit, output_unit):
-    return fs.Response.from_pyrocko_pz_response(
+    return sxml.Response.from_pyrocko_pz_response(
         presponse, input_unit, output_unit, 1.0)
 
 
@@ -125,15 +125,15 @@ def make_stationxml(responses, inconsistencies='warn'):
         station_coords[net, sta].append(
             (cr.codes, cr.lat, cr.lon, cr.elevation))
 
-        station_channels[net, sta].append(fs.Channel(
+        station_channels[net, sta].append(sxml.Channel(
             code=cha,
             location_code=loc,
             start_date=cr.tmin,
             end_date=cr.tmax,
-            latitude=fs.Latitude(cr.lat),
-            longitude=fs.Longitude(cr.lon),
-            elevation=fs.Distance(cr.elevation),
-            depth=fs.Distance(cr.depth),
+            latitude=sxml.Latitude(cr.lat),
+            longitude=sxml.Longitude(cr.lon),
+            elevation=sxml.Distance(cr.elevation),
+            depth=sxml.Distance(cr.depth),
             response=make_stationxml_response(
                 cr.response, cr.input_unit, cr.output_unit)))
 
@@ -144,20 +144,20 @@ def make_stationxml(responses, inconsistencies='warn'):
             error=inconsistencies)
 
         if net not in networks:
-            networks[net] = fs.Network(code=net)
+            networks[net] = sxml.Network(code=net)
 
-        stations[net, sta] = fs.Station(
+        stations[net, sta] = sxml.Station(
             code=sta,
-            latitude=fs.Latitude(lat),
-            longitude=fs.Longitude(lon),
-            elevation=fs.Distance(elevation),
+            latitude=sxml.Latitude(lat),
+            longitude=sxml.Longitude(lon),
+            elevation=sxml.Distance(elevation),
             channel_list=sorted(
                 station_channels[net, sta],
                 key=lambda c: (c.location_code, c.code)))
 
         networks[net].station_list.append(stations[net, sta])
 
-    return fs.FDSNStationXML(
+    return sxml.FDSNStationXML(
         source='Converted from "enhanced" SACPZ information',
         created=time.time(),
         network_list=[networks[net_] for net_ in sorted(networks.keys())])
@@ -172,5 +172,5 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit('usage: python -m pyrocko.station.enhanced_sacpz <sacpz> ...')
 
-    sxml = make_stationxml(iload(sys.argv[1:]))
-    print(sxml.dump_xml())
+    sxml_in = make_stationxml(iload(sys.argv[1:]))
+    print(sxml_in.dump_xml())
