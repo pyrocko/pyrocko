@@ -280,7 +280,7 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko.fdsn', 'station', ['pyrocko.io.fdsn_station']),
             ('pyrocko', 'gcf', ['pyrocko.io.gcf']),
             ('pyrocko', 'gse1', ['pyrocko.io.gse1']),
-            ('pyrocko', 'gse2_io_wrap', ['pyrocko.io.gse2_io_wrap']),
+            ('pyrocko', 'gse2_io_wrap', ['pyrocko.io.gse2']),
             ('pyrocko', 'ims', ['pyrocko.io.ims']),
             ('pyrocko', 'io_common', ['pyrocko.io.io_common']),
             ('pyrocko', 'kan', ['pyrocko.io.kan']),
@@ -306,7 +306,8 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'cake_plot', ['pyrocko.plot.cake_plot']),
             ('pyrocko', 'gmtpy', ['pyrocko.plot.gmtpy']),
             ('pyrocko', 'hudson', ['pyrocko.plot.hudson']),
-            ('pyrocko', 'response_plot', ['pyrocko.plot.response_plot']),
+            ('pyrocko', 'response_plot', ['pyrocko.plot.response']),
+            ('pyrocko', 'marker', ['pyrocko.gui.marker']),
         ]
 
         for (package, compat_module, import_modules) in mapping:

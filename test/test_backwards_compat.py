@@ -42,6 +42,7 @@ compat_modules = [
     'fdsn.station',
     'fdsn.resp',
     'fdsn.ws',
+    'marker',
 ]
 
 

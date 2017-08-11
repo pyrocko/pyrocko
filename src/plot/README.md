@@ -4,7 +4,7 @@
 * `pyrocko.plot.beachball` Beachball visualisation for `matplotlib`.
 * `pyrocko.plot.cake_plot` Plotting velocities models and ray paths.
 * `pyrocko.plot.hudson` Generate hudson plots with this module.
-* `pyrocko.plot.response_plot` Shows station's response's.
+* `pyrocko.plot.response` Plot the station's response's.
 
 ## GMTPy
 

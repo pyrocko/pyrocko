@@ -7,7 +7,7 @@ import numpy as num
 from matplotlib import image, pyplot as plt
 
 from pyrocko import util
-from pyrocko.plot import response_plot
+from pyrocko.plot import response
 
 from . import common
 
@@ -67,11 +67,11 @@ class ResponsePlotTestCase(unittest.TestCase):
             fpath_resp = common.test_data_file(fn)
             fname = 'test_response_plot_%s.png' % fn
             fpath_png = self.fpath(fname)
-            resps, labels = response_plot.load_response_information(
+            resps, labels = response.load_response_information(
                 fpath_resp, format)
             labels = [lab[len(fpath_resp)+1:] or 'dummy' for lab in labels]
 
-            response_plot.plot(
+            response.plot(
                 responses=resps, labels=labels, filename=fpath_png, dpi=50)
             # self.compare_with_ref(fname, 0.01)
 

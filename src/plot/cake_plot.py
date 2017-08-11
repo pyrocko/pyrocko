@@ -8,7 +8,7 @@ from builtins import range
 import math
 import numpy as num
 from pyrocko import cake
-from .plot import mpl_labelspace as labelspace, mpl_init, \
+from . import mpl_labelspace as labelspace, mpl_init,\
     mpl_color as str_to_mpl_color, InvalidColorDef
 
 str_to_mpl_color
