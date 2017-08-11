@@ -15,11 +15,28 @@ if common.have_gui():  # noqa
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import util as gui_util
+    from pyrocko.gui import snuffling
     from pyrocko import util, model
 
 
 from pyrocko.pile import make_pile
 from pyrocko import config, trace
+
+
+class TestSnuffling(snuffling.Snuffling):
+
+    def setup(self):
+        self.set_name('X')
+
+    def call(self):
+        figframe = self.figure_frame()
+        ax = figframe.gca()
+        ax.plot([0, 1], [0, 1])
+        figframe.draw()
+
+        self.pixmap_frame()
+
+        self.web_frame()
 
 
 @common.require_gui
@@ -400,6 +417,16 @@ class GUITest(unittest.TestCase):
         self.viewer.go_to_event_by_name(event.name)
         self.viewer.go_to_time(tinit, tinitlen)
 
+    def test_frames(self):
+        frame_snuffling = TestSnuffling()
+
+        self.viewer.add_snuffling(frame_snuffling)
+        frame_snuffling.call()
+
+        # close three opened frames
+        QTest.keyPress(self.pile_viewer, 'd')
+        QTest.keyPress(self.pile_viewer, 'd')
+        QTest.keyPress(self.pile_viewer, 'd')
 
 if __name__ == '__main__':
     util.setup_logging('test_gui', 'warning')
