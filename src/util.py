@@ -154,8 +154,9 @@ def _download(url, fpath, username=None, password=None,
         os.rename(fn_tmp, fn)
 
         if frx != fsize:
-            logger.warn('content-length from http header (%i) does not match '
-                        'downloaded size (%i)' % (fsize, frx))
+            logger.warning(
+                'content-length from http header (%i) does not match '
+                'download size (%i)' % (fsize, frx))
 
         logger.info('finished download of %s' % url)
 

@@ -1,6 +1,8 @@
 import unittest
 from . import common
 import numpy as num
+import tempfile
+import os
 
 if common.have_gui():  # noqa
     from PyQt4.QtTest import QTest
@@ -102,8 +104,13 @@ class GUITest(unittest.TestCase):
         QTest.mouseRelease(slider, Qt.LeftButton)
 
     def test_save_image(self):
-        self.pile_viewer.viewer.savesvg(fn='data/test_img_snuffler.svg')
-        self.pile_viewer.viewer.savesvg(fn='data/test_img_snuffler.png')
+        tempfn_svg = tempfile.mkstemp()[1] + '.svg'
+        self.pile_viewer.viewer.savesvg(fn=tempfn_svg)
+        os.remove(tempfn_svg)
+
+        tempfn_png = tempfile.mkstemp()[1] + '.png'
+        self.pile_viewer.viewer.savesvg(fn=tempfn_png)
+        os.remove(tempfn_png)
 
     def add_one_pick(self):
         '''Add a single pick to pile_viewer'''
@@ -188,11 +195,13 @@ class GUITest(unittest.TestCase):
                                    nslc_ids=[('*', '*', '*', '*'), ])
                    for t in times]
 
+        tempfn = tempfile.mkstemp()[1]
+
         self.pile_viewer.viewer.add_markers(markers)
-        self.pile_viewer.viewer.write_markers(fn='data/test_markers.pf')
         self.pile_viewer.viewer.write_selected_markers(
-            fn='data/test_markers_selected.pf')
-        self.pile_viewer.viewer.read_markers(fn='data/test_markers.pf')
+            fn=tempfn)
+        self.pile_viewer.viewer.write_markers(fn=tempfn)
+        self.pile_viewer.viewer.read_markers(fn=tempfn)
 
         for k in 'pnPN':
             QTest.keyPress(self.pile_viewer, k)
@@ -201,6 +210,8 @@ class GUITest(unittest.TestCase):
         self.pile_viewer.update()
         self.pile_viewer.viewer.update()
         self.pile_viewer.viewer.remove_markers(markers)
+
+        os.remove(tempfn)
 
     def test_click_non_dialogs(self):
         # Click through many menu option combinations that do not require

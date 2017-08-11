@@ -1,4 +1,5 @@
 from __future__ import print_function, division
+from __future__ import absolute_import
 from builtins import range, zip
 
 import unittest
@@ -9,7 +10,7 @@ import logging
 import shutil
 
 from tempfile import mkdtemp
-from common import Benchmark
+from .common import Benchmark
 from pyrocko import gf, util
 
 random = num.random

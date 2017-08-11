@@ -1,6 +1,7 @@
 '''
 Calculate P-phase arrivals.
 '''
+from __future__ import print_function
 from pyrocko import cake
 import numpy as num
 
@@ -19,6 +20,6 @@ distances = num.linspace(1500, 3000, 16)*km * cake.m2d
 Phase = cake.PhaseDef('P')
 
 # calculate distances and arrivals and print them:
-print 'distance [km]      time [s]'
+print('distance [km]      time [s]')
 for arrival in model.arrivals(distances, phases=Phase, zstart=source_depth):
-    print '%13g %13g' % (arrival.x*cake.d2m/km, arrival.t)
+    print('%13g %13g' % (arrival.x*cake.d2m/km, arrival.t))

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unittest
 import math
 import random
@@ -7,7 +8,7 @@ import logging
 
 from pyrocko import orthodrome, util
 from pyrocko import orthodrome_ext
-from common import Benchmark
+from .common import Benchmark
 from pyrocko import config
 
 logger = logging.getLogger('OrthodromeTest')
