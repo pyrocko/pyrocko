@@ -16,7 +16,7 @@ from multiprocessing import cpu_count
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis, ahfullgreen
 
-logger = logging.getLogger('test_gf_qseis')
+logger = logging.getLogger('pyrocko.test.test_gf_qseis')
 benchmark = Benchmark()
 
 km = 1000.

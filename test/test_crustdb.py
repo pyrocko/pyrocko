@@ -9,7 +9,7 @@ from os.path import join as pjoin
 from pyrocko import util
 from pyrocko.dataset import crustdb
 
-logger = logging.getLogger('test_crustdb.py')
+logger = logging.getLogger('pyrocko.test.test_crustdb')
 
 
 class CrustDBTestCase(unittest.TestCase):

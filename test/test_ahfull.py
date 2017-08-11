@@ -19,7 +19,7 @@ from . import common
 
 guts_prefix = 'test_ahfull'
 
-logger = logging.getLogger('test_gf_ahfull')
+logger = logging.getLogger('pyrocko.test.test_ahfull')
 
 km = 1000.
 

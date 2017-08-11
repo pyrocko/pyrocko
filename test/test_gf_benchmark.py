@@ -13,7 +13,7 @@ from .common import Benchmark
 from pyrocko import gf, util
 
 random = num.random
-logger = logging.getLogger('test_gf_benchmark.py')
+logger = logging.getLogger('pyrocko.test.test_gf_benchmark')
 benchmark = Benchmark()
 
 r2d = 180. / math.pi

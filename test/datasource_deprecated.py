@@ -11,7 +11,7 @@ from pyrocko import util
 # sampling rates, which may hang for some time, or produce samples at an
 # inaccurate timing
 
-logger = logging.getLogger('producer')
+logger = logging.getLogger('pyrocko.test.datasource')
 
 
 def produce(deltat, duration):

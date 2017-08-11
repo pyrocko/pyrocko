@@ -13,7 +13,7 @@ from pyrocko.client import fdsn, iris
 
 from . import common
 
-logger = logging.getLogger('pyrocko.test.test_fdsn.py')
+logger = logging.getLogger('pyrocko.test.test_fdsn')
 
 stt = util.str_to_time
 

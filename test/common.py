@@ -7,7 +7,7 @@ import functools
 import logging
 import socket
 
-logger = logging.getLogger('test.common')
+logger = logging.getLogger('pyrocko.test.common')
 
 benchmark_results = []
 

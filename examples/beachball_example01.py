@@ -8,7 +8,7 @@ from pyrocko.plot import beachball
 
 ''' Beachball Copacabana '''
 
-logger = logging.getLogger(sys.argv[0])
+logger = logging.getLogger('pyrocko.examples.beachball_example01')
 
 util.setup_logging()
 

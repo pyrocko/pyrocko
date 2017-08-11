@@ -20,7 +20,7 @@ from .common import Benchmark
 assert_ae = num.testing.assert_almost_equal
 
 
-logger = logging.getLogger('test_gf.py')
+logger = logging.getLogger('pyrocko.test.test_gf')
 benchmark = Benchmark()
 
 r2d = 180. / math.pi

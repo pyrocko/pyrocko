@@ -12,7 +12,7 @@ from pyrocko import gf, util, model
 from pyrocko import moment_tensor as pmt
 from pyrocko import orthodrome as od
 
-logger = logging.getLogger('test_gf_scenarios')
+logger = logging.getLogger('pyrocko.test.test_gf_scenarios')
 km = 1000.
 d2r = math.pi/180.
 

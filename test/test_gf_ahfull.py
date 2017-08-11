@@ -13,7 +13,7 @@ from pyrocko import gf, util
 from pyrocko.fomosto import ahfullgreen
 
 
-logger = logging.getLogger('test_gf_ahfull.py')
+logger = logging.getLogger('pyrocko.test.test_gf_ahfull')
 
 
 r2d = 180. / math.pi
