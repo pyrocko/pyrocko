@@ -307,6 +307,11 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'gmtpy', ['pyrocko.plot.gmtpy']),
             ('pyrocko', 'hudson', ['pyrocko.plot.hudson']),
             ('pyrocko', 'response_plot', ['pyrocko.plot.response_plot']),
+            ('pyrocko', 'snuffling', ['pyrocko.gui.snuffling']),
+            ('pyrocko', 'pile_viewer', ['pyrocko.gui.pile_viewer']),
+            ('pyrocko', 'marker', ['pyrocko.gui.marker']),
+            ('pyrocko', 'snuffler', ['pyrocko.gui.snuffler']),
+            ('pyrocko', 'gui_util', ['pyrocko.gui.gui_util']),
         ]
 
         for (package, compat_module, import_modules) in mapping:
