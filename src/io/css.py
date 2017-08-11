@@ -108,40 +108,21 @@ class CSSHeaderFile(object):
                 return
         return data
 
-    def read(self, use_template=True):
-        ''' read header file
-
-        :param use_template: If *False*, try to extract information bv
-            splitting the file on whitespaces. Otherwise (default) use the
-            official template.
-            (http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm)
-        '''
+    def read(self):
+        ''' read header file '''
         with open(self.fn, 'rb') as f:
             lines = f.readlines()
             for iline, line in enumerate(lines):
                 line = str(line.decode('ascii'))
-                if use_template:
-                    d = {}
-                    for (ident, convert, (istart, istop), desc) in template:
-                        try:
-                            d[ident] = convert(line[istart: istop].strip())
-                        except:
-                            raise CSSWfError(iline=iline+1, data=line,
-                                             ident=ident, convert=convert,
-                                             istart=istart+1, istop=istop+1,
-                                             desc=desc, d=d)
-
-                else:
-                    d = {}
-                    split = line.split()
-                    d['sta'] = template[0][1](split[0])
-                    d['chan'] = template[1][1](split[1])
-                    d['time'] = template[2][1](split[2])
-                    d['nsamp'] = template[7][1](split[7])
-                    d['samprate'] = template[8][1](split[8])
-                    d['datatype'] = template[-8][1](split[-8])
-                    d['dir'] = template[-6][1](split[-6])
-                    d['dfile'] = template[-5][1](split[-5])
+                d = {}
+                for (ident, convert, (istart, istop), desc) in template:
+                    try:
+                        d[ident] = convert(line[istart: istop].strip())
+                    except:
+                        raise CSSWfError(iline=iline+1, data=line,
+                                         ident=ident, convert=convert,
+                                         istart=istart+1, istop=istop+1,
+                                         desc=desc, d=d)
 
                 fn = os.path.join(self.superdir, d['dir'], d['dfile'])
                 if os.path.isfile(fn):
