@@ -36,6 +36,7 @@ class GUITest(unittest.TestCase):
         p = make_pile(fpath, show_progress=False)
         cls.win = SnufflerWindow(pile=p)
         cls.pile_viewer = cls.win.pile_viewer
+        cls.viewer = cls.win.pile_viewer.viewer
         pv = cls.pile_viewer
         cls.main_control_defaults = dict(
             highpass_control=pv.highpass_control.get_value(),
@@ -57,9 +58,9 @@ class GUITest(unittest.TestCase):
         for k, v in self.main_control_defaults.items():
             getattr(self.pile_viewer, k).set_value(v)
 
-        self.initial_trange = self.pile_viewer.viewer.get_time_range()
-        self.pile_viewer.viewer.set_tracks_range(
-            [0, self.pile_viewer.viewer.ntracks_shown_max])
+        self.initial_trange = self.viewer.get_time_range()
+        self.viewer.set_tracks_range(
+            [0, self.viewer.ntracks_shown_max])
         self.tempfiles = []
 
     def tearDown(self):
@@ -67,7 +68,7 @@ class GUITest(unittest.TestCase):
         for tempfn in self.tempfiles:
             os.remove(tempfn)
 
-        self.pile_viewer.viewer.set_time_range(*self.initial_trange)
+        self.viewer.set_time_range(*self.initial_trange)
 
     def get_tempfile(self):
         tempfn = tempfile.mkstemp()[1]
@@ -140,7 +141,7 @@ class GUITest(unittest.TestCase):
         self.drag_slider(self.pile_viewer.rot_control.slider)
 
     def test_inputline(self):
-        initrange = self.pile_viewer.viewer.shown_tracks_range
+        initrange = self.viewer.shown_tracks_range
 
         self.write_to_input_line('hide W.X.Y.Z')
         self.write_to_input_line('unhide W.X.Y.Z')
@@ -149,10 +150,10 @@ class GUITest(unittest.TestCase):
         self.write_to_input_line('hide *')
         self.pile_viewer.update()
 
-        assert(self.pile_viewer.viewer.shown_tracks_range == (0, 1))
+        assert(self.viewer.shown_tracks_range == (0, 1))
         self.write_to_input_line('unhide')
 
-        assert(self.pile_viewer.viewer.shown_tracks_range == initrange)
+        assert(self.viewer.shown_tracks_range == initrange)
 
         self.write_to_input_line('markers')
         self.write_to_input_line('markers 4')
@@ -185,31 +186,31 @@ class GUITest(unittest.TestCase):
             events.append(
                 model.Event(time=i, lat=lat, lon=lon, name='XXXX%s' % i))
 
-        self.pile_viewer.viewer.add_event(events[-1])
-        assert len(self.pile_viewer.viewer.markers) == 1
-        self.pile_viewer.viewer.add_events(events)
-        assert len(self.pile_viewer.viewer.markers) == n + 1
+        self.viewer.add_event(events[-1])
+        assert len(self.viewer.markers) == 1
+        self.viewer.add_events(events)
+        assert len(self.viewer.markers) == n + 1
 
-        self.pile_viewer.viewer.set_time_range(-500., 5000)
-        self.pile_viewer.viewer.set_time_range(0., None)
-        self.pile_viewer.viewer.set_time_range(None, 0.)
+        self.viewer.set_time_range(-500., 5000)
+        self.viewer.set_time_range(0., None)
+        self.viewer.set_time_range(None, 0.)
 
     def test_follow(self):
-        self.pile_viewer.viewer.follow(10.)
-        self.pile_viewer.viewer.unfollow()
+        self.viewer.follow(10.)
+        self.viewer.unfollow()
 
     def test_save_image(self):
         tempfn_svg = self.get_tempfile() + '.svg'
-        self.pile_viewer.viewer.savesvg(fn=tempfn_svg)
+        self.viewer.savesvg(fn=tempfn_svg)
 
         tempfn_png = self.get_tempfile() + '.png'
-        self.pile_viewer.viewer.savesvg(fn=tempfn_png)
+        self.viewer.savesvg(fn=tempfn_png)
 
     def test_read_events(self):
         event = model.Event()
         tempfn = self.get_tempfile()
         model.event.dump_events([event], tempfn)
-        self.pile_viewer.viewer.read_events(tempfn)
+        self.viewer.read_events(tempfn)
 
     def test_add_remove_stations(self):
         n = 10
@@ -222,10 +223,10 @@ class GUITest(unittest.TestCase):
         ]
         tempfn = self.get_tempfile()
         model.station.dump_stations(stations, tempfn)
-        self.pile_viewer.viewer.open_stations(fns=[tempfn])
+        self.viewer.open_stations(fns=[tempfn])
         last = stations[-1]
-        self.assertTrue(self.pile_viewer.viewer.has_station(last))
-        self.pile_viewer.viewer.get_station((last.network, last.station))
+        self.assertTrue(self.viewer.has_station(last))
+        self.viewer.get_station((last.network, last.station))
 
     def test_markers(self):
         self.add_one_pick()
@@ -255,8 +256,8 @@ class GUITest(unittest.TestCase):
                     self.assertEqual(m.get_phasename(), want)
 
     def test_load_waveforms(self):
-        self.pile_viewer.viewer.load('data', regex='\w*.mseed')
-        self.assertFalse(self.pile_viewer.viewer.get_pile().is_empty())
+        self.viewer.load('data', regex='\w*.mseed')
+        self.assertFalse(self.viewer.get_pile().is_empty())
 
     def test_add_traces(self):
         trs = []
@@ -266,7 +267,7 @@ class GUITest(unittest.TestCase):
                             ydata=num.random.random(100),
                             deltat=num.random.random())
             )
-        self.pile_viewer.viewer.add_traces(trs)
+        self.viewer.add_traces(trs)
 
     def test_event_marker(self):
         pv = self.pile_viewer
@@ -293,28 +294,28 @@ class GUITest(unittest.TestCase):
         tempfn = self.get_tempfile()
         tempfn_selected = self.get_tempfile()
 
-        self.pile_viewer.viewer.add_markers(markers)
-        self.pile_viewer.viewer.write_selected_markers(
+        self.viewer.add_markers(markers)
+        self.viewer.write_selected_markers(
             fn=tempfn_selected)
-        self.pile_viewer.viewer.write_markers(fn=tempfn)
+        self.viewer.write_markers(fn=tempfn)
 
-        self.pile_viewer.viewer.read_markers(fn=tempfn_selected)
-        self.pile_viewer.viewer.read_markers(fn=tempfn)
+        self.viewer.read_markers(fn=tempfn_selected)
+        self.viewer.read_markers(fn=tempfn)
 
         for k in 'pnPN':
             QTest.keyPress(self.pile_viewer, k)
 
-        self.pile_viewer.viewer.go_to_time(-20., 20)
+        self.viewer.go_to_time(-20., 20)
         self.pile_viewer.update()
-        self.pile_viewer.viewer.update()
-        assert(len(self.pile_viewer.viewer.markers) != 0)
-        assert(len(self.pile_viewer.viewer.markers) == nmarkers * 2)
-        len_before = len(self.pile_viewer.viewer.markers)
-        self.pile_viewer.viewer.remove_marker(
-            self.pile_viewer.viewer.markers[0])
-        assert(len(self.pile_viewer.viewer.markers) == len_before-1)
-        self.pile_viewer.viewer.remove_markers(self.pile_viewer.viewer.markers)
-        assert(len(self.pile_viewer.viewer.markers) == 0)
+        self.viewer.update()
+        assert(len(self.viewer.markers) != 0)
+        assert(len(self.viewer.markers) == nmarkers * 2)
+        len_before = len(self.viewer.markers)
+        self.viewer.remove_marker(
+            self.viewer.markers[0])
+        assert(len(self.viewer.markers) == len_before-1)
+        self.viewer.remove_markers(self.viewer.markers)
+        assert(len(self.viewer.markers) == 0)
 
     def test_click_non_dialogs(self):
         # Click through many menu option combinations that do not require
@@ -386,7 +387,7 @@ class GUITest(unittest.TestCase):
         pv.viewer.set_active_event(event)
         pv.viewer.set_event_marker_as_origin()
 
-        right_click_menu = self.pile_viewer.viewer.menu
+        right_click_menu = self.viewer.menu
         for action_name in non_dialog_actions:
             for oa in options:
                 for ob in options:
@@ -396,8 +397,8 @@ class GUITest(unittest.TestCase):
 
                 options.remove(oa)
 
-        self.pile_viewer.viewer.go_to_event_by_name(event.name)
-        self.pile_viewer.viewer.go_to_time(tinit, tinitlen)
+        self.viewer.go_to_event_by_name(event.name)
+        self.viewer.go_to_time(tinit, tinitlen)
 
 
 if __name__ == '__main__':
