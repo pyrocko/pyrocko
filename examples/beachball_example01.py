@@ -1,6 +1,5 @@
 import random
 import logging
-import sys
 from matplotlib import pyplot as plt
 from pyrocko import moment_tensor as pmt
 from pyrocko import util

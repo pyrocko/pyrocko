@@ -30,6 +30,7 @@ from .trace import degapper
 
 show_progress_force_off = False
 
+
 def sl(s):
     return [str(x) for x in sorted(s)]
 

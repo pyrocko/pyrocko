@@ -1,11 +1,12 @@
 import os
+import sys
 from os.path import join as pjoin
 import shutil
 import random
 import math
 import numpy as num
 from pyrocko.gmtpy import GMT, inch, cm, golden_ratio, Ax, ScaleGuru, \
-    GridLayout, FrameLayout, all_installed_gmt_versions, have_gmt, is_gmt5
+    GridLayout, FrameLayout, have_gmt, is_gmt5
 
 if not have_gmt():
     sys.exit('need gmt to run these examples')
