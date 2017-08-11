@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 '''Utility functions for Pyrocko.'''
-from __future__ import division
+from __future__ import division, print_function
 from past.builtins import zip
 from builtins import range
 from builtins import object
@@ -101,8 +101,7 @@ def _download(url, fpath, username=None, password=None,
         url += '/'
 
     def parse_directory_tree(url, subdir=''):
-        url = urljoin(url, subdir)
-        r = requests.get(url, auth=cred)
+        r = requests.get(urljoin(url, subdir), auth=cred)
         r.raise_for_status()
 
         entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
@@ -155,8 +154,9 @@ def _download(url, fpath, username=None, password=None,
         os.rename(fn_tmp, fn)
 
         if frx != fsize:
-            raise DownloadError('unexpected EOF while downloading %s'
-                                % url)
+            logger.warning(
+                'content-length from http header (%i) does not match '
+                'download size (%i)' % (fsize, frx))
 
         logger.info('finished download of %s' % url)
 
@@ -192,6 +192,10 @@ def _download(url, fpath, username=None, password=None,
 
 def download_file(url, fpath, username=None, password=None):
     return _download(url, fpath, username, password, recursive=False)
+
+
+def download_dir(url, fpath, username=None, password=None):
+    return _download(url, fpath, username, password, recursive=True)
 
 
 if hasattr(num, 'float128'):

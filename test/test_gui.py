@@ -1,21 +1,24 @@
 import unittest
-from . import common
+try:
+    from . import common
+except:
+    import common
+import numpy as num
+import tempfile
+import os
 
 if common.have_gui():  # noqa
     from PyQt4.QtTest import QTest
-    from PyQt4.QtCore import Qt
+    from PyQt4.QtCore import Qt, QPoint
     from PyQt4.QtGui import QStyleOptionSlider, QStyle
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import gui_util
     from pyrocko import util, model
 
-    import traceback
-    traceback.print_exc()
-
 
 from pyrocko.pile import make_pile
-from pyrocko import config
+from pyrocko import config, trace
 
 
 @common.require_gui
@@ -56,9 +59,16 @@ class GUITest(unittest.TestCase):
     def tearDown(self):
         self.clear_all_markers()
 
+    # def test_inputline(self):
+    #     pv = self.pile_viewer
+    #     il = pv.inputline
+    #     QTest.keyPress(pv, ':')
+    #     il.setText('ASDF')
+    #     QTest.keyPress(pv, )
+
     def clear_all_markers(self):
         pv = self.pile_viewer
-        QTest.keyPress(pv, 'a', Qt.ShiftModifier, 10)
+        QTest.keyPress(pv, 'A', Qt.ShiftModifier, 10)
         QTest.keyPress(pv, Qt.Key_Backspace)
         self.assertEqual(len(pv.viewer.get_markers()), 0)
 
@@ -93,10 +103,24 @@ class GUITest(unittest.TestCase):
         QTest.mouseMove(slider, pos=position.topLeft())
         QTest.mouseRelease(slider, Qt.LeftButton)
 
+    def test_save_image(self):
+        tempfn_svg = tempfile.mkstemp()[1] + '.svg'
+        self.pile_viewer.viewer.savesvg(fn=tempfn_svg)
+        os.remove(tempfn_svg)
+
+        tempfn_png = tempfile.mkstemp()[1] + '.png'
+        self.pile_viewer.viewer.savesvg(fn=tempfn_png)
+        os.remove(tempfn_png)
+
     def add_one_pick(self):
         '''Add a single pick to pile_viewer'''
         pv = self.pile_viewer
         QTest.mouseDClick(pv.viewer, Qt.LeftButton)
+        position_tl = pv.pos()
+        geom = pv.frameGeometry()
+        QTest.mouseMove(pv.viewer, pos=position_tl)
+        QTest.mouseMove(pv.viewer, pos=(
+            QPoint(position_tl.x()+geom.x()/2., position_tl.y()+geom.y()/2.)))
 
         # This should be done also by mouseDClick().
         QTest.mouseRelease(pv.viewer, Qt.LeftButton)
@@ -135,10 +159,21 @@ class GUITest(unittest.TestCase):
                 if want:
                     self.assertEqual(m.get_phasename(), want)
 
+    def test_load(self):
+        self.pile_viewer.viewer.load('data', regex='\w*.mseed')
+
+    def test_add_traces(self):
+        trs = []
+        for i in range(3):
+            trs.append(
+                trace.Trace(network=str(i), tmin=num.random.uniform(1),
+                            ydata=num.random.random(100),
+                            deltat=num.random.random())
+            )
+        self.pile_viewer.viewer.add_traces(trs)
+
     def test_event_marker(self):
-
         pv = self.pile_viewer
-
         self.add_one_pick()
 
         # select all markers
@@ -150,11 +185,41 @@ class GUITest(unittest.TestCase):
         for m in pv.viewer.get_markers():
             self.assertTrue(isinstance(m, gui_util.EventMarker))
 
+        QTest.keyPress(pv, 'd')
+
+    def test_load_save(self):
+        nmarkers = 505
+        # times = num.random.uniform(-10., 10, nmarkers) # Fails
+        times = num.arange(nmarkers)
+        markers = [gui_util.Marker(tmin=t, tmax=t,
+                                   nslc_ids=[('*', '*', '*', '*'), ])
+                   for t in times]
+
+        tempfn = tempfile.mkstemp()[1]
+
+        self.pile_viewer.viewer.add_markers(markers)
+        self.pile_viewer.viewer.write_selected_markers(
+            fn=tempfn)
+        self.pile_viewer.viewer.write_markers(fn=tempfn)
+        self.pile_viewer.viewer.read_markers(fn=tempfn)
+
+        for k in 'pnPN':
+            QTest.keyPress(self.pile_viewer, k)
+
+        self.pile_viewer.viewer.go_to_time(-20., 20)
+        self.pile_viewer.update()
+        self.pile_viewer.viewer.update()
+        self.pile_viewer.viewer.remove_markers(markers)
+
+        os.remove(tempfn)
+
     def test_click_non_dialogs(self):
-        '''Click through many menu option combinations that do not require
-        further interaction. Activate options in pairs of two.
-        '''
+        # Click through many menu option combinations that do not require
+        # further interaction. Activate options in pairs of two.
+
         pv = self.pile_viewer
+        tinit = pv.viewer.tmin
+        tinitlen = pv.viewer.tmax - pv.viewer.tmin
 
         non_dialog_actions = [
             'Indivdual Scale',
@@ -199,13 +264,20 @@ class GUITest(unittest.TestCase):
         # create an event marker and activate it
         self.add_one_pick()
 
-        for key in 'mAeR':
+        keys = 'mAhefrRh+-fgc?'
+
+        def fire_key(x):
             QTest.keyPress(self.pile_viewer, key)
+
+        for key in keys:
+            QTest.qWait(100)
+            fire_key(key)
 
         event = model.Event()
         markers = pv.viewer.get_markers()
         self.assertEqual(len(markers), 1)
         markers[0]._event = event
+
         right_click_menu = self.pile_viewer.viewer.menu
         for action_name in non_dialog_actions:
             for oa in options:
@@ -215,6 +287,9 @@ class GUITest(unittest.TestCase):
                     self.click_menu_item(right_click_menu, ob)
 
                 options.remove(oa)
+
+        self.pile_viewer.viewer.go_to_event_by_name(event.name)
+        self.pile_viewer.viewer.go_to_time(tinit, tinitlen)
 
 
 if __name__ == '__main__':

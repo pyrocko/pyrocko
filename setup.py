@@ -644,7 +644,5 @@ setup(
                    'data/earthmodels/*.nd',
                    'data/colortables/*.cpt',
                    'data/tectonics/*.txt',
-                   'data/fomosto_report/gfreport.*'] + get_readme_paths()},
-
-    test_suite='test.get_test_suite'
+                   'data/fomosto_report/gfreport.*'] + get_readme_paths()}
 )

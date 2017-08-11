@@ -3192,6 +3192,7 @@ class GMT(object):
         self.installation = get_gmt_installation(version)
         self.gmt_config = dict(self.installation['defaults'])
         self.eps_mode = eps_mode
+        self._shutil = shutil
 
         if config:
             self.gmt_config.update(config)
@@ -3271,9 +3272,8 @@ class GMT(object):
         f.close()
 
     def __del__(self):
-        import shutil
         if not self.keep_temp_dir:
-            shutil.rmtree(self.tempdir)
+            self._shutil.rmtree(self.tempdir)
 
     def _gmtcommand(self, command, *addargs, **kwargs):
 

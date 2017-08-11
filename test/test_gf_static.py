@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import unittest
 import numpy as num
 import cProfile
@@ -6,7 +7,7 @@ import logging
 import shutil
 
 from tempfile import mkdtemp
-from common import Benchmark
+from .common import Benchmark
 from pyrocko import gf, util, cake
 from pyrocko.fomosto import qseis, psgrn_pscmp
 
