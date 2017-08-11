@@ -1246,7 +1246,7 @@ def MakePileViewerMainClass(base):
             markers = [EventMarker(e) for e in events]
             self.add_markers(markers)
 
-        def set_event_marker_as_origin(self, ignore):
+        def set_event_marker_as_origin(self, ignore=None):
             selected = self.selected_markers()
             if not selected:
                 self.fail('An event marker must be selected.')
@@ -1494,11 +1494,12 @@ def MakePileViewerMainClass(base):
 
             self.load([str(fn)])
 
-        def open_stations(self, _=None):
+        def open_stations(self, fns=None):
             caption = 'Select one or more files to open'
 
-            fns = qg.QFileDialog.getOpenFileNames(
-                self, caption, options=qfiledialog_options)
+            if not fns:
+                fns = qg.QFileDialog.getOpenFileNames(
+                    self, caption, options=qfiledialog_options)
 
             stations = [pyrocko.model.load_stations(str(x)) for x in fns]
             for stat in stations:
@@ -1700,14 +1701,17 @@ def MakePileViewerMainClass(base):
             associate_phases_to_events(self.markers)
 
         def add_marker(self, marker):
-            self.markers.append(marker)
+            if marker not in self.markers:
+                self.markers.append(marker)
             self.emit(
                 qc.SIGNAL('markers_added(int,int)'),
                 len(self.markers)-1, len(self.markers)-1)
 
         def add_markers(self, markers):
             len_before = len(self.markers)
-            self.markers.extend(markers)
+            for m in markers:
+                if m not in self.markers:
+                    self.markers.append(m)
             self.emit(
                 qc.SIGNAL('markers_added(int,int)'),
                 len_before, len(self.markers)-1)
@@ -1717,7 +1721,7 @@ def MakePileViewerMainClass(base):
 
             :param marker: :py:class:`Marker` (or subclass) instance'''
             try:
-                indx = [self.markers.index(marker)]
+                indx = self.markers.index(marker)
                 self.remove_marker_from_menu(indx, indx)
                 self.markers.remove(marker)
                 if marker is self.active_event_marker:
@@ -3632,6 +3636,10 @@ def MakePileViewerMainClass(base):
                         self.update()
 
                     elif command == 'scaling':
+                        if len(toks) == 2:
+                            hideit = False
+                            error = 'wrong number of arguments'
+
                         if len(toks) >= 3:
                             vmin, vmax = [
                                 pyrocko.model.float_or_none(x)
@@ -3670,17 +3678,19 @@ def MakePileViewerMainClass(base):
                         if len(toks2) == 2:
                             arg = toks2[1]
                             m = re.match(
-                                r'^\d\d\d\d-\d\d(-\d\d( \d\d(:\d\d'
-                                r'(:\d\d(.\d+)?)?)?)?)?$', arg)
+                                r'^\d\d\d\d(-\d\d(-\d\d( \d\d(:\d\d'
+                                r'(:\d\d(.\d+)?)?)?)?)?)?$', arg)
                             if m:
                                 tlen = None
                                 if not m.group(1):
-                                    tlen = 32*24*60*60
+                                    tlen = 12*32*24*60*60
                                 elif not m.group(2):
-                                    tlen = 24*60*60
+                                    tlen = 32*24*60*60
                                 elif not m.group(3):
-                                    tlen = 60*60
+                                    tlen = 24*60*60
                                 elif not m.group(4):
+                                    tlen = 60*60
+                                elif not m.group(5):
                                     tlen = 60
 
                                 supl = '1970-01-01 00:00:00'
@@ -3852,7 +3862,7 @@ class PileViewer(qg.QFrame):
 
     def inputline_set_error(self, string):
         self.inputline_error_str = string
-        self.inputline.setPalette(pyrocko.gui_util.get_err_palette())
+        self.inputline.setPalette(pyrocko.gui.gui_util.get_err_palette())
         self.inputline.selectAll()
         self.inputline_error.setText(string)
         self.input_area.show()
