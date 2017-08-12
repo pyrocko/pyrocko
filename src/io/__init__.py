@@ -9,7 +9,7 @@ import logging
 from pyrocko import util, trace
 
 from . import (mseed, sac, kan, segy, yaff, seisan_waveform, gse1, gcf,
-               datacube, suds, css, gse2_io_wrap)
+               datacube, suds, css, gse2)
 from .io_common import FileLoadError, FileSaveError
 
 import numpy as num
@@ -82,7 +82,7 @@ def detect_format(filename):
             (mseed, 'mseed'),
             (sac, 'sac'),
             (gse1, 'gse1'),
-            (gse2_io_wrap, 'gse2'),
+            (gse2, 'gse2'),
             (datacube, 'datacube'),
             (suds, 'suds')]:
 
@@ -141,7 +141,7 @@ def iload(filename, format='mseed', getdata=True, substitutions=None):
         'mseed': mseed,
         'seisan': seisan_waveform,
         'gse1': gse1,
-        'gse2': gse2_io_wrap,
+        'gse2': gse2,
         'gcf': gcf,
         'datacube': datacube,
         'suds': suds,
@@ -197,7 +197,7 @@ def save(traces, filename_template, format='mseed', additional={},
                           overwrite=overwrite)
 
     elif format == 'gse2':
-        return gse2_io_wrap.save(traces, filename_template, additional,
+        return gse2.save(traces, filename_template, additional,
                                  overwrite=overwrite)
 
     elif format == 'sac':

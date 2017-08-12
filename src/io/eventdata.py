@@ -3,11 +3,10 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-from pyrocko import trace, util, model
+from pyrocko import trace, model
 
 import logging
 import copy
-import numpy as num
 import pickle
 
 logger = logging.getLogger('pyrocko.io.eventdata')
@@ -83,9 +82,6 @@ class EventDataAccess(object):
         if not self._events:
             self._events = self._get_events_from_file()
         return self._events
-
-    def get_pyrocko_event(self, i):
-        return self.get_pyrocko_events()[i]
 
     def get_pyrocko_station(self, tr, relative_event=None):
         '''Get the underlying :py:class:`trace.Channel`
@@ -189,189 +185,6 @@ class EventDataAccess(object):
                     to_delete.append(nslc[:3] + (l2,))
 
         return to_delete
-
-    def iter_displacement_traces(
-            self, tfade, freqband,
-            deltat=None,
-            rotations=None,
-            projections=None,
-            relative_event=None,
-            maxdisplacement=None,
-            extend=None,
-            group_selector=None,
-            trace_selector=None,
-            allowed_methods=None,
-            crop=True,
-            out_stations=None,
-            redundant_channel_priorities=None,
-            restitution_off_hack=False,
-            preprocess=None,
-            progress='Processing traces'):
-
-        stations = self._get_stations(relative_event=relative_event)
-        if out_stations is not None:
-            out_stations.clear()
-        else:
-            out_stations = {}
-
-        for xtraces in self.get_pile().chopper_grouped(
-                gather=lambda tr: (tr.network, tr.station, tr.location),
-                group_selector=group_selector,
-                trace_selector=trace_selector,
-                progress=progress):
-
-            xxtraces = []
-            nslcs = set()
-            for tr in xtraces:
-                nsl = tr.network, tr.station, tr.location
-                if nsl not in stations:
-                    logger.warning(
-                        'No station description for trace %s.%s.%s.%s' %
-                        tr.nslc_id)
-                    continue
-
-                nslcs.add(tr.nslc_id)
-                xxtraces.append(tr)
-
-            to_delete = self._redundant_channel_weeder(
-                redundant_channel_priorities, nslcs)
-
-            traces = []
-            for tr in xxtraces:
-                if tr.nslc_id in to_delete:
-                    logger.info(
-                        'Skipping channel %s.%s.%s.%s due to redunancies.' %
-                        tr.nslc_id)
-                    continue
-                traces.append(tr)
-
-            traces.sort(lambda x: x.full_id)
-
-            # mainly to get rid if overlaps and duplicates
-            traces = trace.degapper(traces)
-            if traces:
-                nsl = traces[0].nslc_id[:3]
-                # all traces belong to the same station here
-                station = stations[nsl]
-
-                displacements = []
-                for tr in traces:
-
-                    if preprocess is not None:
-                        preprocess(tr)
-
-                    tr.ydata = tr.ydata - num.mean(tr.ydata)
-
-                    if deltat is not None:
-                        try:
-                            tr.downsample_to(
-                                deltat, snap=True, allow_upsample_max=5)
-
-                        except util.UnavailableDecimation as e:
-                            self.problems().add(
-                                'cannot_downsample', tr.full_id)
-                            logger.warning(
-                                'Cannot downsample %s.%s.%s.%s: %s' %
-                                (tr.nslc_id + (e,)))
-                            continue
-
-                    if 'evalresp' in allowed_methods:
-                        trans = self.get_pyrocko_response(tr, target='dis')
-                    else:
-                        self.problems().add('no_response', tr.full_id)
-                        logger.warning(
-                            'Cannot restitute trace %s.%s.%s.%s: %s' %
-                            (tr.nslc_id))
-
-                        continue
-
-                    try:
-                        if extend:
-                            tr.extend(
-                                tr.tmin+extend[0],
-                                tr.tmax+extend[1],
-                                fillmethod='repeat')
-
-                        if restitution_off_hack:
-                            displacement = tr.copy()
-
-                        else:
-                            try:
-                                displacement = tr.transfer(
-                                    tfade,
-                                    freqband,
-                                    transfer_function=trans,
-                                    cut_off_fading=crop)
-
-                            except Exception as e:
-                                if isinstance(e, trace.TraceTooShort):
-                                    raise
-
-                                logger.warning(
-                                    'An error while applying transfer '
-                                    'function to trace %s.%s.%s.%s.' %
-                                    tr.nslc_id)
-
-                                continue
-
-                        amax = num.max(num.abs(displacement.get_ydata()))
-                        if maxdisplacement is not None and \
-                                amax > maxdisplacement:
-
-                            self.problems().add(
-                                'unrealistic_amplitude', tr.full_id)
-                            logger.warning(
-                                'Trace %s.%s.%s.%s has too large '
-                                'displacement: %g' % (tr.nslc_id + (amax,)))
-
-                            continue
-
-                        if not num.all(num.isfinite(displacement.get_ydata())):
-                            self.problems().add('has_nan_or_inf', tr.full_id)
-                            logger.warning(
-                                'Trace %s.%s.%s.%s has NaNs or Infs' %
-                                tr.nslc_id)
-                            continue
-
-                    except trace.TraceTooShort as e:
-                        self.problems().add('gappy', tr.full_id)
-                        logger.warning('%s' % e)
-                        continue
-
-                    displacements.append(displacement)
-                    if nsl not in out_stations:
-                        out_stations[nsl] = copy.deepcopy(station)
-                        out_station = out_stations[nsl]
-
-                if displacements:
-                    if projections:
-                        for project in projections:
-                            matrix, in_channels, out_channels = project(
-                                out_station)
-                            projected = trace.project(
-                                displacements, matrix,
-                                in_channels, out_channels)
-                            displacements.extend(projected)
-                            for tr in projected:
-                                for ch in out_channels:
-                                    if ch.name == tr.channel:
-                                        out_station.add_channel(ch)
-
-                    if rotations:
-                        for rotate in rotations:
-                            angle, in_channels, out_channels = \
-                                rotate(out_station)
-                            rotated = trace.rotate(
-                                displacements, angle,
-                                in_channels, out_channels)
-
-                            displacements.extend(rotated)
-                            for tr in rotated:
-                                for ch in out_channels:
-                                    if ch.name == tr.channel:
-                                        out_station.add_channel(ch)
-
-                yield displacements
 
     def get_restitution(self, tr, allowed_methods):
         if 'integration' in allowed_methods:

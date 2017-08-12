@@ -69,6 +69,7 @@ def _make_function(test_name, fn):
         try:
             import imp
             imp.load_source(test_name, fn)
+
         except ImportError:
             import importlib.machinery
             importlib.machinery.SourceFileLoader(test_dir, fn)

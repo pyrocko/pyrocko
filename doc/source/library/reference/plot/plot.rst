@@ -18,8 +18,8 @@
 .. automodule :: pyrocko.plot.hudson
     :members:
 
-``pyrocko.plot.response_plot``
+``pyrocko.plot.response``
 ------------------------------
 
-.. automodule :: pyrocko.plot.response_plot
+.. automodule :: pyrocko.plot.response
     :members:

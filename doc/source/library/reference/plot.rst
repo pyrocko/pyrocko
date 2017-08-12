@@ -8,6 +8,6 @@ The :mod:`plot` subpackage
 .. toctree ::
     :maxdepth: 2
 
-    plot/plot
+    plot
     plot/automap
     plot/gmtpy

@@ -16,6 +16,8 @@ test/data
 scratch
 *.sublime-*
 htmlcov
-.coverage*
+.coverage
+.coverage.*
+
 .cache
 test/example_run_dir

@@ -12,15 +12,15 @@ Example
 
 ::
 
-    from pyrocko import response_plot
+    from pyrocko.plot import response
     from pyrocko.example import get_example_data
 
     get_example_data('test_response.resp')
 
-    resps, labels = response_plot.load_response_information(
+    resps, labels = response.load_response_information(
         'test_response.resp', 'resp')
 
-    response_plot.plot(
+    response.plot(
         responses=resps, labels=labels, filename='test_response.png',
         fmin=0.001, fmax=400., dpi=75.)
 
@@ -294,9 +294,9 @@ if __name__ == '__main__':
     import sys
     from optparse import OptionParser
 
-    util.setup_logging('pyrocko.response_plot.__main__', 'warning')
+    util.setup_logging('pyrocko.plot.response.__main__', 'warning')
 
-    usage = 'python -m pyrocko.response_plot <filename> ... [options]'
+    usage = 'python -m pyrocko.plot.response <filename> ... [options]'
 
     description = '''Plot instrument responses (transfer functions).'''
 
