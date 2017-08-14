@@ -508,7 +508,12 @@ class Snuffling(object):
         '''
 
         f = PixmapFrame(filename)
-        self._panel_parent.add_tab(name or "Pixmap", f)
+
+        scroll_area = qg.QScrollArea()
+        scroll_area.setWidget(f)
+        scroll_area.setWidgetResizable(True)
+
+        self._panel_parent.add_tab(name or "Pixmap", scroll_area)
         return f
 
     def web_frame(self, url=None, name=None):
