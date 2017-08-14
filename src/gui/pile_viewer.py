@@ -33,8 +33,8 @@ from pyrocko.util import hpfloat, gmtime_x, mystrftime
 from .marker import associate_phases_to_events
 
 from .util import (ValControl, LinValControl, Marker, EventMarker,
-                       PhaseMarker, make_QPolygonF, draw_label, Label,
-                       Progressbars)
+                   PhaseMarker, make_QPolygonF, draw_label, Label,
+                   Progressbars)
 
 from PyQt4 import QtCore as qc
 from PyQt4 import QtGui as qg
