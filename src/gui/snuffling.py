@@ -22,8 +22,8 @@ from PyQt4 import QtGui as qg
 from pyrocko import pile, config
 
 from .util import (ValControl, LinValControl, FigureFrame, WebKitFrame,
-                       VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
-                       load_markers, save_markers)
+                   VTKFrame, PixmapFrame, Marker, EventMarker, PhaseMarker,
+                   load_markers, save_markers)
 
 if sys.version_info >= (3, 0):
     from importlib import reload
