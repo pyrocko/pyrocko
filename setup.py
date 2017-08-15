@@ -315,7 +315,6 @@ class CustomBuildPyCommand(build_py):
         ]
 
         for (package, compat_module, import_modules) in mapping:
-            print(package, compat_module, import_modules)
             module_code = '''
 import sys
 import pyrocko
@@ -328,8 +327,6 @@ if pyrocko.grumpy:
 
             outfile = self.get_module_outfile(
                 self.build_lib, package.split('.'), compat_module)
-
-            print(outfile)
 
             dir = os.path.dirname(outfile)
             self.mkpath(dir)
