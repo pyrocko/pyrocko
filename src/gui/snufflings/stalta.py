@@ -6,7 +6,7 @@ from __future__ import print_function, absolute_import
 from builtins import zip
 
 from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice
-from pyrocko.gui.gui_util import Marker
+from pyrocko.gui.util import Marker
 
 h = 3600.
 

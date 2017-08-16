@@ -6,7 +6,7 @@ from __future__ import absolute_import
 import os
 import logging
 
-from pyrocko.gui.gui_util import EventMarker
+from pyrocko.gui.util import EventMarker
 
 from pyrocko.gui.snuffling import Param, Snuffling, Switch, Choice
 from pyrocko import util, io, model

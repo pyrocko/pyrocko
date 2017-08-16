@@ -4,7 +4,7 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 from ..snuffling import Snuffling, Param, Choice
-from ..gui_util import EventMarker
+from ..util import EventMarker
 
 from pyrocko.client import catalog
 

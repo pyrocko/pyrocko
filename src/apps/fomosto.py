@@ -14,7 +14,7 @@ import copy
 from optparse import OptionParser
 
 from pyrocko import util, trace, gf, cake, io
-from pyrocko.gui import gui_util
+from pyrocko.gui import util as gui_util
 
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.apps.fomosto')
