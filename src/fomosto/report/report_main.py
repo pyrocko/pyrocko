@@ -604,9 +604,14 @@ class GreensFunctionTest(Object):
         if is_tex:
             pro_call = ['pdflatex', '-output-directory', self.pdf_dir, out,
                         '-interaction', 'nonstop']
-            subprocess.call(pro_call)
-            subprocess.call(pro_call)
-            subprocess.call(pro_call)
+            try:
+                subprocess.call(pro_call)
+                subprocess.call(pro_call)
+                subprocess.call(pro_call)
+            except OSError as e:
+                if e.errno == 2:
+                    e.message = 'Command pdflatex not found.'
+                raise e
 
         self.cleanup()
         if gft2 is not None:
