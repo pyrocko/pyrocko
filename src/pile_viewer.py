@@ -3074,7 +3074,8 @@ def MakePileViewerMainClass(base):
 
                         if demean:
                             for tr in traces:
-                                tr.ydata -= num.mean(tr.ydata)
+                                tr.ydata = tr.ydata.astype(num.float) - \
+                                    num.mean(tr.ydata)
 
                         traces = self.pre_process_hooks(traces)
 
