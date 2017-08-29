@@ -277,7 +277,7 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'datacube', ['pyrocko.io.datacube']),
             ('pyrocko.fdsn', '__init__', []),
             ('pyrocko.fdsn', 'enhanced_sacpz', ['pyrocko.io.enhanced_sacpz']),
-            ('pyrocko.fdsn', 'station', ['pyrocko.io.fdsn_station']),
+            ('pyrocko.fdsn', 'station', ['pyrocko.io.stationxml']),
             ('pyrocko', 'gcf', ['pyrocko.io.gcf']),
             ('pyrocko', 'gse1', ['pyrocko.io.gse1']),
             ('pyrocko', 'gse2_io_wrap', ['pyrocko.io.gse2']),
