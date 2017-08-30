@@ -2995,6 +2995,8 @@ class LayeredModel(object):
         for l in self.layers(direction):
             if l.contains(z):
                 return l
+        else:
+            raise Exception('Failed extracting layer at depth z=%s' % z)
 
     def walker(self):
         return Walker(self._elements)
