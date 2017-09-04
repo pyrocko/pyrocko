@@ -79,33 +79,6 @@ def _request(url, post=False, **kwargs):
     return resp.raw
 
 
-# def _request(url, post=False, **kwargs):
-#     logger.debug('Accessing URL %s' % url)
-    
-#     url_values = urllib.parse.urlencode(kwargs)
-#     if url_values:
-#         url += '?' + url_values
-
-#     req = urllib.request.Request(url)
-#     if post:
-#         logger.debug('POST data: \n%s' % post)
-#         req.add_data(post)
-
-#     req.add_header('Accept', '*/*')
-
-#     try:
-#         resp = urllib.request.urlopen(req)
-#         if resp.getcode() == 204:
-#             raise EmptyResult(url)
-#         return resp
-
-#     except urllib.error.HTTPError as e:
-#         if e.code == 413:
-#             raise RequestEntityTooLarge(url)
-#         else:
-#             raise
-
-
 def fillurl(url, site, service, majorversion, method='query'):
     return url % dict(
         site=g_site_abbr.get(site, site),
@@ -197,5 +170,4 @@ def seismosizer(url=g_url, site=g_default_site, majorversion=1,
 
     from pyrocko.gf import meta
 
-    return meta.load(stream=_request(url, post=urllib.parse.urlencode(
-        {'request': request.dump()})))
+    return meta.load(stream=_request(url, post={'request': request.dump()}))
