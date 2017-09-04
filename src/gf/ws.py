@@ -6,9 +6,7 @@ from future import standard_library
 standard_library.install_aliases()  # noqa
 
 import time
-import urllib.request
-import urllib.parse
-import urllib.error
+import requests
 
 import logging
 
@@ -53,29 +51,59 @@ class InvalidRequest(Exception):
 
 
 def _request(url, post=False, **kwargs):
-    url_values = urllib.parse.urlencode(kwargs)
-    if url_values:
-        url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
-    req = urllib.request.Request(url)
     if post:
         logger.debug('POST data: \n%s' % post)
-        req.add_data(post)
+        req = requests.Request(
+            'POST',
+            url=url,
+            params=kwargs,
+            data=post)
+    else:
+        req = requests.Request(
+            'GET',
+            url=url,
+            params=kwargs)
 
-    req.add_header('Accept', '*/*')
+    ses = requests.Session()
 
-    try:
-        resp = urllib.request.urlopen(req)
-        if resp.getcode() == 204:
-            raise EmptyResult(url)
-        return resp
+    prep = ses.prepare_request(req)
+    prep.headers['Accept'] = '*/*'
 
-    except urllib.error.HTTPError as e:
-        if e.code == 413:
-            raise RequestEntityTooLarge(url)
-        else:
-            raise
+    resp = ses.send(prep, stream=True)
+    resp.raise_for_status()
+
+    if resp.status_code == 204:
+        raise EmptyResult(url)
+    return resp.raw
+
+
+# def _request(url, post=False, **kwargs):
+#     logger.debug('Accessing URL %s' % url)
+    
+#     url_values = urllib.parse.urlencode(kwargs)
+#     if url_values:
+#         url += '?' + url_values
+
+#     req = urllib.request.Request(url)
+#     if post:
+#         logger.debug('POST data: \n%s' % post)
+#         req.add_data(post)
+
+#     req.add_header('Accept', '*/*')
+
+#     try:
+#         resp = urllib.request.urlopen(req)
+#         if resp.getcode() == 204:
+#             raise EmptyResult(url)
+#         return resp
+
+#     except urllib.error.HTTPError as e:
+#         if e.code == 413:
+#             raise RequestEntityTooLarge(url)
+#         else:
+#             raise
 
 
 def fillurl(url, site, service, majorversion, method='query'):

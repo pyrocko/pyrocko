@@ -136,7 +136,7 @@ def _download(url, fpath, username=None, password=None,
         logger.info('starting download of %s...' % url)
 
         ensuredirs(fn)
-        r = requests.get(url, auth=cred)
+        r = requests.get(url, auth=cred, stream=True)
         r.raise_for_status()
 
         fsize = get_content_length(url)
@@ -145,8 +145,8 @@ def _download(url, fpath, username=None, password=None,
         fn_tmp = fn + '.%i.temp' % os.getpid()
         with open(fn_tmp, 'wb') as f:
             for d in r.iter_content(chunk_size=1024):
-                frx += len(d)
                 f.write(d)
+                frx += len(d)
 
                 if callable(status_callback):
                     status_callback(frx, fsize)
