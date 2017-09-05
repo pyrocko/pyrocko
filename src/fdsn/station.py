@@ -684,7 +684,7 @@ class Response(Object):
         stage = ResponseStage(
             number=1,
             poles_zeros_list=[pzs],
-            stage_gain=Gain(presponse.constant/norm_factor))
+            stage_gain=Gain(abs(presponse.constant)/norm_factor))
 
         resp = Response(
             instrument_sensitivity=Sensitivity(
