@@ -15,8 +15,9 @@ from .marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
 from .marker import load_markers, save_markers  # noqa
 from pyrocko import plot
 
-from PyQt4 import QtCore as qc
-from PyQt4 import QtGui as qg
+from PyQt5 import QtCore as qc
+from PyQt5 import QtGui as qg
+from PyQt5 import QtWidgets as qw
 
 if sys.version_info > (3,):
     buffer = memoryview
@@ -49,7 +50,7 @@ class Label(object):
             font=None,
             color=None):
 
-        text = qg.QTextDocument()
+        text = qw.QTextDocument()
         if font:
             text.setDefaultFont(font)
         text.setDefaultStyleSheet('span { color: %s; }' % color.name())
@@ -102,7 +103,7 @@ class Label(object):
 def draw_label(p, x, y, label_str, label_bg, anchor='BL', outline=False):
     fm = p.fontMetrics()
 
-    label = qc.QString(label_str)
+    label = label_str
     rect = fm.boundingRect(label)
 
     tx, ty = x, y
@@ -131,12 +132,12 @@ def draw_label(p, x, y, label_str, label_bg, anchor='BL', outline=False):
 
 
 def get_err_palette():
-    err_palette = qg.QPalette()
-    err_palette.setColor(qg.QPalette.Base, qg.QColor(255, 200, 200))
+    err_palette = qw.QPalette()
+    err_palette.setColor(qw.QPalette.Base, qw.QColor(255, 200, 200))
     return err_palette
 
 
-class MySlider(qg.QSlider):
+class MySlider(qw.QSlider):
 
     def wheelEvent(self, ev):
         ev.ignore()
@@ -145,7 +146,9 @@ class MySlider(qg.QSlider):
         ev.ignore()
 
 
-class MyValueEdit(qg.QLineEdit):
+class MyValueEdit(qw.QLineEdit):
+
+    edited = qc.pyqtSignal(float)
 
     def __init__(
             self,
@@ -154,15 +157,15 @@ class MyValueEdit(qg.QLineEdit):
             low_is_zero=False,
             *args, **kwargs):
 
-        qg.QLineEdit.__init__(self, *args, **kwargs)
+        qw.QLineEdit.__init__(self, *args, **kwargs)
         self.value = 0.
         self.mi = 0.
         self.ma = 1.
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
         self.low_is_zero = low_is_zero
-        self.connect(
-            self, qc.SIGNAL("editingFinished()"), self.myEditingFinished)
+        self.editingFinished.connect(
+            self.myEditingFinished)
         self.lock = False
 
     def setRange(self, mi, ma):
@@ -172,7 +175,7 @@ class MyValueEdit(qg.QLineEdit):
     def setValue(self, value):
         if not self.lock:
             self.value = value
-            self.setPalette(qg.QApplication.palette())
+            self.setPalette(qw.QApplication.palette())
             self.adjust_text()
 
     def myEditingFinished(self):
@@ -193,8 +196,8 @@ class MyValueEdit(qg.QLineEdit):
             if value != self.value:
                 self.value = value
                 self.lock = True
-                self.emit(qc.SIGNAL("edited(float)"), value)
-                self.setPalette(qg.QApplication.palette())
+                self.edited.emit(value)
+                self.setPalette(qw.QApplication.palette())
         except:
             self.setPalette(get_err_palette())
 
@@ -223,6 +226,8 @@ class MyValueEdit(qg.QLineEdit):
 
 class ValControl(qc.QObject):
 
+    valchange = qc.pyqtSignal(object, int)
+
     def __init__(
             self,
             low_is_none=False,
@@ -232,9 +237,9 @@ class ValControl(qc.QObject):
 
         qc.QObject.__init__(self, *args)
 
-        self.lname = qg.QLabel("name")
+        self.lname = qw.QLabel("name")
         self.lname.setSizePolicy(
-            qg.QSizePolicy(qg.QSizePolicy.Minimum, qg.QSizePolicy.Minimum))
+            qw.QSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Minimum))
         self.lvalue = MyValueEdit(
             low_is_none=low_is_none,
             high_is_none=high_is_none,
@@ -242,20 +247,20 @@ class ValControl(qc.QObject):
         self.lvalue.setFixedWidth(100)
         self.slider = MySlider(qc.Qt.Horizontal)
         self.slider.setSizePolicy(
-            qg.QSizePolicy(qg.QSizePolicy.Expanding, qg.QSizePolicy.Minimum))
+            qw.QSizePolicy(qw.QSizePolicy.Expanding, qw.QSizePolicy.Minimum))
         self.slider.setMaximum(10000)
         self.slider.setSingleStep(100)
         self.slider.setPageStep(1000)
-        self.slider.setTickPosition(qg.QSlider.NoTicks)
+        self.slider.setTickPosition(qw.QSlider.NoTicks)
         self.slider.setFocusPolicy(qc.Qt.ClickFocus)
 
         self.low_is_none = low_is_none
         self.high_is_none = high_is_none
         self.low_is_zero = low_is_zero
 
-        self.connect(self.slider, qc.SIGNAL("valueChanged(int)"),
+        self.slider.valueChanged.connect(
                      self.slided)
-        self.connect(self.lvalue, qc.SIGNAL("edited(float)"),
+        self.lvalue.edited.connect(
                      self.edited)
 
         self.mute = False
@@ -367,8 +372,7 @@ class ValControl(qc.QObject):
         if self.cursl == 10000 and self.high_is_none:
             cur = None
 
-        self.emit(qc.SIGNAL(
-            "valchange(PyQt_PyObject,int)"), cur, int(self.ind))
+        self.valchange.emit(cur, int(self.ind))
 
 
 class LinValControl(ValControl):
@@ -386,14 +390,14 @@ class Progressbar(object):
     def __init__(self, parent, name, can_abort=True):
         self.parent = parent
         self.name = name
-        self.label = qg.QLabel(name, parent)
-        self.pbar = qg.QProgressBar(parent)
+        self.label = qw.QLabel(name, parent)
+        self.pbar = qw.QProgressBar(parent)
         self.aborted = False
         self.time_last_update = 0.
         if can_abort:
-            self.abort_button = qg.QPushButton('Abort', parent)
-            self.parent.connect(
-                self.abort_button, qc.SIGNAL('clicked()'), self.abort)
+            self.abort_button = qw.QPushButton('Abort', parent)
+            self.abort_button.clicked.connect(
+                self.abort)
         else:
             self.abort_button = False
 
@@ -410,10 +414,10 @@ class Progressbar(object):
         self.aborted = True
 
 
-class Progressbars(qg.QFrame):
+class Progressbars(qw.QFrame):
     def __init__(self, parent):
-        qg.QFrame.__init__(self, parent)
-        self.layout = qg.QGridLayout()
+        qw.QFrame.__init__(self, parent)
+        self.layout = qw.QGridLayout()
         self.setLayout(self.layout)
         self.bars = {}
         self.start_times = {}
@@ -486,16 +490,16 @@ def beautify_axes(axes):
             break
 
 
-class FigureFrame(qg.QFrame):
+class FigureFrame(qw.QFrame):
 
     def __init__(self, parent=None):
-        qg.QFrame.__init__(self, parent)
+        qw.QFrame.__init__(self, parent)
 
-        # bgrgb = self.palette().color(qg.QPalette.Window).getRgb()[:3]
+        # bgrgb = self.palette().color(qw.QPalette.Window).getRgb()[:3]
         fgcolor = plot.tango_colors['aluminium5']
         dpi = 0.5*(self.logicalDpiX() + self.logicalDpiY())
 
-        font = qg.QFont()
+        font = qw.QFont()
         font.setBold(True)
         fontsize = font.pointSize()
 
@@ -560,7 +564,7 @@ class FigureFrame(qg.QFrame):
         from matplotlib.backends.backend_qt4agg \
             import FigureCanvasQTAgg as FigureCanvas
 
-        layout = qg.QGridLayout()
+        layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
@@ -589,13 +593,13 @@ class FigureFrame(qg.QFrame):
         self.closed = True
 
 
-class WebKitFrame(qg.QFrame):
+class WebKitFrame(qw.QFrame):
 
     def __init__(self, url=None, parent=None):
-        from PyQt4.QtWebKit import QWebView
+        from PyQt5.QtWebKit import QWebView
 
-        qg.QFrame.__init__(self, parent)
-        layout = qg.QGridLayout()
+        qw.QFrame.__init__(self, parent)
+        layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.setLayout(layout)
@@ -605,15 +609,15 @@ class WebKitFrame(qg.QFrame):
             self.web_widget.load(qc.QUrl(url))
 
 
-class VTKFrame(qg.QFrame):
+class VTKFrame(qw.QFrame):
 
     def __init__(self, actors=None, parent=None):
         import vtk
         from vtk.qt4.QVTKRenderWindowInteractor import \
             QVTKRenderWindowInteractor
 
-        qg.QFrame.__init__(self, parent)
-        layout = qg.QGridLayout()
+        qw.QFrame.__init__(self, parent)
+        layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
@@ -637,15 +641,15 @@ class VTKFrame(qg.QFrame):
         self.renderer.AddActor(actor)
 
 
-class PixmapFrame(qg.QLabel):
+class PixmapFrame(qw.QLabel):
 
     def __init__(self, filename=None, parent=None):
 
-        qg.QLabel.__init__(self, parent)
+        qw.QLabel.__init__(self, parent)
         self.setAlignment(qc.Qt.AlignCenter)
         self.setContentsMargins(0, 0, 0, 0)
-        self.menu = qg.QMenu(self)
-        action = qg.QAction('Save as', self.menu)
+        self.menu = qw.QMenu(self)
+        action = qw.QAction('Save as', self.menu)
         action.triggered.connect(self.save_pixmap)
         self.menu.addAction(action)
 
@@ -653,14 +657,14 @@ class PixmapFrame(qg.QLabel):
             self.load_pixmap(filename)
 
     def contextMenuEvent(self, event):
-        self.menu.popup(qg.QCursor.pos())
+        self.menu.popup(qw.QCursor.pos())
 
     def load_pixmap(self, filename):
-        self.pixmap = qg.QPixmap(filename)
+        self.pixmap = qw.QPixmap(filename)
         self.setPixmap(self.pixmap)
 
     def save_pixmap(self, filename=None):
         if not filename:
-            filename = qg.QFileDialog.getSaveFileName(
+            filename = qw.QFileDialog.getSaveFileName(
                 self.parent(), caption='save as')
         self.pixmap.save(filename)

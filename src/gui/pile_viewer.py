@@ -36,11 +36,12 @@ from .util import (ValControl, LinValControl, Marker, EventMarker,
                    PhaseMarker, make_QPolygonF, draw_label, Label,
                    Progressbars)
 
-from PyQt4 import QtCore as qc
-from PyQt4 import QtGui as qg
-from PyQt4 import QtOpenGL as qgl
-from PyQt4 import QtSvg as qsvg
-# from PyQt4.QtSvg import *
+from PyQt5 import QtCore as qc
+from PyQt5 import QtGui as qg
+from PyQt5 import QtWidgets as qw
+from PyQt5 import QtOpenGL as qgl
+from PyQt5 import QtSvg as qsvg
+# from PyQt5.QtSvg import *
 
 import scipy.stats as sstats
 import platform
@@ -49,10 +50,10 @@ if sys.version_info[0] >= 3:
     qc.QString = str
 
 if platform.mac_ver() != ('', ('', '', ''), ''):
-    qfiledialog_options = qg.QFileDialog.DontUseNativeDialog
+    qfiledialog_options = qw.QFileDialog.DontUseNativeDialog
     macosx = True
 else:
-    qfiledialog_options = qg.QFileDialog.DontUseSheet
+    qfiledialog_options = qw.QFileDialog.DontUseSheet
     macosx = False
 logger = logging.getLogger('pyrocko.gui.pile_viewer')
 
@@ -527,7 +528,7 @@ class TimeAx(TimeScaler):
                 ushift = 0.
 
             for l0x in (l0, l0_brief, ''):
-                label0 = qc.QString(l0x)
+                label0 = l0x
                 rect0 = fm.boundingRect(label0)
                 if rect0.width() <= pinc_approx*0.9:
                     break
@@ -542,7 +543,7 @@ class TimeAx(TimeScaler):
                     vmin+rect0.height()+ticklen), label0)
 
             if l1:
-                label1 = qc.QString(l1)
+                label1 = l1
                 rect1 = fm.boundingRect(label1)
                 if uumin+pad < umin-rect1.width()/2. and \
                         umin+rect1.width()/2. < uumax-pad:
@@ -555,7 +556,7 @@ class TimeAx(TimeScaler):
                     l1_hits += 1
 
             if l2:
-                label2 = qc.QString(l2)
+                label2 = l2
                 rect2 = fm.boundingRect(label2)
                 if uumin+pad < umin-rect2.width()/2. and \
                         umin+rect2.width()/2. < uumax-pad:
@@ -582,7 +583,7 @@ class TimeAx(TimeScaler):
                 l1 = None
 
         if l1_hits == 0 and l1:
-            label1 = qc.QString(l1)
+            label1 = l1
             rect1 = fm.boundingRect(label1)
             p.drawText(qc.QPointF(
                 uumin+pad,
@@ -592,7 +593,7 @@ class TimeAx(TimeScaler):
             l1_hits += 1
 
         if l2_hits == 0 and l2:
-            label2 = qc.QString(l2)
+            label2 = l2
             rect2 = fm.boundingRect(label2)
             p.drawText(qc.QPointF(
                 uumin+pad,
@@ -646,14 +647,14 @@ class Projection(object):
 
 
 def add_radiobuttongroup(menu, menudef, obj, target, default=None):
-    group = qg.QActionGroup(menu)
+    group = qw.QActionGroup(menu)
     menuitems = []
     for l, v in menudef:
-        k = qg.QAction(l, menu)
+        k = qw.QAction(l, menu)
         group.addAction(k)
         menu.addAction(k)
         k.setCheckable(True)
-        obj.connect(group, qc.SIGNAL('triggered(QAction*)'), target)
+        group.triggered.connect(target)
         menuitems.append((k, v))
         if default is not None and l == default:
             k.setChecked(True)
@@ -690,6 +691,16 @@ class PileViewerMainException(Exception):
 def MakePileViewerMainClass(base):
 
     class PileViewerMain(base):
+
+        want_input = qc.pyqtSignal()
+        about_to_close = qc.pyqtSignal()
+        pile_has_changed_signal = qc.pyqtSignal()
+        tracks_range_changed = qc.pyqtSignal(int, int, int)
+
+        markers_added = qc.pyqtSignal(int, int)
+        markers_removed = qc.pyqtSignal(int, int)
+        changed_marker_selection = qc.pyqtSignal()
+        active_event_marker_changed = qc.pyqtSignal(int)
 
         def __init__(self, pile, ntracks_shown_max, panel_parent, *args):
             if base == qgl.QGLWidget:
@@ -732,45 +743,43 @@ def MakePileViewerMainClass(base):
             self.tax = TimeAx()
             self.setBackgroundRole(qg.QPalette.Base)
             self.setAutoFillBackground(True)
-            poli = qg.QSizePolicy(
-                qg.QSizePolicy.Expanding,
-                qg.QSizePolicy.Expanding)
+            poli = qw.QSizePolicy(
+                qw.QSizePolicy.Expanding,
+                qw.QSizePolicy.Expanding)
 
             self.setSizePolicy(poli)
             self.setMinimumSize(300, 200)
             self.setFocusPolicy(qc.Qt.StrongFocus)
 
-            self.menu = qg.QMenu(self)
+            self.menu = qw.QMenu(self)
 
-            mi = qg.QAction('Open waveform files...', self.menu)
+            mi = qw.QAction('Open waveform files...', self.menu)
             self.menu.addAction(mi)
-            self.connect(mi, qc.SIGNAL("triggered(bool)"), self.open_waveforms)
+            mi.triggered.connect(self.open_waveforms)
 
-            mi = qg.QAction('Open waveform directory...', self.menu)
+            mi = qw.QAction('Open waveform directory...', self.menu)
             self.menu.addAction(mi)
-            self.connect(
-                mi, qc.SIGNAL("triggered(bool)"), self.open_waveform_directory)
+            mi.triggered.connect(self.open_waveform_directory)
 
-            mi = qg.QAction('Open station files...', self.menu)
+            mi = qw.QAction('Open station files...', self.menu)
             self.menu.addAction(mi)
-            self.connect(mi, qc.SIGNAL("triggered(bool)"), self.open_stations)
+            mi.triggered.connect(self.open_stations)
 
-            mi = qg.QAction('Write markers...', self.menu)
+            mi = qw.QAction('Write markers...', self.menu)
             self.menu.addAction(mi)
-            self.connect(mi, qc.SIGNAL("triggered(bool)"), self.write_markers)
+            mi.triggered.connect(self.write_markers)
 
-            mi = qg.QAction('Write selected markers...', self.menu)
+            mi = qw.QAction('Write selected markers...', self.menu)
             self.menu.addAction(mi)
-            self.connect(
-                mi, qc.SIGNAL("triggered(bool)"), self.write_selected_markers)
+            mi.triggered.connect(self.write_selected_markers)
 
-            mi = qg.QAction('Read markers...', self.menu)
+            mi = qw.QAction('Read markers...', self.menu)
             self.menu.addAction(mi)
-            self.connect(mi, qc.SIGNAL("triggered(bool)"), self.read_markers)
+            mi.triggered.connect(self.read_markers)
 
-            mi = qg.QAction('Read events...', self.menu)
+            mi = qw.QAction('Read events...', self.menu)
             self.menu.addAction(mi)
-            self.connect(mi, qc.SIGNAL("triggered(bool)"), self.read_events)
+            mi.triggered.connect(self.read_events)
 
             self.menu.addSeparator()
 
@@ -845,12 +854,10 @@ def MakePileViewerMainClass(base):
 
             self._ssort = lambda tr: ()
 
-            self.menuitem_distances_3d = qg.QAction('3D distances', self.menu)
+            self.menuitem_distances_3d = qw.QAction('3D distances', self.menu)
             self.menuitem_distances_3d.setCheckable(True)
             self.menuitem_distances_3d.setChecked(False)
-            self.connect(
-                self.menuitem_distances_3d,
-                qc.SIGNAL("toggled(bool)"),
+            self.menuitem_distances_3d.toggled.connect(
                 self.distances_3d_changed)
 
             self.menu.addAction(self.menuitem_distances_3d)
@@ -899,84 +906,84 @@ def MakePileViewerMainClass(base):
 
             self.menu.addSeparator()
 
-            self.menuitem_antialias = qg.QAction('Antialiasing', self.menu)
+            self.menuitem_antialias = qw.QAction('Antialiasing', self.menu)
             self.menuitem_antialias.setCheckable(True)
             self.menu.addAction(self.menuitem_antialias)
 
-            self.menuitem_liberal_fetch = qg.QAction(
+            self.menuitem_liberal_fetch = qw.QAction(
                 'Liberal Fetch Optimization', self.menu)
             self.menuitem_liberal_fetch.setCheckable(True)
             self.menu.addAction(self.menuitem_liberal_fetch)
 
-            self.menuitem_cliptraces = qg.QAction('Clip Traces', self.menu)
+            self.menuitem_cliptraces = qw.QAction('Clip Traces', self.menu)
             self.menuitem_cliptraces.setCheckable(True)
             self.menuitem_cliptraces.setChecked(True)
             self.menu.addAction(self.menuitem_cliptraces)
 
-            self.menuitem_showboxes = qg.QAction('Show Boxes', self.menu)
+            self.menuitem_showboxes = qw.QAction('Show Boxes', self.menu)
             self.menuitem_showboxes.setCheckable(True)
             self.menuitem_showboxes.setChecked(True)
             self.menu.addAction(self.menuitem_showboxes)
 
-            self.menuitem_colortraces = qg.QAction('Color Traces', self.menu)
+            self.menuitem_colortraces = qw.QAction('Color Traces', self.menu)
             self.menuitem_colortraces.setCheckable(True)
             self.menuitem_colortraces.setChecked(False)
             self.menu.addAction(self.menuitem_colortraces)
 
-            self.menuitem_showscalerange = qg.QAction(
+            self.menuitem_showscalerange = qw.QAction(
                 'Show Scale Ranges', self.menu)
             self.menuitem_showscalerange.setCheckable(True)
             self.menu.addAction(self.menuitem_showscalerange)
 
-            self.menuitem_showscaleaxis = qg.QAction(
+            self.menuitem_showscaleaxis = qw.QAction(
                 'Show Scale Axes', self.menu)
             self.menuitem_showscaleaxis.setCheckable(True)
             self.menu.addAction(self.menuitem_showscaleaxis)
 
-            self.menuitem_showzeroline = qg.QAction(
+            self.menuitem_showzeroline = qw.QAction(
                 'Show Zero Lines', self.menu)
             self.menuitem_showzeroline.setCheckable(True)
             self.menu.addAction(self.menuitem_showzeroline)
 
-            self.menuitem_fixscalerange = qg.QAction(
+            self.menuitem_fixscalerange = qw.QAction(
                 'Fix Scale Ranges', self.menu)
             self.menuitem_fixscalerange.setCheckable(True)
             self.menu.addAction(self.menuitem_fixscalerange)
 
-            self.menuitem_allowdownsampling = qg.QAction(
+            self.menuitem_allowdownsampling = qw.QAction(
                 'Allow Downsampling', self.menu)
             self.menuitem_allowdownsampling.setCheckable(True)
             self.menuitem_allowdownsampling.setChecked(True)
             self.menu.addAction(self.menuitem_allowdownsampling)
 
-            self.menuitem_degap = qg.QAction('Allow Degapping', self.menu)
+            self.menuitem_degap = qw.QAction('Allow Degapping', self.menu)
             self.menuitem_degap.setCheckable(True)
             self.menuitem_degap.setChecked(True)
             self.menu.addAction(self.menuitem_degap)
 
-            self.menuitem_demean = qg.QAction('Demean', self.menu)
+            self.menuitem_demean = qw.QAction('Demean', self.menu)
             self.menuitem_demean.setCheckable(True)
             self.menuitem_demean.setChecked(True)
             self.menu.addAction(self.menuitem_demean)
 
-            self.menuitem_fft_filtering = qg.QAction(
+            self.menuitem_fft_filtering = qw.QAction(
                 'FFT Filtering', self.menu)
             self.menuitem_fft_filtering.setCheckable(True)
             self.menuitem_fft_filtering.setChecked(False)
             self.menu.addAction(self.menuitem_fft_filtering)
 
-            self.menuitem_lphp = qg.QAction(
+            self.menuitem_lphp = qw.QAction(
                 'Bandpass is Lowpass + Highpass', self.menu)
             self.menuitem_lphp.setCheckable(True)
             self.menuitem_lphp.setChecked(True)
             self.menu.addAction(self.menuitem_lphp)
 
-            self.menuitem_watch = qg.QAction('Watch Files', self.menu)
+            self.menuitem_watch = qw.QAction('Watch Files', self.menu)
             self.menuitem_watch.setCheckable(True)
             self.menuitem_watch.setChecked(False)
             self.menu.addAction(self.menuitem_watch)
 
-            self.visible_length_menu = qg.QMenu('Visible Length', self.menu)
+            self.visible_length_menu = qw.QMenu('Visible Length', self.menu)
 
             menudef = [(x.key, x.value) for x in
                        self.config.visible_length_setting]
@@ -989,70 +996,56 @@ def MakePileViewerMainClass(base):
             self.menu.addMenu(self.visible_length_menu)
             self.menu.addSeparator()
 
-            self.snufflings_menu = qg.QMenu('Run Snuffling', self.menu)
+            self.snufflings_menu = qw.QMenu('Run Snuffling', self.menu)
             self.menu.addMenu(self.snufflings_menu)
 
-            self.toggle_panel_menu = qg.QMenu('Panels', self.menu)
+            self.toggle_panel_menu = qw.QMenu('Panels', self.menu)
             self.menu.addMenu(self.toggle_panel_menu)
 
-            self.menuitem_reload = qg.QAction('Reload Snufflings', self.menu)
+            self.menuitem_reload = qw.QAction('Reload Snufflings', self.menu)
             self.menu.addAction(self.menuitem_reload)
-            self.connect(
-                self.menuitem_reload,
-                qc.SIGNAL("triggered(bool)"),
+            self.menuitem_reload.triggered.connect(
                 self.setup_snufflings)
 
             self.menu.addSeparator()
 
-            self.menuitem_test = qg.QAction('Test', self.menu)
+            self.menuitem_test = qw.QAction('Test', self.menu)
             self.menuitem_test.setCheckable(True)
             self.menuitem_test.setChecked(False)
             self.menu.addAction(self.menuitem_test)
-            self.connect(
-                self.menuitem_test,
-                qc.SIGNAL("toggled(bool)"),
+            self.menuitem_test.triggered.connect(
                 self.toggletest)
 
-            self.menuitem_print = qg.QAction('Print', self.menu)
+            self.menuitem_print = qw.QAction('Print', self.menu)
             self.menu.addAction(self.menuitem_print)
-            self.connect(
-                self.menuitem_print,
-                qc.SIGNAL("triggered(bool)"),
+            self.menuitem_print.triggered.connect(
                 self.printit)
 
-            self.menuitem_svg = qg.QAction('Save as SVG|PNG', self.menu)
+            self.menuitem_svg = qw.QAction('Save as SVG|PNG', self.menu)
             self.menu.addAction(self.menuitem_svg)
-            self.connect(
-                self.menuitem_svg,
-                qc.SIGNAL("triggered(bool)"),
+            self.menuitem_svg.triggered.connect(
                 self.savesvg)
 
-            self.snuffling_help_menu = qg.QMenu('Help', self.menu)
+            self.snuffling_help_menu = qw.QMenu('Help', self.menu)
             self.menu.addMenu(self.snuffling_help_menu)
-            self.menuitem_help = qg.QAction(
+            self.menuitem_help = qw.QAction(
                 'Snuffler Controls', self.snuffling_help_menu)
             self.snuffling_help_menu.addAction(self.menuitem_help)
-            self.connect(
-                self.menuitem_help, qc.SIGNAL('triggered(bool)'), self.help)
+            self.menuitem_help.triggered.connect(self.help)
 
             self.snuffling_help_menu.addSeparator()
 
-            self.menuitem_about = qg.QAction('About', self.menu)
+            self.menuitem_about = qw.QAction('About', self.menu)
             self.menu.addAction(self.menuitem_about)
-            self.connect(
-                self.menuitem_about, qc.SIGNAL('triggered(bool)'), self.about)
+            self.menuitem_about.triggered.connect(self.about)
 
-            self.menuitem_close = qg.QAction('Close', self.menu)
+            self.menuitem_close = qw.QAction('Close', self.menu)
             self.menu.addAction(self.menuitem_close)
-            self.connect(
-                self.menuitem_close,
-                qc.SIGNAL("triggered(bool)"),
-                self.myclose)
+            self.menuitem_close.triggered.connect(self.myclose)
 
             self.menu.addSeparator()
 
-            self.connect(
-                self.menu, qc.SIGNAL('triggered(QAction*)'), self.update)
+            self.menu.triggered.connect(self.update)
 
             self.time_projection = Projection()
             self.set_time_range(self.pile.get_tmin(), self.pile.get_tmax())
@@ -1072,7 +1065,7 @@ def MakePileViewerMainClass(base):
             self.old_processed_traces = None
 
             self.timer = qc.QTimer(self)
-            self.connect(self.timer, qc.SIGNAL("timeout()"), self.periodical)
+            self.timer.timeout.connect(self.periodical)
             self.timer.setInterval(1000)
             self.timer.start()
             self.pile.add_listener(self)
@@ -1115,7 +1108,7 @@ def MakePileViewerMainClass(base):
             self.closing = False
 
         def fail(self, reason):
-            box = qg.QMessageBox(self)
+            box = qw.QMessageBox(self)
             box.setText(reason)
             box.exec_()
 
@@ -1263,7 +1256,7 @@ def MakePileViewerMainClass(base):
             if self.active_event_marker:
                 self.active_event_marker.set_active(False)
 
-            self.emit(qc.SIGNAL('active_event_marker_changed(int)'), -1)
+            self.active_event_marker_changed.emit(-1)
 
         def set_active_event_marker(self, event_marker):
             if self.active_event_marker:
@@ -1275,7 +1268,7 @@ def MakePileViewerMainClass(base):
             self.set_origin(event)
             i_active = self.markers.index(self.active_event_marker)
 
-            self.emit(qc.SIGNAL('active_event_marker_changed(int)'), i_active)
+            self.active_event_marker_changed.emit(i_active)
 
         def set_active_event(self, event):
             for marker in self.markers:
@@ -1437,7 +1430,7 @@ def MakePileViewerMainClass(base):
             def update_progress(label, i, n):
                 abort = False
 
-                qg.qApp.processEvents()
+                qw.qApp.processEvents()
                 if n != 0:
                     perc = i*100/n
                 else:
@@ -1530,7 +1523,7 @@ def MakePileViewerMainClass(base):
 
         def pile_changed(self, what):
             self.pile_has_changed = True
-            self.emit(qc.SIGNAL('pile_has_changed_signal()'))
+            self.pile_has_changed_signal.emit()
             if self.automatic_updates:
                 self.update()
 
@@ -1703,8 +1696,7 @@ def MakePileViewerMainClass(base):
         def add_marker(self, marker):
             if marker not in self.markers:
                 self.markers.append(marker)
-            self.emit(
-                qc.SIGNAL('markers_added(int,int)'),
+            self.markers_added.emit(
                 len(self.markers)-1, len(self.markers)-1)
 
         def add_markers(self, markers):
@@ -1712,8 +1704,7 @@ def MakePileViewerMainClass(base):
             for m in markers:
                 if m not in self.markers:
                     self.markers.append(m)
-            self.emit(
-                qc.SIGNAL('markers_added(int,int)'),
+            self.markers_added.emit(
                 len_before, len(self.markers)-1)
 
         def remove_marker(self, marker):
@@ -1757,7 +1748,7 @@ def MakePileViewerMainClass(base):
                     pass
 
         def remove_marker_from_menu(self, istart, istop):
-            self.emit(qc.SIGNAL('markers_removed(int, int)'), istart, istop)
+            self.markers_removed.emit(istart, istop)
 
         def set_markers(self, markers):
             self.markers = markers
@@ -2075,7 +2066,7 @@ def MakePileViewerMainClass(base):
                 self.zoom_tracks(0., dtracks)
 
             elif keytext == ':':
-                self.emit(qc.SIGNAL('want_input()'))
+                self.want_input.emit()
 
             elif keytext == 'f':
                 if self.window().windowState() & qc.Qt.WindowFullScreen or \
@@ -2128,7 +2119,7 @@ def MakePileViewerMainClass(base):
 
             _indexes.sort()
             _indexes = make_chunks(_indexes)
-            self.emit(qc.SIGNAL('changed_marker_selection'), _indexes)
+            self.changed_marker_selection.emit(_indexes)
 
         def toggle_marker_editor(self):
             self.panel_parent.toggle_marker_editor()
@@ -2193,8 +2184,8 @@ def MakePileViewerMainClass(base):
                     qc.Qt.LinksAccessibleByMouse | qc.Qt.TextSelectableByMouse)
                 h.setBackgroundRole(qg.QPalette.Base)
                 layout.addWidget(h)
-                frame.connect(
-                    h, qc.SIGNAL('linkActivated(QString)'), self.open_link)
+                h.linkActivated.connect(
+                    self.open_link)
 
             if self.panel_parent is not None:
                 if target == 'panel':
@@ -2271,9 +2262,7 @@ def MakePileViewerMainClass(base):
                 else:
                     l, h = 0, self.ntracks
 
-                self.emit(
-                    qc.SIGNAL('tracks_range_changed(int,int,int)'),
-                    self.ntracks, l, h)
+                self.tracks_range_changed.emit(self.ntracks, l, h)
 
         def set_tracks_range(self, range, start=None):
 
@@ -2290,9 +2279,7 @@ def MakePileViewerMainClass(base):
                 self.shown_tracks_range = l, h
                 self.shown_tracks_start = start
 
-                self.emit(
-                    qc.SIGNAL('tracks_range_changed(int,int,int)'),
-                    self.ntracks, l, h)
+                self.tracks_range_changed.emit(self.ntracks, l, h)
 
         def scroll_tracks(self, shift):
             shown = self.shown_tracks_range
@@ -3389,9 +3376,7 @@ def MakePileViewerMainClass(base):
                 self.floating_marker.set_selected(True)
 
                 self.picking_timer = qc.QTimer()
-                self.connect(
-                    self.picking_timer,
-                    qc.SIGNAL("timeout()"),
+                self.picking_timer.timeout.connect(
                     self.animate_picking)
 
                 self.picking_timer.setInterval(50)
@@ -3509,8 +3494,8 @@ def MakePileViewerMainClass(base):
             self.show_all = False
             self.follow_time = tlen
             self.follow_timer = qc.QTimer(self)
-            self.connect(
-                self.follow_timer, qc.SIGNAL("timeout()"), self.follow_update)
+            self.follow_timer.timeout.connect(
+                self.follow_update)
             self.follow_timer.setInterval(interval)
             self.follow_timer.start()
             self.follow_started = time.time()
@@ -3549,7 +3534,7 @@ def MakePileViewerMainClass(base):
             for snuffling in list(self.snufflings):
                 self.remove_snuffling(snuffling)
 
-            self.emit(qc.SIGNAL('about_to_close()'))
+            self.about_to_close.emit()
             self.return_tag = return_tag
 
         def set_error_message(self, key, value):
@@ -3726,24 +3711,28 @@ def MakePileViewerMainClass(base):
     return PileViewerMain
 
 
-PileViewerMain = MakePileViewerMainClass(qg.QWidget)
+PileViewerMain = MakePileViewerMainClass(qw.QWidget)
 GLPileViewerMain = MakePileViewerMainClass(qgl.QGLWidget)
 
 
-class LineEditWithAbort(qg.QLineEdit):
+class LineEditWithAbort(qw.QLineEdit):
+
+    aborted = qc.pyqtSignal()
+    history_down = qc.pyqtSignal()
+    history_up = qc.pyqtSignal()
 
     def keyPressEvent(self, key_event):
         if key_event.key() == qc.Qt.Key_Escape:
-            self.emit(qc.SIGNAL('aborted()'))
+            self.aborted.emit()
         elif key_event.key() == qc.Qt.Key_Down:
-            self.emit(qc.SIGNAL('history_down()'))
+            self.history_down.emit()
         elif key_event.key() == qc.Qt.Key_Up:
-            self.emit(qc.SIGNAL('history_up()'))
+            self.history_up.emit()
         else:
             return qg.QLineEdit.keyPressEvent(self, key_event)
 
 
-class PileViewer(qg.QFrame):
+class PileViewer(qw.QFrame):
     '''PileViewerMain + Controls + Inputline'''
 
     def __init__(
@@ -3753,7 +3742,7 @@ class PileViewer(qg.QFrame):
             panel_parent=None,
             *args):
 
-        qg.QFrame.__init__(self, *args)
+        qw.QFrame.__init__(self, *args)
 
         if use_opengl:
             self.viewer = GLPileViewerMain(
@@ -3766,43 +3755,33 @@ class PileViewer(qg.QFrame):
                 ntracks_shown_max=ntracks_shown_max,
                 panel_parent=panel_parent)
 
-        layout = qg.QGridLayout()
+        layout = qw.QGridLayout()
         self.setLayout(layout)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.setFrameShape(qg.QFrame.StyledPanel)
-        self.setFrameShadow(qg.QFrame.Sunken)
+        self.setFrameShape(qw.QFrame.StyledPanel)
+        self.setFrameShadow(qw.QFrame.Sunken)
 
-        self.input_area = qg.QFrame(self)
-        ia_layout = qg.QGridLayout()
+        self.input_area = qw.QFrame(self)
+        ia_layout = qw.QGridLayout()
         ia_layout.setContentsMargins(11, 11, 11, 11)
         self.input_area.setLayout(ia_layout)
 
         self.inputline = LineEditWithAbort(self.input_area)
-        self.connect(
-            self.inputline,
-            qc.SIGNAL('returnPressed()'),
+        self.inputline.returnPressed.connect(
             self.inputline_returnpressed)
-        self.connect(
-            self.inputline,
-            qc.SIGNAL('editingFinished()'),
+        self.inputline.editingFinished.connect(
             self.inputline_finished)
-        self.connect(
-            self.inputline,
-            qc.SIGNAL('aborted()'),
+        self.inputline.aborted.connect(
             self.inputline_aborted)
 
-        self.connect(self.inputline,
-                     qc.SIGNAL('history_down()'),
-                     lambda: self.step_through_history(1))
-        self.connect(self.inputline,
-                     qc.SIGNAL('history_up()'),
-                     lambda: self.step_through_history(-1))
+        self.inputline.history_down.connect(
+            lambda: self.step_through_history(1))
+        self.inputline.history_up.connect(
+            lambda: self.step_through_history(-1))
 
-        self.connect(
-            self.inputline,
-            qc.SIGNAL('textEdited(QString)'),
+        self.inputline.textEdited.connect(
             self.inputline_changed)
 
         self.inputline.setFocusPolicy(qc.Qt.ClickFocus)
@@ -3811,7 +3790,7 @@ class PileViewer(qg.QFrame):
 
         self.inputline_error_str = None
 
-        self.inputline_error = qg.QLabel()
+        self.inputline_error = qw.QLabel()
         self.inputline_error.hide()
 
         ia_layout.addWidget(self.inputline, 0, 0)
@@ -3823,31 +3802,21 @@ class PileViewer(qg.QFrame):
         layout.addWidget(pb, 2, 0, 1, 2)
         self.progressbars = pb
 
-        scrollbar = qg.QScrollBar(qc.Qt.Vertical)
+        scrollbar = qw.QScrollBar(qc.Qt.Vertical)
         self.scrollbar = scrollbar
         layout.addWidget(scrollbar, 1, 1)
-        self.connect(
-            self.scrollbar,
-            qc.SIGNAL('valueChanged(int)'),
+        self.scrollbar.valueChanged.connect(
             self.scrollbar_changed)
 
         self.block_scrollbar_changes = False
 
-        self.connect(
-            self.viewer,
-            qc.SIGNAL('want_input()'),
+        self.viewer.want_input.connect(
             self.inputline_show)
-        self.connect(
-            self.viewer,
-            qc.SIGNAL('tracks_range_changed(int,int,int)'),
+        self.viewer.tracks_range_changed.connect(
             self.tracks_range_changed)
-        self.connect(
-            self.viewer,
-            qc.SIGNAL('pile_has_changed_signal()'),
+        self.viewer.pile_has_changed_signal.connect(
             self.adjust_controls)
-        self.connect(
-            self.viewer,
-            qc.SIGNAL('about_to_close()'),
+        self.viewer.about_to_close.connect(
             self.save_inputline_history)
 
     def get_progressbars(self):
@@ -3871,7 +3840,7 @@ class PileViewer(qg.QFrame):
 
     def inputline_clear_error(self):
         if self.inputline_error_str:
-            self.inputline.setPalette(qg.QApplication.palette())
+            self.inputline.setPalette(qw.QApplication.palette())
             self.inputline_error_str = None
             self.inputline_error.clear()
             self.inputline_error.hide()
@@ -3979,8 +3948,8 @@ class PileViewer(qg.QFrame):
         self.update_contents()
 
     def controls(self):
-        frame = qg.QFrame(self)
-        layout = qg.QGridLayout()
+        frame = qw.QFrame(self)
+        layout = qw.QGridLayout()
         frame.setLayout(layout)
 
         minfreq = 0.001
@@ -3995,21 +3964,14 @@ class PileViewer(qg.QFrame):
         self.gain_control.setup('Gain:', 0.001, 1000., 1., 2)
         self.rot_control = LinValControl()
         self.rot_control.setup('Rotate [deg]:', -180., 180., 0., 3)
-        self.connect(
-            self.lowpass_control,
-            qc.SIGNAL("valchange(PyQt_PyObject,int)"),
+
+        self.lowpass_control.valchange.connect(
             self.viewer.lowpass_change)
-        self.connect(
-            self.highpass_control,
-            qc.SIGNAL("valchange(PyQt_PyObject,int)"),
+        self.highpass_control.valchange.connect(
             self.viewer.highpass_change)
-        self.connect(
-            self.gain_control,
-            qc.SIGNAL("valchange(PyQt_PyObject,int)"),
+        self.gain_control.valchange.connect(
             self.viewer.gain_change)
-        self.connect(
-            self.rot_control,
-            qc.SIGNAL("valchange(PyQt_PyObject,int)"),
+        self.rot_control.valchange.connect(
             self.viewer.rot_change)
 
         for icontrol, control in enumerate((
@@ -4021,8 +3983,8 @@ class PileViewer(qg.QFrame):
             for iwidget, widget in enumerate(control.widgets()):
                 layout.addWidget(widget, icontrol, iwidget)
 
-        spacer = qg.QSpacerItem(
-            0, 0, qg.QSizePolicy.Expanding, qg.QSizePolicy.Expanding)
+        spacer = qw.QSpacerItem(
+            0, 0, qw.QSizePolicy.Expanding, qw.QSizePolicy.Expanding)
         layout.addItem(spacer, 4, 0, 1, 3)
 
         self.adjust_controls()
@@ -4031,9 +3993,7 @@ class PileViewer(qg.QFrame):
     def marker_editor(self):
         editor = pyrocko.gui.marker_editor.MarkerEditor(self)
         editor.set_viewer(self.get_view())
-        self.connect(
-            editor.get_marker_model(),
-            qc.SIGNAL('dataChanged()'),
+        editor.get_marker_model().dataChanged.connect(
             self.update_contents)
         return editor
 
