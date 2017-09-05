@@ -95,8 +95,13 @@ class DummyAwareOptionalTimestamp(Object):
 
                 except util.TimeStrError:
                     year = int(val[:4])
-                    if year > this_year + 100:
-                        return None  # StationXML contained a dummy end date
+                    if sys.maxsize > 2**32:  # if we're on 64bit
+                        if year > this_year + 100:
+                            return None  # StationXML contained a dummy end date
+
+                    else:  # 32bit end of time is in 2038
+                        if this_year < 2037 and year > 2037:
+                            return None  # StationXML contained a dummy end date
 
                     raise
 
