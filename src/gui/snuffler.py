@@ -797,7 +797,9 @@ def snuffle(pile=None, **kwargs):
         return ret
 
 
-def snuffler_from_commandline(args=sys.argv):
+def snuffler_from_commandline(args=None):
+    if args is None:
+        args = sys.argv
 
     usage = '''usage: %prog [options] waveforms ...'''
     parser = OptionParser(usage=usage)
@@ -907,7 +909,7 @@ def snuffler_from_commandline(args=sys.argv):
         default=False,
         help='print debugging information to stderr')
 
-    options, args = parser.parse_args(list(args[1:]))
+    options, args = parser.parse_args(list(args))
 
     if options.debug:
         util.setup_logging('snuffler', 'debug')

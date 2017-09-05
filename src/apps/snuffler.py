@@ -6,8 +6,8 @@
 from pyrocko.gui import snuffler
 
 
-def main():
-    snuffler.snuffler_from_commandline()
+def main(args=None):
+    snuffler.snuffler_from_commandline(args=args)
 
 
 if __name__ == '__main__':
