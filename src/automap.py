@@ -9,7 +9,7 @@ from cStringIO import StringIO
 import numpy as num
 
 from pyrocko.guts import Object, Float, Bool, Int, Tuple, String, List
-from pyrocko.guts import Unicode, Dict
+from pyrocko.guts import Unicode, Dict, StringChoice
 from pyrocko.guts_array import Array
 from pyrocko import orthodrome as od
 from pyrocko import gmtpy, topo
@@ -130,6 +130,7 @@ class Map(Object):
     lat = Float.T(optional=True)
     lon = Float.T(optional=True)
     radius = Float.T(optional=True)
+    projection = StringChoice.T(default='A', choices=['A', 'E'])
     width = Float.T(default=20.)
     height = Float.T(default=14.)
     margins = List.T(Float.T())
@@ -287,7 +288,10 @@ class Map(Object):
         self._corners = corners(self.lon, self.lat, wreg, hreg)
         west, east, south, north = extent(self.lon, self.lat, wreg, hreg, 10)
 
-        x, y, z = ((west, east), (south, north), (-6000., 4500.))
+        if self.projection == 'A':
+            x, y, z = ((west, east), (south, north), (-6000., 4500.))
+        elif self.projection == 'E':
+            x, y, z = ((0, 360), (-90, 90), (-6000., 4500.))
 
         xax = gmtpy.Ax(mode='min-max', approx_ticks=4.)
         yax = gmtpy.Ax(mode='min-max', approx_ticks=4.)
@@ -398,14 +402,22 @@ class Map(Object):
         layout.set_fixed_margins(*[x*cm for x in self._expand_margins()])
 
         widget = layout.get_widget()
+
+        if self.projection == 'A':
+            widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
+            scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
+            aspect = self._map_aspect(jr=widget.J() + scaler.R()) 
+        elif self.projection == 'E':
+            horizon = self.radius * m2d
+            widget['J'] = ('-JE%g/%g/%g' % (self.lon, self.lat, horizon)) + '/%(width)gp'
+            scaler['R'] = '-Rg'
+            aspect = 1.
+
         widget['P'] = widget['J']
-        widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
-        scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
 
         # aspect = gmtpy.aspect_for_projection(
         #     gmt.installation['version'], *(widget.J() + scaler.R()))
 
-        aspect = self._map_aspect(jr=widget.J() + scaler.R())
         widget.set_aspect(aspect)
 
         self._gmt = gmt
@@ -604,14 +616,28 @@ class Map(Object):
                 S='c20p', W='2p,black',
                 *self._jxyr)
 
-        if self.show_grid:
-            btmpl = ('%(xinc)gg%(xinc)g:%(xlabel)s:/'
-                     '%(yinc)gg%(yinc)g:%(ylabel)s:')
-        else:
-            btmpl = '%(xinc)g:%(xlabel)s:/%(yinc)g:%(ylabel)s:'
+        if self.projection == 'A':
+            if self.show_grid:
+                btmpl = ('%(xinc)gg%(xinc)g:%(xlabel)s:/'
+                         '%(yinc)gg%(yinc)g:%(ylabel)s:')
+            else:
+                btmpl = '%(xinc)g:%(xlabel)s:/%(yinc)g:%(ylabel)s:'
+        
+            B = (btmpl % scaler.get_params())+axes_layout
+
+        elif self.projection == 'E':
+            if self.show_grid:
+                for i in range(1, 4):
+                    circle_r = widget.width() * i / 3. 
+                    gmt.psxy(
+                        in_rows=[[self.lon, self.lat]],
+                        S='c%gp' % circle_r,
+                        *self._jxyr)
+
+            B = True
 
         gmt.psbasemap(
-            B=(btmpl % scaler.get_params())+axes_layout,
+            B=B,
             L=('x%gp/%gp/%g/%g/%gk' % (
                 6./7*widget.width(),
                 widget.height()/7.,

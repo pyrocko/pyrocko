@@ -40,6 +40,13 @@ if __name__ == '__main__':
         help='set height of output image [cm] (%default)')
 
     parser.add_option(
+        '--projection',
+        dest='projection',
+        type='string',
+        default='A',
+        help='type of projection, A-equal area, E-equidistant')
+
+    parser.add_option(
         '--topo-resolution-min',
         dest='topo_resolution_min',
         type='float',
@@ -168,6 +175,7 @@ if __name__ == '__main__':
     map = automap.Map(
         width=options.width,
         height=options.height,
+        projection=options.projection,
         lat=lat,
         lon=lon,
         radius=radius,
@@ -190,7 +198,7 @@ if __name__ == '__main__':
         map.gmt.psxy(
             in_columns=(lons, lats),
             S='t8p',
-            G='black',
+            G='red',
             *map.jxyr)
 
         for s in stations:
