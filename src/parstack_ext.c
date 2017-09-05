@@ -20,31 +20,31 @@ static PyObject *ParstackError;
 
 int parstack_config(
         size_t narrays,
-        int *offsets,
+        int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
-        int *shifts,
+        int32_t *shifts,
         double *weights,
         int method,
         size_t *lengthout,
-        int *offsetout);
+        int32_t *offsetout);
 
 int parstack(
         size_t narrays,
         double **arrays,
-        int *offsets,
+        int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
-        int *shifts,
+        int32_t *shifts,
         double *weights,
         int method,
         size_t lengthout,
-        int offsetout,
+        int32_t offsetout,
         double *result,
         int nparallel);
 
 
-int min(int a, int b) {
+int32_t min(int32_t a, int32_t b) {
     return (a < b) ? a : b;
 }
 
@@ -52,7 +52,7 @@ size_t smin(size_t a, size_t b) {
     return (a < b) ? a : b;
 }
 
-int max(int a, int b) {
+int32_t max(int32_t a, int32_t b) {
     return (a > b) ? a : b;
 }
 
@@ -66,14 +66,14 @@ double dmax(double a, double b) {
 
 int parstack_config(
         size_t narrays,
-        int *offsets,
+        int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
-        int *shifts,
+        int32_t *shifts,
         double *weights,
         int method,
         size_t *lengthout,
-        int *offsetout) {
+        int32_t *offsetout) {
 
     (void)weights;  /* silence warnings */
     (void)method;
@@ -82,7 +82,7 @@ int parstack_config(
         return NODATA;
     }
 
-    int imin, imax, istart, iend;
+    int32_t imin, imax, istart, iend;
     size_t iarray, ishift;
 
     imin = offsets[0] + shifts[0];
@@ -105,19 +105,19 @@ int parstack_config(
 int parstack(
         size_t narrays,
         double **arrays,
-        int *offsets,
+        int32_t *offsets,
         size_t *lengths,
         size_t nshifts,
-        int *shifts,
+        int32_t *shifts,
         double *weights,
         int method,
         size_t lengthout,
-        int offsetout,
+        int32_t offsetout,
         double *result,
         int nparallel) {
 
 	(void) nparallel;
-    int imin, istart, ishift;
+    int32_t imin, istart, ishift;
     size_t iarray, nsamp, i;
     double weight;
     int chunk;
@@ -147,7 +147,7 @@ int parstack(
 	#if defined(_OPENMP)
         #pragma omp for schedule(dynamic, chunk) nowait
 	#endif
-        for (ishift=0; ishift<(int)nshifts; ishift++) {
+        for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
             for (iarray=0; iarray<narrays; iarray++) {
                 istart = offsets[iarray] + shifts[ishift*narrays + iarray];
                 weight = weights[ishift*narrays + iarray];
@@ -168,7 +168,7 @@ int parstack(
 	#if defined(_OPENMP)
         #pragma omp for schedule(dynamic,chunk) nowait
 	#endif
-        for (ishift=0; ishift<(int)nshifts; ishift++) {
+        for (ishift=0; ishift<(int32_t)nshifts; ishift++) {
             for (i=0; i<nsamp; i++) {
                 temp[i] = 0.0;
             }
@@ -262,9 +262,9 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
     size_t narrays, nshifts, nweights;
     size_t *clengths;
     size_t lengthout;
-    int offsetout;
+    int32_t offsetout;
     int lengthout_arg;
-    int *coffsets, *cshifts;
+    int32_t *coffsets, *cshifts;
     double *cweights, *cresult;
     double **carrays;
     npy_intp array_dims[1];
@@ -285,8 +285,8 @@ static PyObject* w_parstack(PyObject *dummy, PyObject *args) {
 
         return NULL;
     }
-    if (!good_array(offsets, NPY_INT)) return NULL;
-    if (!good_array(shifts, NPY_INT)) return NULL;
+    if (!good_array(offsets, NPY_INT32)) return NULL;
+    if (!good_array(shifts, NPY_INT32)) return NULL;
     if (!good_array(weights, NPY_DOUBLE)) return NULL;
     if (result != Py_None && !good_array(result, NPY_DOUBLE)) return NULL;
 
