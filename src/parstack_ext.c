@@ -427,7 +427,7 @@ static PyObject* w_argmax(PyObject *dummy, PyObject *args) {
 
     carrayin = PyArray_DATA((PyArrayObject*)arrayin);
 
-    if (shape[0] >= UINT32_MAX) {
+    if ((size_t)shape[0] >= (size_t)UINT32_MAX) {
         PyErr_SetString(ParstackError, "shape[0] must be smaller than 2^32");
         return NULL;
     }
