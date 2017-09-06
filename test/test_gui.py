@@ -9,9 +9,9 @@ import tempfile
 import os
 
 if common.have_gui():  # noqa
-    from PyQt4.QtTest import QTest
-    from PyQt4.QtCore import Qt, QPoint
-    from PyQt4.QtGui import QStyleOptionSlider, QStyle
+    from PyQt5.QtTest import QTest
+    from PyQt5.QtCore import Qt, QPoint
+    from PyQt5.QtWidgets import QStyleOptionSlider, QStyle
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import util as gui_util
@@ -26,7 +26,7 @@ from pyrocko import config, trace
 class TestSnuffling(snuffling.Snuffling):
 
     def setup(self):
-        self.set_name('X')
+        self.set_name('TestSnuffling')
 
     def call(self):
         figframe = self.figure_frame()
@@ -34,9 +34,12 @@ class TestSnuffling(snuffling.Snuffling):
         ax.plot([0, 1], [0, 1])
         figframe.draw()
 
-        self.pixmap_frame()
+        self.enable_pile_changed_notifications()
 
+        self.pixmap_frame()
         self.web_frame()
+
+        self.get_pile()
 
 
 @common.require_gui
@@ -427,6 +430,7 @@ class GUITest(unittest.TestCase):
         QTest.keyPress(self.pile_viewer, 'd')
         QTest.keyPress(self.pile_viewer, 'd')
         QTest.keyPress(self.pile_viewer, 'd')
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gui', 'warning')

@@ -409,7 +409,7 @@ class Snuffling(object):
         '''
 
         try:
-            box = qg.QMessageBox(self.get_viewer())
+            box = qw.QMessageBox(self.get_viewer())
             box.setText('%s: %s' % (kind.capitalize(), message))
             box.exec_()
         except NoViewerSet:
@@ -508,7 +508,7 @@ class Snuffling(object):
 
         f = PixmapFrame(filename)
 
-        scroll_area = qg.QScrollArea()
+        scroll_area = qw.QScrollArea()
         scroll_area.setWidget(f)
         scroll_area.setWidgetResizable(True)
 
