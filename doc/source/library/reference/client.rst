@@ -1,7 +1,8 @@
 The :mod:`client` subpackage
 =============================
 
-.. automodule:: pyrocko.client
+.. automodule::
+    pyrocko.client
 
 
 .. toctree::
