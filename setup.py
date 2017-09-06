@@ -133,7 +133,7 @@ def get_build_include(lib_name):
     return op.join(op.dirname(op.abspath(__file__)), lib_name)
 
 
-def check_multiple_install():
+def find_pyrocko_installs():
     found = []
     seen = set()
     orig_sys_path = sys.path
@@ -161,7 +161,11 @@ def check_multiple_install():
             pass
 
     sys.path = orig_sys_path
+    return found
 
+
+def check_multiple_install():
+    found = find_pyrocko_installs()
     e = sys.stderr
 
     initpyc = '__init__.pyc'
@@ -203,7 +207,39 @@ WARNING: Multiple installations of Pyrocko are present on this system.''',
             print('WARNING: Not using newest installed version.', file=e)
 
 
-class CheckMultipleInstall(Command):
+def check_pyrocko_install_compat():
+    found = find_pyrocko_installs()
+    if len(found) == 0:
+        return
+
+    expected_submodules = ['gui', 'dataset', 'client',
+                           'streaming', 'io', 'model']
+
+    installed_date, p, fpath, long_version = found[0]
+    install_path = op.dirname(op.abspath(fpath))
+
+    installed_submodules = [d for d in os.listdir(install_path)
+                            if op.isdir(op.join(install_path, d))]
+
+    if not all([ed in installed_submodules for ed in expected_submodules]):
+
+        print('''\r\r
+###############################################################################
+WARNING: Found an old, incompatible, pyrocko installation!!!
+Installed on %s.
+
+Please purge the old installation before installing this new version:
+
+    sudo rm -rf %s
+
+No worries the pyrocko version beeing installed is fully backwards compatible.
+###############################################################################
+''' % (installed_date, install_path))
+
+        sys.exit(1)
+
+
+class CheckInstalls(Command):
     description = '''check for multiple installations of Pyrocko'''
     user_options = []
 
@@ -463,6 +499,8 @@ python setup.py build
     return False
 
 
+check_pyrocko_install_compat()
+
 if _check_for_openmp():
     omp_arg = ['-fopenmp']
     omp_lib = ['-lgomp']
@@ -496,7 +534,7 @@ setup(
         'build_py': CustomBuildPyCommand,
         # 'py2app': CustomBuildAppCommand,
         'build_ext': CustomBuildExtCommand,
-        'check_multiple_install': CheckMultipleInstall,
+        'check_multiple_install': CheckInstalls,
         'install_prerequisites': InstallPrerequisits,
     },
 
