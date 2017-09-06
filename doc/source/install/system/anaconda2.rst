@@ -1,9 +1,16 @@
 Installation under Anaconda2
 ............................
 
+* **Anaconda2** thru conda
+    
+    conda install -c pyrocko pyrocko 
+
+More Information available at <https://anaconda.org/pyrocko/pyrocko>_
+
+
 * **Anaconda2** (4.2.0)::
 
-    conda install pyqt=4    # downgrades some packages
+    conda install pyqt=5    # downgrades some packages
     easy_install pyavl
     pip install progressbar
     cd `conda info --root`
