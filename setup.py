@@ -311,7 +311,7 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'pile_viewer', ['pyrocko.gui.pile_viewer']),
             ('pyrocko', 'marker', ['pyrocko.gui.marker']),
             ('pyrocko', 'snuffler', ['pyrocko.gui.snuffler']),
-            ('pyrocko', 'gui_util', ['pyrocko.gui.gui_util']),
+            ('pyrocko', 'gui_util', ['pyrocko.gui.util']),
         ]
 
         for (package, compat_module, import_modules) in mapping:
