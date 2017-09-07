@@ -23,7 +23,7 @@ from pyrocko.guts import load_xml  # noqa
 import pyrocko.model
 from pyrocko import trace, util
 
-guts_prefix = 'pf'
+guts_prefix = 'sx'
 
 logger = logging.getLogger('pyrocko.io.stationxml')
 
@@ -693,7 +693,7 @@ class Response(Object):
         stage = ResponseStage(
             number=1,
             poles_zeros_list=[pzs],
-            stage_gain=Gain(presponse.constant/norm_factor))
+            stage_gain=Gain(float(abs(presponse.constant))/norm_factor))
 
         resp = Response(
             instrument_sensitivity=Sensitivity(
@@ -1319,6 +1319,9 @@ def load_channel_table(stream):
 
         (net, sta, loc, cha, lat, lon, ele, dep, azi, dip, sens, scale,
             scale_freq, scale_units, sample_rate, start_date, end_date) = t
+
+        if not scale_freq:
+            scale_freq = None
 
         try:
             if net not in networks:
