@@ -2158,7 +2158,7 @@ def MakePileViewerMainClass(base):
             fn = pyrocko.util.data_file('snuffler.png')
             with open(pyrocko.util.data_file('snuffler_about.html')) as f:
                 txt = f.read()
-            label = qg.QLabel(txt % {'logo': fn})
+            label = qw.QLabel(txt % {'logo': fn})
             label.setAlignment(qc.Qt.AlignVCenter | qc.Qt.AlignHCenter)
             self.show_doc('About', [label], target='tab')
 
