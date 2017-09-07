@@ -13,10 +13,9 @@ The :mod:`io` subpackage
     pyrocko.io.css
     pyrocko.io.datacube
     pyrocko.io.enhanced_sacpz
-    pyrocko.io.fdsn_station
     pyrocko.io.gcf
     pyrocko.io.gse1
-    pyrocko.io.gse2_io_wrap
+    pyrocko.io.gse2
     pyrocko.io.ims
     pyrocko.io.io_common
     pyrocko.io.kan
@@ -25,7 +24,7 @@ The :mod:`io` subpackage
     pyrocko.io.rdseed
     pyrocko.io.resp
     pyrocko.io.sac
-    pyrocko.io.seed
+    pyrocko.io.stationxml
     pyrocko.io.segy
     pyrocko.io.seisan_response
     pyrocko.io.seisan_waveform

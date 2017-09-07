@@ -13,7 +13,8 @@ Installation on Mac OS X systems
     sudo port install py27-pyqt4
     sudo port install py27-setuptools
     sudo port install py27-jinja2
-    sudo easy_install pyavl
+    sudo port install py27-requests
+    sudo port install py27-future
     sudo easy_install progressbar
     cd ~/src/   # or wherever you keep your source packages
     git clone git://github.com/pyrocko/pyrocko.git pyrocko

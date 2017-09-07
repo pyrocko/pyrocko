@@ -13,10 +13,6 @@ Available io modules ``pyrocko.io``
     :members:
     :undoc-members:
 
-.. automodule:: pyrocko.io.fdsn_station
-    :members:
-    :undoc-members:
-
 .. automodule:: pyrocko.io.gcf
     :members:
     :undoc-members:
@@ -25,7 +21,7 @@ Available io modules ``pyrocko.io``
     :members:
     :undoc-members:
 
-.. automodule:: pyrocko.io.gse2_io_wrap
+.. automodule:: pyrocko.io.gse2
     :members:
     :undoc-members:
 
@@ -61,7 +57,7 @@ Available io modules ``pyrocko.io``
     :members:
     :undoc-members:
 
-.. automodule:: pyrocko.io.seed
+.. automodule:: pyrocko.io.stationxml
     :members:
     :undoc-members:
 
