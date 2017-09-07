@@ -1308,6 +1308,7 @@ def load_channel_table(stream):
     stations = {}
 
     for line in stream:
+        line = str(line.decode('ascii'))
         if line.startswith('#'):
             continue
 
