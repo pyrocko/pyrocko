@@ -232,7 +232,7 @@ Please purge the old installation before installing this new version:
 
     sudo rm -rf %s
 
-No worries the pyrocko version beeing installed is fully backwards compatible.
+No worries, the pyrocko version beeing installed is fully backwards compatible.
 ###############################################################################
 ''' % (installed_date, install_path))
 

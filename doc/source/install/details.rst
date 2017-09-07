@@ -15,23 +15,26 @@ Prerequisites
 
 The following software packages must be installed before Pyrocko can be installed:
 
-* Try to use normal system packages for these:
-   * `Python <http://www.python.org/>`_ (>= 2.6, < 3.0, with development headers)
+* Try to use normal system packages for these Python modules:
+   * `Python <http://www.python.org/>`_ (>= 2.6 and >=3.4, with development headers)
    * `NumPy <http://numpy.scipy.org/>`_ (>= 1.6, with development headers)
    * `SciPy <http://scipy.org/>`_
    * `matplotlib <http://matplotlib.sourceforge.net/>`_
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
    * `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
-   * `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)
-   * `GMT <http://gmt.soest.hawaii.edu/>`_ (optional, only required for the :py:mod:`automap` module)
-   * `Jinja2 <http://jinja.pocoo.org/>`_ (optional, only required for the ``fomosto report`` subcommand)
+   * `future <https://pypi.python.org/pypi/future>`_ (Python2/3 compatibility layer)
+   * `requests <http://docs.python-requests.org/en/master/>`_ (HTTP for Humans)
 
-* Try to use `easy_install <http://pythonhosted.org/setuptools/easy_install.html>`_ or `pip install <http://www.pip-installer.org/en/latest/installing.html>`_ for these:
-   * `pyavl <http://pypi.python.org/pypi/pyavl/>`_
+* Optional Python modules:
+   * `progressbar2 <http://pypi.python.org/pypi/progressbar2>`_
+   * `GMT <http://gmt.soest.hawaii.edu/>`_ (only required for the :py:mod:`pyrocko.plot.automap` module)
+   * `Jinja2 <http://jinja.pocoo.org/>`_ (only required for the ``fomosto report`` subcommand)
+   * `nosetest <https://pypi.python.org/pypi/nose>`_ (for unittesting)
+   * `coverage <https://pypi.python.org/pypi/coverage>`_ (unittest coverage report)
 
-* Manually install these:
-   * `slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.slink` module)
-   * `rdseed <http://www.iris.edu/software/downloads/rdseed_request.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.rdseed` module)
+* Manually install these seismological software tools:
+   * `slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.streaming.slink` module)
+   * `rdseed <http://www.iris.edu/software/downloads/rdseed_request.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.io.rdseed` module)
    * `QSEIS <http://kinherd.org/fomosto-qseis-2006a.tar.gz>`_ (optional, needed for the Fomosto ``qseis.2006a`` backend)
    * `QSSP <http://kinherd.org/fomosto-qssp-2010.tar.gz>`_ (optional, needed for the Fomosto ``qssp.2010`` backend)
 
