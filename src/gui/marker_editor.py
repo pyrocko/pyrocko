@@ -5,8 +5,6 @@
 from __future__ import absolute_import
 from builtins import zip, range
 
-import sys
-
 from PyQt5 import QtCore as qc
 from PyQt5 import QtGui as qg
 from PyQt5 import QtWidgets as qw
@@ -25,37 +23,24 @@ def noop(x=None):
     return x
 
 
-if sys.version_info[0] >= 3:
-    qc.QString = str
-    qc.QVariant = noop
+def toDateTime(val):
+    return val
 
-    def toDateTime(val):
-        return val
 
-    def isDateTime(val):
-        return isinstance(val, qc.QDateTime)
+def isDateTime(val):
+    return isinstance(val, qc.QDateTime)
 
-    def toFloat(val):
-        try:
-            return float(val), True
-        except ValueError:
-            return 0.0, False
 
-    def toString(val):
-        return str(val)
+def toFloat(val):
+    try:
+        return float(val), True
+    except ValueError:
+        return 0.0, False
 
-else:
-    def toDateTime(val):
-        return val.toDateTime()
 
-    def isDateTime(val):
-        return val.type() == qc.QVariant.DateTime
+def toString(val):
+    return str(val)
 
-    def toFloat(val):
-        return val.toFloat()
-
-    def toString(val):
-        return val.toString()
 
 logger = logging.getLogger('pyrocko.gui.marker_editor')
 
@@ -147,7 +132,7 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
         if index.column() == _column_mapping['MT']:
             mt = self.get_mt_from_index(index)
             if mt:
-                key = qc.QString(''.join([str(round(x, 1)) for x in mt.m6()]))
+                key = ''.join([str(round(x, 1)) for x in mt.m6()])
                 pixmap = qg.QPixmap()
                 found = self.bbcache.find(key, pixmap)
                 if found:
@@ -162,7 +147,7 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
                 painter.restore()
 
         else:
-            qg.QStyledItemDelegate.paint(self, painter, option, index)
+            qw.QStyledItemDelegate.paint(self, painter, option, index)
 
     def displayText(self, value, locale):
         if isDateTime(value):
@@ -440,9 +425,9 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
             elif index.column() == _column_mapping['T']:
                 if isinstance(marker, EventMarker):
-                    s = qc.QString('E')
+                    s = 'E'
                 elif isinstance(marker, PhaseMarker):
-                    s = qc.QString('P')
+                    s = 'P'
 
             elif index.column() == _column_mapping['M']:
                 if isinstance(marker, EventMarker):
@@ -454,9 +439,9 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
             elif index.column() == _column_mapping['Label']:
                 if isinstance(marker, EventMarker):
-                    s = qc.QString(marker.label())
+                    s = marker.label()
                 elif isinstance(marker, PhaseMarker):
-                    s = qc.QString(marker.get_label())
+                    s = marker.get_label()
 
             elif index.column() == _column_mapping['Depth [km]']:
                 if isinstance(marker, EventMarker):
@@ -714,17 +699,17 @@ class MarkerEditor(qw.QFrame):
 
         :param indices: list of indices of selected markers.'''
         self.selection_model.clearSelection()
-        selections = qg.QItemSelection()
-        selection_flags = qg.QItemSelectionModel.SelectionFlags(
-            (qg.QItemSelectionModel.Select |
-             qg.QItemSelectionModel.Rows |
-             qg.QItemSelectionModel.Current))
+        selections = qc.QItemSelection()
+        selection_flags = qc.QItemSelectionModel.SelectionFlags(
+            (qc.QItemSelectionModel.Select |
+             qc.QItemSelectionModel.Rows |
+             qc.QItemSelectionModel.Current))
 
         for chunk in indices:
             mi_start = self.marker_model.index(min(chunk), 0)
             mi_stop = self.marker_model.index(max(chunk), 0)
             row_selection = self.proxy_filter.mapSelectionFromSource(
-                qg.QItemSelection(mi_start, mi_stop))
+                qc.QItemSelection(mi_start, mi_stop))
             selections.merge(row_selection, selection_flags)
 
         if len(indices) != 0:

@@ -21,7 +21,7 @@ The following software packages must be installed before Pyrocko can be installe
    * `SciPy <http://scipy.org/>`_
    * `matplotlib <http://matplotlib.sourceforge.net/>`_
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
-   * `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
+   * `PyQt5 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
    * `progressbar <http://pypi.python.org/pypi/progressbar>`_ (optional)
    * `GMT <http://gmt.soest.hawaii.edu/>`_ (optional, only required for the :py:mod:`automap` module)
    * `Jinja2 <http://jinja.pocoo.org/>`_ (optional, only required for the ``fomosto report`` subcommand)

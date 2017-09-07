@@ -699,7 +699,7 @@ def MakePileViewerMainClass(base):
 
         markers_added = qc.pyqtSignal(int, int)
         markers_removed = qc.pyqtSignal(int, int)
-        changed_marker_selection = qc.pyqtSignal()
+        changed_marker_selection = qc.pyqtSignal(list)
         active_event_marker_changed = qc.pyqtSignal(int)
 
         def __init__(self, pile, ntracks_shown_max, panel_parent, *args):
@@ -2163,7 +2163,7 @@ def MakePileViewerMainClass(base):
             self.show_doc('About', [label], target='tab')
 
         def help(self):
-            class MyScrollArea(qg.QScrollArea):
+            class MyScrollArea(qw.QScrollArea):
 
                 def sizeHint(self):
                     s = qc.QSize()
@@ -2173,11 +2173,11 @@ def MakePileViewerMainClass(base):
 
             with open(pyrocko.util.data_file(
                     'snuffler_help.html')) as f:
-                hcheat = qg.QLabel(f.read())
+                hcheat = qw.QLabel(f.read())
 
             with open(pyrocko.util.data_file(
                     'snuffler_help_epilog.html')) as f:
-                hepilog = qg.QLabel(f.read())
+                hepilog = qw.QLabel(f.read())
 
             for h in [hcheat, hepilog]:
                 h.setAlignment(qc.Qt.AlignTop | qc.Qt.AlignHCenter)
@@ -2186,10 +2186,10 @@ def MakePileViewerMainClass(base):
             self.show_doc('Help', [hcheat, hepilog], target='panel')
 
         def show_doc(self, name, labels, target='panel'):
-            scroller = qg.QScrollArea()
-            frame = qg.QFrame(scroller)
+            scroller = qw.QScrollArea()
+            frame = qw.QFrame(scroller)
             frame.setLineWidth(0)
-            layout = qg.QVBoxLayout()
+            layout = qw.QVBoxLayout()
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
             frame.setLayout(layout)
@@ -2466,7 +2466,7 @@ def MakePileViewerMainClass(base):
                 painter.end()
 
             elif str(fn).endswith('.png'):
-                pixmap = qg.QPixmap().grabWidget(self)
+                pixmap = self.grab()
                 pixmap.save(fn)
             else:
                 logger.warning('unsupported file type')
@@ -3382,7 +3382,7 @@ def MakePileViewerMainClass(base):
 
             if not self.picking:
                 self.deselect_all()
-                self.picking = qg.QRubberBand(qg.QRubberBand.Rectangle)
+                self.picking = qw.QRubberBand(qw.QRubberBand.Rectangle)
                 point = self.mapFromGlobal(qg.QCursor.pos())
 
                 gpoint = self.mapToGlobal(qc.QPoint(point.x(), 0))
@@ -3749,7 +3749,7 @@ class LineEditWithAbort(qw.QLineEdit):
         elif key_event.key() == qc.Qt.Key_Up:
             self.history_up.emit()
         else:
-            return qg.QLineEdit.keyPressEvent(self, key_event)
+            return qw.QLineEdit.keyPressEvent(self, key_event)
 
 
 class PileViewer(qw.QFrame):

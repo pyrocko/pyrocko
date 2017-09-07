@@ -18,6 +18,8 @@ from pyrocko import plot
 from PyQt5 import QtCore as qc
 from PyQt5 import QtGui as qg
 from PyQt5 import QtWidgets as qw
+from PyQt5.QtWebEngineWidgets import QWebEngineView
+
 
 if sys.version_info > (3,):
     buffer = memoryview
@@ -50,7 +52,7 @@ class Label(object):
             font=None,
             color=None):
 
-        text = qw.QTextDocument()
+        text = qg.QTextDocument()
         if font:
             text.setDefaultFont(font)
         text.setDefaultStyleSheet('span { color: %s; }' % color.name())
@@ -132,8 +134,8 @@ def draw_label(p, x, y, label_str, label_bg, anchor='BL', outline=False):
 
 
 def get_err_palette():
-    err_palette = qw.QPalette()
-    err_palette.setColor(qw.QPalette.Base, qw.QColor(255, 200, 200))
+    err_palette = qg.QPalette()
+    err_palette.setColor(qg.QPalette.Base, qg.QColor(255, 200, 200))
     return err_palette
 
 
@@ -499,7 +501,7 @@ class FigureFrame(qw.QFrame):
         fgcolor = plot.tango_colors['aluminium5']
         dpi = 0.5*(self.logicalDpiX() + self.logicalDpiY())
 
-        font = qw.QFont()
+        font = qg.QFont()
         font.setBold(True)
         fontsize = font.pointSize()
 
@@ -555,13 +557,13 @@ class FigureFrame(qw.QFrame):
 
         from matplotlib.figure import Figure
         try:
-            from matplotlib.backends.backend_qt4agg import \
+            from matplotlib.backends.backend_qt5agg import \
                 NavigationToolbar2QTAgg as NavigationToolbar
         except:
-            from matplotlib.backends.backend_qt4agg import \
+            from matplotlib.backends.backend_qt5agg import \
                 NavigationToolbar2QT as NavigationToolbar
 
-        from matplotlib.backends.backend_qt4agg \
+        from matplotlib.backends.backend_qt5agg \
             import FigureCanvasQTAgg as FigureCanvas
 
         layout = qw.QGridLayout()
@@ -596,14 +598,13 @@ class FigureFrame(qw.QFrame):
 class WebKitFrame(qw.QFrame):
 
     def __init__(self, url=None, parent=None):
-        from PyQt5.QtWebKit import QWebView
 
         qw.QFrame.__init__(self, parent)
         layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.setLayout(layout)
-        self.web_widget = QWebView()
+        self.web_widget = QWebEngineView()
         layout.addWidget(self.web_widget, 0, 0)
         if url:
             self.web_widget.load(qc.QUrl(url))
@@ -657,7 +658,7 @@ class PixmapFrame(qw.QLabel):
             self.load_pixmap(filename)
 
     def contextMenuEvent(self, event):
-        self.menu.popup(qw.QCursor.pos())
+        self.menu.popup(qg.QCursor.pos())
 
     def load_pixmap(self, filename):
         self.pixmap = qw.QPixmap(filename)

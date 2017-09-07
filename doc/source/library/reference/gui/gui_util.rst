@@ -1,5 +1,5 @@
-``pyrocko.gui.gui_util``
+``pyrocko.gui.util``
 ========================
 
-.. automodule:: pyrocko.gui.gui_util
+.. automodule:: pyrocko.gui.util
     :members:

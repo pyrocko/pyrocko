@@ -55,7 +55,7 @@ require_internet = unittest.skipUnless(have_internet(), 'need internet access')
 
 def have_gui():
     try:
-        from PyQt4 import QtCore  # noqa
+        from PyQt5 import QtCore  # noqa
         return True
     except ImportError:
         return False

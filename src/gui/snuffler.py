@@ -797,7 +797,7 @@ def snuffle(pile=None, **kwargs):
 
 def snuffler_from_commandline(args=None):
     if args is None:
-        args = sys.argv
+        args = sys.argv[1:]
 
     usage = '''usage: %prog [options] waveforms ...'''
     parser = OptionParser(usage=usage)
