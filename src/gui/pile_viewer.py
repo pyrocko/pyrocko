@@ -1084,6 +1084,9 @@ def MakePileViewerMainClass(base):
             self.timer_draw = Timer()
             self.timer_cutout = Timer()
             self.time_spent_painting = 0.0
+            self.time_last_painted = time.time()
+
+            self.timer_update_soon = None
 
             self.interactive_range_change_time = 0.0
             self.interactive_range_change_delay_time = 10.0
@@ -1106,6 +1109,14 @@ def MakePileViewerMainClass(base):
             self.automatic_updates = True
 
             self.closing = False
+
+        def update(self):
+            self.timer_update_soon = None
+            qw.QWidget.update(self)
+
+        def update_soon(self):
+            if not self.timer_update_soon:
+                self.timer_update_soon = qc.QTimer.singleShot(50, self.update)
 
         def fail(self, reason):
             box = qw.QMessageBox(self)
@@ -1793,6 +1804,10 @@ def MakePileViewerMainClass(base):
             if self.picking:
                 self.stop_picking(mouse_ev.x(), mouse_ev.y())
                 self.emit_selected_markers()
+
+            if self.track_start:
+                self.update()
+
             self.track_start = None
             self.track_trange = None
             self.update_status()
@@ -1827,7 +1842,11 @@ def MakePileViewerMainClass(base):
                     tmin0 - dt - dtr*frac,
                     tmax0 - dt + dtr*(1.-frac))
 
-                self.update()
+                if self.time_last_painted < time.time() \
+                        - self.time_spent_painting * 2.:
+                    self.update()
+                else:
+                    self.update_soon()
             else:
                 self.hoovering(point.x(), point.y())
 
@@ -2198,7 +2217,7 @@ def MakePileViewerMainClass(base):
             qg.QDesktopServices.openUrl(qc.QUrl(link))
 
         def wheelEvent(self, wheel_event):
-            self.wheel_pos += wheel_event.delta()
+            self.wheel_pos += wheel_event.angleDelta().y()
             n = self.wheel_pos // 120
             self.wheel_pos = self.wheel_pos % 120
             if n == 0:
@@ -2470,6 +2489,7 @@ def MakePileViewerMainClass(base):
                 self.timer_cutout.get())
 
             self.time_spent_painting = self.timer_draw.get()[-1]
+            self.time_last_painted = time.time()
 
         def determine_box_styles(self):
 
