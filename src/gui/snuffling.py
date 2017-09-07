@@ -1257,7 +1257,7 @@ class Snuffling(object):
         if not dir and self._previous_output_filename:
             dir = self._previous_output_filename
 
-        fn = qw.QFileDialog.getSaveFileName(
+        fn, _ = qw.QFileDialog.getSaveFileName(
             self.get_viewer(), caption, dir, filter, selected_filter)
 
         if not fn:
@@ -1278,7 +1278,7 @@ class Snuffling(object):
         if not dir and self._previous_input_directory:
             dir = self._previous_input_directory
 
-        dirn = qw.QFileDialog.getExistingDirectory(
+        dirn, _ = qw.QFileDialog.getExistingDirectory(
             None, caption, dir, qw.QFileDialog.ShowDirsOnly)
 
         if not dirn:
@@ -1300,7 +1300,7 @@ class Snuffling(object):
         if not dir and self._previous_input_filename:
             dir = self._previous_input_filename
 
-        fn = qw.QFileDialog.getOpenFileName(
+        fn, _ = qw.QFileDialog.getOpenFileName(
             self.get_viewer(),
             caption,
             dir,

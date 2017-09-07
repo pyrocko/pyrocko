@@ -1484,7 +1484,7 @@ def MakePileViewerMainClass(base):
 
             caption = 'Select one or more files to open'
 
-            fns = qg.QFileDialog.getOpenFileNames(
+            fns, _ = qw.QFileDialog.getOpenFileNames(
                 self, caption, options=qfiledialog_options)
 
             self.load(list(str(fn) for fn in fns))
@@ -1493,7 +1493,7 @@ def MakePileViewerMainClass(base):
 
             caption = 'Select directory to scan for waveform files'
 
-            fn = qg.QFileDialog.getExistingDirectory(
+            fn, _ = qw.QFileDialog.getExistingDirectory(
                 self, caption, options=qfiledialog_options)
 
             self.load([str(fn)])
@@ -1502,7 +1502,7 @@ def MakePileViewerMainClass(base):
             caption = 'Select one or more files to open'
 
             if not fns:
-                fns = qg.QFileDialog.getOpenFileNames(
+                fns, _ = qw.QFileDialog.getOpenFileNames(
                     self, caption, options=qfiledialog_options)
 
             stations = [pyrocko.model.load_stations(str(x)) for x in fns]
@@ -1656,7 +1656,7 @@ def MakePileViewerMainClass(base):
         def write_markers(self, fn=None):
             caption = "Choose a file name to write markers"
             if not fn:
-                fn = qg.QFileDialog.getSaveFileName(
+                fn, _ = qw.QFileDialog.getSaveFileName(
                     self, caption, options=qfiledialog_options)
             if fn:
                 Marker.save_markers(
@@ -1666,7 +1666,7 @@ def MakePileViewerMainClass(base):
         def write_selected_markers(self, fn=None):
             caption = "Choose a file name to write selected markers"
             if not fn:
-                fn = qg.QFileDialog.getSaveFileName(
+                fn, _ = qw.QFileDialog.getSaveFileName(
                     self, caption, options=qfiledialog_options)
             if fn:
                 Marker.save_markers(
@@ -1681,7 +1681,7 @@ def MakePileViewerMainClass(base):
             '''
             caption = "Selet one or more files to open"
             if not fn:
-                fn = qg.QFileDialog.getOpenFileName(
+                fn, _ = qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options)
             if fn:
                 self.add_events(pyrocko.model.Event.load_catalog(fn))
@@ -1694,7 +1694,7 @@ def MakePileViewerMainClass(base):
             '''
             caption = "Selet one or more files to open"
             if not fn:
-                fn = qg.QFileDialog.getOpenFileName(
+                fn, _ = qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options)
             if fn:
                 self.add_markers(Marker.load_markers(fn))
@@ -2443,7 +2443,7 @@ def MakePileViewerMainClass(base):
         def savesvg(self, fn=None):
 
             if not fn:
-                fn = qg.QFileDialog.getSaveFileName(
+                fn, _ = qw.QFileDialog.getSaveFileName(
                     self,
                     'Save as SVG|PNG',
                     os.path.join(os.environ['HOME'],  'untitled.svg'),

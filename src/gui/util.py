@@ -669,6 +669,6 @@ class PixmapFrame(qw.QLabel):
 
     def save_pixmap(self, filename=None):
         if not filename:
-            filename = qw.QFileDialog.getSaveFileName(
+            filename, _ = qw.QFileDialog.getSaveFileName(
                 self.parent(), caption='save as')
         self.pixmap.save(filename)
