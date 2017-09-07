@@ -18,7 +18,6 @@ from pyrocko import plot
 from PyQt5 import QtCore as qc
 from PyQt5 import QtGui as qg
 from PyQt5 import QtWidgets as qw
-from PyQt5.QtWebEngineWidgets import QWebEngineView
 
 
 if sys.version_info > (3,):
@@ -598,13 +597,17 @@ class FigureFrame(qw.QFrame):
 class WebKitFrame(qw.QFrame):
 
     def __init__(self, url=None, parent=None):
+        try:
+            from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
+        except ImportError:
+            from PyQt5.QtWebKitWidgets import QWebView as WebView
 
         qw.QFrame.__init__(self, parent)
         layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.setLayout(layout)
-        self.web_widget = QWebEngineView()
+        self.web_widget = WebView()
         layout.addWidget(self.web_widget, 0, 0)
         if url:
             self.web_widget.load(qc.QUrl(url))
