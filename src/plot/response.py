@@ -36,12 +36,20 @@ from builtins import range
 import numpy as num
 
 from pyrocko import util
+from pyrocko import guts
+
+
+def normalize_on_flat(f, tf, factor=10000.):
+    df = num.diff(num.log(f))
+    tap = 1.0 / (1.0 + factor * (num.diff(num.log(num.abs(tf)))/df)**2)
+    return tf / (num.sum(num.abs(tf[1:]) * tap) / num.sum(tap))
 
 
 def draw(
         response,
         axes_amplitude=None, axes_phase=None,
         fmin=0.01, fmax=100., nf=100,
+        normalize=False,
         style={},
         label=None):
 
@@ -64,6 +72,10 @@ def draw(
 
     f = num.exp(num.linspace(num.log(fmin), num.log(fmax), nf))
     tf = response.evaluate(f)
+
+    if normalize:
+        tf = normalize_on_flat(f, tf)
+
     ta = num.abs(tf)
 
     if axes_amplitude:
@@ -110,6 +122,7 @@ def plot(
         filename=None,
         dpi=100,
         fmin=0.01, fmax=100., nf=100,
+        normalize=False,
         fontsize=10.,
         figsize=None,
         styles=None,
@@ -123,6 +136,7 @@ def plot(
     :param fmin: minimum frequency [Hz]
     :param fmax: maximum frequency [Hz]
     :param nf: number of frequencies where to evaluate the response
+    :param normalize: if ``True`` normalize flat part of response to be ``1``
     :param styles: :py:class:`list` of :py:class:`dict` objects  with keyword
         arguments to be passed to matplotlib's
         :py:meth:`matplotlib.axes.Axes.plot` function when drawing the response
@@ -167,19 +181,25 @@ def plot(
         assert len(labels) == len(responses)
 
     a_ranges, p_ranges = [], []
+    have_labels = False
     for style, resp, label in zip(styles, responses, labels):
         a_range, p_range = draw(
             response=resp,
             axes_amplitude=axes_amplitude,
             axes_phase=axes_phase,
             fmin=fmin, fmax=fmax, nf=nf,
+            normalize=normalize,
             style=style,
             label=label)
+
+        if label is not None:
+            have_labels = True
 
         a_ranges.append(a_range)
         p_ranges.append(p_range)
 
-    axes_amplitude.legend(loc='lower right', prop=dict(size=fontsize))
+    if have_labels:
+        axes_amplitude.legend(loc='lower right', prop=dict(size=fontsize))
 
     a_ranges = num.array(a_ranges)
     p_ranges = num.array(p_ranges)
@@ -228,6 +248,15 @@ def load_response_information(
         resp = trace.PoleZeroResponse(
             zeros=zeros, poles=poles, constant=constant)
 
+        resps.append(resp)
+        labels.append(filename)
+
+    elif format == 'pf':
+        if fake_input_units is not None:
+            raise Exception(
+                'cannot guess true input units from plain response files')
+
+        resp = guts.load(filename=filename)
         resps.append(resp)
         labels.append(filename)
 
@@ -300,7 +329,7 @@ if __name__ == '__main__':
 
     description = '''Plot instrument responses (transfer functions).'''
 
-    allowed_formats = ['sacpz', 'resp', 'stationxml']
+    allowed_formats = ['sacpz', 'resp', 'stationxml', 'pf']
 
     parser = OptionParser(
         usage=usage,
@@ -328,6 +357,13 @@ if __name__ == '__main__':
         type='float',
         default=100.,
         help='maximum frequency [Hz], default: %default')
+
+    parser.add_option(
+        '--normalize',
+        dest='normalize',
+        action='store_true',
+        help='normalize response to be 1 on flat part')
+
 
     parser.add_option(
         '--save',
@@ -384,4 +420,5 @@ if __name__ == '__main__':
     plot(
         resps,
         fmin=options.fmin, fmax=options.fmax, nf=200,
+        normalize=options.normalize,
         labels=labels, filename=options.filename, dpi=options.dpi)
