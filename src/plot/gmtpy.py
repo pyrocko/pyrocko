@@ -33,6 +33,16 @@ find_bb = re.compile(br'%%BoundingBox:((\s+[-0-9]+){4})')
 find_hiresbb = re.compile(br'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
 
 
+encoding_gmt_to_python = {
+    'isolatin1+': 'iso-8859-1',
+    'standard+': 'ascii',
+    'isolatin1': 'iso-8859-1',
+    'standard': 'ascii'}
+
+for i in range(1, 11):
+    encoding_gmt_to_python['iso-8859-%i' % i] = 'iso-8859-%i' % i
+
+
 def have_gmt():
     try:
         get_gmt_installation('newest')
@@ -3072,18 +3082,21 @@ def text_box(
 class TableLiner(object):
     '''Utility class to turn tables into lines.'''
 
-    def __init__(self, in_columns=None, in_rows=None):
+    def __init__(self, in_columns=None, in_rows=None, encoding='ascii'):
         self.in_columns = in_columns
         self.in_rows = in_rows
+        self.encoding = encoding
 
     def __iter__(self):
         if self.in_columns is not None:
             for row in zip(*self.in_columns):
-                yield (' '.join([str(x) for x in row])+'\n').encode('ascii')
+                yield (' '.join([str(x) for x in row])+'\n').encode(
+                    self.encoding)
 
         if self.in_rows is not None:
             for row in self.in_rows:
-                yield (' '.join([str(x) for x in row])+'\n').encode('ascii')
+                yield (' '.join([str(x) for x in row])+'\n').encode(
+                    self.encoding)
 
 
 class LineStreamChopper(object):
@@ -3305,8 +3318,9 @@ class GMT(object):
                          if x is not None]))
 
         gmt_config_filename = self.gmt_config_filename
+        gmt_config = self.gmt_config
         if config_override:
-            gmt_config = self.gmt_config.copy()
+            gmt_config = gmt_config.copy()
             gmt_config.update(config_override)
             gmt_config_override_filename = pjoin(
                 self.tempdir, 'gmtdefaults_override')
@@ -3329,9 +3343,16 @@ class GMT(object):
         if in_string is not None:
             in_stream = BytesIO(in_string)
 
+        encoding_gmt = gmt_config.get(
+            'PS_CHAR_ENCODING',
+            gmt_config.get('CHAR_ENCODING', 'ISOLatin1+'))
+
+        encoding = encoding_gmt_to_python[encoding_gmt.lower()]
+
         if in_columns is not None or in_rows is not None:
             in_stream = LineStreamChopper(TableLiner(in_columns=in_columns,
-                                                     in_rows=in_rows))
+                                                     in_rows=in_rows,
+                                                     encoding=encoding))
 
         # convert option arguments to strings
         for k, v in kwargs.items():
