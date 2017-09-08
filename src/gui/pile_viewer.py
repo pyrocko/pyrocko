@@ -704,6 +704,8 @@ def MakePileViewerMainClass(base):
 
         def __init__(self, pile, ntracks_shown_max, panel_parent, *args):
             if base == qgl.QGLWidget:
+                from OpenGL import GL  # noqa
+
                 base.__init__(
                     self, qgl.QGLFormat(qgl.QGL.SampleBuffers), *args)
             else:
