@@ -271,6 +271,14 @@ def snuffler_from_commandline(args=None):
              '100000+ markers')
 
     parser.add_option(
+        '--hptime',
+        choices=('on', 'off', 'config'),
+        dest='hp_time',
+        default='config',
+        metavar='on|off|config',
+        help='set high precision time mode [default: %default]')
+
+    parser.add_option(
         '--opengl',
         dest='opengl',
         action='store_true',
@@ -304,6 +312,9 @@ def snuffler_from_commandline(args=None):
         util.setup_logging('snuffler', 'debug')
     else:
         util.setup_logging('snuffler', 'warning')
+
+    if options.hp_time in ('on', 'off'):
+        util.use_high_precision_time(options.hp_time == 'on')
 
     if options.gui_toolkit_qt4:
         config.override_gui_toolkit = 'qt4'

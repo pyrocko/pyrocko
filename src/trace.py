@@ -14,7 +14,7 @@ import numpy as num
 from scipy import signal
 
 from . import util, evalresp, orthodrome, pchain, model
-from .util import reuse, hpfloat, UnavailableDecimation
+from .util import reuse, UnavailableDecimation
 from .guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice, Timestamp
 from .guts_array import Array
@@ -69,7 +69,7 @@ class Trace(Object):
     location = String.T(default='')
     channel = String.T(default='')
 
-    tmin = Timestamp.T(default=0.0)
+    tmin = Timestamp.T(default=Timestamp.D('1970-01-01 00:00:00'))
     tmax = Timestamp.T()
 
     deltat = Float.T(default=1.0)
@@ -85,24 +85,25 @@ class Trace(Object):
 
         Object.__init__(self, init_props=False)
 
-        if not isinstance(tmin, float):
+        time_float = util.get_time_float()
+
+        if not isinstance(tmin, time_float):
             tmin = Trace.tmin.regularize_extra(tmin)
 
-        if tmax is not None and not isinstance(tmax, float):
+        if tmax is not None and not isinstance(tmax, time_float):
             tmax = Trace.tmax.regularize_extra(tmax)
 
-        if mtime is not None and not isinstance(mtime, float):
+        if mtime is not None and not isinstance(mtime, time_float):
             mtime = Trace.mtime.regularize_extra(mtime)
 
         self._growbuffer = None
 
-        if deltat < 0.001:
-            tmin = hpfloat(tmin)
-            if tmax is not None:
-                tmax = hpfloat(tmax)
+        tmin = time_float(tmin)
+        if tmax is not None:
+            tmax = time_float(tmax)
 
         if mtime is None:
-            mtime = time.time()
+            mtime = time_float(time.time())
 
         self.network, self.station, self.location, self.channel = [
             reuse(x) for x in (network, station, location, channel)]
@@ -385,7 +386,6 @@ class Trace(Object):
         '''
         Check if trace has overlap with a given time span.
         '''
-
         return not (tmax < self.tmin or self.tmax < tmin)
 
     def is_relevant(self, tmin, tmax, selector=None):
@@ -1154,10 +1154,14 @@ class Trace(Object):
             n = xself.data_len()
             ydata_new = num.empty(n, dtype=num.float)
             i_control = num.array([0, n-1], dtype=num.int64)
-            t_control = num.array([xself.tmin, xself.tmax])
+            tref = tmin
+            t_control = num.array(
+                [float(xself.tmin-tref), float(xself.tmax-tref)],
+                dtype=num.float)
+
             signal_ext.antidrift(i_control, t_control,
                                  xself.ydata.astype(num.float),
-                                 tmin, xself.deltat, ydata_new)
+                                 float(tmin-tref), xself.deltat, ydata_new)
 
             xself.ydata = ydata_new
 
@@ -2863,7 +2867,7 @@ class InverseEvalresp(FrequencyResponse):
     respfile = String.T()
     nslc_id = Tuple.T(4, String.T())
     target = String.T(default='dis')
-    instant = Float.T()
+    instant = Timestamp.T()
 
     def __init__(self, respfile, trace, target='dis'):
         FrequencyResponse.__init__(

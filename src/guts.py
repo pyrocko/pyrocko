@@ -28,7 +28,8 @@ try:
 except ImportError:
     from yaml import SafeLoader, SafeDumper
 
-from .util import time_to_str, str_to_time, TimeStrError
+from .util import time_to_str, str_to_time, TimeStrError, hpfloat, \
+    get_time_float
 
 try:
     newstr = unicode
@@ -233,6 +234,13 @@ def make_content_name(name):
         return name
 
 
+def classnames(cls):
+    if isinstance(cls, tuple):
+        return '(%s)' % ', '.join(x.__name__ for x in cls)
+    else:
+        return cls.__name__
+
+
 def expand_stream_args(mode):
     def wrap(f):
         '''Decorator to enhance functions taking stream objects.
@@ -343,10 +351,6 @@ class TBase(object):
 
         g_iprop += 1
         self._default = default
-        if isinstance(self._default, DefaultMaker):
-            self._default_cmp = self._default.make()
-        else:
-            self._default_cmp = self._default
 
         self.optional = optional
         self.name = None
@@ -360,10 +364,10 @@ class TBase(object):
         return make_default(self._default)
 
     def is_default(self, val):
-        if self._default_cmp is None:
+        if self._default is None:
             return val is None
         else:
-            return self._default_cmp == val
+            return self._default == val
 
     def has_default(self):
         return self._default is not None
@@ -540,18 +544,25 @@ class TBase(object):
                 except ValueError:
                     raise ValidationError(
                         '%s: could not convert "%s" to type %s' % (
-                            self.xname(), val, self.cls.__name__))
+                            self.xname(), val, classnames(self.cls)))
             else:
                 raise ValidationError(
                     '%s: "%s" (type: %s) is not of type %s' % (
-                        self.xname(), val, type(val), self.cls.__name__))
+                        self.xname(), val, type(val), classnames(self.cls)))
 
         validator = self
-        if type(val) != self.cls \
-                and isinstance(val, self.cls) and \
-                hasattr(val, 'T'):
-            # derived classes only: validate with derived class validator
-            validator = val.T.instance
+        if isinstance(self.cls, tuple):
+            clss = self.cls
+        else:
+            clss = (self.cls,)
+
+        for cls in clss:
+            try:
+                if type(val) != cls and isinstance(val, cls):
+                    validator = val.T.instance
+
+            except AttributeError:
+                pass
 
         validator.validate_extra(val)
 
@@ -593,9 +604,11 @@ class TBase(object):
     def classname_for_help(self, strip_module=''):
         if self.dummy_cls in guts_plain_dummy_types:
             return '``%s``' % self.cls.__name__
+
+        elif self.dummy_cls.dummy_for_description:
+            return self.dummy_cls.dummy_for_description
+
         else:
-            mod = self.cls.__module__
-            cls = self.cls.__name__
             if self.dummy_cls is not self.cls:
                 if self.dummy_cls.__module__ == strip_module:
                     sadd = ' (:py:class:`%s`)' % (
@@ -606,14 +619,23 @@ class TBase(object):
             else:
                 sadd = ''
 
-            if mod == '__builtin__':
-                return '``%s``%s' % (cls, sadd)
+            def sclass(cls):
+                mod = cls.__module__
+                clsn = cls.__name__
+                if mod == '__builtin__' or mod == 'builtins':
+                    return '``%s``' % clsn
 
-            elif self.cls.__module__ == strip_module:
-                return ':py:class:`%s`%s' % (cls, sadd)
+                elif mod == strip_module:
+                    return ':py:class:`%s`' % clsn
 
+                else:
+                    return ':py:class:`%s.%s`' % (mod, clsn)
+
+            if isinstance(self.cls, tuple):
+                return '(%s)%s' % (
+                    ' | '.join(sclass(cls) for cls in self.cls), sadd)
             else:
-                return ':py:class:`%s.%s`%s' % (mod, cls, sadd)
+                return '%s%s' % (sclass(cls), sadd)
 
     @classmethod
     def props_help_string(cls):
@@ -634,9 +656,12 @@ class TBase(object):
             if prop.optional:
                 descr.append('*optional*')
 
-            d = prop.default()
-            if d is not None:
-                descr.append('*default:* ``%s``' % repr(d))
+            if isinstance(prop._default, DefaultMaker):
+                descr.append('*default:* ``%s``' % repr(prop._default))
+            else:
+                d = prop.default()
+                if d is not None:
+                    descr.append('*default:* ``%s``' % repr(d))
 
             hlp.append('    .. py:gattribute:: %s' % prop.name)
             hlp.append('')
@@ -805,15 +830,51 @@ def make_default(x):
 
 
 class DefaultMaker(object):
+    def make(self):
+        raise NotImplementedError('Schould be implemented in subclass.')
+
+
+class ObjectDefaultMaker(DefaultMaker):
     def __init__(self, cls, args, kwargs):
+        DefaultMaker.__init__(self)
         self.cls = cls
         self.args = args
         self.kwargs = kwargs
+        self.instance = None
 
     def make(self):
         return self.cls(
             *[make_default(x) for x in self.args],
             **dict((k, make_default(v)) for (k, v) in self.kwargs.items()))
+
+    def __eq__(self, other):
+        if self.instance is None:
+            self.instance = self.make()
+
+        return self.instance == other
+
+    def __repr__(self):
+        sargs = []
+        for arg in self.args:
+            sargs.append(repr(arg))
+
+        for k, v in self.kwargs.items():
+            sargs.append('%s=%s' % (k, repr(v)))
+
+        return '%s(%s)' % (self.cls.__name__, ', '.join(sargs))
+
+
+class TimestampDefaultMaker(DefaultMaker):
+    def __init__(self, s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
+        DefaultMaker.__init__(self)
+        self._stime = s
+        self._format = format
+
+    def make(self):
+        return str_to_time(self._stime, self._format)
+
+    def __repr__(self):
+        return "str_to_time(%s)" % repr(self._stime)
 
 
 def with_metaclass(meta, *bases):
@@ -832,6 +893,7 @@ def with_metaclass(meta, *bases):
 
 class Object(with_metaclass(ObjectMetaClass, object)):
     dummy_for = None
+    dummy_for_description = None
 
     def __init__(self, **kwargs):
         if not kwargs.get('init_props', True):
@@ -854,7 +916,7 @@ class Object(with_metaclass(ObjectMetaClass, object)):
 
     @classmethod
     def D(cls, *args, **kwargs):
-        return DefaultMaker(cls, args, kwargs)
+        return ObjectDefaultMaker(cls, args, kwargs)
 
     def validate(self, regularize=False, depth=-1):
         self.T.instance.validate(self, regularize, depth)
@@ -1218,18 +1280,22 @@ re_tz = re.compile(r'(Z|([+-][0-2][0-9])(:?([0-5][0-9]))?)$')
 
 
 class Timestamp(Object):
-    dummy_for = float
+    dummy_for = (hpfloat, float)
+    dummy_for_description = 'time_float'
 
     class __T(TBase):
 
         def regularize_extra(self, val):
+
+            time_float = get_time_float()
+
             if isinstance(val, datetime.datetime):
                 tt = val.utctimetuple()
-                val = calendar.timegm(tt) + val.microsecond * 1e-6
+                val = time_float(calendar.timegm(tt)) + val.microsecond * 1e-6
 
             elif isinstance(val, datetime.date):
                 tt = val.timetuple()
-                val = float(calendar.timegm(tt))
+                val = time_float(calendar.timegm(tt))
 
             elif isinstance(val, (str, newstr)):
                 val = val.strip()
@@ -1253,41 +1319,52 @@ class Timestamp(Object):
                     raise ValidationError(
                         '%s: cannot parse time/date: %s' % (self.xname(), val))
 
-            elif isinstance(val, int):
-                val = float(val)
+            elif isinstance(val, (int, float)):
+                val = time_float(val)
 
             else:
                 raise ValidationError(
-                    '%s: cannot convert "%s" to float' % (self.xname(), val))
+                    '%s: cannot convert "%s" to type %s' % (
+                        self.xname(), val, time_float))
 
             return val
 
         def to_save(self, val):
-            return datetime.datetime.utcfromtimestamp(val)
+            return time_to_str(val, format='%Y-%m-%d %H:%M:%S.9FRAC')\
+                .rstrip('0').rstrip('.')
 
         def to_save_xml(self, val):
-            return datetime.datetime.utcfromtimestamp(val).isoformat() + 'Z'
+            return time_to_str(val, format='%Y-%m-%dT%H:%M:%S.9FRAC')\
+                .rstrip('0').rstrip('.') + 'Z'
+
+    @classmethod
+    def D(self, s):
+        return TimestampDefaultMaker(s)
 
 
 class DateTimestamp(Object):
-    dummy_for = float
+    dummy_for = (hpfloat, float)
+    dummy_for_description = 'time_float'
 
     class __T(TBase):
 
         def regularize_extra(self, val):
+
+            time_float = get_time_float()
+
             if isinstance(val, datetime.datetime):
                 tt = val.utctimetuple()
-                val = calendar.timegm(tt) + val.microsecond * 1e-6
+                val = time_float(calendar.timegm(tt)) + val.microsecond * 1e-6
 
             elif isinstance(val, datetime.date):
                 tt = val.timetuple()
-                val = float(calendar.timegm(tt))
+                val = time_float(calendar.timegm(tt))
 
             elif isinstance(val, (str, newstr)):
                 val = str_to_time(val, format='%Y-%m-%d')
 
             elif isinstance(val, int):
-                val = float(val)
+                val = time_float(val)
 
             return val
 
@@ -1296,6 +1373,10 @@ class DateTimestamp(Object):
 
         def to_save_xml(self, val):
             return time_to_str(val, format='%Y-%m-%d')
+
+    @classmethod
+    def D(self, s):
+        return TimestampDefaultMaker(s, format='%Y-%m-%d')
 
 
 class StringPattern(String):
@@ -1466,16 +1547,27 @@ class Choice(Object):
                         raise ValidationError(
                             '%s: could not convert "%s" to any type out of '
                             '(%s)' % (self.xname(), val, ','.join(
-                                x.cls.__name__ for x in self.choices)))
+                                classnames(x.cls) for x in self.choices)))
                 else:
                     raise ValidationError(
                         '%s: "%s" (type: %s) is not of any type out of '
                         '(%s)' % (self.xname(), val, type(val), ','.join(
-                            x.cls.__name__ for x in self.choices)))
+                            classnames(x.cls) for x in self.choices)))
 
             validator = t
-            if type(val) != t.cls and isinstance(val, t.cls):
-                validator = val.T.instance
+
+            if isinstance(t.cls, tuple):
+                clss = t.cls
+            else:
+                clss = (t.cls,)
+
+            for cls in clss:
+                try:
+                    if type(val) != cls and isinstance(val, cls):
+                        validator = val.T.instance
+
+                except AttributeError:
+                    pass
 
             validator.validate_extra(val)
 
@@ -1669,10 +1761,13 @@ class Constructor(object):
                 cls = self.stack[-1][1].T.xmltagname_to_class.get(
                     ns_name, None)
 
-                if cls is not None and (
-                        not issubclass(cls, Object)
-                        or issubclass(cls, SObject)):
+                if isinstance(cls, tuple):
                     cls = None
+                else:
+                    if cls is not None and (
+                            not issubclass(cls, Object)
+                            or issubclass(cls, SObject)):
+                        cls = None
             else:
                 cls = g_xmltagname_to_class.get(ns_name, None)
 
