@@ -7,7 +7,7 @@ from collections import defaultdict
 import numpy as num
 from pyrocko import util, trace, autopick
 
-from pyrocko.parstack import parstack
+from pyrocko.parstack import parstack, get_offset_and_length
 
 
 def numeq(a, b, eps):
@@ -325,6 +325,38 @@ class ParstackTestCase(unittest.TestCase):
         argmax_parstack = pargmax(a, nparallel)
 
         num.testing.assert_array_equal(argmax_parstack, argmax_numpy)
+
+    def test_semblance(self):
+        arrays = [
+            num.array([0, 0, 0, 0, 0, 0, 0, 1, 0, -1, 0], dtype=num.float),
+            num.array([0, 0, 0, 0, 0, 0, 1, 0, -1, 0, 0], dtype=num.float),
+            num.array([0, 0, 0, 0, 0, 1, 0, -1, 0, 0, 0], dtype=num.float)]
+
+        offsets = num.array([0, 0, 0], dtype=num.int32)
+        shifts = -num.array([
+            [8, 7, 6],
+            [7, 6, 5],
+            [6, 5, 4]], dtype=num.int32)
+
+        weights = num.ones((3, 3), dtype=num.float)
+
+        mat, ioff = parstack(arrays, offsets, shifts, weights, 0)
+
+        ioff_total, nsamples_total = get_offset_and_length(
+            arrays, offsets, shifts)
+
+        mat0, ioff = parstack(arrays, offsets, shifts, weights, 0)
+
+        neach = 3
+        for ioff in range(0, nsamples_total, 3):
+            mat, ioff_check = parstack(
+                arrays, offsets, shifts, weights, 0,
+                offsetout=ioff_total + ioff, lengthout=neach)
+
+            assert ioff_total + ioff == ioff_check
+
+            num.testing.assert_almost_equal(
+                mat0[:, ioff:ioff+neach], mat)
 
 
 if __name__ == '__main__':
