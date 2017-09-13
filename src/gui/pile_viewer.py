@@ -1710,8 +1710,7 @@ def MakePileViewerMainClass(base):
         def add_markers(self, markers):
             len_before = len(self.markers)
             for m in markers:
-                if m not in self.markers:
-                    self.markers.append(m)
+                self.markers.append(m)
             self.emit(
                 qc.SIGNAL('markers_added(int,int)'),
                 len_before, len(self.markers)-1)
