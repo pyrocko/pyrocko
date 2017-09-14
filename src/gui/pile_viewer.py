@@ -1024,6 +1024,13 @@ def MakePileViewerMainClass(base):
             self.menuitem_reload.triggered.connect(
                 self.setup_snufflings)
 
+            self.open_app_store = qg.QAction('Get Snufflings', self.menu)
+            self.menu.addAction(self.open_app_store)
+            self.connect(
+                self.open_app_store,
+                qc.SIGNAL("triggered(bool)"),
+                self.get_snufflings)
+
             self.menu.addSeparator()
 
             # Disable ShadowPileTest
@@ -1371,6 +1378,11 @@ def MakePileViewerMainClass(base):
                                 directory, name, self)
 
                     yield self.snuffling_modules[directory, name]
+
+        def get_snufflings(self):
+            from pyrocko.gui import app_store
+            w = app_store.AppStore(parent=self)
+            w.show()
 
         def setup_snufflings(self):
             # user snufflings
