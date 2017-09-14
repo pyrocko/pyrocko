@@ -287,6 +287,7 @@ class Map(Object):
 
         self._corners = corners(self.lon, self.lat, wreg, hreg)
         west, east, south, north = extent(self.lon, self.lat, wreg, hreg, 10)
+        print west, east, south, north
 
         if self.projection == 'A':
             x, y, z = ((west, east), (south, north), (-6000., 4500.))
@@ -312,7 +313,10 @@ class Map(Object):
 
     def _setup_lod(self):
         w, e, s, n = self._wesn
-        if self.radius > 1500.*km:
+        if self.radius > 6000.*km:
+            coastline_resolution = 'c'
+            rivers = False
+        elif self.radius > 1500.*km:
             coastline_resolution = 'i'
             rivers = False
         else:
@@ -406,10 +410,11 @@ class Map(Object):
         if self.projection == 'A':
             widget['J'] = ('-JA%g/%g' % (self.lon, self.lat)) + '/%(width)gp'
             scaler['R'] = '-R%g/%g/%g/%gr' % self._corners
-            aspect = self._map_aspect(jr=widget.J() + scaler.R()) 
+            aspect = self._map_aspect(jr=widget.J() + scaler.R())
         elif self.projection == 'E':
             horizon = self.radius * m2d
-            widget['J'] = ('-JE%g/%g/%g' % (self.lon, self.lat, horizon)) + '/%(width)gp'
+            widget['J'] = (
+                '-JE%g/%g/%g' % (self.lon, self.lat, horizon)) + '/%(width)gp'
             scaler['R'] = '-Rg'
             aspect = 1.
 
@@ -527,25 +532,45 @@ class Map(Object):
         JXY = widget.JXY()
         R = scaler.R()
 
-        try:
-            grdfile, ilumargs = self._prep_topo('ocean')
-            gmt.pscoast(D=cres, S='c', A=minarea, *(JXY+R))
-            gmt.grdimage(grdfile, C=topo.cpt(self.topo_cpt_wet),
-                         *(ilumargs+JXY+R))
-            gmt.pscoast(Q=True, *(JXY+R))
-            self._have_topo_ocean = True
-        except NoTopo:
-            self._have_topo_ocean = False
+        if R[0] != '-Rg':
+            try:
+                grdfile, ilumargs = self._prep_topo('ocean')
+                gmt.pscoast(D=cres, S='c', A=minarea, *(JXY+R))
+                gmt.grdimage(grdfile, C=topo.cpt(self.topo_cpt_wet),
+                             *(ilumargs+JXY+R))
+                gmt.pscoast(Q=True, *(JXY+R))
+                self._have_topo_ocean = True
+            except NoTopo:
+                self._have_topo_ocean = False
 
-        try:
-            grdfile, ilumargs = self._prep_topo('land')
-            gmt.pscoast(D=cres, G='c', A=minarea, *(JXY+R))
-            gmt.grdimage(grdfile, C=topo.cpt(self.topo_cpt_dry),
-                         *(ilumargs+JXY+R))
-            gmt.pscoast(Q=True, *(JXY+R))
-            self._have_topo_land = True
-        except NoTopo:
-            self._have_topo_land = False
+            try:
+                grdfile, ilumargs = self._prep_topo('land')
+                gmt.pscoast(D=cres, G='c', A=minarea, *(JXY+R))
+                gmt.grdimage(grdfile, C=topo.cpt(self.topo_cpt_dry),
+                             *(ilumargs+JXY+R))
+                gmt.pscoast(Q=True, *(JXY+R))
+                self._have_topo_land = True
+            except NoTopo:
+                self._have_topo_land = False
+        else:
+            try:
+                print 'aaa'
+                dry = read_cpt(topo.cpt(self.topo_cpt_dry))
+                wet = read_cpt(topo.cpt(self.topo_cpt_wet))
+                combi = cpt_merge_wet_dry(wet, dry)
+                topo_cpt = self.gmt.tempfilename() + '.cpt'
+                write_cpt(combi, topo_cpt)
+
+                grdfile, ilumargs = self._prep_topo('ocean')
+                print 'bbb', ilumargs
+                gmt.grdimage(grdfile, C=topo_cpt,
+                             *(ilumargs+JXY+R))
+                self._have_topo_ocean = True
+                self._have_topo_land = True
+
+            except NoTopo:
+                self._have_topo_ocean = False
+                self._have_topo_land = False
 
     def _draw_topo_scale(self, label='Elevation [km]'):
         dry = read_cpt(topo.cpt(self.topo_cpt_dry))
@@ -586,12 +611,15 @@ class Map(Object):
         if not self._have_topo_ocean:
             fill['S'] = color_wet
 
+        print 'a', cres, minarea
         gmt.pscoast(
+            config={'PS_MITER_LIMIT': '90'},
             D=cres,
             W='thinnest,%s' % gmtpy.color(darken(gmtpy.color_tup(color_dry))),
             A=minarea,
             *(rivers+self._jxyr), **fill)
 
+        print 'b'
         if self.show_plates:
             self.draw_plates()
 
@@ -616,35 +644,35 @@ class Map(Object):
                 S='c20p', W='2p,black',
                 *self._jxyr)
 
+        kwargs = {}
         if self.projection == 'A':
             if self.show_grid:
                 btmpl = ('%(xinc)gg%(xinc)g:%(xlabel)s:/'
                          '%(yinc)gg%(yinc)g:%(ylabel)s:')
             else:
                 btmpl = '%(xinc)g:%(xlabel)s:/%(yinc)g:%(ylabel)s:'
-        
-            B = (btmpl % scaler.get_params())+axes_layout
+
+            kwargs['B'] = (btmpl % scaler.get_params())+axes_layout
 
         elif self.projection == 'E':
             if self.show_grid:
                 for i in range(1, 4):
-                    circle_r = widget.width() * i / 3. 
+                    circle_r = widget.width() * i / 3.
                     gmt.psxy(
                         in_rows=[[self.lon, self.lat]],
                         S='c%gp' % circle_r,
+                        W='0.5p,black',
                         *self._jxyr)
 
-            B = True
-
         gmt.psbasemap(
-            B=B,
             L=('x%gp/%gp/%g/%g/%gk' % (
                 6./7*widget.width(),
                 widget.height()/7.,
                 self.lon,
                 self.lat,
                 scale_km)),
-            *self._jxyr)
+            *self._jxyr,
+            **kwargs)
 
         if self.comment:
             font_size = self.gmt.label_font_size()

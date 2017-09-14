@@ -142,6 +142,49 @@ class AutomapTestCase(unittest.TestCase):
         fpath = self.fpath(fname)
         m.save(fpath)
 
+    def test_equidist(self):
+        from pyrocko.fdsn import ws
+        if False:
+            tmin = util.stt('2017-01-01 00:00:00')
+            tmax = util.stt('2017-01-02 00:00:00')
+            sx = ws.station(
+                channel='BHZ',
+                level='channel',
+                format='text',
+                startbefore=tmin,
+                endafter=tmax)
+
+            stations = sx.get_pyrocko_stations()
+            for station in stations:
+                print station.nsl()
+
+        for version in gmtpy.all_installed_gmt_versions():
+            if not version.startswith('5'):
+                continue
+
+            m = automap.Map(
+                gmtversion=version,
+                lat=40., # automap.rand(-60., 60.),
+                lon=-40.,
+                radius=10000*km,
+                projection='E',
+                width=30., height=30.,
+                show_grid=True,
+                show_topo=False,
+                color_dry=(238, 236, 230),
+                #topo_cpt_wet='light_sea_uniform',
+                #topo_cpt_dry='light_land_uniform',
+                illuminate=False,
+                illuminate_factor_ocean=0.5,
+                show_rivers=False,
+                show_plates=False)
+
+            fname = 'equidist.pdf'
+            #fpath = self.fpath(fname)
+            fpath = fname
+            m.save(fpath)
+
+
 
 if __name__ == "__main__":
     util.setup_logging('test_automap', 'warning')
