@@ -257,7 +257,7 @@ def context(fn):
         entries.append(DirContextEntry(
             path=os.path.abspath(fn2),
             tstart=util.str_to_time(
-                header['S_DATE'] + ' ' + header['S_TIME'],
+                '20' + header['S_DATE'] + ' ' + header['S_TIME'],
                 format='%Y/%m/%d %H:%M:%S'),
             ifile=int(header['DAT_NO'])))
 
