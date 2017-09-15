@@ -97,7 +97,7 @@ class AppWidget(qg.QWidget):
 
     def fail(self, message):
         box = qg.QMessageBox(self.viewer)
-        self.debug(message)
+        logger.debug(message)
         box.setText('%s' % message)
         box.exec_()
 
