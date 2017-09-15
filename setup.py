@@ -229,7 +229,8 @@ def check_pyrocko_install_compat():
 
         print('''\n
 ###############################################################################
-WARNING: Found an old, incompatible, Pyrocko installation!!!
+
+WARNING: Found an old, incompatible, Pyrocko installation!
 
 Please purge the old installation and the 'build' directory before installing
 this new version:
