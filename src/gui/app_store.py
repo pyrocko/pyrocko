@@ -1,12 +1,20 @@
 import sys
 import json
-import urllib2
+try:
+    from urllib2 import HTTPError, urlopen, URLError
+except ImportError:
+    from urllib.request import urlopen
+    from urllib.error import HTTPError, URLError
+
 import os
 import shutil
+import logging
 
 import PyQt4.QtGui as qg
 import PyQt4.QtCore as qc
 from pyrocko import config as pconfig
+
+logger = logging.getLogger('pyrocko.gui.app_store')
 
 pjoin = os.path.join
 
@@ -39,9 +47,11 @@ class AppTile(qg.QWidget):
             button_label = 'install'
 
         self.install_button.setText(button_label)
+        self.emit(qc.SIGNAL('snuffling_update_required()'))
 
     def download(self, name, item):
-        response = urllib2.urlopen(item['download_url'])
+        logger.debug('Downloading snuffling %s' % item['name'])
+        response = urlopen(item['download_url'])
         with open(pjoin(destination_path, name, item['name']), 'w') as f:
             fd = response.read()
             f.write(fd)
@@ -56,20 +66,20 @@ class AppTile(qg.QWidget):
             self.remove()
         else:
             if self.data['type'] == 'dir':
-                response = urllib2.urlopen(base_url + 'contents/' + self.data['name'])
-                json_data = json.load(response)
+                response = urlopen(base_url + 'contents/' + self.data['name'])
+                json_data = json.load(response.decode())
 
                 name = self.data['name']
                 os.mkdir(pjoin(destination_path, name))
                 for item in json_data:
                     self.download(name, item)
-
             else:
                 self.download('', self.data)
 
         self.update_state()
 
     def remove(self):
+        logger.debug('Delete snuffling %s' % self.data['name'])
         fns = pjoin(destination_path, self.data['name'])
         try:
             shutil.rmtree(fns)
@@ -78,20 +88,23 @@ class AppTile(qg.QWidget):
 
 
 class AppWidget(qg.QWidget):
-    def __init__(self):
-        qg.QWidget.__init__(self)
+    def __init__(self, viewer=None, *args, **kwargs):
+        qg.QWidget.__init__(self, *args, **kwargs)
         self.url = base_url + 'contents'
         self.json_data = None
+        self.viewer = viewer
         self.setLayout(qg.QVBoxLayout())
 
     def fail(self, message):
-        box = qg.QMessageBox(self)
+        box = qg.QMessageBox(self.viewer)
+        self.debug(message)
         box.setText('%s' % message)
         box.exec_()
 
     def refresh(self):
         try:
-            response = urllib2.urlopen(self.url)
+            logger.debug('Checking contrib-snufflings repo')
+            response = urlopen(self.url)
             self.json_data = json.load(response)
             layout = self.layout()
 
@@ -110,15 +123,25 @@ class AppWidget(qg.QWidget):
                         raise e
 
                 tile = AppTile(data, installed=is_installed)
+                self.connect(
+                    tile,
+                    qc.SIGNAL('snuffling_update_required()'),
+                    self.setup_snufflings)
                 layout.addWidget(tile)
-        except urllib2.URLError:
+
+        except URLError:
             self.fail('No connection to internet')
+
+    def setup_snufflings(self):
+        if self.viewer:
+            logger.debug('setup snufflings')
+            self.viewer.setup_snufflings([destination_path])
 
 
 class AppStore(qg.QFrame):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, viewer=None, *args, **kwargs):
         qg.QFrame.__init__(self, *args, **kwargs)
-        w = AppWidget()
+        w = AppWidget(viewer=viewer)
         w.refresh()
         self.setLayout(qg.QVBoxLayout())
         scroller = qg.QScrollArea()

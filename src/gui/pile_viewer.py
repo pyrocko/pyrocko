@@ -1101,7 +1101,10 @@ def MakePileViewerMainClass(base):
 
             user_home_dir = os.environ['HOME']
             self.snuffling_modules = {}
-            self.snuffling_paths = [os.path.join(user_home_dir, '.snufflings')]
+            self.snuffling_paths = [
+                os.path.join(user_home_dir, '.snufflings'),
+                pyrocko.config.config().snufflings,
+            ]
             self.default_snufflings = None
             self.snufflings = []
 
@@ -1350,9 +1353,10 @@ def MakePileViewerMainClass(base):
         def remove_shadow_piles(self):
             self.pile = self.pile.get_basepile()
 
-        def iter_snuffling_modules(self):
+        def iter_snuffling_modules(self, paths=None):
             pjoin = os.path.join
-            for path in self.snuffling_paths:
+            paths = paths or self.snuffling_paths
+            for path in paths:
 
                 if not os.path.isdir(path):
                     os.mkdir(path)
@@ -1381,12 +1385,12 @@ def MakePileViewerMainClass(base):
 
         def get_snufflings(self):
             from pyrocko.gui import app_store
-            w = app_store.AppStore(parent=self)
+            w = app_store.AppStore(viewer=self)
             self.panel_parent.add_tab('Add-ons', w)
 
-        def setup_snufflings(self):
+        def setup_snufflings(self, paths=None):
             # user snufflings
-            for mod in self.iter_snuffling_modules():
+            for mod in self.iter_snuffling_modules(paths):
                 try:
                     mod.load_if_needed()
                 except pyrocko.gui.snuffling.BrokenSnufflingModule as e:
