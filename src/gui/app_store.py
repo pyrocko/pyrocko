@@ -51,7 +51,6 @@ class AppTile(qg.QWidget):
         installed_snufflings = os.listdir(destination_path)
         return self.data['name'] in installed_snufflings
 
-
     def un_install(self):
         if self.is_installed:
             self.remove()
@@ -60,7 +59,6 @@ class AppTile(qg.QWidget):
                 response = urllib2.urlopen(base_url + 'contents/' + self.data['name'])
                 json_data = json.load(response)
 
-                # download files
                 name = self.data['name']
                 os.mkdir(pjoin(destination_path, name))
                 for item in json_data:
@@ -86,27 +84,35 @@ class AppWidget(qg.QWidget):
         self.json_data = None
         self.setLayout(qg.QVBoxLayout())
 
+    def fail(self, message):
+        box = qg.QMessageBox(self)
+        box.setText('%s' % message)
+        box.exec_()
+
     def refresh(self):
-        response = urllib2.urlopen(self.url)
-        self.json_data = json.load(response)
-        layout = self.layout()
+        try:
+            response = urllib2.urlopen(self.url)
+            self.json_data = json.load(response)
+            layout = self.layout()
 
-        for data in self.json_data:
-            if data['name'] in exclude:
-                continue
+            for data in self.json_data:
+                if data['name'] in exclude:
+                    continue
 
-            try:
-                installed_snufflings = os.listdir(destination_path)
-                is_installed = data['name'] in installed_snufflings
-            except OSError as e:
-                if e.errno == 2:
-                    os.mkdir(destination_path)
-                    is_installed = False
-                else:
-                    raise e
+                try:
+                    installed_snufflings = os.listdir(destination_path)
+                    is_installed = data['name'] in installed_snufflings
+                except OSError as e:
+                    if e.errno == 2:
+                        os.mkdir(destination_path)
+                        is_installed = False
+                    else:
+                        raise e
 
-            tile = AppTile(data, installed=is_installed)
-            layout.addWidget(tile)
+                tile = AppTile(data, installed=is_installed)
+                layout.addWidget(tile)
+        except urllib2.URLError:
+            self.fail('No connection to internet')
 
 
 class AppStore(qg.QFrame):

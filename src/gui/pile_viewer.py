@@ -1382,7 +1382,7 @@ def MakePileViewerMainClass(base):
         def get_snufflings(self):
             from pyrocko.gui import app_store
             w = app_store.AppStore(parent=self)
-            w.show()
+            self.panel_parent.add_tab('Add-ons', w)
 
         def setup_snufflings(self):
             # user snufflings
