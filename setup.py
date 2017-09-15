@@ -204,10 +204,10 @@ def check_pyrocko_install_compat():
 
         print('''\n
 ###############################################################################
-WARNING: Found an new, incompatible, Pyrocko installation!!!
+WARNING: Found an newer Python 2/3 compatible Pyrocko installation!
 
 Please purge the new installation and the 'build' directory before installing
-this old version:
+this older version:
 
     sudo rm -rf '%s' build
 
