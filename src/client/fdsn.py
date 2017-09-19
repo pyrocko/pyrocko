@@ -39,7 +39,7 @@ g_site_abbr = {
     'ipgp': 'http://centrededonnees.ipgp.fr',
     'ingv': 'http://webservices.rm.ingv.it',
     'isc': 'http://www.isc.ac.uk',
-    'lmu': 'http://www.geophysik.uni-muenchen.de/observatory/seismology',
+    'lmu': 'http://erde.geophysik.uni-muenchen.de',
     'noa': 'http://bbnet.gein.noa.gr',
     'resif': 'http://portal.resif.fr',
     'usp': 'http://www.moho.iag.usp.br'
