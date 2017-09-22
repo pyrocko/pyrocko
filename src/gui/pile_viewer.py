@@ -89,6 +89,16 @@ class m_float(float):
         else:
             return '%.5g m' % self
 
+    def __lt__(self, other):
+        if other is None:
+            return True
+        return float(self) < float(other)
+
+    def __gt__(self, other):
+        if other is None:
+            return False
+        return float(self) > float(other)
+
 
 def m_float_or_none(x):
     if x is None:
