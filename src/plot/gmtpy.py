@@ -3317,17 +3317,24 @@ class GMT(object):
         assert(1 >= len([x for x in [out_stream, out_filename, out_discard]
                          if x is not None]))
 
-        gmt_config_filename = self.gmt_config_filename
-        gmt_config = self.gmt_config
-        if config_override:
-            gmt_config = gmt_config.copy()
-            gmt_config.update(config_override)
-            gmt_config_override_filename = pjoin(
-                self.tempdir, 'gmtdefaults_override')
-            self.gen_gmt_config_file(gmt_config_override_filename, gmt_config)
-            gmt_config_filename = gmt_config_override_filename
-
         options = []
+
+        gmt_config = self.gmt_config
+        if not self.is_gmt5():
+            gmt_config_filename = self.gmt_config_filename
+            if config_override:
+                gmt_config = self.gmt_config.copy()
+                gmt_config.update(config_override)
+                gmt_config_override_filename = pjoin(
+                    self.tempdir, 'gmtdefaults_override')
+                self.gen_gmt_config_file(
+                    gmt_config_override_filename, gmt_config)
+                gmt_config_filename = gmt_config_override_filename
+
+        else:  # gmt5 needs override variables as --VAR=value
+            if config_override:
+                for k, v in config_override.items():
+                    options.append('--%s=%s' % (k, v))
 
         if out_discard:
             out_filename = '/dev/null'
@@ -3393,7 +3400,7 @@ class GMT(object):
             raise Exception('No such file: %s' % args[0])
         args.extend(options)
         args.extend(addargs)
-        if not suppressdefaults and not self.is_gmt5():
+        if not self.is_gmt5() and not suppressdefaults:
             # does not seem to work with GMT 5 (and should not be necessary
             args.append('+'+gmt_config_filename)
 

@@ -336,7 +336,7 @@ class ParstackTestCase(unittest.TestCase):
         num.testing.assert_almost_equal(
             argmax_parstack.astype(num.int64), argmax_numpy)
 
-    def test_semblance(self):
+    def test_limited(self):
         arrays = [
             num.array([0, 0, 0, 0, 0, 0, 0, 1, 0, -1, 0], dtype=num.float),
             num.array([0, 0, 0, 0, 0, 0, 1, 0, -1, 0, 0], dtype=num.float),
@@ -352,14 +352,17 @@ class ParstackTestCase(unittest.TestCase):
 
         mat, ioff = parstack(arrays, offsets, shifts, weights, 0)
 
-        ioff_total, nsamples_total = get_offset_and_length(arrays, offsets, shifts)
+        ioff_total, nsamples_total = get_offset_and_length(
+            arrays, offsets, shifts)
 
         mat0, ioff = parstack(arrays, offsets, shifts, weights, 0)
 
         neach = 3
         for ioff in range(0, nsamples_total, 3):
-            mat, ioff_check = parstack(arrays, offsets, shifts, weights, 0,
-                     offsetout=ioff_total + ioff, lengthout=neach)
+            mat, ioff_check = parstack(
+                arrays, offsets, shifts, weights, 0,
+                offsetout=ioff_total + ioff,
+                lengthout=neach)
 
             assert ioff_total + ioff == ioff_check
 
