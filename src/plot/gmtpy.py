@@ -9,7 +9,7 @@
 
 
 from __future__ import print_function, absolute_import
-from builtins import zip
+from builtins import zip, str as text
 import subprocess
 try:
     from StringIO import StringIO as BytesIO
@@ -3082,7 +3082,7 @@ def text_box(
 class TableLiner(object):
     '''Utility class to turn tables into lines.'''
 
-    def __init__(self, in_columns=None, in_rows=None, encoding='ascii'):
+    def __init__(self, in_columns=None, in_rows=None, encoding='utf-8'):
         self.in_columns = in_columns
         self.in_rows = in_rows
         self.encoding = encoding
@@ -3090,12 +3090,12 @@ class TableLiner(object):
     def __iter__(self):
         if self.in_columns is not None:
             for row in zip(*self.in_columns):
-                yield (' '.join([str(x) for x in row])+'\n').encode(
+                yield (' '.join([text(x) for x in row])+'\n').encode(
                     self.encoding)
 
         if self.in_rows is not None:
             for row in self.in_rows:
-                yield (' '.join([str(x) for x in row])+'\n').encode(
+                yield (' '.join([text(x) for x in row])+'\n').encode(
                     self.encoding)
 
 
