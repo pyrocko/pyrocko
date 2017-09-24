@@ -24,6 +24,27 @@ exclude = ['.gitignore', 'screenshots', 'LICENSE', 'README.md']
 destination_path = pconfig.config().snufflings
 
 
+prolog_html = '''
+    <html>
+    <body>
+    <h3>
+    Add snufflings to your snuffler
+    </h3>
+    <p>
+    The list of snufflings below mirrors the user contributed snufflings
+    repository at <a href="http://github.com">ADD LINKgithub</a><br>
+    Checkout that site for bug reports, whishes and ideas.
+    </p>
+    <p>
+    Note, that we trust authors of contrib snufflings and review most of the
+    codes which are listed here.<br>
+    However, we do not take any responsibilities.
+    </p>
+    </body>
+    </html>
+'''
+
+
 class AppTile(qg.QWidget):
     def __init__(self, data, installed=False):
         qg.QWidget.__init__(self)
@@ -131,6 +152,7 @@ class AppWidget(qg.QWidget):
 
         except URLError:
             self.fail('No connection to internet')
+            self.setVisible(False)
 
     def setup_snufflings(self):
         if self.viewer:
@@ -141,12 +163,23 @@ class AppWidget(qg.QWidget):
 class AppStore(qg.QFrame):
     def __init__(self, viewer=None, *args, **kwargs):
         qg.QFrame.__init__(self, *args, **kwargs)
-        w = AppWidget(viewer=viewer)
-        w.refresh()
+        self.viewer = viewer
+        w = AppWidget(viewer=self.viewer)
         self.setLayout(qg.QVBoxLayout())
+
+        prolog = qg.QLabel(prolog_html)
+
         scroller = qg.QScrollArea()
         scroller.setWidget(w)
+
+        self.layout().addWidget(prolog)
         self.layout().addWidget(scroller)
+        w.refresh()
+
+    def closeEvent(self, event):
+        # TODO connect to closing event in pile viewer
+        if self.viewer:
+            self.viewer.store = None
 
 
 if __name__ == '__main__':

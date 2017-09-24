@@ -1105,6 +1105,7 @@ def MakePileViewerMainClass(base):
                 os.path.join(user_home_dir, '.snufflings'),
                 pyrocko.config.config().snufflings,
             ]
+            self.store = None
             self.default_snufflings = None
             self.snufflings = []
 
@@ -1385,8 +1386,12 @@ def MakePileViewerMainClass(base):
 
         def get_snufflings(self):
             from pyrocko.gui import app_store
-            w = app_store.AppStore(viewer=self)
-            self.panel_parent.add_tab('Add-ons', w)
+
+            if self.store:
+                self.panel_parent.tabs.setCurrentWidget(self.store)
+            else:
+                self.store = app_store.AppStore(parent=self, viewer=self)
+                self.panel_parent.add_tab('Add-ons', self.store)
 
         def setup_snufflings(self, paths=None):
             # user snufflings
