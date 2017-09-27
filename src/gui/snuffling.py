@@ -1279,7 +1279,7 @@ class Snuffling(object):
             dir = self._previous_output_filename
 
         fn = qg.QFileDialog.getSaveFileName(
-            self.get_viewer(), caption, dir, filter, selected_filter)
+            self.get_viewer(), caption, dir, filter) # selected_filter)
 
         if not fn:
             raise UserCancelled()
@@ -1325,8 +1325,8 @@ class Snuffling(object):
             self.get_viewer(),
             caption,
             dir,
-            filter,
-            selected_filter)
+            filter)
+            #selected_filter)
 
         if not fn:
             raise UserCancelled()
