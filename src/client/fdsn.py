@@ -7,7 +7,11 @@ from builtins import str
 
 import re
 import logging
-from urllib import parse
+try:
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib import urlencode
+
 try:
     from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,
                          HTTPError, urlopen)
@@ -97,7 +101,7 @@ class InvalidRequest(Exception):
 
 
 def _request(url, post=False, user=None, passwd=None, **kwargs):
-    url_values = parse.urlencode(kwargs)
+    url_values = urlencode(kwargs)
     if url_values:
         url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
