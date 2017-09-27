@@ -1920,6 +1920,7 @@ def MakePileViewerMainClass(base):
                 self.update()
 
         def keyPressEvent(self, key_event):
+            self.show_all = False
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
 
