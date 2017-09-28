@@ -920,6 +920,7 @@ class Map(Object):
 
                     self.gmt.pstext(
                         in_rows=[row],
+                        N=True,
                         D='%gp/%gp' % (xoff, yoff),
                         *(self.jxyr + farg),
                         **styles[i])
