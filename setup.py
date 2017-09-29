@@ -275,12 +275,11 @@ class CustomInstallCommand(install):
             try:
                 shutil.copy('extras/pyrocko', bd_dir)
                 print('Installing pyrocko bash_completion to "%s"' % bd_dir)
-            except IOError as e:
-                import errno
-                if e.errno in (errno.EACCES, errno.ENOENT):
-                    print(e)
-                else:
-                    raise e
+            except:
+                print(
+                    'Could not install pyrocko bash_completion to "%s" '
+                    '(continuing without)'
+                    % bd_dir)
 
 
 packname = 'pyrocko'
@@ -348,15 +347,6 @@ class custom_build_py(build_py):
     def run(self):
         make_info_module(packname, version)
         build_py.run(self)
-        try:
-            shutil.copy('extras/pyrocko', '/etc/bash_completion.d/pyrocko')
-            print('Installing pyrocko bash_completion...')
-        except IOError as e:
-            import errno
-            if e.errno in (errno.EACCES, errno.ENOENT):
-                print(e)
-            else:
-                raise e
 
 
 class custom_build_ext(build_ext):
