@@ -37,12 +37,14 @@ from pyrocko.io import stationxml
 
 from . import pile_viewer     # noqa
 
+from PyQt5 import Qt
 from PyQt5 import QtCore as qc
 from PyQt5 import QtGui as qg
 from PyQt5 import QtWidgets as qw
 from PyQt5 import QtNetwork as qn
 
 logger = logging.getLogger('pyrocko.gui.snuffler')
+Qt.QCoreApplication.setAttribute(qc.Qt.AA_ShareOpenGLContexts, True)
 
 
 class AcquisitionThread(qc.QThread):

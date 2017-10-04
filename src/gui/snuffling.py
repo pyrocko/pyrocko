@@ -17,7 +17,6 @@ import traceback
 import tempfile
 
 from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
 from PyQt5 import QtWidgets as qw
 
 from pyrocko import pile, config
@@ -1278,14 +1277,14 @@ class Snuffling(object):
         if not dir and self._previous_input_directory:
             dir = self._previous_input_directory
 
-        dirn, _ = qw.QFileDialog.getExistingDirectory(
+        dn = qw.QFileDialog.getExistingDirectory(
             None, caption, dir, qw.QFileDialog.ShowDirsOnly)
 
-        if not dirn:
+        if not dn:
             raise UserCancelled()
 
-        self._previous_input_directory = dirn
-        return str(dirn)
+        self._previous_input_directory = dn
+        return str(dn)
 
     def input_filename(self, caption='Open File', dir='', filter='',
                        selected_filter=None):

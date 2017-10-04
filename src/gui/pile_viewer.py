@@ -767,19 +767,19 @@ def MakePileViewerMainClass(base):
             self.menu.addAction(mi)
             mi.triggered.connect(self.open_stations)
 
-            mi = qw.QAction('Write markers...', self.menu)
+            mi = qw.QAction('Save markers...', self.menu)
             self.menu.addAction(mi)
             mi.triggered.connect(self.write_markers)
 
-            mi = qw.QAction('Write selected markers...', self.menu)
+            mi = qw.QAction('Save selected markers...', self.menu)
             self.menu.addAction(mi)
             mi.triggered.connect(self.write_selected_markers)
 
-            mi = qw.QAction('Read markers...', self.menu)
+            mi = qw.QAction('Open marker file...', self.menu)
             self.menu.addAction(mi)
             mi.triggered.connect(self.read_markers)
 
-            mi = qw.QAction('Read events...', self.menu)
+            mi = qw.QAction('Open event file...', self.menu)
             self.menu.addAction(mi)
             mi.triggered.connect(self.read_events)
 
@@ -1482,23 +1482,23 @@ def MakePileViewerMainClass(base):
             self._paths_to_load.extend(paths)
             qc.QTimer.singleShot(200, self.load_queued)
 
-        def open_waveforms(self, _=None):
-
+        def open_waveforms(self):
             caption = 'Select one or more files to open'
 
             fns, _ = qw.QFileDialog.getOpenFileNames(
                 self, caption, options=qfiledialog_options)
 
-            self.load(list(str(fn) for fn in fns))
+            if fns:
+                self.load(list(str(fn) for fn in fns))
 
-        def open_waveform_directory(self, _=None):
-
+        def open_waveform_directory(self):
             caption = 'Select directory to scan for waveform files'
 
-            fn, _ = qw.QFileDialog.getExistingDirectory(
+            dn = qw.QFileDialog.getExistingDirectory(
                 self, caption, options=qfiledialog_options)
 
-            self.load([str(fn)])
+            if dn:
+                self.load([str(dn)])
 
         def open_stations(self, fns=None):
             caption = 'Select one or more files to open'
@@ -2425,16 +2425,17 @@ def MakePileViewerMainClass(base):
                         self.set_time_range(tmin, tmax)
 
         def printit(self):
-            printer = qg.QPrinter()
-            printer.setOrientation(qg.QPrinter.Landscape)
+            from PyQt5 import QtPrintSupport as qps
+            printer = qps.QPrinter()
+            printer.setOrientation(qps.QPrinter.Landscape)
 
-            dialog = qg.QPrintDialog(printer, self)
+            dialog = qps.QPrintDialog(printer, self)
             dialog.setWindowTitle('Print')
 
-            if dialog.exec_() != qg.QDialog.Accepted:
+            if dialog.exec_() != qw.QDialog.Accepted:
                 return
 
-            painter = qg.QPainter()
+            painter = qps.QPainter()
             painter.begin(printer)
             page = printer.pageRect()
             self.drawit(

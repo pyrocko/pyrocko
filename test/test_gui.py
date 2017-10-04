@@ -11,6 +11,7 @@ import os
 if common.have_gui():  # noqa
     from PyQt5.QtTest import QTest
     from PyQt5.QtCore import Qt, QPoint
+    from PyQt5 import QtCore as qc
     from PyQt5.QtWidgets import QStyleOptionSlider, QStyle
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
@@ -109,11 +110,20 @@ class GUITest(unittest.TestCase):
         QTest.keyPress(pv, Qt.Key_Backspace)
         self.assertEqual(len(pv.viewer.get_markers()), 0)
 
-    def click_menu_item(self, qmenu, action_name):
-        ''' Emulate a mouseClick on a menu item *action_name* in the
+    def click_menu_item(self, qmenu, action_text, dialog=False):
+        ''' Emulate a mouseClick on a menu item *action_text* in the
         *qmenu*.'''
         for iaction, action in enumerate(qmenu.actions()):
-            if action.text() == action_name:
+            if action.text() == action_text:
+
+                if dialog:
+                    def closeDialog():
+                        dlg = self.snuffler.activeModalWidget()
+                        QTest.keyClick(dlg, Qt.Key_Escape)
+                        QTest.qWait(100)
+
+                    qc.QTimer.singleShot(100, closeDialog)
+
                 QTest.keyClick(qmenu, Qt.Key_Enter)
                 for i in range(iaction):
                     QTest.keyClick(qmenu, Qt.Key_Up)
@@ -337,7 +347,7 @@ class GUITest(unittest.TestCase):
         self.viewer.remove_markers(self.viewer.markers)
         assert(len(self.viewer.markers) == 0)
 
-    def test_click_non_dialogs(self):
+    def test_actions(self):
         # Click through many menu option combinations that do not require
         # further interaction. Activate options in pairs of two.
 
@@ -368,6 +378,17 @@ class GUITest(unittest.TestCase):
             'Subsort by Station, Network, Channel (Grouped by Location)',
             'Test',
         ]
+
+        dialog_actions = [
+            'Open waveform files...',
+            'Open waveform directory...',
+            'Open station files...',
+            'Save markers...',
+            'Save selected markers...',
+            'Open marker file...',
+            'Open event file...',
+            'Save as SVG|PNG',
+            ]
 
         options = [
             'Antialiasing',
@@ -408,10 +429,14 @@ class GUITest(unittest.TestCase):
         pv.viewer.set_event_marker_as_origin()
 
         right_click_menu = self.viewer.menu
-        for action_name in non_dialog_actions:
+
+        for action_text in dialog_actions:
+            self.click_menu_item(right_click_menu, action_text, dialog=True)
+
+        for action_text in non_dialog_actions:
             for oa in options:
                 for ob in options:
-                    self.click_menu_item(right_click_menu, action_name)
+                    self.click_menu_item(right_click_menu, action_text)
                     self.click_menu_item(right_click_menu, oa)
                     self.click_menu_item(right_click_menu, ob)
 
