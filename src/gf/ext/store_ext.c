@@ -149,15 +149,12 @@ const char* interpolation_scheme_names[] = {
 };
 
 typedef store_error_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
-static store_error_t irecord_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
-
 typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+
+static store_error_t irecord_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 static store_error_t vicinity_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
-typedef store_error_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 static store_error_t irecord_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
-
-typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 static store_error_t vicinity_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
 typedef struct {
