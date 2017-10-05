@@ -9,9 +9,10 @@ import tempfile
 import os
 
 if common.have_gui():  # noqa
-    from PyQt4.QtTest import QTest
-    from PyQt4.QtCore import Qt, QPoint
-    from PyQt4.QtGui import QStyleOptionSlider, QStyle
+    from PyQt5.QtTest import QTest
+    from PyQt5.QtCore import Qt, QPoint
+    from PyQt5 import QtCore as qc
+    from PyQt5.QtWidgets import QStyleOptionSlider, QStyle
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import util as gui_util
@@ -26,7 +27,7 @@ from pyrocko import config, trace
 class TestSnuffling(snuffling.Snuffling):
 
     def setup(self):
-        self.set_name('X')
+        self.set_name('TestSnuffling')
 
     def call(self):
         figframe = self.figure_frame()
@@ -34,9 +35,12 @@ class TestSnuffling(snuffling.Snuffling):
         ax.plot([0, 1], [0, 1])
         figframe.draw()
 
-        self.pixmap_frame()
+        self.enable_pile_changed_notifications()
 
+        self.pixmap_frame()
         self.web_frame()
+
+        self.get_pile()
 
 
 @common.require_gui
@@ -106,18 +110,20 @@ class GUITest(unittest.TestCase):
         QTest.keyPress(pv, Qt.Key_Backspace)
         self.assertEqual(len(pv.viewer.get_markers()), 0)
 
-    def click_menu_item(self, qmenu, action_name):
-        ''' Emulate a mouseClick on a menu item *action_name* in the
-        *qmenu*.'''
+    def trigger_menu_item(self, qmenu, action_text, dialog=False):
+        ''' trigger a QMenu QAction with action_text. '''
         for iaction, action in enumerate(qmenu.actions()):
-            if action.text() == action_name:
-                QTest.keyClick(qmenu, Qt.Key_Enter)
-                for i in range(iaction):
-                    QTest.keyClick(qmenu, Qt.Key_Up)
-                qmenu.close()
+            if action.text() == action_text:
+
+                if dialog:
+                    def closeDialog():
+                        dlg = self.snuffler.activeModalWidget()
+                        QTest.keyClick(dlg, Qt.Key_Escape)
+
+                    qc.QTimer.singleShot(150, closeDialog)
+
+                action.trigger()
                 break
-            else:
-                QTest.keyClick(qmenu, Qt.Key_Down)
 
     def get_slider_position(self, slider):
         style = slider.style()
@@ -334,7 +340,7 @@ class GUITest(unittest.TestCase):
         self.viewer.remove_markers(self.viewer.markers)
         assert(len(self.viewer.markers) == 0)
 
-    def test_click_non_dialogs(self):
+    def test_actions(self):
         # Click through many menu option combinations that do not require
         # further interaction. Activate options in pairs of two.
 
@@ -363,8 +369,18 @@ class GUITest(unittest.TestCase):
             'Subsort by Channel, Network, Station, Location',
             'Subsort by Network, Station, Channel (Grouped by Location)',
             'Subsort by Station, Network, Channel (Grouped by Location)',
-            'Test',
         ]
+
+        dialog_actions = [
+            'Open waveform files...',
+            'Open waveform directory...',
+            'Open station files...',
+            'Save markers...',
+            'Save selected markers...',
+            'Open marker file...',
+            'Open event file...',
+            'Save as SVG|PNG',
+            ]
 
         options = [
             'Antialiasing',
@@ -405,12 +421,16 @@ class GUITest(unittest.TestCase):
         pv.viewer.set_event_marker_as_origin()
 
         right_click_menu = self.viewer.menu
-        for action_name in non_dialog_actions:
+
+        for action_text in dialog_actions:
+            self.trigger_menu_item(right_click_menu, action_text, dialog=True)
+
+        for action_text in non_dialog_actions:
             for oa in options:
                 for ob in options:
-                    self.click_menu_item(right_click_menu, action_name)
-                    self.click_menu_item(right_click_menu, oa)
-                    self.click_menu_item(right_click_menu, ob)
+                    self.trigger_menu_item(right_click_menu, action_text)
+                    self.trigger_menu_item(right_click_menu, oa)
+                    self.trigger_menu_item(right_click_menu, ob)
 
                 options.remove(oa)
 
@@ -427,6 +447,7 @@ class GUITest(unittest.TestCase):
         QTest.keyPress(self.pile_viewer, 'd')
         QTest.keyPress(self.pile_viewer, 'd')
         QTest.keyPress(self.pile_viewer, 'd')
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gui', 'warning')
