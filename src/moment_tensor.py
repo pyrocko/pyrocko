@@ -6,7 +6,6 @@ from __future__ import division, print_function, absolute_import
 from builtins import map
 from builtins import zip
 
-import random
 import math
 import numpy as num
 
@@ -18,6 +17,12 @@ dynecm = 1e-7
 
 
 def random_axis(rstate=None):
+    '''
+    Get randomly oriented unit vector.
+
+    :param rstate: :py:class:`RandomState` object, can be used to create
+        reproducible pseudo-random sequences
+    '''
     rstate = rstate or num.random
     while True:
         axis = rstate.uniform(size=3) * 2.0 - 1.0
@@ -27,6 +32,14 @@ def random_axis(rstate=None):
 
 
 def rotation_from_angle_and_axis(angle, axis):
+    '''
+    Build rotation matrix based on axis and angle.
+
+    :param angle: rotation angle [degrees]
+    :param axis: orientation of rotation axis, either in spherical
+        coordinates ``(theta, phi)`` [degrees], or as a unit vector
+        ``(ux, uy, uz)``.
+    '''
 
     if len(axis) == 2:
         theta, phi = axis
@@ -51,8 +64,17 @@ def rotation_from_angle_and_axis(angle, axis):
 
 
 def random_rotation(x=None):
+    '''Get random rotation matrix.
 
-    # after Arvo 1992 - "Fast random rotation matrices"
+    A random rotation matrix, drawn from a uniform distrubution in the space
+    of rotations is returned, after Avro 1992 - "Fast random rotation
+    matrices".
+
+    :param x: three (uniform random) numbers in the range [0, 1\[ used as input
+        to the distribution tranformation. If ``None``, random numbers are
+        used. Can be used to create grids of random rotations with uniform
+        density in rotation space.
+    '''
 
     if x is not None:
         x1, x2, x3 = x
@@ -78,9 +100,7 @@ def random_rotation(x=None):
 
 
 def rand(mi, ma):
-    mi = float(mi)
-    ma = float(ma)
-    return random.random()*(ma-mi) + mi
+    return float(num.random.uniform(mi, ma))
 
 
 def randdip(mi, ma):
@@ -94,6 +114,16 @@ def random_strike_dip_rake(
         dipmin=0., dipmax=90.,
         rakemin=-180., rakemax=180.):
 
+    '''
+    Get random strike, dip, rake triplet.
+
+    .. note::
+
+        Might not produce a homogeneous distribution of mechanisms. Better use
+        :py:meth:`MomentTensor.random_dc` which is based on
+        :py:func:`random_rotation`.
+    '''
+
     strike = rand(strikemin, strikemax)
     dip = randdip(dipmin, dipmax)
     rake = rand(rakemin, rakemax)
@@ -102,17 +132,23 @@ def random_strike_dip_rake(
 
 
 def to6(m):
+    '''Get non-redundant components from symmetric 3x3 matrix
+
+    :returns: 1D NumPy array with entries ordered like
+        ``(a_xx, a_yy, a_zz, a_xy, a_xz, a_yz)``
+    '''
+
     return num.array([m[0, 0], m[1, 1], m[2, 2], m[0, 1], m[0, 2], m[1, 2]])
 
 
-def symmat6(*vals):
-    '''Create symmetric 3x3 matrix from its 6 non-redundant values.
+def symmat6(a_xx, a_yy, a_zz, a_xy, a_xz, a_yz):
+    '''
+    Create symmetric 3x3 matrix from its 6 non-redundant values.
+    '''
 
-    vals = [ Axx, Ayy, Azz, Axy, Axz, Ayz ]'''
-
-    return num.matrix([[vals[0], vals[3], vals[4]],
-                       [vals[3], vals[1], vals[5]],
-                       [vals[4], vals[5], vals[2]]], dtype=num.float)
+    return num.matrix([[a_xx, a_xy, a_xz],
+                       [a_xy, a_yy, a_yz],
+                       [a_xz, a_yz, a_zz]], dtype=num.float)
 
 
 def values_to_matrix(values):
@@ -121,14 +157,15 @@ def values_to_matrix(values):
     Transforms :py:class:`MomentTensor` objects, tuples, lists and NumPy arrays
     with 3x3 or 3, 4, 6, or 7 elements into NumPy 3x3 matrix objects.
 
-    The following parameter sequences and objects are supported::
+    The ``values`` argument is interpreted depending on shape and type as
+    follows:
 
-        [strike, dip, rake]
-        [strike, dip, rake, magnitude]
-        [mnn, mee, mdd, mne, mnd, med]
-        [mnn, mee, mdd, mne, mnd, med, magnitude]
-        [[mnn, mne, mnd], [mne, mee, med], [mnd, med, mdd]]
-        MomentTensor_object
+    * ``(strike, dip, rake)``
+    * ``(strike, dip, rake, magnitude)``
+    * ``(mnn, mee, mdd, mne, mnd, med)``
+    * ``(mnn, mee, mdd, mne, mnd, med, magnitude)``
+    * ``((mnn, mne, mnd), (mne, mee, med), (mnd, med, mdd))``
+    * :py:class:`MomentTensor`
     '''
 
     if isinstance(values, (tuple, list)):
@@ -166,12 +203,39 @@ def values_to_matrix(values):
 
 
 def moment_to_magnitude(moment):
+    '''
+    Convert scalar moment to moment magnitude Mw.
+
+    :param moment: scalar moment [Nm]
+    :returns: moment magnitude Mw
+
+    Moment magnitude is defined as
+
+    .. math::
+
+        M_\\mathrm{w} = {\\frac{2}{3}}\\log_{10}(M_0) - 10.7
+
+    where :math:`M_0` is the scalar moment given in [Nm].
+
+    .. note::
+
+        Global CMT uses 10.7333333 instead of 10.7, based on [Kanamori 1977],
+        10.7 is from [Hanks and Kanamori 1979].
+    '''
+
     return num.log10(moment*1.0e7) / 1.5 - 10.7
-    # global CMT uses 10.7333333... instead of 10.7, based on [Kanamori 1977]
-    # 10.7 comes from [Hanks and Kanamori 1979]
 
 
 def magnitude_to_moment(magnitude):
+    '''
+    Convert moment magnitude Mw to scalar moment.
+
+    :param magnitude: moment magnitude
+    :returns: scalar moment [Nm]
+
+    See :py:func:`moment_to_magnitude`.
+    '''
+
     return 10.0**(1.5*(magnitude+10.7))*1.0e-7
 
 
@@ -212,7 +276,7 @@ def euler_to_matrix(alpha, beta, gamma):
 
 
 def matrix_to_euler(rotmat):
-    '''Inverse of euler_to_matrix().'''
+    '''Get eulerian angle triplet from rotation matrix.'''
 
     ex = cvec(1., 0., 0.)
     ez = cvec(0., 0., 1.)
@@ -237,18 +301,21 @@ def matrix_to_euler(rotmat):
 
 
 def unique_euler(alpha, beta, gamma):
-    '''Uniquify euler angle triplet.
+    '''Uniquify eulerian angle triplet.
 
-Put euler angles into ranges compatible with (dip,strike,-rake) in seismology:
+    Put eulerian angle triplet into ranges compatible with
+    ``(dip, strike, -rake)`` conventions in seismology::
 
-    alpha (dip)   : [0, pi/2]
-    beta (strike) : [0, 2*pi)
-    gamma (-rake) : [-pi, pi)
+        alpha (dip)   : [0, pi/2]
+        beta (strike) : [0, 2*pi)
+        gamma (-rake) : [-pi, pi)
 
-If alpha is near to zero, beta is replaced by beta+gamma and gamma is set to
-zero, to prevent that additional ambiguity.
+    If ``alpha1`` is near to zero, ``beta`` is replaced by ``beta+gamma`` and
+    ``gamma`` is set to zero, to prevent this additional ambiguity.
 
-If alpha is near to pi/2, beta is put into the range [0,pi).'''
+    If ``alpha`` is near to ``pi/2``, ``beta`` is put into the range
+    ``[0,pi)``.
+    '''
 
     pi = math.pi
 
@@ -352,6 +419,13 @@ def sm(m):
 
 
 def as_mt(mt):
+    '''
+    Convenience function to convert various objects to moment tensor object.
+
+    Like :py:meth:``MomentTensor.from_values``, but does not create a new
+    :py:class:`MomentTensor` object when ``mt`` already is one.
+    '''
+
     if isinstance(mt, MomentTensor):
         return mt
     else:
@@ -426,14 +500,15 @@ class MomentTensor(Object):
         or NumPy array with 3x3 or 3, 4, 6, or 7 elements to build a Moment
         tensor object.
 
-        The ``values`` argument is interpreted depending on shape as follows::
+        The ``values`` argument is interpreted depending on shape and type as
+        follows:
 
-            [strike, dip, rake]
-            [strike, dip, rake, magnitude]
-            [mnn, mee, mdd, mne, mnd, med]
-            [mnn, mee, mdd, mne, mnd, med, magnitude]
-            [[mnn, mne, mnd], [mne, mee, med], [mnd, med, mdd]]
-            MomentTensor_object
+        * ``(strike, dip, rake)``
+        * ``(strike, dip, rake, magnitude)``
+        * ``(mnn, mee, mdd, mne, mnd, med)``
+        * ``(mnn, mee, mdd, mne, mnd, med, magnitude)``
+        * ``((mnn, mne, mnd), (mne, mee, med), (mnd, med, mdd))``
+        * :py:class:`MomentTensor` object
         '''
 
         m = values_to_matrix(values)
@@ -804,7 +879,7 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
             zero mean and given standard deviation [degrees]
         :param angle: set angle [degrees], only axis will be random
         :param rstate: :py:class:`RandomState` object, can be used to create
-            reproducible sequences
+            reproducible pseudo-random sequences
         :returns: new :py:class:`MomentTensor` object
         '''
 
@@ -821,6 +896,10 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
 
 
 def other_plane(strike, dip, rake):
+    '''
+    Get the respectively other plane in the double-couple ambiguity.
+    '''
+
     mt = MomentTensor(strike=strike, dip=dip, rake=rake)
     both_sdr = mt.both_strike_dip_rake()
     w = [sum([abs(x-y) for x, y in zip(both_sdr[i], (strike, dip, rake))])
