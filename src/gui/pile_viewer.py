@@ -1011,12 +1011,14 @@ def MakePileViewerMainClass(base):
 
             self.menu.addSeparator()
 
-            self.menuitem_test = qw.QAction('Test', self.menu)
-            self.menuitem_test.setCheckable(True)
-            self.menuitem_test.setChecked(False)
-            self.menu.addAction(self.menuitem_test)
-            self.menuitem_test.triggered.connect(
-                self.toggletest)
+            # Disable ShadowPileTest
+            if False:
+                self.menuitem_test = qw.QAction('Test', self.menu)
+                self.menuitem_test.setCheckable(True)
+                self.menuitem_test.setChecked(False)
+                self.menu.addAction(self.menuitem_test)
+                self.menuitem_test.triggered.connect(
+                    self.toggletest)
 
             self.menuitem_print = qw.QAction('Print', self.menu)
             self.menu.addAction(self.menuitem_print)
@@ -2435,7 +2437,7 @@ def MakePileViewerMainClass(base):
             if dialog.exec_() != qw.QDialog.Accepted:
                 return
 
-            painter = qps.QPainter()
+            painter = qg.QPainter()
             painter.begin(printer)
             page = printer.pageRect()
             self.drawit(
@@ -2452,6 +2454,9 @@ def MakePileViewerMainClass(base):
                     os.path.join(os.environ['HOME'],  'untitled.svg'),
                     'SVG|PNG (*.svg *.png)',
                     options=qfiledialog_options)
+
+                if fn == '':
+                    return
 
             if str(fn).endswith('.svg'):
                 w, h = 842, 595
@@ -2471,6 +2476,7 @@ def MakePileViewerMainClass(base):
             elif str(fn).endswith('.png'):
                 pixmap = self.grab()
                 pixmap.save(fn)
+
             else:
                 logger.warning('unsupported file type')
 

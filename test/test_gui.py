@@ -110,9 +110,8 @@ class GUITest(unittest.TestCase):
         QTest.keyPress(pv, Qt.Key_Backspace)
         self.assertEqual(len(pv.viewer.get_markers()), 0)
 
-    def click_menu_item(self, qmenu, action_text, dialog=False):
-        ''' Emulate a mouseClick on a menu item *action_text* in the
-        *qmenu*.'''
+    def trigger_menu_item(self, qmenu, action_text, dialog=False):
+        ''' trigger a QMenu QAction with action_text. '''
         for iaction, action in enumerate(qmenu.actions()):
             if action.text() == action_text:
 
@@ -120,17 +119,11 @@ class GUITest(unittest.TestCase):
                     def closeDialog():
                         dlg = self.snuffler.activeModalWidget()
                         QTest.keyClick(dlg, Qt.Key_Escape)
-                        QTest.qWait(100)
 
-                    qc.QTimer.singleShot(100, closeDialog)
+                    qc.QTimer.singleShot(150, closeDialog)
 
-                QTest.keyClick(qmenu, Qt.Key_Enter)
-                for i in range(iaction):
-                    QTest.keyClick(qmenu, Qt.Key_Up)
-                qmenu.close()
+                action.trigger()
                 break
-            else:
-                QTest.keyClick(qmenu, Qt.Key_Down)
 
     def get_slider_position(self, slider):
         style = slider.style()
@@ -376,7 +369,6 @@ class GUITest(unittest.TestCase):
             'Subsort by Channel, Network, Station, Location',
             'Subsort by Network, Station, Channel (Grouped by Location)',
             'Subsort by Station, Network, Channel (Grouped by Location)',
-            'Test',
         ]
 
         dialog_actions = [
@@ -431,14 +423,14 @@ class GUITest(unittest.TestCase):
         right_click_menu = self.viewer.menu
 
         for action_text in dialog_actions:
-            self.click_menu_item(right_click_menu, action_text, dialog=True)
+            self.trigger_menu_item(right_click_menu, action_text, dialog=True)
 
         for action_text in non_dialog_actions:
             for oa in options:
                 for ob in options:
-                    self.click_menu_item(right_click_menu, action_text)
-                    self.click_menu_item(right_click_menu, oa)
-                    self.click_menu_item(right_click_menu, ob)
+                    self.trigger_menu_item(right_click_menu, action_text)
+                    self.trigger_menu_item(right_click_menu, oa)
+                    self.trigger_menu_item(right_click_menu, ob)
 
                 options.remove(oa)
 
