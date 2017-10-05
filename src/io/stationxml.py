@@ -5,6 +5,7 @@
 from __future__ import absolute_import, division
 from builtins import str
 
+import sys
 import time
 import logging
 import datetime
@@ -23,7 +24,7 @@ from pyrocko.guts import load_xml  # noqa
 import pyrocko.model
 from pyrocko import trace, util
 
-guts_prefix = 'pf'
+guts_prefix = 'sx'
 
 logger = logging.getLogger('pyrocko.io.stationxml')
 
@@ -104,8 +105,13 @@ class DummyAwareOptionalTimestamp(Object):
 
                 except util.TimeStrError:
                     year = int(val[:4])
-                    if year > this_year + 100:
-                        return None  # StationXML contained a dummy end date
+                    if sys.maxsize > 2**32:  # if we're on 64bit
+                        if year > this_year + 100:
+                            return None  # StationXML contained a dummy date
+
+                    else:  # 32bit end of time is in 2038
+                        if this_year < 2037 and year > 2037 or year < 1903:
+                            return None  # StationXML contained a dummy date
 
                     raise
 
@@ -298,10 +304,12 @@ class Equipment(Object):
     vendor = Unicode.T(optional=True, xmltagname='Vendor')
     model = Unicode.T(optional=True, xmltagname='Model')
     serial_number = String.T(optional=True, xmltagname='SerialNumber')
-    installation_date = Timestamp.T(optional=True,
-                                    xmltagname='InstallationDate')
-    removal_date = DummyAwareOptionalTimestamp.T(optional=True,
-                                                 xmltagname='RemovalDate')
+    installation_date = DummyAwareOptionalTimestamp.T(
+        optional=True,
+        xmltagname='InstallationDate')
+    removal_date = DummyAwareOptionalTimestamp.T(
+        optional=True,
+        xmltagname='RemovalDate')
     calibration_date_list = List.T(Timestamp.T(xmltagname='CalibrationDate'))
 
 
@@ -551,7 +559,7 @@ class Comment(Object):
 
     id = Counter.T(optional=True, xmlstyle='attribute')
     value = Unicode.T(xmltagname='Value')
-    begin_effective_time = Timestamp.T(
+    begin_effective_time = DummyAwareOptionalTimestamp.T(
         optional=True,
         xmltagname='BeginEffectiveTime')
     end_effective_time = DummyAwareOptionalTimestamp.T(
@@ -693,7 +701,7 @@ class Response(Object):
         stage = ResponseStage(
             number=1,
             poles_zeros_list=[pzs],
-            stage_gain=Gain(presponse.constant/norm_factor))
+            stage_gain=Gain(float(abs(presponse.constant))/norm_factor))
 
         resp = Response(
             instrument_sensitivity=Sensitivity(
@@ -711,7 +719,8 @@ class BaseNode(Object):
     Channel types.'''
 
     code = String.T(xmlstyle='attribute')
-    start_date = Timestamp.T(optional=True, xmlstyle='attribute')
+    start_date = DummyAwareOptionalTimestamp.T(optional=True,
+                                               xmlstyle='attribute')
     end_date = DummyAwareOptionalTimestamp.T(optional=True,
                                              xmlstyle='attribute')
     restricted_status = RestrictedStatus.T(optional=True, xmlstyle='attribute')
@@ -784,7 +793,8 @@ class Station(BaseNode):
     geology = Unicode.T(optional=True, xmltagname='Geology')
     equipment_list = List.T(Equipment.T(xmltagname='Equipment'))
     operator_list = List.T(Operator.T(xmltagname='Operator'))
-    creation_date = Timestamp.T(optional=True, xmltagname='CreationDate')
+    creation_date = DummyAwareOptionalTimestamp.T(
+        optional=True, xmltagname='CreationDate')
     termination_date = DummyAwareOptionalTimestamp.T(
         optional=True, xmltagname='TerminationDate')
     total_number_channels = Counter.T(
@@ -1308,6 +1318,7 @@ def load_channel_table(stream):
     stations = {}
 
     for line in stream:
+        line = str(line.decode('ascii'))
         if line.startswith('#'):
             continue
 
@@ -1318,6 +1329,9 @@ def load_channel_table(stream):
 
         (net, sta, loc, cha, lat, lon, ele, dep, azi, dip, sens, scale,
             scale_freq, scale_units, sample_rate, start_date, end_date) = t
+
+        if not scale_freq:
+            scale_freq = None
 
         try:
             if net not in networks:

@@ -46,6 +46,7 @@ def git_infos():
 
     sha1 = q(['git', 'log', '--pretty=oneline', '-n1']).split()[0]
     sha1 = re.sub(br'[^0-9a-f]', '', sha1)
+    sha1 = str(sha1.decode('ascii'))
     sstatus = q(['git', 'status'])
     local_modifications = bool(re.search(br'^#\s+modified:', sstatus,
                                          flags=re.M))
@@ -133,7 +134,7 @@ def get_build_include(lib_name):
     return op.join(op.dirname(op.abspath(__file__)), lib_name)
 
 
-def check_multiple_install():
+def find_pyrocko_installs():
     found = []
     seen = set()
     orig_sys_path = sys.path
@@ -152,46 +153,52 @@ def check_multiple_install():
 
         try:
             import pyrocko
-            x = (pyrocko.installed_date, p, pyrocko.__file__,
+            dpath = op.dirname(op.abspath(pyrocko.__file__))
+            x = (pyrocko.installed_date, p, dpath,
                  pyrocko.long_version)
             found.append(x)
             del sys.modules['pyrocko']
             del sys.modules['pyrocko.info']
-        except:
+        except ImportError:
             pass
 
     sys.path = orig_sys_path
+    return found
 
-    e = sys.stderr
 
-    initpyc = '__init__.pyc'
+def print_installs(found, file):
+    print(
+        '\nsys.path configuration is: \n  %s\n' % '\n  '.join(sys.path),
+        file=file)
+
+    dates = sorted([xx[0] for xx in found])
     i = 1
+
+    for (installed_date, p, installed_path, long_version) in found:
+        oldnew = ''
+        if len(dates) >= 2:
+            if installed_date == dates[0]:
+                oldnew = ' (oldest)'
+
+            if installed_date == dates[-1]:
+                oldnew = ' (newest)'
+
+        print('''Pyrocko installation #%i:
+  date installed: %s%s
+  version: %s
+  path: %s
+''' % (i, installed_date, oldnew, long_version, installed_path), file=file)
+        i += 1
+
+
+def check_multiple_install():
+    found = find_pyrocko_installs()
+    e = sys.stderr
 
     dates = sorted([xx[0] for xx in found])
 
     if len(found) > 1:
-        print(
-            'sys.path configuration is: \n  %s\n' % '\n  '.join(sys.path),
-            file=e)
-
-        for (installed_date, p, fpath, long_version) in found:
-            oldnew = ''
-            if len(dates) >= 2:
-                if installed_date == dates[0]:
-                    oldnew = ' (oldest)'
-
-                if installed_date == dates[-1]:
-                    oldnew = ' (newest)'
-
-            if fpath.endswith(initpyc):
-                fpath = fpath[:-len(initpyc)]
-
-            print('''Pyrocko installation #%i:
-  date installed: %s%s
-  path: %s
-  version: %s
-''' % (i, installed_date, oldnew, fpath, long_version), file=e)
-            i += 1
+        print_installs(found, e)
 
     if len(found) > 1:
         print(
@@ -203,7 +210,40 @@ WARNING: Multiple installations of Pyrocko are present on this system.''',
             print('WARNING: Not using newest installed version.', file=e)
 
 
-class CheckMultipleInstall(Command):
+def check_pyrocko_install_compat():
+    found = find_pyrocko_installs()
+    if len(found) == 0:
+        return
+
+    expected_submodules = ['gui', 'dataset', 'client',
+                           'streaming', 'io', 'model']
+
+    installed_date, p, install_path, long_version = found[0]
+
+    installed_submodules = [d for d in os.listdir(install_path)
+                            if op.isdir(op.join(install_path, d))]
+
+    if not all([ed in installed_submodules for ed in expected_submodules]):
+
+        print_installs(found, sys.stdout)
+
+        print('''\n
+###############################################################################
+
+WARNING: Found an old, incompatible, Pyrocko installation!
+
+Please purge the old installation and the 'build' directory before installing
+this new version:
+
+    sudo rm -rf '%s' build
+
+###############################################################################
+''' % install_path)
+
+        sys.exit(1)
+
+
+class CheckInstalls(Command):
     description = '''check for multiple installations of Pyrocko'''
     user_options = []
 
@@ -217,8 +257,43 @@ class CheckMultipleInstall(Command):
         check_multiple_install()
 
 
+class Uninstall(Command):
+    description = 'delete installations of Pyrocko known to the invoked ' \
+                  'Python interpreter'''
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        found = find_pyrocko_installs()
+        print_installs(found, sys.stdout)
+
+        if found:
+            print('''
+Use the following commands to remove the Pyrocko installation(s) known to the
+currently running Python interpreter:
+
+  sudo rm -rf build''')
+
+            for _, _, install_path, _ in found:
+                print('  sudo rm -rf "%s"' % install_path)
+
+            print()
+
+        else:
+            print('''
+No Pyrocko installations found with the currently running Python interpreter.
+''')
+
+
 class CustomInstallCommand(install):
     def run(self):
+        check_pyrocko_install_compat()
         install.run(self)
         check_multiple_install()
         bd_dir = bash_completions_dir()
@@ -463,6 +538,7 @@ python setup.py build
     return False
 
 
+
 if _check_for_openmp():
     omp_arg = ['-fopenmp']
     omp_lib = ['-lgomp']
@@ -496,8 +572,9 @@ setup(
         'build_py': CustomBuildPyCommand,
         # 'py2app': CustomBuildAppCommand,
         'build_ext': CustomBuildExtCommand,
-        'check_multiple_install': CheckMultipleInstall,
+        'check_multiple_install': CheckInstalls,
         'install_prerequisites': InstallPrerequisits,
+        'uninstall': Uninstall,
     },
 
     name=packname,

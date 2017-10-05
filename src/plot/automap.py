@@ -1036,7 +1036,7 @@ class Map(Object):
 
             for c in cities:
                 try:
-                    text = c.name.encode('iso-8859-1')
+                    text = c.name.encode('iso-8859-1').decode('iso-8859-1')
                 except UnicodeEncodeError:
                     text = c.asciiname
 

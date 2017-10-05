@@ -7,7 +7,11 @@ from builtins import str
 
 import re
 import logging
-from urllib import parse
+try:
+    from urllib.parse import urlencode
+except ImportError:
+    from urllib import urlencode
+
 try:
     from urllib2 import (Request, build_opener, HTTPDigestAuthHandler,
                          HTTPError, urlopen)
@@ -39,7 +43,7 @@ g_site_abbr = {
     'ipgp': 'http://centrededonnees.ipgp.fr',
     'ingv': 'http://webservices.rm.ingv.it',
     'isc': 'http://www.isc.ac.uk',
-    'lmu': 'http://www.geophysik.uni-muenchen.de/observatory/seismology',
+    'lmu': 'http://erde.geophysik.uni-muenchen.de',
     'noa': 'http://bbnet.gein.noa.gr',
     'resif': 'http://portal.resif.fr',
     'usp': 'http://www.moho.iag.usp.br'
@@ -97,7 +101,7 @@ class InvalidRequest(Exception):
 
 
 def _request(url, post=False, user=None, passwd=None, **kwargs):
-    url_values = parse.urlencode(kwargs)
+    url_values = urlencode(kwargs)
     if url_values:
         url += '?' + url_values
     logger.debug('Accessing URL %s' % url)

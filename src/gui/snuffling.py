@@ -1303,8 +1303,8 @@ class Snuffling(object):
             self.get_viewer(),
             caption,
             dir,
-            filter,
-            selected_filter)
+            filter)
+            #selected_filter)
 
         if not fn:
             raise UserCancelled()

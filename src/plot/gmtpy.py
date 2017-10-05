@@ -9,7 +9,7 @@
 
 
 from __future__ import print_function, absolute_import
-from builtins import zip
+from builtins import zip, str as text
 import subprocess
 try:
     from StringIO import StringIO as BytesIO
@@ -31,6 +31,16 @@ from scipy.io import netcdf
 
 find_bb = re.compile(br'%%BoundingBox:((\s+[-0-9]+){4})')
 find_hiresbb = re.compile(br'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
+
+
+encoding_gmt_to_python = {
+    'isolatin1+': 'iso-8859-1',
+    'standard+': 'ascii',
+    'isolatin1': 'iso-8859-1',
+    'standard': 'ascii'}
+
+for i in range(1, 11):
+    encoding_gmt_to_python['iso-8859-%i' % i] = 'iso-8859-%i' % i
 
 
 def have_gmt():
@@ -3072,18 +3082,21 @@ def text_box(
 class TableLiner(object):
     '''Utility class to turn tables into lines.'''
 
-    def __init__(self, in_columns=None, in_rows=None):
+    def __init__(self, in_columns=None, in_rows=None, encoding='utf-8'):
         self.in_columns = in_columns
         self.in_rows = in_rows
+        self.encoding = encoding
 
     def __iter__(self):
         if self.in_columns is not None:
             for row in zip(*self.in_columns):
-                yield (' '.join([str(x) for x in row])+'\n').encode('ascii')
+                yield (' '.join([text(x) for x in row])+'\n').encode(
+                    self.encoding)
 
         if self.in_rows is not None:
             for row in self.in_rows:
-                yield (' '.join([str(x) for x in row])+'\n').encode('ascii')
+                yield (' '.join([text(x) for x in row])+'\n').encode(
+                    self.encoding)
 
 
 class LineStreamChopper(object):
@@ -3304,16 +3317,24 @@ class GMT(object):
         assert(1 >= len([x for x in [out_stream, out_filename, out_discard]
                          if x is not None]))
 
-        gmt_config_filename = self.gmt_config_filename
-        if config_override:
-            gmt_config = self.gmt_config.copy()
-            gmt_config.update(config_override)
-            gmt_config_override_filename = pjoin(
-                self.tempdir, 'gmtdefaults_override')
-            self.gen_gmt_config_file(gmt_config_override_filename, gmt_config)
-            gmt_config_filename = gmt_config_override_filename
-
         options = []
+
+        gmt_config = self.gmt_config
+        if not self.is_gmt5():
+            gmt_config_filename = self.gmt_config_filename
+            if config_override:
+                gmt_config = self.gmt_config.copy()
+                gmt_config.update(config_override)
+                gmt_config_override_filename = pjoin(
+                    self.tempdir, 'gmtdefaults_override')
+                self.gen_gmt_config_file(
+                    gmt_config_override_filename, gmt_config)
+                gmt_config_filename = gmt_config_override_filename
+
+        else:  # gmt5 needs override variables as --VAR=value
+            if config_override:
+                for k, v in config_override.items():
+                    options.append('--%s=%s' % (k, v))
 
         if out_discard:
             out_filename = '/dev/null'
@@ -3329,9 +3350,16 @@ class GMT(object):
         if in_string is not None:
             in_stream = BytesIO(in_string)
 
+        encoding_gmt = gmt_config.get(
+            'PS_CHAR_ENCODING',
+            gmt_config.get('CHAR_ENCODING', 'ISOLatin1+'))
+
+        encoding = encoding_gmt_to_python[encoding_gmt.lower()]
+
         if in_columns is not None or in_rows is not None:
             in_stream = LineStreamChopper(TableLiner(in_columns=in_columns,
-                                                     in_rows=in_rows))
+                                                     in_rows=in_rows,
+                                                     encoding=encoding))
 
         # convert option arguments to strings
         for k, v in kwargs.items():
@@ -3372,7 +3400,7 @@ class GMT(object):
             raise Exception('No such file: %s' % args[0])
         args.extend(options)
         args.extend(addargs)
-        if not suppressdefaults and not self.is_gmt5():
+        if not self.is_gmt5() and not suppressdefaults:
             # does not seem to work with GMT 5 (and should not be necessary
             args.append('+'+gmt_config_filename)
 
