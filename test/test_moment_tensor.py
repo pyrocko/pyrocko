@@ -128,6 +128,22 @@ class MomentTensorTestCase(unittest.TestCase):
 
             assert abs(angle - angle2) < eps
 
+    def testRandomRotation(self):
+        angles = []
+        rstate = num.random.RandomState(10)
+        for _ in range(100):
+            mt1 = MomentTensor.random_mt(magnitude=-1.0)
+            mt2 = mt1.random_rotated(10.0, rstate=rstate)
+            angle = kagan_angle(mt1, mt2)
+            angles.append(angle)
+
+        assert abs(num.mean(angles) - 8.330) < 0.01
+
+        mt1 = MomentTensor.random_mt(magnitude=-1.0)
+        mt2 = mt1.random_rotated(angle=10.0)
+
+        assert abs(kagan_angle(mt1, mt2) - 10.0) < 0.0001
+
 
 if __name__ == "__main__":
     util.setup_logging('test_moment_tensor', 'warning')
