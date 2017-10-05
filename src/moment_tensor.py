@@ -17,9 +17,10 @@ guts_prefix = 'pf'
 dynecm = 1e-7
 
 
-def random_axis():
+def random_axis(rstate=None):
+    rstate = rstate or num.random
     while True:
-        axis = num.random.random(3) * 2.0 - 1.0
+        axis = rstate.uniform(size=3) * 2.0 - 1.0
         uabs = math.sqrt(num.sum(axis**2))
         if 0.001 < uabs < 1.0:
             return axis / uabs
@@ -783,6 +784,40 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
             (moment_clvd, ratio_clvd, m_clvd),
             (moment_devi, ratio_devi, m_devi),
             (moment, 1.0, m)]
+
+    def rotated(self, rot):
+        '''
+        Get rotated moment tensor.
+
+        :param rot: ratation matrix, coordinate system is NED
+        :returns: new :py:class:`MomentTensor` object
+        '''
+
+        rotmat = num.matrix(rot)
+        return MomentTensor(m=rotmat * self.m() * rotmat.T)
+
+    def random_rotated(self, angle_std=None, angle=None, rstate=None):
+        '''
+        Get distorted MT by rotation around random axis and angle.
+
+        :param angle_std: angles are drawn from a normal distribution with
+            zero mean and given standard deviation [degrees]
+        :param angle: set angle [degrees], only axis will be random
+        :param rstate: :py:class:`RandomState` object, can be used to create
+            reproducible sequences
+        :returns: new :py:class:`MomentTensor` object
+        '''
+
+        assert (angle_std is None) != (angle is None), \
+            'either angle or angle_std must be given'
+
+        if angle_std is not None:
+            rstate = rstate or num.random
+            angle = rstate.normal(scale=angle_std)
+
+        axis = random_axis(rstate=rstate)
+        rot = rotation_from_angle_and_axis(angle, axis)
+        return self.rotated(rot)
 
 
 def other_plane(strike, dip, rake):
