@@ -44,6 +44,12 @@ restricted_dtype_map_rev = dict(
     (v, k) for (k, v) in restricted_dtype_map.items())
 
 
+def array_equal(a, b):
+    return a.dtype == b.dtype \
+        and a.shape == b.shape \
+        and num.all(a == b)
+
+
 class Array(Object):
 
     dummy_for = num.ndarray
@@ -60,10 +66,18 @@ class Array(Object):
             TBase.__init__(self, *args, **kwargs)
             self.shape = shape
             self.dtype = dtype
-            assert serialize_as in ('table', 'base64', 'list', 'npy',
-                                    'base64+meta')
+            assert serialize_as in (
+                'table', 'base64', 'list', 'npy', 'base64+meta')
             self.serialize_as = serialize_as
             self.serialize_dtype = serialize_dtype
+
+        def is_default(self, val):
+            if self._default_cmp is None:
+                return val is None
+            elif val is None:
+                return False
+            else:
+                return array_equal(self._default_cmp, val)
 
         def regularize_extra(self, val):
             if isinstance(val, (str, newstr)):
