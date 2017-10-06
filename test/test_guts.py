@@ -390,6 +390,117 @@ class GutsTestCase(unittest.TestCase):
         self.assertEqual(x.dn.network, 'abc')
         self.assertEqual(x.dn.station, 'def')
 
+    def testOptionalDefault(self):
+
+        from pyrocko.guts_array import Array, array_equal
+        import numpy as num
+        assert_ae = num.testing.assert_almost_equal
+
+        def array_equal_noneaware(a, b):
+            if a is None:
+                return b is None
+            elif b is None:
+                return a is None
+            else:
+                return array_equal(a, b)
+
+        data = [
+            ('a', Int.T(),
+                [None, 0, 1, 2],
+                ['aerr', 0, 1, 2]),
+            ('b', Int.T(optional=True),
+                [None, 0, 1, 2],
+                [None, 0, 1, 2]),
+            ('c', Int.T(default=1),
+                [None, 0, 1, 2],
+                [1, 0, 1, 2]),
+            ('d', Int.T(default=1, optional=True),
+                [None, 0, 1, 2],
+                [1, 0, 1, 2]),
+            ('e', List.T(Int.T()),
+                [None, [], [1], [2]],
+                [[], [], [1], [2]]),
+            ('f', List.T(Int.T(), optional=True),
+                [None, [], [1], [2]],
+                [None, [], [1], [2]]),
+            ('g', List.T(Int.T(), default=[1]), [
+                None, [], [1], [2]],
+                [[1], [], [1], [2]]),
+            ('h', List.T(Int.T(), default=[1], optional=True),
+                [None, [], [1], [2]],
+                [[1], [], [1], [2]]),
+            ('i', Tuple.T(2, Int.T()),
+                [None, (1, 2)],
+                ['err', (1, 2)]),
+            ('j', Tuple.T(2, Int.T(), optional=True),
+                [None, (1, 2)],
+                [None, (1, 2)]),
+            ('k', Tuple.T(2, Int.T(), default=(1, 2)),
+                [None, (1, 2), (3, 4)],
+                [(1, 2), (1, 2), (3, 4)]),
+            ('l', Tuple.T(2, Int.T(), default=(1, 2), optional=True),
+                [None, (1, 2), (3, 4)],
+                [(1, 2), (1, 2), (3, 4)]),
+            ('m', Array.T(shape=(None,), dtype=num.int, serialize_as='list'),
+                [num.arange(0), num.arange(2)],
+                [num.arange(0), num.arange(2)]),
+            ('n', Array.T(shape=(None,), dtype=num.int, serialize_as='list',
+                          optional=True),
+                [None, num.arange(0), num.arange(2)],
+                [None, num.arange(0), num.arange(2)]),
+            ('o', Array.T(shape=(None,), dtype=num.int, serialize_as='list',
+                          default=num.arange(2)),
+                [None, num.arange(0), num.arange(2), num.arange(3)],
+                [num.arange(2), num.arange(0), num.arange(2), num.arange(3)]),
+            ('p', Array.T(shape=(None,), dtype=num.int, serialize_as='list',
+                          default=num.arange(2), optional=True),
+                [None, num.arange(0), num.arange(2), num.arange(3)],
+                [num.arange(2), num.arange(0), num.arange(2), num.arange(3)]),
+        ]
+
+        for k, t, vals, exp, in data:
+            last = [None]
+
+            class A(Object):
+                def __init__(self, **kwargs):
+                    last[0] = len(kwargs)
+                    Object.__init__(self, **kwargs)
+
+                v = t
+
+            for v, e in zip(vals, exp):
+                if isinstance(e, str) and e == 'aerr':
+                    with self.assertRaises(ArgumentError):
+                        if v is not None:
+                            a1 = A(v=v)
+                        else:
+                            a1 = A()
+
+                    continue
+                else:
+                    if v is not None:
+                        a1 = A(v=v)
+                    else:
+                        a1 = A()
+
+                if isinstance(e, str) and e == 'err':
+                    with self.assertRaises(ValidationError):
+                        a1.validate()
+                else:
+                    a1.validate()
+                    a2 = load_string(dump(a1))
+                    if isinstance(e, num.ndarray):
+                        assert last[0] == int(
+                            not (array_equal_noneaware(t.default(), a1.v)
+                                 and t.optional))
+                        assert_ae(a1.v, e)
+                        assert_ae(a1.v, e)
+                    else:
+                        assert last[0] == int(
+                            not(t.default() == a1.v and t.optional))
+                        self.assertEqual(a1.v, e)
+                        self.assertEqual(a2.v, e)
+
     def testArray(self):
         from pyrocko.guts_array import Array
         import numpy as num
