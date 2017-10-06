@@ -5,7 +5,6 @@
 from __future__ import absolute_import
 
 from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
 from PyQt5 import QtWidgets as qw
 
 from .util import make_QPolygonF, LinValControl
