@@ -14,7 +14,7 @@ from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
     ArgumentError, ValidationError, Any, List, Tuple, Union, Choice, Dict, \
     load, load_string, load_xml_string, load_xml, load_all, iload_all, \
     load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml, \
-    make_typed_list_class, walk, zip_walk, path_to_str
+    make_typed_list_class, walk, zip_walk, path_to_str, clone
 
 
 guts_prefix = 'guts_test'
@@ -154,6 +154,7 @@ class GutsTestCase(unittest.TestCase):
             a = Int.T(xmlstyle='content')
 
         x = X(a=11, z=[1, 2, 3])
+        del x
 
         X.T.remove_property('y')
         X.T.remove_property('z')
@@ -927,6 +928,34 @@ class GutsTestCase(unittest.TestCase):
         a.validate()
         a2 = load_string(a.dump())
         assert a2.vals == a.vals
+
+    def testClone(self):
+
+        class A(Object):
+            a = Int.T(optional=True)
+
+        class B(Object):
+            a_list = List.T(A.T())
+            a_tuple = Tuple.T(3, A.T())
+            a_dict = Dict.T(Int.T(), A.T())
+            b = Float.T()
+
+        a1 = A()
+        a2 = A(a=1)
+        b = B(
+            a_list=[a1, a2],
+            a_tuple=(a1, a2, a2),
+            a_dict={1: a1, 2: a2},
+            b=1.0)
+        b_clone = clone(b)
+        b.validate()
+        b_clone.validate()
+        self.assertEqual(b.dump(), b_clone.dump())
+        assert b is not b_clone
+        assert b.a_list is not b_clone.a_list
+        assert b.a_tuple is not b_clone.a_tuple
+        assert b.a_list[0] is not b_clone.a_list[0]
+        assert b.a_tuple[0] is not b_clone.a_tuple[0]
 
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):

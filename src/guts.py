@@ -14,6 +14,7 @@ import calendar
 import re
 import sys
 import types
+import copy
 
 from io import open, BytesIO
 
@@ -168,7 +169,7 @@ class Defer(object):
 class TBase(object):
 
     strict = False
-    multivalued = False
+    multivalued = None
     force_regularize = False
     propnames = []
 
@@ -790,7 +791,7 @@ class Dict(Object):
     dummy_for = dict
 
     class __T(TBase):
-        multivalued = True
+        multivalued = dict
 
         def __init__(self, key_t=Any.T(), content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -841,7 +842,7 @@ class List(Object):
     dummy_for = list
 
     class __T(TBase):
-        multivalued = True
+        multivalued = list
 
         def __init__(self, content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -905,7 +906,7 @@ class Tuple(Object):
     dummy_for = tuple
 
     class __T(TBase):
-        multivalued = True
+        multivalued = tuple
 
         def __init__(self, n=None, content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -1526,6 +1527,54 @@ def walk(x, typ=None, path=()):
             else:
                 for y in walk(val, typ, path=path+(prop.name,)):
                     yield y
+
+
+def clone(x, pool=None):
+    '''
+    Clone guts object tree.
+
+    Traverses guts object tree and recursively clones all guts attributes,
+    falling back to :py:func:`copy.deepcopy` for non-guts objects. Objects
+    deriving from :py:class:`Object` are instantiated using their respective
+    init function. Multiply referenced objects in the source tree are multiply
+    referenced also in the destination tree.
+
+    This function can be used to clone guts objects ignoring any contained
+    run-time state, i.e. any of their attributes not defined as a guts
+    property.
+    '''
+
+    if pool is None:
+        pool = {}
+
+    if id(x) in pool:
+        x_copy = pool[id(x)]
+
+    else:
+        if isinstance(x, Object):
+            d = {}
+            for (prop, y) in x.T.ipropvals(x):
+                if y is not None:
+                    if not prop.multivalued:
+                        y_copy = clone(y, pool)
+                    elif prop.multivalued is dict:
+                        y_copy = dict(
+                            (clone(zk, pool), clone(zv, pool))
+                            for (zk, zv) in y.items())
+                    else:
+                        y_copy = type(y)(clone(z, pool) for z in y)
+                else:
+                    y_copy = y
+
+                d[prop.name] = y_copy
+
+            x_copy = x.__class__(**d)
+
+        else:
+            x_copy = copy.deepcopy(x)
+
+    pool[id(x)] = x_copy
+    return x_copy
 
 
 def zip_walk(x, typ=None, path=(), stack=()):
