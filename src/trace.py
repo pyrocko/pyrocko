@@ -159,6 +159,18 @@ class Trace(object):
             and abs(self.tmax-other.tmax) < self.deltat*0.01
             and num.all(self.ydata == other.ydata))
 
+    def almost_equal(self, other, rtol=1e-5, atol=0.0):
+        return (
+            self.network == other.network
+            and self.station == other.station
+            and self.location == other.location
+            and self.channel == other.channel
+            and (abs(self.deltat - other.deltat)
+                 < (self.deltat + other.deltat)*1e-6)
+            and abs(self.tmin-other.tmin) < self.deltat*0.01
+            and abs(self.tmax-other.tmax) < self.deltat*0.01
+            and num.allclose(self.ydata, other.ydata, rtol=rtol, atol=atol))
+
     def __hash__(self):
         return id(self)
 
