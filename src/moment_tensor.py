@@ -20,7 +20,7 @@ def random_axis(rstate=None):
     '''
     Get randomly oriented unit vector.
 
-    :param rstate: :py:class:`RandomState` object, can be used to create
+    :param rstate: :py:class:`numpy.random.RandomState` object, can be used to create
         reproducible pseudo-random sequences
     '''
     rstate = rstate or num.random
@@ -878,7 +878,7 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
         :param angle_std: angles are drawn from a normal distribution with
             zero mean and given standard deviation [degrees]
         :param angle: set angle [degrees], only axis will be random
-        :param rstate: :py:class:`RandomState` object, can be used to create
+        :param rstate: :py:class:`numpy.random.RandomState` object, can be used to create
             reproducible pseudo-random sequences
         :returns: new :py:class:`MomentTensor` object
         '''
