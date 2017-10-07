@@ -35,6 +35,15 @@ def dark(color, factor=0.5):
     return tuple(c*factor for c in color)
 
 
+def have_geographiclib():
+    try:
+        from geographiclib.geodesic import Geodesic  # noqa
+        return True
+
+    except ImportError:
+        return False
+
+
 class OrthodromeTestCase(unittest.TestCase):
 
     def get_critical_random_locations(self, ntest):
@@ -304,6 +313,7 @@ class OrthodromeTestCase(unittest.TestCase):
                                 '(maximum error)\n tested lat/lon: %s/%s' %
                                 (lat, lon))
 
+    @unittest.skipUnless(have_geographiclib(), 'geographiclib not available')
     def test_geodetic_to_ecef(self):
         orthodrome.geodetic_to_ecef(23., 0., 0.)
         wgs = orthodrome.get_wgs84()
@@ -319,6 +329,7 @@ class OrthodromeTestCase(unittest.TestCase):
             num.testing.assert_almost_equal(orthodrome.geodetic_to_ecef(*p[0]),
                                             p[1])
 
+    @unittest.skipUnless(have_geographiclib(), 'geographiclib not available')
     def test_ecef_to_geodetic(self):
         ncoords = 5
         lats = num.random.uniform(-90., 90, size=ncoords)
