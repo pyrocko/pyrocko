@@ -198,7 +198,7 @@ def save(traces, filename_template, format='mseed', additional={},
 
     elif format == 'gse2':
         return gse2.save(traces, filename_template, additional,
-                                 overwrite=overwrite)
+                         overwrite=overwrite)
 
     elif format == 'sac':
         fns = []

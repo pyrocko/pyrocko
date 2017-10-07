@@ -4,14 +4,14 @@ Plotting functions
 Generating topographic maps with ``automap``
 --------------------------------------------
 
-The :py:mod:`pyrocko.automap` module provides a painless and clean interface
+The :mod:`pyrocko.plot.automap` module provides a painless and clean interface
 for the `Generic Mapping Tool (GMT) <http://gmt.soest.hawaii.edu/>`_ [#f1]_.
 
 Classes covered in these examples:
- * :py:class:`pyrocko.automap.Map`
+ * :class:`pyrocko.plot.automap.Map`
 
 For details on GMT wrapping module:
- * :py:mod:`pyrocko.gmtpy`
+ * :mod:`pyrocko.plot.gmtpy`
 
 Topographic map of Dead Sea basin
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,16 +39,16 @@ Plotting beachballs (focal mechanisms)
 --------------------------------------
 
 Classes covered in these examples:
- * :py:class:`pyrocko.beachball` (visual representation of a focal mechanism)
- * :py:mod:`pyrocko.moment_tensor` (a 3x3 matrix representation of an
+ * :class:`pyrocko.plot.beachball` (visual representation of a focal mechanism)
+ * :mod:`pyrocko.moment_tensor` (a 3x3 matrix representation of an
    earthquake source)
- * :py:class:`pyrocko.gf.seismosizer.DCSource` (a representation of a double
+ * :class:`pyrocko.gf.seismosizer.DCSource` (a representation of a double
    couple source object),
- * :py:class:`pyrocko.gf.seismosizer.RectangularExplosionSource` (a
+ * :class:`pyrocko.gf.seismosizer.RectangularExplosionSource` (a
    representation of a rectangular explostion source), 
- * :py:class:`pyrocko.gf.seismosizer.CLVDSource` (a representation of a
+ * :class:`pyrocko.gf.seismosizer.CLVDSource` (a representation of a
    compensated linear vector diploe source object)
- * :py:class:`pyrocko.gf.seismosizer.DoubleDCSource` (a representation of a
+ * :class:`pyrocko.gf.seismosizer.DoubleDCSource` (a representation of a
    double double-couple source object).
 
 Beachballs from moment tensors
@@ -66,7 +66,7 @@ Download :download:`beachball_example01.py </../../examples/beachball_example01.
     :alt: Beachballs (focal mechanisms) created by moment tensors.
 
     An artistic display of focal mechanisms drawn by classes
-    :py:class:`pyrocko.beachball` and :py:mod:`pyrocko.moment_tensor`.
+    :class:`pyrocko.plot.beachball` and :mod:`pyrocko.moment_tensor`.
 
 
 This example shows how to plot a full, a deviatoric and a double-couple beachball
@@ -88,10 +88,10 @@ Beachballs from source objects
 
 This example shows how to add beachballs of various sizes to the corners of a
 plot by obtaining the moment tensor from four different source object types:
-:py:class:`pyrocko.gf.seismosizer.DCSource` (upper left),
-:py:class:`pyrocko.gf.seismosizer.RectangularExplosionSource` (upper right), 
-:py:class:`pyrocko.gf.seismosizer.CLVDSource` (lower left) and
-:py:class:`pyrocko.gf.seismosizer.DoubleDCSource` (lower right).
+:class:`pyrocko.gf.seismosizer.DCSource` (upper left),
+:class:`pyrocko.gf.seismosizer.RectangularExplosionSource` (upper right), 
+:class:`pyrocko.gf.seismosizer.CLVDSource` (lower left) and
+:class:`pyrocko.gf.seismosizer.DoubleDCSource` (lower right).
 
 Creating the beachball this ways allows for finer control over their location
 based on their size (in display units) which allows for a round beachball even
@@ -117,12 +117,12 @@ This example shows how to add station symbols at the positions where P wave
 rays pierce the focal sphere.
 
 The function to plot focal spheres
-(:py:func:`pyrocko.beachball.plot_beachball_mpl`) uses the function
-:py:func:`pyrocko.beachball.project` in the final projection from 3D to 2D
+(:func:`pyrocko.plot.beachball.plot_beachball_mpl`) uses the function
+:func:`pyrocko.plot.beachball.project` in the final projection from 3D to 2D
 coordinates. Here we use this function to place additional symbols on the plot.
 The take-off angles needed can be computed with some help of the
-:py:mod:`pyrocko.cake` module. Azimuth and distance computations are done with
-functions from :py:mod:`pyrocko.orthodrome`.
+:mod:`pyrocko.cake` module. Azimuth and distance computations are done with
+functions from :mod:`pyrocko.orthodrome`.
 
 Download :download:`beachball_example04.py </../../examples/beachball_example04.py>`
 

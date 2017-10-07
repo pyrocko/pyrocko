@@ -21,7 +21,7 @@ The following software packages must be installed before Pyrocko can be installe
    * `SciPy <http://scipy.org/>`_
    * `matplotlib <http://matplotlib.sourceforge.net/>`_
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
-   * `PyQt4 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
+   * `PyQt5 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
    * `future <https://pypi.python.org/pypi/future>`_ (Python2/3 compatibility layer)
    * `requests <http://docs.python-requests.org/en/master/>`_ (HTTP for Humans)
 
