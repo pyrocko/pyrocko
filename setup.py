@@ -301,12 +301,11 @@ class CustomInstallCommand(install):
             try:
                 shutil.copy('extras/pyrocko', bd_dir)
                 print('Installing pyrocko bash_completion to "%s"' % bd_dir)
-            except IOError as e:
-                import errno
-                if e.errno in (errno.EACCES, errno.ENOENT):
-                    print(e)
-                else:
-                    raise e
+            except:
+                print(
+                    'Could not install pyrocko bash_completion to "%s" '
+                    '(continuing without)'
+                    % bd_dir)
 
 
 class InstallPrerequisits(Command):
