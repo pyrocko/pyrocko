@@ -44,7 +44,11 @@ from PyQt5 import QtWidgets as qw
 from PyQt5 import QtNetwork as qn
 
 logger = logging.getLogger('pyrocko.gui.snuffler')
-Qt.QCoreApplication.setAttribute(qc.Qt.AA_ShareOpenGLContexts, True)
+
+# Application attribute has to be set for QWebView
+if qc.QVersionNumber.fromString(Qt.QT_VERSION_STR) \
+   >= qc.QVersionNumber.fromString('5.4.0'):
+    Qt.QCoreApplication.setAttribute(qc.Qt.AA_ShareOpenGLContexts, True)
 
 
 class AcquisitionThread(qc.QThread):
