@@ -171,6 +171,28 @@ class Trace(object):
             and abs(self.tmax-other.tmax) < self.deltat*0.01
             and num.allclose(self.ydata, other.ydata, rtol=rtol, atol=atol))
 
+    def assert_almost_equal(self, other, rtol=1e-5, atol=0.0):
+
+        assert self.network == other.network, \
+            'network codes differ: %s, %s' % (self.network, other.network)
+        assert self.station == other.station, \
+            'station codes differ: %s, %s' % (self.station, other.station)
+        assert self.location == other.location, \
+            'location codes differ: %s, %s' % (self.location, other.location)
+        assert self.channel == other.channel, 'channel codes differ'
+        assert (abs(self.deltat - other.deltat)
+                 < (self.deltat + other.deltat)*1e-6), \
+            'sampling intervals differ %g, %g' % (self.deltat, other.delta)
+        assert abs(self.tmin-other.tmin) < self.deltat*0.01, \
+            'start times differ: %s, %s' % (
+                util.time_to_str(self.tmin), util.time_to_str(other.tmin))
+        assert abs(self.tmax-other.tmax) < self.deltat*0.01, \
+            'end times differ: %s, %s' % (
+                util.time_to_str(self.tmax), util.time_to_str(other.tmax))
+
+        assert num.allclose(self.ydata, other.ydata, rtol=rtol, atol=atol), \
+            'trace values differ'
+
     def __hash__(self):
         return id(self)
 
