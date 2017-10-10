@@ -43,6 +43,8 @@ Python (the \*-dev packages) is also system specific.
 Download and install Pyrocko
 ----------------------------
 
+.. highlight:: sh
+
 Use *git* to download the software package and the included script *setup.py*
 to install::
 

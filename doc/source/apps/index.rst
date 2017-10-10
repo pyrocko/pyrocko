@@ -16,3 +16,4 @@ practice.
    snuffler/index
    cake/index
    fomosto/index
+   jackseis/index

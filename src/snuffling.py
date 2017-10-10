@@ -497,7 +497,7 @@ class Snuffling:
 
     def pixmap_frame(self, filename=None, name=None):
         '''
-        Create a :py:class:`pyrocko.gui_util.PixmapFrame'.
+        Create a :py:class:`pyrocko.gui_util.PixmapFrame`
 
         :param name: labels the tab
         :param filename: name of file to be displayed
