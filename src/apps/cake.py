@@ -439,7 +439,7 @@ as in --phases.''')
             except cake.InvalidArguments as e:
                 parser.error(str(e))
 
-    for k in d.keys():
+    for k in list(d.keys()):
         if k not in want:
             del d[k]
 
