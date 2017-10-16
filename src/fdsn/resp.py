@@ -496,6 +496,7 @@ def make_stationxml(pyrocko_stations, channel_responses):
     pstations = dict((s.nsl(), s) for s in pyrocko_stations)
     networks = {}
     stations = {}
+    azidips = {}
     for (net, sta, loc) in sorted(pstations.keys()):
         pstation = pstations[net, sta, loc]
         if net not in networks:
@@ -510,10 +511,21 @@ def make_stationxml(pyrocko_stations, channel_responses):
 
             networks[net].station_list.append(stations[net, sta])
 
+        for channel in pstation.get_channels():
+            cha = channel.name
+            azidips[net, sta, loc, cha] = channel.azimuth, channel.dip
+
     for cr in channel_responses:
         net, sta, loc, cha = cr.codes
         if (net, sta, loc) in pstations:
             pstation = pstations[net, sta, loc]
+            azi, dip = azidips.get((net, sta, loc, cha), (None, None))
+            if azi is not None:
+                azi = fs.Azimuth(value=azi)
+
+            if dip is not None:
+                dip = fs.Dip(value=dip)
+
             channel = fs.Channel(
                 code=cha,
                 location_code=loc,
@@ -523,6 +535,8 @@ def make_stationxml(pyrocko_stations, channel_responses):
                 longitude=fs.Longitude(pstation.lon),
                 elevation=fs.Distance(pstation.elevation),
                 depth=fs.Distance(pstation.depth),
+                azimuth=azi,
+                dip=dip,
                 response=cr.response)
 
             stations[net, sta].channel_list.append(channel)
