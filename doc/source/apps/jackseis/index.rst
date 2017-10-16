@@ -7,7 +7,10 @@ Jackseis is a simple tool to convert seismic waveform archive datasets. It can
 be used to downsample, rename meta-data, to cut out time windows, to convert
 between different file formats, and to convert the sample data types.
 
-Jackseis is a command line tool, for example, to convert a dataset with
+Synopsis
+--------
+
+Jackseis is a command line tool. For example, to convert a dataset with
 day-files into hour-files, you could use a command as follows::
 
     jackseis <input-directory> --tinc=3600 --output-dir=<output-directory>
@@ -18,6 +21,9 @@ by station, in chronological order. The ``--tinc=3600`` option tells it to
 create files of one hour length and the ``--output-dir=...`` option to store
 output to the given output directory creating files using a predefined naming
 scheme.
+
+Configuring the naming of output files
+--------------------------------------
 
 If more control on the output file naming is needed, use the
 ``--output=TEMPLATE`` option. With this option, quite arbitrary directory
@@ -39,9 +45,13 @@ Jackseis several times with the same output template will add new data to an
 existing dataset. Jackseis refuses to overwrite existing files, unless the
 ``--force`` option is given.
 
+Further options
+---------------
+
 Additional options exist, e.g. to downsample (``--downsample=...``), to
 replace/rename meta-data (``--rename-...``), to cut out time windows
 (``--tmin=...``, ``--tmax=...``), to convert between different data formats
-(``--format=...``, ``--output-format=...``), and to convert the sample data types
-(``--output-data-type=...``). See ``jackseis --help`` to find out more about any of
-the available options.
+(``--format=...``, ``--output-format=...``), and to convert the sample data
+types (``--output-data-type=...``).
+
+Run ``jackseis --help`` to find out more about any of the available options.
