@@ -1319,6 +1319,45 @@ class CPT(Object):
             level.vmax = (level.vmax - vmin_old) / (vmax_old - vmin_old) * \
                 (vmax - vmin) + vmin
 
+    def discretize(self, nlevels):
+        colors = []
+        vals = []
+        for level in self.levels:
+            vals.append(level.vmin)
+            vals.append(level.vmax)
+            colors.append(level.color_min)
+            colors.append(level.color_max)
+
+        r, g, b = num.array(colors, dtype=num.float).T
+        vals = num.array(vals, dtype=num.float)
+
+        vmin, vmax = self.levels[0].vmin, self.levels[-1].vmax
+        x = num.linspace(vmin, vmax, nlevels+1)
+        rd = num.interp(x, vals, r)
+        gd = num.interp(x, vals, g)
+        bd = num.interp(x, vals, b)
+
+        levels = []
+        for ilevel in range(nlevels):
+            color = (
+                float(0.5*(rd[ilevel]+rd[ilevel+1])),
+                float(0.5*(gd[ilevel]+gd[ilevel+1])),
+                float(0.5*(bd[ilevel]+bd[ilevel+1])))
+
+            levels.append(CPTLevel(
+                vmin=x[ilevel],
+                vmax=x[ilevel+1],
+                color_min=color,
+                color_max=color))
+
+        cpt = CPT(
+            color_below=self.color_below,
+            color_above=self.color_above,
+            color_nan=self.color_nan,
+            levels=levels)
+
+        return cpt
+
 
 class CPTParseError(Exception):
     pass
