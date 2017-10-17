@@ -2,7 +2,7 @@ Installation on Mac OS X systems
 ................................
 
 Superuser installation (sudo rights in /usr/bin)
-------------------------------------
+------------------------------------------------
   
 * **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)::
 
@@ -24,7 +24,7 @@ Superuser installation (sudo rights in /usr/bin)
     sudo python setup.py install --install-scripts=/usr/local/bin
 
 Local installation (no sudo rights in /usr/bin)
------------------------------------
+-----------------------------------------------
 
 * **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)::
 

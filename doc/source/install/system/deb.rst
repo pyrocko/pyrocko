@@ -1,8 +1,8 @@
 Installation on Debian based systems (Debian, Ubuntu, Mint)
-...........................................................
+===========================================================
 
-Superuser installation (sudo rights in /usr/bin)
-------------------------------------
+Normal installation (with sudo)
+-------------------------------
 
 * **Ubuntu** (12.04.1 LTS), **Debian** (7 wheezy), **Mint** (13 Maya)::
 
@@ -17,8 +17,8 @@ Superuser installation (sudo rights in /usr/bin)
     sudo python setup.py install
 
 
-Local installation (no sudo rights in /usr/bin)
------------------------------------
+Local installation (no sudo rights in /usr/local/bin)
+-----------------------------------------------------
 
 * **Ubuntu** (12.04.1 LTS), **Debian** (7 wheezy), **Mint** (13 Maya)
 
