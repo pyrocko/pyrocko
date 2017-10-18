@@ -5,6 +5,8 @@ from collections import OrderedDict
 
 from pyrocko.fomosto_report import GreensFunctionTest as gftest
 from pyrocko.fomosto_report import FilterFrequencyError as gft_ffe
+from pyrocko.fomosto_report import FomostoReportError
+
 
 spstr = '\n' + ' '*20
 subcmds_desc = OrderedDict([
@@ -493,15 +495,20 @@ def run_program(args):
     if len(args) == 0 or (len(args) == 1 and
                           args[0] in ('-d', '--show_defaults')):
         args.append('--help')
-    lst = globals()['command_' + command](command, args)
-    if lst is not None:
-        gfts = lst[0]
-        with open(lst[-1], 'w') as f:
-            if isinstance(gfts, gftest):
-                f.write(gfts.dump())
-            else:
-                for i in lst[0]:
-                    f.write(i.dump())
+
+    try:
+        lst = globals()['command_' + command](command, args)
+        if lst is not None:
+            gfts = lst[0]
+            with open(lst[-1], 'w') as f:
+                if isinstance(gfts, gftest):
+                    f.write(gfts.dump())
+                else:
+                    for i in lst[0]:
+                        f.write(i.dump())
+
+    except FomostoReportError as e:
+        sys.exit(str(e))
 
 
 if __name__ == '__main__':
