@@ -1080,7 +1080,7 @@ class SourceWithMagnitude(Source):
         default=6.0,
         help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
-    _keys = None
+    __keys = None
 
     def __init__(self, **kwargs):
         if 'moment' in kwargs:
@@ -1100,10 +1100,10 @@ class SourceWithMagnitude(Source):
 
     @classmethod
     def keys(cls):
-        if cls._keys is None:
-            cls._keys = super(SourceWithMagnitude, cls).keys() + ['moment']
+        if cls.__keys is None:
+            cls.__keys = super(SourceWithMagnitude, cls).keys() + ['moment']
 
-        return cls._keys
+        return cls.__keys
 
     def pyrocko_event(self, **kwargs):
         return Source.pyrocko_event(
