@@ -805,10 +805,10 @@ class HalfSinusoidSTF(STF):
         return (self.duration, self.anchor, type(self))
 
 
-class SmoothRampSTF(STF):
-    '''Smooth-ramp type source time function for near-field displacement.
-    Based on moment function of double-couple point source proposed by Bruestle
-    and Mueller (PEPI, 1983).
+class BellShapedSTF(STF):
+    '''Bell-shaped source time function. It is the time derivative of a
+    smooth ramp function proposed by Bruestle and Mueller (1983) as the
+    moment function of the double-couple point source.
 
     .. [1] W. Bruestle, G. Mueller (1983), Moment and duration of shallow
         earthquakes from Love-wave modelling for regional distances, PEPI 32,
@@ -816,12 +816,7 @@ class SmoothRampSTF(STF):
     '''
     duration = Float.T(
         default=0.0,
-        help='duration of the ramp (baseline)')
-
-    rise_ratio = Float.T(
-        default=0.5,
-        help='fraction of time compared to duration, '
-             'when the maximum amplitude is reached')
+        help='source time function duration (baseline)')
 
     anchor = Float.T(
         default=0.0,
@@ -829,6 +824,17 @@ class SmoothRampSTF(STF):
              '-1.0: left -> source duration ``[0, T]`` ~ hypocenter time, '
              '0.0: center -> source duration ``[-T/2, T/2]`` ~ centroid time, '
              '+1.0: right -> source duration ``[-T, 0]`` ~ rupture end time)')
+
+    @classmethod
+    def factor_duration_to_effective(cls):
+        return math.sqrt((9.*math.pi**2 - 80.) / (3.*math.pi**2))
+
+    def centroid_time(self, tref):
+        return tref - 0.5 * self.duration * self.anchor
+
+    @property
+    def effective_duration(self):
+        return self.duration * self.factor_duration_to_effective()
 
     def discretize_t(self, deltat, tref):
         tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
@@ -839,14 +845,9 @@ class SmoothRampSTF(STF):
         nt = int(D/deltat) + 1
         times = num.linspace(tmin, tmax, nt)
         if nt > 1:
-            rise_time = self.rise_ratio * self.duration
             amplitudes = num.ones_like(times)
-            tp = tmin + rise_time
-            ii = num.where(times <= tp)
-            t_inc = times[ii]
-            a = num.cos(num.pi * (t_inc - tmin_stf) / rise_time)
-            b = num.cos(3 * num.pi * (t_inc - tmin_stf) / rise_time) - 1.0
-            amplitudes[ii] = (9./16.) * (1 - a + (1./9.)*b)
+            amplitudes = (3./4.) * (num.pi/self.duration) * \
+                (num.sin(num.pi*(times-tmin_stf)/self.duration))**3
 
             amplitudes /= num.sum(amplitudes)
         else:
@@ -855,7 +856,7 @@ class SmoothRampSTF(STF):
         return times, amplitudes
 
     def base_key(self):
-        return (self.duration, self.rise_ratio, self.anchor, type(self))
+        return (self.duration, self.anchor, type(self))
 
 
 class STFMode(StringChoice):
@@ -3046,6 +3047,7 @@ stf_classes = [
     BoxcarSTF,
     TriangularSTF,
     HalfSinusoidSTF,
+    BellShapedSTF,
 ]
 
 __all__ = '''
