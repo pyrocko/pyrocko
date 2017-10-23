@@ -42,6 +42,7 @@ class RDSeedTestCase(unittest.TestCase):
 
         assert p.__dict__ == pl.__dict__
 
+
 if __name__ == '__main__':
     util.setup_logging('test_rdseed', 'warning')
     unittest.main()

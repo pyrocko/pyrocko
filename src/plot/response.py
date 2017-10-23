@@ -364,7 +364,6 @@ if __name__ == '__main__':
         action='store_true',
         help='normalize response to be 1 on flat part')
 
-
     parser.add_option(
         '--save',
         dest='filename',

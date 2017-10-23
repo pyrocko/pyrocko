@@ -40,7 +40,7 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then xcode-select --install || true ; fi
   - pip install --upgrade pip setuptools wheel
   - pip install --only-binary=numpy,scipy,matplotlib scipy numpy matplotlib
-  - pip install progressbar setuptools flake8 pyyaml coveralls coverage jinja2 future coverage nose
+  - pip install progressbar setuptools flake8 pyyaml coveralls jinja2 future coverage nose
 
   - git clone https://github.com/pyrocko/fomosto-qseis
   - cd fomosto-qseis; autoreconf -i; ./configure; make; export PATH=$PATH:`pwd`/src; cd ..

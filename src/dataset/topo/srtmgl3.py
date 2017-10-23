@@ -43,7 +43,7 @@ class SRTMGL3(dataset.TiledGlobalDataset):
             self,
             name='SRTMGL3',
             data_dir=op.join(op.dirname(__file__), 'data', 'SRTMGL3'),
-            raw_data_url='http://e4ftl01.cr.usgs.gov/SRTM/SRTMGL3.003/'
+            raw_data_url='https://e4ftl01.cr.usgs.gov/SRTM/SRTMGL3.003/'
                          '2000.02.11'):
 
         dataset.TiledGlobalDataset.__init__(

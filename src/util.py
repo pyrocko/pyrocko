@@ -85,9 +85,11 @@ def _download(url, fpath, username=None, password=None,
               status_callback=None, entries_wanted=None,
               recursive=False):
     import requests
+    from requests.auth import HTTPDigestAuth
+    requests.adapters.DEFAULT_RETRIES = 5
     urljoin = requests.compat.urljoin
 
-    cred = None if username is None else (username, password)
+    cred = None if username is None else HTTPDigestAuth(username, password)
 
     bytes_rx = 0
     bytes_total = 0
@@ -99,9 +101,10 @@ def _download(url, fpath, username=None, password=None,
 
     if recursive and not url.endswith('/'):
         url += '/'
+    print(url)
 
     def parse_directory_tree(url, subdir=''):
-        r = requests.get(urljoin(url, subdir), auth=cred)
+        r = requests.get(urljoin(url, subdir), auth=cred, verify=False)
         r.raise_for_status()
 
         entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
@@ -123,7 +126,7 @@ def _download(url, fpath, username=None, password=None,
         return files
 
     def get_content_length(url):
-        r = requests.head(url, auth=cred)
+        r = requests.head(url, auth=cred, verify=False)
         r.raise_for_status()
 
         content_length = r.headers.get('content-length', None)
@@ -136,7 +139,7 @@ def _download(url, fpath, username=None, password=None,
         logger.info('starting download of %s...' % url)
 
         ensuredirs(fn)
-        r = requests.get(url, auth=cred, stream=True)
+        r = requests.get(url, auth=cred, stream=True, timeout=5)
         r.raise_for_status()
 
         fsize = get_content_length(url)

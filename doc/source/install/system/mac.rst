@@ -10,7 +10,7 @@ Installation on Mac OS X systems
     sudo port install py27-scipy
     sudo port install py27-matplotlib
     sudo port install py27-yaml
-    sudo port install py27-pyqt4
+    sudo port install py27-pyqt5
     sudo port install py27-setuptools
     sudo port install py27-jinja2
     sudo port install py27-requests

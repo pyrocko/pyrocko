@@ -197,6 +197,11 @@ class TBase(object):
 
         g_iprop += 1
         self._default = default
+        if isinstance(self._default, DefaultMaker):
+            self._default_cmp = self._default.make()
+        else:
+            self._default_cmp = self._default
+
         self.optional = optional
         self.name = None
         self._xmltagname = xmltagname
@@ -209,6 +214,12 @@ class TBase(object):
             return self._default.make()
         else:
             return self._default
+
+    def is_default(self, val):
+        if self._default_cmp is None:
+            return val is None
+        else:
+            return self._default_cmp == val
 
     def has_default(self):
         return self._default is not None
@@ -309,12 +320,11 @@ class TBase(object):
 
     @classmethod
     def ipropvals_to_save(cls, val, xmlmode=False):
-
         for prop in cls.properties:
             v = getattr(val, prop.name)
             if v is not None and (
                     not (prop.optional or (prop.multivalued and not v))
-                    or prop.default() != v):
+                    or (not prop.is_default(v))):
 
                 if xmlmode:
                     yield prop, prop.to_save_xml(v)
