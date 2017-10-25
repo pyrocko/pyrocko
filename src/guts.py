@@ -23,7 +23,7 @@ try:
 except:
     from yaml import SafeLoader, SafeDumper
 
-from .util import time_to_str, str_to_time
+from .util import time_to_str, str_to_time, TimeStrError
 
 try:
     unicode
@@ -267,6 +267,7 @@ class TBase(object):
             cls.content_property = None
 
         cls.properties.remove(prop)
+        cls.propnames.remove(name)
 
         return prop
 
@@ -380,7 +381,7 @@ class TBase(object):
             if regularize:
                 try:
                     val = self.regularize_extra(val)
-                except (RegularizationError, ValueError):
+                except ValueError:
                     raise ValidationError(
                         '%s: could not convert "%s" to type %s' % (
                             self.xname(), val, self.cls.__name__))
@@ -620,10 +621,6 @@ class ObjectMetaClass(type):
 
 
 class ValidationError(Exception):
-    pass
-
-
-class RegularizationError(Exception):
     pass
 
 
@@ -940,8 +937,6 @@ class Tuple(Object):
                 raise ValidationError(
                     '%s should have length %i' % (self.xname(), self.n))
 
-            return val
-
         def validate_children(self, val, regularize, depth):
             if not regularize:
                 for ele in val:
@@ -996,16 +991,21 @@ class Timestamp(Object):
             elif isinstance(val, (str, newstr)):
                 val = val.strip()
                 val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
-                if val[10] == 'T':
+                if len(val) > 10 and val[10] == 'T':
                     val = val.replace('T', ' ', 1)
-                val = str_to_time(val)
+
+                try:
+                    val = str_to_time(val)
+                except TimeStrError:
+                    raise ValidationError(
+                        '%s: cannot parse time/date: %s' % (self.xname(), val))
 
             elif isinstance(val, int):
                 val = float(val)
 
             else:
-                raise ValidationError('%s: cannot convert "%s" to float' % (
-                    self.xname(), val))
+                raise ValidationError(
+                    '%s: cannot convert "%s" to float' % (self.xname(), val))
 
             return val
 
@@ -1026,10 +1026,14 @@ class DateTimestamp(Object):
                 tt = val.utctimetuple()
                 val = calendar.timegm(tt) + val.microsecond * 1e-6
 
+            elif isinstance(val, datetime.date):
+                tt = val.timetuple()
+                val = float(calendar.timegm(tt))
+
             elif isinstance(val, (str, newstr)):
                 val = str_to_time(val, format='%Y-%m-%d')
 
-            if not isinstance(val, float):
+            elif isinstance(val, int):
                 val = float(val)
 
             return val
@@ -1202,7 +1206,7 @@ class Choice(Object):
                             ok = True
                             t = tc
                             break
-                        except (RegularizationError, ValueError):
+                        except (ValidationError, ValueError):
                             pass
 
                     if not ok:
