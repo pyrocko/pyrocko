@@ -776,9 +776,9 @@ class PsCmpConfigFull(PsCmpConfig):
 
     snapshot_basefilename = String.T(default='snapshot')
 
-    @staticmethod
-    def example():
-        conf = PsCmpConfigFull()
+    @classmethod
+    def example(cls):
+        conf = cls()
         conf.psgrn_outdir = 'TEST_psgrn_functions/'
         conf.pscmp_outdir = 'TEST_pscmp_output/'
         conf.rectangular_source_patches = [PsCmpRectangularSource(
