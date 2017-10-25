@@ -538,7 +538,6 @@ python setup.py build
     return False
 
 
-
 if _check_for_openmp():
     omp_arg = ['-fopenmp']
     omp_lib = ['-lgomp']
@@ -561,6 +560,7 @@ subpacknames = [
     'pyrocko.plot',
     'pyrocko.gui',
     'pyrocko.gui.snufflings',
+    'pyrocko.gui.snufflings.map',
     'pyrocko.dataset',
     'pyrocko.dataset.topo',
     'pyrocko.streaming',
@@ -723,5 +723,8 @@ setup(
                    'data/earthmodels/*.nd',
                    'data/colortables/*.cpt',
                    'data/tectonics/*.txt',
-                   'data/fomosto_report/gfreport.*'] + get_readme_paths()}
+                   'data/fomosto_report/gfreport.*',
+                   'gui/snufflings/map/*ml',
+                   'gui/snufflings/map/*.js',
+                   ] + get_readme_paths()}
 )

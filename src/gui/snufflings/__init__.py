@@ -4,8 +4,9 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 from . import (minmax, rms, stalta, geofon, ampspec,
-               catalogs, download)
-modules = [minmax, rms, download, stalta, geofon, ampspec, catalogs]
+               catalogs, download, cake_phase, seismosizer, map)
+modules = [minmax, rms, download, stalta, geofon, ampspec, catalogs,
+           map, cake_phase, seismosizer]
 
 
 def __snufflings__():
