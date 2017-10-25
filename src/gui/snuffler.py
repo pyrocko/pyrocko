@@ -45,9 +45,14 @@ from PyQt5 import QtNetwork as qn
 
 logger = logging.getLogger('pyrocko.gui.snuffler')
 
+try:
+    vers = qc.QVersionNumber.fromString
+except AttributeError:
+    def vers(s):
+        return tuple(s.split('.'))
+
 # Application attribute has to be set for QWebView
-if qc.QVersionNumber.fromString(Qt.QT_VERSION_STR) \
-   >= qc.QVersionNumber.fromString('5.4.0'):
+if vers(Qt.QT_VERSION_STR) >= vers('5.4.0'):
     Qt.QCoreApplication.setAttribute(qc.Qt.AA_ShareOpenGLContexts, True)
 
 
