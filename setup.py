@@ -326,7 +326,8 @@ class InstallPrerequisits(Command):
 
         distribution = platform.linux_distribution()[0].lower().rstrip()
         distribution = 'debian' if distribution == 'ubuntu' else distribution
-        fn = 'prerequisites/prerequisites_%s.sh' % distribution
+        fn = 'prerequisites/prerequisites_%s_%s.sh' % (
+                distribution, 'python%i' % sys.version_info.major)
 
         if not self.force_yes:
             confirm = raw_input('Execute: %s \n\

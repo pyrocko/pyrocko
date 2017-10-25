@@ -1,3 +1,4 @@
+#!/bin/sh
 
 sudo apt-get install make git python-dev python-setuptools
 sudo apt-get install python-numpy python-numpy-dev python-scipy python-matplotlib
