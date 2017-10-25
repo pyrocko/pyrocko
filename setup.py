@@ -367,6 +367,7 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'seisan_waveform', ['pyrocko.io.seisan_waveform']),
             ('pyrocko', 'suds', ['pyrocko.io.suds']),
             ('pyrocko', 'yaff', ['pyrocko.io.yaff']),
+            ('pyrocko', 'eventdata', ['pyrocko.io.eventdata']),
             ('pyrocko.fdsn', 'ws', ['pyrocko.client.fdsn']),
             ('pyrocko', 'catalog', ['pyrocko.client.catalog']),
             ('pyrocko', 'iris_ws', ['pyrocko.client.iris']),
