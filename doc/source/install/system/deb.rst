@@ -1,7 +1,7 @@
 Installation on Debian based systems (Debian, Ubuntu, Mint)
 ...........................................................
 
-* Python 2 Installation on **Ubuntu** (12.04.1 LTS), **Debian** (7 wheezy), **Debian** (8 jessie), **Mint** (13 Maya)::
+* Python 2 Installation on **Ubuntu** (14.04.1 LTS), **Debian** (7 wheezy), **Debian** (8 jessie), **Mint** (13 Maya)::
 
     sudo apt-get install make git python-dev python-setuptools
     sudo apt-get install python-numpy python-numpy-dev python-scipy python-matplotlib
@@ -13,7 +13,7 @@ Installation on Debian based systems (Debian, Ubuntu, Mint)
     cd pyrocko
     sudo python setup.py install
 
-* Python 3 Installation on **Ubuntu** (12.04.1 LTS), **Debian** (7 wheezy), **Debian** (8 jessie), **Mint** (13 Maya)::
+* Python 3 Installation on **Ubuntu** (14.04.1 LTS), **Debian** (7 wheezy), **Debian** (8 jessie), **Mint** (13 Maya)::
 
     sudo apt-get install make git python3-dev python3-setuptools
     sudo apt-get install python3-numpy python3-numpy-dev python3-scipy python3-matplotlib

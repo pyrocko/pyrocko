@@ -330,7 +330,12 @@ class InstallPrerequisits(Command):
                 distribution, 'python%i' % sys.version_info.major)
 
         if not self.force_yes:
-            confirm = raw_input('Execute: %s \n\
+            try:
+                input = raw_input
+            except NameError:
+                pass
+
+            confirm = input('Execute: %s \n\
 proceed? [y/n]' % open(fn, 'r').read())
             if not confirm.lower() == 'y':
                 sys.exit(0)
