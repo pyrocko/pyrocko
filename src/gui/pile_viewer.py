@@ -2116,6 +2116,9 @@ def MakePileViewerMainClass(base):
             elif keytext == 'g':
                 self.go_to_selection()
 
+            elif keytext == 'G':
+                self.go_to_selection(tight=True)
+
             elif keytext == 'm':
                 self.toggle_marker_editor()
 
@@ -2375,7 +2378,7 @@ def MakePileViewerMainClass(base):
 
             return deltatmin, deltatmax
 
-        def make_good_looking_time_range(self, tmin, tmax):
+        def make_good_looking_time_range(self, tmin, tmax, tight=False):
             if tmax < tmin:
                 tmin, tmax = tmax, tmin
 
@@ -2385,9 +2388,22 @@ def MakePileViewerMainClass(base):
             if dt == 0.0:
                 dt = 1.0
 
+            if tight:
+                if tmax != tmin:
+                    dtm = tmax - tmin
+                    tmin -= dtm*0.1
+                    tmax += dtm*0.1
+                    return tmin, tmax
+                else:
+                    tcenter = (tmin + tmax) / 2.
+                    tmin = tcenter - 0.5*dt
+                    tmax = tcenter + 0.5*dt
+                    return tmin, tmax
+
             if tmax-tmin < dt:
                 vmin, vmax = self.get_time_range()
                 dt = min(vmax - vmin, dt)
+
                 tcenter = (tmin+tmax)/2.
                 etmin, etmax = tmin, tmax
                 tmin = min(etmin, tcenter - 0.5*dt)
@@ -2405,14 +2421,24 @@ def MakePileViewerMainClass(base):
 
             return tmin, tmax
 
-        def go_to_selection(self):
+        def go_to_selection(self, tight=False):
             markers = self.selected_markers()
-            tmax, tmin = self.content_time_range()
-            for marker in markers:
-                tmin = min(tmin, marker.tmin)
-                tmax = max(tmax, marker.tmax)
+            if markers:
+                tmax, tmin = self.content_time_range()
+                for marker in markers:
+                    tmin = min(tmin, marker.tmin)
+                    tmax = max(tmax, marker.tmax)
 
-            tmin, tmax = self.make_good_looking_time_range(tmin, tmax)
+            else:
+                if tight:
+                    vmin, vmax = self.get_time_range()
+                    tmin = tmax = (vmin + vmax) / 2.
+                else:
+                    tmin, tmax = self.content_time_range()
+
+            tmin, tmax = self.make_good_looking_time_range(
+                tmin, tmax, tight=tight)
+
             self.interrupt_following()
             self.set_time_range(tmin, tmax)
             self.update()
