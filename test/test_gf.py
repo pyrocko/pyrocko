@@ -478,6 +478,7 @@ class GFTestCase(unittest.TestCase):
         ]
 
         pulse = engine.get_store_extra(None, 'pulse')
+        store = engine.get_store('pulse')
 
         response = engine.process(sources=sources, targets=targets)
         for source, target, tr in response.iter_results():
@@ -493,7 +494,7 @@ class GFTestCase(unittest.TestCase):
 
             azi, bazi = source.azibazi_to(target)
 
-            data *= source.moment
+            data *= source.get_moment(store)
 
             if tr.channel.endswith('N'):
                 data *= math.cos(phi*d2r) * math.cos(azi*d2r)
