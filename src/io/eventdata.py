@@ -36,12 +36,12 @@ class Problems(object):
         problem.add(nslct)
 
     def dump(self, fn):
-        f = open(fn, 'w')
+        f = open(fn, 'wb')
         pickle.dump(self._problems, f)
         f.close()
 
     def load(self, fn):
-        f = open(fn, 'r')
+        f = open(fn, 'rb')
         self._problems = pickle.load(f)
         f.close()
 
