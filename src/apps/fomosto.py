@@ -13,8 +13,7 @@ import logging
 import copy
 from optparse import OptionParser
 
-from pyrocko import util, trace, gf, cake, io
-from pyrocko.gui import util as gui_util
+from pyrocko import util, trace, gf, cake, io, marker
 
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.apps.fomosto')
@@ -500,7 +499,7 @@ def command_view(args):
                         for phasename in phasenames:
                             phase_tmin = store.t(phasename, args[:-1])
                             if phase_tmin:
-                                m = gui_util.PhaseMarker(
+                                m = marker.PhaseMarker(
                                     [('',
                                       sta_code,
                                       loc_code,

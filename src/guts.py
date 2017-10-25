@@ -14,6 +14,7 @@ import calendar
 import re
 import sys
 import types
+import copy
 
 from io import open, BytesIO
 
@@ -23,7 +24,7 @@ try:
 except:
     from yaml import SafeLoader, SafeDumper
 
-from .util import time_to_str, str_to_time
+from .util import time_to_str, str_to_time, TimeStrError
 
 try:
     unicode
@@ -168,7 +169,7 @@ class Defer(object):
 class TBase(object):
 
     strict = False
-    multivalued = False
+    multivalued = None
     force_regularize = False
     propnames = []
 
@@ -267,6 +268,7 @@ class TBase(object):
             cls.content_property = None
 
         cls.properties.remove(prop)
+        cls.propnames.remove(name)
 
         return prop
 
@@ -380,7 +382,7 @@ class TBase(object):
             if regularize:
                 try:
                     val = self.regularize_extra(val)
-                except (RegularizationError, ValueError):
+                except ValueError:
                     raise ValidationError(
                         '%s: could not convert "%s" to type %s' % (
                             self.xname(), val, self.cls.__name__))
@@ -623,10 +625,6 @@ class ValidationError(Exception):
     pass
 
 
-class RegularizationError(Exception):
-    pass
-
-
 class ArgumentError(Exception):
     pass
 
@@ -793,7 +791,7 @@ class Dict(Object):
     dummy_for = dict
 
     class __T(TBase):
-        multivalued = True
+        multivalued = dict
 
         def __init__(self, key_t=Any.T(), content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -844,7 +842,7 @@ class List(Object):
     dummy_for = list
 
     class __T(TBase):
-        multivalued = True
+        multivalued = list
 
         def __init__(self, content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -908,7 +906,7 @@ class Tuple(Object):
     dummy_for = tuple
 
     class __T(TBase):
-        multivalued = True
+        multivalued = tuple
 
         def __init__(self, n=None, content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -939,8 +937,6 @@ class Tuple(Object):
             if self.n is not None and len(val) != self.n:
                 raise ValidationError(
                     '%s should have length %i' % (self.xname(), self.n))
-
-            return val
 
         def validate_children(self, val, regularize, depth):
             if not regularize:
@@ -996,16 +992,21 @@ class Timestamp(Object):
             elif isinstance(val, (str, newstr)):
                 val = val.strip()
                 val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
-                if val[10] == 'T':
+                if len(val) > 10 and val[10] == 'T':
                     val = val.replace('T', ' ', 1)
-                val = str_to_time(val)
+
+                try:
+                    val = str_to_time(val)
+                except TimeStrError:
+                    raise ValidationError(
+                        '%s: cannot parse time/date: %s' % (self.xname(), val))
 
             elif isinstance(val, int):
                 val = float(val)
 
             else:
-                raise ValidationError('%s: cannot convert "%s" to float' % (
-                    self.xname(), val))
+                raise ValidationError(
+                    '%s: cannot convert "%s" to float' % (self.xname(), val))
 
             return val
 
@@ -1026,10 +1027,14 @@ class DateTimestamp(Object):
                 tt = val.utctimetuple()
                 val = calendar.timegm(tt) + val.microsecond * 1e-6
 
+            elif isinstance(val, datetime.date):
+                tt = val.timetuple()
+                val = float(calendar.timegm(tt))
+
             elif isinstance(val, (str, newstr)):
                 val = str_to_time(val, format='%Y-%m-%d')
 
-            if not isinstance(val, float):
+            elif isinstance(val, int):
                 val = float(val)
 
             return val
@@ -1202,7 +1207,7 @@ class Choice(Object):
                             ok = True
                             t = tc
                             break
-                        except (RegularizationError, ValueError):
+                        except (ValidationError, ValueError):
                             pass
 
                     if not ok:
@@ -1522,6 +1527,54 @@ def walk(x, typ=None, path=()):
             else:
                 for y in walk(val, typ, path=path+(prop.name,)):
                     yield y
+
+
+def clone(x, pool=None):
+    '''
+    Clone guts object tree.
+
+    Traverses guts object tree and recursively clones all guts attributes,
+    falling back to :py:func:`copy.deepcopy` for non-guts objects. Objects
+    deriving from :py:class:`Object` are instantiated using their respective
+    init function. Multiply referenced objects in the source tree are multiply
+    referenced also in the destination tree.
+
+    This function can be used to clone guts objects ignoring any contained
+    run-time state, i.e. any of their attributes not defined as a guts
+    property.
+    '''
+
+    if pool is None:
+        pool = {}
+
+    if id(x) in pool:
+        x_copy = pool[id(x)]
+
+    else:
+        if isinstance(x, Object):
+            d = {}
+            for (prop, y) in x.T.ipropvals(x):
+                if y is not None:
+                    if not prop.multivalued:
+                        y_copy = clone(y, pool)
+                    elif prop.multivalued is dict:
+                        y_copy = dict(
+                            (clone(zk, pool), clone(zv, pool))
+                            for (zk, zv) in y.items())
+                    else:
+                        y_copy = type(y)(clone(z, pool) for z in y)
+                else:
+                    y_copy = y
+
+                d[prop.name] = y_copy
+
+            x_copy = x.__class__(**d)
+
+        else:
+            x_copy = copy.deepcopy(x)
+
+    pool[id(x)] = x_copy
+    return x_copy
 
 
 def zip_walk(x, typ=None, path=(), stack=()):

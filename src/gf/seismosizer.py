@@ -18,7 +18,8 @@ import resource
 import numpy as num
 
 from pyrocko.guts import (Object, Float, String, StringChoice, List,
-                          Timestamp, Int, SObject, ArgumentError, Dict)
+                          Timestamp, Int, SObject, ArgumentError, Dict,
+                          ValidationError)
 from pyrocko.guts_array import Array
 
 from pyrocko import moment_tensor as mt
@@ -1117,8 +1118,6 @@ class SourceWithMagnitude(Source):
         default=6.0,
         help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
-    _keys = None
-
     def __init__(self, **kwargs):
         if 'moment' in kwargs:
             mom = kwargs.pop('moment')
@@ -1134,14 +1133,6 @@ class SourceWithMagnitude(Source):
     @moment.setter
     def moment(self, value):
         self.magnitude = float(mt.moment_to_magnitude(value))
-
-    @classmethod
-    def keys(cls):
-        if cls._keys is None:
-            cls._keys = list(super(SourceWithMagnitude, cls).keys())\
-                + ['moment']
-
-        return cls._keys
 
     def pyrocko_event(self, **kwargs):
         return Source.pyrocko_event(
@@ -1159,35 +1150,146 @@ class SourceWithMagnitude(Source):
         return super(SourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
 
 
-class ExplosionSource(SourceWithMagnitude):
+class DerivedMagnitudeError(ValidationError):
+    pass
+
+
+class SourceWithDerivedMagnitude(Source):
+
+    magnitude = Float.T(
+        optional=True,
+        help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
+
+    interpolation = meta.InterpolationMethod.T(
+        optional=True,
+        default='nearest_neighbor',
+        help='velocity model interpolation technique for magnitude '
+             'conversions')
+
+    class __T(Source.T):
+        def validate_extra(self, val):
+            Source.T.validate_extra(self, val)
+            val.check_conflicts()
+
+    def __init__(self, **kwargs):
+        if 'moment' in kwargs:
+            mom = kwargs.pop('moment')
+            if 'magnitude' not in kwargs:
+                kwargs['magnitude'] = float(mt.moment_to_magnitude(mom))
+
+        Source.__init__(self, **kwargs)
+
+    def check_conflicts(self):
+        '''
+        Check for parameter conflicts.
+
+        To be overloaded in subclasses. Raises :py:exc:`DerivedMagnitudeError`
+        on conflicts.
+        '''
+        pass
+
+    def get_magnitude(self, store=None):
+        return self.magnitude
+
+    def get_moment(self, store=None):
+        return float(mt.magnitude_to_moment(self.get_magnitude(store=store)))
+
+    def pyrocko_moment_tensor(self, store=None):
+        m0 = self.get_moment(store=store)
+        return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
+
+    def pyrocko_event(self, store=None, **kwargs):
+        try:
+            mt = self.pyrocko_moment_tensor(store=store)
+        except DerivedMagnitudeError:
+            mt = None
+
+        return Source.pyrocko_event(
+            self,
+            moment_tensor=mt,
+            **kwargs)
+
+
+class ExplosionSource(SourceWithDerivedMagnitude):
     '''
     An isotropic explosion point source.
     '''
+
+    volume_change = Float.T(
+        optional=True,
+        help='volume change of the explosion/implosion or '
+             'the contracting/extending magmatic source. [m^3]')
 
     discretized_source_class = meta.DiscretizedExplosionSource
 
     def base_key(self):
         return Source.base_key(self)
 
+    def check_conflicts(self):
+        if self.magnitude is not None and self.volume_change is not None:
+            raise DerivedMagnitudeError(
+                'magnitude and volume_change are both defined')
+
+    def get_magnitude(self, store=None):
+        self.check_conflicts()
+
+        if self.magnitude is not None:
+            return self.magnitude
+
+        elif self.volume_change is not None:
+            moment = self.volume_change * \
+                self.get_moment_to_volume_change_ratio(store)
+
+            return float(mt.moment_to_magnitude(moment))
+
+        else:
+            return float(mt.moment_to_magnitude(1.0))
+
+    def get_volume_change(self, store=None):
+        self.check_conflicts()
+
+        if self.volume_change is not None:
+            return self.volume_change
+
+        elif self.magnitude is not None:
+            moment = float(mt.magnitude_to_moment(self.magnitude))
+            return moment / self.get_moment_to_volume_change_ratio(store)
+
+        else:
+            return 1.0 / self.get_moment_to_volume_change_ratio(store)
+
+    def get_moment_to_volume_change_ratio(self, store):
+        if store is None:
+            raise DerivedMagnitudeError(
+                'need earth model to convert between volume change and '
+                'magnitude')
+
+        points = num.array(
+            [[self.north_shift, self.east_shift, self.depth]], dtype=num.float)
+
+        try:
+            shear_moduli = store.config.get_shear_moduli(
+                self.lat, self.lon,
+                points=points,
+                interpolation=self.interpolation)[0]
+        except meta.OutOfBounds:
+            raise DerivedMagnitudeError(
+                'could not get shear modulus at source position')
+
+        return float(3. * shear_moduli)
+
     def get_factor(self):
-        return mt.magnitude_to_moment(self.magnitude)
+        return 1.0
 
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
+
+        amplitudes *= self.get_moment(store)
+
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
-
-    def pyrocko_moment_tensor(self):
-        m0 = self.moment
-        return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
-
-    def pyrocko_event(self, **kwargs):
-        return SourceWithMagnitude.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
-            **kwargs)
 
 
 class RectangularExplosionSource(ExplosionSource):
@@ -1316,7 +1418,7 @@ class DCSource(SourceWithMagnitude):
         return Source.base_key(self) + (self.strike, self.dip, self.rake)
 
     def get_factor(self):
-        return mt.magnitude_to_moment(self.magnitude)
+        return float(mt.magnitude_to_moment(self.magnitude))
 
     def discretize_basesource(self, store, target=None):
         mot = mt.MomentTensor(strike=self.strike, dip=self.dip, rake=self.rake)
@@ -3090,6 +3192,7 @@ __all__ = '''
 SeismosizerError
 BadRequest
 NoSuchStore
+DerivedMagnitudeError
 STFMode
 '''.split() + [S.__name__ for S in source_classes + stf_classes] + '''
 Request

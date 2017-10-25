@@ -6,7 +6,9 @@
 
 import sys
 import logging
-from pyrocko import util, model
+import numpy as num
+from pyrocko import util, model, orthodrome as od, gmtpy
+from pyrocko import moment_tensor as pmt
 from pyrocko.plot import automap
 
 from optparse import OptionParser
@@ -22,6 +24,11 @@ usage: %s [options] [--] <lat> <lon> <radius_km> <output.(pdf|png)>
 '''.strip() % (program_name, program_name)
 
 description = '''Create a simple map with topography.'''
+
+
+def latlon_arrays(locs):
+    return num.array(
+        [(x.lat, x.lon) for x in locs]).T
 
 
 def main(args=None):
@@ -79,6 +86,13 @@ def main(args=None):
         help='don\'t show topography')
 
     parser.add_option(
+        '--no-cities',
+        dest='show_cities',
+        default=True,
+        action='store_false',
+        help='don\'t show cities')
+
+    parser.add_option(
         '--no-illuminate',
         dest='illuminate',
         default=True,
@@ -88,18 +102,22 @@ def main(args=None):
     parser.add_option(
         '--illuminate-factor-land',
         dest='illuminate_factor_land',
-        default='0.5',
         type='float',
         metavar='FLOAT',
-        help='set factor for artificial illumination of land (%default)')
+        help='set factor for artificial illumination of land (0.5)')
 
     parser.add_option(
         '--illuminate-factor-ocean',
         dest='illuminate_factor_ocean',
-        default='0.25',
         type='float',
         metavar='FLOAT',
-        help='set factor for artificial illumination of ocean (%default)')
+        help='set factor for artificial illumination of ocean (0.25)')
+
+    parser.add_option(
+        '--theme',
+        choices=['topo', 'soft'],
+        default='topo',
+        help='select color theme, available: topo, soft (topo)"')
 
     parser.add_option(
         '--download-etopo1',
@@ -162,19 +180,50 @@ def main(args=None):
 
         sys.exit(0)
 
-    if len(args) != 4:
+    if options.theme == 'soft':
+        color_kwargs = {
+            'illuminate_factor_land': options.illuminate_factor_land or 0.2,
+            'illuminate_factor_ocean': options.illuminate_factor_ocean or 0.15,
+            'color_wet': (216, 242, 254),
+            'color_dry': (238, 236, 230),
+            'topo_cpt_wet': 'light_sea_uniform',
+            'topo_cpt_dry': 'light_land_uniform'}
+    elif options.theme == 'topo':
+        color_kwargs = {
+            'illuminate_factor_land': options.illuminate_factor_land or 0.5,
+            'illuminate_factor_ocean': options.illuminate_factor_ocean or 0.25}
+
+    events = []
+    if options.events_fn:
+        events = model.load_events(options.events_fn)
+
+    stations = []
+
+    if options.stations_fn:
+        stations = model.load_stations(options.stations_fn)
+
+    if not (len(args) == 4 or (
+            len(args) == 1 and (events or stations))):
+
         parser.print_help()
         sys.exit(1)
 
-    try:
-        lat = float(args[0])
-        lon = float(args[1])
-        radius = float(args[2])*km
-    except:
-        parser.print_help()
-        sys.exit(1)
+    if len(args) == 4:
+        try:
+            lat = float(args[0])
+            lon = float(args[1])
+            radius = float(args[2])*km
+        except:
+            parser.print_help()
+            sys.exit(1)
+    else:
+        lats, lons = latlon_arrays(stations+events)
+        lat, lon = map(float, od.geographic_midpoint(lats, lons))
+        radius = float(
+            num.max(od.distance_accurate50m_numpy(lat, lon, lats, lons)))
+        radius *= 1.1
 
-    map = automap.Map(
+    m = automap.Map(
         width=options.width,
         height=options.height,
         lat=lat,
@@ -185,38 +234,66 @@ def main(args=None):
         show_topo=options.show_topo,
         show_grid=options.show_grid,
         illuminate=options.illuminate,
-        illuminate_factor_land=options.illuminate_factor_land,
-        illuminate_factor_ocean=options.illuminate_factor_ocean)
+        **color_kwargs)
 
-    logger.debug('map configuration:\n%s' % str(map))
-    map.draw_cities()
+    logger.debug('map configuration:\n%s' % str(m))
 
-    if options.stations_fn:
-        stations = model.load_stations(options.stations_fn)
+    if options.show_cities:
+        m.draw_cities()
+
+    if stations:
         lats = [s.lat for s in stations]
         lons = [s.lon for s in stations]
 
-        map.gmt.psxy(
+        m.gmt.psxy(
             in_columns=(lons, lats),
             S='t8p',
             G='black',
-            *map.jxyr)
+            *m.jxyr)
 
         for s in stations:
-            map.add_label(s.lat, s.lon, '%s.%s' % (s.network, s.station))
+            m.add_label(s.lat, s.lon, '%s' % '.'.join(
+                x for x in s.nsl() if x))
 
-    if options.events_fn:
-        events = model.load_events(options.events_fn)
-        lats = [e.lat for e in events]
-        lons = [e.lon for e in events]
+    if events:
+        beachball_symbol = 'mt'
+        beachball_size = 20.0
+        for ev in events:
+            if ev.moment_tensor is None:
+                m.gmt.psxy(
+                    in_rows=[[ev.lon, ev.lat]],
+                    S='c12p',
+                    G=gmtpy.color('scarletred2'),
+                    W='1p,black',
+                    *m.jxyr)
 
-        map.gmt.psxy(
-            in_columns=(lons, lats),
-            S='c8p',
-            G='black',
-            *map.jxyr)
+            else:
+                devi = ev.moment_tensor.deviatoric()
+                mt = devi.m_up_south_east()
+                mt = mt / ev.moment_tensor.scalar_moment() \
+                    * pmt.magnitude_to_moment(5.0)
+                m6 = pmt.to6(mt)
+                data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)
 
-    map.save(args[3])
+                if m.gmt.is_gmt5():
+                    kwargs = dict(
+                        M=True,
+                        S='%s%g' % (
+                            beachball_symbol[0], beachball_size / gmtpy.cm))
+                else:
+                    kwargs = dict(
+                        S='%s%g' % (
+                            beachball_symbol[0], beachball_size*2 / gmtpy.cm))
+
+                m.gmt.psmeca(
+                    in_rows=[data],
+                    G=gmtpy.color('chocolate1'),
+                    E='white',
+                    W='1p,%s' % gmtpy.color('chocolate3'),
+                    *m.jxyr,
+                    **kwargs)
+
+    m.save(args[-1])
 
 
 if __name__ == '__main__':

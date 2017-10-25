@@ -184,8 +184,8 @@ def plot_xt(
             axes.plot([x[0]], [t[0]-x[0]/vred], 'o', color=color)
             axes.plot([x[-1]], [t[-1]-x[-1]/vred], 'o', color=color)
             axes.text(
-                x[len(x)/2],
-                t[len(x)/2]-x[len(x)/2]/vred,
+                x[len(x)//2],
+                t[len(x)//2]-x[len(x)//2]/vred,
                 path.used_phase().used_repr(),
                 color=color,
                 va='center',
@@ -202,8 +202,8 @@ def plot_xt(
             axes.plot([x[0]], [t[0]], 'o', color=color)
             axes.plot([x[-1]], [t[-1]], 'o', color=color)
             axes.text(
-                x[len(x)/2],
-                t[len(x)/2],
+                x[len(x)//2],
+                t[len(x)//2],
                 path.used_phase().used_repr(),
                 color=color,
                 va='center',
@@ -222,7 +222,7 @@ def plot_xt(
         all_t -= all_x/vred
     xxx = num.sort(all_x)
     ttt = num.sort(all_t)
-    return xxx.min(), xxx[99*len(xxx)/100], ttt.min(), ttt[99*len(ttt)/100]
+    return xxx.min(), xxx[99*len(xxx)//100], ttt.min(), ttt[99*len(ttt)//100]
 
 
 def labels_xt(axes=None, vred=None, as_degrees=False):
@@ -274,8 +274,8 @@ def plot_xp(
         axes.plot(x[:1], p[:1], 'o', color=color)
         axes.plot(x[-1:], p[-1:], 'o', color=color)
         axes.text(
-            x[len(x)/2],
-            p[len(x)/2],
+            x[len(x)//2],
+            p[len(x)//2],
             path.used_phase().used_repr(),
             color=color,
             va='center',
@@ -290,7 +290,7 @@ def plot_xp(
         all_x.append(x)
 
     xxx = num.sort(num.concatenate(all_x))
-    return xxx.min(), xxx[99*len(xxx)/100]
+    return xxx.min(), xxx[99*len(xxx)//100]
 
 
 def labels_xp(axes=None, as_degrees=False):

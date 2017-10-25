@@ -5,14 +5,19 @@ import calendar
 import math
 import re
 import sys
+import datetime
 from contextlib import contextmanager
 
 
 from pyrocko.guts import StringPattern, Object, Bool, Int, Float, String, \
     SObject, Unicode, Complex, Timestamp, DateTimestamp, StringChoice, Defer, \
-    ArgumentError, ValidationError, Any, List, Tuple, Union, Choice, \
+    ArgumentError, ValidationError, Any, List, Tuple, Union, Choice, Dict, \
     load, load_string, load_xml_string, load_xml, load_all, iload_all, \
-    load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml
+    load_all_xml, iload_all_xml, dump, dump_xml, dump_all, dump_all_xml, \
+    make_typed_list_class, walk, zip_walk, path_to_str, clone
+
+
+guts_prefix = 'guts_test'
 
 
 class SamplePat(StringPattern):
@@ -66,7 +71,20 @@ regularize[Timestamp] = [
     ('2010-01-01 10:20:01',  tstamp(2010, 1, 1, 10, 20, 1)),
     ('2010-01-01T10:20:01',  tstamp(2010, 1, 1, 10, 20, 1)),
     ('2010-01-01T10:20:01.11Z',  tstamp(2010, 1, 1, 10, 20, 1)+0.11),
-    ('2030-12-12 00:00:10.11111',  tstamp(2030, 12, 12, 0, 0, 10)+0.11111)
+    ('2030-12-12 00:00:10.11111',  tstamp(2030, 12, 12, 0, 0, 10)+0.11111),
+    (datetime.date(2010, 12, 12),  tstamp(2010, 12, 12, 0, 0, 0)),
+    (10,  10.)
+]
+regularize[DateTimestamp] = [
+    ('2010-01-01',  tstamp(2010, 1, 1, 0, 0, 0)),
+    (datetime.datetime(2010, 12, 12),  tstamp(2010, 12, 12, 0, 0, 0)),
+    (datetime.date(2010, 12, 12),  tstamp(2010, 12, 12, 0, 0, 0)),
+    (86400, 86400.)
+]
+
+regularize[Complex] = [
+    ([1., 2.], 1.0+2.0J),
+    ((1., 2.), 1.0+2.0J)
 ]
 
 
@@ -108,6 +126,44 @@ class GutsTestCase(unittest.TestCase):
         x = X(m='c')
         with self.assertRaises(ValidationError):
             x.validate()
+
+    def testStringChoiceIgnoreCase(self):
+        class X(Object):
+            m = StringChoice.T(['a', 'b'], ignore_case=True)
+
+        x = X(m='A')
+        x.validate()
+        x = X(m='C')
+        with self.assertRaises(ValidationError):
+            x.validate()
+
+    def testDefaultMaker(self):
+        class X(Object):
+            y = Int.T(default=1)
+
+        class Y(Object):
+            x = X.T(default=X.D(y=2))
+
+        y = Y()
+        self.assertEqual(y.x.y, 2)
+
+    def testRemove(self):
+        class X(Object):
+            y = Int.T(default=1, xmlstyle='attribute')
+            z = List.T(Int.T())
+            a = Int.T(xmlstyle='content')
+
+        x = X(a=11, z=[1, 2, 3])
+        del x
+
+        X.T.remove_property('y')
+        X.T.remove_property('z')
+        X.T.remove_property('a')
+
+        assert len(X.T.propnames) == 0
+        assert len(X.T.xmltagname_to_name) == 0
+        assert len(X.T.xmltagname_to_name_multivalued) == 0
+        assert len(X.T.xmltagname_to_name_multivalued) == 0
 
     def testAny(self):
         class X(Object):
@@ -239,6 +295,31 @@ class GutsTestCase(unittest.TestCase):
                 c = C(ab=bad)
                 with self.assertRaises(ValidationError):
                     c.validate()
+
+        c = C1(ab=A(x='5'))
+        c.regularize()
+        assert c.ab.x == 5
+        c = C1(ab=B(y='6'))
+        c.regularize()
+        assert c.ab.y == 6
+
+    def testRegularizeChoice(self):
+
+        class A(Object):
+            x = Choice.T(optional=True, choices=[Timestamp.T(), Int.T()])
+
+        a = A()
+        a.regularize()
+
+        a = A(x='2015-01-01 00:00:00')
+        a.regularize()
+
+        a = A(x='5')
+        a.regularize()
+
+        a = A(x='abc')
+        with self.assertRaises(ValidationError):
+            a.regularize()
 
     def testTooMany(self):
 
@@ -394,6 +475,30 @@ class GutsTestCase(unittest.TestCase):
         self.assertEqual(x.dn.network, 'abc')
         self.assertEqual(x.dn.station, 'def')
 
+    def testDict(self):
+        class A(Object):
+            d = Dict.T(Int.T(), Float.T())
+
+        a = A(d={1: 2.0})
+
+        with self.assertRaises(NotImplementedError):
+            a.dump_xml()
+
+        a2 = load_string(a.dump())
+        self.assertEqual(a2.dump(), a.dump())
+
+        for (k1, v1), (k2, v2) in [
+                [('1', 2.0), (1, 2.0)],
+                [(1, '2.0'), (1, 2.0)],
+                [('1', '2.0'), (1, 2.0)]]:
+
+            a = A(d={k1: v1})
+            with self.assertRaises(ValidationError):
+                a.validate()
+
+            a.regularize()
+            self.assertEqual(a.d[k2], v2)
+
     def testOptionalDefault(self):
 
         from pyrocko.guts_array import Array, array_equal
@@ -445,6 +550,18 @@ class GutsTestCase(unittest.TestCase):
             ('l', Tuple.T(2, Int.T(), default=(1, 2), optional=True),
                 [None, (1, 2), (3, 4)],
                 [(1, 2), (1, 2), (3, 4)]),
+            ('i2', Tuple.T(None, Int.T()),
+                [None, (1, 2)],
+                [(), (1, 2)]),
+            ('j2', Tuple.T(None, Int.T(), optional=True),
+                [None, (), (3, 4)],
+                [None, (), (3, 4)]),
+            ('k2', Tuple.T(None, Int.T(), default=(1,)),
+                [None, (), (3, 4)],
+                [(1,), (), (3, 4)]),
+            ('l2', Tuple.T(None, Int.T(), default=(1,), optional=True),
+                [None, (), (3, 4)],
+                [(1,), (), (3, 4)]),
             ('m', Array.T(shape=(None,), dtype=num.int, serialize_as='list'),
                 [num.arange(0), num.arange(2)],
                 [num.arange(0), num.arange(2)]),
@@ -460,6 +577,18 @@ class GutsTestCase(unittest.TestCase):
                           default=num.arange(2), optional=True),
                 [None, num.arange(0), num.arange(2), num.arange(3)],
                 [num.arange(2), num.arange(0), num.arange(2), num.arange(3)]),
+            ('q', Dict.T(String.T(), Int.T()),
+                [None, {}, {'a': 1}],
+                [{}, {}, {'a': 1}]),
+            ('r', Dict.T(String.T(), Int.T(), optional=True),
+                [None, {}, {'a': 1}],
+                [None, {}, {'a': 1}]),
+            ('s', Dict.T(String.T(), Int.T(), default={'a': 1}),
+                [None, {}, {'a': 1}],
+                [{'a': 1}, {}, {'a': 1}]),
+            ('t', Dict.T(String.T(), Int.T(), default={'a': 1}, optional=True),
+                [None, {}, {'a': 1}],
+                [{'a': 1}, {}, {'a': 1}]),
         ]
 
         for k, t, vals, exp, in data:
@@ -471,6 +600,8 @@ class GutsTestCase(unittest.TestCase):
                     Object.__init__(self, **kwargs)
 
                 v = t
+
+            A.T.class_signature()
 
             for v, e in zip(vals, exp):
                 if isinstance(e, str) and e == 'aerr':
@@ -642,6 +773,16 @@ class GutsTestCase(unittest.TestCase):
         po1 = load_xml_string(xml)
         po2 = load_xml_string(po1.dump_xml())
 
+        for (path1, obj1), (path2, obj2) in zip(walk(po1), walk(po2)):
+            assert path1 == path2
+            assert path_to_str(path1) == path_to_str(path2)
+            assert type(obj1) is type(obj2)
+            if not isinstance(obj1, Object):
+                assert obj1 == obj2
+
+        for _ in zip_walk(po1):
+            pass
+
         self.assertEqual(po1.dump(), po2.dump())
 
     def testDumpLoad(self):
@@ -724,6 +865,98 @@ class GutsTestCase(unittest.TestCase):
         check1(a1, b1)
         f.close()
 
+    def testCustomValidator(self):
+
+        class RangeFloat(Float):
+            class __T(Float.T):
+                def __init__(self, min=0., max=1., *args, **kwargs):
+                    Float.T.__init__(self, *args, **kwargs)
+                    self.min = min
+                    self.max = max
+
+                def validate_extra(self, val):
+                    if val < self.min or self.max < val:
+                        raise ValidationError('out of range [%g, %g]: %g' % (
+                            self.min, self.max, val))
+
+        class A(Object):
+            x = RangeFloat.T(min=-1., max=+1., default=0.)
+
+        class B(A):
+            y = RangeFloat.T(min=-2., max=+2., default=1.)
+
+            class __T(A.T):
+                def validate_extra(self, val):
+                    if val.y <= val.x:
+                        raise ValidationError('y must be greater than x')
+
+        class C(B):
+            class __T(B.T):
+                def validate_extra(self, val):
+                    if val.y >= val.x:
+                        raise ValidationError('x must be greater than y')
+
+        a1 = A()
+        a1.validate()
+
+        a2 = A(x=10.)
+        with self.assertRaises(ValidationError):
+            a2.validate()
+
+        b1 = B()
+        b1.validate()
+
+        b2 = B(x=1., y=0.)
+        with self.assertRaises(ValidationError):
+            b2.validate()
+
+        c1 = C()
+        with self.assertRaises(ValidationError):
+            c1.validate()
+
+        c2 = C(x=1., y=0.)
+        c2.validate()
+
+    def testTypedListClass(self):
+
+        FloatList = make_typed_list_class(Float)
+
+        class A(Object):
+            vals = FloatList.T()
+
+        a = A(vals=[1., 2., 3.])
+        a.validate()
+        a2 = load_string(a.dump())
+        assert a2.vals == a.vals
+
+    def testClone(self):
+
+        class A(Object):
+            a = Int.T(optional=True)
+
+        class B(Object):
+            a_list = List.T(A.T())
+            a_tuple = Tuple.T(3, A.T())
+            a_dict = Dict.T(Int.T(), A.T())
+            b = Float.T()
+
+        a1 = A()
+        a2 = A(a=1)
+        b = B(
+            a_list=[a1, a2],
+            a_tuple=(a1, a2, a2),
+            a_dict={1: a1, 2: a2},
+            b=1.0)
+        b_clone = clone(b)
+        b.validate()
+        b_clone.validate()
+        self.assertEqual(b.dump(), b_clone.dump())
+        assert b is not b_clone
+        assert b.a_list is not b_clone.a_list
+        assert b.a_tuple is not b_clone.a_tuple
+        assert b.a_list[0] is not b_clone.a_list[0]
+        assert b.a_tuple[0] is not b_clone.a_tuple[0]
+
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 
@@ -779,17 +1012,23 @@ def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 for Type in samples:
     for isample, sample in enumerate(samples[Type]):
         for xml in (False, True):
-            setattr(GutsTestCase, 'testBasicType' + Type.__name__ +
-                    str(isample) + ['', 'XML'][xml],
-                    makeBasicTypeTest(Type, sample, xml=xml))
+            name = 'testBasicType' + Type.__name__ + str(isample) \
+                + ['', 'XML'][xml]
+            func = makeBasicTypeTest(Type, sample, xml=xml)
+            func.__name__ = name
+            setattr(GutsTestCase, name, func)
+            del func
 
 for Type in regularize:
     for isample, (sample_in, sample) in enumerate(regularize[Type]):
         for xml in (False, True):
-            setattr(GutsTestCase, 'testBasicTypeRegularize' + Type.__name__ +
-                    str(isample) + ['', 'XML'][xml],
-                    makeBasicTypeTest(
-                        Type, sample, sample_in=sample_in, xml=xml))
+            name = 'testBasicTypeRegularize' + Type.__name__ + str(isample) \
+                + ['', 'XML'][xml]
+            func = makeBasicTypeTest(
+                Type, sample, sample_in=sample_in, xml=xml)
+            func.__name__ = name
+            setattr(GutsTestCase, name, func)
+            del func
 
 
 if __name__ == '__main__':

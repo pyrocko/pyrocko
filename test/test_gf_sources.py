@@ -6,7 +6,7 @@ import numpy as num
 from tempfile import mkdtemp
 import shutil
 
-from pyrocko import gf, util, guts
+from pyrocko import gf, util, guts, cake
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
@@ -87,7 +87,7 @@ class GFSourcesTestCase(unittest.TestCase):
         sgrid = source.grid(rake=r(-10, 10, 1),
                             strike=r(-100, 100, n=21),
                             depth=r('0k .. 100k : 10k'),
-                            moment=r(1, 2, 1))
+                            magnitude=r(1, 2, 1))
 
         sgrid = guts.load_string(sgrid.dump())
 
@@ -130,7 +130,8 @@ class GFSourcesTestCase(unittest.TestCase):
                 distance_max=2000*km,
                 distance_delta=10*km,
                 sample_rate=2.0,
-                ncomponents=10)
+                ncomponents=10,
+                earthmodel_1d=cake.load_model(crust2_profile=(50., 10.)))
 
             store_dir = mkdtemp(prefix='gfstore')
             self.tempdirs.append(store_dir)
@@ -199,6 +200,46 @@ class GFSourcesTestCase(unittest.TestCase):
             plt.show()
 
         # plot_sources(sources)
+
+    def test_explosion_source(self):
+        ex = gf.ExplosionSource(
+                magnitude=5.,
+                volume_change=4.,
+                depth=5*km)
+
+        with self.assertRaises(gf.DerivedMagnitudeError):
+            ex.validate()
+
+        ex = gf.ExplosionSource(
+                depth=5*km)
+
+        ex.validate()
+
+        self.assertEqual(ex.get_moment(), 1.0)
+
+        ex = gf.ExplosionSource(
+                magnitude=3.0,
+                depth=5*km)
+
+        store = self.dummy_store()
+
+        with self.assertRaises(gf.DerivedMagnitudeError):
+            ex.get_volume_change()
+
+        volume_change = ex.get_volume_change(store)
+
+        ex = gf.ExplosionSource(
+                volume_change=volume_change,
+                depth=5*km)
+
+        self.assertAlmostEqual(ex.get_magnitude(store), 3.0)
+
+        ex = gf.ExplosionSource(
+                magnitude=3.0,
+                depth=-5.)
+
+        with self.assertRaises(gf.DerivedMagnitudeError):
+            ex.get_volume_change(store)
 
 
 if __name__ == '__main__':

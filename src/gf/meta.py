@@ -1758,7 +1758,11 @@ class Config(Object):
 
         shear_moduli_interpolator = interp1d(
             store_depth_profile, store_shear_modulus_profile, kind=kind)
-        return shear_moduli_interpolator(points[:, 2])
+
+        try:
+            return shear_moduli_interpolator(points[:, 2])
+        except ValueError:
+            raise OutOfBounds()
 
 
 class ConfigTypeA(Config):

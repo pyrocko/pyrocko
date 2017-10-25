@@ -3623,18 +3623,20 @@ class LayeredModel(object):
         for element in self.elements():
             element = element.copy()
             do_append = False
-            if (depth_min <= element.ztop or depth_min is None) and\
-                    (depth_max >= element.zbot or depth_max is None):
+            if (depth_min is None or depth_min <= element.ztop) \
+                    and (depth_max is None or depth_max >= element.zbot):
                 mod_extracted.append(element)
                 continue
 
-            if depth_min > element.ztop and depth_min < element.zbot:
-                _, element = element.split(depth_min)
-                do_append = True
+            if depth_min is not None:
+                if element.ztop < depth_min and depth_min < element.zbot:
+                    _, element = element.split(depth_min)
+                    do_append = True
 
-            if depth_max < element.zbot and depth_max > element.ztop:
-                element, _ = element.split(depth_max)
-                do_append = True
+            if depth_max is not None:
+                if element.zbot > depth_max and depth_max > element.ztop:
+                    element, _ = element.split(depth_max)
+                    do_append = True
 
             if do_append:
                 mod_extracted.append(element)
