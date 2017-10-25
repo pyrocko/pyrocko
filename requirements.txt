@@ -7,3 +7,4 @@ progressbar2
 future
 requests
 nose
+OpenGL
