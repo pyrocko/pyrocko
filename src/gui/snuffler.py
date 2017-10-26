@@ -37,23 +37,9 @@ from pyrocko.io import stationxml
 
 from . import pile_viewer     # noqa
 
-from PyQt5 import Qt
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
-from PyQt5 import QtNetwork as qn
+from .qt_compat import qc, qg, qw, qn
 
 logger = logging.getLogger('pyrocko.gui.snuffler')
-
-try:
-    vers = qc.QVersionNumber.fromString
-except AttributeError:
-    def vers(s):
-        return tuple(s.split('.'))
-
-# Application attribute has to be set for QWebView
-if vers(Qt.QT_VERSION_STR) >= vers('5.4.0'):
-    Qt.QCoreApplication.setAttribute(qc.Qt.AA_ShareOpenGLContexts, True)
 
 
 class AcquisitionThread(qc.QThread):

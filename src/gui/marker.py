@@ -353,8 +353,7 @@ class Marker(object):
             draw_triangle=False,
             **kwargs):
 
-        from PyQt5 import QtCore as qc
-        from PyQt5 import QtGui as qg
+        from .qt_compat import qc, qg
         from . import util as gui_util
 
         if self.selected or self.alerted or not self.nslc_ids:
@@ -409,8 +408,7 @@ class Marker(object):
             self, viewer, p, tr, time_projection, track_projection, gain,
             outline_label=False):
 
-        from PyQt5 import QtCore as qc
-        from PyQt5 import QtGui as qg
+        from .qt_compat import qc, qg
         from . import util as gui_util
 
         if self.nslc_ids and not self.match_nslc(tr.nslc_id):
@@ -584,7 +582,7 @@ class EventMarker(Marker):
             self.draw_label(p, time_projection, y_projection)
 
     def draw_label(self, p, time_projection, y_projection):
-        from PyQt5 import QtGui as qg
+        from .qt_compat import qg
         from . import util as gui_util
 
         u = time_projection(self.tmin)

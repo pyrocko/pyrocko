@@ -5,9 +5,8 @@
 from __future__ import absolute_import
 from builtins import zip, range
 
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
+from .qt_compat import qc, qg, qw, QSortFilterProxyModel, \
+    QItemSelectionModel, use_pyqt5
 
 from .util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.plot.beachball import mt2beachball, BeachballError
@@ -166,11 +165,11 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
             return None
 
 
-class MarkerSortFilterProxyModel(qc.QSortFilterProxyModel):
+class MarkerSortFilterProxyModel(QSortFilterProxyModel):
     '''Sorts the table's columns.'''
 
     def __init__(self, *args, **kwargs):
-        qc.QSortFilterProxyModel.__init__(self, *args, **kwargs)
+        QSortFilterProxyModel.__init__(self, *args, **kwargs)
         self.sort(1, qc.Qt.DescendingOrder)
 
     def lessThan(self, left, right):
@@ -649,12 +648,16 @@ class MarkerEditor(qw.QFrame):
 
         header = self.marker_table_view.horizontalHeader()
         for i_s, s in enumerate(_header_sizes):
-            header.setSectionResizeMode(i_s, qw.QHeaderView.Interactive)
+            if use_pyqt5:
+                header.setSectionResizeMode(i_s, qw.QHeaderView.Interactive)
+            else:
+                header.setResizeMode(i_s, qw.QHeaderView.Interactive)
+
             header.resizeSection(i_s, s)
 
         header.setStretchLastSection(True)
 
-        self.selection_model = qc.QItemSelectionModel(self.proxy_filter)
+        self.selection_model = QItemSelectionModel(self.proxy_filter)
         self.marker_table_view.setSelectionModel(self.selection_model)
         self.selection_model.selectionChanged.connect(
             self.set_selected_markers)
@@ -700,10 +703,10 @@ class MarkerEditor(qw.QFrame):
         :param indices: list of indices of selected markers.'''
         self.selection_model.clearSelection()
         selections = qc.QItemSelection()
-        selection_flags = qc.QItemSelectionModel.SelectionFlags(
-            (qc.QItemSelectionModel.Select |
-             qc.QItemSelectionModel.Rows |
-             qc.QItemSelectionModel.Current))
+        selection_flags = QItemSelectionModel.SelectionFlags(
+            (QItemSelectionModel.Select |
+             QItemSelectionModel.Rows |
+             QItemSelectionModel.Current))
 
         for chunk in indices:
             mi_start = self.marker_model.index(min(chunk), 0)

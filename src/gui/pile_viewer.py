@@ -36,12 +36,7 @@ from .util import (ValControl, LinValControl, Marker, EventMarker,
                    PhaseMarker, make_QPolygonF, draw_label, Label,
                    Progressbars)
 
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
-from PyQt5 import QtOpenGL as qgl
-from PyQt5 import QtSvg as qsvg
-# from PyQt5.QtSvg import *
+from .qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5
 
 import scipy.stats as sstats
 import platform
@@ -2235,7 +2230,11 @@ def MakePileViewerMainClass(base):
             qg.QDesktopServices.openUrl(qc.QUrl(link))
 
         def wheelEvent(self, wheel_event):
-            self.wheel_pos += wheel_event.angleDelta().y()
+            if use_pyqt5:
+                self.wheel_pos += wheel_event.angleDelta().y()
+            else:
+                self.wheel_pos += wheel_event.delta()
+
             n = self.wheel_pos // 120
             self.wheel_pos = self.wheel_pos % 120
             if n == 0:

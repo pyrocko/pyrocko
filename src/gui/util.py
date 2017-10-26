@@ -10,13 +10,7 @@ import time
 import numpy as num
 import logging
 
-import matplotlib
-if matplotlib.get_backend().find('Qt4') != -1:  # noqa
-    matplotlib.use('Qt5Agg')
-
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
+from .qt_compat import qc, qg, qw
 
 from .marker import Marker, PhaseMarker, EventMarker  # noqa
 from .marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
