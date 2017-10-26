@@ -86,10 +86,12 @@ def _download(url, fpath, username=None, password=None,
               recursive=False):
     import requests
     from requests.auth import HTTPDigestAuth
+
     requests.adapters.DEFAULT_RETRIES = 5
     urljoin = requests.compat.urljoin
 
     cred = None if username is None else HTTPDigestAuth(username, password)
+    session = requests.Session(auth=cred)
 
     bytes_rx = 0
     bytes_total = 0
@@ -104,7 +106,7 @@ def _download(url, fpath, username=None, password=None,
     print(url)
 
     def parse_directory_tree(url, subdir=''):
-        r = requests.get(urljoin(url, subdir), auth=cred, verify=False)
+        r = session.get(urljoin(url, subdir))
         r.raise_for_status()
 
         entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
@@ -126,20 +128,21 @@ def _download(url, fpath, username=None, password=None,
         return files
 
     def get_content_length(url):
-        r = requests.head(url, auth=cred, verify=False)
+        r = session.head(url)
         r.raise_for_status()
 
         content_length = r.headers.get('content-length', None)
         if content_length is None:
-            logger.warning('Could not get Header:Content-Length for %s' % url)
-            content_length = 0.
+            logger.warning('Could not get HTTP header '
+                           'Content-Length for %s' % url)
+            return 0
         return int(content_length)
 
     def download_file(url, fn, download=True):
         logger.info('starting download of %s...' % url)
-
         ensuredirs(fn)
-        r = requests.get(url, auth=cred, stream=True, timeout=5)
+
+        r = session.get(url, stream=True, timeout=5)
         r.raise_for_status()
 
         fsize = get_content_length(url)
@@ -158,9 +161,10 @@ def _download(url, fpath, username=None, password=None,
 
         if frx != fsize:
             logger.warning(
-                'content-length from http header (%i) does not match '
-                'download size (%i)' % (fsize, frx))
+                'HTTP header Content-Length: %i bytes does not match '
+                'download size %i bytes' % (fsize, frx))
 
+        session.close()
         logger.info('finished download of %s' % url)
 
         return frx, fsize
@@ -170,7 +174,7 @@ def _download(url, fpath, username=None, password=None,
 
     if recursive:
         if op.exists(fpath) and not force:
-            raise PathExists('path "%s" already exists' % fpath)
+            raise PathExists('path %s already exists' % fpath)
 
         files = parse_directory_tree(url)
 
