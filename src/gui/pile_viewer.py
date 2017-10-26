@@ -1024,12 +1024,9 @@ def MakePileViewerMainClass(base):
             self.menuitem_reload.triggered.connect(
                 self.setup_snufflings)
 
-            self.open_app_store = qg.QAction('Get Snufflings', self.menu)
+            self.open_app_store = qw.QAction('Get Snufflings', self.menu)
+            self.open_app_store.triggered.connect(self.get_snufflings)
             self.menu.addAction(self.open_app_store)
-            self.connect(
-                self.open_app_store,
-                qc.SIGNAL("triggered(bool)"),
-                self.get_snufflings)
 
             self.menu.addSeparator()
 

@@ -10,8 +10,9 @@ import os
 import shutil
 import logging
 
-import PyQt4.QtGui as qg
-import PyQt4.QtCore as qc
+import PyQt5.QtGui as qg
+import PyQt5.QtCore as qc
+import PyQt5.QtWidgets as qw
 from pyrocko import config as pconfig
 
 logger = logging.getLogger('pyrocko.gui.app_store')
@@ -31,8 +32,9 @@ prolog_html = '''
     Add snufflings to your snuffler
     </h3>
     <p>
-    The list of snufflings below mirrors the user contributed snufflings
-    repository at <a href="http://github.com">ADD LINKgithub</a><br>
+    The list of snufflings below mirrors the
+    <a href="https://github.com/pyrocko/contrib-snufflings">user contributed snufflings
+    repository</a><br>
     Checkout that site for bug reports, whishes and ideas.
     </p>
     <p>
@@ -45,19 +47,22 @@ prolog_html = '''
 '''
 
 
-class AppTile(qg.QWidget):
+class AppTile(qw.QWidget):
+
+    snuffling_update_required = qc.pyqtSignal()
+
     def __init__(self, data, installed=False):
-        qg.QWidget.__init__(self)
+        qw.QWidget.__init__(self)
         self.data = data
         self.installed = installed
-        self.setLayout(qg.QHBoxLayout())
+        self.setLayout(qw.QHBoxLayout())
         self.setup()
         self.update_state(installed)
 
     def setup(self):
         name = self.data['name']
-        self.layout().addWidget(qg.QLabel(name))
-        self.install_button = qg.QPushButton('')
+        self.layout().addWidget(qw.QLabel(name))
+        self.install_button = qw.QPushButton('')
         self.install_button.clicked.connect(self.un_install)
         self.layout().addWidget(self.install_button)
 
@@ -68,7 +73,7 @@ class AppTile(qg.QWidget):
             button_label = 'install'
 
         self.install_button.setText(button_label)
-        self.emit(qc.SIGNAL('snuffling_update_required()'))
+        self.snuffling_update_required.emit()
 
     def download(self, name, item):
         logger.debug('Downloading snuffling %s' % item['name'])
@@ -88,6 +93,7 @@ class AppTile(qg.QWidget):
         else:
             if self.data['type'] == 'dir':
                 response = urlopen(base_url + 'contents/' + self.data['name'])
+                logger.debug(response)
                 json_data = json.load(response.decode())
 
                 name = self.data['name']
@@ -108,23 +114,23 @@ class AppTile(qg.QWidget):
             os.remove(fns)
 
 
-class AppWidget(qg.QWidget):
+class AppWidget(qw.QWidget):
     def __init__(self, viewer=None, *args, **kwargs):
-        qg.QWidget.__init__(self, *args, **kwargs)
+        qw.QWidget.__init__(self, *args, **kwargs)
         self.url = base_url + 'contents'
         self.json_data = None
         self.viewer = viewer
-        self.setLayout(qg.QVBoxLayout())
+        self.setLayout(qw.QVBoxLayout())
 
     def fail(self, message):
-        box = qg.QMessageBox(self.viewer)
+        box = qw.QMessageBox(self.viewer)
         logger.debug(message)
         box.setText('%s' % message)
         box.exec_()
 
     def refresh(self):
         try:
-            logger.debug('Checking contrib-snufflings repo')
+            logger.info('Checking contrib-snufflings repo')
             response = urlopen(self.url)
             self.json_data = json.load(response)
             layout = self.layout()
@@ -144,13 +150,10 @@ class AppWidget(qg.QWidget):
                         raise e
 
                 tile = AppTile(data, installed=is_installed)
-                self.connect(
-                    tile,
-                    qc.SIGNAL('snuffling_update_required()'),
-                    self.setup_snufflings)
-                layout.addWidget(tile)
+                tile.snuffling_update_required.connect(self.setup_snufflings)
+                self.layout().addWidget(tile)
 
-        except URLError:
+        except URLError as e:
             self.fail('No connection to internet')
             self.setVisible(False)
 
@@ -160,21 +163,21 @@ class AppWidget(qg.QWidget):
             self.viewer.setup_snufflings([destination_path])
 
 
-class AppStore(qg.QFrame):
+class AppStore(qw.QFrame):
     def __init__(self, viewer=None, *args, **kwargs):
-        qg.QFrame.__init__(self, *args, **kwargs)
+        qw.QFrame.__init__(self, *args, **kwargs)
         self.viewer = viewer
         w = AppWidget(viewer=self.viewer)
-        self.setLayout(qg.QVBoxLayout())
+        w.refresh()
+        self.setLayout(qw.QVBoxLayout())
 
-        prolog = qg.QLabel(prolog_html)
+        prolog = qw.QLabel(prolog_html)
 
-        scroller = qg.QScrollArea()
+        scroller = qw.QScrollArea(parent=self)
         scroller.setWidget(w)
 
         self.layout().addWidget(prolog)
         self.layout().addWidget(scroller)
-        w.refresh()
 
     def closeEvent(self, event):
         # TODO connect to closing event in pile viewer
@@ -183,7 +186,11 @@ class AppStore(qg.QFrame):
 
 
 if __name__ == '__main__':
-   app = qg.QApplication(sys.argv)
-   w = AppStore()
-   w.show()
-   sys.exit(app.exec_())
+    if len(sys.argv) > 2 and '--debug' in sys.argv[2]:
+        logger.setLevel(logging.DEBUG)
+    app = qw.QApplication(sys.argv)
+    win = qw.QMainWindow()
+    w = AppStore()
+    win.setCentralWidget(w)
+    win.show()
+    sys.exit(app.exec_())
