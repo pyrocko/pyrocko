@@ -1,6 +1,10 @@
 from pyrocko import model
+from pyrocko import gmtpy
 from pyrocko.plot.automap import Map
 from pyrocko.example import get_example_data
+
+
+gmtpy.check_have_gmt()
 
 # Download example data
 get_example_data('stations_deadsea.pf')
