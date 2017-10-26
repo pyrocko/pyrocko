@@ -1,25 +1,29 @@
 import sys
 import json
 try:
-    from urllib2 import HTTPError, urlopen, URLError
+    from urllib2 import HTTPError, urlopen, URLError, Request
 except ImportError:
-    from urllib.request import urlopen
+    from urllib.request import urlopen, Request
     from urllib.error import HTTPError, URLError
 
 import os
 import shutil
 import logging
+import re
 
 import PyQt5.QtGui as qg
 import PyQt5.QtCore as qc
 import PyQt5.QtWidgets as qw
+
 from pyrocko import config as pconfig
 
 logger = logging.getLogger('pyrocko.gui.app_store')
 
 pjoin = os.path.join
 
-base_url = 'https://api.github.com/repos/pyrocko/contrib-snufflings/'
+git_branch = 'python3-appstore'
+base_url = 'https://api.github.com/repos/HerrMuellerluedenscheid/contrib-snufflings/'
+# base_url = 'https://api.github.com/repos/pyrocko/contrib-snufflings/'
 exclude = ['.gitignore', 'screenshots', 'LICENSE', 'README.md']
 
 destination_path = pconfig.config().snufflings
@@ -51,26 +55,26 @@ class AppTile(qw.QWidget):
 
     snuffling_update_required = qc.pyqtSignal()
 
-    def __init__(self, data, installed=False):
+    def __init__(self, data, label, installed=False):
         qw.QWidget.__init__(self)
         self.data = data
+        self.label = label
         self.installed = installed
         self.setLayout(qw.QHBoxLayout())
         self.setup()
         self.update_state(installed)
 
     def setup(self):
-        name = self.data['name']
-        self.layout().addWidget(qw.QLabel(name))
+        self.layout().addWidget(qw.QLabel(self.label))
         self.install_button = qw.QPushButton('')
         self.install_button.clicked.connect(self.un_install)
         self.layout().addWidget(self.install_button)
 
     def update_state(self, is_installed=None):
         if is_installed or self.is_installed:
-            button_label = 'remove'
+            button_label = 'Remove'
         else:
-            button_label = 'install'
+            button_label = 'Install'
 
         self.install_button.setText(button_label)
         self.snuffling_update_required.emit()
@@ -92,7 +96,7 @@ class AppTile(qw.QWidget):
             self.remove()
         else:
             if self.data['type'] == 'dir':
-                response = urlopen(base_url + 'contents/' + self.data['name'])
+                response = urlopen(base_url + 'contents/' + self.data['name'] + '?ref=%s'%git_branch)
                 logger.debug(response)
                 json_data = json.load(response.decode())
 
@@ -117,7 +121,7 @@ class AppTile(qw.QWidget):
 class AppWidget(qw.QWidget):
     def __init__(self, viewer=None, *args, **kwargs):
         qw.QWidget.__init__(self, *args, **kwargs)
-        self.url = base_url + 'contents'
+        self.url = base_url + 'contents' + '?ref=%s' % git_branch
         self.json_data = None
         self.viewer = viewer
         self.setLayout(qw.QVBoxLayout())
@@ -131,10 +135,13 @@ class AppWidget(qw.QWidget):
     def refresh(self):
         try:
             logger.info('Checking contrib-snufflings repo')
+            nbytes_header = 100
+            header_request = ('Range', 'bytes=0-%s' % nbytes_header)
+            reader_re = re.compile('name\s*=(.*)', flags=re.IGNORECASE)
+            
             response = urlopen(self.url)
             self.json_data = json.load(response)
             layout = self.layout()
-
             for data in self.json_data:
                 if data['name'] in exclude:
                     continue
@@ -148,8 +155,21 @@ class AppWidget(qw.QWidget):
                         is_installed = False
                     else:
                         raise e
+                print(data['download_url'])
 
-                tile = AppTile(data, installed=is_installed)
+                if data['type'] == 'dir':
+                    continue
+
+                req = Request(data['download_url'])
+                req.add_header(*header_request)
+                response = urlopen(req)
+                app_header = response.read()
+                m = re.search(reader_re, app_header)
+                if m:
+                    app_label = m.group(1)
+                else:
+                    app_label = data['name']
+                tile = AppTile(data, label=app_label, installed=is_installed)
                 tile.snuffling_update_required.connect(self.setup_snufflings)
                 self.layout().addWidget(tile)
 
@@ -175,6 +195,7 @@ class AppStore(qw.QFrame):
 
         scroller = qw.QScrollArea(parent=self)
         scroller.setWidget(w)
+        w.setParent(scroller)
 
         self.layout().addWidget(prolog)
         self.layout().addWidget(scroller)
