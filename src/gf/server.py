@@ -621,7 +621,8 @@ class Server(asyncore.dispatcher):
             'debug': logger.debug,
             'info': logger.info,
             'warning': logger.warning,
-            'error': logger.error}.get(type, 'info')(str(message))
+            'error': logger.error
+        }.get(type, 'info')(str(message))
 
 
 def run(ip, port, engine):

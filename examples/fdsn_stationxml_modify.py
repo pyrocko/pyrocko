@@ -1,15 +1,15 @@
-from pyrocko.io import fdsn_station as fs
+from pyrocko.io import stationxml
 from pyrocko.example import get_example_data
 
 # Download example StationXML file
 get_example_data('responses.xml')
 
 # load the StationXML downloaded data file
-sx = fs.load_xml(filename='responses.xml')
+sx = stationxml.load_xml(filename='responses.xml')
 
 comp_to_azi_dip = {
-    'X': (0., 0.),
-    'Y': (90., 0.),
+    'E': (0., 0.),
+    'N': (90., 0.),
     'Z': (0., -90.),
 }
 
@@ -23,8 +23,7 @@ for network in sx.network_list:
         for channel in station.channel_list:
             azi, dip = comp_to_azi_dip[channel.code[-1]]
 
-            # change the azimuth and dip of the channel per channel alpha
-            # code
+            # change the azimuth and dip of the channel per channel alpha code
             channel.azimuth.value = azi
             channel.dip.value = dip
 

@@ -48,7 +48,7 @@ class GFWSTestCase(unittest.TestCase):
 
             def run(self):
                 self.s = server.Server(
-                    '', 8080, server.SeismosizerHandler, self.engine)
+                    '127.0.0.1', 8080, server.SeismosizerHandler, self.engine)
                 asyncore.loop(timeout=.2)
 
         t_ws = ServerThread(self.serve_dir)

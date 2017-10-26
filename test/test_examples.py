@@ -70,7 +70,7 @@ def _make_function(test_name, fn):
             import imp
             imp.load_source(test_name, fn)
 
-        except ImportError:
+        except ImportError as e:
             import importlib.machinery
             importlib.machinery.SourceFileLoader(test_dir, fn)
 
