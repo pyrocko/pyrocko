@@ -8,6 +8,8 @@ import traceback
 
 from . import common
 
+from pyrocko import ExternalProgramMissing
+
 from pyrocko import util
 from pyrocko import example
 from pyrocko import pile
@@ -76,6 +78,9 @@ def _make_function(test_name, fn):
 
         except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')
+
+        except ExternalProgramMissing as e:
+            raise unittest.SkipTest(str(e))
 
         except Exception as e:
             self.fail(traceback.format_exc(e))

@@ -17,6 +17,7 @@ import re
 import logging
 import shutil
 
+from pyrocko import ExternalProgramMissing
 from pyrocko import trace, pile, model, util
 from pyrocko.io import eventdata
 
@@ -390,3 +391,9 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
     def _insert_channel_descriptions(self, stations):
         # this is done beforehand in this class
         pass
+
+
+def check_have_rdseed():
+    if not Programs.check():
+        raise ExternalProgramMissing(
+            'rdseed is not installed or cannot be found')

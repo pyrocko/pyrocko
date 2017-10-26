@@ -326,10 +326,16 @@ class InstallPrerequisits(Command):
 
         distribution = platform.linux_distribution()[0].lower().rstrip()
         distribution = 'debian' if distribution == 'ubuntu' else distribution
-        fn = 'prerequisites/prerequisites_%s.sh' % distribution
+        fn = 'prerequisites/prerequisites_%s_%s.sh' % (
+                distribution, 'python%i' % sys.version_info.major)
 
         if not self.force_yes:
-            confirm = raw_input('Execute: %s \n\
+            try:
+                input = raw_input
+            except NameError:
+                pass
+
+            confirm = input('Execute: %s \n\
 proceed? [y/n]' % open(fn, 'r').read())
             if not confirm.lower() == 'y':
                 sys.exit(0)
@@ -338,9 +344,9 @@ proceed? [y/n]' % open(fn, 'r').read())
                   shell=False)
 
         while p.poll() is None:
-            print(p.stdout.readline().rstrip())
+            print(p.stdout.readline().decode('ascii').rstrip())
 
-        print(p.stdout.read())
+        print(p.stdout.read().decode('ascii'))
 
 
 class CustomBuildPyCommand(build_py):
@@ -367,6 +373,7 @@ class CustomBuildPyCommand(build_py):
             ('pyrocko', 'seisan_waveform', ['pyrocko.io.seisan_waveform']),
             ('pyrocko', 'suds', ['pyrocko.io.suds']),
             ('pyrocko', 'yaff', ['pyrocko.io.yaff']),
+            ('pyrocko', 'eventdata', ['pyrocko.io.eventdata']),
             ('pyrocko.fdsn', 'ws', ['pyrocko.client.fdsn']),
             ('pyrocko', 'catalog', ['pyrocko.client.catalog']),
             ('pyrocko', 'iris_ws', ['pyrocko.client.iris']),

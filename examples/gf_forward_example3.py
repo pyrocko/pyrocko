@@ -32,7 +32,8 @@ thrust = gf.RectangularSource(
 
 # We will define a grid of targets
 # number in east and north directions, and total
-ngrid = 90
+ngrid = 40
+# ngrid = 90  # for better resolution
 
 # extension from origin in all directions
 obs_size = 20.*km

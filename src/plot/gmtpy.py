@@ -29,6 +29,8 @@ import copy
 from select import select
 from scipy.io import netcdf
 
+from pyrocko import ExternalProgramMissing
+
 find_bb = re.compile(br'%%BoundingBox:((\s+[-0-9]+){4})')
 find_hiresbb = re.compile(br'%%HiResBoundingBox:((\s+[-0-9.]+){4})')
 
@@ -50,6 +52,11 @@ def have_gmt():
 
     except GMTInstallationProblem:
         return False
+
+
+def check_have_gmt():
+    if not have_gmt():
+        raise ExternalProgramMissing('GMT is not installed or cannot be found')
 
 
 def have_pixmaptools():

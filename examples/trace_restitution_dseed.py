@@ -5,6 +5,8 @@ from pyrocko.example import get_example_data
 # Note: this example requires *rdseed* available e.g. at:
 # https://ds.iris.edu/
 
+rdseed.check_have_rdseed()
+
 # Download example data
 get_example_data('station_info.dseed')
 get_example_data('traces_italy.mseed')
