@@ -595,17 +595,14 @@ class FigureFrame(qw.QFrame):
 class WebKitFrame(qw.QFrame):
 
     def __init__(self, url=None, parent=None):
-        try:
-            if use_pyqt5:
+        if use_pyqt5:
+            try:
                 from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
-            else:
-                from PyQt4.QtWebEngineWidgets import QWebEngineView as WebView
-
-        except (ImportError, ModuleNotFoundError):
-            if use_pyqt5:
+            except (ImportError, ModuleNotFoundError):
                 from PyQt5.QtWebKitWidgets import QWebView as WebView
-            else:
-                from PyQt4.QtWebKit import QWebView as WebView
+
+        else:
+            from PyQt4.QtWebKit import QWebView as WebView
 
         qw.QFrame.__init__(self, parent)
         layout = qw.QGridLayout()
