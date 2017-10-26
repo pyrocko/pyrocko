@@ -20,6 +20,8 @@ except ImportError:
                                 urlopen)
     from urllib.error import HTTPError
 
+import ssl
+
 from pyrocko import util
 
 logger = logging.getLogger('pyrocko.client.fdsn')
@@ -100,11 +102,15 @@ class InvalidRequest(Exception):
     pass
 
 
-def _request(url, post=False, user=None, passwd=None, **kwargs):
+def _request(url, post=False, user=None, passwd=None,
+             allow_TLSv1=True, **kwargs):
     url_values = urlencode(kwargs)
     if url_values:
         url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
+
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1 if allow_TLSv1
+                                 else ssl.PROTOCOL_SSLv2)
 
     opener = None
 
@@ -121,9 +127,9 @@ def _request(url, post=False, user=None, passwd=None, **kwargs):
         try:
 
             if opener:
-                resp = opener.open(req, timeout=g_timeout)
+                resp = opener.open(req, timeout=g_timeout, context=ssl_context)
             else:
-                resp = urlopen(req, timeout=g_timeout)
+                resp = urlopen(req, timeout=g_timeout, context=ssl_context)
 
             if resp.getcode() == 204:
                 raise EmptyResult(url)
