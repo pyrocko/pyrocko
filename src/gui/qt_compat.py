@@ -6,6 +6,7 @@ if use_pyqt5:
     if matplotlib.get_backend().find('Qt4') != -1:  # noqa
         matplotlib.use('Qt5Agg')
 
+    import PyQt5 as PyQt
     from PyQt5 import Qt
     from PyQt5 import QtCore as qc
     from PyQt5 import QtGui as qg
@@ -15,10 +16,12 @@ if use_pyqt5:
     from PyQt5 import QtSvg as qsvg
     QSortFilterProxyModel = qc.QSortFilterProxyModel
     QItemSelectionModel = qc.QItemSelectionModel
+    QItemSelection = qc.QItemSelection
 else:
     if matplotlib.get_backend().find('Qt5') != -1:  # noqa
         matplotlib.use('Qt4Agg')
 
+    import PyQt4 as PyQt
     from PyQt4 import Qt
     from PyQt4 import QtCore as qc
     from PyQt4 import QtGui as qg
@@ -28,6 +31,7 @@ else:
     from PyQt4 import QtSvg as qsvg
     QSortFilterProxyModel = qg.QSortFilterProxyModel
     QItemSelectionModel = qg.QItemSelectionModel
+    QItemSelection = qg.QItemSelection
 
 
 try:

@@ -5,8 +5,10 @@
 from __future__ import absolute_import
 from builtins import zip, range
 
+import sys
+
 from .qt_compat import qc, qg, qw, QSortFilterProxyModel, \
-    QItemSelectionModel, use_pyqt5
+    QItemSelectionModel, QItemSelection, use_pyqt5
 
 from .util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.plot.beachball import mt2beachball, BeachballError
@@ -22,23 +24,37 @@ def noop(x=None):
     return x
 
 
-def toDateTime(val):
-    return val
+if sys.version_info[0] >= 3 or use_pyqt5:
+    qc.QString = str
+    qc.QVariant = noop
 
+    def toDateTime(val):
+        return val
 
-def isDateTime(val):
-    return isinstance(val, qc.QDateTime)
+    def isDateTime(val):
+        return isinstance(val, qc.QDateTime)
 
+    def toFloat(val):
+        try:
+            return float(val), True
+        except ValueError:
+            return 0.0, False
 
-def toFloat(val):
-    try:
-        return float(val), True
-    except ValueError:
-        return 0.0, False
+    def toString(val):
+        return str(val)
 
+else:
+    def toDateTime(val):
+        return val.toDateTime()
 
-def toString(val):
-    return str(val)
+    def isDateTime(val):
+        return val.type() == qc.QVariant.DateTime
+
+    def toFloat(val):
+        return val.toFloat()
+
+    def toString(val):
+        return val.toString()
 
 
 logger = logging.getLogger('pyrocko.gui.marker_editor')
@@ -702,7 +718,7 @@ class MarkerEditor(qw.QFrame):
 
         :param indices: list of indices of selected markers.'''
         self.selection_model.clearSelection()
-        selections = qc.QItemSelection()
+        selections = QItemSelection()
         selection_flags = QItemSelectionModel.SelectionFlags(
             (QItemSelectionModel.Select |
              QItemSelectionModel.Rows |
@@ -712,7 +728,7 @@ class MarkerEditor(qw.QFrame):
             mi_start = self.marker_model.index(min(chunk), 0)
             mi_stop = self.marker_model.index(max(chunk), 0)
             row_selection = self.proxy_filter.mapSelectionFromSource(
-                qc.QItemSelection(mi_start, mi_stop))
+                QItemSelection(mi_start, mi_stop))
             selections.merge(row_selection, selection_flags)
 
         if len(indices) != 0:

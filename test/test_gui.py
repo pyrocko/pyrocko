@@ -2,17 +2,20 @@ from __future__ import division, print_function, absolute_import
 import unittest
 try:
     from . import common
-except:
+except Exception:
     import common
 import numpy as num
 import tempfile
 import os
 
 if common.have_gui():  # noqa
-    from PyQt5.QtTest import QTest
-    from PyQt5.QtCore import Qt, QPoint
-    from PyQt5 import QtCore as qc
-    from PyQt5.QtWidgets import QStyleOptionSlider, QStyle
+    from pyrocko.gui.qt_compat import qc, qw, use_pyqt5
+    if use_pyqt5:
+        from PyQt5.QtTest import QTest
+    else:
+        from PyQt4.QtTest import QTest
+        Qt = qc.Qt
+
     from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import util as gui_util
@@ -127,9 +130,9 @@ class GUITest(unittest.TestCase):
 
     def get_slider_position(self, slider):
         style = slider.style()
-        opt = QStyleOptionSlider()
+        opt = qw.QStyleOptionSlider()
         return style.subControlRect(
-            QStyle.CC_Slider, opt, QStyle.SC_SliderHandle)
+            qw.QStyle.CC_Slider, opt, qw.QStyle.SC_SliderHandle)
 
     def drag_slider(self, slider):
         ''' Click *slider*, drag from one side to the other, release mouse
@@ -150,8 +153,8 @@ class GUITest(unittest.TestCase):
         position_tl = pv.pos()
         geom = pv.frameGeometry()
         QTest.mouseMove(pv.viewer, pos=position_tl)
-        QTest.mouseMove(pv.viewer, pos=(
-            QPoint(position_tl.x()+geom.x()/2., position_tl.y()+geom.y()/2.)))
+        QTest.mouseMove(pv.viewer, pos=(qc.QPoint(
+            position_tl.x()+geom.x()/2., position_tl.y()+geom.y()/2.)))
 
         # This should be done also by mouseDClick().
         QTest.mouseRelease(pv.viewer, Qt.LeftButton)

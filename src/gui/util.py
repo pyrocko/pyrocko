@@ -10,7 +10,7 @@ import time
 import numpy as num
 import logging
 
-from .qt_compat import qc, qg, qw
+from .qt_compat import qc, qg, qw, PyQt, use_pyqt5
 
 from .marker import Marker, PhaseMarker, EventMarker  # noqa
 from .marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
@@ -596,9 +596,16 @@ class WebKitFrame(qw.QFrame):
 
     def __init__(self, url=None, parent=None):
         try:
-            from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
-        except ImportError:
-            from PyQt5.QtWebKitWidgets import QWebView as WebView
+            if use_pyqt5:
+                from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
+            else:
+                from PyQt4.QtWebEngineWidgets import QWebEngineView as WebView
+
+        except (ImportError, ModuleNotFoundError):
+            if use_pyqt5:
+                from PyQt5.QtWebKitWidgets import QWebView as WebView
+            else:
+                from PyQt4.QtWebKit import QWebView as WebView
 
         qw.QFrame.__init__(self, parent)
         layout = qw.QGridLayout()
