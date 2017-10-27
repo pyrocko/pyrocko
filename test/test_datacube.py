@@ -62,7 +62,7 @@ class DataCubeTestCase(unittest.TestCase):
                 tr.set_codes(location='i=%s' % imode)
 
         # import pylab as lab
-        for cha in ['p0']: #, 'p1', 'p2']:
+        for cha in ['p0']:  # 'p1', 'p2']:
             t1 = [tr for tr in trs['off'] if tr.channel == cha][0]
             t2 = [tr for tr in trs['sinc'] if tr.channel == cha][0]
             it = 0

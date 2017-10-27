@@ -1,4 +1,4 @@
-from pyrocko.guts import Object, String, Float, List, dump_xml
+from pyrocko.guts import Object, String, Float, List
 
 
 class XMLEventMarker(Object):

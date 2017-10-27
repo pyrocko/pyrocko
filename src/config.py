@@ -184,5 +184,6 @@ def write_config(conf, config_name='config'):
 
 override_gui_toolkit = None
 
+
 def effective_gui_toolkit():
     return override_gui_toolkit or config().gui_toolkit

@@ -1,5 +1,4 @@
 from __future__ import division, print_function, absolute_import
-import time
 import unittest
 import shutil
 import os
@@ -50,7 +49,7 @@ class GFWSTestCase(unittest.TestCase):
                     'localhost', 32483, server.SeismosizerHandler, self.engine)
 
             def run(self):
-                asyncore.loop(.2)
+                asyncore.loop(1.)
 
         t_ws = ServerThread(self.serve_dir)
         t_ws.start()
@@ -60,12 +59,12 @@ class GFWSTestCase(unittest.TestCase):
                 site='http://localhost:32483',
                 store_id=self.store_id,
                 quiet=False)
-
             gfstore = store.Store(self.store_id)
             gfstore.check()
 
         finally:
-
+            # import time
+            # time.sleep(100)
             t_ws.s.close()
             t_ws.join(1.)
 

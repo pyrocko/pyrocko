@@ -7,11 +7,12 @@ import numpy as num
 import logging
 
 from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet
+from pyrocko.guts import dump_xml
 from pyrocko import util, gui_util, model, orthodrome as ortho
 from pyrocko import moment_tensor
 from pyrocko.automap import Map
 from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker
-from .xmlMarker import StationMarkerList, MarkerLists, dump_xml
+from .xmlMarker import StationMarkerList, MarkerLists
 
 from pyrocko.gui.qt_compat import qc, qg
 

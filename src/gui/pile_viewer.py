@@ -36,7 +36,7 @@ from .util import (ValControl, LinValControl, Marker, EventMarker,
                    PhaseMarker, make_QPolygonF, draw_label, Label,
                    Progressbars)
 
-from .qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5, PyQt
+from .qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5
 
 import scipy.stats as sstats
 import platform

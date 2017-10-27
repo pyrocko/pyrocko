@@ -355,8 +355,8 @@ class RequestHandler(asynchat.async_chat, SHRH):
         encoding = sys.getfilesystemencoding()
 
         self.send_response(200, 'OK')
-        self.send_header("Content-Type", "text/html; charset=%s" % encoding)
         self.send_header("Content-Length", str(length))
+        self.send_header("Content-Type", "text/html; charset=%s" % encoding)
         self.end_headers()
 
         return f
@@ -603,6 +603,9 @@ class Server(asyncore.dispatcher):
 
     def log(self, message):
         self.log_info(message)
+
+    def handle_close(self):
+        self.close()
 
     def log_info(self, message, type='info'):
         {
