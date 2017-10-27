@@ -563,7 +563,8 @@ class SeismosizerHandler(RequestHandler):
             return 'text/plain'
 
         else:
-            return RequestHandler.guess_type(self, path)
+            return RequestHandler.guess_type(self, path) \
+                or 'application/x-octet'
 
 
 class Server(asyncore.dispatcher):
