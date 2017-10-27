@@ -10,6 +10,7 @@ import os
 import shutil
 import logging
 import re
+import codecs
 
 import PyQt5.QtGui as qg
 import PyQt5.QtCore as qc
@@ -135,14 +136,19 @@ class AppWidget(qw.QWidget):
     def refresh(self):
         try:
             logger.info('Checking contrib-snufflings repo')
+
             nbytes_header = 100
             header_request = ('Range', 'bytes=0-%s' % nbytes_header)
             reader_re = re.compile('name\s*=(.*)', flags=re.IGNORECASE)
             
             response = urlopen(self.url)
-            self.json_data = json.load(response)
+            reader = codecs.getreader("utf-8")
+            self.json_data = json.load(reader(response))
+
+            n_repos = len(self.json_data)
             layout = self.layout()
-            for data in self.json_data:
+            for irepo, data in enumerate(self.json_data):
+                print(irepo+1, n_repos)
                 if data['name'] in exclude:
                     continue
 
@@ -155,8 +161,7 @@ class AppWidget(qw.QWidget):
                         is_installed = False
                     else:
                         raise e
-                print(data['download_url'])
-
+                print(data['type'])
                 if data['type'] == 'dir':
                     continue
 
