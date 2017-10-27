@@ -1,4 +1,5 @@
 from __future__ import division, print_function, absolute_import
+import time
 import unittest
 import shutil
 import os
@@ -45,18 +46,18 @@ class GFWSTestCase(unittest.TestCase):
                 threading.Thread.__init__(self)
                 self.engine = LocalEngine(
                     store_dirs=[serve_dir])
+                self.s = server.Server(
+                    'localhost', 32483, server.SeismosizerHandler, self.engine)
 
             def run(self):
-                self.s = server.Server(
-                    '127.0.0.1', 8080, server.SeismosizerHandler, self.engine)
-                asyncore.loop(timeout=.2)
+                asyncore.loop(.2)
 
         t_ws = ServerThread(self.serve_dir)
         t_ws.start()
 
         try:
             ws.download_gf_store(
-                site='localhost',
+                site='http://localhost:32483',
                 store_id=self.store_id,
                 quiet=False)
 
@@ -64,6 +65,7 @@ class GFWSTestCase(unittest.TestCase):
             gfstore.check()
 
         finally:
+
             t_ws.s.close()
             t_ws.join(1.)
 

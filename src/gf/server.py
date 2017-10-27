@@ -38,7 +38,7 @@ import re
 from collections import deque
 import logging
 
-from pyrocko import gf
+from pyrocko import gf, util
 
 logger = logging.getLogger('pyrocko.gf.server')
 
@@ -83,7 +83,7 @@ class writewrapper(object):
 class RequestHandler(asynchat.async_chat, SHRH):
 
     server_version = 'Seismosizer/'+__version__
-    protocol_version = "HTTP/1.1"
+    protocol_version = 'HTTP/1.1'
     blocksize = 4096
 
     # In enabling the use of buffer objects by setting use_buffer to True,
@@ -126,7 +126,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 
     def prepare_POST(self):
         """Prepare to read the request body"""
-        bytesToRead = int(self.headers.getheader('content-length'))
+        bytesToRead = int(self.headers.getheader('Content-length'))
         # set terminator to length (will read bytesToRead bytes)
         self.set_terminator(bytesToRead)
         self.incoming.clear()
@@ -291,22 +291,6 @@ class RequestHandler(asynchat.async_chat, SHRH):
                 self.log_error(str(why))
             self.handle_error()
 
-    def send_response(self, code, message=None):
-        if self.code:
-            return
-        self.code = code
-        if message is None:
-            if code in self.responses:
-                message = self.responses[code][0]
-            else:
-                message = ''
-        if self.request_version != 'HTTP/0.9':
-            self.wfile.write("%s %d %s\r\n" %
-                             (self.protocol_version, code, message))
-
-        self.send_header('Server', self.version_string())
-        self.send_header('Date', self.date_time_string())
-
     def log(self, message):
         self.log_info(message)
 
@@ -315,7 +299,8 @@ class RequestHandler(asynchat.async_chat, SHRH):
             'debug': logger.debug,
             'info': logger.info,
             'warning': logger.warning,
-            'error': logger.error}.get(type, logger.info)(str(message))
+            'error': logger.error
+        }.get(type, logger.info)(str(message))
 
     def log_message(self, format, *args):
         self.log_info("%s - - [%s] %s \"%s\" \"%s\"\n" % (
@@ -367,11 +352,13 @@ class RequestHandler(asynchat.async_chat, SHRH):
         f.write(enc("</ul>\n<hr>\n</body>\n</html>\n"))
         length = f.tell()
         f.seek(0)
-        self.send_response(200)
         encoding = sys.getfilesystemencoding()
-        self.send_header("Content-type", "text/html; charset=%s" % encoding)
+
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "text/html; charset=%s" % encoding)
         self.send_header("Content-Length", str(length))
         self.end_headers()
+
         return f
 
     def redirect(self, path):
@@ -413,11 +400,12 @@ class RequestHandler(asynchat.async_chat, SHRH):
         except IOError:
             self.send_error(404, "File not found")
             return None
-        self.send_response(200)
-        self.send_header("Content-type", ctype)
         fs = os.fstat(f.fileno())
-        self.send_header("Content-Length", str(fs[6]))
+        self.send_response(200, "OK")
         self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+        self.send_header("Content-Length", str(fs[6]))
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Disposition", "attachment")
         self.end_headers()
         return f
 
@@ -538,8 +526,8 @@ class SeismosizerHandler(RequestHandler):
         s = templates[format].render(stores=stores, title=title).encode('utf8')
         length = len(s)
         f = BytesIO(s)
-        self.send_response(200)
-        self.send_header("Content-type", "text/html; charset=utf-8")
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(length))
         self.end_headers()
         return f
@@ -559,8 +547,8 @@ class SeismosizerHandler(RequestHandler):
 
         f.seek(0)
 
-        self.send_response(200)
-        self.send_header("Content-type", "text/html; charset=utf-8")
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(length))
         self.end_headers()
         return f
@@ -575,7 +563,7 @@ class SeismosizerHandler(RequestHandler):
             return 'text/plain'
 
         else:
-            RequestHandler.guess_type(self, path)
+            return RequestHandler.guess_type(self, path)
 
 
 class Server(asyncore.dispatcher):
@@ -632,5 +620,8 @@ def run(ip, port, engine):
 
 
 if __name__ == '__main__':
+    util.setup_logging('pyrocko.gf.server', 'warning')
+    port = 8085
     engine = gf.LocalEngine(store_superdirs=sys.argv[1:])
-    run('', 8080, engine)
+    logger.info('Starting Server at http://127.0.0.1:%d' % port)
+    run('', port, engine)

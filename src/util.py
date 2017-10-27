@@ -90,8 +90,9 @@ def _download(url, fpath, username=None, password=None,
     requests.adapters.DEFAULT_RETRIES = 5
     urljoin = requests.compat.urljoin
 
-    cred = None if username is None else HTTPDigestAuth(username, password)
-    session = requests.Session(auth=cred)
+    session = requests.Session()
+    session.auth = None if username is None\
+        else HTTPDigestAuth(username, password)
 
     bytes_rx = 0
     bytes_total = 0
@@ -103,7 +104,6 @@ def _download(url, fpath, username=None, password=None,
 
     if recursive and not url.endswith('/'):
         url += '/'
-    print(url)
 
     def parse_directory_tree(url, subdir=''):
         r = session.get(urljoin(url, subdir))
@@ -129,7 +129,7 @@ def _download(url, fpath, username=None, password=None,
 
     def get_content_length(url):
         r = session.head(url)
-        r.raise_for_status()
+        # r.raise_for_status()
 
         content_length = r.headers.get('content-length', None)
         if content_length is None:
