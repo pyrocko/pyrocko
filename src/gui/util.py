@@ -510,6 +510,11 @@ class FigureFrame(qw.QFrame):
 
         import matplotlib
         matplotlib.rcdefaults()
+        if use_pyqt5:
+            matplotlib.rcParams['backend'] = 'Qt5Agg'
+        else:
+            matplotlib.rcParams['backend'] = 'Qt4Agg'
+
         matplotlib.rc('xtick', direction='out', labelsize=fontsize)
         matplotlib.rc('ytick', direction='out', labelsize=fontsize)
         matplotlib.rc('xtick.major', size=8)
@@ -561,12 +566,8 @@ class FigureFrame(qw.QFrame):
         from matplotlib.figure import Figure
 
         if use_pyqt5:
-            try:
-                from matplotlib.backends.backend_qt5agg import \
-                    NavigationToolbar2QTAgg as NavigationToolbar
-            except ImportError:
-                from matplotlib.backends.backend_qt5agg import \
-                    NavigationToolbar2QT as NavigationToolbar
+            from matplotlib.backends.backend_qt5agg import \
+                NavigationToolbar2QT as NavigationToolbar
 
             from matplotlib.backends.backend_qt5agg \
                 import FigureCanvasQTAgg as FigureCanvas

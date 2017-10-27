@@ -4023,6 +4023,7 @@ class Simple(object):
                         G=fn_grid,
                         I='%i+/%i+' % dpd.size,
                         out_discard=True,
+                        V=True,
                         *R)
 
                 if gmt.is_gmt5():
@@ -4234,15 +4235,17 @@ def nice_palette(gmt, widget, scaleguru, cptfile, zlabeloffset=0.8*inch,
         ticklen = negpalwid
     else:
         ticklen = '0p'
+
+    TICK_LENGTH_PARAM = 'MAP_TICK_LENGTH' if gmt.is_gmt5() else 'TICK_LENGTH'
     gmt.psbasemap(
         R=pal_ax_r, B='4::/%(zinc)g::nsw' % par_ax,
-        config={'TICK_LENGTH': ticklen},
+        config={TICK_LENGTH_PARAM: ticklen},
         *widget.JXY())
 
     if innerticks:
         gmt.psbasemap(
             R=pal_ax_r, B='4::/%(zinc)g::E' % par_ax,
-            config={'TICK_LENGTH': '0p'},
+            config={TICK_LENGTH_PARAM: '0p'},
             *widget.JXY())
     else:
         gmt.psbasemap(R=pal_ax_r, B='4::/%(zinc)g::E' % par_ax, *widget.JXY())
