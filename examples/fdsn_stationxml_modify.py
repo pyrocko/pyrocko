@@ -8,8 +8,8 @@ get_example_data('responses.xml')
 sx = stationxml.load_xml(filename='responses.xml')
 
 comp_to_azi_dip = {
-    'E': (0., 0.),
-    'N': (90., 0.),
+    'X': (0., 0.),
+    'Y': (90., 0.),
     'Z': (0., -90.),
 }
 
