@@ -1,4 +1,4 @@
-from pyrocko.io import fdsn_station as fs
+from pyrocko.io import stationxml as fs
 from pyrocko.example import get_example_data
 
 # Download example StationXML file
