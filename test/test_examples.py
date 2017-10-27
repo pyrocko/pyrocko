@@ -4,7 +4,6 @@ import sys
 import unittest
 import os
 import glob
-import traceback
 
 from . import common
 
@@ -88,7 +87,7 @@ def _make_function(test_name, fn):
             raise unittest.SkipTest(str(e))
 
         except Exception as e:
-            self.fail(traceback.format_exc(e))
+            self.fail(e)
 
     f.__name__ = 'test_example_' + test_name
 
