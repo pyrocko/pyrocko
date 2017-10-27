@@ -152,7 +152,7 @@ def _download(url, fpath, username=None, password=None,
         with open(fn_tmp, 'wb') as f:
             for d in r.iter_content(chunk_size=1024):
                 f.write(d)
-                frx += len(d)
+                frx = r.raw.tell()
 
                 if callable(status_callback):
                     status_callback(frx, fsize)
