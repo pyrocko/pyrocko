@@ -178,9 +178,8 @@ class Polygon(object):
         return r
         if num.any(cond):
             pass
-        return num.full(points.shape[0],
-                        dtype=num.bool,
-                        fill_value=False)
+
+        return num.zeros(points.shape[0], dtype=num.bool)
 
     def get_bounding_box(self):
         return (self.west, self.east, self.south, self.north)
@@ -359,7 +358,7 @@ class GSHHG(object):
         relevant_polygons = self.get_polygons_within(west, east, south, north)
         relevant_polygons.sort()
 
-        mask = num.full(points.shape[0], dtype=num.bool, fill_value=False)
+        mask = num.zeros(points.shape[0], dtype=num.bool)
         for p in relevant_polygons:
             if (p.is_land() or p.is_antarctic_grounding_line() or
                p.is_island_in_lake()):
