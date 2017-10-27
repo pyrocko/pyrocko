@@ -9,689 +9,26 @@ standard_library.install_aliases()  # noqa
 
 import os
 import sys
-import signal
 import logging
-import time
-import re
 import gc
 import tempfile
 import shutil
 import urllib.parse  # noqa
-import zlib
-import struct
-import pickle
 
 from os.path import join as pjoin
 from optparse import OptionParser
 
-from pyrocko.streaming import serial_hamster
-from pyrocko.streaming import slink
-from pyrocko.streaming import edl
 
-from pyrocko import pile            # noqa
-from pyrocko import util            # noqa
-from pyrocko import model           # noqa
-from pyrocko import config          # noqa
-from pyrocko import io              # noqa
+from pyrocko import pile
+from pyrocko import util
+from pyrocko import model
+from pyrocko import config
+from pyrocko import io
+from pyrocko import marker
 from pyrocko.io import stationxml
 
-from . import pile_viewer     # noqa
-
-from PyQt5 import Qt
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
-from PyQt5 import QtNetwork as qn
 
 logger = logging.getLogger('pyrocko.gui.snuffler')
-
-try:
-    vers = qc.QVersionNumber.fromString
-except AttributeError:
-    def vers(s):
-        return tuple(s.split('.'))
-
-# Application attribute has to be set for QWebView
-if vers(Qt.QT_VERSION_STR) >= vers('5.4.0'):
-    Qt.QCoreApplication.setAttribute(qc.Qt.AA_ShareOpenGLContexts, True)
-
-
-class AcquisitionThread(qc.QThread):
-    def __init__(self, post_process_sleep=0.0):
-        qc.QThread.__init__(self)
-        self.mutex = qc.QMutex()
-        self.queue = []
-        self.post_process_sleep = post_process_sleep
-        self._sun_is_shining = True
-
-    def run(self):
-        while True:
-            try:
-                self.acquisition_start()
-                while self._sun_is_shining:
-                    t0 = time.time()
-                    self.process()
-                    t1 = time.time()
-                    if self.post_process_sleep != 0.0:
-                        time.sleep(max(0, self.post_process_sleep-(t1-t0)))
-
-                self.acquisition_stop()
-                break
-
-            except (
-                    edl.ReadError,
-                    serial_hamster.SerialHamsterError,
-                    slink.SlowSlinkError) as e:
-
-                logger.error(str(e))
-                logger.error('Acquistion terminated, restart in 5 s')
-                self.acquisition_stop()
-                time.sleep(5)
-                if not self._sun_is_shining:
-                    break
-
-    def stop(self):
-        self._sun_is_shining = False
-
-        logger.debug("Waiting for thread to terminate...")
-        self.wait()
-        logger.debug("Thread has terminated.")
-
-    def got_trace(self, tr):
-        self.mutex.lock()
-        self.queue.append(tr)
-        self.mutex.unlock()
-
-    def poll(self):
-        self.mutex.lock()
-        items = self.queue[:]
-        self.queue[:] = []
-        self.mutex.unlock()
-        return items
-
-
-class SlinkAcquisition(
-        slink.SlowSlink, AcquisitionThread):
-
-    def __init__(self, *args, **kwargs):
-        slink.SlowSlink.__init__(self, *args, **kwargs)
-        AcquisitionThread.__init__(self)
-
-    def got_trace(self, tr):
-        AcquisitionThread.got_trace(self, tr)
-
-
-class CamAcquisition(
-        serial_hamster.CamSerialHamster, AcquisitionThread):
-
-    def __init__(self, *args, **kwargs):
-        serial_hamster.CamSerialHamster.__init__(self, *args, **kwargs)
-        AcquisitionThread.__init__(self, post_process_sleep=0.1)
-
-    def got_trace(self, tr):
-        AcquisitionThread.got_trace(self, tr)
-
-
-class USBHB628Acquisition(
-        serial_hamster.USBHB628Hamster, AcquisitionThread):
-
-    def __init__(self, deltat=0.02, *args, **kwargs):
-        serial_hamster.USBHB628Hamster.__init__(
-            self, deltat=deltat, *args, **kwargs)
-        AcquisitionThread.__init__(self)
-
-    def got_trace(self, tr):
-        AcquisitionThread.got_trace(self, tr)
-
-
-class SchoolSeismometerAcquisition(
-        serial_hamster.SerialHamster, AcquisitionThread):
-
-    def __init__(self, *args, **kwargs):
-        serial_hamster.SerialHamster.__init__(self, *args, **kwargs)
-        AcquisitionThread.__init__(self, post_process_sleep=0.01)
-
-    def got_trace(self, tr):
-        AcquisitionThread.got_trace(self, tr)
-
-
-class EDLAcquisition(
-        edl.EDLHamster, AcquisitionThread):
-
-    def __init__(self, *args, **kwargs):
-        edl.EDLHamster.__init__(self, *args, **kwargs)
-        AcquisitionThread.__init__(self)
-
-    def got_trace(self, tr):
-        AcquisitionThread.got_trace(self, tr)
-
-
-def setup_acquisition_sources(args):
-
-    sources = []
-    iarg = 0
-    while iarg < len(args):
-        arg = args[iarg]
-
-        msl = re.match(r'seedlink://([a-zA-Z0-9.-]+)(:(\d+))?(/(.*))?', arg)
-        mca = re.match(r'cam://([^:]+)', arg)
-        mus = re.match(r'hb628://([^:?]+)(\?([^?]+))?', arg)
-        msc = re.match(r'school://([^:]+)', arg)
-        med = re.match(r'edl://([^:]+)', arg)
-        if msl:
-            host = msl.group(1)
-            port = msl.group(3)
-            if not port:
-                port = '18000'
-
-            sl = SlinkAcquisition(host=host, port=port)
-            if msl.group(5):
-                stream_patterns = msl.group(5).split(',')
-
-                if '_' not in msl.group(5):
-                    try:
-                        streams = sl.query_streams()
-                    except slink.SlowSlinkError as e:
-                        logger.fatal(str(e))
-                        sys.exit(1)
-
-                    streams = list(set(
-                        util.match_nslcs(stream_patterns, streams)))
-
-                    for stream in streams:
-                        sl.add_stream(*stream)
-                else:
-                    for stream in stream_patterns:
-                        sl.add_raw_stream_selector(stream)
-
-            sources.append(sl)
-        elif mca:
-            port = mca.group(1)
-            cam = CamAcquisition(port=port, deltat=0.0314504)
-            sources.append(cam)
-        elif mus:
-            port = mus.group(1)
-            try:
-                d = {}
-                if mus.group(3):
-                    d = dict(urlparse.parse_qsl(mus.group(3)))  # noqa
-
-                deltat = 1.0/float(d.get('rate', '50'))
-                channels = [(int(c), c) for c in d.get('channels', '01234567')]
-                hb628 = USBHB628Acquisition(
-                    port=port,
-                    deltat=deltat,
-                    channels=channels,
-                    buffersize=16,
-                    lookback=50)
-
-                sources.append(hb628)
-            except:
-                raise
-                sys.exit('invalid acquisition source: %s' % arg)
-
-        elif msc:
-            port = msc.group(1)
-            sco = SchoolSeismometerAcquisition(port=port)
-            sources.append(sco)
-        elif med:
-            port = med.group(1)
-            edl = EDLAcquisition(port=port)
-            sources.append(edl)
-
-        if msl or mca or mus or msc or med:
-            args.pop(iarg)
-        else:
-            iarg += 1
-
-    return sources
-
-
-class PollInjector(qc.QObject, pile.Injector):
-
-    def __init__(self, *args, **kwargs):
-        qc.QObject.__init__(self)
-        pile.Injector.__init__(self, *args, **kwargs)
-        self._sources = []
-        self.startTimer(1000.)
-
-    def add_source(self, source):
-        self._sources.append(source)
-
-    def remove_source(self, source):
-        self._sources.remove(source)
-
-    def timerEvent(self, ev):
-        for source in self._sources:
-            trs = source.poll()
-            for tr in trs:
-                self.inject(tr)
-
-
-class Connection(qc.QObject):
-
-    received = qc.pyqtSignal(object, object)
-    disconnected = qc.pyqtSignal(object)
-
-    def __init__(self, parent, sock):
-        qc.QObject.__init__(self, parent)
-        self.socket = sock
-        self.readyRead.connect(
-            self.handle_read)
-        self.disconnected.connect(
-            self.handle_disconnected)
-        self.nwanted = 8
-        self.reading_size = True
-        self.handler = None
-        self.nbytes_received = 0
-        self.nbytes_sent = 0
-        self.compressor = zlib.compressobj()
-        self.decompressor = zlib.decompressobj()
-
-    def handle_read(self):
-        while True:
-            navail = self.socket.bytesAvailable()
-            if navail < self.nwanted:
-                return
-
-            data = self.socket.read(self.nwanted)
-            self.nbytes_received += len(data)
-            if self.reading_size:
-                self.nwanted = struct.unpack('>Q', data)[0]
-                self.reading_size = False
-            else:
-                obj = pickle.loads(self.decompressor.decompress(data))
-                if obj is None:
-                    self.socket.disconnectFromHost()
-                else:
-                    self.handle_received(obj)
-                self.nwanted = 8
-                self.reading_size = True
-
-    def handle_received(self, obj):
-        self.received.emit(self, obj)
-
-    def ship(self, obj):
-        data = self.compressor.compress(pickle.dumps(obj))
-        data_end = self.compressor.flush(zlib.Z_FULL_FLUSH)
-        self.socket.write(struct.pack('>Q', len(data)+len(data_end)))
-        self.socket.write(data)
-        self.socket.write(data_end)
-        self.nbytes_sent += len(data)+len(data_end) + 8
-
-    def handle_disconnected(self):
-        self.disconnected.emit(self)
-
-    def close(self):
-        self.socket.close()
-
-
-class ConnectionHandler(qc.QObject):
-    def __init__(self, parent):
-        qc.QObject.__init__(self, parent)
-        self.queue = []
-        self.connection = None
-
-    def connected(self):
-        return self.connection is None
-
-    def set_connection(self, connection):
-        self.connection = connection
-        connection.received.connect(
-            self._handle_received)
-
-        connection.connect(
-            self.handle_disconnected)
-
-        for obj in self.queue:
-            self.connection.ship(obj)
-
-        self.queue = []
-
-    def _handle_received(self, conn, obj):
-        self.handle_received(obj)
-
-    def handle_received(self, obj):
-        pass
-
-    def handle_disconnected(self):
-        self.connection = None
-
-    def ship(self, obj):
-        if self.connection:
-            self.connection.ship(obj)
-        else:
-            self.queue.append(obj)
-
-
-class SimpleConnectionHandler(ConnectionHandler):
-    def __init__(self, parent, **mapping):
-        ConnectionHandler.__init__(self, parent)
-        self.mapping = mapping
-
-    def handle_received(self, obj):
-        command = obj[0]
-        args = obj[1:]
-        self.mapping[command](*args)
-
-
-class MyMainWindow(qw.QMainWindow):
-
-    def __init__(self, app, *args):
-        qg.QMainWindow.__init__(self, *args)
-        self.app = app
-
-    def keyPressEvent(self, ev):
-        self.app.pile_viewer.get_view().keyPressEvent(ev)
-
-
-class SnufflerTabs(qw.QTabWidget):
-    def __init__(self, parent):
-        qw.QTabWidget.__init__(self, parent)
-        if hasattr(self, 'setTabsClosable'):
-            self.setTabsClosable(True)
-
-        self.tabCloseRequested.connect(
-            self.removeTab)
-
-        if hasattr(self, 'setDocumentMode'):
-            self.setDocumentMode(True)
-
-    def hide_close_button_on_first_tab(self):
-        tbar = self.tabBar()
-        if hasattr(tbar, 'setTabButton'):
-            tbar.setTabButton(0, qw.QTabBar.LeftSide, None)
-            tbar.setTabButton(0, qw.QTabBar.RightSide, None)
-
-    def append_tab(self, widget, name):
-        widget.setParent(self)
-        self.insertTab(self.count(), widget, name)
-        self.setCurrentIndex(self.count()-1)
-
-    def remove_tab(self, widget):
-        self.removeTab(self.indexOf(widget))
-
-    def tabInserted(self, index):
-        if index == 0:
-            self.hide_close_button_on_first_tab()
-
-        self.tabbar_visibility()
-        self.setFocus()
-
-    def removeTab(self, index):
-        w = self.widget(index)
-        w.close()
-        qw.QTabWidget.removeTab(self, index)
-
-    def tabRemoved(self, index):
-        self.tabbar_visibility()
-
-    def tabbar_visibility(self):
-        if self.count() <= 1:
-            self.tabBar().hide()
-        elif self.count() > 1:
-            self.tabBar().show()
-
-    def keyPressEvent(self, event):
-        if event.text() == 'd':
-            self.tabCloseRequested.emit(
-                self.currentIndex())
-        else:
-            self.parent().keyPressEvent(event)
-
-
-class SnufflerWindow(qw.QMainWindow):
-
-    def __init__(
-            self, pile, stations=None, events=None, markers=None, ntracks=12,
-            follow=None, controls=True, opengl=False):
-
-        qw.QMainWindow.__init__(self)
-
-        self.dockwidget_to_toggler = {}
-        self.dockwidgets = []
-
-        self.setWindowTitle("Snuffler")
-
-        self.pile_viewer = pile_viewer.PileViewer(
-            pile, ntracks_shown_max=ntracks, use_opengl=opengl,
-            panel_parent=self)
-
-        self.marker_editor = self.pile_viewer.marker_editor()
-        self.add_panel(
-            'Markers', self.marker_editor, visible=False,
-            where=qc.Qt.RightDockWidgetArea)
-        if stations:
-            self.get_view().add_stations(stations)
-
-        if events:
-            self.get_view().add_events(events)
-
-            if len(events) == 1:
-                self.get_view().set_active_event(events[0])
-
-        if markers:
-            self.get_view().add_markers(markers)
-            self.get_view().associate_phases_to_events()
-
-        self.tabs = SnufflerTabs(self)
-        self.setCentralWidget(self.tabs)
-        self.add_tab('Main', self.pile_viewer)
-
-        self.pile_viewer.setup_snufflings()
-
-        self.main_controls = self.pile_viewer.controls()
-        self.add_panel('Main Controls', self.main_controls, visible=controls)
-        self.show()
-
-        self.get_view().setFocus(qc.Qt.OtherFocusReason)
-
-        sb = self.statusBar()
-        sb.clearMessage()
-        sb.showMessage('Welcome to Snuffler! Press <?> for help.')
-
-        if follow:
-            self.get_view().follow(float(follow))
-
-        self.closing = False
-
-    def sizeHint(self):
-        return qc.QSize(1024, 768)
-        # return qc.QSize(800, 600) # used for screen shots in tutorial
-
-    def keyPressEvent(self, ev):
-        self.get_view().keyPressEvent(ev)
-
-    def get_view(self):
-        return self.pile_viewer.get_view()
-
-    def get_panel_parent_widget(self):
-        return self
-
-    def add_tab(self, name, widget):
-        self.tabs.append_tab(widget, name)
-
-    def remove_tab(self, widget):
-        self.tabs.remove_tab(widget)
-
-    def add_panel(self, name, panel, visible=False, volatile=False,
-                  where=qc.Qt.BottomDockWidgetArea):
-
-        if not self.dockwidgets:
-            self.dockwidgets = []
-
-        dws = [x for x in self.dockwidgets if self.dockWidgetArea(x) == where]
-
-        dockwidget = qw.QDockWidget(name, self)
-        self.dockwidgets.append(dockwidget)
-        dockwidget.setWidget(panel)
-        panel.setParent(dockwidget)
-        self.addDockWidget(where, dockwidget)
-
-        if dws:
-            self.tabifyDockWidget(dws[-1], dockwidget)
-
-        self.toggle_panel(dockwidget, visible)
-
-        mitem = qw.QAction(name, None)
-
-        def toggle_panel(checked):
-            self.toggle_panel(dockwidget, True)
-
-        mitem.triggered.connect(toggle_panel)
-
-        if volatile:
-            def visibility(visible):
-                if not visible:
-                    self.remove_panel(panel)
-
-            dockwidget.visibilityChanged.connect(
-                visibility)
-
-        self.get_view().add_panel_toggler(mitem)
-        self.dockwidget_to_toggler[dockwidget] = mitem
-
-    def toggle_panel(self, dockwidget, visible):
-        if visible is None:
-            visible = not dockwidget.isVisible()
-
-        dockwidget.setVisible(visible)
-        if visible:
-            w = dockwidget.widget()
-            minsize = w.minimumSize()
-            w.setMinimumHeight(w.sizeHint().height() + 5)
-
-            def reset_minimum_size():
-                w.setMinimumSize(minsize)
-
-            qc.QTimer.singleShot(200, reset_minimum_size)
-
-            dockwidget.setFocus()
-            dockwidget.raise_()
-
-    def toggle_marker_editor(self):
-        self.toggle_panel(self.marker_editor.parent(), None)
-
-    def toggle_main_controls(self):
-        self.toggle_panel(self.main_controls.parent(), None)
-
-    def remove_panel(self, panel):
-        dockwidget = panel.parent()
-        self.removeDockWidget(dockwidget)
-        dockwidget.setParent(None)
-        mitem = self.dockwidget_to_toggler[dockwidget]
-        self.get_view().remove_panel_toggler(mitem)
-
-    def return_tag(self):
-        return self.get_view().return_tag
-
-    def closeEvent(self, event):
-        event.accept()
-        self.closing = True
-
-    def is_closing(self):
-        return self.closing
-
-
-class Snuffler(qw.QApplication):
-
-    def __init__(self):
-        qw.QApplication.__init__(self, sys.argv)
-        self.lastWindowClosed.connect(self.myQuit)
-        self.server = None
-        self.loader = None
-
-    def install_sigint_handler(self):
-        self._old_signal_handler = signal.signal(
-            signal.SIGINT,
-            self.myCloseAllWindows)
-
-    def uninstall_sigint_handler(self):
-        signal.signal(signal.SIGINT, self._old_signal_handler)
-
-    def start_server(self):
-        self.connections = []
-        s = qn.QTcpServer(self)
-        s.listen(qn.QHostAddress.LocalHost)
-        s.newConnection.connect(
-            self.handle_accept)
-        self.server = s
-
-    def start_loader(self):
-        self.loader = SimpleConnectionHandler(
-            self,
-            add_files=self.add_files,
-            update_progress=self.update_progress)
-        ticket = os.urandom(32)
-        self.forker.spawn('loader', self.server.serverPort(), ticket)
-        self.connection_handlers[ticket] = self.loader
-
-    def handle_accept(self):
-        sock = self.server.nextPendingConnection()
-        con = Connection(self, sock)
-        self.connections.append(con)
-
-        con.disconnected.connect(
-            self.handle_disconnected)
-
-        con.received.connect(
-            self.handle_received_ticket)
-
-    def handle_disconnected(self, connection):
-        self.connections.remove(connection)
-        connection.close()
-        del connection
-
-    def handle_received_ticket(self, connection, object):
-        if not isinstance(object, str):
-            self.handle_disconnected(connection)
-
-        ticket = object
-        if ticket in self.connection_handlers:
-            h = self.connection_handlers[ticket]
-            connection.received.disconnect(
-                self.handle_received_ticket)
-
-            h.set_connection(connection)
-        else:
-            self.handle_disconnected(connection)
-
-    def snuffler_windows(self):
-        return [w for w in self.topLevelWidgets()
-                if isinstance(w, SnufflerWindow) and not w.is_closing()]
-
-    def event(self, e):
-        if isinstance(e, qg.QFileOpenEvent):
-            paths = [str(e.file())]
-            wins = self.snuffler_windows()
-            if wins:
-                wins[0].get_view().load_soon(paths)
-
-            return True
-        else:
-            return qw.QApplication.event(self, e)
-
-    def load(self, pathes, cachedirname, pattern, format):
-        if not self.loader:
-            self.start_loader()
-
-        self.loader.ship(
-            ('load', pathes, cachedirname, pattern, format))
-
-    def add_files(self, files):
-        p = self.pile_viewer.get_pile()
-        p.add_files(files)
-        self.pile_viewer.update_contents()
-
-    def update_progress(self, task, percent):
-        self.pile_viewer.progressbars.set_status(task, percent)
-
-    def myCloseAllWindows(self, *args):
-        self.closeAllWindows()
-
-    def myQuit(self, *args):
-        self.quit()
-
 
 app = None
 
@@ -723,6 +60,8 @@ def snuffle(pile=None, **kwargs):
     :param launch_hook: callback function called before snuffler window is
         shown
     '''
+    from .snuffler_app import Snuffler, SnufflerWindow, \
+        setup_acquisition_sources, PollInjector
 
     if pile is None:
         pile = pile.make_pile()
@@ -912,6 +251,20 @@ def snuffler_from_commandline(args=None):
         help='use OpenGL for drawing')
 
     parser.add_option(
+        '--qt5',
+        dest='gui_toolkit_qt5',
+        action='store_true',
+        default=False,
+        help='use Qt5 for the GUI')
+
+    parser.add_option(
+        '--qt4',
+        dest='gui_toolkit_qt4',
+        action='store_true',
+        default=False,
+        help='use Qt4 for the GUI')
+
+    parser.add_option(
         '--debug',
         dest='debug',
         action='store_true',
@@ -924,6 +277,12 @@ def snuffler_from_commandline(args=None):
         util.setup_logging('snuffler', 'debug')
     else:
         util.setup_logging('snuffler', 'warning')
+
+    if options.gui_toolkit_qt4:
+        config.override_gui_toolkit = 'qt4'
+
+    if options.gui_toolkit_qt5:
+        config.override_gui_toolkit = 'qt5'
 
     this_pile = pile.Pile()
     stations = []
@@ -941,7 +300,7 @@ def snuffler_from_commandline(args=None):
 
     markers = []
     for marker_fn in options.marker_fns:
-        markers.extend(pile_viewer.Marker.load_markers(marker_fn))
+        markers.extend(marker.load_markers(marker_fn))
 
     return snuffle(
         this_pile,

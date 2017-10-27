@@ -5,9 +5,10 @@
 from __future__ import absolute_import
 from builtins import zip, range
 
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
+import sys
+
+from .qt_compat import qc, qg, qw, QSortFilterProxyModel, \
+    QItemSelectionModel, QItemSelection, use_pyqt5
 
 from .util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.plot.beachball import mt2beachball, BeachballError
@@ -23,23 +24,37 @@ def noop(x=None):
     return x
 
 
-def toDateTime(val):
-    return val
+if sys.version_info[0] >= 3 or use_pyqt5:
+    qc.QString = str
+    qc.QVariant = noop
 
+    def toDateTime(val):
+        return val
 
-def isDateTime(val):
-    return isinstance(val, qc.QDateTime)
+    def isDateTime(val):
+        return isinstance(val, qc.QDateTime)
 
+    def toFloat(val):
+        try:
+            return float(val), True
+        except ValueError:
+            return 0.0, False
 
-def toFloat(val):
-    try:
-        return float(val), True
-    except ValueError:
-        return 0.0, False
+    def toString(val):
+        return str(val)
 
+else:
+    def toDateTime(val):
+        return val.toDateTime()
 
-def toString(val):
-    return str(val)
+    def isDateTime(val):
+        return val.type() == qc.QVariant.DateTime
+
+    def toFloat(val):
+        return val.toFloat()
+
+    def toString(val):
+        return val.toString()
 
 
 logger = logging.getLogger('pyrocko.gui.marker_editor')
@@ -166,11 +181,11 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
             return None
 
 
-class MarkerSortFilterProxyModel(qc.QSortFilterProxyModel):
+class MarkerSortFilterProxyModel(QSortFilterProxyModel):
     '''Sorts the table's columns.'''
 
     def __init__(self, *args, **kwargs):
-        qc.QSortFilterProxyModel.__init__(self, *args, **kwargs)
+        QSortFilterProxyModel.__init__(self, *args, **kwargs)
         self.sort(1, qc.Qt.DescendingOrder)
 
     def lessThan(self, left, right):
@@ -649,12 +664,16 @@ class MarkerEditor(qw.QFrame):
 
         header = self.marker_table_view.horizontalHeader()
         for i_s, s in enumerate(_header_sizes):
-            header.setSectionResizeMode(i_s, qw.QHeaderView.Interactive)
+            if use_pyqt5:
+                header.setSectionResizeMode(i_s, qw.QHeaderView.Interactive)
+            else:
+                header.setResizeMode(i_s, qw.QHeaderView.Interactive)
+
             header.resizeSection(i_s, s)
 
         header.setStretchLastSection(True)
 
-        self.selection_model = qc.QItemSelectionModel(self.proxy_filter)
+        self.selection_model = QItemSelectionModel(self.proxy_filter)
         self.marker_table_view.setSelectionModel(self.selection_model)
         self.selection_model.selectionChanged.connect(
             self.set_selected_markers)
@@ -699,17 +718,17 @@ class MarkerEditor(qw.QFrame):
 
         :param indices: list of indices of selected markers.'''
         self.selection_model.clearSelection()
-        selections = qc.QItemSelection()
-        selection_flags = qc.QItemSelectionModel.SelectionFlags(
-            (qc.QItemSelectionModel.Select |
-             qc.QItemSelectionModel.Rows |
-             qc.QItemSelectionModel.Current))
+        selections = QItemSelection()
+        selection_flags = QItemSelectionModel.SelectionFlags(
+            (QItemSelectionModel.Select |
+             QItemSelectionModel.Rows |
+             QItemSelectionModel.Current))
 
         for chunk in indices:
             mi_start = self.marker_model.index(min(chunk), 0)
             mi_stop = self.marker_model.index(max(chunk), 0)
             row_selection = self.proxy_filter.mapSelectionFromSource(
-                qc.QItemSelection(mi_start, mi_stop))
+                QItemSelection(mi_start, mi_stop))
             selections.merge(row_selection, selection_flags)
 
         if len(indices) != 0:

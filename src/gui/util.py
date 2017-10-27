@@ -10,13 +10,7 @@ import time
 import numpy as num
 import logging
 
-import matplotlib
-if matplotlib.get_backend().find('Qt4') != -1:  # noqa
-    matplotlib.use('Qt5Agg')
-
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
+from .qt_compat import qc, qg, qw, use_pyqt5
 
 from .marker import Marker, PhaseMarker, EventMarker  # noqa
 from .marker import MarkerParseError, MarkerOneNSLCRequired  # noqa
@@ -203,7 +197,7 @@ class MyValueEdit(qw.QLineEdit):
                 self.lock = True
                 self.edited.emit(value)
                 self.setPalette(qw.QApplication.palette())
-        except:
+        except Exception:
             self.setPalette(get_err_palette())
 
         self.lock = False
@@ -484,7 +478,13 @@ def to01(c):
 
 
 def beautify_axes(axes):
-    axes.set_color_cycle(list(map(to01, plot.graph_colors)))
+    try:
+        from cycler import cycler
+        axes.set_prop_cycle(
+            cycler(color=[to01(x) for x in plot.graph_colors]))
+
+    except (ImportError, KeyError):
+        axes.set_color_cycle(list(map(to01, plot.graph_colors)))
 
     xa = axes.get_xaxis()
     ya = axes.get_yaxis()
@@ -559,15 +559,27 @@ class FigureFrame(qw.QFrame):
             pass
 
         from matplotlib.figure import Figure
-        try:
-            from matplotlib.backends.backend_qt5agg import \
-                NavigationToolbar2QTAgg as NavigationToolbar
-        except:
-            from matplotlib.backends.backend_qt5agg import \
-                NavigationToolbar2QT as NavigationToolbar
 
-        from matplotlib.backends.backend_qt5agg \
-            import FigureCanvasQTAgg as FigureCanvas
+        if use_pyqt5:
+            try:
+                from matplotlib.backends.backend_qt5agg import \
+                    NavigationToolbar2QTAgg as NavigationToolbar
+            except ImportError:
+                from matplotlib.backends.backend_qt5agg import \
+                    NavigationToolbar2QT as NavigationToolbar
+
+            from matplotlib.backends.backend_qt5agg \
+                import FigureCanvasQTAgg as FigureCanvas
+        else:
+            try:
+                from matplotlib.backends.backend_qt4agg import \
+                    NavigationToolbar2QTAgg as NavigationToolbar
+            except ImportError:
+                from matplotlib.backends.backend_qt4agg import \
+                    NavigationToolbar2QT as NavigationToolbar
+
+            from matplotlib.backends.backend_qt4agg \
+                import FigureCanvasQTAgg as FigureCanvas
 
         layout = qw.QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -601,10 +613,14 @@ class FigureFrame(qw.QFrame):
 class WebKitFrame(qw.QFrame):
 
     def __init__(self, url=None, parent=None):
-        try:
-            from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
-        except ImportError:
-            from PyQt5.QtWebKitWidgets import QWebView as WebView
+        if use_pyqt5:
+            try:
+                from PyQt5.QtWebEngineWidgets import QWebEngineView as WebView
+            except (ImportError):
+                from PyQt5.QtWebKitWidgets import QWebView as WebView
+
+        else:
+            from PyQt4.QtWebKit import QWebView as WebView
 
         qw.QFrame.__init__(self, parent)
         layout = qw.QGridLayout()

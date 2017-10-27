@@ -68,13 +68,18 @@ example_files = [fn for fn in glob.glob(op.join(test_dir, 'examples', '*.py'))
 
 def _make_function(test_name, fn):
     def f(self):
+        imp = imp2 = None
         try:
             import imp
-            imp.load_source(test_name, fn)
 
-        except ImportError as e:
-            import importlib.machinery
-            importlib.machinery.SourceFileLoader(test_dir, fn)
+        except ImportError:
+            import importlib.machinery as imp2
+
+        try:
+            if imp:
+                imp.load_source(test_name, fn)
+            else:
+                imp2.SourceFileLoader(test_dir, fn)
 
         except example.util.DownloadError:
             raise unittest.SkipTest('could not download required data file')

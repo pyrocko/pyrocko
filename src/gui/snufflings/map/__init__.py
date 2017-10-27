@@ -12,8 +12,8 @@ from pyrocko import moment_tensor
 from pyrocko.automap import Map
 from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker
 from .xmlMarker import StationMarkerList, MarkerLists, dump_xml
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices
+
+from pyrocko.gui.qt_compat import qc, qg
 
 g_counter = 0
 
@@ -202,7 +202,7 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             dump_xml(event_station_list, filename=markers_fn)
 
             if self.open_external:
-                QDesktopServices.openUrl(QUrl(url))
+                qg.QDesktopServices.openUrl(qc.QUrl(url))
             else:
                 global g_counter
                 g_counter += 1

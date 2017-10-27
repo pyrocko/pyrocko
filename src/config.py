@@ -8,7 +8,8 @@ import os.path as op
 from copy import deepcopy
 
 from . import util
-from .guts import Object, Float, String, load, dump, List, Dict, TBase, Tuple
+from .guts import Object, Float, String, load, dump, List, Dict, TBase, \
+    Tuple, StringChoice
 
 guts_prefix = 'pf'
 
@@ -92,6 +93,9 @@ class PyrockoConfig(ConfigBase):
     leapseconds_url = String.T(
         default='http://www.ietf.org/timezones/data/leap-seconds.list')
     earthdata_credentials = Tuple.T(2, String.T(), optional=True)
+    gui_toolkit = StringChoice.T(
+        choices=['auto', 'qt4', 'qt5'],
+        default='auto')
 
 
 config_cls = {
@@ -176,3 +180,9 @@ def write_config(conf, config_name='config'):
     conf_path = expand(make_conf_path_tmpl(config_name))
     util.ensuredirs(conf_path)
     dump(conf, filename=conf_path)
+
+
+override_gui_toolkit = None
+
+def effective_gui_toolkit():
+    return override_gui_toolkit or config().gui_toolkit

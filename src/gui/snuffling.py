@@ -16,8 +16,7 @@ import logging
 import traceback
 import tempfile
 
-from PyQt5 import QtCore as qc
-from PyQt5 import QtWidgets as qw
+from .qt_compat import qc, qw
 
 from pyrocko import pile, config
 

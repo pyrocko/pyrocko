@@ -36,25 +36,30 @@ from .util import (ValControl, LinValControl, Marker, EventMarker,
                    PhaseMarker, make_QPolygonF, draw_label, Label,
                    Progressbars)
 
-from PyQt5 import QtCore as qc
-from PyQt5 import QtGui as qg
-from PyQt5 import QtWidgets as qw
-from PyQt5 import QtOpenGL as qgl
-from PyQt5 import QtSvg as qsvg
-# from PyQt5.QtSvg import *
+from .qt_compat import qc, qg, qw, qgl, qsvg, use_pyqt5, PyQt
 
 import scipy.stats as sstats
 import platform
 
+
+def fnpatch(x):
+    if use_pyqt5:
+        return x
+    else:
+        return x, None
+
+
 if sys.version_info[0] >= 3:
     qc.QString = str
 
+qfiledialog_options = qw.QFileDialog.DontUseNativeDialog | \
+    qw.QFileDialog.DontUseSheet
+
 if platform.mac_ver() != ('', ('', '', ''), ''):
-    qfiledialog_options = qw.QFileDialog.DontUseNativeDialog
     macosx = True
 else:
-    qfiledialog_options = qw.QFileDialog.DontUseSheet
     macosx = False
+
 logger = logging.getLogger('pyrocko.gui.pile_viewer')
 
 
@@ -1497,8 +1502,8 @@ def MakePileViewerMainClass(base):
         def open_waveforms(self):
             caption = 'Select one or more files to open'
 
-            fns, _ = qw.QFileDialog.getOpenFileNames(
-                self, caption, options=qfiledialog_options)
+            fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
+                self, caption, options=qfiledialog_options))
 
             if fns:
                 self.load(list(str(fn) for fn in fns))
@@ -1516,8 +1521,8 @@ def MakePileViewerMainClass(base):
             caption = 'Select one or more files to open'
 
             if not fns:
-                fns, _ = qw.QFileDialog.getOpenFileNames(
-                    self, caption, options=qfiledialog_options)
+                fns, _ = fnpatch(qw.QFileDialog.getOpenFileNames(
+                    self, caption, options=qfiledialog_options))
 
             stations = [pyrocko.model.load_stations(str(x)) for x in fns]
             for stat in stations:
@@ -1670,8 +1675,8 @@ def MakePileViewerMainClass(base):
         def write_markers(self, fn=None):
             caption = "Choose a file name to write markers"
             if not fn:
-                fn, _ = qw.QFileDialog.getSaveFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = fnpatch(qw.QFileDialog.getSaveFileName(
+                    self, caption, options=qfiledialog_options))
             if fn:
                 Marker.save_markers(
                     self.markers, fn,
@@ -1680,8 +1685,8 @@ def MakePileViewerMainClass(base):
         def write_selected_markers(self, fn=None):
             caption = "Choose a file name to write selected markers"
             if not fn:
-                fn, _ = qw.QFileDialog.getSaveFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = fnpatch(qw.QFileDialog.getSaveFileName(
+                    self, caption, options=qfiledialog_options))
             if fn:
                 Marker.save_markers(
                     self.selected_markers(), fn,
@@ -1695,8 +1700,8 @@ def MakePileViewerMainClass(base):
             '''
             caption = "Selet one or more files to open"
             if not fn:
-                fn, _ = qw.QFileDialog.getOpenFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = fnpatch(qw.QFileDialog.getOpenFileName(
+                    self, caption, options=qfiledialog_options))
             if fn:
                 self.add_events(pyrocko.model.Event.load_catalog(fn))
 
@@ -1708,8 +1713,8 @@ def MakePileViewerMainClass(base):
             '''
             caption = "Selet one or more files to open"
             if not fn:
-                fn, _ = qw.QFileDialog.getOpenFileName(
-                    self, caption, options=qfiledialog_options)
+                fn, _ = fnpatch(qw.QFileDialog.getOpenFileName(
+                    self, caption, options=qfiledialog_options))
             if fn:
                 self.add_markers(Marker.load_markers(fn))
 
@@ -2235,7 +2240,11 @@ def MakePileViewerMainClass(base):
             qg.QDesktopServices.openUrl(qc.QUrl(link))
 
         def wheelEvent(self, wheel_event):
-            self.wheel_pos += wheel_event.angleDelta().y()
+            if use_pyqt5:
+                self.wheel_pos += wheel_event.angleDelta().y()
+            else:
+                self.wheel_pos += wheel_event.delta()
+
             n = self.wheel_pos // 120
             self.wheel_pos = self.wheel_pos % 120
             if n == 0:
@@ -2464,7 +2473,7 @@ def MakePileViewerMainClass(base):
                         self.set_time_range(tmin, tmax)
 
         def printit(self):
-            from PyQt5 import QtPrintSupport as qps
+            from PyQt import QtPrintSupport as qps
             printer = qps.QPrinter()
             printer.setOrientation(qps.QPrinter.Landscape)
 
@@ -2485,12 +2494,12 @@ def MakePileViewerMainClass(base):
         def savesvg(self, fn=None):
 
             if not fn:
-                fn, _ = qw.QFileDialog.getSaveFileName(
+                fn, _ = fnpatch(qw.QFileDialog.getSaveFileName(
                     self,
                     'Save as SVG|PNG',
                     os.path.join(os.environ['HOME'],  'untitled.svg'),
                     'SVG|PNG (*.svg *.png)',
-                    options=qfiledialog_options)
+                    options=qfiledialog_options))
 
                 if fn == '':
                     return
@@ -2511,7 +2520,11 @@ def MakePileViewerMainClass(base):
                 painter.end()
 
             elif str(fn).endswith('.png'):
-                pixmap = self.grab()
+                if use_pyqt5:
+                    pixmap = self.grab()
+                else:
+                    pixmap = qg.QPixmap().grabWidget(self)
+
                 pixmap.save(fn)
 
             else:
