@@ -685,17 +685,17 @@ class Trace(object):
             indices = ibegin + num.arange(nindices) * ninterval
             data_split = num.split(self.ydata, indices)
             data = []
-            for l, h in zip(data_split[:-1], data_split[1:]):
+            for ln, h in zip(data_split[:-1], data_split[1:]):
                 if delete:
-                    l = l[:-1]
+                    ln = ln[:-1]
 
-                data.append(l)
+                data.append(ln)
                 if not delete:
-                    if l.size == 0:
+                    if ln.size == 0:
                         v = h[0]
                     else:
-                        v = 0.5*(l[-1] + h[0])
-                    data.append(num.array([v], dtype=l.dtype))
+                        v = 0.5*(ln[-1] + h[0])
+                    data.append(num.array([v], dtype=ln.dtype))
 
             data.append(data_split[-1])
 

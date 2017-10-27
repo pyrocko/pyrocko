@@ -311,8 +311,8 @@ def load_events(filename):
 
 
 def load_one_event(filename):
-    l = Event.load_catalog(filename)
-    return next(l)
+    lst = Event.load_catalog(filename)
+    return next(lst)
 
 
 def dump_events(events, filename=None, stream=None):

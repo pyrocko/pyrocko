@@ -157,7 +157,7 @@ def iload(filename, load_data, endianness='>'):
                     tmin = calendar.timegm(
                         (year, 1, doy, hour, minute, second))
 
-                except:
+                except Exception:
                     raise SEGYError('invalid start date/time')
 
                 if fixed_length_traces:

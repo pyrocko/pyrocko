@@ -344,7 +344,7 @@ def load_config(fn):
         config = gf.meta.load(filename=fn)
         assert isinstance(config, gf.Config)
 
-    except:
+    except Exception:
         die('cannot load gf config from file: %s' % fn)
 
     return config
@@ -364,7 +364,7 @@ def command_decimate(args):
     parser, options, args = cl_parse('decimate', args, setup=setup)
     try:
         decimate = int(args.pop())
-    except:
+    except Exception:
         parser.error('cannot get <factor> argument')
 
     store_dir = get_store_dir(args)
@@ -536,7 +536,7 @@ def command_extract(args):
     parser, options, args = cl_parse('extract', args, setup=setup)
     try:
         sdef = args.pop()
-    except:
+    except Exception:
         parser.error('cannot get <selection> argument')
 
     try:
@@ -791,7 +791,7 @@ def command_tttview(args):
 
     try:
         phase_ids = args.pop().split(',')
-    except:
+    except Exception:
         parser.error('cannot get <phase-ids> argument')
 
     np = 1
@@ -848,12 +848,12 @@ def command_tttextract(args):
     parser, options, args = cl_parse('tttextract', args, setup=setup)
     try:
         sdef = args.pop()
-    except:
+    except Exception:
         parser.error('cannot get <selection> argument')
 
     try:
         sphase = args.pop()
-    except:
+    except Exception:
         parser.error('cannot get <phase> argument')
 
     try:

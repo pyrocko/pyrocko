@@ -261,7 +261,7 @@ def portnames():
         from serial.tools.list_ports import comports
         names = sorted(x[0] for x in comports())
 
-    except:
+    except Exception:
         # may only work on some linuxes
         from glob import glob
         names = sorted(glob('/dev/ttyS*') + glob('/dev/ttyUSB*'))
@@ -562,7 +562,7 @@ class Reader(object):
             data = self._serial.read(nread)
             hexdump(data)
 
-        except:
+        except Exception:
             raise ReadError()
 
         if len(data) != nread:

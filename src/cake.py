@@ -176,15 +176,15 @@ class Material(object):
 
             if qp is None:
                 if self.vs != 0.0:
-                    l = (4.0/3.0)*(self.vs/self.vp)**2
-                    self.qp = self.qs / l
+                    s = (4.0/3.0)*(self.vs/self.vp)**2
+                    self.qp = self.qs / s
                 else:
                     self.qp = 1456.
 
             if qs is None:
                 if self.vs != 0.0:
-                    l = (4.0/3.0)*(self.vs/self.vp)**2
-                    self.qs = self.qp * l
+                    s = (4.0/3.0)*(self.vs/self.vp)**2
+                    self.qs = self.qp * s
                 else:
                     self.vs = 600.
 
@@ -194,18 +194,18 @@ class Material(object):
                 self.qp = 5782e4
             else:
                 self.qs = 600.
-                l = (4.0/3.0)*(self.vs/self.vp)**2
-                self.qp = self.qs/l
+                s = (4.0/3.0)*(self.vs/self.vp)**2
+                self.qp = self.qs/s
 
         elif qp is None and qs is None and qk is not None and qmu is not None:
-            l = (4.0/3.0)*(self.vs/self.vp)**2
+            s = (4.0/3.0)*(self.vs/self.vp)**2
             if qmu == 0. and self.vs == 0.:
                 self.qp = qk
             else:
                 if num.isinf(qk):
-                    self.qp = qmu/l
+                    self.qp = qmu/s
                 else:
-                    self.qp = 1.0 / (l/qmu + (1.0-l)/qk)
+                    self.qp = 1.0 / (s/qmu + (1.0-s)/qk)
             self.qs = qmu
         else:
             raise InvalidArguments(
@@ -271,12 +271,12 @@ class Material(object):
         if self.vs == 0. and self.qs == 0.:
             return self.qp
         else:
-            l = (4.0/3.0)*(self.vs/self.vp)**2
-            denom = (1/self.qp - l/self.qs)
+            s = (4.0/3.0)*(self.vs/self.vp)**2
+            denom = (1/self.qp - s/self.qs)
             if denom <= 0.0:
                 return num.inf
             else:
-                return (1.-l)/(1.0/self.qp - l/self.qs)
+                return (1.-s)/(1.0/self.qp - s/self.qs)
 
     def _rayleigh_equation(self, cr):
         cr_a = (cr/self.vp)**2
@@ -1938,15 +1938,15 @@ class Straight(RayElement):
         if endgaps is not None:
             return endgaps[0]
         else:
-            l = self.layer
-            return (l.ztop, l.zbot)[self._direction_in == UP]
+            lyr = self.layer
+            return (lyr.ztop, lyr.zbot)[self._direction_in == UP]
 
     def z_out(self, endgaps=None):
         if endgaps is not None:
             return endgaps[1]
         else:
-            l = self.layer
-            return (l.ztop, l.zbot)[self._direction_out == DOWN]
+            lyr = self.layer
+            return (lyr.ztop, lyr.zbot)[self._direction_out == DOWN]
 
     def turns(self):
         return self._direction_in != self._direction_out
@@ -1964,8 +1964,8 @@ class Straight(RayElement):
             return endgaps[3]
 
     def zturn(self, p):
-        l = self.layer
-        return l.zturn(p, self.mode)
+        lyr = self.layer
+        return lyr.zturn(p, self.mode)
 
     def u_in(self, endgaps=None):
         return self.layer.u(self.mode, self.z_in(endgaps))
@@ -3013,8 +3013,8 @@ class LayeredModel(object):
         first layer with respect to the the traversal ordering is returned.
         '''
 
-        l = self.layer(z, direction)
-        return l.material(z)
+        lyr = self.layer(z, direction)
+        return lyr.material(z)
 
     def discontinuities(self):
         '''Iterate over all discontinuities of the model.'''
@@ -3562,11 +3562,11 @@ class LayeredModel(object):
             ztop = zcut[i]
             zbot = zcut[i+1]
             if mtop == mbot:
-                l = HomogeneousLayer(ztop, zbot, mtop)
+                lyr = HomogeneousLayer(ztop, zbot, mtop)
             else:
-                l = GradientLayer(ztop, zbot, mtop, mbot)
+                lyr = GradientLayer(ztop, zbot, mtop, mbot)
 
-            out_layers.append(l)
+            out_layers.append(lyr)
         return out_layers
 
     def simplify(self, max_rel_error=0.001):

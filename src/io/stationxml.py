@@ -1289,14 +1289,14 @@ class FDSNStationXML(Object):
         return sorted(nslcs)
 
     def summary(self):
-        l = [
+        lst = [
             'number of n codes: %i' % len(self.n_code_list),
             'number of ns codes: %i' % len(self.ns_code_list),
             'number of nsl codes: %i' % len(self.nsl_code_list),
             'number of nslc codes: %i' % len(self.nslc_code_list)
         ]
 
-        return '\n'.join(l)
+        return '\n'.join(lst)
 
 
 class InconsistentChannelLocations(Exception):

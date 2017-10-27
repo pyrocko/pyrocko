@@ -213,7 +213,7 @@ def main(args=None):
             lat = float(args[0])
             lon = float(args[1])
             radius = float(args[2])*km
-        except:
+        except Exception:
             parser.print_help()
             sys.exit(1)
     else:

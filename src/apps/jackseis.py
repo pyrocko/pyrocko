@@ -270,14 +270,14 @@ def main(args=None):
         else:
             try:
                 tinc = str_to_seconds(options.tinc)
-            except:
+            except Exception:
                 die('invalid argument to --tinc')
 
     tmin = None
     if options.tmin is not None:
         try:
             tmin = stt(options.tmin)
-        except:
+        except Exception:
             die('invalid argument to --tmin. '
                 'Expected format is ""')
 
@@ -285,7 +285,7 @@ def main(args=None):
     if options.tmax is not None:
         try:
             tmax = stt(options.tmax)
-        except:
+        except Exception:
             die('invalid argument to --tmax. '
                 'Expected format is "%s"' % tfmt)
 
@@ -293,7 +293,7 @@ def main(args=None):
     if options.downsample is not None:
         try:
             target_deltat = 1.0 / float(options.downsample)
-        except:
+        except Exception:
             die('invalid argument to --downsample')
 
     replacements = []

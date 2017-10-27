@@ -48,15 +48,15 @@ class DeserializeError(Exception):
         self._version_dialect = version_dialect
 
     def __str__(self):
-        l = [Exception.__str__(self)]
+        lst = [Exception.__str__(self)]
         if self._version_dialect is not None:
-            l.append('format version: %s' % self._version_dialect[0])
-            l.append('dialect: %s' % self._version_dialect[1])
+            lst.append('format version: %s' % self._version_dialect[0])
+            lst.append('dialect: %s' % self._version_dialect[1])
         if self._line_number is not None:
-            l.append('line number: %i' % self._line_number)
+            lst.append('line number: %i' % self._line_number)
         if self._line is not None:
-            l.append('line content:\n%s' % (self._line.decode('ascii') or
-                                            '*** line is empty ***'))
+            lst.append('line content:\n%s' % (self._line.decode('ascii') or
+                                              '*** line is empty ***'))
 
         if self._position is not None:
             if self._position[1] is None:
@@ -64,7 +64,7 @@ class DeserializeError(Exception):
             else:
                 length = self._position[1]
 
-            l.append(' ' * self._position[0] + '^' * length)
+            lst.append(' ' * self._position[0] + '^' * length)
 
         if self._format is not None:
             i = 0
@@ -82,9 +82,9 @@ class DeserializeError(Exception):
 
                     j += 1
 
-            l.append(''.join(f))
+            lst.append(''.join(f))
 
-        return '\n'.join(l)
+        return '\n'.join(lst)
 
 
 def float_or_none(x):
@@ -104,9 +104,9 @@ def int_or_none(x):
 def float_to_string(fmt):
     ef = fmt[0]
     assert ef in 'ef'
-    l, d = map(int, fmt[1:].split('.'))
-    pfmts = ['%%%i.%i%s' % (l, dsub, ef) for dsub in range(d, -1, -1)]
-    blank = b' ' * l
+    ln, d = map(int, fmt[1:].split('.'))
+    pfmts = ['%%%i.%i%s' % (ln, dsub, ef) for dsub in range(d, -1, -1)]
+    blank = b' ' * ln
 
     def func(v):
         if v is None:
@@ -114,7 +114,7 @@ def float_to_string(fmt):
 
         for pfmt in pfmts:
             s = pfmt % v
-            if len(s) == l:
+            if len(s) == ln:
                 return s.encode('ascii')
 
         raise SerializeError('format="%s", value=%s' % (pfmt, repr(v)))
@@ -125,15 +125,15 @@ def float_to_string(fmt):
 def int_to_string(fmt):
     assert fmt[0] == 'i'
     pfmt = '%'+fmt[1:]+'i'
-    l = int(fmt[1:])
-    blank = b' ' * l
+    ln = int(fmt[1:])
+    blank = b' ' * ln
 
     def func(v):
         if v is None:
             return blank
 
         s = pfmt % v
-        if len(s) == l:
+        if len(s) == ln:
             return s.encode('ascii')
         else:
             raise SerializeError('format="%s", value=%s' % (pfmt, repr(v)))
@@ -164,7 +164,7 @@ def serialize_string(fmt):
     fmt = fmt.rstrip('?+')
 
     assert fmt[0] == 'a'
-    l = int(fmt[1:])
+    ln = int(fmt[1:])
 
     def func(v):
         if v is None:
@@ -172,11 +172,11 @@ def serialize_string(fmt):
         else:
             v = v.encode('ascii')
 
-        s = v.ljust(l)
-        if more_ok or len(s) == l:
+        s = v.ljust(ln)
+        if more_ok or len(s) == ln:
             return s
         else:
-            raise SerializeError('max string length: %i, value="%s"' % l, v)
+            raise SerializeError('max string length: %i, value="%s"' % ln, v)
 
     return func
 
@@ -277,7 +277,7 @@ def x_date_time(fmt='%Y/%m/%d %H:%M:%S.3FRAC'):
             s = fillup_zeros(s, fmt)
             return util.str_to_time(s, format=fmt)
 
-        except:
+        except Exception:
             # iris sets this dummy end dates and they don't fit into 32bit
             # time stamps
             if fmt[:2] == '%Y' and s[:4] in ('2599', '2045'):
@@ -393,22 +393,22 @@ class E(object):
             if t in 'ef':
                 self.parse = float_or_none
                 self.string = float_to_string(fmt)
-                l = int(fmt[1:].split('.')[0])
+                ln = int(fmt[1:].split('.')[0])
                 self.help_type = 'float'
             elif t == 'a':
                 self.parse = deserialize_string(fmt)
                 self.string = serialize_string(fmt)
-                l = int(fmt[1:].rstrip('+?'))
+                ln = int(fmt[1:].rstrip('+?'))
                 self.help_type = 'string'
             elif t == 'i':
                 self.parse = int_or_none
                 self.string = int_to_string(fmt)
-                l = int(fmt[1:])
+                ln = int(fmt[1:])
                 self.help_type = 'integer'
             else:
                 assert False, 'invalid format: %s' % t
 
-            assert self.length is None or l == self.length, \
+            assert self.length is None or ln == self.length, \
                 'inconsistent length for pos=%i, fmt=%s' \
                 % (self.position, fmt)
 
@@ -524,7 +524,7 @@ class Block(Object):
 
                 if element.advance != 0:
                     values.append(val)
-            except:
+            except Exception:
                 raise DeserializeError(
                     'Cannot parse %s' % (
                         element.help_type),
@@ -2369,18 +2369,18 @@ class Reader(object):
         while True:
             self._current_fpos = self._f.tell()
             self._current_lpos = self._readline_count + 1
-            l = self._f.readline()
+            ln = self._f.readline()
             self._readline_count += 1
-            if not l:
+            if not ln:
                 self._current_line = None
                 return None
 
-            lines = [l.rstrip(b'\n\r')]
+            lines = [ln.rstrip(b'\n\r')]
             while lines[-1].endswith(b'\\'):
                 lines[-1] = lines[-1][:-1]
-                l = self._f.readline()
+                ln = self._f.readline()
                 self._readline_count += 1
-                lines.append(l.rstrip(b'\n\r'))
+                lines.append(ln.rstrip(b'\n\r'))
 
             self._current_line = b''.join(lines)
 

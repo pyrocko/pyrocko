@@ -78,7 +78,7 @@ class Global(object):
 
 
 class NSLC(object):
-    def __init__(self, n, s, l=None, c=None):
+    def __init__(self, n, s, l=None, c=None):  # noqa
         self.network = n
         self.station = s
         self.location = l
@@ -220,7 +220,7 @@ def get_working_system_time_range():
             tt = time.gmtime(now)
             time.strftime('', tt)
             hi = now
-        except:
+        except Exception:
             break
 
     now = time.time()
@@ -231,7 +231,7 @@ def get_working_system_time_range():
             tt = time.gmtime(now)
             time.strftime('', tt)
             lo = now
-        except:
+        except Exception:
             break
     return lo, hi
 
@@ -664,14 +664,14 @@ class Projection(object):
 def add_radiobuttongroup(menu, menudef, obj, target, default=None):
     group = qw.QActionGroup(menu)
     menuitems = []
-    for l, v in menudef:
-        k = qw.QAction(l, menu)
+    for name, v in menudef:
+        k = qw.QAction(name, menu)
         group.addAction(k)
         menu.addAction(k)
         k.setCheckable(True)
         group.triggered.connect(target)
         menuitems.append((k, v))
-        if default is not None and l == default:
+        if default is not None and name == default:
             k.setChecked(True)
 
     if default is None:
@@ -1582,26 +1582,26 @@ def MakePileViewerMainClass(base):
                     previous_ntracks == 0 or \
                     self.show_all:
 
-                l, h = 0, min(self.ntracks_shown_max, self.ntracks)
+                low, high = 0, min(self.ntracks_shown_max, self.ntracks)
                 key_at_top = None
-                n = h-l
+                n = high-low
 
             else:
-                l, h = self.shown_tracks_range
-                key_at_top = self.track_keys[l]
-                n = h-l
+                low, high = self.shown_tracks_range
+                key_at_top = self.track_keys[low]
+                n = high-low
 
             self.track_keys = sorted(keys, key=order)
 
             if key_at_top is not None:
                 try:
                     ind = self.track_keys.index(key_at_top)
-                    l = ind
-                    h = l+n
-                except:
+                    low = ind
+                    high = low+n
+                except Exception:
                     pass
 
-            self.set_tracks_range((l, h))
+            self.set_tracks_range((low, high))
 
             self.key_to_row = dict(
                 [(key, i) for (i, key) in enumerate(self.track_keys)])
@@ -2312,20 +2312,20 @@ def MakePileViewerMainClass(base):
 
         def set_tracks_range(self, range, start=None):
 
-            l, h = range
-            l = min(self.ntracks-1, l)
-            h = min(self.ntracks, h)
-            l = max(0, l)
-            h = max(1, h)
+            low, high = range
+            low = min(self.ntracks-1, low)
+            high = min(self.ntracks, high)
+            low = max(0, low)
+            high = max(1, high)
 
             if start is None:
-                start = float(l)
+                start = float(low)
 
-            if self.shown_tracks_range != (l, h):
-                self.shown_tracks_range = l, h
+            if self.shown_tracks_range != (low, high):
+                self.shown_tracks_range = low, high
                 self.shown_tracks_start = start
 
-                self.tracks_range_changed.emit(self.ntracks, l, h)
+                self.tracks_range_changed.emit(self.ntracks, low, high)
 
         def scroll_tracks(self, shift):
             shown = self.shown_tracks_range
@@ -3690,7 +3690,7 @@ def MakePileViewerMainClass(base):
                                 for x in toks[1]:
                                     try:
                                         kinds.append(int(x))
-                                    except:
+                                    except Exception:
                                         pass
 
                             self.set_visible_marker_kinds(kinds)

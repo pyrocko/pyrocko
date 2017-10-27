@@ -131,12 +131,12 @@ def convert_graph(in_filename, out_filename, resolution=75., oversample=2.,
                 try:
                     subprocess.check_call(
                         ['convert', tmp_filename, out_filename])
-                except:
+                except Exception:
                     raise GmtPyError(
                         'Cannot start `convert`, is it installed? (%s)'
                         % str(e))
 
-    except:
+    except Exception:
         raise
 
     finally:
@@ -4006,14 +4006,16 @@ class Simple(object):
             fn_mean = gmt.tempfilename()
 
             if dpd.method in ('surface', 'triangulate'):
-                gmt.blockmean(in_columns=dpd.data, I='%i+/%i+' % dpd.size,
-                              out_filename=fn_mean,  *R)
+                gmt.blockmean(in_columns=dpd.data,
+                              I='%i+/%i+' % dpd.size,  # noqa
+                              out_filename=fn_mean, *R)
 
                 if dpd.method == 'surface':
                     gmt.surface(
                         in_filename=fn_mean,
                         T=dpd.tension,
-                        G=fn_grid, I='%i+/%i+' % dpd.size,
+                        G=fn_grid,
+                        I='%i+/%i+' % dpd.size,  # noqa
                         out_discard=True,
                         *R)
 
@@ -4021,7 +4023,7 @@ class Simple(object):
                     gmt.triangulate(
                         in_filename=fn_mean,
                         G=fn_grid,
-                        I='%i+/%i+' % dpd.size,
+                        I='%i+/%i+' % dpd.size,  # noqa
                         out_discard=True,
                         V=True,
                         *R)
@@ -4042,7 +4044,8 @@ class Simple(object):
             if dpd.method == 'fillcontour':
                 extra = dict(C=fn_cpt)
                 extra.update(dpd.extra)
-                gmt.pscontour(in_columns=dpd.data, I=True, *rxyj, **extra)
+                gmt.pscontour(in_columns=dpd.data,
+                              I=True, *rxyj, **extra)  # noqa
 
             if dpd.method == 'contour':
                 extra = dict(W='0.5p,black', C=fn_cpt)
@@ -4221,7 +4224,8 @@ def nice_palette(gmt, widget, scaleguru, cptfile, zlabeloffset=0.8*inch,
     pal_r = (0, 1, par['zmin'], par['zmax'])
     pal_ax_r = (0, 1, par_ax['zmin'], par_ax['zmax'])
     gmt.xyz2grd(
-        G=palgrdfile, R=pal_r, I=(1, pdz), in_columns=(px, pz, pz),
+        G=palgrdfile, R=pal_r,
+        I=(1, pdz), in_columns=(px, pz, pz),  # noqa
         out_discard=True)
 
     gmt.grdimage(palgrdfile, R=pal_r, C=cptfile, *widget.JXY())

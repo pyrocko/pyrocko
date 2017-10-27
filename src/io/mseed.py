@@ -116,7 +116,7 @@ def detect(first512):
 
     try:
         sequence_number = int(rec[:6])
-    except:
+    except Exception:
         return False
     if sequence_number < 0:
         return False
@@ -153,7 +153,7 @@ def detect(first512):
 
         try:
             blockette_length = int(rec[11:11+4])
-        except:
+        except Exception:
             return False
 
         if blockette_length < 7:

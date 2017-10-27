@@ -284,7 +284,7 @@ class BaseStore(object):
 
         try:
             util.ensuredir(store_dir)
-        except:
+        except Exception:
             raise CannotCreate('cannot create directory %s' % store_dir)
 
         index_fn = BaseStore.index_fn_(store_dir)
@@ -327,7 +327,7 @@ class BaseStore(object):
         try:
             self._f_index = open(index_fn, fmode)
             self._f_data = open(data_fn, fmode)
-        except:
+        except Exception:
             self.mode = ''
             raise CannotOpen('cannot open gf store: %s' % self.store_dir)
 
@@ -1094,7 +1094,7 @@ class Store(BaseStore):
     def create_editables(store_dir, config, force=False, extra=None):
         try:
             util.ensuredir(store_dir)
-        except:
+        except Exception:
             raise CannotCreate('cannot create directory %s' % store_dir)
 
         fns = []

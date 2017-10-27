@@ -159,7 +159,7 @@ class SerialHamster(object):
             if line == '':
                 raise SerialHamsterError(
                     'Failed to read from serial port %s' % self.port)
-        except:
+        except Exception:
             raise SerialHamsterError(
                 'Failed to read from serial port %s' % self.port)
 
@@ -168,7 +168,7 @@ class SerialHamster(object):
         for tok in line.split():
             try:
                 val = float(tok)
-            except:
+            except Exception:
                 logger.warning('Got something unexpected on serial line. ' +
                                'Current line: "%s". ' % line +
                                'Could not convert string to float: "%s"' % tok)
@@ -345,7 +345,7 @@ class CamSerialHamster(SerialHamster):
                 'Sent command "2,e" to cam; received answer: "%s"' % a.strip())
             ser.write('2,01\n')
             ser.write('2,f400\n')
-        except:
+        except Exception:
             raise SerialHamsterError(
                 'Initialization of camera acquisition failed.')
 
