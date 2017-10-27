@@ -103,7 +103,7 @@ class CSSHeaderFile(object):
             try:
                 data = num.array(unpack(fmt, f.read(nbytes * 4)),
                                  dtype=num.int32)
-            except:
+            except Exception:
                 logger.exception('Error while unpacking %s' % fn)
                 return
         return data
@@ -118,7 +118,7 @@ class CSSHeaderFile(object):
                 for (ident, convert, (istart, istop), desc) in template:
                     try:
                         d[ident] = convert(line[istart: istop].strip())
-                    except:
+                    except Exception:
                         raise CSSWfError(iline=iline+1, data=line,
                                          ident=ident, convert=convert,
                                          istart=istart+1, istop=istop+1,

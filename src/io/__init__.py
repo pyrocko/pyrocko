@@ -21,21 +21,22 @@ logger = logging.getLogger('pyrocko.io')
 
 def allowed_formats(operation, use=None, default=None):
     if operation == 'load':
-        l = ['detect', 'from_extension', 'mseed', 'sac', 'segy', 'seisan',
-             'seisan.l', 'seisan.b', 'kan', 'yaff', 'gse1', 'gse2', 'gcf',
-             'datacube', 'suds', 'css']
+        lst = ['detect', 'from_extension', 'mseed', 'sac', 'segy', 'seisan',
+               'seisan.l', 'seisan.b', 'kan', 'yaff', 'gse1', 'gse2', 'gcf',
+               'datacube', 'suds', 'css']
 
     elif operation == 'save':
-        l = ['mseed', 'sac', 'text', 'yaff', 'gse2']
+        lst = ['mseed', 'sac', 'text', 'yaff', 'gse2']
 
     if use == 'doc':
-        return ', '.join("``'%s'``" % fmt for fmt in l)
+        return ', '.join("``'%s'``" % fmt for fmt in lst)
 
     elif use == 'cli_help':
-        return ', '.join(fmt + ['', ' [default]'][fmt == default] for fmt in l)
+        return ', '.join(fmt + ['', ' [default]'][fmt == default]
+                         for fmt in lst)
 
     else:
-        return l
+        return lst
 
 
 def load(filename, format='mseed', getdata=True, substitutions=None):

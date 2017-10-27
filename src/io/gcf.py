@@ -231,7 +231,7 @@ def detect(first512):
         read_header(f)
         return True
 
-    except:
+    except Exception:
         return False
 
 

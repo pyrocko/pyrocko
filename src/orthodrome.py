@@ -377,10 +377,10 @@ def distance_accurate50m(*args, **kwargs):
 
     f = (alat + blat)*d2r / 2.
     g = (alat - blat)*d2r / 2.
-    l = (alon - blon)*d2r / 2.
+    h = (alon - blon)*d2r / 2.
 
-    s = math.sin(g)**2 * math.cos(l)**2 + math.cos(f)**2 * math.sin(l)**2
-    c = math.cos(g)**2 * math.cos(l)**2 + math.sin(f)**2 * math.sin(l)**2
+    s = math.sin(g)**2 * math.cos(h)**2 + math.cos(f)**2 * math.sin(h)**2
+    c = math.cos(g)**2 * math.cos(h)**2 + math.sin(f)**2 * math.sin(h)**2
 
     w = math.atan(math.sqrt(s/c))
 
@@ -495,10 +495,10 @@ def distance_accurate50m_numpy(
 
     f = (a_lats + b_lats)*d2r / 2.
     g = (a_lats - b_lats)*d2r / 2.
-    l = (a_lons - b_lons)*d2r / 2.
+    h = (a_lons - b_lons)*d2r / 2.
 
-    s = num.sin(g)**2 * num.cos(l)**2 + num.cos(f)**2 * num.sin(l)**2
-    c = num.cos(g)**2 * num.cos(l)**2 + num.sin(f)**2 * num.sin(l)**2
+    s = num.sin(g)**2 * num.cos(h)**2 + num.cos(f)**2 * num.sin(h)**2
+    c = num.cos(g)**2 * num.cos(h)**2 + num.sin(f)**2 * num.sin(h)**2
 
     w = num.arctan(num.sqrt(s/c))
 

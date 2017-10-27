@@ -228,18 +228,18 @@ def station(url=g_url, site=g_default_site, majorversion=1, parsed=True,
     params = fix_params(kwargs)
 
     if selection:
-        l = []
+        lst = []
         for k, v in params.items():
-            l.append('%s=%s' % (k, v))
+            lst.append('%s=%s' % (k, v))
 
         for (network, station, location, channel, tmin, tmax) in selection:
             if location == '':
                 location = '--'
 
-            l.append(' '.join((network, station, location, channel,
-                               sdatetime(tmin), sdatetime(tmax))))
+            lst.append(' '.join((network, station, location, channel,
+                                 sdatetime(tmin), sdatetime(tmax))))
 
-        post = '\n'.join(l)
+        post = '\n'.join(lst)
         params = dict(post=post.encode())
 
     if parsed:
@@ -295,7 +295,7 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
     params = fix_params(kwargs)
 
     if selection:
-        l = []
+        lst = []
 
         if 'minimumlength' not in params:
             params['minimumlength'] = 0.0
@@ -304,16 +304,16 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
             params['longestonly'] = 'FALSE'
 
         for k, v in params.items():
-            l.append('%s=%s' % (k, v))
+            lst.append('%s=%s' % (k, v))
 
         for (network, station, location, channel, tmin, tmax) in selection:
             if location == '':
                 location = '--'
 
-            l.append(' '.join((network, station, location, channel,
-                               sdatetime(tmin), sdatetime(tmax))))
+            lst.append(' '.join((network, station, location, channel,
+                                 sdatetime(tmin), sdatetime(tmax))))
 
-        post = '\n'.join(l)
+        post = '\n'.join(lst)
         return _request(url, user=user, passwd=passwd, post=post.encode())
     else:
         return _request(url, user=user, passwd=passwd, **params)

@@ -452,7 +452,7 @@ class Timing(SObject):
         SObject.__init__(self, **kwargs)
 
     def __str__(self):
-        l = []
+        s = []
         if self.phase_defs:
             sphases = '|'.join(self.phase_defs)
             # if len(self.phase_defs) > 1 or self.select:
@@ -461,14 +461,14 @@ class Timing(SObject):
             if self.select:
                 sphases = self.select + sphases
 
-            l.append(sphases)
+            s.append(sphases)
 
         if self.offset != 0.0 or not self.phase_defs:
-            l.append('%+g' % self.offset)
+            s.append('%+g' % self.offset)
             if self.offset_is_slowness:
-                l.append('S')
+                s.append('S')
 
-        return ''.join(l)
+        return ''.join(s)
 
     def evaluate(self, get_phase, args):
         try:

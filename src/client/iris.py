@@ -181,23 +181,24 @@ def ws_bulkdataselect(
         minimumlength=None,
         longestonly=False):
 
-    l = []
+    sel = []
     if quality is not None:
-        l.append('quality %s' % quality)
+        sel.append('quality %s' % quality)
     if minimumlength is not None:
-        l.append('minimumlength %s' % minimumlength)
+        sel.append('minimumlength %s' % minimumlength)
     if longestonly:
-        l.append('longestonly')
+        sel.append('longestonly')
 
     for (network, station, location, channel, tmin, tmax) in selection:
         if location == '':
             location = '--'
 
-        l.append(' '.join((
+        sel.append(' '.join((
             network, station, location, channel,
             sdatetime(tmin), sdatetime(tmax))))
 
-    return ws_request(base_url + '/bulkdataselect/1/query', post='\n'.join(l))
+    return ws_request(base_url + '/bulkdataselect/1/query',
+                      post='\n'.join(sel))
 
 
 def ws_sacpz(
@@ -343,7 +344,7 @@ def grok_sacpz(data):
 
             cis[nslc(ci)] = ci
 
-        except:
+        except Exception:
             logger.error('Error while parsing SACPZ data')
 
     return cis

@@ -1669,7 +1669,7 @@ class SnufflingModule(object):
                     snuffling._filename = filename
                     self.add_snuffling(snuffling)
 
-            except:
+            except Exception:
                 logger.error(traceback.format_exc())
                 raise BrokenSnufflingModule(filename)
 
@@ -1695,7 +1695,7 @@ class SnufflingModule(object):
                     for sett, snuf in zip(settings, self._snufflings):
                         snuf.set_settings(sett)
 
-            except:
+            except Exception:
                 logger.error(traceback.format_exc())
                 raise BrokenSnufflingModule(filename)
 

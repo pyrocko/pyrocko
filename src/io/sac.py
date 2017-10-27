@@ -147,10 +147,10 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
                 return 1
             return 0
         elif t == 'k':
-            l = 8
+            ln = 8
             if k == 'kevnm':
-                l = 16   # only this header val has different length
-            return v.ljust(l)[:l]
+                ln = 16   # only this header val has different length
+            return v.ljust(ln)[:ln]
 
     def __init__(self, *args, **kwargs):
         if 'from_trace' in kwargs:

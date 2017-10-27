@@ -349,11 +349,11 @@ def get1(content, field, default=None, optional=False):
 
 
 def getn(content, field):
-    l = []
+    lst = []
     for field_, _, value in content:
         if field_ == field:
-            l.append(value)
-    return l
+            lst.append(value)
+    return lst
 
 
 def pdate(s):
@@ -384,26 +384,26 @@ def pcode(s):
     return str(s.decode('ascii'))
 
 
-def gett(l, t):
-    return [x for x in l if isinstance(x, t)]
+def gett(lst, t):
+    return [x for x in lst if isinstance(x, t)]
 
 
-def gett1o(l, t):
-    l = [x for x in l if isinstance(x, t)]
-    if len(l) == 0:
+def gett1o(lst, t):
+    lst = [x for x in lst if isinstance(x, t)]
+    if len(lst) == 0:
         return None
-    elif len(l) == 1:
-        return l[0]
+    elif len(lst) == 1:
+        return lst[0]
     else:
         raise RespError('duplicate entry')
 
 
-def gett1(l, t):
-    l = [x for x in l if isinstance(x, t)]
-    if len(l) == 0:
+def gett1(lst, t):
+    lst = [x for x in lst if isinstance(x, t)]
+    if len(lst) == 0:
         raise RespError('entry not found')
-    elif len(l) == 1:
-        return l[0]
+    elif len(lst) == 1:
+        return lst[0]
     else:
         raise RespError('duplicate entry')
 

@@ -36,7 +36,7 @@ logger = logging.getLogger('pyrocko.util')
 
 try:
     import progressbar as progressbar_mod
-except:
+except ImportError:
     from pyrocko import dummy_progressbar as progressbar_mod
 
 
@@ -1204,8 +1204,8 @@ def unpack_fixed(format, line, *callargs):
         optional = form[-1] == '?'
         form = form.rstrip('?')
         typ = form[0]
-        l = int(form[1:])
-        s = line[ipos:ipos+l]
+        ln = int(form[1:])
+        s = line[ipos:ipos+ln]
         cast = {
             'x': None,
             'A': str,
@@ -1224,16 +1224,16 @@ def unpack_fixed(format, line, *callargs):
             else:
                 try:
                     values.append(cast(s))
-                except:
+                except Exception:
                     mark = [' '] * 80
-                    mark[ipos:ipos+l] = ['^'] * l
+                    mark[ipos:ipos+ln] = ['^'] * ln
                     mark = ''.join(mark)
                     raise UnpackError(
                         'Invalid cast to type "%s" at position [%i:%i] of '
                         'line: \n%s%s\n%s' % (
-                            typ, ipos, ipos+l, ruler, line.rstrip(), mark))
+                            typ, ipos, ipos+ln, ruler, line.rstrip(), mark))
 
-        ipos += l
+        ipos += ln
 
     return values
 
@@ -1343,7 +1343,7 @@ class Sole(object):
 
         try:
             self._lockfile = os.open(self._pid_path, os.O_CREAT | os.O_WRONLY)
-        except:
+        except Exception:
             raise SoleError(
                 'Cannot open lockfile (path = %s)' % self._pid_path)
 
@@ -1356,7 +1356,7 @@ class Sole(object):
                 f = open(self._pid_path, 'r')
                 pid = f.read().strip()
                 f.close()
-            except:
+            except Exception:
                 pid = '?'
 
             raise SoleError('Other instance is running (pid = %s)' % pid)
@@ -1366,7 +1366,7 @@ class Sole(object):
             os.write(self._lockfile, '%i\n' % os.getpid())
             os.fsync(self._lockfile)
 
-        except:
+        except Exception:
             # the pid is only stored for user information, so this is allowed
             # to fail
             pass
@@ -1380,7 +1380,7 @@ class Sole(object):
                 os.close(self._lockfile)
             try:
                 os.unlink(self._pid_path)
-            except:
+            except Exception:
                 pass
 
 

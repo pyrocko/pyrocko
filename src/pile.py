@@ -955,12 +955,12 @@ class Pile(TracesGroup):
             show_progress=True,
             update_progress=None):
 
-        l = loader(
+        load = loader(
             filenames, fileformat, cache, filename_attributes,
             show_progress=show_progress,
             update_progress=update_progress)
 
-        self.add_files(l)
+        self.add_files(load)
 
     def add_files(self, files):
         for file in files:

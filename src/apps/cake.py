@@ -331,7 +331,7 @@ as in --phases.''')
                 try:
                     args = tuple(
                         [float(x) for x in options.crust2loc.split(',')])
-                except:
+                except Exception:
                     parser.error(
                         'format for --crust2loc option is '
                         '"LATITUDE,LONGITUDE"')
@@ -377,7 +377,7 @@ as in --phases.''')
             try:
                 slat, slon = tuple([float(x) for x in options.sloc.split(',')])
                 rlat, rlon = tuple([float(x) for x in options.rloc.split(',')])
-            except:
+            except Exception:
                 parser.error(
                     'format for --sloc and --rloc options is '
                     '"LATITUDE,LONGITUDE"')

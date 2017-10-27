@@ -79,7 +79,7 @@ def read_dat1_chk1(f, data_format, diff_flag, nsamples):
     t = line.split()
     try:
         checksum = int(t[1])
-    except:
+    except Exception:
         raise GSE1LoadError('could not parse CHK1 section')
 
     f.readline()

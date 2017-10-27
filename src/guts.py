@@ -21,7 +21,7 @@ from io import open, BytesIO
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader, CSafeDumper as SafeDumper
-except:
+except ImportError:
     from yaml import SafeLoader, SafeDumper
 
 from .util import time_to_str, str_to_time, TimeStrError
@@ -467,8 +467,8 @@ class TBase(object):
             if hasattr(base, 'T'):
                 baseprops.extend(base.T.properties)
 
-        l = []
-        l.append('')
+        hlp = []
+        hlp.append('')
         for prop in cls.properties:
             if prop in baseprops:
                 continue
@@ -483,15 +483,15 @@ class TBase(object):
             if d is not None:
                 descr.append('*default:* ``%s``' % repr(d))
 
-            l.append('    .. py:gattribute:: %s' % prop.name)
-            l.append('')
-            l.append('      %s' % ', '.join(descr))
-            l.append('      ')
+            hlp.append('    .. py:gattribute:: %s' % prop.name)
+            hlp.append('')
+            hlp.append('      %s' % ', '.join(descr))
+            hlp.append('      ')
             if prop.help is not None:
-                l.append('      %s' % prop.help)
-                l.append('')
+                hlp.append('      %s' % prop.help)
+                hlp.append('')
 
-        return '\n'.join(l)
+        return '\n'.join(hlp)
 
     @classmethod
     def class_help_string(cls):
@@ -499,7 +499,7 @@ class TBase(object):
 
     @classmethod
     def class_signature(cls):
-        l = []
+        r = []
         for prop in cls.properties:
             d = prop.default()
             if d is not None:
@@ -511,9 +511,9 @@ class TBase(object):
             else:
                 arg = '...'
 
-            l.append('%s=%s' % (prop.name, arg))
+            r.append('%s=%s' % (prop.name, arg))
 
-        return '(%s)' % ', '.join(l)
+        return '(%s)' % ', '.join(r)
 
     @classmethod
     def help(cls):
@@ -894,12 +894,12 @@ class List(Object):
 
 
 def make_typed_list_class(t):
-    class O(List):
+    class TL(List):
         class __T(List.T):
             def __init__(self, *args, **kwargs):
                 List.T.__init__(self, content_t=t.T(), *args, **kwargs)
 
-    return O
+    return TL
 
 
 class Tuple(Object):

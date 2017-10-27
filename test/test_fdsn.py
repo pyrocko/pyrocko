@@ -177,7 +177,7 @@ class FDSNStationTestCase(unittest.TestCase):
 
                 else:
                     print('ok')
-            except:
+            except Exception:
                 print('failed: ', nslc)
 
     @common.require_internet

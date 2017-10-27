@@ -714,18 +714,19 @@ class TraceTestCase(unittest.TestCase):
 
                 ydata = num.zeros(n)
 
-                s = int(round(tshort / tr.deltat))
-                l = int(round(tlong / tr.deltat))
+                sh = int(round(tshort / tr.deltat))
+                ln = int(round(tlong / tr.deltat))
 
-                for i in range(l-s, n-s):
-                    ydata[i] = (1.0 / s * num.sum(y[i:i+s])) / (
-                        1.0 / l * num.sum(y[i+s-l:i+s])) * float(s)/float(l)
+                for i in range(ln-sh, n-sh):
+                    ydata[i] = (1.0 / sh * num.sum(y[i:i+sh])) / (
+                        1.0 / ln * num.sum(y[i+sh-ln:i+sh])) \
+                        * float(sh)/float(ln)
 
                 stalta_ref = trace.Trace(
                     '', 'X', 'ref', '',
                     ydata=ydata, deltat=1.0)
 
-                stalta_ref.chop(float(l-s), float(n-s))
+                stalta_ref.chop(float(ln-sh), float(n-sh))
 
                 assert numeq(stalta.ydata, stalta_ref.ydata, 1e-3)
 

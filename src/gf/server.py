@@ -48,7 +48,7 @@ __version__ = '1.0'
 def enc(s):
     try:
         return s.encode('utf-8')
-    except:
+    except Exception:
         return s
 
 
@@ -232,9 +232,9 @@ class RequestHandler(asynchat.async_chat, SHRH):
         return len(self.outgoing) and self.connected
 
     def handle_write(self):
-        O = self.outgoing
-        while len(O):
-            a = O.popleft()
+        out = self.outgoing
+        while len(out):
+            a = out.popleft()
 
             a = enc(a)
             # handle end of request disconnection
@@ -259,7 +259,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
                     del _a
                     continue
                 else:
-                    O.appendleft(_a)  # noqa
+                    out.appendleft(_a)  # noqa
                     break
 
             # handle string/buffer objects
@@ -276,11 +276,11 @@ class RequestHandler(asynchat.async_chat, SHRH):
                 if not num_sent:
                     # this is probably overkill, but it can save the
                     # allocations of buffers when they are enabled
-                    O.appendleft(a)
+                    out.appendleft(a)
                 elif self.use_buffer:
-                    O.appendleft(buffer(a, num_sent))
+                    out.appendleft(buffer(a, num_sent))
                 else:
-                    O.appendleft(a[num_sent:])
+                    out.appendleft(a[num_sent:])
 
         except socket.error as why:
             if isinstance(why, newstr):

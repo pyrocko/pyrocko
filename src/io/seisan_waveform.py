@@ -121,7 +121,7 @@ def iload(filename, load_data=True, subformat='l4'):
                 endianness = {'l': '<', 'b': '>'}[subformat[0]]
                 if len(subformat) > 1:
                     npad = int(subformat[1:])
-            except:
+            except Exception:
                 raise SeisanFileError(
                     'Bad subformat specification: "%s"' % subformat)
         else:

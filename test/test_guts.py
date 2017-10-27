@@ -171,19 +171,19 @@ class GutsTestCase(unittest.TestCase):
 
         class A(Object):
             x = Any.T()
-            l = List.T(Any.T())
+            lst = List.T(Any.T())
 
         a1 = A(x=X(y=33))
         a1.validate()
         a1c = load_string(a1.dump())
         self.assertEqual(a1c.x.y, 33)
 
-        a2 = A(x=22, l=['a', 44, X(y=22)])
+        a2 = A(x=22, lst=['a', 44, X(y=22)])
         a2.validate()
         a2c = load_string(a2.dump())
         self.assertEqual(a2c.x, 22)
-        self.assertEqual(a2c.l[:2], ['a', 44])
-        self.assertEqual(a2c.l[2].y, 22)
+        self.assertEqual(a2c.lst[:2], ['a', 44])
+        self.assertEqual(a2c.lst[2].y, 22)
 
         a3 = A(x=X(y='10'))
         with self.assertRaises(ValidationError):

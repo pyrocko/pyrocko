@@ -496,7 +496,7 @@ class Map(Object):
                         grdfile2,
                         G=grdfile,
                         n='l',
-                        I='%g/%g' % (t.dx, t.dy),
+                        I='%g/%g' % (t.dx, t.dy),  # noqa
                         R=grdfile,
                         out_discard=True)
                 else:
@@ -504,7 +504,7 @@ class Map(Object):
                         grdfile2,
                         G=grdfile,
                         Q='l',
-                        I='%g/%g' % (t.dx, t.dy),
+                        I='%g/%g' % (t.dx, t.dy),  # noqa
                         R=grdfile,
                         out_discard=True)
 
@@ -1258,7 +1258,7 @@ def read_cpt(filename):
                         color_min=color_min,
                         color_max=color_max))
 
-        except:
+        except Exception:
             raise CPTParseError()
 
     return CPT(

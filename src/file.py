@@ -19,12 +19,12 @@ from io import BytesIO
 import numpy as num
 try:
     from hashlib import sha1
-except:
+except ImportError:
     from sha import new as sha1
 
 try:
     from os import SEEK_CUR
-except:
+except ImportError:
     SEEK_CUR = 1
 
 from . import util

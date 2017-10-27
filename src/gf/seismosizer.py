@@ -132,18 +132,18 @@ def nonzero(x, eps=1e-15):
     return abs(x) > eps
 
 
-def permudef(l, j=0):
-    if j < len(l):
-        k, v = l[j]
+def permudef(ln, j=0):
+    if j < len(ln):
+        k, v = ln[j]
         for y in v:
-            l[j] = k, y
-            for s in permudef(l, j+1):
+            ln[j] = k, y
+            for s in permudef(ln, j+1):
                 yield s
 
-        l[j] = k, v
+        ln[j] = k, v
         return
     else:
-        yield l
+        yield ln
 
 
 def arr(x):
@@ -161,19 +161,19 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
     mindeltagf = num.min(deltas)
     mindeltagf = min(mindeltagf, deltat * velocity)
 
-    l = length
-    w = width
+    ln = length
+    wd = width
 
-    nl = int((2./decimation_factor) * num.ceil(l / mindeltagf)) + 1
-    nw = int((2./decimation_factor) * num.ceil(w / mindeltagf)) + 1
+    nl = int((2./decimation_factor) * num.ceil(ln / mindeltagf)) + 1
+    nw = int((2./decimation_factor) * num.ceil(wd / mindeltagf)) + 1
 
     n = int(nl*nw)
 
-    dl = l / nl
-    dw = w / nw
+    dl = ln / nl
+    dw = wd / nw
 
-    xl = num.linspace(-0.5*(l-dl), 0.5*(l-dl), nl)
-    xw = num.linspace(-0.5*(w-dw), 0.5*(w-dw), nw)
+    xl = num.linspace(-0.5*(ln-dl), 0.5*(ln-dl), nl)
+    xw = num.linspace(-0.5*(wd-dw), 0.5*(wd-dw), nw)
 
     points = num.empty((n, 3), dtype=num.float)
     points[:, 0] = num.tile(xl, nw)
@@ -231,14 +231,14 @@ def discretize_rect_source(deltas, deltat, strike, dip, length, width,
 
 
 def outline_rect_source(strike, dip, length, width, anchor):
-    l = length
-    w = width
+    ln = length
+    wd = width
     points = num.array(
-        [[-0.5*l, -0.5*w, 0.],
-         [0.5*l, -0.5*w, 0.],
-         [0.5*l, 0.5*w, 0.],
-         [-0.5*l, 0.5*w, 0.],
-         [-0.5*l, -0.5*w, 0.]])
+        [[-0.5*ln, -0.5*wd, 0.],
+         [0.5*ln, -0.5*wd, 0.],
+         [0.5*ln, 0.5*wd, 0.],
+         [-0.5*ln, 0.5*wd, 0.],
+         [-0.5*ln, -0.5*wd, 0.]])
     anch_x = 0.
     anch_y = 0.
     if anchor == 'top' or anchor == 'bottom':
@@ -385,7 +385,7 @@ class Range(SObject):
         if not m:
             try:
                 vals = [ufloat(x) for x in s.split(',')]
-            except:
+            except Exception:
                 raise InvalidGridDef(
                     '"%s" is not a valid range specification' % s)
 
@@ -397,7 +397,7 @@ class Range(SObject):
             stop = ufloat_or_none(d['stop'])
             step = ufloat_or_none(d['step'])
             n = int_or_none(d['n'])
-        except:
+        except Exception:
             raise InvalidGridDef(
                 '"%s" is not a valid range specification' % s)
 

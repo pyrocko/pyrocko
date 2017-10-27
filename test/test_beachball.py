@@ -230,7 +230,7 @@ class BeachballTestCase(unittest.TestCase):
 
                     mop_beach.ploBB(kwargs, ax=axes3)
 
-                except:
+                except Exception:
                     print(
                         'mopad failed (maybe patched mopad version is needed')
 
