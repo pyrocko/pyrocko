@@ -566,12 +566,8 @@ class FigureFrame(qw.QFrame):
         from matplotlib.figure import Figure
 
         if use_pyqt5:
-            try:
-                from matplotlib.backends.backend_qt5agg import \
-                    NavigationToolbar2QTAgg as NavigationToolbar
-            except ImportError:
-                from matplotlib.backends.backend_qt5agg import \
-                    NavigationToolbar2QT as NavigationToolbar
+            from matplotlib.backends.backend_qt5agg import \
+                NavigationToolbar2QT as NavigationToolbar
 
             from matplotlib.backends.backend_qt5agg \
                 import FigureCanvasQTAgg as FigureCanvas
