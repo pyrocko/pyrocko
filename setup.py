@@ -325,9 +325,15 @@ class InstallPrerequisits(Command):
         import platform
 
         distribution = platform.linux_distribution()[0].lower().rstrip()
-        distribution = 'debian' if distribution == 'ubuntu' else distribution
-        fn = 'prerequisites/prerequisites_%s_%s.sh' % (
-                distribution, 'python%i' % sys.version_info.major)
+
+        if distribution == 'ubuntu':
+            distribution = 'debian'
+
+        if distribution.startswith('centos'):
+            distribution = 'centos'
+
+        fn = 'prerequisites/prerequisites_%s_python%i.sh' % (
+                distribution, sys.version_info.major)
 
         if not self.force_yes:
             try:
