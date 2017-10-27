@@ -12,17 +12,17 @@ if common.have_gui():  # noqa
     from pyrocko.gui.qt_compat import qc, qw, use_pyqt5
     if use_pyqt5:
         from PyQt5.QtTest import QTest
+        Qt = qc.Qt
     else:
         from PyQt4.QtTest import QTest
         Qt = qc.Qt
 
-    from pyrocko.gui.snuffler import Snuffler, SnufflerWindow
+    from pyrocko.gui.snuffler_app import Snuffler, SnufflerWindow
     from pyrocko.gui import pile_viewer as pyrocko_pile_viewer
     from pyrocko.gui import util as gui_util
     from pyrocko.gui import snuffling
-    from pyrocko import util, model
 
-
+from pyrocko import util, model
 from pyrocko.pile import make_pile
 from pyrocko import config, trace
 
@@ -115,6 +115,7 @@ class GUITest(unittest.TestCase):
 
     def trigger_menu_item(self, qmenu, action_text, dialog=False):
         ''' trigger a QMenu QAction with action_text. '''
+
         for iaction, action in enumerate(qmenu.actions()):
             if action.text() == action_text:
 

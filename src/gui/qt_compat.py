@@ -1,7 +1,23 @@
 
+from pyrocko import config
 import matplotlib
 
-use_pyqt5 = False
+gui_toolkit = config.effective_gui_toolkit()
+
+if gui_toolkit == 'auto':
+    try:
+        import PyQt5
+        use_pyqt5 = True
+
+    except ImportError:
+        use_pyqt5 = False
+
+elif gui_toolkit == 'qt4':
+    use_pyqt5 = False
+else:
+    use_pyqt5 = True
+
+
 if use_pyqt5:
     if matplotlib.get_backend().find('Qt4') != -1:  # noqa
         matplotlib.use('Qt5Agg')

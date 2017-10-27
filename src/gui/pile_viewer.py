@@ -52,12 +52,14 @@ def fnpatch(x):
 if sys.version_info[0] >= 3:
     qc.QString = str
 
+qfiledialog_options = qw.QFileDialog.DontUseNativeDialog | \
+    qw.QFileDialog.DontUseSheet
+
 if platform.mac_ver() != ('', ('', '', ''), ''):
-    qfiledialog_options = qw.QFileDialog.DontUseNativeDialog
     macosx = True
 else:
-    qfiledialog_options = qw.QFileDialog.DontUseSheet
     macosx = False
+
 logger = logging.getLogger('pyrocko.gui.pile_viewer')
 
 
@@ -2518,7 +2520,11 @@ def MakePileViewerMainClass(base):
                 painter.end()
 
             elif str(fn).endswith('.png'):
-                pixmap = self.grab()
+                if use_pyqt5:
+                    pixmap = self.grab()
+                else:
+                    pixmap = qg.QPixmap().grabWidget(self)
+
                 pixmap.save(fn)
 
             else:
