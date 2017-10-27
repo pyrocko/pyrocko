@@ -87,7 +87,7 @@ def _make_function(test_name, fn):
             raise unittest.SkipTest(str(e))
 
         except Exception as e:
-            self.fail(e)
+            raise e
 
     f.__name__ = 'test_example_' + test_name
 
