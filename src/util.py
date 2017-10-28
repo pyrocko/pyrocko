@@ -84,6 +84,7 @@ def _download(url, fpath, username=None, password=None,
               force=False, method='download', stats=None,
               status_callback=None, entries_wanted=None,
               recursive=False):
+
     import requests
     from requests.auth import HTTPDigestAuth
 
@@ -91,118 +92,164 @@ def _download(url, fpath, username=None, password=None,
     urljoin = requests.compat.urljoin
 
     session = requests.Session()
-    session.auth = None if username is None\
-        else HTTPDigestAuth(username, password)
+    try:
+        session.auth = None if username is None\
+            else HTTPDigestAuth(username, password)
 
-    bytes_rx = 0
-    bytes_total = 0
+        url_to_size = {}
+        status = dict(
+            ntotal_files=0,
+            nread_files=0,
+            ntotal_bytes_all_files=0,
+            nread_bytes_all_files=0,
+            ntotal_bytes_current_file=0,
+            nread_bytes_current_file=0)
 
-    if not recursive and url.endswith('/'):
-        raise DownloadError(
-            'URL: %s appears to be a directory'
-            ' but recurvise download is False' % url)
-
-    if recursive and not url.endswith('/'):
-        url += '/'
-
-    def parse_directory_tree(url, subdir=''):
-        r = session.get(urljoin(url, subdir))
-        r.raise_for_status()
-
-        entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
-
-        files = sorted(set(subdir + fn for fn in entries
-                           if not fn.endswith('/')))
-        dirs = sorted(set(subdir + dn for dn in entries
-                          if dn.endswith('/')
-                          and dn not in ('./', '../')))
-
-        for dn in dirs:
-            files.extend(parse_directory_tree(
-                url, subdir=dn))
-
-        if entries_wanted is not None:
-            files = [fn for fn in files
-                     if (fn in wanted for wanted in entries_wanted)]
-
-        return files
-
-    def get_content_length(url):
-        r = session.head(url)
-        # r.raise_for_status()
-
-        content_length = r.headers.get('content-length', None)
-        if content_length is None:
-            logger.warning('Could not get HTTP header '
-                           'Content-Length for %s' % url)
-            return 0
-        return int(content_length)
-
-    def download_file(url, fn, download=True):
-        logger.info('starting download of %s...' % url)
-        ensuredirs(fn)
-
-        r = session.get(url, stream=True, timeout=5)
-        r.raise_for_status()
-
-        fsize = get_content_length(url)
-        frx = 0
-
-        fn_tmp = fn + '.%i.temp' % os.getpid()
-        with open(fn_tmp, 'wb') as f:
-            for d in r.iter_content(chunk_size=1024):
-                f.write(d)
-                frx = r.raw.tell()
-
-                if callable(status_callback):
-                    status_callback(frx, fsize)
-
-        os.rename(fn_tmp, fn)
-
-        if frx != fsize:
-            logger.warning(
-                'HTTP header Content-Length: %i bytes does not match '
-                'download size %i bytes' % (fsize, frx))
-
-        session.close()
-        logger.info('finished download of %s' % url)
-
-        return frx, fsize
-
-    # if url.endswith('/') and not recursive:
-        # raise DownloadError('%s appears to be a directory' % url)
-
-    if recursive:
-        if op.exists(fpath) and not force:
-            raise PathExists('path %s already exists' % fpath)
-
-        files = parse_directory_tree(url)
-
-        for fn in files:
-            file_url = urljoin(url, fn)
-            if method == 'download':
-                _, fsize = download_file(file_url,
-                                         op.join(fpath, fn),
-                                         download=True)
-            elif method == 'calcsize':
-                fsize = get_content_length(file_url)
-
-            bytes_total += fsize
-
-    else:
-        bytes_rx, bytes_total = download_file(url, fpath)
         if callable(status_callback):
-            status_callback(bytes_rx, bytes_total)
+            status_callback(status)
 
-    return bytes_total
+        if not recursive and url.endswith('/'):
+            raise DownloadError(
+                'URL: %s appears to be a directory'
+                ' but recurvise download is False' % url)
+
+        if recursive and not url.endswith('/'):
+            url += '/'
+
+        def parse_directory_tree(url, subdir=''):
+            r = session.get(urljoin(url, subdir))
+            r.raise_for_status()
+
+            entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
+
+            files = sorted(set(subdir + fn for fn in entries
+                               if not fn.endswith('/')))
+
+            if entries_wanted is not None:
+                files = [fn for fn in files
+                         if (fn in wanted for wanted in entries_wanted)]
+
+            status['ntotal_files'] += len(files)
+
+            dirs = sorted(set(subdir + dn for dn in entries
+                              if dn.endswith('/')
+                              and dn not in ('./', '../')))
+
+            for dn in dirs:
+                files.extend(parse_directory_tree(
+                    url, subdir=dn))
+
+            return files
+
+        def get_content_length(url):
+            if url not in url_to_size:
+                r = session.head(url, headers={'Accept-Encoding': ''})
+
+                content_length = r.headers.get('content-length', None)
+                if content_length is None:
+                    logger.warning('Could not get HTTP header '
+                                   'Content-Length for %s' % url)
+
+                    content_length = None
+
+                else:
+                    content_length = int(content_length)
+                    status['ntotal_bytes_all_files'] += content_length
+                    if callable(status_callback):
+                        status_callback(status)
+
+                url_to_size[url] = content_length
+
+            return url_to_size[url]
+
+        def download_file(url, fn):
+            logger.info('starting download of %s...' % url)
+            ensuredirs(fn)
+
+            fsize = get_content_length(url)
+            status['ntotal_bytes_current_file'] = fsize
+            status['nread_bytes_current_file'] = 0
+            if callable(status_callback):
+                status_callback(status)
 
 
-def download_file(url, fpath, username=None, password=None):
-    return _download(url, fpath, username, password, recursive=False)
+            r = session.get(url, stream=True, timeout=5)
+            r.raise_for_status()
+
+            frx = 0
+            fn_tmp = fn + '.%i.temp' % os.getpid()
+            with open(fn_tmp, 'wb') as f:
+                for d in r.iter_content(chunk_size=1024):
+                    f.write(d)
+                    frx += len(d)
+
+                    status['nread_bytes_all_files'] += len(d)
+                    status['nread_bytes_current_file'] += len(d)
+                    if callable(status_callback):
+                        status_callback(status)
+
+            os.rename(fn_tmp, fn)
+
+            if fsize != None and frx != fsize:
+                logger.warning(
+                    'HTTP header Content-Length: %i bytes does not match '
+                    'download size %i bytes' % (fsize, frx))
+
+            logger.info('finished download of %s' % url)
+
+            status['nread_files'] += 1
+            if callable(status_callback):
+                status_callback(status)
+
+        if recursive:
+            if op.exists(fpath) and not force:
+                raise PathExists('path %s already exists' % fpath)
+
+            files = parse_directory_tree(url)
+
+            dsize = 0
+            for fn in files:
+                file_url = urljoin(url, fn)
+                dsize += get_content_length(file_url) or 0
+
+            if method == 'calcsize':
+                return dsize
+
+            else:
+                for fn in files:
+                    file_url = urljoin(url, fn)
+                    download_file(file_url, op.join(fpath, fn))
+
+        else:
+            status['ntotal_files'] += 1
+            if callable(status_callback):
+                status_callback(status)
+
+            fsize = get_content_length(url)
+            if method == 'calcsize':
+                return fsize
+            else:
+                download_file(url, fpath)
+
+    finally:
+        session.close()
 
 
-def download_dir(url, fpath, username=None, password=None):
-    return _download(url, fpath, username, password, recursive=True)
+def download_file(
+        url, fpath, username=None, password=None, status_callback=None):
+    return _download(
+        url, fpath, username, password,
+        recursive=False,
+        status_callback=status_callback)
+
+
+def download_dir(
+        url, fpath, username=None, password=None, status_callback=None):
+
+    return _download(
+        url, fpath, username, password,
+        recursive=True,
+        status_callback=status_callback)
 
 
 if hasattr(num, 'float128'):
