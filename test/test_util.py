@@ -3,12 +3,26 @@ from builtins import zip
 from builtins import range
 from pyrocko import util
 import unittest
+import tempfile
+import shutil
 import time
+import os
 from random import random
 import numpy as num
 
 
 class UtilTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tempdir = tempfile.mkdtemp()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tempdir)
+
+    def fpath(self, fn):
+        return os.path.join(self.tempdir, fn)
 
     def testTime(self):
 
@@ -176,7 +190,35 @@ class UtilTestCase(unittest.TestCase):
 |   3.33E+09 |
 |   3.33E+10 |'''.strip())
 
+    def test_download(self):
+        fn = self.fpath('responses.xml')
+        url = 'http://data.pyrocko.org/examples/responses.xml'
+
+        stat = []
+        def status(d):
+            stat.append(d)
+
+        util.download_file(url, fn, status_callback=status)
+
+        url = 'http://data.pyrocko.org/testing/my_test_dir'
+        dn = self.fpath('my_test_dir')
+        util.download_dir(url, dn, status_callback=status)
+
+        d = stat[-1]
+
+        dwant = {
+            'ntotal_files': 4,
+            'nread_files': 4,
+            'ntotal_bytes_all_files': 22,
+            'nread_bytes_all_files': 22,
+            'ntotal_bytes_current_file': 8,
+            'nread_bytes_current_file': 8}
+
+        for k in dwant:
+            assert k in d
+            assert d[k] == dwant[k]
+
 
 if __name__ == "__main__":
-    util.setup_logging('test_util', 'debug')
+    util.setup_logging('test_util', 'info')
     unittest.main()

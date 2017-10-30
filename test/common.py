@@ -54,11 +54,16 @@ require_internet = unittest.skipUnless(have_internet(), 'need internet access')
 
 
 def have_gui():
+    display = os.environ.get('DISPLAY', '')
+    if not display:
+        return False
+
     try:
         from pyrocko.gui.qt_compat import qc  # noqa
-        return True
     except ImportError:
         return False
+
+    return True
 
 
 require_gui = unittest.skipUnless(have_gui(), 'no gui support configured')

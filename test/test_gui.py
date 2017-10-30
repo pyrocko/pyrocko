@@ -8,6 +8,10 @@ import numpy as num
 import tempfile
 import os
 
+from pyrocko import util, model
+from pyrocko.pile import make_pile
+from pyrocko import config, trace
+
 if common.have_gui():  # noqa
     from pyrocko.gui.qt_compat import qc, qw, use_pyqt5
     if use_pyqt5:
@@ -22,28 +26,27 @@ if common.have_gui():  # noqa
     from pyrocko.gui import util as gui_util
     from pyrocko.gui import snuffling
 
-from pyrocko import util, model
-from pyrocko.pile import make_pile
-from pyrocko import config, trace
+    class TestSnuffling(snuffling.Snuffling):
 
+        def setup(self):
+            self.set_name('TestSnuffling')
 
-class TestSnuffling(snuffling.Snuffling):
+        def call(self):
+            figframe = self.figure_frame()
+            ax = figframe.gca()
+            ax.plot([0, 1], [0, 1])
+            figframe.draw()
 
-    def setup(self):
-        self.set_name('TestSnuffling')
+            self.enable_pile_changed_notifications()
 
-    def call(self):
-        figframe = self.figure_frame()
-        ax = figframe.gca()
-        ax.plot([0, 1], [0, 1])
-        figframe.draw()
+            self.pixmap_frame()
+            self.web_frame()
 
-        self.enable_pile_changed_notifications()
+            self.get_pile()
 
-        self.pixmap_frame()
-        self.web_frame()
-
-        self.get_pile()
+    no_gui = False
+else:
+    no_gui = True
 
 
 @common.require_gui
@@ -55,6 +58,9 @@ class GUITest(unittest.TestCase):
         Create a reusable snuffler instance for all tests cases.
         '''
         super(GUITest, cls).setUpClass()
+        if no_gui:  # nosetests runs this even when class is has @skip
+            return
+
         cls.snuffler = Snuffler()  # noqa
         fpath = common.test_data_file('test2.mseed')
         p = make_pile(fpath, show_progress=False)
@@ -73,6 +79,9 @@ class GUITest(unittest.TestCase):
         '''
         Quit snuffler.
         '''
+        if no_gui:  # nosetests runs this even when class is has @skip
+            return
+
         QTest.keyPress(cls.pile_viewer, 'q')
 
     def setUp(self):

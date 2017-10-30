@@ -131,22 +131,24 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
     tlast = [time.time()]
 
     if not quiet:
-        def status_callback(i, n):
+        def status_callback(d):
+            i = d['nread_bytes_all_files']
+            n = d['ntotal_bytes_all_files']
             tnow = time.time()
-            if (tnow - tlast[0]) > 5 or i == n:
+            if n != 0 and ((tnow - tlast[0]) > 5 or i == n):
                 print('%s / %s [%.1f%%]' % (
                     util.human_bytesize(i), util.human_bytesize(n), i*100.0/n))
 
                 tlast[0] = tnow
     else:
-        def status_callback(i, n):
+        def status_callback(d):
             pass
 
     wanted = ['config', 'extra/', 'index', 'phases/', 'traces/']
 
     try:
         if store_id is None:
-            print(static(url=stores_url+'/', format='text').read())
+            print(static(url=stores_url+'/', format='text').read().decode('utf-8'))
 
         else:
             store_url = ujoin(stores_url, store_id)
