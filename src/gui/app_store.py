@@ -17,6 +17,7 @@ import PyQt5.QtCore as qc
 import PyQt5.QtWidgets as qw
 
 from pyrocko import config as pconfig
+from pyrocko.gui.util import WebKitFrame
 
 
 logger = logging.getLogger('pyrocko.gui.app_store')
@@ -62,10 +63,10 @@ class AppTile(qw.QWidget):
         qw.QWidget.__init__(self)
         self.data = data
         self.label = label
-        self.installed = installed
         self.setLayout(qw.QHBoxLayout())
         self.setup()
         self.update_state(installed)
+        self.snuffling = None
 
     def setup(self):
         self.layout().addWidget(qw.QLabel(self.label))
@@ -73,15 +74,14 @@ class AppTile(qw.QWidget):
         self.button_install.clicked.connect(self.un_install)
         self.layout().addWidget(self.button_install)
 
-        button_checkout = qw.QPushButton('View')
+        button_checkout = qw.QPushButton('Source Code')
         self.layout().addWidget(button_checkout)
-        print(self.data['url'])
         button_checkout.clicked.connect(
             self.open_url_slot)
 
     @qc.pyqtSlot()
     def open_url_slot(self):
-        self.open_url.emit(self.data['url'])
+        self.open_url_signal.emit(self.data['html_url'])
 
     def update_state(self, is_installed=None):
         if is_installed or self.is_installed:
@@ -109,7 +109,8 @@ class AppTile(qw.QWidget):
             self.remove()
         else:
             if self.data['type'] == 'dir':
-                response = urlopen(base_url + 'contents/' + self.data['name'] + '?ref=%s'%git_branch)
+                response = urlopen(
+                    base_url + 'contents/' + self.data['name'] + '?ref=%s'%git_branch)
                 logger.debug(response)
                 json_data = json.load(response.decode())
 
@@ -119,7 +120,6 @@ class AppTile(qw.QWidget):
                     self.download(name, item)
             else:
                 self.download('', self.data)
-
         self.update_state()
 
     def remove(self):
@@ -127,8 +127,9 @@ class AppTile(qw.QWidget):
         fns = pjoin(destination_path, self.data['name'])
         try:
             shutil.rmtree(fns)
-        except OSError:
+        except OSError as e:
             os.remove(fns)
+            print(e)
 
 
 class AppWidget(qw.QWidget):
@@ -145,7 +146,7 @@ class AppWidget(qw.QWidget):
         box.setText('%s' % message)
         box.exec_()
 
-    def refresh(self):
+    def refresh(self, callback=None):
         try:
             logger.info('Checking contrib-snufflings repo')
 
@@ -159,8 +160,22 @@ class AppWidget(qw.QWidget):
 
             n_repos = len(self.json_data)
             layout = self.layout()
+            progress_dialog = qw.QProgressDialog(parent=self)
+            progress_dialog.setModal(qc.Qt.WindowModal)
+            progress_dialog.setWindowTitle('Connecting')
+            progress_dialog.setLabelText('Connecting to AppStore')
+            progress_dialog.setMaximum(n_repos)
+            progress_dialog.setAutoClose(True)
+            progress_dialog.canceled.connect(self.cancel_refresh)
+            progress_dialog.show()
+            self.refresh_cancelled = False
+
             for irepo, data in enumerate(self.json_data):
-                print(irepo+1, n_repos)
+                progress_dialog.setValue(irepo+1)
+
+                if self.refresh_cancelled:
+                    return
+
                 if data['name'] in exclude:
                     continue
 
@@ -186,22 +201,32 @@ class AppWidget(qw.QWidget):
 
                 m = re.search(reader_re, app_header)
                 if m:
-                    app_label = m.group(1)
+                    app_label = m.group(1).strip()
                 else:
                     app_label = data['name']
                 tile = AppTile(data, label=app_label, installed=is_installed)
-                tile.open_url_signal.connect(self.parent().open_browser)
+                tile.open_url_signal.connect(self.open_browser)
                 tile.snuffling_update_required.connect(self.setup_snufflings)
                 self.layout().addWidget(tile)
 
         except URLError as e:
             self.fail('No connection to internet')
             self.setVisible(False)
+        finally:
+            progress_dialog.setValue(n_repos)
+
+    def cancel_refresh(self):
+        self.refresh_cancelled = True
 
     def setup_snufflings(self):
         if self.viewer:
             logger.debug('setup snufflings')
             self.viewer.setup_snufflings([destination_path])
+
+    @qc.pyqtSlot(str)
+    def open_browser(self, url):
+        f = WebKitFrame(url)
+        self.viewer.panel_parent.add_tab('Browse the code', f)
 
 
 class AppStore(qw.QFrame):
@@ -211,6 +236,10 @@ class AppStore(qw.QFrame):
         w = AppWidget(viewer=self.viewer)
         w.refresh()
         self.setLayout(qw.QVBoxLayout())
+        self.setAutoFillBackground(True)
+        pal = self.palette()
+        pal.setColor(qg.QPalette.Background, qc.Qt.white)
+        self.setPalette(pal)
 
         prolog = qw.QLabel(prolog_html)
 
@@ -226,10 +255,6 @@ class AppStore(qw.QFrame):
         if self.viewer:
             self.viewer.store = None
 
-    @qc.pyqtSlot(str)
-    def open_browser(self, url):
-        f = WebKitFrame(url)
-        self.viewer.add_tab('Browse the code', f)
 
 
 if __name__ == '__main__':
