@@ -511,7 +511,10 @@ class FigureFrame(qw.QFrame):
         import matplotlib
         matplotlib.rcdefaults()
         if use_pyqt5:
-            matplotlib.rcParams['backend'] = 'Qt5Agg'
+            try:
+                matplotlib.rcParams['backend'] = 'Qt5Agg'
+            except ValueError:
+                matplotlib.rcParams['backend'] = 'Qt4Agg'
         else:
             matplotlib.rcParams['backend'] = 'Qt4Agg'
 
