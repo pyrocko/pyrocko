@@ -18,6 +18,7 @@ import PyQt5.QtWidgets as qw
 
 from pyrocko import config as pconfig
 
+
 logger = logging.getLogger('pyrocko.gui.app_store')
 
 pjoin = os.path.join
@@ -55,6 +56,7 @@ prolog_html = '''
 class AppTile(qw.QWidget):
 
     snuffling_update_required = qc.pyqtSignal()
+    open_url_signal = qc.pyqtSignal(str)
 
     def __init__(self, data, label, installed=False):
         qw.QWidget.__init__(self)
@@ -67,9 +69,19 @@ class AppTile(qw.QWidget):
 
     def setup(self):
         self.layout().addWidget(qw.QLabel(self.label))
-        self.install_button = qw.QPushButton('')
-        self.install_button.clicked.connect(self.un_install)
-        self.layout().addWidget(self.install_button)
+        self.button_install = qw.QPushButton('')
+        self.button_install.clicked.connect(self.un_install)
+        self.layout().addWidget(self.button_install)
+
+        button_checkout = qw.QPushButton('View')
+        self.layout().addWidget(button_checkout)
+        print(self.data['url'])
+        button_checkout.clicked.connect(
+            self.open_url_slot)
+
+    @qc.pyqtSlot()
+    def open_url_slot(self):
+        self.open_url.emit(self.data['url'])
 
     def update_state(self, is_installed=None):
         if is_installed or self.is_installed:
@@ -77,7 +89,7 @@ class AppTile(qw.QWidget):
         else:
             button_label = 'Install'
 
-        self.install_button.setText(button_label)
+        self.button_install.setText(button_label)
         self.snuffling_update_required.emit()
 
     def download(self, name, item):
@@ -161,20 +173,24 @@ class AppWidget(qw.QWidget):
                         is_installed = False
                     else:
                         raise e
-                print(data['type'])
+
                 if data['type'] == 'dir':
+                    # TODO: to be handled
                     continue
 
                 req = Request(data['download_url'])
                 req.add_header(*header_request)
                 response = urlopen(req)
-                app_header = response.read()
+
+                app_header = reader(response).read()
+
                 m = re.search(reader_re, app_header)
                 if m:
                     app_label = m.group(1)
                 else:
                     app_label = data['name']
                 tile = AppTile(data, label=app_label, installed=is_installed)
+                tile.open_url_signal.connect(self.parent().open_browser)
                 tile.snuffling_update_required.connect(self.setup_snufflings)
                 self.layout().addWidget(tile)
 
@@ -209,6 +225,11 @@ class AppStore(qw.QFrame):
         # TODO connect to closing event in pile viewer
         if self.viewer:
             self.viewer.store = None
+
+    @qc.pyqtSlot(str)
+    def open_browser(self, url):
+        f = WebKitFrame(url)
+        self.viewer.add_tab('Browse the code', f)
 
 
 if __name__ == '__main__':
