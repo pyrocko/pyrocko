@@ -8,4 +8,4 @@ sudo apt-get install -y python-pyqt5.qtwebengine || sudo apt-get install -y pyth
 sudo apt-get install -y python-yaml python-progressbar python-jinja2
 sudo apt-get install -y python-requests
 sudo apt-get install -y python-future || sudo easy_install future
-sudo apt-get install -y python-coverage
+sudo apt-get install -y python-coverage python-nose
