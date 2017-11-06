@@ -1,10 +1,14 @@
 import os
 from os import path as op
 
-import tempfile
-import shutil
 import numpy as num
 import logging
+import posixpath
+import urllib
+import shutil
+
+from BaseHTTPServer import HTTPServer
+from SimpleHTTPServer import SimpleHTTPRequestHandler
 
 from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet
 from pyrocko.guts import dump_xml
@@ -52,6 +56,57 @@ def convert_event_marker(marker):
         active=['no', 'yes'][marker._active])
 
     return xmleventmarker
+
+
+class RootedHTTPServer(HTTPServer):
+
+    def __init__(self, base_path, *args, **kwargs):
+        HTTPServer.__init__(self, *args, **kwargs)
+        self.RequestHandlerClass.base_path = base_path
+
+
+class RootedHTTPRequestHandler(SimpleHTTPRequestHandler):
+
+    def translate_path(self, path):
+        path = posixpath.normpath(urllib.unquote(path))
+        words = path.split('/')
+        words = filter(None, words)
+        path = self.base_path
+        for word in words:
+            drive, word = os.path.splitdrive(word)
+            head, word = os.path.split(word)
+            if word in (os.curdir, os.pardir):
+                continue
+            path = os.path.join(path, word)
+        return path
+
+
+class FileServingWorker(qc.QObject):
+
+    def __init__(self, dirname, *args, **kwargs):
+        super(FileServingWorker, self).__init__(*args, **kwargs)
+        self.dirname = dirname
+        self.httpd = None
+
+    @qc.pyqtSlot(int)
+    def run(self, port):
+        server_address = ('', port)
+        self.httpd = RootedHTTPServer(
+            self.dirname, server_address, RootedHTTPRequestHandler)
+        sa = self.httpd.socket.getsockname()
+        logger.debug('Serving on port %s' % sa[1])
+        self.httpd.serve_forever()
+
+    @qc.pyqtSlot()
+    def stop(self):
+        if self.httpd:
+            logger.debug('Shutdown server')
+            self.httpd.shutdown()
+            self.httpd.socket.close()
+
+
+class SignalProxy(qc.QObject):
+    content_to_serve = qc.pyqtSignal(int)
 
 
 class MapMaker(Snuffling):
@@ -104,6 +159,7 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
     </body>
     </html>
     '''
+
     def setup(self):
         self.set_name('Map')
         self.add_parameter(Switch('Only active event', 'only_active', False))
@@ -114,8 +170,24 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
 
         self.set_live_update(False)
         self.figcount = 0
+        self.thread = qc.QThread()
+        self.marker_tempdir = self.tempdir()
+
+        self.file_serving_worker = FileServingWorker(self.marker_tempdir)
+        self.file_serving_worker.moveToThread(self.thread)
+        self.data_proxy = SignalProxy()
+        self.data_proxy.content_to_serve.connect(
+            self.file_serving_worker.run)
+        self.thread.start()
+        self.port = 9998
+
+        self.viewer_connected = False
 
     def call(self):
+        if not self.viewer_connected:
+            self.get_viewer().about_to_close.connect(
+                self.file_serving_worker.stop)
+            self.viewer_connected = True
         try:
             from OpenGL import GL  # noqa
         except ImportError:
@@ -186,20 +258,22 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
 
         event_station_list.validate()
         if self.map_kind != 'GMT':
-            tempdir = tempfile.mkdtemp(dir=self.tempdir())
+            tempdir = self.marker_tempdir
             if self.map_kind == 'Google Maps':
                 map_fn = 'map_googlemaps.html'
             elif self.map_kind == 'OpenStreetMap':
                 map_fn = 'map_osm.html'
 
-            url = 'file://' + tempdir + '/' + map_fn
+            url = 'http://localhost:' + str(self.port) + '/%s' % map_fn
 
             snuffling_dir = op.dirname(op.abspath(__file__))
             for entry in ['loadxmldoc.js', 'plates.kml', map_fn]:
                 shutil.copy(os.path.join(snuffling_dir, entry),
                             os.path.join(tempdir, entry))
 
-            markers_fn = os.path.join(tempdir, 'markers.xml')
+            markers_fn = os.path.join(self.marker_tempdir, 'markers.xml')
+            print(markers_fn)
+            self.data_proxy.content_to_serve.emit(self.port)
             dump_xml(event_station_list, filename=markers_fn)
 
             if self.open_external:
@@ -257,6 +331,9 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
 
             lats_all = num.array(lats_all)
             lons_all = num.array(lons_all)
+
+            if len(lats_all) == 0:
+                return
 
             center_lat, center_lon = ortho.geographic_midpoint(
                 lats_all, lons_all)

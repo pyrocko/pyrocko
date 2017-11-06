@@ -9,6 +9,8 @@ __pycache__
 *.swp
 *.so
 doc/_build
+maintenance/vagrant/*/*.out
+maintenance/vagrant/*/.vagrant
 src/info.py
 pages
 tags

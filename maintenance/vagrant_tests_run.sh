@@ -5,9 +5,10 @@ set -e
 rm -f vagrant/*/*.out
 
 branch=$1
+thetest=$2
 
 if [ -z "$branch" ]; then
-    echo 'usage: vagrant_test.sh <branch>'
+    echo 'usage: vagrant_tests_run.sh <branch> <test>'
     exit 1
 fi
 
@@ -20,6 +21,6 @@ done
 for box in `ls vagrant` ; do 
     echo "testing box $box"
     cd "vagrant/$box"
-    ./outside.sh "$branch"
+    ./outside.sh "$branch" "$thetest"
     cd ../..
 done

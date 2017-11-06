@@ -688,7 +688,7 @@ class PixmapFrame(qw.QLabel):
         self.menu.popup(qg.QCursor.pos())
 
     def load_pixmap(self, filename):
-        self.pixmap = qw.QPixmap(filename)
+        self.pixmap = qg.QPixmap(filename)
         self.setPixmap(self.pixmap)
 
     def save_pixmap(self, filename=None):

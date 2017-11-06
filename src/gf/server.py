@@ -203,7 +203,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
             self.log_request(self.code)
 
         # signal the end of this request
-        self.outgoing.append(None)
+        # self.outgoing.append(None)
 
     def handle_request_line(self):
         """Called when the http request line and headers have been received"""
