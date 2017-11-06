@@ -109,14 +109,18 @@ def _request(url, post=False, user=None, passwd=None,
         url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
+    url_args = {
+        'timeout': g_timeout
+    }
+
     try:
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1 if allow_TLSv1
-                                     else ssl.PROTOCOL_SSLv2)
+        url_args['context'] = ssl.SSLContext(
+            ssl.PROTOCOL_TLSv1 if allow_TLSv1 else ssl.PROTOCOL_SSLv2)
     except AttributeError:
         try:
-            ssl_context = ssl.create_default_context()
+            url_args['context'] = ssl.create_default_context()
         except AttributeError:
-            ssl_context = None
+            pass
 
     opener = None
 
@@ -133,9 +137,9 @@ def _request(url, post=False, user=None, passwd=None,
         try:
 
             if opener:
-                resp = opener.open(req, timeout=g_timeout, context=ssl_context)
+                resp = opener.open(req, **url_args)
             else:
-                resp = urlopen(req, timeout=g_timeout, context=ssl_context)
+                resp = urlopen(req, **url_args)
 
             if resp.getcode() == 204:
                 raise EmptyResult(url)
