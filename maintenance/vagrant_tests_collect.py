@@ -1,21 +1,23 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 import glob
 import sys
 import os
 import re
 
+
 def parse_result(fn, show_skips=False):
     with open(fn, 'r') as f:
+        txt = f.read()
+
+        m = re.search(r'Python Version: (Python.*)', txt)
+        py_version = m.group(1)
         m = re.search(r'/test-(.*)\.py([23])\.out$', fn)
         branch = m.group(1)
-        py_version = m.group(2)
-        print('   python: %s' % py_version)
 
+        print('   python: %s' % py_version)
         print('      log: %s' % fn)
         print('      branch: %s' % branch)
-
-        txt = f.read()
 
         m = re.search(r'---+\nTOTAL +(.+)\n---+', txt)
         if m:
@@ -56,4 +58,3 @@ if len(args) == 0:
                 parse_result(result)
         else:
             print('  ', '<no results>')
-
