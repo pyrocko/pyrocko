@@ -32,12 +32,14 @@ ln -s "/pyrocko-test-data" "test/data"
 
 python3 setup.py install_prerequisites --force-yes && \
     sudo python3 setup.py install -f && \
+    python3 --version >> "$outfile_py3" && \
     python3 -m pyrocko.print_version >> "$outfile_py3" && \
     nosetests3 "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true
 
 python setup.py install_prerequisites --force-yes && \
     sudo python setup.py install -f && \
+    python --version >> "$outfile_py3" && \
     python -m pyrocko.print_version >> "$outfile_py2" && \
     nosetests "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
     /bin/true
