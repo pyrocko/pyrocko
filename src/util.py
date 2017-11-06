@@ -4,7 +4,7 @@
 # ---|P------/S----------~Lg----------
 '''Utility functions for Pyrocko.'''
 from __future__ import division, print_function
-from past.builtins import zip
+from past.builtins import zip, long
 from builtins import range
 from builtins import object
 
