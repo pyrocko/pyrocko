@@ -49,7 +49,7 @@ class GFWSTestCase(unittest.TestCase):
                     'localhost', 32483, server.SeismosizerHandler, self.engine)
 
             def run(self):
-                asyncore.loop(1.)
+                asyncore.loop(1., use_poll=True)
 
         t_ws = ServerThread(self.serve_dir)
         t_ws.start()
