@@ -113,7 +113,10 @@ def _request(url, post=False, user=None, passwd=None,
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1 if allow_TLSv1
                                      else ssl.PROTOCOL_SSLv2)
     except AttributeError:
-        ssl_context = ssl.create_default_context()
+        try:
+            ssl_context = ssl.create_default_context()
+        except AttributeError:
+            ssl_context = None
 
     opener = None
 
