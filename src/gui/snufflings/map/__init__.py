@@ -1,24 +1,35 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+
+from pyrocko.gui.qt_compat import qc, qg
 import os
 from os import path as op
+import sys
 
 import numpy as num
 import logging
 import posixpath
-import urllib
 import shutil
 
-from BaseHTTPServer import HTTPServer
-from SimpleHTTPServer import SimpleHTTPRequestHandler
+if sys.version_info >= (3, 0):
+    from http.server import HTTPServer, SimpleHTTPRequestHandler
+    from urllib.parse import unquote
+else:
+    from BaseHTTPServer import HTTPServer
+    from SimpleHTTPServer import SimpleHTTPRequestHandler
+    from urllib import unquote
 
-from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet
-from pyrocko.guts import dump_xml
-from pyrocko import util, gui_util, model, orthodrome as ortho
-from pyrocko import moment_tensor
-from pyrocko.automap import Map
-from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker
-from .xmlMarker import StationMarkerList, MarkerLists
+from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet    # noqa
+from pyrocko.guts import dump_xml                                       # noqa
+from pyrocko import util, gui_util, model, orthodrome as ortho          # noqa
+from pyrocko import moment_tensor                                       # noqa
+from pyrocko.automap import Map                                         # noqa
+from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker # noqa
+from .xmlMarker import StationMarkerList, MarkerLists                   # noqa
 
-from pyrocko.gui.qt_compat import qc, qg
 
 g_counter = 0
 
@@ -68,7 +79,7 @@ class RootedHTTPServer(HTTPServer):
 class RootedHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path):
-        path = posixpath.normpath(urllib.unquote(path))
+        path = posixpath.normpath(unquote(path))
         words = path.split('/')
         words = filter(None, words)
         path = self.base_path
@@ -272,7 +283,6 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
                             os.path.join(tempdir, entry))
 
             markers_fn = os.path.join(self.marker_tempdir, 'markers.xml')
-            print(markers_fn)
             self.data_proxy.content_to_serve.emit(self.port)
             dump_xml(event_station_list, filename=markers_fn)
 

@@ -414,8 +414,9 @@ class SnufflerTabs(qw.QTabWidget):
 
     def keyPressEvent(self, event):
         if event.text() == 'd':
-            self.tabCloseRequested.emit(
-                self.currentIndex())
+            i = self.currentIndex()
+            if i != 0:
+                self.tabCloseRequested.emit(i)
         else:
             self.parent().keyPressEvent(event)
 
