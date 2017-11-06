@@ -1179,7 +1179,7 @@ def base36encode(number, alphabet='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'):
     Convert positive integer to a base36 string.
     '''
 
-    if not isinstance(number, int):
+    if not isinstance(number, (int, long)):
         raise TypeError('number must be an integer')
     if number < 0:
         raise ValueError('number must be positive')
