@@ -7,6 +7,7 @@ from builtins import str
 
 import re
 import logging
+import ssl
 try:
     from urllib.parse import urlencode
 except ImportError:
@@ -20,9 +21,8 @@ except ImportError:
                                 urlopen)
     from urllib.error import HTTPError
 
-import ssl
-
 from pyrocko import util
+
 
 logger = logging.getLogger('pyrocko.client.fdsn')
 
