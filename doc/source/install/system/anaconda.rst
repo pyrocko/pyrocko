@@ -1,12 +1,12 @@
-Installation under Anaconda2
+Installation for Anaconda
 ............................
 
-* **Anaconda2** thru conda
+* **Anaconda3** using ``conda`` package manager (Preferred)::
     
-    conda install -c pyrocko pyrocko 
+    conda install -c pyrocko pyrocko
 
-More Information available at <https://anaconda.org/pyrocko/pyrocko>_
-
+Packages are available for Linux 64-Bit and MacOS.
+More information available at https://anaconda.org/pyrocko/pyrocko
 
 * **Anaconda2** (4.2.0)::
 

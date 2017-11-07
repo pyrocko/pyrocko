@@ -7,10 +7,10 @@ on some popular systems.
 
 .. toctree::
    Debian based systems (Debian, Ubuntu, Mint) <deb>
+   Anaconda <anaconda>
+   Mac OS X <mac>
    Fedora <fedora>
    OpenSuse <suse>
-   Mac OS X <mac>
-   Anaconda2 <anaconda2>
 
 For instructions on how to install Pyrocko on other systems or if the
 installation with any of the above procedures fails, see

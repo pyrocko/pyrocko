@@ -1,16 +1,12 @@
 {% set data = load_setup_py_data() %}
 
-
 package:
   name: pyrocko
   version: {{ data.get('version') }}
 
 source:
-  path: ../../
+  path: ../../../
   # git-url: https://github.com/pyrocko/pyrocko
-
-build:
-  script: $PYTHON setup.py install
 
 requirements:
   build:
@@ -24,12 +20,7 @@ requirements:
     - pyyaml
     - progressbar2
     - future
-
-app:
-  entry: snuffler .
-  summary: A seismogram browser and workbench from Pyrocko.
-  icon: snuffler.png
-  type: gui
+    - requests
 
 about:
   home: http://pyrocko.org
