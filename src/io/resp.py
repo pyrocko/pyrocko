@@ -471,14 +471,38 @@ def iload_fh(f):
 
                 stages.append(stage)
 
-        if totalgain and stages:
+        if stages:
             resp = sxml.Response(
-                instrument_sensitivity=sxml.Sensitivity(
-                    value=totalgain.value,
-                    frequency=totalgain.frequency,
-                    input_units=stages[0].input_units,
-                    output_units=stages[-1].output_units),
                 stage_list=stages)
+
+            if totalgain:
+                totalgain_value = totalgain.value
+                totalgain_frequency = totalgain.frequency
+
+            else:
+                totalgain_value = 1.
+                gain_frequencies = []
+                for stage in stages:
+                    totalgain_value *= stage.stage_gain.value
+                    gain_frequencies.append(stage.stage_gain.frequency)
+
+                totalgain_frequency = gain_frequencies[0]
+
+                if not all(f == totalgain_frequency for f in gain_frequencies):
+                    logger.warn(
+                        'no total gain reported and inconsistent gain '
+                        'frequency values found in resp file for %s.%s.%s.%s: '
+                        'omitting total gain and frequency from created '
+                        'instrument sensitivity object' % nslc)
+
+                    totalgain_value = None
+                    totalgain_frequency = None
+
+            resp.instrument_sensitivity = sxml.Sensitivity(
+                value=totalgain_value,
+                frequency=totalgain_frequency,
+                input_units=stages[0].input_units,
+                output_units=stages[-1].output_units)
 
             yield ChannelResponse(
                 codes=nslc,
