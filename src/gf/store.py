@@ -1417,6 +1417,14 @@ class Store(BaseStore):
     stats_keys = BaseStore.stats_keys + ['decimated']
 
     def check(self, show_progress=False):
+        for pdef in self.config.tabulated_phases:
+            phase_id = pdef.id
+            ph = self.get_stored_phase(phase_id)
+            if ph.check_holes():
+                logger.warn(
+                    'travel time table of phase "{}" contains holes'.format(
+                        phase_id))
+
         if show_progress:
             pbar = util.progressbar('checking store', self.config.nrecords)
 
@@ -1608,9 +1616,21 @@ class Store(BaseStore):
         '''
 
         data = []
+        failed = []
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
+            if not tmin:
+                failed.append(str(begin))
+            if not tmax:
+                failed.append(str(end))
+
+            if failed:
+                msg = 'determination of time window failed using phase ' +\
+                    'definitions: {}.\n Travel time table contains holes ' +\
+                    'in probed ranges.'
+                raise MakeTimingParamsFailed(msg.format(' and '.join(failed)))
+
             x = self.config.get_surface_distance(args)
             data.append((x, tmin, tmax))
 
