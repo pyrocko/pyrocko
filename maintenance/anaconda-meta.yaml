@@ -20,7 +20,7 @@ requirements:
     - numpy
     - scipy
     - matplotlib
-    - pyqt 4.11.4
+    - pyqt
     - pyyaml
     - progressbar2
     - future

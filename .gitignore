@@ -23,3 +23,10 @@ htmlcov
 
 .cache
 test/example_run_dir
+
+# Anaconda
+miniconda.sh
+maintenance/pyrocko-anaconda-deploy
+
+# Other stuff
+*.err_log
