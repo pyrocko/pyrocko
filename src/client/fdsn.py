@@ -135,11 +135,13 @@ def _request(url, post=False, user=None, passwd=None,
     while True:
         itry += 1
         try:
-
-            if opener:
-                resp = opener.open(req, **url_args)
-            else:
-                resp = urlopen(req, **url_args)
+            urlopen_ = opener.open if opener else urlopen
+            while True:
+                try:
+                    resp = urlopen_(req, **url_args)
+                    break
+                except TypeError:
+                    del url_args['context']  # context not avail before 3.4.3
 
             if resp.getcode() == 204:
                 raise EmptyResult(url)
