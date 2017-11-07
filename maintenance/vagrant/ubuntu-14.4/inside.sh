@@ -31,6 +31,7 @@ cd "$pyrockodir"
 ln -s "/pyrocko-test-data" "test/data"
 
 python3 setup.py install_prerequisites --force-yes && \
+    sudo apt-get install python3-pyqt4 python3-pyqt4.qtopengl && \
     sudo python3 setup.py install -f && \
     echo -n "Python Version: " >> "$outfile_py3" && \
     python3 --version >> "$outfile_py3" && \
