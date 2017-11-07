@@ -2,7 +2,7 @@
 set -e
 VERSION=`python -c "import pyrocko; print(pyrocko.__version__);"`
 
-if [ ! -f maintenance/update-docs.sh ] ; then
+if [ ! -f maintenance/deploy-docs.sh ] ; then
     echo "must be run from pyrocko's toplevel directory"
     exit 1
 fi
