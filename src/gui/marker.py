@@ -182,7 +182,7 @@ class Marker(object):
 
         return markers
 
-    def __init__(self, nslc_ids, tmin, tmax, kind=0):
+    def __init__(self, nslc_ids, tmin, tmax, kind=0, uncertainty=0.):
         self.set(nslc_ids, tmin, tmax)
         c = plot.color
 
@@ -200,6 +200,7 @@ class Marker(object):
         self.alerted = False
         self.selected = False
         self.kind = kind
+        self.uncertainty = uncertainty
 
     def set(self, nslc_ids, tmin, tmax):
         '''Set ``nslc_ids``, start time and end time of :py:class:`Marker`
@@ -393,6 +394,8 @@ class Marker(object):
 
             if draw_line or self.selected or self.alerted:
                 p.setPen(linepen)
+                drawline(self.tmin - self.uncertainty)
+                drawline(self.tmax + self.uncertainty)
                 drawline(self.tmin)
                 drawline(self.tmax)
 
