@@ -22,6 +22,26 @@ earthradius = config().earthradius
 d2m = earthradius_equator*math.pi/180.
 m2d = 1./d2m
 
+_testpath = Path([(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)], closed=True)
+
+if hasattr(_testpath, 'contains_points') and num.all(
+        _testpath.contains_points([(0.5, 0.5), (1.5, 0.5)]) != [True, False]):
+
+    def path_contains_points(verts, points):
+        p = Path(verts, closed=True)
+        return p.contains_points(points).astype(num.bool)
+
+else:
+    # work around missing contains_points and bug in matplotlib ~ v1.2.0
+
+    def path_contains_points(verts, points):
+        p = Path(verts, closed=True)
+        result = num.zeros(points.shape[0], dtype=num.bool)
+        for i in range(result.size):
+            result[i] = p.contains_point(points[i, :])
+
+        return result
+
 
 try:
     cbrt = num.cbrt
@@ -1214,12 +1234,8 @@ def contains_points(polygon, points):
         for poly_rot_group_xyz in group:
             try:
                 poly_rot_group_pro = stereographic_poly(poly_rot_group_xyz)
-                p = Path(poly_rot_group_pro, closed=True)
-                if hasattr(p, 'contains_points'):
-                    result += p.contains_points(points_rot_pro)
-                else:
-                    for i in range(result.size):
-                        result[i] += p.contains_point(points_rot_pro[i, :])
+                result += path_contains_points(
+                    poly_rot_group_pro, points_rot_pro)
 
             except Farside:
                 pass
