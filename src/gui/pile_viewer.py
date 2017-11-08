@@ -1126,7 +1126,6 @@ def MakePileViewerMainClass(base):
             self.automatic_updates = True
 
             self.closing = False
-
             self.paint_timer = qc.QTimer(self)
             self.paint_timer.timeout.connect(self.reset_updates)
             self.paint_timer.setInterval(20)
@@ -1134,7 +1133,8 @@ def MakePileViewerMainClass(base):
 
         @qc.pyqtSlot()
         def reset_updates(self):
-            self.setUpdatesEnabled(True)
+            if not self.updatesEnabled():
+                self.setUpdatesEnabled(True)
 
         def fail(self, reason):
             box = qw.QMessageBox(self)
@@ -1836,6 +1836,7 @@ def MakePileViewerMainClass(base):
             self.ignore_releases = 1
 
         def mouseMoveEvent(self, mouse_ev):
+            self.setUpdatesEnabled(False)
             point = self.mapFromGlobal(mouse_ev.globalPos())
 
             if self.picking:
@@ -2544,7 +2545,6 @@ def MakePileViewerMainClass(base):
 
             self.time_spent_painting = self.timer_draw.get()[-1]
             self.time_last_painted = time.time()
-            self.setUpdatesEnabled(False)
 
         def determine_box_styles(self):
 
