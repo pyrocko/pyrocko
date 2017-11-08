@@ -1125,6 +1125,7 @@ def MakePileViewerMainClass(base):
 
             self.automatic_updates = True
 
+            self.control_pressed = False
             self.closing = False
             self.paint_timer = qc.QTimer(self)
             self.paint_timer.timeout.connect(self.reset_updates)
@@ -1790,15 +1791,12 @@ def MakePileViewerMainClass(base):
 
         def mousePressEvent(self, mouse_ev):
             self.show_all = False
-            self.control_pressed = False
 
             point = self.mapFromGlobal(mouse_ev.globalPos())
 
             if mouse_ev.button() == qc.Qt.LeftButton:
                 marker = self.marker_under_cursor(point.x(), point.y())
                 if self.picking:
-                    if mouse_ev.modifiers() & qc.Qt.ControlModifier:
-                        self.control_pressed
 
                     if self.picking_down is None:
                         self.picking_down = (
@@ -1833,7 +1831,6 @@ def MakePileViewerMainClass(base):
 
             self.track_start = None
             self.track_trange = None
-            self.control_pressed = False
 
             self.update_status()
 
@@ -1942,12 +1939,19 @@ def MakePileViewerMainClass(base):
             if needupdate:
                 self.update()
 
+        def keyReleaseEvent(self, key_event):
+            if (key_event.modifiers() | qc.Qt.ControlModifier):
+                self.control_pressed = False
+
         def keyPressEvent(self, key_event):
             self.show_all = False
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
 
             keytext = str(key_event.text())
+
+            if (key_event.modifiers() & qc.Qt.ControlModifier):
+                self.control_pressed = True
 
             if keytext == '?':
                 self.help()
@@ -3468,12 +3472,6 @@ def MakePileViewerMainClass(base):
         def update_picking(self, x, y, doshift=False):
             if self.picking:
                 mouset = self.time_projection.rev(x)
-                err_y = self.track_to_screen(0)
-                print('err', err_y)
-                print(y)
-                print(self.track_to_screen(y))
-
-                # mousey = self.track_projections.values()[0].rev(y)
                 dt = 0.0
                 if mouset < self.tmin or mouset > self.tmax:
                     if mouset < self.tmin:
@@ -3511,8 +3509,9 @@ def MakePileViewerMainClass(base):
                 self.floating_marker.set(nslc_ids, tmin, tmax)
 
                 if self.control_pressed:
-                    sigma = self.time_projection.rev(self.y_start_pick) - \
-                        self.time_projection.rev(y)
+                    sigma = max(self.time_projection.rev(y) - \
+                                self.time_projection.rev(self.y_start_pick),
+                                0.)
                     self.floating_marker.uncertainty = sigma
 
                 if dt != 0.0 and doshift:
