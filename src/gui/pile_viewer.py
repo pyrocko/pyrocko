@@ -1105,8 +1105,6 @@ def MakePileViewerMainClass(base):
             self.time_spent_painting = 0.0
             self.time_last_painted = time.time()
 
-            self.timer_update_soon = None
-
             self.interactive_range_change_time = 0.0
             self.interactive_range_change_delay_time = 10.0
             self.follow_timer = None
@@ -1128,14 +1126,15 @@ def MakePileViewerMainClass(base):
             self.automatic_updates = True
 
             self.closing = False
+            self.paint_timer = qc.QTimer(self)
+            self.paint_timer.timeout.connect(self.reset_updates)
+            self.paint_timer.setInterval(20)
+            self.paint_timer.start()
 
-        def update(self):
-            self.timer_update_soon = None
-            qw.QWidget.update(self)
-
-        def update_soon(self):
-            if not self.timer_update_soon:
-                self.timer_update_soon = qc.QTimer.singleShot(50, self.update)
+        @qc.pyqtSlot()
+        def reset_updates(self):
+            if not self.updatesEnabled():
+                self.setUpdatesEnabled(True)
 
         def fail(self, reason):
             box = qw.QMessageBox(self)
@@ -1837,6 +1836,7 @@ def MakePileViewerMainClass(base):
             self.ignore_releases = 1
 
         def mouseMoveEvent(self, mouse_ev):
+            self.setUpdatesEnabled(False)
             point = self.mapFromGlobal(mouse_ev.globalPos())
 
             if self.picking:
@@ -1861,11 +1861,7 @@ def MakePileViewerMainClass(base):
                     tmin0 - dt - dtr*frac,
                     tmax0 - dt + dtr*(1.-frac))
 
-                if self.time_last_painted < time.time() \
-                        - self.time_spent_painting * 2.:
-                    self.update()
-                else:
-                    self.update_soon()
+                self.update()
             else:
                 self.hoovering(point.x(), point.y())
 
