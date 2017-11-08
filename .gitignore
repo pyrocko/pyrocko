@@ -32,3 +32,5 @@ maintenance/anaconda/pyrocko-anaconda-deploy
 *.err_log
 
 pyrocko.git/
+.vagrant/
+pyrocko-test-data/
