@@ -62,7 +62,7 @@ def bash_completions_dir():
     try:
         d = q(['pkg-config', 'bash-completion', '--variable=completionsdir'])
         return d.strip().decode('utf-8')
-    except:
+    except Exception:
         return None
 
 
@@ -96,7 +96,7 @@ installed_date = %s
         f = open(pjoin('src', 'info.py'), 'w')
         f.write(s)
         f.close()
-    except:
+    except Exception:
         pass
 
 
@@ -104,7 +104,7 @@ def make_prerequisites():
     from subprocess import check_call
     try:
         check_call(['sh', 'prerequisites/prerequisites.sh'])
-    except:
+    except Exception:
         sys.exit('error: failed to build the included prerequisites with '
                  '"sh prerequisites/prerequisites.sh"')
 
@@ -115,7 +115,7 @@ def get_long_description():
                   op.dirname(op.abspath(__file__)),
                   'README.md'), 'r') as readme:
             return readme.read()
-    except:
+    except Exception:
         return 'Failed to get long description'
 
 
@@ -301,7 +301,7 @@ class CustomInstallCommand(install):
             try:
                 shutil.copy('extras/pyrocko', bd_dir)
                 print('Installing pyrocko bash_completion to "%s"' % bd_dir)
-            except:
+            except Exception:
                 print(
                     'Could not install pyrocko bash_completion to "%s" '
                     '(continuing without)'
@@ -559,7 +559,7 @@ else:
 
 
 packname = 'pyrocko'
-version = time.strftime('2017.7')
+version = '2017.11'
 
 subpacknames = [
     'pyrocko.gf',

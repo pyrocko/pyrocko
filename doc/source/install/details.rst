@@ -15,6 +15,7 @@ Prerequisites
 
 The following software packages must be installed before Pyrocko can be installed:
 
+
 * Try to use normal system packages for these Python modules:
    * `Python <http://www.python.org/>`_ (>= 2.6 and >=3.4, with development headers)
    * `NumPy <http://numpy.scipy.org/>`_ (>= 1.6, with development headers)
@@ -38,6 +39,10 @@ The following software packages must be installed before Pyrocko can be installe
    * `QSEIS <http://kinherd.org/fomosto-qseis-2006a.tar.gz>`_ (optional, needed for the Fomosto ``qseis.2006a`` backend)
    * `QSSP <http://kinherd.org/fomosto-qssp-2010.tar.gz>`_ (optional, needed for the Fomosto ``qssp.2010`` backend)
 
+This can be shortcutted by::
+
+    sudo python setup.py make_prerequisites
+
 The names of the system packages to be installed differ from system to system.
 Whether there are separate packages for the development headers of NumPy and
 Python (the \*-dev packages) is also system specific.
@@ -46,7 +51,7 @@ Python (the \*-dev packages) is also system specific.
 Download and install Pyrocko
 ----------------------------
 
-Use *git* to download the software package and the included script *setup.py*
+Use ``git`` to download the software package and the included script ``setup.py``
 to install::
 
     cd ~/src/   # or wherever you keep your source packages

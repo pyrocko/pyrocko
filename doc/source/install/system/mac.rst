@@ -1,6 +1,11 @@
 Installation on Mac OS X systems
 ................................
 
+
+* Anaconda for MacOS
+    
+    If you are using Anaconda under MacOS, see :doc:`/anaconda`
+
 * **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)::
   
     sudo port install git

@@ -4,11 +4,15 @@ import matplotlib
 
 gui_toolkit = config.effective_gui_toolkit()
 
+qt5_backend_available = 'Qt5Agg' in matplotlib.rcsetup.all_backends
+
 if gui_toolkit == 'auto':
     try:
-        import PyQt5
-        use_pyqt5 = True
-
+        if qt5_backend_available:
+            import PyQt5
+            use_pyqt5 = True
+        else:
+            use_pyqt5 = False
     except ImportError:
         use_pyqt5 = False
 
@@ -16,6 +20,9 @@ elif gui_toolkit == 'qt4':
     use_pyqt5 = False
 else:
     use_pyqt5 = True
+    if not qt5_backend_available:
+        raise Exception(
+            'Qt5 was forced but matplotlib Qt5Agg backend is not availble')
 
 
 if use_pyqt5:
