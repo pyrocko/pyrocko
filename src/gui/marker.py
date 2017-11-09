@@ -649,6 +649,7 @@ class EventMarker(Marker):
 
 
 class PhaseMarker(Marker):
+    polarity_symbols = {1: u'\u2191', -1:u'\u2193', None: u''}
     '''
     A PhaseMarker is a GUI-element representing a seismological phase arrival
 
@@ -705,7 +706,7 @@ class PhaseMarker(Marker):
         if self._phasename is not None:
             t.append(self._phasename)
         if self._polarity is not None:
-            t.append(self._polarity)
+            t.append(self.polarity_symbols.get(self._polarity, ''))
 
         if self._automatic:
             t.append('@')
@@ -745,6 +746,14 @@ class PhaseMarker(Marker):
 
     def set_phasename(self, phasename):
         self._phasename = phasename
+
+    def set_polarity(self, polarity):
+        if polarity not in [1, -1, 0, None]:
+            raise ValueError('polarity has to be 1, -1, 0 or None')
+        self._polarity = polarity
+
+    def get_polarity(self):
+        return self._polarity
 
     def convert_to_marker(self):
         del self._event
