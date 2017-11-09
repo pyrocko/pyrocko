@@ -1125,7 +1125,7 @@ def MakePileViewerMainClass(base):
 
             self.automatic_updates = True
 
-            self.control_pressed = False
+            self.y_start_control = False
             self.closing = False
             self.paint_timer = qc.QTimer(self)
             self.paint_timer.timeout.connect(self.reset_updates)
@@ -1869,7 +1869,21 @@ def MakePileViewerMainClass(base):
             else:
                 self.hoovering(point.x(), point.y())
 
+            if self.y_start_control:
+                self.update_marker_uncertainties(self.selected_markers())
+
             self.update_status()
+
+        def update_marker_uncertainties(self, markers):
+            point = self.mapFromGlobal(qg.QCursor.pos())
+            y = point.y()
+            delta_sigma = self.time_projection.rev(y) - \
+                self.time_projection.rev(self.y_start_control)
+            for m in markers:
+                uncertainty =  max(m.uncertainty + delta_sigma, 0.)
+                m.uncertainty = uncertainty
+
+            self.y_start_control = y
 
         def nslc_ids_under_cursor(self, x, y):
             ftrack = self.track_to_screen.rev(y)
@@ -1941,7 +1955,7 @@ def MakePileViewerMainClass(base):
 
         def keyReleaseEvent(self, key_event):
             if (key_event.modifiers() | qc.Qt.ControlModifier):
-                self.control_pressed = False
+                self.y_start_control = False
 
         def keyPressEvent(self, key_event):
             self.show_all = False
@@ -1951,7 +1965,8 @@ def MakePileViewerMainClass(base):
             keytext = str(key_event.text())
 
             if (key_event.modifiers() & qc.Qt.ControlModifier):
-                self.control_pressed = True
+                point = self.mapFromGlobal(qg.QCursor.pos())
+                self.y_start_control = point.y()
 
             if keytext == '?':
                 self.help()
@@ -3455,7 +3470,6 @@ def MakePileViewerMainClass(base):
                 self.picking.setGeometry(
                     gpoint.x(), gpoint.y(), 1, self.height())
                 t = self.time_projection.rev(point.x())
-                self.y_start_pick = point.y()
 
                 ftrack = self.track_to_screen.rev(point.y())
                 nslc_ids = self.get_nslc_ids_for_track(ftrack)
@@ -3508,11 +3522,8 @@ def MakePileViewerMainClass(base):
                 nslc_ids = self.get_nslc_ids_for_track(ftrack)
                 self.floating_marker.set(nslc_ids, tmin, tmax)
 
-                if self.control_pressed:
-                    sigma = max(self.time_projection.rev(y) - \
-                                self.time_projection.rev(self.y_start_pick),
-                                0.)
-                    self.floating_marker.uncertainty = sigma
+                if self.y_start_control:
+                    self.update_marker_uncertainties([self.floating_marker])
 
                 if dt != 0.0 and doshift:
                     self.interrupt_following()
