@@ -1435,13 +1435,20 @@ class Store(BaseStore):
     stats_keys = BaseStore.stats_keys + ['decimated']
 
     def check(self, show_progress=False):
+        have_holes = []
         for pdef in self.config.tabulated_phases:
             phase_id = pdef.id
             ph = self.get_stored_phase(phase_id)
             if ph.check_holes():
+                have_holes.append(phase_id)
+
+        if have_holes:
+            for phase_id in have_holes:
                 logger.warn(
                     'travel time table of phase "{}" contains holes'.format(
                         phase_id))
+        else:
+            logger.info('No holes in travel time tables')
 
         if show_progress:
             pbar = util.progressbar('checking store', self.config.nrecords)
@@ -1638,9 +1645,9 @@ class Store(BaseStore):
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
-            if not tmin:
+            if tmin is None:
                 failed.append(str(begin))
-            if not tmax:
+            if tmax is None:
                 failed.append(str(end))
 
             if failed:
