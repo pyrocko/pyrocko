@@ -3067,6 +3067,23 @@ def MakePileViewerMainClass(base):
             self.old_processed_traces = None
             self.update()
 
+        def get_adequate_tpad(self):
+            freqs = [f for f in (self.highpass, self.lowpass)
+                     if f is not None]
+
+            tpad = 0.
+            for f in [self.highpass, self.lowpass]:
+                if f is not None:
+                    tpad = max(tpad, 1.0/f)
+
+            for snuffling in self.snufflings:
+                if snuffling._post_process_hook_enabled \
+                        or snuffling._pre_process_hook_enabled:
+
+                    tpad = max(tpad, snuffling.get_tpad())
+
+            return tpad
+
         def prepare_cutout2(
                 self, tmin, tmax, trace_selector=None, degap=True,
                 demean=True, nmax=6000):
@@ -3104,9 +3121,12 @@ def MakePileViewerMainClass(base):
             lphp = self.menuitem_lphp.isChecked()
             ads = self.menuitem_allowdownsampling.isChecked()
 
+            tpad = self.get_adequate_tpad()
+            tpad = max(tpad, tsee)
+
             # state vector to decide if cached traces can be used
             vec = (
-                tmin, tmax, trace_selector, degap, demean, self.lowpass,
+                tmin, tmax, tpad, trace_selector, degap, demean, self.lowpass,
                 self.highpass, fft_filtering, lphp,
                 min_deltat_allow, self.rotate, self.shown_tracks_range,
                 ads, self.pile.get_update_count())
@@ -3139,12 +3159,8 @@ def MakePileViewerMainClass(base):
                         def trace_selectorx(tr):
                             return tr.deltat >= min_deltat_allow
 
-                    freqs = [f for f in (self.highpass, self.lowpass)
-                             if f is not None]
 
-                    tpad = 0
-                    if freqs:
-                        tpad = max(1./min(freqs), tsee)
+
 
                     for traces in self.pile.chopper(
                             tmin=tmin, tmax=tmax, tpad=tpad,

@@ -255,10 +255,11 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
         self.station_headers_file = os.path.join(
             self.tempdir, 'station_header_infos')
         self._unpack()
+        self.shutil = shutil
 
     def __del__(self):
         if self.tempdir:
-            shutil.rmtree(self.tempdir)
+            self.shutil.rmtree(self.tempdir)
 
     def get_pile(self):
         if self._pile is None:
@@ -276,6 +277,34 @@ class SeedVolumeAccess(eventdata.EventDataAccess):
                 % tr.nslc_id)
 
         return respfile
+
+    def get_stationxml(self):
+        stations = self.get_stations().values()
+        respfiles = []
+        for station in stations:
+            for channel in station.get_channels():
+                nslc = station.nsl() + (channel.name,)
+                respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % nslc)
+                respfiles.append(respfile)
+
+        from pyrocko.fdsn import resp
+        sxml = resp.make_stationxml(stations, resp.iload(respfiles))
+        return sxml
+
+    def get_restitution(self, tr, allowed_methods):
+        if 'evalresp' in allowed_methods:
+            respfile = pjoin(self.tempdir, 'RESP.%s.%s.%s.%s' % tr.nslc_id)
+            if not os.path.exists(respfile):
+                raise eventdata.NoRestitution(
+                    'no response information available for trace %s.%s.%s.%s'
+                    % tr.nslc_id)
+
+            trans = trace.InverseEvalresp(respfile, tr)
+            return trans
+        else:
+            raise eventdata.NoRestitution(
+                'no response information available for trace %s.%s.%s.%s'
+                % tr.nslc_id)
 
     def get_pyrocko_response(self, tr, target):
         '''Extract the frequency response as :py:class:`trace.EvalResp`
