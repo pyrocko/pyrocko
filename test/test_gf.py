@@ -893,6 +893,7 @@ class GFTestCase(unittest.TestCase):
                 idim = 8
             if interpolation == 'nearest_neighbor':
                 idim = 1
+            print(store.config)
 
             nsummands_scheme = [5, 5, 3]  # elastic8
             nsummands_scheme = [6, 6, 4]  # elastic10
