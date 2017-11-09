@@ -55,9 +55,9 @@ def make_stationxml_response(presponse, input_unit, output_unit):
 this_year = time.gmtime()[0]
 
 
-def dummy_aware_str_to_time(s):
+def dummy_aware_str_to_time(s, time_format='%Y-%m-%dT%H:%M:%S'):
     try:
-        util.str_to_time(s, format='%Y-%m-%dT%H:%M:%S')
+        util.str_to_time(s, format=time_format)
     except util.TimeStrError:
         year = int(s[:4])
         if year > this_year + 100:
@@ -66,7 +66,7 @@ def dummy_aware_str_to_time(s):
         raise
 
 
-def iload_fh(f):
+def iload_fh(f, time_format='%Y-%m-%dT%H:%M:%S'):
     zeros, poles, constant, comments = pz.read_sac_zpk(file=f,
                                                        get_comments=True)
     d = {}
@@ -86,7 +86,7 @@ def iload_fh(f):
     try:
         yield EnhancedSacPzResponse(
             codes=(d['network'], d['station'], d['location'], d['channel']),
-            tmin=util.str_to_time(d['start'], format='%Y-%m-%dT%H:%M:%S'),
+            tmin=util.str_to_time(d['start'], format=time_format),
             tmax=dummy_aware_str_to_time(d['end']),
             lat=float(d['latitude']),
             lon=float(d['longitude']),
