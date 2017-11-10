@@ -9,7 +9,7 @@ on some popular systems.
    Debian based systems (Debian, Ubuntu, Mint) <deb>
    Anaconda <anaconda>
    Mac OS X <mac>
-   Fedora <fedora>
+   Centos <centos>
    OpenSuse <suse>
 
 For instructions on how to install Pyrocko on other systems or if the

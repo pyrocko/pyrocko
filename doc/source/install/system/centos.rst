@@ -1,10 +1,13 @@
-Installation on Fedora systems
+Installation on Centos systems
 ..............................
 
-* **Fedora** (20)::
+.. code-block:: bash
+    :caption: e.g. **Centos** (7)
 
-    sudo yum install make git python python-yaml python-matplotlib numpy scipy PyQt4
-    sudo yum install python-jinja2 python-requests python-future
+    sudo yum install make gcc git python python-yaml python-matplotlib 
+    sudo yum install numpy scipy python-requests python-coverage 
+    sudo yum install python-jinja2 PyQt4 python-matplotlib-qt4
+    sudo yum install python-future || sudo easy_install future
     sudo easy_install progressbar
     cd ~/src/   # or wherever you keep your source packages
     git clone git://github.com/pyrocko/pyrocko.git pyrocko
