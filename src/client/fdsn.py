@@ -293,7 +293,7 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
                user=None, passwd=None, token=None,
                **kwargs):
 
-    if user is not None:
+    if user or token:
         method = 'queryauth'
     else:
         method = 'query'
