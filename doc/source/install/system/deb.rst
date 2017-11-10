@@ -1,5 +1,5 @@
-Installation on Debian based systems (Debian, Ubuntu, Mint)
-===========================================================
+Installation on Ubuntu, Debian, Mint, ...
+=========================================
 
 Python 3 installation
 ---------------------
