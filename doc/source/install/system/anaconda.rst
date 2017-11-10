@@ -1,14 +1,26 @@
-Installation for Anaconda
-............................
+Installation under Anaconda
+===========================
 
-* **Anaconda3** using ``conda`` package manager (Preferred)::
-    
+`Anaconda <https://www.anaconda.com/>`_, is a cross-platform Python
+distribution with its own package manager ``conda``. There are two versions:
+Anaconda2 for Python 2 and Anaconda3 for Python 3. Pyrocko can be installed
+under either of them.
+
+
+Anaconda3 (using ``conda`` package manager)
+-------------------------------------------
+
+Pre-built packages are available for Linux 64-Bit and MacOS. Use can use the
+``conda`` package manager to install Pyrocko::
+
     conda install -c pyrocko pyrocko
 
-Packages are available for Linux 64-Bit and MacOS.
 More information available at https://anaconda.org/pyrocko/pyrocko
 
-* **Anaconda2** (4.2.0)::
+Anaconda2 (compilation from source)
+-----------------------------------
+
+::
 
     conda install pyqt=5    # downgrades some packages
     easy_install pyavl

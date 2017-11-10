@@ -1,16 +1,23 @@
 Installation on Mac OS X systems
-................................
+================================
 
-* Anaconda for MacOS
-    
-    If you are using Anaconda under MacOS, see :doc:`/anaconda`
+On the Mac, several different package managers are available to ease the
+installation of popular open source software tools and libraries. `Anaconda
+<https://www.anaconda.com/>`_, `MacPorts <https://www.macports.org/>`_, `Fink
+<http://www.finkproject.org/>`_, and `HomeBrew <https://brew.sh/>`_ are among
+the most popular choices. To prevent trouble, pick one and stay with one.
 
-* **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)::
+Mac OS X with Anaconda 
+----------------------
 
-Superuser installation (sudo rights in /usr/bin)
-------------------------------------------------
+If you are using Anaconda under Mac OS X, see
+:doc:`/install/system/anaconda`.
+
+Mac OS X with MacPorts
+----------------------
   
-* **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)::
+.. code-block:: bash
+    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
 
     sudo port install git
     sudo port install python27
@@ -30,10 +37,13 @@ Superuser installation (sudo rights in /usr/bin)
     cd pyrocko
     sudo python setup.py install --install-scripts=/usr/local/bin
 
-Local installation (no sudo rights in /usr/bin)
------------------------------------------------
+Mac OS X with MacPorts and local installation (no sudo)
+-------------------------------------------------------
 
-* **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)::
+Try this if you don't have sudo rights in ``/usr/bin``.
+
+.. code-block:: bash
+    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
 
     port install git
     port install python27
@@ -46,12 +56,17 @@ Local installation (no sudo rights in /usr/bin)
     port install py27-setuptools
     port install py27-jinja2
 
-For local installations of python modules, please first configure your PYTHONPATH and PYTHONUSERBASE variables in your environmment or your .bash_profile::
+For local installations of python modules, please first configure your
+``PYTHONPATH`` and ``PYTHONUSERBASE`` variables in your environment or your
+``~/.bash_profile``::
 
-    export PYTHONUSERBASE='path_to_local_python'
-    export PYTHONPATH=:'path_to_local_python_site-packages':$PYTHONPATH
+    export PYTHONUSERBASE=<path_to_local_python>
+    export PYTHONPATH=:<path_to_local_python_site-packages>:$PYTHONPATH
 
-Then install local Python Module dependencies and Pyrocko locally::
+Then install local Python module prerequisites and Pyrocko locally::
+
+.. code-block:: bash
+    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
 
     pip install --user progressbar
     pip install --user Jinja2 
@@ -59,7 +74,7 @@ Then install local Python Module dependencies and Pyrocko locally::
     cd ~/src/   # or wherever you keep your source packages   
     git clone git://github.com/pyrocko/pyrocko.git pyrocko
     cd pyrocko
-    python setup.py install --user --install-scripts="path_to_your_local_binaries"
+    python setup.py install --user --install-scripts=<path_to_your_local_binaries>
 
 For instructions on how to install Pyrocko on other systems or if the
 installation with the above procedure fails, see :doc:`index` or
