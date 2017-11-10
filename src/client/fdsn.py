@@ -280,7 +280,7 @@ def get_auth_credentials(
     url = fillurl(url, site, 'dataselect', majorversion, method='auth')
 
     f = _request(url, post=token)
-    s = f.read()
+    s = f.read().decode()
     try:
         user, passwd = s.strip().split(':')
     except ValueError:
