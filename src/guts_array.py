@@ -50,6 +50,12 @@ def array_equal(a, b):
         and num.all(a == b)
 
 
+def array_equal(a, b):
+    return a.dtype == b.dtype \
+        and a.shape == b.shape \
+        and num.all(a == b)
+
+
 class Array(Object):
 
     dummy_for = num.ndarray

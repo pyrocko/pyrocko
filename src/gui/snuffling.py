@@ -585,6 +585,11 @@ class Snuffling(object):
         if self._have_post_process_hook:
             self._post_process_hook_enabled = live_update
 
+        try:
+            self.get_viewer().clean_update()
+        except NoViewerSet:
+            pass
+
     def add_parameter(self, param):
         '''
         Add an adjustable parameter to the snuffling.
@@ -1554,6 +1559,13 @@ class Snuffling(object):
 
     def post_process_hook(self, traces):
         return traces
+
+    def get_tpad(self):
+        '''
+        Return current amount of extra padding needed by live processing hooks.
+        '''
+
+        return 0.0
 
     def pre_destroy(self):
         '''

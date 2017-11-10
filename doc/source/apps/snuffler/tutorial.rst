@@ -172,7 +172,8 @@ command line option::
 
     snuffler --stations=testdata/stations.txt testdata
 
-The :file:`stations.txt` file is a simple ascii table.
+The :file:`stations.txt` file is a simple text file in the format descibed in
+section :ref:`basic-station-files`.
 
 Event information can come from various sources. In our example dataset, we are
 most likely seeing a global earthquake, so we may query one of the global

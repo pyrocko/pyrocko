@@ -1732,8 +1732,8 @@ def utc_gps_offset(t_gps):
 
     i = 0
     while i < len(ls) - 1:
-        if ls[i][0] + ls[i][1] - 9 <= t_gps\
-           and t_gps < ls[i+1][0] + ls[i+1][1] - 9:
+        if ls[i][0] + ls[i][1] - 9 <= t_gps \
+                and t_gps < ls[i+1][0] + ls[i+1][1] - 9:
             return - (ls[i][1] - 9)
         i += 1
 

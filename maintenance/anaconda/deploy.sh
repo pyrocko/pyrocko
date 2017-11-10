@@ -5,6 +5,7 @@ set -e
 MINICONDA_URL="https://repo.continuum.io/miniconda"
 CONDA_PREFIX="$HOME/miniconda3"
 BUILD_DIR=`dirname $0`
+export PATH=$PATH:$CONDA_PREFIX/bin
 
 if [ `uname` == "Darwin" ]; then
     MINICONDA_FILE="Miniconda3-latest-MacOSX-x86_64.sh"
@@ -24,7 +25,6 @@ case $resp in
     *)
         ;;
 esac
-export PATH=$PATH:$CONDA_PREFIX/bin
 
 # Install Anaconda client and build tools
 read -r -p "Do you want to upload pyrocko to Anaconda (https://anaconda.org/pyrocko/pyrocko) [y/N]?" resp
