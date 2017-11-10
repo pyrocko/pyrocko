@@ -4,11 +4,13 @@ import unittest
 import numpy as num
 from tempfile import mkdtemp
 
-from pyrocko import gf, util, guts
+from pyrocko import gf, util, guts, cake
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
-km = 1000.
+km = 1e3
+
+plot = False
 
 
 def numeq(a, b, eps):
@@ -108,6 +110,7 @@ class GFSourcesTestCase(unittest.TestCase):
                 distance_max=2000*km,
                 distance_delta=10*km,
                 sample_rate=2.0,
+                earthmodel_1d=cake.load_model('ak135-f-average.l'),
                 ncomponents=10)
 
             store_dir = mkdtemp(prefix='gfstore')
@@ -176,9 +179,25 @@ class GFSourcesTestCase(unittest.TestCase):
                 ax.fill(e, n, color=colors[i], alpha=0.5)
             plt.show()
 
-        # plot_sources(sources)
+        if plot:
+            plot_sources(sources)
+
+    def test_rect_source(self):
+        src = gf.RectangularSource()
+        store = self.dummy_store()
+
+        src.discretize_basesource(store)
+
+    def test_source_with_magnitude(self):
+        src = gf.ExplosionSource(
+            depth=5*km,)
+        store = self.dummy_store()
+
+        src.discretize_basesource(store)
+        src.get_volume_change(store)
 
 
 if __name__ == '__main__':
+    plot = True
     util.setup_logging('test_gf_sources', 'warning')
     unittest.main()

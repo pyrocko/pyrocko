@@ -1120,36 +1120,104 @@ class SourceWithMagnitude(Source):
         d.update(kwargs)
         return super(SourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
 
+    def outline(self, cs='xyz'):
+        points = num.atleast_2d(num.zeros([1, 3]))
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
+
 
 class ExplosionSource(SourceWithMagnitude):
     '''
     An isotropic explosion point source.
     '''
 
+    volume_change = Float.T(
+        optional=True,
+        help='Volume change of the explosion/implosion or '
+             'the contracting/extending magmatic source. [m^3]')
+
+    interpolation = meta.InterpolationMethod.T(
+        optional=True,
+        default='nearest_neighbor',
+        help='Shear moduli interpolation technique for volume/moment'
+             ' conversion')
+
     discretized_source_class = meta.DiscretizedExplosionSource
 
-    def base_key(self):
-        return Source.base_key(self)
-
     def get_factor(self):
+        self._is_initialized()
         return mt.magnitude_to_moment(self.magnitude)
 
     def discretize_basesource(self, store, target=None):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
+
+        if self.volume_change is not None:
+            points = num.atleast_2d(
+                num.array([self.north_shift, self.east_shift, self.depth]))
+
+            shear_moduli = store.config.get_shear_moduli(
+                self.lat, self.lon,
+                points=points,
+                interpolation=self.interpolation)
+
+            self.moment = 3. * shear_moduli * self.volume_change
+            self._initialized = True
+
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
 
+    def _is_initialized(self):
+        if self.volume_change is not None\
+         and not hasattr(self, '_initialized'):
+            raise BadRequest('Explosion source with volume_change is not'
+                             ' initilized. Run `discretize_basesource`'
+                             ' to initialize.')
+
     def pyrocko_moment_tensor(self):
+        self._is_initialized()
         m0 = self.moment
         return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
 
     def pyrocko_event(self, **kwargs):
+        self._is_initialized()
         return SourceWithMagnitude.pyrocko_event(
             self,
             moment_tensor=self.pyrocko_moment_tensor(),
             **kwargs)
+
+    def get_volume_change(self, store):
+        # Assumes incompressibility!
+        if self.volume_change is None:
+            points = num.atleast_2d(
+                num.array([self.north_shift, self.east_shift, self.depth]))
+
+            shear_moduli = store.config.get_shear_moduli(
+                self.lat, self.lon,
+                points=points,
+                interpolation=self.interpolation)
+            print points, shear_moduli
+
+            return float(self.moment / (3. * shear_moduli))
+
+        else:
+            return self.volume_change
 
 
 class RectangularExplosionSource(ExplosionSource):
