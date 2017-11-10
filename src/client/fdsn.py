@@ -127,7 +127,7 @@ def _request(url, post=False, user=None, passwd=None,
     req = Request(url)
     if post:
         logger.debug('POST data: \n%s' % post)
-        req.data = str.encode(post)
+        req.data = post
 
     req.add_header('Accept', '*/*')
 
