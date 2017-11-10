@@ -10,6 +10,12 @@ selection = [
     ('GE', 'EIL', '*', '*Z', tmin, tmax),   # all vertical components
 ]
 
+
+# Restricted access token
+# token = open('token.asc', 'rb').read()
+# request_waveform = fdsn.dataselect(site='geofon', selection=selection,
+#                                    token=token)
+
 # setup a waveform data request
 request_waveform = fdsn.dataselect(site='geofon', selection=selection)
 
