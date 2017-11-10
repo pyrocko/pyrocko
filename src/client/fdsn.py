@@ -127,7 +127,7 @@ def _request(url, post=False, user=None, passwd=None,
     req = Request(url)
     if post:
         logger.debug('POST data: \n%s' % post)
-        req.data = post
+        req.data = str.encode(post)
 
     req.add_header('Accept', '*/*')
 
@@ -280,7 +280,7 @@ def get_auth_credentials(
     url = fillurl(url, site, 'dataselect', majorversion, method='auth')
 
     f = _request(url, post=token)
-    s = f.read()
+    s = f.read().decode()
     try:
         user, passwd = s.strip().split(':')
     except ValueError:
@@ -293,7 +293,7 @@ def dataselect(url=g_url, site=g_default_site, majorversion=1, selection=None,
                user=None, passwd=None, token=None,
                **kwargs):
 
-    if user is not None:
+    if user or token:
         method = 'queryauth'
     else:
         method = 'query'
