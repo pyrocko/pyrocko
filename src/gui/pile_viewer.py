@@ -2281,12 +2281,13 @@ def MakePileViewerMainClass(base):
                     markers = [self.floating_marker]
                 else:
                     markers = [
-                        x for x in self.selected_markers() if \
-                            isinstance(x, PhaseMarker)]
+                        x for x in self.selected_markers() if
+                        isinstance(x, PhaseMarker)]
+
                 self.update_marker_uncertainties(markers, wheel_delta/10.)
 
             else:
-                self.wheel_pos += wheel_delta 
+                self.wheel_pos += wheel_delta
 
                 n = self.wheel_pos // 120
                 self.wheel_pos = self.wheel_pos % 120
@@ -2295,7 +2296,8 @@ def MakePileViewerMainClass(base):
 
                 amount = max(
                     1.,
-                    abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
+                    abs(self.shown_tracks_range[0] -
+                        self.shown_tracks_range[1]) / 5.)
                 wdelta = amount * n
 
                 trmin, trmax = self.track_to_screen.get_in_range()
@@ -3528,8 +3530,6 @@ def MakePileViewerMainClass(base):
                 tmin, tmax = (
                     max(working_system_time_range[0], tmin),
                     min(working_system_time_range[1], tmax))
-
-                tcenter = tmin + (tmax - tmax) / 2.
 
                 p1 = self.mapToGlobal(qc.QPoint(x0, 0))
 
