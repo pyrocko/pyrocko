@@ -7,7 +7,7 @@ rm -f vagrant/*/*.out
 branch=$1
 thetest=$2
 
-if [ -z "$branch" ]; then
+if [ -z "$branch" -o -z "$thetest" ]; then
     echo 'usage: vagrant_tests_run.sh <branch> <test>'
     exit 1
 fi
