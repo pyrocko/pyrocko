@@ -9,7 +9,6 @@ from builtins import range
 from builtins import map
 
 import numpy as num
-import matplotlib.pyplot as plt
 import copy
 import logging
 from os import path
@@ -44,6 +43,9 @@ class ProfileEmpty(Exception):
 
 
 def _getCanvas(axes):
+
+    import matplotlib.pyplot as plt
+
     if axes is None:
         fig = plt.figure()
         return fig, fig.gca()
@@ -174,6 +176,9 @@ class VelocityProfile(Object):
 
         :param axes: Axes to plot into.
         :type axes: :class:`matplotlib.Axes`'''
+
+        import matplotlib.pyplot as plt
+
         fig, ax = _getCanvas(axes)
         my_model_plot(self.getLayeredModel(), axes=axes)
         ax.set_title('Global Crustal Database\n'
@@ -470,6 +475,9 @@ class CrustDB(object):
         :param figure: Figure to plot in, defaults to None
         :type figure: :class:`matplotlib.Figure`, optional
         '''
+
+        import matplotlib.pyplot as plt
+
         fig, ax = _getCanvas(axes)
 
         if phase not in ['vp', 'vs']:
@@ -528,6 +536,9 @@ class CrustDB(object):
         :param axes: Axes to plot into, defaults to None
         :type axes: :class:`matplotlib.Axes`
         '''
+
+        import matplotlib.pyplot as plt
+
         fig, ax = _getCanvas(axes)
 
         ax = fig.gca()
@@ -607,6 +618,8 @@ class CrustDB(object):
 
     def plotVelocitySurface(self, v_max, d_min=0., d_max=6000., axes=None):
         '''Plot a triangulated a depth surface exceeding velocity'''
+
+        import matplotlib.pyplot as plt
 
         fig, ax = _getCanvas(axes)
         d = self.exceedVelocity(v_max, d_min, d_max)
