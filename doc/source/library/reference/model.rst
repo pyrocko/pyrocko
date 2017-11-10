@@ -10,3 +10,4 @@ The :mod:`model` subpackage
 
     model/trace
     model/event
+    model/station

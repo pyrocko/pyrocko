@@ -5,8 +5,9 @@ Reference
 .. toctree::
    :maxdepth: 3
 
-   model
    io
+   trace
+   model
    client
    dataset
    plot
