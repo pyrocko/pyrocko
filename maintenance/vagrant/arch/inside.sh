@@ -29,12 +29,12 @@ git clone -b $branch "/vagrant/pyrocko.git" "$pyrockodir"
 cd "$pyrockodir"
 ln -s "/pyrocko-test-data" "test/data"
 
-python setup.py install_prerequisites --force-yes && \
-    sudo python setup.py install -f && \
+python3 setup.py install_prerequisites --force-yes && \
+    sudo python3 setup.py install -f && \
     echo -n "Python Version: " >> "$outfile_py3" && \
-    python --version >> "$outfile_py3" && \
-    python -m pyrocko.print_version >> "$outfile_py3" && \
-    nosetests "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
+    python3 --version >> "$outfile_py3" && \
+    python3 -m pyrocko.print_version >> "$outfile_py3" && \
+    python3 -m nose "$thetest" > >(tee -a "$outfile_py3") 2> >(tee -a "$outfile_py3" >&2) || \
     /bin/true
 
 prerequisites/prerequisites_arch_python2.sh && \
@@ -42,5 +42,5 @@ prerequisites/prerequisites_arch_python2.sh && \
     echo -n "Python Version: " >> "$outfile_py2" && \
     python2 --version 2>> "$outfile_py2" && \
     python2 -m pyrocko.print_version >> "$outfile_py2" && \
-    nosetests2 "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
+    python2 -m nose "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
     /bin/true
