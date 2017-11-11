@@ -11,5 +11,7 @@ you run into problems during installation, `please let us know
 <https://github.com/pyrocko/pyrocko/issues>`_.
 
 .. toctree::
+   :maxdepth: 2
+
    system/index
    details

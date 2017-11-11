@@ -15,7 +15,7 @@ If you are using Anaconda under Mac OS X, see
 
 Mac OS X with MacPorts
 ----------------------
-  
+
 .. code-block:: bash
     :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
 
@@ -63,7 +63,7 @@ For local installations of python modules, please first configure your
     export PYTHONUSERBASE=<path_to_local_python>
     export PYTHONPATH=:<path_to_local_python_site-packages>:$PYTHONPATH
 
-Then install local Python module prerequisites and Pyrocko locally::
+Then install local Python module prerequisites and Pyrocko locally
 
 .. code-block:: bash
     :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
