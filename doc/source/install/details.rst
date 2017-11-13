@@ -20,11 +20,11 @@ installed from source:
    * `Python <http://www.python.org/>`_ (== 2.7 or >= 3.4, with development headers)
    * `NumPy <http://numpy.scipy.org/>`_ (>= 1.6, with development headers)
    * `SciPy <http://scipy.org/>`_
-   * `matplotlib <http://matplotlib.sourceforge.net/>`_
+   * `matplotlib <http://matplotlib.sourceforge.net/>`_ (with Qt4 or Qt5 backend)
    * `pyyaml <https://bitbucket.org/xi/pyyaml>`_
    * `PyQt4 or PyQt5 <http://www.riverbankcomputing.co.uk/software/pyqt/intro>`_ (only needed for the GUI apps)
    * `future <https://pypi.python.org/pypi/future>`_ (Python2/3 compatibility layer)
-   * `requests <http://docs.python-requests.org/en/master/>`_ (HTTP for Humans)
+   * `requests <http://docs.python-requests.org/en/master/>`_
 
 * Optional Python modules:
    * `progressbar2 <http://pypi.python.org/pypi/progressbar2>`_
@@ -33,19 +33,11 @@ installed from source:
    * `coverage <https://pypi.python.org/pypi/coverage>`_ (unittest coverage report)
 
 * Manually install these optional software tools:
-   * `GMT <http://gmt.soest.hawaii.edu/>`_ (only required for the :py:mod:`pyrocko.plot.automap` module)
+   * `GMT <http://gmt.soest.hawaii.edu/>`_ (4 or 5, only required for the :py:mod:`pyrocko.plot.automap` module)
    * `slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.streaming.slink` module)
    * `rdseed <http://www.iris.edu/software/downloads/rdseed_request.htm>`_ (optionally, if you want to use the :py:mod:`pyrocko.io.rdseed` module)
    * `QSEIS <http://kinherd.org/fomosto-qseis-2006a.tar.gz>`_ (optional, needed for the Fomosto ``qseis.2006a`` backend)
    * `QSSP <http://kinherd.org/fomosto-qssp-2010.tar.gz>`_ (optional, needed for the Fomosto ``qssp.2010`` backend)
-
-This can be shortcutted by::
-
-    sudo python setup.py make_prerequisites
-
-The names of the system packages to be installed differ from system to system.
-Whether there are separate packages for the development headers of NumPy and
-Python (the \*-dev packages) is also system specific.
 
 
 Download and install Pyrocko
