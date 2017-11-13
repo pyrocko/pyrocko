@@ -481,7 +481,7 @@ def beautify_axes(axes):
     try:
         from cycler import cycler
         axes.set_prop_cycle(
-            cycler(color=[to01(x) for x in plot.graph_colors]))
+            cycler('color', [to01(x) for x in plot.graph_colors]))
 
     except (ImportError, KeyError):
         axes.set_color_cycle(list(map(to01, plot.graph_colors)))
