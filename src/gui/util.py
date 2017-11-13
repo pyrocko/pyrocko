@@ -546,7 +546,7 @@ class FigureFrame(qw.QFrame):
             from cycler import cycler
             matplotlib.rc(
                 'axes', prop_cycle=cycler(
-                    color=[to01(x) for x in plot.graph_colors]))
+                    'color', [to01(x) for x in plot.graph_colors]))
 
         except (ImportError, KeyError):
             try:
