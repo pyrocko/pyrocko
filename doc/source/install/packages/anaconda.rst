@@ -7,7 +7,7 @@ Anaconda2 for Python 2 and Anaconda3 for Python 3. Pyrocko can be installed
 under either of them.
 
 
-Anaconda3 (using ``conda`` package manager)
+Anaconda3 using ``conda``
 -------------------------------------------
 
 Pre-built packages are available for Linux 64-Bit and MacOS. Use can use the
@@ -16,6 +16,25 @@ Pre-built packages are available for Linux 64-Bit and MacOS. Use can use the
     conda install -c pyrocko pyrocko
 
 More information available at https://anaconda.org/pyrocko/pyrocko
+
+Anaconda: Update Pyrocko from ``master``
+-------------------------------------------
+
+Once Pyrocko is installed through conda, all dependencies should be resolved. You can then go ahead and use ``pip`` to update Pyrocko from source
+
+::
+
+    pip install git+https://github.com/pyrocko/pyrocko.git
+
+Or clone ``pyrocko`` from Github manually:
+
+::
+
+    git clone https://github.com/pyrocko/pyrocko.git
+    cd pyrocko
+    python setup.py --user install
+
+
 
 Anaconda2 (compilation from source)
 -----------------------------------

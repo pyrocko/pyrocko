@@ -5,7 +5,7 @@ Python 3 installation
 ---------------------
 
 .. code-block:: bash
-    :caption: e.g. **Ubuntu** (14.04.1 LTS), **Debian** (7 wheezy, 8 jessie), **Mint** (13 Maya)
+    :caption: e.g. **Ubuntu** (14.04.1 LTS), **Debian** (7 wheezy, 8 jessie), **Mint** (17 - 18.2 Sonya)
 
     sudo apt-get install -y make git python3-dev python3-setuptools
     sudo apt-get install -y python3-numpy python3-numpy-dev python3-scipy python3-matplotlib

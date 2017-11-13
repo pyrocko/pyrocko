@@ -8,6 +8,5 @@ The :mod:`model` subpackage
 .. toctree::
     :maxdepth: 2
 
-    model/trace
     model/event
     model/station

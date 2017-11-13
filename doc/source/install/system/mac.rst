@@ -11,7 +11,7 @@ Mac OS X with Anaconda
 ----------------------
 
 If you are using Anaconda under Mac OS X, see
-:doc:`/install/system/anaconda`.
+:doc:`/install/packages/anaconda`.
 
 Mac OS X with MacPorts
 ----------------------

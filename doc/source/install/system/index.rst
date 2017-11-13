@@ -1,4 +1,3 @@
-
 System specific installation instructions
 -----------------------------------------
 
@@ -9,7 +8,6 @@ on some popular systems.
    :maxdepth: 1
 
    Ubuntu, Debian, Mint, ... <deb>
-   Anaconda <anaconda>
    Mac OS X <mac>
    Centos, Fedora, ... <centos>
    OpenSuse <suse>
