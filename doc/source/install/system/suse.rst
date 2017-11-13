@@ -1,13 +1,39 @@
 Installation on OpenSuse systems
-................................
+================================
 
-* **OpenSuse** (13)::
+Python 3.4 and later
+--------------------
 
-    sudo zypper install make git python-devel python-setuptools
-    sudo zypper install python-numpy python-numpy-devel python-scipy python-matplotlib
-    sudo zypper install python-qt4 python-Jinja2
-    sudo zypper install python-PyYAML python-progressbar
-    sudo easy_install pyavl
+.. code-block:: bash
+    :caption: **OpenSuse** (e.g. 42.1)
+
+    sudo zypper -n install make git gcc python3-devel python3-setuptools \
+        python3-numpy python3-numpy-devel python3-scipy python3-matplotlib \
+        python3-qt5 python3-qt4 \
+        python3-matplotlib-qt4 \
+        python3-PyYAML python3-progressbar python3-Jinja2 \
+        python3-future python3-requests \
+        python3-nose python3-coverage
+
+    cd ~/src/   # or wherever you keep your source packages
+    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    cd pyrocko
+    sudo python3 setup.py install
+
+Python 2.7
+----------
+
+.. code-block:: bash
+    :caption: **OpenSuse** (e.g. 42.1)
+
+    sudo zypper install make git gcc python-devel python-setuptools \
+        python-numpy python-numpy-devel python-scipy python-matplotlib \
+        python-matplotlib-qt5 python-matplotlib-qt4 python-matplotlib-tk \
+        python-qt5 python-qt4 \
+        python-PyYAML python-progressbar python-Jinja2 \
+        python-future python-requests \
+        python-nose python-coverage
+
     cd ~/src/   # or wherever you keep your source packages
     git clone git://github.com/pyrocko/pyrocko.git pyrocko
     cd pyrocko
