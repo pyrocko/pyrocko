@@ -1,0 +1,103 @@
+Pyrocko
+=======
+
+*A seismology toolkit for Python*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For documentation and installation instructions please see
+http://pyrocko.org/.
+
+Installation
+------------
+
+Native installation
+~~~~~~~~~~~~~~~~~~~
+
+::
+
+    sudo python setup.py make_prerequisites
+    sudo python setup.py install
+
+Anaconda3 / MacOS
+~~~~~~~~~~~~~~~~~
+
+::
+
+    conda install -c pyrocko pyrocko
+
+Anaconda Packages are available for Linux and OSX
+
+Python PIP
+~~~~~~~~~~
+
+::
+
+    sudo pip install pyrocko
+
+or from source
+
+::
+
+    git clone https://github.org/pyrocko/pyrocko
+    cd pyrocko
+    sudo pip install -r requirements.txt
+    sudo pip install .
+
+More installation instruction at http://pyrocko.org
+
+Documentation
+-------------
+
+Documentation and usage examples are available online at
+http://pyrocko.org/docs/current
+
+Community Support
+-----------------
+
+Communit support at `https://hive.pyrocko.org`_.
+
+Citation
+--------
+
+Recommended citation for Pyrocko
+
+    Heimann, Sebastian; Kriegerowski, Marius; Isken, Marius; Cesca,
+    Simone; Daout, Simon; Grigoli, Francesco; Juretzek, Carina; Megies,
+    Tobias; Nooshiri, Nima; Steinberg, Andreas; Sudhaus, Henriette;
+    Vasyura-Bathke, Hannes; Willey, Timothy; Dahm, Torsten (2017):
+    Pyrocko - An open-source seismology toolbox and library. V. 0.3. GFZ
+    Data Services. http://doi.org/10.5880/GFZ.2.1.2017.001
+
+License
+-------
+
+GNU General Public License, Version 3, 29 June 2007
+
+Copyright © 2017 Helmholtz Centre Potsdam GFZ German Research Centre for
+Geosciences, Potsdam, Germany
+
+Pyrocko is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your
+option) any later version. Pyrocko is distributed in the hope that it
+will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details. You should have received a
+copy of the GNU General Public License along with this program. If not,
+see http://www.gnu.org/licenses/.
+
+Contact
+-------
+
+-  Sebastian Heimann; sebastian.heimann@gfz-potsdam.de
+
+-  Marius Isken; marius.isken@gfz-potsdam.de
+
+-  Marius Kriegerowski; marius.kriegerowski@gfz-potsdam.de
+
+::
+
+    Helmholtz Centre Potsdam German Research Centre for Geoscienes GFZ
+    Section 2.1: Physics of Earthquakes and Volcanoes
+    Helmholtzstraße 6/7
+    14467 Potsdam, Germany

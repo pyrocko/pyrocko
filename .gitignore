@@ -28,6 +28,9 @@ test/example_run_dir
 miniconda.sh
 maintenance/anaconda/pyrocko-anaconda-deploy
 
+# Pip
+pip-pyrocko.git/
+
 # Other stuff
 *.err_log
 
