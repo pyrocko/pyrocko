@@ -9,8 +9,6 @@ if [ -z "$branch" ]; then
     branch=master
 fi
 
-echo "Starting Pyrocko PyPi Deployment Branch $branch"
-
 if [ ! -e ~/.pypirc ] ; then
     echo "!! NO ~/.pypirc found !!
 Create a ~/.pypirc with the following content:
@@ -42,6 +40,7 @@ case $resp in
         cd "pip-pyrocko.git"
         python setup.py sdist upload -r pypi
         cd -
+        rm -rf "pip-pyrocko.git"
         ;;
     * ) ;;
 esac
