@@ -29,8 +29,6 @@ ln -s "/vagrant/pyrocko-test-data" "test/data"
 
 python setup.py install_prerequisites --force-yes && \
     sudo python setup.py install -f && \
-    echo -n "Python Version: " >> "$outfile_py2" && \
-    python --version 2>> "$outfile_py2" && \
-    python -m pyrocko.print_version >> "$outfile_py2" && \
+    python -m pyrocko.print_version deps >> "$outfile_py2" && \
     nosetests "$thetest" > >(tee -a "$outfile_py2") 2> >(tee -a "$outfile_py2" >&2) || \
     /bin/true

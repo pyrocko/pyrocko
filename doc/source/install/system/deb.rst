@@ -1,8 +1,8 @@
 Installation on Ubuntu, Debian, Mint, ...
 =========================================
 
-Python 3 installation
----------------------
+Python 3.4 and later
+--------------------
 
 .. code-block:: bash
     :caption: e.g. **Ubuntu** (14.04.1 LTS), **Debian** (7 wheezy, 8 jessie), **Mint** (17 - 18.2 Sonya)
@@ -20,8 +20,8 @@ Python 3 installation
     cd pyrocko
     sudo python3 setup.py install
 
-Python 2.7 installation
------------------------
+Python 2.7
+----------
 
 .. code-block:: bash
     :caption: e.g. **Ubuntu** (14.04.1 LTS), **Debian** (7 wheezy, 8 jessie), **Mint** (13 Maya)

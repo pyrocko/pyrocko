@@ -11,6 +11,7 @@ on some popular systems.
    Mac OS X <mac>
    Centos, Fedora, ... <centos>
    OpenSuse <suse>
+   Arch Linux <arch>
 
 For instructions on how to install Pyrocko on other systems or if the
 installation with any of the above procedures fails, see
