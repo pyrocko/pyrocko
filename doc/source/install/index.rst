@@ -8,7 +8,7 @@ If you do not want to use package managers like Anaconda or PIP to install Pyroc
 
 .. raw:: html
 
-    <h3>Install Support</h3>
+    <h3>Support</h3>
 
 If you run into problems during installation, `please let us know on GitHub <https://github.com/pyrocko/pyrocko/issues>`_ or join the support forum `https://hive.pyrocko.org <https://hive.pyrocko.org/signup_user_complete/?id=9edryhxeptdbmxrecbwy3zg49y>`_!
 
@@ -18,4 +18,5 @@ If you run into problems during installation, `please let us know on GitHub <htt
 
    packages/index
    system/index
+   upgrade
    details

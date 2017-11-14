@@ -22,17 +22,10 @@ Mac OS X with MacPorts
     sudo port install git
     sudo port install python27
     sudo port select python python27
-    sudo port install py27-numpy
-    sudo port install py27-scipy
-    sudo port install py27-matplotlib
-    sudo port install py27-yaml
-    sudo port install py27-pyqt5
-    sudo port install py27-setuptools
-    sudo port install py27-jinja2
-    sudo port install py27-requests
-    sudo port install py27-future
+    sudo port install py27-numpy py27-scipy py27-matplotlib py27-yaml py27-pyqt5 py27-setuptools py27-jinja2 py27-requests py27-future
     sudo easy_install progressbar
-    cd ~/src/   # or wherever you keep your source packages
+
+    cd ~/src/  # or wherever you keep your source packages
     git clone git://github.com/pyrocko/pyrocko.git pyrocko
     cd pyrocko
     sudo python setup.py install --install-scripts=/usr/local/bin
@@ -48,13 +41,7 @@ Try this if you don't have sudo rights in ``/usr/bin``.
     port install git
     port install python27
     port select python python27
-    port install py27-numpy
-    port install py27-scipy
-    port install py27-matplotlib
-    port install py27-yaml
-    port install py27-pyqt4
-    port install py27-setuptools
-    port install py27-jinja2
+    port install py27-numpy py27-scipy py27-matplotlib py27-yaml py27-pyqt4 py27-setuptools py27-jinja2
 
 For local installations of python modules, please first configure your
 ``PYTHONPATH`` and ``PYTHONUSERBASE`` variables in your environment or your
