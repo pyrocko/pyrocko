@@ -22,7 +22,7 @@ Mac OS X with MacPorts
     sudo port install git
     sudo port install python35
     sudo port select python python35
-    sudo port install py35-numpy py35-scipy py35-matplotlib py35-yamli py35-pyqt py35-setuptools py35-jinja2 py35-requests py35-future
+    sudo port install py35-numpy py35-scipy py35-matplotlib py35-yaml py35-pyqt5 py35-setuptools py35-jinja2 py35-requests py35-future
     sudo easy_install progressbar
     cd ~/src/   # or wherever you keep your source packages
     git clone git://github.com/pyrocko/pyrocko.git pyrocko
@@ -58,7 +58,7 @@ Try this if you don't have sudo rights in ``/usr/bin``.
     port install git
     port install python35
     port select python python35
-    port install py35-numpy py27-scipy py35-matplotlib py35-yamli py35-pyqt5 py35-setuptools py35-jinja2 py35-requests py35-future
+    port install py35-numpy py35-scipy py35-matplotlib py35-yaml py35-pyqt5 py35-setuptools py35-jinja2 py35-requests py35-future
 
 For local installations of python modules, please first configure your
 ``PYTHONPATH`` and ``PYTHONUSERBASE`` variables in your environment or your
