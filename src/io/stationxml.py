@@ -3,7 +3,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import, division
-from builtins import str
+from builtins import str as newstr
 
 import sys
 import time
@@ -93,7 +93,7 @@ class DummyAwareOptionalTimestamp(Object):
                 tt = val.timetuple()
                 val = float(calendar.timegm(tt))
 
-            elif isinstance(val, str):
+            elif isinstance(val, (str, newstr)):
                 val = val.strip()
 
                 val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
