@@ -17,7 +17,24 @@ Mac OS X with MacPorts
 ----------------------
 
 .. code-block:: bash
-    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
+    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.4.2)
+
+    sudo port install git
+    sudo port install python35
+    sudo port select python python35
+    sudo port install py35-numpy py35-scipy py35-matplotlib py35-yamli py35-pyqt py35-setuptools py35-jinja2 py35-requests py35-future
+    sudo easy_install progressbar
+    cd ~/src/   # or wherever you keep your source packages
+    git clone git://github.com/pyrocko/pyrocko.git pyrocko
+    cd pyrocko
+    sudo python setup.py install --install-scripts=/usr/local/bin
+
+
+Mac OS X with MacPorts (python 2.7)
+-----------------------------------
+
+.. code-block:: bash
+    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.4.2)
 
     sudo port install git
     sudo port install python27
@@ -36,12 +53,12 @@ Mac OS X with MacPorts and local installation (no sudo)
 Try this if you don't have sudo rights in ``/usr/bin``.
 
 .. code-block:: bash
-    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
+    :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.4.2)
 
     port install git
-    port install python27
-    port select python python27
-    port install py27-numpy py27-scipy py27-matplotlib py27-yaml py27-pyqt4 py27-setuptools py27-jinja2
+    port install python35
+    port select python python35
+    port install py35-numpy py27-scipy py35-matplotlib py35-yamli py35-pyqt5 py35-setuptools py35-jinja2 py35-requests py35-future
 
 For local installations of python modules, please first configure your
 ``PYTHONPATH`` and ``PYTHONUSERBASE`` variables in your environment or your
@@ -50,7 +67,9 @@ For local installations of python modules, please first configure your
     export PYTHONUSERBASE=<path_to_local_python>
     export PYTHONPATH=:<path_to_local_python_site-packages>:$PYTHONPATH
 
-Then install local Python module prerequisites and Pyrocko locally
+Then install local Python module prerequisites and Pyrocko locally.
+Depending on your system's default Python version, you may have to install and
+use pip3 instead of pip.
 
 .. code-block:: bash
     :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.3.3)
