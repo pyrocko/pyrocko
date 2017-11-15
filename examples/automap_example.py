@@ -44,11 +44,54 @@ for i in range(len(stations)):
     m.add_label(lats[i], lons[i], labels[i])
 
 # Draw a beachball
-m.gmt.psmeca(
-    S='m.5', G='red', C='5p,0/0/0', in_rows=[
+#m.gmt.psmeca(
+#    S='m.5', G='red', C='5p,0/0/0', in_rows=[
         # location and moment tensor components (from www.globalcmt.org)
-        (35.31, 31.62, 10, -0.27, 0.53, -0.27, -0.66, -0.35, -0.74, 24,
-         35.31, 31.62, 'Event - 2004/01/11'),
-    ], *m.jxyr)
+#        (35.31, 31.62, 10, -0.27, 0.53, -0.27, -0.66, -0.35, -0.74, 24,
+#         35.31, 31.62, 'Event - 2004/01/11'),
+#    ], *m.jxyr)
+
+# Load events from catalog file (generated using catalog.GlobalCMT() to download from www.globalcmt.org)
+# If no moment tensor is provided in the catalogue, the event is plotted as a red circle.
+# Symbol size relative to magnitude.
+events = model.load_events('deadsea_gcmt.txt')
+print(events)
+beachball_symbol = 'd'
+for ev in events:
+    if ev.moment_tensor is None:
+        mag = ev.magnitude
+        ev_size = 'c'+str(mag*5.)+'p' 
+        m.gmt.psxy(
+            in_rows=[[ev.lon, ev.lat]],
+            S=ev_size,
+            G=gmtpy.color('scarletred2'),
+            W='1p,black',
+            *m.jxyr)
+
+    else:
+        devi = ev.moment_tensor.deviatoric()
+        mag = ev.magnitude
+        beachball_size = mag*5.0
+        mt = devi.m_up_south_east()
+        mt = mt / ev.moment_tensor.scalar_moment() \
+            * pmt.magnitude_to_moment(5.0)
+        m6 = pmt.to6(mt)
+        data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)#
+
+        if m.gmt.is_gmt5():
+            kwargs = dict(
+                M=True,
+                S='%s%g' % (beachball_symbol[0], (beachball_size) / gmtpy.cm))
+        else:
+            kwargs = dict(
+                S='%s%g' % (beachball_symbol[0], (beachball_size)*2 / gmtpy.cm))
+
+        m.gmt.psmeca(
+            in_rows=[data],
+            G=gmtpy.color('chocolate1'),
+            E='white',
+            W='1p,%s' % gmtpy.color('chocolate3'),
+            *m.jxyr,
+            **kwargs)
 
 m.save('automap_deadsea.png')
