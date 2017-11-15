@@ -23,9 +23,8 @@ For additional information, refer to :doc:`details`.
    upgrade
    details
 
-.. raw:: html
-
-    <h3>Support</h3>
+Support
+-------
 
 If you run into problems during installation, please let us know `on GitHub
 <https://github.com/pyrocko/pyrocko/issues>`_ or join the `support forum
