@@ -16,7 +16,7 @@ def decode_post(data):
     return system
 
 
-class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
+class PyrockoSurveyHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         # Send response status code
@@ -25,10 +25,9 @@ class testHTTPServer_RequestHandler(BaseHTTPRequestHandler):
             self.send_response(400, 'Bad Request')
             return
 
-        client = self.client_address[0]
         with open(outfile, 'a') as f:
             system = decode_post(self.rfile.read(content_length))
-            system['client'] = client
+            system['client'] = self.headers.get('X-Real-IP', None)
             system['time'] = time.time()
             f.write(json.dumps(system, indent=4))
             f.write(',\n')
@@ -49,7 +48,7 @@ def run():
           % port)
 
     server_address = ('127.0.0.1', port)
-    httpd = HTTPServer(server_address, testHTTPServer_RequestHandler)
+    httpd = HTTPServer(server_address, PyrockoSurveyHandler)
     print('Running server...')
     httpd.serve_forever()
 
