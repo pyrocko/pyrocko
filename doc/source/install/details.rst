@@ -53,10 +53,10 @@ to install::
     cd pyrocko
     sudo python setup.py install
 
-**Note:** If you have previously installed pyrocko using other tools like e.g.
-*easy_install*, you should manually remove the old installation - otherwise you
-will end up with two parallel installations of Pyrocko which will cause
-trouble.
+**Note:** If you have previously installed Pyrocko using other tools like e.g.
+*easy_install* or *pip*, you should manually remove the old installation -
+otherwise you will end up with two parallel installations of Pyrocko which will
+cause trouble.
 
 Updating
 --------
@@ -64,6 +64,6 @@ Updating
 If you later would like to update Pyrocko, run the following commands (this
 assumes that you have used *git* to download Pyrocko):: 
 
-    cd ~/src/pyrocko   # assuming the Pyrocko software package is here
+    cd ~/src/pyrocko   # assuming the Pyrocko source package is here
     git pull origin master 
     sudo python setup.py install

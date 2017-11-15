@@ -2,13 +2,14 @@ Upgrading Pyrocko from v0.3 to v2017.11 or later
 ================================================
 
 This document describes details of the upgrade from Pyrocko version **v0.3** to
-**v2017.11** or later. Starting with v2017.11,  **Pyrocko supports Python 3**.
+**v2017.11** or later.
 
-With the version jump, Pyrocko's internal module hierarchy
-has changed (see :doc:`../library/index`) - The API is backwards-compatible so
-your old scripts still work. **Under Python 2, upgrading the framework requires
-purging of the old v0.3 version and installing some new dependencies**. Pyrocko
-will continue to work under Python 2.
+Starting with v2017.11,  **Pyrocko supports Python 3**. With the version jump,
+Pyrocko's internal module hierarchy has changed (see :doc:`../library/index`) -
+The API is backward-compatible so your old scripts still work. **Under Python
+2, upgrading the framework requires purging of the old v0.3 version and
+installing some new dependencies**. Pyrocko will continue to work under Python
+2.
 
 
 Python 3
