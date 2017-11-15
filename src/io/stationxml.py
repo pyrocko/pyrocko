@@ -1330,7 +1330,9 @@ def load_channel_table(stream):
         (net, sta, loc, cha, lat, lon, ele, dep, azi, dip, sens, scale,
             scale_freq, scale_units, sample_rate, start_date, end_date) = t
 
-        if not scale_freq:
+        try:
+            scale_freq = float(scale_freq)
+        except ValueError:
             scale_freq = None
 
         try:
