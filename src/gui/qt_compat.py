@@ -37,6 +37,7 @@ if use_pyqt5:
     from PyQt5 import QtNetwork as qn
     from PyQt5 import QtOpenGL as qgl
     from PyQt5 import QtSvg as qsvg
+    from PyQt5 import QtPrintSupport as qprint
     QSortFilterProxyModel = qc.QSortFilterProxyModel
     QItemSelectionModel = qc.QItemSelectionModel
     QItemSelection = qc.QItemSelection
@@ -52,6 +53,7 @@ else:
     from PyQt4 import QtNetwork as qn
     from PyQt4 import QtOpenGL as qgl
     from PyQt4 import QtSvg as qsvg
+    qprint = qg
     QSortFilterProxyModel = qg.QSortFilterProxyModel
     QItemSelectionModel = qg.QItemSelectionModel
     QItemSelection = qg.QItemSelection

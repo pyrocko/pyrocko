@@ -2469,11 +2469,11 @@ def MakePileViewerMainClass(base):
                         self.set_time_range(tmin, tmax)
 
         def printit(self):
-            from PyQt import QtPrintSupport as qps
-            printer = qps.QPrinter()
-            printer.setOrientation(qps.QPrinter.Landscape)
+            from .qt_compat import qprint
+            printer = qprint.QPrinter()
+            printer.setOrientation(qprint.QPrinter.Landscape)
 
-            dialog = qps.QPrintDialog(printer, self)
+            dialog = qprint.QPrintDialog(printer, self)
             dialog.setWindowTitle('Print')
 
             if dialog.exec_() != qw.QDialog.Accepted:
