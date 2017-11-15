@@ -1,16 +1,21 @@
 Installation with pip
 =====================
 
-When installing Pyrocko through ``pip`` the dependencies should be 
+When installing Pyrocko through ``pip`` we do not allow the installer to
+resolve dependencies automatically. We think it is up to you, to decide which
+prerequisites to install with the system's native package manager and which
+ones to install through ``pip``.
 
-Install from PiPython
----------------------
+Install from PyPI (Python Package Index)
+----------------------------------------
 
 Tagged builds are available for download from https://pypi.python.org/.
 
 .. note :: 
 
-    Pyrockos' build depends on Python and Numpy developer source files, please install those through your system mananger. Please see :doc:`../system/index` for more information.
+    Pyrocko's build depends on Python and NumPy development header files,
+    please install those through your system's package manager. Please see
+    :doc:`../system/index` for more information.
 
 .. warning ::
     
@@ -28,13 +33,14 @@ Tagged builds are available for download from https://pypi.python.org/.
     sudo pip3 install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
 
 
-Pyrocko Pip User Install
-^^^^^^^^^^^^^^^^^^^^^^^^
+User local installation (no sudo)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to install pyrocko in a user environment without root access you can use PIP to manage the installation as well:
+If you want to install pyrocko in a user environment without root access you
+can use ``pip`` to manage the installation as well:
 
 .. code-block:: bash
-    :caption: ``pip`` allows to install into user's environments - **dangerous for system integrity**
+    :caption: ``pip`` allows to install into user's home directory - **dangerous for system integrity**
 
     # We assume the build requirements are already installed, see above
     pip3 install pyrocko
@@ -43,12 +49,12 @@ If you want to install pyrocko in a user environment without root access you can
     pip3 install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
 
 
-
-
 Install from Github
 -------------------
 
-If you want to install the latest ``master`` from Github you can use ``pip`` to install directly from the repository:
+If you want to install or update to the latest version of Pyrocko on Github
+(``master`` branch) you can use ``pip`` to install directly from the
+repository:
 
 .. code-block:: bash
     :caption: We install straight from GitHub
