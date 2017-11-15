@@ -463,8 +463,9 @@ class SnufflerStartWizard(qw.QWizard):
         lyt.addWidget(qw.QLabel(
             '<p>Your feedback is important for'
             ' the development and improvement of Pyrocko.</p>'
-            '<p>Do you want to send the following data anonymously to'
-            ' <a href="https://pyrocko.org">https://pyrocko.org</a>?</p>'))
+            '<p>Do you want to send this system information anon'
+            'ymously to <a href="https://pyrocko.org">'
+            'https://pyrocko.org</a>?</p>'))
 
         text_data = qw.QLabel(
             '<code style="font-size: small;">%s</code>' %
@@ -476,7 +477,8 @@ class SnufflerStartWizard(qw.QWizard):
         lyt.addWidget(text_data)
 
         lyt.addWidget(qw.QLabel(
-            'We appreciate your contribution!'
+            'This message won\'t show again.\n\n'
+            'We appreciate your contribution!\n- The Pyrocko Devs'
             ))
 
         p.setLayout(lyt)
@@ -485,12 +487,13 @@ class SnufflerStartWizard(qw.QWizard):
         yes_btn = qw.QPushButton(p)
         yes_btn.setText('Yes')
 
-        def sent_data():
+        @qc.pyqtSlot()
+        def send_data():
             import requests
             requests.post('https://pyrocko.org/%s' % webtk, data=sys_info)
             self.button(self.NextButton).clicked.emit(True)
 
-        self.customButtonClicked.connect(sent_data)
+        self.customButtonClicked.connect(send_data)
 
         self.setButton(self.CustomButton1, yes_btn)
         self.setOption(self.HaveCustomButton1, True)
