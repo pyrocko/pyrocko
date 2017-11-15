@@ -15,7 +15,7 @@ cp -r build/html build/$VERSION
 read -r -p "Are your sure to update live docs at http://pyrocko.org/docs/$VERSION [y/N]?" resp
 case $resp in
     [yY][eE][sS]|[yY] )
-        scp -r build/$VERSION pyrocko@hive:/var/www/pyrocko.org/docs;
+        rsync -av build/$VERSION pyrocko@hive:/var/www/pyrocko.org/docs;
         ;;
     * ) ;;
 esac
