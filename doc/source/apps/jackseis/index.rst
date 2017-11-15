@@ -4,7 +4,7 @@ Jackseis
 .. highlight:: sh
 
 Jackseis is a simple tool to convert seismic waveform archive datasets. It can
-be used to downsample, rename meta-data, to cut out time windows, to convert
+be used to downsample, to rename meta-data, to cut out time windows, to convert
 between different file formats, and to convert the sample data types.
 
 Synopsis
