@@ -9,7 +9,7 @@ from copy import deepcopy
 
 from . import util
 from .guts import Object, Float, String, load, dump, List, Dict, TBase, \
-    Tuple, StringChoice
+    Tuple, StringChoice, Bool
 
 guts_prefix = 'pf'
 
@@ -67,6 +67,8 @@ class SnufflerConfig(ConfigBase):
                  VisibleLengthSetting(key='Long', value=60000.)])
     phase_key_mapping = Dict.T(
         String.T(), String.T(), default=default_phase_key_mapping)
+    first_start = Bool.T(
+        default=True)
 
     def get_phase_name(self, key):
         return self.phase_key_mapping.get('F%s' % key, 'Undefined')

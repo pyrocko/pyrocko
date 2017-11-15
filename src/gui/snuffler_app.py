@@ -421,6 +421,121 @@ class SnufflerTabs(qw.QTabWidget):
             self.parent().keyPressEvent(event)
 
 
+class SnufflerStartWizard(qw.QWizard):
+
+    def __init__(self, parent):
+        qw.QWizard.__init__(self, parent)
+
+        self.setOption(self.NoBackButtonOnStartPage)
+        self.addPageSurvey()
+        self.addPageHelp()
+        self.setWindowTitle('Welcome to Pyrocko')
+
+    def getSystemInfo(self):
+        import numpy
+        import scipy
+        import pyrocko
+        import platform
+        import uuid
+        data = {
+            'node-uuid': uuid.getnode(),
+            'platform.architecture': platform.architecture(),
+            'platform.system': platform.system(),
+            'platform.release': platform.release(),
+            'python': platform.python_version(),
+            'pyrocko': pyrocko.__version__,
+            'numpy': numpy.__version__,
+            'scipy': scipy.__version__,
+            'qt': qc.PYQT_VERSION_STR,
+        }
+        return data
+
+    def addPageSurvey(self):
+        import pprint
+        webtk = 'DSFGK234ADF4ASDF'
+        sys_info = self.getSystemInfo()
+
+        p = qw.QWizardPage()
+        p.setCommitPage(True)
+        p.setTitle('Thank you for installing Pyrocko!')
+
+        lyt = qw.QVBoxLayout()
+        lyt.addWidget(qw.QLabel(
+            '<p>Your feedback is important for'
+            ' the development and improvement of Pyrocko.</p>'
+            '<p>Do you want to send the following data anonymously to'
+            ' <a href="https://pyrocko.org">https://pyrocko.org</a>?</p>'))
+
+        text_data = qw.QLabel(
+            '<code style="font-size: small;">%s</code>' %
+            pprint.pformat(
+                sys_info,
+                indent=1).replace('\n', '<br>')
+            )
+        text_data.setStyleSheet('padding: 10px;')
+        lyt.addWidget(text_data)
+
+        lyt.addWidget(qw.QLabel(
+            'We appreciate your contribution!'
+            ))
+
+        p.setLayout(lyt)
+        p.setButtonText(self.CommitButton, 'No')
+
+        yes_btn = qw.QPushButton(p)
+        yes_btn.setText('Yes')
+
+        def sent_data():
+            import requests
+            requests.post('https://pyrocko.org/%s' % webtk, data=sys_info)
+            self.button(self.NextButton).clicked.emit(True)
+
+        self.customButtonClicked.connect(sent_data)
+
+        self.setButton(self.CustomButton1, yes_btn)
+        self.setOption(self.HaveCustomButton1, True)
+
+        self.addPage(p)
+        return p
+
+    def addPageHelp(self):
+        p = qw.QWizardPage()
+        p.setTitle('Welcome to Snuffler!')
+
+        text = qw.QLabel('''<html>
+<h3>- <i>The Seismogramm browser and workbench.</i></h3>
+<p>Looks like you are starting the Snuffler for the first time.<br>
+It allows you to browse and process large archives of waveform data.</p>
+<p>Basic processing is complemented by Snufflings (<i>Plugins</i>):</p>
+<ul>
+    <li><b>Download seismograms</b> from Geofon, IRIS and others</li>
+    <li><b>Earthquake catalog</b> access to Geofon, GobalCMT, USGS...</li>
+    <li><b>Cake</b>, Calculate synthetic arrival times</li>
+    <li><b>Seismosizer</b>, generate synthetic seismograms on-the-fly</li>
+    <li>
+        <b>Map</b>, swiftly inspect stations and events on interactive maps
+    </li>
+</ul>
+<p>And more... see <a href="https://pyrocko.org/">https://pyrocko.org/</a>!</p>
+<p style="width: 100%; background-color: #e9b96e; margin: 5px; padding: 50;"
+          align="center">
+    <b>You can always press <code>?</code> for help!</b>
+</p>
+</html>''')
+
+        lyt = qw.QVBoxLayout()
+        lyt.addWidget(text)
+
+        def remove_custom_button():
+            self.setOption(self.HaveCustomButton1, False)
+
+        p.initializePage = remove_custom_button
+
+        p.setLayout(lyt)
+        self.addPage(p)
+        return p
+
+
 class SnufflerWindow(qw.QMainWindow):
 
     def __init__(
@@ -470,6 +585,14 @@ class SnufflerWindow(qw.QMainWindow):
         sb = self.statusBar()
         sb.clearMessage()
         sb.showMessage('Welcome to Snuffler! Press <?> for help.')
+
+        snuffler_config = self.pile_viewer.viewer.config
+
+        if snuffler_config.first_start:
+            wizard = SnufflerStartWizard(self)
+            wizard.show()
+            snuffler_config.first_start = False
+            config.write_config(snuffler_config, 'snuffler')
 
         if follow:
             self.get_view().follow(float(follow))
