@@ -36,7 +36,7 @@ Tagged builds are available for download from https://pypi.python.org/.
 User local installation (no sudo)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you want to install pyrocko in a user environment without root access you
+If you want to install Pyrocko in a user environment without root access you
 can use ``pip`` to manage the installation as well:
 
 .. code-block:: bash
@@ -49,11 +49,11 @@ can use ``pip`` to manage the installation as well:
     pip3 install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
 
 
-Install from Github
+Install from GitHub
 -------------------
 
-If you want to install or update to the latest version of Pyrocko on Github
-(``master`` branch) you can use ``pip`` to install directly from the
+If you want to install or update to the latest version of Pyrocko available on
+GitHub (``master`` branch) you can use ``pip`` to install directly from the
 repository:
 
 .. code-block:: bash
