@@ -1320,6 +1320,11 @@ def load_channel_table(stream):
             scale_freq, scale_units, sample_rate, start_date, end_date) = t
 
         try:
+            scale_freq = float(scale_freq)
+        except ValueError:
+            scale_freq = None
+
+        try:
             if net not in networks:
                 network = Network(code=net)
             else:
