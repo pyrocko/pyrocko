@@ -55,6 +55,7 @@ def run():
 
 
 def test_post():
+    addr = 'http://localhost:%d' % port
     import requests
 
     import numpy
@@ -76,9 +77,9 @@ def test_post():
     }
 
     while True:
-        print('Posting to http://127.0.0.1:%d' % port)
+        print('Posting to %s' % addr)
         try:
-            requests.post('http://127.0.0.1:%d' % port, data=data)
+            requests.post(addr, data=data)
         except Exception as e:
             print(e)
         time.sleep(5)
