@@ -1,103 +1,43 @@
-Pyrocko
-=======
-
-*A seismology toolkit for Python*
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-For documentation and installation instructions please see
-http://pyrocko.org/.
+Pyrocko is an open source seismology toolbox and library, written in the Python programming language. It can be utilized flexibly for a variety of geophysical tasks, like seismological data processing and analysis, modelling of InSAR, GPS data and dynamic waveforms, or for seismic source characterization.
 
 Installation
-------------
-
-Native installation
-~~~~~~~~~~~~~~~~~~~
-
-::
-
-    sudo python setup.py make_prerequisites
-    sudo python setup.py install
-
-Anaconda3 / MacOS
-~~~~~~~~~~~~~~~~~
-
-::
-
-    conda install -c pyrocko pyrocko
-
-Anaconda Packages are available for Linux and OSX
-
-Python PIP
-~~~~~~~~~~
-
-::
-
-    sudo pip install pyrocko
-
-or from source
-
-::
-
-    git clone https://github.org/pyrocko/pyrocko
-    cd pyrocko
-    sudo pip install -r requirements.txt
-    sudo pip install .
-
-More installation instruction at http://pyrocko.org
-
-Documentation
 -------------
 
-Documentation and usage examples are available online at
-http://pyrocko.org/docs/current
+`Pyrocko is Python2/3 compatible.`
 
-Community Support
------------------
+Only source packages for Pyrocko are available on ``pip``, this means that parts of the code has is compiled locally.
 
-Communit support at `https://hive.pyrocko.org`_.
-
-Citation
---------
-
-Recommended citation for Pyrocko
-
-    Heimann, Sebastian; Kriegerowski, Marius; Isken, Marius; Cesca,
-    Simone; Daout, Simon; Grigoli, Francesco; Juretzek, Carina; Megies,
-    Tobias; Nooshiri, Nima; Steinberg, Andreas; Sudhaus, Henriette;
-    Vasyura-Bathke, Hannes; Willey, Timothy; Dahm, Torsten (2017):
-    Pyrocko - An open-source seismology toolbox and library. V. 0.3. GFZ
-    Data Services. http://doi.org/10.5880/GFZ.2.1.2017.001
-
-License
--------
-
-GNU General Public License, Version 3, 29 June 2007
-
-Copyright © 2017 Helmholtz Centre Potsdam GFZ German Research Centre for
-Geosciences, Potsdam, Germany
-
-Pyrocko is free software: you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your
-option) any later version. Pyrocko is distributed in the hope that it
-will be useful, but WITHOUT ANY WARRANTY; without even the implied
-warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details. You should have received a
-copy of the GNU General Public License along with this program. If not,
-see http://www.gnu.org/licenses/.
-
-Contact
--------
-
--  Sebastian Heimann; sebastian.heimann@gfz-potsdam.de
-
--  Marius Isken; marius.isken@gfz-potsdam.de
-
--  Marius Kriegerowski; marius.kriegerowski@gfz-potsdam.de
+Example for Ubuntu, Debian, Mint...
 
 ::
 
-    Helmholtz Centre Potsdam German Research Centre for Geoscienes GFZ
-    Section 2.1: Physics of Earthquakes and Volcanoes
-    Helmholtzstraße 6/7
-    14467 Potsdam, Germany
+    # Install build requirements
+    sudo apt-get install python3-dev python3-numpy
+    sudo pip3 install pyrocko
+
+    # Install requirements manually
+    sudo pip3 install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
+
+
+For the GUI application ``PyQt4`` or ``PyQt5`` has to be installed:
+
+::
+    
+    sudo apt-get install -y python3-pyqt5 python3-pyqt5.qtopengl python3-pyqt5.qtsvg
+    
+
+More information at https://pyrocko.org/docs/current/install
+
+Documentation
+--------------
+
+Documentation, examples and support at https://pyrocko.org
+
+
+Development
+------------
+
+Find us on GitHub - https://github.com/pyrocko
+
+
+-- The Pyrocko Developers
