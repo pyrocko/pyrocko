@@ -1,12 +1,26 @@
 #!/usr/bin/env python3
 import time
 import json
+import requests
 from urllib import parse
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 port = 58326
 outfile = '/home/pyrocko/user_survey.txt'
+
+mattermost_webhook = ''
+
+
+mattermost_payload = {
+    'username': 'Pyrocko',
+    'icon_url': 'https://pyrocko.org/_static/pyrocko.svg',
+    'text': 'Yay, someone contributed to the survey! :pray:',
+}
+
+
+def mattermost_post():
+    requests.post(mattermost_webhook, json=mattermost_payload)
 
 
 def decode_post(data):
@@ -40,6 +54,8 @@ class PyrockoSurveyHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         self.wfile.write(message)
+
+        mattermost_post()
         return
 
 
@@ -89,12 +105,16 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Pyrocko User Survey Server')
     parser.add_argument(
-        'action', choices=['start', 'post'],
-        default='post', const='post', nargs='?',
-        help='Start the server or post test data.')
+        'action', choices=['start', 'post', 'webhook'],
+        help='Start the server or post test data to it. '
+             'Webhook integrates to mattermost')
     args = parser.parse_args()
+
     if args.action == 'start':
         run()
 
     if args.action == 'post':
         test_post()
+
+    if args.action == 'webhook':
+        mattermost_post()
