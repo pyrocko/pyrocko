@@ -18,4 +18,4 @@ built on your system during the installation:
 
 If you run into problems during installation, please let us know `on GitHub
 <https://github.com/pyrocko/pyrocko/issues>`_ or join the `support forum
-<https://hive.pyrocko.org/`_.
+<https://hive.pyrocko.org/>`_.
