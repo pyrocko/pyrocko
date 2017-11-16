@@ -1,3 +1,8 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
 '''Classical seismic ray theory for layered earth models (*layer cake* models).
 
 This module can be used to e.g. calculate arrival times, ray paths, reflection
@@ -37,17 +42,27 @@ The main classes defined in this module are:
      :py:class:`Discontinuity`.
 '''
 
+from __future__ import absolute_import
+from functools import reduce
+from future import standard_library
+standard_library.install_aliases()  # noqa
+from builtins import range, zip, str as newstr
 
 import os
 import copy
 import math
 import cmath
 import operator
-import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 import glob
-from pyrocko import util, config
-from scipy.optimize import bisect, brentq
 import numpy as num
+from scipy.optimize import bisect, brentq
+
+from . import util, config
 
 ZEPS = 0.01
 P = 1
@@ -161,15 +176,15 @@ class Material(object):
 
             if qp is None:
                 if self.vs != 0.0:
-                    l = (4.0/3.0)*(self.vs/self.vp)**2
-                    self.qp = self.qs / l
+                    s = (4.0/3.0)*(self.vs/self.vp)**2
+                    self.qp = self.qs / s
                 else:
                     self.qp = 1456.
 
             if qs is None:
                 if self.vs != 0.0:
-                    l = (4.0/3.0)*(self.vs/self.vp)**2
-                    self.qs = self.qp * l
+                    s = (4.0/3.0)*(self.vs/self.vp)**2
+                    self.qs = self.qp * s
                 else:
                     self.vs = 600.
 
@@ -179,18 +194,18 @@ class Material(object):
                 self.qp = 5782e4
             else:
                 self.qs = 600.
-                l = (4.0/3.0)*(self.vs/self.vp)**2
-                self.qp = self.qs/l
+                s = (4.0/3.0)*(self.vs/self.vp)**2
+                self.qp = self.qs/s
 
         elif qp is None and qs is None and qk is not None and qmu is not None:
-            l = (4.0/3.0)*(self.vs/self.vp)**2
+            s = (4.0/3.0)*(self.vs/self.vp)**2
             if qmu == 0. and self.vs == 0.:
                 self.qp = qk
             else:
                 if num.isinf(qk):
-                    self.qp = qmu/l
+                    self.qp = qmu/s
                 else:
-                    self.qp = 1.0 / (l/qmu + (1.0-l)/qk)
+                    self.qp = 1.0 / (s/qmu + (1.0-s)/qk)
             self.qs = qmu
         else:
             raise InvalidArguments(
@@ -256,12 +271,12 @@ class Material(object):
         if self.vs == 0. and self.qs == 0.:
             return self.qp
         else:
-            l = (4.0/3.0)*(self.vs/self.vp)**2
-            denom = (1/self.qp - l/self.qs)
+            s = (4.0/3.0)*(self.vs/self.vp)**2
+            denom = (1/self.qp - s/self.qs)
             if denom <= 0.0:
                 return num.inf
             else:
-                return (1.-l)/(1.0/self.qp - l/self.qs)
+                return (1.-s)/(1.0/self.qp - s/self.qs)
 
     def _rayleigh_equation(self, cr):
         cr_a = (cr/self.vp)**2
@@ -731,7 +746,7 @@ class PhaseDef(object):
             defs[x+'n'] = [x+'v_(moho)'+x.lower()]
 
         # depth phases
-        for k in defs.keys():
+        for k in list(defs.keys()):
             if k not in 'ps':
                 for x in 'ps':
                     defs[x+k] = [x + defs[k][0]]
@@ -911,7 +926,7 @@ class PhaseDef(object):
                         depthmin = depthlim
                     state = 0
 
-            except (ValueError, InvalidKneeDef), e:
+            except (ValueError, InvalidKneeDef) as e:
                 raise PhaseDefParseError(definition, ic, e)
 
             if state != 0 or need_leg:
@@ -1050,12 +1065,12 @@ class PhaseDef(object):
 
 
 def to_phase_defs(phases):
-    if isinstance(phases, (basestring, PhaseDef)):
+    if isinstance(phases, (str, newstr, PhaseDef)):
         phases = [phases]
 
     phases_out = []
     for phase in phases:
-        if isinstance(phase, basestring):
+        if isinstance(phase, (str, newstr)):
             phases_out.extend(PhaseDef(x.strip()) for x in phase.split(','))
         elif isinstance(phase, PhaseDef):
             phases_out.append(phase)
@@ -1417,11 +1432,11 @@ class Layer(object):
             def sep(eta):
                 return num.sqrt(num.maximum(eta**2 - p**2, 0.0))
 
-            x = (cpe(eta2)-cpe(eta1))/(1-b)
-            t = (sep(eta2)-sep(eta1))/(1-b)
+            x = (cpe(eta2)-cpe(eta1))/(1.0-b)
+            t = (sep(eta2)-sep(eta1))/(1.0-b)
         else:
             lr = math.log(r2/r1)
-            sap = num.sqrt(1/a**2 - p**2)
+            sap = num.sqrt(1.0/a**2 - p**2)
             x = p/sap * lr
             t = 1./(a**2 * sap)
 
@@ -1446,7 +1461,7 @@ class Layer(object):
         '''Get turning depth for given ray parameter and propagation mode.'''
 
         a, b = self.potint_coefs(mode)
-        r = num.exp(num.log(a*p)/(1-b))
+        r = num.exp(num.log(a*p)/(1.0-b))
         return earthradius-r
 
     def propagate(self, p, mode, direction):
@@ -1923,15 +1938,15 @@ class Straight(RayElement):
         if endgaps is not None:
             return endgaps[0]
         else:
-            l = self.layer
-            return (l.ztop, l.zbot)[self._direction_in == UP]
+            lyr = self.layer
+            return (lyr.ztop, lyr.zbot)[self._direction_in == UP]
 
     def z_out(self, endgaps=None):
         if endgaps is not None:
             return endgaps[1]
         else:
-            l = self.layer
-            return (l.ztop, l.zbot)[self._direction_out == DOWN]
+            lyr = self.layer
+            return (lyr.ztop, lyr.zbot)[self._direction_out == DOWN]
 
     def turns(self):
         return self._direction_in != self._direction_out
@@ -1949,8 +1964,8 @@ class Straight(RayElement):
             return endgaps[3]
 
     def zturn(self, p):
-        l = self.layer
-        return l.zturn(p, self.mode)
+        lyr = self.layer
+        return lyr.zturn(p, self.mode)
 
     def u_in(self, endgaps=None):
         return self.layer.u(self.mode, self.z_in(endgaps))
@@ -2424,7 +2439,7 @@ class RayPath(object):
             zin, zout = s.z_in(), s.z_out()
             if type(s) is HeadwaveStraight:
                 z = zin
-                for i in xrange(n):
+                for i in range(n):
                     xs = float(i)/(n-1) * xstretch
                     ts = s.x2t_headwave(xs)
                     zxt.append((filled(z, xstretch.size), sx+xs, st+ts))
@@ -2438,7 +2453,7 @@ class RayPath(object):
                 else:  # ray turns in layer
                     zturn = s.zturn(p)
                     back = []
-                    for i in xrange(n):
+                    for i in range(n):
                         z = zin + (zturn - zin) * num.sin(
                             float(i)/(n-1)*math.pi/2.0) * 0.999
 
@@ -2477,7 +2492,7 @@ class RayPath(object):
         tmax = t[:, -1] - dtr
         zstart, zstop = endgaps[:2]
         zs, xs, ts = [], [], []
-        for i in xrange(nout):
+        for i in range(nout):
             t_ = t[i]
             indices = num.where(num.logical_and(0. <= t_, t_ <= tmax[i]))[0]
             n = indices.size + 2
@@ -2840,7 +2855,7 @@ def anything_to_crust2_profile(crust2_profile):
     if isinstance(crust2_profile, tuple):
         lat, lon = [float(x) for x in crust2_profile]
         return crust2x2.get_profile(lat, lon)
-    elif isinstance(crust2_profile, basestring):
+    elif isinstance(crust2_profile, (str, newstr)):
         return crust2x2.get_profile(crust2_profile)
     elif isinstance(crust2_profile, crust2x2.Crust2Profile):
         return crust2_profile
@@ -2980,6 +2995,8 @@ class LayeredModel(object):
         for l in self.layers(direction):
             if l.contains(z):
                 return l
+        else:
+            raise Exception('Failed extracting layer at depth z=%s' % z)
 
     def walker(self):
         return Walker(self._elements)
@@ -2996,8 +3013,8 @@ class LayeredModel(object):
         first layer with respect to the the traversal ordering is returned.
         '''
 
-        l = self.layer(z, direction)
-        return l.material(z)
+        lyr = self.layer(z, direction)
+        return lyr.material(z)
 
     def discontinuities(self):
         '''Iterate over all discontinuities of the model.'''
@@ -3102,7 +3119,7 @@ class LayeredModel(object):
                     direction = next_knee.out_direction()
                     mode = next_knee.out_mode
                     next_knee = next_or_none(knees)
-                    leg = legs.next()
+                    leg = next(legs)
 
                 else:  # implicit reflection/transmission
                     direction = current.propagate(p, mode, direction)
@@ -3281,11 +3298,11 @@ class LayeredModel(object):
                         for (pl, ph) in zip(pedges[:-1], pedges[1:]):
                             recurse(pl, ph)
 
-                        for path, ps in phase_paths.iteritems():
+                        for path, ps in phase_paths.items():
                             path.set_prange(
                                 min(ps), max(ps), pmax/(self._np-1))
 
-                        phase_paths = phase_paths.keys()
+                        phase_paths = list(phase_paths.keys())
 
                     except ZeroDivisionError:
                         phase_paths = []
@@ -3294,7 +3311,7 @@ class LayeredModel(object):
 
             paths.extend(phase_paths)
 
-        paths.sort(key=lambda x: x.pmin)
+        paths.sort(key=lambda x: x.pmin())
         return paths
 
     def arrivals(
@@ -3474,7 +3491,7 @@ class LayeredModel(object):
 
         data = num.array(data, dtype=num.float)
         data_means = num.mean(data, axis=0)
-        nmax = len(layers)/2
+        nmax = len(layers) // 2
         accept = False
 
         zcut_best = []
@@ -3484,11 +3501,11 @@ class LayeredModel(object):
             if n == 2:
                 zcuts = [
                     [ztop, ztop + i*zdelta, zbot]
-                    for i in xrange(1, ncutintervals)]
+                    for i in range(1, ncutintervals)]
             elif n == 3:
                 zcuts = []
-                for j in xrange(1, ncutintervals):
-                    for i in xrange(j+1, ncutintervals):
+                for j in range(1, ncutintervals):
+                    for i in range(j+1, ncutintervals):
                         zcuts.append(
                             [ztop, ztop + j*zdelta, ztop + i*zdelta, zbot])
             else:
@@ -3545,11 +3562,11 @@ class LayeredModel(object):
             ztop = zcut[i]
             zbot = zcut[i+1]
             if mtop == mbot:
-                l = HomogeneousLayer(ztop, zbot, mtop)
+                lyr = HomogeneousLayer(ztop, zbot, mtop)
             else:
-                l = GradientLayer(ztop, zbot, mtop, mbot)
+                lyr = GradientLayer(ztop, zbot, mtop, mbot)
 
-            out_layers.append(l)
+            out_layers.append(lyr)
         return out_layers
 
     def simplify(self, max_rel_error=0.001):
@@ -3595,10 +3612,10 @@ class LayeredModel(object):
         Interpolates a :py:class:`GradientLayer` at ``depth_min`` and/or
         ``depth_max``.'''
 
-        if isinstance(depth_min, basestring):
+        if isinstance(depth_min, (str, newstr)):
             depth_min = self.discontinuity(depth_min).z
 
-        if isinstance(depth_max, basestring):
+        if isinstance(depth_max, (str, newstr)):
             depth_max = self.discontinuity(depth_max).z
 
         mod_extracted = LayeredModel()
@@ -3606,18 +3623,20 @@ class LayeredModel(object):
         for element in self.elements():
             element = element.copy()
             do_append = False
-            if (depth_min <= element.ztop or depth_min is None) and\
-                    (depth_max >= element.zbot or depth_max is None):
+            if (depth_min is None or depth_min <= element.ztop) \
+                    and (depth_max is None or depth_max >= element.zbot):
                 mod_extracted.append(element)
                 continue
 
-            if depth_min > element.ztop and depth_min < element.zbot:
-                _, element = element.split(depth_min)
-                do_append = True
+            if depth_min is not None:
+                if element.ztop < depth_min and depth_min < element.zbot:
+                    _, element = element.split(depth_min)
+                    do_append = True
 
-            if depth_max < element.zbot and depth_max > element.ztop:
-                element, _ = element.split(depth_max)
-                do_append = True
+            if depth_max is not None:
+                if element.zbot > depth_max and depth_max > element.ztop:
+                    element, _ = element.split(depth_max)
+                    do_append = True
 
             if do_append:
                 mod_extracted.append(element)
@@ -3686,24 +3705,22 @@ def read_hyposat_model(fn):
     ``'CONR'`` -> ``'conrad'``
     '''
 
-    f = open(fn, 'r')
-    translate = {'MOHO': 'moho', 'CONR': 'conrad'}
-    lname = None
-    for iline, line in enumerate(f):
-        if iline == 0:
-            continue
+    with open(fn, 'r') as f:
+        translate = {'MOHO': 'moho', 'CONR': 'conrad'}
+        lname = None
+        for iline, line in enumerate(f):
+            if iline == 0:
+                continue
 
-        z, vp, vs, name = util.unpack_fixed('f10, f10, f10, a4', line)
-        if not name:
-            name = None
-        material = Material(vp*1000., vs*1000.)
+            z, vp, vs, name = util.unpack_fixed('f10, f10, f10, a4', line)
+            if not name:
+                name = None
+            material = Material(vp*1000., vs*1000.)
 
-        tname = translate.get(lname, lname)
-        yield z*1000., material, tname
+            tname = translate.get(lname, lname)
+            yield z*1000., material, tname
 
-        lname = name
-
-    f.close()
+            lname = name
 
 
 def read_nd_model(fn):
@@ -3714,15 +3731,13 @@ def read_nd_model(fn):
     Interface names are translated as follows: ``'mantle'`` -> ``'moho'``,
     ``'outer-core'`` -> ``'cmb'``, ``'inner-core'`` -> ``'icb'``.
     '''
-
-    f = open(fn, 'r')
-    for x in read_nd_model_fh(f):
-        yield x
-    f.close()
+    with open(fn, 'r') as f:
+        for x in read_nd_model_fh(f):
+            yield x
 
 
 def read_nd_model_str(s):
-    f = StringIO.StringIO(s)
+    f = StringIO(s)
     for x in read_nd_model_fh(f):
         yield x
     f.close()
@@ -3816,15 +3831,14 @@ def write_nd_model_fh(mod, fh):
 
 
 def write_nd_model_str(mod):
-    f = StringIO.StringIO()
+    f = StringIO()
     write_nd_model_fh(mod, f)
     return f.getvalue()
 
 
 def write_nd_model(mod, fn):
-    f = open(fn, 'w')
-    write_nd_model_fh(mod, f)
-    f.close()
+    with open(fn, 'w') as f:
+        write_nd_model_fh(mod, f)
 
 
 def builtin_models():
@@ -3951,7 +3965,7 @@ def filled(v, *args, **kwargs):
 
 def next_or_none(i):
     try:
-        return i.next()
+        return next(i)
     except StopIteration:
         return None
 
@@ -4013,6 +4027,6 @@ def float_or_none(x):
 
 
 def parstore_float(thelocals, obj, *args):
-    for k, v in thelocals.iteritems():
+    for k, v in thelocals.items():
         if k != 'self' and (not args or k in args):
             setattr(obj, k, float_or_none(v))

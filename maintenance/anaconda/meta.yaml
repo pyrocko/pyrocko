@@ -1,0 +1,30 @@
+{% set data = load_setup_py_data() %}
+
+package:
+  name: pyrocko
+  version: {{ data.get('version') }}
+
+source:
+  path: ./pyrocko.git/
+  # git-url: https://github.com/pyrocko/pyrocko
+
+requirements:
+  build:
+    - python
+    - numpy
+  run:
+    - numpy
+    - scipy
+    - matplotlib
+    - pyqt
+    - pyyaml
+    - progressbar2
+    - future
+    - requests
+
+about:
+  home: http://pyrocko.org
+  license: GPL3
+  license-family: GPL
+  summary: A versatile seismology toolkit for Python.
+  doc_url: http://pyrocko.org/docs

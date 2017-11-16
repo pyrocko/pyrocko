@@ -1,8 +1,10 @@
+from __future__ import division, print_function, absolute_import
 import unittest
 import numpy as num
 from numpy.testing import assert_allclose
 
-from pyrocko import tectonics, util
+from pyrocko.dataset import tectonics
+from pyrocko import util
 
 
 class TectonicsTestCase(unittest.TestCase):
@@ -45,6 +47,7 @@ class TectonicsTestCase(unittest.TestCase):
                     types.append(typ)
 
                 assert types == [['OSR'], ['CTF', 'CRB']]
+            boundary.split_types()
 
     def test_plates(self):
         bird = tectonics.PeterBird2003()

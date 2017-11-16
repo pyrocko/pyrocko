@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import unittest
 import math
 import random
@@ -7,19 +8,32 @@ import logging
 
 from pyrocko import orthodrome, util
 from pyrocko import orthodrome_ext
-from common import Benchmark
-import pyrocko.config
+from .common import Benchmark
+from pyrocko import config
 
-config = pyrocko.config.config()
-logger = logging.getLogger('OrthodromeTest')
+logger = logging.getLogger('pyrocko.test.test_orthodrome')
 benchmark = Benchmark()
+
+earth_oblateness = 1./298.257223563
+earthradius_equator = 6378.14 * 1000.
+earthradius = config.config().earthradius
 
 r2d = 180./math.pi
 d2r = 1./r2d
 km = 1000.
 
+plot = False
+
 
 def random_lat(mi=-90., ma=90., rstate=None, size=None):
+    if rstate is None:
+        rstate = num.random
+    mi_ = 0.5*(math.sin(mi * math.pi/180.)+1.)
+    ma_ = 0.5*(math.sin(ma * math.pi/180.)+1.)
+    return num.arcsin(rstate.uniform(mi_, ma_, size=size)*2.-1.)*180./math.pi
+
+
+def random_lon(mi=-180., ma=180., rstate=None, size=None):
     if rstate is None:
         rstate = num.random
     mi_ = 0.5*(math.sin(mi * math.pi/180.)+1.)
@@ -71,10 +85,6 @@ class OrthodromeTestCase(unittest.TestCase):
         return lats1, lons1, lats2, lons2
 
     def testRaisesValueError(self):
-        '''
-        Assert that orthodrome_ext implementations raise a ValueError when
-        working on undefined lats/lons.
-        '''
         for lat1, lon1, lat2, lon2 in [
                 (91., 0., 0., 0.),
                 (0., 181., 0., 0.),
@@ -97,7 +107,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testAziBaziPython(self):
         ntest = 10000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             orthodrome.azibazi(
                 float(lats1[i]), float(lons1[i]),
                 float(lats2[i]), float(lons2[i]),
@@ -107,7 +117,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testAziBaziC(self):
         ntest = 10000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             orthodrome.azibazi(
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='c')
@@ -116,7 +126,7 @@ class OrthodromeTestCase(unittest.TestCase):
         ntest = 100
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
 
-        for i in xrange(ntest):
+        for i in range(ntest):
             azibazi_py = orthodrome.azibazi(
                 float(lats1[i]), float(lons1[i]),
                 float(lats2[i]), float(lons2[i]),
@@ -156,7 +166,7 @@ class OrthodromeTestCase(unittest.TestCase):
             lats1, lons1, lats2, lons2,
             implementation='python')
 
-        for i in xrange(ntest):
+        for i in range(ntest):
             azi_py, bazi_py = orthodrome.azibazi(
                 float(lats1[i]), float(lons1[i]),
                 float(lats2[i]), float(lons2[i]),
@@ -180,7 +190,7 @@ class OrthodromeTestCase(unittest.TestCase):
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
         loc1 = orthodrome.Loc(0., 0.)
         loc2 = orthodrome.Loc(0., 0.)
-        for i in xrange(ntest):
+        for i in range(ntest):
             loc1.lat, loc1.lon = lats1[i], lons1[i]
             loc2.lat, loc2.lon = lats2[i], lons2[i]
             orthodrome.distance_accurate50m(
@@ -191,7 +201,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testDistanceC(self):
         ntest = 1000
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             orthodrome.distance_accurate50m(
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='c')
@@ -199,7 +209,7 @@ class OrthodromeTestCase(unittest.TestCase):
     def testDistancePythonC(self):
         ntest = 100
         lats1, lons1, lats2, lons2 = self.get_critical_random_locations(ntest)
-        for i in xrange(ntest):
+        for i in range(ntest):
             dist_py = orthodrome.distance_accurate50m(
                 lats1[i], lons1[i], lats2[i], lons2[i],
                 implementation='python')
@@ -257,11 +267,17 @@ class OrthodromeTestCase(unittest.TestCase):
 
                 cd = orthodrome.cosdelta(a, b)
                 assert cd <= 1.0
-                d = num.arccos(cd)*config.earthradius
+                d = num.arccos(cd)*earthradius
                 d2 = math.sqrt(no**2+ea**2)
                 assert not (abs(d-d2) > 1.0e-3 and d2 > 1.)
 
-    def OFF_test_local_distances(self):
+    def test_wrap(self):
+        assert orthodrome.wrap(11, -10, 10) == -9
+        assert orthodrome.wrap(10, -10, 10) == -10
+        assert orthodrome.wrap(10.001, -10, 10) == -9.999
+
+    @unittest.skip('needs inspection')
+    def test_local_distances(self):
 
         for reflat, reflon in [
                 (0.0, 0.0),
@@ -299,7 +315,8 @@ class OrthodromeTestCase(unittest.TestCase):
                 clat, clon = orthodrome.geographic_midpoint(dlats, dlons)
                 d = orthodrome.distance_accurate50m_numpy(
                     clat, clon, lat, lon)[0]
-                if False:
+
+                if plot:
                     import matplotlib.pyplot as plt
                     fig = plt.figure()
                     ax = fig.add_subplot(111)
@@ -308,6 +325,7 @@ class OrthodromeTestCase(unittest.TestCase):
                         lat, lon, clat, clon)
                     ax.plot(c_n, c_e, 'ro')
                     plt.show()
+
                 self.assertTrue(d < distance_error_max, 'Distance %s > %s' %
                                 (d, distance_error_max) +
                                 '(maximum error)\n tested lat/lon: %s/%s' %
@@ -316,9 +334,9 @@ class OrthodromeTestCase(unittest.TestCase):
     @unittest.skipUnless(have_geographiclib(), 'geographiclib not available')
     def test_geodetic_to_ecef(self):
         orthodrome.geodetic_to_ecef(23., 0., 0.)
-        wgs = orthodrome.get_wgs84()
-        a = wgs.a
-        b = wgs.a * (1. - wgs.f)
+
+        a = orthodrome.earthradius_equator
+        b = orthodrome.earthradius_equator * (1. - orthodrome.earth_oblateness)
 
         points = [
             ((90., 0., 0.), (0., 0., b)),
@@ -338,7 +356,7 @@ class OrthodromeTestCase(unittest.TestCase):
 
         coords = num.array([lats, lons, alts]).T
 
-        for ic in xrange(coords.shape[0]):
+        for ic in range(coords.shape[0]):
             xyz = orthodrome.geodetic_to_ecef(*coords[ic, :])
             latlonalt = orthodrome.ecef_to_geodetic(*xyz)
 
@@ -367,22 +385,24 @@ class OrthodromeTestCase(unittest.TestCase):
         assert num.all(points2[:, 1] > -eps)
 
     def test_point_in_polygon(self):
-        from pyrocko.plot import mpl_graph_color
+        if plot:
+            from pyrocko.plot import mpl_graph_color
 
-        import matplotlib.pyplot as plt
-        from matplotlib.patches import Polygon
+            import matplotlib.pyplot as plt
+            from matplotlib.patches import Polygon
 
-        axes = plt.gca()
+            axes = plt.gca()
+
         nip = 100
 
-        for i in xrange(1):
+        for i in range(1):
             np = 3
             points = num.zeros((np, 2))
             points[:, 0] = random_lat(size=3)
-            points[:, 1] = num.random.uniform(-180., 180., size=3)
+            points[:, 1] = random_lon(size=3)
 
             points_ip = num.zeros((nip*points.shape[0], 2))
-            for ip in range(points.shape[0]) + [0]:
+            for ip in range(points.shape[0]):
                 n, e = orthodrome.latlon_to_ne_numpy(
                     points[ip % np, 0], points[ip % np, 1],
                     points[(ip+1) % np, 0], points[(ip+1) % np, 1])
@@ -395,13 +415,14 @@ class OrthodromeTestCase(unittest.TestCase):
                 points_ip[ip*nip:(ip+1)*nip, 0] = lats
                 points_ip[ip*nip:(ip+1)*nip, 1] = lons
 
-            color = mpl_graph_color(i)
-            axes.add_patch(
-                Polygon(
-                    num.fliplr(points_ip),
-                    facecolor=light(color),
-                    edgecolor=color,
-                    alpha=0.5))
+            if plot:
+                color = mpl_graph_color(i)
+                axes.add_patch(
+                    Polygon(
+                        num.fliplr(points_ip),
+                        facecolor=light(color),
+                        edgecolor=color,
+                        alpha=0.5))
 
             points_xyz = orthodrome.latlon_to_xyz(points_ip.T)
             center_xyz = num.mean(points_xyz, axis=0)
@@ -421,13 +442,14 @@ class OrthodromeTestCase(unittest.TestCase):
             groups = orthodrome.spoly_cut([poly_rot_xyz], axis=0)
             num.zeros(points.shape[0], dtype=num.int)
 
-            for group in groups:
-                for poly_rot_group_xyz in group:
+            if plot:
+                for group in groups:
+                    for poly_rot_group_xyz in group:
 
-                    axes.set_xlim(-180., 180.)
-                    axes.set_ylim(-90., 90.)
+                        axes.set_xlim(-180., 180.)
+                        axes.set_ylim(-90., 90.)
 
-                plt.show()
+                    plt.show()
 
     def test_point_in_region(self):
         testdata = [
@@ -462,11 +484,11 @@ def plot_erroneous_ne_to_latlon():
         north_grid = north_grid.flatten()
         east_grid = east_grid.flatten()
 
-        lat_delta = gsize/config.earthradius*r2d*2.
+        lat_delta = gsize/earthradius*r2d*2.
         lon = random.uniform(-180., 180.)
         lat = random.uniform(-90., 90.)
 
-        print gsize/1000.
+        print(gsize/1000.)
 
         lat_grid, lon_grid = orthodrome.ne_to_latlon(
             lat, lon, north_grid, east_grid)
@@ -478,7 +500,7 @@ def plot_erroneous_ne_to_latlon():
         maxerrlon = num.max(num.abs(lon_grid-lon_grid_alt))
         eps = 1.0e-8
         if maxerrlon > eps or maxerrlat > eps:
-            print lat, lon, maxerrlat, maxerrlon
+            print(lat, lon, maxerrlat, maxerrlon)
 
             gmt = gmtpy.GMT(
                 config={
@@ -491,7 +513,7 @@ def plot_erroneous_ne_to_latlon():
 
             lon_delta = lat_delta/math.cos(lat*d2r)
 
-            delta = lat_delta/360.*config.earthradius*2.*math.pi
+            delta = lat_delta/360.*earthradius*2.*math.pi
             scale_km = gmtpy.nice_value(delta/10.)/1000.
 
             west = lon - 0.5*lon_delta
@@ -532,10 +554,11 @@ def plot_erroneous_ne_to_latlon():
             subprocess.call(['xpdf', '-remote', 'ortho', '-reload'])
             time.sleep(2)
         else:
-            print 'ok', gsize, lat, lon
+            print('ok', gsize, lat, lon)
 
 
 if __name__ == "__main__":
+    plot = False
     util.setup_logging('test_orthodrome', 'warning')
     unittest.main(exit=False)
-    print benchmark
+    print(benchmark)

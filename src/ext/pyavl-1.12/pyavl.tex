@@ -1,0 +1,616 @@
+%&PDFLaTeX
+\documentclass{howto}
+\usepackage[T1]{fontenc}
+\usepackage{fancyvrb}
+\usepackage[]{hyperref}
+\input{pyavl-hysetup}
+\makeindex
+% \makemodindex
+\title{AVL-tree type for Python}
+\author{R. McGraw}
+\date{typeset \today}
+\authoraddress{\email{dasnar@fastmail.fm}}
+\release{1.1}
+\begin{document}
+\maketitle
+
+% This makes the Abstract go on a separate page in the HTML version;
+% if a copyright notice is used, it should go immediately after this.
+%
+\ifhtml
+\chapter*{Front Matter\label{front}}
+\fi
+
+\begin{abstract}
+\noindent This document describes how to use the \module{avl}
+extension module (dynamically loadable library) for Python, which
+implements a dual-personality object using AVL trees.  AVL trees
+(named after the inventors, Adel'son-Vel'ski\u{\i} and Landis) are
+balanced binary search trees.  While these objects can be seen as
+implementing ordered containers, allowing fast lookup and deletion of
+any item, they can also act as sequential lists.  The \module{avl}
+module is based on a \C{} written library.  It is based on an
+extension module by Sam Rushing (\cite{Rushing}) and on Ben Pfaff's
+\module{libavl} (\cite{Pfaff}).
+\end{abstract}
+
+\tableofcontents
+
+\section{\module{avl} ---
+         AVL-tree type for Python}
+% 
+\declaremodule{extension}{avl}		% not standard, in C
+\refexmodindex{avl}
+% \platform{Unix}
+
+\moduleauthor{author}{email}		% Author of the module code
+\sectionauthor{Richard McGraw}{dasnar@fastmail.fm}		% Author of the documentation,
+					% even if not a module section.
+\modulesynopsis{AVL trees in Python}
+
+The \module{avl} module defines dual-personality objects for Python
+programmers to enjoy.  An object of type \code{`avl_tree'} can be seen
+as implementing a dictionary, or it can act as a sequential list since
+the underlying implementation maintains a \code{RANK} field at each
+node in the tree.  Contrary to objects of type \code{`dict'} which
+record key/value pairs, objects of type \code{`avl_tree'} record
+single values, hereinafter referred to as `items'; it's possible to
+insert duplicates.
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+%                      %
+%   Module functions   %
+%                      %
+%%%%%%%%%%%%%%%%%%%%%%%%
+The \module{avl} module defines exactly these functions~:
+%% 
+ % Factory
+ %%
+\begin{funcdesc}{new}{%
+	\optional{source\optional{, compare%
+	\optional{, unique}}}%
+	}
+Create a new tree.  It is created empty if no argument is passed.  The
+optional \var{source} argument can be either of type \code{`list'} or
+\code{`avl_tree'}~: in the former case, each item from the list is
+inserted into the tree; in the latter case, a copy of \var{object} is
+returned.  Note that if \var{source} is a list which is known to be
+sorted with respect to some \var{compare} function, it is more
+efficient to call
+\samp{avl.from_iter(iter(source),len(source),compare)}, see below.
+
+The optional \var{compare} argument is a Python function that will be
+used to order the tree instead of the default built-in mechanism.
+
+If \var{\code{bool}==1} and source object is a list,
+duplicates are removed (default: $0$). 
+For example,
+\begin{Verbatim}
+>>> import avl
+>>> a = avl.new([2,1,2], None, 1)
+>>> type(a)
+<type 'avl_tree'>
+>>> a
+[1, 2]
+\end{Verbatim}
+\end{funcdesc}
+
+% 
+% Pickling
+% 
+\begin{funcdesc}{dump}{tree,pickler}
+	Convenience function to pickle a tree, as in
+	\code{tree.dump(pickler)}.  First we pickle the size of the
+	tree as a \code{PyInt} object, then its compare function, then
+	each item in order by \code{pickler.dump()}.  The \module{cPickle}
+	module has no exported API. The advantage of visiting the tree in
+	inorder is that no comparison is necessary at unpickling time.
+	
+	Note that \var{pickler} is not type-checked (the function
+	only checks for the existence of a callable `\var{dump}' attribute).
+\end{funcdesc}
+\begin{funcdesc}{load}{unpickler}
+	Convenience function to unpickle a tree which was pickled with the
+	simple method applied by \function{avl.dump} (see above).
+	
+	Note that \var{unpickler} is not type-checked (the
+	function only checks for the existence of a callable `\var{load}'
+	attribute).
+\end{funcdesc}
+\begin{funcdesc}{from_iter}{%
+	iter\optional{, len},\optional{, compare}%
+	}
+	Load a tree from \var{iter} if the sequence is in sorted order
+	with respect to some \var{compare} function.  This can't be
+	reproduced in Python since it relies on \cfunction{avl_xload} in
+	\code{avl.c} (which proceeds recursively like
+	\cfunction{avl_slice} and has to know the items count in advance).
+	If no \var{len} is specified, it will be read by the first call to
+	\code{iter.next()}.  It can be specified as an \code{intobject} or
+	a \code{longobject}.  If no \var{compare} function is specified,
+	\code{None} is assumed.
+	
+	A \exception{StopIteration} exception occurs if \var{len} is too
+	large.
+	
+	Note that \var{iter} is not type-checked (the function only checks
+	for the existence of a callable `\var{next}' attribute).
+\end{funcdesc}
+
+\begin{excdesc}{avl.Error}
+Exception raised when an operation fails for some \module{avl}
+specific reason.  The exception argument is a string describing the
+reason for failure or just where it occurred.
+\end{excdesc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+%                      %
+%   AVL-tree objects   %
+%                      %
+%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{`avl_tree' objects}
+\label{avl-tree-objects}
+
+\textsc{AVL} objects, as returned by \function{new()} above, have the
+following functions~
+\note{functions which do comparisons to do their work will raise
+an exception as soon as some comparison procedure fails.}
+
+First, here is a function that is included by defining the  
+\constant{HAVE_AVL_VERIFY} compile flag~:
+\begin{methoddesc}[avl_tree]{verify}{}
+	Verify internal AVL tree structure, including \emph{ordering}.
+	Return \code{1} if tree is valid, \code{0} otherwise.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{lookup}{item}
+	Return new reference to an item in the tree that compares equal to passed 
+	\var{item}. Raise a \exception{LookupError} exception if \var{item} is
+	not contained in the tree. 
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{insert}{item\optional{, index}}
+	Insert \var{item} in the tree.  If no \var{index} is specified,
+	\var{item} is inserted based on its rank with respect to the
+	built-in Python compare function \cfunction{PyObject_Compare()},
+	or a possible user-supplied one.  Indeed items of any type can be
+	inserted as long as they are comparable to one another.  If some
+	error occurs during a compare operation, the tree remains
+	unchanged and an exception is raised.  Otherwise insertion is
+	carried out whether or not an item comparing equal to \var{item}
+	is already present in the tree.
+
+	Use the call \samp{t.insert(o,j)} to insert \code{o} in front of
+	index \code{j} in \code{t} regardless of order, if it's what you
+	really want (an \exception{IndexError} exception is raised if
+	\code{j} is out of range).  \note{order may be broken as a result. 
+	See also the \method{span()} method.}
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{append}{item}
+	Shortcut to append \var{item} to tree regardless of order.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{remove}{item}
+	Remove \var{item} from the tree. Nothing is done if \var{item} is not found.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{clear}{}
+	Make the tree logically empty in one sweep.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{remove_at}{index}
+	Remove item in front of specified \var{index}.
+	An \code{IndexError} exception is raised if \var{index} is out of range.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{has_key}{item}
+	Return \code{1} if \var{item} is in tree, \code{0} otherwise.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{index}{item}
+	\samp{t.index(item)} returns smallest index \code{j} such that
+	\code{t[j] == \var{item}}, or \code{-1} if \var{item} is not in \code{t}.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{concat}{arg}
+	In-place concatenation~: 
+	append tree \var{arg} to the tree, regardless of order.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{min}{}
+	Return smallest item in tree, except if it's empty.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{max}{}
+	Return greatest item in tree, except if it's empty.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{at_least}{item}
+	Return smallest item that compares greater than or equal to \var{item} if 
+	any, or raise a \exception{ValueError} exception.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree]{at_most}{item}
+	Return greatest item that compares less than or equal to \var{item} if 
+	any, or raise a \exception{ValueError} exception.
+\end{methoddesc}
+
+% We might change that method's protocol
+\begin{methoddesc}[avl_tree]{span}{o1\optional{, o2}}
+	\samp{t.span(o1)} returns a pair of indices \code{(i,j)} such that 
+	\code{t[i:j]} is the longest slice that spans \code{o1} if it's in \code{t},
+	otherwise \code{i==j} in which \samp{t.insert(o1,j)} puts \code{o1} 
+	where it should be with no need to redo comparisons.
+	
+	\samp{t.span(o1,o2)} returns \code{(i,j)} such that 
+	\code{t[i:j]} is the longest slice that spans \code{o1,o2}.
+	For example (see below for slice support),
+\begin{Verbatim}
+>>> a= avl.new(map (lambda x: random.randint(0,1000), range(10)))
+>>> a
+[28, 66, 82, 95, 109, 114, 268, 335, 761, 851]
+>>> a.span(100,500)
+(4, 8)
+>>> a[4:8]
+[109, 114, 268, 335]
+>>> a.span(500,100)
+(4, 8)
+>>> a.span(900,950)
+(10, 10)
+>>> len(a)
+10
+>>> a.span(a[0],a[-1])
+(0, 10)
+>>> a.span(95,109)
+(3, 5)
+\end{Verbatim}
+\end{methoddesc}
+
+% Pickle method
+\begin{methoddesc}[avl_tree]{dump}{pickler}
+	See \function{avl.dump} module function.
+\end{methoddesc}
+
+% Get an iterator
+\begin{methoddesc}[avl_tree]{iter}{\optional{pre_or_post}}
+	Return a new iterator over the items in this tree, either in
+	pre-position if \var{pre_or_post} is zero/false (the default), or in
+	post-position.
+\end{methoddesc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       %
+%   Sequence protocol   %
+%                       %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+There is support for the \textbf{sequence} protocol.
+
+\begin{itemize}
+	\item  \samp{len(t)} returns the size of tree \code{t}.
+
+	\item  \samp{a+b} returns a new tree object resulting from the concatenation 
+	of trees \code{`a'} and \code{`b'}. This is done regardless of order.
+
+	\item  The \code{repeat} operation is undefined.
+	
+	\item  \code{`t[j]'} returns a new reference to the item whose inorder index 
+	in \code{t} is \code{j} (starting from \code{0}).
+	The usual defaults apply~: \code{j} should be in range 
+	\code{[-len(t):len(t)]}, otherwise
+	an \exception{IndexError} exception is raised.
+	
+	\item  A \strong{slice} of a tree can be obtained as a new tree, with the 
+	usual defaults.
+	Thus \samp{b = a[:]} is equivalent to \samp{b = avl.new(a)}.
+	No exception.
+	
+	\item  Item and slice assignments are undefined.
+	
+	\item  \samp{o in t} is equivalent to \samp{t.has_key(o)}.
+	
+	\item To perform in-place concatenation please call \samp{a += b} 
+	or \samp{a.concat(b)}.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%                       %
+%   Iterator protocol   %
+%                       %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Support for the \textbf{iterator} protocol: `avl_tree_iterator' objects}
+\label{iterator}
+
+\begin{seealso}
+\seepep{234}{Iterators}{New protocol in Python 2.2}
+\end{seealso}
+
+The \module{avl} module implements the iterator protocol. 
+Objects of type \code{`avl_tree_iterator'} are implicitly called upon 
+if a \code{for} loop is used to iterate over a tree,
+like in \samp{for o in t: print o}. This is more 
+efficient than retrieving the $i^{\mathrm{th}}$ item for all $i$.
+
+There are also a couple of explicit methods.
+
+To get a new iterator (in pre-position) for some tree \code{t}, say
+\samp{iter(t)} in Python~:
+\begin{Verbatim}
+	>>> j = iter(t)
+	>>> type(j)
+	<type 'avl_tree_iterator'>
+\end{Verbatim}
+Note that it increments the tree object's refcount.
+
+To obtain an iterator in either pre- or post-position,
+use the \function{iter} instance method, see above.
+The call \samp{t.iter()} is equivalent to \samp{iter(t)}.
+
+Here are the methods~:
+
+\begin{methoddesc}[avl_tree_iterator]{next}{}
+	Return new reference to next item if there is one, or raise
+	a  \code{StopIteration} exception. This is part of the protocol.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree_iterator]{prev}{}
+	Symmetrically, return new reference to previous item.
+	This is not part of the protocol.
+\end{methoddesc}
+
+\begin{methoddesc}[avl_tree_iterator]{index}{}
+	Return inorder index of current item in iteration, 
+	or \code{-1} if it's in `pre-position', i.e. right before the
+	first item, or tree's \code{len} if it's in `post-position'.
+\end{methoddesc}
+
+Since the tree implementation maintains a parent pointer for each
+node, any iterator remains able to proceed if insertions are done
+while it's in use, or if any item \emph{\textbf{other than the current
+one}} is deleted via the \method{remove()} tree object method.  The
+module provides another iterator method~:
+
+\begin{methoddesc}[avl_tree_iterator]{remove}{}
+	Remove current item in iteration, or raise an
+	\exception{avl.Error} exception.  Current iterator position is set
+	to next position or in post-position. This is not part of the protocol.
+\end{methoddesc}
+
+%%%%%%%%%%%%%%%
+%             %
+%   Example   %
+%             %
+%%%%%%%%%%%%%%%
+\subsection{Example \label{avl-example}}
+
+The following example demonstrates usage of the \module{avl} module.
+
+\begin{Verbatim}[fontsize=\small,baselinestretch=.9,commentchar=!]
+Python 2.3 (#1, Sep 13 2003, 00:49:11) 
+[GCC 3.3 20030304 (Apple Computer, Inc. build 1495)] on darwin
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import random
+>>> import avl
+
+# Create new avl_tree:
+>>> t = avl.new()
+>>> type(t)
+<type 'avl_tree'>
+
+# Insert new items:
+>>> for x in range(20): t.insert(random.randint(0, 100))
+... 
+# verify() --> 1 if tree is valid, 0 otherwise
+>>> t.verify()
+1
+>>> t
+[2, 5, 9, 18, 24, 25, 29, 42, 45, 51, 58, 58, 60, 64, 66, 80, 85, 87, 92, 99]
+
+# Lookup by index with usual syntax:
+>>> t[0], t.min()
+(2, 2)
+>>> t[-1], t.max()
+(99, 99)
+>>> t[4], t[-16]
+(24, 24)
+
+# Create a tree from list of items:
+>>> list = [3,8,3,5,1,2,8,7]
+>>> u = avl.new(list)
+# As a result, list is sorted ; this is an _unstable_ sort
+>>> u
+[1, 2, 3, 3, 5, 7, 8, 8]
+# A second optional argument to new() is a Python compare function:
+>>> u= avl.new(list, None)
+>>> u
+[1, 2, 3, 3, 5, 7, 8, 8]
+# Same as above except duplicates are removed:
+>>> u = avl.new(list, None, 1)
+>>> u
+[1, 2, 3, 5, 7, 8]
+
+# Lookup by key:
+>>> t.lookup(42)
+42
+# Failure:
+>>> t.lookup(36)
+Traceback (most recent call last):
+  File "<stdin>", line 1, in ?
+LookupError: 36
+
+# Smallest index of item, or -1:
+>>> t.index(58)
+10
+>>> i,j = t.span(58); i,j
+(10, 12)
+>>> t[10:12]
+[58, 58]
+>>> t.span(36)
+(7, 7)
+# Put it where it should be without comparing:
+>>> t.insert(36,7); t.verify()
+1
+>>> t.index(36)
+7
+
+# Slices with usual defaults:
+>>> u = t[:10]
+>>> type(u)
+<type 'avl_tree'>
+>>> u
+[2, 5, 9, 18, 24, 25, 29, 36, 42, 45]
+>>> 42 in u
+True
+# otherwise put:
+>>> u.has_key(42)
+1
+
+# new() accepts a tree as argument
+# this is equivalent to `a = u[:]':
+>>> a = avl.new(u)
+>>> a.verify()
+1
+>>> b = avl.new(range(60,70))
+
+### Concatenation with usual syntax:
+>>> c = a + b
+>>> c.verify()
+1
+>>> c
+[2, 5, 9, 18, 24, 25, 29, 36, 42, 45, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69]
+
+# Concatenation is done regardless of order:
+>>> avl.new([5,1,2]) + avl.new([2,8,6])
+[1, 2, 5, 2, 6, 8]
+
+# In-place concatenation:
+>>> a.concat(b)
+>>> a
+[2, 5, 9, 18, 24, 25, 29, 36, 42, 45, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69]
+
+### ITERATION:
+>>> n = 0
+>>> for o in u:
+... 	print n, ":", o
+... 	n += 1
+... 
+0 : 2
+1 : 5
+2 : 9
+3 : 18
+4 : 24
+5 : 25
+6 : 29
+7 : 36
+8 : 42
+9 : 45
+
+### Explicit iteration:
+>>> j = iter(u)
+>>> type(j)
+<type 'avl_tree_iterator'>
+>>> j.next()
+2
+>>> j.next()
+5
+>>> u
+[2, 5, 9, 18, 24, 25, 29, 36, 42, 45]
+>>> j.index()
+1
+>>> u[2]
+9
+>>> u.insert(11)
+>>> j.next()
+9
+>>> j.next()
+11
+>>> j.cur()
+11
+>>> j.remove()
+>>> j.next()
+18
+>>> 11 in u
+False
+>>> u.verify()
+1
+# Get previous item:
+>>> j.prev()
+9
+
+### Removing items:
+
+# Remove u[3]:
+>>> u.remove_at(3)
+>>> u.verify()
+1
+# Remove by key:
+>>> u.remove(24)
+>>> u.remove(36)
+>>> u
+[2, 5, 9, 25, 29, 42, 45]
+>>> u.verify()
+1
+# Nothing is done if item not found:
+>>> u.remove(20)
+>>> u
+[2, 5, 9, 25, 29, 42, 45]
+
+### at_least() and at_most(), with exceptions:
+>>> u.at_least(30)
+42
+>>> u.at_most(30)
+29
+>>> u.at_least(50)
+Traceback (most recent call last):
+  File "<input>", line 1, in ?
+ValueError: 50
+
+! The span() protocol may be subject to change
+>>> u.span(1,9)
+(0, 3)
+>>> u[0:3]
+[2, 5, 9]
+>>> u.span(2,8)
+(0, 2)
+>>> u.span(30,35)
+(5, 5)
+>>> u[5]
+42
+>>> u.span(25,44)
+(3, 6)
+>>> u[3:6]
+[25, 29, 42]
+>>> u.span(24,44)
+(3, 6)
+>>> u.span(24, 45)
+(3, 7)
+>>> u[3:7]
+[25, 29, 42, 45]
+>>> u.span(26,45)
+(4, 7)
+>>> 
+\end{Verbatim}
+% 
+%%%%%%%%%%%%%%%%%%
+%                %
+%   References   %
+%                %
+%%%%%%%%%%%%%%%%%%
+\clearpage
+\begin{thebibliography}{9}\addcontentsline{toc}{section}{References}
+	
+	\bibitem{Rushing} Sam Rushing's own iterative C implementation, on
+	which this one is based, is to be found at
+	\url{http://www.python.org/ftp/python/contrib-09-Dec-1999/DataStructures/avl.README}
+	
+	\bibitem{Pfaff} Good ideas came from browsing 
+	Ben Pfaff's GNU libavl home at \url{http://adtinfo.org/}
+	
+	\bibitem{AVL} Adel'son-Vel'ski\u{\i} (G.M.) and Landis (E.M.) ---
+	{\itshape An algorithm for the organization of information.} Soviet
+	Mathematics Doklady, vol.~3, 1962, pp.  1259--1263
+\end{thebibliography}
+
+\input{pyavl.ind}\addcontentsline{toc}{section}{Index}
+% \input{modpyavl.ind}
+\end{document}

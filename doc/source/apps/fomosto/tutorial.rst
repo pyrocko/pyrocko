@@ -416,6 +416,8 @@ time tables, ``fomosto stats`` to summarize some technical details, and
 ``fomosto check`` which checks the store for *NaN* values and some other
 problems.
 
+.. _fomosto_report:
+
 Report subcommand
 -----------------
 

@@ -1,4 +1,12 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''Utility functions for Pyrocko.'''
+from __future__ import division, print_function
+from past.builtins import zip, long
+from builtins import range
+from builtins import object
 
 import time
 import logging
@@ -19,7 +27,7 @@ from scipy import signal
 
 
 if platform.system() != 'Darwin':
-    import util_ext
+    from pyrocko import util_ext
 else:
     util_ext = None
 
@@ -28,7 +36,7 @@ logger = logging.getLogger('pyrocko.util')
 
 try:
     import progressbar as progressbar_mod
-except:
+except ImportError:
     from pyrocko import dummy_progressbar as progressbar_mod
 
 
@@ -68,38 +76,180 @@ class DownloadError(Exception):
     pass
 
 
-def download_file(url, fpath, username=None, password=None):
-    import urllib2
-    import base64
+class PathExists(DownloadError):
+    pass
 
-    logger.info('starting download of %s' % url)
 
-    ensuredirs(fpath)
+def _download(url, fpath, username=None, password=None,
+              force=False, method='download', stats=None,
+              status_callback=None, entries_wanted=None,
+              recursive=False):
+
+    import requests
+    from requests.auth import HTTPDigestAuth
+
+    requests.adapters.DEFAULT_RETRIES = 5
+    urljoin = requests.compat.urljoin
+
+    session = requests.Session()
     try:
-        request = urllib2.Request(url)
-        if username and password:
-            base64string = base64.b64encode('%s:%s' % (username, password))
-            request.add_header("Authorization", "Basic %s" % base64string)
+        session.auth = None if username is None\
+            else HTTPDigestAuth(username, password)
 
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor())
-        f = opener.open(request)
-    except urllib2.HTTPError, e:
-        raise DownloadError('cannot download file from url %s: %s' % (url, e))
+        url_to_size = {}
+        status = dict(
+            ntotal_files=0,
+            nread_files=0,
+            ntotal_bytes_all_files=0,
+            nread_bytes_all_files=0,
+            ntotal_bytes_current_file=0,
+            nread_bytes_current_file=0)
 
-    fpath_tmp = fpath + '.%i.temp' % os.getpid()
-    g = open(fpath_tmp, 'wb')
-    while True:
-        data = f.read(1024)
-        if not data:
-            break
-        g.write(data)
+        if callable(status_callback):
+            status_callback(status)
 
-    g.close()
-    f.close()
+        if not recursive and url.endswith('/'):
+            raise DownloadError(
+                'URL: %s appears to be a directory'
+                ' but recurvise download is False' % url)
 
-    os.rename(fpath_tmp, fpath)
+        if recursive and not url.endswith('/'):
+            url += '/'
 
-    logger.info('finished download of %s' % url)
+        def parse_directory_tree(url, subdir=''):
+            r = session.get(urljoin(url, subdir))
+            r.raise_for_status()
+
+            entries = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', r.text)
+
+            files = sorted(set(subdir + fn for fn in entries
+                               if not fn.endswith('/')))
+
+            if entries_wanted is not None:
+                files = [fn for fn in files
+                         if (fn in wanted for wanted in entries_wanted)]
+
+            status['ntotal_files'] += len(files)
+
+            dirs = sorted(set(subdir + dn for dn in entries
+                              if dn.endswith('/')
+                              and dn not in ('./', '../')))
+
+            for dn in dirs:
+                files.extend(parse_directory_tree(
+                    url, subdir=dn))
+
+            return files
+
+        def get_content_length(url):
+            if url not in url_to_size:
+                r = session.head(url, headers={'Accept-Encoding': ''})
+
+                content_length = r.headers.get('content-length', None)
+                if content_length is None:
+                    logger.warning('Could not get HTTP header '
+                                   'Content-Length for %s' % url)
+
+                    content_length = None
+
+                else:
+                    content_length = int(content_length)
+                    status['ntotal_bytes_all_files'] += content_length
+                    if callable(status_callback):
+                        status_callback(status)
+
+                url_to_size[url] = content_length
+
+            return url_to_size[url]
+
+        def download_file(url, fn):
+            logger.info('starting download of %s...' % url)
+            ensuredirs(fn)
+
+            fsize = get_content_length(url)
+            status['ntotal_bytes_current_file'] = fsize
+            status['nread_bytes_current_file'] = 0
+            if callable(status_callback):
+                status_callback(status)
+
+
+            r = session.get(url, stream=True, timeout=5)
+            r.raise_for_status()
+
+            frx = 0
+            fn_tmp = fn + '.%i.temp' % os.getpid()
+            with open(fn_tmp, 'wb') as f:
+                for d in r.iter_content(chunk_size=1024):
+                    f.write(d)
+                    frx += len(d)
+
+                    status['nread_bytes_all_files'] += len(d)
+                    status['nread_bytes_current_file'] += len(d)
+                    if callable(status_callback):
+                        status_callback(status)
+
+            os.rename(fn_tmp, fn)
+
+            if fsize != None and frx != fsize:
+                logger.warning(
+                    'HTTP header Content-Length: %i bytes does not match '
+                    'download size %i bytes' % (fsize, frx))
+
+            logger.info('finished download of %s' % url)
+
+            status['nread_files'] += 1
+            if callable(status_callback):
+                status_callback(status)
+
+        if recursive:
+            if op.exists(fpath) and not force:
+                raise PathExists('path %s already exists' % fpath)
+
+            files = parse_directory_tree(url)
+
+            dsize = 0
+            for fn in files:
+                file_url = urljoin(url, fn)
+                dsize += get_content_length(file_url) or 0
+
+            if method == 'calcsize':
+                return dsize
+
+            else:
+                for fn in files:
+                    file_url = urljoin(url, fn)
+                    download_file(file_url, op.join(fpath, fn))
+
+        else:
+            status['ntotal_files'] += 1
+            if callable(status_callback):
+                status_callback(status)
+
+            fsize = get_content_length(url)
+            if method == 'calcsize':
+                return fsize
+            else:
+                download_file(url, fpath)
+
+    finally:
+        session.close()
+
+
+def download_file(
+        url, fpath, username=None, password=None, status_callback=None):
+    return _download(
+        url, fpath, username, password,
+        recursive=False,
+        status_callback=status_callback)
+
+
+def download_dir(
+        url, fpath, username=None, password=None, status_callback=None):
+
+    return _download(
+        url, fpath, username, password,
+        recursive=True,
+        status_callback=status_callback)
 
 
 if hasattr(num, 'float128'):
@@ -113,7 +263,7 @@ else:
             'platform.')
 
 
-class Stopwatch:
+class Stopwatch(object):
     '''
     Simple stopwatch to measure elapsed wall clock time.
 
@@ -344,7 +494,7 @@ def polylinefit(x, y, n_or_xnodes):
 
     ndata = len(x)
     a = num.zeros((ndata+(n-1), n*2))
-    for i in xrange(n):
+    for i in range(n):
         xmin_block = xnodes[i]
         xmax_block = xnodes[i+1]
         if i == n-1:  # don't loose last point
@@ -400,7 +550,7 @@ def plf_integrate_piecewise(x_edges, x, y):
     return num.diff(y_all[-len(y_edges):])
 
 
-class GlobalVars:
+class GlobalVars(object):
     reuse_store = dict()
     decitab_nmax = 0
     decitab = {}
@@ -463,9 +613,9 @@ def decimate(x, q, n=None, ftype='iir', zi=None, ioff=0):
     y, zf = signal.lfilter(b, a, x, zi=zi_)
 
     if zi is not None:
-        return y[n/2+ioff::q].copy(), zf
+        return y[n//2+ioff::q].copy(), zf
     else:
-        return y[n/2+ioff::q].copy()
+        return y[n//2+ioff::q].copy()
 
 
 class UnavailableDecimation(Exception):
@@ -492,7 +642,7 @@ def lcm(a, b):
     Least common multiple.
     '''
 
-    return a*b/gcd(a, b)
+    return a*b // gcd(a, b)
 
 
 def mk_decitab(nmax=100):
@@ -754,7 +904,7 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
     if util_ext is not None:
         try:
             t, tfrac = util_ext.stt(s, format)
-        except util_ext.UtilExtError, e:
+        except util_ext.UtilExtError as e:
             raise TimeStrError(
                 '%s, string=%s, format=%s' % (str(e), s, format))
 
@@ -789,7 +939,7 @@ def str_to_time(s, format='%Y-%m-%d %H:%M:%S.OPTFRAC'):
 
     try:
         return calendar.timegm(time.strptime(s, format)) + fracsec
-    except ValueError, e:
+    except ValueError as e:
         raise TimeStrError('%s, string=%s, format=%s' % (str(e), s, format))
 
 
@@ -820,7 +970,7 @@ def time_to_str(t, format='%Y-%m-%d %H:%M:%S.3FRAC'):
         t0 = math.floor(t)
         try:
             return util_ext.tts(int(t0), t - t0, format)
-        except util_ext.UtilExtError, e:
+        except util_ext.UtilExtError as e:
             raise TimeStrError(
                 '%s, timestamp=%f, format=%s' % (str(e), t, format))
 
@@ -930,7 +1080,7 @@ def reuse(x):
     return grs[x]
 
 
-class Anon:
+class Anon(object):
     '''
     Dict-to-object utility.
 
@@ -996,7 +1146,7 @@ def select_files(paths, selector=None, regex=None, show_progress=True):
             if m:
                 infos = Anon(**m.groupdict())
                 logger.debug("   regex '%s' matches." % regex)
-                for k, v in m.groupdict().iteritems():
+                for k, v in m.groupdict().items():
                     logger.debug(
                         "      attribute '%s' has value '%s'" % (k, v))
                 if selector is None or selector(infos):
@@ -1101,8 +1251,8 @@ def unpack_fixed(format, line, *callargs):
         optional = form[-1] == '?'
         form = form.rstrip('?')
         typ = form[0]
-        l = int(form[1:])
-        s = line[ipos:ipos+l]
+        ln = int(form[1:])
+        s = line[ipos:ipos+ln]
         cast = {
             'x': None,
             'A': str,
@@ -1121,16 +1271,16 @@ def unpack_fixed(format, line, *callargs):
             else:
                 try:
                     values.append(cast(s))
-                except:
+                except Exception:
                     mark = [' '] * 80
-                    mark[ipos:ipos+l] = ['^'] * l
+                    mark[ipos:ipos+ln] = ['^'] * ln
                     mark = ''.join(mark)
                     raise UnpackError(
                         'Invalid cast to type "%s" at position [%i:%i] of '
                         'line: \n%s%s\n%s' % (
-                            typ, ipos, ipos+l, ruler, line.rstrip(), mark))
+                            typ, ipos, ipos+ln, ruler, line.rstrip(), mark))
 
-        ipos += l
+        ipos += ln
 
     return values
 
@@ -1166,10 +1316,10 @@ def match_nslc(patterns, nslc):
         match_nslc('*.HAM3.*.BH?', ('GR', 'HAM3', '', 'BHZ'))   # -> True
     '''
 
-    if isinstance(patterns, basestring):
+    if isinstance(patterns, str):
         patterns = [patterns]
 
-    if not isinstance(nslc, basestring):
+    if not isinstance(nslc, str):
         s = '.'.join(nslc)
     else:
         s = nslc
@@ -1240,7 +1390,7 @@ class Sole(object):
 
         try:
             self._lockfile = os.open(self._pid_path, os.O_CREAT | os.O_WRONLY)
-        except:
+        except Exception:
             raise SoleError(
                 'Cannot open lockfile (path = %s)' % self._pid_path)
 
@@ -1253,7 +1403,7 @@ class Sole(object):
                 f = open(self._pid_path, 'r')
                 pid = f.read().strip()
                 f.close()
-            except:
+            except Exception:
                 pid = '?'
 
             raise SoleError('Other instance is running (pid = %s)' % pid)
@@ -1263,7 +1413,7 @@ class Sole(object):
             os.write(self._lockfile, '%i\n' % os.getpid())
             os.fsync(self._lockfile)
 
-        except:
+        except Exception:
             # the pid is only stored for user information, so this is allowed
             # to fail
             pass
@@ -1277,7 +1427,7 @@ class Sole(object):
                 os.close(self._lockfile)
             try:
                 os.unlink(self._pid_path)
-            except:
+            except Exception:
                 pass
 
 
@@ -1288,7 +1438,7 @@ def escapequotes(s):
     return re_escapequotes.sub(r"\\\1", s)
 
 
-class TableWriter:
+class TableWriter(object):
     '''
     Write table of space separated values to a file.
 
@@ -1335,7 +1485,7 @@ class TableWriter:
         self._f.write(' '.join(out).rstrip() + '\n')
 
 
-class TableReader:
+class TableReader(object):
 
     '''
     Read table of space separated values from a file.
@@ -1487,7 +1637,7 @@ def read_leap_seconds(tzfile='/usr/share/zoneinfo/right/UTC'):
 
         # read leap-seconds
         fmt = '>2l'
-        for i in xrange(leapcnt):
+        for i in range(leapcnt):
             tleap, nleap = unpack(fmt, f.read(calcsize(fmt)))
             out.append((tleap-nleap+1, nleap))
 
@@ -1516,11 +1666,11 @@ def parse_leap_seconds_list(fn):
         raise LeapSecondsOutdated('no leap seconds file found')
 
     try:
-        with open(fn, 'r') as f:
+        with open(fn, 'rb') as f:
             for line in f:
-                if line.startswith('#@'):
+                if line.startswith(b'#@'):
                     texpires = int(line.split()[1]) + t0
-                elif line.startswith('#'):
+                elif line.startswith(b'#') or len(line) < 5:
                     pass
                 else:
                     toks = line.split()
@@ -1550,9 +1700,10 @@ def read_leap_seconds2():
             logger.info('updating leap seconds list...')
             download_file(url, fn)
 
-        except Exception:
+        except Exception as e:
             raise LeapSecondsError(
-                'cannot download leap seconds list from %s to %s' % (url, fn))
+                'cannot download leap seconds list from %s to %s (%s)'
+                % (url, fn, e))
 
         return parse_leap_seconds_list(fn)
 
@@ -1592,15 +1743,15 @@ def utc_gps_offset(t_gps):
 def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
     import itertools
     import glob
-    from io_common import FileLoadError
+    from pyrocko.io.io_common import FileLoadError
 
     def iload_filename(filename, **kwargs):
         try:
-            with open(filename, 'r') as f:
+            with open(filename, 'rb') as f:
                 for cr in iload_fh(f, **kwargs):
                     yield cr
 
-        except FileLoadError, e:
+        except FileLoadError as e:
             e.set_context('filename', filename)
             raise
 
@@ -1619,7 +1770,7 @@ def make_iload_family(iload_fh, doc_fmt='FMT', doc_yielded_objects='FMT'):
                 yield cr
 
     def iload(source, **kwargs):
-        if isinstance(source, basestring):
+        if isinstance(source, str):
             if op.isdir(source):
                 return iload_dirname(source, **kwargs)
             elif op.isfile(source):
@@ -1691,7 +1842,7 @@ def mostfrequent(x):
     for e in x:
         c[e] += 1
 
-    return sorted(c.keys(), key=lambda k: c[k])[-1]
+    return sorted(list(c.keys()), key=lambda k: c[k])[-1]
 
 
 def consistency_merge(list_of_tuples,
@@ -1707,11 +1858,29 @@ def consistency_merge(list_of_tuples,
     try:
         consistency_check(list_of_tuples, message)
         return list_of_tuples[0][1:]
-    except Inconsistency, e:
+    except Inconsistency as e:
         if error == 'raise':
             raise
 
         elif error == 'warn':
-            logger.warn(str(e))
+            logger.warning(str(e))
 
         return tuple([merge(x) for x in zip(*list_of_tuples)[1:]])
+
+
+def parse_md(f):
+    try:
+        with open(op.join(
+                op.dirname(op.abspath(f)),
+                  'README.md'), 'r') as readme:
+            mdstr = readme.read()
+    except IOError as e:
+        return 'Failed to get README.md: %s' % e
+
+    # Remve the title
+    mdstr = re.sub(r'^# .*\n?', '', mdstr)
+    # Append sphinx reference to `pyrocko.` modules
+    mdstr = re.sub(r'`pyrocko\.(.*)`', r':py:mod:`pyrocko.\1`', mdstr)
+    # Convert Subsections to toc-less rubrics
+    mdstr = re.sub(r'## (.*)\n', r'.. rubric:: \1\n', mdstr)
+    return mdstr

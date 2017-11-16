@@ -1,7 +1,11 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 import sys
 
 
-class ProgressBar:
+class ProgressBar(object):
     def __init__(self, widgets=['progress'], maxval=1, *args, **kwargs):
         self._widgets = widgets
         self._maxval = maxval
@@ -27,11 +31,11 @@ class ProgressBar:
         sys.stderr.write('%s done\n' % self.label())
 
 
-class Bar:
+class Bar(object):
     def __init__(self, *args, **kwargs):
         pass
 
 
-class Percentage:
+class Percentage(object):
     def __init__(self, *args, **kwargs):
         pass

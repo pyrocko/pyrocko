@@ -1,12 +1,16 @@
-#!/bin/python
-# encoding=utf8
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import range
+
 import numpy as num
 import math
 
-from pyrocko.gf import meta
+from . import meta
 from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
 from pyrocko.guts_array import Array
-from pyrocko.gf.meta import InterpolationMethod
 
 d2r = num.pi / 180.
 
@@ -54,7 +58,7 @@ class Target(meta.Receiver):
              'If not given the GF store\'s default sample rate is used. '
              'GF store specific restrictions may apply.')
 
-    interpolation = InterpolationMethod.T(
+    interpolation = meta.InterpolationMethod.T(
         default='nearest_neighbor',
         help='Interpolation method between Green\'s functions. Supported are'
              ' ``nearest_neighbor`` and ``multilinear``')
@@ -182,7 +186,7 @@ class StaticTarget(meta.MultiLocation):
         help='Measurement quantity type, for now only `displacement` is'
              'supported.')
 
-    interpolation = InterpolationMethod.T(
+    interpolation = meta.InterpolationMethod.T(
         default='nearest_neighbor',
         help='Interpolation method between Green\'s functions. Supported are'
              ' ``nearest_neighbor`` and ``multilinear``')
@@ -219,7 +223,7 @@ class StaticTarget(meta.MultiLocation):
         :rtype: list
         '''
         targets = []
-        for i in xrange(self.ntargets):
+        for i in range(self.ntargets):
             targets.append(
                 Target(
                     lat=self.coords5[i, 0],
@@ -250,7 +254,7 @@ class SatelliteTarget(StaticTarget):
     phi = Array.T(
         shape=(None,), dtype=num.float,
         help='Theta is look vector elevation angle towards satellite from'
-             ' horizon in radians. Matrix of theta towards satellite’s'
+             ' horizon in radians. Matrix of theta towards satellite\'s'
              ' line of sight.'
              '\n\n        .. important::\n\n'
              '            :math:`-\\frac{\\pi}{2}` is **down** and'

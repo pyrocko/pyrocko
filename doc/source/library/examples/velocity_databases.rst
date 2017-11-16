@@ -4,18 +4,18 @@ Accessing crustal velocity databases
 Crust 2.0 Database
 ------------------
 
-The `CRUST 2.0 <http://igppweb.ucsd.edu/~gabi/rem.html>`_ is a global 2x2 degree velocity model of the earth's crust. Each individual profile is a 7 layer 1D-model.
+The `CRUST 2.0 <http://igppweb.ucsd.edu/~gabi/rem.html>`_ [#1]_ is a global 2x2 degree velocity model of the earth's crust. Each individual profile is a 7 layer 1D-model.
 
 
 .. rubric:: Citation
 
-.. [1] **Bassin, C., Laske, G. and Masters, G., The Current Limits of Resolution for Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000.**
+.. [#1] **Bassin, C., Laske, G. and Masters, G., The Current Limits of Resolution for Surface Wave Tomography in North America, EOS Trans AGU, 81, F897, 2000.**
 
 
 Accessing the Crust 2x2 database
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Here we utilize the :class:`pyrocko.crust2x2` module to query the Crust 2.0 database
+Here we utilize the :mod:`pyrocko.dataset.crust2x2` module to query the Crust 2.0 database
 
 ::
     
@@ -56,11 +56,11 @@ We can use :mod:`pyrocko.cake` to access the data and handle the velocity model 
 
 Global Crustal Database
 --------------------------
-The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ gathers empirical 1D velocity models from seismic reflection and refraction profiles. As of 2013 there are 138939 profiles, mainly P and fewer S wave records in the database.
+The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ [#2]_ gathers empirical 1D velocity models from seismic reflection and refraction profiles. As of 2013 there are 138939 profiles, mainly P and fewer S wave records in the database.
 
 .. rubric:: Citation
 
-.. [2] **W.D. Mooney, G. Laske and G. Masters, CRUST 5.1: A global crustal model at 5°x5°. J. Geophys. Res., 103, 727-747, 1998.**
+.. [#2] **W.D. Mooney, G. Laske and G. Masters, CRUST 5.1: A global crustal model at 5°x5°. J. Geophys. Res., 103, 727-747, 1998.**
 
 ::
 
@@ -82,4 +82,4 @@ The `Global Crustal Database <https://earthquake.usgs.gov/data/crust/>`_ gathers
 Other selection methods are :func:`~pyrocko.crustdb.CrustDB.selectPolygon` and
 :func:`~pyrocko.crustdb.CrustDB.selectRegion`.
 
-See :doc:`/library/reference/crustdb` for more information on the API.
+See :doc:`/library/reference/dataset` for more information on the API.

@@ -1,0 +1,19 @@
+[Unit]
+Description=Pyrocko User Survey Server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/pyrocko/server-user_survey.py start
+ExecStop=/bin/kill -9 $MAINPID
+User=pyrocko
+Group=pyrocko
+RestartSec=5
+TimeoutSec=60
+RuntimeMaxSec=infinity
+Restart=always
+PIDFile=/run/pyrocko/server-user_survey.pid
+
+[Install]
+WantedBy=multi-user.target

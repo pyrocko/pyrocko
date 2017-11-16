@@ -1,26 +1,28 @@
+from __future__ import division, print_function, absolute_import
+
 import unittest
 import logging
 from tempfile import mkdtemp
+import shutil
 
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis
-from pyrocko.fomosto_report import GreensFunctionTest as gftest
+from pyrocko.fomosto.report import GreensFunctionTest as gftest
 
-logger = logging.getLogger('test_fomosto_report')
+logger = logging.getLogger('pyrocko.test.test_fomosto_report')
 
 km = 1e3
 
 
 class ReportTestCase(unittest.TestCase):
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_pyrocko_report_with_gf_and_qseis(self):
@@ -93,7 +95,7 @@ mantle
 
         try:
             qseis.build(store_dir, nworkers=1)
-        except qseis.QSeisError, e:
+        except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
                 logger.warn('qseis not installed; '
                             'skipping test_pyrocko_gf_vs_qseis')

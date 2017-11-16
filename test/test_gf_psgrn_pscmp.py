@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import math
 from time import time
 import unittest
@@ -5,13 +6,14 @@ import logging
 from tempfile import mkdtemp
 import numpy as num
 import os
+import shutil
 
 from pyrocko import orthodrome as ortd
 from pyrocko import util, gf, cake  # noqa
 from pyrocko.fomosto import psgrn_pscmp
-from common import Benchmark
+from .common import Benchmark
 
-logger = logging.getLogger('test_gf_psgrn_pscmp')
+logger = logging.getLogger('pyrocko.test.test_gf_psgrn_pscmp')
 benchmark = Benchmark()
 
 km = 1000.
@@ -49,16 +51,18 @@ def statics(engine, source, starget):
     return out
 
 
+@unittest.skipUnless(
+    psgrn_pscmp.have_backend(), 'backend psgrn_pscmp not available')
 class GFPsgrnPscmpTestCase(unittest.TestCase):
+
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_fomosto_vs_psgrn_pscmp(self):
@@ -118,7 +122,7 @@ mantle
         # build store
         try:
             psgrn_pscmp.build(store_dir, nworkers=1)
-        except psgrn_pscmp.PsCmpError, e:
+        except psgrn_pscmp.PsCmpError as e:
             if str(e).find('could not start psgrn/pscmp') != -1:
                 logger.warn('psgrn/pscmp not installed; '
                             'skipping test_pyrocko_gf_vs_pscmp')

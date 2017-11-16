@@ -1,3 +1,13 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+
+from future import standard_library
+standard_library.install_aliases()  # noqa
+
+from builtins import range
 
 import os
 import logging
@@ -8,17 +18,29 @@ import re
 import sys
 import operator
 import math
-import cPickle as pickle
+import hashlib
+import pickle
 
-import avl
 
-from pyrocko import trace, io, util
-from pyrocko import config
-from pyrocko.trace import degapper
+from . import avl
+from . import trace, io, util
+from . import config
+from .trace import degapper
+
+
+show_progress_force_off = False
+
+
+def ehash(s):
+    return hashlib.sha1(s.encode('utf8')).hexdigest()
+
+
+def cmp(a, b):
+    return int(a > b) - int(a < b)
 
 
 def sl(s):
-    return map(str, sorted(list(s)))
+    return [str(x) for x in sorted(s)]
 
 
 class Counter(dict):
@@ -27,11 +49,11 @@ class Counter(dict):
         return 0
 
     def update(self, other):
-        for k, v in other.iteritems():
+        for k, v in other.items():
             self[k] += v
 
     def subtract(self, other):
-        for k, v in other.iteritems():
+        for k, v in other.items():
             self[k] -= v
             if self[k] <= 0:
                 del self[k]
@@ -48,7 +70,7 @@ logger = logging.getLogger('pyrocko.pile')
 
 def avl_remove_exact(avltree, element):
     ilo, ihi = avltree.span(element)
-    for i in xrange(ilo, ihi):
+    for i in range(ilo, ihi):
         if avltree[i] is element:
             avltree.remove_at(i)
             return
@@ -71,7 +93,7 @@ def cmpfunc(key):
     return lambda a, b: cmp(key(a), key(b))
 
 
-class Dummy:
+class Dummy(object):
     pass
 
 
@@ -84,7 +106,7 @@ class Sorted(object):
         self._key = key
         self._cmp = cmpfunc(key)
         if isinstance(key, str):
-            class Dummy:
+            class Dummy(object):
                 def __init__(self, k):
                     setattr(self, key, k)
             self._dummy = Dummy
@@ -216,17 +238,16 @@ class TracesFileCache(object):
         return self.dircaches[cachepath]
 
     def _dircachepath(self, abspath):
-        cachefn = "%i" % abs(hash(os.path.dirname(abspath)))
+        cachefn = ehash(abspath)
         return pjoin(self.cachedir, cachefn)
 
     def _load_dircache(self, cachefilename):
 
-        f = open(cachefilename, 'r')
-        cache = pickle.load(f)
-        f.close()
+        with open(cachefilename, 'rb') as f:
+            cache = pickle.load(f)
 
         # weed out files which no longer exist
-        for fn in cache.keys():
+        for fn in list(cache.keys()):
             if not os.path.isfile(fn):
                 del cache[fn]
 
@@ -237,6 +258,7 @@ class TracesFileCache(object):
 
             v.data_use_count = 0
             v.data_loaded = False
+
         return cache
 
     def _dump_dircache(self, cache, cachefilename):
@@ -270,10 +292,9 @@ class TracesFileCache(object):
             cache_copy[fn] = trf
 
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
-        f = open(tmpfn, 'w')
+        with open(tmpfn, 'wb') as f:
+            pickle.dump(cache_copy, f, protocol=2)
 
-        pickle.dump(cache_copy, f)
-        f.close()
         os.rename(tmpfn, cachefilename)
 
 
@@ -289,7 +310,10 @@ def loader(
         filenames, fileformat, cache, filename_attributes,
         show_progress=True, update_progress=None):
 
-    class Progress:
+    if show_progress_force_off:
+        show_progress = False
+
+    class Progress(object):
         def __init__(self, label, n):
             self._label = label
             self._n = n
@@ -315,7 +339,7 @@ def loader(
             return abort
 
     if not filenames:
-        logger.warn('No files to load from')
+        logger.warning('No files to load from')
         return
 
     regex = None
@@ -356,9 +380,9 @@ def loader(
 
             to_load.append((mustload, mtime, abspath, substitutions, tfile))
 
-        except (OSError, FilenameAttributeError), xerror:
+        except (OSError, FilenameAttributeError) as xerror:
             failures.append(abspath)
-            logger.warn(xerror)
+            logger.warning(xerror)
 
         abort = progress.update(i+1)
         if abort:
@@ -396,9 +420,9 @@ def loader(
                 if count_all:
                     iload += 1
 
-            except (io.FileLoadError, OSError), xerror:
+            except (io.FileLoadError, OSError) as xerror:
                 failures.append(abspath)
-                logger.warn(xerror)
+                logger.warning(xerror)
             else:
                 yield tfile
 
@@ -409,7 +433,7 @@ def loader(
         progress.update(nload)
 
     if failures:
-        logger.warn(
+        logger.warning(
             'The following file%s caused problems and will be ignored:\n' %
             util.plural_s(len(failures)) + '\n'.join(failures))
 
@@ -579,7 +603,7 @@ class TracesGroup(object):
             t = self.by_tlen.max()
             self.tlenmax = t.tmax - t.tmin
             self.mtime = self.by_mtime.max().mtime
-            deltats = self.deltats.keys()
+            deltats = list(self.deltats.keys())
             self.deltatmin = min(deltats)
             self.deltatmax = max(deltats)
         else:
@@ -936,12 +960,12 @@ class Pile(TracesGroup):
             show_progress=True,
             update_progress=None):
 
-        l = loader(
+        load = loader(
             filenames, fileformat, cache, filename_attributes,
             show_progress=show_progress,
             update_progress=update_progress)
 
-        self.add_files(l)
+        self.add_files(load)
 
     def add_files(self, files):
         for file in files:
@@ -949,12 +973,12 @@ class Pile(TracesGroup):
 
     def add_file(self, file):
         if file.abspath is not None and file.abspath in self.abspaths:
-            logger.warn('File already in pile: %s' % file.abspath)
+            logger.warning('File already in pile: %s' % file.abspath)
             return
 
         if file.deltatmin is None:
-            logger.warn('Sampling rate of all traces are zero in file: %s' %
-                        file.abspath)
+            logger.warning('Sampling rate of all traces are zero in file: %s' %
+                           file.abspath)
             return
 
         subpile = self.dispatch(file)
@@ -977,7 +1001,7 @@ class Pile(TracesGroup):
 
             subpile_files[subpile].append(file)
 
-        for subpile, files in subpile_files.iteritems():
+        for subpile, files in subpile_files.items():
             subpile.remove_files(files)
             for file in files:
                 if file.abspath is not None:
@@ -995,7 +1019,7 @@ class Pile(TracesGroup):
         return self.subpiles[k]
 
     def get_deltats(self):
-        return self.deltats.keys()
+        return list(self.deltats.keys())
 
     def chop(
             self, tmin, tmax,
@@ -1044,7 +1068,7 @@ class Pile(TracesGroup):
             self, chopped, degap, maxgap, maxlap, want_incomplete, wmax, wmin,
             tpad):
 
-        chopped.sort(lambda a, b: cmp(a.full_id, b.full_id))
+        chopped.sort(key=lambda a: a.full_id)
         if degap:
             chopped = degapper(chopped, maxgap=maxgap, maxlap=maxlap)
 
@@ -1121,13 +1145,19 @@ class Pile(TracesGroup):
             objects for every extracted time window
         '''
         if tmin is None:
-            tmin = self.tmin+tpad
+            if self.tmin is None:
+                logger.warning('Pile\'s tmin is not set - pile may be empty.')
+                return
+            tmin = self.tmin + tpad
 
         if tmax is None:
-            tmax = self.tmax-tpad
+            if self.tmax is None:
+                logger.warning('Pile\'s tmax is not set - pile may be empty.')
+                return
+            tmax = self.tmax - tpad
 
         if tinc is None:
-            tinc = tmax-tmin
+            tinc = tmax - tmin
 
         if not self.is_relevant(tmin-tpad, tmax+tpad, group_selector):
             return
@@ -1335,7 +1365,7 @@ class Pile(TracesGroup):
         :param opengl: bool, whether to use opengl (default: ``False``)
         '''
 
-        from pyrocko.snuffler import snuffle
+        from pyrocko.gui.snuffler import snuffle
         snuffle(self, **kwargs)
 
 
@@ -1358,6 +1388,10 @@ def make_pile(
         created as neccessary.
     :param show_progress: show progress bar and other progress information
     '''
+
+    if show_progress_force_off:
+        show_progress = False
+
     if isinstance(paths, str):
         paths = [paths]
 
@@ -1438,7 +1472,7 @@ class Injector(trace.States):
                 self._fixate(buf, complete=False)
 
     def fixate_all(self):
-        for state in self._states.values():
+        for state in list(self._states.values()):
             self._fixate(state[-1])
 
         self._states = {}

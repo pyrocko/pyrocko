@@ -5,16 +5,15 @@ Pyrocko offers access to commonly used geographical datasets, such as
 
 GSHHG Coastal Database
 ----------------------
-
 The `GSHHG database <https://www.ngdc.noaa.gov/mgg/shorelines/gshhs.html>`_ is a high-resolution geography data set. We implement functions to extract coordinates of landmasks.
 
 Classes covered in this example:
- * :py:class:`pyrocko.gshhg.GSHHG`
+ * :py:class:`pyrocko.datasets.gshhg.GSHHG`
 
- .. literalinclude :: /static/gshhg_example.py
+ .. literalinclude :: /../../examples/gshhg_example.py
     :language: python
 
-Download :download:`gshhg_example.py </static/gshhg_example.py>`
+Download :download:`gshhg_example.py </../../examples/gshhg_example.py>`
 
 .. rubric:: Footnotes
 
@@ -27,12 +26,12 @@ Tectonic Plates and Boundaries (PB2003)
 *An updated digital model of plate boundaries* [#f2]_ offers a global set of present plate boundaries on the Earth. This database used in :mod:`pyrocko.automap`.
 
 Classes covered in this example:
- * :py:class:`pyrocko.tectonics.PeterBird2003`
+ * :py:class:`pyrocko.datasets.tectonics.PeterBird2003`
 
- .. literalinclude :: /static/tectonics_example.py
+ .. literalinclude :: /../../examples/tectonics_example.py
     :language: python
 
-Download :download:`tectonics_example.py </static/tectonics_example.py>`
+Download :download:`tectonics_example.py </../../examples/tectonics_example.py>`
 
 .. rubric:: Footnotes
 
@@ -45,7 +44,7 @@ Global Srain Rate (GSRM1)
 Access to the global strain rate data set from Kreemer et al. (2003) [#f3]_.
 
 Classes to be covered in this example:
- * :py:class:`pyrocko.tectonics.GSRM1`
+ * :py:class:`pyrocko.datasets.tectonics.GSRM1`
 
 .. warning :: To be documented by example!
 

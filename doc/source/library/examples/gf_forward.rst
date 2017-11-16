@@ -14,9 +14,9 @@ such stores.
 Further API documentation for the utilized objects can be found at :class:`~pyrocko.gf.targets.Target`,
 :class:`~pyrocko.gf.seismosizer.LocalEngine` and :class:`~pyrocko.gf.seismosizer.DCSource`.
 
-Download :download:`gf_forward_example1.py </static/gf_forward_example1.py>`
+Download :download:`gf_forward_example1.py </../../examples/gf_forward_example1.py>`
 
-.. literalinclude :: /static/gf_forward_example1.py
+.. literalinclude :: /../../examples/gf_forward_example1.py
     :language: python
 
 .. figure :: /static/gf_synthetic.png
@@ -41,9 +41,9 @@ We will utilize :class:`~pyrocko.gf.seismosizer.LocalEngine`, :class:`~pyrocko.g
 
     Synthetic surface displacement from a vertical strike-slip fault, with a N104W azimuth, in the Line-of-sight (LOS), east, north and vertical directions. LOS as for Envisat satellite (Look Angle: 23., Heading:-76). Positive motion toward the satellite. 
 
-Download :download:`gf_forward_example2.py </static/gf_forward_example2.py>`
+Download :download:`gf_forward_example2.py </../../examples/gf_forward_example2.py>`
 
-.. literalinclude :: /static/gf_forward_example2.py
+.. literalinclude :: /../../examples/gf_forward_example2.py
     :language: python
 
 Calculate forward model of thrust event and display wrapped phase
@@ -59,9 +59,9 @@ In this example we compare the synthetic unwappred and wrapped LOS displacements
     Synthetic LOS displacements from a south-dipping thrust fault. LOS as for Sentinel-1 satellite (Look Angle: 36., Heading:-76). Positive motion toward the satellite. Left: unwrapped phase. Right: Wrapped phase.
 
 
-Download :download:`gf_forward_example3.py </static/gf_forward_example3.py>`
+Download :download:`gf_forward_example3.py </../../examples/gf_forward_example3.py>`
 
-.. literalinclude :: /static/gf_forward_example3.py
+.. literalinclude :: /../../examples/gf_forward_example3.py
     :language: python
 
 
@@ -77,7 +77,7 @@ In this example we combine two rectangular sources and plot the forward model in
     fault and one thrust fault. LOS as for Sentinel-1 satellite (Look Angle:
     36., Heading:-76). Positive motion toward the satellite. 
 
-Download :download:`gf_forward_example4.py </static/gf_forward_example4.py>`
+Download :download:`gf_forward_example4.py </../../examples/gf_forward_example4.py>`
 
-.. literalinclude :: /static/gf_forward_example4.py
+.. literalinclude :: /../../examples/gf_forward_example4.py
     :language: python

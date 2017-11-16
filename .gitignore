@@ -1,13 +1,39 @@
 build
+dist
+pyrocko.egg-info
 evalresp-3.3.0
 libmseed
-*.pyc
+__pycache__
+*.py[cod]
 *~
 *.swp
+*.so
 doc/_build
+maintenance/vagrant/*/*.out
+maintenance/vagrant/*/.vagrant
 src/info.py
 pages
 tags
 test/data
 scratch
 *.sublime-*
+htmlcov
+.coverage
+.coverage.*
+
+.cache
+test/example_run_dir
+
+# Anaconda
+miniconda.sh
+maintenance/anaconda/pyrocko-anaconda-deploy
+
+# Pip
+pip-pyrocko.git/
+
+# Other stuff
+*.err_log
+
+pyrocko.git/
+.vagrant/
+pyrocko-test-data/

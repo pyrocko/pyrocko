@@ -33,7 +33,8 @@ import sphinx_sleekcat_theme
 extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.imgmath', # 'sphinx.ext.jsmath', 
     'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx'
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.autosummary'
 ]
 
 intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
@@ -266,18 +267,21 @@ def process_signature(app, what, name, obj, options, signature,
 
     from pyrocko import guts
 
-    if what == 'attribute' and isinstance(obj, guts.TBase):
-        return str(obj)
+    # if what == 'attribute' and isinstance(obj, guts.TBase):
+    #     return (str(obj), '')
 
     if what == 'class' and issubclass(obj, guts.Object):
         if obj.dummy_for is not None:
             return ('(dummy)', '%s' % obj.dummy_for.__name__)
-
     return
 
 
 def skip_member(app, what, name, obj, skip, options):
+    from pyrocko import guts
+
     if what == 'class' and name == 'dummy_for':
+        return True
+    if what == 'class' and name == 'T':
         return True
 
 

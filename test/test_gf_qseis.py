@@ -1,17 +1,22 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
+
 import random
 import math
 import unittest
 import logging
 from tempfile import mkdtemp
+import shutil
+
 import numpy as num
 
-from common import Benchmark
+from .common import Benchmark
 from multiprocessing import cpu_count
 
 from pyrocko import util, trace, gf, cake  # noqa
 from pyrocko.fomosto import qseis, ahfullgreen
 
-logger = logging.getLogger('test_gf_qseis')
+logger = logging.getLogger('pyrocko.test.test_gf_qseis')
 benchmark = Benchmark()
 
 km = 1000.
@@ -30,16 +35,18 @@ def g(trs, cha):
             return tr
 
 
+@unittest.skipUnless(
+    qseis.have_backend(), 'backend qseis not available')
 class GFQSeisTestCase(unittest.TestCase):
+
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_pyrocko_gf_vs_qseis(self):
@@ -112,7 +119,7 @@ mantle
 
         try:
             qseis.build(store_dir, nworkers=1)
-        except qseis.QSeisError, e:
+        except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
                 logger.warn('qseis not installed; '
                             'skipping test_pyrocko_gf_vs_qseis')
@@ -125,7 +132,7 @@ mantle
             lon=0.,
             depth=10.*km)
 
-        source.m6 = tuple(random.random()*2.-1. for x in xrange(6))
+        source.m6 = tuple(random.random()*2.-1. for x in range(6))
 
         azi = random.random()*365.
         dist = 553.*km
@@ -197,7 +204,7 @@ mantle
                     .pyrocko_traces()
             return process(nthreads)
 
-        for nthreads in xrange(1, cpu_count()+1):
+        for nthreads in range(1, cpu_count()+1):
             trs2 = process_wrap(nthreads)
         # print benchmark
 
@@ -297,7 +304,7 @@ mantle
 
         try:
             qseis.build(store_dir_qseis, nworkers=1)
-        except qseis.QSeisError, e:
+        except qseis.QSeisError as e:
             if str(e).find('could not start qseis') != -1:
                 logger.warn('qseis not installed; '
                             'skipping test_pyrocko_gf_vs_qseis')
@@ -351,9 +358,9 @@ mantle
             lon=0.,
             depth=sdepth)
 
-        source.m6 = tuple(rand(-1., 1.) for x in xrange(6))
+        source.m6 = tuple(rand(-1., 1.) for x in range(6))
 
-        for ii in xrange(5):
+        for ii in range(5):
             azi = random.random()*365.
             dist = rand(config.distance_min, config.distance_max)
             dist = round(dist / config.distance_delta) * config.distance_delta

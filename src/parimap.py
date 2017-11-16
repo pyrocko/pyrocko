@@ -1,4 +1,11 @@
-import Queue
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+
+from builtins import map
+
+import queue
 import multiprocessing
 import traceback
 import errno
@@ -14,14 +21,14 @@ def worker(q_in, q_out, function, eprintignore, pshared):
         if i is None:
             break
 
-        r, e = None, None
+        res, exception = None, None
         try:
-            r = function(*args, **kwargs)
-        except Exception, e:
+            res = function(*args, **kwargs)
+        except Exception as e:
             if eprintignore is not None and not isinstance(e, eprintignore):
                 traceback.print_exc()
-
-        q_out.put((i, r, e))
+            exception = e
+        q_out.put((i, res, exception))
 
 
 def parimap(function, *iterables, **kwargs):
@@ -36,13 +43,19 @@ def parimap(function, *iterables, **kwargs):
         eprintignore = None
 
     if nprocs == 1:
-        iterables = map(iter, iterables)
+        iterables = list(map(iter, iterables))
         kwargs = {}
         if pshared is not None:
             kwargs['pshared'] = pshared
 
         while True:
-            args = [next(it) for it in iterables]
+            args = []
+            for it in iterables:
+                try:
+                    args.append(next(it))
+                except StopIteration:
+                    return
+
             yield function(*args, **kwargs)
 
         return
@@ -61,10 +74,16 @@ def parimap(function, *iterables, **kwargs):
     iout = 0
     all_written = False
     error_ahead = False
-    iterables = map(iter, iterables)
+    iterables = list(map(iter, iterables))
     while True:
         if nrun < nprocs and not all_written and not error_ahead:
-            args = tuple(it.next() for it in iterables)
+            args = []
+            for it in iterables:
+                try:
+                    args.append(next(it))
+                except StopIteration:
+                    pass
+
             if len(args) == len(iterables):
                 if len(procs) < nrun + 1:
                     p = multiprocessing.Process(
@@ -91,30 +110,30 @@ def parimap(function, *iterables, **kwargs):
                         try:
                             results.append(q_out.get())
                             break
-                        except IOError, e:
+                        except IOError as e:
                             if e.errno != errno.EINTR:
                                 raise
 
                 nrun -= 1
 
-        except Queue.Empty:
+        except queue.Empty:
             pass
 
         if results:
             results.sort()
             # check for error ahead to prevent further enqueuing
-            if any(e for (_, _, e) in results):
+            if any(exc for (_, _, exc) in results):
                 error_ahead = True
 
             while results:
-                (i, r, e) = results[0]
+                (i, r, exc) = results[0]
                 if i == iout:
                     results.pop(0)
-                    if e:
+                    if exc is not None:
                         if not all_written:
                             [q_in.put((None, None)) for p in procs]
                             q_in.close()
-                        raise e
+                        raise exc
                     else:
                         yield r
 
@@ -126,3 +145,4 @@ def parimap(function, *iterables, **kwargs):
             break
 
     [p.join() for p in procs]
+    return

@@ -1,12 +1,14 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from future import standard_library
+standard_library.install_aliases()  # noqa
 
-import os
 import time
-import shutil
-import urllib
-import urllib2
-import httplib
+import requests
+
 import logging
-import re
 
 from pyrocko import util
 
@@ -49,29 +51,32 @@ class InvalidRequest(Exception):
 
 
 def _request(url, post=False, **kwargs):
-    url_values = urllib.urlencode(kwargs)
-    if url_values:
-        url += '?' + url_values
     logger.debug('Accessing URL %s' % url)
 
-    req = urllib2.Request(url)
     if post:
         logger.debug('POST data: \n%s' % post)
-        req.add_data(post)
+        req = requests.Request(
+            'POST',
+            url=url,
+            params=kwargs,
+            data=post)
+    else:
+        req = requests.Request(
+            'GET',
+            url=url,
+            params=kwargs)
 
-    req.add_header('Accept', '*/*')
+    ses = requests.Session()
 
-    try:
-        resp = urllib2.urlopen(req)
-        if resp.getcode() == 204:
-            raise EmptyResult(url)
-        return resp
+    prep = ses.prepare_request(req)
+    prep.headers['Accept'] = '*/*'
 
-    except urllib2.HTTPError, e:
-        if e.code == 413:
-            raise RequestEntityTooLarge(url)
-        else:
-            raise
+    resp = ses.send(prep, stream=True)
+    resp.raise_for_status()
+
+    if resp.status_code == 204:
+        raise EmptyResult(url)
+    return resp.raw
 
 
 def fillurl(url, site, service, majorversion, method='query'):
@@ -107,83 +112,17 @@ class Incomplete(DownloadError):
 def rget(url, path, force=False, method='download', stats=None,
          status_callback=None, entries_wanted=None):
 
-    if stats is None:
-        stats = [0, None]  # bytes received, bytes expected
-
-    if not url.endswith('/'):
-        url = url + '/'
-
-    resp = urllib2.urlopen(url)
-    data = resp.read()
-    resp.close()
-
-    l = re.findall(r'href="([a-zA-Z0-9_.-]+/?)"', data)
-    l = sorted(set(x for x in l if x.rstrip('/') not in ('.', '..')))
-    if entries_wanted is not None:
-        l = [x for x in l if x.rstrip('/') in entries_wanted]
-
-    if method == 'download':
-        if os.path.exists(path):
-            if not force:
-                raise PathExists('path "%s" already exists' % path)
-            else:
-                shutil.rmtree(path)
-
-        os.mkdir(path)
-
-    for x in l:
-        if x.endswith('/'):
-            rget(
-                url + x,
-                os.path.join(path, x),
-                force=force,
-                method=method,
-                stats=stats,
-                status_callback=status_callback)
-
-        else:
-            req = urllib2.Request(url + x)
-            if method == 'calcsize':
-                req.get_method = lambda: 'HEAD'
-
-            resp = urllib2.urlopen(req)
-            sexpected = int(resp.headers['content-length'])
-
-            if method == 'download':
-                out = open(os.path.join(path, x), 'w')
-                sreceived = 0
-                while True:
-                    data = resp.read(1024*4)
-                    if not data:
-                        break
-
-                    sreceived += len(data)
-                    stats[0] += len(data)
-                    if status_callback and stats[1] is not None:
-                        status_callback(stats[0], stats[1])
-
-                    out.write(data)
-
-                if sreceived != sexpected:
-                    raise Incomplete(
-                        'unexpected end of file while downloading %s' % (
-                            url + x))
-
-                out.close()
-
-            else:
-                stats[0] += sexpected
-
-            resp.close()
-
-    if status_callback and stats[0] == stats[1]:
-        status_callback(stats[0], stats[1])
-
-    return stats[0]
+    return util._download(
+        url, path,
+        force=force,
+        method=method,
+        status_callback=status_callback,
+        entries_wanted=entries_wanted,
+        recursive=True)
 
 
 def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
-                      store_id=None, force=False):
+                      store_id=None, force=False, quiet=False):
 
     url = fillurl(url, site, 'static', majorversion)
 
@@ -191,19 +130,25 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
 
     tlast = [time.time()]
 
-    def status_callback(i, n):
-        tnow = time.time()
-        if (tnow - tlast[0]) > 5 or i == n:
-            print '%s / %s [%.1f%%]' % (
-                util.human_bytesize(i), util.human_bytesize(n), i*100.0/n)
+    if not quiet:
+        def status_callback(d):
+            i = d['nread_bytes_all_files']
+            n = d['ntotal_bytes_all_files']
+            tnow = time.time()
+            if n != 0 and ((tnow - tlast[0]) > 5 or i == n):
+                print('%s / %s [%.1f%%]' % (
+                    util.human_bytesize(i), util.human_bytesize(n), i*100.0/n))
 
-            tlast[0] = tnow
+                tlast[0] = tnow
+    else:
+        def status_callback(d):
+            pass
 
-    wanted = ['config', 'extra', 'index', 'phases', 'traces']
+    wanted = ['config', 'extra/', 'index', 'phases/', 'traces/']
 
     try:
         if store_id is None:
-            print static(url=stores_url+'/', format='text').read()
+            print(static(url=stores_url+'/', format='text').read().decode('utf-8'))
 
         else:
             store_url = ujoin(stores_url, store_id)
@@ -215,7 +160,7 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
                 store_url, store_id, force=force, stats=[0, stotal],
                 status_callback=status_callback, entries_wanted=wanted)
 
-    except (urllib2.URLError, urllib2.HTTPError, httplib.HTTPException), e:
+    except Exception as e:
         raise DownloadError('download failed. Original error was: %s, %s' % (
             type(e).__name__, e))
 
@@ -227,5 +172,4 @@ def seismosizer(url=g_url, site=g_default_site, majorversion=1,
 
     from pyrocko.gf import meta
 
-    return meta.load(stream=_request(url, post=urllib.urlencode(
-        {'request': request.dump()})))
+    return meta.load(stream=_request(url, post={'request': request.dump()}))
