@@ -90,7 +90,6 @@ def _get_data():
 
 def test_post():
     addr = 'http://localhost:%d' % port
-    addr = 'https://pyrocko.org/DSFGK234ADF4ASDF'
     data = _get_data()
 
     while True:
