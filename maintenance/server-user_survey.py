@@ -36,9 +36,10 @@ class PyrockoSurveyHandler(BaseHTTPRequestHandler):
             return
 
         with open(outfile, 'a') as f:
-            data = json.loads(self.rfile.read(content_length))
+            data = json.loads(self.rfile.read(content_length).decode())
             data['client'] = self.headers.get('X-Real-IP', '')
-            data['country'] = gi.country_code_by_addr(data['client'])
+            data['country'] = gi.country_name_by_addr(data['client'])
+            data['country_code'] = gi.country_code_by_addr(data['client'])
             data['time'] = time.time()
             f.write(json.dumps(data, indent=4))
             f.write(',\n')
@@ -89,6 +90,7 @@ def _get_data():
 
 def test_post():
     addr = 'http://localhost:%d' % port
+    addr = 'https://pyrocko.org/DSFGK234ADF4ASDF'
     data = _get_data()
 
     while True:
