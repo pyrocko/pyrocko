@@ -36,7 +36,11 @@ ja_latex_env = Environment(block_start_string='\BLOCK{',
                                                 'data/fomosto_report'))
 
 
-class GreensFunctionError(Exception):
+class FomostoReportError(Exception):
+    pass
+
+
+class GreensFunctionError(FomostoReportError):
     pass
 
 
@@ -594,9 +598,13 @@ class GreensFunctionTest(Object):
         if is_tex:
             pro_call = ['pdflatex', '-output-directory', self.pdf_dir, out,
                         '-interaction', 'nonstop']
-            subprocess.call(pro_call)
-            subprocess.call(pro_call)
-            subprocess.call(pro_call)
+            try:
+                subprocess.call(pro_call)
+                subprocess.call(pro_call)
+                subprocess.call(pro_call)
+            except OSError:
+                raise FomostoReportError(
+                    'Cannot run "pdflatex" executable. Is it installed?')
 
         self.cleanup()
         if gft2 is not None:

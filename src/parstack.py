@@ -37,6 +37,24 @@ def parstack(arrays, offsets, shifts, weights, method,
     return result, offset
 
 
+def get_offset_and_length(arrays, offsets, shifts):
+    narrays = offsets.size
+    nshifts = shifts.size // narrays
+    if shifts.ndim == 2:
+        shifts = num.reshape(shifts, (nshifts*narrays))
+
+    lengths = num.array([a.size for a in arrays], dtype=num.int)
+    imin = offsets[0] + shifts[0]
+    imax = imin + lengths[0]
+    for iarray in range(len(arrays)):
+        istarts = offsets[iarray] + shifts[iarray::narrays]
+        iends = istarts + lengths[iarray]
+        imin = min(imin, num.amin(istarts))
+        imax = max(imax, num.amax(iends))
+
+    return imin, imax - imin
+
+
 def parstack_numpy(
         arrays,
         offsets,
@@ -54,17 +72,7 @@ def parstack_numpy(
 
     lengths = num.array([a.size for a in arrays], dtype=num.int)
     if lengthout < 0:
-
-        imin = offsets[0] + shifts[0]
-        imax = imin + lengths[0]
-        for iarray in xrange(len(arrays)):
-            istarts = offsets[iarray] + shifts[iarray::narrays]
-            iends = istarts + lengths[iarray]
-            imin = min(imin, num.amin(istarts))
-            imax = max(imax, num.amax(iends))
-
-        nsamp = imax - imin
-        offsetout = imin
+        imin, nsamp = get_offset_and_length(arrays, offsets, shifts)
     else:
         nsamp = lengthout
         imin = offsetout
@@ -83,9 +91,9 @@ def parstack_numpy(
                 arrays[iarray][jstart:jstop] * weight
 
     if method == 0:
-        return result, offsetout
+        return result, imin
     elif method == 1:
-        return num.amax(result.reshape((nshifts, nsamp)), axis=1), offsetout
+        return num.amax(result.reshape((nshifts, nsamp)), axis=1), imin
 
 
 def argmax(a, nparallel=1):

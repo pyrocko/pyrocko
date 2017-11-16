@@ -5,7 +5,7 @@ from copy import deepcopy
 
 from pyrocko import util
 from pyrocko.guts import Object, Float, String, load, dump, List, Dict, \
-    TBase, Tuple
+    TBase, Tuple, Bool
 
 guts_prefix = 'pf'
 
@@ -64,6 +64,8 @@ class SnufflerConfig(ConfigBase):
     phase_key_mapping = Dict.T(
         String.T(), String.T(), default=default_phase_key_mapping)
 
+    first_start = Bool.T(default=True)
+
     def get_phase_name(self, key):
         return self.phase_key_mapping.get('F%s' % key, 'Undefined')
 
@@ -82,6 +84,8 @@ class PyrockoConfig(ConfigBase):
         default=os.path.join(pyrocko_dir_tmpl, 'geonames'))
     crustdb_dir = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'crustdb'))
+    gshhg_dir = PathWithPlaceholders.T(
+        default=os.path.join(pyrocko_dir_tmpl, 'gshhg'))
     leapseconds_path = PathWithPlaceholders.T(
         default=os.path.join(pyrocko_dir_tmpl, 'leap-seconds.list'))
     leapseconds_url = String.T(

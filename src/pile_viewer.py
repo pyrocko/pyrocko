@@ -942,6 +942,11 @@ def MakePileViewerMainClass(base):
             self.menuitem_degap.setChecked(True)
             self.menu.addAction(self.menuitem_degap)
 
+            self.menuitem_demean = qg.QAction('Demean', self.menu)
+            self.menuitem_demean.setCheckable(True)
+            self.menuitem_demean.setChecked(True)
+            self.menu.addAction(self.menuitem_demean)
+
             self.menuitem_fft_filtering = qg.QAction(
                 'FFT Filtering', self.menu)
             self.menuitem_fft_filtering.setCheckable(True)
@@ -2065,6 +2070,9 @@ def MakePileViewerMainClass(base):
             elif keytext == 'g':
                 self.go_to_selection()
 
+            elif keytext == 'G':
+                self.go_to_selection(tight=True)
+
             elif keytext == 'm':
                 self.toggle_marker_editor()
 
@@ -2325,7 +2333,7 @@ def MakePileViewerMainClass(base):
 
             return deltatmin, deltatmax
 
-        def make_good_looking_time_range(self, tmin, tmax):
+        def make_good_looking_time_range(self, tmin, tmax, tight=False):
             if tmax < tmin:
                 tmin, tmax = tmax, tmin
 
@@ -2335,9 +2343,22 @@ def MakePileViewerMainClass(base):
             if dt == 0.0:
                 dt = 1.0
 
+            if tight:
+                if tmax != tmin:
+                    dtm = tmax - tmin
+                    tmin -= dtm*0.1
+                    tmax += dtm*0.1
+                    return tmin, tmax
+                else:
+                    tcenter = (tmin + tmax) / 2.
+                    tmin = tcenter - 0.5*dt
+                    tmax = tcenter + 0.5*dt
+                    return tmin, tmax
+
             if tmax-tmin < dt:
                 vmin, vmax = self.get_time_range()
                 dt = min(vmax - vmin, dt)
+
                 tcenter = (tmin+tmax)/2.
                 etmin, etmax = tmin, tmax
                 tmin = min(etmin, tcenter - 0.5*dt)
@@ -2355,14 +2376,24 @@ def MakePileViewerMainClass(base):
 
             return tmin, tmax
 
-        def go_to_selection(self):
+        def go_to_selection(self, tight=False):
             markers = self.selected_markers()
-            tmax, tmin = self.content_time_range()
-            for marker in markers:
-                tmin = min(tmin, marker.tmin)
-                tmax = max(tmax, marker.tmax)
+            if markers:
+                tmax, tmin = self.content_time_range()
+                for marker in markers:
+                    tmin = min(tmin, marker.tmin)
+                    tmax = max(tmax, marker.tmax)
 
-            tmin, tmax = self.make_good_looking_time_range(tmin, tmax)
+            else:
+                if tight:
+                    vmin, vmax = self.get_time_range()
+                    tmin = tmax = (vmin + vmax) / 2.
+                else:
+                    tmin, tmax = self.content_time_range()
+
+            tmin, tmax = self.make_good_looking_time_range(
+                tmin, tmax, tight=tight)
+
             self.interrupt_following()
             self.set_time_range(tmin, tmax)
             self.update()
@@ -2677,7 +2708,8 @@ def MakePileViewerMainClass(base):
                 processed_traces = self.prepare_cutout2(
                     self.tmin, self.tmax,
                     trace_selector=self.trace_selector,
-                    degap=self.menuitem_degap.isChecked())
+                    degap=self.menuitem_degap.isChecked(),
+                    demean=self.menuitem_demean.isChecked())
 
                 color_lookup = dict(
                     [(k, i) for (i, k) in enumerate(self.color_keys)])
@@ -2977,8 +3009,26 @@ def MakePileViewerMainClass(base):
             self.old_processed_traces = None
             self.update()
 
+        def get_adequate_tpad(self):
+            freqs = [f for f in (self.highpass, self.lowpass)
+                     if f is not None]
+
+            tpad = 0.
+            for f in [self.highpass, self.lowpass]:
+                if f is not None:
+                    tpad = max(tpad, 1.0/f)
+
+            for snuffling in self.snufflings:
+                if snuffling._post_process_hook_enabled \
+                        or snuffling._pre_process_hook_enabled:
+
+                    tpad = max(tpad, snuffling.get_tpad())
+
+            return tpad
+
         def prepare_cutout2(
-                self, tmin, tmax, trace_selector=None, degap=True, nmax=6000):
+                self, tmin, tmax, trace_selector=None, degap=True,
+                demean=True, nmax=6000):
 
             nmax = self.visible_length
 
@@ -3010,9 +3060,12 @@ def MakePileViewerMainClass(base):
             lphp = self.menuitem_lphp.isChecked()
             ads = self.menuitem_allowdownsampling.isChecked()
 
+            tpad = self.get_adequate_tpad()
+            tpad = max(tpad, tsee)
+
             # state vector to decide if cached traces can be used
             vec = (
-                tmin, tmax, trace_selector, degap, self.lowpass,
+                tmin, tmax, tpad, trace_selector, degap, demean, self.lowpass,
                 self.highpass, fft_filtering, lphp,
                 min_deltat_allow, self.rotate, self.shown_tracks_range,
                 ads, self.pile.get_update_count())
@@ -3045,12 +3098,8 @@ def MakePileViewerMainClass(base):
                         def trace_selectorx(tr):
                             return tr.deltat >= min_deltat_allow
 
-                    freqs = [f for f in (self.highpass, self.lowpass)
-                             if f is not None]
 
-                    tpad = 0
-                    if freqs:
-                        tpad = max(1./min(freqs), tsee)
+
 
                     for traces in self.pile.chopper(
                             tmin=tmin, tmax=tmax, tpad=tpad,
@@ -3064,6 +3113,11 @@ def MakePileViewerMainClass(base):
                             accessor_id=id(self),
                             snap=(math.floor, math.ceil),
                             include_last=True):
+
+                        if demean:
+                            for tr in traces:
+                                tr.ydata = tr.ydata.astype(num.float) - \
+                                    num.mean(tr.ydata)
 
                         traces = self.pre_process_hooks(traces)
 

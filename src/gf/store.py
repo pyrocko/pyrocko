@@ -1487,7 +1487,11 @@ class Store(BaseStore):
         return self._phases[phase_id]
 
     def get_phase(self, phase_def):
-        provider, phase_def = phase_def.split(':', 1)
+        toks = phase_def.split(':', 1)
+        if len(toks) == 2:
+            provider, phase_def = toks
+        else:
+            provider, phase_def = 'stored', toks[0]
 
         if provider == 'stored':
             return self.get_stored_phase(phase_def)
@@ -1612,6 +1616,8 @@ class Store(BaseStore):
 
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
 
+        tlens = tmaxs - tmins
+
         i = num.nanargmin(tmins)
         if not num.isfinite(i):
             raise MakeTimingParamsFailed('determination of time window failed')
@@ -1646,6 +1652,7 @@ class Store(BaseStore):
         return dict(
             tmin=tminmin,
             tmax=num.nanmax(tmaxs),
+            tlenmax=num.nanmax(tlens),
             tmin_vred=tmin_vred,
             tlenmax_vred=tlenmax_vred,
             vred=vred)

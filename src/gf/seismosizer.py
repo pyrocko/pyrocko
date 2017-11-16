@@ -246,6 +246,7 @@ class Range(SObject):
       Range(0, 10e3, 1e3)
       Range('0 .. 10k @ 11')
       Range(start=0., stop=10*km, n=11)
+
       Range(0, 10e3, n=11)
       Range(values=[x*1e3 for x in range(11)])
 
@@ -802,6 +803,59 @@ class HalfSinusoidSTF(STF):
 
     def base_key(self):
         return (self.duration, self.anchor, type(self))
+
+
+class SmoothRampSTF(STF):
+    '''Smooth-ramp type source time function for near-field displacement.
+    Based on moment function of double-couple point source proposed by Bruestle
+    and Mueller (PEPI, 1983).
+
+    .. [1] W. Bruestle, G. Mueller (1983), Moment and duration of shallow
+        earthquakes from Love-wave modelling for regional distances, PEPI 32,
+        312-324.
+    '''
+    duration = Float.T(
+        default=0.0,
+        help='duration of the ramp (baseline)')
+
+    rise_ratio = Float.T(
+        default=0.5,
+        help='fraction of time compared to duration, '
+             'when the maximum amplitude is reached')
+
+    anchor = Float.T(
+        default=0.0,
+        help='anchor point with respect to source.time: ('
+             '-1.0: left -> source duration ``[0, T]`` ~ hypocenter time, '
+             '0.0: center -> source duration ``[-T/2, T/2]`` ~ centroid time, '
+             '+1.0: right -> source duration ``[-T, 0]`` ~ rupture end time)')
+
+    def discretize_t(self, deltat, tref):
+        tmin_stf = tref - self.duration * (self.anchor + 1.) * 0.5
+        tmax_stf = tref + self.duration * (1. - self.anchor) * 0.5
+        tmin = round(tmin_stf / deltat) * deltat
+        tmax = round(tmax_stf / deltat) * deltat
+        D = round((tmax - tmin)/deltat) * deltat
+        nt = int(D/deltat) + 1
+        times = num.linspace(tmin, tmax, nt)
+        if nt > 1:
+            rise_time = self.rise_ratio * self.duration
+            amplitudes = num.ones_like(times)
+            tp = tmin + rise_time
+            ii = num.where(times <= tp)
+            t_inc = times[ii]
+            a = num.cos(num.pi * (t_inc - tmin_stf) / rise_time)
+            b = num.cos(3 * num.pi * (t_inc - tmin_stf) / rise_time) - 1.0
+            amplitudes[ii] = (9./16.) * (1 - a + (1./9.)*b)
+
+            amplitudes /= num.sum(amplitudes)
+        else:
+            amplitudes = num.ones(1)
+
+        return times, amplitudes
+
+    def base_key(self):
+        return (self.duration, self.rise_ratio, self.anchor, type(self))
 
 
 class STFMode(StringChoice):
@@ -2439,9 +2493,16 @@ class LocalEngine(Engine):
             self.store_superdirs.extend(c.gf_store_superdirs)
             self.store_dirs.extend(c.gf_store_dirs)
 
+        self._check_store_dirs_type()
         self._id_to_store_dir = {}
         self._open_stores = {}
         self._effective_default_store_id = None
+
+    def _check_store_dirs_type(self):
+        for sdir in ['store_dirs', 'store_superdirs']:
+            if not isinstance(self.__getattribute__(sdir), list):
+                raise TypeError("{} of {} is not of type list".format(
+                    sdir, self.__class__.__name__))
 
     def _get_store_id(self, store_dir):
         store_ = store.Store(store_dir)
@@ -2807,7 +2868,7 @@ class LocalEngine(Engine):
 
             for ii_results, tcounters_static in process_static(
               work_static, request.sources, request.targets, self,
-              nthreads=nprocs):
+              nthreads=nthreads):
 
                 tcounters_static_list.append(num.diff(tcounters_static))
                 isource, itarget, result = ii_results

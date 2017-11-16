@@ -497,7 +497,7 @@ class Snuffling:
 
     def pixmap_frame(self, filename=None, name=None):
         '''
-        Create a :py:class:`pyrocko.gui_util.PixmapFrame'.
+        Create a :py:class:`pyrocko.gui_util.PixmapFrame`
 
         :param name: labels the tab
         :param filename: name of file to be displayed
@@ -578,6 +578,11 @@ class Snuffling:
             self._pre_process_hook_enabled = live_update
         if self._have_post_process_hook:
             self._post_process_hook_enabled = live_update
+
+        try:
+            self.get_viewer().clean_update()
+        except NoViewerSet:
+            pass
 
     def add_parameter(self, param):
         '''
@@ -1569,6 +1574,13 @@ class Snuffling:
 
     def post_process_hook(self, traces):
         return traces
+
+    def get_tpad(self):
+        '''
+        Return current amount of extra padding needed by live processing hooks.
+        '''
+
+        return 0.0
 
     def pre_destroy(self):
         '''

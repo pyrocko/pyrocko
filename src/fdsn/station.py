@@ -1,3 +1,4 @@
+import sys
 import time
 import logging
 import datetime
@@ -95,8 +96,13 @@ class DummyAwareOptionalTimestamp(Object):
 
                 except util.TimeStrError:
                     year = int(val[:4])
-                    if year > this_year + 100:
-                        return None  # StationXML contained a dummy end date
+                    if sys.maxsize > 2**32:  # if we're on 64bit
+                        if year > this_year + 100:
+                            return None  # StationXML contained a dummy date
+
+                    else:  # 32bit end of time is in 2038
+                        if this_year < 2037 and year > 2037 or year < 1903:
+                            return None  # StationXML contained a dummy date
 
                     raise
 
@@ -289,10 +295,12 @@ class Equipment(Object):
     vendor = Unicode.T(optional=True, xmltagname='Vendor')
     model = Unicode.T(optional=True, xmltagname='Model')
     serial_number = String.T(optional=True, xmltagname='SerialNumber')
-    installation_date = Timestamp.T(optional=True,
-                                    xmltagname='InstallationDate')
-    removal_date = DummyAwareOptionalTimestamp.T(optional=True,
-                                                 xmltagname='RemovalDate')
+    installation_date = DummyAwareOptionalTimestamp.T(
+        optional=True,
+        xmltagname='InstallationDate')
+    removal_date = DummyAwareOptionalTimestamp.T(
+        optional=True,
+        xmltagname='RemovalDate')
     calibration_date_list = List.T(Timestamp.T(xmltagname='CalibrationDate'))
 
 
@@ -542,7 +550,7 @@ class Comment(Object):
 
     id = Counter.T(optional=True, xmlstyle='attribute')
     value = Unicode.T(xmltagname='Value')
-    begin_effective_time = Timestamp.T(
+    begin_effective_time = DummyAwareOptionalTimestamp.T(
         optional=True,
         xmltagname='BeginEffectiveTime')
     end_effective_time = DummyAwareOptionalTimestamp.T(
@@ -684,7 +692,7 @@ class Response(Object):
         stage = ResponseStage(
             number=1,
             poles_zeros_list=[pzs],
-            stage_gain=Gain(presponse.constant/norm_factor))
+            stage_gain=Gain(abs(presponse.constant)/norm_factor))
 
         resp = Response(
             instrument_sensitivity=Sensitivity(
@@ -702,7 +710,8 @@ class BaseNode(Object):
     Channel types.'''
 
     code = String.T(xmlstyle='attribute')
-    start_date = Timestamp.T(optional=True, xmlstyle='attribute')
+    start_date = DummyAwareOptionalTimestamp.T(optional=True,
+                                               xmlstyle='attribute')
     end_date = DummyAwareOptionalTimestamp.T(optional=True,
                                              xmlstyle='attribute')
     restricted_status = RestrictedStatus.T(optional=True, xmlstyle='attribute')
@@ -775,7 +784,8 @@ class Station(BaseNode):
     geology = Unicode.T(optional=True, xmltagname='Geology')
     equipment_list = List.T(Equipment.T(xmltagname='Equipment'))
     operator_list = List.T(Operator.T(xmltagname='Operator'))
-    creation_date = Timestamp.T(optional=True, xmltagname='CreationDate')
+    creation_date = DummyAwareOptionalTimestamp.T(
+        optional=True, xmltagname='CreationDate')
     termination_date = DummyAwareOptionalTimestamp.T(
         optional=True, xmltagname='TerminationDate')
     total_number_channels = Counter.T(
@@ -979,6 +989,58 @@ class FDSNStationXML(Object):
                         name=station.description or ''))
 
         return pstations
+
+    @classmethod
+    def from_pyrocko_stations(cls, pyrocko_stations):
+        ''' Generate :py:class:`FDSNStationXML` from list of
+        :py:class;`pyrocko.model.Station` instances.
+
+        :param pyrocko_stations: list of
+            :py:class;`pyrocko.model.Station` instances.
+        '''
+        from collections import defaultdict
+        network_dict = defaultdict(list)
+        for s in pyrocko_stations:
+            network, station, location = s.nsl()
+            channel_list = []
+            for c in s.channels:
+                channel_list.append(
+                    Channel(
+                        location_code=location,
+                        code=c.name,
+                        latitude=Latitude(value=s.lat),
+                        longitude=Longitude(value=s.lon),
+                        elevation=Distance(value=s.elevation),
+                        depth=Distance(value=s.depth),
+                        azimuth=Azimuth(value=c.azimuth),
+                        dip=Dip(value=c.dip)
+                    )
+                )
+
+            network_dict[network].append(
+                Station(
+                    code=station,
+                    latitude=Latitude(value=s.lat),
+                    longitude=Longitude(value=s.lon),
+                    elevation=Distance(value=s.elevation),
+                    channel_list=channel_list)
+            )
+
+        timestamp = time.time()
+        network_list = []
+        for k, station_list in network_dict.items():
+
+            network_list.append(
+                Network(
+                    code=k, station_list=station_list,
+                    total_number_stations=len(station_list)))
+
+        sxml = FDSNStationXML(
+            source='from pyrocko stations list', created=timestamp,
+            network_list=network_list)
+
+        sxml.validate()
+        return sxml
 
     def iter_network_stations(
             self, net=None, sta=None, time=None, timespan=None):
@@ -1256,6 +1318,11 @@ def load_channel_table(stream):
 
         (net, sta, loc, cha, lat, lon, ele, dep, azi, dip, sens, scale,
             scale_freq, scale_units, sample_rate, start_date, end_date) = t
+
+        try:
+            scale_freq = float(scale_freq)
+        except ValueError:
+            scale_freq = None
 
         try:
             if net not in networks:

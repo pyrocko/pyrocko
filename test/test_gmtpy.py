@@ -289,6 +289,34 @@ class GmtPyTestCase(unittest.TestCase):
                 gmtversion=version)
             assert_allclose(s, (179.9, 12.3), rtol=0.01)
 
+    def test_override_args(self):
+        x = num.array([0, 0.5, 1, 0])
+        y = num.array([0, 1, 0, 0])
+        width = 300
+        height = 100
+        config_papersize = (width, height)
+
+        for version in gmtpy.all_installed_gmt_versions():
+            gmt = gmtpy.GMT(
+                version=version,
+                config_papersize=config_papersize)
+
+            for i, cutoff in enumerate([30, 90]):
+                gmt.psxy(
+                    in_columns=(i*2+x, y),
+                    W='10p,red',
+                    J='X%gp/%gp' % (width, height),
+                    X=0,
+                    Y=0,
+                    R=(-1, 4, -1, 2),
+                    config={
+                        'PS_MITER_LIMIT': '%i' % cutoff})
+
+            fname = 'gmtpy_test_override.png'
+            fpath = self.fpath(fname)
+            gmt.save(fpath)
+            self.compare_with_ref(fname, 0.001, show=False)
+
 
 if __name__ == "__main__":
     util.setup_logging('test_gmtpy', 'warning')

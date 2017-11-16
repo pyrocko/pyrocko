@@ -1,3 +1,4 @@
+from __future__ import print_function
 import sys
 
 if sys.version_info < (2, 6) or (3, 0) <= sys.version_info:
@@ -18,6 +19,7 @@ import time
 import shutil
 import tempfile
 from os.path import join as pjoin
+import os.path as op
 
 from distutils.core import setup, Extension
 from distutils.cmd import Command
@@ -49,6 +51,19 @@ def git_infos():
     local_modifications = bool(re.search(r'^#\s+modified:', sstatus,
                                          flags=re.M))
     return sha1, local_modifications
+
+
+def bash_completions_dir():
+    from subprocess import Popen, PIPE
+
+    def q(c):
+        return Popen(c, stdout=PIPE).communicate()[0]
+
+    try:
+        d = q(['pkg-config', 'bash-completion', '--variable=completionsdir'])
+        return d.strip().decode('utf-8')
+    except:
+        return None
 
 
 def make_info_module(packname, version):
@@ -94,14 +109,14 @@ def make_prerequisites():
                  '"sh prerequisites/prerequisites.sh"')
 
 
-def double_install_check():
+def find_pyrocko_installs():
     found = []
     seen = set()
     orig_sys_path = sys.path
     for p in sys.path:
 
-        ap = os.path.abspath(p)
-        if ap == os.path.abspath('.'):
+        ap = op.abspath(p)
+        if ap == op.abspath('.'):
             continue
 
         if ap in seen:
@@ -113,55 +128,158 @@ def double_install_check():
 
         try:
             import pyrocko
-            x = (pyrocko.installed_date, p, pyrocko.__file__,
+            dpath = op.dirname(op.abspath(pyrocko.__file__))
+            x = (pyrocko.installed_date, p, dpath,
                  pyrocko.long_version)
             found.append(x)
             del sys.modules['pyrocko']
             del sys.modules['pyrocko.info']
-        except:
+        except ImportError:
             pass
 
     sys.path = orig_sys_path
+    return found
 
-    e = sys.stderr
 
-    initpyc = '__init__.pyc'
+def print_installs(found, file):
+    print(
+        '\nsys.path configuration is: \n  %s\n' % '\n  '.join(sys.path),
+        file=file)
+
+    dates = sorted([xx[0] for xx in found])
     i = 1
+
+    for (installed_date, p, installed_path, long_version) in found:
+        oldnew = ''
+        if len(dates) >= 2:
+            if installed_date == dates[0]:
+                oldnew = ' (oldest)'
+
+            if installed_date == dates[-1]:
+                oldnew = ' (newest)'
+
+        print('''Pyrocko installation #%i:
+  date installed: %s%s
+  version: %s
+  path: %s
+''' % (i, installed_date, oldnew, long_version, installed_path), file=file)
+        i += 1
+
+
+def check_multiple_install():
+    found = find_pyrocko_installs()
+    e = sys.stderr
 
     dates = sorted([xx[0] for xx in found])
 
     if len(found) > 1:
-        print >>e, 'sys.path configuration is: \n  %s' % '\n  '.join(sys.path)
-        print >>e
-
-        for (installed_date, p, fpath, long_version) in found:
-            oldnew = ''
-            if len(dates) >= 2:
-                if installed_date == dates[0]:
-                    oldnew = ' (oldest)'
-
-                if installed_date == dates[-1]:
-                    oldnew = ' (newest)'
-
-            if fpath.endswith(initpyc):
-                fpath = fpath[:-len(initpyc)]
-
-            print >>e, 'Pyrocko installation #%i:' % i
-            print >>e, '  date installed: %s%s' % (installed_date, oldnew)
-            print >>e, '  path: %s' % fpath
-            print >>e, '  version: %s' % long_version
-            print >>e
-            i += 1
+        print_installs(found, e)
 
     if len(found) > 1:
-        print >>e, \
-            'Installation #1 is used with default sys.path configuration.'
-        print >>e
-        print >>e, 'WARNING: Multiple installations of Pyrocko are present '\
-            'on this system.'
+        print(
+            '''Installation #1 is used with default sys.path configuration.
+
+WARNING: Multiple installations of Pyrocko are present on this system.''',
+            file=e)
         if found[0][0] != dates[-1]:
-            print >>e, 'WARNING: Not using newest installed version.'
-        print >>e
+            print('WARNING: Not using newest installed version.', file=e)
+
+
+def check_pyrocko_install_compat():
+    found = find_pyrocko_installs()
+    if len(found) == 0:
+        return
+
+    expected_submodules = ['gui', 'dataset', 'client',
+                           'streaming', 'io', 'model']
+
+    installed_date, p, install_path, long_version = found[0]
+
+    installed_submodules = [d for d in os.listdir(install_path)
+                            if op.isdir(op.join(install_path, d))]
+
+    if any([ed in installed_submodules for ed in expected_submodules]):
+
+        print_installs(found, sys.stdout)
+
+        print('''\n
+###############################################################################
+WARNING: Found an newer Python 2/3 compatible Pyrocko installation!
+
+Please purge the new installation and the 'build' directory before installing
+this older version:
+
+    sudo rm -rf '%s' build
+
+###############################################################################
+''' % install_path)
+
+        sys.exit(1)
+
+
+class CheckInstalls(Command):
+    description = '''check for multiple installations of Pyrocko'''
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        check_multiple_install()
+
+
+class Uninstall(Command):
+    description = 'delete installations of Pyrocko known to the invoked ' \
+                  'Python interpreter'''
+
+    user_options = []
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        found = find_pyrocko_installs()
+        print_installs(found, sys.stdout)
+
+        if found:
+            print('''
+Use the following commands to remove the Pyrocko installation(s) known to the
+currently running Python interpreter:
+
+  sudo rm -rf build''')
+
+            for _, _, install_path, _ in found:
+                print('  sudo rm -rf "%s"' % install_path)
+
+            print()
+
+        else:
+            print('''
+No Pyrocko installations found with the currently running Python interpreter.
+''')
+
+
+class CustomInstallCommand(install):
+    def run(self):
+        check_pyrocko_install_compat()
+        install.run(self)
+        check_multiple_install()
+        bd_dir = bash_completions_dir()
+        if bd_dir:
+            try:
+                shutil.copy('extras/pyrocko', bd_dir)
+                print('Installing pyrocko bash_completion to "%s"' % bd_dir)
+            except:
+                print(
+                    'Could not install pyrocko bash_completion to "%s" '
+                    '(continuing without)'
+                    % bd_dir)
 
 
 packname = 'pyrocko'
@@ -187,10 +305,8 @@ class double_install_check_cls(Command):
         pass
 
     def run(self):
-        double_install_check()
+        check_multiple_install()
 
-
-install.sub_commands.append(['double_install_check', None])
 
 
 class Prereqs(Command):
@@ -223,23 +339,14 @@ proceed? [y/n]' % open(fn, 'r').read())
                   shell=False)
 
         while p.poll() is None:
-            print p.stdout.readline().rstrip()
-        print p.stdout.read()
+            print(p.stdout.readline().rstrip())
+        print(p.stdout.read())
 
 
 class custom_build_py(build_py):
     def run(self):
         make_info_module(packname, version)
         build_py.run(self)
-        try:
-            shutil.copy('extras/pyrocko', '/etc/bash_completion.d/pyrocko')
-            print 'Installing pyrocko bash_completion...'
-        except IOError as e:
-            import errno
-            if e.errno in (errno.EACCES, errno.ENOENT):
-                print e
-            else:
-                raise e
 
 
 class custom_build_ext(build_ext):
@@ -375,11 +482,13 @@ else:
 
 setup(
     cmdclass={
+        'install': CustomInstallCommand,
         'build_py': custom_build_py,
         'py2app': custom_build_app,
         'build_ext': custom_build_ext,
         'double_install_check': double_install_check_cls,
-        'prereqs': Prereqs
+        'prereqs': Prereqs,
+        'uninstall': Uninstall,
     },
 
     name=packname,

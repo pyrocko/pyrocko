@@ -458,14 +458,38 @@ def iload_fh(f):
 
                 stages.append(stage)
 
-        if totalgain and stages:
-            resp = fs.Response(
-                instrument_sensitivity=fs.Sensitivity(
-                    value=totalgain.value,
-                    frequency=totalgain.frequency,
-                    input_units=stages[0].input_units,
-                    output_units=stages[-1].output_units),
+        if stages:
+            resp = sxml.Response(
                 stage_list=stages)
+
+            if totalgain:
+                totalgain_value = totalgain.value
+                totalgain_frequency = totalgain.frequency
+
+            else:
+                totalgain_value = 1.
+                gain_frequencies = []
+                for stage in stages:
+                    totalgain_value *= stage.stage_gain.value
+                    gain_frequencies.append(stage.stage_gain.frequency)
+
+                totalgain_frequency = gain_frequencies[0]
+
+                if not all(f == totalgain_frequency for f in gain_frequencies):
+                    logger.warn(
+                        'no total gain reported and inconsistent gain '
+                        'frequency values found in resp file for %s.%s.%s.%s: '
+                        'omitting total gain and frequency from created '
+                        'instrument sensitivity object' % nslc)
+
+                    totalgain_value = None
+                    totalgain_frequency = None
+
+            resp.instrument_sensitivity = sxml.Sensitivity(
+                value=totalgain_value,
+                frequency=totalgain_frequency,
+                input_units=stages[0].input_units,
+                output_units=stages[-1].output_units)
 
             yield ChannelResponse(
                 codes=nslc,
@@ -496,6 +520,7 @@ def make_stationxml(pyrocko_stations, channel_responses):
     pstations = dict((s.nsl(), s) for s in pyrocko_stations)
     networks = {}
     stations = {}
+    azidips = {}
     for (net, sta, loc) in sorted(pstations.keys()):
         pstation = pstations[net, sta, loc]
         if net not in networks:
@@ -510,10 +535,21 @@ def make_stationxml(pyrocko_stations, channel_responses):
 
             networks[net].station_list.append(stations[net, sta])
 
+        for channel in pstation.get_channels():
+            cha = channel.name
+            azidips[net, sta, loc, cha] = channel.azimuth, channel.dip
+
     for cr in channel_responses:
         net, sta, loc, cha = cr.codes
         if (net, sta, loc) in pstations:
             pstation = pstations[net, sta, loc]
+            azi, dip = azidips.get((net, sta, loc, cha), (None, None))
+            if azi is not None:
+                azi = fs.Azimuth(value=azi)
+
+            if dip is not None:
+                dip = fs.Dip(value=dip)
+
             channel = fs.Channel(
                 code=cha,
                 location_code=loc,
@@ -523,6 +559,8 @@ def make_stationxml(pyrocko_stations, channel_responses):
                 longitude=fs.Longitude(pstation.lon),
                 elevation=fs.Distance(pstation.elevation),
                 depth=fs.Distance(pstation.depth),
+                azimuth=azi,
+                dip=dip,
                 response=cr.response)
 
             stations[net, sta].channel_list.append(channel)

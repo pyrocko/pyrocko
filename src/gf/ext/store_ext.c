@@ -149,15 +149,12 @@ const char* interpolation_scheme_names[] = {
 };
 
 typedef store_error_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
-static store_error_t irecord_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
-
 typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
+
+static store_error_t irecord_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 static store_error_t vicinity_function_type_a(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
-typedef store_error_t (*irecord_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
 static store_error_t irecord_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*);
-
-typedef store_error_t (*vicinity_function_t)(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 static store_error_t vicinity_function_type_b(const mapping_t*, const float64_t*, const float64_t*, uint64_t*, float64_t*);
 
 typedef struct {
@@ -981,7 +978,7 @@ static PyObject* w_store_mapping_init(PyObject *dummy, PyObject *args) {
     npy_intp n;
     int ng_;
 
-    (void)dummy; /* silence warning */
+    (void) dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OsOOOOi", &capsule, &mapping_scheme_name,
                           &mins_arr, &maxs_arr, &deltas_arr, &ns_arr,
@@ -1058,7 +1055,7 @@ static PyObject* w_store_get(PyObject *dummy, PyObject *args) {
     int i;
     store_error_t err;
 
-    (void)dummy; /* silence warning */
+    (void) dummy; /* silence warning */
 
     if (!PyArg_ParseTuple(args, "OKii", &capsule, &irecord_, &itmin_, &nsamples_)) {
         PyErr_SetString(StoreExtError, "usage: store_get(cstore, irecord, itmin, nsamples)");
