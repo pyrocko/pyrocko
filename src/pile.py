@@ -243,9 +243,8 @@ class TracesFileCache(object):
 
     def _load_dircache(self, cachefilename):
 
-        f = open(cachefilename, 'rb')
-        cache = pickle.load(f)
-        f.close()
+        with open(cachefilename, 'rb') as f:
+            cache = pickle.load(f)
 
         # weed out files which no longer exist
         for fn in list(cache.keys()):
@@ -294,7 +293,7 @@ class TracesFileCache(object):
 
         tmpfn = cachefilename+'.%i.tmp' % os.getpid()
         with open(tmpfn, 'wb') as f:
-            pickle.dump(cache_copy, f)
+            pickle.dump(cache_copy, f, protocol=2)
 
         os.rename(tmpfn, cachefilename)
 
