@@ -10,7 +10,7 @@ under either of them.
 .. _conda_install:
 
 Anaconda3 using ``conda``
--------------------------------------------
+-------------------------
 
 As of Pyrocko 2017.11, pre-built packages are available for Linux 64-Bit and MacOS. You can use can use the ``conda`` package manager to install Pyrocko framwork:
 
@@ -21,16 +21,16 @@ As of Pyrocko 2017.11, pre-built packages are available for Linux 64-Bit and Mac
 
 More information available at https://anaconda.org/pyrocko/pyrocko
 
-Anaconda: Update Pyrocko from ``master``
--------------------------------------------
+Anaconda: update to latest Pyrocko version on GitHub (master branch)
+--------------------------------------------------------------------
 
-**All dependencies should be resolved by a ``conda`` install**. You can then go ahead and use ``pip`` to update Pyrocko from source
+**All dependencies should be resolved by a previous conda install**. You can
+then go ahead and use ``pip`` to update Pyrocko from source
 
 .. code-block:: bash
     :caption: Anaconda's ``pip`` installs straight from GitHub
 
     pip install git+https://github.com/pyrocko/pyrocko.git
-
 
 
 Anaconda2 (compilation from source)
@@ -39,8 +39,7 @@ Anaconda2 (compilation from source)
 .. code-block:: bash
     :caption: Compile from GitHub sources
 
-
-    conda install pyqt=5  # downgrades some packages
+    conda install pyqt=5
     conda install progressbar
     cd `conda info --root`
 

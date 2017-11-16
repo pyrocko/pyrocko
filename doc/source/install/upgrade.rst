@@ -59,9 +59,9 @@ when you try to run ``python setup.py install``.
     rm -rf pyrocko
     git clone https://github.com/pyrocko/pyrocko.git
     cd pyrocko
-    sudo setup.py install  # on failure, reports <directory> to remove
+    sudo python setup.py install  # on failure, reports <directory> to remove
     rm -rf <directory>
-    sudo setup.py install 
+    sudo python setup.py install 
 
 
 Mac OS X with MacPorts
