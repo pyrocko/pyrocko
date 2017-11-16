@@ -18,6 +18,7 @@ import re
 import sys
 import operator
 import math
+import hashlib
 import pickle
 
 
@@ -28,6 +29,10 @@ from .trace import degapper
 
 
 show_progress_force_off = False
+
+
+def ehash(s):
+    return hashlib.sha1(s.encode('utf8')).hexdigest()
 
 
 def cmp(a, b):
@@ -233,7 +238,7 @@ class TracesFileCache(object):
         return self.dircaches[cachepath]
 
     def _dircachepath(self, abspath):
-        cachefn = "%i" % abs(hash(os.path.dirname(abspath)))
+        cachefn = ehash(abspath)
         return pjoin(self.cachedir, cachefn)
 
     def _load_dircache(self, cachefilename):
@@ -254,6 +259,7 @@ class TracesFileCache(object):
 
             v.data_use_count = 0
             v.data_loaded = False
+
         return cache
 
     def _dump_dircache(self, cache, cachefilename):
