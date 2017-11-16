@@ -427,6 +427,8 @@ class SnufflerStartWizard(qw.QWizard):
         qw.QWizard.__init__(self, parent)
 
         self.setOption(self.NoBackButtonOnStartPage)
+        self.setOption(self.NoBackButtonOnLastPage)
+        self.setOption(self.NoCancelButton)
         self.addPageSurvey()
         self.addPageHelp()
         self.setWindowTitle('Welcome to Pyrocko')
@@ -477,8 +479,8 @@ class SnufflerStartWizard(qw.QWizard):
         lyt.addWidget(text_data)
 
         lyt.addWidget(qw.QLabel(
-            'This message won\'t show again.\n\n'
-            'We appreciate your contribution!\n- The Pyrocko Devs'
+            'This message won\'t be shown again.\n\n'
+            'We appreciate your contribution!\n- The Pyrocko Developers'
             ))
 
         p.setLayout(lyt)
@@ -506,7 +508,7 @@ class SnufflerStartWizard(qw.QWizard):
         p.setTitle('Welcome to Snuffler!')
 
         text = qw.QLabel('''<html>
-<h3>- <i>The Seismogramm browser and workbench.</i></h3>
+<h3>- <i>The Seismogram browser and workbench.</i></h3>
 <p>Looks like you are starting the Snuffler for the first time.<br>
 It allows you to browse and process large archives of waveform data.</p>
 <p>Basic processing is complemented by Snufflings (<i>Plugins</i>):</p>
@@ -519,7 +521,7 @@ It allows you to browse and process large archives of waveform data.</p>
         <b>Map</b>, swiftly inspect stations and events on interactive maps
     </li>
 </ul>
-<p>And more... see <a href="https://pyrocko.org/">https://pyrocko.org/</a>!</p>
+<p>And more, see <a href="https://pyrocko.org/">https://pyrocko.org/</a></p>
 <p style="width: 100%; background-color: #e9b96e; margin: 5px; padding: 50;"
           align="center">
     <b>You can always press <code>?</code> for help!</b>
@@ -593,9 +595,16 @@ class SnufflerWindow(qw.QMainWindow):
 
         if snuffler_config.first_start:
             wizard = SnufflerStartWizard(self)
+
+            @qc.pyqtSlot()
+            def wizard_finished(result):
+                if result == wizard.Accepted:
+                    snuffler_config.first_start = False
+                    config.write_config(snuffler_config, 'snuffler')
+
+            wizard.finished.connect(wizard_finished)
+
             wizard.show()
-            snuffler_config.first_start = False
-            config.write_config(snuffler_config, 'snuffler')
 
         if follow:
             self.get_view().follow(float(follow))
