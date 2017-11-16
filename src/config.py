@@ -70,6 +70,8 @@ class SnufflerConfig(ConfigBase):
     first_start = Bool.T(
         default=True)
 
+    first_start = Bool.T(default=True)
+
     def get_phase_name(self, key):
         return self.phase_key_mapping.get('F%s' % key, 'Undefined')
 
