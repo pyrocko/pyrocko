@@ -2,32 +2,28 @@
 import time
 import json
 import requests
-from urllib import parse
+import GeoIP
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 port = 58326
-outfile = '/home/pyrocko/user_survey.txt'
+outfile = '/tmp/user_survey.txt'
 
 mattermost_webhook = ''
 
+gi = GeoIP.new(GeoIP.GEOIP_MMAP_CACHE)
 
 mattermost_payload = {
     'username': 'Pyrocko',
     'icon_url': 'https://pyrocko.org/_static/pyrocko.svg',
-    'text': 'Yay, someone contributed to the survey! :pray:',
+    'text': 'Yay, someone from **%s** contributed to the survey! :pray:',
 }
 
 
-def mattermost_post():
-    requests.post(mattermost_webhook, json=mattermost_payload)
-
-
-def decode_post(data):
-    system = {}
-    for k, v in parse.parse_qs(data).items():
-        system[k.decode()] = v[0].decode()
-    return system
+def mattermost_post(data):
+    payload = mattermost_payload.copy()
+    payload['text'] = payload['text'] % data['country']
+    requests.post(mattermost_webhook, json=payload)
 
 
 class PyrockoSurveyHandler(BaseHTTPRequestHandler):
@@ -40,10 +36,11 @@ class PyrockoSurveyHandler(BaseHTTPRequestHandler):
             return
 
         with open(outfile, 'a') as f:
-            system = decode_post(self.rfile.read(content_length))
-            system['client'] = self.headers.get('X-Real-IP', None)
-            system['time'] = time.time()
-            f.write(json.dumps(system, indent=4))
+            data = json.loads(self.rfile.read(content_length))
+            data['client'] = self.headers.get('X-Real-IP', '')
+            data['country'] = gi.country_code_by_addr(data['client'])
+            data['time'] = time.time()
+            f.write(json.dumps(data, indent=4))
             f.write(',\n')
             print('Metrics dumped...')
 
@@ -55,7 +52,7 @@ class PyrockoSurveyHandler(BaseHTTPRequestHandler):
 
         self.wfile.write(message)
 
-        mattermost_post()
+        mattermost_post(data)
         return
 
 
@@ -69,17 +66,15 @@ def run():
     httpd.serve_forever()
 
 
-def test_post():
-    addr = 'http://localhost:%d' % port
-    import requests
-
+def _get_data():
     import numpy
     import scipy
     import pyrocko
     import platform
     import uuid
     import PyQt5.QtCore as qc
-    data = {
+
+    return {
         'node-uuid': uuid.getnode(),
         'platform.architecture': platform.architecture(),
         'platform.system': platform.system(),
@@ -91,10 +86,15 @@ def test_post():
         'qt': qc.PYQT_VERSION_STR,
     }
 
+
+def test_post():
+    addr = 'http://localhost:%d' % port
+    data = _get_data()
+
     while True:
         print('Posting to %s' % addr)
         try:
-            requests.post(addr, data=data)
+            requests.post(addr, json=data)
         except Exception as e:
             print(e)
         time.sleep(5)
