@@ -31,7 +31,7 @@ read -r -p "Do you want to upload pyrocko to Anaconda (https://anaconda.org/pyro
 case $resp in
     [yY][eE][sS]|[yY] )
         anaconda logout;
-        anaconda login --username pyrocko --password $ANACONDA_PASSWORD;
+        anaconda login --username pyrocko;
         conda config --set anaconda_upload yes;
         ;;
     * ) conda config --set anaconda_upload no;
