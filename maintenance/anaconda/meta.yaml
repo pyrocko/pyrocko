@@ -5,8 +5,7 @@ package:
   version: {{ data.get('version') }}
 
 source:
-  path: ./pyrocko.git/
-  # git-url: https://github.com/pyrocko/pyrocko
+  path: pyrocko.git/
 
 requirements:
   build:
@@ -21,6 +20,16 @@ requirements:
     - progressbar2
     - future
     - requests
+
+test:
+  source_files:
+    - test
+  requires:
+    - nose
+  imports:
+    - pyrocko
+  commands:
+    - nosetests --verbosity=2 --detailed-errors test
 
 about:
   home: https://pyrocko.org
