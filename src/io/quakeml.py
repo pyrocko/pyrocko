@@ -10,8 +10,6 @@ from pyrocko.model import event
 from pyrocko import moment_tensor
 import numpy as num
 
-
-
 logger = logging.getLogger('pyrocko.io.quakeml')
 
 
@@ -584,25 +582,29 @@ class Event(Object):
         otime = self.preferred_origin.time.value
         reg = self.region
         foc_mech = self.preferred_focal_mechanism
-        print self.preferred_magnitude
-        print 'TEST'
-	if foc_mech != None:
-            mom_tens = foc_mech.moment_tensor_list[0].tensor
+        if foc_mech is not None:
             mrr = foc_mech.moment_tensor_list[0].tensor.mrr.value
             mtt = foc_mech.moment_tensor_list[0].tensor.mtt.value
             mpp = foc_mech.moment_tensor_list[0].tensor.mpp.value
             mrt = foc_mech.moment_tensor_list[0].tensor.mrt.value
             mrp = foc_mech.moment_tensor_list[0].tensor.mrp.value
             mtp = foc_mech.moment_tensor_list[0].tensor.mtp.value
-            mt = moment_tensor.MomentTensor(m_up_south_east=num.matrix([[mrr,mrt,mrp],[mrt,mtt,mtp],[mrp,mtp,mpp]]))
-            print mt
+            mt = moment_tensor.MomentTensor(m_up_south_east=num.matrix([
+                 [mrr, mrt, mrp], [mrt, mtt, mtp], [mrp, mtp, mpp]]))
+        else:
+            mt = None
+        pref_mag = self.preferred_magnitude
+        if pref_mag is None:
+            mag = self.magnitude_list[0].mag.value
+        else:
+            mag = pref_mag.mag.value
 
         cat = self.preferred_origin.creation_info.agency_id
         reg = self.description_list[0].text
-        
-        return model.Event(
+
+        return event.Event(
             name=self.public_id, lat=lat, lon=lon, time=otime, depth=depth,
-            magnitude=self.preferred_magnitude.mag.value, region=reg, moment_tensor=mt, catalog = cat)
+            magnitude=mag, region=reg, moment_tensor=mt, catalog=cat)
 
     @property
     def preferred_origin(self):
@@ -639,10 +641,7 @@ class QuakeML(Object):
     def get_pyrocko_events(self):
         '''Extract a list of :py:class:`pyrocko.model.Event` instances'''
         events = []
-        print self.event_parameters.event_list
         for e in self.event_parameters.event_list:
-            print type(e)
             events.append(e.pyrocko_event())
 
         return events
-
