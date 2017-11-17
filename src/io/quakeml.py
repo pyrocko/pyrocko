@@ -3,11 +3,13 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-
 import logging
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
     Timestamp, Object, List, Union, Bool
 from pyrocko.model import event
+from pyrocko import moment_tensor
+import numpy as num
+
 
 
 logger = logging.getLogger('pyrocko.io.quakeml')
@@ -574,15 +576,33 @@ class Event(Object):
     type = EventType.T(optional=True)
     type_certainty = EventTypeCertainty.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
+    region = Region.T(optional=True)
 
     def pyrocko_event(self):
         '''Considers only the *preferred* origin and magnitude'''
         lat, lon, depth = self.preferred_origin.position_values()
         otime = self.preferred_origin.time.value
+        reg = self.region
+        foc_mech = self.preferred_focal_mechanism
+        print self.preferred_magnitude
+        print 'TEST'
+	if foc_mech != None:
+            mom_tens = foc_mech.moment_tensor_list[0].tensor
+            mrr = foc_mech.moment_tensor_list[0].tensor.mrr.value
+            mtt = foc_mech.moment_tensor_list[0].tensor.mtt.value
+            mpp = foc_mech.moment_tensor_list[0].tensor.mpp.value
+            mrt = foc_mech.moment_tensor_list[0].tensor.mrt.value
+            mrp = foc_mech.moment_tensor_list[0].tensor.mrp.value
+            mtp = foc_mech.moment_tensor_list[0].tensor.mtp.value
+            mt = moment_tensor.MomentTensor(m_up_south_east=num.matrix([[mrr,mrt,mrp],[mrt,mtt,mtp],[mrp,mtp,mpp]]))
+            print mt
 
-        return event.Event(
+        cat = self.preferred_origin.creation_info.agency_id
+        reg = self.description_list[0].text
+        
+        return model.Event(
             name=self.public_id, lat=lat, lon=lon, time=otime, depth=depth,
-            magnitude=self.preferred_magnitude.mag.value)
+            magnitude=self.preferred_magnitude.mag.value, region=reg, moment_tensor=mt, catalog = cat)
 
     @property
     def preferred_origin(self):
@@ -619,7 +639,10 @@ class QuakeML(Object):
     def get_pyrocko_events(self):
         '''Extract a list of :py:class:`pyrocko.model.Event` instances'''
         events = []
+        print self.event_parameters.event_list
         for e in self.event_parameters.event_list:
+            print type(e)
             events.append(e.pyrocko_event())
 
         return events
+
