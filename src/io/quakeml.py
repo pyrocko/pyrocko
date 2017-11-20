@@ -126,7 +126,9 @@ class EventType(StringChoice):
         'landslide',
         'rockslide',
         'meteorite',
-        'volcanic eruption']
+        'volcanic eruption',
+        'duplicate earthquake',
+        'rockburst']
 
 
 class DataUsedWaveType(StringChoice):
@@ -387,7 +389,8 @@ class MomentTensor(Object):
         xmlstyle='attribute', xmltagname='publicID')
     data_used_list = List.T(DataUsed.T())
     comment_list = List.T(Comment.T())
-    derived_origin_id = ResourceReference.T(xmltagname='derivedOriginID')
+    derived_origin_id = ResourceReference.T(
+        optional=True, xmltagname='derivedOriginID')
     moment_magnitude_id = ResourceReference.T(
         optional=True, xmltagname='momentMagnitudeID')
     scalar_moment = RealQuantity.T(optional=True)
