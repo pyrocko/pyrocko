@@ -27,6 +27,25 @@ class OptimizationMethod(StringChoice):
     choices = ['enable', 'disable']
 
 
+def component_orientation(source, target, component):
+    '''
+    Get component and azimuth for standard components R, T, Z, N, and E.
+
+    :param source: :py:class:`pyrocko.gf.Location` object
+    :param target: :py:class:`pyrocko.gf.Location` object
+    :param component: string ``'R'``, ``'T'``, ``'Z'``, ``'N'`` or ``'E'``
+    '''
+
+    _, bazi = source.azibazi_to(target)
+
+    azi, dip = {
+        'T': (bazi + 270., 0.),
+        'R': (bazi + 180., 0.),
+        'N': (0., 0.),
+        'E': (90., 0.),
+        'Z': (0., -90.)}[component]
+
+
 class Target(meta.Receiver):
     '''
     A seismogram computation request for a single component, including
