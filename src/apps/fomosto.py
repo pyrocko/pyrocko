@@ -474,7 +474,6 @@ def command_view(args):
     if options.gui_toolkit_qt5:
         config.override_gui_toolkit = 'qt5'
 
-
     gdef = None
     if options.extract:
         try:

@@ -3068,9 +3068,6 @@ def MakePileViewerMainClass(base):
             self.update()
 
         def get_adequate_tpad(self):
-            freqs = [f for f in (self.highpass, self.lowpass)
-                     if f is not None]
-
             tpad = 0.
             for f in [self.highpass, self.lowpass]:
                 if f is not None:
@@ -3158,9 +3155,6 @@ def MakePileViewerMainClass(base):
                     else:
                         def trace_selectorx(tr):
                             return tr.deltat >= min_deltat_allow
-
-
-
 
                     for traces in self.pile.chopper(
                             tmin=tmin, tmax=tmax, tpad=tpad,

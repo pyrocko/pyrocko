@@ -195,6 +195,7 @@ class UtilTestCase(unittest.TestCase):
         url = 'http://data.pyrocko.org/examples/responses.xml'
 
         stat = []
+
         def status(d):
             stat.append(d)
 

@@ -172,7 +172,6 @@ def _download(url, fpath, username=None, password=None,
             if callable(status_callback):
                 status_callback(status)
 
-
             r = session.get(url, stream=True, timeout=5)
             r.raise_for_status()
 
@@ -190,7 +189,7 @@ def _download(url, fpath, username=None, password=None,
 
             os.rename(fn_tmp, fn)
 
-            if fsize != None and frx != fsize:
+            if fsize is not None and frx != fsize:
                 logger.warning(
                     'HTTP header Content-Length: %i bytes does not match '
                     'download size %i bytes' % (fsize, frx))
