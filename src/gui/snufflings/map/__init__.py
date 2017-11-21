@@ -205,7 +205,7 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             logger.warn(
                 'Could not find package OpenGL, '
                 'if the map does not work try installing OpenGL\n'
-                'e.g. sudo pip install OpenGL')
+                'e.g. sudo pip install PyOpenGL')
 
         self.cleanup()
 
