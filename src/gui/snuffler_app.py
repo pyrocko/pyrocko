@@ -522,6 +522,10 @@ It allows you to browse and process large archives of waveform data.</p>
     </li>
 </ul>
 <p>And more, see <a href="https://pyrocko.org/">https://pyrocko.org/</a></p>
+<p><b>NOTE:</b><br>If you installed snufflings from the
+<a href="https://github.com/pyrocko/contrib-snufflings">user contributed
+snufflings repository</a><br>you also have to pull an update from there.
+</p>
 <p style="width: 100%; background-color: #e9b96e; margin: 5px; padding: 50;"
           align="center">
     <b>You can always press <code>?</code> for help!</b>
