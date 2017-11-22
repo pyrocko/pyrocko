@@ -3,12 +3,12 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
-
 import logging
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
     Timestamp, Object, List, Union, Bool
 from pyrocko.model import event
-
+from pyrocko import moment_tensor
+import numpy as num
 
 logger = logging.getLogger('pyrocko.io.quakeml')
 
@@ -126,7 +126,9 @@ class EventType(StringChoice):
         'landslide',
         'rockslide',
         'meteorite',
-        'volcanic eruption']
+        'volcanic eruption',
+        'duplicate earthquake',
+        'rockburst']
 
 
 class DataUsedWaveType(StringChoice):
@@ -387,7 +389,8 @@ class MomentTensor(Object):
         xmlstyle='attribute', xmltagname='publicID')
     data_used_list = List.T(DataUsed.T())
     comment_list = List.T(Comment.T())
-    derived_origin_id = ResourceReference.T(xmltagname='derivedOriginID')
+    derived_origin_id = ResourceReference.T(
+        optional=True, xmltagname='derivedOriginID')
     moment_magnitude_id = ResourceReference.T(
         optional=True, xmltagname='momentMagnitudeID')
     scalar_moment = RealQuantity.T(optional=True)
@@ -574,15 +577,37 @@ class Event(Object):
     type = EventType.T(optional=True)
     type_certainty = EventTypeCertainty.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
+    region = Region.T(optional=True)
 
     def pyrocko_event(self):
         '''Considers only the *preferred* origin and magnitude'''
         lat, lon, depth = self.preferred_origin.position_values()
         otime = self.preferred_origin.time.value
+        reg = self.region
+        foc_mech = self.preferred_focal_mechanism
+        if foc_mech is not None:
+            mrr = foc_mech.moment_tensor_list[0].tensor.mrr.value
+            mtt = foc_mech.moment_tensor_list[0].tensor.mtt.value
+            mpp = foc_mech.moment_tensor_list[0].tensor.mpp.value
+            mrt = foc_mech.moment_tensor_list[0].tensor.mrt.value
+            mrp = foc_mech.moment_tensor_list[0].tensor.mrp.value
+            mtp = foc_mech.moment_tensor_list[0].tensor.mtp.value
+            mt = moment_tensor.MomentTensor(m_up_south_east=num.matrix([
+                 [mrr, mrt, mrp], [mrt, mtt, mtp], [mrp, mtp, mpp]]))
+        else:
+            mt = None
+        pref_mag = self.preferred_magnitude
+        if pref_mag is None:
+            mag = self.magnitude_list[0].mag.value
+        else:
+            mag = pref_mag.mag.value
+
+        cat = self.preferred_origin.creation_info.agency_id
+        reg = self.description_list[0].text
 
         return event.Event(
             name=self.public_id, lat=lat, lon=lon, time=otime, depth=depth,
-            magnitude=self.preferred_magnitude.mag.value)
+            magnitude=mag, region=reg, moment_tensor=mt, catalog=cat)
 
     @property
     def preferred_origin(self):
