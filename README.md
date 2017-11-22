@@ -7,7 +7,7 @@
 ### Native installation
 
 ```
-sudo python setup.py make_prerequisites
+sudo python setup.py install_prerequisites
 sudo python setup.py install
 ```
 
