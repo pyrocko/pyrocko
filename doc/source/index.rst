@@ -49,3 +49,19 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+More Manuals:
+------------------------------
+
+
+.. raw:: html
+
+    <div class="icon-button-group">
+
+      <a href="http://pyrocko.org/docs/kite" class="icon-button">
+        <i class="fa fa-rocket" aria-hidden="true"></i><br />
+          Kite manual
+      </a>
+
+    </div>

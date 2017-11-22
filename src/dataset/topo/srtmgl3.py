@@ -84,7 +84,7 @@ class SRTMGL3(dataset.TiledGlobalDataset):
             else:
                 url = self.raw_data_url + '/'
                 f = urlopen(url)
-                data = f.read()
+                data = f.read().decode()
                 available = re.findall(
                     r'([NS]\d\d[EW]\d\d\d)\.SRTMGL3\.hgt', data)
 
