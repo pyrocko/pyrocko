@@ -86,7 +86,7 @@ def _download(url, fpath, username=None, password=None,
               recursive=False):
 
     import requests
-    from requests.auth import HTTPDigestAuth
+    from requests.auth import HTTPBasicAuth
 
     requests.adapters.DEFAULT_RETRIES = 5
     urljoin = requests.compat.urljoin
@@ -94,7 +94,7 @@ def _download(url, fpath, username=None, password=None,
     session = requests.Session()
     try:
         session.auth = None if username is None\
-            else HTTPDigestAuth(username, password)
+            else HTTPBasicAuth(username, password)
 
         url_to_size = {}
         status = dict(
