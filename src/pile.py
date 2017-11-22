@@ -19,7 +19,10 @@ import sys
 import operator
 import math
 import hashlib
-import pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 
 from . import avl
@@ -93,8 +96,18 @@ def cmpfunc(key):
     return lambda a, b: cmp(key(a), key(b))
 
 
-class Dummy(object):
-    pass
+g_dummys = {}
+
+
+def get_dummy(key):
+    if key not in g_dummys:
+        class Dummy(object):
+            def __init__(self, k):
+                setattr(self, key, k)
+
+        g_dummys[key] = Dummy
+
+    return g_dummys[key]
 
 
 class Sorted(object):
@@ -106,10 +119,7 @@ class Sorted(object):
         self._key = key
         self._cmp = cmpfunc(key)
         if isinstance(key, str):
-            class Dummy(object):
-                def __init__(self, k):
-                    setattr(self, key, k)
-            self._dummy = Dummy
+            self._dummy = get_dummy(key)
 
     def __getstate__(self):
         state = list(self._avl.iter()), self._key
@@ -217,13 +227,9 @@ class TracesFileCache(object):
         self.dump_modified()
 
         for fn in os.listdir(self.cachedir):
-            try:
-                int(fn)  # valid filenames are integers
+            if len(fn) == 40:
                 cache = self._load_dircache(pjoin(self.cachedir, fn))
                 self._dump_dircache(cache, pjoin(self.cachedir, fn))
-
-            except ValueError:
-                pass
 
     def _get_dircache_for(self, abspath):
         return self._get_dircache(self._dircachepath(abspath))
@@ -238,7 +244,7 @@ class TracesFileCache(object):
         return self.dircaches[cachepath]
 
     def _dircachepath(self, abspath):
-        cachefn = ehash(abspath)
+        cachefn = ehash(os.path.dirname(abspath))
         return pjoin(self.cachedir, cachefn)
 
     def _load_dircache(self, cachefilename):
