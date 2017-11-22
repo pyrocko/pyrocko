@@ -47,7 +47,7 @@ Mac OS X with MacPorts (Python 2.7)
     cd pyrocko
     sudo python setup.py install --install-scripts=/usr/local/bin
 
-Mac OS X with MacPorts and local installation (no sudo)
+Mac OS X with MacPorts and user installation (no sudo)
 -------------------------------------------------------
 
 Try this if you don't have sudo rights in ``/usr/bin``.

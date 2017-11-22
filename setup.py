@@ -548,7 +548,7 @@ else:
 
 
 packname = 'pyrocko'
-version = '2017.11'
+version = '2017.11.22'
 
 subpacknames = [
     'pyrocko.gf',
