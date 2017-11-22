@@ -11,12 +11,12 @@ sudo python setup.py install_prerequisites
 sudo python setup.py install
 ```
 
-### Anaconda3 / MacOS
+### Anaconda / MacOSX
 
 ```
 conda install -c pyrocko pyrocko
 ```
-Anaconda Packages are available for Linux and OSX
+Anaconda2/3 Packages are available for Linux and OSX
 
 ### Python PIP
 
