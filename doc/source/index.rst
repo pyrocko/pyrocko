@@ -51,17 +51,7 @@ Indices and tables
 * :ref:`search`
 
 
-More Manuals:
-------------------------------
+More manuals from the ecosystem:
+---------------------------------
 
-
-.. raw:: html
-
-    <div class="icon-button-group">
-
-      <a href="http://pyrocko.org/docs/kite" class="icon-button">
-        <i class="fa fa-rocket" aria-hidden="true"></i><br />
-          Kite manual
-      </a>
-
-    </div>
+* `Kite - Static displacement and InSAR post-processing <http://pyrocko.org/docs/kite>`_
