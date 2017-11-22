@@ -113,12 +113,24 @@ class SRTMGL3(dataset.TiledGlobalDataset):
             cred = self.config.earthdata_credentials
         else:
             raise AuthenticationRequired(
-                '\n\nRegister at https://urs.earthdata.nasa.gov/users/new ' +
-                'and provide credentials in your local ~/.pyrocko/config.pf ' +
-                'as follows:\n' +
+                '\n\nRegister at https://urs.earthdata.nasa.gov/users/new'
+                ' and provide credentials in your local ~/.pyrocko/config.pf'
+                ' as follows:\n' +
                 'earthdata_credentials: [username, password]')
 
-        self.download_file(url, fpath, *cred)
+        try:
+            self.download_file(url, fpath, username=cred[0], password=cred[1])
+        except Exception as e:
+            if e.response.status_code == 401:
+                raise AuthenticationRequired(
+                    '\n\n We could not login to earthdata given the'
+                    ' credentials in ~/.pyrocko/config.pf!\n'
+                    'Register at https://urs.earthdata.nasa.gov/users/new'
+                    ' and provide credentials in your local '
+                    ' ~/.pyrocko/config.pf as follows:\n' +
+                    'earthdata_credentials: [username, password]')
+            else:
+                raise e
 
     def download(self):
         for tn in self.available_tilenames():
