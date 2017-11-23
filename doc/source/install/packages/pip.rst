@@ -27,10 +27,10 @@ Tagged builds are available for download from https://pypi.python.org/.
 
     # Install build requirements
     sudo apt-get install python3-dev python3-numpy
-    sudo pip3 install pyrocko
+    sudo pip install pyrocko
 
     # Install requirements
-    sudo pip3 install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
+    sudo pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
 
 
 User local installation (no sudo)
@@ -43,10 +43,10 @@ can use ``pip`` to manage the installation as well:
     :caption: ``pip`` allows to install into user's home directory - **dangerous for system integrity**
 
     # We assume the build requirements are already installed, see above
-    pip3 install pyrocko
+    pip install pyrocko
 
     # Install requirements
-    pip3 install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
+    pip install numpy>=1.8 scipy pyyaml matplotlib progressbar2 future jinja2 requests PyOpenGL
 
 
 Install from GitHub
@@ -59,4 +59,4 @@ repository:
 .. code-block:: bash
     :caption: We install straight from GitHub
 
-    sudo pip3 install git+https://github.com/pyrocko/pyrocko.git
+    sudo pip install git+https://github.com/pyrocko/pyrocko.git

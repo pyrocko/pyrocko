@@ -37,6 +37,7 @@ case $resp in
     * ) conda config --set anaconda_upload no;
         ;;
 esac
+conda config --remove channels conda-forge
 conda-build $BUILD_DIR
 
 # Workaround for https://github.com/travis-ci/travis-ci/issues/6522
