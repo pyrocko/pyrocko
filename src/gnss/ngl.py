@@ -4,12 +4,13 @@ import urlparse
 import urllib2
 import numpy as num
 import time
+
 from datetime import datetime
 
 from os import path
 from ..trace import Trace  # noqa
 from ..guts import (Object, String, Float, Int, DateTimestamp, StringChoice,
-                    Dict)
+                    Dict, List)
 
 
 logger = logging.getLogger('pyrocko.gnss.ngl')
@@ -31,6 +32,10 @@ class StepEvent(Object):
     USGS_eventid = String.T(
         default=None,
         optional=True)
+    magnitude = Float.T(
+        optional=True)
+    distance = Float.T(
+        optional=True)
 
 
 class NGLStation(Object):
@@ -51,9 +56,8 @@ class NGLStation(Object):
     latency = StringChoice.T(
         ['2 Weeks', '24 Hours'],
         help='Solution processing latency')
-    traces = Dict.T(
-        optional=True,
-        default=None)
+    steps_events = List.T(
+        optional=True)
 
 
 class NGLCatalog(object):
@@ -109,34 +113,38 @@ class NGLCatalog(object):
         start_day = int((startdate % 1) * 365.25)
         starttime = datetime.strptime('%d.%03d-12' % (start_year, start_day),
                                       '%Y.%j-%H')
+        tmin = time.mktime(starttime.timetuple())
+
         dates = data[:, 0]
-        gaps = num.round(num.diff(dates) * 365.25).astype(num.int)
+        gaps = num.round(num.gradient(dates) * 365.25).astype(num.int)
         idx = num.cumsum(gaps) - 1
 
         traces = {}
-        for it, trace_name in enumerate([
-            'x',
-            'y',
-            'z',
-            'Sigma_x',
-            'Sigma_y',
-            'Sigma_z',
-            'Corr_xy',
-            'Corr_yz',
-            'Corr_xz',
-            'Antenna_Height']):
+        for it, trace_name in enumerate(
+            ['x',
+             'y',
+             'z',
+             'Sigma_x',
+             'Sigma_y',
+             'Sigma_z',
+             'Corr_xy',
+             'Corr_yz',
+             'Corr_xz',
+             'Antenna_Height']):
 
             ydata = num.full(idx[-1], fill_value=num.nan)
             ydata = data[:, it+1]
-            traces[trace_name] = Trace(
+            tr = Trace(
                 network='NGL',
                 station=station_id,
                 channel=trace_name,
                 ydata=ydata,
-                tmin=time.mktime(starttime.timetuple()),
+                tmin=tmin,
                 deltat=sday)
+            traces[trace_name] = tr
 
         station.traces = traces
+        station.step_events = self.get_step_events(station_id)
         return station
 
     def _read_station_list(self):
@@ -169,34 +177,36 @@ class NGLCatalog(object):
                     print logger.error('Could not read line: \'%s\'' % sta)
         self.nstations = len(self.stations)
 
-    @staticmethod
-    def _date_to_dec(date):
-        return datetime.strptime('{}'.format(date),'%y%b%d').strftime('%Y-%m-%d')
-
-    def get_event(self, station_id):
+    def get_step_events(self, station_id):
         events = []
         with open(self._get_file(self.url_steps), 'r') as ngl_steps:
             ngl_steps.readline()
             lines = csv.reader(ngl_steps, delimiter=' ', skipinitialspace=True)
             for line in lines:
-                if line[0] == station_id:
-                    print self._date_to_dec(line[1])
-                    events.append(
-                    StepEvent(
-                        station_id=line[0], 
-                        time=self._date_to_dec(line[1]),
-                        event='Equipment change', 
-                        ))
-                    # if earthquake
-                    if line[2] == 2: 
-                        events[-1].event='Possible earthquake',
-                        # distance from station to epicenter in km
-                        events[-1].dist=line[4]
-                        # event magnitude
-                        events[-1].mag=line[5]
-                        # USGS event ID
-                        events[-1].USGS_eventid=line[6]
-                    events[-1].regularize()
+                if line[0] != station_id:
+                    continue
+
+                ev_time = datetime.strptime(line[1], '%y%b%d')\
+                    .strftime('%Y-%m-%d')
+
+                if line[2] == '1':
+                    ev = StepEvent(
+                        station_id=line[0],
+                        time=ev_time,
+                        event='Equipment change')
+                elif line[2] == '2':
+                    ev = StepEvent(
+                        station_id=line[0],
+                        time=ev_time,
+                        event='Possible earthquake',
+                        USGS_eventid=line[6],
+                        distance=float(line[4]),
+                        magnitude=float(line[5]))
+                else:
+                    logger.error('Could not interpret event ' + line)
+                ev.regularize()
+                events.append(ev)
+
         return events
 
     @staticmethod
