@@ -21,15 +21,15 @@ requirements:
     - future
     - requests
 
-test:
-  source_files:
-    - test
-  requires:
-    - nose
-  imports:
-    - pyrocko
-  commands:
-    - nosetests --verbosity=2 --detailed-errors test
+# test:
+#   source_files:
+#     - test
+#   requires:
+#     - nose
+#   imports:
+#     - pyrocko
+#   commands:
+#     - nosetests --verbosity=2 --detailed-errors test
 
 about:
   home: https://pyrocko.org
