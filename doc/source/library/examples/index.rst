@@ -19,10 +19,12 @@ Annotated scripts and real-world use cases using Pyrocko.
 .. toctree::
     :maxdepth: 2
 
+
     trace_handling
     dataset_management
     fdsn_download
     catalog_search
+    gnss
     moment_tensor
     plotting
     snuffler_markers
