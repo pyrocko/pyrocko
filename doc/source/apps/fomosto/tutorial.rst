@@ -89,21 +89,25 @@ in order to make it simple to build a database of pre-calculated Green's
 functions.
 
 Four modelling codes, including python interfaces required for fomosto are
-available at:
+available on GitHub:
 
- - http://kinherd.org/fomosto-qssp-2010beta.tar.gz
- - http://kinherd.org/fomosto-qssp-2010.tar.gz
- - http://kinherd.org/fomosto-qseis-2006.tar.gz
- - http://kinherd.org/fomosto-qseis-2006a.tar.gz
+ - https://github.com/pyrocko/fomosto-qssp
+ - https://github.com/pyrocko/fomosto-qseis
+ - https://github.com/pyrocko/fomosto-qseis2d
+ - https://github.com/pyrocko/fomosto-psgrn-pscmp
 
 For detailled information regarding each computation code refer to the
 Downloads/Software website of section 2.1 (GFZ): http://www.gfz-potsdam.de/en/section/physics-of-earthquakes-and-volcanoes/services/downloads-software/.
 
-Installation is done for each code inside the uncompressed folder by:
+Installation is done for each code inside the uncompressed folder by (More information in each packages' :file:`README.md`):
 
+.. code-block :: bash
+    :caption: Installation example for ``qseis``
+
+    autoreconf -i   # only if 'configure' script is missing
     ./configure
     make
-    make install
+    sudo make install
 
 In this example, we will use QSEIS as the modelling code.
 
@@ -151,7 +155,10 @@ Green's functions are built in parallel, if possible. The number of worker proce
 may be limited with the ``--nworkers=N`` option.
 
 We now have a complete Green's function store, ready to be used. This is the
-directory structure of the store::
+directory structure of the store:
+
+.. code-block :: text
+    :caption: Green's function store directory structure
 
     my_first_gfs/         # this directory represents the GF store
     |-- config            # general settings
@@ -415,6 +422,8 @@ Other diagnostic subcommands are ``fomosto tttview`` to visualize the travel
 time tables, ``fomosto stats`` to summarize some technical details, and
 ``fomosto check`` which checks the store for *NaN* values and some other
 problems.
+
+.. _fomosto_report:
 
 Report subcommand
 -----------------

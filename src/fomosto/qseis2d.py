@@ -1,3 +1,10 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import range, map
+
 import numpy as num
 import logging
 import os
@@ -13,17 +20,16 @@ from scipy.integrate import cumtrapz
 
 from pyrocko.moment_tensor import MomentTensor, symmat6
 from pyrocko.guts import Float, Int, Tuple, List, Bool, Object, String
-from pyrocko import trace, util, cake
-from pyrocko import gf
+from pyrocko import trace, util, cake, gf
 
-km = 1000.
+km = 1e3
 
 guts_prefix = 'pf'
 
 Timing = gf.meta.Timing
 
 
-logger = logging.getLogger('fomosto.qseis2d')
+logger = logging.getLogger('pyrocko.fomosto.qseis2d')
 
 # how to call the programs
 program_bins = {
@@ -42,6 +48,18 @@ default_fk_basefilename = 'green'
 default_source_depth = 10.0
 default_time_region = (Timing('-10'), Timing('+890'))
 default_slowness_window = (0.0, 0.0, 0.2, 0.25)
+
+
+def have_backend():
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+
+        except OSError:
+            return False
+
+    return True
 
 
 def nextpow2(i):
@@ -315,7 +333,7 @@ smallest is first chosen. If this is even smaller than 1 percent of the
 characteristic wavelength, then the latter is taken finally for the sublayer
 thickness.
 '''  # noqa
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class QSeisRReceiver(Object):
@@ -493,7 +511,7 @@ class QSeisRConfigFull(QSeisRConfig):
 # (3) The cutoff frequency should be high enough for separating different
 #     wave types.
 '''  # noqa
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class QSeis2dConfig(Object):
@@ -525,7 +543,7 @@ class Interrupted(gf.store.StoreError):
         return 'Interrupted.'
 
 
-class QSeisSRunner:
+class QSeisSRunner(object):
     '''
     Takes QSeis2dConfigFull or QSeisSConfigFull objects, runs the program.
     '''
@@ -543,14 +561,12 @@ class QSeisSRunner:
 
         input_fn = op.join(self.tempdir, 'input')
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
+            logger.debug('===== begin qseisS input =====\n'
+                         '%s===== end qseisS input =====' % input_str.decode())
+            f.write(input_str)
 
-        logger.debug('===== begin qseisS input =====\n'
-                     '%s===== end qseisS input =====' % input_str)
-
-        f.write(input_str)
-        f.close()
         program = program_bins['qseis2d.qseisS%s' % config.qseiss_version]
 
         old_wd = os.getcwd()
@@ -571,7 +587,7 @@ class QSeisSRunner:
                 os.chdir(old_wd)
                 raise QSeis2dError('could not start qseisS: "%s"' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -580,7 +596,7 @@ class QSeisSRunner:
             raise KeyboardInterrupt()
 
         logger.debug('===== begin qseisS output =====\n'
-                     '%s===== end qseisS output =====' % output_str)
+                     '%s===== end qseisS output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -590,7 +606,7 @@ class QSeisSRunner:
         if error_str:
             errmess.append('qseisS emitted something via stderr')
 
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in qseisS output")
 
         if errmess:
@@ -607,7 +623,10 @@ class QSeisSRunner:
 %s
 qseisS has been invoked as "%s"
 in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
+                input_str.decode(),
+                output_str.decode(),
+                error_str.decode(),
+                '\n'.join(errmess), program,
                 self.tempdir))
 
         self.qseiss_output = output_str
@@ -625,7 +644,7 @@ in the directory %s'''.lstrip() % (
                     'not removing temporary directory: %s' % self.tempdir)
 
 
-class QSeisRRunner:
+class QSeisRRunner(object):
     '''
     Takes QSeis2dConfig or QSeisRConfigFull objects, runs the program and
     reads the output.
@@ -643,17 +662,14 @@ class QSeisRRunner:
 
         input_fn = op.join(self.tempdir, 'input')
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
+            old_wd = os.getcwd()
+            os.chdir(self.tempdir)
+            logger.debug('===== begin qseisR input =====\n'
+                         '%s===== end qseisR input =====' % input_str.decode())
+            f.write(input_str)
 
-        old_wd = os.getcwd()
-        os.chdir(self.tempdir)
-
-        logger.debug('===== begin qseisR input =====\n'
-                     '%s===== end qseisR input =====' % input_str)
-
-        f.write(input_str)
-        f.close()
         program = program_bins['qseis2d.qseisR%s' % config.qseisr_version]
 
         interrupted = []
@@ -671,7 +687,7 @@ class QSeisRRunner:
                 os.chdir(old_wd)
                 raise QSeis2dError('could not start qseisR: "%s"' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -680,7 +696,7 @@ class QSeisRRunner:
             raise KeyboardInterrupt()
 
         logger.debug('===== begin qseisR output =====\n'
-                     '%s===== end qseisR output =====' % output_str)
+                     '%s===== end qseisR output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -690,7 +706,7 @@ class QSeisRRunner:
         if error_str:
             errmess.append('qseisR emitted something via stderr')
 
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in qseisR output")
 
         if errmess:
@@ -707,7 +723,10 @@ class QSeisRRunner:
 %s
 qseisR has been invoked as "%s"
 in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
+                input_str.decode(),
+                output_str.decode(),
+                error_str.decode(),
+                '\n'.join(errmess), program,
                 self.tempdir))
 
         self.qseisr_output = output_str

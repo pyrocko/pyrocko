@@ -1,11 +1,16 @@
+# python 2/3
+from __future__ import division, print_function, absolute_import
+
+from builtins import range
 import time
 import unittest
 from collections import defaultdict
 
 import numpy as num
 
-import common
-from pyrocko import util, io, datacube_ext, datacube
+from . import common
+from pyrocko import util, io, datacube_ext
+from pyrocko.io import datacube
 
 
 class DataCubeTestCase(unittest.TestCase):
@@ -51,13 +56,13 @@ class DataCubeTestCase(unittest.TestCase):
         fpath = common.test_data_file('test2.cube')
         trs = {}
         for imode in ('off', 'sinc'):
-            trs[imode] = list(datacube.iload(fpath, interpolation=imode))
+            trs[imode] = list(datacube.iload(fpath, interpolation=imode))[:1]
 
             for tr in trs[imode]:
                 tr.set_codes(location='i=%s' % imode)
 
         # import pylab as lab
-        for cha in ['p0', 'p1', 'p2']:
+        for cha in ['p0']:  # 'p1', 'p2']:
             t1 = [tr for tr in trs['off'] if tr.channel == cha][0]
             t2 = [tr for tr in trs['sinc'] if tr.channel == cha][0]
             it = 0
@@ -80,6 +85,10 @@ class DataCubeTestCase(unittest.TestCase):
 
         # trace.snuffle(trs['off'] + trs['sinc'])
 
+    def test_timing_context(self):
+        fpath = common.test_data_file('test2.cube')
+        datacube.get_extended_timing_context(fpath)
+
     def benchmark_load(self):
         mode = {
             0: 'get time range',
@@ -96,12 +105,12 @@ class DataCubeTestCase(unittest.TestCase):
 
                 f.close()
                 t1 = time.time()
-                print '%s: %10.3f' % (mode[loadflag], t1 - t0)
+                print('%s: %10.3f' % (mode[loadflag], t1 - t0))
 
             t0 = time.time()
             trs = io.load(fpath, format='datacube')
             t1 = time.time()
-            print 'with interpolation: %10.3f' % (t1 - t0)
+            print('with interpolation: %10.3f' % (t1 - t0))
             del trs
 
     def test_leapsecond(self):

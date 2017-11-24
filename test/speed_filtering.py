@@ -1,7 +1,9 @@
+from __future__ import division, print_function, absolute_import
+
 import time
 from pyrocko import trace
 import numpy as num
-import gmtpy
+from pyrocko import gmtpy
 
 
 def timeit(f, duration=1.0):
@@ -39,7 +41,7 @@ for n in range(1, 22):
     a = timeit(lambda: bandpass(mktrace(2**n)))
     b = timeit(lambda: lowpass_highpass(mktrace(2**n)))
     c = timeit(lambda: bandpass_fft(mktrace(2**n)))
-    print 2**n, a, b, c
+    print(2**n, a, b, c)
     tab.append((2**n, a, b, c))
 
 a = num.array(tab).T

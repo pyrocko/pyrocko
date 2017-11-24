@@ -1,5 +1,12 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import
+from builtins import range
 import numpy as num
-import parstack_ext
+
+from . import parstack_ext
 
 
 def parstack(arrays, offsets, shifts, weights, method,
@@ -15,7 +22,7 @@ def parstack(arrays, offsets, shifts, weights, method,
 
     narrays = offsets.size
     assert(len(arrays) == narrays)
-    nshifts = shifts.size / narrays
+    nshifts = shifts.size // narrays
     assert shifts.shape == (nshifts, narrays)
     shifts = num.reshape(shifts, (nshifts*narrays))
     assert weights.shape == (nshifts, narrays)
@@ -31,7 +38,7 @@ def parstack(arrays, offsets, shifts, weights, method,
         lengthout, offsetout, result, nparallel)
 
     if method == 0:
-        nsamps = result.size / nshifts
+        nsamps = result.size // nshifts
         result = result.reshape((nshifts, nsamps))
 
     return result, offset
@@ -77,11 +84,11 @@ def parstack_numpy(
         nsamp = lengthout
         imin = offsetout
 
-    nshifts = shifts.size / narrays
+    nshifts = shifts.size // narrays
     result = num.zeros(nsamp*nshifts, dtype=num.float)
 
-    for ishift in xrange(nshifts):
-        for iarray in xrange(narrays):
+    for ishift in range(nshifts):
+        for iarray in range(narrays):
             istart = offsets[iarray] + shifts[ishift*narrays + iarray]
             weight = weights[ishift*narrays + iarray]
             istart_r = ishift*nsamp + istart - imin

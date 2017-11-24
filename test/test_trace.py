@@ -1,10 +1,17 @@
+# python 2/3
+from __future__ import division, print_function, absolute_import
+from future import standard_library
+standard_library.install_aliases()  # noqa
+
+from builtins import range
 from pyrocko import trace, util, model, pile
 import unittest
 import math
 import time
-import os
 import numpy as num
-import cPickle as pickle
+import pickle as pickle
+
+from . import common
 
 sometime = 1234567890.
 d2r = num.pi/180.
@@ -63,7 +70,7 @@ class TraceTestCase(unittest.TestCase):
             a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=atmin)
             b = trace.Trace(deltat=dt, ydata=num.ones(5), tmin=btmin)
             traces = [a, b]
-            traces.sort(lambda a, b: cmp(a.full_id, b.full_id))
+            traces.sort(key=lambda a: a.full_id)
             xs = trace.degapper(traces)
 
             if btmin == 90:
@@ -76,7 +83,7 @@ class TraceTestCase(unittest.TestCase):
         a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=100)
         b = trace.Trace(deltat=dt, ydata=num.ones(10), tmin=100)
         traces = [a, b]
-        traces.sort(lambda a, b: cmp(a.full_id, b.full_id))
+        traces.sort(key=lambda a: a.full_id)
         xs = trace.degapper(traces)
         assert len(xs) == 1
         for x in xs:
@@ -95,7 +102,7 @@ class TraceTestCase(unittest.TestCase):
                 a = trace.Trace(deltat=dt, ydata=num.zeros(10), tmin=100)
             b = trace.Trace(deltat=dt, ydata=num.ones(10), tmin=108)
             traces = [a, b]
-            traces.sort(lambda a, b: cmp(a.full_id, b.full_id))
+            traces.sort(key=lambda a: a.full_id)
             xs = trace.degapper(traces, deoverlap=meth)
             for x in xs:
                 assert x.ydata.size == 18
@@ -209,7 +216,7 @@ class TraceTestCase(unittest.TestCase):
 
     def testAppend(self):
         a = trace.Trace(ydata=num.zeros(0, dtype=num.float), tmin=sometime)
-        for i in xrange(10000):
+        for i in range(10000):
             a.append(num.arange(1000, dtype=num.float))
         assert a.ydata.size == 10000*1000
 
@@ -330,7 +337,6 @@ class TraceTestCase(unittest.TestCase):
         assert numeq(ap, [1., 1., 1., 1.], 0.0001)
 
     def testCorrelate(self):
-
         for la, lb, mode, res in [
                 ([0, 1, .5, 0, 0],    [0, 0, 0, 1, 0],    'same', 0.3),
                 ([0, 1, .5, 0, 0, 0], [0, 1, 0],          'valid', 0.1),
@@ -497,9 +503,6 @@ class TraceTestCase(unittest.TestCase):
             % (t1.deltat, t2.deltat))
 
     def testLxnorm(self):
-        """
-        expected results calculated by hand.
-        """
         yref = num.array([0., 1.5, 2.3, 0., -1.])
         ytest = num.array([-1., 0.3, -0.3, 1., 0.2])
         m, n = trace.Lx_norm(ytest, yref, norm=1)
@@ -533,18 +536,8 @@ class TraceTestCase(unittest.TestCase):
             self.assertEqual(m, 0., 'misfit\'s m of equal traces is != 0')
 
     def testMisfitOfSameTracesDtDifferentShifted(self):
-        """
-        Tests:
-            Different length
-            Different delta t
-            Shifted
-            L2-Norm
-            L1-Norm
-            time- and frequency-domain
-        """
-        test_file = os.path.join(
-            os.path.dirname(__file__),
-            '../examples/1989.072.evt.mseed')
+        test_file = common.test_data_file('1989.072.evt.mseed')
+
         p = pile.make_pile(test_file, show_progress=False)
         rt = p.all()[0]
         tt = rt.copy()
@@ -559,13 +552,14 @@ class TraceTestCase(unittest.TestCase):
         t_shifts = [1.0, 0.49999, 0.5]
         for ts in t_shifts:
             tts_shifted = [t.copy() for t in tts]
-            map(lambda x: x.shift(ts), tts_shifted)
+            for x in tts_shifted:
+                x.shift(ts)
             tts.extend(tts_shifted)
 
         a = rt.tmin
         d = rt.tmax
-        b = a+(d-a)/10
-        c = d-(d-a)/10
+        b = a+(d-a)/10.
+        c = d-(d-a)/10.
 
         taper = trace.CosTaper(a, b, c, d)
         fresponse = trace.FrequencyResponse()
@@ -626,7 +620,7 @@ class TraceTestCase(unittest.TestCase):
 
         n = 100
         ydata = num.ones(n)
-        ydata[n/2-10:n/2+10] = 2.0
+        ydata[n//2-10:n//2+10] = 2.0
 
         deltat = 0.01
         tr1 = trace.Trace(
@@ -658,7 +652,7 @@ class TraceTestCase(unittest.TestCase):
         t1 = time.time()
         signal_ext.antidrift(i_control, t_control, s_in, tmin, deltat, s_out)
         t2 = time.time()
-        print t2 - t1
+        print(t2 - t1)
 
     def test_transfer(self):
         n = 100
@@ -708,8 +702,8 @@ class TraceTestCase(unittest.TestCase):
             '', 'X', '', '',
             ydata=y, deltat=1.0)
 
-        for itlong in xrange(1, 20):
-            for itshort in xrange(1, itlong):
+        for itlong in range(1, 20):
+            for itshort in range(1, itlong):
 
                 tlong = float(itlong)
                 tshort = float(itshort)
@@ -720,20 +714,30 @@ class TraceTestCase(unittest.TestCase):
 
                 ydata = num.zeros(n)
 
-                s = int(round(tshort / tr.deltat))
-                l = int(round(tlong / tr.deltat))
+                sh = int(round(tshort / tr.deltat))
+                ln = int(round(tlong / tr.deltat))
 
-                for i in xrange(l-s, n-s):
-                    ydata[i] = (1.0 / s * num.sum(y[i:i+s])) / (
-                        1.0 / l * num.sum(y[i+s-l:i+s])) * float(s)/float(l)
+                for i in range(ln-sh, n-sh):
+                    ydata[i] = (1.0 / sh * num.sum(y[i:i+sh])) / (
+                        1.0 / ln * num.sum(y[i+sh-ln:i+sh])) \
+                        * float(sh)/float(ln)
 
                 stalta_ref = trace.Trace(
                     '', 'X', 'ref', '',
                     ydata=ydata, deltat=1.0)
 
-                stalta_ref.chop(float(l-s), float(n-s))
+                stalta_ref.chop(float(ln-sh), float(n-sh))
 
                 assert numeq(stalta.ydata, stalta_ref.ydata, 1e-3)
+
+    def test_trace_equal(self):
+        ydata = num.arange(10)
+        tr1 = trace.Trace(ydata=ydata)
+        tr2 = trace.Trace(ydata=ydata)
+
+        tr_set = set([tr1, tr2])
+
+        assert len(tr_set), 2
 
 
 if __name__ == "__main__":

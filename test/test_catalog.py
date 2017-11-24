@@ -1,5 +1,9 @@
-from pyrocko import catalog, util
+from __future__ import division, print_function, absolute_import
+from pyrocko import util
+from pyrocko.client import catalog
+from pyrocko import moment_tensor
 import unittest
+from . import common
 
 
 def near(a, b, eps):
@@ -8,6 +12,7 @@ def near(a, b, eps):
 
 class CatalogTestCase(unittest.TestCase):
 
+    @common.require_internet
     def testGeofon(self):
         def is_the_haiti_event(ev):
             assert near(ev.magnitude, 7.2, 0.001)
@@ -38,6 +43,18 @@ class CatalogTestCase(unittest.TestCase):
         ev = cat.get_event(ident)
         is_the_haiti_event(ev)
 
+    @common.require_internet
+    def testGeofonMT(self):
+        cat = catalog.Geofon()
+        tmin = util.ctimegm('2014-01-01 00:00:00')
+        tmax = util.ctimegm('2017-01-01 00:00:00')
+        events = cat.get_events((tmin, tmax), magmin=8)
+        self.assertEqual(len(events), 2)
+        mt1, mt2 = [ev.moment_tensor for ev in events]
+        angle = moment_tensor.kagan_angle(mt1, mt2)
+        self.assertEqual(round(angle - 7.7, 1), 0.0)
+
+    @common.require_internet
     def testGlobalCMT(self):
 
         def is_the_haiti_event(ev):
@@ -65,6 +82,7 @@ class CatalogTestCase(unittest.TestCase):
         ev = cat.get_event(ident)
         is_the_haiti_event(ev)
 
+    @common.require_internet
     def testUSGS(self):
 
         def is_the_haiti_event(ev):

@@ -1,16 +1,19 @@
+from __future__ import division, print_function, absolute_import
 import sys
 import random  # noqa
 import math
 import unittest
 from tempfile import mkdtemp
 import logging
+import shutil
+
 import numpy as num
 
 from pyrocko import gf, util
 from pyrocko.fomosto import ahfullgreen
 
 
-logger = logging.getLogger('test_gf_ahfull.py')
+logger = logging.getLogger('pyrocko.test.test_gf_ahfull')
 
 
 r2d = 180. / math.pi
@@ -25,6 +28,7 @@ def numeq(a, b, eps):
 
 class GFAhfullTestCase(unittest.TestCase):
 
+    tempdirs = []
     if sys.version_info < (2, 7):
         from contextlib import contextmanager
 
@@ -44,12 +48,10 @@ class GFAhfullTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def test_create_default(self):

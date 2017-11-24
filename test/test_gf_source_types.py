@@ -1,18 +1,21 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
+
 import unittest
 import numpy as num
-from pyrocko import gf
+from pyrocko import gf, util
 
 km = 1e3
 
 
-class GFSourceTypes(unittest.UnitTest):
+class GFSourceTypesTestCase(unittest.TestCase):
 
     def test_rectangular_source(self):
         # WIP
         nsrc = 5
         rect_sources = []
 
-        for n in xrange(nsrc):
+        for n in range(nsrc):
             src = gf.RectangularSource(
                 lat=0., lon=0.,
                 anchor='bottom',
@@ -37,3 +40,8 @@ class GFSourceTypes(unittest.UnitTest):
 
         plt.axis('equal')
         plt.show()
+
+
+if __name__ == '__main__':
+    util.setup_logging('test_gf_source_types', 'warning')
+    unittest.main(defaultTest='GFSourceTypesTestCase')

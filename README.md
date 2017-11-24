@@ -1,9 +1,48 @@
 # Pyrocko
 ### _A seismology toolkit for Python_
-[![Build Status](https://travis-ci.org/pyrocko/pyrocko.svg?branch=master)](https://travis-ci.org/pyrocko/pyrocko) [![Coverage Status](https://coveralls.io/repos/github/pyrocko/pyrocko/badge.svg)](https://coveralls.io/github/pyrocko/pyrocko)
+[![Anaconda-Server Badge](https://anaconda.org/pyrocko/pyrocko/badges/installer/conda.svg)](https://conda.anaconda.org/pyrocko)
 
-For documentation and installation instructions please see 
-[http://pyrocko.org/](http://pyrocko.org/).
+## Installation
+
+### Native installation
+
+```
+sudo python setup.py install_prerequisites
+sudo python setup.py install
+```
+
+### Anaconda / MacOSX
+
+```
+conda install -c pyrocko pyrocko
+```
+Anaconda2/3 Packages are available for Linux and OSX
+
+### Python PIP
+
+```
+sudo pip install pyrocko
+```
+
+or from source
+
+```
+git clone https://github.org/pyrocko/pyrocko
+cd pyrocko
+sudo pip install -r requirements.txt
+sudo pip install .
+```
+
+More installation instruction at http://pyrocko.org
+
+
+## Documentation
+
+Documentation and usage examples are available online at http://pyrocko.org/docs/current
+
+## Community Support
+
+Communit support at [https://hive.pyrocko.org](https://hive.pyrocko.org/signup_user_complete/?id=9edryhxeptdbmxrecbwy3zg49y).
 
 ## Citation
 Recommended citation for Pyrocko
@@ -29,7 +68,7 @@ You should have received a copy of the GNU General Public License along with thi
   marius.isken@gfz-potsdam.de
 
 * Marius Kriegerowski; 
-  marius.kriegerowski@gfz-potsdam.de 
+  marius.kriegerowski@gfz-potsdam.de
 
 ```
 Helmholtz Centre Potsdam German Research Centre for Geoscienes GFZ

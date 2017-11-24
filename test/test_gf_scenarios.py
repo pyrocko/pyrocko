@@ -1,3 +1,6 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
+
 import unittest
 import logging
 import random
@@ -9,7 +12,7 @@ from pyrocko import gf, util, model
 from pyrocko import moment_tensor as pmt
 from pyrocko import orthodrome as od
 
-logger = logging.getLogger('test_gf_scenarios')
+logger = logging.getLogger('pyrocko.test.test_gf_scenarios')
 km = 1000.
 d2r = math.pi/180.
 
@@ -41,21 +44,29 @@ def to_kiwi_source(source):
         rise_time=source.stf.duration)
 
 
-class GFScenariosTestCase(unittest.TestCase):
+def have_store(store_id):
+    engine = gf.get_engine()
+    try:
+        engine.get_store(store_id)
+        return True
+    except gf.NoSuchStore:
+        return False
 
+
+class GFScenariosTestCase(unittest.TestCase):
+    store_id = 'crust2_mf'
+    store_id2 = 'chile_70km_crust'
+
+    @unittest.skipUnless(
+            have_store(store_id),
+            'GF Store "%s" is not available' % store_id)
     def test_regional(self):
         engine = gf.get_engine()
-        store_id = 'crust2_mf'
-        try:
-            engine.get_store(store_id)
-        except gf.NoSuchStore:
-            logger.warn('GF Store %s not available - skipping test' % store_id)
-            return
 
         nsources = 10
         nstations = 10
 
-        print 'cache source channels par wallclock seismograms_per_second'
+        print('cache source channels par wallclock seismograms_per_second')
         nprocs_max = multiprocessing.cpu_count()
 
         for sourcetype, channels in [
@@ -69,7 +80,7 @@ class GFScenariosTestCase(unittest.TestCase):
                     continue
 
                 sources = []
-                for isource in xrange(nsources):
+                for isource in range(nsources):
                     m = pmt.MomentTensor.random_dc()
                     strike, dip, rake = map(float, m.both_strike_dip_rake()[0])
 
@@ -102,7 +113,7 @@ class GFScenariosTestCase(unittest.TestCase):
                     sources.append(source)
 
                 targets = []
-                for istation in xrange(nstations):
+                for istation in range(nstations):
                     dist = rand(40.*km, 900*km)
                     azi = rand(-180., 180.)
 
@@ -117,7 +128,7 @@ class GFScenariosTestCase(unittest.TestCase):
                             quantity='displacement',
                             interpolation='multilinear',
                             # optimization='disable',
-                            store_id=store_id)
+                            store_id=GFScenariosTestCase.store_id)
 
                         targets.append(target)
 
@@ -133,15 +144,18 @@ class GFScenariosTestCase(unittest.TestCase):
                     if temperature == 'hot':
                         if nprocs == 1:
                             sps_ref = sps
-                        print '%-5s %-6s %-8s %3i %9.3f %12.1f %12.1f' % (
+                        print('%-5s %-6s %-8s %3i %9.3f %12.1f %12.1f' % (
                             temperature, sourcetype, channels, nprocs, t1-t0,
-                            sps, sps/sps_ref)
+                            sps, sps/sps_ref))
 
                     del resp
 
+    @unittest.skipUnless(
+            have_store(store_id2),
+            'GF Store "%s" is not available' % store_id2)
     def test_against_kiwi(self):
         engine = gf.get_engine()
-        store_id = 'chile_70km_crust'
+        store_id = GFScenariosTestCase.store_id2
         try:
             store = engine.get_store(store_id)
         except gf.NoSuchStore:
@@ -165,7 +179,7 @@ class GFScenariosTestCase(unittest.TestCase):
         nstations = 20
         stations = []
         targets = []
-        for istation in xrange(nstations):
+        for istation in range(nstations):
             dist = rand(40.*km, 900*km)
             azi = rand(-180., 180.)
             north_shift = dist * math.cos(azi*d2r)
@@ -229,7 +243,7 @@ class GFScenariosTestCase(unittest.TestCase):
 
             for sourcetype in ['point', 'rect']:
                 sources = []
-                for isource in xrange(nsources):
+                for isource in range(nsources):
                     m = pmt.MomentTensor.random_dc()
                     strike, dip, rake = map(float, m.both_strike_dip_rake()[0])
 
@@ -284,10 +298,10 @@ class GFScenariosTestCase(unittest.TestCase):
                     if temperature == 'hot':
                         dur_kiwi = t1 - t0
 
-                print 'pyrocko %-5s %5.2fs  %5.1fx' % (
-                    sourcetype, dur_pyrocko, 1.0)
-                print 'kiwi    %-5s %5.2fs  %5.1fx' % (
-                    sourcetype, dur_kiwi, dur_pyrocko/dur_kiwi)
+                print('pyrocko %-5s %5.2fs  %5.1fx' % (
+                    sourcetype, dur_pyrocko, 1.0))
+                print('kiwi    %-5s %5.2fs  %5.1fx' % (
+                    sourcetype, dur_kiwi, dur_pyrocko/dur_kiwi))
 
         finally:
             seis.close()

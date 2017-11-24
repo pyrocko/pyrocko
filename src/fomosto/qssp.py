@@ -1,3 +1,10 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import range, zip
+
 import numpy as num
 import logging
 import os
@@ -12,20 +19,34 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
+from pyrocko import trace, util, cake, gf
 from pyrocko.guts import Object, Float, String, Bool, Tuple, Int, List
-from pyrocko import trace, util, cake
-from pyrocko import gf
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('fomosto.qssp')
+logger = logging.getLogger('pyrocko.fomosto.qssp')
 
 # how to call the programs
 program_bins = {
     'qssp.2010beta': 'fomosto_qssp2010beta',
     'qssp.2010': 'fomosto_qssp2010',
 }
+
+
+def have_backend():
+    have_any = False
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+            have_any = True
+
+        except OSError:
+            pass
+
+    return have_any
+
 
 qssp_components = {
     1: 'ae an az gr sd te tn ue un uz ve vn vz'.split(),
@@ -408,7 +429,7 @@ class QSSPConfigFull(QSSPConfig):
 #---------------------------------end of all inputs-----------------------------------------
 '''  # noqa
 
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class QSSPError(gf.store.StoreError):
@@ -420,7 +441,7 @@ class Interrupted(gf.store.StoreError):
         return 'Interrupted.'
 
 
-class QSSPRunner:
+class QSSPRunner(object):
 
     def __init__(self, tmp=None, keep_tmp=False):
 
@@ -433,14 +454,12 @@ class QSSPRunner:
 
         input_fn = pjoin(self.tempdir, 'input')
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
+            logger.debug('===== begin qssp input =====\n'
+                         '%s===== end qssp input =====' % input_str)
+            f.write(input_str)
 
-        logger.debug('===== begin qssp input =====\n'
-                     '%s===== end qssp input =====' % input_str)
-
-        f.write(input_str)
-        f.close()
         program = program_bins['qssp.%s' % config.qssp_version]
 
         old_wd = os.getcwd()
@@ -468,7 +487,7 @@ on
 
 ''' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -477,7 +496,7 @@ on
             raise KeyboardInterrupt()
 
         logger.debug('===== begin qssp output =====\n'
-                     '%s===== end qssp output =====' % output_str)
+                     '%s===== end qssp output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -486,10 +505,11 @@ on
         if error_str:
 
             logger.warn(
-                'qssp emitted something via stderr: \n\n%s' % error_str)
+                'qssp emitted something via stderr: \n\n%s'
+                % error_str.decode())
 
             # errmess.append('qssp emitted something via stderr')
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in qssp output")
 
         if errmess:
@@ -503,9 +523,9 @@ on
 %s===== end qssp error =====
 %s
 qssp has been invoked as "%s"'''.lstrip() % (
-                input_str,
-                output_str,
-                error_str,
+                input_str.decode(),
+                output_str.decode(),
+                error_str.decode(),
                 '\n'.join(errmess),
                 program))
 
@@ -524,7 +544,7 @@ qssp has been invoked as "%s"'''.lstrip() % (
             ntraces -= 1
             deltat = (data[-1, 0] - data[0, 0])/(nsamples-1)
             toffset = data[0, 0]
-            for itrace in xrange(ntraces):
+            for itrace in range(ntraces):
                 rec = self.config.receivers[itrace]
                 tmin = rec.tstart + toffset
                 tr = trace.Trace(

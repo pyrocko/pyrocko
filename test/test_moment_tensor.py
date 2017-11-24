@@ -1,3 +1,6 @@
+from __future__ import division, print_function, absolute_import
+from builtins import str
+from builtins import range
 import unittest
 import random
 import math
@@ -20,17 +23,12 @@ class MomentTensorTestCase(unittest.TestCase):
                 < 1e-6, 'Magnitude to moment to magnitude test failed.'
 
     def testAnyAngles(self):
-        '''Check some arbitrary angles.'''
         for i in range(100):
             (s1, d1, r1) = [r2d*random.random()*10.-5. for j in range(3)]
             m0 = 1.+random.random()*1.0e20
             self.forwardBackward(s1, d1, r1, m0)
 
     def testProblematicAngles(self):
-        '''
-        Checks angles close to fractions of pi, which are especially
-        problematic.
-        '''
         for i in range(100):
             # angles close to fractions of pi are especially problematic
             (s1, d1, r1) = [
@@ -40,7 +38,6 @@ class MomentTensorTestCase(unittest.TestCase):
             self.forwardBackward(s1, d1, r1, m0)
 
     def testNonPlainDoubleCouples(self):
-        '''Convert random MTs to plain double couples and compare angles.'''
         for i in range(100):
             ms = [random.random()*1.0e20-0.5e20 for j in range(6)]
             m = num.matrix(
@@ -114,7 +111,7 @@ class MomentTensorTestCase(unittest.TestCase):
 
     def testKagan(self):
         eps = 0.01
-        for _ in xrange(500):
+        for _ in range(500):
             mt1 = MomentTensor.random_mt(magnitude=-1.0)
             assert 0.0 == kagan_angle(mt1, mt1)
 

@@ -1,15 +1,21 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import range
+
 import logging
 import os
 import signal
 
 import numpy as num
 
-from pyrocko import trace
-from pyrocko import gf
+from pyrocko import trace, gf
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('fomosto.dummy')
+logger = logging.getLogger('pyrocko.fomosto.dummy')
 
 
 class Interrupted(gf.store.StoreError):
@@ -40,7 +46,7 @@ class DummyGFBuilder(gf.builder.Builder):
         duplicate_inserts = 0
         try:
             for x in num.linspace(firstx, lastx, nx):
-                for ig in xrange(self.store.config.ncomponents):
+                for ig in range(self.store.config.ncomponents):
                     args = (sz, x, ig)
                     irec = self.store.config.irecord(*args)
                     tr = trace.Trace(

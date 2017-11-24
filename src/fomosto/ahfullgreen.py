@@ -1,11 +1,17 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import zip
+
 import numpy as num
 import logging
 import os
 import math
 import signal
 
-from pyrocko import trace, cake
-from pyrocko import gf
+from pyrocko import trace, cake, gf
 from pyrocko.ahfullgreen import add_seismogram, Impulse
 from pyrocko.moment_tensor import MomentTensor, symmat6
 
@@ -13,7 +19,7 @@ km = 1000.
 
 guts_prefix = 'pf'
 
-logger = logging.getLogger('fomosto.ahfullgreen')
+logger = logging.getLogger('pyrocko.fomosto.ahfullgreen')
 
 # how to call the programs
 program_bins = {

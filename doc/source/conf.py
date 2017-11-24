@@ -33,7 +33,8 @@ import sphinx_sleekcat_theme
 extensions = ['sphinx.ext.autodoc',
     'sphinx.ext.imgmath', # 'sphinx.ext.jsmath', 
     'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx'
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.autosummary'
 ]
 
 intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
@@ -42,7 +43,7 @@ intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                                  None),
                        'matplotlib': ('http://matplotlib.org/',
                                  None),
-                       'python': ('https://docs.python.org/2.7',
+                       'python': ('https://docs.python.org/3.5',
                                   None)}
 
 # Add any paths that contain templates here, relative to this directory.
@@ -189,7 +190,7 @@ html_show_sphinx = False
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'http://pyrocko.org/pyrocko/'
+html_use_opensearch = 'https://pyrocko.org/pyrocko/'
 
 # This is the file name suffix for HTML files (e.g. ".xhtml").
 #html_file_suffix = None
@@ -266,18 +267,21 @@ def process_signature(app, what, name, obj, options, signature,
 
     from pyrocko import guts
 
-    if what == 'attribute' and isinstance(obj, guts.TBase):
-        return str(obj)
+    # if what == 'attribute' and isinstance(obj, guts.TBase):
+    #     return (str(obj), '')
 
     if what == 'class' and issubclass(obj, guts.Object):
         if obj.dummy_for is not None:
             return ('(dummy)', '%s' % obj.dummy_for.__name__)
-
     return
 
 
 def skip_member(app, what, name, obj, skip, options):
+    from pyrocko import guts
+
     if what == 'class' and name == 'dummy_for':
+        return True
+    if what == 'class' and name == 'T':
         return True
 
 

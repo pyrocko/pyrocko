@@ -1,7 +1,11 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
+
 import unittest
 import numpy as num
 
-from pyrocko import gshhg, util
+from pyrocko.dataset import gshhg
+from pyrocko import util
 
 plot = False
 
@@ -45,7 +49,7 @@ class GSHHGTest(unittest.TestCase):
         self.gshhg = gshhg.GSHHG.intermediate()
 
     def test_polygon_loading_points(self):
-        for ipoly in xrange(10):
+        for ipoly in range(10):
             self.gshhg.polygons[ipoly].points
 
     def test_polygon_contains_point(self):
@@ -93,9 +97,7 @@ class GSHHGTest(unittest.TestCase):
             plt.show()
 
     def test_bounding_box_select(self):
-        print 'test...'
         p = self.gshhg.get_polygons_within(*BB.tpl)
-        print len(self.gshhg.polygons), len(p)
 
         if plot:
             import matplotlib.pyplot as plt
@@ -224,6 +226,6 @@ class GSHHGTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    plot = True
+    plot = False
     util.setup_logging('test_gshhg', 'debug')
     unittest.main(exit=False)

@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import math
 import unittest
 import numpy as num
@@ -7,6 +8,7 @@ from pyrocko import gf, util
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
 km = 1000.
+plot = False
 
 
 def numeq(a, b, eps):
@@ -19,7 +21,7 @@ class GFSTFTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
 
-    def test_stf_triangular(self, plot=False):
+    def test_stf_triangular(self):
         from matplotlib import pyplot as plt
 
         tref = 10.
@@ -30,13 +32,14 @@ class GFSTFTestCase(unittest.TestCase):
                 t, a = stf.discretize_t(deltat=0.1, tref=tref)
                 assert numeq(stf.centroid_time(tref), tref, 1e-5)
                 if plot:
+                    plt.title('Triangular')
                     plt.plot(t, a)
                     plt.plot(t, a, 'o')
 
         if plot:
             plt.show()
 
-    def test_stf_boxcar(self, plot=False):
+    def test_stf_boxcar(self):
         from matplotlib import pyplot as plt
 
         for duration in [0., 1., 2., 3.]:
@@ -45,13 +48,14 @@ class GFSTFTestCase(unittest.TestCase):
             t, a = stf.discretize_t(deltat=0.1, tref=tref)
             assert numeq(stf.centroid_time(tref), tref, 1e-5)
             if plot:
+                plt.title('Boxcar')
                 plt.plot(t, a)
                 plt.plot(t, a, 'o')
 
         if plot:
             plt.show()
 
-    def test_stf_half_sinusoid(self, plot=False):
+    def test_stf_half_sinusoid(self):
         from matplotlib import pyplot as plt
 
         for duration in [0., 1., 2., 3.]:
@@ -60,6 +64,7 @@ class GFSTFTestCase(unittest.TestCase):
             t, a = stf.discretize_t(deltat=0.1, tref=tref)
             assert numeq(stf.centroid_time(tref), tref, 1e-5)
             if plot:
+                plt.title('Half Sinosoid')
                 plt.plot(t, a)
                 plt.plot(t, a, 'o')
 
@@ -93,5 +98,6 @@ class GFSTFTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    plot = True
     util.setup_logging('test_gf_stf', 'warning')
     unittest.main()

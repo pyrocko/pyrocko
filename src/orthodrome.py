@@ -1,9 +1,16 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import division, absolute_import
+from builtins import object
+
 import math
 import numpy as num
 
-from pyrocko.moment_tensor import euler_to_matrix
-from pyrocko.beachball import spoly_cut
-from pyrocko.config import config
+from .moment_tensor import euler_to_matrix
+from .config import config
+from .plot.beachball import spoly_cut
 
 from matplotlib.path import Path
 
@@ -15,13 +22,40 @@ earthradius = config().earthradius
 d2m = earthradius_equator*math.pi/180.
 m2d = 1./d2m
 
+_testpath = Path([(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)], closed=True)
+
+if hasattr(_testpath, 'contains_points') and num.all(
+        _testpath.contains_points([(0.5, 0.5), (1.5, 0.5)]) != [True, False]):
+
+    def path_contains_points(verts, points):
+        p = Path(verts, closed=True)
+        return p.contains_points(points).astype(num.bool)
+
+else:
+    # work around missing contains_points and bug in matplotlib ~ v1.2.0
+
+    def path_contains_points(verts, points):
+        p = Path(verts, closed=True)
+        result = num.zeros(points.shape[0], dtype=num.bool)
+        for i in range(result.size):
+            result[i] = p.contains_point(points[i, :])
+
+        return result
+
+
+try:
+    cbrt = num.cbrt
+except AttributeError:
+    def cbrt(x):
+        return x**(1./3.)
+
 
 def float_array_broadcast(*args):
     return num.broadcast_arrays(*[
         num.asarray(x, dtype=num.float) for x in args])
 
 
-class Loc:
+class Loc(object):
     '''Simple location representation
 
         :attrib lat: Latitude degree
@@ -363,10 +397,10 @@ def distance_accurate50m(*args, **kwargs):
 
     f = (alat + blat)*d2r / 2.
     g = (alat - blat)*d2r / 2.
-    l = (alon - blon)*d2r / 2.
+    h = (alon - blon)*d2r / 2.
 
-    s = math.sin(g)**2 * math.cos(l)**2 + math.cos(f)**2 * math.sin(l)**2
-    c = math.cos(g)**2 * math.cos(l)**2 + math.sin(f)**2 * math.sin(l)**2
+    s = math.sin(g)**2 * math.cos(h)**2 + math.cos(f)**2 * math.sin(h)**2
+    c = math.cos(g)**2 * math.cos(h)**2 + math.sin(f)**2 * math.sin(h)**2
 
     w = math.atan(math.sqrt(s/c))
 
@@ -481,10 +515,10 @@ def distance_accurate50m_numpy(
 
     f = (a_lats + b_lats)*d2r / 2.
     g = (a_lats - b_lats)*d2r / 2.
-    l = (a_lons - b_lons)*d2r / 2.
+    h = (a_lons - b_lons)*d2r / 2.
 
-    s = num.sin(g)**2 * num.cos(l)**2 + num.cos(f)**2 * num.sin(l)**2
-    c = num.cos(g)**2 * num.cos(l)**2 + num.sin(f)**2 * num.sin(l)**2
+    s = num.sin(g)**2 * num.cos(h)**2 + num.cos(f)**2 * num.sin(h)**2
+    c = num.cos(g)**2 * num.cos(h)**2 + num.sin(f)**2 * num.sin(h)**2
 
     w = num.arctan(num.sqrt(s/c))
 
@@ -982,12 +1016,12 @@ def geographic_midpoint(lats, lons, weights=None):
 def geodetic_to_ecef(lat, lon, alt):
     '''
     Convert geodetic coordinates to Earth-Centered, Earth-Fixed (ECEF)
-    Cartesian coordinates.
+    Cartesian coordinates. [#1]_ [#2]_
 
     :param lat: Geodetic latitude in [deg].
     :param lon: Geodetic longitude in [deg].
     :param alt: Geodetic altitude (height) in [m] (positive for points outside
-        the geoid).
+       the geoid).
     :type lat: float
     :type lon: float
     :type alt: float
@@ -997,12 +1031,12 @@ def geodetic_to_ecef(lat, lon, alt):
 
     .. [#1] https://en.wikipedia.org/wiki/ECEF
     .. [#2] https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
-        #From_geodetic_to_ECEF_coordinates
+       #From_geodetic_to_ECEF_coordinates
     '''
 
-    wgs = get_wgs84()
-    a = wgs.a
-    e2 = 2*wgs.f - wgs.f**2
+    f = earth_oblateness
+    a = earthradius_equator
+    e2 = 2*f - f**2
 
     lat, lon = num.radians(lat), num.radians(lon)
     # Normal (plumb line)
@@ -1032,10 +1066,9 @@ def ecef_to_geodetic(X, Y, Z):
         https://en.wikipedia.org/wiki/Geographic_coordinate_conversion
         #The_application_of_Ferrari.27s_solution
     '''
-    wgs = get_wgs84()
-    a = wgs.a
-    f = wgs.f
-    b = wgs.a * (1. - f)
+    f = earth_oblateness
+    a = earthradius_equator
+    b = a * (1. - f)
     e2 = 2.*f - f**2
 
     # usefull
@@ -1054,7 +1087,7 @@ def ecef_to_geodetic(X, Y, Z):
     F = 54. * b2 * Z2
     G = r2 + (1.-e2)*Z2 - (e2*E2)
     C = (e4 * F * r2) / (G**3)
-    S = num.cbrt(1. + C + num.sqrt(C**2 + 2.*C))
+    S = cbrt(1. + C + num.sqrt(C**2 + 2.*C))
     P = F / (3. * (S + 1./S + 1.)**2 * G**2)
     Q = num.sqrt(1. + (2.*e4*P))
 
@@ -1201,12 +1234,8 @@ def contains_points(polygon, points):
         for poly_rot_group_xyz in group:
             try:
                 poly_rot_group_pro = stereographic_poly(poly_rot_group_xyz)
-                p = Path(poly_rot_group_pro, closed=True)
-                if hasattr(p, 'contains_points'):
-                    result += p.contains_points(points_rot_pro)
-                else:
-                    for i in xrange(result.size):
-                        result[i] += p.contains_point(points_rot_pro[i, :])
+                result += path_contains_points(
+                    poly_rot_group_pro, points_rot_pro)
 
             except Farside:
                 pass

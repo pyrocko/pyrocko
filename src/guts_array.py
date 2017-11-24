@@ -1,8 +1,23 @@
-from pyrocko import guts
-from pyrocko.guts import TBase, Object, ValidationError
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import
+from builtins import zip
+from builtins import str as newstr
+
 import numpy as num
-from cStringIO import StringIO
-from base64 import b64decode
+from io import BytesIO
+from base64 import b64decode, b64encode
+
+from . import guts
+from .guts import TBase, Object, ValidationError
+
+
+try:
+    unicode
+except NameError:
+    unicode = str
 
 
 class literal(str):
@@ -26,7 +41,7 @@ restricted_dtype_map = {
     num.dtype('int8'): '<i1'}
 
 restricted_dtype_map_rev = dict(
-    (v, k) for (k, v) in restricted_dtype_map.iteritems())
+    (v, k) for (k, v) in restricted_dtype_map.items())
 
 
 def array_equal(a, b):
@@ -65,14 +80,15 @@ class Array(Object):
                 return array_equal(self._default_cmp, val)
 
         def regularize_extra(self, val):
-            if isinstance(val, basestring):
+            if isinstance(val, (str, newstr)):
                 ndim = None
                 if self.shape:
                     ndim = len(self.shape)
 
                 if self.serialize_as == 'table':
                     val = num.loadtxt(
-                        StringIO(str(val)), dtype=self.dtype, ndmin=ndim)
+                        BytesIO(val.encode('utf-8')),
+                        dtype=self.dtype, ndmin=ndim)
 
                 elif self.serialize_as == 'base64':
                     data = b64decode(val)
@@ -82,10 +98,10 @@ class Array(Object):
                 elif self.serialize_as == 'npy':
                     data = b64decode(val)
                     try:
-                        val = num.load(StringIO(str(data)), allow_pickle=False)
+                        val = num.load(BytesIO(data), allow_pickle=False)
                     except TypeError:
                         # allow_pickle only available in newer NumPy
-                        val = num.load(StringIO(str(data)))
+                        val = num.load(BytesIO(data))
 
             elif isinstance(val, dict):
                 if self.serialize_as == 'base64+meta':
@@ -113,7 +129,7 @@ class Array(Object):
                             % ', '.join(sorted(allowed)))
 
                     data = val['data']
-                    if not isinstance(data, basestring):
+                    if not isinstance(data, (str, newstr)):
                         raise ValidationError(
                             'data must be given as a base64 encoded string')
 
@@ -136,6 +152,9 @@ class Array(Object):
             return val
 
         def validate_extra(self, val):
+            if not isinstance(val, num.ndarray):
+                raise ValidationError(
+                    'object is not of type numpy.ndarray: %s' % type(val))
             if self.dtype is not None and self.dtype != val.dtype:
                 raise ValidationError(
                     'array not of required type: need %s, got %s' % (
@@ -157,26 +176,26 @@ class Array(Object):
 
         def to_save(self, val):
             if self.serialize_as == 'table':
-                out = StringIO()
+                out = BytesIO()
                 num.savetxt(out, val, fmt='%12.7g')
-                return literal(out.getvalue())
+                return literal(out.getvalue().decode('utf-8'))
             elif self.serialize_as == 'base64':
                 data = val.astype(self.serialize_dtype).tostring()
-                return literal(data.encode('base64'))
+                return literal(b64encode(data).decode('utf-8'))
             elif self.serialize_as == 'list':
                 if self.dtype == num.complex:
                     return [repr(x) for x in val]
                 else:
                     return val.tolist()
             elif self.serialize_as == 'npy':
-                out = StringIO()
+                out = BytesIO()
                 try:
                     num.save(out, val, allow_pickle=False)
                 except TypeError:
                     # allow_pickle only available in newer NumPy
                     num.save(out, val)
 
-                return literal(out.getvalue().encode('base64'))
+                return literal(b64encode(out.getvalue()).decode('utf-8'))
 
             elif self.serialize_as == 'base64+meta':
                 serialize_dtype = self.serialize_dtype or \
@@ -187,7 +206,7 @@ class Array(Object):
                 return dict(
                     dtype=serialize_dtype,
                     shape=val.shape,
-                    data=literal(data.encode('base64')))
+                    data=literal(b64encode(data).decode('utf-8')))
 
 
 __all__ = ['Array']

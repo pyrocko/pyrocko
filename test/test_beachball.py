@@ -1,9 +1,16 @@
+# python 2/3
+
+from __future__ import division, print_function, absolute_import
+from future import standard_library
+standard_library.install_aliases()  # noqa
+from builtins import range
 import unittest
 import math
 import numpy as num
-from cStringIO import StringIO as StringIO
+from io import BytesIO
 
-from pyrocko import util, moment_tensor as mtm, beachball
+from pyrocko import util, moment_tensor as mtm
+from pyrocko.plot import beachball
 
 from random import random, choice
 
@@ -31,10 +38,9 @@ def fuzz_angle(mi, ma):
 class BeachballTestCase(unittest.TestCase):
 
     def compare_beachball(self, mt, show=False, **kwargs):
-        import matplotlib
-        matplotlib.use('Agg')
         from matplotlib import pyplot as plt
         from matplotlib import image
+        plt.switch_backend('Agg')
 
         plotargs = dict(
             size=1.0,
@@ -58,7 +64,7 @@ class BeachballTestCase(unittest.TestCase):
 
             plot(mt, axes, **plotargs)
 
-            f = StringIO()
+            f = BytesIO()
             fig.savefig(f, format='png')
             f.seek(0)
             imgs.append(image.imread(f, format='png'))
@@ -71,8 +77,8 @@ class BeachballTestCase(unittest.TestCase):
         d[:, :, 3] = 1.
         dsum = num.sum(d[:, :, :3])
         if dsum > 1600 or show:
-            print dsum
-            print mt
+            print(dsum)
+            print(mt)
             fig = plt.figure()
             axes1 = fig.add_subplot(1, 3, 1, aspect=1.)
             axes2 = fig.add_subplot(1, 3, 2, aspect=1.)
@@ -157,7 +163,8 @@ class BeachballTestCase(unittest.TestCase):
 
             self.compare_beachball(mt)
 
-    def off_test_plotstyle(self):
+    @unittest.skip('contour and contourf do not support transform')
+    def test_plotstyle(self):
 
         # contour and contourf do not support transform
         mt = mtm.MomentTensor.random_mt()
@@ -223,8 +230,9 @@ class BeachballTestCase(unittest.TestCase):
 
                     mop_beach.ploBB(kwargs, ax=axes3)
 
-                except:
-                    print 'mopad failed (maybe patched mopad version is needed'
+                except Exception:
+                    print(
+                        'mopad failed (maybe patched mopad version is needed')
 
             fig.canvas.draw()
 

@@ -1,11 +1,14 @@
+from __future__ import division, print_function, absolute_import
+from builtins import range
 import unittest
 import numpy as num  # noqa
 import logging
 import shutil
 from tempfile import mkdtemp
-from pyrocko import crust2x2, util
+from pyrocko.dataset import crust2x2
+from pyrocko import util
 
-logger = logging.getLogger('test_crust2x2.py')
+logger = logging.getLogger('pyrocko.test.test_crust2x2')
 
 
 class Crust2x2TestCase(unittest.TestCase):
@@ -19,9 +22,9 @@ class Crust2x2TestCase(unittest.TestCase):
 
     def test_crust2(self):
         nprofiles = 25
-        lons = num.random.random_integers(-180, 180, nprofiles)
-        lats = num.random.random_integers(-90, 90, nprofiles)
-        for i in xrange(nprofiles):
+        lons = num.random.randint(-180, 180, nprofiles)
+        lats = num.random.randint(-90, 90, nprofiles)
+        for i in range(nprofiles):
             self.db.get_profile(lats[i], lons[i])
 
     def test_profiles(self):

@@ -1,5 +1,4 @@
-
-The :mod:`trace` module
+``pyrocko.trace``
 =======================
 
 .. automodule:: pyrocko.trace

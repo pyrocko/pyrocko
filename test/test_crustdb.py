@@ -1,12 +1,15 @@
+from __future__ import division, print_function, absolute_import
 import unittest
 import numpy as num  # noqa
 import logging
 import shutil
 from tempfile import mkdtemp
 from os.path import join as pjoin
-from pyrocko import crustdb, util
 
-logger = logging.getLogger('test_crustdb.py')
+from pyrocko import util
+from pyrocko.dataset import crustdb
+
+logger = logging.getLogger('pyrocko.test.test_crustdb')
 
 
 class CrustDBTestCase(unittest.TestCase):
@@ -18,7 +21,7 @@ class CrustDBTestCase(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
-    @unittest.skip('')
+    @unittest.skip('Plotting not tested atm.')
     def test_map(self):
         tmpmap = pjoin(self.tmpdir, 'map.ps')
         self.db.plotMap(tmpmap)
@@ -33,7 +36,7 @@ class CrustDBTestCase(unittest.TestCase):
         self.db.selectMaxDepth(40.)
         self.db.selectMinDepth(20.)
 
-    @unittest.skip('')
+    @unittest.skip('Plotting not tested atm.')
     def test_ploting(self):
         import matplotlib.pyplot as plt
         fig = plt.figure()

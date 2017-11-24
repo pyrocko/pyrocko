@@ -1,11 +1,28 @@
+from __future__ import division, print_function, absolute_import
+from builtins import zip
+from builtins import range
 from pyrocko import util
 import unittest
+import tempfile
+import shutil
 import time
+import os
 from random import random
 import numpy as num
 
 
 class UtilTestCase(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tempdir = tempfile.mkdtemp()
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tempdir)
+
+    def fpath(self, fn):
+        return os.path.join(self.tempdir, fn)
 
     def testTime(self):
 
@@ -17,7 +34,7 @@ class UtilTestCase(unittest.TestCase):
             ta = util.str_to_time('1960-01-01 10:10:10')
             tb = util.str_to_time('2020-01-01 10:10:10')
 
-            for i in xrange(10000):
+            for i in range(10000):
                 t1 = ta + random() * (tb-ta)
                 s = util.time_to_str(t1, format=fmt)
                 t2 = util.str_to_time(s, format=fmt)
@@ -49,17 +66,17 @@ class UtilTestCase(unittest.TestCase):
         assert ok
 
     def benchmark_stt_tts(self):
-        for x in xrange(2):
+        for x in range(2):
             if x == 1:
                 util.util_ext = None
             t = util.str_to_time('1999-03-20 20:10:10')
             tt1 = time.time()
-            for i in xrange(10000):
+            for i in range(10000):
                 s = util.tts(t)
                 util.stt(s)
 
             tt2 = time.time()
-            print tt2 - tt1
+            print(tt2 - tt1)
 
     def test_consistency_merge(self):
         data = [
@@ -143,11 +160,66 @@ class UtilTestCase(unittest.TestCase):
             num.linspace(0., 1.1, 12))
 
     def test_gform(self):
-        for i in xrange(-11, 12):
+        s = ''
+        for i in range(-11, 12):
             v = 1/3. * 10**i
-            print '|%s|' % util.gform(v)
+            s += '|%s|\n' % util.gform(v)
+
+        self.assertEqual(s.strip(), '''
+|   3.33E-12 |
+|   3.33E-11 |
+|   3.33E-10 |
+|   3.33E-09 |
+|   3.33E-08 |
+|   3.33E-07 |
+|   3.33E-06 |
+|   3.33E-05 |
+|   3.33E-04 |
+|   3.33E-03 |
+|   3.33E-02 |
+|   0.333    |
+|   3.33     |
+|  33.3      |
+| 333.       |
+|   3.33E+03 |
+|   3.33E+04 |
+|   3.33E+05 |
+|   3.33E+06 |
+|   3.33E+07 |
+|   3.33E+08 |
+|   3.33E+09 |
+|   3.33E+10 |'''.strip())
+
+    def test_download(self):
+        fn = self.fpath('responses.xml')
+        url = 'http://data.pyrocko.org/examples/responses.xml'
+
+        stat = []
+
+        def status(d):
+            stat.append(d)
+
+        util.download_file(url, fn, status_callback=status)
+
+        url = 'http://data.pyrocko.org/testing/my_test_dir'
+        dn = self.fpath('my_test_dir')
+        util.download_dir(url, dn, status_callback=status)
+
+        d = stat[-1]
+
+        dwant = {
+            'ntotal_files': 4,
+            'nread_files': 4,
+            'ntotal_bytes_all_files': 22,
+            'nread_bytes_all_files': 22,
+            'ntotal_bytes_current_file': 8,
+            'nread_bytes_current_file': 8}
+
+        for k in dwant:
+            assert k in d
+            assert d[k] == dwant[k]
 
 
 if __name__ == "__main__":
-    util.setup_logging('test_util', 'warning')
+    util.setup_logging('test_util', 'info')
     unittest.main()

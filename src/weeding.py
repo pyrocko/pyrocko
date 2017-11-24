@@ -1,3 +1,7 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 import numpy as num
 
 
@@ -17,17 +21,17 @@ def _weed(dists, badnesses, neighborhood=1, interaction_radius=3.,
     meandists = neighborhood_density(dists, neighborhood)
 
     order = meandists.argsort()
-    candidates = order[:order.size/del_frac+1]
+    candidates = order[:order.size//del_frac+1]
     badness_candidates = badnesses[candidates]
     order_badness = (-badness_candidates).argsort()
 
-    order[:order.size/del_frac+1] = \
-        order[:order.size/del_frac+1][order_badness]
+    order[:order.size//del_frac+1] = \
+        order[:order.size//del_frac+1][order_badness]
 
     deleted = num.zeros(order.size, dtype=num.bool)
     ndeleted = 0
     for i, ind in enumerate(order):
-        if (i < order.size / del_frac / 2 + 1
+        if (i < order.size // del_frac // 2 + 1
                 and ndeleted < max_del
                 and num.all(
                     dists[ind, deleted] > interaction_radius*meandists[ind])):
@@ -59,7 +63,7 @@ def weed(x, y, badnesses, neighborhood=1, nwanted=None, interaction_radius=3.):
     by = y[:, NEW]
 
     if nwanted is None:
-        nwanted = n/2
+        nwanted = n // 2
 
     dx = num.abs(ax-bx)
     dx = num.where(dx > 180., 360.-dx, dx)
@@ -78,11 +82,11 @@ def weed(x, y, badnesses, neighborhood=1, nwanted=None, interaction_radius=3.):
 def badnesses_c_mean(badnesses_nslc):
     # convert stream badnesses to station badnesses by averaging
     badnesses_nsl = {}
-    for nslc, b in badnesses_nslc.iteritems():
+    for nslc, b in badnesses_nslc.items():
         nsl = nslc[:3]
         badnesses_nsl.setdefault(nsl, []).append(b)
 
-    for nsl in badnesses_nsl.keys():
+    for nsl in list(badnesses_nsl.keys()):
         this_station_badness = badnesses_nsl[nsl]
         badnesses_nsl[nsl] = sum(this_station_badness) \
             / len(this_station_badness)

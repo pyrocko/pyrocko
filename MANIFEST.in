@@ -1,0 +1,5 @@
+recursive-include prerequisites *
+recursive-include extras *
+recursive-include src *.md
+recursive-include src/ext/pyavl-1.12 *
+include *.md *.tar.gz *.cfg
