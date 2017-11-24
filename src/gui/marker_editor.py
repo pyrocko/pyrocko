@@ -307,7 +307,7 @@ class MarkerTableView(qw.QTableView):
         pass
 
     def contextMenuEvent(self, event):
-        self.right_click_menu.popup(qw.QCursor.pos())
+        self.right_click_menu.popup(qg.QCursor.pos())
 
     def toggle_numbering(self, want):
         if want:
@@ -316,9 +316,11 @@ class MarkerTableView(qw.QTableView):
             self.verticalHeader().hide()
 
     def print_menu(self):
-        printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
-        printer_dialog = qg.QPrintDialog(printer, self)
-        if printer_dialog.exec_() == qg.QDialog.Accepted:
+        from .qt_compat import qprint
+        printer = qprint.QPrinter(qprint.QPrinter.ScreenResolution)
+        printer.setOutputFormat(qprint.QPrinter.NativeFormat)
+        printer_dialog = qprint.QPrintDialog(printer, self)
+        if printer_dialog.exec_() == qw.QDialog.Accepted:
 
             scrollbarpolicy = self.verticalScrollBarPolicy()
             self.setVerticalScrollBarPolicy(qc.Qt.ScrollBarAlwaysOff)
