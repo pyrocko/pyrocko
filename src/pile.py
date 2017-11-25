@@ -360,7 +360,7 @@ def loader(
         try:
             abspath = os.path.abspath(filename)
 
-            substitutions = False
+            substitutions = None
             if regex:
                 m = regex.search(filename)
                 if not m:
@@ -382,7 +382,7 @@ def loader(
                 not tfile or
                 (tfile.format != fileformat and fileformat != 'detect') or
                 tfile.mtime != mtime or
-                substitutions)
+                substitutions is not None)
 
             to_load.append((mustload, mtime, abspath, substitutions, tfile))
 
