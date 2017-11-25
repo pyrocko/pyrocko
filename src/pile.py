@@ -360,7 +360,7 @@ def loader(
         try:
             abspath = os.path.abspath(filename)
 
-            substitutions = None
+            substitutions = False
             if regex:
                 m = regex.search(filename)
                 if not m:
