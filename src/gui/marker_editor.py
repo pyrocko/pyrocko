@@ -61,7 +61,7 @@ logger = logging.getLogger('pyrocko.gui.marker_editor')
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
-    'NSLCs', 'Kagan Angle [deg]', 'MT']
+    'NSLCs', 'Kagan Angle [deg]', 'Event Hash', 'MT']
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
@@ -70,7 +70,7 @@ _string_header = (_column_mapping['Time'], _column_mapping['Label'])
 _header_sizes = [70] * len(_header_data)
 _header_sizes[0] = 40
 _header_sizes[1] = 190
-_header_sizes[11] = 20
+_header_sizes[-1] = 20
 
 
 class BeachballWidget(qw.QWidget):
@@ -191,7 +191,7 @@ class MarkerSortFilterProxyModel(QSortFilterProxyModel):
     def lessThan(self, left, right):
         if left.column() == 1:
             return toDateTime(left.data()) < toDateTime(right.data())
-        elif left.column() in [0, 3, 9]:
+        elif left.column() in [0, 3, 9, 11]:
             return toString(left.data()) < toString(right.data())
         else:
             return toFloat(left.data())[0] < toFloat(right.data())[0]
@@ -238,9 +238,9 @@ class MarkerTableView(qw.QTableView):
         show_initially = ['Type', 'Time', 'Magnitude']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
-                            'NSLCs', 'Kagan Angle [deg]', 'MT']
+                            'NSLCs', 'Kagan Angle [deg]', 'Event Hash', 'MT']
         self.menu_items = dict(zip(
-            self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11]))
+            self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]))
 
         self.editable_columns = [2, 3, 4, 5, 6, 7]
 
@@ -307,7 +307,7 @@ class MarkerTableView(qw.QTableView):
         pass
 
     def contextMenuEvent(self, event):
-        self.right_click_menu.popup(qw.QCursor.pos())
+        self.right_click_menu.popup(qg.QCursor.pos())
 
     def toggle_numbering(self, want):
         if want:
@@ -316,9 +316,11 @@ class MarkerTableView(qw.QTableView):
             self.verticalHeader().hide()
 
     def print_menu(self):
-        printer = qg.QPrinter(qg.QPrinter.ScreenResolution)
-        printer_dialog = qg.QPrintDialog(printer, self)
-        if printer_dialog.exec_() == qg.QDialog.Accepted:
+        from .qt_compat import qprint
+        printer = qprint.QPrinter(qprint.QPrinter.ScreenResolution)
+        printer.setOutputFormat(qprint.QPrinter.NativeFormat)
+        printer_dialog = qprint.QPrintDialog(printer, self)
+        if printer_dialog.exec_() == qw.QDialog.Accepted:
 
             scrollbarpolicy = self.verticalScrollBarPolicy()
             self.setVerticalScrollBarPolicy(qc.Qt.ScrollBarAlwaysOff)
@@ -491,6 +493,12 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
             elif index.column() == _column_mapping['MT']:
                 return qc.QVariant()
+
+            elif index.column() == _column_mapping['Event Hash']:
+                if isinstance(marker, (EventMarker, PhaseMarker)):
+                    s = marker.get_event_hash()
+                else:
+                    return qc.QVariant()
 
             return qc.QVariant(s)
 

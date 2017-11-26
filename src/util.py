@@ -83,7 +83,7 @@ class PathExists(DownloadError):
 def _download(url, fpath, username=None, password=None,
               force=False, method='download', stats=None,
               status_callback=None, entries_wanted=None,
-              recursive=False):
+              recursive=False, header=None):
 
     import requests
     from requests.auth import HTTPBasicAuth
@@ -92,9 +92,11 @@ def _download(url, fpath, username=None, password=None,
     urljoin = requests.compat.urljoin
 
     session = requests.Session()
+    session.header = header
+    session.auth = None if username is None\
+        else HTTPBasicAuth(username, password)
+
     try:
-        session.auth = None if username is None\
-            else HTTPBasicAuth(username, password)
 
         url_to_size = {}
         status = dict(
@@ -235,20 +237,24 @@ def _download(url, fpath, username=None, password=None,
 
 
 def download_file(
-        url, fpath, username=None, password=None, status_callback=None):
+        url, fpath, username=None, password=None, status_callback=None,
+        **kwargs):
     return _download(
         url, fpath, username, password,
         recursive=False,
-        status_callback=status_callback)
+        status_callback=status_callback,
+        **kwargs)
 
 
 def download_dir(
-        url, fpath, username=None, password=None, status_callback=None):
+        url, fpath, username=None, password=None, status_callback=None,
+        **kwargs):
 
     return _download(
         url, fpath, username, password,
         recursive=True,
-        status_callback=status_callback)
+        status_callback=status_callback,
+        **kwargs)
 
 
 if hasattr(num, 'float128'):

@@ -43,7 +43,7 @@ intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                                  None),
                        'matplotlib': ('http://matplotlib.org/',
                                  None),
-                       'python': ('https://docs.python.org/2.7',
+                       'python': ('https://docs.python.org/3.5',
                                   None)}
 
 # Add any paths that contain templates here, relative to this directory.
@@ -190,7 +190,7 @@ html_show_sphinx = False
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
 # base URL from which the finished HTML is served.
-html_use_opensearch = 'http://pyrocko.org/pyrocko/'
+html_use_opensearch = 'https://pyrocko.org/pyrocko/'
 
 # This is the file name suffix for HTML files (e.g. ".xhtml").
 #html_file_suffix = None

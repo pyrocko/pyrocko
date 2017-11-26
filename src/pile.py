@@ -382,7 +382,7 @@ def loader(
                 not tfile or
                 (tfile.format != fileformat and fileformat != 'detect') or
                 tfile.mtime != mtime or
-                substitutions)
+                substitutions is not None)
 
             to_load.append((mustload, mtime, abspath, substitutions, tfile))
 

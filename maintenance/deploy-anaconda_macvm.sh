@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ ! -f deploy-anaconda_mac.sh ] ; then
+if [ ! -f deploy-anaconda_macvm.sh ] ; then
     echo "must be run from pyrocko's maintenance directory"
     exit 1
 fi
