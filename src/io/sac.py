@@ -251,7 +251,7 @@ iqb1 iqb2 iqbx iqmt ieq ieq1 ieq2 ime iex inu inc io_ il ir it iu
             nbn = struct.calcsize(format)
             hv = list(struct.unpack(format, filedata[:nbn]))
 
-            strings = filedata[nbn:nbh]
+            strings = filedata[nbn:nbh].decode('ascii')
             hv.append(strings[:8].rstrip())
             hv.append(strings[8:24].rstrip())
             for i in range(len(strings[24:])//8):

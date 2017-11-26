@@ -397,7 +397,7 @@ def loader(
 
     progress.update(len(filenames))
 
-    to_load.sort()
+    to_load.sort(key=lambda x: x[2])
 
     nload = len([1 for x in to_load if x[0]])
     iload = 0

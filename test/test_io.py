@@ -102,6 +102,11 @@ class IOTestCase(unittest.TestCase):
         assert tr.meta['cmpaz'] == 0.0
         assert tr.meta['cmpinc'] == 0.0
 
+    def testReadSac2(self):
+        fpath = common.test_data_file('test2.sac')
+        tr = io.load(fpath, format='sac')[0]
+        assert tr.location == ''
+
     def testLongCode(self):
         c = '1234567'
         tr = trace.Trace(c, c, c, c, ydata=num.zeros(10))
