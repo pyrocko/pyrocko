@@ -382,7 +382,7 @@ def loader(
                 not tfile or
                 (tfile.format != fileformat and fileformat != 'detect') or
                 tfile.mtime != mtime or
-                substitutions)
+                substitutions is not None)
 
             to_load.append((mustload, mtime, abspath, substitutions, tfile))
 
@@ -397,7 +397,7 @@ def loader(
 
     progress.update(len(filenames))
 
-    to_load.sort()
+    to_load.sort(key=lambda x: x[2])
 
     nload = len([1 for x in to_load if x[0]])
     iload = 0
