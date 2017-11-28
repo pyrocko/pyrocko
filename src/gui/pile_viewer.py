@@ -2740,12 +2740,11 @@ def MakePileViewerMainClass(base):
                     self.floating_marker.draw(
                         p, self.time_projection, vcenter_projection)
 
-                self.draw_visible_markers(self.markers, p, vcenter_projection)
-                active_event_marker = self.get_active_event_marker()
-                if active_event_marker is not None:
-                    active_event_marker.draw(
-                        p, self.time_projection, vcenter_projection,
-                        with_label=True)
+                self.draw_visible_markers(
+                    self.markers, p, vcenter_projection)
+
+                self.draw_visible_markers(
+                    [self.get_active_event_marker()], p, vcenter_projection)
 
                 self.draw_visible_markers(
                     self.selected_markers(), p, vcenter_projection)
