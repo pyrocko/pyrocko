@@ -1678,7 +1678,7 @@ def MakePileViewerMainClass(base):
                     self, caption, options=qfiledialog_options))
             if fn:
                 Marker.save_markers(
-                    self.markers, fn,
+                    sorted(self.markers, key=lambda m: m.tmin), fn,
                     fdigits=self.time_fractional_digits())
 
         def write_selected_markers(self, fn=None):
@@ -1688,7 +1688,7 @@ def MakePileViewerMainClass(base):
                     self, caption, options=qfiledialog_options))
             if fn:
                 Marker.save_markers(
-                    self.selected_markers(), fn,
+                    sorted(self.selected_markers(), key=lambda m: m.tmin), fn,
                     fdigits=self.time_fractional_digits())
 
         def read_events(self, fn=None):
@@ -2743,8 +2743,11 @@ def MakePileViewerMainClass(base):
                 self.draw_visible_markers(
                     self.markers, p, vcenter_projection)
 
-                self.draw_visible_markers(
-                    [self.get_active_event_marker()], p, vcenter_projection)
+                active_marker = self.get_active_event_marker()
+
+                if active_marker:
+                    self.draw_visible_markers(
+                        [active_marker], p, vcenter_projection)
 
                 self.draw_visible_markers(
                     self.selected_markers(), p, vcenter_projection)

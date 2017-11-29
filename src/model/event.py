@@ -7,6 +7,8 @@ from __future__ import absolute_import, division
 from past.builtins import cmp
 import logging
 import numpy as num
+import hashlib
+import base64
 
 from pyrocko import util, moment_tensor
 from pyrocko.guts import Object, Float, String, Timestamp
@@ -16,6 +18,15 @@ logger = logging.getLogger('pyrocko.model.event')
 guts_prefix = 'pf'
 
 d2r = num.pi / 180.
+
+
+def ehash(s):
+    return str(base64.urlsafe_b64encode(
+        hashlib.sha1(s.encode('utf8')).digest()).decode('ascii'))
+
+
+def float_or_none_to_str(x):
+    return 'None' if x is None else '%.14e' % x
 
 
 class FileParseError(Exception):
@@ -262,16 +273,18 @@ class Event(Object):
 
     def get_hash(self):
         e = self
-        return util.base36encode(
-            abs(hash((
-                util.time_to_str(e.time),
-                str(e.lat),
-                str(e.lon),
-                str(e.depth),
-                str(e.magnitude),
-                e.catalog,
-                e.name,
-                e.region)))).lower()
+        if isinstance(e.time, util.hpfloat):
+            stime = util.time_to_str(e.time, format='%Y-%m-%d %H:%M:%S.6FRAC')
+        else:
+            stime = util.time_to_str(e.time, format='%Y-%m-%d %H:%M:%S.3FRAC')
+
+        s = float_or_none_to_str
+
+        return ehash(', '.join((
+            stime,
+            s(e.lat), s(e.lon), s(e.depth), s(e.magnitude),
+            str(e.catalog), str(e.name),
+            str(e.region))))
 
     def human_str(self):
         s = [
