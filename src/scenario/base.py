@@ -10,6 +10,7 @@ import hashlib
 import logging
 import tarfile
 from datetime import datetime
+from functools import reduce
 
 import numpy as num
 
@@ -278,21 +279,21 @@ class ScenePatch(Object):
             from kite import Scene
             from kite.scene_io import SceneIO
 
-            gen = self.scene_patch
+            patch = self.scene_patch
 
-            grid, _ = gen.get_grid()
+            grid, _ = patch.get_grid()
 
             displacement = num.empty_like(grid)
             displacement.fill(num.nan)
-            displacement[gen.get_mask()] = resp.result['displacement.los']
+            displacement[patch.get_mask()] = resp.result['displacement.los']
 
-            theta, phi = gen.get_incident_angles()
+            theta, phi = patch.get_incident_angles()
 
-            llLat, llLon = gen.get_ll_anchor()
+            llLat, llLon = patch.get_ll_anchor()
             urLat, urLon = od.ne_to_latlon(llLat, llLon,
-                                           gen.track_length, gen.width)
-            dLon = num.abs(llLon - urLon) / gen.resolution[0]
-            dLat = num.abs(llLat - urLat) / gen.resolution[1]
+                                           patch.track_length, patch.width)
+            dLon = num.abs(llLon - urLon) / patch.resolution[0]
+            dLat = num.abs(llLat - urLat) / patch.resolution[1]
 
             io = SceneIO()
             io.container = {
@@ -311,7 +312,7 @@ class ScenePatch(Object):
                 'meta': {
                     'title': 'Pyrocko Scenario Generator ({})'
                              .format(datetime.now()),
-                    'orbit_direction': 'Ascending',
+                    'orbit_direction': 'ascending',
                     'satellite_name': 'Sentinel-1',
                     'wavelength': None,
                     'time_master': None,
@@ -323,7 +324,6 @@ class ScenePatch(Object):
 
             scene = Scene()
             scene = Scene._import_from_dict(scene, io.container)
-            scene.save('/tmp/test-%s.npz' % self.scene_patch.track_direction)
             resp.scene = scene
 
             return resp
@@ -562,7 +562,8 @@ class WhiteNoiseGenerator(NoiseGenerator):
     scale = Float.T(default=1e-6)
 
     def get_seed_offset2(self, deltat, iw, codes):
-        m = hashlib.sha1('%e %i %s.%s.%s.%s' % ((deltat, iw) + codes))
+        m = hashlib.sha1(('%e %i %s.%s.%s.%s' % ((deltat, iw) + codes))
+                         .encode('utf8'))
         return int(m.hexdigest(), base=16) % 1000
 
     def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
@@ -693,14 +694,24 @@ class ScenarioGenerator(LocationGenerator):
 
         return targets
 
-    def get_insar_targets(self, source):
+    def get_insar_targets(self):
         targets = [s.get_target() for s in self.get_scene_patches()]
+
         for t in targets:
             t.store_id = self.get_static_store_id()
 
+        invalid_targets = []
+        for t in targets:
+            if not num.any(t.lats):
+                invalid_targets.append(t)
+                logger.warning('InSAR taget has no valid points,'
+                               ' maybe it\'s all water?')
+
+        return [t for t in targets if t not in invalid_targets]
+
     def get_targets(self, source):
         targets = self.get_waveform_targets(source)
-        targets.extend(self.get_insar_targets(source))
+        targets.extend(self.get_insar_targets())
         return targets
 
     def get_sources(self):
@@ -753,13 +764,17 @@ class ScenarioGenerator(LocationGenerator):
         tinc = int(round(tinc / deltat)) * deltat
         return tinc
 
-    def get_waveforms(self, tmin, tmax):
-        engine = self.get_engine()
-
+    def get_relevant_sources(self, tmin, tmax):
         dmin, dmax = self.get_station_distance_range()
-
         tmin_events = tmin - dmax / self.vmin_cut - 1.0 / self.fmin
         tmax_events = tmax - dmin / self.vmax_cut + 1.0 / self.fmin
+
+        return [source for source in self.get_sources()
+                if tmin_events <= source.time and source.time <= tmax_events]
+
+    def get_waveforms(self, tmin, tmax):
+        logger.info('Calculating waveforms...')
+        engine = self.get_engine()
 
         trs = {}
 
@@ -778,11 +793,7 @@ class ScenarioGenerator(LocationGenerator):
 
             trs[nslc] = tr
 
-        relevant_sources = [
-            source for source in self.get_sources()
-            if tmin_events <= source.time and source.time <= tmax_events]
-
-        for source in relevant_sources:
+        for source in self.get_relevant_sources(tmin, tmax):
             targets = self.get_waveform_targets(source)
             resp = engine.process(source, targets)
             for _, target, tr in resp.iter_results():
@@ -804,16 +815,35 @@ class ScenarioGenerator(LocationGenerator):
         elif self.seismogram_quantity == 'counts':
             raise NotImplemented()
 
-    def get_displacement_scenes(self):
+    def get_insar_scenes(self, tmin=None, tmax=None):
         engine = self.get_engine()
+        logger.info('Calculating InSAR displacement...')
 
-        relevant_sources = [source for source in self.get_sources()]
+        scenario_tmin, scenario_tmax = self.get_time_range()
+        if not tmin:
+            tmin = scenario_tmin
+        if not tmax:
+            tmax = scenario_tmax
+
         targets = self.get_insar_targets()
 
-        resp = engine.process(relevant_sources, targets,
-                              nprocs=0)
+        relevant_sources = self.get_relevant_sources(tmin, tmax)
 
-        return [r.scene for r in resp.static_results()]
+        resp = engine.process(
+            relevant_sources,
+            targets,
+            nprocs=0)
+
+        scenes = [r.scene for r in resp.static_results()]
+        for sc in scenes:
+            hs = '%s%s%s' % (tmin, tmax, ''.join(
+                r.dump() for r in relevant_sources)).encode('utf8')
+
+            sc.meta.time_master = tmin
+            sc.meta.time_slave = tmax
+            sc.meta.hash = hashlib.sha1(hs).hexdigest()
+
+        return scenes
 
 
 def draw_scenario_gmt(generator, fn):
@@ -967,7 +997,6 @@ class ScenarioCollectionItem(Object):
 
             if self.have_waveforms(tmin_win, tmax_win):
                 continue
-
             trs = generator.get_waveforms(tmin_win, tmax_win)
             tts = util.time_to_str
 
@@ -987,6 +1016,38 @@ class ScenarioCollectionItem(Object):
                 p.load_files(fns, fileformat='mseed', show_progress=False)
 
         return p
+
+    def ensure_insar_scenes(self, tmin=None, tmax=None):
+        from kite import Scene
+
+        path_insar = self.get_path('insar')
+        util.ensuredir(path_insar)
+
+        generator = self.get_generator()
+        tmin, tmax = generator.get_time_range()
+
+        tts = util.time_to_str
+        fn = op.join(path_insar, 'insar-scene-{track_direction}_%s_%s'
+                     % (tts(tmin), tts(tmax)))
+
+        def scene_file(track):
+            return fn.format(track_direction=track)
+
+        for track in ('ascending', 'descending'):
+
+            if op.exists('%s.npz' % scene_file(track)):
+                continue
+
+            scenes = generator.get_insar_scenes(tmin, tmax)
+            for sc in scenes:
+                sc.save(scene_file(sc.meta.orbit_direction))
+            return scenes
+
+        scenes = []
+        for track in ('ascending', 'descending'):
+            scenes.append(Scene.load(scene_file(track)))
+
+        return scenes
 
     def get_time_range(self):
         return self.get_generator().get_time_range()

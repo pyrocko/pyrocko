@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import
 import unittest
+import os
 from tempfile import mkdtemp
 import shutil
 
@@ -20,30 +21,19 @@ def have_store(store_id):
 class ScenarioTestCase(unittest.TestCase):
     store_id = 'crust2_m5_hardtop_8Hz_fine'
     store_id_static = 'ak135_static'
+
     tempdirs = []
+    tempdir = mkdtemp(prefix='pyrocko-scenario')
+    tempdirs.append(tempdir)
 
-    def __init__(self, *args, **kwargs):
-        unittest.TestCase.__init__(self, *args, **kwargs)
-
-    @classmethod
-    def tearDownClass(cls):
-        for d in cls.tempdirs:
-            shutil.rmtree(d)
-
-    @unittest.skipUnless(
-            have_store(store_id),
-            'GF Store "%s" is not available' % store_id)
-    def test_scenario(self):
-
-        tempdir = mkdtemp()
-        self.tempdirs.append(tempdir)
-
-        vmin = 2500.
-        generator = scenario.ScenarioGenerator(
+    generator = scenario.ScenarioGenerator(
             seed=20,
-            center_lat=42.6,
-            center_lon=13.3,
-            radius=100*km,
+            # center_lat=42.6,
+            # center_lon=13.3,
+            center_lat=28.6,
+            center_lon=-115.3,
+
+            radius=80*km,
             station_generator=scenario.RandomStationGenerator(
                 nstations=5),
             source_generator=scenario.DCSourceGenerator(
@@ -59,8 +49,26 @@ class ScenarioTestCase(unittest.TestCase):
                 rake=90.,
                 perturbation_angle_std=15.,
                 nevents=3),
-            store_id=ScenarioTestCase.store_id,
+            store_id=store_id,
+            store_id_static=store_id_static,
             seismogram_quantity='velocity')
+
+    def __init__(self, *args, **kwargs):
+        unittest.TestCase.__init__(self, *args, **kwargs)
+
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
+            shutil.rmtree(d)
+
+    @unittest.skipUnless(
+            have_store(store_id),
+            'GF Store "%s" is not available' % store_id)
+    def test_scenario(self):
+        tempdir = self.tempdir
+
+        vmin = 2500.
+        generator = self.generator
 
         def twin(source):
             tmin = source.time
@@ -122,6 +130,12 @@ class ScenarioTestCase(unittest.TestCase):
             trs = p.all(tmin=tmin, tmax=tmax, include_last=False)
             trs.sort(key=lambda tr: tr.nslc_id)
             self.assert_traces_almost_equal(trs, ref_trs)
+
+        s.ensure_insar_scenes()
+
+    def test_plot_scenario(self):
+        scenario.draw_scenario_gmt(
+            self.generator, os.path.join(self.tempdir, 'map.png'))
 
     def assert_traces_almost_equal(self, trs1, trs2):
         assert len(trs1) == len(trs2)
