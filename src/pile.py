@@ -631,6 +631,8 @@ class TracesGroup(object):
         return tmax >= self.tmin and self.tmax >= tmin
 
     def is_relevant(self, tmin, tmax, group_selector=None):
+        if not self.tmin or not self.tmax:
+            return False
         return tmax >= self.tmin and self.tmax >= tmin and (
             group_selector is None or group_selector(self))
 
