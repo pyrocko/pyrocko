@@ -123,19 +123,21 @@ class SRTMGL3(dataset.TiledGlobalDataset):
         try:
             # we have to follow the oauth redirect here...
             r = requests.get(url, auth=cred)
+            print(url)
             self.download_file(
                 r.url, fpath, username=cred[0], password=cred[1])
         except Exception as e:
-            if e.response.status_code == 401:
-                raise AuthenticationRequired(
-                    '\n\nWe could not login to earthdata given the'
-                    ' credentials in ~/.pyrocko/config.pf!\n'
-                    'Register at https://urs.earthdata.nasa.gov/users/new'
-                    ' and provide credentials in your local '
-                    ' ~/.pyrocko/config.pf as follows:\n' +
-                    'earthdata_credentials: [username, password]')
-            else:
-                raise e
+            if hasattr(e.response, 'status_code'):
+                if e.response.status_code == 401:
+                    raise AuthenticationRequired(
+                        '\n\nWe could not login to earthdata given the'
+                        ' credentials in ~/.pyrocko/config.pf!\n'
+                        'Register at https://urs.earthdata.nasa.gov/users/new'
+                        ' and provide credentials in your local '
+                        ' ~/.pyrocko/config.pf as follows:\n' +
+                        'earthdata_credentials: [username, password]')
+                else:
+                    raise e
 
     def download(self):
         for tn in self.available_tilenames():
