@@ -1,3 +1,6 @@
+from __future__ import division
+from builtins import range, object
+
 import math
 import os
 import errno
@@ -83,7 +86,8 @@ class Generator(Object):
 
     def hash(self):
         return hashlib.sha1(
-            self.dump() + '\n\n%i' % self._retry_offset).hexdigest()
+            (self.dump() + '\n\n%i' % self._retry_offset).encode('utf8'))\
+            .hexdigest()
 
     def get_seed_offset(self):
         return int(self.hash(), base=16) % N
@@ -168,7 +172,7 @@ class LocationGenerator(Generator):
 
     def get_latlon(self, i):
         rstate = self.get_rstate(i)
-        for itry in xrange(self.ntries):
+        for itry in range(self.ntries):
             radius = self.get_radius()
             if radius is None:
                 lat = random_lat(rstate)
@@ -216,7 +220,7 @@ class RandomStationGenerator(StationGenerator):
     def get_stations(self):
         if self._stations is None:
             stations = []
-            for istation in xrange(self.nstations):
+            for istation in range(self.nstations):
                 lat, lon = self.get_latlon(istation)
 
                 net, sta, loc = self.nsl(istation)
@@ -258,6 +262,7 @@ class ScenePatch(Object):
         ['ascending', 'descending'],
         help='Orbit direction.')
     mask_water = Bool.T(
+        default=True,
         help='Mask water bodies.')
 
     class SatelliteGeneratorTarget(gf.SatelliteTarget):
@@ -417,7 +422,7 @@ class ScenePatch(Object):
             phi=phi)
 
 
-class SatelliteSceneGenerator(LocationGenerator):
+class InSARDisplacementGenerator(LocationGenerator):
     # https://sentinel.esa.int/web/sentinel/user-guides/sentinel-1-sar/acquisition-modes/interferometric-wide-swath
     inclination = Float.T(
         default=98.2,
@@ -465,6 +470,7 @@ class SatelliteSceneGenerator(LocationGenerator):
                 track_direction=direction,
                 mask_water=self.mask_water)
             scene_patches.append(patch)
+
         return scene_patches
 
 
@@ -531,7 +537,7 @@ class DCSourceGenerator(SourceGenerator):
 
     def get_sources(self):
         sources = []
-        for ievent in xrange(self.nevents):
+        for ievent in range(self.nevents):
             sources.append(self.get_source(ievent))
 
         return sources
@@ -565,7 +571,7 @@ class WhiteNoiseGenerator(NoiseGenerator):
         iwmax = int(math.floor(tmax / tinc))
 
         trs = []
-        for iw in xrange(iwmin, iwmax+1):
+        for iw in range(iwmin, iwmax+1):
             seed_offset = self.get_seed_offset2(deltat, iw, codes)
             rstate = self.get_rstate(seed_offset)
 
@@ -584,8 +590,8 @@ class ScenarioGenerator(LocationGenerator):
     station_generator = StationGenerator.T(
         default=StationGenerator.D())
 
-    satellite_generator = SatelliteSceneGenerator.T(
-        default=SatelliteSceneGenerator.D(),
+    insar_generator = InSARDisplacementGenerator.T(
+        default=InSARDisplacementGenerator.D(),
         optional=True)
 
     source_generator = SourceGenerator.T(
@@ -594,8 +600,10 @@ class ScenarioGenerator(LocationGenerator):
     noise_generator = NoiseGenerator.T(
         default=WhiteNoiseGenerator.D())
 
-    store_id = gf.StringID.T(optional=True)
-    static_store_id = gf.StringID.T(optional=True)
+    store_id = gf.StringID.T(
+        optional=True)
+    store_id_static = gf.StringID.T(
+        optional=True)
 
     seismogram_quantity = StringChoice.T(
         choices=['displacement', 'velocity', 'acceleration', 'counts'],
@@ -609,7 +617,7 @@ class ScenarioGenerator(LocationGenerator):
     def __init__(self, **kwargs):
         LocationGenerator.__init__(self, **kwargs)
 
-        for itry in xrange(self.ntries):
+        for itry in range(self.ntries):
 
             try:
                 self.get_stations()
@@ -629,8 +637,8 @@ class ScenarioGenerator(LocationGenerator):
         return self.station_generator.get_stations()
 
     def get_scene_patches(self):
-        if self.satellite_generator:
-            return self.satellite_generator.get_scene_patches()
+        if self.insar_generator:
+            return self.insar_generator.get_scene_patches()
         else:
             return None
 
@@ -641,8 +649,8 @@ class ScenarioGenerator(LocationGenerator):
             return 'global_2s'
 
     def get_static_store_id(self):
-        if self.static_store_id is not None:
-            return self.static_store_id
+        if self.store_id_static is not None:
+            return self.store_id_static
         else:
             return 'static_local'
 
@@ -685,12 +693,14 @@ class ScenarioGenerator(LocationGenerator):
 
         return targets
 
-    def get_satellite_targets(self, source):
-        return [s.get_target() for s in self.get_scene_patches()]
+    def get_insar_targets(self, source):
+        targets = [s.get_target() for s in self.get_scene_patches()]
+        for t in targets:
+            t.store_id = self.get_static_store_id()
 
     def get_targets(self, source):
         targets = self.get_waveform_targets(source)
-        targets.extend(self.get_satellite_targets(source))
+        targets.extend(self.get_insar_targets(source))
         return targets
 
     def get_sources(self):
@@ -753,7 +763,7 @@ class ScenarioGenerator(LocationGenerator):
 
         trs = {}
 
-        for nslc, deltat in self.get_codes_to_deltat().iteritems():
+        for nslc, deltat in self.get_codes_to_deltat().items():
             tr_tmin = int(round(tmin / deltat)) * deltat
             tr_tmax = (int(round(tmax / deltat))-1) * deltat
             n = int(round((tr_tmax - tr_tmin) / deltat)) + 1
@@ -782,7 +792,7 @@ class ScenarioGenerator(LocationGenerator):
 
                 trs[target.codes].add(tr)
 
-        return trs.values()
+        return list(trs.values())
 
     def get_transfer_function(self, codes):
         if self.seismogram_quantity == 'displacement':
@@ -797,14 +807,8 @@ class ScenarioGenerator(LocationGenerator):
     def get_displacement_scenes(self):
         engine = self.get_engine()
 
-        scene_patches = self.satellite_generator.get_scene_patches()
-
         relevant_sources = [source for source in self.get_sources()]
-
-        targets = [p.get_target() for p in scene_patches]
-
-        for t in targets:
-            t.store_id = self.get_static_store_id()
+        targets = self.get_insar_targets()
 
         resp = engine.process(relevant_sources, targets,
                               nprocs=0)
@@ -955,7 +959,7 @@ class ScenarioCollectionItem(Object):
 
         p = self.get_waveform_pile()
 
-        for iwin in xrange(nwin):
+        for iwin in range(nwin):
             tmin_win = max(tmin, tmin + iwin*tinc)
             tmax_win = min(tmax, tmin + (iwin+1)*tinc)
             if tmax_win <= tmin_win:
@@ -1044,7 +1048,7 @@ class ScenarioCollection(object):
 
         if scenario_generator.seed is None:
             scenario_generator = guts.clone(scenario_generator)
-            scenario_generator.seed = random.randint(1, 2**32-1)
+            scenario_generator.seed = num.random.randint(1, 2**32-1)
 
         path = self.get_path(scenario_id)
         try:
@@ -1088,7 +1092,7 @@ __all__ = '''
     LocationGenerator
     StationGenerator
     RandomStationGenerator
-    SatelliteSceneGenerator
+    InSARDisplacementGenerator
     SourceGenerator
     DCSourceGenerator
     NoiseGenerator

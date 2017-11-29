@@ -3,7 +3,7 @@ import unittest
 from tempfile import mkdtemp
 import shutil
 
-from pyrocko import scenario, util, gf, trace
+from pyrocko import scenario, util, gf
 
 km = 1000.
 
@@ -19,6 +19,7 @@ def have_store(store_id):
 
 class ScenarioTestCase(unittest.TestCase):
     store_id = 'crust2_m5_hardtop_8Hz_fine'
+    store_id_static = 'ak135_static'
     tempdirs = []
 
     def __init__(self, *args, **kwargs):
@@ -121,7 +122,6 @@ class ScenarioTestCase(unittest.TestCase):
             trs = p.all(tmin=tmin, tmax=tmax, include_last=False)
             trs.sort(key=lambda tr: tr.nslc_id)
             self.assert_traces_almost_equal(trs, ref_trs)
-
 
     def assert_traces_almost_equal(self, trs1, trs2):
         assert len(trs1) == len(trs2)
