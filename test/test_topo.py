@@ -11,12 +11,14 @@ def srtm_credentials():
 
 class TopoTestCase(unittest.TestCase):
 
-    @unittest.skipIf(srtm_credentials, 'No Earthdata credentials in config.')
+    @unittest.skipIf(not srtm_credentials,
+                     'No Earthdata credentials in config.')
     def test_srtm(self):
         srtm = topo.srtmgl3
-        tiles = srtm.available_tilenames()
+        tiles = list(srtm.available_tilenames())
 
-        srtm.download_tile(list(tiles)[-1])
+        tilenum = num.random.randint(0, len(tiles)-1)
+        srtm.download_tile(tiles[tilenum])
         srtm.get_tile(0, 0)
 
     @unittest.skip('etopo not downloaded.')
