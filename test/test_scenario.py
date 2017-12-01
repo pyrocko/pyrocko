@@ -36,7 +36,9 @@ class ScenarioTestCase(unittest.TestCase):
                 station_generator=scenario.targets.RandomStationGenerator(),
                 noise_generator=scenario.targets.WhiteNoiseGenerator(),
                 seismogram_quantity='velocity'),
-            scenario.targets.InSARDisplacementGenerator(),
+            scenario.targets.InSARDisplacementGenerator(
+                noise_generator=scenario.targets.AtmosphericNoiseGenerator(
+                    amplitude=1e-5)),
             ],
         source_generator=scenario.DCSourceGenerator(
             time_min=util.str_to_time('2017-01-01 00:00:00'),
@@ -73,8 +75,8 @@ class ScenarioTestCase(unittest.TestCase):
         trs = generator.get_waveforms()
         print(trs)
 
-        trs = generator.get_insar_scenes()
-        print(trs)
+        scenes = generator.get_insar_scenes()
+        scenes[0].spool()
 
     @unittest.skipUnless(
         have_store(store_id),

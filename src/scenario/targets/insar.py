@@ -255,7 +255,7 @@ class AtmosphericNoiseGenerator(Generator):
     beta = [5./3, 8./3, 2./3]
     regimes = [.15, .99, 1.]
 
-    def add_athmospheric_noise(self, scene):
+    def get_noise(self, scene):
         nE = scene.frame.rows
         nN = scene.frame.cols
 
@@ -273,11 +273,11 @@ class AtmosphericNoiseGenerator(Generator):
         kN = num.fft.fftfreq(nN, dN)
         k_rad = num.sqrt(kN[:, num.newaxis]**2 + kE[num.newaxis, :]**2)
 
-        regime = num.array(self.regime)
+        regimes = num.array(self.regimes)
 
         k0 = 0.
-        k1 = regime[0] * k_rad.max()
-        k2 = regime[1] * k_rad.max()
+        k1 = regimes[0] * k_rad.max()
+        k2 = regimes[1] * k_rad.max()
 
         r0 = num.logical_and(k_rad > k0, k_rad < k1)
         r1 = num.logical_and(k_rad >= k1, k_rad < k2)
@@ -313,11 +313,10 @@ class AtmosphericNoiseGenerator(Generator):
         amp[k_rad == 0.] = amp.max()
 
         spec *= self.amplitude * num.sqrt(amp)
-        disp = num.abs(num.fft.ifft2(spec))
-        disp -= num.mean(disp)
+        noise = num.abs(num.fft.ifft2(spec))
+        noise -= num.mean(noise)
 
-        scene.displacement += disp
-        return scene
+        return noise
 
 
 class InSARDisplacementGenerator(TargetGenerator):
@@ -423,5 +422,9 @@ class InSARDisplacementGenerator(TargetGenerator):
 
         scene_asc = stack_scenes(scenes_asc)
         scene_dsc = stack_scenes(scenes_dsc)
+
+        if self.noise_generator:
+            scene_asc.displacement += self.noise_generator.get_noise(scene_asc)
+            scene_dsc.displacement += self.noise_generator.get_noise(scene_dsc)
 
         return scene_asc, scene_dsc
