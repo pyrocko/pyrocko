@@ -566,7 +566,7 @@ subpacknames = [
     'pyrocko.dataset.topo',
     'pyrocko.streaming',
     'pyrocko.scenario',
-    'pyrocko.scenario.generators',
+    'pyrocko.scenario.targets',
 ]
 
 setup(

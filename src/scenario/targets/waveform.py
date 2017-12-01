@@ -2,9 +2,8 @@ from builtins import range
 import hashlib
 import math
 import logging
-from functools import reduce
-
 import numpy as num
+from functools import reduce
 
 from pyrocko.guts import StringChoice, Float
 from pyrocko import gf, model, util, trace
@@ -12,6 +11,8 @@ from pyrocko import gf, model, util, trace
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator
 from ..base import Generator
+
+DEFAULT_STORE_ID = 'global_2s'
 
 logger = logging.getLogger('pyrocko.scenario.targets.waveform')
 guts_prefix = 'pf.scenario'
@@ -61,9 +62,6 @@ class WhiteNoiseGenerator(NoiseGenerator):
         return trs
 
 
-guts_prefix = 'pf.scenario'
-
-
 class WaveformGenerator(TargetGenerator):
 
     station_generator = StationGenerator.T(
@@ -73,9 +71,7 @@ class WaveformGenerator(TargetGenerator):
         default=WhiteNoiseGenerator.D())
 
     store_id = gf.StringID.T(
-        optional=True)
-
-    store_id_static = gf.StringID.T(
+        default=DEFAULT_STORE_ID,
         optional=True)
 
     seismogram_quantity = StringChoice.T(
@@ -87,19 +83,10 @@ class WaveformGenerator(TargetGenerator):
 
     fmin = Float.T(default=0.01)
 
-    def init_modelling(self, engine):
-        self._engine = engine
-
     def get_stations(self):
         return self.station_generator.get_stations()
 
-    def get_store_id(self, source, station):
-        if self.store_id is not None:
-            return self.store_id
-        else:
-            return 'global_2s'
-
-    def get_waveform_targets(self, source):
+    def get_targets(self):
         targets = []
         for station in self.get_stations():
             channel_data = []
@@ -107,7 +94,9 @@ class WaveformGenerator(TargetGenerator):
             if channels:
                 for channel in channels:
                     channel_data.append([
-                        channel.name, channel.azimuth, channel.dip])
+                        channel.name,
+                        channel.azimuth,
+                        channel.dip])
 
             else:
                 for c_name in ['BHZ', 'BHE', 'BHN']:
@@ -128,7 +117,7 @@ class WaveformGenerator(TargetGenerator):
                     lat=station.lat,
                     lon=station.lon,
                     depth=station.depth,
-                    store_id=self.get_store_id(source, station),
+                    store_id=self.store_id,
                     optimization='enable',
                     interpolation='nearest_neighbor',
                     azimuth=c_azi,
@@ -138,25 +127,20 @@ class WaveformGenerator(TargetGenerator):
 
         return targets
 
-    def get_targets(self, source):
-        targets = self.get_waveform_targets(source)
-        targets.extend(self.get_insar_targets())
-        return targets
-
-    def get_station_distance_range(self):
+    def get_station_distance_range(self, sources):
         dists = []
-        for source in self.get_sources():
+        for source in sources:
             for station in self.get_stations():
                 dists.append(
                     source.distance_to(station))
 
         return num.min(dists), num.max(dists)
 
-    def get_time_range(self):
-        dmin, dmax = self.get_station_distance_range()
+    def get_time_range(self, sources):
+        dmin, dmax = self.get_station_distance_range(sources)
 
-        times = num.array(
-            [source.time for source in self.get_sources()], dtype=num.float)
+        times = num.array([source.time for source in sources],
+                          dtype=num.float)
 
         tmin_events = num.min(times)
         tmax_events = num.max(times)
@@ -166,45 +150,31 @@ class WaveformGenerator(TargetGenerator):
 
         return tmin, tmax
 
-    def get_engine(self):
-        return self._engine
-
-    def get_codes_to_deltat(self):
-        engine = self.get_engine()
-
+    def get_codes_to_deltat(self, engine, sources):
         deltats = {}
-        for source in self.get_sources():
-            for target in self.get_waveform_targets(source):
+        for source in sources:
+            for target in self.get_targets():
                 deltats[target.codes] = engine.get_store(
                     target.store_id).config.deltat
 
         return deltats
 
-    def get_useful_time_increment(self):
-        _, dmax = self.get_station_distance_range()
+    def get_useful_time_increment(self, engine, sources):
+        _, dmax = self.get_station_distance_range(sources)
         tinc = dmax / self.vmin_cut + 2.0 / self.fmin
 
-        deltats = set(self.get_codes_to_deltat().values())
+        deltats = set(self.get_codes_to_deltat(engine, sources).values())
 
         deltat = reduce(util.lcm, deltats)
         tinc = int(round(tinc / deltat)) * deltat
         return tinc
 
-    def get_relevant_sources(self, sources, tmin, tmax):
-        dmin, dmax = self.get_station_distance_range()
-        tmin_events = tmin - dmax / self.vmin_cut - 1.0 / self.fmin
-        tmax_events = tmax - dmin / self.vmax_cut + 1.0 / self.fmin
-
-        return [source for source in sources
-                if tmin_events <= source.time and source.time <= tmax_events]
-
-    def get_waveforms(self, sources, tmin, tmax):
+    def get_waveforms(self, engine, sources):
         logger.info('Calculating waveforms...')
-        engine = self.get_engine()
-
         trs = {}
+        tmin, tmax = self.get_time_range(sources)
 
-        for nslc, deltat in self.get_codes_to_deltat().items():
+        for nslc, deltat in self.get_codes_to_deltat(engine, sources).items():
             tr_tmin = int(round(tmin / deltat)) * deltat
             tr_tmax = (int(round(tmax / deltat))-1) * deltat
             n = int(round((tr_tmax - tr_tmin) / deltat)) + 1
@@ -219,9 +189,10 @@ class WaveformGenerator(TargetGenerator):
 
             trs[nslc] = tr
 
-        for source in self.get_relevant_sources(sources, tmin, tmax):
-            targets = self.get_waveform_targets(source)
+        for source in sources:
+            targets = self.get_targets()
             resp = engine.process(source, targets)
+
             for _, target, tr in resp.iter_results():
                 resp = self.get_transfer_function(target.codes)
                 if resp:

@@ -4,67 +4,19 @@ from datetime import datetime
 
 from pyrocko import gf
 from pyrocko import orthodrome as od
-from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object
+from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object,\
+    String
 
 from .base import TargetGenerator
 from ..base import Generator, get_gsshg
+
+DEFAULT_STORE_ID = 'ak135_static'
 
 km = 1e3
 d2r = num.pi/180.
 
 logger = logging.getLogger('pyrocko.scenario.base')
 guts_prefix = 'pf.scenario'
-
-
-class SatelliteGeneratorTarget(gf.SatelliteTarget):
-
-    def __init__(self, scene_patch, *args, **kwargs):
-        gf.SatelliteTarget.__init__(self, *args, **kwargs)
-
-        self.scene_patch = scene_patch
-
-    def post_process(self, *args, **kwargs):
-        resp = gf.SatelliteTarget.post_process(self, *args, **kwargs)
-
-        from kite import Scene
-        from kite.scene import SceneConfig, FrameConfig, Meta
-
-        patch = self.scene_patch
-
-        grid, _ = patch.get_grid()
-
-        displacement = num.empty_like(grid)
-        displacement.fill(num.nan)
-        displacement[patch.get_mask()] = resp.result['displacement.los']
-
-        theta, phi = patch.get_incident_angles()
-
-        llLat, llLon = patch.get_ll_anchor()
-        urLat, urLon = patch.get_ur_anchor()
-        dLon = num.abs(llLon - urLon) / patch.resolution[0]
-        dLat = num.abs(llLat - urLat) / patch.resolution[1]
-
-        scene_config = SceneConfig(
-            meta=Meta(
-                scene_title='Pyrocko Scenario Generator ({})'
-                            .format(datetime.now()),
-                orbit_direction=patch.track_direction,
-                satellite_name='Sentinel-1'),
-            frame=FrameConfig(
-                llLon=float(llLon),
-                llLat=float(llLat),
-                dLat=float(dLat),
-                dLon=float(dLon)))
-
-        scene = Scene(
-            displacement=displacement,
-            theta=theta,
-            phi=phi,
-            config=scene_config)
-
-        resp.scene = scene
-
-        return resp
 
 
 class ScenePatch(Object):
@@ -95,6 +47,56 @@ class ScenePatch(Object):
     mask_water = Bool.T(
         default=True,
         help='Mask water bodies.')
+
+    class SatelliteGeneratorTarget(gf.SatelliteTarget):
+
+        def __init__(self, scene_patch, *args, **kwargs):
+            gf.SatelliteTarget.__init__(self, *args, **kwargs)
+
+            self.scene_patch = scene_patch
+
+        def post_process(self, *args, **kwargs):
+            resp = gf.SatelliteTarget.post_process(self, *args, **kwargs)
+
+            from kite import Scene
+            from kite.scene import SceneConfig, FrameConfig, Meta
+
+            patch = self.scene_patch
+
+            grid, _ = patch.get_grid()
+
+            displacement = num.empty_like(grid)
+            displacement.fill(num.nan)
+            displacement[patch.get_mask()] = resp.result['displacement.los']
+
+            theta, phi = patch.get_incident_angles()
+
+            llLat, llLon = patch.get_ll_anchor()
+            urLat, urLon = patch.get_ur_anchor()
+            dLon = num.abs(llLon - urLon) / patch.resolution[0]
+            dLat = num.abs(llLat - urLat) / patch.resolution[1]
+
+            scene_config = SceneConfig(
+                meta=Meta(
+                    scene_title='Pyrocko Scenario Generator ({})'
+                                .format(datetime.now()),
+                    orbit_direction=patch.track_direction,
+                    satellite_name='Sentinel-1'),
+                frame=FrameConfig(
+                    llLon=float(llLon),
+                    llLat=float(llLat),
+                    dLat=float(dLat),
+                    dLon=float(dLon)))
+
+            scene = Scene(
+                displacement=displacement,
+                theta=theta,
+                phi=phi,
+                config=scene_config)
+
+            resp.scene = scene
+
+            return resp
 
     def __init__(self, *args, **kwargs):
         Object.__init__(self, *args, **kwargs)
@@ -234,7 +236,7 @@ class ScenePatch(Object):
                            ' maybe it\'s all water?')
             return
 
-        return SatelliteGeneratorTarget(
+        return self.SatelliteGeneratorTarget(
             scene_patch=self,
             lats=num.full(ncoords, fill_value=llLat),
             lons=num.full(ncoords, fill_value=llLon),
@@ -246,22 +248,23 @@ class ScenePatch(Object):
 
 class AtmosphericNoiseGenerator(Generator):
 
-    amplitude = Float.T(default=1.)
+    amplitude = Float.T(
+        default=1.,
+        help='Amplitude of the atmospheric noise.')
 
     beta = [5./3, 8./3, 2./3]
     regimes = [.15, .99, 1.]
 
     def add_athmospheric_noise(self, scene):
-        #nE=1024 nN=1024
-        #scene = cls()
-        scene.meta.title =\
-            'Synthetic Displacement | Fractal Noise (Hanssen, 2001)'
-        scene = cls._prepareSceneTest(scene, nE, nN)
+        nE = scene.frame.rows
+        nN = scene.frame.cols
+
         if (nE+nN) % 2 != 0:
             raise ArithmeticError('Dimensions of synthetic scene must '
                                   'both be even!')
 
-        dE, dN = (scene.frame.dE, scene.frame.dN)
+        dE = scene.frame.dE
+        dN = scene.frame.dN
 
         rfield = num.random.rand(nE, nN)
         spec = num.fft.fft2(rfield)
@@ -270,7 +273,8 @@ class AtmosphericNoiseGenerator(Generator):
         kN = num.fft.fftfreq(nN, dN)
         k_rad = num.sqrt(kN[:, num.newaxis]**2 + kE[num.newaxis, :]**2)
 
-        regime = num.array(regime)
+        regime = num.array(self.regime)
+
         k0 = 0.
         k1 = regime[0] * k_rad.max()
         k2 = regime[1] * k_rad.max()
@@ -279,7 +283,7 @@ class AtmosphericNoiseGenerator(Generator):
         r1 = num.logical_and(k_rad >= k1, k_rad < k2)
         r2 = k_rad >= k2
 
-        beta = num.array(beta)
+        beta = num.array(self.beta)
         # From Hanssen (2001)
         #   beta+1 is used as beta, since, the power exponent
         #   is defined for a 1D slice of the 2D spectrum:
@@ -308,16 +312,20 @@ class AtmosphericNoiseGenerator(Generator):
 
         amp[k_rad == 0.] = amp.max()
 
-        spec *= amplitude * num.sqrt(amp)
+        spec *= self.amplitude * num.sqrt(amp)
         disp = num.abs(num.fft.ifft2(spec))
         disp -= num.mean(disp)
 
-        scene.displacement = disp
+        scene.displacement += disp
         return scene
 
 
 class InSARDisplacementGenerator(TargetGenerator):
     # https://sentinel.esa.int/web/sentinel/user-guides/sentinel-1-sar/acquisition-modes/interferometric-wide-swath
+    store_id = String.T(
+        default=DEFAULT_STORE_ID,
+        help='Store ID for these stations.')
+
     inclination = Float.T(
         default=98.2,
         help='Inclination of the satellite orbit towards equatorial plane'
@@ -369,3 +377,51 @@ class InSARDisplacementGenerator(TargetGenerator):
             scene_patches.append(patch)
 
         return scene_patches
+
+    def get_time_range(self, sources):
+        times = num.array([source.time for source in sources],
+                          dtype=num.float)
+
+        return num.min(times), num.max(times)
+
+    def get_targets(self):
+        targets = [s.get_target() for s in self.get_scene_patches()]
+
+        for t in targets:
+            t.store_id = self.store_id
+
+        return targets
+
+    def get_insar_scenes(self, engine, sources):
+        logger.info('Calculating InSAR displacement...')
+
+        scenario_tmin, scenario_tmax = self.get_time_range(sources)
+        targets = self.get_targets()
+
+        resp = engine.process(
+            sources,
+            targets,
+            nthreads=0)
+
+        scenes = [res.scene for res in resp.static_results()]
+
+        tmin, tmax = self.get_time_range(sources)
+        for sc in scenes:
+            sc.meta.time_master = float(tmin)
+            sc.meta.time_slave = float(tmax)
+
+        scenes_asc = [sc for sc in scenes
+                      if sc.config.meta.orbit_direction == 'Ascending']
+        scenes_dsc = [sc for sc in scenes
+                      if sc.config.meta.orbit_direction == 'Descending']
+
+        def stack_scenes(scenes):
+            base = scenes[0]
+            for sc in scenes[1:]:
+                base += sc
+            return base
+
+        scene_asc = stack_scenes(scenes_asc)
+        scene_dsc = stack_scenes(scenes_dsc)
+
+        return scene_asc, scene_dsc

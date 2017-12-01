@@ -1,7 +1,7 @@
 from pyrocko.guts import Timestamp, Float, Int, Bool
 from pyrocko import moment_tensor, util, gf
 
-from ..base import LocationGenerator, ScenarioError
+from .base import LocationGenerator, ScenarioError
 
 km = 1e3
 

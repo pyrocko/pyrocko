@@ -1,16 +1,12 @@
 import numpy as num
 import logging
-from functools import reduce
 
-from pyrocko.guts import StringChoice, Float
-from pyrocko import gf, model, util, trace, moment_tensor, gmtpy
+from pyrocko.guts import List
+from pyrocko import moment_tensor, gmtpy
 
 from .base import LocationGenerator, ScenarioError
-from .generators import StationGenerator, RandomStationGenerator,\
-    SourceGenerator, DCSourceGenerator,\
-    InSARDisplacementGenerator,\
-    NoiseGenerator, WhiteNoiseGenerator
-
+from .sources import SourceGenerator, DCSourceGenerator
+from .targets import TargetGenerator
 
 logger = logging.getLogger('pyrocko.scenario')
 guts_prefix = 'pf.scenario'
@@ -18,38 +14,20 @@ guts_prefix = 'pf.scenario'
 
 class ScenarioGenerator(LocationGenerator):
 
-    target_generators = List.T(TargetGenerator.T())
-
-    station_generator = StationGenerator.T(
-        default=RandomStationGenerator.D())
-
-    insar_generator = InSARDisplacementGenerator.T(
-        default=InSARDisplacementGenerator.D(),
-        optional=True)
+    target_generators = List.T(
+        TargetGenerator.T(),
+        default=[],
+        help='Targets to throw in the scenario.')
 
     source_generator = SourceGenerator.T(
-        default=DCSourceGenerator.D())
-
-    noise_generator = NoiseGenerator.T(
-        default=WhiteNoiseGenerator.D())
-
-    store_id = gf.StringID.T(
-        optional=True)
-
-    store_id_static = gf.StringID.T(
-        optional=True)
-
-    seismogram_quantity = StringChoice.T(
-        choices=['displacement', 'velocity', 'acceleration', 'counts'],
-        default='displacement')
-
-    vmin_cut = Float.T(default=2000.)
-    vmax_cut = Float.T(default=8000.)
-
-    fmin = Float.T(default=0.01)
+        default=DCSourceGenerator.D(),
+        help='Sources to be places in the scenario.')
 
     def __init__(self, **kwargs):
         LocationGenerator.__init__(self, **kwargs)
+
+        for gen in self.target_generators:
+            gen.update_hierarchy(self)
 
         for itry in range(self.ntries):
 
@@ -67,128 +45,11 @@ class ScenarioGenerator(LocationGenerator):
     def init_modelling(self, engine):
         self._engine = engine
 
-    def get_stations(self):
-        return self.station_generator.get_stations()
-
-    def get_insar_patches(self):
-        if self.insar_generator:
-            return self.insar_generator.get_scene_patches()
-        else:
-            return None
-
-    def get_store_id(self, source, station):
-        if self.store_id is not None:
-            return self.store_id
-        else:
-            return 'global_2s'
-
-    def get_static_store_id(self):
-        if self.store_id_static is not None:
-            return self.store_id_static
-        else:
-            return 'static_local'
-
-    def get_waveform_targets(self, source):
-        targets = []
-        for station in self.get_stations():
-            channel_data = []
-            channels = station.get_channels()
-            if channels:
-                for channel in channels:
-                    channel_data.append([
-                        channel.name, channel.azimuth, channel.dip])
-
-            else:
-                for c_name in ['BHZ', 'BHE', 'BHN']:
-                    channel_data.append([
-                        c_name,
-                        model.guess_azimuth_from_name(c_name),
-                        model.guess_dip_from_name(c_name)])
-
-            for c_name, c_azi, c_dip in channel_data:
-
-                target = gf.Target(
-                    codes=(
-                        station.network,
-                        station.station,
-                        station.location,
-                        c_name),
-                    quantity='displacement',
-                    lat=station.lat,
-                    lon=station.lon,
-                    depth=station.depth,
-                    store_id=self.get_store_id(source, station),
-                    optimization='enable',
-                    interpolation='nearest_neighbor',
-                    azimuth=c_azi,
-                    dip=c_dip)
-
-                targets.append(target)
-
-        return targets
-
-    def get_insar_targets(self):
-        targets = [s.get_target() for s in self.get_insar_patches()]
-
-        for t in targets:
-            t.store_id = self.get_static_store_id()
-
-        return targets
-
-    def get_targets(self, source):
-        targets = self.get_waveform_targets(source)
-        targets.extend(self.get_insar_targets())
-        return targets
-
-    def get_sources(self):
-        return self.source_generator.get_sources()
-
-    def get_station_distance_range(self):
-        dists = []
-        for source in self.get_sources():
-            for station in self.get_stations():
-                dists.append(
-                    source.distance_to(station))
-
-        return num.min(dists), num.max(dists)
-
-    def get_time_range(self):
-        dmin, dmax = self.get_station_distance_range()
-
-        times = num.array(
-            [source.time for source in self.get_sources()], dtype=num.float)
-
-        tmin_events = num.min(times)
-        tmax_events = num.max(times)
-
-        tmin = tmin_events + dmin / self.vmax_cut - 10.0 / self.fmin
-        tmax = tmax_events + dmax / self.vmin_cut + 10.0 / self.fmin
-
-        return tmin, tmax
-
     def get_engine(self):
         return self._engine
 
-    def get_codes_to_deltat(self):
-        engine = self.get_engine()
-
-        deltats = {}
-        for source in self.get_sources():
-            for target in self.get_waveform_targets(source):
-                deltats[target.codes] = engine.get_store(
-                    target.store_id).config.deltat
-
-        return deltats
-
-    def get_useful_time_increment(self):
-        _, dmax = self.get_station_distance_range()
-        tinc = dmax / self.vmin_cut + 2.0 / self.fmin
-
-        deltats = set(self.get_codes_to_deltat().values())
-
-        deltat = reduce(util.lcm, deltats)
-        tinc = int(round(tinc / deltat)) * deltat
-        return tinc
+    def get_sources(self):
+        return self.source_generator.get_sources()
 
     def get_relevant_sources(self, tmin, tmax):
         dmin, dmax = self.get_station_distance_range()
@@ -198,89 +59,36 @@ class ScenarioGenerator(LocationGenerator):
         return [source for source in self.get_sources()
                 if tmin_events <= source.time and source.time <= tmax_events]
 
-    def get_waveforms(self, tmin, tmax):
-        logger.info('Calculating waveforms...')
-        engine = self.get_engine()
+    def collect(collector):
+        if not callable(collector):
+            raise AttributeError('This method should not be called directly.')
 
-        trs = {}
+        def method(self, *args, **kwargs):
+            result = []
+            for gen in self.target_generators:
+                result.extend(collector(self)(gen, *args, **kwargs))
+            return result
 
-        for nslc, deltat in self.get_codes_to_deltat().items():
-            tr_tmin = int(round(tmin / deltat)) * deltat
-            tr_tmax = (int(round(tmax / deltat))-1) * deltat
-            n = int(round((tr_tmax - tr_tmin) / deltat)) + 1
+        return method
 
-            tr = trace.Trace(
-                nslc[0], nslc[1], nslc[2], nslc[3],
-                tmin=tr_tmin,
-                ydata=num.zeros(n),
-                deltat=deltat)
+    @collect
+    def get_stations(self):
+        return lambda gen: gen.get_stations()
 
-            self.noise_generator.add_noise(tr)
+    @collect
+    def get_waveforms(self):
+        return lambda gen: gen.get_waveforms(
+            self._engine, self.get_sources())
 
-            trs[nslc] = tr
+    @collect
+    def get_insar_scenes(self):
+        return lambda gen: gen.get_insar_scenes(
+            self._engine, self.get_sources())
 
-        for source in self.get_relevant_sources(tmin, tmax):
-            targets = self.get_waveform_targets(source)
-            resp = engine.process(source, targets)
-            for _, target, tr in resp.iter_results():
-                resp = self.get_transfer_function(target.codes)
-                if resp:
-                    tr = tr.transfer(transfer_function=resp)
-
-                trs[target.codes].add(tr)
-
-        return list(trs.values())
-
-    def get_transfer_function(self, codes):
-        if self.seismogram_quantity == 'displacement':
-            return None
-        elif self.seismogram_quantity == 'velocity':
-            return trace.DifferentiationResponse(1)
-        elif self.seismogram_quantity == 'acceleration':
-            return trace.DifferentiationResponse(2)
-        elif self.seismogram_quantity == 'counts':
-            raise NotImplemented()
-
-    def get_insar_scenes(self, tmin=None, tmax=None):
-        engine = self.get_engine()
-        logger.info('Calculating InSAR displacement...')
-
-        scenario_tmin, scenario_tmax = self.get_time_range()
-        if not tmin:
-            tmin = scenario_tmin
-        if not tmax:
-            tmax = scenario_tmax
-
-        targets = self.get_insar_targets()
-
-        relevant_sources = self.get_relevant_sources(tmin, tmax)
-
-        resp = engine.process(
-            relevant_sources,
-            targets,
-            nthreads=0)
-
-        scenes = [res.scene for res in resp.static_results()]
-
-        for sc in scenes:
-            sc.meta.time_master = float(tmin)
-            sc.meta.time_slave = float(tmax)
-
-        scenes_asc = [sc for sc in scenes
-                      if sc.config.meta.orbit_direction == 'Ascending']
-        scenes_dsc = [sc for sc in scenes
-                      if sc.config.meta.orbit_direction == 'Descending']
-
-        def stack_scenes(scenes):
-            base = scenes[0]
-            for sc in scenes[1:]:
-                base += sc
-            return base
-
-        scene_asc = stack_scenes(scenes_asc)
-        scene_dsc = stack_scenes(scenes_dsc)
-
-        return scene_asc, scene_dsc
+    @collect
+    def get_gnss_offsets(self):
+        return lambda gen: gen.get_gnss_offsets(
+            self._engine, self.get_sources())
 
 
 def draw_scenario_gmt(generator, fn):
