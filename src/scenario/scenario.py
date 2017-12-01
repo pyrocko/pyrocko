@@ -1,6 +1,5 @@
 import numpy as num
 import logging
-import hashlib
 from functools import reduce
 
 from pyrocko.guts import StringChoice, Float
@@ -33,6 +32,7 @@ class ScenarioGenerator(LocationGenerator):
 
     store_id = gf.StringID.T(
         optional=True)
+
     store_id_static = gf.StringID.T(
         optional=True)
 
@@ -257,17 +257,27 @@ class ScenarioGenerator(LocationGenerator):
             targets,
             nthreads=0)
 
-        scenes = [r.scene for r in resp.static_results()]
-        for sc in scenes:
-            hs = '%s%s%s' % (tmin, tmax, ''.join(
-                r.dump() for r in relevant_sources))
-            hs = hs.encode('utf8')
+        scenes = [res.scene for res in resp.static_results()]
 
+        for sc in scenes:
             sc.meta.time_master = float(tmin)
             sc.meta.time_slave = float(tmax)
-            sc.meta.hash = hashlib.sha1(hs).hexdigest()
 
-        return scenes
+        scenes_asc = [sc for sc in scenes
+                      if sc.config.meta.orbit_direction == 'Ascending']
+        scenes_dsc = [sc for sc in scenes
+                      if sc.config.meta.orbit_direction == 'Descending']
+
+        def stack_scenes(scenes):
+            base = scenes[0]
+            for sc in scenes[1:]:
+                base += sc
+            return base
+
+        scene_asc = stack_scenes(scenes_asc)
+        scene_dsc = stack_scenes(scenes_dsc)
+
+        return scene_asc, scene_dsc
 
 
 def draw_scenario_gmt(generator, fn):

@@ -157,7 +157,6 @@ class ScenarioCollectionItem(Object):
 
             scenes = generator.get_insar_scenes(tmin, tmax)
             for sc in scenes:
-                print(sc.config)
                 sc.save(scene_fn(sc.meta.orbit_direction))
             return scenes
 

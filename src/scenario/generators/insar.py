@@ -6,7 +6,7 @@ from pyrocko import gf
 from pyrocko import orthodrome as od
 from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object
 
-from ..base import LocationGenerator, get_gsshg
+from ..base import LocationGenerator, Generator, get_gsshg
 
 km = 1e3
 d2r = num.pi/180.
@@ -26,6 +26,7 @@ class SatelliteGeneratorTarget(gf.SatelliteTarget):
         resp = gf.SatelliteTarget.post_process(self, *args, **kwargs)
 
         from kite import Scene
+        from kite.scene import SceneConfig, FrameConfig, Meta
 
         patch = self.scene_patch
 
@@ -42,34 +43,24 @@ class SatelliteGeneratorTarget(gf.SatelliteTarget):
         dLon = num.abs(llLon - urLon) / patch.resolution[0]
         dLat = num.abs(llLat - urLat) / patch.resolution[1]
 
-        container = {
-            'phi': theta,    # Look orientation
-                             # counter-clockwise angle from east
-            'theta': phi,  # Look elevation angle
-                           # (up from horizontal in degree) 90deg North
-            'displacement': displacement,  # Displacement towards LOS
-            'frame': {
-                'llLon': float(llLon),  # Lower left corner latitude
-                'llLat': float(llLat),  # Lower left corner londgitude
-                'dLat': float(dLat),   # Pixel delta latitude
-                'dLon': float(dLon),   # Pixel delta longitude
-            },
-            # Meta information
-            'meta': {
-                'title': 'Pyrocko Scenario Generator ({})'
-                         .format(datetime.now()),
-                'orbit_direction': patch.track_direction,
-                'satellite_name': 'Sentinel-1',
-                'wavelength': None,
-                'time_master': None,
-                'time_slave': None
-            },
-            # All extra information
-            'extra': {}
-        }
+        scene_config = SceneConfig(
+            meta=Meta(
+                scene_title='Pyrocko Scenario Generator ({})'
+                            .format(datetime.now()),
+                orbit_direction=patch.track_direction,
+                satellite_name='Sentinel-1'),
+            frame=FrameConfig(
+                llLon=float(llLon),
+                llLat=float(llLat),
+                dLat=float(dLat),
+                dLon=float(dLon)))
 
-        scene = Scene()
-        scene = Scene._import_from_dict(scene, container)
+        scene = Scene(
+            displacement=displacement,
+            theta=theta,
+            phi=phi,
+            config=scene_config)
+
         resp.scene = scene
 
         return resp
@@ -252,6 +243,77 @@ class ScenePatch(Object):
             phi=phi)
 
 
+class AtmosphericNoiseGenerator(Generator):
+
+    amplitude = Float.T(default=1.)
+
+    beta = [5./3, 8./3, 2./3]
+    regimes = [.15, .99, 1.]
+    def add_athmospheric_noise(self, scene):
+        nE=1024, nN=1024
+        scene = cls()
+        scene.meta.title =\
+            'Synthetic Displacement | Fractal Noise (Hanssen, 2001)'
+        scene = cls._prepareSceneTest(scene, nE, nN)
+        if (nE+nN) % 2 != 0:
+            raise ArithmeticError('Dimensions of synthetic scene must '
+                                  'both be even!')
+
+        dE, dN = (scene.frame.dE, scene.frame.dN)
+
+        rfield = num.random.rand(nE, nN)
+        spec = num.fft.fft2(rfield)
+
+        kE = num.fft.fftfreq(nE, dE)
+        kN = num.fft.fftfreq(nN, dN)
+        k_rad = num.sqrt(kN[:, num.newaxis]**2 + kE[num.newaxis, :]**2)
+
+        regime = num.array(regime)
+        k0 = 0.
+        k1 = regime[0] * k_rad.max()
+        k2 = regime[1] * k_rad.max()
+
+        r0 = num.logical_and(k_rad > k0, k_rad < k1)
+        r1 = num.logical_and(k_rad >= k1, k_rad < k2)
+        r2 = k_rad >= k2
+
+        beta = num.array(beta)
+        # From Hanssen (2001)
+        #   beta+1 is used as beta, since, the power exponent
+        #   is defined for a 1D slice of the 2D spectrum:
+        #   austin94: "Adler, 1981, shows that the surface profile
+        #   created by the intersection of a plane and a
+        #   2-D fractal surface is itself fractal with
+        #   a fractal dimension  equal to that of the 2D
+        #   surface decreased by one."
+        beta += 1.
+        # From Hanssen (2001)
+        #   The power beta/2 is used because the power spectral
+        #   density is proportional to the amplitude squared
+        #   Here we work with the amplitude, instead of the power
+        #   so we should take sqrt( k.^beta) = k.^(beta/2)  RH
+        # beta /= 2.
+
+        amp = num.zeros_like(k_rad)
+        amp[r0] = k_rad[r0] ** -beta[0]
+        amp[r0] /= amp[r0].max()
+
+        amp[r1] = k_rad[r1] ** -beta[1]
+        amp[r1] /= amp[r1].max() / amp[r0].min()
+
+        amp[r2] = k_rad[r2] ** -beta[2]
+        amp[r2] /= amp[r2].max() / amp[r1].min()
+
+        amp[k_rad == 0.] = amp.max()
+
+        spec *= amplitude * num.sqrt(amp)
+        disp = num.abs(num.fft.ifft2(spec))
+        disp -= num.mean(disp)
+
+        scene.displacement = disp
+        return scene
+
+
 class InSARDisplacementGenerator(LocationGenerator):
     # https://sentinel.esa.int/web/sentinel/user-guides/sentinel-1-sar/acquisition-modes/interferometric-wide-swath
     inclination = Float.T(
@@ -280,6 +342,9 @@ class InSARDisplacementGenerator(LocationGenerator):
     mask_water = Bool.T(
         default=True,
         help='Mask out water bodies.')
+    noise_generator = Generator.T(
+        default=AtmosphericNoiseGenerator.D(),
+        help='Add atmospheric noise model after Hansen, 2001.')
 
     def get_scene_patches(self):
         lat_center, lon_center = self.get_center_latlon()
