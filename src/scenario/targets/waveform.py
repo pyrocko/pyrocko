@@ -1,34 +1,73 @@
-import numpy as num
+from builtins import range
+import hashlib
+import math
 import logging
 from functools import reduce
 
+import numpy as num
+
 from pyrocko.guts import StringChoice, Float
-from pyrocko import gf, model, util, trace, moment_tensor, gmtpy
+from pyrocko import gf, model, util, trace
 
-from .base import LocationGenerator, ScenarioError
-from .generators import StationGenerator, RandomStationGenerator,\
-    SourceGenerator, DCSourceGenerator,\
-    InSARDisplacementGenerator,\
-    NoiseGenerator, WhiteNoiseGenerator
+from .station import StationGenerator, RandomStationGenerator
+from .base import TargetGenerator
+from ..base import Generator
 
-
-logger = logging.getLogger('pyrocko.scenario')
+logger = logging.getLogger('pyrocko.scenario.targets.waveform')
 guts_prefix = 'pf.scenario'
 
 
-class ScenarioGenerator(LocationGenerator):
+class NoiseGenerator(Generator):
 
-    target_generators = List.T(TargetGenerator.T())
+    def get_time_increment(self, deltat):
+        return deltat * 1024
+
+    def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
+        raise NotImplemented()
+
+    def add_noise(self, tr):
+        for ntr in self.get_intersecting_snippets(
+                tr.deltat, tr.nslc_id, tr.tmin, tr.tmax):
+            tr.add(ntr)
+
+
+class WhiteNoiseGenerator(NoiseGenerator):
+
+    scale = Float.T(default=1e-6)
+
+    def get_seed_offset2(self, deltat, iw, codes):
+        m = hashlib.sha1(('%e %i %s.%s.%s.%s' % ((deltat, iw) + codes))
+                         .encode('utf8'))
+        return int(m.hexdigest(), base=16) % 1000
+
+    def get_intersecting_snippets(self, deltat, codes, tmin, tmax):
+        tinc = self.get_time_increment(deltat)
+        iwmin = int(math.floor(tmin / tinc))
+        iwmax = int(math.floor(tmax / tinc))
+
+        trs = []
+        for iw in range(iwmin, iwmax+1):
+            seed_offset = self.get_seed_offset2(deltat, iw, codes)
+            rstate = self.get_rstate(seed_offset)
+
+            n = int(round(tinc // deltat))
+
+            trs.append(trace.Trace(
+                codes[0], codes[1], codes[2], codes[3],
+                deltat=deltat,
+                tmin=iw*tinc,
+                ydata=rstate.normal(loc=0, scale=self.scale, size=n)))
+
+        return trs
+
+
+guts_prefix = 'pf.scenario'
+
+
+class WaveformGenerator(TargetGenerator):
 
     station_generator = StationGenerator.T(
         default=RandomStationGenerator.D())
-
-    insar_generator = InSARDisplacementGenerator.T(
-        default=InSARDisplacementGenerator.D(),
-        optional=True)
-
-    source_generator = SourceGenerator.T(
-        default=DCSourceGenerator.D())
 
     noise_generator = NoiseGenerator.T(
         default=WhiteNoiseGenerator.D())
@@ -48,45 +87,17 @@ class ScenarioGenerator(LocationGenerator):
 
     fmin = Float.T(default=0.01)
 
-    def __init__(self, **kwargs):
-        LocationGenerator.__init__(self, **kwargs)
-
-        for itry in range(self.ntries):
-
-            try:
-                self.get_stations()
-                self.get_sources()
-                return
-
-            except ScenarioError:
-                self.retry()
-
-        raise ScenarioError(
-            'could not generate scenario within %i tries' % self.ntries)
-
     def init_modelling(self, engine):
         self._engine = engine
 
     def get_stations(self):
         return self.station_generator.get_stations()
 
-    def get_insar_patches(self):
-        if self.insar_generator:
-            return self.insar_generator.get_scene_patches()
-        else:
-            return None
-
     def get_store_id(self, source, station):
         if self.store_id is not None:
             return self.store_id
         else:
             return 'global_2s'
-
-    def get_static_store_id(self):
-        if self.store_id_static is not None:
-            return self.store_id_static
-        else:
-            return 'static_local'
 
     def get_waveform_targets(self, source):
         targets = []
@@ -127,21 +138,10 @@ class ScenarioGenerator(LocationGenerator):
 
         return targets
 
-    def get_insar_targets(self):
-        targets = [s.get_target() for s in self.get_insar_patches()]
-
-        for t in targets:
-            t.store_id = self.get_static_store_id()
-
-        return targets
-
     def get_targets(self, source):
         targets = self.get_waveform_targets(source)
         targets.extend(self.get_insar_targets())
         return targets
-
-    def get_sources(self):
-        return self.source_generator.get_sources()
 
     def get_station_distance_range(self):
         dists = []
@@ -190,15 +190,15 @@ class ScenarioGenerator(LocationGenerator):
         tinc = int(round(tinc / deltat)) * deltat
         return tinc
 
-    def get_relevant_sources(self, tmin, tmax):
+    def get_relevant_sources(self, sources, tmin, tmax):
         dmin, dmax = self.get_station_distance_range()
         tmin_events = tmin - dmax / self.vmin_cut - 1.0 / self.fmin
         tmax_events = tmax - dmin / self.vmax_cut + 1.0 / self.fmin
 
-        return [source for source in self.get_sources()
+        return [source for source in sources
                 if tmin_events <= source.time and source.time <= tmax_events]
 
-    def get_waveforms(self, tmin, tmax):
+    def get_waveforms(self, sources, tmin, tmax):
         logger.info('Calculating waveforms...')
         engine = self.get_engine()
 
@@ -219,7 +219,7 @@ class ScenarioGenerator(LocationGenerator):
 
             trs[nslc] = tr
 
-        for source in self.get_relevant_sources(tmin, tmax):
+        for source in self.get_relevant_sources(sources, tmin, tmax):
             targets = self.get_waveform_targets(source)
             resp = engine.process(source, targets)
             for _, target, tr in resp.iter_results():
@@ -240,108 +240,3 @@ class ScenarioGenerator(LocationGenerator):
             return trace.DifferentiationResponse(2)
         elif self.seismogram_quantity == 'counts':
             raise NotImplemented()
-
-    def get_insar_scenes(self, tmin=None, tmax=None):
-        engine = self.get_engine()
-        logger.info('Calculating InSAR displacement...')
-
-        scenario_tmin, scenario_tmax = self.get_time_range()
-        if not tmin:
-            tmin = scenario_tmin
-        if not tmax:
-            tmax = scenario_tmax
-
-        targets = self.get_insar_targets()
-
-        relevant_sources = self.get_relevant_sources(tmin, tmax)
-
-        resp = engine.process(
-            relevant_sources,
-            targets,
-            nthreads=0)
-
-        scenes = [res.scene for res in resp.static_results()]
-
-        for sc in scenes:
-            sc.meta.time_master = float(tmin)
-            sc.meta.time_slave = float(tmax)
-
-        scenes_asc = [sc for sc in scenes
-                      if sc.config.meta.orbit_direction == 'Ascending']
-        scenes_dsc = [sc for sc in scenes
-                      if sc.config.meta.orbit_direction == 'Descending']
-
-        def stack_scenes(scenes):
-            base = scenes[0]
-            for sc in scenes[1:]:
-                base += sc
-            return base
-
-        scene_asc = stack_scenes(scenes_asc)
-        scene_dsc = stack_scenes(scenes_dsc)
-
-        return scene_asc, scene_dsc
-
-
-def draw_scenario_gmt(generator, fn):
-    from pyrocko import automap
-
-    lat, lon = generator.station_generator.get_center_latlon()
-    radius = generator.station_generator.get_radius()
-
-    m = automap.Map(
-        width=30.,
-        height=30.,
-        lat=lat,
-        lon=lon,
-        radius=radius,
-        show_topo=False,
-        show_grid=True,
-        show_rivers=False,
-        color_wet=(216, 242, 254),
-        color_dry=(238, 236, 230))
-
-    stations = generator.get_stations()
-    lats = [s.lat for s in stations]
-    lons = [s.lon for s in stations]
-
-    m.gmt.psxy(
-        in_columns=(lons, lats),
-        S='t8p',
-        G='black',
-        *m.jxyr)
-
-    if len(stations) < 20:
-        for station in stations:
-            m.add_label(station.lat, station.lon, '.'.join(
-                x for x in (station.network, station.station) if x))
-
-    sources = generator.get_sources()
-
-    for source in sources:
-
-        event = source.pyrocko_event()
-
-        mt = event.moment_tensor.m_up_south_east()
-        xx = num.trace(mt) / 3.
-        mc = num.matrix([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
-        mc = mt - mc
-        mc = mc / event.moment_tensor.scalar_moment() * \
-            moment_tensor.magnitude_to_moment(5.0)
-        m6 = tuple(moment_tensor.to6(mc))
-
-        symbol_size = 20.
-        m.gmt.psmeca(
-            S='%s%g' % ('d', symbol_size / gmtpy.cm),
-            in_rows=[(source.lon, source.lat, 10) + m6 + (1, 0, 0)],
-            M=True,
-            *m.jxyr)
-
-    for patch in generator.get_insar_patches():
-        symbol_size = 50.
-        coords = num.array(patch.get_corner_coordinates())
-        m.gmt.psxy(in_rows=num.fliplr(coords),
-                   L=True,
-                   *m.jxyr)
-
-    m.save(fn)

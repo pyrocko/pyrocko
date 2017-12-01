@@ -6,7 +6,8 @@ from pyrocko import gf
 from pyrocko import orthodrome as od
 from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object
 
-from ..base import LocationGenerator, Generator, get_gsshg
+from .base import TargetGenerator
+from ..base import Generator, get_gsshg
 
 km = 1e3
 d2r = num.pi/180.
@@ -249,9 +250,10 @@ class AtmosphericNoiseGenerator(Generator):
 
     beta = [5./3, 8./3, 2./3]
     regimes = [.15, .99, 1.]
+
     def add_athmospheric_noise(self, scene):
-        nE=1024, nN=1024
-        scene = cls()
+        #nE=1024 nN=1024
+        #scene = cls()
         scene.meta.title =\
             'Synthetic Displacement | Fractal Noise (Hanssen, 2001)'
         scene = cls._prepareSceneTest(scene, nE, nN)
@@ -314,7 +316,7 @@ class AtmosphericNoiseGenerator(Generator):
         return scene
 
 
-class InSARDisplacementGenerator(LocationGenerator):
+class InSARDisplacementGenerator(TargetGenerator):
     # https://sentinel.esa.int/web/sentinel/user-guides/sentinel-1-sar/acquisition-modes/interferometric-wide-swath
     inclination = Float.T(
         default=98.2,

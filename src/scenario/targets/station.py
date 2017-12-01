@@ -1,12 +1,12 @@
 from pyrocko import model
 from pyrocko.guts import Int
 
-from ..base import LocationGenerator
+from .base import TargetGenerator
 
 guts_prefix = 'pf.scenario'
 
 
-class StationGenerator(LocationGenerator):
+class StationGenerator(TargetGenerator):
     pass
 
 
@@ -17,7 +17,7 @@ class RandomStationGenerator(StationGenerator):
         help='Number of randomly distributed stations.')
 
     def __init__(self, **kwargs):
-        LocationGenerator.__init__(self, **kwargs)
+        StationGenerator.__init__(self, **kwargs)
         self._stations = None
 
     def clear(self):

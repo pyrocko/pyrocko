@@ -101,6 +101,15 @@ class Generator(Object):
     def get_rstate(self, i):
         return num.random.RandomState(self.get_seed() + i)
 
+    def get_center_latlon(self):
+        return self._parent.get_center_latlon()
+
+    def get_radius(self):
+        return self._parent.get_radius()
+
+    def get_stations(self):
+        return []
+
 
 class LocationGenerator(Generator):
 
@@ -180,3 +189,7 @@ class LocationGenerator(Generator):
             sadd = ' (avoiding water)'
 
         raise ScenarioError('could not generate location%s' % sadd)
+
+
+class TargetGenerator(LocationGenerator):
+    pass
