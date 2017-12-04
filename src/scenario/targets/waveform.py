@@ -3,10 +3,13 @@ import hashlib
 import math
 import logging
 import numpy as num
+
+from os import path as op
 from functools import reduce
 
 from pyrocko.guts import StringChoice, Float
-from pyrocko import gf, model, util, trace
+from pyrocko import gf, model, util, trace, io
+from pyrocko.io_common import FileSaveError
 
 from .station import StationGenerator, RandomStationGenerator
 from .base import TargetGenerator
@@ -127,17 +130,8 @@ class WaveformGenerator(TargetGenerator):
 
         return targets
 
-    def get_station_distance_range(self, sources):
-        dists = []
-        for source in sources:
-            for station in self.get_stations():
-                dists.append(
-                    source.distance_to(station))
-
-        return num.min(dists), num.max(dists)
-
     def get_time_range(self, sources):
-        dmin, dmax = self.get_station_distance_range(sources)
+        dmin, dmax = self.station_generator.get_distance_range(sources)
 
         times = num.array([source.time for source in sources],
                           dtype=num.float)
@@ -160,7 +154,7 @@ class WaveformGenerator(TargetGenerator):
         return deltats
 
     def get_useful_time_increment(self, engine, sources):
-        _, dmax = self.get_station_distance_range(sources)
+        _, dmax = self.station_generator.get_distance_range(sources)
         tinc = dmax / self.vmin_cut + 2.0 / self.fmin
 
         deltats = set(self.get_codes_to_deltat(engine, sources).values())
@@ -169,20 +163,23 @@ class WaveformGenerator(TargetGenerator):
         tinc = int(round(tinc / deltat)) * deltat
         return tinc
 
-    def get_waveforms(self, engine, sources):
+    def get_waveforms(self, engine, sources, tmin=None, tmax=None):
         logger.info('Calculating waveforms...')
         trs = {}
-        tmin, tmax = self.get_time_range(sources)
+
+        tmin_all, tmax_all = self.get_time_range(sources)
+        tmin = tmin if tmin is not None else tmin_all
+        tmax = tmax if tmax is not None else tmax_all
 
         for nslc, deltat in self.get_codes_to_deltat(engine, sources).items():
             tr_tmin = int(round(tmin / deltat)) * deltat
             tr_tmax = (int(round(tmax / deltat))-1) * deltat
-            n = int(round((tr_tmax - tr_tmin) / deltat)) + 1
+            nsamples = int(round((tr_tmax - tr_tmin) / deltat)) + 1
 
             tr = trace.Trace(
                 nslc[0], nslc[1], nslc[2], nslc[3],
                 tmin=tr_tmin,
-                ydata=num.zeros(n),
+                ydata=num.zeros(nsamples),
                 deltat=deltat)
 
             self.noise_generator.add_noise(tr)
@@ -211,3 +208,77 @@ class WaveformGenerator(TargetGenerator):
             return trace.DifferentiationResponse(2)
         elif self.seismogram_quantity == 'counts':
             raise NotImplemented()
+
+    def dump_data(self, engine, sources, path,
+                  tmin=None, tmax=None, overwrite=False):
+        fns = []
+        fns.extend(
+            self.dump_waveforms(engine, sources, path, tmin, tmax, overwrite))
+        # fns.extend(
+        #     self.dump_responses(path))
+        return fns
+
+    def dump_waveforms(self, engine, sources, path,
+                       tmin=None, tmax=None, overwrite=False):
+        path_waveforms = op.join(path, 'waveforms')
+        util.ensuredir(path_waveforms)
+        logger.info('Dumping waveforms to %s...' % path_waveforms)
+
+        path_traces = op.join(
+            path_waveforms,
+            '%(wmin_year)s',
+            '%(wmin_month)s',
+            '%(wmin_day)s',
+            'waveform_%(network)s_%(station)s_'
+            + '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
+
+        tmin_all, tmax_all = self.get_time_range(sources)
+
+        tmin = tmin if tmin is not None else tmin_all
+        tmax = tmax if tmax is not None else tmax_all
+
+        tinc = self.get_useful_time_increment(engine, sources)
+
+        tmin = math.floor(tmin / tinc) * tinc
+        tmax = math.ceil(tmax / tinc) * tinc
+
+        nwin = int(round((tmax - tmin) / tinc))
+
+        for iwin in range(nwin):
+            tmin_win = max(tmin, tmin + iwin*tinc)
+            tmax_win = min(tmax, tmin + (iwin+1)*tinc)
+
+            if tmax_win <= tmin_win:
+                continue
+
+            trs = self.get_waveforms(engine, sources, tmin_win, tmax_win)
+            tts = util.time_to_str
+
+            logger.debug('Saving traces between %s - %s...'
+                         % (tmin_win, tmax_win))
+            try:
+                io.save(
+                    trs, path_traces,
+                    additional=dict(
+                        wmin_year=tts(tmin_win, format='%Y'),
+                        wmin_month=tts(tmin_win, format='%m'),
+                        wmin_day=tts(tmin_win, format='%d'),
+                        wmin=tts(tmin_win, format='%Y-%m-%d_%H-%M-%S'),
+                        wmax_year=tts(tmax_win, format='%Y'),
+                        wmax_month=tts(tmax_win, format='%m'),
+                        wmax_day=tts(tmax_win, format='%d'),
+                        wmax=tts(tmax_win, format='%Y-%m-%d_%H-%M-%S')),
+                    overwrite=overwrite)
+            except FileSaveError as e:
+                logger.debug('Waveform exists %s' % e)
+
+        return [path_waveforms]
+
+    def dump_responses(self, path):
+        path_responses = op.join(path, 'meta')
+        util.ensuredir(path_responses)
+        logger.info('Dumping waveforms to %s...' % path_responses)
+
+        raise NotImplementedError()
+
+        return [path_responses]

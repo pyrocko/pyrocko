@@ -76,12 +76,11 @@ class ScenarioTestCase(unittest.TestCase):
         print(trs)
 
         scenes = generator.get_insar_scenes()
-        scenes[0].spool()
 
     @unittest.skipUnless(
         have_store(store_id),
         'GF Store "%s" is not available' % store_id)
-    def _test_scenario_waveforms(self):
+    def test_scenario_waveforms(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
 
@@ -177,6 +176,7 @@ class ScenarioTestCase(unittest.TestCase):
         s.get_map()
 
     def assert_traces_almost_equal(self, trs1, trs2):
+        print(len(trs1), len(trs2))
         assert len(trs1) == len(trs2)
         for (tr1, tr2) in zip(trs1, trs2):
             tr1.assert_almost_equal(tr2)

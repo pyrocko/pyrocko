@@ -1,3 +1,5 @@
+import os.path as op
+
 from pyrocko.guts import Timestamp, Float, Int, Bool
 from pyrocko import moment_tensor, util, gf
 
@@ -75,3 +77,16 @@ class DCSourceGenerator(SourceGenerator):
             sources.append(self.get_source(ievent))
 
         return sources
+
+    def dump_data(self, path):
+        fn_sources = op.join(path, 'sources.yml')
+        with open(fn_sources, 'w') as f:
+            for src in self.get_sources():
+                f.write(src.dump())
+
+        fn_events = op.join(path, 'events.txt')
+        with open(fn_events, 'w') as f:
+            for src in self.get_sources():
+                f.write(src.pyrocko_event().dump())
+
+        return [fn_events, fn_sources]

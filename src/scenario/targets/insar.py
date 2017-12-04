@@ -1,8 +1,9 @@
 import numpy as num
 import logging
-from datetime import datetime
+from os import path as op
 
-from pyrocko import gf
+from datetime import datetime
+from pyrocko import gf, util
 from pyrocko import orthodrome as od
 from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object,\
     String
@@ -377,12 +378,6 @@ class InSARDisplacementGenerator(TargetGenerator):
 
         return scene_patches
 
-    def get_time_range(self, sources):
-        times = num.array([source.time for source in sources],
-                          dtype=num.float)
-
-        return num.min(times), num.max(times)
-
     def get_targets(self):
         targets = [s.get_target() for s in self.get_scene_patches()]
 
@@ -391,7 +386,8 @@ class InSARDisplacementGenerator(TargetGenerator):
 
         return targets
 
-    def get_insar_scenes(self, engine, sources):
+    def get_insar_scenes(self, engine, sources,
+                         tmin=None, tmax=None, overwrite=False):
         logger.info('Calculating InSAR displacement...')
 
         scenario_tmin, scenario_tmax = self.get_time_range(sources)
@@ -428,3 +424,37 @@ class InSARDisplacementGenerator(TargetGenerator):
             scene_dsc.displacement += self.noise_generator.get_noise(scene_dsc)
 
         return scene_asc, scene_dsc
+
+    def dump_data(self, engine, sources, path,
+                  tmin=None, tmax=None, overwrite=False):
+        from kite import Scene
+
+        path_insar = op.join(path, 'insar')
+        util.ensuredir(path_insar)
+
+        logger.info('Dumping InSAR scenes to %s...' % path_insar)
+
+        tmin, tmax = self.get_time_range(sources)
+        tts = util.time_to_str
+
+        fn = op.join(path_insar, 'insar-scene-{track_direction}_%s_%s'
+                     % (tts(tmin), tts(tmax)))
+
+        def scene_fn(track):
+            return fn.format(track_direction=track.lower())
+
+        scenes = []
+        for track in ('ascending', 'descending'):
+            fn = '%s.yml' % scene_fn(track)
+            if op.exists(fn) and not overwrite:
+                logger.debug('Files exist %s' % fn)
+                scenes.load(Scene.load(scene_fn(track)))
+                continue
+
+            scenes = self.get_insar_scenes(engine, sources, tmin, tmax)
+            for sc in scenes:
+                sc.save(fn)
+
+            break
+
+        return [path_insar]

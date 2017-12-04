@@ -1,3 +1,4 @@
+import numpy as num
 from pyrocko import model
 from pyrocko.guts import Int
 
@@ -44,6 +45,15 @@ class RandomStationGenerator(StationGenerator):
             self._stations = stations
 
         return self._stations
+
+    def get_distance_range(self, sources):
+        dists = []
+        for source in sources:
+            for station in self.get_stations():
+                dists.append(
+                    source.distance_to(station))
+
+        return num.min(dists), num.max(dists)
 
     def dump_stations(self):
         pass

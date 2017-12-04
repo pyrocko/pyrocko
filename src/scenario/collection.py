@@ -1,5 +1,4 @@
 import os
-import math
 import tarfile
 import errno
 import numpy as num
@@ -7,7 +6,7 @@ import time
 
 
 from pyrocko.guts import Object, Timestamp
-from pyrocko import gf, guts, util, pile, gmtpy, io
+from pyrocko import gf, guts, util, pile, gmtpy
 
 from .scenario import draw_scenario_gmt
 from .base import ScenarioError
@@ -33,6 +32,11 @@ class ScenarioCollectionItem(Object):
     def set_base_path(self, path):
         self._path = path
 
+    def get_base_path(self):
+        if self._path is None:
+            raise EnvironmentError('Base path not set!')
+        return self._path
+
     def init_modelling(self, engine):
         self._engine = engine
 
@@ -44,6 +48,9 @@ class ScenarioCollectionItem(Object):
         generator.init_modelling(self._engine)
         return generator
 
+    def get_time_range(self):
+        return self.get_generator().get_time_range()
+
     def have_waveforms(self, tmin, tmax):
         p = self.get_waveform_pile()
         trs_have = p.all(
@@ -54,15 +61,30 @@ class ScenarioCollectionItem(Object):
     def get_waveform_pile(self):
         if self._pile is None:
             path_waveforms = self.get_path('waveforms')
+            print('get_pile_', path_waveforms)
             util.ensuredir(path_waveforms)
             fns = util.select_files(
                 [path_waveforms], show_progress=False)
+            print(path_waveforms)
             self._pile = pile.Pile()
             if fns:
                 self._pile.load_files(
                     fns, fileformat='mseed', show_progress=False)
 
         return self._pile
+
+    def get_insar_scenes(self):
+        from kite import Scene
+        if self._scenes is None:
+            self._scenes = []
+            path_insar = self.get_path('insar')
+            util.ensuredir(path_insar)
+
+            fns = util.select_files([path_insar], regex='\.(npz)$')
+            for f in fns:
+                self._scenes.append(Scene.load(f))
+
+        return self._scenes
 
     def make_map(self, path_pdf):
         draw_scenario_gmt(self.get_generator(), path_pdf)
@@ -81,93 +103,17 @@ class ScenarioCollectionItem(Object):
 
         return path
 
-    def ensure_waveforms(self, tmin, tmax):
-        path_waveforms = self.get_path('waveforms')
-        path_traces = op.join(
-            path_waveforms,
-            '%(wmin_year)s',
-            '%(wmin_month)s',
-            '%(wmin_day)s',
-            'waveform_%(network)s_%(station)s_'
-            + '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
+    def ensure_data(self, tmin=None, tmax=None, overwrite=False):
+        return self.get_generator().dump_data2(
+            self.get_path(), tmin, tmax, overwrite)
 
-        generator = self.get_generator()
-        tmin_all, tmax_all = generator.get_time_range()
-
-        tmin = tmin if tmin is not None else tmin_all
-        tmax = tmax if tmax is not None else tmax_all
-
-        tinc = generator.get_useful_time_increment()
-
-        tmin = math.floor(tmin / tinc) * tinc
-        tmax = math.ceil(tmax / tinc) * tinc
-
-        nwin = int(round((tmax - tmin) / tinc))
-
-        p = self.get_waveform_pile()
-
-        for iwin in range(nwin):
-            tmin_win = max(tmin, tmin + iwin*tinc)
-            tmax_win = min(tmax, tmin + (iwin+1)*tinc)
-            if tmax_win <= tmin_win:
-                continue
-
-            if self.have_waveforms(tmin_win, tmax_win):
-                continue
-            trs = generator.get_waveforms(tmin_win, tmax_win)
-            tts = util.time_to_str
-
-            fns = io.save(
-                trs, path_traces,
-                additional=dict(
-                    wmin_year=tts(tmin_win, format='%Y'),
-                    wmin_month=tts(tmin_win, format='%m'),
-                    wmin_day=tts(tmin_win, format='%d'),
-                    wmin=tts(tmin_win, format='%Y-%m-%d_%H-%M-%S'),
-                    wmax_year=tts(tmax_win, format='%Y'),
-                    wmax_month=tts(tmax_win, format='%m'),
-                    wmax_day=tts(tmax_win, format='%d'),
-                    wmax=tts(tmax_win, format='%Y-%m-%d_%H-%M-%S')))
-
-            if fns:
-                p.load_files(fns, fileformat='mseed', show_progress=False)
-
-        return p
+    def ensure_waveforms(self, tmin=None, tmax=None):
+        self.ensure_data(tmin, tmax, overwrite=False)
+        return self.get_waveform_pile()
 
     def ensure_insar_scenes(self, tmin=None, tmax=None):
-        from kite import Scene
-
-        path_insar = self.get_path('insar')
-        util.ensuredir(path_insar)
-
-        generator = self.get_generator()
-        tmin, tmax = generator.get_time_range()
-
-        tts = util.time_to_str
-        fn = op.join(path_insar, 'insar-scene-{track_direction}_%s_%s'
-                     % (tts(tmin), tts(tmax)))
-
-        def scene_fn(track):
-            return fn.format(track_direction=track.lower())
-
-        for track in ('ascending', 'descending'):
-
-            if op.exists('%s.npz' % scene_fn(track)):
-                continue
-
-            scenes = generator.get_insar_scenes(tmin, tmax)
-            for sc in scenes:
-                sc.save(scene_fn(sc.meta.orbit_direction))
-            return scenes
-
-        scenes = []
-        for track in ('ascending', 'descending'):
-            scenes.append(Scene.load(scene_fn(track)))
-
-        return scenes
-
-    def get_time_range(self):
-        return self.get_generator().get_time_range()
+        self.ensure_data(tmin, tmax, overwrite=False)
+        return self.get_insar_scenes()
 
     def get_archive(self):
         path_tar = self.get_path('archive.tar')

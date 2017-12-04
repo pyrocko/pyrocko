@@ -2,7 +2,7 @@ import numpy as num
 import logging
 
 from pyrocko.guts import List
-from pyrocko import moment_tensor, gmtpy
+from pyrocko import moment_tensor, gmtpy, pile
 
 from .base import LocationGenerator, ScenarioError
 from .sources import SourceGenerator, DCSourceGenerator
@@ -17,11 +17,11 @@ class ScenarioGenerator(LocationGenerator):
     target_generators = List.T(
         TargetGenerator.T(),
         default=[],
-        help='Targets to throw in the scenario.')
+        help='Targets to spawn in the scenario.')
 
     source_generator = SourceGenerator.T(
         default=DCSourceGenerator.D(),
-        help='Sources to be places in the scenario.')
+        help='Sources to spawn in the scenario.')
 
     def __init__(self, **kwargs):
         LocationGenerator.__init__(self, **kwargs)
@@ -51,14 +51,6 @@ class ScenarioGenerator(LocationGenerator):
     def get_sources(self):
         return self.source_generator.get_sources()
 
-    def get_relevant_sources(self, tmin, tmax):
-        dmin, dmax = self.get_station_distance_range()
-        tmin_events = tmin - dmax / self.vmin_cut - 1.0 / self.fmin
-        tmax_events = tmax - dmin / self.vmax_cut + 1.0 / self.fmin
-
-        return [source for source in self.get_sources()
-                if tmin_events <= source.time and source.time <= tmax_events]
-
     def collect(collector):
         if not callable(collector):
             raise AttributeError('This method should not be called directly.')
@@ -66,7 +58,8 @@ class ScenarioGenerator(LocationGenerator):
         def method(self, *args, **kwargs):
             result = []
             for gen in self.target_generators:
-                result.extend(collector(self)(gen, *args, **kwargs))
+                result.extend(
+                    collector(self, *args, **kwargs)(gen, *args, **kwargs))
             return result
 
         return method
@@ -76,19 +69,38 @@ class ScenarioGenerator(LocationGenerator):
         return lambda gen: gen.get_stations()
 
     @collect
-    def get_waveforms(self):
-        return lambda gen: gen.get_waveforms(
-            self._engine, self.get_sources())
+    def get_waveforms(self, tmin=None, tmax=None):
+        return lambda gen, *args, **kwargs: gen.get_waveforms(
+            self._engine, self.get_sources(), *args, **kwargs)
 
     @collect
-    def get_insar_scenes(self):
-        return lambda gen: gen.get_insar_scenes(
-            self._engine, self.get_sources())
+    def get_insar_scenes(self, tmin=None, tmax=None):
+        return lambda gen, *args, **kwargs: gen.get_insar_scenes(
+            self._engine, self.get_sources(), *args, **kwargs)
 
     @collect
-    def get_gnss_offsets(self):
-        return lambda gen: gen.get_gnss_offsets(
-            self._engine, self.get_sources())
+    def get_gnss_offsets(self, tmin=None, tmax=None):
+        return lambda gen, *args, **kwargs: gen.get_gnss_offsets(
+            self._engine, self.get_sources(), *args, **kwargs)
+
+    @collect
+    def dump_data2(self, path, tmin=None, tmax=None, overwrite=False):
+        self.source_generator.dump_data(path)
+        return lambda gen, *args, **kwargs: gen.dump_data(
+            self._engine, self.get_sources(), *args, **kwargs)
+
+    @collect
+    def _get_time_ranges(self):
+        return lambda gen: [gen.get_time_range(self.get_sources())]
+
+    def get_time_range(self):
+        ranges = num.array(self._get_time_ranges())
+        print(ranges)
+        return ranges[:, 0].min(), ranges[:, 0].max()
+
+    def get_pile(self, tmin=None, tmax=None):
+        trs = self.get_waveforms(tmin, tmax)
+        return pile(trs)
 
 
 def draw_scenario_gmt(generator, fn):
