@@ -28,7 +28,7 @@ class ScenarioTestCase(unittest.TestCase):
         seed=20,
         center_lat=42.6,
         center_lon=13.3,
-        radius=80*km,
+        radius=60*km,
         target_generators=[
             targets.RandomStationGenerator(
                 nstations=5),
@@ -40,6 +40,8 @@ class ScenarioTestCase(unittest.TestCase):
             targets.InSARGenerator(
                 noise_generator=targets.insar.AtmosphericNoiseGenerator(
                     amplitude=1e-5)),
+            targets.GNSSCampaignGenerator(
+                station_generator=targets.RandomStationGenerator())
             ],
         source_generator=scenario.DCSourceGenerator(
             time_min=util.str_to_time('2017-01-01 00:00:00'),
@@ -65,7 +67,7 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_store(store_id),
         'GF Store "%s" is not available' % store_id)
-    def _test_scenario(self):
+    def test_scenario(self):
         generator = self.generator
         engine = gf.get_engine()
         generator.init_modelling(engine)
@@ -73,6 +75,7 @@ class ScenarioTestCase(unittest.TestCase):
         generator.get_stations()
         generator.get_waveforms()
         generator.get_insar_scenes()
+        generator.get_gnss_campaigns()
 
     @unittest.skipUnless(
         have_store(store_id),
@@ -145,7 +148,7 @@ class ScenarioTestCase(unittest.TestCase):
             trs.sort(key=lambda tr: tr.nslc_id)
             self.assert_traces_almost_equal(trs, ref_trs)
 
-    def _test_scenario_insar(self):
+    def test_scenario_insar(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
 
@@ -159,7 +162,21 @@ class ScenarioTestCase(unittest.TestCase):
         s = collection.get_scenario('insar')
         s.ensure_insar_scenes()
 
-    def _test_scenario_map(self):
+    def test_scenario_gnss(self):
+        tempdir = mkdtemp(prefix='pyrocko-scenario')
+        self.tempdirs.append(tempdir)
+
+        generator = self.generator
+        engine = gf.get_engine()
+        generator.init_modelling(engine)
+
+        collection = scenario.ScenarioCollection(tempdir, engine)
+        collection.add_scenario('gnss', generator)
+
+        s = collection.get_scenario('gnss')
+        assert len(s.get_gnss_campaigns()) == 1
+
+    def test_scenario_map(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
 

@@ -1,5 +1,5 @@
 import numpy as num
-from ..base import LocationGenerator
+from ..base import LocationGenerator, Generator
 
 
 class TargetGenerator(LocationGenerator):
@@ -29,9 +29,13 @@ class TargetGenerator(LocationGenerator):
     def get_insar_scenes(self, engine, sources, tmin=None, tmax=None):
         return []
 
-    def get_gps_offsets(self, engine, sources,  tmin=None, tmax=None):
+    def get_gnss_campaign(self, engine, sources, tmin=None, tmax=None):
         return []
 
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
         return []
+
+
+class NoiseGenerator(Generator):
+    pass

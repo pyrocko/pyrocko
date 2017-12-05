@@ -28,6 +28,7 @@ class ScenarioCollectionItem(Object):
         self._path = None
         self._pile = None
         self._engine = None
+        self._scenes = None
 
     def set_base_path(self, path):
         self._path = path
@@ -81,11 +82,15 @@ class ScenarioCollectionItem(Object):
             path_insar = self.get_path('insar')
             util.ensuredir(path_insar)
 
-            fns = util.select_files([path_insar], regex='\.(npz)$')
+            fns = util.select_files([path_insar], regex='\.(npz)$',
+                                    show_progress=False)
             for f in fns:
                 self._scenes.append(Scene.load(f))
 
         return self._scenes
+
+    def get_gnss_campaigns(self):
+        return self.get_generator().get_gnss_campaigns()
 
     def make_map(self, path_pdf):
         draw_scenario_gmt(self.get_generator(), path_pdf)

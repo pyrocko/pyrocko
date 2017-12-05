@@ -70,24 +70,24 @@ class ScenarioGenerator(LocationGenerator):
 
     @collect
     def get_waveforms(self, tmin=None, tmax=None):
-        return lambda gen, *args, **kwargs: gen.get_waveforms(
-            self._engine, self.get_sources(), *args, **kwargs)
+        return lambda gen, *a, **kw: gen.get_waveforms(
+            self._engine, self.get_sources(), *a, **kw)
 
     @collect
     def get_insar_scenes(self, tmin=None, tmax=None):
-        return lambda gen, *args, **kwargs: gen.get_insar_scenes(
-            self._engine, self.get_sources(), *args, **kwargs)
+        return lambda gen, *a, **kw: gen.get_insar_scenes(
+            self._engine, self.get_sources(), *a, **kw)
 
     @collect
-    def get_gnss_offsets(self, tmin=None, tmax=None):
-        return lambda gen, *args, **kwargs: gen.get_gnss_offsets(
-            self._engine, self.get_sources(), *args, **kwargs)
+    def get_gnss_campaigns(self, tmin=None, tmax=None):
+        return lambda gen, *a, **kw: gen.get_gnss_campaign(
+            self._engine, self.get_sources(), *a, **kw)
 
     @collect
     def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
         self.source_generator.dump_data(path)
-        return lambda gen, *args, **kwargs: gen.dump_data(
-            self._engine, self.get_sources(), *args, **kwargs)
+        return lambda gen, *a, **kw: gen.dump_data(
+            self._engine, self.get_sources(), *a, **kw)
 
     @collect
     def _get_time_ranges(self):
@@ -105,8 +105,8 @@ class ScenarioGenerator(LocationGenerator):
 def draw_scenario_gmt(generator, fn):
     from pyrocko import automap
 
-    lat, lon = generator.station_generator.get_center_latlon()
-    radius = generator.station_generator.get_radius()
+    lat, lon = generator.get_center_latlon()
+    radius = generator.get_radius()
 
     m = automap.Map(
         width=30.,
@@ -156,11 +156,11 @@ def draw_scenario_gmt(generator, fn):
             M=True,
             *m.jxyr)
 
-    for patch in generator.get_insar_patches():
-        symbol_size = 50.
-        coords = num.array(patch.get_corner_coordinates())
-        m.gmt.psxy(in_rows=num.fliplr(coords),
-                   L=True,
-                   *m.jxyr)
+    # for patch in generator.get_insar_patches():
+    #     symbol_size = 50.
+    #     coords = num.array(patch.get_corner_coordinates())
+    #     m.gmt.psxy(in_rows=num.fliplr(coords),
+    #                L=True,
+    #                *m.jxyr)
 
     m.save(fn)

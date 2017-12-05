@@ -8,8 +8,8 @@ from pyrocko import orthodrome as od
 from pyrocko.guts import Float, Timestamp, Tuple, StringChoice, Bool, Object,\
     String
 
-from .base import TargetGenerator
-from ..base import Generator, get_gsshg
+from .base import TargetGenerator, NoiseGenerator
+from ..base import get_gsshg
 
 DEFAULT_STORE_ID = 'ak135_static'
 
@@ -247,7 +247,7 @@ class ScenePatch(Object):
             phi=phi)
 
 
-class AtmosphericNoiseGenerator(Generator):
+class AtmosphericNoiseGenerator(NoiseGenerator):
 
     amplitude = Float.T(
         default=1.,
@@ -352,7 +352,7 @@ class InSARGenerator(TargetGenerator):
     mask_water = Bool.T(
         default=True,
         help='Mask out water bodies.')
-    noise_generator = Generator.T(
+    noise_generator = NoiseGenerator.T(
         default=AtmosphericNoiseGenerator.D(),
         help='Add atmospheric noise model after Hansen, 2001.')
 

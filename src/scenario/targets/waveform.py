@@ -12,8 +12,7 @@ from pyrocko import gf, model, util, trace, io
 from pyrocko.io_common import FileSaveError
 
 from .station import StationGenerator, RandomStationGenerator
-from .base import TargetGenerator
-from ..base import Generator
+from .base import TargetGenerator, NoiseGenerator
 
 DEFAULT_STORE_ID = 'global_2s'
 
@@ -21,7 +20,7 @@ logger = logging.getLogger('pyrocko.scenario.targets.waveform')
 guts_prefix = 'pf.scenario'
 
 
-class NoiseGenerator(Generator):
+class WaveformNoiseGenerator(NoiseGenerator):
 
     def get_time_increment(self, deltat):
         return deltat * 1024
@@ -35,7 +34,7 @@ class NoiseGenerator(Generator):
             tr.add(ntr)
 
 
-class WhiteNoiseGenerator(NoiseGenerator):
+class WhiteNoiseGenerator(WaveformNoiseGenerator):
 
     scale = Float.T(default=1e-6)
 
@@ -70,7 +69,7 @@ class WaveformGenerator(TargetGenerator):
     station_generator = StationGenerator.T(
         default=RandomStationGenerator.D())
 
-    noise_generator = NoiseGenerator.T(
+    noise_generator = WaveformNoiseGenerator.T(
         default=WhiteNoiseGenerator.D())
 
     store_id = gf.StringID.T(
