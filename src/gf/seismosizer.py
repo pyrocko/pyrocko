@@ -2582,7 +2582,7 @@ def process_static(work, psources, ptargets, engine, nthreads=0):
                     e.context = OutOfBoundsContext(
                         source=sources[0],
                         target=targets[0],
-                        distance=sources[0].distance_to(targets[0]),
+                        distance=0.,
                         components=components)
                     raise
                 result = engine._post_process_statics(
