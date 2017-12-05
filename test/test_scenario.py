@@ -4,6 +4,7 @@ from tempfile import mkdtemp
 import shutil
 
 from pyrocko import scenario, util, gf
+from pyrocko.scenario import targets
 
 km = 1000.
 
@@ -29,15 +30,15 @@ class ScenarioTestCase(unittest.TestCase):
         center_lon=13.3,
         radius=80*km,
         target_generators=[
-            scenario.targets.RandomStationGenerator(
+            targets.RandomStationGenerator(
                 nstations=5),
-            scenario.targets.WaveformGenerator(
+            targets.WaveformGenerator(
                 store_id=store_id,
-                station_generator=scenario.targets.RandomStationGenerator(),
-                noise_generator=scenario.targets.WhiteNoiseGenerator(),
+                station_generator=targets.RandomStationGenerator(),
+                noise_generator=targets.waveform.WhiteNoiseGenerator(),
                 seismogram_quantity='velocity'),
-            scenario.targets.InSARDisplacementGenerator(
-                noise_generator=scenario.targets.AtmosphericNoiseGenerator(
+            targets.InSARGenerator(
+                noise_generator=targets.insar.AtmosphericNoiseGenerator(
                     amplitude=1e-5)),
             ],
         source_generator=scenario.DCSourceGenerator(
@@ -64,18 +65,14 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_store(store_id),
         'GF Store "%s" is not available' % store_id)
-    def test_scenario(self):
+    def _test_scenario(self):
         generator = self.generator
         engine = gf.get_engine()
         generator.init_modelling(engine)
 
-        stations = generator.get_stations()
-        print(stations)
-
-        trs = generator.get_waveforms()
-        print(trs)
-
-        scenes = generator.get_insar_scenes()
+        generator.get_stations()
+        generator.get_waveforms()
+        generator.get_insar_scenes()
 
     @unittest.skipUnless(
         have_store(store_id),
@@ -135,9 +132,9 @@ class ScenarioTestCase(unittest.TestCase):
             trs.sort(key=lambda tr: tr.nslc_id)
             self.assert_traces_almost_equal(trs, ref_trs)
 
-        p = s.get_waveform_pile()
         tmin, tmax = s.get_time_range()
         s.ensure_waveforms(tmin, tmax)
+        p = s.get_waveform_pile()
 
         for ref_trs, source in zip(
                 ref_trs_list,
@@ -176,7 +173,6 @@ class ScenarioTestCase(unittest.TestCase):
         s.get_map()
 
     def assert_traces_almost_equal(self, trs1, trs2):
-        print(len(trs1), len(trs2))
         assert len(trs1) == len(trs2)
         for (tr1, tr2) in zip(trs1, trs2):
             tr1.assert_almost_equal(tr2)

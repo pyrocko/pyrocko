@@ -177,7 +177,7 @@ class WaveformGenerator(TargetGenerator):
             nsamples = int(round((tr_tmax - tr_tmin) / deltat)) + 1
 
             tr = trace.Trace(
-                nslc[0], nslc[1], nslc[2], nslc[3],
+                *nslc,
                 tmin=tr_tmin,
                 ydata=num.zeros(nsamples),
                 deltat=deltat)
@@ -233,12 +233,10 @@ class WaveformGenerator(TargetGenerator):
             + '%(location)s_%(channel)s_%(tmin)s_%(tmax)s.mseed')
 
         tmin_all, tmax_all = self.get_time_range(sources)
-
         tmin = tmin if tmin is not None else tmin_all
         tmax = tmax if tmax is not None else tmax_all
 
         tinc = self.get_useful_time_increment(engine, sources)
-
         tmin = math.floor(tmin / tinc) * tinc
         tmax = math.ceil(tmax / tinc) * tinc
 

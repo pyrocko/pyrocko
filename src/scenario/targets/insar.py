@@ -16,7 +16,7 @@ DEFAULT_STORE_ID = 'ak135_static'
 km = 1e3
 d2r = num.pi/180.
 
-logger = logging.getLogger('pyrocko.scenario.base')
+logger = logging.getLogger('pyrocko.scenario.targets.insar')
 guts_prefix = 'pf.scenario'
 
 
@@ -320,7 +320,7 @@ class AtmosphericNoiseGenerator(Generator):
         return noise
 
 
-class InSARDisplacementGenerator(TargetGenerator):
+class InSARGenerator(TargetGenerator):
     # https://sentinel.esa.int/web/sentinel/user-guides/sentinel-1-sar/acquisition-modes/interferometric-wide-swath
     store_id = String.T(
         default=DEFAULT_STORE_ID,
@@ -386,16 +386,14 @@ class InSARDisplacementGenerator(TargetGenerator):
 
         return targets
 
-    def get_insar_scenes(self, engine, sources,
-                         tmin=None, tmax=None, overwrite=False):
+    def get_insar_scenes(self, engine, sources, tmin=None, tmax=None):
         logger.info('Calculating InSAR displacement...')
 
         scenario_tmin, scenario_tmax = self.get_time_range(sources)
-        targets = self.get_targets()
 
         resp = engine.process(
             sources,
-            targets,
+            self.get_targets(),
             nthreads=0)
 
         scenes = [res.scene for res in resp.static_results()]
@@ -427,7 +425,6 @@ class InSARDisplacementGenerator(TargetGenerator):
 
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
-        from kite import Scene
 
         path_insar = op.join(path, 'insar')
         util.ensuredir(path_insar)
@@ -443,12 +440,10 @@ class InSARDisplacementGenerator(TargetGenerator):
         def scene_fn(track):
             return fn.format(track_direction=track.lower())
 
-        scenes = []
         for track in ('ascending', 'descending'):
             fn = '%s.yml' % scene_fn(track)
             if op.exists(fn) and not overwrite:
                 logger.debug('Files exist %s' % fn)
-                scenes.load(Scene.load(scene_fn(track)))
                 continue
 
             scenes = self.get_insar_scenes(engine, sources, tmin, tmax)

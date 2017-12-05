@@ -15,8 +15,10 @@ class TargetGenerator(LocationGenerator):
 
         return num.min(times), num.max(times)
 
-    def set_workdir(self, path):
-        self._workdir = path
+    def get_targets(self):
+        ''' Returns a list of targets, used class-internally to forward model.
+        '''
+        return []
 
     def get_stations(self):
         return []

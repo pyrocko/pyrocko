@@ -84,7 +84,7 @@ class ScenarioGenerator(LocationGenerator):
             self._engine, self.get_sources(), *args, **kwargs)
 
     @collect
-    def dump_data2(self, path, tmin=None, tmax=None, overwrite=False):
+    def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
         self.source_generator.dump_data(path)
         return lambda gen, *args, **kwargs: gen.dump_data(
             self._engine, self.get_sources(), *args, **kwargs)
@@ -95,8 +95,7 @@ class ScenarioGenerator(LocationGenerator):
 
     def get_time_range(self):
         ranges = num.array(self._get_time_ranges())
-        print(ranges)
-        return ranges[:, 0].min(), ranges[:, 0].max()
+        return ranges.min(), ranges.max()
 
     def get_pile(self, tmin=None, tmax=None):
         trs = self.get_waveforms(tmin, tmax)

@@ -59,13 +59,14 @@ class ScenarioCollectionItem(Object):
         return any(tr.data_len() > 0 for tr in trs_have)
 
     def get_waveform_pile(self):
+        self.ensure_data()
+
         if self._pile is None:
             path_waveforms = self.get_path('waveforms')
-            print('get_pile_', path_waveforms)
             util.ensuredir(path_waveforms)
             fns = util.select_files(
                 [path_waveforms], show_progress=False)
-            print(path_waveforms)
+
             self._pile = pile.Pile()
             if fns:
                 self._pile.load_files(
@@ -104,25 +105,26 @@ class ScenarioCollectionItem(Object):
         return path
 
     def ensure_data(self, tmin=None, tmax=None, overwrite=False):
-        return self.get_generator().dump_data2(
+        return self.get_generator().dump_data(
             self.get_path(), tmin, tmax, overwrite)
 
-    def ensure_waveforms(self, tmin=None, tmax=None):
-        self.ensure_data(tmin, tmax, overwrite=False)
+    def ensure_waveforms(self, tmin=None, tmax=None, overwrite=False):
+        self.ensure_data(tmin, tmax, overwrite)
         return self.get_waveform_pile()
 
-    def ensure_insar_scenes(self, tmin=None, tmax=None):
-        self.ensure_data(tmin, tmax, overwrite=False)
+    def ensure_insar_scenes(self, tmin=None, tmax=None, overwrite=False):
+        self.ensure_data(tmin, tmax, overwrite)
         return self.get_insar_scenes()
 
     def get_archive(self):
+        self.ensure_data()
+
         path_tar = self.get_path('archive.tar')
         if not op.exists(path_tar):
             path_base = self.get_path()
             path_waveforms = self.get_path('waveforms')
+            self.ensure_data()
 
-            tmin, tmax = self.get_time_range()
-            self.ensure_waveforms(tmin, tmax)
             fns = util.select_files(
                 [path_waveforms], show_progress=False)
 
