@@ -14,6 +14,8 @@ from pyrocko import orthodrome
 from pyrocko.orthodrome import wrap
 from pyrocko.guts import Object, Float, String, List
 
+from .location import Location
+
 logger = logging.getLogger('pyrocko.model.station')
 
 guts_prefix = 'pf'
@@ -129,21 +131,17 @@ class Channel(Object):
         return '%s %f %f %g' % (self.name, self.azimuth, self.dip, self.gain)
 
 
-class Station(Object):
+class Station(Location):
     network = String.T()
     station = String.T()
     location = String.T()
-    lat = Float.T(default=0.0)
-    lon = Float.T(default=0.0)
-    elevation = Float.T(default=0.0)
-    depth = Float.T(default=0.0)
     name = String.T(default='')
     channels = List.T(Channel.T())
 
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0,
                  elevation=0.0, depth=0.0, name='', channels=None):
 
-        Object.__init__(
+        Location.__init__(
             self,
             network=network, station=station, location=location,
             lat=float(lat), lon=float(lon),

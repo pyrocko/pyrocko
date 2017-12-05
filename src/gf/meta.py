@@ -19,7 +19,7 @@ from pyrocko.guts import (Object, SObject, String, StringChoice,
                           List, ValidationError, Timestamp, Tuple, Dict)
 from pyrocko.guts import dump, load  # noqa
 from pyrocko.guts_array import literal, Array
-from pyrocko.model import Location
+from pyrocko.model import Location, gnss
 
 from pyrocko import cake, orthodrome, spit, moment_tensor, trace
 
@@ -91,6 +91,11 @@ class Result(SeismosizerResult):
 
 class StaticResult(SeismosizerResult):
     result = Dict.T()
+
+
+class GNSSCampaignResult(StaticResult):
+    campaign = gnss.GNSSCampaign.T(
+        optional=True)
 
 
 class ComponentSchemeDescription(Object):

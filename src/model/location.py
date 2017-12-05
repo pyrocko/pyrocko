@@ -52,6 +52,10 @@ class Location(Object):
         optional=True,
         help='eastward cartesian offset from reference point [m]')
 
+    elevation = Float.T(
+        default=0.0,
+        help='elevation [m]')
+
     depth = Float.T(
         default=0.0,
         help='depth [m]')
