@@ -19,6 +19,7 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 
 from pyrocko.guts import Float, Int, Tuple, List, Object, String
+from pyrocko.model import Location
 from pyrocko import gf, util, trace, cake
 
 
@@ -519,7 +520,7 @@ class PsCmpArray(PsCmpObservation):
                 self.n_steps_lon, self.slon, self.elon)
 
 
-class PsCmpRectangularSource(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
     '''
     Input parameters have to be in:
     [deg] for reference point (lat, lon) and angles (rake, strike, dip)
@@ -604,7 +605,7 @@ MTDev = {
     }
 
 
-class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
     '''
     Compound dislocation of 3 perpendicular, rectangular sources to approximate
     an opening single force couple. NED coordinate system!
@@ -636,7 +637,7 @@ class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
         return cmpd
 
 
-class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpShearSF(Location, gf.seismosizer.Cloneable):
 
     length = Float.T(default=1.0 * km)
     width = Float.T(default=1.0 * km)
@@ -652,7 +653,7 @@ class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
         return [PsCmpRectangularSource(**kwargs)]
 
 
-class PsCmpMomentTensor(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
     '''
     Mapping of Moment Tensor components to rectangular faults.
     Only one component at a time valid! NED coordinate system!
