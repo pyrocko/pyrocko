@@ -1,3 +1,5 @@
+import math
+
 from pyrocko.guts import (Object, Float, String, List, StringChoice,
                           DateTimestamp)
 from pyrocko.model import Location
@@ -15,6 +17,20 @@ class GNSSComponent(Object):
     error = Float.T(
         default=0.,
         help='Error of the measurement')
+
+    def __add__(self, other):
+        if not isinstance(other, self.__class__):
+            raise AttributeError('Other has to be of instance %s'
+                                 % self.__class__)
+        comp = self.__class__()
+        comp.shift = self.shift + other.shift
+        comp.error = math.sqrt(self.error**2 + other.error**2)
+        return comp
+
+    def __iadd__(self, other):
+        self.shift += other.shift
+        self.error = math.sqrt(self.error**2 + other.error**2)
+        return self
 
 
 class GNSSStation(Location):

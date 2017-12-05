@@ -170,6 +170,11 @@ class ModelTestCase(unittest.TestCase):
 
         campaign2 = load(filename=fn)
 
+        s1 = campaign.stations[0]
+
+        s_add = s1.north + s1.north
+        assert s_add.shift == (s1.north.shift + s1.north.shift)
+
         assert len(campaign.stations) == len(campaign2.stations)
 
 

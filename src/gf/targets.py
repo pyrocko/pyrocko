@@ -303,11 +303,11 @@ class GNSSCampaignTarget(StaticTarget):
 
         for ista in range(self.ntargets):
             north = gnss.GNSSComponent(
-                shift=statics['displacement.n'][ista])
+                shift=float(statics['displacement.n'][ista]))
             east = gnss.GNSSComponent(
-                shift=statics['displacement.e'][ista])
+                shift=float(statics['displacement.e'][ista]))
             up = gnss.GNSSComponent(
-                shift=-statics['displacement.d'][ista])
+                shift=-float(statics['displacement.d'][ista]))
 
             coords = self.coords5
             station = gnss.GNSSStation(
