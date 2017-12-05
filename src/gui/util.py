@@ -273,6 +273,8 @@ class ValControl(qc.QObject):
 
     def v2s(self, value):
         a = math.log(self.ma/self.mi) / 10000.
+        if value == 0:
+            return 0
         return int(round(math.log(value/self.mi) / a))
 
     def setup(self, name, mi, ma, cur, ind):
