@@ -1169,33 +1169,38 @@ on
         logger.debug('===== begin pscmp output =====\n'
                      '%s===== end pscmp output =====' % output_str.decode())
 
-        errmess = []
+        errmsg = []
         if proc.returncode != 0:
-            errmess.append(
+            errmsg.append(
                 'pscmp had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            errmess.append('pscmp emitted something via stderr')
+            errmsg.append('pscmp emitted something via stderr')
 
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in pscmp output")
+            errmsg.append("the string 'error' appeared in pscmp output")
 
-        if errmess:
+        if errmsg:
             self.keep_tmp = True
 
             os.chdir(old_wd)
-            raise PsCmpError(b'''
+            raise PsCmpError('''
 ===== begin pscmp input =====
-%s===== end pscmp input =====
+{pscmp_input}===== end pscmp input =====
 ===== begin pscmp output =====
-%s===== end pscmp output =====
+{pscmp_output}===== end pscmp output =====
 ===== begin pscmp error =====
-%s===== end pscmp error =====
-%s
-pscmp has been invoked as "%s"
-in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.tempdir))
+{pscmp_error}===== end pscmp error =====
+{error_messages}
+pscmp has been invoked as "{call}"
+in the directory {dir}'''.format(
+                pscmp_input=input_str,
+                pscmp_output=output_str,
+                pscmp_error=error_str,
+                error_messages='\n'.join(errmsg),
+                call=program,
+                dir=self.tempdir)
+                .lstrip())
 
         self.pscmp_output = output_str
         self.pscmp_error = error_str
