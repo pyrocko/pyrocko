@@ -5,5 +5,5 @@ from .insar import *  # noqa
 from .gnss_campaign import *  # noqa
 
 AVAILABLE_TARGETS =\
-    [RandomStationGenerator, WaveformGenerator,InSARGenerator,  # noqa
+    [RandomStationGenerator, WaveformGenerator, InSARGenerator,  # noqa
      GNSSCampaignGenerator]  # noqa

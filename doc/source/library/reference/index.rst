@@ -10,6 +10,7 @@ Reference
    model
    client
    dataset
+   scenario
    plot
    gui
    streaming
