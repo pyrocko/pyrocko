@@ -1,20 +1,16 @@
 The ``scenario`` subpackage
 ============================
 
-Available Scenario Target Generators
--------------------------------------
-
-We can create different synthetics targets within the scenario:
-
-.. toctree ::
-
-    scenario/targets
-
 
 The ScenarioGenerator (``pyrocko.scenario.ScenarioGenerator``)
 ----------------------------------------------------------------
 
 This module bundles the ``TargetGenerators`` together.
+Available Scenario Target Generators
+
+.. toctree ::
+
+    scenario/targets
 
 .. automodule :: pyrocko.scenario.scenario
     :members:
