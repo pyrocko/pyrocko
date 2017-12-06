@@ -123,7 +123,6 @@ class SRTMGL3(dataset.TiledGlobalDataset):
         try:
             # we have to follow the oauth redirect here...
             r = requests.get(url, auth=cred)
-            print(r.url)
             self.download_file(
                 r.url, fpath, username=cred[0], password=cred[1])
         except Exception as e:
