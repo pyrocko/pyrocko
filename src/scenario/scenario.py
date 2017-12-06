@@ -2,14 +2,18 @@ import numpy as num
 import logging
 
 from pyrocko.guts import List
-from pyrocko import moment_tensor, gmtpy, pile
+from pyrocko import moment_tensor, gmtpy, pile, util
 
 from .base import LocationGenerator, ScenarioError
 from .sources import SourceGenerator, DCSourceGenerator
-from .targets import TargetGenerator
+from .targets import TargetGenerator, AVAILABLE_TARGETS
 
 logger = logging.getLogger('pyrocko.scenario')
 guts_prefix = 'pf.scenario'
+
+
+class CannotCreate(Exception):
+    pass
 
 
 class ScenarioGenerator(LocationGenerator):
@@ -86,8 +90,12 @@ class ScenarioGenerator(LocationGenerator):
     @collect
     def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
         self.source_generator.dump_data(path)
-        return lambda gen, *a, **kw: gen.dump_data(
-            self._engine, self.get_sources(), *a, **kw)
+
+        def dump_data(gen, *a, **kw):
+            logger.info('Creating files from %s...' % gen.__class__.__name__)
+            return gen.dump_data(self._engine, self.get_sources(), *a, **kw)
+
+        return dump_data
 
     @collect
     def _get_time_ranges(self):
@@ -100,6 +108,40 @@ class ScenarioGenerator(LocationGenerator):
     def get_pile(self, tmin=None, tmax=None):
         trs = self.get_waveforms(tmin, tmax)
         return pile(trs)
+
+    def make_map(self, filename):
+        logger.info('Plotting scenarios\' map...')
+        draw_scenario_gmt(self, filename)
+
+    @classmethod
+    def initialize(
+            cls, path,
+            center_lat=None, center_lon=None, radius=None,
+            targets=AVAILABLE_TARGETS,
+            force=False):
+        import os.path as op
+
+        if op.exists(path) and not force:
+            raise CannotCreate('Directory %s alread exists! May use force?'
+                               % path)
+
+        util.ensuredir(path)
+        fn = op.join(path, 'scenario.yml')
+        logger.debug('Writing new scenario to %s' % fn)
+
+        scenario = cls()
+        scenario.target_generators.extend([t() for t in targets])
+
+        for gen in scenario.target_generators:
+            gen.update_hierarchy(scenario)
+
+        scenario.center_lat = center_lat
+        scenario.center_lon = center_lon
+        scenario.radius = radius
+
+        scenario.dump(filename=fn)
+
+        return scenario
 
 
 def draw_scenario_gmt(generator, fn):
@@ -114,26 +156,14 @@ def draw_scenario_gmt(generator, fn):
         lat=lat,
         lon=lon,
         radius=radius,
-        show_topo=False,
+        show_topo=True,
         show_grid=True,
-        show_rivers=False,
-        color_wet=(216, 242, 254),
-        color_dry=(238, 236, 230))
+        show_rivers=True,
+        # color_wet=(216, 242, 254),
+        # color_dry=(238, 236, 230)
+        )
 
-    stations = generator.get_stations()
-    lats = [s.lat for s in stations]
-    lons = [s.lon for s in stations]
-
-    m.gmt.psxy(
-        in_columns=(lons, lats),
-        S='t8p',
-        G='black',
-        *m.jxyr)
-
-    if len(stations) < 20:
-        for station in stations:
-            m.add_label(station.lat, station.lon, '.'.join(
-                x for x in (station.network, station.station) if x))
+    m.add_stations(generator.get_stations())
 
     sources = generator.get_sources()
 

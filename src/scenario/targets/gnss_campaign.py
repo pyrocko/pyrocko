@@ -11,6 +11,7 @@ from .station import RandomStationGenerator, StationGenerator
 DEFAULT_STORE_ID = 'ak135_static'
 
 logger = logging.getLogger('pyrocko.scenario.targets.gnss_campaign')
+guts_prefix = 'pf.scenario'
 
 
 class GPSNoiseGenerator(NoiseGenerator):
@@ -21,19 +22,16 @@ class GPSNoiseGenerator(NoiseGenerator):
 
 class GNSSCampaignGenerator(TargetGenerator):
     station_generator = StationGenerator.T(
-        default=RandomStationGenerator.D())
+        default=RandomStationGenerator.D(),
+        help='The StationGenerator for creating the stations.')
 
     noise_generator = NoiseGenerator.T(
-        default=GPSNoiseGenerator.D())
+        default=GPSNoiseGenerator.D(),
+        help='Add Synthetic noise to the GNSS displacements.')
 
     store_id = gf.StringID.T(
         default=DEFAULT_STORE_ID,
-        optional=True)
-
-    def get_store_id(self):
-        if self.store_id is None:
-            return DEFAULT_STORE_ID
-        return self.store_id
+        help='The GF store to use for forward-calculations.')
 
     def get_stations(self):
         return self.station_generator.get_stations()
@@ -46,13 +44,11 @@ class GNSSCampaignGenerator(TargetGenerator):
         target = gf.GNSSCampaignTarget(
             lats=lats,
             lons=lons,
-            store_id=self.get_store_id())
+            store_id=self.store_id)
 
         return [target]
 
     def get_gnss_campaign(self, engine, sources, tmin=None, tmax=None):
-        logger.info('Calculating GNSS campaign displacement...')
-
         resp = engine.process(
             sources,
             self.get_targets(),

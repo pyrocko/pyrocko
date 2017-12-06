@@ -1044,6 +1044,28 @@ class Map(Object):
 
         self._cities_minpop = minpop
 
+    def add_stations(self, stations, psxy_style=dict(S='t8p', G='black')):
+        lats = [s.lat for s in stations]
+        lons = [s.lon for s in stations]
+
+        self.gmt.psxy(
+            in_columns=(lons, lats),
+            *self.jxyr, **psxy_style)
+
+        for station in stations:
+            self.add_label(station.lat, station.lon, '.'.join(
+                x for x in (station.network, station.station) if x))
+
+    def add_kite_scene(self, scene):
+        tile = FloatTile(
+            scene.frame.llLon,
+            scene.frame.llLat,
+            scene.frame.dLon,
+            scene.frame.dLat,
+            scene.displacement)
+
+        return tile
+
     def draw_plates(self):
         from pyrocko.dataset import tectonics
 

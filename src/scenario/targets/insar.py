@@ -425,31 +425,29 @@ class InSARGenerator(TargetGenerator):
 
     def dump_data(self, engine, sources, path,
                   tmin=None, tmax=None, overwrite=False):
-
         path_insar = op.join(path, 'insar')
         util.ensuredir(path_insar)
-
-        logger.info('Dumping InSAR scenes to %s...' % path_insar)
 
         tmin, tmax = self.get_time_range(sources)
         tts = util.time_to_str
 
-        fn = op.join(path_insar, 'insar-scene-{track_direction}_%s_%s'
-                     % (tts(tmin), tts(tmax)))
+        fn_tpl = op.join(path_insar, 'insar-scene-{track_direction}_%s_%s'
+                         % (tts(tmin), tts(tmax)))
 
         def scene_fn(track):
-            return fn.format(track_direction=track.lower())
+            return fn_tpl.format(track_direction=track.lower())
 
         for track in ('ascending', 'descending'):
             fn = '%s.yml' % scene_fn(track)
+
             if op.exists(fn) and not overwrite:
-                logger.debug('Files exist %s' % fn)
+                logger.debug('Scene exists: %s' % fn)
                 continue
 
             scenes = self.get_insar_scenes(engine, sources, tmin, tmax)
             for sc in scenes:
-                sc.save(fn)
-
-            break
+                fn = scene_fn(sc.config.meta.orbit_direction)
+                logger.debug('Writing %s' % fn)
+                sc.save('%s.npz' % fn)
 
         return [path_insar]

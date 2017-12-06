@@ -67,23 +67,32 @@ class WhiteNoiseGenerator(WaveformNoiseGenerator):
 class WaveformGenerator(TargetGenerator):
 
     station_generator = StationGenerator.T(
-        default=RandomStationGenerator.D())
+        default=RandomStationGenerator.D(),
+        help='The StationGenerator for creating the stations.')
 
     noise_generator = WaveformNoiseGenerator.T(
-        default=WhiteNoiseGenerator.D())
+        default=WhiteNoiseGenerator.D(),
+        help='Add Synthetic noise on the waveforms.')
 
     store_id = gf.StringID.T(
         default=DEFAULT_STORE_ID,
-        optional=True)
+        help='The GF store to use for forward-calculations.')
 
     seismogram_quantity = StringChoice.T(
         choices=['displacement', 'velocity', 'acceleration', 'counts'],
         default='displacement')
 
-    vmin_cut = Float.T(default=2000.)
-    vmax_cut = Float.T(default=8000.)
+    vmin_cut = Float.T(
+        default=2000.,
+        help='Minimum velocity to seismic velicty to consider in the model.')
+    vmax_cut = Float.T(
+        default=8000.,
+        help='Maximum velocity to seismic velicty to consider in the model.')
 
-    fmin = Float.T(default=0.01)
+    fmin = Float.T(
+        default=0.01,
+        help='Minimum frequency/wavelength to resolve in the'
+             ' synthetic waveforms.')
 
     def get_stations(self):
         return self.station_generator.get_stations()
@@ -163,12 +172,12 @@ class WaveformGenerator(TargetGenerator):
         return tinc
 
     def get_waveforms(self, engine, sources, tmin=None, tmax=None):
-        logger.info('Calculating waveforms...')
         trs = {}
 
         tmin_all, tmax_all = self.get_time_range(sources)
         tmin = tmin if tmin is not None else tmin_all
         tmax = tmax if tmax is not None else tmax_all
+        tts = util.time_to_str
 
         for nslc, deltat in self.get_codes_to_deltat(engine, sources).items():
             tr_tmin = int(round(tmin / deltat)) * deltat
@@ -184,6 +193,10 @@ class WaveformGenerator(TargetGenerator):
             self.noise_generator.add_noise(tr)
 
             trs[nslc] = tr
+
+        logger.debug('Calculating waveforms between %s - %s...'
+                     % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
+                        tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
         for source in sources:
             targets = self.get_targets()
@@ -221,7 +234,6 @@ class WaveformGenerator(TargetGenerator):
                        tmin=None, tmax=None, overwrite=False):
         path_waveforms = op.join(path, 'waveforms')
         util.ensuredir(path_waveforms)
-        logger.info('Dumping waveforms to %s...' % path_waveforms)
 
         path_traces = op.join(
             path_waveforms,
@@ -234,6 +246,7 @@ class WaveformGenerator(TargetGenerator):
         tmin_all, tmax_all = self.get_time_range(sources)
         tmin = tmin if tmin is not None else tmin_all
         tmax = tmax if tmax is not None else tmax_all
+        tts = util.time_to_str
 
         tinc = self.get_useful_time_increment(engine, sources)
         tmin = math.floor(tmin / tinc) * tinc
@@ -249,10 +262,7 @@ class WaveformGenerator(TargetGenerator):
                 continue
 
             trs = self.get_waveforms(engine, sources, tmin_win, tmax_win)
-            tts = util.time_to_str
 
-            logger.debug('Saving traces between %s - %s...'
-                         % (tmin_win, tmax_win))
             try:
                 io.save(
                     trs, path_traces,
@@ -274,7 +284,6 @@ class WaveformGenerator(TargetGenerator):
     def dump_responses(self, path):
         path_responses = op.join(path, 'meta')
         util.ensuredir(path_responses)
-        logger.info('Dumping waveforms to %s...' % path_responses)
 
         raise NotImplementedError()
 

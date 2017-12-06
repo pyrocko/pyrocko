@@ -26,7 +26,7 @@ class RandomStationGenerator(StationGenerator):
         self._stations = None
 
     def nsl(self, istation):
-        return '', 'S%03i' % (istation + 1), '',
+        return 'CO', 'S%03i' % (istation + 1), '',
 
     def get_stations(self):
         if self._stations is None:
@@ -55,5 +55,5 @@ class RandomStationGenerator(StationGenerator):
 
         return num.min(dists), num.max(dists)
 
-    def dump_stations(self):
-        pass
+    def dump_data(self, engine, sources, path, *args, **kwargs):
+        return []

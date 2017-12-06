@@ -51,7 +51,9 @@ def random_lat(rstate, lat_min=-90., lat_max=90.):
 
 
 class Generator(Object):
-    seed = Int.T(optional=True)
+    seed = Int.T(
+        optional=True,
+        help='Random seed for a reproducible scenario.')
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)

@@ -16,6 +16,9 @@ class SourceGenerator(LocationGenerator):
         default=False,
         help='Avoid sources offshore under the ocean / lakes.')
 
+    radius = Float.T(
+        default=10*km)
+
 
 class DCSourceGenerator(SourceGenerator):
     nevents = Int.T(default=10)
