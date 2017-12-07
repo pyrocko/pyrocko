@@ -1066,6 +1066,28 @@ class Map(Object):
 
         return tile
 
+    def add_gnss_campaign(self, campaign,
+                          psxy_style=dict(G='black', W='1p,black')):
+
+        offsets = num.array([math.sqrt(s.east.shift**2 + s.north.shift**2)
+                             for s in campaign.stations])
+        scale = 1./offsets.max()
+
+        self.gmt.psvelo(
+            in_rows=[(s.lon, s.lat,
+                      s.east.shift, s.north.shift,
+                      s.east.error, s.north.error, 0,
+                      s.code)
+                     for s in campaign.stations],
+            h=2,
+            W='0.5p,black',
+            t='30',
+            G='black',
+            L=True,
+            S='e%d/0.95/8' % scale,
+            *self.jxyr
+            )
+
     def draw_plates(self):
         from pyrocko.dataset import tectonics
 

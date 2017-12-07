@@ -10,13 +10,13 @@ Use :mod:`pyrocko.gf` Greens' Function databases to generate earthquake data fro
 :class:`~pyrocko.scenario.sources.SourceGenerators`
 * :mod:`~pyrocko.scenario.sources`
 
-:class:`~pyrocko.scenario.targets.base. qRandomStationGenerator`
-* :class:`~pyrocko.scenario.targets.RandomStationGenerator`
-* :class:`~pyrocko.scenario.targets.WaveformGenerator`
-* :class:`~pyrocko.scenario.targets.InSARGenerator`
-* :class:`~pyrocko.scenario.targets.GNSSCampaignGenerator`
+TargetGenerators
+* :class:`~pyrocko.scenario.targets.station.StationGenerator`
+* :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator`
+* :class:`~pyrocko.scenario.targets.insar.InSARGenerator`
+* :class:`~pyrocko.scenario.targets.gnss_campaign.GNSSCampaignGenerator`
 
-Creating a scenario with ``colosseo` is straight forward, but if you want more help with the subcommands, use:
+Creating a scenario with ``colosseo`` is straight forward, but if you want more help with the subcommands, use:
 
 .. code-block :: sh
 

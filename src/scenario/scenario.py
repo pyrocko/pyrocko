@@ -156,19 +156,16 @@ def draw_scenario_gmt(generator, fn):
         lat=lat,
         lon=lon,
         radius=radius,
-        show_topo=True,
+        show_topo=False,
         show_grid=True,
         show_rivers=True,
         # color_wet=(216, 242, 254),
         # color_dry=(238, 236, 230)
         )
 
-    m.add_stations(generator.get_stations())
+    # m.add_stations(generator.get_stations())
 
-    sources = generator.get_sources()
-
-    for source in sources:
-
+    for source in generator.get_sources():
         event = source.pyrocko_event()
 
         mt = event.moment_tensor.m_up_south_east()
@@ -185,6 +182,9 @@ def draw_scenario_gmt(generator, fn):
             in_rows=[(source.lon, source.lat, 10) + m6 + (1, 0, 0)],
             M=True,
             *m.jxyr)
+    
+    for campaign in generator.get_gnss_campaigns():
+        m.add_gnss_campaign(campaign)
 
     # for patch in generator.get_insar_patches():
     #     symbol_size = 50.

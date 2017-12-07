@@ -1,6 +1,6 @@
 import numpy as num
 from pyrocko import model
-from pyrocko.guts import Int
+from pyrocko.guts import Int, String
 
 from .base import TargetGenerator
 
@@ -8,14 +8,16 @@ guts_prefix = 'pf.scenario'
 
 
 class StationGenerator(TargetGenerator):
-    pass
-
-
-class RandomStationGenerator(StationGenerator):
-
     nstations = Int.T(
         default=10,
         help='Number of randomly distributed stations.')
+
+    network_name = String.T(
+        default='CO',
+        help='Network name')
+
+
+class RandomStationGenerator(StationGenerator):
 
     def __init__(self, **kwargs):
         StationGenerator.__init__(self, **kwargs)
@@ -26,7 +28,7 @@ class RandomStationGenerator(StationGenerator):
         self._stations = None
 
     def nsl(self, istation):
-        return 'CO', 'S%03i' % (istation + 1), '',
+        return self.network_name, 'S%03i' % (istation + 1), '',
 
     def get_stations(self):
         if self._stations is None:

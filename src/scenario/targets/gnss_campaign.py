@@ -19,10 +19,24 @@ class GPSNoiseGenerator(NoiseGenerator):
         default=2.,
         help='Measurement duration in length')
 
+    def add_noise(self, campaign):
+        # https://www.nat-hazards-earth-syst-sci.net/15/875/2015/nhess-15-875-2015.pdf
+        waterlevel = 1. - (.99 + .0015 * self.measurement_duarion_days)
+
+        for ista, sta in enumerate(campaign.stations):
+            rstate = self.get_rstate(ista)
+
+            sta.north.error = 2e-5
+            sta.east.error = 2e-5
+
+            sta.north.shift += rstate.normal(0., sta.north.error)
+            sta.east.shift += rstate.normal(0., sta.east.error)
+
 
 class GNSSCampaignGenerator(TargetGenerator):
     station_generator = StationGenerator.T(
-        default=RandomStationGenerator.D(),
+        default=RandomStationGenerator(
+            network_name='GN'),
         help='The StationGenerator for creating the stations.')
 
     noise_generator = NoiseGenerator.T(
@@ -59,12 +73,16 @@ class GNSSCampaignGenerator(TargetGenerator):
         stacked_campaign = campaigns[0]
         for camp in campaigns[1:]:
             for ista, sta in enumerate(camp.stations):
-                stacked_campaign.stations[ista].north += sta.north
-                stacked_campaign.stations[ista].east += sta.east
-                stacked_campaign.stations[ista].up += sta.up
+                stacked_campaign.stations[ista].north.shift += sta.north.shift
+                stacked_campaign.stations[ista].east.shift += sta.east.shift
+                stacked_campaign.stations[ista].up.shift += sta.up.shift
 
         for ista, sta in enumerate(stacked_campaign.stations):
             sta.code = 'SY%02d' % (ista + 1)
+
+        if self.noise_generator is not None:
+            self.noise_generator.add_noise(stacked_campaign)
+            pass
 
         return [stacked_campaign]
 

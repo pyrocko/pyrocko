@@ -316,9 +316,10 @@ class GNSSCampaignTarget(StaticTarget):
                 east_shift=float(coords[ista, 2]),
                 north_shift=float(coords[ista, 3]),
                 elevation=float(coords[ista, 4]),
-                east=east,
                 north=north,
+                east=east,
                 up=up)
 
             campaign.add_station(station)
+
         return meta.GNSSCampaignResult(result=statics, campaign=campaign)

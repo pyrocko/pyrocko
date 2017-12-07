@@ -10,6 +10,7 @@ import numpy as num
 from pyrocko.guts import Object, Int, Bool, Float
 from pyrocko import orthodrome as od
 from pyrocko.dataset import gshhg
+from pyrocko import topo
 
 logger = logging.getLogger('pyrocko.scenario.base')
 
@@ -36,8 +37,11 @@ class ScenarioError(Exception):
 
 def is_on_land(lat, lon, method='topo'):
     if method == 'topo':
-        from pyrocko import topo
-        return topo.elevation(lat, lon) > 0.
+        elevation = topo.elevation(lat, lon)
+        if elevation is None:
+            return False
+        else:
+            return topo.elevation(lat, lon) > 0.
 
     elif method == 'coastlines':
         logger.debug('Testing %.4f %.4f' % (lat, lon))

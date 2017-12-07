@@ -1,7 +1,6 @@
 The ``scenario`` subpackage
 ============================
 
-
 The ScenarioGenerator (``pyrocko.scenario.ScenarioGenerator``)
 ----------------------------------------------------------------
 
@@ -25,4 +24,3 @@ A collection acts like an archive for a :mod:`pyrocko.scenario.ScenarioGenerator
 .. automodule :: pyrocko.scenario.collection
     :members:
     :show-inheritance:
-

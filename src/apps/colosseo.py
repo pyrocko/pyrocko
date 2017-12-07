@@ -44,9 +44,9 @@ usage = '''%(program_name)s <subcommand> [options] [--] <arguments> ...
 
 Subcommands:
 
-    init            %(init)s
-    fill         %(fill)s
-    map             %(map)s
+    init      %(init)s
+    fill      %(fill)s
+    map       %(map)s
 
 To get further help and a list of available options for any subcommand run:
 
@@ -116,21 +116,17 @@ def command_init(args):
     parser, options, args = cl_parse('init', args, setup=setup)
 
     if len(args) == 0:
-        args.append('.')
-
-    fn = get_scenario_yml(args[0])
-
-    if not fn:
         parser.print_help()
         sys.exit(1)
 
-    scenario_dims = [52, 5.4, 120.]
+    scenario_dims = [52, 5.4, 90.]
     scenario_dims[:len(args[1:])] = map(float, args[1:])
-    scenario_dims[2] *= km
 
     project_dir = op.abspath(args[0])
     logger.info('Initialising new scenario at %.2f, %.2f with radius %d km'
                 % tuple(scenario_dims))
+
+    scenario_dims[2] *= km
     scenario.ScenarioGenerator.initialize(project_dir, *scenario_dims,
                                           force=options.force)
 
