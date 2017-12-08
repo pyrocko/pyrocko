@@ -11,6 +11,7 @@ Use :mod:`pyrocko.gf` Greens' Function databases to generate earthquake data fro
 * :mod:`~pyrocko.scenario.sources`
 
 TargetGenerators
+
 * :class:`~pyrocko.scenario.targets.station.StationGenerator`
 * :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator`
 * :class:`~pyrocko.scenario.targets.insar.InSARGenerator`

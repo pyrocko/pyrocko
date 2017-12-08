@@ -31,7 +31,3 @@ Scenarios' TargetGenerators
 .. automodule :: pyrocko.scenario.targets.gnss_campaign
     :members:
     :show-inheritance:
-
-
-
-
