@@ -2,7 +2,7 @@ import numpy as num
 import logging
 
 from pyrocko.guts import List
-from pyrocko import moment_tensor, gmtpy, pile, util
+from pyrocko import pile, util
 
 from .base import LocationGenerator, ScenarioError
 from .sources import SourceGenerator, DCSourceGenerator
@@ -113,6 +113,40 @@ class ScenarioGenerator(LocationGenerator):
         logger.info('Plotting scenarios\' map...')
         draw_scenario_gmt(self, filename)
 
+    def draw_map(self, fn):
+        from pyrocko import automap
+
+        lat, lon = self.get_center_latlon()
+        radius = self.get_radius()
+
+        m = automap.Map(
+            width=30.,
+            height=30.,
+            lat=lat,
+            lon=lon,
+            radius=radius,
+            show_topo=False,
+            show_grid=True,
+            show_rivers=True,
+            color_wet=(216, 242, 254),
+            color_dry=(238, 236, 230)
+            )
+
+        self.source_generator.add_map_artists(m)
+
+        sources = self.get_sources()
+        for gen in self.target_generators:
+            gen.add_map_artists(self.get_engine(), sources, m)
+
+        # for patch in self.get_insar_patches():
+        #     symbol_size = 50.
+        #     coords = num.array(patch.get_corner_coordinates())
+        #     m.gmt.psxy(in_rows=num.fliplr(coords),
+        #                L=True,
+        #                *m.jxyr)
+
+        m.save(fn)
+
     @classmethod
     def initialize(
             cls, path,
@@ -145,52 +179,4 @@ class ScenarioGenerator(LocationGenerator):
 
 
 def draw_scenario_gmt(generator, fn):
-    from pyrocko import automap
-
-    lat, lon = generator.get_center_latlon()
-    radius = generator.get_radius()
-
-    m = automap.Map(
-        width=30.,
-        height=30.,
-        lat=lat,
-        lon=lon,
-        radius=radius,
-        show_topo=False,
-        show_grid=True,
-        show_rivers=True,
-        # color_wet=(216, 242, 254),
-        # color_dry=(238, 236, 230)
-        )
-
-    # m.add_stations(generator.get_stations())
-
-    for source in generator.get_sources():
-        event = source.pyrocko_event()
-
-        mt = event.moment_tensor.m_up_south_east()
-        xx = num.trace(mt) / 3.
-        mc = num.matrix([[xx, 0., 0.], [0., xx, 0.], [0., 0., xx]])
-        mc = mt - mc
-        mc = mc / event.moment_tensor.scalar_moment() * \
-            moment_tensor.magnitude_to_moment(5.0)
-        m6 = tuple(moment_tensor.to6(mc))
-
-        symbol_size = 20.
-        m.gmt.psmeca(
-            S='%s%g' % ('d', symbol_size / gmtpy.cm),
-            in_rows=[(source.lon, source.lat, 10) + m6 + (1, 0, 0)],
-            M=True,
-            *m.jxyr)
-    
-    for campaign in generator.get_gnss_campaigns():
-        m.add_gnss_campaign(campaign)
-
-    # for patch in generator.get_insar_patches():
-    #     symbol_size = 50.
-    #     coords = num.array(patch.get_corner_coordinates())
-    #     m.gmt.psxy(in_rows=num.fliplr(coords),
-    #                L=True,
-    #                *m.jxyr)
-
-    m.save(fn)
+    return generator.draw_map(fn)

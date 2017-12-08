@@ -451,3 +451,6 @@ class InSARGenerator(TargetGenerator):
                 sc.save('%s.npz' % fn)
 
         return [path_insar]
+
+    def add_map_artists(self, engine, sources, automap):
+        pass

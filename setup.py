@@ -567,6 +567,7 @@ subpacknames = [
     'pyrocko.streaming',
     'pyrocko.scenario',
     'pyrocko.scenario.targets',
+    'pyrocko.scenario.sources',
 ]
 
 setup(

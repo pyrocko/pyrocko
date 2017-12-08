@@ -59,3 +59,6 @@ class RandomStationGenerator(StationGenerator):
 
     def dump_data(self, engine, sources, path, *args, **kwargs):
         return []
+
+    def add_map_artists(self, engine, sources, automap):
+        automap.add_stations(self.get_stations())

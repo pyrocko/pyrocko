@@ -4,6 +4,8 @@ from pyrocko.guts import (Object, Float, String, List, StringChoice,
                           DateTimestamp)
 from pyrocko.model import Location
 
+guts_prefix = 'pf.gnss'
+
 
 class GNSSComponent(Object):
     unit = StringChoice.T(
@@ -14,9 +16,9 @@ class GNSSComponent(Object):
         default=0.,
         help='Shift in unit')
 
-    error = Float.T(
+    sigma = Float.T(
         default=0.,
-        help='Error of the measurement')
+        help='One sigma uncertainty of the measurement')
 
     def __add__(self, other):
         if not isinstance(other, self.__class__):
@@ -24,12 +26,12 @@ class GNSSComponent(Object):
                                  % self.__class__)
         comp = self.__class__()
         comp.shift = self.shift + other.shift
-        comp.error = math.sqrt(self.error**2 + other.error**2)
+        comp.sigma = math.sqrt(self.sigma**2 + other.sigma**2)
         return comp
 
     def __iadd__(self, other):
         self.shift += other.shift
-        self.error = math.sqrt(self.error**2 + other.error**2)
+        self.sigma = math.sqrt(self.sigma**2 + other.sigma**2)
         return self
 
 
@@ -85,3 +87,13 @@ class GNSSCampaign(Object):
 
     def add_station(self, station):
         return self.stations.append(station)
+
+    def get_station(self, station_code):
+        for sta in self.stations:
+            if sta.code == station_code:
+                return sta
+        raise ValueError('Could not find station %s' % station_code)
+
+    @property
+    def nstations(self):
+        return len(self.stations)

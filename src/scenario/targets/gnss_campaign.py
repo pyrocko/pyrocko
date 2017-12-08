@@ -26,11 +26,11 @@ class GPSNoiseGenerator(NoiseGenerator):
         for ista, sta in enumerate(campaign.stations):
             rstate = self.get_rstate(ista)
 
-            sta.north.error = 2e-5
-            sta.east.error = 2e-5
+            sta.north.sigma = 8e-3
+            sta.east.sigma = 8e-3
 
-            sta.north.shift += rstate.normal(0., sta.north.error)
-            sta.east.shift += rstate.normal(0., sta.east.error)
+            sta.north.shift += rstate.normal(0., sta.north.sigma)
+            sta.east.shift += rstate.normal(0., sta.east.sigma)
 
 
 class GNSSCampaignGenerator(TargetGenerator):
@@ -82,7 +82,6 @@ class GNSSCampaignGenerator(TargetGenerator):
 
         if self.noise_generator is not None:
             self.noise_generator.add_noise(stacked_campaign)
-            pass
 
         return [stacked_campaign]
 
@@ -101,3 +100,6 @@ class GNSSCampaignGenerator(TargetGenerator):
                 camp.dump(stream=f)
 
         return [fn]
+
+    def add_map_artists(self, engine, sources, automap):
+        automap.add_gnss_campaign(self.get_gnss_campaign(engine, sources)[0])

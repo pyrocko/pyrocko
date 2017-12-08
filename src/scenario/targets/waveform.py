@@ -288,3 +288,6 @@ class WaveformGenerator(TargetGenerator):
         raise NotImplementedError()
 
         return [path_responses]
+
+    def add_map_artists(self, engine, sources, automap):
+        automap.add_stations(self.get_stations())

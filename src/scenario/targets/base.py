@@ -36,6 +36,9 @@ class TargetGenerator(LocationGenerator):
                   tmin=None, tmax=None, overwrite=False):
         return []
 
+    def add_map_artists(self, engine, sources, automap):
+        pass
+
 
 class NoiseGenerator(Generator):
     pass
