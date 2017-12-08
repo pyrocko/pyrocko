@@ -9,7 +9,6 @@ Scenarios' TargetGenerators
     :show-inheritance:
 
 
-
 ``WaveformGenerator``
 ---------------------------
 
@@ -18,14 +17,12 @@ Scenarios' TargetGenerators
     :show-inheritance:
 
 
-
 ``InSARGenerator``
 ---------------------------
 
 .. automodule :: pyrocko.scenario.targets.insar
     :members:
     :show-inheritance:
-
 
 
 ``GNSSCampaignGenerator``

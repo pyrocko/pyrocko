@@ -113,7 +113,19 @@ Start the forward modelling with:
 The final scenario
 -------------------
 
-Along with the output of synthetic data a scenario's map is plotted
+The directory structure is divided into subfolders holding the forward modelled data as well as individual files for plots, stations, events and StationXML responses.
+
+.. code-block :: text
+    :caption: Colosseo directory structure
+
+    my_scenario/         # this directory hosts the scenario
+    |-- scenario.yml     # general settings
+    |-- waveforms/       # generated waveforms
+    |-- insar/           # Kite InSAR scenes
+    |-- map.pdf          # GMT map of the scenario
+
+
+Along with the output of synthetic data the scenarios' map is plotted
 
 .. figure :: /static/scenario_map.png
   :scale: 80%
@@ -121,15 +133,3 @@ Along with the output of synthetic data a scenario's map is plotted
   :alt: Synthetic scenario map
 
   Example of an earthquake scenario located in the Netherland's part of the Lower Rhine Plain.
-
-
-The directory structure is divided into subfolders holding the forward modelled data as well as individual files for plots, stations, events and StationXML responses.
-
-.. code-block :: text
-    :caption: Green's function store directory structure
-
-    my_scenario/         # this directory hosts the scenario
-    |-- scenario.yml     # general settings
-    |-- waveforms/       # generated waveforms
-    |-- insar/           # Kite InSAR scenes
-    |-- map.pdf          # GMT map of the scenario
