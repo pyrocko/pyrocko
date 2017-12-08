@@ -192,7 +192,10 @@
 			});
 			aerial.setVisibility(false);
 
-			var stamen_terrain = new OpenLayers.Layer.Stamen('terrain');
+			var stamen_terrain = new OpenLayers.layer.Tile({
+		        source: new OpenLayers.source.Stamen({
+		          layer: 'terrain'
+		        })
 			stamen_terrain.setVisibility(false);
 
 			var mouse_control = new OpenLayers.Control.MousePosition({
