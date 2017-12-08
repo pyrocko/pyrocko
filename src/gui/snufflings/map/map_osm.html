@@ -192,6 +192,9 @@
 			});
 			aerial.setVisibility(false);
 
+			var stamen_terrain = new OpenLayers.Layer.Stamen('terrain');
+			stamen_terrain.setVisibility(false);
+
 			var mouse_control = new OpenLayers.Control.MousePosition({
 				prefix: 'Coordinates: ',
 				separator: ' | ',
@@ -222,9 +225,10 @@
 				div: "map",
 				allOverlays: true,
 				layers: [
-				new OpenLayers.Layer.OSM(),
-				aerial,
-				plate_boundaries,
+					new OpenLayers.Layer.OSM(),
+					aerial,
+					plate_boundaries,
+					stamen_terrain,
 				],
 				controls: [
 				new OpenLayers.Control.LayerSwitcher({roundedCornerColor: "#999999"}),
