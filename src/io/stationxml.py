@@ -991,7 +991,7 @@ class FDSNStationXML(Object):
                                 channels,
                                 inconsistencies=inconsistencies))
                 else:
-                    pstations.append(Station(
+                    pstations.append(pyrocko.model.Station(
                         network.code, station.code, '*',
                         lat=station.latitude.value,
                         lon=station.longitude.value,

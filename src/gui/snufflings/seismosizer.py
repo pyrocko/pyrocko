@@ -167,6 +167,10 @@ class Seismosizer(Snuffling):
         self.add_marker(m)
 
         targets = []
+
+        if self.store_id == '<not loaded yet>':
+            self.fail('Select a GF Store first')
+
         for station in stations:
 
             nsl = station.nsl()
@@ -218,7 +222,11 @@ class Seismosizer(Snuffling):
 
         req.regularize()
 
-        resp = self.get_engine().process(req)
+        try:
+            resp = self.get_engine().process(req)
+        except (gf.meta.OutOfBounds, gf.store_ext.StoreExtError)as e:
+            self.fail(e)
+
         traces = resp.pyrocko_traces()
 
         if self.waveform_type.startswith('Velocity'):

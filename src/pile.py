@@ -32,10 +32,11 @@ from .trace import degapper
 
 
 show_progress_force_off = False
+version_salt = 'v1-'
 
 
 def ehash(s):
-    return hashlib.sha1(s.encode('utf8')).hexdigest()
+    return hashlib.sha1((version_salt + s).encode('utf8')).hexdigest()
 
 
 def cmp(a, b):

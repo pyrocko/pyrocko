@@ -62,6 +62,7 @@ class ModelTestCase(unittest.TestCase):
         assert e1.region == e2.region
         assert e1.magnitude == e2.magnitude
         assert e1.magnitude_type == e2.magnitude_type
+        assert e1.get_hash() == e2.get_hash()
         shutil.rmtree(tempdir)
 
     def testMissingComponents(self):

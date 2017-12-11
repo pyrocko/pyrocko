@@ -737,7 +737,8 @@ class PhaseMarker(Marker):
 
     def set_event(self, event):
         self._event = event
-        self.set_event_hash(event.get_hash())
+        if event is not None:
+            self.set_event_hash(event.get_hash())
 
     def get_phasename(self):
         return self._phasename
