@@ -21,7 +21,7 @@ class GPSNoiseGenerator(NoiseGenerator):
 
     def add_noise(self, campaign):
         # https://www.nat-hazards-earth-syst-sci.net/15/875/2015/nhess-15-875-2015.pdf
-        waterlevel = 1. - (.99 + .0015 * self.measurement_duarion_days)
+        waterlevel = 1. - (.99 + .0015 * self.measurement_duarion_days)  # noqa
 
         for ista, sta in enumerate(campaign.stations):
             rstate = self.get_rstate(ista)
@@ -36,7 +36,8 @@ class GPSNoiseGenerator(NoiseGenerator):
 class GNSSCampaignGenerator(TargetGenerator):
     station_generator = StationGenerator.T(
         default=RandomStationGenerator(
-            network_name='GN'),
+            network_name='GN',
+            with_channels=False),
         help='The StationGenerator for creating the stations.')
 
     noise_generator = NoiseGenerator.T(
@@ -93,7 +94,8 @@ class GNSSCampaignGenerator(TargetGenerator):
         campaigns = self.get_gnss_campaign(
             engine, sources, tmin, tmax)
 
-        fn = op.join(path_gnss, 'campaign.yml')
+        fn = op.join(path_gnss,
+                     'campaign-%s.yml' % self.station_generator.network_name)
 
         with open(fn, 'w') as f:
             for camp in campaigns:

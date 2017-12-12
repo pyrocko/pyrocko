@@ -1,6 +1,6 @@
 import numpy as num
 from pyrocko import model
-from pyrocko.guts import Int, String
+from pyrocko.guts import Int, String, Bool
 
 from .base import TargetGenerator
 
@@ -15,6 +15,10 @@ class StationGenerator(TargetGenerator):
     network_name = String.T(
         default='CO',
         help='Network name')
+
+    with_channels = Bool.T(
+        default=True,
+        help='Generate seismic channels: BHN, BHE, BHZ')
 
 
 class RandomStationGenerator(StationGenerator):
@@ -32,6 +36,14 @@ class RandomStationGenerator(StationGenerator):
 
     def get_stations(self):
         if self._stations is None:
+
+            if self.with_channels:
+                channels = []
+                for comp in ('BHN', 'BHE', 'BHZ'):
+                    channels.append(model.station.Channel(comp))
+            else:
+                channels = None
+
             stations = []
             for istation in range(self.nstations):
                 lat, lon = self.get_latlon(istation)
@@ -40,7 +52,8 @@ class RandomStationGenerator(StationGenerator):
                 station = model.Station(
                     net, sta, loc,
                     lat=lat,
-                    lon=lon)
+                    lon=lon,
+                    channels=channels)
 
                 stations.append(station)
 

@@ -139,7 +139,7 @@
 		}
 
 		function add_event_markers(map, items, magmin, magmax, depth_min, depth_max){
-			var vectorLayer = new ol.Layer.Vector("Events", {
+			var vectorLayer = new ol.layer.Vector("Events", {
 				styleMap: new ol.StyleMap({
 					"default": new ol.Style({
 						pointRadius: "${radius}",

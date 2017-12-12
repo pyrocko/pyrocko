@@ -3,38 +3,49 @@ Colosseo
 
 .. highlight:: sh
 
-Use :mod:`pyrocko.gf` Greens' Function databases to generate earthquake data from picturebook scenarios.
+Use :mod:`pyrocko.gf` Green's Function databases to generate earthquake data from picture-book scenarios.
 
-``colosseo`` is a CLI for :mod:`pyrocko.scenario` which orchestrates different generators to randomly (yet seeded) create synthetic data:
+``colosseo`` is a CLI for :mod:`pyrocko.scenario` that orchestrates different generators to randomly (yet seeded) create synthetic data of randomised sources.
+Point sources or finite sources are generated with the :class:`~pyrocko.scenario.sources.SourceGenerator`
 
-:class:`~pyrocko.scenario.sources.SourceGenerators`
-* :mod:`~pyrocko.scenario.sources`
+At generated stations from the :class:`~pyrocko.scenario.targets.station.StationGenerator`, dynamic or static synthetic data are created with the :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator` and the :class:`~pyrocko.scenario.targets.gnss_campaign.GNSSCampaignGenerator`. Also InSAR data scenarios using `kite <https://pyrocko.org/docs/kite/>`_are possible with the :class:`~pyrocko.scenario.targets.insar.InSARGenerator`.
 
-TargetGenerators
-
-* :class:`~pyrocko.scenario.targets.station.StationGenerator`
-* :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator`
-* :class:`~pyrocko.scenario.targets.insar.InSARGenerator`
-* :class:`~pyrocko.scenario.targets.gnss_campaign.GNSSCampaignGenerator`
-
-Creating a scenario with ``colosseo`` is straight forward, but if you want more help with the subcommands, use:
+Creating a scenario with ``colosseo`` is straight forward, but in any case you get help with subcommands using:
 
 .. code-block :: sh
 
-    colosseo --help
+    $ colosseo --help
+
+    Usage: colosseo <subcommand> [options] [--] <arguments> ...
+
+    Subcommands:
+
+        init      initialize a new, blank scenario
+        fill      fill the scenario with modelled data
+        snuffle   open Snuffler to inspect the waveform data
+        map       map the scenario arena
+
+    To get further help and a list of available options for any subcommand run:
+
+        colosseo <subcommand> --help
 
 
 Initialize a new scenario
 --------------------------
 
-Create a new scenario in folder :file:`my_scenario`:
+Create a new scenario in a folder :file:`my_scenario`:
 
 .. code-block :: sh
 
     colosseo init my_scenario
 
 
-The scenario is built from a YAML configuration file.
+What you need is a **pre-calculated Green's function store**, for more information see :doc:`../fomosto/index`.
+The database to utilize for forward modelling is defined in variable ``store_id`` at the respective :class:`~pyrocko.scenario.targets.TargetGenerator`.
+
+The you can either copy the database into folder :file:`gf_stores` or have them in your ``gf_store_superdirs`` config variable (see :file:`~/.pyrocko/config.pf`).
+
+The scenario is built from a YAML configuration file, which looks like this:
 
 .. code-block:: yaml
     :caption: Example scenario configuration file
@@ -104,7 +115,7 @@ The scenario is built from a YAML configuration file.
 Start the forward model
 ---------------------------
 
-Start the forward modelling with:
+Start filling the scenario with forward modelled data:
 
 .. code-block:: sh
 
@@ -114,7 +125,7 @@ Start the forward modelling with:
 The final scenario
 -------------------
 
-The directory structure is divided into subfolders holding the forward modelled data as well as individual files for plots, stations, events and StationXML responses.
+The directory structure is divided into subfolders holding the forward-modelled data as well as individual folders and files for plots and meta data of stations and events (e.g. StationXML responses).
 
 .. code-block :: text
     :caption: Colosseo directory structure
@@ -123,10 +134,11 @@ The directory structure is divided into subfolders holding the forward modelled 
     |-- scenario.yml     # general settings
     |-- waveforms/       # generated waveforms
     |-- insar/           # Kite InSAR scenes
+    |-- gf_stores/       # Your GF stores live here
     |-- map.pdf          # GMT map of the scenario
 
 
-Along with the output of synthetic data the scenarios' map is plotted
+Along with the output of synthetic data the scenario's map is plotted
 
 .. figure :: /static/scenario_map.png
   :scale: 80%

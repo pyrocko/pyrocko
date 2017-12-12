@@ -8,6 +8,8 @@ guts_prefix = 'pf.gnss'
 
 
 class GNSSComponent(Object):
+    ''' Component of a GNSSStation
+    '''
     unit = StringChoice.T(
         choices=['mm', 'cm', 'm'],
         default='m')

@@ -226,8 +226,8 @@ class WaveformGenerator(TargetGenerator):
         fns = []
         fns.extend(
             self.dump_waveforms(engine, sources, path, tmin, tmax, overwrite))
-        # fns.extend(
-        #     self.dump_responses(path))
+        fns.extend(
+            self.dump_responses(path))
         return fns
 
     def dump_waveforms(self, engine, sources, path,
@@ -282,10 +282,27 @@ class WaveformGenerator(TargetGenerator):
         return [path_waveforms]
 
     def dump_responses(self, path):
+        from pyrocko.io import stationxml
+
+        logger.debug('Writing out StationXML...')
+
         path_responses = op.join(path, 'meta')
         util.ensuredir(path_responses)
+        fn_stationxml = op.join(path_responses, 'stations.xml')
 
-        raise NotImplementedError()
+        stations = self.station_generator.get_stations()
+        sxml = stationxml.FDSNStationXML.from_pyrocko_stations(stations)
+
+        response = stationxml.Response(
+            instrument_sensitivity=stationxml.Sensitivity(
+                value=1.,
+                frequency=1.),
+            stage_list=[])
+
+        for net, station, channel in sxml.iter_network_station_channels():
+            channel.response = response
+
+        sxml.dump_xml(filename=fn_stationxml)
 
         return [path_responses]
 

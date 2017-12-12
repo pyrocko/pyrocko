@@ -142,7 +142,7 @@ class ModelTestCase(unittest.TestCase):
         lons = num.random.uniform(90, -90, nstations)
 
         shifts = num.random.uniform(-2.5, 2.5, (nstations, 3))
-        errors = num.random.uniform(-0.5, 0.5, (nstations, 3))
+        sigma = num.random.uniform(-0.5, 0.5, (nstations, 3))
 
         campaign = model.gnss.GNSSCampaign()
 
@@ -150,13 +150,13 @@ class ModelTestCase(unittest.TestCase):
 
             north = model.gnss.GNSSComponent(
                 shift=float(shifts[ista, 0]),
-                error=float(errors[ista, 0]))
+                sigma=float(sigma[ista, 0]))
             east = model.gnss.GNSSComponent(
                 shift=float(shifts[ista, 1]),
-                error=float(errors[ista, 1]))
+                sigma=float(sigma[ista, 1]))
             up = model.gnss.GNSSComponent(
                 shift=float(shifts[ista, 2]),
-                error=float(errors[ista, 2]))
+                sigma=float(sigma[ista, 2]))
 
             station = model.gnss.GNSSStation(
                 lat=float(lats[ista]),

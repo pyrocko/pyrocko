@@ -3098,10 +3098,14 @@ class RemoteEngine(Engine):
 g_engine = None
 
 
-def get_engine():
+def get_engine(store_superdirs=[]):
     global g_engine
     if g_engine is None:
         g_engine = LocalEngine(use_env=True, use_config=True)
+
+    for d in store_superdirs:
+        if d not in g_engine.store_superdirs:
+            g_engine.store_superdirs.append(d)
 
     return g_engine
 

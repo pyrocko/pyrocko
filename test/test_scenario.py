@@ -41,7 +41,8 @@ class ScenarioTestCase(unittest.TestCase):
                 noise_generator=targets.insar.AtmosphericNoiseGenerator(
                     amplitude=1e-5)),
             targets.GNSSCampaignGenerator(
-                station_generator=targets.RandomStationGenerator())
+                station_generator=targets.RandomStationGenerator(
+                    with_channels=False))
             ],
         source_generator=scenario.DCSourceGenerator(
             time_min=util.str_to_time('2017-01-01 00:00:00'),
@@ -67,15 +68,27 @@ class ScenarioTestCase(unittest.TestCase):
     @unittest.skipUnless(
         have_store(store_id),
         'GF Store "%s" is not available' % store_id)
-    def test_scenario(self):
-        generator = self.generator
+    def test_scenario_combinations(self):
+        import copy
+        generator = copy.deepcopy(self.generator)
         engine = gf.get_engine()
         generator.init_modelling(engine)
 
-        generator.get_stations()
-        generator.get_waveforms()
-        generator.get_insar_scenes()
-        generator.get_gnss_campaigns()
+        for src in scenario.sources.AVAILABLE_SOURCES:
+            generator.source_generator = src(
+                time_min=util.str_to_time('2017-01-01 00:00:00'),
+                time_max=util.str_to_time('2017-01-01 02:00:00'),
+                radius=1*km,
+                depth_min=1*km,
+                depth_max=5*km,
+                magnitude_min=3.0,
+                magnitude_max=4.5)
+            generator.source_generator.update_hierarchy(generator)
+
+            generator.get_stations()
+            generator.get_waveforms()
+            generator.get_insar_scenes()
+            generator.get_gnss_campaigns()
 
     @unittest.skipUnless(
         have_store(store_id),

@@ -22,14 +22,16 @@ Create waveforms, InSAR and GNSS offsets of earthquake scenario on the earth.
 '''
 
 subcommand_descriptions = {
-    'init': 'Initialize a new scenario',
-    'fill': 'run fill modelling',
+    'init': 'initialize a new, blank scenario',
+    'fill': 'fill the scenario with modelled data',
+    'snuffle': 'open Snuffler to inspect the waveform data',
     'map': 'map the scenario arena'
 }
 
 subcommand_usages = {
     'init': 'init <scenario_dir> [lat] [lon] [radius_km]',
     'fill': 'fill <scenario_dir>',
+    'snuffle': 'snuffle <scenario_dir>',
     'map': '<scenario_dir>',
 }
 
@@ -46,6 +48,7 @@ Subcommands:
 
     init      %(init)s
     fill      %(fill)s
+    snuffle   %(snuffle)s
     map       %(map)s
 
 To get further help and a list of available options for any subcommand run:
@@ -123,12 +126,13 @@ def command_init(args):
     scenario_dims[:len(args[1:])] = map(float, args[1:])
 
     project_dir = op.abspath(args[0])
-    logger.info('Initialising new scenario at %.2f, %.2f with radius %d km'
-                % tuple(scenario_dims))
+    logger.info('Initialising new scenario %s at %.2f, %.2f with radius %d km'
+                % tuple([args[0]] + scenario_dims))
 
     scenario_dims[2] *= km
     scenario.ScenarioGenerator.initialize(project_dir, *scenario_dims,
                                           force=options.force)
+    util.ensuredir(op.join(project_dir, 'gf_stores'))
 
 
 def command_fill(args):
@@ -139,16 +143,22 @@ def command_fill(args):
             help='overwrite existing files')
 
     parser, options, args = cl_parse('fill', args, setup=setup)
+
     if len(args) == 0:
+        args.append('.')
+
+    fn = get_scenario_yml(args[0])
+
+    if not fn:
         parser.print_help()
         sys.exit(1)
 
     project_dir = op.abspath(args[0])
 
     logger.info('Initializing gf.LocalEngine...')
-    engine = gf.get_engine()
+    engine = get_engine()
 
-    scenario = guts.load(filename=op.join(project_dir, 'scenario.yml'))
+    scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
     scenario.dump_data(path=project_dir, overwrite=options.force)
     scenario.make_map(op.join(project_dir, 'map.pdf'))
@@ -169,11 +179,34 @@ def command_map(args):
     project_dir = op.abspath(args[0])
 
     logger.info('Initializing gf.LocalEngine...')
-    engine = gf.get_engine()
+    engine = get_engine()
 
-    scenario = guts.load(filename=op.join(project_dir, 'scenario.yml'))
+    scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
     scenario.make_map(op.join(project_dir, 'map.pdf'))
+
+
+def command_snuffle(args):
+    from pyrocko.gui import snuffler
+    parser, options, args = cl_parse('map', args)
+
+    if len(args) == 0:
+        args.append('.')
+
+    fn = get_scenario_yml(args[0])
+
+    if not fn:
+        parser.print_help()
+        sys.exit(1)
+
+    engine = get_engine()
+    scenario = guts.load(filename=fn)
+    scenario.init_modelling(engine)
+
+    return snuffler.snuffle(
+        scenario.get_pile(),
+        stations=scenario.get_stations(),
+        events=scenario.get_events())
 
 
 def main(args=None):
@@ -198,6 +231,10 @@ def main(args=None):
 
     else:
         sys.exit('%s: error: no such subcommand: %s' % (program_name, command))
+
+
+def get_engine():
+    return gf.get_engine(store_superdirs=['gf_stores'])
 
 
 if __name__ == '__main__':

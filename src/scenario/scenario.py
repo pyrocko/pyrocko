@@ -1,8 +1,9 @@
 import numpy as num
 import logging
+import os.path as op
 
 from pyrocko.guts import List
-from pyrocko import pile, util
+from pyrocko import pile, util, model
 
 from .base import LocationGenerator, ScenarioError
 from .sources import SourceGenerator, DCSourceGenerator
@@ -55,6 +56,9 @@ class ScenarioGenerator(LocationGenerator):
     def get_sources(self):
         return self.source_generator.get_sources()
 
+    def get_events(self):
+        return [s.pyrocko_event() for s in self.get_sources()]
+
     def collect(collector):
         if not callable(collector):
             raise AttributeError('This method should not be called directly.')
@@ -91,6 +95,16 @@ class ScenarioGenerator(LocationGenerator):
     def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
         self.source_generator.dump_data(path)
 
+        meta_dir = op.join(path, 'meta')
+        util.ensuredir(meta_dir)
+
+        model.station.dump_stations(
+            self.get_stations(), op.join(meta_dir, 'stations.txt'))
+        model.station.dump_kml(
+            self.get_stations(), op.join(meta_dir, 'stations.kml'))
+
+        dump_readme(path)
+
         def dump_data(gen, *a, **kw):
             logger.info('Creating files from %s...' % gen.__class__.__name__)
             return gen.dump_data(self._engine, self.get_sources(), *a, **kw)
@@ -106,8 +120,11 @@ class ScenarioGenerator(LocationGenerator):
         return ranges.min(), ranges.max()
 
     def get_pile(self, tmin=None, tmax=None):
-        trs = self.get_waveforms(tmin, tmax)
-        return pile(trs)
+        p = pile.Pile()
+
+        trf = pile.MemTracesFile(None, self.get_waveforms(tmin, tmax))
+        p.add_file(trf)
+        return p
 
     def make_map(self, filename):
         logger.info('Plotting scenarios\' map...')
@@ -125,7 +142,7 @@ class ScenarioGenerator(LocationGenerator):
             lat=lat,
             lon=lon,
             radius=radius,
-            show_topo=False,
+            show_topo=True,
             show_grid=True,
             show_rivers=True,
             color_wet=(216, 242, 254),
@@ -180,3 +197,42 @@ class ScenarioGenerator(LocationGenerator):
 
 def draw_scenario_gmt(generator, fn):
     return generator.draw_map(fn)
+
+
+def dump_readme(path):
+    readme = '''# Pyrocko Earthquake Scenario
+
+The directory structure of a scenario is layed out as follows:
+
+## Map of the scenario
+A simple map is generated from `pyrocko.automap` in map.pdf
+
+## Earthquake Sources
+
+Can be found as events.txt and sources.yml hosts the pyrocko.gf sources.
+
+## Folder `meta`
+
+Contains stations.txt and StationXML files for waveforms as well as KML data.
+The responses are flat with gain of 1.0 at 1.0 Hz.
+
+## Folder `waveforms`
+
+Waveforms as mini-seed are stored here, segregated into days.
+
+## Folder `gnss`
+
+The GNSS campaign.yml is living here.
+Use `pyrocko.guts.load(filename='campaign.yml)` to load the campaign.
+
+## Folder `insar`
+
+Kite InSAR scenes for ascending and descending tracks are stored there.
+Use `kite.Scene.load(<filename>)` to inspect the scenes.
+
+'''
+    fn = op.join(path, 'README.md')
+    with open(fn, 'w') as f:
+        f.write(readme)
+
+    return [fn]
