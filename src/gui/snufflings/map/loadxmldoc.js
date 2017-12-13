@@ -1,4 +1,4 @@
-function loadXMLDoc(dname)
+export function loadXMLDoc(dname)
 {
     if (window.XMLHttpRequest)
         {
@@ -8,9 +8,9 @@ function loadXMLDoc(dname)
         {
             xhttp=new ActiveXObject("Microsoft.XMLHTTP");
         }
-        xhttp.open("GET",dname,false);
-        xhttp.send();
-        return xhttp.responseXML;
+    xhttp.open("GET", dname, false);
+    xhttp.send();
+    return xhttp.responseXML;
 }
 
 
