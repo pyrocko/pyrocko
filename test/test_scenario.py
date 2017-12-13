@@ -79,7 +79,7 @@ class ScenarioTestCase(unittest.TestCase):
                 time_min=util.str_to_time('2017-01-01 00:00:00'),
                 time_max=util.str_to_time('2017-01-01 02:00:00'),
                 radius=1*km,
-                depth_min=1*km,
+                depth_min=1.5*km,
                 depth_max=5*km,
                 magnitude_min=3.0,
                 magnitude_max=4.5)
