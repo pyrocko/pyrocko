@@ -15,7 +15,7 @@
     <div id="logger"></div>
     <script>
         try{
-            xmlDoc = loadXMLDoc("markers.xml")
+            xmlDoc = loadXMLDoc("markers.xml");
         }
         catch(err)
         {
@@ -41,7 +41,7 @@
             this.depth = depth || 0;
             this.magnitude = magnitude || 0;
             this.get_event_description = function(){
-                return "Magnitude " + this.magnitude.toFixed(2) + "<br>" + this.time + "<br>depth: " + (this.depth/1000).toFixed(2) + " km"
+                return "Magnitude " + this.magnitude.toFixed(2) + "<br>" + this.time + "<br>Depth: " + (this.depth/1000).toFixed(2) + " km"
             };
 
             this.get_fill_color = function(depth_min, depth_max){
@@ -266,7 +266,6 @@
                     /*new ol.Control.LayerSwitcher({roundedCornerColor: "#999999"}),*/
                     new ol.control.Attribution(),
                     new ol.control.Zoom(),
-                    new ol.control.Rotate(),
                     new ol.control.MousePosition({
                         coordinateFormat: ol.coordinate.createStringXY(4),
                         projection: 'EPSG:4326',
@@ -319,33 +318,9 @@
                 map.getTarget().style.cursor = hit ? 'pointer' : '';
             });
 
-
-            layerListeners = {
-                featureclick: function(e) {
-                    var popup = new ol.Popup.FramedCloud("popup",
-                        ol.LonLat.fromString(e.feature.geometry.toShortString()),
-                        null,
-                        "<div style='font-size:.8em'>Event:<br>" + e.feature.attributes.description+"</div>",
-                        null,
-                        true
-                        );
-                    e.feature.popup = popup;
-                    map.addPopup(popup);
-                    return false;
-                },
-            };
-
             zoomToExtent(map, [station_layer, event_layer]);
         }
 
-
-        function log(msg) {
-            if (!log.timer) {
-                logger.innerHTML = "";
-                log.timer = window.setTimeout(function() {delete log.timer;}, 100);
-            }
-            logger.innerHTML += msg + "<br>";
-        }
     </script>
 </body>
 </html>
