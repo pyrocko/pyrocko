@@ -25,6 +25,7 @@ from pyrocko.guts_array import Array
 from pyrocko import moment_tensor as mt
 from pyrocko import trace, util, config, model
 from pyrocko.orthodrome import ne_to_latlon
+from pyrocko.model import Location
 
 from . import meta, store, ws
 from .targets import Target, StaticTarget, SatelliteTarget
@@ -900,7 +901,7 @@ class STFMode(StringChoice):
     choices = ['pre', 'post']
 
 
-class Source(meta.Location, Cloneable):
+class Source(Location, Cloneable):
     '''
     Base class for all source models.
     '''
@@ -920,7 +921,7 @@ class Source(meta.Location, Cloneable):
         help='whether to apply source time function in pre or post-processing')
 
     def __init__(self, **kwargs):
-        meta.Location.__init__(self, **kwargs)
+        Location.__init__(self, **kwargs)
 
     def update(self, **kwargs):
         '''
@@ -2581,7 +2582,7 @@ def process_static(work, psources, ptargets, engine, nthreads=0):
                     e.context = OutOfBoundsContext(
                         source=sources[0],
                         target=targets[0],
-                        distance=sources[0].distance_to(targets[0]),
+                        distance=float('nan'),
                         components=components)
                     raise
                 result = engine._post_process_statics(
@@ -3097,10 +3098,14 @@ class RemoteEngine(Engine):
 g_engine = None
 
 
-def get_engine():
+def get_engine(store_superdirs=[]):
     global g_engine
     if g_engine is None:
         g_engine = LocalEngine(use_env=True, use_config=True)
+
+    for d in store_superdirs:
+        if d not in g_engine.store_superdirs:
+            g_engine.store_superdirs.append(d)
 
     return g_engine
 

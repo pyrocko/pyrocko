@@ -19,6 +19,7 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 
 from pyrocko.guts import Float, Int, Tuple, List, Object, String
+from pyrocko.model import Location
 from pyrocko import gf, util, trace, cake
 
 
@@ -519,7 +520,7 @@ class PsCmpArray(PsCmpObservation):
                 self.n_steps_lon, self.slon, self.elon)
 
 
-class PsCmpRectangularSource(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
     '''
     Input parameters have to be in:
     [deg] for reference point (lat, lon) and angles (rake, strike, dip)
@@ -604,7 +605,7 @@ MTDev = {
     }
 
 
-class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
     '''
     Compound dislocation of 3 perpendicular, rectangular sources to approximate
     an opening single force couple. NED coordinate system!
@@ -636,7 +637,7 @@ class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
         return cmpd
 
 
-class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpShearSF(Location, gf.seismosizer.Cloneable):
 
     length = Float.T(default=1.0 * km)
     width = Float.T(default=1.0 * km)
@@ -652,7 +653,7 @@ class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
         return [PsCmpRectangularSource(**kwargs)]
 
 
-class PsCmpMomentTensor(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
     '''
     Mapping of Moment Tensor components to rectangular faults.
     Only one component at a time valid! NED coordinate system!
@@ -1168,33 +1169,38 @@ on
         logger.debug('===== begin pscmp output =====\n'
                      '%s===== end pscmp output =====' % output_str.decode())
 
-        errmess = []
+        errmsg = []
         if proc.returncode != 0:
-            errmess.append(
+            errmsg.append(
                 'pscmp had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            errmess.append('pscmp emitted something via stderr')
+            errmsg.append('pscmp emitted something via stderr')
 
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in pscmp output")
+            errmsg.append("the string 'error' appeared in pscmp output")
 
-        if errmess:
+        if errmsg:
             self.keep_tmp = True
 
             os.chdir(old_wd)
-            raise PsCmpError(b'''
+            raise PsCmpError('''
 ===== begin pscmp input =====
-%s===== end pscmp input =====
+{pscmp_input}===== end pscmp input =====
 ===== begin pscmp output =====
-%s===== end pscmp output =====
+{pscmp_output}===== end pscmp output =====
 ===== begin pscmp error =====
-%s===== end pscmp error =====
-%s
-pscmp has been invoked as "%s"
-in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.tempdir))
+{pscmp_error}===== end pscmp error =====
+{error_messages}
+pscmp has been invoked as "{call}"
+in the directory {dir}'''.format(
+                pscmp_input=input_str,
+                pscmp_output=output_str,
+                pscmp_error=error_str,
+                error_messages='\n'.join(errmsg),
+                call=program,
+                dir=self.tempdir)
+                .lstrip())
 
         self.pscmp_output = output_str
         self.pscmp_error = error_str

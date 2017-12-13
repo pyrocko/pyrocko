@@ -1044,6 +1044,50 @@ class Map(Object):
 
         self._cities_minpop = minpop
 
+    def add_stations(self, stations, psxy_style=dict(S='t8p', G='black')):
+        lats = [s.lat for s in stations]
+        lons = [s.lon for s in stations]
+
+        self.gmt.psxy(
+            in_columns=(lons, lats),
+            *self.jxyr, **psxy_style)
+
+        for station in stations:
+            self.add_label(station.lat, station.lon, '.'.join(
+                x for x in (station.network, station.station) if x))
+
+    def add_kite_scene(self, scene):
+        tile = FloatTile(
+            scene.frame.llLon,
+            scene.frame.llLat,
+            scene.frame.dLon,
+            scene.frame.dLat,
+            scene.displacement)
+
+        return tile
+
+    def add_gnss_campaign(self, campaign,
+                          psxy_style=dict(G='black', W='1p,black')):
+
+        offsets = num.array([math.sqrt(s.east.shift**2 + s.north.shift**2)
+                             for s in campaign.stations])
+        scale = 1./offsets.max()
+
+        self.gmt.psvelo(
+            in_rows=[(s.lon, s.lat,
+                      s.east.shift, s.north.shift,
+                      s.east.sigma, s.north.sigma, 0,
+                      s.code)
+                     for s in campaign.stations],
+            h=2,
+            W='0.5p,black',
+            t='30',
+            G='black',
+            L=True,
+            S='e%d/0.95/8' % scale,
+            *self.jxyr
+            )
+
     def draw_plates(self):
         from pyrocko.dataset import tectonics
 

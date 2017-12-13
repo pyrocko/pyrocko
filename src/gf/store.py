@@ -1759,14 +1759,17 @@ class Store(BaseStore):
         if ntargets == 0:
             raise StoreError('MultiLocation.coords5 is empty')
 
-        sum_params = store_ext.make_sum_params(
-            self.cstore,
-            source.coords5(),
-            source_terms,
-            multi_location.coords5,
-            self.config.component_scheme,
-            interpolation,
-            nthreads or 0)
+        try:
+            sum_params = store_ext.make_sum_params(
+                self.cstore,
+                source.coords5(),
+                source_terms,
+                multi_location.coords5,
+                self.config.component_scheme,
+                interpolation,
+                nthreads or 0)
+        except store_ext.StoreExtError:
+            raise meta.OutOfBounds()
 
         for icomp, comp in enumerate(scheme_desc.provided_components):
             if comp not in components:
@@ -1841,13 +1844,17 @@ class Store(BaseStore):
         source_terms = source.get_source_terms(scheme)
         receiver_coords_arr = receiver.coords5[num.newaxis, :].copy()
 
-        params = store_ext.make_sum_params(
-            store.cstore,
-            source_coords_arr,
-            source_terms,
-            receiver_coords_arr,
-            scheme,
-            interpolation, nthreads)
+        try:
+            params = store_ext.make_sum_params(
+                store.cstore,
+                source_coords_arr,
+                source_terms,
+                receiver_coords_arr,
+                scheme,
+                interpolation, nthreads)
+
+        except store_ext.StoreExtError:
+            raise meta.OutOfBounds()
 
         provided_components = scheme_desc.provided_components
 

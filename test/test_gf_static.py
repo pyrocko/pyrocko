@@ -339,6 +339,32 @@ mantle
                 num.testing.assert_equal(t, s)
                 benchmark.clear()
 
+    def test_gnss_target(self):
+        src_length = 5 * km
+        src_width = 2 * km
+        nstations = 100
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[0]
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            north_shift=0., east_shift=0., depth=6.5*km,
+            width=src_width, length=src_length,
+            dip=90., rake=90., strike=90.,
+            slip=1.)
+
+        gnss_target = gf.GNSSCampaignTarget(
+            lats=(random.uniform(-.2, .2, nstations)),
+            lons=(random.uniform(-.2, .2, nstations)),
+            interpolation=interpolation)
+
+        engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])
+        res = engine.process(source, gnss_target, nprocs=0)
+
+        statics = res.static_results()
+        for static in statics:
+            assert len(static.campaign.stations) == nstations
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf', 'warning')

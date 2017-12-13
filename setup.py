@@ -565,6 +565,9 @@ subpacknames = [
     'pyrocko.dataset',
     'pyrocko.dataset.topo',
     'pyrocko.streaming',
+    'pyrocko.scenario',
+    'pyrocko.scenario.targets',
+    'pyrocko.scenario.sources',
 ]
 
 setup(
@@ -711,7 +714,8 @@ setup(
              'cake = pyrocko.apps.cake:main',
              'automap = pyrocko.apps.automap:main',
              'hamster = pyrocko.apps.hamster:main',
-             'jackseis = pyrocko.apps.jackseis:main'],
+             'jackseis = pyrocko.apps.jackseis:main',
+             'colosseo = pyrocko.apps.colosseo:main'],
         'gui_scripts':
             ['snuffler = pyrocko.apps.snuffler:main']
     },

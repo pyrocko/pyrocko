@@ -105,8 +105,8 @@ Channel lines have of four white-space separated words:
 * ``<gain>`` should be set to ``1``, use StationXML, SAC Pole-Zero, or RESP
   files for proper instrument response handling
 
-Use the library function :py:func:`pyrocko.model.load_stations` and
-:py:func:`pyrocko.model.dump_stations` to read and write basic station files.
+Use the library function :py:func:`pyrocko.model.station.load_stations` and
+:py:func:`pyrocko.model.station.dump_stations` to read and write basic station files.
 
 .. _basic-event-files:
 
