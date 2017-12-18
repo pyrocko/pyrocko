@@ -2,6 +2,7 @@ from __future__ import division, print_function, absolute_import
 from builtins import zip
 from builtins import range
 from pyrocko import util
+import re
 import unittest
 import tempfile
 import shutil
@@ -28,8 +29,9 @@ class UtilTestCase(unittest.TestCase):
 
         for fmt, accu in zip(
                 ['%Y-%m-%d %H:%M:%S.3FRAC', '%Y-%m-%d %H:%M:%S.2FRAC',
-                 '%Y-%m-%d %H:%M:%S.1FRAC', '%Y-%m-%d %H:%M:%S'],
-                [0.001, 0.01, 0.1, 1.]):
+                 '%Y-%m-%d %H:%M:%S.1FRAC', '%Y-%m-%d %H:%M:%S',
+                 '%Y-%m-%d %H.%M.%S.3FRAC'],
+                [0.001, 0.01, 0.1, 1., 0.001, 0.001]):
 
             ta = util.str_to_time('1960-01-01 10:10:10')
             tb = util.str_to_time('2020-01-01 10:10:10')
@@ -39,6 +41,9 @@ class UtilTestCase(unittest.TestCase):
                 s = util.time_to_str(t1, format=fmt)
                 t2 = util.str_to_time(s, format=fmt)
                 assert abs(t1 - t2) < accu
+                fmt_opt = re.sub(r'\.[0-9]FRAC$', '', fmt) + '.OPTFRAC'
+                t3 = util.str_to_time(s, format=fmt_opt)
+                assert abs(t1 - t3) < accu
 
     def testIterTimes(self):
 
