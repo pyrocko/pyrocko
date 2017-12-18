@@ -111,7 +111,7 @@ def expand_stream_args(mode):
                 return f(*args, **kwargs)
 
             elif filename is not None:
-                stream = open(filename, mode)
+                stream = open(filename, mode+'b')
                 kwargs['stream'] = stream
                 retval = f(*args, **kwargs)
                 if isinstance(retval, types.GeneratorType):
