@@ -46,6 +46,7 @@ class DCSourceGenerator(SourceGenerator):
         (s, d, r), (_, _, _) = mt.both_strike_dip_rake()
 
         source = gf.DCSource(
+            name='ev%04i' % ievent,
             time=float(time),
             lat=float(lat),
             lon=float(lon),
