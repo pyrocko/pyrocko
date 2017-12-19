@@ -296,7 +296,9 @@ class WaveformGenerator(TargetGenerator):
         response = stationxml.Response(
             instrument_sensitivity=stationxml.Sensitivity(
                 value=1.,
-                frequency=1.),
+                frequency=1.,
+                input_units=stationxml.Units('M/S'),
+                output_units=stationxml.Units('COUNTS')),
             stage_list=[])
 
         for net, station, channel in sxml.iter_network_station_channels():
