@@ -20,8 +20,8 @@ def random_axis(rstate=None):
     '''
     Get randomly oriented unit vector.
 
-    :param rstate: :py:class:`numpy.random.RandomState` object, can be used to create
-        reproducible pseudo-random sequences
+    :param rstate: :py:class:`numpy.random.RandomState` object, can be used to
+        create reproducible pseudo-random sequences
     '''
     rstate = rstate or num.random
     while True:
@@ -395,7 +395,7 @@ def random_mt(x=None, scalar_moment=1.0, magnitude=None):
         x = num.random.random(6)
 
     evals = x[:3] * 2. - 1.0
-    evals /= num.sqrt(num.sum(evals**2))
+    evals /= num.sqrt(num.sum(evals**2)) / math.sqrt(2.0)
     rotmat = random_rotation(x[3:])
     return scalar_moment * rotmat * num.matrix(num.diag(evals)) * rotmat.T
 
@@ -878,8 +878,8 @@ Moment Tensor [Nm]: Mnn = %6.3f,  Mee = %6.3f, Mdd = %6.3f,
         :param angle_std: angles are drawn from a normal distribution with
             zero mean and given standard deviation [degrees]
         :param angle: set angle [degrees], only axis will be random
-        :param rstate: :py:class:`numpy.random.RandomState` object, can be used to create
-            reproducible pseudo-random sequences
+        :param rstate: :py:class:`numpy.random.RandomState` object, can be
+            used to create reproducible pseudo-random sequences
         :returns: new :py:class:`MomentTensor` object
         '''
 
