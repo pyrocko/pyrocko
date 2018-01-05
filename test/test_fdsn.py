@@ -1,14 +1,19 @@
+from __future__ import division, print_function, absolute_import
+from future import standard_library
+standard_library.install_aliases()  # noqa
+
 import unittest
 import tempfile
 import numpy as num
-import urllib2
+import urllib
 import logging
-from pyrocko import util, trace, iris_ws
-from pyrocko.fdsn import station as fdsn_station, ws as fdsn_ws
+from pyrocko import util, trace
+from pyrocko.io import stationxml
+from pyrocko.client import fdsn, iris
 
-import common
+from . import common
 
-logger = logging.getLogger('pyrocko.test.test_fdsn.py')
+logger = logging.getLogger('pyrocko.test.test_fdsn')
 
 stt = util.str_to_time
 
@@ -19,7 +24,7 @@ class FDSNStationTestCase(unittest.TestCase):
         ok = False
         for fn in ['geeil.iris.xml', 'geeil.geofon.xml']:
             fpath = common.test_data_file(fn)
-            x = fdsn_station.load_xml(filename=fpath)
+            x = stationxml.load_xml(filename=fpath)
             for network in x.network_list:
                 assert network.code == 'GE'
                 for station in network.station_list:
@@ -39,30 +44,55 @@ class FDSNStationTestCase(unittest.TestCase):
             assert len(x.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
 
-            new = fdsn_station.FDSNStationXML.from_pyrocko_stations(pstations)
+            new = stationxml.FDSNStationXML.from_pyrocko_stations(pstations)
             assert len(new.get_pyrocko_stations()) in (3, 4)
             for s in new.get_pyrocko_stations():
                 assert len(s.get_channels()) == 3
 
+    @common.require_internet
     def test_retrieve(self):
         for site in ['geofon', 'iris']:
-            fsx = fdsn_ws.station(site=site,
-                                  network='GE',
-                                  station='EIL',
-                                  level='channel')
+            fsx = fdsn.station(site=site,
+                               network='GE',
+                               station='EIL',
+                               level='channel')
 
             assert len(fsx.get_pyrocko_stations(
                 time=stt('2010-01-15 10:00:00'))) == 1
 
+    @common.require_internet
+    def test_dataselect(self):
+        tmin = stt('2010-01-15 10:00:00')
+        tmax = stt('2010-01-15 10:01:00')
+        for site in ['geofon', 'iris']:
+            fdsn.dataselect(site=site,
+                            network='GE',
+                            station='EIL',
+                            starttime=tmin,
+                            endtime=tmax)
+
+    @common.require_internet
+    def test_dataselection(self):
+        tmin = stt('2010-01-15 10:00:00')
+        tmax = stt('2010-01-15 10:01:00')
+        selection = [
+            ('GE', 'EIL', '*', 'SHZ', tmin, tmax),
+        ]
+
+        fdsn.dataselect(site='geofon', selection=selection)
+        fdsn.station(site='geofon', selection=selection, level='response')
+
     def test_read_big(self):
         for site in ['iris']:
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
-            fdsn_station.load_xml(filename=fpath)
+            stationxml.load_xml(filename=fpath)
 
-    def OFF_test_response(self):
+    @unittest.skip('needs manual inspection')
+    @common.require_internet
+    def test_response(self):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
-        sx = fdsn_ws.station(
+        sx = fdsn.station(
             site='iris',
             network='II',
             channel='?HZ',
@@ -71,9 +101,9 @@ class FDSNStationTestCase(unittest.TestCase):
             level='channel', format='text', matchtimeseries=True)
 
         for nslc in sx.nslc_code_list:
-            print nslc
+            print(nslc)
             net, sta, loc, cha = nslc
-            sxr = fdsn_ws.station(
+            sxr = fdsn.station(
                 site='iris',
                 network=net,
                 station=sta,
@@ -83,7 +113,7 @@ class FDSNStationTestCase(unittest.TestCase):
                 endafter=tmax,
                 level='response', matchtimeseries=True)
 
-            fi = iris_ws.ws_resp(
+            fi = iris.ws_resp(
                 network=net,
                 station=sta,
                 location=loc,
@@ -130,7 +160,7 @@ class FDSNStationTestCase(unittest.TestCase):
 
                 mdp = num.mean(pha_dif[f < 0.5*fmax])
 
-                print mda, mdp
+                print(mda, mdp)
 
                 if mda > 0.03 or mdp > 0.04:
                     lab.gcf().add_subplot(2, 1, 1)
@@ -146,14 +176,14 @@ class FDSNStationTestCase(unittest.TestCase):
                     lab.show()
 
                 else:
-                    print 'ok'
-            except:
-                print 'failed: ', nslc
+                    print('ok')
+            except Exception:
+                print('failed: ', nslc)
 
+    @common.require_internet
     def test_url_alive(self):
-        '''
-        Test urls which are used as references in pyrocko if they still exist.
-        '''
+        # Test urls which are used as references in pyrocko if they still
+        # exist.
         to_check = [
             ('http://nappe.wustl.edu/antelope/css-formats/wfdisc.htm',
              'pyrocko.css'),
@@ -175,8 +205,8 @@ class FDSNStationTestCase(unittest.TestCase):
 
         for url in to_check:
             try:
-                fdsn_ws._request(url[0])
-            except urllib2.HTTPError as e:
+                fdsn._request(url[0])
+            except urllib.error.HTTPError as e:
                 logger.warn('%s - %s referenced in pyrocko.%s' %
                             (e, url[0], url[1]))
 

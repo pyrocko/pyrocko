@@ -1,9 +1,11 @@
+from __future__ import division, print_function, absolute_import
 import unittest
 import math
 import tempfile
 import shutil
 
 from pyrocko import model, util, trace, orthodrome, guts, moment_tensor
+from pyrocko.guts import load
 import numpy as num
 from os.path import join as pjoin
 
@@ -26,7 +28,7 @@ def near(a, b, eps):
 class ModelTestCase(unittest.TestCase):
 
     def testIOEventOld(self):
-        tempdir = tempfile.mkdtemp()
+        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(
             10., 20., 1234567890., 'bubu', region='taka tuka land',
@@ -44,7 +46,7 @@ class ModelTestCase(unittest.TestCase):
         shutil.rmtree(tempdir)
 
     def testIOEvent(self):
-        tempdir = tempfile.mkdtemp()
+        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
         fn = pjoin(tempdir, 'event.txt')
         e1 = model.Event(
             10., 20., 1234567890., 'bubu', region='taka tuka land',
@@ -60,6 +62,7 @@ class ModelTestCase(unittest.TestCase):
         assert e1.region == e2.region
         assert e1.magnitude == e2.magnitude
         assert e1.magnitude_type == e2.magnitude_type
+        assert e1.get_hash() == e2.get_hash()
         shutil.rmtree(tempdir)
 
     def testMissingComponents(self):
@@ -78,7 +81,7 @@ class ModelTestCase(unittest.TestCase):
         assertOrtho(mat[:, 0], mat[:, 1], mat[:, 2])
 
     def testIOStations(self):
-        tempdir = tempfile.mkdtemp()
+        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
         fn = pjoin(tempdir, 'stations.txt')
 
         ne = model.Channel('NE', azimuth=45., dip=0.)
@@ -128,6 +131,52 @@ class ModelTestCase(unittest.TestCase):
             t = g(projected, 'T')
             assert(near(r.ydata[0], 1.0, 0.001))
             assert(near(t.ydata[0], 1.0, 0.001))
+
+    def testGNSSCampaign(self):
+        tempdir = tempfile.mkdtemp(prefix='pyrocko-model')
+        fn = pjoin(tempdir, 'gnss_campaign.yml')
+
+        nstations = 25
+
+        lats = num.random.uniform(90, -90, nstations)
+        lons = num.random.uniform(90, -90, nstations)
+
+        shifts = num.random.uniform(-2.5, 2.5, (nstations, 3))
+        sigma = num.random.uniform(-0.5, 0.5, (nstations, 3))
+
+        campaign = model.gnss.GNSSCampaign()
+
+        for ista in range(nstations):
+
+            north = model.gnss.GNSSComponent(
+                shift=float(shifts[ista, 0]),
+                sigma=float(sigma[ista, 0]))
+            east = model.gnss.GNSSComponent(
+                shift=float(shifts[ista, 1]),
+                sigma=float(sigma[ista, 1]))
+            up = model.gnss.GNSSComponent(
+                shift=float(shifts[ista, 2]),
+                sigma=float(sigma[ista, 2]))
+
+            station = model.gnss.GNSSStation(
+                lat=float(lats[ista]),
+                lon=float(lons[ista]),
+                north=north,
+                east=east,
+                up=up)
+
+            campaign.add_station(station)
+
+        campaign.dump(filename=fn)
+
+        campaign2 = load(filename=fn)
+
+        s1 = campaign.stations[0]
+
+        s_add = s1.north + s1.north
+        assert s_add.shift == (s1.north.shift + s1.north.shift)
+
+        assert len(campaign.stations) == len(campaign2.stations)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,326 @@
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://openlayers.org/en/v4.6.4/css/ol.css" type="text/css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script>
+    <script src="https://openlayers.org/en/v4.6.4/build/ol.js"></script>
+    <script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="http://maplib.khtml.org/khtml.maplib/khtml_all.js"> </script>
+    <script type="text/javascript" src="loadxmldoc.js"></script>
+</head>
+<body onload="init();">
+    <div class="map" id="map"><div id="popup"></div></div>
+    <div id="logger"></div>
+    <script>
+        try{
+            xmlDoc = loadXMLDoc("markers.xml");
+        }
+        catch(err)
+        {
+            txt="An error occurred while trying to read dumped pyrocko marker.\n\n";
+            txt+="Probably, your browser does not allow to open that document\n\n";
+            txt+="due to the \"Same-Origin-Policy\".\n\n";
+            txt+="A solution might be to change your default browser.\n\n";
+            alert(txt);
+        }
+
+        var apiKey = "ApTJzdkyN1DdFKkRAE6QIDtzihNaf6IWJsT-nQ_2eMoO4PN__0Tzhl2-WgJtXFSp";
+
+        function Station(lat, lon, nsl, icon_data){
+            this.lat = lat;
+            this.lon = lon;
+            this.nsl = nsl;
+        };
+
+        function Event(lat, lon, time, depth, magnitude, icon_data){
+            this.lat = lat;
+            this.lon = lon;
+            this.time = time || 0;
+            this.depth = depth || 0;
+            this.magnitude = magnitude || 0;
+            this.get_event_description = function(){
+                return "Magnitude " + this.magnitude.toFixed(2) + "<br>" + this.time + "<br>Depth: " + (this.depth/1000).toFixed(2) + " km"
+            };
+
+            this.get_fill_color = function(depth_min, depth_max){
+                if (depth_min==depth_max)
+                    scale = 0.5;
+                else
+                    var scale = (this.depth-depth_min)/(depth_max-depth_min);
+                var r = parseInt(255 * scale);
+                var b = parseInt(255 * (1-scale));
+                return 'rgba(' + r + ',0,'+ b + ',0.5)';
+            };
+        };
+
+        function myxmlExtractor(xmlDoc){
+            deb = xmlDoc.getElementsByTagName("event")
+            var events = [];
+            var magnitudes = [];
+            var depths = [];
+
+            for (i=0; i<deb.length; i++)
+            {
+                var lat = deb[i].childNodes[3].firstChild.data;
+                var lon = deb[i].childNodes[5].firstChild.data;
+                var time = deb[i].childNodes[7].firstChild.data;
+                var depth = deb[i].childNodes[11].firstChild.data;
+                var mag = parseFloat(deb[i].childNodes[9].firstChild.data);
+                magnitudes[magnitudes.length] = mag;
+                depths[depths.length] = depth;
+                var event = new Event(lat, lon, time, depth, mag);
+
+                events[events.length] = event;
+            };
+
+            var stations = [];
+            stationElements=xmlDoc.getElementsByTagName("station")
+            for (i=0; i<stationElements.length; i++)
+            {
+                var nsl = stationElements[i].childNodes[1].firstChild.data;
+                var lat = stationElements[i].childNodes[3].firstChild.data;
+                var lon = stationElements[i].childNodes[5].firstChild.data;
+                stations[stations.length] = new Station(lat, lon, nsl);
+            }
+            return [stations, events, magnitudes, depths];
+        };
+
+        function get_transformed_lonlat(item){
+            return ol.proj.fromLonLat([parseFloat(item.lon), parseFloat(item.lat)]);
+        };
+
+        function get_station_layer(items){
+
+            var triangle = new ol.style.Style({
+                image: new ol.style.RegularShape({
+                    fill: new ol.style.Fill({
+                        color: 'red'}),
+                    stroke: new ol.style.Stroke({
+                        color: 'black',
+                        width: 2}),
+                    points: 3,
+                    radius: 8,
+                    angle: 0
+                  })
+            });
+
+            var features = new Array(items.length);
+            for (i=0; i<items.length; i++){
+                var item = items[i];
+
+                features[i] = new ol.Feature({
+                    name: item.nsl,
+                    geometry: new ol.geom.Point(
+                        get_transformed_lonlat(item)),
+                });
+                features[i].setStyle(triangle);
+            };
+
+            var station_marker_source = new ol.source.Vector({
+                features: features,
+                useSpatialIndex: true
+            });
+
+            var station_layer = new ol.layer.Vector({
+                visible: true,
+                source: station_marker_source,
+            });
+            return station_layer;
+        };
+
+        function magnitude_circle_radius(magnitude, magmin, magmax, magshift) {
+            if (magmax == magshift)
+                return 8;
+            else
+                return 2.+Math.exp(2.*(magnitude+magshift-magnitude_min)/(magnitude_max-magnitude_min));
+        }
+
+        function get_event_layer(items, magmin, magmax, depth_min, depth_max) {
+
+            if (magmin < 0)
+                var magshift = magmin * -1;
+            else
+                var magshift = 0.;
+
+            var event_stroke = new ol.style.Stroke({
+                color: '#ffffff', width: 1
+            })
+            var features = new Array(items.length);
+
+            for (i=0; i<items.length; i++) {
+                var item = items[i];
+                var rad = magnitude_circle_radius(item.magnitude, magmin, magmax, magshift);
+                /*item.get_fill_color(depth_min, depth_max),*/
+
+                var style = new ol.style.Style({
+                    image: new ol.style.Circle({
+                        radius: rad,
+                        fill: new ol.style.Fill({
+                            color: item.get_fill_color(depth_min, depth_max)
+                        }),
+                        stroke: event_stroke,
+                      })
+                });
+
+                features[i] = new ol.Feature({
+                    name: item.get_event_description(),
+                    geometry: new ol.geom.Point(
+                        get_transformed_lonlat(item)
+                    ),
+                });
+                features[i].setStyle(style);
+            }
+
+            var event_layer_source = new ol.source.Vector({
+                features: features,
+                useSpatialIndex: true,
+            });
+
+            var event_layer = new ol.layer.Vector({
+                source: event_layer_source,
+                /*eventListeners: layerListeners*/
+            });
+
+            return event_layer;
+        };
+
+        function zoomToExtent(map, layers) {
+            var extent = ol.extent.createEmpty();
+            layers.forEach(function(layers) {
+              ol.extent.extend(extent, layers.getSource().getExtent());
+            });
+            /*console.log(extent);*/
+            map.getView().fit(extent, map.getSize());
+        };
+
+        function init() {
+
+            var aerial = new ol.layer.Tile({
+                visibility: false,
+                isBaseLayer: false,
+                source: new ol.source.BingMaps({
+                    imagerySet: "Aerial",
+                    key: apiKey,
+                })
+            });
+
+            var stamen_terrain = new ol.layer.Tile({
+                visibility: true,
+                source: new ol.source.Stamen({
+                  layer: 'terrain'
+                })
+            });
+
+            var plate_boundary_style = new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    width: 4,
+                    color: "#f49842",
+                })
+            });
+
+/*            var plate_boundaries = new ol.layer.Vector({
+                visible: true,
+                style: plate_boundary_style,
+                source: new ol.source.Vector({
+                    url: "plates.kml",
+                    format: new ol.format.KML({
+                        extractStyles: false,
+                        extractAttributes: false,
+                        maxDepth: 2
+                    })
+                })
+            });*/
+
+            var data = myxmlExtractor(xmlDoc);
+
+            var stations = data[0];
+            var events = data[1];
+            var magnitudes = data[2];
+            var depths = data[3];
+
+            if (magnitudes.length==1){
+                magnitude_min = 0;
+                magnitude_max = 0;
+                depth_min = 10;
+                depth_max = 10;
+            } else {
+                magnitude_min = Math.min.apply(Math, magnitudes);
+                magnitude_max = Math.max.apply(Math, magnitudes);
+                depth_min = Math.min.apply(Math, depths);
+                depth_max = Math.max.apply(Math, depths);
+            }
+            var event_layer = get_event_layer(events, magnitude_min, magnitude_max, depth_min, depth_max);
+            var station_layer = get_station_layer(stations);
+
+            map = new ol.Map({
+                target: document.getElementById('map'),
+                layers: [
+                    stamen_terrain,
+                    /*plate_boundaries,*/
+                    event_layer,
+                    station_layer,
+                ],
+                controls: [
+                    /*new ol.Control.LayerSwitcher({roundedCornerColor: "#999999"}),*/
+                    new ol.control.Attribution(),
+                    new ol.control.Zoom(),
+                    new ol.control.MousePosition({
+                        coordinateFormat: ol.coordinate.createStringXY(4),
+                        projection: 'EPSG:4326',
+                    }),
+                    new ol.control.ScaleLine(),
+                ],
+                view: new ol.View({
+                    center: [0, 0],
+                    zoom: 4
+                })
+            });
+
+            var element = document.getElementById('popup');
+            var popup = new ol.Overlay({
+                element: element,
+                positioning: 'bottom-center',
+                stopEvent: false,
+                offset: [0, -5]
+            });
+            map.addOverlay(popup);
+
+            // display popup on click
+            map.on('click', function(evt) {
+              var feature = map.forEachFeatureAtPixel(evt.pixel,
+                  function(feature) {
+                    return feature;
+                  });
+              if (feature) {
+                var coordinates = feature.getGeometry().getCoordinates();
+                popup.setPosition(coordinates);
+                $(element).popover({
+                  'placement': 'top',
+                  'html': true,
+                  'content': feature.get('name')
+                });
+                $(element).popover('show');
+              } else {
+                $(element).popover('destroy');
+              }
+            });
+
+            // change mouse cursor when over marker
+            map.on('pointermove', function(e) {
+                if (e.dragging) {
+                    $(element).popover('destroy');
+                    return;
+                }
+                var pixel = map.getEventPixel(e.originalEvent);
+                var hit = map.hasFeatureAtPixel(pixel);
+                map.getTarget().style.cursor = hit ? 'pointer' : '';
+            });
+
+            zoomToExtent(map, [station_layer, event_layer]);
+        }
+
+    </script>
+</body>
+</html>

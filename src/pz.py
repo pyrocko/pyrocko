@@ -1,7 +1,14 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import
 import math
-from cStringIO import StringIO
-
 import numpy as num
+try:
+    from StringIO import StringIO as BytesIO
+except ImportError:
+    from io import BytesIO
 
 from pyrocko import trace
 
@@ -20,13 +27,13 @@ def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
     '''
 
     if filename is not None:
-        f = open(filename, 'r')
+        f = open(filename, 'rb')
 
     elif file is not None:
         f = file
 
     elif string is not None:
-        f = StringIO(string)
+        f = BytesIO(string)
 
     sects = ('ZEROS', 'POLES', 'CONSTANT')
     sectdata = {'ZEROS': [], 'POLES': []}
@@ -36,6 +43,7 @@ def read_sac_zpk(filename=None, file=None, string=None, get_comments=False):
     atsect = None
     comments = []
     for iline, line in enumerate(f):
+        line = str(line.decode('ascii'))
         toks = line.split()
         if len(toks) == 0:
             continue
@@ -168,7 +176,7 @@ def plot_amplitudes_zpk(
         nf=100,
         fnorm=None):
 
-    import gmtpy
+    from pyrocko.plot import gmtpy
 
     p = gmtpy.LogLogPlot(width=30*gmtpy.cm, yexp=0)
     for i, (zeros, poles, constant) in enumerate(zpks):
@@ -184,7 +192,7 @@ def plot_amplitudes_zpk(
 
 def plot_phases_zpk(zpks, filename_pdf, fmin=0.001, fmax=100., nf=100):
 
-    import gmtpy
+    from pyrocko.plot import gmtpy
 
     p = gmtpy.LogLinPlot(width=30*gmtpy.cm)
     for i, (zeros, poles, constant) in enumerate(zpks):

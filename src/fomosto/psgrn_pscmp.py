@@ -1,4 +1,10 @@
-# coding=utf-8
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import range, zip
+
 import logging
 import os
 from os.path import join as pjoin
@@ -13,6 +19,7 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 
 from pyrocko.guts import Float, Int, Tuple, List, Object, String
+from pyrocko.model import Location
 from pyrocko import gf, util, trace, cake
 
 
@@ -31,7 +38,19 @@ psgrn_components = 'ep ss ds cl'.split()
 km = 1000.
 
 guts_prefix = 'pf'
-logger = logging.getLogger('psgrn_pscmp')
+logger = logging.getLogger('pyrocko.fomosto.psgrn_pscmp')
+
+
+def have_backend():
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+
+        except OSError:
+            return False
+
+    return True
 
 
 def nextpow2(i):
@@ -290,7 +309,7 @@ class PsGrnConfigFull(PsGrnConfig):
 %(model_lines)s
 #=======================end of input===========================================
 '''  # noqa
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class PsGrnError(gf.store.StoreError):
@@ -305,7 +324,7 @@ def remove_if_exists(fn, force=False):
             raise gf.CannotCreate('file %s already exists' % fn)
 
 
-class PsGrnRunner:
+class PsGrnRunner(object):
     '''
     Wrapper object to execute the program fomosto_psgrn.
     '''
@@ -330,14 +349,11 @@ class PsGrnRunner:
 
         remove_if_exists(input_fn, force=force)
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
-
-        logger.debug('===== begin psgrn input =====\n'
-                     '%s===== end psgrn input =====' % input_str)
-
-        f.write(input_str)
-        f.close()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
+            logger.debug('===== begin psgrn input =====\n'
+                         '%s===== end psgrn input =====' % input_str.decode())
+            f.write(input_str)
         program = program_bins['psgrn.%s' % config.version]
 
         old_wd = os.getcwd()
@@ -366,7 +382,7 @@ on
 
 ''' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -375,7 +391,7 @@ on
             raise KeyboardInterrupt()
 
         logger.debug('===== begin psgrn output =====\n'
-                     '%s===== end psgrn output =====' % output_str)
+                     '%s===== end psgrn output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -385,7 +401,7 @@ on
         if error_str:
             errmess.append('psgrn emitted something via stderr')
 
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in psgrn output")
 
         if errmess:
@@ -400,8 +416,8 @@ on
 %s
 psgrn has been invoked as "%s"
 in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.outdir))
+                input_str.decode(), output_str.decode(), error_str.decode(),
+                '\n'.join(errmess), program, self.outdir))
 
         self.psgrn_output = output_str
         self.psgrn_error = error_str
@@ -522,7 +538,7 @@ class PsCmpArray(PsCmpObservation):
                 self.n_steps_lon, self.slon, self.elon)
 
 
-class PsCmpRectangularSource(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
     '''
     Rectangular Source for the input geometry of the active fault.
 
@@ -567,7 +583,7 @@ class PsCmpRectangularSource(gf.Location, gf.seismosizer.Cloneable):
           rake: 0.0
 
         '''
-        for (k, v) in kwargs.iteritems():
+        for (k, v) in kwargs.items():
             self[k] = v
 
     @property
@@ -612,7 +628,7 @@ MTDev = {
     }
 
 
-class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
     '''
     Compound dislocation of 3 perpendicular, rectangular sources to approximate
     an opening single force couple. NED coordinate system!
@@ -628,7 +644,7 @@ class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
         rf = -0.25
 
         cmpd = []
-        for comp, mt in MTIso.iteritems():
+        for comp, mt in MTIso.items():
             params = copy.deepcopy(mt)
 
             if comp != self.idx:
@@ -644,7 +660,7 @@ class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
         return cmpd
 
 
-class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpShearSF(Location, gf.seismosizer.Cloneable):
 
     length = Float.T(default=1.0 * km)
     width = Float.T(default=1.0 * km)
@@ -660,7 +676,7 @@ class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
         return [PsCmpRectangularSource(**kwargs)]
 
 
-class PsCmpMomentTensor(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
     '''
     Mapping of Moment Tensor components to rectangular faults.
     Only one component at a time valid! NED coordinate system!
@@ -784,9 +800,9 @@ class PsCmpConfigFull(PsCmpConfig):
 
     snapshot_basefilename = String.T(default='snapshot')
 
-    @staticmethod
-    def example():
-        conf = PsCmpConfigFull()
+    @classmethod
+    def example(cls):
+        conf = cls()
         conf.psgrn_outdir = 'TEST_psgrn_functions/'
         conf.pscmp_outdir = 'TEST_pscmp_output/'
         conf.rectangular_source_patches = [PsCmpRectangularSource(
@@ -881,7 +897,7 @@ class PsCmpConfigFull(PsCmpConfig):
 #
 # References:
 #
-# (1) Wang, R., F. Lorenzo-Martín and F. Roth (2003), Computation of deformation
+# (1) Wang, R., F. Lorenzo-Martin and F. Roth (2003), Computation of deformation
 #     induced by earthquakes in a multi-layered elastic crust - FORTRAN programs
 #     EDGRN/EDCMP, Computer and Geosciences, 29(2), 195-207.
 # (2) Wang, R., F. Lorenzo-Martin and F. Roth (2006), PSGRN/PSCMP - a new code for
@@ -1092,7 +1108,7 @@ class PsCmpConfigFull(PsCmpConfig):
 %(patches_str)s
 #================================end of input===================================
 '''  # noqa
-        return template % d
+        return (template % d).encode('ascii')
 
 
 class PsGrnPsCmpConfig(Object):
@@ -1114,7 +1130,7 @@ class Interrupted(gf.store.StoreError):
         return 'Interrupted.'
 
 
-class PsCmpRunner:
+class PsCmpRunner(object):
     '''
     Wrapper object to execute the program fomosto_pscmp with the specified
     configuration.
@@ -1140,14 +1156,14 @@ class PsCmpRunner:
 
         input_fn = pjoin(self.tempdir, 'input')
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
 
-        logger.debug('===== begin pscmp input =====\n'
-                     '%s===== end pscmp input =====' % input_str)
+            logger.debug('===== begin pscmp input =====\n'
+                         '%s===== end pscmp input =====' % input_str.decode())
 
-        f.write(input_str)
-        f.close()
+            f.write(input_str)
+
         program = program_bins['pscmp.%s' % config.version]
 
         old_wd = os.getcwd()
@@ -1177,7 +1193,7 @@ on
 
 ''' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -1186,35 +1202,40 @@ on
             raise KeyboardInterrupt()
 
         logger.debug('===== begin pscmp output =====\n'
-                     '%s===== end pscmp output =====' % output_str)
+                     '%s===== end pscmp output =====' % output_str.decode())
 
-        errmess = []
+        errmsg = []
         if proc.returncode != 0:
-            errmess.append(
+            errmsg.append(
                 'pscmp had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            errmess.append('pscmp emitted something via stderr')
+            errmsg.append('pscmp emitted something via stderr')
 
-        if output_str.lower().find('error') != -1:
-            errmess.append("the string 'error' appeared in pscmp output")
+        if output_str.lower().find(b'error') != -1:
+            errmsg.append("the string 'error' appeared in pscmp output")
 
-        if errmess:
+        if errmsg:
             self.keep_tmp = True
 
             os.chdir(old_wd)
             raise PsCmpError('''
 ===== begin pscmp input =====
-%s===== end pscmp input =====
+{pscmp_input}===== end pscmp input =====
 ===== begin pscmp output =====
-%s===== end pscmp output =====
+{pscmp_output}===== end pscmp output =====
 ===== begin pscmp error =====
-%s===== end pscmp error =====
-%s
-pscmp has been invoked as "%s"
-in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.tempdir))
+{pscmp_error}===== end pscmp error =====
+{error_messages}
+pscmp has been invoked as "{call}"
+in the directory {dir}'''.format(
+                pscmp_input=input_str,
+                pscmp_output=output_str,
+                pscmp_error=error_str,
+                error_messages='\n'.join(errmsg),
+                call=program,
+                dir=self.tempdir)
+                .lstrip())
 
         self.pscmp_output = output_str
         self.pscmp_error = error_str

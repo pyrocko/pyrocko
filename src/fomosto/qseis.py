@@ -1,3 +1,10 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import range, zip
+
 import numpy as num
 import logging
 import os
@@ -10,24 +17,39 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 from os.path import join as pjoin
 
-from pyrocko.guts import Float, Int, Tuple, List, Complex, Bool, Object, String
-from pyrocko import trace, util, cake
 from pyrocko import gf
+from pyrocko import trace, util, cake
 from pyrocko.moment_tensor import MomentTensor, symmat6
+from pyrocko.guts import Float, Int, Tuple, List, Complex, Bool, Object, String
 
-km = 1000.
+km = 1e3
 
 guts_prefix = 'pf'
 
 Timing = gf.meta.Timing
 
-logger = logging.getLogger('fomosto.qseis')
+logger = logging.getLogger('pyrocko.fomosto.qseis')
 
 # how to call the programs
 program_bins = {
     'qseis.2006': 'fomosto_qseis2006',
     'qseis.2006a': 'fomosto_qseis2006a',
 }
+
+
+def have_backend():
+    have_any = False
+    for cmd in [[exe] for exe in program_bins.values()]:
+        try:
+            p = Popen(cmd, stdout=PIPE, stderr=PIPE, stdin=PIPE)
+            (stdout, stderr) = p.communicate()
+            have_any = True
+
+        except OSError:
+            pass
+
+    return have_any
+
 
 qseis_components = 'r t z v'.split()
 qseis_greenf_names = ('ex', 'ss', 'ds', 'cl', 'fz', 'fh')
@@ -561,7 +583,8 @@ allowed thickness of the sublayers. If the resolutions of Vp, Vs and Rho
 is even smaller than 1%% of the characteristic wavelength, then the latter is
 taken finally for the sublayer thickness.
 '''  # noqa
-        return template % d
+
+        return (template % d).encode('ascii')
 
 
 class QSeisError(gf.store.StoreError):
@@ -573,7 +596,7 @@ class Interrupted(gf.store.StoreError):
         return 'Interrupted.'
 
 
-class QSeisRunner:
+class QSeisRunner(object):
 
     def __init__(self, tmp=None, keep_tmp=False):
         self.tempdir = mkdtemp(prefix='qseisrun-', dir=tmp)
@@ -585,14 +608,12 @@ class QSeisRunner:
 
         input_fn = pjoin(self.tempdir, 'input')
 
-        f = open(input_fn, 'w')
-        input_str = config.string_for_config()
+        with open(input_fn, 'wb') as f:
+            input_str = config.string_for_config()
+            logger.debug('===== begin qseis input =====\n'
+                         '%s===== end qseis input =====' % input_str.decode())
+            f.write(input_str)
 
-        logger.debug('===== begin qseis input =====\n'
-                     '%s===== end qseis input =====' % input_str)
-
-        f.write(input_str)
-        f.close()
         program = program_bins['qseis.%s' % config.qseis_version]
 
         old_wd = os.getcwd()
@@ -621,7 +642,7 @@ on
 
 ''' % program)
 
-            (output_str, error_str) = proc.communicate('input\n')
+            (output_str, error_str) = proc.communicate(b'input\n')
 
         finally:
             signal.signal(signal.SIGINT, original)
@@ -630,7 +651,7 @@ on
             raise KeyboardInterrupt()
 
         logger.debug('===== begin qseis output =====\n'
-                     '%s===== end qseis output =====' % output_str)
+                     '%s===== end qseis output =====' % output_str.decode())
 
         errmess = []
         if proc.returncode != 0:
@@ -639,11 +660,12 @@ on
 
         if error_str:
             logger.warn(
-                'qseis emitted something via stderr:\n\n%s' % error_str)
+                'qseis emitted something via stderr:\n\n%s'
+                % error_str.decode())
 
             # errmess.append('qseis emitted something via stderr')
 
-        if output_str.lower().find('error') != -1:
+        if output_str.lower().find(b'error') != -1:
             errmess.append("the string 'error' appeared in qseis output")
 
         if errmess:
@@ -660,8 +682,8 @@ on
 %s
 qseis has been invoked as "%s"
 in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.tempdir))
+                input_str.decode(), output_str.decode(), error_str.decode(),
+                '\n'.join(errmess), program, self.tempdir))
 
         self.qseis_output = output_str
         self.qseis_error = error_str
@@ -697,7 +719,7 @@ in the directory %s'''.lstrip() % (
             deltat = (data[-1, 0] - data[0, 0])/(nsamples-1)
 
             for itrace, distance, azimuth in zip(
-                    xrange(ntraces), distances, azimuths):
+                    range(ntraces), distances, azimuths):
 
                 tmin = self.config.time_start
                 if vred != 0.0:

@@ -1,9 +1,25 @@
+from __future__ import division, print_function, absolute_import
+import unittest
 import os
 import time
 from pyrocko import util
 import functools
+import logging
+import socket
+
+logger = logging.getLogger('pyrocko.test.common')
 
 benchmark_results = []
+
+g_matplotlib_inited = False
+
+
+def matplotlib_use_agg():
+    global g_matplotlib_inited
+    if not g_matplotlib_inited:
+        import matplotlib
+        matplotlib.use('Agg')  # noqa
+        g_matplotlib_inited = True
 
 
 def test_data_file_no_download(fn):
@@ -13,10 +29,44 @@ def test_data_file_no_download(fn):
 def test_data_file(fn):
     fpath = test_data_file_no_download(fn)
     if not os.path.exists(fpath):
-        url = 'http://kinherd.org/pyrocko_test_data/' + fn
+        if not have_internet():
+            raise unittest.SkipTest(
+                'need internet access to download data file')
+
+        url = 'http://data.pyrocko.org/testing/' + fn
+        logger.info('downloading %s' % url)
         util.download_file(url, fpath)
 
     return fpath
+
+
+def have_internet():
+    try:
+        return 0 < len([
+            (s.connect(('8.8.8.8', 80)), s.close())
+            for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]])
+
+    except OSError:
+        return False
+
+
+require_internet = unittest.skipUnless(have_internet(), 'need internet access')
+
+
+def have_gui():
+    display = os.environ.get('DISPLAY', '')
+    if not display:
+        return False
+
+    try:
+        from pyrocko.gui.qt_compat import qc  # noqa
+    except ImportError:
+        return False
+
+    return True
+
+
+require_gui = unittest.skipUnless(have_gui(), 'no gui support configured')
 
 
 class Benchmark(object):

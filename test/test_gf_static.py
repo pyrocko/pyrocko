@@ -1,16 +1,18 @@
+from __future__ import division, print_function, absolute_import
 import unittest
 import numpy as num
 import cProfile
 import math
 import logging
+import shutil
 
 from tempfile import mkdtemp
-from common import Benchmark
+from .common import Benchmark
 from pyrocko import gf, util, cake
 from pyrocko.fomosto import qseis, psgrn_pscmp
 
 random = num.random
-logger = logging.getLogger('test_gf_static.py')
+logger = logging.getLogger('pyrocko.test.test_gf_static')
 benchmark = Benchmark()
 
 r2d = 180. / math.pi
@@ -18,19 +20,22 @@ d2r = 1.0 / r2d
 km = 1000.
 
 
+@unittest.skipUnless(
+    qseis.have_backend(), 'backend qseis not available')
+@unittest.skipUnless(
+    psgrn_pscmp.have_backend(), 'backend psgrn_pscmp not available')
 class GFStaticTest(unittest.TestCase):
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
-        self.tempdirs = []
         self._dummy_store = None
         self.qseis_store_dir = None
         self.pscmp_store_dir = None
         unittest.TestCase.__init__(self, *args, **kwargs)
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     def get_qseis_store_dir(self):
@@ -301,9 +306,9 @@ mantle
 
             @benchmark.labeled('sum-timeseries-np%d' % nthreads)
             def sum_timeseries():
-                nsummands = weights.size / ntargets
+                nsummands = weights.size // ntargets
                 res = num.zeros(ntargets)
-                for t in xrange(ntargets):
+                for t in range(ntargets):
                     sl = slice(t*nsummands, (t+1) * nsummands)
                     r = store_ext.store_sum(
                         cstore, irecords[sl], delays_t[sl],
@@ -333,6 +338,32 @@ mantle
                 # print benchmark.__str__(header=False)
                 num.testing.assert_equal(t, s)
                 benchmark.clear()
+
+    def test_gnss_target(self):
+        src_length = 5 * km
+        src_width = 2 * km
+        nstations = 100
+        interp = ['nearest_neighbor', 'multilinear']
+        interpolation = interp[0]
+
+        source = gf.RectangularSource(
+            lat=0., lon=0.,
+            north_shift=0., east_shift=0., depth=6.5*km,
+            width=src_width, length=src_length,
+            dip=90., rake=90., strike=90.,
+            slip=1.)
+
+        gnss_target = gf.GNSSCampaignTarget(
+            lats=(random.uniform(-.2, .2, nstations)),
+            lons=(random.uniform(-.2, .2, nstations)),
+            interpolation=interpolation)
+
+        engine = gf.LocalEngine(store_dirs=[self.get_pscmp_store_dir()])
+        res = engine.process(source, gnss_target, nprocs=0)
+
+        statics = res.static_results()
+        for static in statics:
+            assert len(static.campaign.stations) == nstations
 
 
 if __name__ == '__main__':

@@ -1,4 +1,14 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''This module provides basic signal processing for seismic traces.'''
+from __future__ import division, absolute_import
+
+from builtins import zip
+from builtins import map
+from builtins import range
+from builtins import str as newstr
 
 import time
 import math
@@ -8,11 +18,11 @@ import logging
 import numpy as num
 from scipy import signal
 
-from pyrocko import util, evalresp, model, orthodrome, pchain
-from pyrocko.util import reuse, hpfloat, UnavailableDecimation
-from pyrocko.guts import Object, Float, Int, String, Complex, Tuple, List, \
+from . import util, evalresp, orthodrome, pchain, model
+from .util import reuse, hpfloat, UnavailableDecimation
+from .guts import Object, Float, Int, String, Complex, Tuple, List, \
     StringChoice
-from pyrocko.guts_array import Array
+from .guts_array import Array
 
 
 UnavailableDecimation  # noqa
@@ -138,7 +148,6 @@ class Trace(object):
         return s
 
     def __eq__(self, other):
-
         return (
             self.network == other.network
             and self.station == other.station
@@ -149,6 +158,43 @@ class Trace(object):
             and abs(self.tmin-other.tmin) < self.deltat*0.01
             and abs(self.tmax-other.tmax) < self.deltat*0.01
             and num.all(self.ydata == other.ydata))
+
+    def almost_equal(self, other, rtol=1e-5, atol=0.0):
+        return (
+            self.network == other.network
+            and self.station == other.station
+            and self.location == other.location
+            and self.channel == other.channel
+            and (abs(self.deltat - other.deltat)
+                 < (self.deltat + other.deltat)*1e-6)
+            and abs(self.tmin-other.tmin) < self.deltat*0.01
+            and abs(self.tmax-other.tmax) < self.deltat*0.01
+            and num.allclose(self.ydata, other.ydata, rtol=rtol, atol=atol))
+
+    def assert_almost_equal(self, other, rtol=1e-5, atol=0.0):
+
+        assert self.network == other.network, \
+            'network codes differ: %s, %s' % (self.network, other.network)
+        assert self.station == other.station, \
+            'station codes differ: %s, %s' % (self.station, other.station)
+        assert self.location == other.location, \
+            'location codes differ: %s, %s' % (self.location, other.location)
+        assert self.channel == other.channel, 'channel codes differ'
+        assert (abs(self.deltat - other.deltat)
+                 < (self.deltat + other.deltat)*1e-6), \
+            'sampling intervals differ %g, %g' % (self.deltat, other.delta)
+        assert abs(self.tmin-other.tmin) < self.deltat*0.01, \
+            'start times differ: %s, %s' % (
+                util.time_to_str(self.tmin), util.time_to_str(other.tmin))
+        assert abs(self.tmax-other.tmax) < self.deltat*0.01, \
+            'end times differ: %s, %s' % (
+                util.time_to_str(self.tmax), util.time_to_str(other.tmax))
+
+        assert num.allclose(self.ydata, other.ydata, rtol=rtol, atol=atol), \
+            'trace values differ'
+
+    def __hash__(self):
+        return id(self)
 
     def __call__(self, t, clip=False, snap=round):
         it = int(snap((t-self.tmin)/self.deltat))
@@ -569,7 +615,7 @@ class Trace(object):
         rratio = round(ratio)
 
         ok = False
-        for upsratio in xrange(1, allow_upsample_max+1):
+        for upsratio in range(1, allow_upsample_max+1):
             dratio = (upsratio/self.deltat) / (1./deltat)
             if abs(dratio - round(dratio)) / dratio < 0.0001 and \
                     util.decitab(int(round(dratio))):
@@ -622,7 +668,7 @@ class Trace(object):
         deltat2 = self.deltat * float(ntrans)/float(ntrans2)
         ndata2 = int(round(ndata*self.deltat/deltat2))
         if abs(fntrans2 - ntrans2) > 1e-7:
-            logger.warn(
+            logger.warning(
                 'resample: requested deltat %g could not be matched exactly: '
                 '%g' % (deltat, deltat2))
 
@@ -630,7 +676,7 @@ class Trace(object):
         data_pad = num.zeros(ntrans, dtype=num.float)
         data_pad[:ndata] = data
         fdata = num.fft.rfft(data_pad)
-        fdata2 = num.zeros((ntrans2+1)/2, dtype=fdata.dtype)
+        fdata2 = num.zeros((ntrans2+1)//2, dtype=fdata.dtype)
         n = min(fdata.size, fdata2.size)
         fdata2[:n] = fdata[:n]
         data2 = num.fft.irfft(fdata2)
@@ -646,7 +692,7 @@ class Trace(object):
             return
 
         if abs(self.deltat - deltat) * tyear/deltat < deltat:
-            logger.warn(
+            logger.warning(
                 'resample_simple: less than one sample would have to be '
                 'inserted/deleted per year. Doing nothing.')
             return
@@ -667,23 +713,23 @@ class Trace(object):
 
         nmin = int(round((self.tmin - tyearbegin)/deltat))
 
-        ibegin = (((nmin-1)/ninterval)+1) * ninterval - nmin
+        ibegin = (((nmin-1)//ninterval)+1) * ninterval - nmin
         nindices = (len(self.ydata) - ibegin - 1) / ninterval + 1
         if nindices > 0:
             indices = ibegin + num.arange(nindices) * ninterval
             data_split = num.split(self.ydata, indices)
             data = []
-            for l, h in zip(data_split[:-1], data_split[1:]):
+            for ln, h in zip(data_split[:-1], data_split[1:]):
                 if delete:
-                    l = l[:-1]
+                    ln = ln[:-1]
 
-                data.append(l)
+                data.append(ln)
                 if not delete:
-                    if l.size == 0:
+                    if ln.size == 0:
                         v = h[0]
                     else:
-                        v = 0.5*(l[-1] + h[0])
-                    data.append(num.array([v], dtype=l.dtype))
+                        v = 0.5*(ln[-1] + h[0])
+                    data.append(num.array([v], dtype=ln.dtype))
 
             data.append(data_split[-1])
 
@@ -746,7 +792,7 @@ class Trace(object):
                       'frequency (%g Hz). (Trace %s)' \
                 % (intro, frequency, 0.5/self.deltat, self.name())
             if warn:
-                logger.warn(message)
+                logger.warning(message)
             if raise_exception:
                 raise AboveNyquist(message)
 
@@ -770,7 +816,7 @@ class Trace(object):
             order, [corner*2.0*self.deltat], btype='low')
 
         if len(a) != order+1 or len(b) != order+1:
-            logger.warn(
+            logger.warning(
                 'Erroneous filter coefficients returned by '
                 'scipy.signal.butter(). You may need to downsample the '
                 'signal before filtering.')
@@ -802,7 +848,7 @@ class Trace(object):
 
         data = self.ydata.astype(num.float64)
         if len(a) != order+1 or len(b) != order+1:
-            logger.warn(
+            logger.warning(
                 'Erroneous filter coefficients returned by '
                 'scipy.signal.butter(). You may need to downsample the '
                 'signal before filtering.')
@@ -943,7 +989,7 @@ class Trace(object):
 
         df = 1./(ntrans*self.deltat)
         nw = int(round(width/df))
-        if ndata/2+1 <= nw:
+        if ndata//2+1 <= nw:
             raise TraceTooShort(
                 'Samples in trace: %s, samples needed: %s' % (ndata, nw))
 
@@ -966,7 +1012,7 @@ class Trace(object):
         nspec = amp.size
         csamp = num.cumsum(amp)
         amp_smoothed = num.empty(nspec, dtype=csamp.dtype)
-        n1, n2 = nw/2, nw/2 + nspec - nw
+        n1, n2 = nw//2, nw//2 + nspec - nw
         amp_smoothed[n1:n2] = (csamp[nw:] - csamp[:-nw]) / nw
         amp_smoothed[:n1] = amp_smoothed[n1]
         amp_smoothed[n2:] = amp_smoothed[n2-1]
@@ -1178,7 +1224,7 @@ class Trace(object):
             raise Exception('Invalid argument to scalingrange argument.')
 
         if scalingmethod == 1:
-            ydata = mavg_short/mavg_long * float(nshort)/float(nlong)
+            ydata = mavg_short/mavg_long * nshort/nlong
         elif scalingmethod in (2, 3):
             ydata = (mavg_short/mavg_long - 1.) \
                 / ((float(nlong)/float(nshort)) - 1)
@@ -1535,7 +1581,7 @@ class Trace(object):
             self, ntrans, freqlimits, transfer_function, invert=False):
 
         deltaf = 1./(self.deltat*ntrans)
-        nfreqs = ntrans/2 + 1
+        nfreqs = ntrans//2 + 1
         transfer = num.ones(nfreqs, dtype=num.complex)
         hi = snapper(nfreqs, deltaf)
         if freqlimits is not None:
@@ -1618,7 +1664,7 @@ class Trace(object):
 
         :param stations: list of `pyrocko.model.Station` objects or ``None``
         :param events: list of `pyrocko.model.Event` objects or ``None``
-        :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+        :param markers: list of `pyrocko.gui.util.Marker` objects or ``None``
         :param ntracks: float, number of tracks to be shown initially (default:
             12)
         :param follow: time interval (in seconds) for real time follow mode or
@@ -1637,7 +1683,7 @@ def snuffle(traces, **kwargs):
 
     :param stations: list of `pyrocko.model.Station` objects or ``None``
     :param events: list of `pyrocko.model.Event` objects or ``None``
-    :param markers: list of `pyrocko.gui_util.Marker` objects or ``None``
+    :param markers: list of `pyrocko.gui.util.Marker` objects or ``None``
     :param ntracks: float, number of tracks to be shown initially (default: 12)
     :param follow: time interval (in seconds) for real time follow mode or
         ``None``
@@ -1646,7 +1692,8 @@ def snuffle(traces, **kwargs):
     :param opengl: bool, whether to use opengl (default: ``False``)
     '''
 
-    from pyrocko import pile, snuffler
+    from pyrocko import pile
+    from pyrocko.gui import snuffler
     p = pile.Pile()
     if traces:
         trf = pile.MemTracesFile(None, traces)
@@ -1824,8 +1871,8 @@ def degapper(
             dist = (b.tmin-(a.tmin+(a.data_len()-1)*a.deltat))/a.deltat
             idist = int(round(dist))
             if abs(dist - idist) > 0.05 and idist <= maxgap:
-                # logger.warn('Cannot degap traces with displaced sampling '
-                #             '(%s, %s, %s, %s)' % a.nslc_id)
+                # logger.warning('Cannot degap traces with displaced sampling '
+                #                '(%s, %s, %s, %s)' % a.nslc_id)
                 pass
             else:
                 if 1 < idist <= maxgap:
@@ -1923,7 +1970,7 @@ def rotate(traces, azimuth, in_channels, out_channels):
                     ac = a.chop(tmin, tmax, inplace=False, include_last=True)
                     bc = b.chop(tmin, tmax, inplace=False, include_last=True)
                     if abs(ac.tmin - bc.tmin) > ac.deltat*0.01:
-                        logger.warn(
+                        logger.warning(
                             'Cannot rotate traces with displaced sampling '
                             '(%s, %s, %s, %s)' % a.nslc_id)
                         continue
@@ -2154,7 +2201,7 @@ def _project2(traces, matrix, in_channels, out_channels):
             ac = a.chop(tmin, tmax, inplace=False, include_last=True)
             bc = b.chop(tmin, tmax, inplace=False, include_last=True)
             if abs(ac.tmin - bc.tmin) > ac.deltat*0.01:
-                logger.warn(
+                logger.warning(
                     'Cannot project traces with displaced sampling '
                     '(%s, %s, %s, %s)' % a.nslc_id)
                 continue
@@ -2202,7 +2249,7 @@ def _project3(traces, matrix, in_channels, out_channels):
                 if (abs(ac.tmin - bc.tmin) > ac.deltat*0.01
                         or abs(bc.tmin - cc.tmin) > bc.deltat*0.01):
 
-                    logger.warn(
+                    logger.warning(
                         'Cannot project traces with displaced sampling '
                         '(%s, %s, %s, %s)' % a.nslc_id)
                     continue
@@ -2496,7 +2543,7 @@ class MultiplyTaper(Taper):
         for taper in self.tapers:
             spans.append(taper.span(y, x0, dx))
 
-        mins, maxs = zip(*spans)
+        mins, maxs = list(zip(*spans))
         return min(mins), max(maxs)
 
     def time_span(self):
@@ -2504,7 +2551,7 @@ class MultiplyTaper(Taper):
         for taper in self.tapers:
             spans.append(taper.time_span())
 
-        mins, maxs = zip(*spans)
+        mins, maxs = list(zip(*spans))
         return none_min(mins), none_max(maxs)
 
 
@@ -2815,8 +2862,8 @@ class MultiplyResponse(FrequencyResponse):
 
 
 def asarray_1d(x, dtype):
-    if isinstance(x, (list, tuple)) and x and isinstance(x[0], basestring):
-        return num.asarray(map(dtype, x), dtype=dtype)
+    if isinstance(x, (list, tuple)) and x and isinstance(x[0], (str, newstr)):
+        return num.asarray(list(map(dtype, x)), dtype=dtype)
     else:
         a = num.asarray(x, dtype=dtype)
         if not a.ndim == 1:
@@ -2840,7 +2887,7 @@ def _get_cached_filter_coefs(order, corners, btype):
     return cached_coefficients[ck]
 
 
-class _globals:
+class _globals(object):
     _numpy_has_correlate_flip_bug = None
 
 
@@ -2908,9 +2955,11 @@ def numpy_correlate_emulate(a, b, mode='valid'):
     kmin = -(b.size-1)
     klen = a.size-kmin
     kmin, kmax = numpy_correlate_lag_range(a, b, mode=mode)
+    kmin = int(kmin)
+    kmax = int(kmax)
     klen = kmax - kmin + 1
     c = num.zeros(klen, dtype=num.find_common_type((b.dtype, a.dtype), ()))
-    for k in xrange(kmin, kmin+klen):
+    for k in range(kmin, kmin+klen):
         imin = max(0, -k)
         ilen = min(b.size, a.size-k) - imin
         c[k-kmin] = num.sum(
@@ -2932,7 +2981,7 @@ def numpy_correlate_lag_range(a, b, mode='valid', use_fft=False):
         klen = a.size-kmin
     elif mode == 'same':
         klen = max(a.size, b.size)
-        kmin += (a.size+b.size-1 - max(a.size, b.size)) / 2 + \
+        kmin += (a.size+b.size-1 - max(a.size, b.size)) // 2 + \
             int(not use_fft and a.size % 2 == 0 and b.size > a.size)
     elif mode == 'valid':
         klen = abs(a.size - b.size) + 1
@@ -2988,9 +3037,9 @@ def moving_avg(x, n):
     cx = x.cumsum()
     nn = len(x)
     y = num.zeros(nn, dtype=cx.dtype)
-    y[n/2:n/2+(nn-n)] = (cx[n:]-cx[:-n])/n
-    y[:n/2] = y[n/2]
-    y[n/2+(nn-n):] = y[n/2+(nn-n)-1]
+    y[n//2:n//2+(nn-n)] = (cx[n:]-cx[:-n])/n
+    y[:n//2] = y[n//2]
+    y[n//2+(nn-n):] = y[n//2+(nn-n)-1]
     return y
 
 
@@ -3018,7 +3067,7 @@ def moving_sum(x, n, mode='valid'):
             y[n:nn+n-1] = cx[nn-1] - cx[0:nn-1]
 
     if mode == 'same':
-        n1 = (n-1)/2
+        n1 = (n-1)//2
         y = num.zeros(nn, dtype=cx.dtype)
         if n <= nn:
             y[0:n-n1] = cx[n1:n]
@@ -3092,16 +3141,16 @@ def hilbert(x, N=None):
     if N <= 0:
         raise ValueError("N must be positive.")
     if num.iscomplexobj(x):
-        logger.warn('imaginary part of x ignored.')
+        logger.warning('imaginary part of x ignored.')
         x = num.real(x)
     Xf = num.fft.fft(x, N, axis=0)
     h = num.zeros(N)
     if N % 2 == 0:
-        h[0] = h[N/2] = 1
-        h[1:N/2] = 2
+        h[0] = h[N//2] = 1
+        h[1:N//2] = 2
     else:
         h[0] = 1
-        h[1:(N+1)/2] = 2
+        h[1:(N+1)//2] = 2
 
     if len(x.shape) > 1:
         h = h[:, num.newaxis]
@@ -3116,7 +3165,7 @@ def near(a, b, eps):
 def coroutine(func):
     def wrapper(*args, **kwargs):
         gen = func(*args, **kwargs)
-        gen.next()
+        next(gen)
         return gen
 
     wrapper.__name__ = func.__name__

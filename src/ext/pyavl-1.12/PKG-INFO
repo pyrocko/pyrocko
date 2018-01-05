@@ -1,0 +1,22 @@
+Metadata-Version: 1.0
+Name: pyavl
+Version: 1.12_1
+Summary: avl-tree type for Python (C-written extension module)
+Home-page: http://dasnar.sdf-eu.org/miscres.html
+Author: Richard McGraw
+Author-email: dasnar at fastmail dot fm
+License: None, public domain
+Download-URL: http://sourceforge.net/projects/pyavl/
+Description: This small C package is comprised of an independent set of
+        routines dedicated to manipulating AVL trees (files avl.c, avl.h), and of
+        an extension module for Python that builds upon it (file avlmodule.c) to
+        provide objects of type 'avl_tree' in Python, which can behave as sorted
+        containers or sequential lists.  For example one can take slices of trees
+        with the usual syntax.  Unlike collectionsmodule.c, avlmodule.c contains
+        only bindings to the underlying implementation.
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: License :: Public Domain
+Classifier: Programming Language :: C
+Classifier: Programming Language :: Python
+Classifier: Topic :: Software Development :: Libraries :: Python Modules

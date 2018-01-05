@@ -1,20 +1,36 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
 '''Lightweight declarative YAML and XML data binding for Python.'''
+from __future__ import absolute_import
+from builtins import str as newstr
+from builtins import range
+from builtins import object
+from future.utils import with_metaclass
 
 import datetime
 import calendar
 import re
 import sys
 import types
+import copy
 
-from cStringIO import StringIO
+from io import open, BytesIO
 
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader, CSafeDumper as SafeDumper
-except:
+except ImportError:
     from yaml import SafeLoader, SafeDumper
 
-from pyrocko.util import time_to_str, str_to_time
+from .util import time_to_str, str_to_time, TimeStrError
+
+try:
+    unicode
+except NameError:
+    unicode = str
+
 
 g_iprop = 0
 
@@ -48,6 +64,14 @@ def cc_to_us(s):
 
 re_frac = re.compile(r'\.[1-9]FRAC')
 frac_formats = dict([('.%sFRAC' % x, '%.'+x+'f') for x in '123456789'])
+
+
+def encode_utf8(s):
+    return s.encode('utf-8')
+
+
+def no_encode(s):
+    return s
 
 
 def make_xmltagname_from_name(name):
@@ -87,7 +111,7 @@ def expand_stream_args(mode):
                 return f(*args, **kwargs)
 
             elif filename is not None:
-                stream = open(filename, mode)
+                stream = open(filename, mode+'b')
                 kwargs['stream'] = stream
                 retval = f(*args, **kwargs)
                 if isinstance(retval, types.GeneratorType):
@@ -112,7 +136,7 @@ def expand_stream_args(mode):
                     'Keyword argument string=... cannot be used in dumper ' \
                     'function.'
 
-                kwargs['stream'] = StringIO(string)
+                kwargs['stream'] = BytesIO(string.encode('utf-8'))
                 return f(*args, **kwargs)
 
             else:
@@ -120,16 +144,16 @@ def expand_stream_args(mode):
                     'Use keyword argument stream=... or filename=... in ' \
                     'loader function.'
 
-                sout = StringIO()
+                sout = BytesIO()
                 f(stream=sout, *args, **kwargs)
-                return sout.getvalue()
+                return sout.getvalue().decode('utf-8')
 
         return g
 
     return wrap
 
 
-class Defer:
+class Defer(object):
     def __init__(self, classname, *args, **kwargs):
         global g_iprop
         if kwargs.get('position', None) is None:
@@ -145,7 +169,7 @@ class Defer:
 class TBase(object):
 
     strict = False
-    multivalued = False
+    multivalued = None
     force_regularize = False
     propnames = []
 
@@ -244,6 +268,7 @@ class TBase(object):
             cls.content_property = None
 
         cls.properties.remove(prop)
+        cls.propnames.remove(name)
 
         return prop
 
@@ -349,6 +374,7 @@ class TBase(object):
 
         is_derived = isinstance(val, self.cls)
         is_exact = type(val) == self.cls
+
         not_ok = not self.strict and not is_derived or \
             self.strict and not is_exact
 
@@ -356,7 +382,7 @@ class TBase(object):
             if regularize:
                 try:
                     val = self.regularize_extra(val)
-                except (RegularizationError, ValueError):
+                except ValueError:
                     raise ValidationError(
                         '%s: could not convert "%s" to type %s' % (
                             self.xname(), val, self.cls.__name__))
@@ -366,7 +392,10 @@ class TBase(object):
                         self.xname(), val, type(val), self.cls.__name__))
 
         validator = self
-        if type(val) != self.cls and isinstance(val, self.cls):
+        if type(val) != self.cls \
+                and isinstance(val, self.cls) and \
+                hasattr(val, 'T'):
+            # derived classes only: validate with derived class validator
             validator = val.T.instance
 
         validator.validate_extra(val)
@@ -438,8 +467,8 @@ class TBase(object):
             if hasattr(base, 'T'):
                 baseprops.extend(base.T.properties)
 
-        l = []
-        l.append('')
+        hlp = []
+        hlp.append('')
         for prop in cls.properties:
             if prop in baseprops:
                 continue
@@ -454,15 +483,15 @@ class TBase(object):
             if d is not None:
                 descr.append('*default:* ``%s``' % repr(d))
 
-            l.append('    .. py:gattribute:: %s' % prop.name)
-            l.append('')
-            l.append('      %s' % ', '.join(descr))
-            l.append('      ')
+            hlp.append('    .. py:gattribute:: %s' % prop.name)
+            hlp.append('')
+            hlp.append('      %s' % ', '.join(descr))
+            hlp.append('      ')
             if prop.help is not None:
-                l.append('      %s' % prop.help)
-                l.append('')
+                hlp.append('      %s' % prop.help)
+                hlp.append('')
 
-        return '\n'.join(l)
+        return '\n'.join(hlp)
 
     @classmethod
     def class_help_string(cls):
@@ -470,7 +499,7 @@ class TBase(object):
 
     @classmethod
     def class_signature(cls):
-        l = []
+        r = []
         for prop in cls.properties:
             d = prop.default()
             if d is not None:
@@ -482,9 +511,9 @@ class TBase(object):
             else:
                 arg = '...'
 
-            l.append('%s=%s' % (prop.name, arg))
+            r.append('%s=%s' % (prop.name, arg))
 
-        return '(%s)' % ', '.join(l)
+        return '(%s)' % ', '.join(r)
 
     @classmethod
     def help(cls):
@@ -596,10 +625,6 @@ class ValidationError(Exception):
     pass
 
 
-class RegularizationError(Exception):
-    pass
-
-
 class ArgumentError(Exception):
     pass
 
@@ -614,8 +639,7 @@ class DefaultMaker(object):
         return self.cls(*self.args, **self.kwargs)
 
 
-class Object(object):
-    __metaclass__ = ObjectMetaClass
+class Object(with_metaclass(ObjectMetaClass, object)):
     dummy_for = None
 
     def __init__(self, **kwargs):
@@ -635,7 +659,7 @@ class Object(object):
 
         if kwargs:
             raise ArgumentError('Invalid argument to %s: %s' % (
-                self.T.tagname, ', '.join(kwargs.keys())))
+                self.T.tagname, ', '.join(list(kwargs.keys()))))
 
     @classmethod
     def D(cls, *args, **kwargs):
@@ -669,7 +693,7 @@ class SObject(Object):
 
     class __T(TBase):
         def regularize_extra(self, val):
-            if isinstance(val, basestring):
+            if isinstance(val, (str, newstr)):
                 return self.cls(val)
 
             return val
@@ -742,7 +766,7 @@ class Bool(Object):
         strict = True
 
         def regularize_extra(self, val):
-            if isinstance(val, basestring):
+            if isinstance(val, (str, newstr)):
                 if val.lower().strip() in ('0', 'false'):
                     return False
 
@@ -757,7 +781,7 @@ class String(Object):
 
 
 class Unicode(Object):
-    dummy_for = unicode
+    dummy_for = newstr
 
 
 guts_plain_dummy_types = (String, Unicode, Int, Float, Complex, Bool)
@@ -767,7 +791,7 @@ class Dict(Object):
     dummy_for = dict
 
     class __T(TBase):
-        multivalued = True
+        multivalued = dict
 
         def __init__(self, key_t=Any.T(), content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -792,7 +816,7 @@ class Dict(Object):
             return TBase.validate(self, val, regularize, depth+1)
 
         def validate_children(self, val, regularize, depth):
-            for key, ele in val.items():
+            for key, ele in list(val.items()):
                 newkey = self.key_t.validate(key, regularize, depth-1)
                 newele = self.content_t.validate(ele, regularize, depth-1)
                 if regularize:
@@ -804,7 +828,7 @@ class Dict(Object):
 
         def to_save(self, val):
             return dict((self.key_t.to_save(k), self.content_t.to_save(v))
-                        for (k, v) in val.iteritems())
+                        for (k, v) in val.items())
 
         def to_save_xml(self, val):
             raise NotImplementedError()
@@ -818,7 +842,7 @@ class List(Object):
     dummy_for = list
 
     class __T(TBase):
-        multivalued = True
+        multivalued = list
 
         def __init__(self, content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -870,19 +894,19 @@ class List(Object):
 
 
 def make_typed_list_class(t):
-    class O(List):
+    class TL(List):
         class __T(List.T):
             def __init__(self, *args, **kwargs):
                 List.T.__init__(self, content_t=t.T(), *args, **kwargs)
 
-    return O
+    return TL
 
 
 class Tuple(Object):
     dummy_for = tuple
 
     class __T(TBase):
-        multivalued = True
+        multivalued = tuple
 
         def __init__(self, n=None, content_t=Any.T(), *args, **kwargs):
             TBase.__init__(self, *args, **kwargs)
@@ -899,7 +923,7 @@ class Tuple(Object):
             else:
                 if self.n is not None:
                     return tuple(
-                        self.content_t.default() for x in xrange(self.n))
+                        self.content_t.default() for x in range(self.n))
                 else:
                     return tuple()
 
@@ -913,8 +937,6 @@ class Tuple(Object):
             if self.n is not None and len(val) != self.n:
                 raise ValidationError(
                     '%s should have length %i' % (self.xname(), self.n))
-
-            return val
 
         def validate_children(self, val, regularize, depth):
             if not regularize:
@@ -967,19 +989,24 @@ class Timestamp(Object):
                 tt = val.timetuple()
                 val = float(calendar.timegm(tt))
 
-            elif isinstance(val, str) or isinstance(val, unicode):
+            elif isinstance(val, (str, newstr)):
                 val = val.strip()
                 val = re.sub(r'(Z|\+00(:?00)?)$', '', val)
-                if val[10] == 'T':
+                if len(val) > 10 and val[10] == 'T':
                     val = val.replace('T', ' ', 1)
-                val = str_to_time(val)
+
+                try:
+                    val = str_to_time(val)
+                except TimeStrError:
+                    raise ValidationError(
+                        '%s: cannot parse time/date: %s' % (self.xname(), val))
 
             elif isinstance(val, int):
                 val = float(val)
 
             else:
-                raise ValidationError('%s: cannot convert "%s" to float' % (
-                    self.xname(), val))
+                raise ValidationError(
+                    '%s: cannot convert "%s" to float' % (self.xname(), val))
 
             return val
 
@@ -1000,10 +1027,14 @@ class DateTimestamp(Object):
                 tt = val.utctimetuple()
                 val = calendar.timegm(tt) + val.microsecond * 1e-6
 
-            elif isinstance(val, str) or isinstance(val, unicode):
+            elif isinstance(val, datetime.date):
+                tt = val.timetuple()
+                val = float(calendar.timegm(tt))
+
+            elif isinstance(val, (str, newstr)):
                 val = str_to_time(val, format='%Y-%m-%d')
 
-            if not isinstance(val, float):
+            elif isinstance(val, int):
                 val = float(val)
 
             return val
@@ -1048,7 +1079,7 @@ class UnicodePattern(Unicode):
 
     '''Any ``unicode`` matching pattern ``%(pattern)s``.'''
 
-    dummy_for = unicode
+    dummy_for = newstr
     pattern = '.*'
 
     class __T(TBase):
@@ -1129,13 +1160,14 @@ class Union(Object):
 
         def validate(self, val, regularize=False, depth=-1):
             assert self.members
+            e2 = None
             for member in self.members:
                 try:
                     return member.validate(val, regularize, depth=depth)
-                except ValidationError, e:
-                    pass
+                except ValidationError as e:
+                    e2 = e
 
-            raise e
+            raise e2
 
 
 class Choice(Object):
@@ -1175,7 +1207,7 @@ class Choice(Object):
                             ok = True
                             t = tc
                             break
-                        except (RegularizationError, ValueError):
+                        except (ValidationError, ValueError):
                             pass
 
                     if not ok:
@@ -1206,15 +1238,23 @@ class Choice(Object):
 
 def _dump(object, stream, header=False, _dump_function=yaml.dump):
 
+    if not getattr(stream, 'encoding', None):
+        enc = encode_utf8
+    else:
+        enc = no_encode
+
     if header:
-        stream.write('%YAML 1.1\n')
-        if isinstance(header, basestring):
-            banner = '\n'.join('# ' + x for x in header.splitlines())
-            stream.write(banner)
-            stream.write('\n')
+        stream.write(enc(u'%YAML 1.1\n'))
+        if isinstance(header, (str, newstr)):
+            banner = u'\n'.join('# ' + x for x in header.splitlines()) + '\n'
+            stream.write(enc(banner))
 
     _dump_function(
-        object, stream=stream, explicit_start=True, Dumper=SafeDumper)
+        object,
+        stream=stream,
+        encoding='utf-8',
+        explicit_start=True,
+        Dumper=SafeDumper)
 
 
 def _dump_all(object, stream, header=True):
@@ -1253,7 +1293,7 @@ def multi_constructor(loader, tag_suffix, node):
     tagname = re_compatibility.sub('pf.', tagname)
 
     cls = g_tagname_to_class[tagname]
-    kwargs = dict(loader.construct_mapping(node, deep=True).iteritems())
+    kwargs = dict(iter(loader.construct_mapping(node, deep=True).items()))
     o = cls(**kwargs)
     o.validate(regularize=True, depth=1)
     return o
@@ -1267,6 +1307,14 @@ def dict_noflow_representer(dumper, data):
 yaml.add_multi_representer(Object, multi_representer, Dumper=SafeDumper)
 yaml.add_multi_constructor('!', multi_constructor, Loader=SafeLoader)
 yaml.add_representer(dict, dict_noflow_representer, Dumper=SafeDumper)
+
+
+def newstr_representer(dumper, data):
+    return dumper.represent_scalar(
+        'tag:yaml.org,2002:str', unicode(data))
+
+
+yaml.add_representer(newstr, newstr_representer, Dumper=SafeDumper)
 
 
 class Constructor(object):
@@ -1295,7 +1343,7 @@ class Constructor(object):
         name, cls, attrs, content2, content1 = self.stack.pop()
 
         if cls is not None:
-            content2.extend(x for x in attrs.iteritems())
+            content2.extend(x for x in attrs.items())
             content2.append((None, ''.join(content1)))
             o = cls(**cls.T.translate_from_xml(content2, self.strict))
             o.validate(regularize=True, depth=1)
@@ -1365,35 +1413,48 @@ def _load_all_xml(*args, **kwargs):
 
 def _load_xml(*args, **kwargs):
     g = _iload_all_xml(*args, **kwargs)
-    return g.next()
+    return next(g)
 
 
 def _dump_all_xml(objects, stream, root_element_name='root', header=True):
 
+    if not getattr(stream, 'encoding', None):
+        enc = encode_utf8
+    else:
+        enc = no_encode
+
     _dump_xml_header(stream, header)
 
-    beg = '<%s>\n' % root_element_name
-    end = '</%s>\n' % root_element_name
+    beg = u'<%s>\n' % root_element_name
+    end = u'</%s>\n' % root_element_name
 
-    stream.write(beg)
+    stream.write(enc(beg))
 
-    for object in objects:
-        _dump_xml(object, stream=stream)
+    for ob in objects:
+        _dump_xml(ob, stream=stream)
 
-    stream.write(end)
+    stream.write(enc(end))
 
 
 def _dump_xml_header(stream, banner=None):
 
-    stream.write('<?xml version="1.0" encoding="UTF-8" ?>\n')
-    if isinstance(banner, basestring):
-        stream.write('<!-- ')
-        stream.write(banner)
-        stream.write(' -->\n')
+    if not getattr(stream, 'encoding', None):
+        enc = encode_utf8
+    else:
+        enc = no_encode
+
+    stream.write(enc(u'<?xml version="1.0" encoding="UTF-8" ?>\n'))
+    if isinstance(banner, (str, newstr)):
+        stream.write(enc(u'<!-- %s -->\n' % banner))
 
 
 def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
     from xml.sax.saxutils import escape, quoteattr
+
+    if not getattr(stream, 'encoding', None):
+        enc = encode_utf8
+    else:
+        enc = no_encode
 
     if depth == 0 and header:
         _dump_xml_header(stream, header)
@@ -1426,27 +1487,29 @@ def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
                 '%s=%s' % (k, quoteattr(str(v))) for (k, v) in attrs)
 
         if not elems:
-            stream.write('%s<%s%s />\n' % (indent, xmltagname, attr_str))
+            stream.write(enc(u'%s<%s%s />\n' % (indent, xmltagname, attr_str)))
         else:
             oneline = len(elems) == 1 and elems[0][0] is None
-            stream.write(u'%s<%s%s>%s' % (
-                indent, xmltagname, attr_str, ('\n', '')[oneline]))
+            stream.write(enc(u'%s<%s%s>%s' % (
+                indent,
+                xmltagname,
+                attr_str,
+                '' if oneline else '\n')))
 
             for (k, v) in elems:
                 if k is None:
-                    stream.write(
-                        '%s' % escape(unicode(v), {'\0': '&#00;'})
-                        .encode('utf8'))
+                    stream.write(enc(escape(newstr(v), {'\0': '&#00;'})))
                 else:
                     _dump_xml(v, stream=stream, depth=depth+1, xmltagname=k)
 
-            stream.write('%s</%s>\n' % ((indent, '')[oneline], xmltagname))
+            stream.write(enc(u'%s</%s>\n' % (
+                '' if oneline else indent, xmltagname)))
     else:
-        stream.write('%s<%s>%s</%s>\n' % (
+        stream.write(enc(u'%s<%s>%s</%s>\n' % (
             indent,
             xmltagname,
-            escape(unicode(obj), {'\0': '&#00;'}).encode('utf8'),
-            xmltagname))
+            escape(newstr(obj), {'\0': '&#00;'}),
+            xmltagname)))
 
 
 def walk(x, typ=None, path=()):
@@ -1464,6 +1527,54 @@ def walk(x, typ=None, path=()):
             else:
                 for y in walk(val, typ, path=path+(prop.name,)):
                     yield y
+
+
+def clone(x, pool=None):
+    '''
+    Clone guts object tree.
+
+    Traverses guts object tree and recursively clones all guts attributes,
+    falling back to :py:func:`copy.deepcopy` for non-guts objects. Objects
+    deriving from :py:class:`Object` are instantiated using their respective
+    init function. Multiply referenced objects in the source tree are multiply
+    referenced also in the destination tree.
+
+    This function can be used to clone guts objects ignoring any contained
+    run-time state, i.e. any of their attributes not defined as a guts
+    property.
+    '''
+
+    if pool is None:
+        pool = {}
+
+    if id(x) in pool:
+        x_copy = pool[id(x)]
+
+    else:
+        if isinstance(x, Object):
+            d = {}
+            for (prop, y) in x.T.ipropvals(x):
+                if y is not None:
+                    if not prop.multivalued:
+                        y_copy = clone(y, pool)
+                    elif prop.multivalued is dict:
+                        y_copy = dict(
+                            (clone(zk, pool), clone(zv, pool))
+                            for (zk, zv) in y.items())
+                    else:
+                        y_copy = type(y)(clone(z, pool) for z in y)
+                else:
+                    y_copy = y
+
+                d[prop.name] = y_copy
+
+            x_copy = x.__class__(**d)
+
+        else:
+            x_copy = copy.deepcopy(x)
+
+    pool[id(x)] = x_copy
+    return x_copy
 
 
 def zip_walk(x, typ=None, path=(), stack=()):

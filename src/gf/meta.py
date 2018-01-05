@@ -1,3 +1,11 @@
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import, division
+from builtins import str as new_str
+from builtins import range, map, zip
+
 import math
 import re
 import fnmatch
@@ -6,14 +14,14 @@ import logging
 import numpy as num
 from scipy.interpolate import interp1d
 
-from pyrocko.guts import Object, SObject, String, StringChoice, \
-    StringPattern, Unicode, Float, Bool, Int, TBase, List, ValidationError, \
-    Timestamp, Tuple, Dict
+from pyrocko.guts import (Object, SObject, String, StringChoice,
+                          StringPattern, Unicode, Float, Bool, Int, TBase,
+                          List, ValidationError, Timestamp, Tuple, Dict)
 from pyrocko.guts import dump, load  # noqa
-from pyrocko import trace
 from pyrocko.guts_array import literal, Array
-from pyrocko import cake, orthodrome, spit, moment_tensor
-from pyrocko.config import config
+from pyrocko.model import Location, gnss
+
+from pyrocko import cake, orthodrome, spit, moment_tensor, trace
 
 
 guts_prefix = 'pf'
@@ -83,6 +91,11 @@ class Result(SeismosizerResult):
 
 class StaticResult(SeismosizerResult):
     result = Dict.T()
+
+
+class GNSSCampaignResult(StaticResult):
+    campaign = gnss.GNSSCampaign.T(
+        optional=True)
 
 
 class ComponentSchemeDescription(Object):
@@ -189,20 +202,12 @@ class ComponentScheme(StringChoice):
     choices = component_schemes
 
 
-def latlondepth_to_carthesian(lat, lon, depth):
-    radius = config().earthradius - depth
-    x = radius * math.cos(d2r*lat) * math.cos(d2r*lon)
-    y = radius * math.cos(d2r*lat) * math.sin(d2r*lon)
-    z = radius * math.sin(d2r*lat)
-    return x, y, z
-
-
 class Earthmodel1D(Object):
     dummy_for = cake.LayeredModel
 
     class __T(TBase):
         def regularize_extra(self, val):
-            if isinstance(val, basestring):
+            if isinstance(val, str):
                 val = cake.LayeredModel.from_scanlines(
                     cake.read_nd_model_str(val))
 
@@ -288,7 +293,7 @@ class Reference(Object):
 
         references = []
 
-        for id_, entry in bib_data.entries.iteritems():
+        for id_, entry in bib_data.entries.items():
             d = {}
             avail = entry.fields.keys()
             for prop in cls.T.properties:
@@ -300,7 +305,7 @@ class Reference(Object):
             if 'author' in entry.persons:
                 d['authors'] = []
                 for person in entry.persons['author']:
-                    d['authors'].append(unicode(person))
+                    d['authors'].append(new_str(person))
 
             c = Reference(id=id_, type=entry.type, **d)
             references.append(c)
@@ -444,7 +449,7 @@ class Timing(SObject):
         SObject.__init__(self, **kwargs)
 
     def __str__(self):
-        l = []
+        s = []
         if self.phase_defs:
             sphases = '|'.join(self.phase_defs)
             # if len(self.phase_defs) > 1 or self.select:
@@ -453,14 +458,14 @@ class Timing(SObject):
             if self.select:
                 sphases = self.select + sphases
 
-            l.append(sphases)
+            s.append(sphases)
 
         if self.offset != 0.0 or not self.phase_defs:
-            l.append('%+g' % self.offset)
+            s.append('%+g' % self.offset)
             if self.offset_is_slowness:
-                l.append('S')
+                s.append('S')
 
-        return ''.join(l)
+        return ''.join(s)
 
     def evaluate(self, get_phase, args):
         try:
@@ -558,188 +563,6 @@ class OutOfBounds(Exception):
             return 'out of bounds%s' % scontext
 
 
-class Location(Object):
-    '''
-    Geographical location.
-
-    The location is given by a reference point at the earth's surface
-    (:py:attr:`lat`, :py:attr:`lon`) and a cartesian offset from this point
-    (:py:attr:`north_shift`, :py:attr:`east_shift`, :py:attr:`depth`). The
-    offset corrected lat/lon coordinates of the location can be accessed though
-    the :py:attr:`effective_latlon`, :py:attr:`effective_lat`, and
-    :py:attr:`effective_lon` properties.
-    '''
-
-    lat = Float.T(
-        default=0.0,
-        optional=True,
-        help='latitude of reference point [deg]')
-
-    lon = Float.T(
-        default=0.0,
-        optional=True,
-        help='longitude of reference point [deg]')
-
-    north_shift = Float.T(
-        default=0.,
-        optional=True,
-        help='northward cartesian offset from reference point [m]')
-
-    east_shift = Float.T(
-        default=0.,
-        optional=True,
-        help='eastward cartesian offset from reference point [m]')
-
-    depth = Float.T(
-        default=0.0,
-        help='depth [m]')
-
-    def __init__(self, **kwargs):
-        Object.__init__(self, **kwargs)
-        self._latlon = None
-
-    def __setattr__(self, name, value):
-        if name in ('lat', 'lon', 'north_shift', 'east_shift'):
-            self.__dict__['_latlon'] = None
-
-        Object.__setattr__(self, name, value)
-
-    @property
-    def effective_latlon(self):
-        '''
-        Property holding the offset-corrected lat/lon pair of the location.
-        '''
-
-        if self._latlon is None:
-            if self.north_shift == 0.0 and self.east_shift == 0.0:
-                self._latlon = self.lat, self.lon
-            else:
-                self._latlon = tuple(float(x) for x in orthodrome.ne_to_latlon(
-                    self.lat, self.lon, self.north_shift, self.east_shift))
-
-        return self._latlon
-
-    @property
-    def effective_lat(self):
-        '''
-        Property holding the offset-corrected latitude of the location.
-        '''
-
-        return self.effective_latlon[0]
-
-    @property
-    def effective_lon(self):
-        '''
-        Property holding the offset-corrected longitude of the location.
-        '''
-
-        return self.effective_latlon[1]
-
-    def same_origin(self, other):
-        '''
-        Check whether other location object has the same reference location.
-        '''
-
-        return self.lat == other.lat and self.lon == other.lon
-
-    def distance_to(self, other):
-        '''
-        Compute surface distance [m] to other location object.
-
-
-        '''
-
-        if self.same_origin(other):
-            if isinstance(other, Location):
-                return math.sqrt((self.north_shift - other.north_shift)**2 +
-                                 (self.east_shift - other.east_shift)**2)
-            else:
-                return 0.0
-
-        else:
-            slat, slon = self.effective_latlon
-            try:
-                rlat, rlon = other.effective_latlon
-            except AttributeError:
-                rlat, rlon = other.lat, other.lon
-
-            return float(orthodrome.distance_accurate50m_numpy(
-                slat, slon, rlat, rlon)[0])
-
-    def distance_3d_to(self, other):
-        '''
-        Compute 3D distance [m] to other location object.
-
-        All coordinates are transformed to cartesian coordinates if necessary
-        then distance is:
-
-        .. math::
-
-            \\Delta = \\sqrt{\\Delta {\\bf x}^2 + \\Delta {\\bf y}^2 + \
-                      \\Delta {\\bf z}^2}
-
-        '''
-
-        if self.same_origin(other):
-            if isinstance(other, Location):
-                return math.sqrt((self.north_shift - other.north_shift)**2 +
-                                 (self.east_shift - other.east_shift)**2 +
-                                 (self.depth - other.depth)**2)
-            else:
-                return 0.0
-        else:
-            slat, slon = self.effective_latlon
-            try:
-                rlat, rlon = other.effective_latlon
-            except AttributeError:
-                rlat, rlon = other.lat, other.lon
-
-            sx, sy, sz = latlondepth_to_carthesian(slat, slon, self.depth)
-            rx, ry, rz = latlondepth_to_carthesian(rlat, rlon, other.depth)
-
-            return math.sqrt((sx-rx)**2 + (sy-ry)**2 + (sz-rz)**2)
-
-    def azibazi_to(self, other):
-        '''
-        Compute azimuth and backazimuth to and from other location object.
-        '''
-
-        if self.same_origin(other):
-            if isinstance(other, Location):
-                azi = r2d * math.atan2(other.east_shift - self.east_shift,
-                                       other.north_shift - self.north_shift)
-            else:
-                azi = 0.0
-
-            bazi = azi + 180.
-        else:
-            slat, slon = self.effective_latlon
-            try:
-                rlat, rlon = other.effective_latlon
-            except AttributeError:
-                rlat, rlon = other.lat, other.lon
-
-            azi, bazi = orthodrome.azibazi_numpy(slat, slon, rlat, rlon)
-
-        return float(azi), float(bazi)
-
-    def set_origin(self, lat, lon):
-        lat = float(lat)
-        lon = float(lon)
-        elat, elon = self.effective_latlon
-        n, e = orthodrome.latlon_to_ne_numpy(lat, lon, elat, elon)
-        self.lat = lat
-        self.lon = lon
-        self.north_shift = float(n)
-        self.east_shift = float(e)
-        self._latlon = elat, elon  # unchanged
-
-    @property
-    def coords5(self):
-        return num.array([
-            self.lat, self.lon, self.north_shift, self.east_shift, self.depth])
-
-
 class MultiLocation(Object):
 
     lats = Array.T(
@@ -793,7 +616,7 @@ class MultiLocation(Object):
         :rtype: :class:`numpy.ndarray`, (N, 2)
         '''
         latlons = num.empty((self.ncoords, 2))
-        for i in xrange(self.ncoords):
+        for i in range(self.ncoords):
             latlons[i, :] = orthodrome.ne_to_latlon(*self.coords5[i, :4])
         return latlons
 
@@ -1183,7 +1006,7 @@ class DiscretizedExplosionSource(DiscretizedSource):
     def split(self):
         from pyrocko.gf.seismosizer import ExplosionSource
         sources = []
-        for i in xrange(self.nelements):
+        for i in range(self.nelements):
             lat, lon, north_shift, east_shift = self.element_coords(i)
             sources.append(ExplosionSource(
                 time=float(self.times[i]),
@@ -1394,7 +1217,7 @@ class DiscretizedMTSource(DiscretizedSource):
     def split(self):
         from pyrocko.gf.seismosizer import MTSource
         sources = []
-        for i in xrange(self.nelements):
+        for i in range(self.nelements):
             lat, lon, north_shift, east_shift = self.element_coords(i)
             sources.append(MTSource(
                 time=float(self.times[i]),
@@ -1410,7 +1233,7 @@ class DiscretizedMTSource(DiscretizedSource):
     def moments(self):
         n = self.nelements
         moments = num.zeros(n)
-        for i in xrange(n):
+        for i in range(n):
             m = moment_tensor.symmat6(*self.m6s[i])
             m_evals = num.linalg.eigh(m)[0]
 
@@ -1702,7 +1525,7 @@ class Config(Object):
             weights *= self.factor
 
             args = self.make_indexing_args(source, receiver, icomponents)
-            delays_expanded = num.tile(delays, icomponents.size/delays.size)
+            delays_expanded = num.tile(delays, icomponents.size//delays.size)
             out.append((comp, args, delays_expanded, weights))
 
         return out
@@ -1750,7 +1573,11 @@ class Config(Object):
 
         shear_moduli_interpolator = interp1d(
             store_depth_profile, store_shear_modulus_profile, kind=kind)
-        return shear_moduli_interpolator(points[:, 2])
+
+        try:
+            return shear_moduli_interpolator(points[:, 2])
+        except ValueError:
+            raise OutOfBounds()
 
 
 class ConfigTypeA(Config):
@@ -1857,8 +1684,8 @@ class ConfigTypeA(Config):
 
         def vicinities_function(a, b, ig):
 
-            xa = (a-amin) / da
-            xb = (b-bmin) / db
+            xa = (a - amin) / da
+            xb = (b - bmin) / db
 
             xa_fl = num.floor(xa)
             xa_ce = num.ceil(xa)
@@ -1909,8 +1736,8 @@ class ConfigTypeA(Config):
         nc = icomponents.size
         dists = source.distances_to(receiver)
         n = dists.size
-        return (num.tile(source.depths, nc/n),
-                num.tile(dists, nc/n),
+        return (num.tile(source.depths, nc//n),
+                num.tile(dists, nc//n),
                 icomponents)
 
     def make_indexing_args1(self, source, receiver):
@@ -2044,9 +1871,9 @@ class ConfigTypeB(Config):
 
         def vicinities_function(a, b, c, ig):
 
-            xa = (a-amin) / da
-            xb = (b-bmin) / db
-            xc = (c-cmin) / dc
+            xa = (a - amin) / da
+            xb = (b - bmin) / db
+            xc = (c - cmin) / dc
 
             xa_fl = num.floor(xa)
             xa_ce = num.ceil(xa)
@@ -2120,8 +1947,8 @@ class ConfigTypeB(Config):
         receiver_depths = num.empty(nc)
         receiver_depths.fill(receiver.depth)
         return (receiver_depths,
-                num.tile(source.depths, nc/n),
-                num.tile(dists, nc/n),
+                num.tile(source.depths, nc//n),
+                num.tile(dists, nc//n),
                 icomponents)
 
     def make_indexing_args1(self, source, receiver):
@@ -2395,9 +2222,9 @@ class ConfigTypeC(Config):
         ireceivers.fill(self.lookup_ireceiver(receiver))
 
         return (ireceivers,
-                num.tile(source_depths, nc/n),
-                num.tile(source_east_shifts, nc/n),
-                num.tile(source_north_shifts, nc/n),
+                num.tile(source_depths, nc//n),
+                num.tile(source_east_shifts, nc//n),
+                num.tile(source_north_shifts, nc//n),
                 icomponents)
 
     def make_indexing_args1(self, source, receiver):

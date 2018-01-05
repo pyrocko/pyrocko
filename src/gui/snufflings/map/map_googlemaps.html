@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head> 
+
+  <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+  <style type="text/css">
+  .labels {
+   color: black;
+   background-color: #ffcccc;
+   font-family: "Lucida Grande", "Arial", sans-serif;
+   font-size: 12px !important;
+   font-weight: bold !important;
+   border: 1px solid black;
+   padding-left: 2px;
+   padding-right: 2px;
+   white-space: nowrap;
+ }
+</style>
+<script src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCH6UltC1GIHJS1Xoxg0Ju38RKgOaCDZ7c&sensor=false">
+</script>
+<script type="text/javascript" src="https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerwithlabel/src/markerwithlabel.js"></script>
+<script type="text/javascript" src="http://localhost:9998/loadxmldoc.js"></script>
+<script>
+	/*
+		javascript ruler for google maps V3
+
+		by Giulio Pons. http://www.barattalo.it
+		this function uses the label class from Marc Ridley Blog
+
+   */
+   function addruler() {
+
+    var ruler1 = new google.maps.Marker({
+     position: map.getCenter() ,
+     map: map,
+     draggable: true
+   });
+
+    var ruler2 = new google.maps.Marker({
+     position: map.getCenter() ,
+     map: map,
+     draggable: true
+   });
+    var ruler1label = new Label({ map: map });
+    var ruler2label = new Label({ map: map });
+    ruler1label.bindTo('position', ruler1, 'position');
+    ruler2label.bindTo('position', ruler2, 'position');
+
+    var rulerpoly = new google.maps.Polyline({
+     path: [ruler1.position, ruler2.position] ,
+     strokeColor: "#FFFF00",
+     strokeOpacity: .7,
+     strokeWeight: 7
+   });
+    rulerpoly.setMap(map);
+
+    ruler1label.set('text',distance( ruler1.getPosition().lat(), ruler1.getPosition().lng(), ruler2.getPosition().lat(), ruler2.getPosition().lng()));
+    ruler2label.set('text',distance( ruler1.getPosition().lat(), ruler1.getPosition().lng(), ruler2.getPosition().lat(), ruler2.getPosition().lng()));
+
+
+    google.maps.event.addListener(ruler1, 'drag', function() {
+     rulerpoly.setPath([ruler1.getPosition(), ruler2.getPosition()]);
+     ruler1label.set('text',distance( ruler1.getPosition().lat(), ruler1.getPosition().lng(), ruler2.getPosition().lat(), ruler2.getPosition().lng()));
+     ruler2label.set('text',distance( ruler1.getPosition().lat(), ruler1.getPosition().lng(), ruler2.getPosition().lat(), ruler2.getPosition().lng()));
+   });
+
+    google.maps.event.addListener(ruler2, 'drag', function() {
+     rulerpoly.setPath([ruler1.getPosition(), ruler2.getPosition()]);
+     ruler1label.set('text',distance( ruler1.getPosition().lat(), ruler1.getPosition().lng(), ruler2.getPosition().lat(), ruler2.getPosition().lng()));
+     ruler2label.set('text',distance( ruler1.getPosition().lat(), ruler1.getPosition().lng(), ruler2.getPosition().lat(), ruler2.getPosition().lng()));
+   });
+
+  }
+	// Define the overlay, derived from google.maps.OverlayView
+	function Label(opt_options) {
+		// Initialization
+		this.setValues(opt_options);
+
+		// Label specific
+		var span = this.span_ = document.createElement('span');
+		span.style.cssText = 'position: relative; left: 0%; top: -8px; ' +
+    'white-space: nowrap; border: 0px; font-family:arial; font-weight:bold;' +
+    'padding: 2px; background-color: #ddd; '+
+    'opacity: .75; '+
+    'filter: alpha(opacity=75); '+
+    '-ms-filter: "alpha(opacity=75)"; '+
+    '-khtml-opacity: .75; '+
+    '-moz-opacity: .75;';
+
+    var div = this.div_ = document.createElement('div');
+    div.appendChild(span);
+    div.style.cssText = 'position: absolute; display: none';
+  };
+  Label.prototype = new google.maps.OverlayView;
+
+	// Implement onAdd
+	Label.prototype.onAdd = function() {
+		var pane = this.getPanes().overlayLayer;
+		pane.appendChild(this.div_);
+
+		// Ensures the label is redrawn if the text or position is changed.
+		var me = this;
+		this.listeners_ = [
+   google.maps.event.addListener(this, 'position_changed',
+     function() { me.draw(); }),
+   google.maps.event.addListener(this, 'text_changed',
+     function() { me.draw(); })
+   ];
+ };
+
+	// Implement onRemove
+	Label.prototype.onRemove = function() { this.div_.parentNode.removeChild(this.div_ );
+		// Label is removed from the map, stop updating its position/text.
+		for (var i = 0, I = this.listeners_.length; i < I; ++i) {
+			google.maps.event.removeListener(this.listeners_[i]);
+		}
+	};
+	// Implement draw
+	Label.prototype.draw = function() {
+		var projection = this.getProjection();
+		var position = projection.fromLatLngToDivPixel(this.get('position'));
+
+		var div = this.div_;
+		div.style.left = position.x + 'px';
+		div.style.top = position.y + 'px';
+		div.style.display = 'block';
+
+		this.span_.innerHTML = this.get('text').toString();
+	};
+	function distance(lat1,lon1,lat2,lon2) {
+	    var R = 6371; // km (change this constant to get miles)
+	    var dLat = (lat2-lat1) * Math.PI / 180;
+	    var dLon = (lon2-lon1) * Math.PI / 180;
+	    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180 ) * Math.cos(lat2 * Math.PI / 180 ) *
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      var d = R * c;
+      if (d>1) return Math.round(d)+"km";
+      else if (d<=1) return Math.round(d*1000)+"m";
+      return d;
+    }
+  </script>
+  <script>
+    try
+    {
+      xmlDoc = loadXMLDoc("http://localhost:9998/markers.xml")
+    }
+    catch(err)
+    {
+      txt="An error occurred while trying to read dumped pyrocko marker.\n\n";
+      txt+="Probably, your browser does not allow to open that document\n\n";
+      txt+="due to the \"Same-Origin-Policy\".\n\n";
+      txt+="A solution might be to change your default browser.\n\n";
+      alert(txt);
+    }
+
+    var stationSymbol= {
+      path: 'M -8,0 8,0 0,-16 z',
+      strokeColor: 'black',
+      fillColor: 'black',
+      fillOpacity: 1
+    }
+
+    var gmarkers = [];
+    var marker = new Array;
+    var magnitudeCircle = {};
+
+            // == print something to console (for debugging)==
+            function log(msg) {
+              setTimeout(function() {
+               throw new Error(msg);
+             }, 0);
+            }
+
+            // == Create event locations ==
+            deb=xmlDoc.getElementsByTagName("event")
+            for (i=0; i<deb.length; i++)
+            {
+              var name = deb[i].childNodes[1].firstChild.data;
+              var lat = deb[i].childNodes[3].firstChild.data;
+              var lon = deb[i].childNodes[5].firstChild.data;
+              var time = deb[i].childNodes[7].firstChild.data;
+              var depth = deb[i].childNodes[11].firstChild.data;
+              try {
+                var mag = deb[i].childNodes[9].firstChild.data;
+              }
+              catch (e) {
+                var mag = 0;
+              }
+
+              var epicenterlocation = new google.maps.LatLng(lat, lon )
+
+              marker[i]=new google.maps.Marker({
+                position: epicenterlocation,
+                icon: { path: google.maps.SymbolPath.CIRCLE,
+                  scale: 2,
+                  strokeColor: 'red'},
+                  title: name + 
+                  "\n" + 'origin time: '+time+
+                  '\n depth: '+depth+
+                  '\n magnitude: '+mag
+                });
+              if (deb[i].attributes.getNamedItem("active").value == 'yes'){
+                filling='#0000FF'}
+                else {
+                  filling='#FF0000'}
+
+                  magnitudeCircle[i] = {
+                    center: epicenterlocation,
+                    magnitude: mag,
+                    fillcolor: filling};
+                  }
+
+
+            // == Create station locations ==
+            var stationMarker = new Array
+            stationElements=xmlDoc.getElementsByTagName("station")
+            for (i=0; i<stationElements.length; i++)
+            {
+              var nsl = stationElements[i].childNodes[1].firstChild.data;
+              var lat = stationElements[i].childNodes[3].firstChild.data;
+              var lon = stationElements[i].childNodes[5].firstChild.data;
+
+              stationMarker[i]= new MarkerWithLabel({
+               position: new google.maps.LatLng(lat, lon ),
+               icon: stationSymbol,
+               labelContent: nsl,
+               labelAnchor: new google.maps.Point(-5, 25),
+                       labelClass: "labels", // the CSS class for the label
+                       labelStyle: {opacity: 0.75}
+                     });
+              stationMarker[i].category = 'stationmarker'
+              gmarkers.push(stationMarker[i]); 
+            } 
+
+
+            function hide(category) {
+              for (i=0; i<gmarkers.length; i++) {
+                if (gmarkers[i].category == category)
+                {
+                  try{
+                    gmarkers[i].setVisible(false);
+                  } catch(e) {
+                    gmarkers[i].setMap(null);
+                  }
+                }
+              }
+            }
+
+            function show(category) {
+              for (i=0; i<gmarkers.length; i++) {
+                if (gmarkers[i].category == category)
+                {
+                  try{
+                    gmarkers[i].setVisible(true);
+                  } catch(e) {
+                    gmarkers[i].setMap(map);
+                  }
+                }
+              }
+            }
+            
+            function boxclick(box, category) {
+              if (box.checked) {
+                show(category);
+              } else {
+                hide(category);
+              }
+            }
+
+            function lat_lon_mouse_position(map)
+            {
+              google.maps.event.addListener(map,'mousemove',function(event) {
+                document.getElementById('latlong').innerHTML = 
+                event.latLng.lat().toFixed(3)
+                + ', ' 
+                + event.latLng.lng().toFixed(3)
+              });
+            }
+
+            function initialize() {
+              var myCenter=new google.maps.LatLng(lat, lon);
+              var mapProp = {
+                center:myCenter,
+                zoom:8,
+                mapTypeId:google.maps.MapTypeId.TERRAIN
+              };
+
+              var latlngbounds = new google.maps.LatLngBounds();
+              map=new google.maps.Map(document.getElementById("googleMap"),mapProp);
+              var platekml='https://raw.githubusercontent.com/emolch/contrib-snufflings/master/map/plates.kml';
+              kmloptions = {suppressInfoWindows: false,
+                preserveViewport:true,
+                map: map,
+                clickable:true};
+
+                boundaries = new google.maps.KmlLayer(platekml, kmloptions);
+                boundaries.category = 'plateboundaries';
+                gmarkers.push(boundaries);
+                google.maps.event.addListener(boundaries, 'click', function(kmlEvent) {
+                 var text = kmlEvent.featureData.description;
+               });
+
+                for (i=0; i<marker.length; i++)
+                {
+                  marker[i].setMap(map);
+                  latlngbounds.extend(marker[i].getPosition());
+                }
+
+                for (i=0; i<stationMarker.length; i++)
+                {
+                  stationMarker[i].setMap(map);
+                  latlngbounds.extend(stationMarker[i].getPosition());
+                }
+                
+                for (i in magnitudeCircle) {
+                  var circleOptions = {
+                   visible: false,
+                   strokeColor: '#FF0000',
+                   strokeOpacity: 0.8,
+                   strokeWeight: 2,
+                   fillColor: magnitudeCircle[i].fillcolor,
+                   fillOpacity: 0.35,
+                   map: map,
+                   center: magnitudeCircle[i].center,
+                   radius: magnitudeCircle[i].magnitude*1000 };
+                   magnitude_circle = new google.maps.Circle(circleOptions);
+                   magnitude_circle.category = 'magnitudecircle'
+                   gmarkers.push(magnitude_circle);
+                 }
+                 lat_lon_mouse_position(map)
+                 map.fitBounds(latlngbounds);
+               }
+
+               google.maps.event.addDomListener(window, 'load', initialize);
+             </script>
+           </head>
+
+           <body style="font-family: sans-serif;">
+            <div id="googleMap" style="position: absolute; 
+            left: 0px; 
+            right:0px; 
+            bottom: 0px; 
+            top: 0px;">
+          </div>
+          <div style="background-color: white; 
+          opacity: 0.8; 
+          position: absolute; 
+          left: 0px; 
+          right:0px; 
+          bottom: 0px; 
+          text-align:center; ">
+          <form action="readXml.html">
+            Stations: <input type='checkbox' 
+            id='stationbox' 
+            onclick="boxclick(this, 'stationmarker')" 
+            checked="checked"/> &nbsp;&nbsp;
+            Magnitude Circles: <input type='checkbox' 
+            id='magnitudebox' 
+            onclick="boxclick(this, 'magnitudecircle')" 
+            /> &nbsp;&nbsp;
+            Plate Boundaries: <input type='checkbox' 
+            id='platebox' 
+            onclick="boxclick(this, 'plateboundaries')" 
+            checked="checked" /> &nbsp;&nbsp;
+            lat lon: <span id="latlong"></span>
+            <input type='button' id='add_ruler' onclick='addruler();' value='add a ruler'/>
+
+          </form>
+
+
+          <noscript><b>JavaScript must be enabled in order for you to use Google Maps.</b> 
+           enable JavaScript by changing your browser settings, and then 
+           try again.
+         </noscript>
+       </div>
+     </body>
+     </html>

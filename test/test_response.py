@@ -1,8 +1,10 @@
+from __future__ import division, print_function, absolute_import
+
 import unittest
 import numpy as num
 from pyrocko import util, evalresp, pz, trace, guts
 
-import common
+from . import common
 
 
 def plot_tfs(freqs, tfs):
@@ -58,7 +60,8 @@ class ResponseTestCase(unittest.TestCase):
     def test_conversions(self):
 
         from pyrocko import model
-        from pyrocko.fdsn import station, resp, enhanced_sacpz
+        from pyrocko.io import resp, enhanced_sacpz
+        from pyrocko.io import stationxml
 
         t = util.str_to_time('2014-01-01 00:00:00')
         codes = 'GE', 'EIL', '', 'BHZ'
@@ -73,6 +76,7 @@ class ResponseTestCase(unittest.TestCase):
 
         sx_resp = resp.make_stationxml(
             stations, resp.iload_filename(resp_fpath))
+
         pr_sx_resp = sx_resp.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
         pr_evresp = trace.Evalresp(
@@ -90,12 +94,12 @@ class ResponseTestCase(unittest.TestCase):
             pr_sacpz.poles.append(0.0j)
 
         sxml_geofon_fpath = common.test_data_file('test1.stationxml')
-        sx_geofon = station.load_xml(filename=sxml_geofon_fpath)
+        sx_geofon = stationxml.load_xml(filename=sxml_geofon_fpath)
         pr_sx_geofon = sx_geofon.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
 
         sxml_iris_fpath = common.test_data_file('test2.stationxml')
-        sx_iris = station.load_xml(filename=sxml_iris_fpath)
+        sx_iris = stationxml.load_xml(filename=sxml_iris_fpath)
         pr_sx_iris = sx_iris.get_pyrocko_response(
             codes, time=t, fake_input_units='M/S')
 

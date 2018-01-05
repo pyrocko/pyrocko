@@ -50,10 +50,10 @@ file with :meth:`pyrocko.io.save`.
     from pyrocko import io
 
     traces = io.load('test.mseed')
-   
+
     for tr in traces:
         tr.lowpass(4, 0.02)   # 4th order, 0.02 Hz
-    
+
     io.save(traces, 'filtered.mseed')
 
 Other filtering methods are :meth:`pyrocko.trace.Trace.highpass` and
@@ -75,7 +75,7 @@ Alternatively, you could of course save the traces to file and use the
 standalone :doc:`/apps/snuffler/index` to look at them.
 
 ::
-     
+
     from pyrocko import io, trace, pile
 
     traces = io.load('test.mseed')
@@ -88,7 +88,7 @@ standalone :doc:`/apps/snuffler/index` to look at them.
         new = tr.copy()
         new.whiten()
         # to allow the viewer to distinguish the traces
-        new.set_location('whitened') 
+        new.set_location('whitened')
         new_traces.append(new)
 
     trace.snuffle(traces + new_traces)
@@ -111,18 +111,10 @@ single or to split files. For each :class:`~pyrocko.trace.Trace` object the
 station name is defined, the channel name, the sampling interval (0.5 s) and
 the time onset (``tmin``).
 
-::
+Download :download:`trace_scratch.py </../../examples/trace_scratch.py>`
 
-    from pyrocko import trace, util, io
-    import numpy as num
-
-    nsamples = 100
-    tmin = util.str_to_time('2010-02-20 15:15:30.100')
-    data = num.random.random(nsamples)
-    t1 = trace.Trace(station='TEST', channel='Z', deltat=0.5, tmin=tmin, ydata=data)
-    t2 = trace.Trace(station='TEST', channel='N', deltat=0.5, tmin=tmin, ydata=data)
-    io.save([t1,t2], 'my_precious_traces.mseed')            # all traces in one file
-    io.save([t1,t2], 'my_precious_trace_%(channel)s.mseed') # each file one channel
+.. literalinclude :: /../../examples/trace_scratch.py
+    :language: python
 
 Extracting part of a trace (trimming)
 -------------------------------------
@@ -131,23 +123,10 @@ Trimming is achieved with the :meth:`~pyrocko.trace.Trace.chop` method. Here we
 cut 10 s from the beginning and the end of the example trace
 (:download:`test.mseed </static/test.mseed>`).
 
-::
+Download :download:`trace_extract.py </../../examples/trace_extract.py>`
 
-    from pyrocko import io
-    
-    traces = io.load('test.mseed')
-    tr = traces[0]  # reference first trace as tr
-    print 'original:', tr
-    
-    # extract a copy of a part of tr
-    tr_extracted = tr.chop(tr.tmin+10.0, tr.tmax-10.0, inplace=False)
-    print 'extracted:', tr_extracted
-    
-    # in-place operation modifies tr itself
-    tr.chop(tr.tmin+10.0, tr.tmax-10.0)
-    print 'modified:', tr
-    
-    
+.. literalinclude :: /../../examples/trace_extract.py
+    :language: python
 
 Time shifting a trace
 ---------------------
@@ -164,12 +143,12 @@ to a given absolute onset time with :meth:`pyrocko.trace.Trace.shift`.
 
     # shift by 10 seconds backward in time
     tr.shift(-10.0)
-    print tr
+    print(tr)
 
     # shift to a new absolute onset time
     tmin_new = util.str_to_time('2009-04-06 01:32:42.000')
     tr.shift(tmin_new - tr.tmin)
-    print tr
+    print(tr)
 
 
 Resampling a trace
@@ -194,6 +173,8 @@ Example for downsampling a trace in a file to a sampling rate with
     # visualize with Snuffler
     trace.snuffle([tr1, tr2])
 
+
+
 To overlay the traces in Snuffler, right-click the mouse button and
 
 * check '*Subsort ... (Grouped by Location)*'
@@ -206,38 +187,22 @@ Convert SAC to MiniSEED
 
 A very basic SAC to MiniSEED converter:
 
-::
+Download :download:`convert_sac_mseed </../../examples/convert_sac_mseed>`
 
-    from pyrocko import io
-    import sys
-
-    for filename in sys.argv[1:]:
-        traces = io.load(filename, format='sac')
-        if filename.lower().endswith('.sac'):
-            out_filename = filename[:-4] + '.mseed'
-        else:
-            out_filename = filename + '.mseed'
-
-        io.save(traces, out_filename)
+.. literalinclude :: /../../examples/convert_sac_mseed
+    :language: python
 
 
 Convert MiniSEED to ASCII
 -------------------------
 
 An inefficient, non-portable, non-header-preserving, but simple, method to
-convert some MiniSEED traces to ASCII tables::
+convert some MiniSEED traces to ASCII tables:
 
-    from pyrocko import io
-    
-    traces = io.load('test.mseed')
-    
-    for it, t in enumerate(traces):
-        f = open('test-%i.txt' % it, 'w')
-        
-        for tim, val in zip(t.get_xdata(), t.get_ydata()):
-            f.write( '%20f %20g\n' % (tim,val) )
-        
-        f.close()
+.. literalinclude :: /../../examples/convert_mseed_ascii.py
+    :language: python
+
+Download :download:`convert_mseed_ascii.py </../../examples/convert_mseed_ascii.py>`
 
 
 Finding the comparative misfits of mulitple traces
@@ -250,64 +215,25 @@ Traces ``rt`` and ``tt1`` will have the same y-data, so the misfit between
 them will be zero.
 
 
-::
+Download :download:`trace_misfit.py </../../examples/trace_misfit.py>`
 
-    from pyrocko import trace
-    from math import sqrt
-    import numpy as num
-    
-    # Let's create three traces: One trace as the reference (rt) and two as test 
-    # traces (tt1 and tt2):
-    ydata1 = num.random.random(1000)
-    ydata2 = num.random.random(1000)
-    rt = trace.Trace(station='REF', ydata=ydata1)
-    candidate1 = trace.Trace(station='TT1', ydata=ydata1)
-    candidate2 = trace.Trace(station='TT2', ydata=ydata2)
-    
-    # Define a fader to apply before fft.
-    taper = trace.CosFader(xfade=5.0)
-    
-    # Define a frequency response to apply before performing the inverse fft.
-    # This can be basically any funtion, as long as it contains a function called
-    # *evaluate*, which evaluates the frequency response function at a given list
-    # of frequencies.
-    # Please refer to the :class:`FrequencyResponse` class or its subclasses for
-    # examples.
-    # However, we are going to use a butterworth low-pass filter in this example.
-    bw_filter = trace.ButterworthResponse(corner=2.0,
-                                          order=4,
-                                          type='low')
-    
-    # Combine all information in one misfit setup:
-    setup = trace.MisfitSetup(description='An Example Setup',
-                              norm=2,
-                              taper=taper,
-                              filter=bw_filter,
-                              domain='time_domain')
-    
-    # Calculate misfits of each candidate against the reference trace:
-    for candidate in [candidate1, candidate2]:
-        misfit = rt.misfit(candidate=candidate, setup=setup)
-        print 'misfit: %s, normalization: %s' % misfit
-    
-    # Finally, dump the misfit setup that has been used as a yaml file for later
-    # re-use:
-    setup.dump(filename='my_misfit_setup.txt')
-    
+.. literalinclude :: /../../examples/trace_misfit.py
+    :language: python
+
 If we wanted to reload our misfit setup, :mod:`pyrocko.guts` provides the
 ``iload_all()`` method for that purpose:
 
 ::
 
     from pyrocko.guts import load
-    from pyrocko.trace import MisfitSetup 
-    
+    from pyrocko.trace import MisfitSetup
+
     setup = load(filename='my_misfit_setup.txt')
-    
+
     # now we can change, for example, the domain:
     setup.domain = 'frequency_domain'
-    
-    print setup
+
+    print(setup)
 
 
 Restitute to displacement using poles and zeros
@@ -328,36 +254,18 @@ Here is a complete example using a SAC pole-zero file
 (:download:`STS2-Generic.polezero.txt </static/STS2-Generic.polezero.txt>`) to
 deconvolve the transfer function from an example seismogram:
 
-:download:`trace_handling_example_pz.py </static/trace_handling_example_pz.py>`
+Download :download:`trace_restitution_pz.py </../../examples/trace_restitution_pz.py>`
 
-::
+.. literalinclude :: /../../examples/trace_restitution_pz.py
+    :language: python
 
-    from pyrocko import pz, io, trace
 
-    # read poles and zeros from SAC format pole-zero file
-    zeros, poles, constant = pz.read_sac_zpk('STS2-Generic.polezero.txt')
+Restitute to displacement using SEED RESP response
+-------------------------------------------------------
 
-    # one more zero to convert from velocity->counts to displacement->counts
-    zeros.append(0.0j)
+In this examples we 
 
-    rest_sts2 = trace.PoleZeroResponse(
-        zeros=zeros,
-        poles=poles,
-        constant=constant)
+Download :download:`trace_restitution_resp.py </../../examples/trace_restitution_resp.py>`
 
-    traces = io.load('test.mseed')
-    out_traces = list(traces)
-    for tr in traces:
-
-        displacement = tr.transfer(
-            1000.,                    # rise and fall of time window taper in [s]
-            (0.001, 0.002, 5., 10.),  # frequency domain taper in [Hz]
-            transfer_function=rest_sts2,
-            invert=True)              # to change to (counts->displacement)
-
-        # change channel id, so we can distinguish the traces in a trace viewer.
-        displacement.set_codes(channel='D'+tr.channel[-1])
-
-        out_traces.append(displacement)
-
-    io.save(out_traces, 'displacement.mseed')
+.. literalinclude :: /../../examples/trace_restitution_resp.py
+    :language: python

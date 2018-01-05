@@ -1,12 +1,19 @@
-from pyrocko import pile, io
+# http://pyrocko.org - GPLv3
+#
+# The Pyrocko Developers, 21st Century
+# ---|P------/S----------~Lg----------
+from __future__ import absolute_import
+
 import os
 import logging
-from pyrocko import trace as tracemod
+
+from . import pile, io
+from . import trace as tracemod
 
 logger = logging.getLogger('pyrocko.hamster_pile')
 
 
-class Processor:
+class Processor(object):
     def __init__(self):
         self._buffers = {}
 
@@ -36,12 +43,12 @@ class Processor:
         del self._buffers[nslc]
 
     def flush_buffers(self):
-        traces = self._buffers.values()
+        traces = list(self._buffers.values())
         self._buffers = {}
         return traces
 
 
-class Renamer:
+class Renamer(object):
     def __init__(self, mapping):
         self._mapping = mapping
 
@@ -228,7 +235,7 @@ class HamsterPile(pile.Pile):
 
     def drop(self, condition, delete_disk_files=False):
         candidates = []
-        buffers = self._buffers.values()
+        buffers = list(self._buffers.values())
         for file in self.iter_files():
             if condition(file) and file not in buffers:
                 candidates.append(file)

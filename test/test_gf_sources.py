@@ -1,10 +1,12 @@
+from __future__ import division, print_function, absolute_import
 import sys
 import math
 import unittest
 import numpy as num
 from tempfile import mkdtemp
+import shutil
 
-from pyrocko import gf, util, guts
+from pyrocko import gf, util, guts, cake
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
@@ -17,16 +19,15 @@ def numeq(a, b, eps):
 
 
 class GFSourcesTestCase(unittest.TestCase):
+    tempdirs = []
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
         self._dummy_store = None
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
+    @classmethod
+    def tearDownClass(cls):
+        for d in cls.tempdirs:
             shutil.rmtree(d)
 
     if sys.version_info < (2, 7):
@@ -86,15 +87,36 @@ class GFSourcesTestCase(unittest.TestCase):
         sgrid = source.grid(rake=r(-10, 10, 1),
                             strike=r(-100, 100, n=21),
                             depth=r('0k .. 100k : 10k'),
-                            moment=r(1, 2, 1))
+                            magnitude=r(1, 2, 1))
 
         sgrid = guts.load_string(sgrid.dump())
+
         n = len(sgrid)
         i = 0
         for source in sgrid:
             i += 1
 
         assert i == n
+
+    def test_sgrid2(self):
+        expect = [10., 12., 14., 16., 18., 20.]
+        source = gf.DCSource()
+        sgrid = source.grid(dip=gf.Range(10, 20, 2))
+        dips = []
+        for source in sgrid:
+            dips.append(source.dip)
+
+        num.testing.assert_array_almost_equal(
+            dips, expect)
+
+        source = gf.DCSource(dip=10)
+        sgrid = source.grid(dip=gf.Range(1, 2, 0.2, relative='mult'))
+        dips = []
+        for source in sgrid:
+            dips.append(source.dip)
+
+        num.testing.assert_array_almost_equal(
+            dips, expect)
 
     def dummy_store(self):
         if self._dummy_store is None:
@@ -108,7 +130,8 @@ class GFSourcesTestCase(unittest.TestCase):
                 distance_max=2000*km,
                 distance_delta=10*km,
                 sample_rate=2.0,
-                ncomponents=10)
+                ncomponents=10,
+                earthmodel_1d=cake.load_model(crust2_profile=(50., 10.)))
 
             store_dir = mkdtemp(prefix='gfstore')
             self.tempdirs.append(store_dir)
@@ -177,6 +200,46 @@ class GFSourcesTestCase(unittest.TestCase):
             plt.show()
 
         # plot_sources(sources)
+
+    def test_explosion_source(self):
+        ex = gf.ExplosionSource(
+                magnitude=5.,
+                volume_change=4.,
+                depth=5*km)
+
+        with self.assertRaises(gf.DerivedMagnitudeError):
+            ex.validate()
+
+        ex = gf.ExplosionSource(
+                depth=5*km)
+
+        ex.validate()
+
+        self.assertEqual(ex.get_moment(), 1.0)
+
+        ex = gf.ExplosionSource(
+                magnitude=3.0,
+                depth=5*km)
+
+        store = self.dummy_store()
+
+        with self.assertRaises(gf.DerivedMagnitudeError):
+            ex.get_volume_change()
+
+        volume_change = ex.get_volume_change(store)
+
+        ex = gf.ExplosionSource(
+                volume_change=volume_change,
+                depth=5*km)
+
+        self.assertAlmostEqual(ex.get_magnitude(store), 3.0)
+
+        ex = gf.ExplosionSource(
+                magnitude=3.0,
+                depth=-5.)
+
+        with self.assertRaises(gf.DerivedMagnitudeError):
+            ex.get_volume_change(store)
 
 
 if __name__ == '__main__':

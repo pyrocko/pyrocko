@@ -1,3 +1,4 @@
+from __future__ import division, print_function, absolute_import
 import os
 import math
 import tempfile
@@ -6,10 +7,10 @@ import unittest
 import numpy as num
 from matplotlib import image, pyplot as plt
 
-from pyrocko import util, gmtpy
-from pyrocko import automap
+from pyrocko import util
+from pyrocko.plot import automap, gmtpy
 
-import common
+from . import common
 
 noshow = False
 km = 1000.

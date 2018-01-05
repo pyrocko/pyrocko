@@ -1,3 +1,7 @@
+# python 2/3
+from __future__ import division, print_function, absolute_import
+from builtins import zip
+from builtins import range
 import random
 import math
 import unittest
@@ -11,11 +15,11 @@ import numpy as num
 from pyrocko import util, ahfullgreen, trace, io
 from pyrocko.guts import Object, Float, Tuple, List, load
 
-import common
+from . import common
 
 guts_prefix = 'test_ahfull'
 
-logger = logging.getLogger('test_gf_ahfull')
+logger = logging.getLogger('pyrocko.test.test_ahfull')
 
 km = 1000.
 
@@ -49,25 +53,18 @@ class AhfullTestCase(unittest.TestCase):
 
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
-        self.tempdirs = []
 
-    def __del__(self):
-        import shutil
-
-        for d in self.tempdirs:
-            shutil.rmtree(d)
-
-    def make_test_ahfull_kiwi_data(self):
+    def _make_test_ahfull_kiwi_data(self):
         trs_all = []
         setups = []
-        for i in xrange(100):
+        for i in range(100):
             s = AhfullKiwiTestSetupEntry(
                 vp=3600.,
                 vs=2000.,
                 density=2800.,
                 x=(rand(100., 1000.), rand(100., 1000.), rand(100., 1000.)),
                 f=(rand(-1., 1.), rand(-1., 1.), rand(-1., 1.)),
-                m6=tuple(rand(-1., 1.) for _ in xrange(6)),
+                m6=tuple(rand(-1., 1.) for _ in range(6)),
                 tau=0.005,
                 deltat=0.001)
 
@@ -89,7 +86,7 @@ class AhfullTestCase(unittest.TestCase):
             nstf = int(round(s.tau * 5. / s.deltat))
             t = num.arange(nstf) * s.deltat
             t0 = nstf * s.deltat / 2.
-            stf = num.exp(-(t-t0)**2/(s.tau/math.sqrt(2.))**2)
+            stf = num.exp(-(t-t0)**2 / (s.tau/math.sqrt(2.))**2)
 
             stf = num.cumsum(stf)
             stf /= stf[-1]
@@ -176,7 +173,7 @@ class AhfullTestCase(unittest.TestCase):
                     (num.sum(t1.ydata**2) + num.sum(t2.ydata**2))
 
                 if d >= 0.02:
-                    print d
+                    print(d)
                     # trace.snuffle([t1, t2])
 
                 assert d < 0.02

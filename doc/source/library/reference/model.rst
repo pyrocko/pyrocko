@@ -1,10 +1,14 @@
-
-
-The :mod:`model` module
-=======================
+The :mod:`model` subpackage
+===========================
 
 .. automodule:: pyrocko.model
     :members:
 
 
+.. toctree::
+    :maxdepth: 2
 
+    model/location
+    model/event
+    model/station
+    model/gnss
