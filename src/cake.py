@@ -2192,6 +2192,8 @@ class RayPath(object):
                         Leg(-before.out_direction, element.mode))
 
         used._direction_stop = self.phase.direction_stop()
+        used._definition = self.phase.definition()
+
         return used
 
     def pmax(self):
