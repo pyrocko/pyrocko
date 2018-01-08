@@ -293,11 +293,17 @@ class WaveformGenerator(TargetGenerator):
         stations = self.station_generator.get_stations()
         sxml = stationxml.FDSNStationXML.from_pyrocko_stations(stations)
 
+        sunit = {
+            'displacement': 'M',
+            'velocity': 'M/S',
+            'acceleration': 'M/S**2',
+            'counts': 'COUNTS'}[self.seismogram_quantity]
+
         response = stationxml.Response(
             instrument_sensitivity=stationxml.Sensitivity(
                 value=1.,
                 frequency=1.,
-                input_units=stationxml.Units('M/S'),
+                input_units=stationxml.Units(sunit),
                 output_units=stationxml.Units('COUNTS')),
             stage_list=[])
 
