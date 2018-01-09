@@ -183,6 +183,7 @@ class Geofon(EarthquakeCatalog):
         # fix broken &nbsp; tags
         page = re.sub(br'&nbsp([^;])', b'&nbsp;\\1', page)
         page = re.sub(br'border=0', b'border="0"', page)
+        page = re.sub(br'<(link|meta).*?>', b'', page, flags=re.DOTALL)
         page = re.sub(br'</html>.*', b'</html>', page, flags=re.DOTALL)
 
         doc = self.parse_xml(page)
@@ -272,6 +273,7 @@ class Geofon(EarthquakeCatalog):
 
         # fix broken tag
         page = re.sub(br'align=center', b'align="center"', page)
+        page = re.sub(br'<(link|meta).*?>', b'', page, flags=re.DOTALL)
         page = re.sub(br'</html>.*', b'</html>', page, flags=re.DOTALL)
 
         doc = self.parse_xml(page)
