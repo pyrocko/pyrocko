@@ -546,11 +546,13 @@ class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
     [deg] for reference point (lat, lon) and angles (rake, strike, dip)
     [m] shifting with respect to reference position
     [m] for fault dimensions and source depth. The default shift of the
-    origin (:py:attr`pos_s`, :py:attr:`pos_d`) with respect to the reference coordinates
-    (lat, lon) is zero, which implies that the reference is the center of the fault plane!
+    origin (:py:attr`pos_s`, :py:attr:`pos_d`) with respect to the reference
+        coordinates
+    (lat, lon) is zero, which implies that the reference is the center of
+        the fault plane!
     The calculation point is always the center of the fault-plane!
-    Setting :py:attr`pos_s` or :py:attr`pos_d` moves the fault point with respect to the origin
-    along strike and dip direction, respectively!
+    Setting :py:attr`pos_s` or :py:attr`pos_d` moves the fault point with
+        respect to the origin along strike and dip direction, respectively!
     '''
     length = Float.T(default=6.0 * km)
     width = Float.T(default=5.0 * km)
@@ -1135,8 +1137,8 @@ class PsCmpRunner(object):
     Wrapper object to execute the program fomosto_pscmp with the specified
     configuration.
 
-    :param tmp: string, path to the temporary directy where calculation 
-     results are stored
+    :param tmp: string, path to the temporary directy where calculation
+        results are stored
     :param keep_tmp: boolean, if True the result directory is kept
     '''
     def __init__(self, tmp=None, keep_tmp=False):

@@ -3,7 +3,7 @@ import unittest
 from tempfile import mkdtemp
 import shutil
 
-from pyrocko import scenario, util, gf
+from pyrocko import scenario, util, gf, gmtpy, config
 from pyrocko.scenario import targets
 
 km = 1000.
@@ -16,6 +16,20 @@ def have_store(store_id):
         return True
     except gf.NoSuchStore:
         return False
+
+
+def have_kite():
+    try:
+        import kite  # noqa
+        return True
+    except ImportError:
+        return False
+
+
+def have_srtm_credentials():
+    if config.config().earthdata_credentials is None:
+        return False
+    return True
 
 
 class ScenarioTestCase(unittest.TestCase):
@@ -38,6 +52,7 @@ class ScenarioTestCase(unittest.TestCase):
                 noise_generator=targets.waveform.WhiteNoiseGenerator(),
                 seismogram_quantity='velocity'),
             targets.InSARGenerator(
+                resolution=(20, 20),
                 noise_generator=targets.insar.AtmosphericNoiseGenerator(
                     amplitude=1e-5)),
             targets.GNSSCampaignGenerator(
@@ -161,6 +176,12 @@ class ScenarioTestCase(unittest.TestCase):
             trs.sort(key=lambda tr: tr.nslc_id)
             self.assert_traces_almost_equal(trs, ref_trs)
 
+    @unittest.skipUnless(
+        have_kite(),
+        'Kite is not available')
+    @unittest.skipUnless(
+        have_store(store_id_static),
+        'GF Store "%s" is not available' % store_id)
     def test_scenario_insar(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -175,6 +196,9 @@ class ScenarioTestCase(unittest.TestCase):
         s = collection.get_scenario('insar')
         s.ensure_insar_scenes()
 
+    @unittest.skipUnless(
+        have_store(store_id_static),
+        'GF Store "%s" is not available' % store_id)
     def test_scenario_gnss(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
@@ -189,6 +213,11 @@ class ScenarioTestCase(unittest.TestCase):
         s = collection.get_scenario('gnss')
         assert len(s.get_gnss_campaigns()) == 1
 
+    @unittest.skipUnless(
+        gmtpy.have_gmt(), 'GMT not available')
+    @unittest.skipUnless(
+        have_srtm_credentials(),
+        'No Earthdata credentials in config.')
     def test_scenario_map(self):
         tempdir = mkdtemp(prefix='pyrocko-scenario')
         self.tempdirs.append(tempdir)
