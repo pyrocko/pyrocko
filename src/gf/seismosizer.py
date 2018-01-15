@@ -1292,6 +1292,26 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
 
+    def outline(self, cs='xyz'):
+        points = num.atleast_2d(num.zeros([1, 3]))
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
+
 
 class RectangularExplosionSource(ExplosionSource):
     '''
@@ -1458,6 +1478,26 @@ class DCSource(SourceWithMagnitude):
         d.update(kwargs)
         return super(DCSource, cls).from_pyrocko_event(ev, **d)
 
+    def outline(self, cs='xyz'):
+        points = num.atleast_2d(num.zeros([1, 3]))
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
+
 
 class CLVDSource(Source):
     '''
@@ -1515,6 +1555,26 @@ class CLVDSource(Source):
             moment_tensor=self.pyrocko_moment_tensor(),
             magnitude=mt.moment_magnitude(),
             **kwargs)
+
+    def outline(self, cs='xyz'):
+        points = num.atleast_2d(num.zeros([1, 3]))
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
 
 
 class MTSource(Source):
@@ -1598,6 +1658,26 @@ class MTSource(Source):
 
         d.update(kwargs)
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
+
+    def outline(self, cs='xyz'):
+        points = num.atleast_2d(num.zeros([1, 3]))
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
 
 
 class RectangularSource(DCSource):
