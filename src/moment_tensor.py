@@ -911,6 +911,42 @@ def other_plane(strike, dip, rake):
         return both_sdr[0]
 
 
+def dsdr(sdr1, sdr2):
+    s1, d1, r1 = sdr1
+    s2, d2, r2 = sdr2
+
+    s1 = s1 % 360.
+    s2 = s2 % 360.
+    r1 = r1 % 360.
+    r2 = r2 % 360.
+
+    ds = abs(s1 - s2)
+    ds = ds if ds <= 180. else 360. - ds
+
+    dr = abs(r1 - r2)
+    dr = dr if dr <= 180. else 360. - dr
+
+    dd = abs(d1 - d2)
+
+    return math.sqrt(ds**2 + dr**2 + dd**2)
+
+
+def order_like(sdrs, sdrs_ref):
+    '''
+    Order strike-dip-rake pair post closely to a given reference pair.
+
+    :param sdrs: tuple, ``((strike1, dip1, rake1), (strike2, dip2, rake2))``
+    :param sdrs_ref: as above but with reference pair
+    '''
+
+    d1 = min(dsdr(sdrs[0], sdrs_ref[0]), dsdr(sdrs[1], sdrs_ref[1]))
+    d2 = min(dsdr(sdrs[0], sdrs_ref[1]), dsdr(sdrs[1], sdrs_ref[0]))
+    if d1 < d2:
+        return sdrs
+    else:
+        return sdrs[::-1]
+
+
 def _tpb2q(t, p, b):
     eps = 0.001
     tqw = 1. + t[0] + p[1] + b[2]
