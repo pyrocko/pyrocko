@@ -132,6 +132,7 @@ def plant():
     obspy.core.inventory.inventory.Inventory.to_pyrocko_stations =\
         to_pyrocko_stations
 
-    import pyrocko
+    import pyrocko.trace
+    import pyrocko.pile
     pyrocko.trace.Trace.to_obspy_trace = to_obspy_trace
     pyrocko.pile.Pile.to_obspy_stream = to_obspy_stream
