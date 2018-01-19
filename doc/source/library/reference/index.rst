@@ -23,3 +23,4 @@ Reference
    pile
    pz
    util
+   obspy_compat
