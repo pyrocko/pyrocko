@@ -1,5 +1,5 @@
-The ``dataset`` subpackage
-==========================
+``dataset``
+===========
 
 .. automodule ::
     pyrocko.dataset

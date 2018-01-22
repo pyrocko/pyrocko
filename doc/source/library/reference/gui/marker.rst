@@ -1,6 +1,5 @@
-
-``pyrocko.gui.marker``
-======================
+``gui.marker``
+==============
 
 .. automodule:: pyrocko.gui.marker
     :members:

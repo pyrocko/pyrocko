@@ -1,5 +1,5 @@
-The :mod:`model` subpackage
-===========================
+``model``
+=========
 
 .. automodule:: pyrocko.model
     :members:

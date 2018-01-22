@@ -2,7 +2,7 @@ Scenario's TargetGenerators
 =============================
 
 ``RandomStationGenerator``
----------------------------
+--------------------------
 
 .. automodule :: pyrocko.scenario.targets.station
     :members:
@@ -10,7 +10,7 @@ Scenario's TargetGenerators
 
 
 ``WaveformGenerator``
----------------------------
+---------------------
 
 .. automodule :: pyrocko.scenario.targets.waveform
     :members:
@@ -18,7 +18,7 @@ Scenario's TargetGenerators
 
 
 ``InSARGenerator``
----------------------------
+------------------
 
 .. automodule :: pyrocko.scenario.targets.insar
     :members:
@@ -26,7 +26,7 @@ Scenario's TargetGenerators
 
 
 ``GNSSCampaignGenerator``
----------------------------
+-------------------------
 
 .. automodule :: pyrocko.scenario.targets.gnss_campaign
     :members:

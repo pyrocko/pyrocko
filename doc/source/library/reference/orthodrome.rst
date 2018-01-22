@@ -1,7 +1,5 @@
-
-
-The :mod:`orthodrome` module
-============================
+``orthodrome``
+==============
 
 .. automodule:: pyrocko.orthodrome
     :members:

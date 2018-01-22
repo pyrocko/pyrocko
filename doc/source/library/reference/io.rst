@@ -1,5 +1,5 @@
-The :mod:`io` subpackage
-========================
+``io``
+======
 
 .. automodule :: pyrocko.io
     :members:
@@ -10,6 +10,7 @@ The :mod:`io` subpackage
 .. autosummary::
     :nosignatures:
 
+    pyrocko.io.io_common
     pyrocko.io.css
     pyrocko.io.datacube
     pyrocko.io.enhanced_sacpz
@@ -17,7 +18,6 @@ The :mod:`io` subpackage
     pyrocko.io.gse1
     pyrocko.io.gse2
     pyrocko.io.ims
-    pyrocko.io.io_common
     pyrocko.io.kan
     pyrocko.io.mseed
     pyrocko.io.quakeml
