@@ -1,7 +1,5 @@
-
-
-The :mod:`evalresp` module
-==========================
+``evalresp``
+============
 
 .. automodule:: pyrocko.evalresp
     :members:

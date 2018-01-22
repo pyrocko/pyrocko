@@ -1,7 +1,5 @@
-
-
-The :mod:`cake` module
-======================
+``cake``
+========
 
 .. automodule:: pyrocko.cake
     :members:

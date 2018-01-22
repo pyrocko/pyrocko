@@ -1,5 +1,5 @@
-The :mod:`client` subpackage
-=============================
+``client``
+==========
 
 .. automodule::
     pyrocko.client

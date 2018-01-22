@@ -1,5 +1,5 @@
-The ``streaming`` subpackage
-============================
+``streaming``
+=============
 
 .. toctree::
     :maxdepth: 2

@@ -1,5 +1,5 @@
-The ``gui`` subpackage
-======================
+``gui``
+=======
 
 .. toctree::
     :maxdepth: 2

@@ -1,8 +1,8 @@
 GMT powered automatic maps
 ==========================
 
-``pyrocko.plot.automap``
-------------------------
+``plot.automap``
+----------------
 
 .. automodule:: pyrocko.plot.automap
     :members: Map

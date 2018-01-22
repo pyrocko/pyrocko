@@ -1,5 +1,5 @@
-``pyrocko.streaming.slink``
-===========================
+``streaming.slink``
+===================
 
 .. automodule:: pyrocko.streaming.slink
     :members:
