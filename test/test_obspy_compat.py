@@ -24,6 +24,18 @@ class ObsPyCompatTestCase(unittest.TestCase):
         trace = stream[0]
         trace.snuffle()
 
+    @unittest.skipUnless(
+        common.have_gui(),
+        'No GUI available')
+    def test_obspy_fiddle(self):
+        fn = common.test_data_file('test1.mseed')
+
+        stream = obspy.read(fn)
+        stream2 = stream.fiddle()
+
+        trace = stream[0]
+        trace2 = trace.fiddle()
+
     def test_to_obspy_trace(self):
         traces = io.load(common.test_data_file('test1.mseed'))
         for tr in traces:

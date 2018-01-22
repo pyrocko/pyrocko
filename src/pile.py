@@ -628,7 +628,8 @@ class TracesGroup(object):
         return self.nupdates
 
     def overlaps(self, tmin, tmax):
-        return tmax >= self.tmin and self.tmax >= tmin
+        return self.tmin is not None \
+            and tmax >= self.tmin and self.tmax >= tmin
 
     def is_relevant(self, tmin, tmax, group_selector=None):
         if not self.tmin or not self.tmax:
