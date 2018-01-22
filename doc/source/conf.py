@@ -44,6 +44,8 @@ intersphinx_mapping = {'numpy': ('https://docs.scipy.org/doc/numpy/',
                        'matplotlib': ('http://matplotlib.org/',
                                  None),
                        'python': ('https://docs.python.org/3.5',
+                                  None),
+                       'obspy': ('https://docs.obspy.org/',
                                   None)}
 
 # Add any paths that contain templates here, relative to this directory.
