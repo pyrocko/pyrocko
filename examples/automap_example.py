@@ -1,19 +1,20 @@
-from pyrocko import model
-from pyrocko import gmtpy
 from pyrocko.plot.automap import Map
 from pyrocko.example import get_example_data
+from pyrocko import util, model,automap, orthodrome as od, moment_tensor as pmt, \
+    gmtpy
 
 
 gmtpy.check_have_gmt()
 
 # Download example data
 get_example_data('stations_deadsea.pf')
+get_example_data('deadsea_events_1976-2017.txt')
 
 # Generate the basic map
 m = Map(
     lat=31.5,
     lon=35.5,
-    radius=100000.,
+    radius=150000.,
     width=30., height=30.,
     show_grid=False,
     show_topo=True,
@@ -43,12 +44,48 @@ m.gmt.psxy(in_columns=(lons, lats), S='t20p', G='black', *m.jxyr)
 for i in range(len(stations)):
     m.add_label(lats[i], lons[i], labels[i])
 
-# Draw a beachball
-m.gmt.psmeca(
-    S='m.5', G='red', C='5p,0/0/0', in_rows=[
-        # location and moment tensor components (from www.globalcmt.org)
-        (35.31, 31.62, 10, -0.27, 0.53, -0.27, -0.66, -0.35, -0.74, 24,
-         35.31, 31.62, 'Event - 2004/01/11'),
-    ], *m.jxyr)
+
+# Load events from catalog file (generated using catalog.GlobalCMT() to download from www.globalcmt.org)
+# If no moment tensor is provided in the catalogue, the event is plotted as a red circle.
+# Symbol size relative to magnitude.
+
+events = model.load_events('deadsea_events_1976-2017.txt')
+beachball_symbol = 'd'
+factor_symbl_size = 5.0
+for ev in events:
+    mag = ev.magnitude
+    if ev.moment_tensor is None:
+        ev_symb = 'c'+str(mag*factor_symbl_size)+'p' 
+        m.gmt.psxy(
+            in_rows=[[ev.lon, ev.lat]],
+            S=ev_symb,
+            G=gmtpy.color('scarletred2'),
+            W='1p,black',
+            *m.jxyr)
+    else:
+        devi = ev.moment_tensor.deviatoric()
+        beachball_size = mag*factor_symbl_size
+        mt = devi.m_up_south_east()
+        mt = mt / ev.moment_tensor.scalar_moment() \
+            * pmt.magnitude_to_moment(5.0)
+        m6 = pmt.to6(mt)
+        data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)#
+
+        if m.gmt.is_gmt5():
+            kwargs = dict(
+                M=True,
+                S='%s%g' % (beachball_symbol[0], (beachball_size) / gmtpy.cm))
+        else:
+            kwargs = dict(
+                S='%s%g' % (beachball_symbol[0], 
+                           (beachball_size)*2 / gmtpy.cm))
+
+        m.gmt.psmeca(
+            in_rows=[data],
+            G=gmtpy.color('chocolate1'),
+            E='white',
+            W='1p,%s' % gmtpy.color('chocolate3'),
+            *m.jxyr,
+            **kwargs)
 
 m.save('automap_deadsea.png')
