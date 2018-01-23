@@ -20,6 +20,7 @@
 </script>
 <script type="text/javascript" src="https://raw.githubusercontent.com/googlemaps/v3-utility-library/master/markerwithlabel/src/markerwithlabel.js"></script>
 <script type="text/javascript" src="http://localhost:9998/loadxmldoc.js"></script>
+<script type="text/javascript" src="http://localhost:9998/map_util.js"></script>
 <script>
 	/*
 		javascript ruler for google maps V3
@@ -142,19 +143,7 @@
     }
   </script>
   <script>
-    try
-    {
-      xmlDoc = loadXMLDoc("http://localhost:9998/markers.xml")
-    }
-    catch(err)
-    {
-      txt="An error occurred while trying to read dumped pyrocko marker.\n\n";
-      txt+="Probably, your browser does not allow to open that document\n\n";
-      txt+="due to the \"Same-Origin-Policy\".\n\n";
-      txt+="A solution might be to change your default browser.\n\n";
-      alert(txt);
-    }
-
+    xmlDoc = load_markers("http://localhost:9998/markers.xml");
     var stationSymbol= {
       path: 'M -8,0 8,0 0,-16 z',
       strokeColor: 'black',
@@ -191,10 +180,10 @@
 
               var epicenterlocation = new google.maps.LatLng(lat, lon )
 
-              marker[i]=new google.maps.Marker({
+              marker[i] = new google.maps.Marker({
                 position: epicenterlocation,
                 icon: { path: google.maps.SymbolPath.CIRCLE,
-                  scale: 2,
+                  scale: 3,
                   strokeColor: 'red'},
                   title: name + 
                   "\n" + 'origin time: '+time+
