@@ -7,7 +7,7 @@ from pyrocko.example import get_example_data
 # K. W. Hudnut, Z. Shen, M. Murray, S. McClusky, R. King, T. Herring,
 # B. Hager, Y. Feng, P. Fang, A. Donnellan, Y. Bock;
 # Co-seismic displacements of the 1994 Northridge, California, earthquake.
-# Bulletin of the Seismological Society of America ; 86 (1B): S19–S36. doi:
+# Bulletin of the Seismological Society of America; 86 (1B): S19-S36. doi:
 
 # https://pasadena.wr.usgs.gov/office/hudnut/hudnut/nr_bssa.html
 

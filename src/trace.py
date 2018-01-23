@@ -181,7 +181,7 @@ class Trace(object):
             'location codes differ: %s, %s' % (self.location, other.location)
         assert self.channel == other.channel, 'channel codes differ'
         assert (abs(self.deltat - other.deltat)
-                 < (self.deltat + other.deltat)*1e-6), \
+                < (self.deltat + other.deltat)*1e-6), \
             'sampling intervals differ %g, %g' % (self.deltat, other.delta)
         assert abs(self.tmin-other.tmin) < self.deltat*0.01, \
             'start times differ: %s, %s' % (

@@ -8,7 +8,7 @@ Use :mod:`pyrocko.gf` Green's Function databases to generate earthquake data fro
 ``colosseo`` is a CLI for :mod:`pyrocko.scenario` that orchestrates different generators to randomly (yet seeded) create synthetic data of randomised sources.
 Point sources or finite sources are generated with the :class:`~pyrocko.scenario.sources.SourceGenerator`
 
-At generated stations from the :class:`~pyrocko.scenario.targets.station.StationGenerator`, dynamic or static synthetic data are created with the :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator` and the :class:`~pyrocko.scenario.targets.gnss_campaign.GNSSCampaignGenerator`. Also InSAR data scenarios using `kite <https://pyrocko.org/docs/kite/>`_are possible with the :class:`~pyrocko.scenario.targets.insar.InSARGenerator`.
+At generated stations from the :class:`~pyrocko.scenario.targets.station.StationGenerator`, dynamic or static synthetic data are created with the :class:`~pyrocko.scenario.targets.waveform.WaveformGenerator` and the :class:`~pyrocko.scenario.targets.gnss_campaign.GNSSCampaignGenerator`. Also InSAR data scenarios using `kite <https://pyrocko.org/docs/kite/>`_ are possible with the :class:`~pyrocko.scenario.targets.insar.InSARGenerator`.
 
 Creating a scenario with ``colosseo`` is straight forward, but in any case you get help with subcommands using:
 
