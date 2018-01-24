@@ -1,6 +1,6 @@
 # Pyrocko
 ### _A seismology toolkit for Python_
-[![Anaconda-Server Badge](https://anaconda.org/pyrocko/pyrocko/badges/installer/conda.svg)](https://conda.anaconda.org/pyrocko)
+[![Anaconda-Server Badge](https://anaconda.org/pyrocko/pyrocko/badges/installer/conda.svg)](https://conda.anaconda.org/pyrocko) [![PyPI](https://img.shields.io/pypi/v/pyrocko.svg)](https://pypi.python.org/pypi/pyrocko/)
 
 ## Installation
 
