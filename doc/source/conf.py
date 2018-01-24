@@ -14,6 +14,7 @@
 
 import sys
 import os
+from datetime import datetime as dt
 from pyrocko import version as pyrocko_version
 import sphinx_sleekcat_theme
 
@@ -63,7 +64,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Pyrocko'
-copyright = u'2017, The Pyrocko Developers'
+copyright = u'%d, The Pyrocko Developers' % dt.now().year
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
