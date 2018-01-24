@@ -5,10 +5,10 @@ from pyrocko import obspy_compat
 obspy_compat.plant()
 
 get_example_data('test.mseed')
-get_example_data('responses.xml')
+get_example_data('geeil.geofon.xml')
 
 # Read in MiniSEED data through ObsPy
-inv = obspy.read_inventory('responses.xml')
+inv = obspy.read_inventory('geeil.geofon.xml')
 stream = obspy.read('test.mseed')
 
 # Start the Snuffler
