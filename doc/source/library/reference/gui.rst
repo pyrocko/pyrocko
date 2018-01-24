@@ -7,4 +7,4 @@ The ``gui`` subpackage
     gui/pile_viewer
     gui/snuffling
     gui/marker
-    gui/gui_util
+    gui/util

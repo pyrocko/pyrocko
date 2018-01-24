@@ -189,7 +189,7 @@ def snuffle(stream_or_trace, inventory=None, catalog=None, **kwargs):
         object
     :param catalog:
         :py:class:`obspy.Catalog <obspy.core.event.Catalog>` object
-    :param **kwargs:
+    :param kwargs:
         extra arguments passed to :meth:`pyrocko.trace.Trace.snuffle`.
 
     :returns:
@@ -257,7 +257,7 @@ def fiddle(stream_or_trace, inventory=None, catalog=None, **kwargs):
         object
     :param catalog:
         :py:class:`obspy.Catalog <obspy.core.event.Catalog>` object
-    :param **kwargs:
+    :param kwargs:
         extra arguments passed to :meth:`pyrocko.trace.Trace.snuffle`.
 
     :returns: :py:class:`obspy.Stream <obspy.core.stream.Stream>` object with
