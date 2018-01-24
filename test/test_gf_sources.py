@@ -177,6 +177,30 @@ class GFSourcesTestCase(unittest.TestCase):
                 cent = dsource.centroid()
                 assert numeq(cent.time + source.get_timeshift(), t, 0.0001)
 
+    def test_outline(self):
+        s = gf.MTSource(
+            east_shift=5. * km,
+            north_shift=-3. * km,
+            depth=7. * km)
+
+        outline = s.outline()
+        numeq(outline, num.array([[-3000., 5000., 7000.]]), 1e-8)
+
+        rs = gf.RectangularSource(
+            length=2 * km,
+            width=2 * km)
+
+        outline = rs.outline()
+        numeq(
+            outline,
+            num.array(
+                [[-1.e3, 0.0, 0.0],
+                 [1.e3, 0.0, 0.0],
+                 [1.e3, 0.0, 2.e3],
+                 [-1.e3, 0.0, 2.e3],
+                 [-1.e3, 0.0, 0.0]]),
+            1e-8)
+
     def test_rect_source_anchors(self):
         sources = {}
         for anchor in ['top', 'center', 'bottom']:
