@@ -1,5 +1,5 @@
-Colosseo
-========
+Colosseo - *Earthquake Scenario Generator*
+==========================================
 
 .. highlight:: sh
 
