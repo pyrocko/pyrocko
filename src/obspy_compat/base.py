@@ -31,11 +31,10 @@ def to_pyrocko_trace(trace):
     :returns:
         :py:class:`pyrocko.trace.Trace` object
     '''
-    import pyrocko.trace
-
     obspy_trace = trace
+    from pyrocko import trace
 
-    return pyrocko.trace.Trace(
+    return trace.Trace(
         str(obspy_trace.stats.network),
         str(obspy_trace.stats.station),
         str(obspy_trace.stats.location),
@@ -178,7 +177,7 @@ def to_obspy_trace(trace):
     return obspy_trace
 
 
-def snuffle(stream_or_trace, inventory=None, catalog=None):
+def snuffle(stream_or_trace, inventory=None, catalog=None, **kwargs):
     '''
     Explore ObsPy data with Snuffler.
 
@@ -190,6 +189,8 @@ def snuffle(stream_or_trace, inventory=None, catalog=None):
         object
     :param catalog:
         :py:class:`obspy.Catalog <obspy.core.event.Catalog>` object
+    :param **kwargs:
+        extra arguments passed to :meth:`pyrocko.trace.Trace.snuffle`.
 
     :returns:
         ``(return_tag, markers)``, where ``return_tag`` is the a string to flag
@@ -225,7 +226,8 @@ def snuffle(stream_or_trace, inventory=None, catalog=None):
         to_pyrocko_traces(obspy_stream),
         events=events,
         stations=stations,
-        want_markers=True)
+        want_markers=True,
+        **kwargs)
 
 
 class ObsPyStreamSnufflingLoader(object):
@@ -243,7 +245,7 @@ class ObsPyStreamSnufflingLoader(object):
         return self.snuffling
 
 
-def fiddle(stream_or_trace, inventory=None, catalog=None):
+def fiddle(stream_or_trace, inventory=None, catalog=None, **kwargs):
     '''
     Manipulate ObsPy stream object interactively.
 
@@ -255,6 +257,8 @@ def fiddle(stream_or_trace, inventory=None, catalog=None):
         object
     :param catalog:
         :py:class:`obspy.Catalog <obspy.core.event.Catalog>` object
+    :param **kwargs:
+        extra arguments passed to :meth:`pyrocko.trace.Trace.snuffle`.
 
     :returns: :py:class:`obspy.Stream <obspy.core.stream.Stream>` object with
         changes applied interactively (or :py:class:`obspy.Trace
@@ -292,13 +296,18 @@ def fiddle(stream_or_trace, inventory=None, catalog=None):
     stations = to_pyrocko_stations(obspy_inventory)
 
     snuffling_loader = ObsPyStreamSnufflingLoader(obspy_stream)
+    launch_hook = kwargs.pop('launch_hook', [])
+    if not isinstance(launch_hook, list):
+        launch_hook = [launch_hook]
+    launch_hook.append(snuffling_loader)
 
     trace.snuffle(
         [],
         events=events,
         stations=stations,
         controls=False,
-        launch_hook=snuffling_loader)
+        launch_hook=launch_hook,
+        **kwargs)
 
     new_obspy_stream = snuffling_loader.get_snuffling().get_obspy_stream()
 
@@ -348,7 +357,7 @@ def plant():
     import obspy
     obspy.Trace.to_pyrocko_trace = to_pyrocko_trace
     obspy.Trace.snuffle = snuffle
-    obspy.Stream.fiddle = fiddle
+    obspy.Trace.fiddle = fiddle
 
     obspy.Stream.to_pyrocko_traces = to_pyrocko_traces
     obspy.Stream.snuffle = snuffle

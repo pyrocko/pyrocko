@@ -5,41 +5,50 @@ from . import common
 import pyrocko.trace
 from pyrocko import util, io, model, pile
 
-import obspy
-from pyrocko import obspy_compat
-obspy_compat.plant()
+if common.have_obspy():
+    import obspy
+    from pyrocko import obspy_compat
+    obspy_compat.plant()
 
 
+def close_win(win):
+    win.close()
+
+
+@common.require_obspy
 class ObsPyCompatTestCase(unittest.TestCase):
 
-    @unittest.skipUnless(
-        common.have_gui(),
-        'No GUI available')
+    @common.require_gui
     def test_obspy_snuffle(self):
         fn = common.test_data_file('test1.mseed')
 
         stream = obspy.read(fn)
-        stream.snuffle()
+        stream.snuffle(launch_hook=close_win)
 
         trace = stream[0]
-        trace.snuffle()
+        trace.snuffle(launch_hook=close_win)
 
-    @unittest.skipUnless(
-        common.have_gui(),
-        'No GUI available')
+    @common.require_gui
     def test_obspy_fiddle(self):
         fn = common.test_data_file('test1.mseed')
 
         stream = obspy.read(fn)
-        stream2 = stream.fiddle()
+        stream2 = stream.fiddle(launch_hook=close_win)  # noqa
 
         trace = stream[0]
-        trace2 = trace.fiddle()
+        trace2 = trace.fiddle(launch_hook=close_win)  # noqa
 
     def test_to_obspy_trace(self):
         traces = io.load(common.test_data_file('test1.mseed'))
         for tr in traces:
-            assert isinstance(tr.to_obspy_trace(), obspy.Trace)
+            obs_tr = tr.to_obspy_trace()
+
+            assert isinstance(obs_tr, obspy.Trace)
+            assert obs_tr.data.size == tr.data_len()
+
+            obs_stats = obs_tr.stats
+            for attr in ('network', 'station', 'location', 'channel'):
+                assert obs_stats.__getattr__(attr) == tr.__getattribute__(attr)
 
     def test_to_obspy_stream(self):
         pl = pile.Pile()
@@ -48,6 +57,7 @@ class ObsPyCompatTestCase(unittest.TestCase):
         st = pl.to_obspy_stream()
 
         assert isinstance(st, obspy.Stream)
+        assert len(st) == len([tr for tr in pl.iter_all()])
         for tr in st:
             assert isinstance(tr, obspy.Trace)
 
