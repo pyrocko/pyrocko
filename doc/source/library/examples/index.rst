@@ -21,6 +21,7 @@ Annotated scripts and real-world use cases using Pyrocko.
 
     trace_handling
     dataset_management
+    readnwrite_quakml
     fdsn_download
     catalog_search
     moment_tensor
