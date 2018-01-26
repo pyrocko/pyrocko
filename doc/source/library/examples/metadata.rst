@@ -10,3 +10,10 @@ If a moment tensor is provided as [``Mrr, Mtt, Mpp, Mrt, Mrp, Mtp``], this is co
 
 .. literalinclude :: /../../examples/readnwrite_quakml.py
     :language: python
+
+StationXML import
+-----------------
+This example shows how to import StationXML files and extract pyrocko.Station objects
+
+.. literalinclude :: /../../examples/station_from_XML.py
+    :language: python
