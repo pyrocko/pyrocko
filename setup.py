@@ -12,6 +12,8 @@ from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
+packname = 'pyrocko'
+version = '2018.01.16'
 
 op = os.path
 try:
@@ -546,9 +548,6 @@ else:
     omp_arg = []
     omp_lib = []
 
-
-packname = 'pyrocko'
-version = '2017.11.22'
 
 subpacknames = [
     'pyrocko.gf',
