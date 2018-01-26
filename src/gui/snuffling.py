@@ -953,7 +953,7 @@ class Snuffling(object):
                         if viewer.highpass is not None:
                             tr.highpass(4, viewer.highpass)
                         if viewer.lowpass is not None:
-                            tr.highpass(4, viewer.highpass)
+                            tr.lowpass(4, viewer.lowpass)
                     return traces
             else:
                 def apply_filters(traces):
