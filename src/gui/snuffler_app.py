@@ -496,8 +496,8 @@ class SnufflerStartWizard(qw.QWizard):
             try:
                 requests.post('https://pyrocko.org/%s' % webtk,
                               data=json.dumps(sys_info))
-            except Exception:
-                pass
+            except Exception as e:
+                print(e)
             self.button(self.NextButton).clicked.emit(True)
 
         self.customButtonClicked.connect(send_data)
