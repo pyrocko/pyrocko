@@ -493,8 +493,11 @@ class SnufflerStartWizard(qw.QWizard):
         def send_data():
             import requests
             import json
-            requests.post('https://pyrocko.org/%s' % webtk,
-                          data=json.dumps(sys_info))
+            try:
+                requests.post('https://pyrocko.org/%s' % webtk,
+                              data=json.dumps(sys_info))
+            except Exception:
+                pass
             self.button(self.NextButton).clicked.emit(True)
 
         self.customButtonClicked.connect(send_data)
