@@ -13,8 +13,8 @@ Mac OS X with Anaconda
 If you are using Anaconda under Mac OS X, see
 :doc:`/install/packages/anaconda`.
 
-Mac OS X with MacPorts
-----------------------
+Mac OS X with MacPorts (Python 3)
+----------------------------------
 
 .. code-block:: bash
     :caption: e.g. **Mac OS X** (10.6 - 10.10) with **MacPorts** (2.4.2)
@@ -30,7 +30,7 @@ Mac OS X with MacPorts
     sudo python setup.py install --install-scripts=/usr/local/bin
 
 
-Mac OS X with MacPorts (python 2.7)
+Mac OS X with MacPorts (Python 2.7)
 -----------------------------------
 
 .. code-block:: bash
@@ -47,7 +47,7 @@ Mac OS X with MacPorts (python 2.7)
     cd pyrocko
     sudo python setup.py install --install-scripts=/usr/local/bin
 
-Mac OS X with MacPorts and local installation (no sudo)
+Mac OS X with MacPorts and user installation (no sudo)
 -------------------------------------------------------
 
 Try this if you don't have sudo rights in ``/usr/bin``.

@@ -1,5 +1,5 @@
-The :mod:`plot` subpackage
-==========================
+``plot``
+========
 
 .. automodule:: pyrocko.plot
     :members:

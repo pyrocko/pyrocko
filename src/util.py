@@ -83,18 +83,20 @@ class PathExists(DownloadError):
 def _download(url, fpath, username=None, password=None,
               force=False, method='download', stats=None,
               status_callback=None, entries_wanted=None,
-              recursive=False):
+              recursive=False, header=None):
 
     import requests
-    from requests.auth import HTTPDigestAuth
+    from requests.auth import HTTPBasicAuth
 
     requests.adapters.DEFAULT_RETRIES = 5
     urljoin = requests.compat.urljoin
 
     session = requests.Session()
+    session.header = header
+    session.auth = None if username is None\
+        else HTTPBasicAuth(username, password)
+
     try:
-        session.auth = None if username is None\
-            else HTTPDigestAuth(username, password)
 
         url_to_size = {}
         status = dict(
@@ -147,8 +149,8 @@ def _download(url, fpath, username=None, password=None,
 
                 content_length = r.headers.get('content-length', None)
                 if content_length is None:
-                    logger.warning('Could not get HTTP header '
-                                   'Content-Length for %s' % url)
+                    logger.debug('Could not get HTTP header '
+                                 'Content-Length for %s' % url)
 
                     content_length = None
 
@@ -172,7 +174,6 @@ def _download(url, fpath, username=None, password=None,
             if callable(status_callback):
                 status_callback(status)
 
-
             r = session.get(url, stream=True, timeout=5)
             r.raise_for_status()
 
@@ -190,7 +191,7 @@ def _download(url, fpath, username=None, password=None,
 
             os.rename(fn_tmp, fn)
 
-            if fsize != None and frx != fsize:
+            if fsize is not None and frx != fsize:
                 logger.warning(
                     'HTTP header Content-Length: %i bytes does not match '
                     'download size %i bytes' % (fsize, frx))
@@ -236,20 +237,24 @@ def _download(url, fpath, username=None, password=None,
 
 
 def download_file(
-        url, fpath, username=None, password=None, status_callback=None):
+        url, fpath, username=None, password=None, status_callback=None,
+        **kwargs):
     return _download(
         url, fpath, username, password,
         recursive=False,
-        status_callback=status_callback)
+        status_callback=status_callback,
+        **kwargs)
 
 
 def download_dir(
-        url, fpath, username=None, password=None, status_callback=None):
+        url, fpath, username=None, password=None, status_callback=None,
+        **kwargs):
 
     return _download(
         url, fpath, username, password,
         recursive=True,
-        status_callback=status_callback)
+        status_callback=status_callback,
+        **kwargs)
 
 
 if hasattr(num, 'float128'):

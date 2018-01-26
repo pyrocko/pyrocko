@@ -24,9 +24,9 @@ class Download(Snuffling):
 
         self.set_name('Download Waveforms')
         self.add_parameter(Param(
-            'Min Radius [deg]', 'minradius', 0., 0., 20.))
+            'Min Radius [deg]', 'minradius', 0., 0., 180.))
         self.add_parameter(Param(
-            'Max Radius [deg]', 'maxradius', 5., 0., 20.))
+            'Max Radius [deg]', 'maxradius', 5., 0., 180.))
         self.add_parameter(Param(
             'Origin latitude [deg]', 'lat', 0, -90., 90.))
         self.add_parameter(Param(
@@ -99,7 +99,7 @@ class Download(Snuffling):
                 try:
                     d = fdsn.dataselect(site=site, selection=selection)
                     fn = pjoin(dir, 'data-%s.mseed' % net)
-                    f = open(fn, 'w')
+                    f = open(fn, 'wb')
                     f.write(d.read())
                     f.close()
                     fns.append(fn)

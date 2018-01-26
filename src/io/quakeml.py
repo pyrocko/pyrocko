@@ -574,10 +574,14 @@ class Event(Object):
         optional=True, xmltagname='preferredMagnitudeID')
     preferred_focal_mechanism_id = ResourceReference.T(
         optional=True, xmltagname='preferredFocalMechanismID')
-    type = EventType.T(optional=True)
-    type_certainty = EventTypeCertainty.T(optional=True)
-    creation_info = CreationInfo.T(optional=True)
-    region = Region.T(optional=True)
+    type = EventType.T(
+        optional=True)
+    type_certainty = EventTypeCertainty.T(
+        optional=True)
+    creation_info = CreationInfo.T(
+        optional=True)
+    region = Region.T(
+        optional=True)
 
     def pyrocko_event(self):
         '''Considers only the *preferred* origin and magnitude'''
@@ -602,8 +606,13 @@ class Event(Object):
         else:
             mag = pref_mag.mag.value
 
-        cat = self.preferred_origin.creation_info.agency_id
-        reg = self.description_list[0].text
+        cat = None
+        if self.preferred_origin.creation_info is not None:
+            cat = self.preferred_origin.creation_info.agency_id
+
+        reg = None
+        if self.description_list:
+            reg = self.description_list[0].text
 
         return event.Event(
             name=self.public_id, lat=lat, lon=lon, time=otime, depth=depth,

@@ -19,6 +19,7 @@ from tempfile import mkdtemp
 from subprocess import Popen, PIPE
 
 from pyrocko.guts import Float, Int, Tuple, List, Object, String
+from pyrocko.model import Location
 from pyrocko import gf, util, trace, cake
 
 
@@ -324,6 +325,9 @@ def remove_if_exists(fn, force=False):
 
 
 class PsGrnRunner(object):
+    '''
+    Wrapper object to execute the program fomosto_psgrn.
+    '''
 
     def __init__(self, outdir):
         outdir = os.path.abspath(outdir)
@@ -333,6 +337,12 @@ class PsGrnRunner(object):
         self.config = None
 
     def run(self, config, force=False):
+        '''
+        Run the program with the specified configuration.
+
+        :param config: :py:class:`PsGrnConfigFull`
+        :param force: boolean, set true to overwrite existing output
+        '''
         self.config = config
 
         input_fn = pjoin(self.outdir, 'input')
@@ -455,6 +465,9 @@ class PsCmpObservation(Object):
 
 
 class PsCmpScatter(PsCmpObservation):
+    '''
+    Scattered observation points.
+    '''
     lats = List.T(Float.T(), optional=True, default=[10.4, 10.5])
     lons = List.T(Float.T(), optional=True, default=[12.3, 13.4])
 
@@ -468,6 +481,9 @@ class PsCmpScatter(PsCmpObservation):
 
 
 class PsCmpProfile(PsCmpObservation):
+    '''
+    Calculation along observation profile.
+    '''
     n_steps = Int.T(default=10)
     slat = Float.T(
         default=0.,
@@ -495,6 +511,9 @@ class PsCmpProfile(PsCmpObservation):
 
 
 class PsCmpArray(PsCmpObservation):
+    '''
+    Calculation on a grid.
+    '''
     n_steps_lat = Int.T(default=10)
     n_steps_lon = Int.T(default=10)
     slat = Float.T(
@@ -519,14 +538,21 @@ class PsCmpArray(PsCmpObservation):
                 self.n_steps_lon, self.slon, self.elon)
 
 
-class PsCmpRectangularSource(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpRectangularSource(Location, gf.seismosizer.Cloneable):
     '''
+    Rectangular Source for the input geometry of the active fault.
+
     Input parameters have to be in:
     [deg] for reference point (lat, lon) and angles (rake, strike, dip)
     [m] shifting with respect to reference position
     [m] for fault dimensions and source depth. The default shift of the
-    origin (pos_s, pos_d) with respect to the reference coordinates
-    (lat, lon) is zero.
+    origin (:py:attr`pos_s`, :py:attr:`pos_d`) with respect to the reference
+        coordinates
+    (lat, lon) is zero, which implies that the reference is the center of
+        the fault plane!
+    The calculation point is always the center of the fault-plane!
+    Setting :py:attr`pos_s` or :py:attr`pos_d` moves the fault point with
+        respect to the origin along strike and dip direction, respectively!
     '''
     length = Float.T(default=6.0 * km)
     width = Float.T(default=5.0 * km)
@@ -604,7 +630,7 @@ MTDev = {
     }
 
 
-class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpTensileSF(Location, gf.seismosizer.Cloneable):
     '''
     Compound dislocation of 3 perpendicular, rectangular sources to approximate
     an opening single force couple. NED coordinate system!
@@ -636,7 +662,7 @@ class PsCmpTensileSF(gf.Location, gf.seismosizer.Cloneable):
         return cmpd
 
 
-class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpShearSF(Location, gf.seismosizer.Cloneable):
 
     length = Float.T(default=1.0 * km)
     width = Float.T(default=1.0 * km)
@@ -652,7 +678,7 @@ class PsCmpShearSF(gf.Location, gf.seismosizer.Cloneable):
         return [PsCmpRectangularSource(**kwargs)]
 
 
-class PsCmpMomentTensor(gf.Location, gf.seismosizer.Cloneable):
+class PsCmpMomentTensor(Location, gf.seismosizer.Cloneable):
     '''
     Mapping of Moment Tensor components to rectangular faults.
     Only one component at a time valid! NED coordinate system!
@@ -1107,7 +1133,14 @@ class Interrupted(gf.store.StoreError):
 
 
 class PsCmpRunner(object):
+    '''
+    Wrapper object to execute the program fomosto_pscmp with the specified
+    configuration.
 
+    :param tmp: string, path to the temporary directy where calculation
+        results are stored
+    :param keep_tmp: boolean, if True the result directory is kept
+    '''
     def __init__(self, tmp=None, keep_tmp=False):
         if tmp is not None:
             tmp = os.path.abspath(tmp)
@@ -1116,6 +1149,11 @@ class PsCmpRunner(object):
         self.config = None
 
     def run(self, config):
+        '''
+        Run the program!
+
+        :param config: :py:class:`PsCmpConfigFull`
+        '''
         self.config = config
 
         input_fn = pjoin(self.tempdir, 'input')
@@ -1168,33 +1206,38 @@ on
         logger.debug('===== begin pscmp output =====\n'
                      '%s===== end pscmp output =====' % output_str.decode())
 
-        errmess = []
+        errmsg = []
         if proc.returncode != 0:
-            errmess.append(
+            errmsg.append(
                 'pscmp had a non-zero exit state: %i' % proc.returncode)
 
         if error_str:
-            errmess.append('pscmp emitted something via stderr')
+            errmsg.append('pscmp emitted something via stderr')
 
         if output_str.lower().find(b'error') != -1:
-            errmess.append("the string 'error' appeared in pscmp output")
+            errmsg.append("the string 'error' appeared in pscmp output")
 
-        if errmess:
+        if errmsg:
             self.keep_tmp = True
 
             os.chdir(old_wd)
-            raise PsCmpError(b'''
+            raise PsCmpError('''
 ===== begin pscmp input =====
-%s===== end pscmp input =====
+{pscmp_input}===== end pscmp input =====
 ===== begin pscmp output =====
-%s===== end pscmp output =====
+{pscmp_output}===== end pscmp output =====
 ===== begin pscmp error =====
-%s===== end pscmp error =====
-%s
-pscmp has been invoked as "%s"
-in the directory %s'''.lstrip() % (
-                input_str, output_str, error_str, '\n'.join(errmess), program,
-                self.tempdir))
+{pscmp_error}===== end pscmp error =====
+{error_messages}
+pscmp has been invoked as "{call}"
+in the directory {dir}'''.format(
+                pscmp_input=input_str,
+                pscmp_output=output_str,
+                pscmp_error=error_str,
+                error_messages='\n'.join(errmsg),
+                call=program,
+                dir=self.tempdir)
+                .lstrip())
 
         self.pscmp_output = output_str
         self.pscmp_error = error_str
@@ -1203,8 +1246,16 @@ in the directory %s'''.lstrip() % (
 
     def get_results(self, component='displ'):
         '''
+        Get the resulting components from the stored directory.
         Be careful: The z-component is downward positive!
-        If flip_z=True it will be flipped upward! For displacements!
+
+        :param component: string, the component to retrieve from the
+        result directory, may be:
+            "displ": displacement, n x 3 array
+            "stress": stresses n x 6 array
+            "tilt': tilts n x 3 array,
+            "gravity': gravity n x 2 array
+            "all": all the above together
         '''
         assert self.config.snapshots is not None
         fns = self.config.get_output_filenames(self.tempdir)
@@ -1232,7 +1283,7 @@ in the directory %s'''.lstrip() % (
     def get_traces(self, component='displ'):
         '''
         Load snapshot data array and return specified components.
-        Transform array component and receiver wize to list of
+        Transform array component and receiver wise to list of
         :py:class:`pyrocko.trace.Trace`
         '''
 

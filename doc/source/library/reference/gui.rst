@@ -1,5 +1,5 @@
-The ``gui`` subpackage
-======================
+``gui``
+=======
 
 .. toctree::
     :maxdepth: 2
@@ -7,4 +7,4 @@ The ``gui`` subpackage
     gui/pile_viewer
     gui/snuffling
     gui/marker
-    gui/gui_util
+    gui/util

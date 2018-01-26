@@ -49,3 +49,9 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+More manuals from the ecosystem:
+---------------------------------
+
+* `Kite - Static displacement and InSAR post-processing <http://pyrocko.org/docs/kite>`_

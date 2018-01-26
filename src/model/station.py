@@ -14,6 +14,8 @@ from pyrocko import orthodrome
 from pyrocko.orthodrome import wrap
 from pyrocko.guts import Object, Float, String, List
 
+from .location import Location
+
 logger = logging.getLogger('pyrocko.model.station')
 
 guts_prefix = 'pf'
@@ -129,21 +131,17 @@ class Channel(Object):
         return '%s %f %f %g' % (self.name, self.azimuth, self.dip, self.gain)
 
 
-class Station(Object):
+class Station(Location):
     network = String.T()
     station = String.T()
     location = String.T()
-    lat = Float.T(default=0.0)
-    lon = Float.T(default=0.0)
-    elevation = Float.T(default=0.0)
-    depth = Float.T(default=0.0)
     name = String.T(default='')
     channels = List.T(Channel.T())
 
     def __init__(self, network='', station='', location='', lat=0.0, lon=0.0,
                  elevation=0.0, depth=0.0, name='', channels=None):
 
-        Object.__init__(
+        Location.__init__(
             self,
             network=network, station=station, location=location,
             lat=float(lat), lon=float(lon),
@@ -408,8 +406,12 @@ def load_stations(filename):
     stations = []
     f = open(filename, 'r')
     station = None
+    channel_names = []
     for (iline, line) in enumerate(f):
         toks = line.split(None, 5)
+        if line.strip().startswith('#') or line.strip() == '':
+            continue
+
         if len(toks) == 5 or len(toks) == 6:
             net, sta, loc = toks[0].split('.')
             lat, lon, elevation, depth = [float(x) for x in toks[1:5]]
@@ -423,12 +425,20 @@ def load_stations(filename):
                 elevation=elevation, depth=depth, name=name)
 
             stations.append(station)
+            channel_names = []
+
         elif len(toks) == 4 and station is not None:
             name, azi, dip, gain = (
                 toks[0],
                 float_or_none(toks[1]),
                 float_or_none(toks[2]),
                 float(toks[3]))
+            if name in channel_names:
+                logger.warning(
+                    'redefined channel! (line: %i, file: %s)' %
+                    (iline + 1, filename))
+            else:
+                channel_names.append(name)
 
             channel = Channel(name, azimuth=azi, dip=dip, gain=gain)
             station.add_channel(channel)

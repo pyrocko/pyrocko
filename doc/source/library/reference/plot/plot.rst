@@ -1,25 +1,25 @@
-``pyrocko.plot.beachball``
---------------------------
+``plot.beachball``
+------------------
 
 .. automodule :: pyrocko.plot.beachball
     :members:
 
 
-``pyrocko.plot.cake_plot``
---------------------------
+``plot.cake_plot``
+------------------
 
 .. automodule :: pyrocko.plot.cake_plot
     :members:
 
 
-``pyrocko.plot.hudson``
---------------------------
+``plot.hudson``
+---------------
 
 .. automodule :: pyrocko.plot.hudson
     :members:
 
-``pyrocko.plot.response``
-------------------------------
+``plot.response``
+-----------------
 
 .. automodule :: pyrocko.plot.response
     :members:

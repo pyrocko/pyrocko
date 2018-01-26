@@ -1536,12 +1536,17 @@ class Snuffling(object):
         try:
             self.call()
             return 0
+
         except SnufflingError as e:
             if not isinstance(e, SnufflingCallFailed):
                 # those have logged within error()
                 logger.error('%s: %s' % (self._name, e))
             logger.error('%s: Snuffling action failed' % self._name)
             return 1
+
+        except Exception as e:
+            logger.exception(
+                '%s: Snuffling action raised an exception' % self._name)
 
     def call(self):
         '''

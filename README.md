@@ -1,25 +1,22 @@
 # Pyrocko
 ### _A seismology toolkit for Python_
-[![Build Status](https://travis-ci.org/pyrocko/pyrocko.svg?branch=master)](https://travis-ci.org/pyrocko/pyrocko) [![Coverage Status](https://coveralls.io/repos/github/pyrocko/pyrocko/badge.svg)](https://coveralls.io/github/pyrocko/pyrocko)
-
-For documentation and installation instructions please see 
-[http://pyrocko.org/](http://pyrocko.org/).
+[![Anaconda-Server Badge](https://anaconda.org/pyrocko/pyrocko/badges/installer/conda.svg)](https://conda.anaconda.org/pyrocko)
 
 ## Installation
 
 ### Native installation
 
 ```
-sudo python setup.py make_prerequisites
+sudo python setup.py install_prerequisites
 sudo python setup.py install
 ```
 
-### Anaconda3 / MacOS
+### Anaconda / MacOSX
 
 ```
 conda install -c pyrocko pyrocko
 ```
-Anaconda Packages are available for Linux and OSX
+Anaconda2/3 Packages are available for Linux and OSX
 
 ### Python PIP
 

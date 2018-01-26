@@ -8,14 +8,14 @@ from builtins import range
 
 import sys
 import re
-import os
+import os.path as op
 import logging
 import copy
+import shutil
 from optparse import OptionParser
 
 from pyrocko import util, trace, gf, cake, io, marker, config
 
-pjoin = os.path.join
 logger = logging.getLogger('pyrocko.apps.fomosto')
 km = 1e3
 
@@ -201,12 +201,22 @@ def command_init(args):
 
         config = copy.deepcopy(source.config)
         config.derived_from_id = source.config.id
-        config.id = 'derived_from_' + config.id
         try:
             config_filenames = gf.store.Store.create_editables(
                 dest_dir, config=config)
+
         except gf.StoreError as e:
             die(e)
+
+        try:
+            dest = gf.Store(dest_dir)
+        except gf.StoreError as e:
+            die(e)
+
+        for k in source.extra_keys():
+            source_fn = source.get_extra_path(k)
+            dest_fn = dest.get_extra_path(k)
+            shutil.copyfile(source_fn, dest_fn)
 
         logger.info(
             '(1) configure settings in files:\n  %s'
@@ -235,11 +245,11 @@ def command_init(args):
 
 def get_store_dir(args):
     if len(args) == 1:
-        store_dir = os.path.abspath(args.pop(0))
+        store_dir = op.abspath(args.pop(0))
     else:
-        store_dir = os.path.abspath(os.path.curdir)
+        store_dir = op.abspath(op.curdir)
 
-    if not os.path.isdir(store_dir):
+    if not op.isdir(store_dir):
         die('not a directory: %s' % store_dir)
 
     return store_dir
@@ -247,12 +257,12 @@ def get_store_dir(args):
 
 def get_store_dirs(args):
     if len(args) == 0:
-        store_dirs = [os.path.abspath(os.path.curdir)]
+        store_dirs = [op.abspath(op.curdir)]
     else:
-        store_dirs = [os.path.abspath(x) for x in args]
+        store_dirs = [op.abspath(x) for x in args]
 
     for store_dir in store_dirs:
-        if not os.path.isdir(store_dir):
+        if not op.isdir(store_dir):
             die('not a directory: %s' % store_dir)
 
     return store_dirs
@@ -474,7 +484,6 @@ def command_view(args):
     if options.gui_toolkit_qt5:
         config.override_gui_toolkit = 'qt5'
 
-
     gdef = None
     if options.extract:
         try:
@@ -619,8 +628,8 @@ def command_import(args):
 
     source_path, dest_store_dir = args
 
-    if os.path.isdir(source_path):
-        source_path = pjoin(source_path, 'db')
+    if op.isdir(source_path):
+        source_path = op.join(source_path, 'db')
 
     source_path = re.sub(r'(\.\d+\.chunk|\.index)$', '', source_path)
 
@@ -696,8 +705,8 @@ def command_export(args):
         sys.exit(1)
 
     target_path = args.pop()
-    if os.path.isdir(target_path):
-        target_path = os.path.join(target_path, 'kiwi_gfdb')
+    if op.isdir(target_path):
+        target_path = op.join(target_path, 'kiwi_gfdb')
         logger.warn('exported gfdb will be named as "%s.*"' % target_path)
 
     source_store_dir = get_store_dir(args)
@@ -708,7 +717,7 @@ def command_export(args):
     if not isinstance(config, gf.meta.ConfigTypeA):
         die('only stores of type A can be exported to Kiwi format')
 
-    if os.path.isfile(target_path + '.index'):
+    if op.isfile(target_path + '.index'):
         die('destation already exists')
 
     cmd = [str(x) for x in [
@@ -1091,9 +1100,9 @@ def command_addref(args):
     store_dirs = []
     filenames = []
     for arg in args:
-        if os.path.isdir(arg):
+        if op.isdir(arg):
             store_dirs.append(arg)
-        elif os.path.isfile(arg):
+        elif op.isfile(arg):
             filenames.append(arg)
         else:
             die('invalid argument: %s' % arg)

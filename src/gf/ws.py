@@ -148,7 +148,8 @@ def download_gf_store(url=g_url_static, site=g_default_site, majorversion=1,
 
     try:
         if store_id is None:
-            print(static(url=stores_url+'/', format='text').read().decode('utf-8'))
+            print(static(
+                url=stores_url+'/', format='text').read().decode('utf-8'))
 
         else:
             store_url = ujoin(stores_url, store_id)

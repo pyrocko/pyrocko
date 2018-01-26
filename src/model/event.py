@@ -7,6 +7,8 @@ from __future__ import absolute_import, division
 from past.builtins import cmp
 import logging
 import numpy as num
+import hashlib
+import base64
 
 from pyrocko import util, moment_tensor
 from pyrocko.guts import Object, Float, String, Timestamp
@@ -16,6 +18,15 @@ logger = logging.getLogger('pyrocko.model.event')
 guts_prefix = 'pf'
 
 d2r = num.pi / 180.
+
+
+def ehash(s):
+    return str(base64.urlsafe_b64encode(
+        hashlib.sha1(s.encode('utf8')).digest()).decode('ascii'))
+
+
+def float_or_none_to_str(x):
+    return 'None' if x is None else '%.14e' % x
 
 
 class FileParseError(Exception):
@@ -262,16 +273,18 @@ class Event(Object):
 
     def get_hash(self):
         e = self
-        return util.base36encode(
-            abs(hash((
-                util.time_to_str(e.time),
-                str(e.lat),
-                str(e.lon),
-                str(e.depth),
-                str(e.magnitude),
-                e.catalog,
-                e.name,
-                e.region)))).lower()
+        if isinstance(e.time, util.hpfloat):
+            stime = util.time_to_str(e.time, format='%Y-%m-%d %H:%M:%S.6FRAC')
+        else:
+            stime = util.time_to_str(e.time, format='%Y-%m-%d %H:%M:%S.3FRAC')
+
+        s = float_or_none_to_str
+
+        return ehash(', '.join((
+            stime,
+            s(e.lat), s(e.lon), s(e.depth), s(e.magnitude),
+            str(e.catalog), str(e.name),
+            str(e.region))))
 
     def human_str(self):
         s = [
@@ -301,13 +314,43 @@ class Event(Object):
         return '\n'.join(s)
 
 
-def load_events(filename):
+def detect_format(filename):
+    with open(filename, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or line.startswith('%'):
+                continue
+            if line.startswith('--- !pf.Event'):
+                return 'yaml'
+            else:
+                return 'basic'
+
+
+def load_events(filename, format='detect'):
     '''Read events file.
 
     :param filename: name of file as str
+    :param format: file format: ``'detect'``, ``'basic'``, or ``'yaml'``
     :returns: list of :py:class:`Event` objects
     '''
-    return list(Event.load_catalog(filename))
+
+    if format == 'detect':
+        fmt = detect_format(filename)
+
+    assert fmt in ('yaml', 'basic')
+
+    if fmt == 'yaml':
+        from pyrocko import guts
+        events = [
+            ev for ev in guts.load_all(filename=filename)
+            if isinstance(ev, Event)]
+
+        return events
+    elif fmt == 'basic':
+        return list(Event.load_catalog(filename))
+    else:
+        from pyrocko.io.io_common import FileLoadError
+        FileLoadError('unknown event file format: %s' % fmt)
 
 
 def load_one_event(filename):

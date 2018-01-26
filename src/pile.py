@@ -19,7 +19,10 @@ import sys
 import operator
 import math
 import hashlib
-import pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 
 
 from . import avl
@@ -29,10 +32,11 @@ from .trace import degapper
 
 
 show_progress_force_off = False
+version_salt = 'v1-'
 
 
 def ehash(s):
-    return hashlib.sha1(s.encode('utf8')).hexdigest()
+    return hashlib.sha1((version_salt + s).encode('utf8')).hexdigest()
 
 
 def cmp(a, b):
@@ -93,8 +97,18 @@ def cmpfunc(key):
     return lambda a, b: cmp(key(a), key(b))
 
 
-class Dummy(object):
-    pass
+g_dummys = {}
+
+
+def get_dummy(key):
+    if key not in g_dummys:
+        class Dummy(object):
+            def __init__(self, k):
+                setattr(self, key, k)
+
+        g_dummys[key] = Dummy
+
+    return g_dummys[key]
 
 
 class Sorted(object):
@@ -106,10 +120,7 @@ class Sorted(object):
         self._key = key
         self._cmp = cmpfunc(key)
         if isinstance(key, str):
-            class Dummy(object):
-                def __init__(self, k):
-                    setattr(self, key, k)
-            self._dummy = Dummy
+            self._dummy = get_dummy(key)
 
     def __getstate__(self):
         state = list(self._avl.iter()), self._key
@@ -217,13 +228,9 @@ class TracesFileCache(object):
         self.dump_modified()
 
         for fn in os.listdir(self.cachedir):
-            try:
-                int(fn)  # valid filenames are integers
+            if len(fn) == 40:
                 cache = self._load_dircache(pjoin(self.cachedir, fn))
                 self._dump_dircache(cache, pjoin(self.cachedir, fn))
-
-            except ValueError:
-                pass
 
     def _get_dircache_for(self, abspath):
         return self._get_dircache(self._dircachepath(abspath))
@@ -238,7 +245,7 @@ class TracesFileCache(object):
         return self.dircaches[cachepath]
 
     def _dircachepath(self, abspath):
-        cachefn = ehash(abspath)
+        cachefn = ehash(os.path.dirname(abspath))
         return pjoin(self.cachedir, cachefn)
 
     def _load_dircache(self, cachefilename):
@@ -376,7 +383,7 @@ def loader(
                 not tfile or
                 (tfile.format != fileformat and fileformat != 'detect') or
                 tfile.mtime != mtime or
-                substitutions)
+                substitutions is not None)
 
             to_load.append((mustload, mtime, abspath, substitutions, tfile))
 
@@ -391,7 +398,7 @@ def loader(
 
     progress.update(len(filenames))
 
-    to_load.sort()
+    to_load.sort(key=lambda x: x[2])
 
     nload = len([1 for x in to_load if x[0]])
     iload = 0
@@ -621,9 +628,12 @@ class TracesGroup(object):
         return self.nupdates
 
     def overlaps(self, tmin, tmax):
-        return tmax >= self.tmin and self.tmax >= tmin
+        return self.tmin is not None \
+            and tmax >= self.tmin and self.tmax >= tmin
 
     def is_relevant(self, tmin, tmax, group_selector=None):
+        if not self.tmin or not self.tmax:
+            return False
         return tmax >= self.tmin and self.tmax >= tmin and (
             group_selector is None or group_selector(self))
 

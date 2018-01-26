@@ -268,10 +268,16 @@ class ValControl(qc.QObject):
         return self.lname, self.lvalue, self.slider
 
     def s2v(self, svalue):
+        if self.ma == 0 or self.mi == 0:
+            return 0
+
         a = math.log(self.ma/self.mi) / 10000.
         return self.mi*math.exp(a*svalue)
 
     def v2s(self, value):
+        if value == 0 or self.mi == 0:
+            return 0
+
         a = math.log(self.ma/self.mi) / 10000.
         return int(round(math.log(value/self.mi) / a))
 

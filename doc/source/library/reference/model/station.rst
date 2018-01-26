@@ -1,5 +1,5 @@
-``pyrocko.model.station``
-=========================
+``model.station``
+=================
 
 .. automodule :: pyrocko.model.station
     :members:

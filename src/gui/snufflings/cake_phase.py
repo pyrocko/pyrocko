@@ -132,7 +132,7 @@ class CakePhase(Snuffling):
 
             multi_dists = []
             nmax = 1
-            for i in xrange(0, nmax):
+            for i in range(0, nmax):
                 multi_dists.append(dist*cake.m2d + 360.*i)
                 multi_dists.append((i+1)*360. - dist*cake.m2d)
 

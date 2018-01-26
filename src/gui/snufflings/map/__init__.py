@@ -22,13 +22,13 @@ else:
     from SimpleHTTPServer import SimpleHTTPRequestHandler
     from urllib import unquote
 
-from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet    # noqa
-from pyrocko.guts import dump_xml                                       # noqa
-from pyrocko import util, gui_util, model, orthodrome as ortho          # noqa
-from pyrocko import moment_tensor                                       # noqa
-from pyrocko.automap import Map                                         # noqa
-from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker # noqa
-from .xmlMarker import StationMarkerList, MarkerLists                   # noqa
+from pyrocko.snuffling import Snuffling, Switch, Choice, NoViewerSet  # noqa
+from pyrocko.guts import dump_xml  # noqa
+from pyrocko import util, gui_util, model, orthodrome as ortho  # noqa
+from pyrocko import moment_tensor  # noqa
+from pyrocko.automap import Map  # noqa
+from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker  # noqa
+from .xmlMarker import StationMarkerList, MarkerLists  # noqa
 
 
 g_counter = 0
@@ -77,6 +77,12 @@ class RootedHTTPServer(HTTPServer):
 
 
 class RootedHTTPRequestHandler(SimpleHTTPRequestHandler):
+
+    def log_message(self, format, *args):
+        logger.debug("%s - - [%s] %s\n" %
+                     (self.client_address[0],
+                      self.log_date_time_string(),
+                      format % args))
 
     def translate_path(self, path):
         path = posixpath.normpath(unquote(path))
@@ -205,7 +211,7 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
             logger.warn(
                 'Could not find package OpenGL, '
                 'if the map does not work try installing OpenGL\n'
-                'e.g. sudo pip install OpenGL')
+                'e.g. sudo pip install PyOpenGL')
 
         self.cleanup()
 

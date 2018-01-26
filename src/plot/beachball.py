@@ -7,6 +7,7 @@ from __future__ import absolute_import
 
 from builtins import zip, map, range
 from math import pi as PI
+import logging
 import numpy as num
 
 from matplotlib.collections import PathCollection
@@ -14,6 +15,8 @@ from matplotlib.path import Path
 from matplotlib.transforms import Transform
 
 from pyrocko import moment_tensor as mtm
+
+logger = logging.getLogger('pyrocko.plot.beachball')
 
 NA = num.newaxis
 
@@ -677,14 +680,58 @@ def plot_beachball_mpl_pixmap(
 
 if __name__ == '__main__':
     import sys
+    import os
     import matplotlib.pyplot as plt
+    from pyrocko import model
 
-    vals = list(map(float, sys.argv[1:]))
+    args = sys.argv[1:]
+
+    data = []
+    for iarg, arg in enumerate(args):
+
+        if os.path.exists(arg):
+            events = model.load_events(arg)
+            for ev in events:
+                if not ev.moment_tensor:
+                    logger.warn('no moment tensor given for event')
+                    continue
+
+                data.append((ev.name, ev.moment_tensor))
+        else:
+            vals = list(map(float, arg.split(',')))
+            mt = mtm.as_mt(vals)
+            data.append(('%i' % (iarg+1), mt))
+
+    n = len(data)
+
+    ncols = 1
+    while ncols**2 < n:
+        ncols += 1
+
+    nrows = ncols
 
     fig = plt.figure()
     axes = fig.add_subplot(1, 1, 1, aspect=1.)
     axes.axison = False
-    axes.set_xlim(-1.05, 1.05)
-    axes.set_ylim(-1.05, 1.05)
-    plot_beachball_mpl(vals, axes, size_units='data')
+    axes.set_xlim(-0.05 - ncols, ncols + 0.05)
+    axes.set_ylim(-0.05 - nrows, nrows + 0.05)
+
+    for ibeach, (name, mt) in enumerate(data):
+        irow = ibeach / ncols
+        icol = ibeach % ncols
+        plot_beachball_mpl(
+            mt, axes,
+            position=(icol*2-ncols+1, -irow*2+nrows-1),
+            size_units='data')
+
+        axes.annotate(
+            name,
+            xy=(icol*2-ncols+1, -irow*2+nrows-2),
+            xycoords='data',
+            xytext=(0, 0),
+            textcoords='offset points',
+            verticalalignment='center',
+            horizontalalignment='center',
+            rotation=0.)
+
     plt.show()
