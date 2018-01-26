@@ -1,5 +1,5 @@
-Jackseis
-========
+Jackseis - *Manipulate Seismic Waveform Archives*
+=================================================
 
 .. highlight:: sh
 

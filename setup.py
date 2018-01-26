@@ -567,6 +567,7 @@ subpacknames = [
     'pyrocko.scenario',
     'pyrocko.scenario.targets',
     'pyrocko.scenario.sources',
+    'pyrocko.obspy_compat',
 ]
 
 setup(

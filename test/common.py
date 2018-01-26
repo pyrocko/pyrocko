@@ -69,6 +69,17 @@ def have_gui():
 require_gui = unittest.skipUnless(have_gui(), 'no gui support configured')
 
 
+def have_obspy():
+    try:
+        import obspy  # noqa
+        return True
+    except ImportError:
+        return False
+
+
+require_obspy = unittest.skipUnless(have_obspy(), 'obspy not installed')
+
+
 class Benchmark(object):
     def __init__(self, prefix=None):
         self.prefix = prefix or ''

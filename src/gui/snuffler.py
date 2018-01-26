@@ -94,7 +94,10 @@ def snuffle(pile=None, **kwargs):
 
     win = SnufflerWindow(pile, **kwargs)
     if launch_hook:
-        launch_hook(win)
+        if not isinstance(launch_hook, list):
+            launch_hook = [launch_hook]
+        for hook in launch_hook:
+            hook(win)
 
     sources = []
     pollinjector = None

@@ -60,6 +60,10 @@ def have_geographiclib():
 
 class OrthodromeTestCase(unittest.TestCase):
 
+    @classmethod
+    def tearDownClass(self):
+        print(benchmark)
+
     def get_critical_random_locations(self, ntest):
         '''
         Create list of random (lat1, lon1, lat2, lon2) including critical
