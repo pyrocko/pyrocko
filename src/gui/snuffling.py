@@ -950,9 +950,9 @@ class Snuffling(object):
             if main_bandpass:
                 def apply_filters(traces):
                     for tr in traces:
-                        if viewer.highpass:
+                        if viewer.highpass is not None:
                             tr.highpass(4, viewer.highpass)
-                        if viewer.lowpass:
+                        if viewer.lowpass is not None:
                             tr.highpass(4, viewer.highpass)
                     return traces
             else:
