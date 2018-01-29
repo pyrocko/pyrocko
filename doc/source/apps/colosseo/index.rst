@@ -1,4 +1,4 @@
-Colosseo - *Earthquake Scenario Generator*
+Colosseo - *earthquake scenario generator*
 ==========================================
 
 .. highlight:: sh

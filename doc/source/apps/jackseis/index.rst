@@ -1,4 +1,4 @@
-Jackseis - *Manipulate Seismic Waveform Archives*
+Jackseis - *manipulate seismic waveform archives*
 =================================================
 
 .. highlight:: sh

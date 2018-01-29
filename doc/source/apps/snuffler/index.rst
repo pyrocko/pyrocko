@@ -1,4 +1,4 @@
-Snuffler - *Seismogram Browser and Workbench*
+Snuffler - *seismogram browser and workbench*
 =============================================
 
 Snuffler is a seismogram browser and workbench.
