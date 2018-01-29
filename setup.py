@@ -13,7 +13,7 @@ from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
 packname = 'pyrocko'
-version = '2018.01.16'
+version = '2018.01.29'
 
 op = os.path
 try:
