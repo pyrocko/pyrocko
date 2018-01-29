@@ -19,4 +19,4 @@ The `pyrocko.dataset` submodule gives access to several helpful geo datasets:
 ## Geographic Datasets
 
 * `pyrocko.dataset.gshhg` An interface to the Global Self-consistent Hierarchical High-resolutions Geography Database (GSHHG; http://www.soest.hawaii.edu/wessel/gshhg/) [Wessel et al, 1998].
-* `pyrocko.dataset.geonames` Providing city names and population size from http:/geonames.org.
+* `pyrocko.dataset.geonames` Providing city names and population size from http://geonames.org.
