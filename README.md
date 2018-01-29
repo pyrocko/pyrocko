@@ -5,7 +5,7 @@
 ## Installation
 
 Full installation instructions are available at 
-http://pyrocko.org/docs/install/.
+http://pyrocko.org/docs/current/install/.
 
 ### Installation from source
 
