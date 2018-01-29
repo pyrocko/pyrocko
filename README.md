@@ -4,9 +4,14 @@
 
 ## Installation
 
-### Native installation
+Full installation instructions are available at 
+http://pyrocko.org/docs/install/.
+
+### Installation from source
 
 ```
+git clone https://github.org/pyrocko/pyrocko
+cd pyrocko
 sudo python setup.py install_prerequisites
 sudo python setup.py install
 ```
@@ -32,8 +37,6 @@ cd pyrocko
 sudo pip install -r requirements.txt
 sudo pip install .
 ```
-
-More installation instruction at http://pyrocko.org
 
 
 ## Documentation
