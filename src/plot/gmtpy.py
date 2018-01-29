@@ -7,7 +7,6 @@
 # This file is part of GmtPy (http://emolch.github.io/gmtpy/)
 # See there for copying and licensing information.
 
-
 from __future__ import print_function, absolute_import
 from builtins import zip, str as text
 import subprocess
@@ -131,7 +130,7 @@ def convert_graph(in_filename, out_filename, resolution=75., oversample=2.,
                 try:
                     subprocess.check_call(
                         ['convert', tmp_filename, out_filename])
-                except Exception:
+                except Exception as e:
                     raise GmtPyError(
                         'Cannot start `convert`, is it installed? (%s)'
                         % str(e))
