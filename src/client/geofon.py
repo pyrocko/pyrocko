@@ -275,6 +275,7 @@ class Geofon(EarthquakeCatalog):
         page = re.sub(br'align=center', b'align="center"', page)
         page = re.sub(br'<(link|meta).*?>', b'', page, flags=re.DOTALL)
         page = re.sub(br'</html>.*', b'</html>', page, flags=re.DOTALL)
+        page = re.sub(br'"[^"]+geohack[^"]+"', b'""', page)
 
         doc = self.parse_xml(page)
 
