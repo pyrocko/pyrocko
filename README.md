@@ -45,7 +45,7 @@ Documentation and usage examples are available online at http://pyrocko.org/docs
 
 ## Community Support
 
-Communit support at [https://hive.pyrocko.org](https://hive.pyrocko.org/signup_user_complete/?id=9edryhxeptdbmxrecbwy3zg49y).
+Community support at [https://hive.pyrocko.org](https://hive.pyrocko.org/signup_user_complete/?id=9edryhxeptdbmxrecbwy3zg49y).
 
 ## Citation
 Recommended citation for Pyrocko
