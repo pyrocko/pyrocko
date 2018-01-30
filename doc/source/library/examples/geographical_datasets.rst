@@ -1,9 +1,9 @@
-Geographical Datasets
+Geographical datasets
 ======================
 
 Pyrocko offers access to commonly used geographical datasets, such as 
 
-GSHHG Coastal Database
+GSHHG coastal database
 ----------------------
 The `GSHHG database <https://www.ngdc.noaa.gov/mgg/shorelines/gshhs.html>`_ is a high-resolution geography data set. We implement functions to extract coordinates of landmasks.
 
@@ -20,7 +20,7 @@ Download :download:`gshhg_example.py </../../examples/gshhg_example.py>`
 .. [#f1] Wessel, P., and W. H. F. Smith, A Global Self-consistent, Hierarchical, High-resolution Shoreline Database, J. Geophys. Res., 101, #B4, pp. 8741-8743, 1996.
 
 
-Tectonic Plates and Boundaries (PB2003)
+Tectonic plates and boundaries (PB2003)
 ---------------------------------------
 
 *An updated digital model of plate boundaries* [#f2]_ offers a global set of present plate boundaries on the Earth. This database used in :mod:`pyrocko.automap`.
@@ -38,8 +38,8 @@ Download :download:`tectonics_example.py </../../examples/tectonics_example.py>`
 .. [#f2] Bird, Peter. "An updated digital model of plate boundaries." Geochemistry, Geophysics, Geosystems 4.3 (2003).
 
 
-Global Srain Rate (GSRM1)
--------------------------
+Global strain rate (GSRM1)
+--------------------------
 
 Access to the global strain rate data set from Kreemer et al. (2003) [#f3]_.
 

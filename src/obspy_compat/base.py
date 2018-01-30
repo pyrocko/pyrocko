@@ -11,12 +11,27 @@ basic objects in Pyrocko and ObsPy. It also provides shortcuts to quickly look
 at ObsPy waveforms with the Pyrocko's :doc:`Snuffler </apps/snuffler/index>`
 application (:py:func:`snuffle`, :py:func:`fiddle`).
 
+With :func:`pyrocko.obspy_compat.plant` several new methods are attached to
+Pyrocko and ObsPy classes.
+
+**Example, visualize ObsPy stream object with Snuffler:**
+
+.. code-block:: python
+
+    import obspy
+    from pyrocko import obspy_compat
+    obspy_compat.plant()
+
+    stream = obspy.read()  # returns some example data
+    stream.snuffle()
+
 -- *With best wishes to the ObsPy Team from the Pyrocko Developers!*
 
 .. note::
 
     This is an experimental module, the interface may still be changed.
     Feedback and discussion welcome!
+
 '''
 
 from __future__ import absolute_import
@@ -350,7 +365,7 @@ def plant():
     +======================================+=================================+
     | :py:class:`pyrocko.trace.Trace`      | :py:func:`to_obspy_trace`       |
     +--------------------------------------+---------------------------------+
-    | :py:class:`pyrocko.pile.Pile`        | :py:func:`to_obspy_traces`      |
+    | :py:class:`pyrocko.pile.Pile`        | :py:func:`to_obspy_stream`      |
     +--------------------------------------+---------------------------------+
     '''
 
@@ -371,3 +386,15 @@ def plant():
     import pyrocko.pile
     pyrocko.trace.Trace.to_obspy_trace = to_obspy_trace
     pyrocko.pile.Pile.to_obspy_stream = to_obspy_stream
+
+
+__all__ = [
+    'to_pyrocko_trace',
+    'to_pyrocko_traces',
+    'to_pyrocko_events',
+    'to_pyrocko_stations',
+    'to_obspy_stream',
+    'to_obspy_trace',
+    'snuffle',
+    'fiddle',
+    'plant']

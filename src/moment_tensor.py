@@ -2,6 +2,25 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
+
+'''
+This module provides various moment tensor related utility functions.
+
+It can be used to convert between strike-dip-rake and moment tensor
+representations and provides different options to produce random moment
+tensors.
+
+Moment tensors are represented by :py:class:`MomentTensor` instances. The
+internal representation uses a north-east-down (NED) coordinate system, but it
+can convert from/to the conventions used by the Global CMT catalog
+(up-south-east, USE).
+
+If not otherwise noted, scalar moment is interpreted as the Frobenius norm
+based scalar moment (see :py:meth:`MomentTensor.scalar_moment`. The scalar
+moment according to the "standard decomposition" can be found in the
+output of :py:meth:`MomentTensor.standard_decomposition`.
+'''
+
 from __future__ import division, print_function, absolute_import
 from builtins import map
 from builtins import zip
@@ -437,12 +456,25 @@ class MomentTensor(Object):
     '''
     Moment tensor object
 
-
-
     :param m: NumPy matrix in north-east-down convention
     :param m_up_south_east: NumPy matrix in up-south-east convention
     :param strike,dip,rake: fault plane angles in [degrees]
     :param scalar_moment: scalar moment in [Nm]
+    :param magnitude: moment magnitude Mw
+
+    Global CMT catalog moment tensors use the up-south-east (USE) coordinate
+    system convention with :math:`r` (up), :math:`\\theta` (south), and
+    :math:`\\phi` (east).
+
+    .. math::
+        :nowrap:
+
+        \\begin{align*}
+            M_{rr} &= M_{dd}, & M_{  r\\theta} &= M_{nd},\\\\
+            M_{\\theta\\theta} &= M_{ nn}, & M_{r\\phi} &= -M_{ed},\\\\
+            M_{\\phi\\phi} &=  M_{ee}, & M_{\\theta\\phi} &= -M_{ne}
+        \\end{align*}
+
     '''
 
     mnn__ = Float.T(default=0.0)
@@ -710,7 +742,17 @@ class MomentTensor(Object):
         return to6(self._m)
 
     def m_up_south_east(self):
-        '''Get moment tensor in up-south-east convention as 3x3 matrix.'''
+        '''Get moment tensor in up-south-east convention as 3x3 matrix.
+
+        .. math::
+            :nowrap:
+
+            \\begin{align*}
+                M_{rr} &= M_{dd}, & M_{  r\\theta} &= M_{nd},\\\\
+                M_{\\theta\\theta} &= M_{ nn}, & M_{r\\phi} &= -M_{ed},\\\\
+                M_{\\phi\\phi} &=  M_{ee}, & M_{\\theta\\phi} &= -M_{ne}
+            \\end{align*}
+        '''
 
         return self._to_up_south_east.T * self._m * self._to_up_south_east
 
@@ -734,6 +776,10 @@ class MomentTensor(Object):
     def scalar_moment(self):
         '''
         Get the scalar moment of the moment tensor (Frobenius norm based)
+
+        .. math::
+
+            M0 = \\frac{1}{\sqrt{2}}\\sqrt{\\sum_{i,j} |M_{ij}|^2}
 
         The scalar moment is calculated based on the Euclidean (Frobenius) norm
         (Silver and Jordan, 1982). The scalar moment returned by this function
