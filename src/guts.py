@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # http://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
@@ -1411,7 +1412,11 @@ def _iload_all_xml(
 
     while True:
         data = stream.read(bufsize)
-        parser.Parse(data, bool(not data))
+        try:
+            parser.Parse(data, bool(not data))
+        except UnicodeEncodeError:
+            data = data.encode('utf8', 'replace')
+            parser.Parse(data, bool(not data))
         for element in handler.get_queued_elements():
             yield element
 
