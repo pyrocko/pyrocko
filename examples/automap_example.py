@@ -1,8 +1,7 @@
 from pyrocko.plot.automap import Map
 from pyrocko.example import get_example_data
-from pyrocko import util, model,automap, orthodrome as od, moment_tensor as pmt, \
-    gmtpy
-
+from pyrocko import model, gmtpy
+from pyrocko import moment_tensor as pmt
 
 gmtpy.check_have_gmt()
 
@@ -45,9 +44,10 @@ for i in range(len(stations)):
     m.add_label(lats[i], lons[i], labels[i])
 
 
-# Load events from catalog file (generated using catalog.GlobalCMT() to download from www.globalcmt.org)
-# If no moment tensor is provided in the catalogue, the event is plotted as a red circle.
-# Symbol size relative to magnitude.
+# Load events from catalog file (generated using catalog.GlobalCMT()
+# download from www.globalcmt.org)
+# If no moment tensor is provided in the catalogue, the event is plotted
+# as a red circle. Symbol size relative to magnitude.
 
 events = model.load_events('deadsea_events_1976-2017.txt')
 beachball_symbol = 'd'
@@ -55,7 +55,7 @@ factor_symbl_size = 5.0
 for ev in events:
     mag = ev.magnitude
     if ev.moment_tensor is None:
-        ev_symb = 'c'+str(mag*factor_symbl_size)+'p' 
+        ev_symb = 'c'+str(mag*factor_symbl_size)+'p'
         m.gmt.psxy(
             in_rows=[[ev.lon, ev.lat]],
             S=ev_symb,
@@ -69,7 +69,7 @@ for ev in events:
         mt = mt / ev.moment_tensor.scalar_moment() \
             * pmt.magnitude_to_moment(5.0)
         m6 = pmt.to6(mt)
-        data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)#
+        data = (ev.lon, ev.lat, 10) + tuple(m6) + (1, 0, 0)
 
         if m.gmt.is_gmt5():
             kwargs = dict(
@@ -77,8 +77,8 @@ for ev in events:
                 S='%s%g' % (beachball_symbol[0], (beachball_size) / gmtpy.cm))
         else:
             kwargs = dict(
-                S='%s%g' % (beachball_symbol[0], 
-                           (beachball_size)*2 / gmtpy.cm))
+                S='%s%g' % (beachball_symbol[0],
+                            (beachball_size)*2 / gmtpy.cm))
 
         m.gmt.psmeca(
             in_rows=[data],
