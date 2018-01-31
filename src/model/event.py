@@ -11,7 +11,7 @@ import hashlib
 import base64
 
 from pyrocko import util, moment_tensor
-from pyrocko.guts import Object, Float, String, Timestamp
+from pyrocko.guts import Object, Float, String, Timestamp, Unicode
 
 logger = logging.getLogger('pyrocko.model.event')
 
@@ -64,7 +64,7 @@ class Event(Object):
     depth = Float.T(optional=True)
     magnitude = Float.T(optional=True)
     magnitude_type = String.T(optional=True)
-    region = String.T(optional=True)
+    region = Unicode.T(optional=True)
     catalog = String.T(optional=True)
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
