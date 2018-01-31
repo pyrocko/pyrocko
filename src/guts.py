@@ -16,7 +16,7 @@ import sys
 import types
 import copy
 
-from io import open, BytesIO
+from io import BytesIO
 
 import yaml
 try:
@@ -1400,7 +1400,7 @@ def _iload_all_xml(
 
     from xml.parsers.expat import ParserCreate
 
-    parser = ParserCreate(namespace_separator=' ')
+    parser = ParserCreate('UTF-8', namespace_separator=' ')
 
     handler = Constructor(add_namespace_maps=add_namespace_maps, strict=strict)
 
@@ -1412,11 +1412,7 @@ def _iload_all_xml(
 
     while True:
         data = stream.read(bufsize)
-        try:
-            parser.Parse(data, bool(not data))
-        except UnicodeEncodeError:
-            data = data.encode('utf8', 'replace')
-            parser.Parse(data, bool(not data))
+        parser.Parse(data, bool(not data))
         for element in handler.get_queued_elements():
             yield element
 
