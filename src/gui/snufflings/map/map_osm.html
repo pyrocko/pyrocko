@@ -217,10 +217,12 @@
                     return feature;
                   });
               if (feature) {
+               $(element).popover('destroy');
                 var coordinates = feature.getGeometry().getCoordinates();
                 popup.setPosition(coordinates);
                 $(element).popover({
                   'placement': 'top',
+                  'animation': false,
                   'html': true,
                   'content': feature.get('name')
                 });
