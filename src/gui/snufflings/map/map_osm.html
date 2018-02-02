@@ -118,11 +118,21 @@
 
 </head>
 <body onload="init();">
+
+    <nav class="navbar navbar-default">
+      <div class="container-fluid">
+        <ul class="nav navbar-nav">
+            <li><button type="button" class="btn btn-info" id='toggle-layer'>Switch Layers</button></li>
+
+            <li><button type="button" class="btn btn-info" id='toggle-plateboundaries'>Plate Boundaries</button></li>
+        </ul>
+      </div>
+    </nav>
     <div class="map" id="map"><div id="popup"></div></div>
-    <div id="logger"></div>
+
     <script type="text/javascript">
-        function init() {
-            var aerial = new ol.layer.Tile({
+
+        const aerial = new ol.layer.Tile({
                 visibility: false,
                 isBaseLayer: false,
                 source: new ol.source.BingMaps({
@@ -131,6 +141,28 @@
                 })
             });
 
+        const plate_boundaries = new ol.layer.Vector({
+            visible: false,
+            // style: plate_boundary_style,
+            source: new ol.source.Vector({
+                url: "plates.kml",
+                format: new ol.format.KML({
+                    extractStyles: false,
+                    extractAttributes: false,
+                    maxDepth: 2
+                })
+            })
+        });
+        
+        $('#toggle-layer').on('click', function(event){
+            aerial.setVisible(!aerial.getVisible());
+        })  
+
+        $('#toggle-plateboundaries').on('click', function(event){
+            plate_boundaries.setVisible(!plate_boundaries.getVisible());
+        })
+
+        function init() {
             var stamen_terrain = new ol.layer.Tile({
                 visibility: true,
                 source: new ol.source.Stamen({
@@ -144,19 +176,6 @@
                     color: "#f49842",
                 })
             });
-
-/*            var plate_boundaries = new ol.layer.Vector({
-                visible: true,
-                style: plate_boundary_style,
-                source: new ol.source.Vector({
-                    url: "plates.kml",
-                    format: new ol.format.KML({
-                        extractStyles: false,
-                        extractAttributes: false,
-                        maxDepth: 2
-                    })
-                })
-            });*/
 
             var data = myxmlExtractor(xmlDoc);
 
@@ -181,7 +200,8 @@
                 target: document.getElementById('map'),
                 layers: [
                     stamen_terrain,
-                    /*plate_boundaries,*/
+                    aerial,
+                    plate_boundaries,
                     event_layer,
                     station_layer,
                 ],
