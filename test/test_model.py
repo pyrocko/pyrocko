@@ -63,6 +63,13 @@ class ModelTestCase(unittest.TestCase):
         assert e1.magnitude == e2.magnitude
         assert e1.magnitude_type == e2.magnitude_type
         assert e1.get_hash() == e2.get_hash()
+
+        fn2 = pjoin(tempdir, 'events.txt')
+        guts.dump_all([e1, e2], filename=fn2)
+
+        with self.assertRaises(model.OneEventRequired):
+            model.load_one_event(fn2)
+
         shutil.rmtree(tempdir)
 
     def testMissingComponents(self):

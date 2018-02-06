@@ -353,9 +353,17 @@ def load_events(filename, format='detect'):
         FileLoadError('unknown event file format: %s' % fmt)
 
 
-def load_one_event(filename):
-    lst = Event.load_catalog(filename)
-    return next(lst)
+class OneEventRequired(Exception):
+    pass
+
+
+def load_one_event(filename, format='detect'):
+    events = load_events(filename)
+    if len(events) != 1:
+        raise OneEventRequired(
+            'exactly one event is required in "%s"' % filename)
+
+    return events[0]
 
 
 def dump_events(events, filename=None, stream=None):
