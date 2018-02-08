@@ -1181,12 +1181,6 @@ class SourceWithDerivedMagnitude(Source):
         optional=True,
         help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
-    interpolation = meta.InterpolationMethod.T(
-        optional=True,
-        default='nearest_neighbor',
-        help='velocity model interpolation technique for magnitude '
-             'conversions')
-
     class __T(Source.T):
         def validate_extra(self, val):
             Source.T.validate_extra(self, val)
@@ -1212,8 +1206,10 @@ class SourceWithDerivedMagnitude(Source):
     def get_magnitude(self, store=None):
         return self.magnitude
 
-    def get_moment(self, store=None):
-        return float(mt.magnitude_to_moment(self.get_magnitude(store=store)))
+    def get_moment(self, store=None, interpolation=None):
+
+        return float(mt.magnitude_to_moment(
+            self.get_magnitude(store=store, interpolation=interpolation)))
 
     def pyrocko_moment_tensor(self, store=None):
         m0 = self.get_moment(store=store)
@@ -1251,7 +1247,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             raise DerivedMagnitudeError(
                 'magnitude and volume_change are both defined')
 
-    def get_magnitude(self, store=None):
+    def get_magnitude(self, store=None, interpolation=None):
         self.check_conflicts()
 
         if self.magnitude is not None:
@@ -1259,14 +1255,15 @@ class ExplosionSource(SourceWithDerivedMagnitude):
 
         elif self.volume_change is not None:
             moment = self.volume_change * \
-                self.get_moment_to_volume_change_ratio(store)
+                self.get_moment_to_volume_change_ratio(
+                    store, interpolation=interpolation)
 
             return float(mt.moment_to_magnitude(moment))
 
         else:
             return float(mt.moment_to_magnitude(1.0))
 
-    def get_volume_change(self, store=None):
+    def get_volume_change(self, store=None, interpolation=None):
         self.check_conflicts()
 
         if self.volume_change is not None:
@@ -1274,12 +1271,13 @@ class ExplosionSource(SourceWithDerivedMagnitude):
 
         elif self.magnitude is not None:
             moment = float(mt.magnitude_to_moment(self.magnitude))
-            return moment / self.get_moment_to_volume_change_ratio(store)
+            return moment / self.get_moment_to_volume_change_ratio(
+                store, interpolation=interpolation)
 
         else:
             return 1.0 / self.get_moment_to_volume_change_ratio(store)
 
-    def get_moment_to_volume_change_ratio(self, store):
+    def get_moment_to_volume_change_ratio(self, store, interpolation=None):
         if store is None:
             raise DerivedMagnitudeError(
                 'need earth model to convert between volume change and '
@@ -1292,7 +1290,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points,
-                interpolation=self.interpolation)[0]
+                interpolation=interpolation)[0]
         except meta.OutOfBounds:
             raise DerivedMagnitudeError(
                 'could not get shear modulus at source position')
@@ -1306,7 +1304,8 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
 
-        amplitudes *= self.get_moment(store)
+        amplitudes *= self.get_moment(
+            store, interpolation=target.interpolation)
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
@@ -1662,11 +1661,6 @@ class RectangularSource(DCSource):
         optional=True,
         help='Slip on the rectangular source area [m]')
 
-    interpolation = meta.InterpolationMethod.T(
-        optional=True,
-        default='nearest_neighbor',
-        help='Shear moduli interpolation technique to discretize slip')
-
     decimation_factor = Int.T(
         optional=True,
         default=1)
@@ -1706,7 +1700,7 @@ class RectangularSource(DCSource):
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points2,
-                interpolation=self.interpolation)
+                interpolation=target.interpolation)
 
             amplitudes *= dl * dw * shear_moduli * self.slip
 
@@ -2873,7 +2867,7 @@ class LocalEngine(Engine):
                 itsnapshot = 1
             tcounters.append(xtime())
 
-            base_source = source.discretize_basesource(store_)
+            base_source = source.discretize_basesource(store_, target=target)
 
             tcounters.append(xtime())
 

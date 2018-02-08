@@ -1534,7 +1534,7 @@ class Config(Object):
         raise NotImplemented('should be implemented in subclass')
 
     def get_shear_moduli(self, lat, lon, points,
-                         interpolation='nearest_neighbor'):
+                         interpolation=None):
         '''
         Get shear moduli at given points from contained velocity model.
 
@@ -1550,6 +1550,9 @@ class Config(Object):
         The default implementation retrieves and interpolates the shear moduli
         from the contained 1D velocity profile.
         '''
+        if interpolation is None:
+            raise TypeError('Interpolation method not defined! available: '
+                            "multilinear", "nearest_neighbor")
 
         store_depth_profile = self.coords[0]
 
@@ -1570,6 +1573,9 @@ class Config(Object):
             kind = 'linear'
         elif interpolation == 'nearest_neighbor':
             kind = 'nearest'
+        else:
+            raise TypeError(
+                'Interpolation method %s not available' % interpolation)
 
         shear_moduli_interpolator = interp1d(
             store_depth_profile, store_shear_modulus_profile, kind=kind)
