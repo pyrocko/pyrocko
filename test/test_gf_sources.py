@@ -226,7 +226,7 @@ class GFSourcesTestCase(unittest.TestCase):
         # plot_sources(sources)
 
     def test_explosion_source(self):
-        interpolation='nearest_neighbor'
+        interpolation = 'nearest_neighbor'
 
         ex = gf.ExplosionSource(
                 magnitude=5.,
@@ -252,7 +252,8 @@ class GFSourcesTestCase(unittest.TestCase):
         with self.assertRaises(gf.DerivedMagnitudeError):
             ex.get_volume_change()
 
-        volume_change = ex.get_volume_change(store, interpolation=interpolation)
+        volume_change = ex.get_volume_change(
+            store, interpolation=interpolation)
 
         with self.assertRaises(TypeError):
             ex.get_volume_change(store, interpolation='nearest_neighbour')
@@ -261,7 +262,8 @@ class GFSourcesTestCase(unittest.TestCase):
                 volume_change=volume_change,
                 depth=5*km)
 
-        self.assertAlmostEqual(ex.get_magnitude(store, interpolation=interpolation), 3.0)
+        self.assertAlmostEqual(
+            ex.get_magnitude(store, interpolation=interpolation), 3.0)
 
         ex = gf.ExplosionSource(
                 magnitude=3.0,
