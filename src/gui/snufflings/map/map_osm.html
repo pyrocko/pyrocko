@@ -28,7 +28,7 @@
                         color: 'black',
                         width: 2}),
                     points: 3,
-                    radius: 8,
+                    radius: 15,
                     angle: 0
                   })
             });
@@ -125,6 +125,9 @@
             <li><button type="button" class="btn btn-info" id='toggle-layer'>Switch Layers</button></li>
 
             <li><button type="button" class="btn btn-info" id='toggle-plateboundaries'>Plate Boundaries</button></li>
+            <li><button type="button" class="btn btn-info" id='toggle-lines'>Lines</button></li>
+
+            <li><button type="button" class="btn btn-info" id='toggle-labels'>Labels</button></li>
         </ul>
       </div>
     </nav>
@@ -146,7 +149,6 @@
 
         const plate_boundaries = new ol.layer.Vector({
             visible: false,
-            // style: plate_boundary_style,
             source: new ol.source.Vector({
                 url: "plates.kml",
                 format: new ol.format.KML({
@@ -154,6 +156,27 @@
                     extractAttributes: false,
                     maxDepth: 2
                 })
+            })
+        });
+
+        const stamen_labels = new ol.layer.Tile({
+            visibility: false,
+            source: new ol.source.Stamen({
+              layer: 'terrain-labels'
+            })
+        });
+
+        const stamen_lines = new ol.layer.Tile({
+            visibility: false,
+            source: new ol.source.Stamen({
+              layer: 'terrain-lines'
+            })
+        });
+
+        const stamen_terrain = new ol.layer.Tile({
+            visibility: false,
+            source: new ol.source.Stamen({
+              layer: 'terrain-background'
             })
         });
         
@@ -164,14 +187,17 @@
         $('#toggle-plateboundaries').on('click', function(event){
             plate_boundaries.setVisible(!plate_boundaries.getVisible());
         })
+        
+        $('#toggle-lines').on('click', function(event){
+            stamen_lines.setVisible(!stamen_lines.getVisible());
+        })  
+
+        $('#toggle-labels').on('click', function(event){
+            stamen_labels.setVisible(!stamen_labels.getVisible());
+        })
 
         function init() {
-            var stamen_terrain = new ol.layer.Tile({
-                visibility: true,
-                source: new ol.source.Stamen({
-                  layer: 'terrain'
-                })
-            });
+
 
             var plate_boundary_style = new ol.style.Style({
                 stroke: new ol.style.Stroke({
@@ -204,9 +230,11 @@
                 layers: [
                     stamen_terrain,
                     aerial,
-                    plate_boundaries,
+                    stamen_labels,
+                    stamen_lines,
                     event_layer,
                     station_layer,
+                    plate_boundaries,
                 ],
                 controls: [
                     /*new ol.Control.LayerSwitcher({roundedCornerColor: "#999999"}),*/
