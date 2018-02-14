@@ -111,7 +111,7 @@ def cpt(name):
 def comparison(region, dems=dems):
     import matplotlib.pyplot as plt
 
-    east, west, south, north = tile.positive_region(region)
+    west, east, south, north = tile.positive_region(region)
 
     fig = plt.gcf()
 
@@ -121,7 +121,7 @@ def comparison(region, dems=dems):
         if t:
             plt.pcolormesh(t.x(), t.y(), t.data)
             plt.title(dem_.name)
-            plt.xlim(east, west)
+            plt.xlim(west, east)
             plt.ylim(south, north)
 
     plt.show()
