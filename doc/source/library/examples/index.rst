@@ -24,7 +24,6 @@ Annotated scripts and real-world use cases using Pyrocko.
     obspy_compat
     metadata
     gnss_data
-    readnwrite_quakml
     fdsn_download
     catalog_search
     moment_tensor
