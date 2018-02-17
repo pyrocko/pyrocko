@@ -1,12 +1,13 @@
 <html>
 <head>
     <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
     <link rel="stylesheet" href="https://openlayers.org/en/v4.6.4/css/ol.css" type="text/css">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.1.1.slim.min.js" integrity="sha384-A7FZj7v+d/sdmMqp/nOQwliLvUsJfDHW+k9Omg/a/EheAdgtzNs3hpfag6Ed950n" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
     <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script>
     <script src="https://openlayers.org/en/v4.6.4/build/ol.js"></script>
-    <script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
     <script type="text/javascript" src="http://maplib.khtml.org/khtml.maplib/khtml_all.js"> </script>
     <script type="text/javascript" src="map_util.js"> </script>
     <script type="text/javascript" src="loadxmldoc.js"></script>
@@ -99,7 +100,6 @@
 
             var event_layer = new ol.layer.Vector({
                 source: event_layer_source,
-                /*eventListeners: layerListeners*/
             });
 
             return event_layer;
@@ -115,20 +115,65 @@
         };
 
     </script>
-
+    <style>
+      .tooltip {
+        position: relative;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 4px;
+        color: white;
+        padding: 4px 8px;
+        opacity: 0.7;
+        white-space: nowrap;
+      }
+      .tooltip-measure {
+        opacity: 1;
+        font-weight: bold;
+      }
+      .tooltip-static {
+        background-color: #ffcc33;
+        color: black;
+        border: 1px solid white;
+      }
+      .tooltip-measure:before,
+      .tooltip-static:before {
+        border-top: 6px solid rgba(0, 0, 0, 0.5);
+        border-right: 6px solid transparent;
+        border-left: 6px solid transparent;
+        content: "";
+        position: absolute;
+        bottom: -6px;
+        margin-left: -7px;
+        left: 50%;
+      }
+      .tooltip-static:before {
+        border-top-color: #ffcc33;
+      }
+    </style>
 </head>
 <body onload="init();">
-
     <nav class="navbar navbar-default">
-      <div class="container-fluid">
-        <ul class="nav navbar-nav">
-            <li><button type="button" class="btn btn-info" id='toggle-layer'>Switch Layers</button></li>
-
-            <li><button type="button" class="btn btn-info" id='toggle-plateboundaries'>Plate Boundaries</button></li>
-            <li><button type="button" class="btn btn-info" id='toggle-lines'>Lines</button></li>
-
-            <li><button type="button" class="btn btn-info" id='toggle-labels'>Labels</button></li>
-        </ul>
+      <div class="btn-group" data-toggle="buttons">
+        <label class="btn btn-primary">
+          <input type="checkbox" autocomplete="off" id='toggle-layer' onchange="toggleLayer()">Switch Layers</input>
+        </label>
+        <label class="btn btn-primary">
+          <input type="checkbox" autocomplete="off" id='toggle-plateboundaries' onchange="togglePlateboundaries()">Plate Boundaries</input>
+        </label>
+        <label class="btn btn-primary">
+          <input type="checkbox" autocomplete="off" id='toggle-lines' onchange="toggleLines()">Lines</input>
+        </label>
+        <label class="btn btn-primary">
+          <input type="checkbox" autocomplete="off" id='toggle-labels' onchange="toggleLabels()">Labels</input>
+        </label>
+        <div class="dropdown">
+          <button class="btn btn-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Measure
+          </button>
+          <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+            <button class="dropdown-item" href="#" id='measure-distance'>Distance</button>
+            <button class="dropdown-item" href="#" id='measure-area'>Area</button>
+          </div>
+        </div>
       </div>
     </nav>
     <div class="container-fluid">
@@ -137,166 +182,393 @@
     </div>
 
     <script type="text/javascript">
+      const aerial = new ol.layer.Tile({
+              visibility: false,
+              isBaseLayer: false,
+              source: new ol.source.BingMaps({
+                  imagerySet: "Aerial",
+                  key: apiKey,
+              })
+          });
 
-        const aerial = new ol.layer.Tile({
-                visibility: false,
-                isBaseLayer: false,
-                source: new ol.source.BingMaps({
-                    imagerySet: "Aerial",
-                    key: apiKey,
-                })
-            });
+      const plate_boundaries = new ol.layer.Vector({
+          visible: false,
+          source: new ol.source.Vector({
+              url: "plates.kml",
+              format: new ol.format.KML({
+                  extractStyles: false,
+                  extractAttributes: false,
+                  maxDepth: 2
+              })
+          })
+      });
 
-        const plate_boundaries = new ol.layer.Vector({
-            visible: false,
-            source: new ol.source.Vector({
-                url: "plates.kml",
-                format: new ol.format.KML({
-                    extractStyles: false,
-                    extractAttributes: false,
-                    maxDepth: 2
-                })
+      const stamen_labels = new ol.layer.Tile({
+          visibility: false,
+          source: new ol.source.Stamen({
+            layer: 'terrain-labels'
+          })
+      });
+
+      const stamen_lines = new ol.layer.Tile({
+          visibility: false,
+          source: new ol.source.Stamen({
+            layer: 'terrain-lines'
+          })
+      });
+
+      const stamen_terrain = new ol.layer.Tile({
+          visibility: false,
+          source: new ol.source.Stamen({
+            layer: 'terrain-background'
+          })
+      });
+
+      function toggleLayer() {
+        aerial.setVisible(document.getElementById('toggle-layer').checked);
+      };
+
+      function togglePlateboundaries(){
+        plate_boundaries.setVisible(document.getElementById('toggle-plateboundaries').checked);
+      }
+      
+      function toggleLines(){
+          stamen_lines.setVisible(document.getElementById('toggle-lines').checked);
+      }
+
+      function toggleLabels(){
+          stamen_labels.setVisible(document.getElementById('toggle-labels').checked);
+      }
+
+      function init() {
+      var data = myxmlExtractor(xmlDoc);
+
+      var stations = data[0];
+      var events = data[1];
+      var magnitudes = data[2];
+      var depths = data[3];
+
+      magnitude_min = 0;
+      magnitude_max = 0;
+      depth_min = 10;
+      depth_max = 10;
+      if (magnitudes.length>1){
+          magnitude_min, magnitude_max = get_minmax(magnitudes)
+          depth_min, depth_max = get_minmax(depths);
+      }
+
+      var event_layer = get_event_layer(events, magnitude_min, magnitude_max, depth_min, depth_max);
+      var station_layer = get_station_layer(stations);
+      var source = new ol.source.Vector();
+      var vector = new ol.layer.Vector({
+        source: source,
+        style: new ol.style.Style({
+          fill: new ol.style.Fill({
+            color: 'rgba(255, 255, 255, 0.2)'
+          }),
+          stroke: new ol.style.Stroke({
+            color: '#ffcc33',
+            width: 2
+          }),
+          image: new ol.style.Circle({
+            radius: 7,
+            fill: new ol.style.Fill({
+              color: '#ffcc33'
             })
-        });
-
-        const stamen_labels = new ol.layer.Tile({
-            visibility: false,
-            source: new ol.source.Stamen({
-              layer: 'terrain-labels'
-            })
-        });
-
-        const stamen_lines = new ol.layer.Tile({
-            visibility: false,
-            source: new ol.source.Stamen({
-              layer: 'terrain-lines'
-            })
-        });
-
-        const stamen_terrain = new ol.layer.Tile({
-            visibility: false,
-            source: new ol.source.Stamen({
-              layer: 'terrain-background'
-            })
-        });
-        
-        $('#toggle-layer').on('click', function(event){
-            aerial.setVisible(!aerial.getVisible());
-        })  
-
-        $('#toggle-plateboundaries').on('click', function(event){
-            plate_boundaries.setVisible(!plate_boundaries.getVisible());
+          })
         })
-        
-        $('#toggle-lines').on('click', function(event){
-            stamen_lines.setVisible(!stamen_lines.getVisible());
-        })  
+      });
 
-        $('#toggle-labels').on('click', function(event){
-            stamen_labels.setVisible(!stamen_labels.getVisible());
-        })
+      var sketch;
+      var helpTooltipElement;
+      var helpTooltip;
+      var measureTooltipElement;
+      var measureTooltip;
+      var continuePolygonMsg = 'Click to continue drawing the polygon';
 
-        function init() {
+      var continueLineMsg = 'Click to continue drawing the line';
+
+      var map_elem = document.getElementById('map')
+
+      var map = new ol.Map({
+          target: map_elem,
+          layers: [
+              stamen_terrain,
+              aerial,
+              stamen_labels,
+              stamen_lines,
+              event_layer,
+              station_layer,
+              plate_boundaries,
+              vector,
+          ],
+          controls: [
+              /*new ol.Control.LayerSwitcher({roundedCornerColor: "#999999"}),*/
+              new ol.control.Attribution(),
+              new ol.control.Zoom(),
+              new ol.control.MousePosition({
+                  coordinateFormat: ol.coordinate.createStringXY(4),
+                  projection: 'EPSG:4326',
+              }),
+              new ol.control.ScaleLine(),
+          ],
+          interactions: ol.interaction.defaults({doubleClickZoom: false}),
+          view: new ol.View({
+              center: [0, 0],
+              zoom: 4
+          })
+      });
 
 
-            var plate_boundary_style = new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    width: 4,
-                    color: "#f49842",
-                })
-            });
+      /**
+       * Handle pointer move.
+       * @param {ol.MapBrowserEvent} evt The event.
+       */
+      var pointerMoveHandler = function(evt) {
+        // return;
+        if (evt.dragging) {
+          return;
+        }
+        /** @type {string} */
+        var helpMsg = 'Click to start drawing';
 
-            var data = myxmlExtractor(xmlDoc);
-
-            var stations = data[0];
-            var events = data[1];
-            var magnitudes = data[2];
-            var depths = data[3];
-
-            magnitude_min = 0;
-            magnitude_max = 0;
-            depth_min = 10;
-            depth_max = 10;
-            if (magnitudes.length>1){
-                magnitude_min, magnitude_max = get_minmax(magnitudes)
-                depth_min, depth_max = get_minmax(depths);
-            }
-
-            var event_layer = get_event_layer(events, magnitude_min, magnitude_max, depth_min, depth_max);
-            var station_layer = get_station_layer(stations);
-
-            map = new ol.Map({
-                target: document.getElementById('map'),
-                layers: [
-                    stamen_terrain,
-                    aerial,
-                    stamen_labels,
-                    stamen_lines,
-                    event_layer,
-                    station_layer,
-                    plate_boundaries,
-                ],
-                controls: [
-                    /*new ol.Control.LayerSwitcher({roundedCornerColor: "#999999"}),*/
-                    new ol.control.Attribution(),
-                    new ol.control.Zoom(),
-                    new ol.control.MousePosition({
-                        coordinateFormat: ol.coordinate.createStringXY(4),
-                        projection: 'EPSG:4326',
-                    }),
-                    new ol.control.ScaleLine(),
-                ],
-                view: new ol.View({
-                    center: [0, 0],
-                    zoom: 4
-                })
-            });
-
-            var element = document.getElementById('popup');
-            var popup = new ol.Overlay({
-                element: element,
-                positioning: 'bottom-center',
-                stopEvent: false,
-                offset: [0, -5]
-            });
-            map.addOverlay(popup);
-
-            // display popup on click
-            map.on('click', function(evt) {
-              var feature = map.forEachFeatureAtPixel(evt.pixel,
-                  function(feature) {
-                    return feature;
-                  });
-              if (feature) {
-               $(element).popover('destroy');
-                var coordinates = feature.getGeometry().getCoordinates();
-                popup.setPosition(coordinates);
-                $(element).popover({
-                  'placement': 'top',
-                  'animation': false,
-                  'html': true,
-                  'content': feature.get('name')
-                });
-                $(element).popover('show');
-              } else {
-                $(element).popover('destroy');
-              }
-            });
-
-            // change mouse cursor when over marker
-            map.on('pointermove', function(e) {
-                if (e.dragging) {
-                    $(element).popover('destroy');
-                    return;
-                }
-                var pixel = map.getEventPixel(e.originalEvent);
-                var hit = map.hasFeatureAtPixel(pixel);
-                map.getTarget().style.cursor = hit ? 'pointer' : '';
-            });
-
-            zoomToExtent(map, [station_layer, event_layer]);
+        if (sketch) {
+          var geom = (sketch.getGeometry());
+          if (geom instanceof ol.geom.Polygon) {
+            helpMsg = continuePolygonMsg;
+          } else if (geom instanceof ol.geom.LineString) {
+            helpMsg = continueLineMsg;
+          }
         }
 
+        helpTooltipElement.innerHTML = helpMsg;
+        helpTooltip.setPosition(evt.coordinate);
+
+        helpTooltipElement.classList.remove('hidden');
+      };
+
+      map.on('pointermove', pointerMoveHandler);
+
+      map.getViewport().addEventListener('mouseout', function() {
+        helpTooltipElement.classList.add('hidden');
+      });
+
+      var addDistMeasure = document.getElementById('measure-distance')
+      var addAreaMeasure = document.getElementById('measure-area')
+
+      var draw; // global so we can remove it later
+
+
+      /**
+       * Format length output.
+       * @param {ol.geom.LineString} line The line.
+       * @return {string} The formatted length.
+       */
+      var formatLength = function(line) {
+        var length = ol.Sphere.getLength(line);
+        var output;
+        if (length > 100) {
+          output = (Math.round(length / 1000 * 100) / 100) +
+              ' ' + 'km';
+        } else {
+          output = (Math.round(length * 100) / 100) +
+              ' ' + 'm';
+        }
+        return output;
+      };
+
+
+      /**
+       * Format area output.
+       * @param {ol.geom.Polygon} polygon The polygon.
+       * @return {string} Formatted area.
+       */
+      var formatArea = function(polygon) {
+        var area = ol.Sphere.getArea(polygon);
+        var output;
+        if (area > 10000) {
+          output = (Math.round(area / 1000000 * 100) / 100) +
+              ' ' + 'km<sup>2</sup>';
+        } else {
+          output = (Math.round(area * 100) / 100) +
+              ' ' + 'm<sup>2</sup>';
+        }
+        return output;
+      };
+
+      function addInteraction(type) {
+        draw = new ol.interaction.Draw({
+          source: source,
+          type: type,
+          style: new ol.style.Style({
+            fill: new ol.style.Fill({
+              color: 'rgba(255, 255, 255, 0.2)'
+            }),
+            stroke: new ol.style.Stroke({
+              color: 'rgba(0, 0, 0, 0.5)',
+              lineDash: [10, 10],
+              width: 2
+            }),
+            image: new ol.style.Circle({
+              radius: 5,
+              stroke: new ol.style.Stroke({
+                color: 'rgba(0, 0, 0, 0.7)'
+              }),
+              fill: new ol.style.Fill({
+                color: 'rgba(255, 255, 255, 0.2)'
+              })
+            })
+          })
+        });
+        map.addInteraction(draw);
+
+        createMeasureTooltip();
+        createHelpTooltip();
+
+        var listener;
+        draw.on('drawstart',
+
+            function(evt) {
+              ol.interaction.defaults({
+                  doubleClickZoom :false
+              })
+              // set sketch
+              sketch = evt.feature;
+
+              /** @type {ol.Coordinate|undefined} */
+              var tooltipCoord = evt.coordinate;
+
+              listener = sketch.getGeometry().on('change', function(evt) {
+                var geom = evt.target;
+                var output;
+                if (geom instanceof ol.geom.Polygon) {
+                  output = formatArea(geom);
+                  tooltipCoord = geom.getInteriorPoint().getCoordinates();
+                } else if (geom instanceof ol.geom.LineString) {
+                  output = formatLength(geom);
+                  tooltipCoord = geom.getLastCoordinate();
+                }
+                measureTooltipElement.innerHTML = output;
+                measureTooltip.setPosition(tooltipCoord);
+              });
+            }, this);
+
+        draw.on('drawend',
+            function() {
+              measureTooltipElement.className = 'tooltip tooltip-static';
+              measureTooltip.setOffset([0, -7]);
+              // unset sketch
+              sketch = null;
+              // unset tooltip so that a new one can be created
+              measureTooltipElement = null;
+              createMeasureTooltip();
+              ol.Observable.unByKey(listener);
+              console.log('finished');
+              map.removeInteraction(draw);
+              map.removeOverlay(helpTooltip);
+
+              ol.interaction.defaults({
+                  doubleClickZoom :true
+              })
+            }, this);
+      }
+
+      /**
+       * Creates a new help tooltip
+       */
+      function createHelpTooltip() {
+        if (helpTooltipElement) {
+          helpTooltipElement.parentNode.removeChild(helpTooltipElement);
+        }
+        helpTooltipElement = document.createElement('div');
+        helpTooltipElement.className = 'tooltip hidden';
+        helpTooltip = new ol.Overlay({
+          element: helpTooltipElement,
+          offset: [15, 0],
+          positioning: 'center-left'
+        });
+        map.addOverlay(helpTooltip);
+      }
+
+
+      /**
+       * Creates a new measure tooltip
+       */
+      function createMeasureTooltip() {
+        if (measureTooltipElement) {
+          measureTooltipElement.parentNode.removeChild(measureTooltipElement);
+        }
+        measureTooltipElement = document.createElement('div');
+        measureTooltipElement.className = 'tooltip tooltip-measure';
+        measureTooltip = new ol.Overlay({
+          element: measureTooltipElement,
+          offset: [0, -15],
+          positioning: 'bottom-center'
+        });
+        map.addOverlay(measureTooltip);
+      }
+
+
+      addAreaMeasure.onclick = function() {
+          addInteraction('Polygon');
+      }
+
+      addDistMeasure.onclick = function() {
+          addInteraction('LineString');
+      }
+
+        var element = document.getElementById('popup');
+        var popup = new ol.Overlay({
+            element: element,
+            positioning: 'bottom-center',
+            stopEvent: false,
+            offset: [0, -5]
+        });
+        map.addOverlay(popup);
+
+        // display popup on click
+        map.on('click', function(evt) {
+          var feature = map.forEachFeatureAtPixel(evt.pixel,
+              function(feature) {
+                return feature;
+              });
+          if (feature) {
+           $(element).popover('dispose');
+
+            var coordinates = feature.getGeometry().getCoordinates();
+            popup.setPosition(coordinates);
+            $(element).popover({
+              'placement': 'top',
+              'animation': false,
+              'html': true,
+              'content': feature.get('name')
+            });
+            $(element).popover('show');
+          } else {
+            $(element).popover('dispose');
+
+          }
+        });
+
+        // change mouse cursor when over marker
+        map.on('pointermove', function(e) {
+            if (e.dragging) {
+                $(element).popover('dispose');
+                return;
+            }
+            var pixel = map.getEventPixel(e.originalEvent);
+            var hit = map.hasFeatureAtPixel(pixel);
+            map.getTarget().style.cursor = hit ? 'pointer' : '';
+        });
+
+        plate_boundaries.setVisible(false)
+        aerial.setVisible(false)
+        stamen_labels.setVisible(false)
+        stamen_lines.setVisible(false)
+
+        zoomToExtent(map, [station_layer, event_layer]);
+        }
     </script>
-</body>
+
+  </body>
 </html>
