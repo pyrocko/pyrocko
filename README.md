@@ -5,7 +5,7 @@
 ## Installation
 
 Full installation instructions are available at 
-http://pyrocko.org/docs/current/install/.
+https://pyrocko.org/docs/current/install/.
 
 ### Installation from source
 
@@ -41,7 +41,7 @@ sudo pip install .
 
 ## Documentation
 
-Documentation and usage examples are available online at http://pyrocko.org/docs/current
+Documentation and usage examples are available online at https://pyrocko.org/docs/current
 
 ## Community Support
 

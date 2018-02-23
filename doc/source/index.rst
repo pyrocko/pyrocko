@@ -54,4 +54,4 @@ Indices and tables
 More manuals from the ecosystem:
 ---------------------------------
 
-* `Kite - Static displacement and InSAR post-processing <http://pyrocko.org/docs/kite>`_
+* `Kite - Static displacement and InSAR post-processing <https://pyrocko.org/docs/kite>`_

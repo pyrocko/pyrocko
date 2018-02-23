@@ -12,7 +12,7 @@ rm -rf build/$VERSION
 make clean; make html $1
 cp -r build/html build/$VERSION
 
-read -r -p "Are your sure to update live docs at http://pyrocko.org/docs/$VERSION [y/N]?" resp
+read -r -p "Are your sure to update live docs at https://pyrocko.org/docs/$VERSION [y/N]?" resp
 case $resp in
     [yY][eE][sS]|[yY] )
         rsync -av build/$VERSION pyrocko@hive:/var/www/pyrocko.org/docs;

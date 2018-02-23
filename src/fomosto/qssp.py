@@ -483,7 +483,7 @@ class QSSPRunner(object):
 Available fomosto backends and download links to the modelling codes are listed
 on
 
-      http://pyrocko.org/current/apps/fomosto/backends.html
+      https://pyrocko.org/current/apps/fomosto/backends.html
 
 ''' % program)
 
