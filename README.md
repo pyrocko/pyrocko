@@ -48,7 +48,8 @@ Documentation and usage examples are available online at http://pyrocko.org/docs
 Community support at [https://hive.pyrocko.org](https://hive.pyrocko.org/signup_user_complete/?id=9edryhxeptdbmxrecbwy3zg49y).
 
 ## Citation
-Recommended citation for Pyrocko
+The recommended citation for Pyrocko is: (You can find the BibTeX snippet in the
+[`CITATION` file](CITATION)):
 
 > Heimann, Sebastian; Kriegerowski, Marius; Isken, Marius; Cesca, Simone; Daout, Simon; Grigoli, Francesco; Juretzek, Carina; Megies, Tobias; Nooshiri, Nima; Steinberg, Andreas; Sudhaus, Henriette; Vasyura-Bathke, Hannes; Willey, Timothy; Dahm, Torsten (2017): Pyrocko - An open-source seismology toolbox and library. V. 0.3. GFZ Data Services. http://doi.org/10.5880/GFZ.2.1.2017.001
 
