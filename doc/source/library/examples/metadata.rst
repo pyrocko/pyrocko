@@ -17,3 +17,11 @@ This example shows how to import StationXML files and extract pyrocko.Station ob
 
 .. literalinclude :: /../../examples/station_from_XML.py
     :language: python
+
+
+Pyrocko stations to StationXML
+------------------------------
+This example shows how to import pyrocko stations and save FDSN StationXML files.
+
+.. literalinclude :: /../../examples/station_from_XML.py
+    :language: python
