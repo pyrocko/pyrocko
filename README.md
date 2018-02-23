@@ -5,7 +5,7 @@
 ## Installation
 
 Full installation instructions are available at 
-http://pyrocko.org/docs/current/install/.
+https://pyrocko.org/docs/current/install/.
 
 ### Installation from source
 
@@ -41,7 +41,7 @@ sudo pip install .
 
 ## Documentation
 
-Documentation and usage examples are available online at http://pyrocko.org/docs/current
+Documentation and usage examples are available online at https://pyrocko.org/docs/current
 
 ## Community Support
 
@@ -50,9 +50,9 @@ Community support at [https://hive.pyrocko.org](https://hive.pyrocko.org/signup_
 ## Citation
 Recommended citation for Pyrocko
 
-> Heimann, Sebastian; Kriegerowski, Marius; Isken, Marius; Cesca, Simone; Daout, Simon; Grigoli, Francesco; Juretzek, Carina; Megies, Tobias; Nooshiri, Nima; Steinberg, Andreas; Sudhaus, Henriette; Vasyura-Bathke, Hannes; Willey, Timothy; Dahm, Torsten (2017): Pyrocko - An open-source seismology toolbox and library. V. 0.3. GFZ Data Services. http://doi.org/10.5880/GFZ.2.1.2017.001
+> Heimann, Sebastian; Kriegerowski, Marius; Isken, Marius; Cesca, Simone; Daout, Simon; Grigoli, Francesco; Juretzek, Carina; Megies, Tobias; Nooshiri, Nima; Steinberg, Andreas; Sudhaus, Henriette; Vasyura-Bathke, Hannes; Willey, Timothy; Dahm, Torsten (2017): Pyrocko - An open-source seismology toolbox and library. V. 0.3. GFZ Data Services. https://doi.org/10.5880/GFZ.2.1.2017.001
 
-[![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2017.001-blue.svg)](http://doi.org/10.5880/GFZ.2.1.2017.001)
+[![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2017.001-blue.svg)](https://doi.org/10.5880/GFZ.2.1.2017.001)
 
 ## License 
 GNU General Public License, Version 3, 29 June 2007
