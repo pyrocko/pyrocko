@@ -1,8 +1,10 @@
 from pyrocko.io import stationxml
 from pyrocko import model
+from pyrocko.example import get_example_data
+
 
 # get example data
-station_file = 'stations.txt'
+station_file = get_example_data('stations.txt')
 
 # load pyrocko stations
 stations = model.station.load_stations(station_file)
