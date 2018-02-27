@@ -180,13 +180,14 @@ def to_obspy_trace(trace):
         data=pyrocko_trace.ydata,
         header=obspy.core.trace.Stats(
             dict(
-                network=pyrocko_trace.network,
-                station=pyrocko_trace.station,
-                location=pyrocko_trace.location,
-                channel=pyrocko_trace.channel,
-                delta=pyrocko_trace.deltat,
-                starttime=pyrocko_trace.tmin,
-                endtime=pyrocko_trace.tmax)
+                npts = len(pyrocko_trace.ydata),
+                network = pyrocko_trace.network,
+                station = pyrocko_trace.station,
+                location = pyrocko_trace.location,
+                channel = pyrocko_trace.channel,
+                delta = pyrocko_trace.deltat,
+                starttime = pyrocko_trace.tmin,
+                endtime = pyrocko_trace.tmax)
             ))
 
     return obspy_trace
