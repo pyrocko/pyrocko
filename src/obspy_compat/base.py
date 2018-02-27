@@ -180,6 +180,7 @@ def to_obspy_trace(trace):
         data=pyrocko_trace.ydata,
         header=obspy.core.trace.Stats(
             dict(
+                npts=len(pyrocko_trace.ydata),
                 network=pyrocko_trace.network,
                 station=pyrocko_trace.station,
                 location=pyrocko_trace.location,
