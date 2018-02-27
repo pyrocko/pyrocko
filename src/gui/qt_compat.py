@@ -66,7 +66,11 @@ else:
     class QPixmapCache(qg.QPixmapCache):
         def cached(self, key):
             pixmap = qg.QPixmap()
-            return self.find(key, pixmap)
+            found = self.find(key, pixmap)
+            if found:
+                return pixmap
+            return found
+
 
 try:
     vers = qc.QVersionNumber.fromString

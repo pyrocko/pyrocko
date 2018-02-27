@@ -118,7 +118,10 @@ class BeachballWidget(qw.QWidget):
             painter.restore()
 
     def to_qpixmap(self):
-        return self.grab(self.rect())
+        try:
+            return self.grab(self.rect())
+        except:
+            return qg.QPixmap().grabWidget(self, self.rect())
 
 
 class MarkerItemDelegate(qw.QStyledItemDelegate):
