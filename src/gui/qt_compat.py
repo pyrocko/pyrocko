@@ -41,6 +41,11 @@ if use_pyqt5:
     QSortFilterProxyModel = qc.QSortFilterProxyModel
     QItemSelectionModel = qc.QItemSelectionModel
     QItemSelection = qc.QItemSelection
+
+    class QPixmapCache(qg.QPixmapCache):
+        def cached(self, key):
+            return self.find(key)
+
 else:
     if matplotlib.get_backend().find('Qt5') != -1:  # noqa
         matplotlib.use('Qt4Agg')
@@ -58,6 +63,10 @@ else:
     QItemSelectionModel = qg.QItemSelectionModel
     QItemSelection = qg.QItemSelection
 
+    class QPixmapCache(qg.QPixmapCache):
+        def cached(self, key):
+            pixmap = qg.QPixmap()
+            return self.find(key, pixmap)
 
 try:
     vers = qc.QVersionNumber.fromString
