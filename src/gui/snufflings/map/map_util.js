@@ -90,3 +90,6 @@ function get_fill_color(depth, depth_min, depth_max){
     return 'rgba(' + r + ',0,'+ b + ',0.5)';
 };
 
+function is_undefined(val) {
+    return typeof val == 'undefined';
+}

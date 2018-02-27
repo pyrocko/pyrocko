@@ -29,7 +29,7 @@
                         color: 'black',
                         width: 2}),
                     points: 3,
-                    radius: 15,
+                    radius: 10,
                     angle: 0
                   })
             });
@@ -57,6 +57,7 @@
             });
             return station_layer;
         };
+
 
         function get_event_layer(items, magmin, magmax, depth_min, depth_max) {
 
@@ -319,14 +320,13 @@
           })
       });
 
-
       /**
        * Handle pointer move.
        * @param {ol.MapBrowserEvent} evt The event.
        */
       var pointerMoveHandler = function(evt) {
-        // return;
-        if (evt.dragging) {
+
+        if (evt.dragging || is_undefined(helpTooltipElement)) {
           return;
         }
         /** @type {string} */
@@ -350,6 +350,9 @@
       map.on('pointermove', pointerMoveHandler);
 
       map.getViewport().addEventListener('mouseout', function() {
+        if (is_undefined(helpTooltipElement)) {
+          return;
+        }
         helpTooltipElement.classList.add('hidden');
       });
 
@@ -490,7 +493,6 @@
         map.addOverlay(helpTooltip);
       }
 
-
       /**
        * Creates a new measure tooltip
        */
@@ -507,7 +509,6 @@
         });
         map.addOverlay(measureTooltip);
       }
-
 
       addAreaMeasure.onclick = function() {
           addInteraction('Polygon');
