@@ -746,6 +746,12 @@ class PhaseMarker(Marker):
     def set_phasename(self, phasename):
         self._phasename = phasename
 
+    def get_polarity(self):
+        return self._polarity
+
+    def set_polarity(self, polarity):
+        return self.polarity = polarity
+
     def convert_to_marker(self):
         del self._event
         del self._event_hash
