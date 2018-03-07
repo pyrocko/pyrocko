@@ -750,7 +750,7 @@ class PhaseMarker(Marker):
         return self._polarity
 
     def set_polarity(self, polarity):
-        return self.polarity = polarity
+        self.polarity = polarity
 
     def convert_to_marker(self):
         del self._event
