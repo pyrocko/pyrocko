@@ -55,7 +55,7 @@ class GlobalCMT(EarthquakeCatalog):
         yearbeg, monbeg, daybeg = time.gmtime(time_range[0])[:3]
         yearend, monend, dayend = time.gmtime(time_range[1])[:3]
 
-        url = 'http://www.globalcmt.org/cgi-bin/globalcmt-cgi-bin/CMT4/form?' \
+        url = 'http://www.globalcmt.org/cgi-bin/globalcmt-cgi-bin/CMT5/form?' \
             + '&'.join([
                 'itype=ymd',
                 'yr=%i' % yearbeg, 'mo=%i' % monbeg, 'day=%i' % daybeg,
