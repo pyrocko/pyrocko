@@ -7,6 +7,7 @@
 
 .. toctree::
     :maxdepth: -1
+    :hidden:
 
     client/waveform
     client/catalog
