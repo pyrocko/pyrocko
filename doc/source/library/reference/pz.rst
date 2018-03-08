@@ -1,7 +1,5 @@
-
-
-The :mod:`pz` module
-====================
+``pz``
+======
 
 .. automodule:: pyrocko.pz
     :members:

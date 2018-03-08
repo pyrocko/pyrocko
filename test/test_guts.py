@@ -139,13 +139,88 @@ class GutsTestCase(unittest.TestCase):
 
     def testDefaultMaker(self):
         class X(Object):
-            y = Int.T(default=1)
+            a = Int.T(default=1)
 
         class Y(Object):
-            x = X.T(default=X.D(y=2))
+            x = X.T(default=X.D(a=2))
+
+        class Yb(Object):
+            x = X.T(default=X(a=2))
+
+        class Z(Object):
+            y = Y.T(default=Y.D(x=X.D(a=3)))
+
+        class Zb(Object):
+            y = Y.T(default=Yb(x=X(a=3)))
+
+        class Zl(Object):
+            y = Y.T(default=Y.D(x=X.D(a=3)))
+
+        class Zbl(Object):
+            y = Y.T(default=Yb(x=X(a=3)))
 
         y = Y()
-        self.assertEqual(y.x.y, 2)
+        self.assertEqual(y.x.a, 2)
+
+        z = Z()
+        z2 = Z()
+
+        z2.y.x.a = 5
+        self.assertEqual(z.y.x.a, 3)
+        self.assertEqual(z2.y.x.a, 5)
+
+        y = Yb()
+        self.assertEqual(y.x.a, 2)
+
+        z = Zb()
+        z2 = Zb()
+
+        z2.y.x.a = 5
+        self.assertEqual(z.y.x.a, 3)
+        self.assertEqual(z2.y.x.a, 5)
+
+    def testDefaultList(self):
+        class X(Object):
+            a = Int.T(default=1)
+
+        class Y(Object):
+            xs = List.T(X.T(), default=[X(a=2)])
+
+        y = Y()
+        y.xs[0].a = 3
+        y2 = Y()
+        self.assertEqual(y2.xs[0].a, 2)
+        self.assertEqual(y.xs[0].a, 3)
+
+    def testDefaultTuple(self):
+        class X(Object):
+            a = Int.T(default=1)
+
+        class Y(Object):
+            xs = Tuple.T(1, X.T(), default=(X(a=2),))
+
+        y = Y()
+        y.xs[0].a = 3
+        y2 = Y()
+        self.assertEqual(y2.xs[0].a, 2)
+        self.assertEqual(y.xs[0].a, 3)
+
+    def testDefaultDict(self):
+        class X(Object):
+            a = Int.T(default=1)
+
+        class Y(Object):
+            xs = Dict.T(X.T(), X.T(), default={
+                X(a=2): X(a=3)})
+
+        def fi(d):
+            return list(d.values())[0]
+
+        y = Y()
+        fi(y.xs).a = 4
+        y2 = Y()
+        self.assertEqual(fi(y2.xs).a, 3)
+        self.assertEqual(fi(y.xs).a, 4)
 
     def testRemove(self):
         class X(Object):

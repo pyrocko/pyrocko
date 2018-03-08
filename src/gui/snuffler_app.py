@@ -227,11 +227,11 @@ def setup_acquisition_sources(args):
     return sources
 
 
-class PollInjector(qc.QObject, pile.Injector):
+class PollInjector(qc.QObject):
 
     def __init__(self, *args, **kwargs):
         qc.QObject.__init__(self)
-        pile.Injector.__init__(self, *args, **kwargs)
+        self._injector = pile.Injector(*args, **kwargs)
         self._sources = []
         self.startTimer(1000.)
 
@@ -245,7 +245,26 @@ class PollInjector(qc.QObject, pile.Injector):
         for source in self._sources:
             trs = source.poll()
             for tr in trs:
-                self.inject(tr)
+                self._injector.inject(tr)
+
+    # following methods needed because mulitple inheritance does not seem
+    # to work anymore with QObject in Python3 or PyQt5
+
+    def set_fixation_length(self, l):
+        return self._injector.set_fixation_length(l)
+
+    def set_save_path(
+            self,
+            path='dump_%(network)s.%(station)s.%(location)s.%(channel)s_'
+                 '%(tmin)s_%(tmax)s.mseed'):
+
+        return self._injector.set_save_path(path)
+
+    def fixate_all(self):
+        return self._injector.fixate_all()
+
+    def free(self):
+        return self._injector.free()
 
 
 class Connection(qc.QObject):
@@ -492,7 +511,12 @@ class SnufflerStartWizard(qw.QWizard):
         @qc.pyqtSlot()
         def send_data():
             import requests
-            requests.post('https://pyrocko.org/%s' % webtk, json=sys_info)
+            import json
+            try:
+                requests.post('https://pyrocko.org/%s' % webtk,
+                              data=json.dumps(sys_info))
+            except Exception as e:
+                print(e)
             self.button(self.NextButton).clicked.emit(True)
 
         self.customButtonClicked.connect(send_data)

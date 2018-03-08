@@ -1,4 +1,3 @@
-
 Reference
 =========
 
@@ -11,6 +10,7 @@ Reference
    model
    client
    dataset
+   scenario
    plot
    gui
    streaming
@@ -23,3 +23,4 @@ Reference
    pile
    pz
    util
+   obspy_compat

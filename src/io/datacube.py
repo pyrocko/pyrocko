@@ -8,6 +8,7 @@ from __future__ import absolute_import
 import os
 import math
 import numpy as num
+from builtins import str as newstr
 
 from pyrocko import trace, util, plot
 from pyrocko.guts import Object, Int, String, Timestamp
@@ -122,7 +123,7 @@ def plot_timeline(fns):
 
     h = 3600.
 
-    if isinstance(fns, basestring):
+    if isinstance(fns, (str, newstr)):
         ipos, t, fix, nsvs, header, offset, nsamples = \
             get_extended_timing_context(fns)
 

@@ -1,8 +1,8 @@
-Tectonic Datasets (``pyrocko.dataset.tectonics``)
-==================================================
+Tectonic Datasets (``dataset.tectonics``)
+=========================================
 
-``pyrocko.dataset.tectonics.PeterBird2003``
---------------------------------------------
+``dataset.tectonics.PeterBird2003``
+-----------------------------------
 
 .. autoclass:: pyrocko.dataset.tectonics.PeterBird2003
     :members:
@@ -12,8 +12,8 @@ Tectonic Datasets (``pyrocko.dataset.tectonics``)
     :members:
     :undoc-members:
 
-``pyrocko.dataset.tectonics.GSRM1``
-------------------------------------
+``dataset.tectonics.GSRM1``
+---------------------------
 
 .. autoclass:: pyrocko.dataset.tectonics.GSRM1
     :members:

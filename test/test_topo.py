@@ -5,18 +5,23 @@ from pyrocko import util, config
 from pyrocko.dataset import topo
 
 
-def srtm_credentials():
-    return config.config().earthdata_credentials
+def have_srtm_credentials():
+    if config.config().earthdata_credentials is None:
+        return False
+    return True
 
 
 class TopoTestCase(unittest.TestCase):
 
-    @unittest.skipIf(srtm_credentials, 'No Earthdata credentials in config.')
+    @unittest.skipUnless(
+        have_srtm_credentials(),
+        'No Earthdata credentials in config.')
     def test_srtm(self):
         srtm = topo.srtmgl3
-        tiles = srtm.available_tilenames()
+        tiles = list(srtm.available_tilenames())
 
-        srtm.download_tile(list(tiles)[-1])
+        tilenum = num.random.randint(0, len(tiles)-1)
+        srtm.download_tile(tiles[tilenum])
         srtm.get_tile(0, 0)
 
     @unittest.skip('etopo not downloaded.')

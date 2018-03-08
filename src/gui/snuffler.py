@@ -13,6 +13,7 @@ import logging
 import gc
 import tempfile
 import shutil
+import glob
 import urllib.parse  # noqa
 
 from os.path import join as pjoin
@@ -31,6 +32,13 @@ from pyrocko.io import stationxml
 logger = logging.getLogger('pyrocko.gui.snuffler')
 
 app = None
+
+
+def extend_paths(paths):
+    paths_r = []
+    for p in paths:
+        paths_r.extend(glob.glob(p))
+    return paths_r
 
 
 def snuffle(pile=None, **kwargs):
@@ -86,7 +94,10 @@ def snuffle(pile=None, **kwargs):
 
     win = SnufflerWindow(pile, **kwargs)
     if launch_hook:
-        launch_hook(win)
+        if not isinstance(launch_hook, list):
+            launch_hook = [launch_hook]
+        for hook in launch_hook:
+            hook(win)
 
     sources = []
     pollinjector = None
@@ -286,20 +297,20 @@ def snuffler_from_commandline(args=None):
 
     this_pile = pile.Pile()
     stations = []
-    for stations_fn in options.station_fns:
+    for stations_fn in extend_paths(options.station_fns):
         stations.extend(model.station.load_stations(stations_fn))
 
-    for stationxml_fn in options.stationxml_fns:
+    for stationxml_fn in extend_paths(options.stationxml_fns):
         stations.extend(
             stationxml.load_xml(
                 filename=stationxml_fn).get_pyrocko_stations())
 
     events = []
-    for event_fn in options.event_fns:
+    for event_fn in extend_paths(options.event_fns):
         events.extend(model.event.Event.load_catalog(event_fn))
 
     markers = []
-    for marker_fn in options.marker_fns:
+    for marker_fn in extend_paths(options.marker_fns):
         markers.extend(marker.load_markers(marker_fn))
 
     return snuffle(

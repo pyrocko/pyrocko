@@ -12,6 +12,8 @@ from setuptools.command.build_py import build_py
 from setuptools.command.build_ext import build_ext
 from setuptools.command.install import install
 
+packname = 'pyrocko'
+version = '2018.01.29'
 
 op = os.path
 try:
@@ -547,9 +549,6 @@ else:
     omp_lib = []
 
 
-packname = 'pyrocko'
-version = '2017.11.22'
-
 subpacknames = [
     'pyrocko.gf',
     'pyrocko.fomosto',
@@ -565,6 +564,10 @@ subpacknames = [
     'pyrocko.dataset',
     'pyrocko.dataset.topo',
     'pyrocko.streaming',
+    'pyrocko.scenario',
+    'pyrocko.scenario.targets',
+    'pyrocko.scenario.sources',
+    'pyrocko.obspy_compat',
 ]
 
 setup(
@@ -711,7 +714,8 @@ setup(
              'cake = pyrocko.apps.cake:main',
              'automap = pyrocko.apps.automap:main',
              'hamster = pyrocko.apps.hamster:main',
-             'jackseis = pyrocko.apps.jackseis:main'],
+             'jackseis = pyrocko.apps.jackseis:main',
+             'colosseo = pyrocko.apps.colosseo:main'],
         'gui_scripts':
             ['snuffler = pyrocko.apps.snuffler:main']
     },

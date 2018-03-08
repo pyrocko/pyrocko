@@ -25,6 +25,7 @@ from pyrocko.guts_array import Array
 from pyrocko import moment_tensor as mt
 from pyrocko import trace, util, config, model
 from pyrocko.orthodrome import ne_to_latlon
+from pyrocko.model import Location
 
 from . import meta, store, ws
 from .targets import Target, StaticTarget, SatelliteTarget
@@ -900,7 +901,7 @@ class STFMode(StringChoice):
     choices = ['pre', 'post']
 
 
-class Source(meta.Location, Cloneable):
+class Source(Location, Cloneable):
     '''
     Base class for all source models.
     '''
@@ -920,7 +921,7 @@ class Source(meta.Location, Cloneable):
         help='whether to apply source time function in pre or post-processing')
 
     def __init__(self, **kwargs):
-        meta.Location.__init__(self, **kwargs)
+        Location.__init__(self, **kwargs)
 
     def update(self, **kwargs):
         '''
@@ -1087,6 +1088,26 @@ class Source(meta.Location, Cloneable):
             duration=duration,
             **kwargs)
 
+    def outline(self, cs='xyz'):
+        points = num.atleast_2d(num.zeros([1, 3]))
+
+        points[:, 0] += self.north_shift
+        points[:, 1] += self.east_shift
+        points[:, 2] += self.depth
+        if cs == 'xyz':
+            return points
+        elif cs == 'xy':
+            return points[:, :2]
+        elif cs in ('latlon', 'lonlat'):
+            latlon = ne_to_latlon(
+                self.lat, self.lon, points[:, 0], points[:, 1])
+
+            latlon = num.array(latlon).T
+            if cs == 'latlon':
+                return latlon
+            else:
+                return latlon[:, ::-1]
+
     @classmethod
     def from_pyrocko_event(cls, ev, **kwargs):
         if ev.depth is None:
@@ -1160,12 +1181,6 @@ class SourceWithDerivedMagnitude(Source):
         optional=True,
         help='moment magnitude Mw as in [Hanks and Kanamori, 1979]')
 
-    interpolation = meta.InterpolationMethod.T(
-        optional=True,
-        default='nearest_neighbor',
-        help='velocity model interpolation technique for magnitude '
-             'conversions')
-
     class __T(Source.T):
         def validate_extra(self, val):
             Source.T.validate_extra(self, val)
@@ -1191,8 +1206,10 @@ class SourceWithDerivedMagnitude(Source):
     def get_magnitude(self, store=None):
         return self.magnitude
 
-    def get_moment(self, store=None):
-        return float(mt.magnitude_to_moment(self.get_magnitude(store=store)))
+    def get_moment(self, store=None, interpolation=None):
+
+        return float(mt.magnitude_to_moment(
+            self.get_magnitude(store=store, interpolation=interpolation)))
 
     def pyrocko_moment_tensor(self, store=None):
         m0 = self.get_moment(store=store)
@@ -1230,7 +1247,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             raise DerivedMagnitudeError(
                 'magnitude and volume_change are both defined')
 
-    def get_magnitude(self, store=None):
+    def get_magnitude(self, store=None, interpolation=None):
         self.check_conflicts()
 
         if self.magnitude is not None:
@@ -1238,14 +1255,15 @@ class ExplosionSource(SourceWithDerivedMagnitude):
 
         elif self.volume_change is not None:
             moment = self.volume_change * \
-                self.get_moment_to_volume_change_ratio(store)
+                self.get_moment_to_volume_change_ratio(
+                    store, interpolation=interpolation)
 
             return float(mt.moment_to_magnitude(moment))
 
         else:
             return float(mt.moment_to_magnitude(1.0))
 
-    def get_volume_change(self, store=None):
+    def get_volume_change(self, store=None, interpolation=None):
         self.check_conflicts()
 
         if self.volume_change is not None:
@@ -1253,12 +1271,13 @@ class ExplosionSource(SourceWithDerivedMagnitude):
 
         elif self.magnitude is not None:
             moment = float(mt.magnitude_to_moment(self.magnitude))
-            return moment / self.get_moment_to_volume_change_ratio(store)
+            return moment / self.get_moment_to_volume_change_ratio(
+                store, interpolation=interpolation)
 
         else:
             return 1.0 / self.get_moment_to_volume_change_ratio(store)
 
-    def get_moment_to_volume_change_ratio(self, store):
+    def get_moment_to_volume_change_ratio(self, store, interpolation=None):
         if store is None:
             raise DerivedMagnitudeError(
                 'need earth model to convert between volume change and '
@@ -1271,7 +1290,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points,
-                interpolation=self.interpolation)[0]
+                interpolation=interpolation)[0]
         except meta.OutOfBounds:
             raise DerivedMagnitudeError(
                 'could not get shear modulus at source position')
@@ -1285,7 +1304,8 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
 
-        amplitudes *= self.get_moment(store)
+        amplitudes *= self.get_moment(
+            store, interpolation=target.interpolation)
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
@@ -1641,11 +1661,6 @@ class RectangularSource(DCSource):
         optional=True,
         help='Slip on the rectangular source area [m]')
 
-    interpolation = meta.InterpolationMethod.T(
-        optional=True,
-        default='nearest_neighbor',
-        help='Shear moduli interpolation technique to discretize slip')
-
     decimation_factor = Int.T(
         optional=True,
         default=1)
@@ -1685,7 +1700,7 @@ class RectangularSource(DCSource):
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points2,
-                interpolation=self.interpolation)
+                interpolation=target.interpolation)
 
             amplitudes *= dl * dw * shear_moduli * self.slip
 
@@ -2581,7 +2596,7 @@ def process_static(work, psources, ptargets, engine, nthreads=0):
                     e.context = OutOfBoundsContext(
                         source=sources[0],
                         target=targets[0],
-                        distance=sources[0].distance_to(targets[0]),
+                        distance=float('nan'),
                         components=components)
                     raise
                 result = engine._post_process_statics(
@@ -2852,7 +2867,7 @@ class LocalEngine(Engine):
                 itsnapshot = 1
             tcounters.append(xtime())
 
-            base_source = source.discretize_basesource(store_)
+            base_source = source.discretize_basesource(store_, target=target)
 
             tcounters.append(xtime())
 
@@ -3097,10 +3112,14 @@ class RemoteEngine(Engine):
 g_engine = None
 
 
-def get_engine():
+def get_engine(store_superdirs=[]):
     global g_engine
     if g_engine is None:
         g_engine = LocalEngine(use_env=True, use_config=True)
+
+    for d in store_superdirs:
+        if d not in g_engine.store_superdirs:
+            g_engine.store_superdirs.append(d)
 
     return g_engine
 

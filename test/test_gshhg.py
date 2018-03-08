@@ -3,6 +3,7 @@ from builtins import range
 
 import unittest
 import numpy as num
+from numpy.testing import assert_array_less
 
 from pyrocko.dataset import gshhg
 from pyrocko import util
@@ -64,6 +65,12 @@ class GSHHGTest(unittest.TestCase):
 
         assert poly.contains_point(p_within) is True
         assert poly.contains_point(p_outside) is False
+
+    def test_latlon(self):
+        p = self.gshhg.polygons[0]
+
+        assert_array_less(num.zeros_like(p.lons) - 0.001, p.lons)
+        assert_array_less(p.lats, num.ones_like(p.lats) * 90 + 0.001)
 
     def test_polygon_level_selection(self):
         for p in self.gshhg.polygons:

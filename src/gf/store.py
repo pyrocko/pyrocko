@@ -269,6 +269,11 @@ def remove_if_exists(fn, force=False):
             raise CannotCreate('file %s already exists' % fn)
 
 
+def get_extra_path(store_dir, key):
+    check_string_id(key)
+    return os.path.join(store_dir, 'extra', key)
+
+
 class BaseStore(object):
 
     @staticmethod
@@ -1111,8 +1116,7 @@ class Store(BaseStore):
 
         if extra:
             for k, v in extra.items():
-                check_string_id(k)
-                fn = os.path.join(store_dir, 'extra', k)
+                fn = get_extra_path(store_dir, k)
                 remove_if_exists(fn, force)
                 meta.dump(v, filename=fn)
 
@@ -1166,15 +1170,17 @@ class Store(BaseStore):
 
         meta.dump(self.config, filename=config_fn)
 
+    def get_extra_path(self, key):
+        return get_extra_path(self.store_dir, key)
+
     def get_extra(self, key):
         '''
         Get extra information stored under given key.
         '''
 
-        check_string_id(key)
         x = self._extra
         if key not in x:
-            fn = os.path.join(self.store_dir, 'extra', key)
+            fn = self.get_extra_path(key)
             if not os.path.exists(fn):
                 raise NoSuchExtra(key)
 
@@ -1188,7 +1194,7 @@ class Store(BaseStore):
         '''
         fns = [os.path.join(self.store_dir, 'config')]
         for key in self.extra_keys():
-            fns.append(os.path.join(self.store_dir, 'extra', key))
+            fns.append(self.get_extra_path(key))
 
         i = 0
         for fn in fns:
@@ -1759,14 +1765,17 @@ class Store(BaseStore):
         if ntargets == 0:
             raise StoreError('MultiLocation.coords5 is empty')
 
-        sum_params = store_ext.make_sum_params(
-            self.cstore,
-            source.coords5(),
-            source_terms,
-            multi_location.coords5,
-            self.config.component_scheme,
-            interpolation,
-            nthreads or 0)
+        try:
+            sum_params = store_ext.make_sum_params(
+                self.cstore,
+                source.coords5(),
+                source_terms,
+                multi_location.coords5,
+                self.config.component_scheme,
+                interpolation,
+                nthreads or 0)
+        except store_ext.StoreExtError:
+            raise meta.OutOfBounds()
 
         for icomp, comp in enumerate(scheme_desc.provided_components):
             if comp not in components:
@@ -1841,13 +1850,17 @@ class Store(BaseStore):
         source_terms = source.get_source_terms(scheme)
         receiver_coords_arr = receiver.coords5[num.newaxis, :].copy()
 
-        params = store_ext.make_sum_params(
-            store.cstore,
-            source_coords_arr,
-            source_terms,
-            receiver_coords_arr,
-            scheme,
-            interpolation, nthreads)
+        try:
+            params = store_ext.make_sum_params(
+                store.cstore,
+                source_coords_arr,
+                source_terms,
+                receiver_coords_arr,
+                scheme,
+                interpolation, nthreads)
+
+        except store_ext.StoreExtError:
+            raise meta.OutOfBounds()
 
         provided_components = scheme_desc.provided_components
 

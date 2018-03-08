@@ -11,7 +11,7 @@ import hashlib
 import base64
 
 from pyrocko import util, moment_tensor
-from pyrocko.guts import Object, Float, String, Timestamp
+from pyrocko.guts import Object, Float, String, Timestamp, Unicode
 
 logger = logging.getLogger('pyrocko.model.event')
 
@@ -64,7 +64,7 @@ class Event(Object):
     depth = Float.T(optional=True)
     magnitude = Float.T(optional=True)
     magnitude_type = String.T(optional=True)
-    region = String.T(optional=True)
+    region = Unicode.T(optional=True)
     catalog = String.T(optional=True)
     moment_tensor = moment_tensor.MomentTensor.T(optional=True)
     duration = Float.T(optional=True)
@@ -314,18 +314,56 @@ class Event(Object):
         return '\n'.join(s)
 
 
-def load_events(filename):
+def detect_format(filename):
+    with open(filename, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or line.startswith('%'):
+                continue
+            if line.startswith('--- !pf.Event'):
+                return 'yaml'
+            else:
+                return 'basic'
+
+
+def load_events(filename, format='detect'):
     '''Read events file.
 
     :param filename: name of file as str
+    :param format: file format: ``'detect'``, ``'basic'``, or ``'yaml'``
     :returns: list of :py:class:`Event` objects
     '''
-    return list(Event.load_catalog(filename))
+
+    if format == 'detect':
+        fmt = detect_format(filename)
+
+    assert fmt in ('yaml', 'basic')
+
+    if fmt == 'yaml':
+        from pyrocko import guts
+        events = [
+            ev for ev in guts.load_all(filename=filename)
+            if isinstance(ev, Event)]
+
+        return events
+    elif fmt == 'basic':
+        return list(Event.load_catalog(filename))
+    else:
+        from pyrocko.io.io_common import FileLoadError
+        FileLoadError('unknown event file format: %s' % fmt)
 
 
-def load_one_event(filename):
-    lst = Event.load_catalog(filename)
-    return next(lst)
+class OneEventRequired(Exception):
+    pass
+
+
+def load_one_event(filename, format='detect'):
+    events = load_events(filename)
+    if len(events) != 1:
+        raise OneEventRequired(
+            'exactly one event is required in "%s"' % filename)
+
+    return events[0]
 
 
 def dump_events(events, filename=None, stream=None):

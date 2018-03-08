@@ -53,6 +53,14 @@ def have_store(store_id):
         return False
 
 
+def have_kiwi():
+    try:
+        import tunguska  # noqa
+        return True
+    except ImportError:
+        return False
+
+
 class GFScenariosTestCase(unittest.TestCase):
     store_id = 'crust2_mf'
     store_id2 = 'chile_70km_crust'
@@ -153,6 +161,9 @@ class GFScenariosTestCase(unittest.TestCase):
     @unittest.skipUnless(
             have_store(store_id2),
             'GF Store "%s" is not available' % store_id2)
+    @unittest.skipUnless(
+            have_kiwi(),
+            'KIWI Tools not available')
     def test_against_kiwi(self):
         engine = gf.get_engine()
         store_id = GFScenariosTestCase.store_id2

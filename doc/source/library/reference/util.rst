@@ -1,7 +1,5 @@
-
-
-The :mod:`util` module
-======================
+``util``
+========
 
 .. automodule:: pyrocko.util
     :members:

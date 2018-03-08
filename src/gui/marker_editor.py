@@ -8,7 +8,7 @@ from builtins import zip, range
 import sys
 
 from .qt_compat import qc, qg, qw, QSortFilterProxyModel, \
-    QItemSelectionModel, QItemSelection, use_pyqt5
+    QItemSelectionModel, QItemSelection, QPixmapCache, use_pyqt5
 
 from .util import EventMarker, PhaseMarker, make_QPolygonF
 from pyrocko.plot.beachball import mt2beachball, BeachballError
@@ -76,11 +76,11 @@ _header_sizes[-1] = 20
 class BeachballWidget(qw.QWidget):
 
     def __init__(self, moment_tensor=None, *args, **kwargs):
-        qg.QWidget.__init__(self, *args, **kwargs)
+        qw.QWidget.__init__(self, *args, **kwargs)
         self.colors = {'white': qc.Qt.white,
                        'green': qc.Qt.green,
-                       'red': qc.Qt.red,
-                       'none': None}
+                       'red': qc.Qt.red}
+
         self.brushs_pens = {}
         for k, c in self.colors.items():
             pen = qg.QPen(c)
@@ -89,7 +89,7 @@ class BeachballWidget(qw.QWidget):
         self.moment_tensor = moment_tensor
         self.setGeometry(0, 0, 100, 100)
         self.setAttribute(qc.Qt.WA_TranslucentBackground)
-        self.flipy = qg.QMatrix()
+        self.flipy = qg.QTransform()
         self.flipy.translate(0, self.height())
         self.flipy.scale(1, -1)
 
@@ -97,12 +97,14 @@ class BeachballWidget(qw.QWidget):
         center = e.rect().center()
         painter = qg.QPainter(self)
         painter.save()
-        painter.setMatrix(self.flipy)
+        painter.setWorldTransform(self.flipy)
         try:
             data = mt2beachball(self.moment_tensor, size=self.height()/2.2,
                                 position=(center.x(), center.y()))
             for pdata in data:
                 paths, fill, edges, thickness = pdata
+                if fill == 'none':
+                    continue
                 brush, pen = self.brushs_pens[fill]
                 polygon = qg.QPolygonF()
                 polygon = make_QPolygonF(*paths.T)
@@ -116,7 +118,10 @@ class BeachballWidget(qw.QWidget):
             painter.restore()
 
     def to_qpixmap(self):
-        return qg.QPixmap().grabWidget(self, self.rect())
+        try:
+            return self.grab(self.rect())
+        except:
+            return qg.QPixmap().grabWidget(self, self.rect())
 
 
 class MarkerItemDelegate(qw.QStyledItemDelegate):
@@ -125,7 +130,7 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         qw.QStyledItemDelegate.__init__(self, *args, **kwargs)
         self.c_alignment = qc.Qt.AlignHCenter
-        self.bbcache = qg.QPixmapCache()
+        self.bbcache = QPixmapCache()
 
     def paint(self, painter, option, index):
         iactive = self.parent().active_event_index
@@ -148,9 +153,8 @@ class MarkerItemDelegate(qw.QStyledItemDelegate):
             mt = self.get_mt_from_index(index)
             if mt:
                 key = ''.join([str(round(x, 1)) for x in mt.m6()])
-                pixmap = qg.QPixmap()
-                found = self.bbcache.find(key, pixmap)
-                if found:
+                pixmap = self.bbcache.cached(key)
+                if pixmap:
                     pixmap = pixmap.scaledToHeight(option.rect.height())
                 else:
                     pixmap = BeachballWidget(mt).to_qpixmap()

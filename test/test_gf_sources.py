@@ -177,6 +177,30 @@ class GFSourcesTestCase(unittest.TestCase):
                 cent = dsource.centroid()
                 assert numeq(cent.time + source.get_timeshift(), t, 0.0001)
 
+    def test_outline(self):
+        s = gf.MTSource(
+            east_shift=5. * km,
+            north_shift=-3. * km,
+            depth=7. * km)
+
+        outline = s.outline()
+        numeq(outline, num.array([[-3000., 5000., 7000.]]), 1e-8)
+
+        rs = gf.RectangularSource(
+            length=2 * km,
+            width=2 * km)
+
+        outline = rs.outline()
+        numeq(
+            outline,
+            num.array(
+                [[-1.e3, 0.0, 0.0],
+                 [1.e3, 0.0, 0.0],
+                 [1.e3, 0.0, 2.e3],
+                 [-1.e3, 0.0, 2.e3],
+                 [-1.e3, 0.0, 0.0]]),
+            1e-8)
+
     def test_rect_source_anchors(self):
         sources = {}
         for anchor in ['top', 'center', 'bottom']:
@@ -202,6 +226,8 @@ class GFSourcesTestCase(unittest.TestCase):
         # plot_sources(sources)
 
     def test_explosion_source(self):
+        interpolation = 'nearest_neighbor'
+
         ex = gf.ExplosionSource(
                 magnitude=5.,
                 volume_change=4.,
@@ -226,20 +252,25 @@ class GFSourcesTestCase(unittest.TestCase):
         with self.assertRaises(gf.DerivedMagnitudeError):
             ex.get_volume_change()
 
-        volume_change = ex.get_volume_change(store)
+        volume_change = ex.get_volume_change(
+            store, interpolation=interpolation)
+
+        with self.assertRaises(TypeError):
+            ex.get_volume_change(store, interpolation='nearest_neighbour')
 
         ex = gf.ExplosionSource(
                 volume_change=volume_change,
                 depth=5*km)
 
-        self.assertAlmostEqual(ex.get_magnitude(store), 3.0)
+        self.assertAlmostEqual(
+            ex.get_magnitude(store, interpolation=interpolation), 3.0)
 
         ex = gf.ExplosionSource(
                 magnitude=3.0,
                 depth=-5.)
 
         with self.assertRaises(gf.DerivedMagnitudeError):
-            ex.get_volume_change(store)
+            ex.get_volume_change(store, interpolation=interpolation)
 
 
 if __name__ == '__main__':

@@ -97,11 +97,11 @@ class Polygon(object):
 
     @property
     def lats(self):
-        return self.points[:, 1]
+        return self.points[:, 0]
 
     @property
     def lons(self):
-        return self.points[:, 0]
+        return self.points[:, 1]
 
     def _is_level(self, level):
         if self.level is self.LEVELS[level]:

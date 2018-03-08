@@ -43,7 +43,7 @@ class SRTMGL3(dataset.TiledGlobalDataset):
             self,
             name='SRTMGL3',
             data_dir=op.join(op.dirname(__file__), 'data', 'SRTMGL3'),
-            raw_data_url='https://e4ftl01.cr.usgs.gov/SRTM/SRTMGL3.003/'
+            raw_data_url='https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/'
                          '2000.02.11'):
 
         dataset.TiledGlobalDataset.__init__(
@@ -123,7 +123,6 @@ class SRTMGL3(dataset.TiledGlobalDataset):
         try:
             # we have to follow the oauth redirect here...
             r = requests.get(url, auth=cred)
-            print(url)
             self.download_file(
                 r.url, fpath, username=cred[0], password=cred[1])
         except Exception as e:

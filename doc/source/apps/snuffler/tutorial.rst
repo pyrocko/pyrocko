@@ -257,3 +257,42 @@ activating the desired column. Left-click on a column's header sorts the table
 by the values given in that column. The *Label*, *Depth*, *Lat*, *Lon* and the
 *magnitude* (*M*) can be set from within the table by a double-click on the
 underlying field.
+
+Live seismograms
+----------------
+
+Snuffler can display incoming seismic waveforms in real-time. Install
+`slinktool <http://www.iris.edu/data/dmc-seedlink.htm>`_ if you want to see
+data streams from a SeedLink server.
+
+To show all available ``BHZ`` channels from the ``GE`` (GEOFON) network, run::
+
+    snuffler seedlink://geofon.gfz-potsdam.de/GE.*.*.BHZ --follow=200
+
+``geofon.gfz-potsdam.de`` is the SeedLink server to access and the option
+:option:`--follow <snuffler --follow>` tells Snuffler that it should continuously display
+the last 200 seconds from real-time (right edge of the screen is current time).
+
+Time to lean back and watch seismograms coming in from all over the world.
+
+.. image:: /static/screenshot_live.png
+    :align: center
+
+If you interactively click into the window, it will interrupt the following
+mode for a while to give you a chance to look around with all the usual
+commands. It resumes to the real-time scrolling mode if you leave it alone for
+a while.
+
+It is also possible to record the received seismograms into a data directory
+for later investigations. To activate this feature, use the :option:`--store-interval <snuffler
+--store-interval>` and :option:`--store-path <snuffler --store-path>` command line options::
+
+    snuffler seedlink://geofon.gfz-potsdam.de/GE.*.*.BHZ --follow=200 \
+        --store-interval=1000  \
+        --store-path='datadump/%(network)s.%(station)s.%(location)s.%(channel)s.%(tmin)s.mseed'
+
+The template given to :option:`--store-path <snuffler --store-path>` will be
+used to create file names (and directories) as needed, expanding the
+``'%(variable)s'`` placeholders with metadata from the waveforms. The
+:option:`--store-interval <snuffler --store-interval>` tells Snuffler after
+intervals of how many seconds, the seismograms should be dumped to file.

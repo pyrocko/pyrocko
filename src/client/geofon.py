@@ -48,7 +48,7 @@ def getTextR(node):
 
 def parse_location(s):
     direction = {'N': 1, 'S': -1, 'E': 1, 'W': -1}
-    m = re.match(r'([0-9.]+)\s*([NSEW])\s+([0-9.]+)\s*([NSEW])', s)
+    m = re.search(r'([0-9.]+)\s*([NSEW])\s+([0-9.]+)\s*([NSEW])', s)
     if m:
         a = float(m.group(1)) * direction[m.group(2)]
         b = float(m.group(3)) * direction[m.group(4)]
@@ -133,7 +133,6 @@ class Geofon(EarthquakeCatalog):
 
             try:
                 d = self._parse_event_page(page)
-
                 ev = model.Event(
                     lat=d['epicenter'][0],
                     lon=d['epicenter'][1],
@@ -183,6 +182,7 @@ class Geofon(EarthquakeCatalog):
         # fix broken &nbsp; tags
         page = re.sub(br'&nbsp([^;])', b'&nbsp;\\1', page)
         page = re.sub(br'border=0', b'border="0"', page)
+        page = re.sub(br'<(img|link|meta).*?>', b'', page, flags=re.DOTALL)
         page = re.sub(br'</html>.*', b'</html>', page, flags=re.DOTALL)
 
         doc = self.parse_xml(page)
@@ -272,7 +272,9 @@ class Geofon(EarthquakeCatalog):
 
         # fix broken tag
         page = re.sub(br'align=center', b'align="center"', page)
+        page = re.sub(br'<(img|link|meta).*?>', b'', page, flags=re.DOTALL)
         page = re.sub(br'</html>.*', b'</html>', page, flags=re.DOTALL)
+        page = re.sub(br'"[^"]+geohack[^"]+"', b'""', page)
 
         doc = self.parse_xml(page)
 

@@ -1,5 +1,5 @@
-Jackseis
-========
+Jackseis - *manipulate seismic waveform archives*
+=================================================
 
 .. highlight:: sh
 

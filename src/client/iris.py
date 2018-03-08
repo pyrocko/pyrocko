@@ -4,6 +4,7 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
+
 import logging
 import re
 from xml.parsers.expat import ParserCreate
@@ -406,9 +407,7 @@ def data_selection(stations, tmin, tmax, channel_prio=[
                 if channel.name in group:
                     gchannels.append(channel)
             if gchannels:
-                gchannels.sort(lambda a, b:
-                               cmp(group.index(a.name), group.index(b.name)))
-
+                gchannels.sort(key=lambda a: group.index(a.name))
                 wanted.append(gchannels[0])
 
         if wanted:

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # http://pyrocko.org - GPLv3
 #
 # The Pyrocko Developers, 21st Century
@@ -6,7 +7,6 @@
 from __future__ import absolute_import
 from builtins import str as newstr
 from builtins import range
-from builtins import object
 from future.utils import with_metaclass
 
 import datetime
@@ -16,7 +16,7 @@ import sys
 import types
 import copy
 
-from io import open, BytesIO
+from io import BytesIO
 
 import yaml
 try:
@@ -111,7 +111,7 @@ def expand_stream_args(mode):
                 return f(*args, **kwargs)
 
             elif filename is not None:
-                stream = open(filename, mode)
+                stream = open(filename, mode+'b')
                 kwargs['stream'] = stream
                 retval = f(*args, **kwargs)
                 if isinstance(retval, types.GeneratorType):
@@ -211,10 +211,7 @@ class TBase(object):
         self.help = help
 
     def default(self):
-        if isinstance(self._default, DefaultMaker):
-            return self._default.make()
-        else:
-            return self._default
+        return make_default(self._default)
 
     def is_default(self, val):
         if self._default_cmp is None:
@@ -629,6 +626,15 @@ class ArgumentError(Exception):
     pass
 
 
+def make_default(x):
+    if isinstance(x, DefaultMaker):
+        return x.make()
+    elif isinstance(x, Object):
+        return clone(x)
+    else:
+        return x
+
+
 class DefaultMaker(object):
     def __init__(self, cls, args, kwargs):
         self.cls = cls
@@ -636,7 +642,9 @@ class DefaultMaker(object):
         self.kwargs = kwargs
 
     def make(self):
-        return self.cls(*self.args, **self.kwargs)
+        return self.cls(
+            *[make_default(x) for x in self.args],
+            **dict((k, make_default(v)) for (k, v) in self.kwargs.items()))
 
 
 class Object(with_metaclass(ObjectMetaClass, object)):
@@ -803,7 +811,10 @@ class Dict(Object):
 
         def default(self):
             if self._default is not None:
-                return self._default
+                return dict(
+                    (make_default(k), make_default(v))
+                    for (k, v) in self._default.items())
+
             if self.optional:
                 return None
             else:
@@ -852,7 +863,7 @@ class List(Object):
 
         def default(self):
             if self._default is not None:
-                return self._default
+                return [make_default(x) for x in self._default]
             if self.optional:
                 return None
             else:
@@ -917,7 +928,9 @@ class Tuple(Object):
 
         def default(self):
             if self._default is not None:
-                return self._default
+                return tuple(
+                    make_default(x) for x in self._default)
+
             elif self.optional:
                 return None
             else:
@@ -1387,7 +1400,7 @@ def _iload_all_xml(
 
     from xml.parsers.expat import ParserCreate
 
-    parser = ParserCreate(namespace_separator=' ')
+    parser = ParserCreate('UTF-8', namespace_separator=' ')
 
     handler = Constructor(add_namespace_maps=add_namespace_maps, strict=strict)
 

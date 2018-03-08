@@ -1,5 +1,5 @@
-``pyrocko.trace``
-=======================
+``trace``
+=========
 
 .. automodule:: pyrocko.trace
    :members:

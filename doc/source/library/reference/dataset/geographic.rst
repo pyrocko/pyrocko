@@ -1,16 +1,16 @@
-Geographic Datasets (``pyrocko.dataset``)
-==========================================
+Geographic Datasets (``dataset``)
+=================================
 
-``pyrocko.dataset.geonames``
-----------------------------
+``dataset.geonames``
+--------------------
 
 .. automodule :: pyrocko.dataset.geonames
     :members:
     :undoc-members:
 
 
-``pyrocko.dataset.gshhg``
-----------------------------
+``dataset.gshhg``
+-----------------
 
 .. automodule :: pyrocko.dataset.gshhg
     :members: GSHHG, Polygon

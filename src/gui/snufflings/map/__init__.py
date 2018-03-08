@@ -27,7 +27,7 @@ from pyrocko.guts import dump_xml                                       # noqa
 from pyrocko import util, gui_util, model, orthodrome as ortho          # noqa
 from pyrocko import moment_tensor                                       # noqa
 from pyrocko.automap import Map                                         # noqa
-from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker # noqa
+from .xmlMarker import XMLEventMarker, EventMarkerList, XMLStationMarker  # noqa
 from .xmlMarker import StationMarkerList, MarkerLists                   # noqa
 
 
@@ -79,10 +79,10 @@ class RootedHTTPServer(HTTPServer):
 class RootedHTTPRequestHandler(SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
-        logger.debug("%s - - [%s] %s\n" %
-                        (self.client_address[0],
-                         self.log_date_time_string(),
-                             format%args))
+        logger.debug("%s - - [%s] %s\n" % (
+            self.client_address[0],
+            self.log_date_time_string(),
+            format % args))
 
     def translate_path(self, path):
         path = posixpath.normpath(unquote(path))
@@ -283,11 +283,12 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
 
             url = 'http://localhost:' + str(self.port) + '/%s' % map_fn
 
+            files = ['loadxmldoc.js', 'map_util.js', 'plates.kml', map_fn]
             snuffling_dir = op.dirname(op.abspath(__file__))
-            for entry in ['loadxmldoc.js', 'plates.kml', map_fn]:
+            for entry in files:
                 shutil.copy(os.path.join(snuffling_dir, entry),
                             os.path.join(tempdir, entry))
-
+            logger.debug('copied data to %s' % tempdir)
             markers_fn = os.path.join(self.marker_tempdir, 'markers.xml')
             self.data_proxy.content_to_serve.emit(self.port)
             dump_xml(event_station_list, filename=markers_fn)
@@ -385,7 +386,7 @@ python $HOME/.snufflings/map/snuffling.py --stations=stations.pf
 
             self.outfn = os.path.join(tmpdir, '%i.png' % self.figcount)
             m.save(self.outfn)
-            f = self.pixmap_frame(self.outfn) # noqa
+            f = self.pixmap_frame(self.outfn)  # noqa
             # f = self.svg_frame(self.outfn, name='XX')
 
     def configure_cli_parser(self, parser):

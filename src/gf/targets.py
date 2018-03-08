@@ -11,6 +11,7 @@ import math
 from . import meta
 from pyrocko.guts import Timestamp, Tuple, String, Float, Object, StringChoice
 from pyrocko.guts_array import Array
+from pyrocko.model import gnss
 
 d2r = num.pi / 180.
 
@@ -245,11 +246,11 @@ class StaticTarget(meta.MultiLocation):
         for i in range(self.ntargets):
             targets.append(
                 Target(
-                    lat=self.coords5[i, 0],
-                    lon=self.coords5[i, 1],
-                    north_shift=self.coords5[i, 2],
-                    east_shift=self.coords5[i, 3],
-                    elevation=self.coords5[i, 4]))
+                    lat=float(self.coords5[i, 0]),
+                    lon=float(self.coords5[i, 1]),
+                    north_shift=float(self.coords5[i, 2]),
+                    east_shift=float(self.coords5[i, 3]),
+                    elevation=float(self.coords5[i, 4])))
         return targets
 
     def post_process(self, engine, source, statics):
@@ -293,3 +294,32 @@ class SatelliteTarget(StaticTarget):
             self._los_factors[:, 1] = num.cos(self.theta) * num.cos(self.phi)
             self._los_factors[:, 2] = num.cos(self.theta) * num.sin(self.phi)
         return self._los_factors
+
+
+class GNSSCampaignTarget(StaticTarget):
+
+    def post_process(self, engine, source, statics):
+        campaign = gnss.GNSSCampaign()
+
+        for ista in range(self.ntargets):
+            north = gnss.GNSSComponent(
+                shift=float(statics['displacement.n'][ista]))
+            east = gnss.GNSSComponent(
+                shift=float(statics['displacement.e'][ista]))
+            up = gnss.GNSSComponent(
+                shift=-float(statics['displacement.d'][ista]))
+
+            coords = self.coords5
+            station = gnss.GNSSStation(
+                lat=float(coords[ista, 0]),
+                lon=float(coords[ista, 1]),
+                east_shift=float(coords[ista, 2]),
+                north_shift=float(coords[ista, 3]),
+                elevation=float(coords[ista, 4]),
+                north=north,
+                east=east,
+                up=up)
+
+            campaign.add_station(station)
+
+        return meta.GNSSCampaignResult(result=statics, campaign=campaign)

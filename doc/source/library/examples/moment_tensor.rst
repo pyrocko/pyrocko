@@ -1,25 +1,16 @@
-Moment Tensor Operations
-========================
+Moment tensor conversions
+=========================
 
-Transformations to and from Moment Tensor using the :py:class:`pyrocko.moment_tensor` modules.
-Conversion between Global Centroid Moment tensors format with pointing upward, southward, and eastward (Up-South-East; USE) system to geographic Cartesian tensor (North-Eeast-Down; NED) transforms by:
-
-.. math::
-    :nowrap:
-
-    \begin{align*} 
-        M_{rr} &= M_{dd}, & M_{  r\theta} &= M_{nd},\\
-        M_{\theta\theta} &= M_{ nn}, & M_{r\phi} &= -M_{ed},\\
-        M_{\phi\phi} &=  M_{ee}, & M_{\theta\phi} &= -M_{ne}
-    \end{align*}
+Transformations between different moment tensor representations using the
+:py:class:`pyrocko.moment_tensor` module.
 
 
-Convert Moment Tensor components to strike, dip and rake
+Convert moment tensor components to strike, dip and rake
 --------------------------------------------------------
 
-Moment Tensor construction is shown by using the moment components
-and conversion to strike, dip and rake.
-
+moment tensor construction is shown by using the moment components (in
+north-east-down coordinate system convention) and conversion to strike, dip and
+rake.
 
 Download :download:`moment_tensor_example1.py </../../examples/moment_tensor_example1.py>`
 
@@ -27,11 +18,11 @@ Download :download:`moment_tensor_example1.py </../../examples/moment_tensor_exa
     :language: python
 
 
-Strike, dip and rake to Moment Tensor
+Strike, dip and rake to moment tensor
 -------------------------------------
 
-Conversion from strike, dip and rake to the Moment Tensor. Afterwards
-we normalize the Moment Tensor. 
+Conversion from strike, dip and rake to the moment tensor. Afterwards
+we normalize the moment tensor. 
 
 Download :download:`moment_tensor_example2.py </../../examples/moment_tensor_example2.py>`
 

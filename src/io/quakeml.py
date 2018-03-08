@@ -5,12 +5,20 @@
 from __future__ import absolute_import
 import logging
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
-    Timestamp, Object, List, Union, Bool
+    Timestamp, Object, List, Union, Bool, Unicode
 from pyrocko.model import event
 from pyrocko import moment_tensor
 import numpy as num
 
 logger = logging.getLogger('pyrocko.io.quakeml')
+
+
+class QuakeMLError(Exception):
+    pass
+
+
+class NoPreferredOriginSet(QuakeMLError):
+    pass
 
 
 def one_element_or_none(l):
@@ -176,7 +184,7 @@ class AgencyID(String):
     pass
 
 
-class Author(String):
+class Author(Unicode):
     pass
 
 
@@ -216,7 +224,7 @@ class MagnitudeHint(String):
     pass
 
 
-class Region(String):
+class Region(Unicode):
     pass
 
 
@@ -272,7 +280,7 @@ class DataUsed(Object):
 
 
 class EventDescription(Object):
-    text = String.T()
+    text = Unicode.T()
     type = EventDescriptionType.T(optional=True)
 
 
@@ -380,7 +388,7 @@ class WaveformStreamID(Object):
 
 class Comment(Object):
     id = ResourceReference.T(optional=True, xmlstyle='attribute')
-    text = String.T()
+    text = Unicode.T()
     creation_info = CreationInfo.T(optional=True)
 
 
@@ -408,6 +416,18 @@ class MomentTensor(Object):
     category = MomentTensorCategory.T(optional=True)
     inversion_type = MTInversionType.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
+
+    def pyrocko_moment_tensor(self):
+        mrr = self.tensor.mrr.value
+        mtt = self.tensor.mtt.value
+        mpp = self.tensor.mpp.value
+        mrt = self.tensor.mrt.value
+        mrp = self.tensor.mrp.value
+        mtp = self.tensor.mtp.value
+        mt = moment_tensor.MomentTensor(m_up_south_east=num.matrix([
+             [mrr, mrt, mrp], [mrt, mtt, mtp], [mrp, mtp, mpp]]))
+
+        return mt
 
 
 class Amplitude(Object):
@@ -556,6 +576,23 @@ class Origin(Object):
         depth = self.depth.value
         return lat, lon, depth
 
+    def pyrocko_event(self):
+        lat, lon, depth = self.position_values()
+        otime = self.time.value
+        if self.creation_info:
+            cat = self.creation_info.agency_id
+        else:
+            cat = None
+
+        return event.Event(
+            name=self.public_id,
+            lat=lat,
+            lon=lon,
+            time=otime,
+            depth=depth,
+            catalog=cat,
+            region=self.region)
+
 
 class Event(Object):
     public_id = ResourceReference.T(
@@ -574,40 +611,71 @@ class Event(Object):
         optional=True, xmltagname='preferredMagnitudeID')
     preferred_focal_mechanism_id = ResourceReference.T(
         optional=True, xmltagname='preferredFocalMechanismID')
-    type = EventType.T(optional=True)
-    type_certainty = EventTypeCertainty.T(optional=True)
-    creation_info = CreationInfo.T(optional=True)
-    region = Region.T(optional=True)
+    type = EventType.T(
+        optional=True)
+    type_certainty = EventTypeCertainty.T(
+        optional=True)
+    creation_info = CreationInfo.T(
+        optional=True)
+    region = Region.T(
+        optional=True)
 
     def pyrocko_event(self):
-        '''Considers only the *preferred* origin and magnitude'''
-        lat, lon, depth = self.preferred_origin.position_values()
-        otime = self.preferred_origin.time.value
-        reg = self.region
+        '''
+        Convert into Pyrocko event object.
+
+        Considers only the *preferred* origin, magnitude, and moment tensor.
+        '''
+
+        if not self.preferred_origin:
+            raise NoPreferredOriginSet()
+
+        ev = self.preferred_origin.pyrocko_event()
+
         foc_mech = self.preferred_focal_mechanism
-        if foc_mech is not None:
-            mrr = foc_mech.moment_tensor_list[0].tensor.mrr.value
-            mtt = foc_mech.moment_tensor_list[0].tensor.mtt.value
-            mpp = foc_mech.moment_tensor_list[0].tensor.mpp.value
-            mrt = foc_mech.moment_tensor_list[0].tensor.mrt.value
-            mrp = foc_mech.moment_tensor_list[0].tensor.mrp.value
-            mtp = foc_mech.moment_tensor_list[0].tensor.mtp.value
-            mt = moment_tensor.MomentTensor(m_up_south_east=num.matrix([
-                 [mrr, mrt, mrp], [mrt, mtt, mtp], [mrp, mtp, mpp]]))
-        else:
-            mt = None
+        if not foc_mech and self.focal_mechanism_list:
+            foc_mech = self.focal_mechanism_list[0]
+            if len(self.focal_mechanism_list) > 1:
+                logger.warn(
+                    'no preferred focal mechanism set, '
+                    'more than one available, using first')
+
+        if foc_mech and foc_mech.moment_tensor_list:
+            ev.moment_tensor = \
+                foc_mech.moment_tensor_list[0].pyrocko_moment_tensor()
+
+            if len(foc_mech.moment_tensor_list) > 1:
+                logger.warn(
+                    'more than one moment tensor available, using first')
+
+        mag = None
         pref_mag = self.preferred_magnitude
-        if pref_mag is None:
-            mag = self.magnitude_list[0].mag.value
-        else:
-            mag = pref_mag.mag.value
+        if pref_mag:
+            mag = pref_mag
+        elif self.magnitude_list:
+            mag = self.magnitude_list[0]
+            if len(self.magnitude_list) > 1:
+                logger.warn(
+                    'no preferred magnitude set, '
+                    'more than one available, using first')
 
-        cat = self.preferred_origin.creation_info.agency_id
-        reg = self.description_list[0].text
+        if mag:
+            ev.magnitude = mag.mag.value
+            ev.magnitude_type = mag.type
 
-        return event.Event(
-            name=self.public_id, lat=lat, lon=lon, time=otime, depth=depth,
-            magnitude=mag, region=reg, moment_tensor=mt, catalog=cat)
+        ev.region = self.get_effective_region()
+
+        return ev
+
+    def get_effective_region(self):
+        if self.region:
+            return self.region
+
+        for desc in self.description_list:
+            if desc.type in ('Flinn-Engdahl region', 'region name'):
+                return desc.text
+
+        return None
 
     @property
     def preferred_origin(self):
@@ -633,7 +701,7 @@ class EventParameters(Object):
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
     event_list = List.T(Event.T(xmltagname='event'))
-    description = String.T(optional=True)
+    description = Unicode.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
 

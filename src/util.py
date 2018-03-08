@@ -149,8 +149,8 @@ def _download(url, fpath, username=None, password=None,
 
                 content_length = r.headers.get('content-length', None)
                 if content_length is None:
-                    logger.warning('Could not get HTTP header '
-                                   'Content-Length for %s' % url)
+                    logger.debug('Could not get HTTP header '
+                                 'Content-Length for %s' % url)
 
                     content_length = None
 

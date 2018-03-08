@@ -29,38 +29,55 @@ class TraceTestCase(unittest.TestCase):
 
     def testIntegrationDifferentiation(self):
 
-        tlen = 100.
-        dt = 0.1
-        n = int(tlen/dt)
-        f = 0.5
-        tfade = tlen/10.
+        fmin = 0.1
+        fmax = 2.0
+        for tlen in [100., 1000., 10000]:
+            for dt in [0.1, 0.05]:
+                for f in [0.2, 0.5, 1.0]:
 
-        xdata = num.arange(n)*dt
-        ydata = num.sin(xdata*2.*num.pi*f)
-        a = trace.Trace(channel='A', deltat=dt, ydata=ydata)
+                    n = int(tlen/dt)
+                    tfade = 2.0/fmin
 
-        b = a.transfer(
-            tfade, (0.0, 0.1, 2., 3.),
-            transfer_function=trace.IntegrationResponse())
-        b.set_codes(channel='B')
+                    xdata = num.arange(n)*dt
+                    ydata = num.sin(xdata*2.*num.pi*f)
+                    a = trace.Trace(channel='A', deltat=dt, ydata=ydata)
 
-        c = a.transfer(
-            tfade, (0.0, 0.1, 2., 3.),
-            transfer_function=trace.DifferentiationResponse())
-        c.set_codes(channel='C')
+                    b = a.transfer(
+                        tfade, (fmin/2., fmin, fmax, fmax*2.),
+                        transfer_function=trace.IntegrationResponse())
+                    b.set_codes(channel='B')
 
-        eps = 0.001
-        xdata = b.get_xdata()
-        ydata = b.get_ydata()
-        ydata_shouldbe = -num.cos(xdata*2*num.pi*f) / (2.*num.pi*f)
-        assert num.amax(num.abs(ydata-ydata_shouldbe)) < eps, \
-            'integration failed'
+                    c = a.transfer(
+                        tfade, (fmin/2., fmin, fmax, fmax*2.),
+                        transfer_function=trace.DifferentiationResponse())
+                    c.set_codes(channel='C')
 
-        xdata = c.get_xdata()
-        ydata = c.get_ydata()
-        ydata_shouldbe = num.cos(xdata*2*num.pi*f) * (2.*num.pi*f)
-        assert num.amax(num.abs(ydata-ydata_shouldbe)) < eps, \
-            'differentiation failed'
+                    eps = 0.005
+                    xdata = b.get_xdata()
+                    ydata = b.get_ydata()
+                    ydata_shouldbe = -num.cos(xdata*2*num.pi*f) / (2.*num.pi*f)
+
+                    # if num.amax(num.abs(ydata-ydata_shouldbe)) > eps:
+                    # b_shouldbe = trace.Trace(
+                    #     channel='B', location='integrated',
+                    #     deltat=dt, ydata=ydata_shouldbe, tmin=xdata[0])
+                    #     trace.snuffle([b, b_shouldbe])
+
+                    assert num.amax(num.abs(ydata-ydata_shouldbe)) < eps, \
+                        'integration failed'
+
+                    xdata = c.get_xdata()
+                    ydata = c.get_ydata()
+                    ydata_shouldbe = num.cos(xdata*2*num.pi*f) * (2.*num.pi*f)
+
+                    # if num.amax(num.abs(ydata-ydata_shouldbe)) > eps:
+                    # c_shouldbe = trace.Trace(
+                    #     channel='C', location='differentiated',
+                    #     deltat=dt, ydata=ydata_shouldbe, tmin=xdata[0])
+                    #     trace.snuffle([c, c_shouldbe])
+
+                    assert num.amax(num.abs(ydata-ydata_shouldbe)) < eps, \
+                        'differentiation failed'
 
     def testDegapping(self):
         dt = 1.0

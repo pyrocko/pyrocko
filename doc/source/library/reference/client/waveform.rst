@@ -1,16 +1,16 @@
-Online Waveform Archives (``pyrocko.client``)
-================================================
+Online Waveform Archives (``client``)
+=====================================
 
-``pyrocko.client.fdsn``
------------------------
+``client.fdsn``
+---------------
 
 .. automodule :: pyrocko.client.fdsn
     :members:
     :undoc-members:
 
 
-``pyrocko.client.iris``
------------------------
+``client.iris``
+---------------
 
 .. automodule:: pyrocko.client.iris
     :members:
