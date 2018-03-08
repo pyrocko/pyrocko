@@ -24,16 +24,40 @@ The :mod:`io` subpackage
     pyrocko.io.rdseed
     pyrocko.io.resp
     pyrocko.io.sac
-    pyrocko.io.stationxml
     pyrocko.io.segy
     pyrocko.io.seisan_response
     pyrocko.io.seisan_waveform
+    pyrocko.io.stationxml
     pyrocko.io.suds
     pyrocko.io.yaff
 
 
-.. toctree::
-    :hidden:
-    :maxdepth: -1
 
-    io/available_io
+
+.. toctree::
+    :maxdepth: 2
+    :hidden:
+
+    io/css
+    io/datacube
+    io/enhanced_sacpz
+    io/gcf
+    io/gse1
+    io/gse2
+    io/ims
+    io/io_common
+    io/kan
+    io/mseed
+    io/quakeml
+    io/rdseed
+    io/resp
+    io/sac
+    io/segy
+    io/seisan_response
+    io/seisan_waveform
+    io/stationxml
+    io/suds
+    io/yaff
+
+
+
