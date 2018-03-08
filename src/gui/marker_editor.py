@@ -283,8 +283,14 @@ class MarkerTableView(qw.QTableView):
             ci = self.indexAt(
                 qc.QPoint(self.viewport().rect().x(), height))
             v = self.verticalHeader()
+
+            if use_pyqt5:
+                wheel_delta = wheel_event.angleDelta().y()
+            else:
+                wheel_delta = wheel_event.delta()
+
             v.setDefaultSectionSize(
-                max(12, v.defaultSectionSize()+wheel_event.delta()//60))
+                max(12, v.defaultSectionSize()+wheel_delta//60))
             self.scrollTo(ci)
             if v.isVisible():
                 self.toggle_numbering(False)
