@@ -920,7 +920,7 @@ def command_tttextract(args):
 
                 fn = options.output_fn % d
                 util.ensuredirs(fn)
-                with open(fn, 'w') as f:
+                with open(fn, 'a') as f:
                     f.write(' '.join(s))
                     f.write('\n')
             else:
