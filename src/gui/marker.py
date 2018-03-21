@@ -19,8 +19,17 @@ from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
 
 logger = logging.getLogger('pyrocko.gui.marker')
 
+box_alpha = 40
+
 
 def str_to_float_or_none(s):
+    if s == 'None':
+        return None
+    else:
+        return float(s)
+
+
+def str_to_int_or_none(s):
     if s == 'None':
         return None
     else:
@@ -496,7 +505,8 @@ class Marker(object):
             polarity=None,
             automatic=None,
             incidence_angle=None,
-            takeoff_angle=None):
+            takeoff_angle=None,
+            uncertainty=None):
 
         if isinstance(self, PhaseMarker):
             return
@@ -508,6 +518,7 @@ class Marker(object):
         self._automatic = automatic
         self._incidence_angle = incidence_angle
         self._takeoff_angle = takeoff_angle
+        self._uncertainty = uncertainty
         if self._event:
             self._event_hash = event.get_hash()
         else:
@@ -669,6 +680,8 @@ class PhaseMarker(Marker):
     :param incident_angle: (optional) incident angle of phase
     :param takeoff_angle: (optional) take off angle of phase
     '''
+    polarity_symbols = {1: u'\u2191', -1: u'\u2193', None: u''}
+
     def __init__(
             self, nslc_ids, tmin, tmax,
             kind=0,
@@ -679,20 +692,41 @@ class PhaseMarker(Marker):
             polarity=None,
             automatic=None,
             incidence_angle=None,
-            takeoff_angle=None):
+            takeoff_angle=None,
+            uncertainty=None):
 
         Marker.__init__(self, nslc_ids, tmin, tmax, kind)
         self._event = event
         self._event_hash = event_hash
         self._event_time = event_time
         self._phasename = phasename
-        self._polarity = polarity
         self._automatic = automatic
         self._incidence_angle = incidence_angle
         self._takeoff_angle = takeoff_angle
+        self._uncertainty = uncertainty
+        self.set_polarity(polarity)
 
     def draw_trace(self, viewer, p, tr, time_projection, track_projection,
                    gain):
+
+        if self.nslc_ids and not self.match_nslc(tr.nslc_id):
+            return
+
+        from .qt_compat import qc, qg
+
+        color = self.select_color(self.color_b)
+
+        def draw_box(tmin, tmax):
+            fill_brush = qg.QBrush(qg.QColor(*color + (box_alpha, )))
+            p.setBrush(fill_brush)
+            dvmin, dvmax = track_projection.get_out_range()
+            dtmin = time_projection.clipped(tmin)
+            dtmax = time_projection.clipped(tmax)
+            rect = qc.QRectF(dtmin, dvmin, float(dtmax-dtmin), dvmax-dvmin)
+            p.fillRect(rect, fill_brush)
+
+        if self._uncertainty:
+            draw_box(self.tmin-self._uncertainty, self.tmax+self._uncertainty)
 
         Marker.draw_trace(
             self, viewer, p, tr, time_projection, track_projection, gain,
@@ -705,7 +739,7 @@ class PhaseMarker(Marker):
         if self._phasename is not None:
             t.append(self._phasename)
         if self._polarity is not None:
-            t.append(self._polarity)
+            t.append(self.polarity_symbols.get(self._polarity, ''))
 
         if self._automatic:
             t.append('@')
@@ -746,6 +780,14 @@ class PhaseMarker(Marker):
     def set_phasename(self, phasename):
         self._phasename = phasename
 
+    def set_polarity(self, polarity):
+        if polarity not in [1, -1, None]:
+            raise ValueError('polarity has to be 1, -1 or None')
+        self._polarity = polarity
+
+    def get_polarity(self):
+        return self._polarity
+
     def convert_to_marker(self):
         del self._event
         del self._event_hash
@@ -754,6 +796,7 @@ class PhaseMarker(Marker):
         del self._automatic
         del self._incidence_angle
         del self._takeoff_angle
+        del self._uncertainty
         self.__class__ = Marker
 
     def hoover_message(self):
@@ -779,27 +822,37 @@ class PhaseMarker(Marker):
             et = st(self._event.time).split()
 
         attributes.extend([
-            h, et[0], et[1], self._phasename, self._polarity, self._automatic])
+            h, et[0], et[1], self._phasename, self._polarity, self._automatic,
+            self._uncertainty])
         return attributes
 
     def get_attribute_widths(self, fdigits=3):
         ws = [6]
         ws.extend(Marker.get_attribute_widths(self, fdigits=fdigits))
-        ws.extend([14, 12, 12, 8, 4, 5])
+        ws.extend([14, 12, 12, 8, 4, 5, 5])
         return ws
 
     @staticmethod
     def from_attributes(vals):
-        if len(vals) == 14:
+        nvals = len(vals)
+        uncertainty = 'None'
+        if nvals == 14:
             nbasicvals = 7
+            i = 11
+        elif nvals == 15:
+            nbasicvals = 7
+            i = 11
+            uncertainty = vals[i+2]
+        elif nvals == 12:
+            nbasicvals = 4
+            i = 8
+            uncertainty = vals[i+3]
         else:
             nbasicvals = 4
+            i = 8
+
         nslc_ids, tmin, tmax, kind = Marker.parse_attributes(
             vals[1:1+nbasicvals])
-
-        i = 8
-        if len(vals) == 14:
-            i = 11
 
         event_hash = str_to_str_or_none(vals[i-3])
         event_sdate = str_to_str_or_none(vals[i-2])
@@ -810,12 +863,14 @@ class PhaseMarker(Marker):
         else:
             event_time = None
 
-        phasename, polarity = [str_to_str_or_none(x) for x in vals[i:i+2]]
+        phasename = str_to_str_or_none(vals[i])
         automatic = str_to_bool(vals[i+2])
+        polarity = str_to_int_or_none(vals[i+1])
+        uncertainty = str_to_float_or_none(uncertainty)
         marker = PhaseMarker(nslc_ids, tmin, tmax, kind, event=None,
                              event_hash=event_hash, event_time=event_time,
                              phasename=phasename, polarity=polarity,
-                             automatic=automatic)
+                             automatic=automatic, uncertainty=uncertainty)
         return marker
 
 

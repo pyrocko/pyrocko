@@ -1790,11 +1790,13 @@ def MakePileViewerMainClass(base):
 
         def mousePressEvent(self, mouse_ev):
             self.show_all = False
+
             point = self.mapFromGlobal(mouse_ev.globalPos())
 
             if mouse_ev.button() == qc.Qt.LeftButton:
                 marker = self.marker_under_cursor(point.x(), point.y())
                 if self.picking:
+
                     if self.picking_down is None:
                         self.picking_down = (
                             self.time_projection.rev(mouse_ev.x()),
@@ -1828,6 +1830,7 @@ def MakePileViewerMainClass(base):
 
             self.track_start = None
             self.track_trange = None
+
             self.update_status()
 
         def mouseDoubleClickEvent(self, mouse_ev):
@@ -1866,6 +1869,17 @@ def MakePileViewerMainClass(base):
                 self.hoovering(point.x(), point.y())
 
             self.update_status()
+
+        def update_marker_uncertainties(self, markers, delta):
+            delta_sigma = self.time_projection.rev(0) - \
+                self.time_projection.rev(delta)
+
+            for m in markers:
+                if m._uncertainty is None:
+                    m._uncertainty = 0.
+                m._uncertainty = max(m._uncertainty + delta_sigma, 0.)
+
+            self.update()
 
         def nslc_ids_under_cursor(self, x, y):
             ftrack = self.track_to_screen.rev(y)
@@ -1942,12 +1956,33 @@ def MakePileViewerMainClass(base):
 
             keytext = str(key_event.text())
 
+            if (key_event.modifiers() & qc.Qt.ShiftModifier):
+                if self.floating_marker:
+                    self.floating_marker.convert_to_phase_marker(phasename='?')
+
+                sm = self.selected_markers()
+                if len(sm) == 1 and not isinstance(
+                        sm[0], (PhaseMarker, EventMarker)):
+                    sm[0].convert_to_phase_marker(phasename='?')
+
             if keytext == '?':
                 self.help()
 
             elif keytext == ' ':
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
+
+            elif key_event.key() == qc.Qt.Key_Up:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        p = 1 if m.get_polarity() != 1 else None
+                        m.set_polarity(p)
+
+            elif key_event.key() == qc.Qt.Key_Down:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        p = -1 if m.get_polarity() != -1 else None
+                        m.set_polarity(p)
 
             elif keytext == 'b':
                 dt = self.tmax - self.tmin
@@ -2237,28 +2272,42 @@ def MakePileViewerMainClass(base):
 
         def wheelEvent(self, wheel_event):
             if use_pyqt5:
-                self.wheel_pos += wheel_event.angleDelta().y()
+                wheel_delta = wheel_event.angleDelta().y()
             else:
-                self.wheel_pos += wheel_event.delta()
+                wheel_delta = wheel_event.delta()
 
-            n = self.wheel_pos // 120
-            self.wheel_pos = self.wheel_pos % 120
-            if n == 0:
-                return
+            if wheel_event.modifiers() & qc.Qt.ShiftModifier:
+                if self.floating_marker:
+                    markers = [self.floating_marker]
+                else:
+                    markers = [
+                        x for x in self.selected_markers() if
+                        isinstance(x, PhaseMarker)]
 
-            amount = max(
-                1.,
-                abs(self.shown_tracks_range[0]-self.shown_tracks_range[1])/5.)
-            wdelta = amount * n
+                self.update_marker_uncertainties(markers, wheel_delta/10.)
 
-            trmin, trmax = self.track_to_screen.get_in_range()
-            anchor = (self.track_to_screen.rev(wheel_event.y())-trmin) \
-                / (trmax-trmin)
-
-            if wheel_event.modifiers() & qc.Qt.ControlModifier:
-                self.zoom_tracks(anchor, wdelta)
             else:
-                self.scroll_tracks(-wdelta)
+                self.wheel_pos += wheel_delta
+
+                n = self.wheel_pos // 120
+                self.wheel_pos = self.wheel_pos % 120
+                if n == 0:
+                    return
+
+                amount = max(
+                    1.,
+                    abs(self.shown_tracks_range[0] -
+                        self.shown_tracks_range[1]) / 5.)
+                wdelta = amount * n
+
+                trmin, trmax = self.track_to_screen.get_in_range()
+                anchor = (self.track_to_screen.rev(wheel_event.y())-trmin) \
+                    / (trmax-trmin)
+
+                if wheel_event.modifiers() & qc.Qt.ControlModifier:
+                    self.zoom_tracks(anchor, wdelta)
+                else:
+                    self.scroll_tracks(-wdelta)
 
         def dragEnterEvent(self, event):
             if event.mimeData().hasUrls():
@@ -2748,9 +2797,6 @@ def MakePileViewerMainClass(base):
                 if active_marker:
                     self.draw_visible_markers(
                         [active_marker], p, vcenter_projection)
-
-                self.draw_visible_markers(
-                    self.selected_markers(), p, vcenter_projection)
 
                 primary_pen = qg.QPen(qg.QColor(*primary_color))
                 p.setPen(primary_pen)

@@ -22,15 +22,23 @@ class MarkerTestCase(unittest.TestCase):
         pmarker = marker.PhaseMarker(nslc_ids=nslc_ids,  tmin=1., tmax=10.)
         pmarker.set_event(event)
 
+        pmarker_1 = marker.PhaseMarker(
+            nslc_ids=nslc_ids,  tmin=1., tmax=10., polarity=-1)
+        pmarker_2 = marker.PhaseMarker(
+            nslc_ids=nslc_ids,  tmin=1., tmax=10., uncertainty=2.)
+        pmarker_3 = marker.PhaseMarker(
+            nslc_ids=nslc_ids,  tmin=1., tmax=10., polarity=-1,
+            uncertainty=-2.)
+
         emarker.set_alerted(True)
 
-        markers = [_marker, emarker, pmarker]
+        markers = [_marker, emarker, pmarker, pmarker_1, pmarker_2, pmarker_3]
         fn = tempfile.mkstemp()[1]
 
         marker.save_markers(markers, fn)
-
         in_markers = marker.load_markers(fn)
-        in__marker, in_emarker, in_pmarker = in_markers
+        in__marker, in_emarker, in_pmarker, pmarker_1, pmarker_2, pmarker_3 = \
+            in_markers
         for i, m in enumerate(in_markers):
             if not isinstance(m, marker.EventMarker):
                 assert (m.tmax - m.tmin) == 9.
