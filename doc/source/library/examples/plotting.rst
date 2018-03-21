@@ -134,3 +134,30 @@ Download :download:`beachball_example04.py </../../examples/beachball_example04.
     :alt: Focal sphere diagram with station symbols
 
     Focal sphere diagram with markers at positions of P wave ray piercing points.
+
+
+Hudson's source type plot
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Hudson's source type plot [Hudson, 1989] is a way to visually represent the
+widely used "standard" decomposition of a moment tensor into its isotropic,
+its compensated linear vector dipole (CLVD), and its double-couple (DC)
+components.
+
+The function :py:func:`pyrocko.plot.hudson.project` may be used to get the
+*(u,v)* coordinates for a given (full) moment tensor used for positioning the
+symbol in the plot. The function :py:func:`pyrocko.plot.hudson.draw_axes` can
+be used to conveniently draw the axes and annotions. Note, that we follow the
+original convention introduced by Hudson, to place the negative CLVD on the
+right hand side.
+
+Download :download:`hudson_diagram.py </../../examples/hudson_diagram.py>`
+
+.. literalinclude :: /../../examples/hudson_diagram.py
+    :language: python
+
+.. figure :: /static/hudson_diagram.png
+    :align: center
+    :alt: Hudson's source type plot for 200 random moment tensors.
+
+    Hudson's source type plot for 200 random moment tensors.
