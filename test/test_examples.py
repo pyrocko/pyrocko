@@ -86,6 +86,9 @@ def _make_function(test_name, fn):
         except ExternalProgramMissing as e:
             raise unittest.SkipTest(str(e))
 
+        except ImportError as e:
+            raise unittest.SkipTest(str(e))
+
         except Exception as e:
             raise e
 
