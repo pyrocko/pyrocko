@@ -137,7 +137,7 @@ Download :download:`beachball_example04.py </../../examples/beachball_example04.
 
 
 Hudson's source type plot
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
 Hudson's source type plot [Hudson, 1989] is a way to visually represent the
 widely used "standard" decomposition of a moment tensor into its isotropic,
