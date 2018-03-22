@@ -1708,7 +1708,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
             return self.magnitude
 
         elif self.slip is not None:
-            amplitudes = self._discretize1(store, target)[2]
+            amplitudes = self._discretize(store, target)[2]
             return float(mt.moment_to_magnitude(num.sum(amplitudes)))
 
         else:
@@ -1717,7 +1717,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
     def get_factor(self):
         return 1.0
 
-    def _discretize1(self, store, target):
+    def _discretize(self, store, target):
         if self.nucleation_x is not None:
             nucx = self.nucleation_x * 0.5 * self.length
         else:
@@ -1751,7 +1751,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
     def discretize_basesource(self, store, target=None):
 
-        points, times, amplitudes, dl, dw = self._discretize1(store, target)
+        points, times, amplitudes, dl, dw = self._discretize(store, target)
 
         mot = mt.MomentTensor(
             strike=self.strike, dip=self.dip, rake=self.rake)
