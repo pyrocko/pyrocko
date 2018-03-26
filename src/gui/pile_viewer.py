@@ -3945,8 +3945,10 @@ class PileViewer(qw.QFrame):
 
         line = line.strip()
 
-        if line != '' and not error and \
-                self.history and line != self.history[-1]:
+        if line != '' and not error:
+            if len(self.history) >= 1 and line == self.history[-1]:
+                return
+
             self.history.append(line)
 
         if clearit:
