@@ -67,9 +67,9 @@ class SnufflerConfig(ConfigBase):
                  VisibleLengthSetting(key='Long', value=60000.)])
     phase_key_mapping = Dict.T(
         String.T(), String.T(), default=default_phase_key_mapping)
-    first_start = Bool.T(
-        default=True)
-
+    demean = Bool.T(default=True)
+    show_scale_ranges = Bool.T(default=False)
+    show_scale_axis = Bool.T(default=False)
     first_start = Bool.T(default=True)
 
     def get_phase_name(self, key):

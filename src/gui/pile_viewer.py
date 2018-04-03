@@ -950,11 +950,15 @@ def MakePileViewerMainClass(base):
             self.menuitem_showscalerange = qw.QAction(
                 'Show Scale Ranges', self.menu)
             self.menuitem_showscalerange.setCheckable(True)
+            self.menuitem_showscalerange.setChecked(
+                self.config.show_scale_ranges)
             self.menu.addAction(self.menuitem_showscalerange)
 
             self.menuitem_showscaleaxis = qw.QAction(
                 'Show Scale Axes', self.menu)
             self.menuitem_showscaleaxis.setCheckable(True)
+            self.menuitem_showscaleaxis.setChecked(
+                self.config.show_scale_axis)
             self.menu.addAction(self.menuitem_showscaleaxis)
 
             self.menuitem_showzeroline = qw.QAction(
@@ -980,7 +984,7 @@ def MakePileViewerMainClass(base):
 
             self.menuitem_demean = qw.QAction('Demean', self.menu)
             self.menuitem_demean.setCheckable(True)
-            self.menuitem_demean.setChecked(True)
+            self.menuitem_demean.setChecked(self.config.demean)
             self.menu.addAction(self.menuitem_demean)
 
             self.menuitem_fft_filtering = qw.QAction(
