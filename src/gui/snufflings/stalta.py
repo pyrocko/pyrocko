@@ -124,7 +124,9 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
         markers = []
         for traces in pile.chopper(
                 tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad,
-                want_incomplete=False):
+                want_incomplete=False,
+                trace_selector=lambda x: not (x.meta and x.meta.get(
+                    'tabu', False))):
 
             sumtrace = None
             isum = 0
