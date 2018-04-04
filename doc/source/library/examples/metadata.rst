@@ -23,5 +23,5 @@ Pyrocko stations to StationXML
 ------------------------------
 This example shows how to import pyrocko stations and save FDSN StationXML files.
 
-.. literalinclude :: /../../examples/station_from_XML.py
+.. literalinclude :: /../../examples/stations_pyr2xml.py
     :language: python
