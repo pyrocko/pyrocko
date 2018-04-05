@@ -34,7 +34,7 @@ def to_kiwi_source(source):
     return kiwi_source.Source(
         time=source.time + source.length / source.velocity / 2.,
         depth=source.depth,
-        moment=source.moment,
+        moment=source.get_moment(),
         strike=source.strike,
         dip=source.dip,
         slip_rake=source.rake,

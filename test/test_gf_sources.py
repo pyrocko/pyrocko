@@ -6,7 +6,7 @@ import numpy as num
 from tempfile import mkdtemp
 import shutil
 
-from pyrocko import gf, util, guts, cake
+from pyrocko import gf, util, guts, cake, moment_tensor as pmt
 
 r2d = 180. / math.pi
 d2r = 1.0 / r2d
@@ -24,6 +24,7 @@ class GFSourcesTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         unittest.TestCase.__init__(self, *args, **kwargs)
         self._dummy_store = None
+        self._dummy_homogeneous_store = None
 
     @classmethod
     def tearDownClass(cls):
@@ -141,6 +142,35 @@ class GFSourcesTestCase(unittest.TestCase):
 
         return self._dummy_store
 
+    def dummy_homogeneous_store(self):
+        mod = cake.LayeredModel.from_scanlines(
+            cake.read_nd_model_str('''
+0 6 3.46  3.0  1000 500
+20 6 3.46  3.0  1000 500
+'''.lstrip()))
+
+        if self._dummy_homogeneous_store is None:
+
+            conf = gf.ConfigTypeA(
+                id='empty_homogeneous',
+                source_depth_min=0.,
+                source_depth_max=20*km,
+                source_depth_delta=10*km,
+                distance_min=1000*km,
+                distance_max=2000*km,
+                distance_delta=10*km,
+                sample_rate=2.0,
+                ncomponents=10,
+                earthmodel_1d=mod)
+
+            store_dir = mkdtemp(prefix='gfstore')
+            self.tempdirs.append(store_dir)
+
+            gf.Store.create(store_dir, config=conf)
+            self._dummy_homogeneous_store = gf.Store(store_dir)
+
+        return self._dummy_homogeneous_store
+
     def test_combine_dsources(self):
         store = self.dummy_store()
         dummy_target = gf.Target()
@@ -226,7 +256,8 @@ class GFSourcesTestCase(unittest.TestCase):
         # plot_sources(sources)
 
     def test_explosion_source(self):
-        interpolation = 'nearest_neighbor'
+        target = gf.Target(
+            interpolation='nearest_neighbor')
 
         ex = gf.ExplosionSource(
                 magnitude=5.,
@@ -253,24 +284,48 @@ class GFSourcesTestCase(unittest.TestCase):
             ex.get_volume_change()
 
         volume_change = ex.get_volume_change(
-            store, interpolation=interpolation)
+            store, target)
 
         with self.assertRaises(TypeError):
-            ex.get_volume_change(store, interpolation='nearest_neighbour')
+            ex.get_volume_change(
+                store, gf.Target(interpolation='nearest_neighbour'))
 
         ex = gf.ExplosionSource(
                 volume_change=volume_change,
                 depth=5*km)
 
         self.assertAlmostEqual(
-            ex.get_magnitude(store, interpolation=interpolation), 3.0)
+            ex.get_magnitude(store, target), 3.0)
 
         ex = gf.ExplosionSource(
                 magnitude=3.0,
                 depth=-5.)
 
         with self.assertRaises(gf.DerivedMagnitudeError):
-            ex.get_volume_change(store, interpolation=interpolation)
+            ex.get_volume_change(store, target)
+
+    def test_rect_source(self):
+
+        store = self.dummy_homogeneous_store()
+
+        rect1 = gf.RectangularSource(
+            depth=10*km,
+            magnitude=5.0,
+            width=5*km,
+            length=5*km)
+
+        rect2 = gf.RectangularSource(
+            depth=10*km,
+            slip=pmt.magnitude_to_moment(5.0) / (
+                5*km * 5*km * store.config.earthmodel_1d.material(
+                    10*km).shear_modulus()),
+            width=5*km,
+            length=5*km)
+
+        self.assertAlmostEqual(
+            rect1.get_magnitude(),
+            rect2.get_magnitude(
+                store, gf.Target(interpolation='nearest_neighbor')))
 
 
 if __name__ == '__main__':
