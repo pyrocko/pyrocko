@@ -998,7 +998,8 @@ class Pile(TracesGroup):
 
     def remove_file(self, file):
         subpile = file.get_parent()
-        subpile.remove_file(file)
+        if subpile is not None:
+            subpile.remove_file(file)
         if file.abspath is not None:
             self.abspaths.remove(file.abspath)
 
