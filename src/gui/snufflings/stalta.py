@@ -90,6 +90,8 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
         self.add_parameter(Choice(
             'Scaling/Normalization method', 'scalingmethod', '[0-1]',
             scalingmethods))
+        self.add_parameter(
+            Switch('Detect on sum trace', 'apply_to_sum', False))
 
         self.set_live_update(False)
 
@@ -102,8 +104,8 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
         lwin = swin * ratio
         tpad = lwin
 
-        pile = self.get_pile()
-        tmin, tmax = pile.get_tmin() + tpad, pile.get_tmax() - tpad
+        data_pile = self.get_pile()
+        tmin, tmax = data_pile.get_tmin() + tpad, data_pile.get_tmax() - tpad
         viewer = self.get_viewer()
 
         if not self.apply_to_all:
@@ -122,7 +124,7 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
             show_level_traces = False
 
         markers = []
-        for traces in pile.chopper(
+        for traces in data_pile.chopper(
                 tmin=tmin, tmax=tmax, tinc=tinc, tpad=tpad,
                 want_incomplete=False,
                 trace_selector=lambda x: not (x.meta and x.meta.get(
@@ -147,13 +149,17 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
                         scalingmethod=scalingmethod_map[self.scalingmethod])
 
                 tr.chop(tr.wmin, min(tr.wmax, tmax))
+
+                if not self.apply_to_sum:
+                    markers.extend(trace_to_pmarkers(tr, self.level, swin))
+
                 tr.set_codes(location='cg')
                 tr.meta = {'tabu': True}
 
                 if sumtrace is None:
-                    ny = int((tr.tmax - tr.tmin) / pile.deltatmin)
+                    ny = int((tr.tmax - tr.tmin) / data_pile.deltatmin)
                     sumtrace = trace.Trace(
-                        deltat=pile.deltatmin,
+                        deltat=data_pile.deltatmin,
                         tmin=tr.tmin,
                         ydata=num.zeros(ny))
 
@@ -166,20 +172,30 @@ escidoc:4098/IS_8.1_rev1.pdf">Understanding
 
             if sumtrace is not None:
                 sumtrace.ydata /= float(isum)
-                tpeaks, apeaks = sumtrace.peaks(self.level, swin)
-
-                for t, a in zip(tpeaks, apeaks):
-                    mark = Marker([], t, t)
-                    print(mark, a)
-                    markers.append(mark)
+                if self.apply_to_sum:
+                    markers.extend(
+                        trace_to_pmarkers(sumtrace, self.level, swin,
+                                          [('*', '*', '*', '*')]))
 
                 if show_level_traces:
                     self.add_trace(sumtrace)
 
+            self.add_markers(markers)
+
             if show_level_traces:
                 self.add_traces(traces)
 
-        self.add_markers(markers)
+
+def trace_to_pmarkers(tr, level, swin, nslc_ids=None):
+    markers = []
+    tpeaks, apeaks = tr.peaks(level, swin)
+    for t, a in zip(tpeaks, apeaks):
+        ids = nslc_ids or [tr.nslc_id]
+        mark = Marker(ids, t, t, )
+        print(mark, a)
+        markers.append(mark)
+
+    return markers
 
 
 def __snufflings__():
