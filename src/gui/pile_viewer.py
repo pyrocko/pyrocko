@@ -3177,6 +3177,8 @@ def MakePileViewerMainClass(base):
 
                         if demean:
                             for tr in traces:
+                                if (tr.meta and tr.meta.get('tabu', False)):
+                                    continue
                                 y = tr.get_ydata()
                                 tr.set_ydata(y - num.mean(y))
 
@@ -3184,9 +3186,7 @@ def MakePileViewerMainClass(base):
 
                         for trace in traces:
 
-                            if not (trace.meta
-                                    and 'tabu' in trace.meta
-                                    and trace.meta['tabu']):
+                            if not (trace.meta and trace.meta.get('tabu', False)):
 
                                 if fft_filtering:
                                     but = pyrocko.trace.ButterworthResponse

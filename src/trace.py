@@ -228,7 +228,7 @@ class Trace(object):
 
         return min(max(0, i), self.ydata.size)
 
-    def add(self, other, interpolate=True):
+    def add(self, other, interpolate=True, left=0., right=0.):
         '''
         Add values of other trace (self += other).
 
@@ -249,7 +249,7 @@ class Trace(object):
             other_xdata = other.get_xdata()
             xdata = self.get_xdata()
             self.ydata += num.interp(
-                xdata, other_xdata, other.ydata, left=0., right=0.)
+                xdata, other_xdata, other.ydata, left=left, right=left)
         else:
             assert self.deltat == other.deltat
             ioff = int(round((other.tmin-self.tmin)/self.deltat))
