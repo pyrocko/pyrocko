@@ -84,10 +84,10 @@ class ScenePatch(Object):
                     orbit_direction=patch.track_direction,
                     satellite_name='Sentinel-1'),
                 frame=FrameConfig(
-                    llLon=float(llLon),
                     llLat=float(llLat),
-                    dLat=float(dLat),
-                    dLon=float(dLon)))
+                    llLon=float(llLon),
+                    dN=float(dLat),
+                    dE=float(dLon)))
 
             scene = Scene(
                 displacement=displacement,
