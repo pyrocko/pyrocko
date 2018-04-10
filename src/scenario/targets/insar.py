@@ -39,7 +39,7 @@ class ScenePatch(Object):
     track_length = Float.T(
         help='Track length in [m].')
     incident_angle = Float.T(
-        help='Near range incident angle in [deg].')
+        help='Ground incident angle in [deg].')
     resolution = Tuple.T(
         help='Resolution of raster in east x north [px].')
     track_direction = StringChoice.T(
@@ -87,7 +87,8 @@ class ScenePatch(Object):
                     llLat=float(llLat),
                     llLon=float(llLon),
                     dN=float(dLat),
-                    dE=float(dLon)))
+                    dE=float(dLon),
+                    spacing='degree'))
 
             scene = Scene(
                 displacement=displacement,
@@ -207,13 +208,13 @@ class ScenePatch(Object):
         return mask_track
 
     def get_incident_angles(self):
-        east_shifts, north_shifts = self.get_grid()
+        east_shifts, _ = self.get_grid()
 
-        phi = north_shifts.copy()
-        phi.fill(self.incident_angle*d2r - num.pi/2)
+        theta = num.empty_like(east_shifts)
+        theta.fill(self.incident_angle*d2r)
 
         east_shifts += num.arctan(self.incident_angle) * self.apogee
-        theta = num.tan(self.apogee/east_shifts)
+        phi = num.tan((self.inclination*d2r)/east_shifts)
 
         return theta, phi
 
@@ -387,7 +388,7 @@ class InSARGenerator(TargetGenerator):
         return targets
 
     def get_insar_scenes(self, engine, sources, tmin=None, tmax=None):
-        logger.info('Calculating InSAR displacement...')
+        logger.debug('Forward modelling InSAR displacement...')
 
         scenario_tmin, scenario_tmax = self.get_time_range(sources)
 

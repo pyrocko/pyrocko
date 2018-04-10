@@ -170,6 +170,25 @@ class ScenarioGenerator(LocationGenerator):
             center_lat=None, center_lon=None, radius=None,
             targets=AVAILABLE_TARGETS,
             force=False):
+        """Initialize a Scenario and create a ``scenario.yml``
+
+        :param path: Path to create the scenerio in
+        :type path: str
+        :param center_lat: Center latitude, defaults to None
+        :type center_lat: float, optional
+        :param center_lon: Center longitude, defaults to None
+        :type center_lon: float, optional
+        :param radius: Scenario's radius in [m], defaults to None
+        :type radius: float, optional
+        :param targets: Targets to thow into scenario,
+            defaults to AVAILABLE_TARGETS
+        :type targets: list of :class:`pyrocko.scenario.ScenarioTargets`,
+            optional
+        :param force: Overwrite directory, defaults to False
+        :type force: bool, optional
+        :returns: Scenario
+        :rtype: :class:`pyrocko.scenario.ScenarioGenerator`
+        """
         import os.path as op
 
         if op.exists(path) and not force:

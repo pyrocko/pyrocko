@@ -194,7 +194,7 @@ class WaveformGenerator(TargetGenerator):
 
             trs[nslc] = tr
 
-        logger.debug('Calculating waveforms between %s - %s...'
+        logger.debug('Forward modelling waveforms between %s - %s...'
                      % (tts(tmin, format='%Y-%m-%d_%H-%M-%S'),
                         tts(tmax, format='%Y-%m-%d_%H-%M-%S')))
 
