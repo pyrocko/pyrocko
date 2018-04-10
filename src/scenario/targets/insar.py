@@ -30,11 +30,11 @@ class ScenePatch(Object):
     time_slave = Timestamp.T(
         help='Timestamp of the slave.')
     inclination = Float.T(
-        help='Inclination of the satellite orbit towards equatorial plane.')
+        help='Orbital inclination towards the equatorial plane [deg].')
     apogee = Float.T(
         help='Apogee of the satellite in [m].')
     swath_width = Float.T(
-        default=250 * km,
+        default=250*km,
         help='Swath width in [m].')
     track_length = Float.T(
         help='Track length in [m].')
@@ -208,13 +208,22 @@ class ScenePatch(Object):
         return mask_track
 
     def get_incident_angles(self):
+        # theta: elevation angle towards satellite from horizon in radians.
+        # phi:  Horizontal angle towards satellite' :abbr:`line of sight (LOS)`
+        #       in [rad] from East.
         east_shifts, _ = self.get_grid()
 
+        phi = num.empty_like(east_shifts)
         theta = num.empty_like(east_shifts)
-        theta.fill(self.incident_angle*d2r)
 
-        east_shifts += num.arctan(self.incident_angle) * self.apogee
-        phi = num.tan((self.inclination*d2r)/east_shifts)
+        east_shifts += num.tan(self.incident_angle*d2r) * self.apogee
+        theta = num.pi/2 - num.arctan(east_shifts/self.apogee)
+
+        if self.orbit_direction == 'Ascending':
+            phi.fill(self.inclination*d2r + num.pi/2)
+        elif self.orbit_direction == 'Descending':
+            phi.fill(-self.inclination*d2r - num.pi/2)
+            theta = num.fliplr(theta)
 
         return theta, phi
 
@@ -332,21 +341,21 @@ class InSARGenerator(TargetGenerator):
         help='Inclination of the satellite orbit towards equatorial plane'
              ' in [deg]. Defaults to Sentinel-1 (98.1 deg).')
     apogee = Float.T(
-        default=693. * km,
+        default=693.*km,
         help='Apogee of the satellite in [m]. '
              'Defaults to Sentinel-1 (693 km).')
     swath_width = Float.T(
-        default=250 * km,
+        default=250*km,
         help='Swath width in [m]. '
              'Defaults to Sentinel-1 Interfeometric Wide Swath Mode (IW).'
              ' (IW; 250 km).')
     track_length = Float.T(
-        default=150 * km,
+        default=150*km,
         help='Track length in [m]. Defaults to 200 km.')
     incident_angle = Float.T(
         default=29.1,
         help='Near range incident angle in [deg]. Defaults to 29.1 deg;'
-             ' Sentinel IW mode.')
+             ' Sentinel IW mode (29.1 - 46.0 deg).')
     resolution = Tuple.T(
         default=(250, 250),
         help='Resolution of raster in east x north [px].')
