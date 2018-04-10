@@ -2916,39 +2916,32 @@ class LocalEngine(Engine):
         return base_seismogram, tcounters
 
     def base_statics(self, source, target, components, nthreads):
+        tcounters = [xtime()]
+        store_ = self.get_store(target.store_id)
 
-        class OkadaSource(object):
-            pass
-
-        if isinstance(source, OkadaSource):
-            pass
+        if target.tsnapshot is not None:
+            n_f = store_.config.sample_rate
+            itsnapshot = int(num.floor(target.tsnapshot * n_f))
+            # print target.tsnapshot, n_f, itsnapshot
         else:
-            tcounters = [xtime()]
-            store_ = self.get_store(target.store_id)
+            itsnapshot = 1
+        tcounters.append(xtime())
 
-            if target.tsnapshot is not None:
-                n_f = store_.config.sample_rate
-                itsnapshot = int(num.floor(target.tsnapshot * n_f))
-                # print target.tsnapshot, n_f, itsnapshot
-            else:
-                itsnapshot = 1
-            tcounters.append(xtime())
+        base_source = source.discretize_basesource(store_, target=target)
 
-            base_source = source.discretize_basesource(store_, target=target)
+        tcounters.append(xtime())
 
-            tcounters.append(xtime())
+        base_statics = store_.statics(
+            base_source,
+            target,
+            itsnapshot,
+            components,
+            target.interpolation,
+            nthreads)
 
-            base_statics = store_.statics(
-                base_source,
-                target,
-                itsnapshot,
-                components,
-                target.interpolation,
-                nthreads)
+        tcounters.append(xtime())
 
-            tcounters.append(xtime())
-
-            return base_statics, tcounters
+        return base_statics, tcounters
 
     def _post_process_dynamic(self, base_seismogram, source, target):
         deltat = list(base_seismogram.values())[0].deltat
