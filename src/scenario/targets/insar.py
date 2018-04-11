@@ -42,9 +42,9 @@ class ScenePatch(Object):
         help='Ground incident angle in [deg].')
     resolution = Tuple.T(
         help='Resolution of raster in east x north [px].')
-    track_direction = StringChoice.T(
+    orbital_node = StringChoice.T(
         ['Ascending', 'Descending'],
-        help='Orbit direction.')
+        help='Orbit heading.')
     mask_water = Bool.T(
         default=True,
         help='Mask water bodies.')
@@ -79,10 +79,13 @@ class ScenePatch(Object):
 
             scene_config = SceneConfig(
                 meta=Meta(
-                    scene_title='Pyrocko Scenario Generator ({})'
-                                .format(datetime.now()),
-                    orbit_direction=patch.track_direction,
-                    satellite_name='Sentinel-1'),
+                    scene_title='Pyrocko Scenario Generator - {orbit} ({time})'
+                                .format(orbit=self.scene_patch.orbital_node,
+                                        time=datetime.now()),
+                    orbit_direction=patch.orbital_node,
+                    scene_id='pyrocko.scenario-%s'
+                             % self.scene_patch.orbital_node,
+                    satellite_name='Sentinel-1 (Scenario)'),
                 frame=FrameConfig(
                     llLat=float(llLat),
                     llLon=float(llLon),
@@ -129,31 +132,29 @@ class ScenePatch(Object):
     def get_corner_coordinates(self):
         inc = self.inclination
 
-        if self.track_direction == 'Ascending':
-            llLat, llLon = self.get_ll_anchor()
-            urLat, urLon = self.get_ur_anchor()
+        llLat, llLon = self.get_ll_anchor()
+        urLat, urLon = self.get_ur_anchor()
+
+        if self.orbital_node == 'Ascending':
 
             ulLat, ulLon = od.ne_to_latlon(
                 self.lat_center, self.lon_center,
                 self.track_length/2,
-                -num.tanh(inc*d2r) * self.width/2)
+                -num.tan(inc*d2r) * self.width/2)
             lrLat, lrLon = od.ne_to_latlon(
                 self.lat_center, self.lon_center,
                 -self.track_length/2,
-                num.tanh(inc*d2r) * self.width/2)
+                num.tan(inc*d2r) * self.width/2)
 
-        elif self.track_direction == 'Descending':
-            ulLat, ulLon = self.get_ul_anchor()
-            lrLat, lrLon = self.get_lr_anchor()
-
+        elif self.orbital_node == 'Descending':
             urLat, urLon = od.ne_to_latlon(
                 self.lat_center, self.lon_center,
                 self.track_length/2,
-                num.tanh(inc*d2r) * self.width/2)
+                num.tan(inc*d2r) * self.width/2)
             llLat, llLon = od.ne_to_latlon(
                 self.lat_center, self.lon_center,
                 -self.track_length/2,
-                -num.tanh(inc*d2r) * self.width/2)
+                -num.tan(inc*d2r) * self.width/2)
 
         return ((llLat, llLon), (ulLat, ulLon),
                 (urLat, urLon), (lrLat, lrLon))
@@ -180,7 +181,7 @@ class ScenePatch(Object):
             east_shifts > track[:, num.newaxis],
             east_shifts < (track + self.swath_width)[:, num.newaxis])
 
-        if self.track_direction == 'Ascending':
+        if self.orbital_node == 'Ascending':
             track_mask = num.fliplr(track_mask)
 
         return track_mask
@@ -217,13 +218,16 @@ class ScenePatch(Object):
         theta = num.empty_like(east_shifts)
 
         east_shifts += num.tan(self.incident_angle*d2r) * self.apogee
-        theta = num.pi/2 - num.arctan(east_shifts/self.apogee)
+        theta = num.arctan(east_shifts/self.apogee)
 
-        if self.orbit_direction == 'Ascending':
+        if self.orbital_node == 'Ascending':
             phi.fill(self.inclination*d2r + num.pi/2)
-        elif self.orbit_direction == 'Descending':
-            phi.fill(-self.inclination*d2r - num.pi/2)
+        elif self.orbital_node == 'Descending':
+            phi.fill(2*num.pi-(self.inclination*d2r + 3/2*num.pi))
             theta = num.fliplr(theta)
+        else:
+            raise AttributeError(
+                'Orbital node %s not defined!' % self.orbital_node)
 
         return theta, phi
 
@@ -382,7 +386,7 @@ class InSARGenerator(TargetGenerator):
                 track_length=self.track_length,
                 incident_angle=self.incident_angle,
                 resolution=self.resolution,
-                track_direction=direction,
+                orbital_node=direction,
                 mask_water=self.mask_water)
             scene_patches.append(patch)
 
@@ -441,11 +445,11 @@ class InSARGenerator(TargetGenerator):
         tmin, tmax = self.get_time_range(sources)
         tts = util.time_to_str
 
-        fn_tpl = op.join(path_insar, 'insar-scene-{track_direction}_%s_%s'
+        fn_tpl = op.join(path_insar, 'insar-scene-{orbital_node}_%s_%s'
                          % (tts(tmin), tts(tmax)))
 
         def scene_fn(track):
-            return fn_tpl.format(track_direction=track.lower())
+            return fn_tpl.format(orbital_node=track.lower())
 
         for track in ('ascending', 'descending'):
             fn = '%s.yml' % scene_fn(track)
