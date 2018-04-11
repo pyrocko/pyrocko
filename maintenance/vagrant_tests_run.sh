@@ -8,8 +8,10 @@ run_test() {
     thetest=$3
     echo "testing box $box"
     cd "vagrant/$box"
-    ./outside.sh "$branch" "$thetest"
-    sleep 2
+    ./outside.sh "$branch" "$thetest" \
+        > >(awk '{printf "%-20s %s\n", "'$box':", $0}') \
+        2> >(awk '{printf "%-20s %s\n", "'$box':", $0}') \
+            || echo "failure of outside.sh script for box $box"
     cd ../..
     echo "done testing box $box"
 }
@@ -55,11 +57,14 @@ case $mode in
 
         i=0
         for box in `ls vagrant` ; do
+            sleep 10  # prevent some race condition in vm startup
             run_test "$box" "$branch" "$thetest" &
             pids[${i}]=$!
             let 'i+=1'
         done
-        for pid in ${pids[*]}; do wait $pid; done;
+        for pid in ${pids[*]}; do
+            wait $pid || echo "no process with pid $pid to wait for"
+        done
 
     ;;
 
