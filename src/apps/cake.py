@@ -8,9 +8,13 @@ from builtins import str
 import sys
 import re
 import numpy as num
+#import logger
 from pyrocko import cake, util, orthodrome
 from pyrocko.plot import cake_plot as plot
 from optparse import OptionParser, OptionGroup
+import matplotlib.pyplot as plt
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
+    mpl_graph_color, mpl_color
 
 r2d = cake.r2d
 
@@ -257,8 +261,8 @@ as in --phases.''')
 
         parser.add_option_group(group)
 
-    if any(x in want for x in ('output_format',)):
-        group = OptionGroup(parser, 'Output')
+    if any(x in want for x in ('output_format', 'save', 'size', 'show')):
+        group = OptionGroup(parser, 'Output', 'Output specifications')
         if 'output_format' in want:
             group.add_option(
                 '--output-format', dest='output_format', metavar='FORMAT',
@@ -266,6 +270,21 @@ as in --phases.''')
                 choices=('textual', 'nd'),
                 help='Set model output format (available: textual, nd, '
                      'default: textual)')
+        if 'save' in want:
+            group.add_option(
+                '-s', '--save', dest='save', metavar='PATH',
+                help='saves plot to .png (default) or other py-supported\
+                 endings without showing, use --show or -u for showing',
+                default='')
+        if 'size' in want:
+            group.add_option(
+                '--size', dest='size', type='string',
+                default='a4',
+                help='gives size of returned plot, use \'a5\' or \'a4\'')
+        if 'show' in want:
+            group.add_option(
+                '-u', '--show', dest='show', action='store_true',
+                help='shows plot when saving (-u for unhide)')
 
         parser.add_option_group(group)
 
@@ -289,6 +308,15 @@ as in --phases.''')
 
     if 'output_format' in want:
         d['output_format'] = options.output_format
+
+    if 'save' in want:
+        d['save'] = options.save
+
+    if 'size' in want:
+        d['size'] = options.size
+
+    if 'show' in want:
+        d['show'] = options.show
 
     if 'aspect' in want:
         d['aspect'] = options.aspect
@@ -581,7 +609,38 @@ def print_arrivals(
             (slow, sd, ray.t, ray.takeoff_angle(), ray.incidence_angle(),
              100*ray.efficiency(), 100*ray.spreading()*ray.surface_sphere()),
             space)) + tuple(
-                x.ljust(17) for x in (ray.path.phase.definition(), su))))
+            x.ljust(17) for x in (ray.path.phase.definition(), su))))
+
+
+def plot_init(size, save, show):
+    fontsize = 9
+    mpl_init()
+    fig = plt.figure(figsize=mpl_papersize(size, 'landscape'))
+
+    labelpos = mpl_margins(fig, w=7., h=5., units=fontsize)
+    axes = fig.add_subplot(1, 1, 1)
+    labelpos(axes, 2., 1.5)
+
+    axes.plot([0, 1], [0, 9])
+    showplt = bool(show or not save)
+
+    return fig, axes, showplt
+
+
+class CakeError(Exception):
+    pass
+
+
+def plot_end(save, fig, show=True):
+    if save:
+        try:
+            fig.savefig(save)
+            if show:
+                plt.show()
+        except OSError as e:
+            raise CakeError(str(e))
+        except ValueError as e:
+            raise CakeError(str(e))
 
 
 def main(args=None):
@@ -680,15 +739,15 @@ To get further help and a list of available options for any subcommand run:
     elif command in ('plot-xt', 'plot-xp', 'plot-rays', 'plot'):
         if command in ('plot-xt', 'plot'):
             c = optparse(
-                ('model', 'phases'),
+                ('model', 'phases',),
                 ('zstart', 'zstop', 'distances', 'as_degrees', 'vred',
-                 'phase_colors'),
+                 'phase_colors', 'save', 'size', 'show'),
                 usage=subusage, descr=descr, args=args)
         else:
             c = optparse(
                 ('model', 'phases'),
                 ('zstart', 'zstop', 'distances', 'as_degrees', 'aspect',
-                 'shade_model', 'phase_colors'),
+                 'shade_model', 'phase_colors', 'save', 'size', 'show'),
                 usage=subusage, descr=descr, args=args)
 
         mod = c.model
@@ -700,34 +759,53 @@ To get further help and a list of available options for any subcommand run:
         else:
             arrivals = None
 
+        fig, axes, showplt = plot_init(c.size, c.save, c.show)
+
         if command == 'plot-xp':
-            plot.my_xp_plot(
-                paths, c.zstart, c.zstop, c.distances, c.as_degrees,
-                phase_colors=c.phase_colors)
+                plot.my_xp_plot(
+                    paths, c.zstart, c.zstop, c.distances,
+                    c.as_degrees, show=showplt, phase_colors=c.phase_colors)
+
         elif command == 'plot-xt':
             plot.my_xt_plot(
                 paths, c.zstart, c.zstop, c.distances, c.as_degrees,
-                vred=c.vred, phase_colors=c.phase_colors)
+                vred=c.vred, show=showplt,
+                phase_colors=c.phase_colors)
+
         elif command == 'plot-rays':
             if c.as_degrees:
                 plot.my_rays_plot_gcs(
                     mod, paths, arrivals, c.zstart, c.zstop, c.distances,
-                    phase_colors=c.phase_colors)
+                    show=showplt, phase_colors=c.phase_colors)
+
             else:
                 plot.my_rays_plot(
                     mod, paths, arrivals, c.zstart, c.zstop, c.distances,
-                    aspect=c.aspect, shade_model=c.shade_model,
+                    show=showplt, aspect=c.aspect, shade_model=c.shade_model,
                     phase_colors=c.phase_colors)
 
         elif command == 'plot':
             plot.my_combi_plot(
                 mod, paths, arrivals, c.zstart, c.zstop, c.distances,
-                c.as_degrees, vred=c.vred, phase_colors=c.phase_colors)
+                c.as_degrees, show=showplt, vred=c.vred,
+                phase_colors=c.phase_colors)
+
+        try:
+            plot_end(save=c.save, fig=fig, show=c.show)
+        except CakeError as e:
+            exit('cake.py: %s' % str(e))
 
     elif command in ('plot-model',):
-        c = optparse(('model',), (), usage=subusage, descr=descr, args=args)
+        c = optparse(
+            ('model',), ('save', 'size', 'show'),
+            usage=subusage, descr=descr, args=args)
         mod = c.model
-        plot.my_model_plot(mod)
+        fig, axes, showplt = plot_init(c.size, c.save, c.show)
+        plot.my_model_plot(mod, show=showplt)
+        try:
+            plot_end(save=c.save, fig=fig, show=c.show)
+        except CakeError as e:
+            exit('cake.py: %s' % str(e))
 
     elif command in ('simplify-model',):
         c = optparse(('model',), ('accuracy',),
@@ -758,7 +836,7 @@ To get further help and a list of available options for any subcommand run:
             (),
             ('model', 'accuracy', 'slowness', 'interface', 'phases',
              'distances', 'zstart', 'zstop', 'distances', 'as_degrees',
-             'material', 'vred'),
+             'material', 'vred', 'save'),
             usage='cake help-options', descr='list all available options',
             args=args)
 
@@ -767,7 +845,6 @@ To get further help and a list of available options for any subcommand run:
 
     else:
         sys.exit('cake: no such subcommand: %s' % command)
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])

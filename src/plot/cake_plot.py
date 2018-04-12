@@ -10,6 +10,8 @@ import numpy as num
 from pyrocko import cake
 from . import mpl_labelspace as labelspace, mpl_init,\
     mpl_color as str_to_mpl_color, InvalidColorDef
+from pyrocko.plot import mpl_init, mpl_papersize, mpl_margins, \
+    mpl_graph_color, mpl_color
 
 str_to_mpl_color
 InvalidColorDef
@@ -20,7 +22,7 @@ r2d = cake.r2d
 
 def globe_cross_section():
     # modified from http://stackoverflow.com/questions/2417794/
-    # how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-to
+    # how-to-make-the-angles-in-a-matplotlib-polar-plot-go-clockwise-with-0-at-the-top
 
     from matplotlib.projections import PolarAxes, register_projection
     from matplotlib.transforms import Affine2D, Bbox, IdentityTransform
@@ -555,12 +557,43 @@ def plot_surface_efficiency(mat):
     plt.show()
 
 
+def my_xp_plot(
+        paths, zstart, zstop,
+        distances=None,
+        as_degrees=False,
+        axes=None,
+        show=True,
+        phase_colors={}):
+
+    if axes is None:
+        from matplotlib import pyplot as plt
+        mpl_init()
+        axes = plt.gca()
+    else:
+        plt = None
+
+    labelspace(axes)
+    xmin, xmax = plot_xp(
+        paths, zstart, zstop, axes=axes, phase_colors=phase_colors)
+
+    if distances is not None:
+        xmin, xmax = distances.min(), distances.max()
+
+    axes.set_xlim(xmin, xmax)
+    labels_xp(as_degrees=as_degrees, axes=axes)
+
+    if plt:
+        if show is True:
+            plt.show()
+
+
 def my_xt_plot(
         paths, zstart, zstop,
         distances=None,
         as_degrees=False,
         vred=None,
         axes=None,
+        show=True,
         phase_colors={}):
 
     if axes is None:
@@ -587,40 +620,14 @@ def my_xt_plot(
     axes.set_ylim(ymin, ymax)
     labels_xt(as_degrees=as_degrees, vred=vred, axes=axes)
     if plt:
-        plt.show()
-
-
-def my_xp_plot(
-        paths, zstart, zstop,
-        distances=None,
-        as_degrees=False,
-        axes=None,
-        phase_colors={}):
-
-    if axes is None:
-        from matplotlib import pyplot as plt
-        mpl_init()
-        axes = plt.gca()
-    else:
-        plt = None
-
-    labelspace(axes)
-    xmin, xmax = plot_xp(
-        paths, zstart, zstop, axes=axes, phase_colors=phase_colors)
-
-    if distances is not None:
-        xmin, xmax = distances.min(), distances.max()
-
-    axes.set_xlim(xmin, xmax)
-    labels_xp(as_degrees=as_degrees, axes=axes)
-
-    if plt:
-        plt.show()
+        if show is True:
+            plt.show()
 
 
 def my_rays_plot_gcs(
         mod, paths, rays, zstart, zstop,
         distances=None,
+        show=True,
         phase_colors={}):
 
     from matplotlib import pyplot as plt
@@ -637,7 +644,8 @@ def my_rays_plot_gcs(
     axes.get_yaxis().set_visible(False)
 
     if plt:
-        plt.show()
+        if show is True:
+            plt.show()
 
 
 def my_rays_plot(
@@ -645,6 +653,7 @@ def my_rays_plot(
         distances=None,
         as_degrees=False,
         axes=None,
+        show=True,
         aspect=None,
         shade_model=True,
         phase_colors={}):
@@ -678,13 +687,15 @@ def my_rays_plot(
     axes.set_ylim(ymax+my, ymin-my)
 
     if plt:
-        plt.show()
+        if show is True:
+            plt.show()
 
 
 def my_combi_plot(
         mod, paths, rays, zstart, zstop,
         distances=None,
         as_degrees=False,
+        show=True,
         vred=None,
         phase_colors={}):
 
@@ -721,10 +732,12 @@ def my_combi_plot(
     my = (ymax-ymin)*0.05
     ax2.set_xlim(xmin-mx, xmax+mx)
     ax2.set_ylim(ymax+my, ymin-my)
-    plt.show()
+
+    if show is True:
+        plt.show()
 
 
-def my_model_plot(mod, axes=None):
+def my_model_plot(mod, axes=None, show=True):
 
     if axes is None:
         from matplotlib import pyplot as plt
@@ -749,4 +762,5 @@ def my_model_plot(mod, axes=None):
     axes.set_ylim(ymax+my, ymin-my)
     axes.set_xlim(xmin, xmax+mx)
     if plt:
-        plt.show()
+        if show is True:
+            plt.show()
