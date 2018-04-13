@@ -704,7 +704,15 @@ class PhaseMarker(Marker):
         t = []
         if self._phasename is not None:
             t.append(self._phasename)
-        if self._polarity is not None:
+        if self._polarity is None:
+            pass
+        elif self._polarity == 'positive':
+            t.append('+')
+        elif self._polarity == 'negative':
+            t.append('-')
+        elif self._polarity == 'undecidable':
+            t.append('0')
+        else:
             t.append(self._polarity)
 
         if self._automatic:
@@ -745,6 +753,12 @@ class PhaseMarker(Marker):
 
     def set_phasename(self, phasename):
         self._phasename = phasename
+
+    def get_polarity(self):
+        return self._polarity
+
+    def set_polarity(self, polarity):
+        self._polarity = polarity
 
     def convert_to_marker(self):
         del self._event
