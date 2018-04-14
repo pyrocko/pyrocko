@@ -958,7 +958,7 @@ def MakePileViewerMainClass(base):
                 'Show Scale Axes', self.menu)
             self.menuitem_showscaleaxis.setCheckable(True)
             self.menuitem_showscaleaxis.setChecked(
-                self.config.show_scale_axis)
+                self.config.show_scale_axes)
             self.menu.addAction(self.menuitem_showscaleaxis)
 
             self.menuitem_showzeroline = qw.QAction(
