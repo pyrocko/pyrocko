@@ -228,6 +228,7 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     points2 = num.repeat(points, nt, axis=0)
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
+    amplitudes2 /= num.sum(amplitudes2)
 
     points2[:, 0] += north
     points2[:, 1] += east
@@ -1387,6 +1388,8 @@ class RectangularExplosionSource(ExplosionSource):
             self.strike, self.dip, self.length, self.width, self.anchor,
             self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
+        amplitudes *= self.get_moment(store, target)
+
         return meta.DiscretizedExplosionSource(
             lat=self.lat,
             lon=self.lon,
@@ -1743,7 +1746,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 points=points,
                 interpolation=target.interpolation)
 
-            amplitudes *= dl * dw * shear_moduli * self.slip
+            amplitudes = dl * dw * shear_moduli * self.slip
         else:
             amplitudes *= self.get_moment()
 

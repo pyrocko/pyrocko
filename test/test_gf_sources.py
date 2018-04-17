@@ -327,6 +327,28 @@ class GFSourcesTestCase(unittest.TestCase):
             rect2.get_magnitude(
                 store, gf.Target(interpolation='nearest_neighbor')))
 
+    def test_discretize_rect_source(self):
+
+        store = self.dummy_homogeneous_store()
+        target = gf.Target(interpolation='nearest_neighbor')
+
+        for source in [
+                gf.RectangularSource(
+                    depth=10*km,
+                    slip=0.5,
+                    width=5*km,
+                    length=5*km),
+                gf.RectangularSource(
+                    depth=10*km,
+                    magnitude=5.0,
+                    width=5*km,
+                    length=5*km)]:
+
+            dsource = source.discretize_basesource(store, target)
+            m1 = source.get_moment(store, target)
+            m2 = dsource.centroid().pyrocko_moment_tensor().scalar_moment()
+            assert abs(m1 - m2) < abs(m1 + m2) * 1e-6
+
 
 if __name__ == '__main__':
     util.setup_logging('test_gf_sources', 'warning')
