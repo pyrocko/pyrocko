@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 
 import sys
 import math
@@ -526,22 +526,30 @@ class FigureFrame(qw.QFrame):
 
         matplotlib.rc('xtick', direction='out', labelsize=fontsize)
         matplotlib.rc('ytick', direction='out', labelsize=fontsize)
-        matplotlib.rc('xtick.major', size=8)
-        matplotlib.rc('xtick.minor', size=4)
-        matplotlib.rc('ytick.major', size=8)
-        matplotlib.rc('ytick.minor', size=4)
-        # matplotlib.rc(
-        #     'figure', facecolor=tohex(bgrgb), edgecolor=tohex(fgcolor))
+        matplotlib.rc('xtick.major', size=8, width=1)
+        matplotlib.rc('xtick.minor', size=4, width=1)
+        matplotlib.rc('ytick.major', size=8, width=1)
+        matplotlib.rc('ytick.minor', size=4, width=1)
         matplotlib.rc('figure', facecolor='white', edgecolor=tohex(fgcolor))
+
         matplotlib.rc(
-            'font', family='sans-serif', weight='bold', size=fontsize,
-            **{'sans-serif': [font.family()]})
+            'font',
+            family='sans-serif',
+            weight='bold',
+            size=fontsize,
+            **{'sans-serif': [
+                font.family(),
+                'DejaVu Sans', 'Bitstream Vera Sans', 'Lucida Grande',
+                'Verdana', 'Geneva', 'Lucid', 'Arial', 'Helvetica']})
+
+        matplotlib.rc('legend', fontsize=fontsize)
+
         matplotlib.rc('text', color=tohex(fgcolor))
         matplotlib.rc('xtick', color=tohex(fgcolor))
         matplotlib.rc('ytick', color=tohex(fgcolor))
         matplotlib.rc('figure.subplot', bottom=0.15)
 
-        matplotlib.rc('axes', linewidth=0.5, unicode_minus=False)
+        matplotlib.rc('axes', linewidth=1.0, unicode_minus=False)
         matplotlib.rc(
             'axes',
             facecolor='white',
