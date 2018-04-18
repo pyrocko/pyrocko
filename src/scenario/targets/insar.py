@@ -82,7 +82,7 @@ class ScenePatch(Object):
                     scene_title='Pyrocko Scenario Generator - {orbit} ({time})'
                                 .format(orbit=self.scene_patch.orbital_node,
                                         time=datetime.now()),
-                    orbit_direction=patch.orbital_node,
+                    orbital_node=patch.orbital_node,
                     scene_id='pyrocko.scenario-%s'
                              % self.scene_patch.orbital_node,
                     satellite_name='Sentinel-1 (Scenario)'),
@@ -418,9 +418,9 @@ class InSARGenerator(TargetGenerator):
             sc.meta.time_slave = float(tmax)
 
         scenes_asc = [sc for sc in scenes
-                      if sc.config.meta.orbit_direction == 'Ascending']
+                      if sc.config.meta.orbital_node == 'Ascending']
         scenes_dsc = [sc for sc in scenes
-                      if sc.config.meta.orbit_direction == 'Descending']
+                      if sc.config.meta.orbital_node == 'Descending']
 
         def stack_scenes(scenes):
             base = scenes[0]
@@ -460,7 +460,7 @@ class InSARGenerator(TargetGenerator):
 
             scenes = self.get_insar_scenes(engine, sources, tmin, tmax)
             for sc in scenes:
-                fn = scene_fn(sc.config.meta.orbit_direction)
+                fn = scene_fn(sc.config.meta.orbital_node)
                 logger.debug('Writing %s' % fn)
                 sc.save('%s.npz' % fn)
 
