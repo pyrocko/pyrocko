@@ -28,7 +28,9 @@ class SourceGenerator(LocationGenerator):
     def get_sources(self):
         sources = []
         for ievent in range(self.nevents):
-            sources.append(self.get_source(ievent))
+            src = self.get_source(ievent)
+            src.name = 'scenario_ev%03d' % (ievent + 1)
+            sources.append(src)
 
         return sources
 
@@ -40,7 +42,7 @@ class SourceGenerator(LocationGenerator):
 
         fn_events = op.join(path, 'events.txt')
         with open(fn_events, 'w') as f:
-            for src in self.get_sources():
+            for isrc, src in enumerate(self.get_sources()):
                 f.write(src.pyrocko_event().dump())
 
         return [fn_events, fn_sources]
