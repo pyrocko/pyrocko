@@ -1290,6 +1290,7 @@ def MakePileViewerMainClass(base):
                 self.active_event_marker.set_active(False)
 
             self.active_event_marker_changed.emit(-1)
+            self.active_event_marker = None
 
         def set_active_event_marker(self, event_marker):
             if self.active_event_marker:
