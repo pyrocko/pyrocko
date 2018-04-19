@@ -621,10 +621,7 @@ def plot_init (size,save,show):
     labelpos(axes, 2., 1.5)
 
     axes.plot([0, 1], [0, 9])
-    if show or not(save):
-        showplt=True
-    else:
-        showplt=False # there might be smarter expressions
+    showplt = bool(show or not save)
 
     return fig, axes, showplt
 
