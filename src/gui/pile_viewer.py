@@ -1944,7 +1944,10 @@ def MakePileViewerMainClass(base):
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
 
-            keytext = str(key_event.text())
+            try:
+                keytext = str(key_event.text())
+            except UnicodeEncodeError:
+                return
 
             if keytext == '?':
                 self.help()
@@ -3186,7 +3189,8 @@ def MakePileViewerMainClass(base):
 
                         for trace in traces:
 
-                            if not (trace.meta and trace.meta.get('tabu', False)):
+                            if not (trace.meta
+                                    and trace.meta.get('tabu', False)):
 
                                 if fft_filtering:
                                     but = pyrocko.trace.ButterworthResponse
