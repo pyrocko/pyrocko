@@ -1741,10 +1741,12 @@ class RectangularSource(SourceWithDerivedMagnitude):
             decimation_factor=self.decimation_factor)
 
         if self.slip is not None:
+            interpolation = 'nearest_neighbor' if target is None\
+                            else target.interpolation
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points,
-                interpolation=target.interpolation)
+                interpolation=interpolation)
 
             amplitudes = dl * dw * shear_moduli * self.slip
         else:
