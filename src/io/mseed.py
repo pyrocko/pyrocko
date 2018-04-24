@@ -148,7 +148,7 @@ def detect(first512):
             return False
 
         blockette_type = rec[8:8+3]
-        if not re.match(r'^\d\d\d$', blockette_type):
+        if not re.match(r'^\d\d\d$', str(blockette_type)):
             return False
 
         try:
