@@ -88,15 +88,20 @@ class ConversionError(Exception):
 
 
 class NoSuchStore(BadRequest):
-    def __init__(self, store_id=None):
+    def __init__(self, store_id=None, dirs=None):
         BadRequest.__init__(self)
         self.store_id = store_id
+        self.dirs = dirs
 
     def __str__(self):
         if self.store_id is not None:
-            return 'no GF store with id "%s" found.' % self.store_id
+            rstr = 'no GF store with id "%s" found.' % self.store_id
         else:
-            return 'GF store not found'
+            rstr = 'GF store not found.'
+
+        if self.dirs is not None:
+            rstr += ' Searched folders: %s' % ', '.join(self.dirs)
+        return rstr
 
 
 def ufloat(s):
@@ -2777,7 +2782,7 @@ class LocalEngine(Engine):
             self._scan_stores()
 
         if store_id not in self._id_to_store_dir:
-            raise NoSuchStore(store_id)
+            raise NoSuchStore(store_id, self.iter_store_dirs())
 
         return self._id_to_store_dir[store_id]
 
