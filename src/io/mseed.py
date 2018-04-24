@@ -147,8 +147,8 @@ def detect(first512):
         if continuation_code != b' ':
             return False
 
-        blockette_type = rec[8:8+3]
-        if not re.match(r'^\d\d\d$', str(blockette_type)):
+        blockette_type = rec[8:8+3].decode()
+        if not re.match(r'^\d\d\d$', blockette_type):
             return False
 
         try:
