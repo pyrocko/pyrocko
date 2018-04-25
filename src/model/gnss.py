@@ -103,9 +103,9 @@ class GNSSCampaign(Object):
 
     def get_radius(self):
         coords = self.coordinates
-        ll = coords[:, 0].min(), coords[:, 1].min()
-        ur = coords[:, 0].max(), coords[:, 1].max()
-        return od.distance_accurate50m(*ll, *ur) / 2.
+        return od.distance_accurate50m(
+            coords[:, 0].min(), coords[:, 1].min(),
+            coords[:, 0].max(), coords[:, 1].max()) / 2.
 
     @property
     def coordinates(self):
