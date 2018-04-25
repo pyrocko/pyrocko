@@ -179,7 +179,7 @@ class Integrator(pyrocko.shadow_pile.ShadowPile):
 
     def process(self, iblock, tmin, tmax, traces):
         for trace in traces:
-            trace.ydata -= trace.ydata.mean()
+            trace.ydata = trace.ydata - trace.ydata.mean()
             trace.ydata = num.cumsum(trace.ydata)
 
         return traces
