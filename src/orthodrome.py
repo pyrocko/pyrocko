@@ -1013,6 +1013,12 @@ def geographic_midpoint(lats, lons, weights=None):
     return lat/d2r, lon/d2r
 
 
+def geographic_midpoint_locations(locations, weights=None):
+    coords = num.array([loc.effective_latlon
+                        for loc in locations])
+    return geographic_midpoint(coords[:, 0], coords[:, 1], weights)
+
+
 def geodetic_to_ecef(lat, lon, alt):
     '''
     Convert geodetic coordinates to Earth-Centered, Earth-Fixed (ECEF)

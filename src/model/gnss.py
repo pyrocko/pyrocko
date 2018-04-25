@@ -1,4 +1,6 @@
 import math
+import numpy as num
+import pyrocko.orthodrome as od
 
 from pyrocko.guts import (Object, Float, String, List, StringChoice,
                           DateTimestamp)
@@ -95,6 +97,19 @@ class GNSSCampaign(Object):
             if sta.code == station_code:
                 return sta
         raise ValueError('Could not find station %s' % station_code)
+
+    def get_center_latlon(self):
+        return od.geographic_midpoint_locations(self.stations)
+
+    def get_radius(self):
+        coords = self.coordinates
+        ll = coords[:, 0].min(), coords[:, 1].min()
+        ur = coords[:, 0].max(), coords[:, 1].max()
+        return od.distance_accurate50m(*ll, *ur) / 2.
+
+    @property
+    def coordinates(self):
+        return num.array([loc.effective_latlon for loc in self.stations])
 
     @property
     def nstations(self):
