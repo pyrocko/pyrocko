@@ -1098,7 +1098,7 @@ class Map(Object):
 
         kwargs = {}
         kwargs.update(default_psxy_style)
-        kwargs.update(elf.jxyr)
+        kwargs.update(self.jxyr)
 
         self.gmt.psvelo(in_rows=rows, **kwargs)
 
