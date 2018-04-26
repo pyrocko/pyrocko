@@ -784,17 +784,19 @@ class PhaseMarker(Marker):
 
         et = None, None
         if self._event:
-            def st(t):
-                return util.time_to_str(
-                    t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
-
-            et = st(self._event.time).split()
+            et = self._st(self._event.time, fdigits).split()
+        elif self._event_time:
+            et = self._st(self._event_time, fdigits).split()
 
         attributes.extend([
             self.get_event_hash(), et[0], et[1], self._phasename,
             self._polarity, self._automatic])
 
         return attributes
+
+    def _st(self, t, fdigits):
+        return util.time_to_str(
+            t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
 
     def get_attribute_widths(self, fdigits=3):
         ws = [6]
