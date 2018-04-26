@@ -23,15 +23,19 @@ logger = logging.getLogger('pyrocko.gui.marker')
 def str_to_float_or_none(s):
     if s == 'None':
         return None
-    else:
-        return float(s)
+    return float(s)
 
 
 def str_to_str_or_none(s):
     if s == 'None':
         return None
-    else:
-        return s
+    return s
+
+
+def str_to_int_or_none(s):
+    if s == 'None':
+        return None
+    return int(s)
 
 
 def str_to_bool(s):
@@ -820,7 +824,8 @@ class PhaseMarker(Marker):
         else:
             event_time = None
 
-        phasename, polarity = [str_to_str_or_none(x) for x in vals[i:i+2]]
+        phasename = str_to_str_or_none(vals[i])
+        polarity = str_to_int_or_none(vals[i+1])
         automatic = str_to_bool(vals[i+2])
         marker = PhaseMarker(nslc_ids, tmin, tmax, kind, event=None,
                              event_hash=event_hash, event_time=event_time,
