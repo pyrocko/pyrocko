@@ -41,7 +41,7 @@ if sys.version_info[0] >= 3 or use_pyqt5:
             return 0.0, False
 
     def toString(val):
-        return str(val)
+        return str(val).encode('utf-8').decode()
 
 else:
     def toDateTime(val):
