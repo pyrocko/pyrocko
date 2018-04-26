@@ -1096,11 +1096,11 @@ class Map(Object):
                      s.code)
                     for s in campaign.stations]
 
-        self.gmt.psvelo(
-            in_rows=rows,
-            **default_psxy_style,
-            **self.jxyr
-            )
+        kwargs = {}
+        kwargs.update(default_psxy_style)
+        kwargs.update(elf.jxyr)
+
+        self.gmt.psvelo(in_rows=rows, **kwargs)
 
     def draw_plates(self):
         from pyrocko.dataset import tectonics
