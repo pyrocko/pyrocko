@@ -1067,7 +1067,7 @@ class Map(Object):
         return tile
 
     def add_gnss_campaign(self, campaign,
-                          psxy_style=dict()):
+                          psxy_style=dict(), labels=True):
 
         offsets = num.array([math.sqrt(s.east.shift**2 + s.north.shift**2)
                              for s in campaign.stations])
@@ -1084,14 +1084,22 @@ class Map(Object):
         }
         default_psxy_style.update(psxy_style)
 
+        if labels:
+            rows = [(s.lon, s.lat,
+                     s.east.shift, s.north.shift,
+                     s.east.sigma, s.north.sigma, 0)
+                    for s in campaign.stations]
+        else:
+            rows = [(s.lon, s.lat,
+                     s.east.shift, s.north.shift,
+                     s.east.sigma, s.north.sigma, 0,
+                     s.code)
+                    for s in campaign.stations]
+
         self.gmt.psvelo(
-            in_rows=[(s.lon, s.lat,
-                      s.east.shift, s.north.shift,
-                      s.east.sigma, s.north.sigma, 0,
-                      s.code)
-                     for s in campaign.stations],
-            *self.jxyr,
-            **default_psxy_style
+            in_rows=rows,
+            **default_psxy_style,
+            **self.jxyr
             )
 
     def draw_plates(self):
