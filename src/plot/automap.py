@@ -1074,8 +1074,7 @@ class Map(Object):
         scale = 1./offsets.max()
 
         default_psxy_style = {
-            'h': 2,
-            'h': 2,
+            'h': 0,
             'W': '0.5p,black',
             'G': 'black',
             'L': True,
