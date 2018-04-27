@@ -1,3 +1,4 @@
+import logging
 import math
 import numpy as num
 import pyrocko.orthodrome as od
@@ -7,6 +8,7 @@ from pyrocko.guts import (Object, Float, String, List, StringChoice,
 from pyrocko.model import Location
 
 guts_prefix = 'pf.gnss'
+logger = logging.getLogger('pyrocko.model.gnss')
 
 
 class GNSSComponent(Object):
@@ -55,10 +57,24 @@ class GNSSStation(Location):
         default='static')
 
     survey_start = DateTimestamp.T(
-        optional=True)
+        optional=True,
+        help='Survey start time')
 
     survey_end = DateTimestamp.T(
-        optional=True)
+        optional=True,
+        help='Survey end time')
+
+    correlation_ne = Float.T(
+        optional=True,
+        help='North-East component correlation')
+
+    correlation_eu = Float.T(
+        optional=True,
+        help='East-Up component correlation')
+
+    correlation_nu = Float.T(
+        optional=True,
+        help='North-Up component correlation')
 
     north = GNSSComponent.T(
         default=GNSSComponent.D())
@@ -89,6 +105,10 @@ class GNSSCampaign(Object):
     survey_end = DateTimestamp.T(
         optional=True)
 
+    def __init__(self, *args, **kwargs):
+        Object.__init__(self, *args, **kwargs)
+        self._cov_arr = None
+
     def add_station(self, station):
         return self.stations.append(station)
 
@@ -106,6 +126,18 @@ class GNSSCampaign(Object):
         return od.distance_accurate50m(
             coords[:, 0].min(), coords[:, 1].min(),
             coords[:, 0].max(), coords[:, 1].max()) / 2.
+
+    def get_covariance_matrix(self):
+        logger.warn('gnss.get_covariance_matrix is not fully implemented!')
+        if self._cov_arr is None:
+            cov_arr = num.zeros((self.nstations*3, self.nstations*3))
+
+            cov_arr[num.diag_indeces(cov_arr)] = num.array(
+                [(s.north.sigma, s.east.sigma, s.up.sigma)
+                for s in self.stations]).ravel()
+
+            self._cov_arr = cov_arr
+        return self._cov_arr
 
     @property
     def coordinates(self):
