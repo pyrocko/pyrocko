@@ -1094,6 +1094,7 @@ class Map(Object):
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, 0)
                     for s in campaign.stations]
+        print(rows)
 
         self.gmt.psvelo(
             in_rows=rows,
