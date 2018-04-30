@@ -1957,6 +1957,18 @@ def MakePileViewerMainClass(base):
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
 
+            elif key_event.key() == qc.Qt.Key_Up:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        p = 1 if m.get_polarity() != 1 else None
+                        m.set_polarity(p)
+
+            elif key_event.key() == qc.Qt.Key_Down:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        p = -1 if m.get_polarity() != -1 else None
+                        m.set_polarity(p)
+
             elif keytext == 'b':
                 dt = self.tmax - self.tmin
                 self.interrupt_following()

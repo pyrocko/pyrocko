@@ -23,15 +23,19 @@ logger = logging.getLogger('pyrocko.gui.marker')
 def str_to_float_or_none(s):
     if s == 'None':
         return None
-    else:
-        return float(s)
+    return float(s)
 
 
 def str_to_str_or_none(s):
     if s == 'None':
         return None
-    else:
-        return s
+    return s
+
+
+def str_to_int_or_none(s):
+    if s == 'None':
+        return None
+    return int(s)
 
 
 def str_to_bool(s):
@@ -649,6 +653,7 @@ class EventMarker(Marker):
 
 
 class PhaseMarker(Marker):
+    polarity_symbols = {1: u'\u2191', -1:u'\u2193', None: u''}
     '''
     A PhaseMarker is a GUI-element representing a seismological phase arrival
 
@@ -705,7 +710,7 @@ class PhaseMarker(Marker):
         if self._phasename is not None:
             t.append(self._phasename)
         if self._polarity is not None:
-            t.append(self._polarity)
+            t.append(self.polarity_symbols.get(self._polarity, ''))
 
         if self._automatic:
             t.append('@')
@@ -746,6 +751,14 @@ class PhaseMarker(Marker):
     def set_phasename(self, phasename):
         self._phasename = phasename
 
+    def set_polarity(self, polarity):
+        if polarity not in [1, -1, 0, None]:
+            raise ValueError('polarity has to be 1, -1, 0 or None')
+        self._polarity = polarity
+
+    def get_polarity(self):
+        return self._polarity
+
     def convert_to_marker(self):
         del self._event
         del self._event_hash
@@ -771,17 +784,19 @@ class PhaseMarker(Marker):
 
         et = None, None
         if self._event:
-            def st(t):
-                return util.time_to_str(
-                    t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
-
-            et = st(self._event.time).split()
+            et = self._st(self._event.time, fdigits).split()
+        elif self._event_time:
+            et = self._st(self._event_time, fdigits).split()
 
         attributes.extend([
             self.get_event_hash(), et[0], et[1], self._phasename,
             self._polarity, self._automatic])
 
         return attributes
+
+    def _st(self, t, fdigits):
+        return util.time_to_str(
+            t, format='%Y-%m-%d %H:%M:%S.'+'%iFRAC' % fdigits)
 
     def get_attribute_widths(self, fdigits=3):
         ws = [6]
@@ -811,7 +826,8 @@ class PhaseMarker(Marker):
         else:
             event_time = None
 
-        phasename, polarity = [str_to_str_or_none(x) for x in vals[i:i+2]]
+        phasename = str_to_str_or_none(vals[i])
+        polarity = str_to_int_or_none(vals[i+1])
         automatic = str_to_bool(vals[i+2])
         marker = PhaseMarker(nslc_ids, tmin, tmax, kind, event=None,
                              event_hash=event_hash, event_time=event_time,
