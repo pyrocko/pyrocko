@@ -2,6 +2,7 @@
 from __future__ import division, print_function, absolute_import
 from builtins import range
 
+import math
 import unittest
 import numpy as num
 from io import BytesIO
@@ -218,6 +219,34 @@ Phase definition "P<(cmb)(moho)pP<(cmb)(moho)p":
         mod = cake.load_model()
         mod.profile('vp').dump(f)
         f.close()
+
+    def test_angles(self):
+        mod = cake.load_model()
+        data = [
+            [1.0*km, 1.0*km, 1.0*km, 90., 90., 'P'],
+            [1.0*km, 2.0*km, 1.0*km, 45., 135., 'P\\'],
+            [2.0*km, 1.0*km, 1.0*km, 135., 45., 'p'],
+            [1.0*km, 2.0*km, math.sqrt(3.)*km, 60., 120., 'P\\'],
+            [2.0*km, 1.0*km, math.sqrt(3.)*km, 120., 60., 'p']]
+
+        for (zstart, zstop, dist, takeoff_want, incidence_want, pdef_want) \
+                in data:
+
+            rays = mod.arrivals(
+                zstart=zstart,
+                zstop=zstop,
+                phases=[cake.PhaseDef(sphase)
+                        for sphase in 'P,p,P\\,p\\'.split(',')],
+                distances=[dist*cake.m2d])
+
+            for ray in rays:
+                takeoff = round(ray.takeoff_angle())
+                incidence = round(ray.incidence_angle())
+                pdef = ray.used_phase().definition()
+
+                assert takeoff == takeoff_want
+                assert incidence == incidence_want
+                assert pdef == pdef_want
 
 
 if __name__ == "__main__":

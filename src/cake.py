@@ -1921,7 +1921,7 @@ class Straight(RayElement):
         pf = self.layer.pflat(p, z)
 
         if dir == DOWN:
-            return 90. + num.arcsin(v*pf)*r2d
+            return 180.-num.arcsin(v*pf)*r2d
         else:
             return num.arcsin(v*pf)*r2d
 
