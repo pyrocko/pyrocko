@@ -939,7 +939,8 @@ def MakePileViewerMainClass(base):
 
             self.menuitem_showboxes = qw.QAction('Show Boxes', self.menu)
             self.menuitem_showboxes.setCheckable(True)
-            self.menuitem_showboxes.setChecked(True)
+            self.menuitem_showboxes.setChecked(
+                self.config.show_boxes)
             self.menu.addAction(self.menuitem_showboxes)
 
             self.menuitem_colortraces = qw.QAction('Color Traces', self.menu)
