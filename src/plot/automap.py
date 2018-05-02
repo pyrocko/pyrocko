@@ -1074,10 +1074,8 @@ class Map(Object):
         scale = 1./offsets.max()
 
         default_psxy_style = {
-            'h': 2,
-            'h': 2,
+            'h': 0,
             'W': '0.5p,black',
-            't': '30',
             'G': 'black',
             'L': True,
             'S': 'e%d/0.95/8' % scale,
@@ -1087,20 +1085,20 @@ class Map(Object):
         if labels:
             rows = [(s.lon, s.lat,
                      s.east.shift, s.north.shift,
-                     s.east.sigma, s.north.sigma, 0)
+                     s.east.sigma, s.north.sigma, 0,
+                     s.code)
                     for s in campaign.stations]
         else:
             rows = [(s.lon, s.lat,
                      s.east.shift, s.north.shift,
-                     s.east.sigma, s.north.sigma, 0,
-                     s.code)
+                     s.east.sigma, s.north.sigma, 0)
                     for s in campaign.stations]
 
-        kwargs = {}
-        kwargs.update(default_psxy_style)
-        kwargs.update(self.jxyr)
-
-        self.gmt.psvelo(in_rows=rows, **kwargs)
+        self.gmt.psvelo(
+            in_rows=rows,
+            *self.jxyr,
+            **default_psxy_style,
+            )
 
     def draw_plates(self):
         from pyrocko.dataset import tectonics

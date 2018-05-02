@@ -151,6 +151,8 @@ class ModelTestCase(unittest.TestCase):
         shifts = num.random.uniform(-2.5, 2.5, (nstations, 3))
         sigma = num.random.uniform(-0.5, 0.5, (nstations, 3))
 
+        correlations = num.random.uniform(-0.5, 0.5, (nstations, 3))
+
         campaign = model.gnss.GNSSCampaign()
 
         for ista in range(nstations):
@@ -168,11 +170,35 @@ class ModelTestCase(unittest.TestCase):
             station = model.gnss.GNSSStation(
                 lat=float(lats[ista]),
                 lon=float(lons[ista]),
+                correlation_eu=float(correlations[ista, 0]),
+                correlation_ne=float(correlations[ista, 1]),
+                correlation_nu=float(correlations[ista, 2]),
                 north=north,
                 east=east,
                 up=up)
 
             campaign.add_station(station)
+
+        for sta in campaign.stations:
+            sta.get_correlation_matrix(full=False)
+            corr_arr = sta.get_correlation_matrix(full=True)
+            num.testing.assert_array_equal(corr_arr, corr_arr.T)
+
+        corr_arr = campaign.get_correlation_matrix()
+        for ista, sta in enumerate(campaign.stations):
+            for ic, comp in enumerate([sta.north, sta.east, sta.up]):
+                corr_arr[ista*3+ic, ista*3+ic] = comp.sigma
+
+            corr_arr[ista*3, ista*3+1] = sta.correlation_ne
+            corr_arr[ista*3+1, ista*3] = sta.correlation_ne
+
+            corr_arr[ista*3, ista*3+2] = sta.correlation_nu
+            corr_arr[ista*3+2, ista*3] = sta.correlation_nu
+
+            corr_arr[ista*3+1, ista*3+2] = sta.correlation_eu
+            corr_arr[ista*3+2, ista*3+1] = sta.correlation_eu
+
+        num.testing.assert_array_equal(corr_arr, corr_arr.T)
 
         campaign.dump(filename=fn)
 
