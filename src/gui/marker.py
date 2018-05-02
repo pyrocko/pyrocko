@@ -10,6 +10,7 @@ import math
 import time
 import copy
 import logging
+import sys
 
 import numpy as num
 
@@ -651,9 +652,15 @@ class EventMarker(Marker):
             e, kind, event_hash=str_to_str_or_none(vals[4]))
         return marker
 
+if sys.version_info[0] >= 3:
+    polarity_symbols = {1: u'\u2191', -1:u'\u2193', None: u''}
+else:
+    polarity_symbols = {1: '+', -1: '-', None: ''}
+
 
 class PhaseMarker(Marker):
-    polarity_symbols = {1: u'\u2191', -1:u'\u2193', None: u''}
+
+
     '''
     A PhaseMarker is a GUI-element representing a seismological phase arrival
 
@@ -758,7 +765,7 @@ class PhaseMarker(Marker):
         self._polarity = polarity
 
     def get_polarity_symbol(self):
-        return self.polarity_symbols.get(self._polarity, '')
+        return polarity_symbols.get(self._polarity, '')
 
     def get_polarity(self):
         return self._polarity

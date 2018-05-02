@@ -54,7 +54,7 @@ else:
         return val.toFloat()
 
     def toString(val):
-        return val.toString()
+        return str(val).encode('utf-8')
 
 
 logger = logging.getLogger('pyrocko.gui.marker_editor')
