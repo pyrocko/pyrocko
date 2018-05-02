@@ -691,10 +691,11 @@ class PhaseMarker(Marker):
         self._event_hash = event_hash
         self._event_time = event_time
         self._phasename = phasename
-        self._polarity = polarity
         self._automatic = automatic
         self._incidence_angle = incidence_angle
         self._takeoff_angle = takeoff_angle
+
+        self.set_polarity(polarity)
 
     def draw_trace(self, viewer, p, tr, time_projection, track_projection,
                    gain):
@@ -710,7 +711,7 @@ class PhaseMarker(Marker):
         if self._phasename is not None:
             t.append(self._phasename)
         if self._polarity is not None:
-            t.append(self.polarity_symbols.get(self._polarity, ''))
+            t.append(self.get_polarity_symbol())
 
         if self._automatic:
             t.append('@')
@@ -755,6 +756,9 @@ class PhaseMarker(Marker):
         if polarity not in [1, -1, 0, None]:
             raise ValueError('polarity has to be 1, -1, 0 or None')
         self._polarity = polarity
+
+    def get_polarity_symbol(self):
+        return self.polarity_symbols.get(self._polarity, '')
 
     def get_polarity(self):
         return self._polarity

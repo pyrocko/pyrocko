@@ -61,7 +61,7 @@ logger = logging.getLogger('pyrocko.gui.marker_editor')
 
 _header_data = [
     'T', 'Time', 'M', 'Label', 'Depth [km]', 'Lat', 'Lon', 'Kind', 'Dist [km]',
-    'NSLCs', 'Kagan Angle [deg]', 'Event Hash', 'MT']
+    'NSLCs', 'Polarity', 'Kagan Angle [deg]', 'Event Hash', 'MT']
 
 _column_mapping = dict(zip(_header_data, range(len(_header_data))))
 
@@ -193,10 +193,10 @@ class MarkerSortFilterProxyModel(QSortFilterProxyModel):
         self.sort(1, qc.Qt.DescendingOrder)
 
     def lessThan(self, left, right):
-        if left.column() == 1:
-            return toDateTime(left.data()) < toDateTime(right.data())
-        elif left.column() in [0, 3, 9, 11]:
+        if left.column() in [0, 3, 9, 10, 12]:
             return toString(left.data()) < toString(right.data())
+        elif left.column() == 1:
+            return toDateTime(left.data()) < toDateTime(right.data())
         else:
             return toFloat(left.data())[0] < toFloat(right.data())[0]
 
@@ -242,9 +242,11 @@ class MarkerTableView(qw.QTableView):
         show_initially = ['Type', 'Time', 'Magnitude']
         self.menu_labels = ['Type', 'Time', 'Magnitude', 'Label', 'Depth [km]',
                             'Latitude/Longitude', 'Kind', 'Distance [km]',
-                            'NSLCs', 'Kagan Angle [deg]', 'Event Hash', 'MT']
+                            'NSLCs', 'Polarity', 'Kagan Angle [deg]',
+                            'Event Hash', 'MT']
+
         self.menu_items = dict(zip(
-            self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]))
+            self.menu_labels, [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13]))
 
         self.editable_columns = [2, 3, 4, 5, 6, 7]
 
@@ -446,17 +448,18 @@ class MarkerTableModel(qc.QAbstractTableModel):
 
         if role == qc.Qt.DisplayRole:
             s = ''
-            if index.column() == _column_mapping['Time']:
+            column = index.column()
+            if column == _column_mapping['Time']:
                 return qc.QVariant(
                     qc.QDateTime.fromMSecsSinceEpoch(marker.tmin*1000))
 
-            elif index.column() == _column_mapping['T']:
+            elif column == _column_mapping['T']:
                 if isinstance(marker, EventMarker):
                     s = 'E'
                 elif isinstance(marker, PhaseMarker):
                     s = 'P'
 
-            elif index.column() == _column_mapping['M']:
+            elif column == _column_mapping['M']:
                 if isinstance(marker, EventMarker):
                     e = marker.get_event()
                     if e.moment_tensor is not None:
@@ -464,49 +467,55 @@ class MarkerTableModel(qc.QAbstractTableModel):
                     elif e.magnitude is not None:
                         s = round(e.magnitude, 1)
 
-            elif index.column() == _column_mapping['Label']:
+            elif column == _column_mapping['Label']:
                 if isinstance(marker, EventMarker):
                     s = marker.label()
                 elif isinstance(marker, PhaseMarker):
                     s = marker.get_label()
 
-            elif index.column() == _column_mapping['Depth [km]']:
+            elif column == _column_mapping['Depth [km]']:
                 if isinstance(marker, EventMarker):
                     d = marker.get_event().depth
                     if d is not None:
                         s = round(marker.get_event().depth/1000., 1)
 
-            elif index.column() == _column_mapping['Lat']:
+            elif column == _column_mapping['Lat']:
                 if isinstance(marker, EventMarker):
                     s = round(marker.get_event().lat, 2)
 
-            elif index.column() == _column_mapping['Lon']:
+            elif column == _column_mapping['Lon']:
                 if isinstance(marker, EventMarker):
                     s = round(marker.get_event().lon, 2)
 
-            elif index.column() == _column_mapping['Kind']:
+            elif column == _column_mapping['Kind']:
                 s = marker.kind
 
-            elif index.column() == _column_mapping['Dist [km]']:
+            elif column == _column_mapping['Dist [km]']:
                 if marker in self.distances:
                     s = self.distances[marker]
 
-            elif index.column() == _column_mapping['NSLCs']:
+            elif column == _column_mapping['NSLCs']:
                 strs = []
                 for nslc_id in marker.get_nslc_ids():
                     strs.append('.'.join(nslc_id))
                 s = '|'.join(strs)
 
-            elif index.column() == _column_mapping['Kagan Angle [deg]']:
+            elif column == _column_mapping['Kagan Angle [deg]']:
                 if marker in self.kagan_angles:
                     s = round(self.kagan_angles[marker], 1)
 
-            elif index.column() == _column_mapping['MT']:
+            elif column == _column_mapping['MT']:
                 return qc.QVariant()
 
-            elif index.column() == _column_mapping['Event Hash']:
+            elif column == _column_mapping['Event Hash']:
                 if isinstance(marker, (EventMarker, PhaseMarker)):
                     s = marker.get_event_hash()
+                else:
+                    return qc.QVariant()
+
+            elif column == _column_mapping['Polarity']:
+                if isinstance(marker, (PhaseMarker)):
+                    s = marker.get_polarity_symbol()
                 else:
                     return qc.QVariant()
 
