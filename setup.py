@@ -150,7 +150,7 @@ def find_pyrocko_installs():
             found.append(x)
             del sys.modules['pyrocko']
             del sys.modules['pyrocko.info']
-        except ImportError:
+        except (ImportError, AttributeError):
             pass
 
     sys.path = orig_sys_path

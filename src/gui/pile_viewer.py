@@ -179,7 +179,7 @@ class Integrator(pyrocko.shadow_pile.ShadowPile):
 
     def process(self, iblock, tmin, tmax, traces):
         for trace in traces:
-            trace.ydata -= trace.ydata.mean()
+            trace.ydata = trace.ydata - trace.ydata.mean()
             trace.ydata = num.cumsum(trace.ydata)
 
         return traces
@@ -939,7 +939,8 @@ def MakePileViewerMainClass(base):
 
             self.menuitem_showboxes = qw.QAction('Show Boxes', self.menu)
             self.menuitem_showboxes.setCheckable(True)
-            self.menuitem_showboxes.setChecked(True)
+            self.menuitem_showboxes.setChecked(
+                self.config.show_boxes)
             self.menu.addAction(self.menuitem_showboxes)
 
             self.menuitem_colortraces = qw.QAction('Color Traces', self.menu)
@@ -1945,7 +1946,10 @@ def MakePileViewerMainClass(base):
             dt = self.tmax - self.tmin
             tmid = (self.tmin + self.tmax) / 2.
 
-            keytext = str(key_event.text())
+            try:
+                keytext = str(key_event.text())
+            except UnicodeEncodeError:
+                return
 
             if keytext == '?':
                 self.help()
@@ -1953,6 +1957,18 @@ def MakePileViewerMainClass(base):
             elif keytext == ' ':
                 self.interrupt_following()
                 self.set_time_range(self.tmin+dt, self.tmax+dt)
+
+            elif key_event.key() == qc.Qt.Key_Up:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        p = 1 if m.get_polarity() != 1 else None
+                        m.set_polarity(p)
+
+            elif key_event.key() == qc.Qt.Key_Down:
+                for m in self.selected_markers():
+                    if isinstance(m, PhaseMarker):
+                        p = -1 if m.get_polarity() != -1 else None
+                        m.set_polarity(p)
 
             elif keytext == 'b':
                 dt = self.tmax - self.tmin
@@ -3187,7 +3203,8 @@ def MakePileViewerMainClass(base):
 
                         for trace in traces:
 
-                            if not (trace.meta and trace.meta.get('tabu', False)):
+                            if not (trace.meta
+                                    and trace.meta.get('tabu', False)):
 
                                 if fft_filtering:
                                     but = pyrocko.trace.ButterworthResponse

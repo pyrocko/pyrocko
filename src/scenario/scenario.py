@@ -131,7 +131,7 @@ class ScenarioGenerator(LocationGenerator):
         draw_scenario_gmt(self, filename)
 
     def draw_map(self, fn):
-        from pyrocko import automap
+        from pyrocko.plot import automap
 
         lat, lon = self.get_center_latlon()
         radius = self.get_radius()

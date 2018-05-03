@@ -101,7 +101,7 @@ class USGS(EarthquakeCatalog):
                 mag = None
 
             if props['place'] is not None:
-                region = props['place'].encode('ascii', 'replace')
+                region = props['place'].encode('ascii', 'replace').decode()
             else:
                 region = None
 
