@@ -1097,7 +1097,7 @@ class Map(Object):
         self.gmt.psvelo(
             in_rows=rows,
             *self.jxyr,
-            **default_psxy_style,
+            **default_psxy_style
             )
 
     def draw_plates(self):
