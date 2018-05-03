@@ -88,6 +88,27 @@ class GNSSStation(Location):
     def __init__(self, *args, **kwargs):
         Location.__init__(self, *args, **kwargs)
 
+
+    def get_covariance_matrix(self, full=True):
+        s = self
+
+        covar = num.zeros((3, 3))
+        covar[num.diag_indices_from(covar)] = num.array(
+            [(c.sigma)**2 for c in (s.north, s.east, s.up)])
+
+        if s.correlation_ne is not None:
+            covar[0, 1] = s.correlation_ne * s.north.sigma * s.east.sigma
+        if s.correlation_nu is not None:
+            covar[0, 2] = s.correlation_nu * s.north.sigma * s.up.sigma
+        if s.correlation_eu is not None:
+            covar[1, 2] = s.correlation_eu * s.east.sigma * s.up.sigma
+
+        if full:
+            covar[num.tril_indices_from(covar, k=-1)] = \
+                covar[num.triu_indices_from(covar, k=1)]
+
+        return covar
+        
     def get_correlation_matrix(self, full=True):
         s = self
 
@@ -147,6 +168,17 @@ class GNSSCampaign(Object):
             coords[:, 0].min(), coords[:, 1].min(),
             coords[:, 0].max(), coords[:, 1].max()) / 2.
 
+    def get_covariance_matrix(self):
+        if self._cov_arr is None:
+            cov_arr = num.zeros((self.nstations*3, self.nstations*3))
+        
+            for ista, sta in enumerate(self.stations):
+                cov_arr[ista*3:ista*3+3, ista*3:ista*3+3] = \
+                    sta.get_covariance_matrix(full=True)
+        
+            self._cov_arr = cov_arr
+        return self._cov_arr
+      
     def get_correlation_matrix(self):
         logger.warn('gnss.get_covariance_matrix is not fully implemented!')
         if self._cov_arr is None:
