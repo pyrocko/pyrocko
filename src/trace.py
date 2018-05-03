@@ -381,6 +381,13 @@ class Trace(object):
         self.nslc_id = reuse(
             (self.network, self.station, self.location, self.channel))
 
+    def prune_from_reuse_cache(self):
+        util.deuse(self.nslc_id)
+        util.deuse(self.network)
+        util.deuse(self.station)
+        util.deuse(self.location)
+        util.deuse(self.channel)
+
     def set_mtime(self, mtime):
         '''
         Set modification time of the trace.

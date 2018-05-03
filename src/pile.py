@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 
 from future import standard_library
 standard_library.install_aliases()  # noqa
@@ -262,6 +262,15 @@ class TracesFileCache(object):
             v.trees_from_content(v.traces)
             for tr in v.traces:
                 tr.file = v
+                # fix Py2 codes to not include unicode when the cache file
+                # was created with Py3
+                if not isinstance(tr.station, str):
+                    tr.prune_from_reuse_cache()
+                    tr.set_codes(
+                        str(tr.network),
+                        str(tr.station),
+                        str(tr.location),
+                        str(tr.channel))
 
             v.data_use_count = 0
             v.data_loaded = False

@@ -1085,6 +1085,12 @@ def reuse(x):
     return grs[x]
 
 
+def deuse(x):
+    grs = GlobalVars.reuse_store
+    if x in grs:
+        del grs[x]
+
+
 class Anon(object):
     '''
     Dict-to-object utility.
