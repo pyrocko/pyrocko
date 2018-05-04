@@ -856,7 +856,6 @@ class PhaseMarker(Marker):
             uncertainty = str_to_float_or_none(vals[-1])
         else:
             uncertainty = None
-            raise Exception("Unsupported version %s" % version)
 
         nslc_ids, tmin, tmax, kind = Marker.parse_attributes(
             vals[1:1+nbasicvals])

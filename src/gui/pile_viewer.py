@@ -26,7 +26,6 @@ import pyrocko.util
 import pyrocko.plot
 import pyrocko.gui.snuffling
 import pyrocko.gui.snufflings
-import pyrocko.gui.marker_editor
 
 from pyrocko.util import hpfloat, gmtime_x, mystrftime
 
@@ -1820,7 +1819,7 @@ def MakePileViewerMainClass(base):
                     self.track_start = mouse_ev.x(), mouse_ev.y()
                     self.track_trange = self.tmin, self.tmax
 
-                if mouse_ev.modifiers() & qc.Qt.ShiftModifier:
+                if mouse_ev.modifiers() & qc.Qt.ControlModifier:
                     self.set_uncertainty_y = self.time_projection(point.y())
 
             if mouse_ev.button() == qc.Qt.RightButton:
@@ -1892,6 +1891,8 @@ def MakePileViewerMainClass(base):
                 if isinstance(m, PhaseMarker):
                     m._uncertainty = m._uncertainty or 0.
                     m._uncertainty = max(0., m._uncertainty + d)
+
+            self.emit_selected_markers()
             self._last_y = y
 
         def nslc_ids_under_cursor(self, x, y):
@@ -1984,12 +1985,14 @@ def MakePileViewerMainClass(base):
                     if isinstance(m, PhaseMarker):
                         p = 1 if m.get_polarity() != 1 else None
                         m.set_polarity(p)
+                self.emit_selected_markers()
 
             elif key_event.key() == qc.Qt.Key_Down:
                 for m in self.selected_markers():
                     if isinstance(m, PhaseMarker):
                         p = -1 if m.get_polarity() != -1 else None
                         m.set_polarity(p)
+                self.emit_selected_markers()
 
             elif keytext == 'b':
                 dt = self.tmax - self.tmin
@@ -2190,6 +2193,8 @@ def MakePileViewerMainClass(base):
             self.emit_selected_markers()
 
         def emit_selected_markers(self):
+            '''Emits indices of selected markers and triggers an update
+            of according entries in the marker_editor.'''
             _indexes = []
             selected_markers = self.selected_markers()
             markers = self.get_markers()
@@ -4122,13 +4127,6 @@ class PileViewer(qw.QFrame):
 
         self.adjust_controls()
         return frame
-
-    def marker_editor(self):
-        editor = pyrocko.gui.marker_editor.MarkerEditor(self)
-        editor.set_viewer(self.get_view())
-        editor.get_marker_model().dataChanged.connect(
-            self.update_contents)
-        return editor
 
     def adjust_controls(self):
         dtmin, dtmax = self.viewer.content_deltat_range()
