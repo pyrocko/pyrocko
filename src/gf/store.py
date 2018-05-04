@@ -1622,7 +1622,7 @@ class Store(BaseStore):
 
         return timing.evaluate(self.get_phase, args)
 
-    def make_timing_params(self, begin, end, snap_vred=True):
+    def make_timing_params(self, begin, end, snap_vred=True, force=False):
 
         '''
         Compute tight parameterized time ranges to include given timings.
@@ -1642,6 +1642,7 @@ class Store(BaseStore):
 
         data = []
         failed = []
+        warned = False
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
@@ -1653,8 +1654,13 @@ class Store(BaseStore):
             if failed:
                 msg = 'determination of time window failed using phase ' +\
                     'definitions: {}.\n Travel time table contains holes ' +\
-                    'in probed ranges.'
-                raise MakeTimingParamsFailed(msg.format(' and '.join(failed)))
+                    'in probed ranges.'.format(' '.join(failed))
+                if force:
+                    if not warned:
+                        logger.warn(msg + '\nStore may contain empty traces.')
+                        warned = True
+                else:
+                    raise MakeTimingParamsFailed(msg.format(' and '.join(failed)))
 
             x = self.config.get_surface_distance(args)
             data.append((x, tmin, tmax))
