@@ -767,3 +767,11 @@ class MarkerEditor(qw.QFrame):
                 mi_start, selection_flags)
 
         self.selection_model.select(selections, selection_flags)
+
+
+def setup_marker_editor(viewer):
+    editor = MarkerEditor(viewer)
+    editor.set_viewer(viewer.viewer)
+    editor.get_marker_model().dataChanged.connect(
+        viewer.update_contents)
+    return editor
