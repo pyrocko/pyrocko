@@ -33,10 +33,15 @@ Example
 from __future__ import absolute_import
 from builtins import range
 
+import logging
+
 import numpy as num
 
 from pyrocko import util
 from pyrocko import guts
+
+
+logger = logging.getLogger('plot.response')
 
 
 def normalize_on_flat(f, tf, factor=10000.):
@@ -296,6 +301,12 @@ def load_response_information(
 
                     if nslc_patterns is not None and not util.match_nslc(
                             nslc_patterns, nslc):
+                        continue
+
+                    if not channel.response:
+                        logger.warn(
+                            'no response for channel %s.%s.%s.%s given.'
+                            % nslc)
                         continue
 
                     units = ''
