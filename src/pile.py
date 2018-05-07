@@ -68,6 +68,13 @@ class Counter(dict):
             del self[k]
 
 
+def fix_unicode_copy(counter, func):
+    counter_new = Counter()
+    for k in counter:
+        counter_new[func(k)] = counter[k]
+    return counter_new
+
+
 pjoin = os.path.join
 logger = logging.getLogger('pyrocko.pile')
 
@@ -274,6 +281,7 @@ class TracesFileCache(object):
 
             v.data_use_count = 0
             v.data_loaded = False
+            v.fix_unicode_codes()
 
         return cache
 
@@ -499,6 +507,18 @@ class TracesGroup(object):
         self.by_tlen = Sorted(content, tlen)
         self.by_mtime = Sorted(content, 'mtime')
         self.adjust_minmax()
+
+    def fix_unicode_codes(self):
+        for net in self.networks:
+            if isinstance(net, str):
+                return
+
+        self.networks = fix_unicode_copy(self.networks, str)
+        self.stations = fix_unicode_copy(self.stations, str)
+        self.locations = fix_unicode_copy(self.locations, str)
+        self.channels = fix_unicode_copy(self.channels, str)
+        self.nslc_ids = fix_unicode_copy(
+            self.nslc_ids, lambda k: tuple(str(x) for x in k))
 
     def add(self, content):
         '''
