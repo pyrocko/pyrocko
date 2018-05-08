@@ -1819,7 +1819,7 @@ def MakePileViewerMainClass(base):
                     self.track_start = mouse_ev.x(), mouse_ev.y()
                     self.track_trange = self.tmin, self.tmax
 
-                if mouse_ev.modifiers() & qc.Qt.ControlModifier:
+                if mouse_ev.modifiers() & qc.Qt.ShiftModifier:
                     self.set_uncertainty_y = self.time_projection(point.y())
 
             if mouse_ev.button() == qc.Qt.RightButton:
