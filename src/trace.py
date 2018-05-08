@@ -1616,9 +1616,10 @@ class Trace(object):
         Uses normal python '%(placeholder)s' string templates. The following
         placeholders are considered: ``network``, ``station``, ``location``,
         ``channel``, ``tmin`` (time of first sample), ``tmax`` (time of last
-        sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``. The
-        versions with '_ms' include milliseconds, the versions with '_us'
-        include microseconds.
+        sample), ``tmin_ms``, ``tmax_ms``, ``tmin_us``, ``tmax_us``,
+        ``tmin_year``, ``tmax_year``, ``julianday``. The variants ending with
+        ``'_ms'`` include milliseconds, those with ``'_us'`` include
+        microseconds, those with ``'_year'`` contain only the year.
         '''
 
         template = template.replace('%n', '%(network)s')\
@@ -1643,6 +1644,10 @@ class Trace(object):
             self.tmin, format='%Y-%m-%d_%H-%M-%S.6FRAC')
         params['tmax_us'] = util.time_to_str(
             self.tmax, format='%Y-%m-%d_%H-%M-%S.6FRAC')
+        params['tmin_year'] = util.time_to_str(
+            self.tmin, format='%Y')
+        params['tmax_year'] = util.time_to_str(
+            self.tmax, format='%Y')
         params['julianday'] = util.julian_day_of_year(self.tmin)
         params.update(additional)
         return template % params

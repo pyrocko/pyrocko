@@ -1983,14 +1983,20 @@ def MakePileViewerMainClass(base):
             elif key_event.key() == qc.Qt.Key_Up:
                 for m in self.selected_markers():
                     if isinstance(m, PhaseMarker):
-                        p = 1 if m.get_polarity() != 1 else None
+                        if key_event.modifiers() & qc.Qt.ShiftModifier:
+                            p = 0
+                        else:
+                            p = 1 if m.get_polarity() != 1 else None
                         m.set_polarity(p)
                 self.emit_selected_markers()
 
             elif key_event.key() == qc.Qt.Key_Down:
                 for m in self.selected_markers():
                     if isinstance(m, PhaseMarker):
-                        p = -1 if m.get_polarity() != -1 else None
+                        if key_event.modifiers() & qc.Qt.ShiftModifier:
+                            p = 0
+                        else:
+                            p = -1 if m.get_polarity() != -1 else None
                         m.set_polarity(p)
                 self.emit_selected_markers()
 
