@@ -653,9 +653,9 @@ class EventMarker(Marker):
         return marker
 
 if sys.version_info[0] >= 3:
-    polarity_symbols = {1: u'\u2191', -1:u'\u2193', None: u''}
+    polarity_symbols = {1: u'\u2191', -1:u'\u2193', None: u'', 0: u'\u2195'}
 else:
-    polarity_symbols = {1: '+', -1: '-', None: ''}
+    polarity_symbols = {1: '+', -1: '-', None: '', 0: '0'}
 
 
 class PhaseMarker(Marker):
