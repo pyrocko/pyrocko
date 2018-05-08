@@ -21,6 +21,12 @@ from pyrocko.util import TableWriter, TableReader, gmtime_x, mystrftime
 logger = logging.getLogger('pyrocko.gui.marker')
 
 
+if sys.version_info[0] >= 3:
+    polarity_symbols = {1: u'\u2191', -1: u'\u2193', None: u'', 0: u'\u2195'}
+else:
+    polarity_symbols = {1: '+', -1: '-', None: '', 0: '0'}
+
+
 def str_to_float_or_none(s):
     if s == 'None':
         return None
@@ -652,15 +658,8 @@ class EventMarker(Marker):
             e, kind, event_hash=str_to_str_or_none(vals[4]))
         return marker
 
-if sys.version_info[0] >= 3:
-    polarity_symbols = {1: u'\u2191', -1:u'\u2193', None: u'', 0: u'\u2195'}
-else:
-    polarity_symbols = {1: '+', -1: '-', None: '', 0: '0'}
-
 
 class PhaseMarker(Marker):
-
-
     '''
     A PhaseMarker is a GUI-element representing a seismological phase arrival
 
