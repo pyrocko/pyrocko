@@ -719,8 +719,8 @@ class PhaseMarker(Marker):
 
         color = self.select_color(self.color_b)
 
-        def draw_box(tmin, tmax):
-            fill_brush = qg.QBrush(qg.QColor(*color + (50, )))
+        def draw_box(tmin, tmax, alpha=50):
+            fill_brush = qg.QBrush(qg.QColor(*color + (alpha, )))
             p.setBrush(fill_brush)
             dvmin, dvmax = track_projection.get_out_range()
             dtmin = time_projection.clipped(tmin)
@@ -729,7 +729,9 @@ class PhaseMarker(Marker):
             p.fillRect(rect, fill_brush)
 
         if self._uncertainty:
-            draw_box(self.tmin-self._uncertainty, self.tmax+self._uncertainty)
+            draw_box(self.tmin, self.tmin - self._uncertainty)
+            draw_box(self.tmax, self.tmax + self._uncertainty)
+            draw_box(self.tmin, self.tmax, alpha=35)
 
         Marker.draw_trace(
             self, viewer, p, tr, time_projection, track_projection, gain,
