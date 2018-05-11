@@ -375,25 +375,33 @@ class GFSourcesTestCase(unittest.TestCase):
 
     def test_discretize_rect_source(self):
 
-        store = self.dummy_homogeneous_store()
-        target = gf.Target(interpolation='nearest_neighbor')
+        store1 = self.dummy_homogeneous_store()
+        store2 = self.dummy_store()
+        for store in [store1, store2]:
+            target = gf.Target(interpolation='nearest_neighbor')
 
-        for source in [
-                gf.RectangularSource(
-                    depth=10*km,
-                    slip=0.5,
-                    width=5*km,
-                    length=5*km),
-                gf.RectangularSource(
-                    depth=10*km,
-                    magnitude=5.0,
-                    width=5*km,
-                    length=5*km)]:
+            for cls in [gf.RectangularSource]:
+                for source in [
+                        cls(
+                            dip=90.,
+                            depth=10*km,
+                            slip=0.5,
+                            width=5*km,
+                            length=5*km),
+                        cls(
+                            dip=90.,
+                            depth=10*km,
+                            magnitude=5.0,
+                            width=5*km,
+                            length=5*km)]:
 
-            dsource = source.discretize_basesource(store, target)
-            m1 = source.get_moment(store, target)
-            m2 = dsource.centroid().pyrocko_moment_tensor().scalar_moment()
-            assert abs(m1 - m2) < abs(m1 + m2) * 1e-6
+                    print(source)
+
+                    dsource = source.discretize_basesource(store, target)
+                    print(dsource)
+                    m1 = source.get_moment(store, target)
+                    m2 = dsource.centroid().pyrocko_moment_tensor().scalar_moment()
+                    assert abs(m1 - m2) < abs(m1 + m2) * 1e-6
 
 
 if __name__ == '__main__':

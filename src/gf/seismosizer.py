@@ -87,6 +87,10 @@ class ConversionError(Exception):
     pass
 
 
+class InvalidSource(SeismosizerError):
+    pass
+
+
 class NoSuchStore(BadRequest):
     def __init__(self, store_id=None, dirs=None):
         BadRequest.__init__(self)
@@ -156,11 +160,27 @@ def arr(x):
     return num.atleast_1d(num.asarray(x))
 
 
-def discretize_rect_source(deltas, deltat, north, east, depth,
-                           strike, dip, length, width,
-                           anchor, velocity, stf=None,
-                           nucleation_x=None, nucleation_y=None,
-                           tref=0.0, decimation_factor=1):
+def two_d_gaussian(x, y, amplitude, xo, yo, sigma_x, sigma_y, theta_g, offset):
+    xo = float(xo)
+    yo = float(yo)
+    a = (num.cos(theta_g)**2)/(2*sigma_x**2) \
+        + (num.sin(theta_g)**2)/(2*sigma_y**2)
+    b = -(num.sin(2*theta_g))/(4*sigma_x**2) \
+        + (num.sin(2*theta_g))/(4*sigma_y**2)
+    c = (num.sin(theta_g)**2)/(2*sigma_x**2) \
+        + (num.cos(theta_g)**2)/(2*sigma_y**2)
+
+    return offset + amplitude*num.exp(- (a*((x-xo)**2) + 2*b*(x-xo)*(y-yo)
+                                      + c*((y-yo)**2)))
+
+
+def discretize_rect_source(
+       deltas, deltat, x, y, z,
+       strike, dip, rupture_plane_rake, length, width,
+       sigma_x, sigma_y, depth_min, depth_max,
+       anchor, velocity, stf=None,
+       nucleation_x=None, nucleation_y=None,
+       tref=0.0, decimation_factor=1):
 
     if stf is None:
         stf = STF()
@@ -183,6 +203,7 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     xw = num.linspace(-0.5*(wd-dw), 0.5*(wd-dw), nw)
 
     points = num.empty((n, 3), dtype=num.float)
+
     points[:, 0] = num.tile(xl, nw)
     points[:, 1] = num.repeat(xw, nl)
     points[:, 2] = 0.0
@@ -200,15 +221,36 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     dist = num.sqrt(dist_x**2 + dist_y**2)
     times = dist / velocity
 
+    if sigma_x is not None and sigma_y is not None:
+        slip_function = two_d_gaussian(
+            points[:, 0], points[:, 1],
+            1.0, 0.0, 0.0, sigma_x, sigma_y, 0.0, 0)
+
+    else:
+        slip_function = num.ones(points.shape[0])
+
     anch_x, anch_y = map_anchor[anchor]
 
     points[:, 0] -= anch_x * 0.5 * length
     points[:, 1] -= anch_y * 0.5 * width
 
     rotmat = num.asarray(
-        mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
+        mt.euler_to_matrix(dip*d2r, strike*d2r, -rupture_plane_rake*d2r))
 
     points = num.dot(rotmat.T, points.T).T
+    points[:, 0] += x
+    points[:, 1] += y
+    points[:, 2] += z
+
+    if depth_min is not None:
+        mask = points[:, 2] < depth_min
+    else:
+        mask = num.zeros(points.shape[0], dtype=num.bool)
+
+    if depth_max is not None:
+        mask = num.logical_or(mask, depth_max < points[:, 2])
+
+    slip_function[mask] = 0.0
 
     xtau, amplitudes = stf.discretize_t(deltat, tref)
     nt = xtau.size
@@ -216,16 +258,14 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     points2 = num.repeat(points, nt, axis=0)
     times2 = num.repeat(times, nt) + num.tile(xtau, n)
     amplitudes2 = num.tile(amplitudes, n)
-    amplitudes2 /= num.sum(amplitudes2)
+    amplitudes2 *= slip_function
 
-    points2[:, 0] += north
-    points2[:, 1] += east
-    points2[:, 2] += depth
-
-    return points2, times2, amplitudes2, dl, dw
+    return (points2, times2, amplitudes2, dl, dw, slip_function, nl, nw)
 
 
-def outline_rect_source(strike, dip, length, width, anchor):
+def outline_rect_source(
+        strike, dip, rupture_plane_rake, length, width, anchor):
+
     ln = length
     wd = width
     points = num.array(
@@ -240,7 +280,7 @@ def outline_rect_source(strike, dip, length, width, anchor):
     points[:, 1] -= anch_y * 0.5 * width
 
     rotmat = num.asarray(
-        mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
+        mt.euler_to_matrix(dip*d2r, strike*d2r, -rupture_plane_rake*d2r))
 
     return num.dot(rotmat.T, points.T).T
 
@@ -1371,11 +1411,14 @@ class RectangularExplosionSource(ExplosionSource):
 
         stf = self.effective_stf_pre()
 
-        points, times, amplitudes, dl, dw = discretize_rect_source(
-            store.config.deltas, store.config.deltat,
-            self.north_shift, self.east_shift, self.depth,
-            self.strike, self.dip, self.length, self.width, self.anchor,
-            self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
+        points, times, amplitudes, dl, dw, _, _, _ = \
+            discretize_rect_source(
+                store.config.deltas, store.config.deltat,
+                self.north_shift, self.east_shift, self.depth,
+                self.strike, self.dip, 0.0, self.length, self.width,
+                None, None, None, None,
+                self.anchor,
+                self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy)
 
         amplitudes *= self.get_moment(store, target)
 
@@ -1389,7 +1432,7 @@ class RectangularExplosionSource(ExplosionSource):
             m0s=amplitudes)
 
     def outline(self, cs='xyz'):
-        points = outline_rect_source(self.strike, self.dip, self.length,
+        points = outline_rect_source(self.strike, self.dip, 0., self.length,
                                      self.width, self.anchor)
 
         points[:, 0] += self.north_shift
@@ -1653,6 +1696,11 @@ class RectangularSource(SourceWithDerivedMagnitude):
              'measured counter-clockwise from right-horizontal '
              'in on-plane view')
 
+    rupture_plane_rake = Float.T(
+        default=0.,
+        help='angle between the horizontal (along-strike axis) and'
+             'the ellipse major axis (0 <= theta_g <= 180) [deg]')
+
     length = Float.T(
         default=0.,
         help='length of rectangular source area [m]')
@@ -1692,6 +1740,20 @@ class RectangularSource(SourceWithDerivedMagnitude):
         optional=True,
         default=1)
 
+    gaussian_cutoff = Float.T(
+        optional=True,
+        help='if given, turn on 2D gaussian distributed slip on source '
+             'rectangle. Give fractional value at (+-0.5*length, 0) and '
+             '(0, +-0.5*width) in source plane coordinates, e.g. 0.01)')
+
+    depth_min = Float.T(
+        optional=True,
+        help='allow slip to occur only at depth greater than this value [m]')
+
+    depth_max = Float.T(
+        optional=True,
+        help='allow slip to occur only at depth less than this value [m]')
+
     def base_key(self):
         return SourceWithDerivedMagnitude.base_key(self) + (
             self.magnitude,
@@ -1699,13 +1761,17 @@ class RectangularSource(SourceWithDerivedMagnitude):
             self.strike,
             self.dip,
             self.rake,
+            self.rupture_plane_rake,
             self.length,
             self.width,
             self.nucleation_x,
             self.nucleation_y,
             self.velocity,
             self.decimation_factor,
-            self.anchor)
+            self.anchor,
+            self.gaussian_cutoff,
+            self.depth_min,
+            self.depth_max)
 
     def check_conflicts(self):
         if self.magnitude is not None and self.slip is not None:
@@ -1734,6 +1800,22 @@ class RectangularSource(SourceWithDerivedMagnitude):
         return 1.0
 
     def _discretize(self, store, target):
+        if self.gaussian_cutoff is not None:
+            sigma_x = self.length * 0.5 * 1./(
+                num.sqrt(2.*num.log(1./self.gaussian_cutoff)))
+
+            sigma_y = self.width * 0.5 * 1./(
+                num.sqrt(2.*num.log(1./self.gaussian_cutoff)))
+
+            if sigma_x == 0.0:
+                sigma_x = 1.0
+
+            if sigma_y == 0.0:
+                sigma_y = 1.0
+
+        else:
+            sigma_x = sigma_y = None
+
         if self.nucleation_x is not None:
             nucx = self.nucleation_x * 0.5 * self.length
         else:
@@ -1746,12 +1828,21 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
         stf = self.effective_stf_pre()
 
-        points, times, amplitudes, dl, dw = discretize_rect_source(
-            store.config.deltas, store.config.deltat,
-            self.north_shift, self.east_shift, self.depth,
-            self.strike, self.dip, self.length, self.width, self.anchor,
-            self.velocity, stf=stf, nucleation_x=nucx, nucleation_y=nucy,
-            decimation_factor=self.decimation_factor)
+        points, times, amplitudes, dl, dw, slip_function, nl, nw \
+            = discretize_rect_source(
+                store.config.deltas, store.config.deltat,
+                self.north_shift, self.east_shift, self.depth,
+                self.strike, self.dip, self.rupture_plane_rake,
+                self.length, self.width,
+                sigma_x, sigma_y,
+                self.depth_min, self.depth_max,
+                self.anchor, self.velocity, stf=stf, nucleation_x=nucx,
+                nucleation_y=nucy, decimation_factor=self.decimation_factor)
+
+        if num.sum(amplitudes) == 0.0:
+            raise InvalidSource(
+                'cannot discretize RectangularSource, no points in allowed '
+                'region')
 
         if self.slip is not None:
             if target is not None:
@@ -1768,9 +1859,12 @@ class RectangularSource(SourceWithDerivedMagnitude):
                 points=points,
                 interpolation=interpolation)
 
-            amplitudes = dl * dw * shear_moduli * self.slip
+            amplitudes *= dl * dw * shear_moduli * self.slip * (nl*nw) \
+                / amplitudes.sum()
+
         else:
-            amplitudes *= self.get_moment(store, target)
+
+            amplitudes *= self.get_moment() / amplitudes.sum()
 
         return points, times, amplitudes, dl, dw
 
@@ -1796,7 +1890,8 @@ class RectangularSource(SourceWithDerivedMagnitude):
         return ds
 
     def outline(self, cs='xyz'):
-        points = outline_rect_source(self.strike, self.dip, self.length,
+        points = outline_rect_source(self.strike, self.dip,
+                                     self.rupture_plane_rake, self.length,
                                      self.width, self.anchor)
 
         points[:, 0] += self.north_shift
