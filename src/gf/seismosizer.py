@@ -187,28 +187,6 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
     points[:, 1] = num.repeat(xw, nl)
     points[:, 2] = 0.0
 
-    anch_x = 0.
-    anch_y = 0.
-    if anchor == 'top' or anchor == 'bottom':
-        anch_y = .5 * width
-    elif anchor == 'center_left':
-        anch_x = .5 * length
-    elif anchor == 'center_right':
-        anch_x = -.5 * length
-    elif anchor == 'top_left' or anchor == 'bottom_left':
-        anch_x = .5 * length
-        anch_y = .5 * width
-    elif anchor == 'top_right' or anchor == 'bottom_right':
-        anch_x = -.5 * length
-        anch_y = .5 * width
-    if anchor == 'bottom':
-        anch_y *= -1.
-    if anchor == 'bottom_right' or anchor == 'bottom_left':
-        anch_y *= -1.
-
-    points[:, 0] += anch_x
-    points[:, 1] += anch_y
-
     if nucleation_x is not None:
         dist_x = num.abs(nucleation_x - points[:, 0])
     else:
@@ -221,6 +199,11 @@ def discretize_rect_source(deltas, deltat, north, east, depth,
 
     dist = num.sqrt(dist_x**2 + dist_y**2)
     times = dist / velocity
+
+    anch_x, anch_y = map_anchor[anchor]
+
+    points[:, 0] -= anch_x * 0.5 * length
+    points[:, 1] -= anch_y * 0.5 * width
 
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
@@ -251,27 +234,10 @@ def outline_rect_source(strike, dip, length, width, anchor):
          [0.5*ln, 0.5*wd, 0.],
          [-0.5*ln, 0.5*wd, 0.],
          [-0.5*ln, -0.5*wd, 0.]])
-    anch_x = 0.
-    anch_y = 0.
-    if anchor == 'top' or anchor == 'bottom':
-        anch_y = .5 * width
-    elif anchor == 'center_left':
-        anch_x = .5 * length
-    elif anchor == 'center_right':
-        anch_x = -.5 * length
-    elif anchor == 'top_left' or anchor == 'bottom_left':
-        anch_x = .5 * length
-        anch_y = .5 * width
-    elif anchor == 'top_right' or anchor == 'bottom_right':
-        anch_x = -.5 * length
-        anch_y = .5 * width
-    if anchor == 'bottom':
-        anch_y *= -1.
-    if anchor == 'bottom_right' or anchor == 'bottom_left':
-        anch_y *= -1.
 
-    points[:, 0] += anch_x
-    points[:, 1] += anch_y
+    anch_x, anch_y = map_anchor[anchor]
+    points[:, 0] -= anch_x * 0.5 * length
+    points[:, 1] -= anch_y * 0.5 * width
 
     rotmat = num.asarray(
         mt.euler_to_matrix(dip*d2r, strike*d2r, 0.0))
@@ -1632,6 +1598,18 @@ class MTSource(Source):
         return super(MTSource, cls).from_pyrocko_event(ev, **d)
 
 
+map_anchor = {
+    'center': (0.0, 0.0),
+    'center_left': (-1.0, 0.0),
+    'center_right': (1.0, 0.0),
+    'top': (0.0, -1.0),
+    'top_left': (-1.0, -1.0),
+    'top_right': (1.0, -1.0),
+    'bottom': (0.0, 1.0),
+    'bottom_left': (-1.0, 1.0),
+    'bottom_right': (1.0, 1.0)}
+
+
 class RectangularSource(SourceWithDerivedMagnitude):
     '''
     Classical Haskell source model modified for bilateral rupture.
@@ -1746,8 +1724,15 @@ class RectangularSource(SourceWithDerivedMagnitude):
             decimation_factor=self.decimation_factor)
 
         if self.slip is not None:
-            interpolation = 'nearest_neighbor' if target is None\
-                            else target.interpolation
+            if target is not None:
+                interpolation = target.interpolation
+            else:
+                interpolation = 'nearest_neighbor'
+                logger.warn(
+                    'no target information available, will use '
+                    '"nearest_neighbor" interpolation when extracting shear '
+                    'modulus from earth model')
+
             shear_moduli = store.config.get_shear_moduli(
                 self.lat, self.lon,
                 points=points,
