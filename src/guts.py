@@ -26,6 +26,15 @@ except ImportError:
 
 from .util import time_to_str, str_to_time, TimeStrError
 
+
+class GutsSafeDumper(SafeDumper):
+    pass
+
+
+class GutsSafeLoader(SafeLoader):
+    pass
+
+
 try:
     unicode
 except NameError:
@@ -1249,7 +1258,11 @@ class Choice(Object):
             elems.append((self.cls_to_xmltagname[type(v)], v))
 
 
-def _dump(object, stream, header=False, _dump_function=yaml.dump):
+def _dump(
+        object, stream,
+        header=False,
+        Dumper=GutsSafeDumper,
+        _dump_function=yaml.dump):
 
     if not getattr(stream, 'encoding', None):
         enc = encode_utf8
@@ -1267,23 +1280,23 @@ def _dump(object, stream, header=False, _dump_function=yaml.dump):
         stream=stream,
         encoding='utf-8',
         explicit_start=True,
-        Dumper=SafeDumper)
+        Dumper=Dumper)
 
 
-def _dump_all(object, stream, header=True):
+def _dump_all(object, stream, header=True, Dumper=GutsSafeDumper):
     _dump(object, stream=stream, header=header, _dump_function=yaml.dump_all)
 
 
-def _load(stream):
-    return yaml.load(stream=stream, Loader=SafeLoader)
+def _load(stream, Loader=GutsSafeLoader):
+    return yaml.load(stream=stream, Loader=Loader)
 
 
-def _load_all(stream):
-    return list(yaml.load_all(stream=stream, Loader=SafeLoader))
+def _load_all(stream, Loader=GutsSafeLoader):
+    return list(yaml.load_all(stream=stream, Loader=Loader))
 
 
-def _iload_all(stream):
-    return yaml.load_all(stream=stream, Loader=SafeLoader)
+def _iload_all(stream, Loader=GutsSafeLoader):
+    return yaml.load_all(stream=stream, Loader=Loader)
 
 
 def multi_representer(dumper, data):
@@ -1306,7 +1319,7 @@ def multi_constructor(loader, tag_suffix, node):
     tagname = re_compatibility.sub('pf.', tagname)
 
     cls = g_tagname_to_class[tagname]
-    kwargs = dict(iter(loader.construct_mapping(node, deep=True).items()))
+    kwargs = dict(iter(loader.construct_pairs(node, deep=True)))
     o = cls(**kwargs)
     o.validate(regularize=True, depth=1)
     return o
@@ -1317,9 +1330,9 @@ def dict_noflow_representer(dumper, data):
         'tag:yaml.org,2002:map', data, flow_style=False)
 
 
-yaml.add_multi_representer(Object, multi_representer, Dumper=SafeDumper)
-yaml.add_multi_constructor('!', multi_constructor, Loader=SafeLoader)
-yaml.add_representer(dict, dict_noflow_representer, Dumper=SafeDumper)
+yaml.add_multi_representer(Object, multi_representer, Dumper=GutsSafeDumper)
+yaml.add_multi_constructor('!', multi_constructor, Loader=GutsSafeLoader)
+yaml.add_representer(dict, dict_noflow_representer, Dumper=GutsSafeDumper)
 
 
 def newstr_representer(dumper, data):
@@ -1327,7 +1340,7 @@ def newstr_representer(dumper, data):
         'tag:yaml.org,2002:str', unicode(data))
 
 
-yaml.add_representer(newstr, newstr_representer, Dumper=SafeDumper)
+yaml.add_representer(newstr, newstr_representer, Dumper=GutsSafeDumper)
 
 
 class Constructor(object):

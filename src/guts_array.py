@@ -29,7 +29,7 @@ def literal_presenter(dumper, data):
         'tag:yaml.org,2002:str', str(data), style='|')
 
 
-guts.SafeDumper.add_representer(literal, literal_presenter)
+guts.GutsSafeDumper.add_representer(literal, literal_presenter)
 
 
 restricted_dtype_map = {
