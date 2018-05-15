@@ -47,6 +47,8 @@ def component_orientation(source, target, component):
         'E': (90., 0.),
         'Z': (0., -90.)}[component]
 
+    return azi, dip
+
 
 class Target(meta.Receiver):
     '''
