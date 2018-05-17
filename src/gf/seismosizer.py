@@ -1231,7 +1231,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
     discretized_source_class = meta.DiscretizedExplosionSource
 
     def base_key(self):
-        return Source.base_key(self)
+        return Source.base_key(self) + (self.volume_change,)
 
     def check_conflicts(self):
         if self.magnitude is not None and self.volume_change is not None:
