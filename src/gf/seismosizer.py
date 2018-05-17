@@ -1354,7 +1354,8 @@ class RectangularExplosionSource(ExplosionSource):
     def base_key(self):
         return Source.base_key(self) + (self.strike, self.dip, self.length,
                                         self.width, self.nucleation_x,
-                                        self.nucleation_y, self.velocity)
+                                        self.nucleation_y, self.velocity,
+                                        self.anchor)
 
     def discretize_basesource(self, store, target=None):
 
@@ -2068,7 +2069,8 @@ class RingfaultSource(SourceWithMagnitude):
     discretized_source_class = meta.DiscretizedMTSource
 
     def base_key(self):
-        return Source.base_key(self) + (self.strike, self.dip, self.diameter)
+        return Source.base_key(self) + (
+            self.strike, self.dip, self.diameter, self.npointsources)
 
     def get_factor(self):
         return self.sign * self.moment
