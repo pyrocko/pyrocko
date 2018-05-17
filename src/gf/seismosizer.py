@@ -1702,7 +1702,9 @@ class RectangularSource(SourceWithDerivedMagnitude):
             self.width,
             self.nucleation_x,
             self.nucleation_y,
-            self.velocity)
+            self.velocity,
+            self.decimation_factor,
+            self.anchor)
 
     def check_conflicts(self):
         if self.magnitude is not None and self.slip is not None:
