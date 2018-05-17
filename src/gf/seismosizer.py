@@ -1050,7 +1050,7 @@ class Source(Location, Cloneable):
         return meta.component_scheme_to_description[component_scheme]\
             .provided_components
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         lat, lon = self.effective_latlon
         duration = None
         if self.stf:
@@ -1106,6 +1106,11 @@ class Source(Location, Cloneable):
         d.update(kwargs)
         return cls(**d)
 
+    def get_magnitude(self):
+        raise NotImplementedError(
+            '%s does not implement get_magnitude()'
+            % self.__class__.__name__)
+
 
 class SourceWithMagnitude(Source):
     '''
@@ -1132,9 +1137,9 @@ class SourceWithMagnitude(Source):
     def moment(self, value):
         self.magnitude = float(mt.moment_to_magnitude(value))
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return Source.pyrocko_event(
-            self,
+            self, store, target,
             magnitude=self.magnitude,
             **kwargs)
 
@@ -1146,6 +1151,9 @@ class SourceWithMagnitude(Source):
 
         d.update(kwargs)
         return super(SourceWithMagnitude, cls).from_pyrocko_event(ev, **d)
+
+    def get_magnitude(self):
+        return self.magnitude
 
 
 class DerivedMagnitudeError(ValidationError):
@@ -1181,26 +1189,32 @@ class SourceWithDerivedMagnitude(Source):
         pass
 
     def get_magnitude(self, store=None, target=None):
+        if self.magnitude is None:
+            raise DerivedMagnitudeError('no magnitude set')
+
         return self.magnitude
 
     def get_moment(self, store=None, target=None):
-
         return float(mt.magnitude_to_moment(
-            self.get_magnitude(store=store, target=target)))
+            self.get_magnitude(store, target)))
 
-    def pyrocko_moment_tensor(self, store=None):
-        m0 = self.get_moment(store=store)
-        return mt.MomentTensor(m=mt.symmat6(m0, m0, m0, 0., 0., 0.))
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        raise NotImplementedError(
+            '%s does not implement pyrocko_moment_tensor()'
+            % self.__class__.__name__)
 
-    def pyrocko_event(self, store=None, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         try:
-            mt = self.pyrocko_moment_tensor(store=store)
-        except DerivedMagnitudeError:
+            mt = self.pyrocko_moment_tensor(store, target)
+            magnitude = self.get_magnitude()
+        except (DerivedMagnitudeError, NotImplementedError):
             mt = None
+            magnitude = None
 
         return Source.pyrocko_event(
-            self,
+            self, store, target,
             moment_tensor=mt,
+            magnitude=magnitude,
             **kwargs)
 
 
@@ -1280,12 +1294,15 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
 
-        amplitudes *= self.get_moment(
-            store, target=target)
+        amplitudes *= self.get_moment(store, target)
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
             **self._dparams_base_repeated(times))
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
+        a = self.get_moment(store, target) * math.sqrt(2./3.)
+        return mt.MomentTensor(m=mt.symmat6(a, a, a, 0., 0., 0.))
 
 
 class RectangularExplosionSource(ExplosionSource):
@@ -1428,17 +1445,17 @@ class DCSource(SourceWithMagnitude):
             m6s=mot.m6()[num.newaxis, :] * amplitudes[:, num.newaxis],
             **self._dparams_base_repeated(times))
 
-    def pyrocko_moment_tensor(self):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(
             strike=self.strike,
             dip=self.dip,
             rake=self.rake,
             scalar_moment=self.moment)
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return SourceWithMagnitude.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
             **kwargs)
 
     @classmethod
@@ -1457,7 +1474,7 @@ class DCSource(SourceWithMagnitude):
         return super(DCSource, cls).from_pyrocko_event(ev, **d)
 
 
-class CLVDSource(Source):
+class CLVDSource(SourceWithMagnitude):
     '''
     A pure CLVD point source.
     '''
@@ -1480,11 +1497,12 @@ class CLVDSource(Source):
         return Source.base_key(self) + (self.azimuth, self.dip)
 
     def get_factor(self):
-        return self.amplitude
+        return float(mt.magnitude_to_moment(self.magnitude))
 
     @property
     def m6(self):
-        m = mt.symmat6(-0.5, -0.5, 1., 0., 0., 0.)
+        a = math.sqrt(4./3.) * self.get_factor()
+        m = mt.symmat6(-0.5*a, -0.5*a, a, 0., 0., 0.)
         rotmat1 = mt.euler_to_matrix(
             d2r*(self.dip-90.),
             d2r*(self.azimuth-90.),
@@ -1497,21 +1515,22 @@ class CLVDSource(Source):
         return tuple(self.m6.tolist())
 
     def discretize_basesource(self, store, target=None):
+        factor = self.get_factor()
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
         return meta.DiscretizedMTSource(
-            m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis],
+            m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis] / factor,
             **self._dparams_base_repeated(times))
 
-    def pyrocko_moment_tensor(self):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
 
-    def pyrocko_event(self, **kwargs):
-        mt = self.pyrocko_moment_tensor()
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        mt = self.pyrocko_moment_tensor(store, target)
         return Source.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
-            magnitude=mt.moment_magnitude(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
+            magnitude=float(mt.moment_magnitude()),
             **kwargs)
 
 
@@ -1576,14 +1595,20 @@ class MTSource(Source):
             m6s=self.m6[num.newaxis, :] * amplitudes[:, num.newaxis],
             **self._dparams_base_repeated(times))
 
-    def pyrocko_moment_tensor(self):
+    def get_magnitude(self, store=None, target=None):
+        m6 = self.m6
+        return mt.moment_to_magnitude(
+            math.sqrt(num.sum(m6[0:3]**2) + 2.0 * num.sum(m6[3:6]**2))
+            / math.sqrt(2.))
+
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
 
-    def pyrocko_event(self, **kwargs):
-        mt = self.pyrocko_moment_tensor()
+    def pyrocko_event(self, store=None, target=None, **kwargs):
+        mt = self.pyrocko_moment_tensor(store, target)
         return Source.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
             magnitude=float(mt.moment_magnitude()),
             **kwargs)
 
@@ -1740,7 +1765,7 @@ class RectangularSource(SourceWithDerivedMagnitude):
 
             amplitudes = dl * dw * shear_moduli * self.slip
         else:
-            amplitudes *= self.get_moment()
+            amplitudes *= self.get_moment(store, target)
 
         return points, times, amplitudes, dl, dw
 
@@ -1786,17 +1811,16 @@ class RectangularSource(SourceWithDerivedMagnitude):
             else:
                 return latlon[:, ::-1]
 
-    def pyrocko_moment_tensor(self, store=None):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(
             strike=self.strike,
             dip=self.dip,
             rake=self.rake,
-            scalar_moment=self.get_moment(store))
+            scalar_moment=self.get_moment(store, target))
 
-    def pyrocko_event(self, store=None, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return SourceWithDerivedMagnitude.pyrocko_event(
-            self,
-            store=store,
+            self, store, target,
             **kwargs)
 
     @classmethod
@@ -1978,7 +2002,7 @@ class DoubleDCSource(SourceWithMagnitude):
 
         return ds
 
-    def pyrocko_moment_tensor(self):
+    def pyrocko_moment_tensor(self, store=None, target=None):
         a1 = 1.0 - self.mix
         a2 = self.mix
         mot1 = mt.MomentTensor(strike=self.strike1, dip=self.dip1,
@@ -1987,10 +2011,10 @@ class DoubleDCSource(SourceWithMagnitude):
                                rake=self.rake2, scalar_moment=a2*self.moment)
         return mt.MomentTensor(m=mot1.m() + mot2.m())
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return SourceWithMagnitude.pyrocko_event(
-            self,
-            moment_tensor=self.pyrocko_moment_tensor(),
+            self, store, target,
+            moment_tensor=self.pyrocko_moment_tensor(store, target),
             **kwargs)
 
     @classmethod
@@ -2135,9 +2159,9 @@ class SFSource(Source):
         return meta.DiscretizedSFSource(forces=forces,
                                         **self._dparams_base_repeated(times))
 
-    def pyrocko_event(self, **kwargs):
+    def pyrocko_event(self, store=None, target=None, **kwargs):
         return Source.pyrocko_event(
-            self,
+            self, store, target,
             **kwargs)
 
     @classmethod
@@ -3242,6 +3266,7 @@ class SourceGrid(SourceGroup):
 source_classes = [
     Source,
     SourceWithMagnitude,
+    SourceWithDerivedMagnitude,
     ExplosionSource,
     RectangularExplosionSource,
     DCSource,
