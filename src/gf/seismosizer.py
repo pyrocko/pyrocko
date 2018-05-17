@@ -1481,10 +1481,6 @@ class CLVDSource(SourceWithMagnitude):
 
     discretized_source_class = meta.DiscretizedMTSource
 
-    amplitude = Float.T(
-        default=1.0,
-        help='value of the largest eigenvalue of moment tensor [Nm]')
-
     azimuth = Float.T(
         default=0.0,
         help='azimuth direction of largest dipole, clockwise from north [deg]')
