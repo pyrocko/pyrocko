@@ -1718,6 +1718,12 @@ class RectangularSource(SourceWithDerivedMagnitude):
             return self.magnitude
 
         elif self.slip is not None:
+            if None in (store, target):
+                raise DerivedMagnitudeError(
+                    'magnitude for a rectangular source with slip defined '
+                    'can only be derived when earth model and target '
+                    'interpolation method are available')
+
             amplitudes = self._discretize(store, target)[2]
             return float(mt.moment_to_magnitude(num.sum(amplitudes)))
 
