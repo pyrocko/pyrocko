@@ -395,10 +395,7 @@ class GFSourcesTestCase(unittest.TestCase):
                             width=5*km,
                             length=5*km)]:
 
-                    print(source)
-
                     dsource = source.discretize_basesource(store, target)
-                    print(dsource)
                     m1 = source.get_moment(store, target)
                     m2 = dsource.centroid().pyrocko_moment_tensor().scalar_moment()
                     assert abs(m1 - m2) < abs(m1 + m2) * 1e-6
