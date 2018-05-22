@@ -88,13 +88,12 @@ class GNSSStation(Location):
     def __init__(self, *args, **kwargs):
         Location.__init__(self, *args, **kwargs)
 
-
     def get_covariance_matrix(self, full=True):
         s = self
 
         covar = num.zeros((3, 3))
         covar[num.diag_indices_from(covar)] = num.array(
-            [(c.sigma)**2 for c in (s.north, s.east, s.up)])
+            [c.sigma**2 for c in (s.north, s.east, s.up)])
 
         if s.correlation_ne is not None:
             covar[0, 1] = s.correlation_ne * s.north.sigma * s.east.sigma
@@ -108,7 +107,7 @@ class GNSSStation(Location):
                 covar[num.triu_indices_from(covar, k=1)]
 
         return covar
-        
+
     def get_correlation_matrix(self, full=True):
         s = self
 
@@ -148,7 +147,8 @@ class GNSSCampaign(Object):
 
     def __init__(self, *args, **kwargs):
         Object.__init__(self, *args, **kwargs)
-        self._cov_arr = None
+        self._cov_mat = None
+        self._cor_mat = None
 
     def add_station(self, station):
         return self.stations.append(station)
@@ -169,27 +169,26 @@ class GNSSCampaign(Object):
             coords[:, 0].max(), coords[:, 1].max()) / 2.
 
     def get_covariance_matrix(self):
-        if self._cov_arr is None:
+        if self._cov_mat is None:
             cov_arr = num.zeros((self.nstations*3, self.nstations*3))
-        
+
             for ista, sta in enumerate(self.stations):
                 cov_arr[ista*3:ista*3+3, ista*3:ista*3+3] = \
                     sta.get_covariance_matrix(full=True)
-        
-            self._cov_arr = cov_arr
-        return self._cov_arr
-      
+
+            self._cov_mat = cov_arr
+        return self._cov_mat
+
     def get_correlation_matrix(self):
-        logger.warn('gnss.get_covariance_matrix is not fully implemented!')
-        if self._cov_arr is None:
+        if self._cor_mat is None:
             cov_arr = num.zeros((self.nstations*3, self.nstations*3))
 
             for ista, sta in enumerate(self.stations):
                 cov_arr[ista*3:ista*3+3, ista*3:ista*3+3] = \
                     sta.get_correlation_matrix(full=True)
 
-            self._cov_arr = cov_arr
-        return self._cov_arr
+            self._cor_mat = cov_arr
+        return self._cor_mat
 
     @property
     def coordinates(self):

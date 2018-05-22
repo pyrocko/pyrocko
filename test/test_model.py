@@ -185,20 +185,48 @@ class ModelTestCase(unittest.TestCase):
             num.testing.assert_array_equal(corr_arr, corr_arr.T)
 
         corr_arr = campaign.get_correlation_matrix()
+        num.testing.assert_array_equal(corr_arr, corr_arr.T)
+
+        corr_arr_ref = num.full_like(corr_arr, 0.)
+
         for ista, sta in enumerate(campaign.stations):
             for ic, comp in enumerate([sta.north, sta.east, sta.up]):
-                corr_arr[ista*3+ic, ista*3+ic] = comp.sigma
+                corr_arr_ref[ista*3+ic, ista*3+ic] = comp.sigma
 
-            corr_arr[ista*3, ista*3+1] = sta.correlation_ne
-            corr_arr[ista*3+1, ista*3] = sta.correlation_ne
+            corr_arr_ref[ista*3, ista*3+1] = sta.correlation_ne
+            corr_arr_ref[ista*3+1, ista*3] = sta.correlation_ne
 
-            corr_arr[ista*3, ista*3+2] = sta.correlation_nu
-            corr_arr[ista*3+2, ista*3] = sta.correlation_nu
+            corr_arr_ref[ista*3, ista*3+2] = sta.correlation_nu
+            corr_arr_ref[ista*3+2, ista*3] = sta.correlation_nu
 
-            corr_arr[ista*3+1, ista*3+2] = sta.correlation_eu
-            corr_arr[ista*3+2, ista*3+1] = sta.correlation_eu
+            corr_arr_ref[ista*3+1, ista*3+2] = sta.correlation_eu
+            corr_arr_ref[ista*3+2, ista*3+1] = sta.correlation_eu
 
-        num.testing.assert_array_equal(corr_arr, corr_arr.T)
+        covar_arr = campaign.get_covariance_matrix()
+        num.testing.assert_array_equal(covar_arr, covar_arr.T)
+
+        covar_ref = num.full_like(covar_arr, 0.)
+
+        for ista, sta in enumerate(campaign.stations):
+            for ic, comp in enumerate([sta.north, sta.east, sta.up]):
+                covar_ref[ista*3+ic, ista*3+ic] = comp.sigma**2
+
+            covar_ref[ista*3, ista*3+1] =\
+                sta.correlation_ne * sta.north.sigma * sta.east.sigma
+            covar_ref[ista*3+1, ista*3] =\
+                sta.correlation_ne * sta.north.sigma * sta.east.sigma
+
+            covar_ref[ista*3, ista*3+2] =\
+                sta.correlation_nu * sta.north.sigma * sta.up.sigma
+            covar_ref[ista*3+2, ista*3] =\
+                sta.correlation_nu * sta.north.sigma * sta.up.sigma
+
+            covar_ref[ista*3+1, ista*3+2] =\
+                sta.correlation_eu * sta.east.sigma * sta.up.sigma
+            covar_ref[ista*3+2, ista*3+1] =\
+                sta.correlation_eu * sta.east.sigma * sta.up.sigma
+
+        num.testing.assert_array_equal(covar_arr, covar_ref)
 
         campaign.dump(filename=fn)
 
