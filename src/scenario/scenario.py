@@ -5,6 +5,7 @@ import os
 import os.path as op
 
 from pyrocko.guts import List
+from pyrocko.plot import gmtpy
 from pyrocko import pile, util, model, config
 
 from .base import LocationGenerator, ScenarioError
@@ -94,10 +95,8 @@ class ScenarioGenerator(LocationGenerator):
             self._engine, self.get_sources(), *a, **kw)
 
     @collect
-    def dump_data(self, path, tmin=None, tmax=None, overwrite=False,
-                  interactive=True):
+    def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
         self.source_generator.dump_data(path)
-        self.ensure_gfstores(interactive=interactive)
 
         meta_dir = op.join(path, 'meta')
         util.ensuredir(meta_dir)
@@ -132,7 +131,10 @@ class ScenarioGenerator(LocationGenerator):
 
     def make_map(self, filename):
         logger.info('Plotting scenarios\' map...')
-        draw_scenario_gmt(self, filename)
+        try:
+            draw_scenario_gmt(self, filename)
+        except gmtpy.GMTError:
+            logger.warning('GMT threw an error, could not plot map')
 
     def draw_map(self, fn):
         from pyrocko.plot import automap
@@ -196,8 +198,8 @@ class ScenarioGenerator(LocationGenerator):
         if interactive:
             print('We could not find the following Green\'s function stores:\n'
                   ' %s\n'
-                  'We can try to download the stores from http://kinherd.org'
-                  ' into Pyrocko\'s global GF cache.'
+                  'We can try to download the stores from '
+                  ' http://kinherd.org:8080 into Pyrocko\'s global GF cache.'
                   % '\n'.join(self.stores_missing))
             for idr, dr in enumerate(cfg.gf_store_superdirs):
                 print(' %d. %s' % ((idr+1), dr))

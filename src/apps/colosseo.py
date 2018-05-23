@@ -161,8 +161,9 @@ def command_fill(args):
 
     scenario = guts.load(filename=fn)
     scenario.init_modelling(engine)
+    scenario.ensure_gfstores(interactive=True)
     scenario.dump_data(
-        path=project_dir, overwrite=options.force, interactive=True)
+        path=project_dir, overwrite=options.force)
     scenario.make_map(op.join(project_dir, 'map.pdf'))
 
 
