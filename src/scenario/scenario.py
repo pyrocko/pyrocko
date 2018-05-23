@@ -1,9 +1,11 @@
 import numpy as num
 import logging
+import sys
+import os
 import os.path as op
 
 from pyrocko.guts import List
-from pyrocko import pile, util, model
+from pyrocko import pile, util, model, config
 
 from .base import LocationGenerator, ScenarioError
 from .sources import SourceGenerator, DCSourceGenerator
@@ -92,8 +94,10 @@ class ScenarioGenerator(LocationGenerator):
             self._engine, self.get_sources(), *a, **kw)
 
     @collect
-    def dump_data(self, path, tmin=None, tmax=None, overwrite=False):
+    def dump_data(self, path, tmin=None, tmax=None, overwrite=False,
+                  interactive=True):
         self.source_generator.dump_data(path)
+        self.ensure_gfstores(interactive=interactive)
 
         meta_dir = op.join(path, 'meta')
         util.ensuredir(meta_dir)
@@ -164,12 +168,70 @@ class ScenarioGenerator(LocationGenerator):
 
         m.save(fn)
 
+    @property
+    def stores_wanted(self):
+        return set([gen.store_id for gen in self.target_generators
+                    if hasattr(gen, 'store_id')])
+
+    @property
+    def stores_missing(self):
+        return self.stores_wanted - set(self.get_engine().get_store_ids())
+
+    def ensure_gfstores(self, interactive=False):
+        if not self.stores_missing:
+            return
+
+        from pyrocko.gf import ws
+
+        cfg = config.config()
+        if len(cfg.gf_store_superdirs) == 0:
+            store_dir = op.expanduser(
+                op.join(config.pyrocko_dir_tmpl, 'gf_stores'))
+            logger.debug('Creating default gf_store_superdirs: %s' % store_dir)
+
+            util.ensuredir(store_dir)
+            cfg.gf_store_superdirs = [store_dir]
+            config.write_config(cfg)
+
+        if interactive:
+            print('We could not find the following Green\'s function stores:\n'
+                  ' %s\n'
+                  'We can try to download the stores from http://kinherd.org'
+                  ' into Pyrocko\'s global GF cache.'
+                  % '\n'.join(self.stores_missing))
+            for idr, dr in enumerate(cfg.gf_store_superdirs):
+                print(' %d. %s' % ((idr+1), dr))
+            s = input('\nIn which cache directory shall the GF store'
+                      ' be downloaded to?\n'
+                      'Default 1, (C)ancel: ')
+            if s in ['c', 'C']:
+                print('Canceled!')
+                sys.exit(1)
+            elif s == '':
+                s = 0
+            try:
+                s = int(s)
+                if s > len(cfg.gf_store_superdirs):
+                    raise ValueError
+            except ValueError:
+                print('Invalid selection: %s' % s)
+                sys.exit(1)
+        else:
+            s = 1
+
+        download_dir = cfg.gf_store_superdirs[s-1]
+        logger.info('Downloading Green\'s functions stores to %s'
+                    % download_dir)
+
+        for store in self.stores_missing:
+            os.chdir(download_dir)
+            ws.download_gf_store(site='kinherd', store_id=store)
+
     @classmethod
     def initialize(
             cls, path,
             center_lat=None, center_lon=None, radius=None,
-            targets=AVAILABLE_TARGETS,
-            force=False):
+            targets=AVAILABLE_TARGETS, force=False):
         """Initialize a Scenario and create a ``scenario.yml``
 
         :param path: Path to create the scenerio in
