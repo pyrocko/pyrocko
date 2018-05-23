@@ -1063,6 +1063,8 @@ def ensuredir(dst):
 
     if os.path.exists(dst):
         return
+    if dst[-1] == '/':
+        dst = dst[:-1]
 
     ensuredirs(dst)
     os.mkdir(dst)
