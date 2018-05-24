@@ -64,10 +64,15 @@ class GNSSCampaignGenerator(TargetGenerator):
         return [target]
 
     def get_gnss_campaign(self, engine, sources, tmin=None, tmax=None):
-        resp = engine.process(
-            sources,
-            self.get_targets(),
-            nthreads=0)
+        try:
+            resp = engine.process(
+                sources,
+                self.get_targets(),
+                nthreads=0)
+        except gf.meta.OutOfBounds as e:
+            logger.warning('Could not calculate GNSS displacements'
+                           ' - the GF store\'s extend is too small!')
+            return []
 
         campaigns = [r.campaign for r in resp.static_results()]
 

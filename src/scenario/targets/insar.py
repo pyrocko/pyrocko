@@ -405,10 +405,15 @@ class InSARGenerator(TargetGenerator):
 
         scenario_tmin, scenario_tmax = self.get_time_range(sources)
 
-        resp = engine.process(
-            sources,
-            self.get_targets(),
-            nthreads=0)
+        try:
+            resp = engine.process(
+                sources,
+                self.get_targets(),
+                nthreads=0)
+        except gf.meta.OutOfBounds as e:
+            logger.warning('Could not calculate InSAR displacements'
+                           ' - the GF store\'s extend is too small!')
+            return []
 
         scenes = [res.scene for res in resp.static_results()]
 
