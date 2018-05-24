@@ -130,7 +130,7 @@ class ScenarioGenerator(LocationGenerator):
         return p
 
     def make_map(self, filename):
-        logger.info('Plotting scenario's map...')
+        logger.info('Plotting scenario\'s map...')
         try:
             draw_scenario_gmt(self, filename)
         except gmtpy.GMTError:
