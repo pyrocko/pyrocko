@@ -63,15 +63,15 @@ class RectangularSourceGenerator(SourceGenerator):
             time=float(time),
             lat=float(lat),
             lon=float(lon),
-            magnitude=magnitude,
-            decimation_factor=self.decimation_factor,
-
+            anchor='top',
             depth=float(depth),
             length=float(length),
             width=float(width),
             strike=float(strike),
             dip=float(dip),
-            rake=float(rake))
+            rake=float(rake),
+            magnitude=magnitude,
+            decimation_factor=self.decimation_factor)
 
         return source
 
