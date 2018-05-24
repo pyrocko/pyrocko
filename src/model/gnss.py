@@ -190,6 +190,10 @@ class GNSSCampaign(Object):
             self._cor_mat = cov_arr
         return self._cor_mat
 
+    def dump(self, *args, **kwargs):
+        self.regularize()
+        Object.dump(self, *args, **kwargs)
+
     @property
     def coordinates(self):
         return num.array([loc.effective_latlon for loc in self.stations])
