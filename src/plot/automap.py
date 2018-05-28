@@ -1044,9 +1044,17 @@ class Map(Object):
 
         self._cities_minpop = minpop
 
-    def add_stations(self, stations, psxy_style=dict(S='t8p', G='black')):
-        lats = [s.lat for s in stations]
-        lons = [s.lon for s in stations]
+    def add_stations(self, stations, psxy_style=dict()):
+
+        default_psxy_style = {
+            'S': 't8p',
+            'G': 'black'
+        }
+        default_psxy_style.update(psxy_style)
+
+        lats, lons = zip(*[od.ne_to_latlon(
+                                s.lat, s.lon, s.north_shift, s.east_shift)
+                           for s in stations])
 
         self.gmt.psxy(
             in_columns=(lons, lats),
@@ -1082,14 +1090,18 @@ class Map(Object):
         }
         default_psxy_style.update(psxy_style)
 
+        lats, lons = zip(*[od.ne_to_latlon(
+                                s.lat, s.lon, s.north_shift, s.east_shift)
+                           for s in campaign.stations])
+
         if labels:
-            rows = [(s.lon, s.lat,
+            rows = [(lons, lats,
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, 0,
                      s.code)
                     for s in campaign.stations]
         else:
-            rows = [(s.lon, s.lat,
+            rows = [(lons, lats,
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, 0)
                     for s in campaign.stations]
