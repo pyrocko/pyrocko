@@ -1058,7 +1058,7 @@ class Map(Object):
 
         self.gmt.psxy(
             in_columns=(lons, lats),
-            *self.jxyr, **psxy_style)
+            *self.jxyr, **default_psxy_style)
 
         for station in stations:
             self.add_label(station.lat, station.lon, '.'.join(
