@@ -97,7 +97,7 @@ available on GitHub:
  - https://github.com/pyrocko/fomosto-psgrn-pscmp
 
 For detailled information regarding each computation code refer to the
-Downloads/Software website of section 2.1 (GFZ): http://www.gfz-potsdam.de/en/section/physics-of-earthquakes-and-volcanoes/services/downloads-software/.
+Downloads/Software website of section 2.1 (GFZ): https://www.gfz-potsdam.de/en/section/physics-of-earthquakes-and-volcanoes/data-products-services/downloads-software/.
 
 Installation is done for each code inside the uncompressed folder by (More information in each packages' :file:`README.md`):
 
