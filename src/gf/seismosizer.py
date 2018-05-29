@@ -2763,18 +2763,21 @@ class LocalEngine(Engine):
                 ('index', 'traces', 'config'))
 
     def iter_store_dirs(self):
+        store_dirs = set()
         for d in self.store_superdirs:
             if not os.path.exists(d):
                 logger.warning('store_superdir not available: %s' % d)
                 continue
 
             for entry in os.listdir(d):
-                store_dir = pjoin(d, entry)
+                store_dir = os.path.realpath(pjoin(d, entry))
                 if self._looks_like_store_dir(store_dir):
-                    yield store_dir
+                    store_dirs.add(store_dir)
 
         for store_dir in self.store_dirs:
-            yield store_dir
+            store_dirs.add(os.path.realpath(store_dir))
+
+        return store_dirs
 
     def _scan_stores(self):
         for store_dir in self.iter_store_dirs():
