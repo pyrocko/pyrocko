@@ -1095,16 +1095,16 @@ class Map(Object):
                            for s in campaign.stations])
 
         if labels:
-            rows = [(lons, lats,
+            rows = [(lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, 0,
                      s.code)
-                    for s in campaign.stations]
+                    for ista, s in enumerate(campaign.stations)]
         else:
-            rows = [(lons, lats,
+            rows = [(lons[ista], lats[ista],
                      s.east.shift, s.north.shift,
                      s.east.sigma, s.north.sigma, 0)
-                    for s in campaign.stations]
+                    for ista, s in enumerate(campaign.stations)]
 
         self.gmt.psvelo(
             in_rows=rows,
