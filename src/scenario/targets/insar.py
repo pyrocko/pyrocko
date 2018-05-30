@@ -83,7 +83,7 @@ class ScenePatch(Object):
                                 .format(orbit=self.scene_patch.orbital_node,
                                         time=datetime.now()),
                     orbital_node=patch.orbital_node,
-                    scene_id='pyrocko.scenario-%s'
+                    scene_id='pyrocko_scenario_%s'
                              % self.scene_patch.orbital_node,
                     satellite_name='Sentinel-1 (Scenario)'),
                 frame=FrameConfig(
@@ -472,4 +472,4 @@ class InSARGenerator(TargetGenerator):
         return [path_insar]
 
     def add_map_artists(self, engine, sources, automap):
-        pass
+        logger.warning('InSAR mapping is not implemented!')

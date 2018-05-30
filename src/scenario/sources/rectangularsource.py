@@ -82,4 +82,5 @@ class RectangularSourceGenerator(SourceGenerator):
                 L='+p2p,black',
                 W='1p,black',
                 G='black',
+                t=60,
                 *automap.jxyr)

@@ -17,20 +17,22 @@ guts_prefix = 'pf.scenario'
 class GPSNoiseGenerator(NoiseGenerator):
     measurement_duarion_days = Float.T(
         default=2.,
-        help='Measurement duration in length')
+        help='Measurement duration in days')
 
     def add_noise(self, campaign):
         # https://www.nat-hazards-earth-syst-sci.net/15/875/2015/nhess-15-875-2015.pdf
         waterlevel = 1. - (.99 + .0015 * self.measurement_duarion_days)  # noqa
+        logger.warning('GNSSNoiseGenerator is a work-in-progress!')
 
         for ista, sta in enumerate(campaign.stations):
-            rstate = self.get_rstate(ista)
+            pass
+            # rstate = self.get_rstate(ista)
 
-            sta.north.sigma = 8e-3
-            sta.east.sigma = 8e-3
+            # sta.north.sigma = 8e-3
+            # sta.east.sigma = 8e-3
 
-            sta.north.shift += rstate.normal(0., sta.north.sigma)
-            sta.east.shift += rstate.normal(0., sta.east.sigma)
+            # sta.north.shift += rstate.normal(0., sta.north.sigma)
+            # sta.east.shift += rstate.normal(0., sta.east.sigma)
 
 
 class GNSSCampaignGenerator(TargetGenerator):
@@ -42,6 +44,7 @@ class GNSSCampaignGenerator(TargetGenerator):
 
     noise_generator = NoiseGenerator.T(
         default=GPSNoiseGenerator.D(),
+        optional=True,
         help='Add Synthetic noise to the GNSS displacements.')
 
     store_id = gf.StringID.T(
@@ -77,6 +80,7 @@ class GNSSCampaignGenerator(TargetGenerator):
         campaigns = [r.campaign for r in resp.static_results()]
 
         stacked_campaign = campaigns[0]
+        stacked_campaign.name = 'Scenario Campaign'
         for camp in campaigns[1:]:
             for ista, sta in enumerate(camp.stations):
                 stacked_campaign.stations[ista].north.shift += sta.north.shift
