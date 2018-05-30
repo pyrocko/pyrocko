@@ -9,6 +9,18 @@ km = 1000.
 
 
 class Seismosizer(Snuffling):
+    '''
+    Generate synthetic traces on the fly
+    ====================================
+
+    Activate an event (press `e`) to generate synthetic waveforms for it.
+    If no stations have been loaded pripor to execution, two stations will be
+    generated at lat/lon = (5., 0) and (-5., 0.).
+
+    All geometrical units are kilometers (if not stated otherwise).
+    `GF Stores` will be loaded on start from `gf_store_superdirs` defined
+    in your pyrocko config file located at `$HOME/.pyrocko/config.pf`.
+    '''
 
     def __init__(self):
         Snuffling.__init__(self)
@@ -118,6 +130,8 @@ class Seismosizer(Snuffling):
             event = model.Event(lat=0., lon=0.)
             stations = []
 
+        stations = self.get_stations()
+
         s2c = {}
         for traces in self.chopper_selected_traces(fallback=True,
                                                    mode='visible'):
@@ -135,14 +149,15 @@ class Seismosizer(Snuffling):
                 s = model.Station(station='(%g, %g)' % (lat, lon),
                                   lat=lat, lon=lon)
                 stations.append(s)
-                ns = s.nsl()[:2]
-                if ns not in s2c:
-                    s2c[ns] = set()
+                viewer.add_stations(stations)
 
-                for cha in 'NEZ':
-                    s2c[ns].add(('', cha))
+        for s in stations:
+            ns = s.nsl()[:2]
+            if ns not in s2c:
+                s2c[ns] = set()
 
-            viewer.add_stations(stations)
+            for cha in 'NEZ':
+                s2c[ns].add(('', cha))
 
         source = gf.RectangularSource(
             time=event.time+self.time,
