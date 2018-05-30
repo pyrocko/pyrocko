@@ -1079,14 +1079,15 @@ class Map(Object):
 
         offsets = num.array([math.sqrt(s.east.shift**2 + s.north.shift**2)
                              for s in campaign.stations])
-        scale = 1./offsets.max()
+        size = math.sqrt(self.height**2 + self.width**2)
+        scale = (size/10.) / offsets.max()
 
         default_psxy_style = {
             'h': 0,
             'W': '0.5p,black',
             'G': 'black',
             'L': True,
-            'S': 'e%d/0.95/8' % scale,
+            'S': 'e%dc/0.95/8' % scale,
         }
         default_psxy_style.update(psxy_style)
 
