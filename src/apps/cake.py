@@ -368,7 +368,7 @@ as in --phases.''')
             else:
                 distances = num.array(
                     list(map(
-                        float, options.sdist.split(',')), dtype=num.float))
+                        float, options.sdist.split(','))), dtype=num.float)
 
             if not as_degrees:
                 distances *= r2d * cake.km / cake.earthradius
