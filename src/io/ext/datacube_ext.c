@@ -362,7 +362,7 @@ datacube_error_t datacube_read_header_block(reader_t *reader) {
     scopy = NULL;
     prev = NULL;
     while (1) {
-        s = strsep(&p, ";= ");
+        s = strsep(&p, ";=");
         if (isnull(s)) {
             break;
         }
