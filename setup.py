@@ -341,9 +341,10 @@ proceed? [y/n]' % open(fn, 'r').read())
                   shell=False)
 
         while p.poll() is None:
-            print(p.stdout.readline().decode('ascii').rstrip())
+            print(p.stdout.readline().decode(
+                'ascii', errors='replace').rstrip())
 
-        print(p.stdout.read().decode('ascii'))
+        print(p.stdout.read().decode('ascii', errors='replace'))
 
 
 class CustomBuildPyCommand(build_py):

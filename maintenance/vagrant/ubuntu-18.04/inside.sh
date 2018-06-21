@@ -21,6 +21,7 @@ rm -f "$outfile_py2"
 
 cd $HOME
 sudo apt-get update -y
+sudo apt-get upgrade -y
 sudo apt-get install -y git python-setuptools python3-setuptools xvfb
 
 if [ -e "$pyrockodir" ] ; then
