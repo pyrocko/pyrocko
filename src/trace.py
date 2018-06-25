@@ -1252,7 +1252,7 @@ class Trace(object):
               nblock_duration_detection=100):
 
         '''
-        Detect peaks above given threshold.
+        Detect peaks above a given threshold (method 1).
 
         From every instant, where the signal rises above ``threshold``, a time
         length of ``tsearch`` seconds is searched for a maximum. A list with
@@ -1318,6 +1318,47 @@ class Trace(object):
             return tpeaks, apeaks, tzeros
         else:
             return tpeaks, apeaks
+
+    def peaks2(self, threshold, tsearch):
+
+        '''
+        Detect peaks above a given threshold (method 2).
+
+        This variant of peak detection is a bit more robust (and slower) than
+        the one implemented in :py:meth:`Trace.peaks`. First all samples with
+        ``a[i-1] < a[i] > a[i+1]`` are masked as potential peaks. From these,
+        iteratively the one with the maximum amplitude ``a[j]`` and time
+        ``t[j]`` is choosen and potential peaks within
+        ``t[j] - tsearch, t[j] + tsearch``
+        are discarded. The algorithm stops, when ``a[j] < threshold`` or when
+        no more potential peaks are left.
+        '''
+
+        a = num.copy(self.ydata)
+
+        amin = num.min(a)
+
+        a[0] = amin
+        a[1: -1][num.diff(a, 2) <= 0.] = amin
+        a[-1] = amin
+
+        data = []
+        while True:
+            imax = num.argmax(a)
+            amax = a[imax]
+
+            if amax < threshold or amax == amin:
+                break
+
+            data.append((self.tmin + imax * self.deltat, amax))
+
+            ntsearch = int(round(tsearch / self.deltat))
+            a[max(imax-ntsearch//2, 0):min(imax+ntsearch//2, a.size)] = amin
+
+        data.sort()
+        tpeaks, apeaks = list(zip(*data))
+
+        return tpeaks, apeaks
 
     def extend(self, tmin=None, tmax=None, fillmethod='zeros'):
         '''
