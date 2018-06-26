@@ -1032,6 +1032,95 @@ class GutsTestCase(unittest.TestCase):
         assert b.a_list[0] is not b_clone.a_list[0]
         assert b.a_tuple[0] is not b_clone.a_tuple[0]
 
+    def testXMLNamespaces(self):
+        ns1 = 'http://www.w3.org/TR/html4/'
+        ns2 = 'https://www.w3schools.com/furniture'
+
+        class Row(Object):
+            xmlns = ns1
+            cells = List.T(String.T(xmltagname='td'))
+
+        class Table1(Object):
+            xmlns = ns1
+            rows = List.T(Row.T(xmltagname='tr'))
+
+        class Table2(Object):
+            xmlns = ns2
+            name = String.T()
+            width = Int.T()
+            length = Int.T()
+
+        class Root(Object):
+            xmltagname = 'root'
+            tables1 = List.T(Table1.T(xmltagname='table'))
+            tables2 = List.T(Table2.T(xmltagname='table'))
+
+        doc = '''
+<root xmlns:h="http://www.w3.org/TR/html4/"
+xmlns:f="https://www.w3schools.com/furniture">
+
+<h:table>
+  <h:tr>
+    <h:td>Apples</h:td>
+    <h:td>Bananas</h:td>
+  </h:tr>
+</h:table>
+
+<f:table>
+  <f:name>African Coffee Table</f:name>
+  <f:width>80</f:width>
+  <f:length>120</f:length>
+</f:table>
+
+</root>
+        '''
+
+        o = load_xml(string=doc)
+        s = o.dump_xml()
+        o2 = load_xml(string=s)
+
+        assert isinstance(o.tables1[0], Table1)
+        assert isinstance(o.tables2[0], Table2)
+
+    def testXMLNamespaces2(self):
+        ns1 = 'http://www.w3.org/TR/html4/'
+
+        class Row(Object):
+            xmlns = ns1
+            cells = List.T(String.T(xmltagname='td'))
+
+        class Table1(Object):
+            xmlns = ns1
+            rows = List.T(Row.T(xmltagname='tr'))
+
+        class Root(Object):
+            xmltagname = 'root'
+            tables1 = List.T(Table1.T(xmltagname='table'))
+
+        doc = '''
+<root xmlns:h="http://www.w3.org/TR/html4/">
+
+<h:table>
+  <h:tr>
+    <h:td>Apples</h:td>
+    <h:td>Bananas</h:td>
+  </h:tr>
+</h:table>
+
+</root>
+        '''
+
+        o = load_xml(string=doc)
+        assert isinstance(o.tables1[0], Table1)
+        s = o.dump_xml()
+
+        o2 = load_xml(string=s)
+        assert isinstance(o2.tables1[0], Table1)
+        s2 = o2.dump_xml(ns_ignore=True)
+
+        o3 = load_xml(string=s2, ns_hints=['', 'http://www.w3.org/TR/html4/'])
+        assert isinstance(o3.tables1[0], Table1)
+
 
 def makeBasicTypeTest(Type, sample, sample_in=None, xml=False):
 

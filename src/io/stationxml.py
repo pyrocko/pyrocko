@@ -26,6 +26,8 @@ from pyrocko import trace, util
 
 guts_prefix = 'sx'
 
+guts_xmlns = 'http://www.fdsn.org/xml/station/1'
+
 logger = logging.getLogger('pyrocko.io.stationxml')
 
 conversion = {
@@ -931,6 +933,7 @@ class FDSNStationXML(Object):
     network_list = List.T(Network.T(xmltagname='Network'))
 
     xmltagname = 'FDSNStationXML'
+    guessable_xmlns = [guts_xmlns]
 
     def get_pyrocko_stations(self, nslcs=None, nsls=None,
                              time=None, timespan=None,

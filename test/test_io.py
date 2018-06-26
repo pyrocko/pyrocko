@@ -12,7 +12,7 @@ from random import choice as rc
 from os.path import join as pjoin
 import shutil
 
-from pyrocko import io
+from pyrocko import io, guts
 from pyrocko.io import FileLoadError
 from pyrocko.io import mseed, trace, util, suds, quakeml
 
@@ -200,6 +200,29 @@ class IOTestCase(unittest.TestCase):
         events = qml.get_pyrocko_events()
         assert len(events) == 2
         assert events[0].moment_tensor is not None
+
+        s = qml.dump_xml(ns_ignore=True)
+        qml2 = quakeml.QuakeML.load_xml(string=s)
+        qml3 = guts.load_xml(string=s)
+        assert qml2.dump_xml() == qml3.dump_xml()
+
+    def testReadUSGSQuakeML(self):
+        fpath = common.test_data_file('usgs.quakeml')
+        qml = quakeml.QuakeML.load_xml(filename=fpath)
+        s = qml.dump_xml()
+
+        qml2 = quakeml.QuakeML.load_xml(string=s)
+        s2 = qml2.dump_xml()
+        assert len(s) == len(s2)
+
+    def testReadStationXML(self):
+        from pyrocko.io import stationxml  # noqa
+
+        fpath = common.test_data_file('test1.stationxml')
+        sx = guts.load_xml(filename=fpath)
+        s = sx.dump_xml(ns_ignore=True)
+        sx2 = guts.load_xml(string=s)
+        assert sx.dump_xml() == sx2.dump_xml()
 
 
 if __name__ == "__main__":

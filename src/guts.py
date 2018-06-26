@@ -4,7 +4,7 @@
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
 '''Lightweight declarative YAML and XML data binding for Python.'''
-from __future__ import absolute_import
+from __future__ import absolute_import, print_function
 from builtins import str as newstr
 from builtins import range
 from future.utils import with_metaclass
@@ -15,6 +15,7 @@ import re
 import sys
 import types
 import copy
+from collections import defaultdict
 
 from io import BytesIO
 
@@ -48,6 +49,7 @@ g_deferred_content = {}
 
 g_tagname_to_class = {}
 g_xmltagname_to_class = {}
+g_guessable_xmlns = {}
 
 guts_types = [
     'Object', 'SObject', 'String', 'Unicode', 'Int', 'Float',
@@ -196,6 +198,7 @@ class TBase(object):
             optional=False,
             xmlstyle='element',
             xmltagname=None,
+            xmlns=None,
             help=None,
             position=None):
 
@@ -215,6 +218,7 @@ class TBase(object):
         self.optional = optional
         self.name = None
         self._xmltagname = xmltagname
+        self._xmlns = xmlns
         self.parent = None
         self.xmlstyle = xmlstyle
         self.help = help
@@ -239,13 +243,24 @@ class TBase(object):
         else:
             return '?'
 
+    def set_xmlns(self, xmlns):
+        if self._xmlns is None and not self.xmlns:
+            self._xmlns = xmlns
+
+        if self.multivalued:
+            self.content_t.set_xmlns(xmlns)
+
+    def get_xmlns(self):
+        return self._xmlns or self.xmlns
+
     def get_xmltagname(self):
         if self._xmltagname is not None:
-            return self._xmltagname
+            return self.get_xmlns() + ' ' + self._xmltagname
         elif self.name:
-            return make_xmltagname_from_name(self.name)
+            return self.get_xmlns() + ' ' \
+                + make_xmltagname_from_name(self.name)
         elif self.xmltagname:
-            return self.xmltagname
+            return self.get_xmlns() + ' ' + self.xmltagname
         else:
             assert False
 
@@ -270,7 +285,7 @@ class TBase(object):
             del cls.xmltagname_to_name_multivalued[
                 prop.content_t.effective_xmltagname]
 
-        if cls.content_property == prop:
+        if cls.content_property is prop:
             cls.content_property = None
 
         cls.properties.remove(prop)
@@ -283,6 +298,7 @@ class TBase(object):
 
         prop.instance = prop
         prop.name = name
+        prop.set_xmlns(cls.xmlns)
 
         if isinstance(prop, Choice.T):
             for tc in prop.choices:
@@ -556,6 +572,17 @@ class ObjectMetaClass(type):
                 T.xmltagname = classname
 
             mod = sys.modules[cls.__module__]
+
+            if hasattr(cls, 'xmlns'):
+                T.xmlns = cls.xmlns
+            elif hasattr(mod, 'guts_xmlns'):
+                T.xmlns = mod.guts_xmlns
+            else:
+                T.xmlns = ''
+
+            if T.xmlns and hasattr(cls, 'guessable_xmlns'):
+                g_guessable_xmlns[T.xmltagname] = cls.guessable_xmlns
+
             if hasattr(mod, 'guts_prefix'):
                 if mod.guts_prefix:
                     T.tagname = mod.guts_prefix + '.' + classname
@@ -611,7 +638,7 @@ class ObjectMetaClass(type):
 
             g_tagname_to_class[T.tagname] = cls
             if hasattr(cls, 'xmltagname'):
-                g_xmltagname_to_class[T.xmltagname] = cls
+                g_xmltagname_to_class[T.xmlns + ' ' + T.xmltagname] = cls
 
             cls.T = T
             T.instance = T()
@@ -691,16 +718,23 @@ class Object(with_metaclass(ObjectMetaClass, object)):
     def dump(self, stream=None, filename=None, header=False):
         return dump(self, stream=stream, filename=filename, header=header)
 
-    def dump_xml(self, stream=None, filename=None, header=False):
-        return dump_xml(self, stream=stream, filename=filename, header=header)
+    def dump_xml(
+            self, stream=None, filename=None, header=False, ns_ignore=False):
+        return dump_xml(
+            self, stream=stream, filename=filename, header=header,
+            ns_ignore=ns_ignore)
 
     @classmethod
     def load(cls, stream=None, filename=None, string=None):
         return load(stream=stream, filename=filename, string=string)
 
     @classmethod
-    def load_xml(cls, stream=None, filename=None, string=None):
-        return load_xml(stream=stream, filename=filename, string=string)
+    def load_xml(cls, stream=None, filename=None, string=None, ns_hints=None):
+        if ns_hints is None:
+            ns_hints = [cls.T.instance.get_xmlns()]
+
+        return load_xml(
+            stream=stream, filename=filename, string=string, ns_hints=ns_hints)
 
     def __str__(self):
         return self.dump()
@@ -1255,7 +1289,8 @@ class Choice(Object):
             return val
 
         def extend_xmlelements(self, elems, v):
-            elems.append((self.cls_to_xmltagname[type(v)], v))
+            elems.append((
+                self.cls_to_xmltagname[type(v)].split(' ', 1)[-1], v))
 
 
 def _dump(
@@ -1344,62 +1379,81 @@ yaml.add_representer(newstr, newstr_representer, Dumper=GutsSafeDumper)
 
 
 class Constructor(object):
-    def __init__(self, add_namespace_maps=False, strict=False):
+    def __init__(self, add_namespace_maps=False, strict=False, ns_hints=None):
         self.stack = []
         self.queue = []
-        self.namespaces = {}
-        self.namespaces_rev = {}
+        self.namespaces = defaultdict(list)
         self.add_namespace_maps = add_namespace_maps
         self.strict = strict
+        self.ns_hints = ns_hints
 
-    def start_element(self, name, attrs):
-        name = name.split()[-1]
-        if self.stack and self.stack[-1][1] is not None:
-            cls = self.stack[-1][1].T.xmltagname_to_class.get(name, None)
-            if cls is not None and (
-                    not issubclass(cls, Object) or issubclass(cls, SObject)):
-                cls = None
+    def start_element(self, ns_name, attrs):
+        if -1 == ns_name.find(' '):
+            if self.ns_hints is None and ns_name in g_guessable_xmlns:
+                self.ns_hints = g_guessable_xmlns[ns_name]
+
+            if self.ns_hints:
+                ns_names = [
+                    ns_hint + ' ' + ns_name for ns_hint in self.ns_hints]
+
+            elif self.ns_hints is None:
+                ns_names = [' ' + ns_name]
+
         else:
-            cls = g_xmltagname_to_class.get(name, None)
+            ns_names = [ns_name]
 
-        self.stack.append((name, cls, attrs, [], []))
+        for ns_name in ns_names:
+            if self.stack and self.stack[-1][1] is not None:
+                cls = self.stack[-1][1].T.xmltagname_to_class.get(
+                    ns_name, None)
 
-    def end_element(self, name):
-        name = name.split()[-1]
-        name, cls, attrs, content2, content1 = self.stack.pop()
+                if cls is not None and (
+                        not issubclass(cls, Object)
+                        or issubclass(cls, SObject)):
+                    cls = None
+            else:
+                cls = g_xmltagname_to_class.get(ns_name, None)
+
+            if cls:
+                break
+
+        self.stack.append((ns_name, cls, attrs, [], []))
+
+    def end_element(self, _):
+        ns_name, cls, attrs, content2, content1 = self.stack.pop()
+
+        ns = ns_name.split(' ', 1)[0]
 
         if cls is not None:
-            content2.extend(x for x in attrs.items())
+            content2.extend((ns + ' ' + k, v) for (k, v) in attrs.items())
             content2.append((None, ''.join(content1)))
             o = cls(**cls.T.translate_from_xml(content2, self.strict))
             o.validate(regularize=True, depth=1)
             if self.add_namespace_maps:
-                o.namespace_map = dict(self.namespaces)
+                o.namespace_map = self.get_current_namespace_map()
 
             if self.stack and not all(x[1] is None for x in self.stack):
-                self.stack[-1][-2].append((name, o))
+                self.stack[-1][-2].append((ns_name, o))
             else:
                 self.queue.append(o)
         else:
             content = [''.join(content1)]
             if self.stack:
                 for c in content:
-                    self.stack[-1][-2].append((name, c))
+                    self.stack[-1][-2].append((ns_name, c))
 
     def characters(self, char_content):
         if self.stack:
             self.stack[-1][-1].append(char_content)
 
     def start_namespace(self, ns, uri):
-        assert ns not in self.namespaces
-        assert uri not in self.namespaces_rev
-
-        self.namespaces[ns] = uri
-        self.namespaces_rev[uri] = ns
+        self.namespaces[ns].append(uri)
 
     def end_namespace(self, ns):
-        del self.namespaces_rev[self.namespaces[ns]]
-        del self.namespaces[ns]
+        self.namespaces[ns].pop()
+
+    def get_current_namespace_map(self):
+        return dict((k, v[-1]) for (k, v) in self.namespaces if v)
 
     def get_queued_elements(self):
         queue = self.queue
@@ -1409,13 +1463,16 @@ class Constructor(object):
 
 def _iload_all_xml(
         stream,
-        bufsize=100000, add_namespace_maps=False, strict=False):
+        bufsize=100000, add_namespace_maps=False, strict=False, ns_hints=None):
 
     from xml.parsers.expat import ParserCreate
 
     parser = ParserCreate('UTF-8', namespace_separator=' ')
 
-    handler = Constructor(add_namespace_maps=add_namespace_maps, strict=strict)
+    handler = Constructor(
+        add_namespace_maps=add_namespace_maps,
+        strict=strict,
+        ns_hints=ns_hints)
 
     parser.StartElementHandler = handler.start_element
     parser.EndElementHandler = handler.end_element
@@ -1474,7 +1531,10 @@ def _dump_xml_header(stream, banner=None):
         stream.write(enc(u'<!-- %s -->\n' % banner))
 
 
-def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
+def _dump_xml(
+        obj, stream, depth=0, ns_name=None, header=False, ns_map=[],
+        ns_ignore=False):
+
     from xml.sax.saxutils import escape, quoteattr
 
     if not getattr(stream, 'encoding', None):
@@ -1486,13 +1546,25 @@ def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
         _dump_xml_header(stream, header)
 
     indent = ' '*depth*2
-    if xmltagname is None:
-        xmltagname = obj.T.xmltagname
+    if ns_name is None:
+        ns_name = obj.T.instance.get_xmltagname()
+
+    if -1 != ns_name.find(' '):
+        ns, name = ns_name.split(' ')
+    else:
+        ns, name = '', ns_name
 
     if isinstance(obj, Object):
         obj.validate(depth=1)
         attrs = []
         elems = []
+
+        added_ns = False
+        if not ns_ignore and ns and (not ns_map or ns_map[-1] != ns):
+            attrs.append(('xmlns', ns))
+            ns_map.append(ns)
+            added_ns = True
+
         for prop, v in obj.T.ipropvals_to_save(obj, xmlmode=True):
             if prop.xmlstyle == 'attribute':
                 assert not prop.multivalued
@@ -1510,15 +1582,16 @@ def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
         attr_str = ''
         if attrs:
             attr_str = ' ' + ' '.join(
-                '%s=%s' % (k, quoteattr(str(v))) for (k, v) in attrs)
+                '%s=%s' % (k.split(' ')[-1], quoteattr(str(v)))
+                for (k, v) in attrs)
 
         if not elems:
-            stream.write(enc(u'%s<%s%s />\n' % (indent, xmltagname, attr_str)))
+            stream.write(enc(u'%s<%s%s />\n' % (indent, name, attr_str)))
         else:
             oneline = len(elems) == 1 and elems[0][0] is None
             stream.write(enc(u'%s<%s%s>%s' % (
                 indent,
-                xmltagname,
+                name,
                 attr_str,
                 '' if oneline else '\n')))
 
@@ -1526,16 +1599,20 @@ def _dump_xml(obj, stream, depth=0, xmltagname=None, header=False):
                 if k is None:
                     stream.write(enc(escape(newstr(v), {'\0': '&#00;'})))
                 else:
-                    _dump_xml(v, stream=stream, depth=depth+1, xmltagname=k)
+                    _dump_xml(v, stream,  depth+1, k, False, ns_map, ns_ignore)
 
             stream.write(enc(u'%s</%s>\n' % (
-                '' if oneline else indent, xmltagname)))
+                '' if oneline else indent, name)))
+
+        if added_ns:
+            ns_map.pop()
+
     else:
         stream.write(enc(u'%s<%s>%s</%s>\n' % (
             indent,
-            xmltagname,
+            name,
             escape(newstr(obj), {'\0': '&#00;'}),
-            xmltagname)))
+            name)))
 
 
 def walk(x, typ=None, path=()):
