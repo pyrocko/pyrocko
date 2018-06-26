@@ -1355,8 +1355,11 @@ class Trace(object):
             ntsearch = int(round(tsearch / self.deltat))
             a[max(imax-ntsearch//2, 0):min(imax+ntsearch//2, a.size)] = amin
 
-        data.sort()
-        tpeaks, apeaks = list(zip(*data))
+        if data:
+            data.sort()
+            tpeaks, apeaks = list(zip(*data))
+        else:
+            tpeaks, apeaks = [], []
 
         return tpeaks, apeaks
 
