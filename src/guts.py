@@ -1465,7 +1465,7 @@ class Constructor(object):
         self.namespaces[ns].pop()
 
     def get_current_namespace_map(self):
-        return dict((k, v[-1]) for (k, v) in self.namespaces if v)
+        return dict((k, v[-1]) for (k, v) in self.namespaces.items() if v)
 
     def get_queued_elements(self):
         queue = self.queue
