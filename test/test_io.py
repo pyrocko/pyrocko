@@ -206,14 +206,15 @@ class IOTestCase(unittest.TestCase):
         qml3 = guts.load_xml(string=s)
         assert qml2.dump_xml() == qml3.dump_xml()
 
-    def testReadUSGSQuakeML(self):
-        fpath = common.test_data_file('usgs.quakeml')
-        qml = quakeml.QuakeML.load_xml(filename=fpath)
-        s = qml.dump_xml()
+    def testReadQuakeML2(self):
+        for fn in ['usgs.quakeml', 'isc.quakeml']:
+            fpath = common.test_data_file(fn)
+            qml = quakeml.QuakeML.load_xml(filename=fpath)
+            s = qml.dump_xml()
 
-        qml2 = quakeml.QuakeML.load_xml(string=s)
-        s2 = qml2.dump_xml()
-        assert len(s) == len(s2)
+            qml2 = quakeml.QuakeML.load_xml(string=s)
+            s2 = qml2.dump_xml()
+            assert len(s) == len(s2)
 
     def testReadStationXML(self):
         from pyrocko.io import stationxml  # noqa

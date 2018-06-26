@@ -729,4 +729,6 @@ class QuakeML(Object):
             'http://quakeml.org/xmlns/quakeml/1.2',
             'http://quakeml.org/xmlns/bed/1.2']
 
+        kwargs['ns_ignore'] = True
+
         return super(QuakeML, cls).load_xml(*args, **kwargs)

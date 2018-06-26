@@ -729,12 +729,18 @@ class Object(with_metaclass(ObjectMetaClass, object)):
         return load(stream=stream, filename=filename, string=string)
 
     @classmethod
-    def load_xml(cls, stream=None, filename=None, string=None, ns_hints=None):
+    def load_xml(cls, stream=None, filename=None, string=None, ns_hints=None,
+                 ns_ignore=False):
+
         if ns_hints is None:
             ns_hints = [cls.T.instance.get_xmlns()]
 
         return load_xml(
-            stream=stream, filename=filename, string=string, ns_hints=ns_hints)
+            stream=stream,
+            filename=filename,
+            string=string,
+            ns_hints=ns_hints,
+            ns_ignore=ns_ignore)
 
     def __str__(self):
         return self.dump()
@@ -1379,15 +1385,21 @@ yaml.add_representer(newstr, newstr_representer, Dumper=GutsSafeDumper)
 
 
 class Constructor(object):
-    def __init__(self, add_namespace_maps=False, strict=False, ns_hints=None):
+    def __init__(self, add_namespace_maps=False, strict=False, ns_hints=None,
+                 ns_ignore=False):
+
         self.stack = []
         self.queue = []
         self.namespaces = defaultdict(list)
         self.add_namespace_maps = add_namespace_maps
         self.strict = strict
         self.ns_hints = ns_hints
+        self.ns_ignore = ns_ignore
 
     def start_element(self, ns_name, attrs):
+        if self.ns_ignore:
+            ns_name = ns_name.split(' ')[-1]
+
         if -1 == ns_name.find(' '):
             if self.ns_hints is None and ns_name in g_guessable_xmlns:
                 self.ns_hints = g_guessable_xmlns[ns_name]
@@ -1463,7 +1475,11 @@ class Constructor(object):
 
 def _iload_all_xml(
         stream,
-        bufsize=100000, add_namespace_maps=False, strict=False, ns_hints=None):
+        bufsize=100000,
+        add_namespace_maps=False,
+        strict=False,
+        ns_hints=None,
+        ns_ignore=False):
 
     from xml.parsers.expat import ParserCreate
 
@@ -1472,7 +1488,8 @@ def _iload_all_xml(
     handler = Constructor(
         add_namespace_maps=add_namespace_maps,
         strict=strict,
-        ns_hints=ns_hints)
+        ns_hints=ns_hints,
+        ns_ignore=ns_ignore)
 
     parser.StartElementHandler = handler.start_element
     parser.EndElementHandler = handler.end_element
