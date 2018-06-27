@@ -42,6 +42,9 @@ if use_pyqt5:
     QItemSelectionModel = qc.QItemSelectionModel
     QItemSelection = qc.QItemSelection
 
+    def getSaveFileName(*args, **kwargs):
+         return qw.QFileDialog.getSaveFileName(*args, **kwargs)[0]
+
     class QPixmapCache(qg.QPixmapCache):
         def cached(self, key):
             return self.find(key)
@@ -62,6 +65,8 @@ else:
     QSortFilterProxyModel = qg.QSortFilterProxyModel
     QItemSelectionModel = qg.QItemSelectionModel
     QItemSelection = qg.QItemSelection
+
+    getSaveFileName = qw.QFileDialog.getSaveFileName
 
     class QPixmapCache(qg.QPixmapCache):
         def cached(self, key):

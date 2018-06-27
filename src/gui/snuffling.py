@@ -16,7 +16,7 @@ import logging
 import traceback
 import tempfile
 
-from .qt_compat import qc, qw
+from .qt_compat import qc, qw, getSaveFileName
 
 from pyrocko import pile, config
 
@@ -1274,9 +1274,8 @@ class Snuffling(object):
         if not dir and self._previous_output_filename:
             dir = self._previous_output_filename
 
-        fn, _ = qw.QFileDialog.getSaveFileName(
+        fn = getSaveFileName(
             self.get_viewer(), caption, dir, filter, selected_filter)
-
         if not fn:
             raise UserCancelled()
 
