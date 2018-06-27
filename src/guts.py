@@ -1437,7 +1437,9 @@ class Constructor(object):
         ns = ns_name.split(' ', 1)[0]
 
         if cls is not None:
-            content2.extend((ns + ' ' + k, v) for (k, v) in attrs.items())
+            content2.extend(
+                (ns + ' ' + k if -1 == k.find(' ') else k, v)
+                for (k, v) in attrs.items())
             content2.append((None, ''.join(content1)))
             o = cls(**cls.T.translate_from_xml(content2, self.strict))
             o.validate(regularize=True, depth=1)
