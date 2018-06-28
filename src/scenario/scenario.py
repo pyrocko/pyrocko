@@ -131,6 +131,8 @@ class ScenarioGenerator(LocationGenerator):
 
     def make_map(self, filename):
         logger.info('Plotting scenario\'s map...')
+        if not gmtpy.have_gmt():
+            logger.warning('Cannot plot map, GMT is not installed.')
         try:
             draw_scenario_gmt(self, filename)
         except gmtpy.GMTError:
