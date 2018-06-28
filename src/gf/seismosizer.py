@@ -2,7 +2,7 @@
 #
 # The Pyrocko Developers, 21st Century
 # ---|P------/S----------~Lg----------
-from __future__ import absolute_import, division
+from __future__ import absolute_import, division, print_function
 from builtins import range, map, zip
 from past.builtins import cmp
 
@@ -100,7 +100,7 @@ class NoSuchStore(BadRequest):
             rstr = 'GF store not found.'
 
         if self.dirs is not None:
-            rstr += ' Searched folders: %s' % ', '.join(self.dirs)
+            rstr += ' Searched folders:\n  %s' % '\n  '.join(sorted(self.dirs))
         return rstr
 
 

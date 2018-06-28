@@ -179,13 +179,14 @@ class ScenarioGenerator(LocationGenerator):
     def stores_missing(self):
         return self.stores_wanted - set(self.get_engine().get_store_ids())
 
-    def ensure_gfstores(self, interactive=False):
+    def ensure_gfstores(self, interactive=False, gf_store_superdirs_extra=[]):
         if not self.stores_missing:
             return
 
         from pyrocko.gf import ws
 
         cfg = config.config()
+
         if len(cfg.gf_store_superdirs) == 0:
             store_dir = op.expanduser(
                 op.join(config.pyrocko_dir_tmpl, 'gf_stores'))
@@ -195,17 +196,19 @@ class ScenarioGenerator(LocationGenerator):
             cfg.gf_store_superdirs = [store_dir]
             config.write_config(cfg)
 
+        gf_store_superdirs = cfg.gf_store_superdirs + gf_store_superdirs_extra
+
         if interactive:
             print('We could not find the following Green\'s function stores:\n'
                   ' %s\n'
                   'We can try to download the stores from '
-                  ' http://kinherd.org:8080 into Pyrocko\'s global GF cache.'
+                  'http://kinherd.org:8080 into one of the following '
+                  'directories.'
                   % '\n'.join(self.stores_missing))
-            for idr, dr in enumerate(cfg.gf_store_superdirs):
+            for idr, dr in enumerate(gf_store_superdirs):
                 print(' %d. %s' % ((idr+1), dr))
-            s = input('\nIn which cache directory shall the GF store'
-                      ' be downloaded to?\n'
-                      'Default 1, (C)ancel: ')
+            s = input('\nInto which directory should we download the GF '
+                      'store(s)?\nDefault 1, (C)ancel: ')
             if s in ['c', 'C']:
                 print('Canceled!')
                 sys.exit(1)
@@ -213,7 +216,7 @@ class ScenarioGenerator(LocationGenerator):
                 s = 0
             try:
                 s = int(s)
-                if s > len(cfg.gf_store_superdirs):
+                if s > len(gf_store_superdirs):
                     raise ValueError
             except ValueError:
                 print('Invalid selection: %s' % s)
@@ -221,13 +224,16 @@ class ScenarioGenerator(LocationGenerator):
         else:
             s = 1
 
-        download_dir = cfg.gf_store_superdirs[s-1]
+        download_dir = gf_store_superdirs[s-1]
         logger.info('Downloading Green\'s functions stores to %s'
                     % download_dir)
 
+        oldwd = os.getcwd()
         for store in self.stores_missing:
             os.chdir(download_dir)
             ws.download_gf_store(site='kinherd', store_id=store)
+
+        os.chdir(oldwd)
 
     @classmethod
     def initialize(
