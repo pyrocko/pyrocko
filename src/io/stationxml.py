@@ -1227,7 +1227,10 @@ class FDSNStationXML(Object):
             useful_bics.sort()
 
             for _, _, rate, _, _, bic in useful_bics:
-                channels = sorted(bic_to_channels[bic])
+                channels = sorted(
+                    bic_to_channels[bic],
+                    key=lambda channel: channel.code)
+
                 if channels:
                     for channel in channels:
                         nslcs[nsl + (channel.code,)] = channel
