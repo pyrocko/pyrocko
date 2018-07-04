@@ -8,6 +8,7 @@ from builtins import str
 import sys
 import re
 import numpy as num
+#import logger
 from pyrocko import cake, util, orthodrome
 from pyrocko.plot import cake_plot as plot
 from optparse import OptionParser, OptionGroup
@@ -627,17 +628,15 @@ def plot_init (size,save,show):
 
 def plot_end (save,fig,show=True):
     if save:
-        try:
-            fig.savefig(save)
-            if show:
-                plt.show()
-            print('figure was saved')
-        except FileNotFoundError:
-            print('Path not defined, use an excisting path')
-        except ValueError:
-        	print('Format not supported, use one of these: eps, jpeg, jpg, pdf, pgf, png, ps, raw, rgba, svg, svgz, tif, tiff.')
-
-            
+        fig.savefig(save)
+        if show:
+            plt.show()
+        print('figure was saved')
+        #logger 
+        if FileNotFoundError:
+            raise Exception
+        if ValueError:
+            raise Exception
 
 
 
@@ -787,14 +786,20 @@ To get further help and a list of available options for any subcommand run:
                 mod, paths, arrivals, c.zstart, c.zstop, c.distances, 
                 c.as_degrees, show=showplt, vred=c.vred, phase_colors=c.phase_colors)
 
-        plot_end(save=c.save,fig=fig,show=c.show) 
-
+        try:
+            plot_end(save=c.save,fig=fig,show=c.show) 
+        except Exception as e:
+            exit('cake.py: %s' % str(e))
+        
     elif command in ('plot-model',):
         c = optparse(('model',), ('save', 'size','show'), usage=subusage, descr=descr, )
         mod = c.model
         fig, axes, showplt = plot_init(c.size,c.save,c.show)
         plot.my_model_plot(mod,show=showplt) 
-        plot_end(save=c.save,fig=fig,show=c.show) 
+        try:
+            plot_end(save=c.save,fig=fig,show=c.show) 
+        except Exception as e:
+            exit('cake.py: %s' % str(e))
 
     elif command in ('simplify-model',):
         c = optparse(('model',), ('accuracy',), usage=subusage, descr=descr)
