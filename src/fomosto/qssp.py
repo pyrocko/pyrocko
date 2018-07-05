@@ -605,7 +605,8 @@ class QSSPGFBuilder(gf.builder.Builder):
 
         if 'time_window' not in shared:
             d = self.store.make_timing_params(
-                conf.time_region[0], conf.time_region[1])
+                conf.time_region[0], conf.time_region[1],
+                force=force)
 
             tmax = math.ceil(d['tmax'] / deltat) * deltat
             tmin = math.floor(d['tmin'] / deltat) * deltat

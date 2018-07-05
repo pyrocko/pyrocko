@@ -1435,6 +1435,21 @@ class Store(BaseStore):
     stats_keys = BaseStore.stats_keys + ['decimated']
 
     def check(self, show_progress=False):
+        have_holes = []
+        for pdef in self.config.tabulated_phases:
+            phase_id = pdef.id
+            ph = self.get_stored_phase(phase_id)
+            if ph.check_holes():
+                have_holes.append(phase_id)
+
+        if have_holes:
+            for phase_id in have_holes:
+                logger.warn(
+                    'travel time table of phase "{}" contains holes'.format(
+                        phase_id))
+        else:
+            logger.info('No holes in travel time tables')
+
         if show_progress:
             pbar = util.progressbar('checking store', self.config.nrecords)
 
@@ -1607,7 +1622,7 @@ class Store(BaseStore):
 
         return timing.evaluate(self.get_phase, args)
 
-    def make_timing_params(self, begin, end, snap_vred=True):
+    def make_timing_params(self, begin, end, snap_vred=True, force=False):
 
         '''
         Compute tight parameterized time ranges to include given timings.
@@ -1626,11 +1641,26 @@ class Store(BaseStore):
         '''
 
         data = []
+        warned = set()
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
+            if tmin is None:
+                warned.add(str(begin))
+            if tmax is None:
+                warned.add(str(end))
+
             x = self.config.get_surface_distance(args)
             data.append((x, tmin, tmax))
+
+        if len(warned):
+            w = ' | '.join(list(warned))
+            msg = '''determination of time window failed using phase
+definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
+            if force:
+                logger.warn(msg)
+            else:
+                raise MakeTimingParamsFailed(msg)
 
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
 

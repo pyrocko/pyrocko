@@ -11,6 +11,7 @@ import errno
 from os.path import join as pjoin
 import numpy as num
 
+from collections import defaultdict
 from pyrocko.parimap import parimap
 from . import store
 
@@ -39,6 +40,7 @@ class Builder(object):
         self.step = step
         self.force = force
         self.gf_config = gf_config
+        self.warnings = defaultdict(int)
         self._block_size = int_arr(*block_size)
 
     @property
@@ -48,6 +50,16 @@ class Builder(object):
     @property
     def block_dims(self):
         return (self.gf_config.ns-1) // self._block_size + 1
+
+    def warn(self, msg):
+        self.warnings[msg] += 1
+
+    def log_warnings(self, index, logger):
+        for warning, noccur in self.warnings.items():
+            msg = "block {}: " + warning
+            logger.warn(msg.format(index, noccur))
+
+        self.warnings = defaultdict(int)
 
     def all_block_indices(self):
         return num.arange(self.nblocks)
