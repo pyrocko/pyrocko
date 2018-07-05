@@ -1641,29 +1641,26 @@ class Store(BaseStore):
         '''
 
         data = []
-        failed = []
-        warned = False
+        warned = set()
         for args in self.config.iter_nodes(level=-1):
             tmin = self.t(begin, args)
             tmax = self.t(end, args)
             if tmin is None:
-                failed.append(str(begin))
+                warned.add(str(begin))
             if tmax is None:
-                failed.append(str(end))
-
-            if failed:
-                msg = 'determination of time window failed using phase ' +\
-                    'definitions: {}.\n Travel time table contains holes ' +\
-                    'in probed ranges.'.format(' '.join(failed))
-                if force:
-                    if not warned:
-                        logger.warn(msg + '\nStore may contain empty traces.')
-                        warned = True
-                else:
-                    raise MakeTimingParamsFailed(msg.format(' and '.join(failed)))
+                warned.add(str(end))
 
             x = self.config.get_surface_distance(args)
             data.append((x, tmin, tmax))
+
+        if len(warned):
+            w = ' | '.join(list(warned))
+            msg = '''determination of time window failed using phase
+definitions: %s.\n Travel time table contains holes in probed ranges.''' % w
+            if force:
+                logger.warn(msg)
+            else:
+                raise MakeTimingParamsFailed(msg)
 
         xs, tmins, tmaxs = num.array(data, dtype=num.float).T
 
