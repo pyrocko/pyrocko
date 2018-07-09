@@ -36,19 +36,19 @@ g_site_abbr = {
     'geonet': 'http://service.geonet.org.nz',
     'knmi': 'http://rdsa.knmi.nl',
     'ncedc': 'http://service.ncedc.org',
-    'scedc': 'http://scedc.caltech.edu',
+    'scedc': 'http://service.scedc.caltech.edu',
     'usgs': 'http://earthquake.usgs.gov',
-    'bgr': 'http://eida.bgr.de',
-    'koeri': 'http://www.koeri.boun.edu.tr/2/tr',
-    'ethz': 'http://eida.ethz.ch/fdsnws',
-    'icgc': 'http://www.icgc.cat/en/xarxasismica',
-    'ipgp': 'http://centrededonnees.ipgp.fr',
-    'ingv': 'http://webservices.rm.ingv.it',
+    'koeri': 'http://eida-service.koeri.boun.edu.tr',
+    'ethz': 'http://eida.ethz.ch',
+    'icgc': 'http://ws.icgc.cat',
+    'ipgp': 'http://eida.ipgp.fr',
+    'ingv': 'http://webservices.ingv.it',
     'isc': 'http://www.isc.ac.uk',
     'lmu': 'http://erde.geophysik.uni-muenchen.de',
-    'noa': 'http://bbnet.gein.noa.gr',
-    'resif': 'http://portal.resif.fr',
-    'usp': 'http://www.moho.iag.usp.br'
+    'noa': 'http://eida.gein.noa.gr',
+    'resif': 'http://ws.resif.fr',
+    'usp': 'http://seisrequest.iag.usp.br',
+    'niep': 'http://eida-sc3.infp.ro'
 }
 
 g_default_site = 'geofon'
