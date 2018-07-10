@@ -83,7 +83,11 @@ spm2sprad = 1.0/sprad2spm
 spkm2sprad = 1.0/sprad2spkm
 
 
-class InvalidArguments(Exception):
+class CakeError(Exception):
+    pass
+
+
+class InvalidArguments(CakeError):
     pass
 
 
@@ -400,7 +404,7 @@ class Leg(object):
         return s
 
 
-class InvalidKneeDef(Exception):
+class InvalidKneeDef(CakeError):
     pass
 
 
@@ -601,7 +605,7 @@ class Head(Knee):
         return ' '.join(x)
 
 
-class UnknownClassicPhase(Exception):
+class UnknownClassicPhase(CakeError):
     def __init__(self, phasename):
         self.phasename = phasename
 
@@ -609,7 +613,7 @@ class UnknownClassicPhase(Exception):
         return 'Unknown classic phase name: %s' % self.phasename
 
 
-class PhaseDefParseError(Exception):
+class PhaseDefParseError(CakeError):
     '''
     Exception raised when an error occures during parsing of a phase
     definition string.
@@ -1214,7 +1218,7 @@ def psv_solid(material1, material2, p, energy=False):
         return num.real(escatter)
 
 
-class BadPotIntCoefs(Exception):
+class BadPotIntCoefs(CakeError):
     pass
 
 
@@ -1245,7 +1249,7 @@ def smode(i):
         return 's'
 
 
-class PathFailed(Exception):
+class PathFailed(CakeError):
     pass
 
 
@@ -1275,7 +1279,7 @@ class NotPhaseConform(PathFailed):
 
 class CannotPropagate(PathFailed):
     def __init__(self, direction, ilayer):
-        Exception.__init__(self)
+        PathFailed.__init__(self)
         self._direction = direction
         self._ilayer = ilayer
 
@@ -1499,7 +1503,7 @@ class Layer(object):
         self.zmid = depth_min + (depth_max - depth_min)/2.
 
 
-class DoesNotTurn(Exception):
+class DoesNotTurn(CakeError):
     pass
 
 
@@ -2085,7 +2089,7 @@ class Kink(RayElement):
             id(self.discontinuity)))
 
 
-class PRangeNotSet(Exception):
+class PRangeNotSet(CakeError):
     pass
 
 
@@ -2699,7 +2703,7 @@ class RayPath(object):
         return '%s\n' % self + ss + sg
 
 
-class RefineFailed(Exception):
+class RefineFailed(CakeError):
     pass
 
 
@@ -2866,9 +2870,9 @@ def anything_to_crust2_profile(crust2_profile):
             'key or a crust2x2 Profile object)'
 
 
-class DiscontinuityNotFound(Exception):
+class DiscontinuityNotFound(CakeError):
     def __init__(self, depth_or_name):
-        Exception.__init__(self)
+        CakeError.__init__(self)
         self.depth_or_name = depth_or_name
 
     def __str__(self):
@@ -2876,7 +2880,7 @@ class DiscontinuityNotFound(Exception):
             self.depth_or_name
 
 
-class LayeredModelError(Exception):
+class LayeredModelError(CakeError):
     pass
 
 
@@ -2947,7 +2951,7 @@ class LayeredModel(object):
                 element.zbot = earthradius - 1.
 
             if element.ztop >= earthradius:
-                raise Exception('Layer deeper than earthradius')
+                raise CakeError('Layer deeper than earthradius')
 
             element.ilayer = self.nlayers
             self.nlayers += 1
@@ -2998,7 +3002,7 @@ class LayeredModel(object):
             if l.contains(z):
                 return l
         else:
-            raise Exception('Failed extracting layer at depth z=%s' % z)
+            raise CakeError('Failed extracting layer at depth z=%s' % z)
 
     def walker(self):
         return Walker(self._elements)
