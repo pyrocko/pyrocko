@@ -521,7 +521,7 @@ class PolesZeros(BaseFilter):
                     computed_normalization_factor,
                     self.normalization_factor))
 
-        return resp
+        return [resp]
 
 
 class ResponseListElement(Object):
@@ -609,8 +609,7 @@ class ResponseStage(Object):
     def get_pyrocko_response(self, nslc):
         responses = []
         for pzs in self.poles_zeros_list:
-            pz = pzs.get_pyrocko_response()
-            responses.append(pz)
+            responses.extend(pzs.get_pyrocko_response())
 
         if len(self.poles_zeros_list) > 1:
             logger.warn(
