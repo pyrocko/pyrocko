@@ -17,7 +17,6 @@ packname = 'pyrocko'
 version = '2018.01.29'
 
 
-
 class NotInAGitRepos(Exception):
     pass
 
