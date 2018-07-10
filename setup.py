@@ -1,10 +1,11 @@
 from __future__ import absolute_import, division, print_function
 import sys
 import os
+import os.path as op
 import time
 import shutil
 import tempfile
-from os.path import join as pjoin
+import numpy
 
 from distutils.sysconfig import get_python_inc
 from setuptools import setup, Extension, Command
@@ -15,17 +16,6 @@ from setuptools.command.install import install
 packname = 'pyrocko'
 version = '2018.01.29'
 
-op = os.path
-try:
-    import numpy
-except ImportError:
-    class numpy():
-        def __init__(self):
-            pass
-
-        @classmethod
-        def get_include(self):
-            return ''
 
 
 class NotInAGitRepos(Exception):
@@ -94,7 +84,7 @@ installed_date = %s
         sha1, local_modifications, version, combi, datestr)])
 
     try:
-        f = open(pjoin('src', 'info.py'), 'w')
+        f = open(op.join('src', 'info.py'), 'w')
         f.write(s)
         f.close()
     except Exception:
@@ -501,7 +491,7 @@ def _check_for_openmp():
 
     # Attempt to compile a test script.
     # See http://openmp.org/wp/openmp-compilers/
-    tmpfile = pjoin(tmpdir, 'check_openmp.c')
+    tmpfile = op.join(tmpdir, 'check_openmp.c')
     with open(tmpfile, 'w') as f:
         f.write('''
 #include <omp.h>
@@ -515,7 +505,7 @@ int main() {
     try:
         with open(os.devnull, 'w') as fnull:
             exit_code = subprocess.call([compiler, '-fopenmp', '-o%s'
-                                         % pjoin(tmpdir, 'check_openmp'),
+                                         % op.join(tmpdir, 'check_openmp'),
                                         tmpfile],
                                         stdout=fnull, stderr=fnull)
     except OSError:
@@ -632,13 +622,13 @@ setup(
         Extension(
             'util_ext',
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'util_ext.c')]),
+            sources=[op.join('src', 'ext', 'util_ext.c')]),
 
         Extension(
             'signal_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'signal_ext.c')]),
+            sources=[op.join('src', 'ext', 'signal_ext.c')]),
 
         Extension(
             'mseed_ext',
@@ -647,7 +637,7 @@ setup(
             library_dirs=[get_build_include('libmseed/')],
             libraries=['mseed'],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'io', 'ext', 'mseed_ext.c')]),
+            sources=[op.join('src', 'io', 'ext', 'mseed_ext.c')]),
 
         Extension(
             'evalresp_ext',
@@ -658,56 +648,56 @@ setup(
             extra_compile_args=[
                 '-Wextra',
                 '-I%s' % get_build_include('evalresp-3.3.0/include')],
-            sources=[pjoin('src', 'ext', 'evalresp_ext.c')]),
+            sources=[op.join('src', 'ext', 'evalresp_ext.c')]),
 
         Extension(
             'ims_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'io', 'ext', 'ims_ext.c')]),
+            sources=[op.join('src', 'io', 'ext', 'ims_ext.c')]),
 
         Extension(
             'datacube_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'io', 'ext', 'datacube_ext.c')]),
+            sources=[op.join('src', 'io', 'ext', 'datacube_ext.c')]),
 
         Extension(
             'autopick_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'autopick_ext.c')]),
+            sources=[op.join('src', 'ext', 'autopick_ext.c')]),
 
         Extension(
             'gf.store_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-D_FILE_OFFSET_BITS=64', '-Wextra'] + omp_arg,
             extra_link_args=[] + omp_lib,
-            sources=[pjoin('src', 'gf', 'ext', 'store_ext.c')]),
+            sources=[op.join('src', 'gf', 'ext', 'store_ext.c')]),
 
         Extension(
             'parstack_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'] + omp_arg,
             extra_link_args=[] + omp_lib,
-            sources=[pjoin('src', 'ext', 'parstack_ext.c')]),
+            sources=[op.join('src', 'ext', 'parstack_ext.c')]),
 
         Extension(
             'ahfullgreen_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'ahfullgreen_ext.c')]),
+            sources=[op.join('src', 'ext', 'ahfullgreen_ext.c')]),
 
         Extension(
             'orthodrome_ext',
             include_dirs=[get_python_inc(), numpy.get_include()],
             extra_compile_args=['-Wextra'],
-            sources=[pjoin('src', 'ext', 'orthodrome_ext.c')]),
+            sources=[op.join('src', 'ext', 'orthodrome_ext.c')]),
 
         Extension(
             "avl",
-            sources=[pjoin('src', 'ext', 'pyavl-1.12', 'avl.c'),
-                     pjoin('src', 'ext', 'pyavl-1.12', 'avlmodule.c')],
+            sources=[op.join('src', 'ext', 'pyavl-1.12', 'avl.c'),
+                     op.join('src', 'ext', 'pyavl-1.12', 'avlmodule.c')],
             define_macros=[('HAVE_AVL_VERIFY', None),
                            ('AVL_FOR_PYTHON', None)],
             include_dirs=[get_python_inc()],
