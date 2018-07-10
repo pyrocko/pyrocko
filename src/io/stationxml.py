@@ -481,6 +481,12 @@ class PolesZeros(BaseFilter):
     pole_list = List.T(PoleZero.T(xmltagname='Pole'))
 
     def get_pyrocko_response(self):
+        if self.pz_transfer_function_type == 'DIGITAL (Z-TRANSFORM)':
+            logger.warn(
+                'unhandled pole-zero response of type "DIGITAL (Z-TRANSFORM)"')
+
+            return []
+
         if self.pz_transfer_function_type not in (
                 'LAPLACE (RADIANS/SECOND)',
                 'LAPLACE (HERTZ)'):
