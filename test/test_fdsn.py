@@ -87,9 +87,9 @@ class FDSNStationTestCase(unittest.TestCase):
             fpath = common.test_data_file('%s_1014-01-01_all.xml' % site)
             stationxml.load_xml(filename=fpath)
 
-    @unittest.skip('needs manual inspection')
+    # @unittest.skip('needs manual inspection')
     @common.require_internet
-    def test_response(self):
+    def test_response(self, ntest=4):
         tmin = stt('2014-01-01 00:00:00')
         tmax = stt('2014-01-02 00:00:00')
         sx = fdsn.station(
@@ -100,8 +100,7 @@ class FDSNStationTestCase(unittest.TestCase):
             endafter=tmax,
             level='channel', format='text', matchtimeseries=True)
 
-        for nslc in sx.nslc_code_list:
-            print(nslc)
+        for nslc in sx.nslc_code_list[:ntest]:
             net, sta, loc, cha = nslc
             sxr = fdsn.station(
                 site='iris',
@@ -146,39 +145,38 @@ class FDSNStationTestCase(unittest.TestCase):
                     fmax = channel.sample_rate.value * 0.5
 
             f = num.exp(num.linspace(num.log(fmin), num.log(fmax), 500))
-            try:
-                t_sx = resp_sx.evaluate(f)
-                t_er = resp_er.evaluate(f)
-                import pylab as lab
 
-                abs_dif = num.abs(num.abs(t_sx) - num.abs(t_er)) / num.max(
-                    num.abs(t_er))
+            t_sx = resp_sx.evaluate(f)
+            t_er = resp_er.evaluate(f)
+            import pylab as lab
 
-                mda = num.mean(abs_dif[f < 0.5*fmax])
+            abs_dif = num.abs(num.abs(t_sx) - num.abs(t_er)) / num.max(
+                num.abs(t_er))
 
-                pha_dif = num.abs(num.angle(t_sx) - num.angle(t_er))
+            mda = num.mean(abs_dif[f < 0.4*fmax])
 
-                mdp = num.mean(pha_dif[f < 0.5*fmax])
+            pha_dif = num.abs(num.angle(t_sx) - num.angle(t_er))
 
-                print(mda, mdp)
+            mdp = num.mean(pha_dif[f < 0.4*fmax])
 
-                if mda > 0.03 or mdp > 0.04:
-                    lab.gcf().add_subplot(2, 1, 1)
-                    lab.plot(f, num.abs(t_sx), color='black')
-                    lab.plot(f, num.abs(t_er), color='red')
-                    lab.xscale('log')
-                    lab.yscale('log')
+            if mda > 0.05 or mdp > 0.04:
 
-                    lab.gcf().add_subplot(2, 1, 2)
-                    lab.plot(f, num.angle(t_sx), color='black')
-                    lab.plot(f, num.angle(t_er), color='red')
-                    lab.xscale('log')
-                    lab.show()
+                lab.gcf().add_subplot(2, 1, 1)
+                lab.plot(f, num.abs(t_sx), color='black')
+                lab.plot(f, num.abs(t_er), color='red')
+                lab.axvline(fmax/2., color='black')
+                lab.axvline(fmax, color='gray')
+                lab.xscale('log')
+                lab.yscale('log')
 
-                else:
-                    print('ok')
-            except Exception:
-                print('failed: ', nslc)
+                lab.gcf().add_subplot(2, 1, 2)
+                lab.plot(f, num.angle(t_sx), color='black')
+                lab.plot(f, num.angle(t_er), color='red')
+                lab.xscale('log')
+                lab.show()
+
+                assert False, \
+                    'evalresp and stationxml responses differ: %s' % str(nslc)
 
     @common.require_internet
     def test_url_alive(self):
