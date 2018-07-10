@@ -283,9 +283,19 @@ No Pyrocko installations found with the currently running Python interpreter.
 
 
 class CustomInstallCommand(install):
+
+    def symlink_interpreter(self):
+        if hasattr(self, 'install_scripts') and sys.executable:
+            target = os.path.join(self.install_scripts, 'pyrocko-python')
+            if os.path.exists(target):
+                os.unlink(target)
+
+            os.symlink(sys.executable, target)
+
     def run(self):
         check_pyrocko_install_compat()
         install.run(self)
+        self.symlink_interpreter()
         check_multiple_install()
         bd_dir = bash_completions_dir()
         if bd_dir:
