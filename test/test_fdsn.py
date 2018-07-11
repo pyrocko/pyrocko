@@ -121,7 +121,7 @@ class FDSNStationTestCase(unittest.TestCase):
                 tmax=tmax)
 
             _, fn = tempfile.mkstemp()
-            fo = open(fn, 'w')
+            fo = open(fn, 'wb')
             while True:
                 d = fi.read(1024)
                 if not d:
