@@ -30,6 +30,9 @@ def tutorial_run_dir():
     return op.join(test_dir, 'example_run_dir')
 
 
+snuffle_orig = None
+
+
 class ExamplesTestCase(unittest.TestCase):
 
     @classmethod
@@ -41,7 +44,8 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = cls.dn
         os.chdir(cls.run_dir)
 
-        cls.snuffle_orig = snuffler.snuffle
+        global snuffle_orig
+        snuffle_orig = snuffler.snuffle
 
         def snuffle_dummy(*args, **kwargs):
             pass
@@ -57,7 +61,7 @@ class ExamplesTestCase(unittest.TestCase):
         sys.stdout = sys.__stdout__
         os.chdir(cls.cwd)
 
-        snuffler.snuffle = cls.snuffle_orig
+        snuffler.snuffle = snuffle_orig
         pile.show_progress_force_off = cls.show_progress_force_off_orig
 
 
@@ -106,6 +110,6 @@ for fn in sorted(example_files):
 
 
 if __name__ == '__main__':
-    util.setup_logging('test_tutorials', 'warning')
+    util.setup_logging('test_examples', 'warning')
     common.matplotlib_use_agg()
     unittest.main()
