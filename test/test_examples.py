@@ -14,6 +14,7 @@ from pyrocko import example
 from pyrocko import pile
 
 from pyrocko.gui import snuffler
+from pyrocko.dataset import topo
 
 
 op = os.path
@@ -92,6 +93,9 @@ def _make_function(test_name, fn):
 
         except ImportError as e:
             raise unittest.SkipTest(str(e))
+
+        except topo.AuthenticationRequired as e:
+            raise unittest.SkipTest('cannot download topo data (no auth credentials)')
 
         except Exception as e:
             raise e
