@@ -6,8 +6,8 @@ from __future__ import absolute_import
 
 import zipfile
 import os.path as op
-
-# import re
+import os
+import re
 # try:
 #     from urllib2 import urlopen
 # except ImportError:
@@ -78,17 +78,12 @@ class SRTMGL3(dataset.TiledGlobalDataset):
     def available_tilenames(self):
         if self._available_tilenames is None:
             fpath = op.join(self.data_dir, 'available.list')
-            if op.exists(fpath):
-                with open(fpath, 'r') as f:
-                    available = [s.strip() for s in f.readlines()]
-
-            else:
+            if not op.exists(fpath) or os.stat(fpath).st_size == 0:
                 util.ensuredirs(fpath)
-
                 # remote structure changed, we would have to clawl through
                 # many pages. Now keeping tile index here:
                 self.download_file(
-                    'https://data.pyrocko.org/scratch/available.list', fpath)
+                    'http://data.pyrocko.org/scratch/available.list', fpath)
 
                 # url = self.raw_data_url + '/'
                 # f = urlopen(url)
@@ -100,6 +95,11 @@ class SRTMGL3(dataset.TiledGlobalDataset):
                 #
                 # with open(fpath, 'w') as f:
                 #     f.writelines('%s\n' % s for s in available)
+
+            with open(fpath, 'r') as f:
+                available = [
+                    s.strip() for s in f.readlines()
+                    if re.match(r'^[NS]\d\d[EW]\d\d\d$', s.strip())]
 
             self._available_tilenames = set(available)
 
