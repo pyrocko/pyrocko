@@ -4,13 +4,14 @@
 # ---|P------/S----------~Lg----------
 from __future__ import absolute_import
 
-import re
 import zipfile
 import os.path as op
-try:
-    from urllib2 import urlopen
-except ImportError:
-    from urllib.request import urlopen
+
+# import re
+# try:
+#     from urllib2 import urlopen
+# except ImportError:
+#     from urllib.request import urlopen
 
 import numpy as num
 
@@ -82,17 +83,23 @@ class SRTMGL3(dataset.TiledGlobalDataset):
                     available = [s.strip() for s in f.readlines()]
 
             else:
-                url = self.raw_data_url + '/'
-                f = urlopen(url)
-                data = f.read().decode()
-                available = re.findall(
-                    r'([NS]\d\d[EW]\d\d\d)\.SRTMGL3\.hgt', data)
-
-                f.close()
-
                 util.ensuredirs(fpath)
-                with open(fpath, 'w') as f:
-                    f.writelines('%s\n' % s for s in available)
+
+                # remote structure changed, we would have to clawl through
+                # many pages. Now keeping tile index here:
+                self.download_file(
+                    'https://data.pyrocko.org/scratch/available.list', fpath)
+
+                # url = self.raw_data_url + '/'
+                # f = urlopen(url)
+                # data = f.read().decode()
+                # available = re.findall(
+                #     r'([NS]\d\d[EW]\d\d\d)\.SRTMGL3\.hgt', data)
+                #
+                # f.close()
+                #
+                # with open(fpath, 'w') as f:
+                #     f.writelines('%s\n' % s for s in available)
 
             self._available_tilenames = set(available)
 
