@@ -1708,7 +1708,7 @@ def MakePileViewerMainClass(base):
                 fn, _ = fnpatch(qw.QFileDialog.getOpenFileName(
                     self, caption, options=qfiledialog_options))
             if fn:
-                self.add_events(pyrocko.model.Event.load_catalog(fn))
+                self.add_events(pyrocko.model.load_events(fn))
 
                 self.associate_phases_to_events()
 

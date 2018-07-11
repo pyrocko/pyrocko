@@ -307,7 +307,7 @@ def snuffler_from_commandline(args=None):
 
     events = []
     for event_fn in extend_paths(options.event_fns):
-        events.extend(model.event.Event.load_catalog(event_fn))
+        events.extend(model.load_events(event_fn))
 
     markers = []
     for marker_fn in extend_paths(options.marker_fns):

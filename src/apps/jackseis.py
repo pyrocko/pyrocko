@@ -317,7 +317,7 @@ def main(args=None):
 
     events = []
     for event_fn in options.event_fns:
-        events.extend(model.Event.load_catalog(event_fn))
+        events.extend(model.load_events(event_fn))
 
     p = pile.make_pile(
         paths=args,
