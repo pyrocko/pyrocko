@@ -45,18 +45,22 @@ class ScenarioTestCase(unittest.TestCase):
         radius=60*km,
         target_generators=[
             targets.RandomStationGenerator(
+                avoid_water=False,
                 nstations=5),
             targets.WaveformGenerator(
                 store_id=store_id,
-                station_generator=targets.RandomStationGenerator(),
+                station_generator=targets.RandomStationGenerator(
+                    avoid_water=False),
                 noise_generator=targets.waveform.WhiteNoiseGenerator(),
                 seismogram_quantity='velocity'),
             targets.InSARGenerator(
                 resolution=(20, 20),
+                avoid_water=False,
                 noise_generator=targets.insar.AtmosphericNoiseGenerator(
                     amplitude=1e-5)),
             targets.GNSSCampaignGenerator(
                 station_generator=targets.RandomStationGenerator(
+                    avoid_water=False,
                     with_channels=False))
             ],
         source_generator=scenario.DCSourceGenerator(
