@@ -67,7 +67,7 @@ beachball.plot_beachball_mpl(source2.pyrocko_moment_tensor(), ax,
 
 
 # create source object
-source3 = gf.CLVDSource(amplitude=35e6, azimuth=30., dip=30.)
+source3 = gf.CLVDSource(moment=1.0, azimuth=30., dip=30.)
 
 # set size of beachball
 sz = 40.
