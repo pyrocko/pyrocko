@@ -7,6 +7,7 @@ import os.path as op
 from pyrocko.guts import List
 from pyrocko.plot import gmtpy
 from pyrocko import pile, util, model, config
+from pyrocko.dataset import topo
 
 from .base import LocationGenerator, ScenarioError
 from .sources import SourceGenerator, DCSourceGenerator
@@ -136,7 +137,10 @@ class ScenarioGenerator(LocationGenerator):
         try:
             draw_scenario_gmt(self, filename)
         except gmtpy.GMTError:
-            logger.warning('GMT threw an error, could not plot map')
+            logger.warning('GMT threw an error, could not plot map.')
+        except topo.AuthenticationRequired:
+            logger.warning('Cannot download topography data (authentication '
+                           'required). Could not plot map.')
 
     def draw_map(self, fn):
         from pyrocko.plot import automap
