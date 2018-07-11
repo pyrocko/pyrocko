@@ -5,7 +5,17 @@ import os.path as op
 import time
 import shutil
 import tempfile
-import numpy
+try:
+    import numpy
+except ImportError:
+    # numpy might not be available when running install_prerequisites
+    class numpy():
+        def __init__(self):
+            pass
+
+        @classmethod
+        def get_include(self):
+            return ''
 
 from distutils.sysconfig import get_python_inc
 from setuptools import setup, Extension, Command
