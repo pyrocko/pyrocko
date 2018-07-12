@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import glob
-import sys
 import os
 import re
 
 
 def parse_result(fn, show_skips=False):
+    lines = []
     with open(fn, 'r') as f:
         txt = f.read()
 
@@ -15,22 +17,22 @@ def parse_result(fn, show_skips=False):
         m = re.search(r'/test-(.*)\.py([23])\.out$', fn)
         branch = m.group(1)
         py_version = m.group(2)
-        print('  running under Py %s' % py_version)
+        lines.append('  running under Py %s' % py_version)
 
-        print('    versions:')
+        lines.append('    versions:')
         for version in versions:
-            print('       %s' % version)
+            lines.append('       %s' % version)
 
-        print('    log: %s' % fn)
-        print('    branch: %s' % branch)
+        lines.append('    log: %s' % fn)
+        lines.append('    branch: %s' % branch)
 
         m = re.search(r'---+\nTOTAL +(.+)\n---+', txt)
         if m:
-            print('    coverage: %s' % m.group(1))
+            lines.append('    coverage: %s' % m.group(1))
 
         m = re.search(r'^((OK|FAILED)( +\([^\)]+\))?)', txt, re.M)
         if m:
-            print('    tests: %s' % m.group(1))
+            lines.append('    tests: %s' % m.group(1))
 
         if show_skips:
             count = {}
@@ -41,25 +43,40 @@ def parse_result(fn, show_skips=False):
                     count[x] += 1
 
             for x in sorted(count.keys()):
-                print('         skip: %s (%ix)' % (x, count[x]))
+                lines.append('         skip: %s (%ix)' % (x, count[x]))
 
         for x in re.findall(r'^ERROR: .*$', txt, re.M):
-            print('         %s' % x)
+            lines.append('         %s' % x)
 
         for x in re.findall(r'^FAIL: .*$', txt, re.M):
-            print('         %s' % x)
+            lines.append('         %s' % x)
+
+    return lines
 
 
-args = sys.argv[1:]
+def iter_results():
+    if os.path.exists('vagrant'):
+        boxes = os.listdir('vagrant')
 
-if len(args) == 0:
+    else:
+        boxes = [os.path.basename(os.path.abspath('.'))]
+        os.chdir('../..')
 
-    boxes = os.listdir('vagrant')
     for box in boxes:
-        print(box)
+        lines = []
+        lines.append(box)
         results = glob.glob(os.path.join('vagrant', box, 'test-*.py[23].out'))
         if results:
             for result in results:
-                parse_result(result)
+                lines.extend(parse_result(result))
         else:
-            print('  ', '<no results>')
+            lines.append('  ', '<no results>')
+
+        lines.append('')
+
+        yield '\n'.join(lines)
+
+
+if __name__ == '__main__':
+    for r in iter_results():
+        print(r)
