@@ -153,7 +153,7 @@ static PyObject* ims_encode_cm6(PyObject *m, PyObject *args) {
     PyArrayObject *contiguous_array = NULL;
     int *in_data;
     char *out_data = NULL;
-    int sample;
+    long long int sample;
     int v;
     int isign, imore;
     size_t nsamples, bufsize, isample, ipos, iout, i;
@@ -200,7 +200,7 @@ static PyObject* ims_encode_cm6(PyObject *m, PyObject *args) {
         if (isample >= 1) sample -= 2 * in_data[isample-1];
         if (isample >= 2) sample += in_data[isample-2];
         isign = sample < 0 ? 16 : 32;
-        sample = abs(sample);
+        sample = llabs(sample);
         imore = 0;
         ipos = iout;
         while (isign != 0) {
