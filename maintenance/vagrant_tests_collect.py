@@ -70,7 +70,7 @@ def iter_results():
             for result in results:
                 lines.extend(parse_result(result))
         else:
-            lines.append('  ', '<no results>')
+            lines.append('  <no results>')
 
         lines.append('')
 
