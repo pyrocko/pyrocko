@@ -342,7 +342,6 @@ class GFSourcesTestCase(unittest.TestCase):
         moment = ex.get_moment(store, target) * float(num.sqrt(2. / 3))
 
         mt = gf.MTSource(mnn=moment, mee=moment, mdd=moment)
-        d_mt = mt.discretize_basesource(store=store, target=target)
 
         self.assertAlmostEqual(
             ex.get_magnitude(store, target),
