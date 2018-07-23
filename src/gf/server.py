@@ -25,6 +25,7 @@ import socket
 from http.server import SimpleHTTPRequestHandler as SHRH
 import sys
 import html
+import json
 import cgi
 from io import BytesIO
 import io
@@ -413,6 +414,7 @@ class RequestHandler(asynchat.async_chat, SHRH):
 class SeismosizerHandler(RequestHandler):
 
     stores_path = '/gfws/static/stores/'
+    api_path = '/gfws/static/api/'
     process_path = '/gfws/seismosizer/1/query'
 
     def send_head(self):
@@ -427,6 +429,12 @@ class SeismosizerHandler(RequestHandler):
 
         elif re.match(r'^' + S + '$', self.path):
             return self.list_stores()
+
+        elif re.match(r'^' + self.api_path + '$', self.path):
+            return self.list_stores_json()
+
+        elif re.match(r'^' + self.api_path + r'[a-zA-Z0-9_]+', self.path):
+            return self.get_store_config()
 
         elif re.match(r'^' + P + '$', self.path):
             return self.process()
@@ -532,6 +540,68 @@ class SeismosizerHandler(RequestHandler):
         self.end_headers()
         return f
 
+    def list_stores_json(self):
+        engine = self.server.engine
+
+        store_ids = list(engine.get_store_ids())
+        store_ids.sort(key=lambda x: x.lower())
+
+        def get_store_dict(store):
+            return {
+                'id': store.config.id,
+                'short_type': store.config.short_type,
+                'modelling_code_id': store.config.modelling_code_id,
+                'source_depth_min': store.config.source_depth_min,
+                'source_depth_max': store.config.source_depth_max,
+                'source_depth_delta': store.config.source_depth_delta,
+                'distance_min': store.config.distance_min,
+                'distance_max': store.config.distance_max,
+                'distance_delta': store.config.distance_delta,
+                'sample_rate': store.config.sample_rate,
+                'size': store.size_index_and_data
+            }
+
+        stores = {
+            'stores': [get_store_dict(engine.get_store(store_id))
+                       for store_id in store_ids]
+        }
+
+        s = json.dumps(stores)
+        length = len(s)
+        f = BytesIO(s.encode('ascii'))
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(length))
+        self.send_header("Access-Control-Allow-Origin", '*')
+        self.end_headers()
+
+        return f
+
+    def get_store_config(self):
+        engine = self.server.engine
+
+        store_ids = list(engine.get_store_ids())
+        store_ids.sort(key=lambda x: x.lower())
+
+        for match in re.finditer(r'/gfws/static/api/([a-zA-Z0-9_]+)',
+                                 self.path):
+            store_id = match.groups()[0]
+
+        store = {}
+        store['id'] = store_id
+        store['config'] = str(engine.get_store(store_id).config)
+
+        s = json.dumps(store)
+        length = len(s)
+        f = BytesIO(s.encode('ascii'))
+        self.send_response(200, 'OK')
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(length))
+        self.send_header("Access-Control-Allow-Origin", '*')
+        self.end_headers()
+
+        return f
+
     def process(self):
 
         request = gf.load(string=self.body['request'][0])
@@ -624,7 +694,7 @@ def run(ip, port, engine):
 
 
 if __name__ == '__main__':
-    util.setup_logging('pyrocko.gf.server', 'warning')
+    util.setup_logging('pyrocko.gf.server', 'info')
     port = 8085
     engine = gf.LocalEngine(store_superdirs=sys.argv[1:])
     logger.info('Starting Server at http://127.0.0.1:%d' % port)
