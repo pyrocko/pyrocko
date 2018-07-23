@@ -1251,7 +1251,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
             return float(mt.moment_to_magnitude(moment))
 
         else:
-            return float(mt.moment_to_magnitude(1.0)) # * math.sqrt(3. / 2.))
+            return float(mt.moment_to_magnitude(1.0))
 
     def get_volume_change(self, store=None, target=None):
         self.check_conflicts()
@@ -1259,14 +1259,9 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         if self.volume_change is not None:
             return self.volume_change
 
-        #    math.sqrt(num.sum(m6[0:3]**2) + 2.0 * num.sum(m6[3:6]**2))
-        #    / math.sqrt(2.))
-
         elif self.magnitude is not None:
             moment = float(mt.magnitude_to_moment(self.magnitude))
-            mt_moment = math.sqrt(2. / 3) * moment
-            print('moment', moment, 'mt_moment', mt_moment)
-            return mt_moment / self.get_moment_to_volume_change_ratio(
+            return moment / self.get_moment_to_volume_change_ratio(
                 store, target)
 
         else:
@@ -1299,7 +1294,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
 
-        amplitudes *= self.get_moment(store, target) # * math.sqrt(3. / 2.)
+        amplitudes *= self.get_moment(store, target)  * math.sqrt(2. / 3.)
         print(amplitudes)
 
         return meta.DiscretizedExplosionSource(
@@ -1600,9 +1595,9 @@ class MTSource(Source):
 
     def get_magnitude(self, store=None, target=None):
         m6 = self.m6
-        sm = math.sqrt(num.sum(m6[0:3]**2) + 2.0 * num.sum(m6[3:6]**2)) / math.sqrt(2.)
-        print('sm', sm)
-        return mt.moment_to_magnitude(sm)
+        return mt.moment_to_magnitude(
+            math.sqrt(num.sum(m6[0:3]**2) + 2.0 * num.sum(m6[3:6]**2)) /
+            math.sqrt(2.))
 
     def pyrocko_moment_tensor(self, store=None, target=None):
         return mt.MomentTensor(m=mt.symmat6(*self.m6_astuple))
