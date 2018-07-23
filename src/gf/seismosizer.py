@@ -1294,8 +1294,7 @@ class ExplosionSource(SourceWithDerivedMagnitude):
         times, amplitudes = self.effective_stf_pre().discretize_t(
             store.config.deltat, 0.0)
 
-        amplitudes *= self.get_moment(store, target)  * math.sqrt(2. / 3.)
-        print(amplitudes)
+        amplitudes *= self.get_moment(store, target) * math.sqrt(2. / 3.)
 
         return meta.DiscretizedExplosionSource(
             m0s=amplitudes,
